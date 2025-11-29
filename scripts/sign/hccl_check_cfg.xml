@@ -1,0 +1,26 @@
+<!--配置文件说明:
+必配:
+    input       - 加头输入文件名
+    output      - 加头输出文件名，输出文件目前与输入文件在同一目录下
+    version     - 版本号配置
+    type - 签名的方式
+        1.cms(加在尾部)
+        2.rsa（/SOC 加在头部）
+        3.支持签名方式多选，以“/”分割，例如“cms/rsa”
+可选:
+    sign_alg    - 签名算法选择,该配置项仅在type为rsa的生效，cms不支持可选填充方式：
+        1.PKCSv1.5(默认)
+        2.PSS
+    encrypt_alg - 加密算法的选择
+        1.aes
+        2.sm4
+    rootrsa     - rootrsa密钥文件配置，路径配置必须相对于signtool仓,默认为default_rsa_rootkey
+    subrsa      - subrsa密钥文件配置，路径配置必须相对于signtool仓,默认为default_rsa_subkey
+    additional  - 附加参数，目前用于bootrom加头时加到文件尾部
+    nvcnt       - RSA固件防回滚版本号，计数范围0~31
+    rsatag      - 固件固定标记，防止固件误升级情况
+-->
+
+<hcomm_check_cfg>
+    <item input="aicpu_hccl.tar.gz" output="aicpu_hccl.tar.gz" type="cms" sign_alg="PSS" additional="-D --pss" tag="ascend_aicpu" nvcnt="0"></item>
+</hcomm_check_cfg>

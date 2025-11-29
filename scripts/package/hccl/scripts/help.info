@@ -1,0 +1,38 @@
+  --run                             Install run mode
+    --docker-root=<docker root fs directory>    Specify the path of docker root
+    --install-path=<path>           Install product to specific dir path
+    --install-for-all               Install for all user
+    --pylocal                       Install python packages to install dir path
+    --chip=<chip1,chip2>            Nothing is currently supported
+    --feature=<feature1,feature2>   Nothing is currently supported
+    --setenv                        Setting the Environment Variables Required at Run Time
+  --devel                           Install devel mode
+    --docker-root=<docker root fs directory>    Specify the path of docker root
+    --install-path=<path>           Install product to specific dir path
+    --install-for-all               Install for all user
+    --pylocal                       Install python packages to install dir path
+    --chip=<chip1,chip2>            Nothing is currently supported
+    --feature=<feature1,feature2>   Nothing is currently supported
+    --setenv                        Setting the Environment Variables Required at Run Time
+  --full                            Install full mode
+    --docker-root=<docker root fs directory>    Specify the path of docker root
+    --install-path=<path>           Install product to specific dir path
+    --install-for-all               Install for all user
+    --pylocal                       Install python packages to install dir path
+    --chip=<chip1,chip2>            Nothing is currently supported
+    --feature=<feature1,feature2>   Nothing is currently supported
+    --setenv                        Setting the Environment Variables Required at Run Time
+  --uninstall                       Uninstall product
+    --docker-root=<path>            Specify the path of docker root
+    --install-path=<path>           Uninstall product to specific dir path
+  --upgrade                         Upgrade product immediately
+    --docker-root=<docker root fs directory>    Specify the path of docker root
+    --install-path=<path>           Install product to specific dir path
+    --install-for-all               Install for all user
+    --pylocal                       Install python packages to install dir path
+    --chip=<chip1,chip2>            Nothing is currently supported
+    --feature=<feature1,feature2>   Nothing is currently supported
+    --setenv                        Setting the Environment Variables Required at Run Time
+  --version                         Query the package version
+  --pre-check                       Package installation/running pre-dependency check
+ 

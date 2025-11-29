@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<block name="HcclLib" copy_type="delivery" src_path="" dst_path="" install_path="" install_own="$username:$usergroup" install_mod="550" install_type="run;devel">
+    <dir_info install_mod="550">
+        <path value="$(TARGET_ENV)/lib64"/>
+        <path value="$(TARGET_ENV)/include" install_type="devel"/>
+        <path value="$(TARGET_ENV)/include/hccl" install_type="devel"/>
+        <path value="$(TARGET_ENV)/include/version" install_type="devel"/>
+        <path value="opp"/>
+        <path value="opp/built-in"/>
+        <path value="opp/built-in/op_impl"/>
+        <path value="opp/built-in/op_impl/aicpu"/>
+        <path value="opp/built-in/op_impl/aicpu/kernel"/>
+        <path value="opp/built-in/op_impl/aicpu/config"/>
+    </dir_info>
+    <file_info value="include" copy_type="source" src_path="hccl/inc" dst_path="include/hccl" install_path="$(TARGET_ENV)/include/hccl" install_type="devel" install_mod="440">
+        <file value="hccl.h"/>
+    </file_info>
+    <file_info value="lib64" copy_type="delivery" src_path="build" dst_path="lib64" install_path="$(TARGET_ENV)/lib64" install_type="all" install_mod="440">
+        <!-- hccl -->
+        <file value="libhccl.so" file_type="shared"/>
+    </file_info>
+    <file_info value="device" copy_type="delivery" src_path="build" dst_path="Ascend/aicpu" install_path="opp/built-in/op_impl/aicpu/kernel" install_type="all" install_mod="440" optional="true">
+        <file value="aicpu_hccl.tar.gz"/>
+    </file_info>
+    <file_info value="json" copy_type="delivery" src_path="build" dst_path="built-in/data/op/aicpu" install_path="opp/built-in/op_impl/aicpu/config" install_type="all" install_mod="440">
+        <file value="libscatter_aicpu_kernel.json"/>
+    </file_info>
+    <file_info value="aicpu_custom" copy_type="delivery" src_path="build" dst_path="built-in/data/op/aicpu" install_path="opp/built-in/op_impl/aicpu/kernel" install_type="all" install_mod="440" optional="true">
+        <file value="libscatter_aicpu_kernel.so"/>
+    </file_info>
+</block>
