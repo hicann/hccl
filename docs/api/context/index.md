@@ -1,4 +1,4 @@
-# hcclapi\_ops\_gitcode
+# HCCL API
 
 -   [集合通信](集合通信.md)
     -   [HcclAllReduce](HcclAllReduce.md)
