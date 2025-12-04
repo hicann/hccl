@@ -59,7 +59,7 @@ bash build.sh --pkg
 安装编译生成的HCCL软件包：
 
 ```shell
-bash ./build_out/cann-hccl<version>_linux-<arch>.run
+bash ./build_out/cann-hccl<version>_linux-<arch>.run --full
 ```
 
 请注意：编译时需要将上述命令中的软件包名称替换为实际编译生成的软件包名称。
@@ -72,12 +72,6 @@ bash ./build_out/cann-hccl<version>_linux-<arch>.run
 
 ```shell
 bash build.sh --ut
-```
-
-如需使能地址消毒器，可添加参数 `--asan`，命令如下：
-
-```shell
-bash build.sh --test --asan
 ```
 
 ## 上板测试
