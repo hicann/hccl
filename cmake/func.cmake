@@ -39,6 +39,7 @@
 #       FILES "README.md"
 #   )
 # =============================================================================
+set(_FUNC_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 function(pack_targets_and_files)
     cmake_parse_arguments(ARG
         ""
@@ -87,7 +88,7 @@ function(pack_targets_and_files)
         if(IS_ABSOLUTE "${ARG_MANIFEST}")
             message(FATAL_ERROR "[pack] MANIFEST must be relative (e.g., 'sha256sums.cfg')")
         endif()
-        set(manifest_arg "-D _MANIFEST_FILE=${staging_dir}/${ARG_MANIFEST}")
+        set(manifest_arg -D_MANIFEST_FILE=${staging_dir}/${ARG_MANIFEST})
     endif()
 
     add_custom_command(
@@ -102,7 +103,7 @@ function(pack_targets_and_files)
             -D _STAGING_DIR=${staging_dir}
             ${manifest_arg}
             -D "_ITEMS=$<JOIN:${src_items},;>"
-            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/_pack_stage.cmake"
+            -P "${_FUNC_CMAKE_DIR}/_pack_stage.cmake"
         COMMAND ${CMAKE_COMMAND} -E tar "czf" "${ARG_OUTPUT}" .
         WORKING_DIRECTORY ${staging_dir}
         DEPENDS ${ARG_TARGETS} ${staging_dir}
