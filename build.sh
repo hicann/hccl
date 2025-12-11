@@ -215,6 +215,21 @@ function run_ut() {
   fi
 }
 
+function run_st() {
+  if [[ "X$ENABLE_ST" = "Xon" ]]; then
+    local st_build_shell="${CURRENT_DIR}/test/st/algorithm/build.sh"
+    echo "st_build_shell = ${st_build_shell}"
+    if [ -e ${st_build_shell} ]; then
+      echo "开始执行st..."
+      bash ${st_build_shell}
+    else
+      echo "${st_build_shell} 文件不存在!"
+    fi
+  else
+    echo "System tests is not enabled, sh build.sh with parameter -s or --st to enable it"
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -j*)
@@ -250,6 +265,11 @@ while [[ $# -gt 0 ]]; do
     -u|--ut)
         ENABLE_TEST="on"
         ENABLE_UT="on"
+        shift
+        ;;
+    -s|--st)
+        ENABLE_TEST="on"
+        ENABLE_ST="on"
         shift
         ;;
     -t|--test)
@@ -365,6 +385,8 @@ cd ${BUILD_DIR}
 if [ "${ENABLE_UT}" == "on" ]; then
     build_ut
     run_ut
+elif [ "${ENABLE_ST}" == "on" ]; then
+    run_st
 elif [ -n "${TEST}" ];then
     build_test
 elif [ "${KERNEL}" == "true" ]; then

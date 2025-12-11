@@ -14,6 +14,7 @@
 #include <functional>
 #include <unordered_map>
 #include "hccl/hccl_types.h"
+#include "dtype_common.h"
 #include "hccl_res.h"
 #include "hccl_sim_pub.h"
 
