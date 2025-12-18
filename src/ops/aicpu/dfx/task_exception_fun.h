@@ -8,17 +8,15 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef OPS_HCCL_SRC_OPS_LOAD_KERNEL
-#define OPS_HCCL_SRC_OPS_LOAD_KERNEL
+#ifndef TASK_EXCEPTION_FUN_H
+#define TASK_EXCEPTION_FUN_H
 
-#include "hccl.h"
+#include <string>
 #include "hccl/base.h"
 
 namespace ops_hccl {
 
-HcclResult LoadAICPUKernel(void);
-extern aclrtBinHandle g_binKernelHandle;
+void GetScatterOpInfo(const void *opInfo, char *outPut, size_t size);
 
 }
-
 #endif

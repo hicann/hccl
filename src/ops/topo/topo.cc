@@ -31,7 +31,7 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
     struct GraphRankInfo* graph;
     u32 len = 0;
     // 获取rankGraph
-    CHK_RET(CommGetRankGraph(comm, GraphType::RANK_GRAPH_910_93, &temp, &len));
+    CHK_RET(HcclGetRankGraph(comm, GraphType::RANK_GRAPH_910_93, &temp, &len));
     graph = static_cast<struct GraphRankInfo*>(temp);
     // 将rankGraph转换为rankList
     std::vector<struct GraphRankInfo> rankList;
@@ -240,6 +240,7 @@ HcclResult GetModuleIdx(const struct GraphRankInfo &rankInfo, TopoInfo* topoInfo
 
 HcclResult CalcLinkInfo(HcclComm comm, const std::vector<struct GraphRankInfo> &rankList, TopoInfo* topoInfo)
 {
+    (void) comm;
     std::vector<s32> devIdList;
     for (auto rankInfo : rankList) {
         if (rankInfo.serverIdx == topoInfo->serverIdx) {
@@ -285,6 +286,7 @@ HcclResult CalcLinkInfo(HcclComm comm, const std::vector<struct GraphRankInfo> &
 /* 针对A2对称拓扑通用的拓扑信息获取方式，支持A+X */
 HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
+    (void) comm;
     algHierarchyInfo.levels = 2;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = topoInfo->userRank % topoInfo->deviceNumPerModule;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = topoInfo->deviceNumPerModule;
@@ -299,6 +301,7 @@ HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, TopoInfo* topoInfo, AlgHierar
 /* 针对A3对称拓扑通用的拓扑信息获取方式 */
 HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
+    (void) comm;
     algHierarchyInfo.levels = 3;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = topoInfo->userRank % topoInfo->deviceNumPerModule;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = topoInfo->deviceNumPerModule;
@@ -317,6 +320,7 @@ HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, TopoInfo* topoInfo, AlgHierar
 /* 针对非对称场景打平拓扑通用的拓扑信息获取方式 */
 HcclResult CalcGeneralTopoInfoForComm(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
+    (void) comm;
     algHierarchyInfo.levels = 2;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = 0;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = 1;

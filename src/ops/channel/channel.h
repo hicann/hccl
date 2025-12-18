@@ -24,12 +24,12 @@ enum CommPlane {
 };
 constexpr u32 NORMAL_NOTIFY_NUM = 3;
 
-HcclResult CalcLevel0ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels);
-HcclResult CalcLevel1ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels);
-HcclResult CalcLevel2ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels);
+HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels);
+HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels);
+HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels);
 
 }
 

@@ -17,7 +17,7 @@ namespace ops_hccl {
 class ScatterRingExecutor : public ScatterExecutorBase {
 public:
     explicit ScatterRingExecutor();
-    ~ScatterRingExecutor() = default;
+    ~ScatterRingExecutor() override = default;
 
     HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
         AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;

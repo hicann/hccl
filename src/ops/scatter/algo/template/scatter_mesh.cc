@@ -97,6 +97,7 @@ HcclResult ScatterMesh::RunAsync(const u32 rank, const u32 rankSize, std::vector
 
 HcclResult ScatterMesh::RunSendScatter(const u32 dstRank, const Slice &slice, std::vector<ChannelInfo> &channels)
 {
+    (void) slice;
     // 本rank是root rank，直接进行数据的拷贝，从input拷贝到output
     if (dstRank == interRank_) {
         if (inputMem_.addr != outputMem_.addr) {

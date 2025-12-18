@@ -158,10 +158,10 @@ HcclResult ScatterNHR::RunScatterNHR(std::vector<ChannelInfo> &channels)
     return HCCL_SUCCESS;
 }
 
-void ScatterNHR::PrepareSlicesData(const u32 unitSize_, const u64 totalCount, const u32 rankSize) const
+void ScatterNHR::PrepareSlicesData(const u32 unitSize, const u64 totalCount, const u32 rankSize) const
 {
     slices_.resize(rankSize);
-    u64 sliceSize = (totalCount / rankSize) * unitSize_;
+    u64 sliceSize = (totalCount / rankSize) * unitSize;
 
     for (u32 i = 0; i < rankSize; i++) {
         slices_[i].offset = i * sliceSize;

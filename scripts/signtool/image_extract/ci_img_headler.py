@@ -19,8 +19,6 @@ def get_args():
                         help='INPUT: recovered raw img')
     parser.add_argument('--rcvr', help="recover the raw img without header",
                         action="store_true")
-    parser.add_argument('-platform', required=False, dest='platform', choices=['ascend'],
-                        help='INPUT: platform : ascend')
 
     return parser.parse_args()
 

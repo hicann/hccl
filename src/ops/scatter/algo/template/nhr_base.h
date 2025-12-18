@@ -11,7 +11,6 @@
 #ifndef NHR_CUSTOM_BASE_H
 #define NHR_CUSTOM_BASE_H
 
-#include <cmath>
 #include "alg_template_base.h"
 
 namespace ops_hccl {

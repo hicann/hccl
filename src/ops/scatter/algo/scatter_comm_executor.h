@@ -19,7 +19,7 @@ namespace ops_hccl {
 class ScatterCommExecutor : public ScatterExecutorBase {
 public:
     explicit ScatterCommExecutor();
-    ~ScatterCommExecutor() = default;
+    ~ScatterCommExecutor() override = default;
 protected:
     /* *************** 资源计算 *************** */
     HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,

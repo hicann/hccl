@@ -19,9 +19,11 @@
 #include "alg_env_config.h"
 
 namespace ops_hccl {
-HcclResult CalcLevel0ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels)
+HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels)
 {
+    (void) param;
+    (void) topoInfo;
     channels.clear();
     SubCommInfo &subCommInfo = algHierarchyInfo.infos[COMM_LEVEL0];
     std::set<u32> connectRanks; // 非通信域rank
@@ -48,9 +50,10 @@ HcclResult CalcLevel0ChannelRequest(const OpParam& param, TopoInfo* topoInfo, Al
     return HCCL_SUCCESS;
 }
 
-HcclResult CalcLevel1ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels)
+HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels)
 {
+    (void) param;
     channels.clear();
     SubCommInfo &subCommInfo = algHierarchyInfo.infos[COMM_LEVEL1];
     std::set<u32> connectRanks; // 非通信域rank
@@ -71,7 +74,7 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, TopoInfo* topoInfo, Al
     bool isA2UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910B && (topoInfo->serverNum > 1 ||
         (topoInfo->serverNum == 1 && topoInfo->isDiffDeviceModule && GetExternalInputIntraRoceSwitch()));
     bool isA3UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910_93 &&
-        ((topoInfo->superPodNum > 1 && topoInfo->multiSuperPodDiffServerNumMode) ||
+        ((topoInfo->superPodNum > 1 && (topoInfo->multiSuperPodDiffServerNumMode || topoInfo->multiModuleDiffDeviceNumMode)) ||
         (topoInfo->superPodNum == 1 && topoInfo->serverNum > 1 && GetExternalInputInterHccsDisable()));
     bool isUsedRdma = isA2UsedRdma || isA3UsedRdma;
 
@@ -86,9 +89,11 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, TopoInfo* topoInfo, Al
     return HCCL_SUCCESS;
 }
 
-HcclResult CalcLevel2ChannelRequest(const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    AlgType& algType, std::vector<ChannelDesc> &channels)
+HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    const AlgType& algType, std::vector<ChannelDesc> &channels)
 {
+    (void) param;
+    (void) topoInfo;
     channels.clear();
     SubCommInfo &subCommInfo = algHierarchyInfo.infos[COMM_LEVEL2];
     std::set<u32> connectRanks; // 非通信域rank

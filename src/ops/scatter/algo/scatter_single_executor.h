@@ -18,7 +18,7 @@ namespace ops_hccl {
 class ScatterSingleExecutor : public ScatterExecutorBase {
 public:
     ScatterSingleExecutor();
-    ~ScatterSingleExecutor() = default;
+    ~ScatterSingleExecutor() override = default;
 
 private:
     HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) override;

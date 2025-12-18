@@ -72,6 +72,14 @@ HcclResult InitEnvConfig()
         HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "\
             "HCCL_OP_EXPANSION_MODE failed. errorno[%d]", HCCL_ERROR_CODE(ret), ret), ret);
 
+    // 解析重执行设置
+    ret = ParseRetryEnable();
+    RPT_ENV_ERR(ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"env", "tips"}),\
+        std::vector<std::string>({"HCCL_OP_RETRY_ENABLE", "Value should be 0 or 1."}));
+    CHK_PRT_RET(ret != HCCL_SUCCESS,
+        HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_OP_RETRY_ENABLE failed. "
+            "errorno[%d]", HCCL_ERROR_CODE(ret), ret), ret);
+
     // 解析算法配置
     ret = ParseHcclAlgo();
     RPT_ENV_ERR(ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"env", "tips"}),
@@ -560,6 +568,119 @@ HcclResult ParseOpExpansion()
     return HCCL_SUCCESS;
 }
 
+HcclResult SplitHcclRetryEnable(const std::string &retryConfig, std::vector<std::string> &retryEnables)
+{
+    std::string remainRetryConfig;
+    std::size_t found = retryConfig.find(",");
+    if ((found == 0) || (found == (retryConfig.length() - 1))) {
+        HCCL_ERROR("[SplitHcclRetryEnable] algo config is invalid.");
+        return HCCL_E_PARA;
+    } else if (found != std::string::npos) {
+        remainRetryConfig = retryConfig.substr(found + 1);
+    } else {
+        // 最后一组配置,剩余的字符串为空
+    }
+    retryEnables.push_back(retryConfig.substr(0, found));
+
+    if (retryEnables.size() > HCCL_RETRY_ENABLE_LEVEL_NUM) {
+        HCCL_ERROR("[SplitHcclRetryEnable] retryEnable config is invalid. retryEnable level is more than %u.",
+            HCCL_RETRY_ENABLE_LEVEL_NUM);
+        return HCCL_E_PARA;
+    }
+    if (!remainRetryConfig.empty()) {
+        CHK_RET(SplitHcclRetryEnable(remainRetryConfig, retryEnables));
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult CollectRetryEnableFromConfig(const std::vector<std::string> &retryEnables)
+{
+    const std::map<std::string, u32> hcclRetryLevelMap = {
+        {"L0", HCCL_RETRY_ENABLE_LEVEL_0}, {"L1", HCCL_RETRY_ENABLE_LEVEL_1}, {"L2", HCCL_RETRY_ENABLE_LEVEL_2}};
+
+    std::map<std::string, u32> countHcclRetryLevelMap = {{"L0", 0}, {"L1", 0}, {"L2", 0}};
+
+    const std::map<std::string, bool> hcclRetryEnableMap = {{"0", false}, {"1", true}};
+    for (auto retryEnableLevel : retryEnables) {
+        u32 level = 0;
+        bool retryEnable = false;
+        std::size_t found = retryEnableLevel.find(":");
+        if ((found == 0) || (found == (retryEnableLevel.length() - 1))) {
+            HCCL_ERROR("[CollectRetryEnableFromConfig] Hccl retryEnableLevel is invalid.");
+            return HCCL_E_PARA;
+        }
+        std::string orginalLevel = retryEnableLevel.substr(0, found);
+        std::string orginalRetryEnable = retryEnableLevel.substr(found + 1);
+        if (orginalLevel == "L0") {
+           HCCL_RUN_WARNING("[CollectRetryEnableFromConfig] L0 config does not take effect"); 
+        }
+        // 检查是否存在重复配置level
+        auto iterCountRetryLevel = countHcclRetryLevelMap.find(orginalLevel);
+        if (iterCountRetryLevel == countHcclRetryLevelMap.end()) {
+            HCCL_ERROR("[CollectRetryEnableFromConfig] Retry config is invalid, level %s is not supported.",
+                orginalLevel.c_str());
+            return HCCL_E_PARA;
+        }
+        if (countHcclRetryLevelMap[orginalLevel] == 1) {
+            HCCL_ERROR("[CollectRetryEnableFromConfig] Retry config level[%s] is repeated, expect: L1:0, L2:0",
+                orginalLevel.c_str());
+            return HCCL_E_PARA;
+        }
+        countHcclRetryLevelMap[orginalLevel] += 1;
+        // 获取level和对应的retryEnable，并赋值给g_algEnvConfig.hcclRetryConfig
+        auto iterRetryLevel = hcclRetryLevelMap.find(orginalLevel);
+        if (iterRetryLevel == hcclRetryLevelMap.end()) {
+            HCCL_ERROR("[CollectRetryEnableFromConfig] Retry config is invalid, level %s is not supported.",
+                orginalLevel.c_str());
+            return HCCL_E_PARA;
+        }
+        auto iterRetryEnable = hcclRetryEnableMap.find(orginalRetryEnable);
+        if (iterRetryEnable == hcclRetryEnableMap.end()) {
+            HCCL_ERROR("[CollectRetryEnableFromConfig] Retry config is invalid, retryEnable %s is not supported.",
+                orginalRetryEnable.c_str());
+            return HCCL_E_PARA;
+        }
+        level = iterRetryLevel->second;
+        retryEnable = iterRetryEnable->second;
+        g_algEnvConfig.hcclRetryConfig[level] = retryEnable;
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult ParseRetryEnable()
+{
+    // 默认都设置成false
+    for (u32 level = 0; level < HCCL_RETRY_ENABLE_LEVEL_NUM; ++level) {
+        g_algEnvConfig.hcclRetryConfig[level] = false;
+    }
+    std::string hcclRetryEnable = GetEnv(MM_ENV_HCCL_OP_RETRY_ENABLE);
+    if (hcclRetryEnable == "EmptyString") {
+        HCCL_RUN_INFO(
+            "[ParseRetryEnable] HCCL_OP_RETRY_ENABLE is not set. The retryEnable of all levels is set to false.");
+        return HCCL_SUCCESS;
+    }
+    // 去除空格
+    std::string retryConfig = hcclRetryEnable;
+    retryConfig.erase(std::remove(retryConfig.begin(), retryConfig.end(), ' '), retryConfig.end());
+
+    if (retryConfig.empty()) {
+        HCCL_RUN_INFO("[ParseRetryEnable] Hccl retry config is empty. The retryEnable of all levels is set to false.");
+        return HCCL_SUCCESS;
+    }
+
+    std::vector<std::string> retryEnables;
+    HcclResult ret = SplitHcclRetryEnable(retryConfig, retryEnables);
+    CHK_PRT_RET(ret != HCCL_SUCCESS,
+        HCCL_ERROR("[CollectRetryEnableFromConfig] Hccl retry config[%s] is invalid. "
+                   "expect: L1:0, L2:0",
+            retryConfig.c_str()),
+        ret);
+
+    CHK_RET(CollectRetryEnableFromConfig(retryEnables));
+    HCCL_RUN_INFO("[ParseRetryEnable] HCCL_OP_RETRY_ENABLE set by environment variable to [%s].", retryConfig.c_str());
+    return HCCL_SUCCESS;
+}
+
 HcclResult ParseDeterministic()
 {
     std::string hcclDeterministicEnv = GetEnv(MM_ENV_HCCL_DETERMINISTIC);
@@ -610,9 +731,36 @@ const bool& GetExternalInputInterHccsDisable()
     return g_algEnvConfig.interHccsDisable;
 }
 
+const bool& GetExternalInputIntraServerRetryEnable()
+{
+    return g_algEnvConfig.hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_0];
+}
+
+const bool& GetExternalInputInterServerRetryEnable()
+{
+    return g_algEnvConfig.hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_1];
+}
+
+const bool& GetExternalInputInterSuperPodRetryEnable()
+{
+    return g_algEnvConfig.hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_2];
+}
+
 const bool& GetExternalInputHcclEnableEntryLog()
 {
     return g_algEnvConfig.enableEntryLog;
 }
 
+bool RunIndependentOpExpansion(DevType deviceType) {
+    std::string opExpansionModeEnv = GetEnv(MM_ENV_HCCL_OP_EXPANSION_MODE);
+    if (deviceType == DevType::DEV_TYPE_910_93) {
+        return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS";
+    }
+    
+    // HOST_TS为Host展开
+    if (deviceType == DevType::DEV_TYPE_910B) {
+        return opExpansionModeEnv == "HOST_TS";
+    }
+    return false;
+}
 }

@@ -169,7 +169,7 @@ HcclResult HcclGetHcclBuffer(HcclComm comm, CommBuffer *buffer)
     return simComm->GetHcclBuffer(buffer);
 }
 
-HcclResult CommChannelCreate(HcclComm comm, const char *channelTag, CommEngine engine,
+HcclResult HcclChannelCreate(HcclComm comm, const char *channelTag, CommEngine engine,
     const ChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
@@ -177,7 +177,7 @@ HcclResult CommChannelCreate(HcclComm comm, const char *channelTag, CommEngine e
     return simComm->ChannelCommCreate(simComm->GetIdentifier(), std::string(channelTag), engine, channelDescList, listNum, channelList);
 }
 
-HcclResult CommCreateEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
+HcclResult HcclCreateEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -191,7 +191,7 @@ HcclResult HcclChannelGetHcclBuffer(HcclComm comm, ChannelHandle channel, CommBu
     return simComm->ChannelCommGetHcclBuffer(channel, buffer);
 }
 
-HcclResult CommGetRankGraph(HcclComm comm, GraphType type, void **graph, uint32_t *len)
+HcclResult HcclGetRankGraph(HcclComm comm, GraphType type, void **graph, uint32_t *len)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -206,15 +206,15 @@ HcclResult HcclAllocThreadRes(
     return simComm->independentOpThreadMgr_->HcclAllocThreadRes(engine, threadNum, notifyNumPerThread, thread);
 }
 
-HcclResult CommAllocThreadResByStream(
+HcclResult HcclAllocThreadResByStream(
     HcclComm comm, CommEngine engine, aclrtStream stream, uint32_t notifyNum, ThreadHandle *thread)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->independentOpThreadMgr_->CommAllocThreadResByStream(engine, stream, notifyNum, thread);
+    return simComm->independentOpThreadMgr_->HcclAllocThreadResByStream(engine, stream, notifyNum, thread);
 }
 
-HcclResult CommGetEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
+HcclResult HcclGetEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -548,13 +548,13 @@ HcclResult HcommReadReduceOnThread(ThreadHandle thread, ChannelHandle channel, v
     return HCCL_SUCCESS;
 }
 
-HcclResult CommLocalBareNotifyRecord(ThreadHandle thread, uint64_t dstNotifyId) 
+HcclResult HcommInterOpNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
 {
     HCCL_ERROR("[%s] not support.", __func__);
     return HCCL_E_NOT_SUPPORT;
 }
 
-HcclResult CommLocalBareNotifyWait(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
+HcclResult HcommInterOpNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
 {
     HCCL_ERROR("[%s] not support.", __func__);
     return HCCL_E_NOT_SUPPORT;

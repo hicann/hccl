@@ -18,14 +18,14 @@ CollAlgExecRegistry &CollAlgExecRegistry::Instance()
     return globalExecRegistry;
 }
 
-HcclResult CollAlgExecRegistry::Register(const std::string &tag, const CollExecCreator &collExecCreator)
+HcclResult CollAlgExecRegistry::Register(const std::string &tag, const CollExecCreator &collAlgExecCreator)
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if (execCreators_.find(tag) != execCreators_.end()) {
         HCCL_WARNING("[CollAlgExecRegistry]Exec tag[%s] already registered.", tag.c_str());
         return HcclResult::HCCL_E_INTERNAL;
     }
-    execCreators_.emplace(tag, collExecCreator);
+    execCreators_.emplace(tag, collAlgExecCreator);
     return HcclResult::HCCL_SUCCESS;
 }
 
