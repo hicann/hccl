@@ -38,12 +38,14 @@ project(hccl)
 
 if(ENABLE_TEST)
     include(cmake/config.cmake)
+    include(cmake/intf_pub_gccnative.cmake)
     add_subdirectory(test)
     return()
 endif()
 
 if(BUILD_OPEN_PROJECT)
     # include(cmake/third_party/json.cmake)
+    include(cmake/intf_pub_gccnative.cmake)
     include(cmake/config.cmake)
     include(cmake/package.cmake)
     pack_built_in()
@@ -87,7 +89,7 @@ if(BUILD_OPEN_PROJECT)
     endif()
 
     set(HCCL_HEAD
-        inc/hccl.h
+        include/hccl.h
     )
 
     set(HCCL_JSON

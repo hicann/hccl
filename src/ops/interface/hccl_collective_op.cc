@@ -85,7 +85,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
 }
 
-HcclResult HcclBatchSendRecvInner(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream)
+HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream)
 {
     return HcclBatchSendRecvInner(sendRecvInfo, itemNum, comm, stream);
 }

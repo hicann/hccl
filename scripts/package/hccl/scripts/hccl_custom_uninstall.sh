@@ -104,9 +104,7 @@ whl_uninstall_package() {
     local _module_apth="$2"
     if [ ! -d "${WHL_INSTALL_DIR_PATH}/${_module}" ]; then
         pip3 show "${_module}" > /dev/null 2>&1
-        if [ $? -ne 0 ]; then
-            log "WARNING" "${_module} is not exist."
-        else
+        if [ $? -eq 0 ]; then
             pip3 uninstall -y "${_module}" 1> /dev/null
             local ret=$?
             if [ $ret -ne 0 ]; then

@@ -81,7 +81,6 @@ if __name__ == '__main__':
         print("Detected 8K header magic number, No need to add head again")
         sys.exit()  # 退出程序
 
-    if args.platform == 'ascend' :
-        import hi_platform.platform_ascend as platforms
+    import hi_platform.platform as platforms
 
     main()

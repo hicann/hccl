@@ -44,11 +44,16 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
-    if (deviceType != DevType::DEV_TYPE_910_93 && deviceType != DevType::DEV_TYPE_910B) {
+    if (!RunIndependentOpExpansion(deviceType)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
     // AclGraph引导到老的流程上面
     if (IsStreamCapture(stream)) {
+        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
+    }
+    // 重执行引导到老的流程上面
+    if (deviceType == DevType::DEV_TYPE_910_93 && (GetExternalInputIntraServerRetryEnable()
+        || GetExternalInputInterServerRetryEnable() || GetExternalInputInterSuperPodRetryEnable())) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
 
@@ -242,6 +247,7 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
         HCCL_ERROR("failed to fill param.tag");
         return HCCL_E_INTERNAL;
     }
+    CHK_RET(HcclGetCommName(comm, param.commName));
 
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;
@@ -359,9 +365,9 @@ HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo)
     HcclMem topoInfoMem;
     topoInfoMem.size = sizeof(TopoInfo);
     // 若获取Context失败，表示对应Context尚未缓存
-    if (CommGetEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem) != HCCL_SUCCESS) {
+    if (HcclGetEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem) != HCCL_SUCCESS) {
         // 创建新的Context
-        CHK_RET(CommCreateEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem));
+        CHK_RET(HcclCreateEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem));
         // 将Context内存地址强转为TopoInfo
         *topoInfo = static_cast<TopoInfo *>(topoInfoMem.addr);
         // 将对应拓扑信息填入到Context内存中
@@ -552,6 +558,7 @@ HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType)
 
 HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName)
 {
+    (void) comm;
     // 由于scatter只支持server间ring,nb和NHR，如果不是上述算法，需要重定向到ring；910_93仅支持server间ring
     if (!(algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NHR) &&
         !(algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NB) &&
@@ -597,7 +604,7 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
 {
     // 这种情况下资源已经有了
     HcclMem resCtxMem;
-    if (CommGetEngineCtx(comm, param.algTag, param.engine, &resCtxMem) == HCCL_SUCCESS) {
+    if (HcclGetEngineCtx(comm, param.algTag, param.engine, &resCtxMem) == HCCL_SUCCESS) {
         *resCtx = static_cast<AlgResourceCtx *>(resCtxMem.addr);
         return HCCL_SUCCESS;
     }
@@ -616,7 +623,7 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         resCtxMem.size += sizeof(ChannelInfo) * algHierarchyInfo.infos[level].localRankSize;
     }
     // 创建Context
-    CHK_RET(CommCreateEngineCtx(comm, param.algTag, param.engine, &resCtxMem));
+    CHK_RET(HcclCreateEngineCtx(comm, param.algTag, param.engine, &resCtxMem));
     // 将内存强转为AlgResourceCtx结构体
     *resCtx = static_cast<AlgResourceCtx *>(resCtxMem.addr);
 
@@ -681,8 +688,6 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
 
     // 当前该接口未提供，需要先规避一下
     // 创建两个notify，放入Context结构体中
-    // CHK_RET(CommAllocNotify(comm, CommEngine::COMM_ENGINE_HOSTCPU_TS,
-    //     AICPU_CONTROL_NOTIFY_NUM, notifies));
 
     for (u32 idx = 0; idx < AICPU_CONTROL_NOTIFY_NUM; idx++) {
         uint32_t notifyId;
@@ -703,7 +708,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
         HCCL_DEBUG("threads ptr is %p\n", *threads);
     } else {
         // host模式下，将主流封装为thread，并创建主流上的notify
-        CHK_RET(CommAllocThreadResByStream(comm, param.engine, param.stream,
+        CHK_RET(HcclAllocThreadResByStream(comm, param.engine, param.stream,
             resRequest.notifyNumOnMainThread, threads));
     }
     curPtr += sizeof(ThreadHandle); // 指针向后偏移
@@ -733,7 +738,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
 
         if (validChannelNum > 0) {
             // 调用控制面接口创建链路
-            CHK_RET(CommChannelCreate(comm, param.algTag, param.engine, levelNChannelRequest.data(),
+            CHK_RET(HcclChannelCreate(comm, param.algTag, param.engine, levelNChannelRequest.data(),
                 validChannelNum, levelNChannels.data()));
         }
 

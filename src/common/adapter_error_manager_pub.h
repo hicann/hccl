@@ -11,7 +11,6 @@
 #ifndef HCCL_INC_ADAPTER_ERROR_MANAGER_PUB_H
 #define HCCL_INC_ADAPTER_ERROR_MANAGER_PUB_H
 
-#include <cstdint>
 #include "log.h"
 #include <string>
 #include <vector> 

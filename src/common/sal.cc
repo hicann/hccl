@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <mutex>
 #include <syscall.h>
-#include <sys/time.h> /* 获取时间 */
 #include <securec.h>
 #include <unistd.h>
 

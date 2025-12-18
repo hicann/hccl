@@ -1382,27 +1382,11 @@ if [ "x$version_installed" != "x" -a "$version_installed" != "none" ] || [ -f "$
         exit_uninstall_log 0
     # 升级场景
     elif [ "$upgrade" = "y" ]; then
-        if [ -n "$pkg_version_dir" ]; then
-            if [ "$hetero_arch" = "y" ]; then
-                get_package_upgrade_install_info_hetero "upgrade_install_info"
-            else
-                get_package_upgrade_install_info "upgrade_install_info" "$pkg_install_path" "hccl"
-            fi
-            if [ -z "$upgrade_install_info" ]; then
-                log "ERROR" "Can not find softlink for this package in latest directory, upgrade failed"
-                log_operation "Upgrade" "failed"
-                exit_install_log 1
-            elif [ "$(realpath $upgrade_install_info)" != "$(realpath $install_info)" ]; then
-                uninstall_run "uninstall" "n" "y" "$upgrade_install_info"
-            fi
-        fi
         unchattr_files
         if [ "$host_only" = "$host_only_in_runpkg" ] || [ "$host_only_in_runpkg" = "false" -a "$host_only" = "none" ]; then
             uninstall_run "uninstall" "n" "n"
         fi
         save_user_files_to_log "$default_dir"
-        save_user_files_to_log "$(dirname $default_dir)/atc"
-        save_user_files_to_log "$(dirname $default_dir)/fwkacllib"
         if [ "$host_only" = "$host_only_in_runpkg" ] || [ "$host_only_in_runpkg" = "false" -a "$host_only" = "none" ]; then
             upgrade_run "upgrade"
         else
@@ -1455,34 +1439,17 @@ else
         fi
     # 升级场景
     elif [ "$upgrade" = "y" ]; then
-        if [ -z "$pkg_version_dir" ]; then
-            if [ -d "$default_dir" ]; then
-                log "ERROR" "The current user does not have the required permission to uninstall $default_dir, upgrade failed"
-                log_operation "Upgrade" "failed"
-                exit_install_log 1
-            else
-                log "ERROR" "ERR_NO:0x0080;ERR_DES:Runfile is not installed in ${pkg_install_path}, upgrade failed"
-                log_operation "Upgrade" "failed"
-                exit_install_log 1
-            fi
+        if [ -d "$default_dir" ]; then
+            log "ERROR" "The current user does not have the required permission to uninstall $default_dir, upgrade failed"
+            log_operation "Upgrade" "failed"
+            exit_install_log 1
         else
-            if [ "$hetero_arch" = "y" ]; then
-                get_package_upgrade_install_info_hetero "upgrade_install_info"
-            else
-                get_package_upgrade_install_info "upgrade_install_info" "$pkg_install_path" "hccl"
+            log "ERROR" "ERR_NO:0x0080;ERR_DES:Runfile is not installed in ${pkg_install_path}, upgrade failed"
+            log_operation "Upgrade" "failed"
+            if [ "$(ls -A "$install_path_param")" = "" ]; then
+                test -d "$install_path_param" && rm -rf "$install_path_param"
             fi
-            if [ -f "$upgrade_install_info" ]; then
-                create_default_dir && cp "$upgrade_install_info" "$install_info"
-                migrate_user_assets_v2
-                [ "$hetero_arch" = "y" ] && update_install_info_hetero "$install_info" "$pkg_version_dir"
-                uninstall_run "uninstall" "n" "y" "$upgrade_install_info"
-                upgrade_run "upgrade"
-                exit_install_log 0
-            else
-                log "ERROR" "ERR_NO:0x0080;ERR_DES:Runfile is not installed in ${pkg_install_path}, upgrade failed"
-                log_operation "Upgrade" "failed"
-                exit_install_log 1
-            fi
+            exit_install_log 1
         fi
     # 安装场景
     elif [ "$run_install" = "y" ] || [ "$full_install" = "y" ] || [ "$devel_install" = "y" ]; then

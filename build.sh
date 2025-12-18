@@ -19,12 +19,12 @@ JOB_NUM="-j${CPU_NUM}"
 ASAN="false"
 COV="false"
 CUSTOM_OPTION="-DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR}"
-FULL_MODE="false"  # 新增变量，用于控制是否全量构建
+FULL_MODE="true"  # 新增变量，用于控制是否全量构建
 KERNEL="false"  # 新增变量，用于控制是否只编译 ccl_kernel.so
 CANN_3RD_LIB_PATH="${CURRENT_DIR}/third_party"
-CUSTOM_SIGN_SCRIPT=""
+CUSTOM_SIGN_SCRIPT="${CURRENT_DIR}/scripts/sign/add_header_sign.py"
 ENABLE_SIGN="false"
-VERSION_INFO="8.5.0.0.B010"
+VERSION_INFO="8.5.0"
 
 ENABLE_UT="off"
 ENABLE_ST="off"
@@ -316,7 +316,7 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
     --enable-sign)
-        ENABLE_SIGN="true"
+        ENABLE_SIGN="false"
         shift
         ;;
     --sign-script)

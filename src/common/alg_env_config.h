@@ -21,11 +21,16 @@ namespace ops_hccl {
 
 constexpr u32 MAX_LEN_OF_DIGIT_ENV = 10; // 数字环境变量最大长度
 
-typedef enum {
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_0 = 0;        // HCCL 重执行层级0
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_1 = 1;        // HCCL 重执行层级1
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_2 = 2;        // HCCL 重执行层级2
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_NUM = 3;     // HCCL 重执行层级最多3级
+
+using DeterministicEnableLevel = enum {
     DETERMINISTIC_DISABLE = 0,          // 不支持确定性
     DETERMINISTIC_ENABLE,               // 支持确定性，不支持规约保序
     DETERMINISTIC_STRICT                // 支持确定性以及规约保序
-} DeterministicEnableLevel;
+};
 
 struct AlgEnvConfig {
     // 初始化标识
@@ -38,6 +43,7 @@ struct AlgEnvConfig {
     bool aicpuUnfold; 
     bool aivMode;
     bool enableFfts;
+    bool hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_NUM];
     std::map<HcclCMDType, std::vector<HcclAlgoType>> hcclAlgoConfig;
 
     AlgEnvConfig()
@@ -110,13 +116,27 @@ HcclResult ParseInterLinkType();
 
 HcclResult ParseOpExpansion();
 
+HcclResult SplitHcclRetryEnable(const std::string &retryConfig, std::vector<std::string> &retryEnables);
+
+HcclResult CollectRetryEnableFromConfig(const std::vector<std::string> &retryEnables);
+
+HcclResult ParseRetryEnable();
+
 const u32& GetExternalInputIntraRoceSwitch();
 
 const bool& GetExternalInputHcclAicpuUnfold();
 
 const bool& GetExternalInputInterHccsDisable();
 
+const bool& GetExternalInputIntraServerRetryEnable();
+
+const bool& GetExternalInputInterServerRetryEnable();
+
+const bool& GetExternalInputInterSuperPodRetryEnable();
+
 const bool& GetExternalInputHcclEnableEntryLog();
+
+bool RunIndependentOpExpansion(DevType deviceType);
 }
 
 #endif // HCCL_ALG_ENV_CONFIG_H

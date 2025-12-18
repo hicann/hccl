@@ -11,7 +11,6 @@
 #ifndef ALG_TEMPLATE_BASE_PUB_H
 #define ALG_TEMPLATE_BASE_PUB_H
 
-#include <cstring>
 #include <vector>
 #include <memory>
 #include <list>
@@ -144,7 +143,7 @@ public:
     {
         if (dataType >= HCCL_DATA_TYPE_RESERVED) {
             HCCL_ERROR("[AlgTemplateBase][DataUnitSize]data type[%s] out of range[%d, %d]",
-                GetDataTypeEnumStr(dataType).c_str(), HCCL_DATA_TYPE_INT8, HCCL_DATA_TYPE_RESERVED - 1);
+                GetDataTypeEnumStr(dataType).c_str(), HCCL_DATA_TYPE_INT8, static_cast<int>(HCCL_DATA_TYPE_RESERVED) - 1);
             return 0;
         }
 

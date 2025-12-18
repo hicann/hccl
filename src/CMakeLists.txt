@@ -21,8 +21,7 @@ else()
 endif()
 
 set(INCLUDE_LIST
-    ${OPS_BASE_DIR}/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    ${OPS_BASE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/ops
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/inc
@@ -84,6 +83,8 @@ else()
         ${TOP_DIR}/abl/qos/qosmng
         ${TOP_DIR}/abl/atrace/inc/utrace
         ${TOP_DIR}/abl/msprof/inc
+        ${TOP_DIR}/abl/libc_sec/include
+        ${TOP_DIR}/abl/mmpa/inc/mmpa
         ${TOP_DIR}/inc/aicpu/common
         ${TOP_DIR}/ace/csruntime/inc/tsch
         ${TOP_DIR}/asl/hss/inc
@@ -96,6 +97,15 @@ else()
         ${TOP_DIR}/metadef/inc/external
 
         ${TOP_DIR}/open_source/json/include
+
+        ${TOP_DIR}/runtime/pkg_inc/base
+
+        ${TOP_DIR}/hcomm/inc
+        ${TOP_DIR}/hcomm/inc/hccl
+        ${TOP_DIR}/hcomm/pkg_inc
+        ${TOP_DIR}/hcomm/pkg_inc/hccl
+        ${TOP_DIR}/hcomm/include
+        ${TOP_DIR}/hcomm/include/hccl
     )
 endif()
 
@@ -110,6 +120,7 @@ add_library(scatter_aicpu_kernel SHARED
 
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/aicpu/kernel_launch.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/aicpu/dfx/task_exception_fun.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/registry/alg_template_register.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/registry/coll_alg_exec_registry.cc
 
@@ -147,6 +158,7 @@ target_compile_definitions(scatter_aicpu_kernel PRIVATE
 )
 
 target_link_libraries(scatter_aicpu_kernel PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
     -Wl,--no-as-needed
     ccl_kernel
     -Wl,--no-as-needed
@@ -209,6 +221,7 @@ target_link_options(hccl PRIVATE
 
 if(BUILD_OPEN_PROJECT)
     target_link_libraries(hccl PRIVATE
+        $<BUILD_INTERFACE:intf_pub>
         -Wl,--no-as-needed
         hcomm
         c_sec
@@ -233,6 +246,10 @@ else()
 endif()
 
 install(TARGETS hccl
+    LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR} OPTIONAL
+)
+
+install(TARGETS scatter_aicpu_kernel
     LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR} OPTIONAL
 )
 

@@ -18,7 +18,6 @@
 #include "hccl_rank_graph.h"
 #include "hccl_rankgraph.h"
 #include "hccl_res.h"
-#include "hcomm_primitives.h"
 
 
 using namespace ops_hccl;

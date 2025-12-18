@@ -61,7 +61,7 @@ protected:
     TopoInfo* topoInfo_ = nullptr;
     AlgResourceCtx* algResource_ = nullptr;
     AlgType algType_;
-    u32 level0RankSize;
+    u32 level0RankSize = 0;
     AlgDesc desc_;
 };
 }

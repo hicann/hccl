@@ -126,6 +126,7 @@ struct AlgResourceCtx {
 struct OpParam { // 不申请ctx，每个算子单独下发
     char tag[TAG_LENGTH];
     char algTag[ALG_TAG_LENGTH];
+    char commName[COMM_INDENTIFIER_MAX_LENGTH];
     aclrtStream stream;
     void* inputPtr = nullptr;
     u64 inputSize = 0;

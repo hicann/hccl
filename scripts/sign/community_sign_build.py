@@ -71,14 +71,16 @@ def _help():
     print("  %s: 待签名的文件路径,支持多target,各target以空格分开" % ("target".ljust(8)))
     print("====================================== END =====================================")
 
-def get_sign_cmd(file) -> str:
+def get_sign_cmd(file, rootdir) -> str:
     """获取签名命令。"""
-    sign_command = ("./home/jenkins/signclient/client --config ./home/jenkins/signclient/client.toml add "
+    sign_crl = os.path.join(rootdir, "scripts/signtool/signature/SWSCRL.crl")
+    sign_command = ("sudo /home/jenkins/signatrust_client/signatrust_client --config /home/jenkins/signatrust_client/client.toml add "
                     "--file-type p7s --key-type x509 --key-name SignCert --detached ")
-    cmd = "{} {}".format(sign_command, file)
+    sign_suffix=" --timestamp-key TimeCert --crl "
+    cmd = "{} {} {} {}".format(sign_command, file, sign_suffix, sign_crl)
     return cmd
 
-def _run_sign(inputfiles):
+def _run_sign(inputfiles, rootdir):
     """执行签名。"""
     crlfile, cmstag = _get_sign_filename()
     ret=True
@@ -86,17 +88,7 @@ def _run_sign(inputfiles):
         if not os.path.isfile(file):
             logging.warning("input file:%s is not exist", file)
             continue
-        crl = os.path.join(mypath, crlfile)
-        cms = file + cmstag
-        for cmsfile in [crl, cms]:
-            if os.path.isfile(cmsfile):
-                logging.info("begin to remove old file:%s", cmsfile)
-                os.remove(cmsfile)
-            if os.path.isfile(cmsfile):
-                logging.error("remove old file:%s fail", cmsfile)
-                return False
-
-        cmd = get_sign_cmd(file)
+        cmd = get_sign_cmd(file, rootdir)
 
         logging.info("run sign cmd %s in %s", cmd, mypath)
         result = subprocess.run(cmd, cwd=mypath, shell=True, check=False, stdout=PIPE, stderr=STDOUT)
@@ -110,14 +102,16 @@ def _run_sign(inputfiles):
 # 多个文件签名场景需要拆分分别签
 def main(argv):
     """主流程。"""
-    if (len(argv)) < 1:
+    if (len(argv)) < 3:
         logging.error(
-            "argv number is error, it must >= 1, now (%s)", str(argv))
+            "argv number is error, it must >= 2, now (%s)", str(argv))
+        print("argv number is error, it must >= 2, now " + str(argv))
         sys.exit(1)
 
-    inputfiles = argv[1:]
+    rootdir = argv[1]
+    inputfiles = argv[2:]
     # 初始化签名环境
-    ret = _run_sign(inputfiles)
+    ret = _run_sign(inputfiles, rootdir)
 
     if ret is not False:
         if not _check_result(inputfiles):

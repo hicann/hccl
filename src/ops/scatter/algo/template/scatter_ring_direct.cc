@@ -177,6 +177,7 @@ HcclResult ScatterRingDirect::RunScatter(const u32 rank, const u32 rankSize)
 HcclResult ScatterRingDirect::RunScatterOnOtherRank(const u32 stepsFromRank2Root, const u32 step,
                                                       const Slice &txSlice, const Slice &rxSlice, const u32 rankSize)
 {
+    (void) txSlice;
     bool needSend = stepsFromRank2Root <= step;
     bool needReceive = stepsFromRank2Root > 0 && stepsFromRank2Root <= (step + 1);
     // Ack

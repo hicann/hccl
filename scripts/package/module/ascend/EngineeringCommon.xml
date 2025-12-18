@@ -8,6 +8,7 @@
         <path value="$(TARGET_ENV)/lib64" install_softlink="lib64"/>
         <path value="$(TARGET_ENV)/conf" install_softlink="conf"/>
         <path value="$(TARGET_ENV)/pkg_inc" install_softlink="pkg_inc"/>
+        <path value="$(TARGET_ENV)/devlib" install_softlink="devlib"/>
         <path value="var" install_mod="750"/>
     </dir_info>
 </block>

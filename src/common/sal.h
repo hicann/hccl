@@ -8,13 +8,13 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#ifndef HCCL_INC_SAL_H
+#define HCCL_INC_SAL_H
+
 #include <climits>
 #include <chrono>
 #include <hccl/hccl_types.h>
 #include <hccl/base.h>
-
-#ifndef HCCL_INC_SAL_H
-#define HCCL_INC_SAL_H
 
 constexpr int HCCL_BASE_DECIMAL = 10; // 10进制字符串转换
 

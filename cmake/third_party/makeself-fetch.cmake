@@ -16,17 +16,18 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/makeself")
-execute_process(
-    COMMAND ${CMAKE_COMMAND} -E copy
-    "${CANN_3RD_LIB_PATH}/makeself/makeself-header.sh"
-    "${CANN_3RD_LIB_PATH}/makeself/makeself.sh"
-    "${CMAKE_BINARY_DIR}/makeself"
-    RESULT_VARIABLE copy_result
-)
+file(MAKE_DIRECTORY "${MAKESELF_PATH}")
+
+if (EXISTS "${CANN_3RD_LIB_PATH}/makeself/makeself-header.sh" AND 
+    EXISTS "${CANN_3RD_LIB_PATH}/makeself/makeself.sh")
+    file(COPY 
+        "${CANN_3RD_LIB_PATH}/makeself/makeself-header.sh"
+        "${CANN_3RD_LIB_PATH}/makeself/makeself.sh"
+        DESTINATION "${MAKESELF_PATH}"
+    )
+endif()
 
 # 默认配置的makeself还是不存在则下载
-if (NOT EXISTS "${CMAKE_BINARY_DIR}/makeself/makeself-header.sh")
 if (NOT EXISTS "${MAKESELF_PATH}/makeself-header.sh" OR NOT EXISTS "${MAKESELF_PATH}/makeself.sh")
     set(MAKESELF_URL "https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz")
     message(STATUS "Downloading ${MAKESELF_NAME} from ${MAKESELF_URL}")
@@ -41,12 +42,11 @@ if (NOT EXISTS "${MAKESELF_PATH}/makeself-header.sh" OR NOT EXISTS "${MAKESELF_P
     )
     FetchContent_MakeAvailable(${MAKESELF_NAME})
     execute_process(
-        COMMAND chmod 700 "${CMAKE_BINARY_DIR}/makeself/makeself.sh"
-        COMMAND chmod 700 "${CMAKE_BINARY_DIR}/makeself/makeself-header.sh"
+        COMMAND chmod 700 "${MAKESELF_PATH}/makeself.sh"
+        COMMAND chmod 700 "${MAKESELF_PATH}/makeself-header.sh"
         -E env
         CMAKE_TLS_VERIFY=0
         RESULT_VARIABLE CHMOD_RESULT
         ERROR_VARIABLE CHMOD_ERROR
     )
-endif()
 endif()

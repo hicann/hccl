@@ -9,16 +9,36 @@
  */
 
 #include <string>
+#include <sstream>
 #include <memory>
 #include "alg_param.h"
 #include "executor_base.h"
 #include "coll_alg_exec_registry.h"
 #include "hcomm_primitives.h"
+#include "dfx/task_exception_fun.h"
 
 using namespace ops_hccl;
+using HcclGetOpInfoCallback = void (*)(const void *opInfo, char *outPut, size_t size);
 
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 {
+    HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
+    if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
+        HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
+        return 1;
+    }
+
+    if (HcommRegisterOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommRegisterOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
+            __func__, param->commName, param->algTag, param, sizeof(OpParam));
+        return 1;
+    }
+
+    if (HcommRegOpTaskException(param->commName, ops_hccl::GetScatterOpInfo) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommRegOpTaskException fail, commName[%s], algTag[%s]", __func__, param->commName, param->algTag);
+        return 1;
+    }
+
     // 根据算法名字获取executor
     std::string algName = std::string(param->algName);
     std::unique_ptr<ExecutorBase> executor = CollAlgExecRegistry::Instance().GetAlgExec(algName);
@@ -37,7 +57,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     }
 
     // 主thread等待Host stream的通知
-    if (CommLocalBareNotifyWait(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
+    if (HcommInterOpNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to wait notify[%d] from host main stream", param->resCtx->notifyIds[0]);
         return 1;
     }
@@ -49,7 +69,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (CommLocalBareNotifyRecord(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
+    if (HcommInterOpNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }
@@ -59,5 +79,10 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         return 1;
     }
 
+    if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
+        return 1;
+    }
+    HCCL_INFO("%s success, tag[%s], algTag[%s], commName[%s]", __func__, param->tag, param->algTag, param->commName);
     return 0;
 }

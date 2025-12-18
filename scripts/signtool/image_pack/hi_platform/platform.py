@@ -18,7 +18,7 @@ def __construct_header(N_buf, E_buf, hash_buf, code_len, suffix, head_type, vers
     code_len = 0 if before_header and large_packet else code_len
     header_base = 0x1000 if head_type else 0
     zero_bytes_32 = int(0).to_bytes(32, 'big') if sys.version > '3' else to_bytes(0, 32)
-    s = struct.Struct('I20sII32s32sIIIII512s512sIIIIII32sI16s16s16s88sIIII20sI32s16s8s16s4I16sI52s')
+    s = struct.Struct('I20sII32s32sIIIII512s512sIIIIII32sI16s16s16s88sIIII20sI32s16s8s16s16s16sI52s')
     preamble = 0x55AA55AA
     rev0 = int(0).to_bytes(20, 'big')
     head_len = 0x600
@@ -63,8 +63,7 @@ def __construct_header(N_buf, E_buf, hash_buf, code_len, suffix, head_type, vers
         code_tag = int(0).to_bytes(16, 'big')
     else:
         code_tag = bytes(str(tag),'ascii')
-    ver_value = list(map(int, version.split('.'), [16] * 5))
-    ver_value[3] = (ver_value[3] << 16) | (ver_value[4] & 0xFFFF)
+    ver_value = bytes(version, 'ascii')
     ver_padding_val = "ff" * 0x10
     ver_padding = binascii.a2b_hex(ver_padding_val)
     padding_val = "ff" * 0x44 # fixed padding at the end of header
@@ -74,7 +73,7 @@ def __construct_header(N_buf, E_buf, hash_buf, code_len, suffix, head_type, vers
                  root_pubkey_e, img_offset, img_sign_obj_len, sign_offset, sign_len, code_encrypt_flag, code_encrypt_algo,
                  derive_seed, km_ireation_cnt, code_encrypt_iv, code_encrypt_tag, code_encrypt_add, rsv1, h2c_enable,
                  h2c_cert_len, h2c_cert_offset, root_pubkeyinfo, rsv2, head_magic, head_hash, cms_flag, code_nvcnt,
-                 code_tag, ver_value[0], ver_value[1], ver_value[2], ver_value[3], ver_padding, certtype, padding)
+                 code_tag, ver_value, ver_padding, certtype, padding)
     header = s.pack(*pack_list)
     return header
 

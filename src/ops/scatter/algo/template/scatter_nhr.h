@@ -41,7 +41,7 @@ private:
     u32 interRankSize_;  // 本comm内ranksize总数
 
     // 开源开放新接口资源
-    void* engineCtx_;
+    void* engineCtx_ = nullptr;
 };
 }
 #endif /* SCATTER_NHR_CUSTOM_H */

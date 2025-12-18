@@ -78,11 +78,11 @@ else()
         ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/communicator
         ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/topo_model
 
-        ${TOP_DIR}/hcomm/inc
-        ${TOP_DIR}/hcomm/inc/hccl
+        ${TOP_DIR}/hcomm/include
+        ${TOP_DIR}/hcomm/include/hccl
         ${TOP_DIR}/hcomm/pkg_inc
         ${TOP_DIR}/hcomm/pkg_inc/hccl
-        ${TOP_DIR}/hccl/inc
+        ${TOP_DIR}/hccl/include
         ${TOP_DIR}/hccl/src/common
 
         ${TOP_DIR}/ace/npuruntime/inc

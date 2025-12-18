@@ -19,7 +19,7 @@ namespace ops_hccl {
 class ScatterExecutorBase : public ExecutorBase {
 public:
     explicit ScatterExecutorBase();
-    ~ScatterExecutorBase() = default;
+    ~ScatterExecutorBase() override = default;
 
     HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) override;
 

@@ -19,7 +19,7 @@ namespace ops_hccl {
 class ScatterMeshExecutor : public ScatterExecutorBase {
 public:
     explicit ScatterMeshExecutor();
-    ~ScatterMeshExecutor() = default;
+    ~ScatterMeshExecutor() override = default;
 
     HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
         AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
