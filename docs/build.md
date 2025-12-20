@@ -66,6 +66,16 @@ bash ./build_out/cann-hccl<version>_linux-<arch>.run --full
 
 安装完成后，用户编译生成的HCCL软件包会替换已安装CANN开发套件包中的HCCL相关软件。
 
+## 卸载
+
+卸载已安装的HCCL软件包：
+
+```shell
+bash ./build_out/cann-hccl_<version>_linux-<arch>.run --uninstall
+```
+
+请注意：卸载时需要将上述命令中的软件包名称替换为实际安装的软件包名称。
+
 ## LLT 测试
 
 安装完编译生成的HCCL软件包后，可通过如下命令执行LLT用例。
