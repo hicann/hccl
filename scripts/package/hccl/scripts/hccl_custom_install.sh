@@ -311,10 +311,6 @@ clear_kernel_cache_dir() {
     fi
 }
 
-WHL_INSTALL_DIR_PATH="${common_parse_dir}/python/site-packages"
-WHL_SOFTLINK_INSTALL_DIR_PATH="${common_parse_dir}/hccl/python/site-packages"
-PYTHON_HCCL_WHL="${sourcedir}/lib64/hccl-0.1.0-py3-none-any.whl"
-
 custom_install() {
     if [ -z "$common_parse_dir/share/info/hccl" ]; then
         log "ERROR" "ERR_NO:0x0001;ERR_DES:hccl directory is empty"
@@ -328,22 +324,6 @@ custom_install() {
     fi
 
     if [ "$hetero_arch" != "y" ]; then
-        # log "INFO" "install hccl extension module begin..."
-        # hccl_install_package "${PYTHON_HCCL_WHL}" "${WHL_INSTALL_DIR_PATH}"
-        # log "INFO" "the hccl extension module installed successfully!"
-
-        # mkdir -p "$WHL_SOFTLINK_INSTALL_DIR_PATH"
-        # if [ "${pylocal}" = "y" ]; then
-        #     create_softlink_if_exists "${WHL_INSTALL_DIR_PATH}" "$WHL_SOFTLINK_INSTALL_DIR_PATH" "hccl"
-        #     create_softlink_if_exists "${WHL_INSTALL_DIR_PATH}" "$WHL_SOFTLINK_INSTALL_DIR_PATH" "hccl-*.dist-info"
-        # fi
-
-        # if [ "${pylocal}" = "y" ]; then
-        #     log "INFO" "please make sure PYTHONPATH include ${WHL_INSTALL_DIR_PATH}."
-        # else
-        #     log "INFO" "The package te is already installed in python default path. It is recommended to install it using the '--pylocal' parameter, install the package hccl in the ${WHL_INSTALL_DIR_PATH}."
-        # fi
-
         if [ "x$stage" = "xinstall" ]; then
             log "INFO" "hccl do migrate user assets."
             migrate_user_assets atc
