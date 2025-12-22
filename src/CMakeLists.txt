@@ -158,7 +158,6 @@ target_compile_definitions(scatter_aicpu_kernel PRIVATE
 )
 
 target_link_libraries(scatter_aicpu_kernel PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
     -Wl,--no-as-needed
     ccl_kernel
     -Wl,--no-as-needed
@@ -221,7 +220,6 @@ target_link_options(hccl PRIVATE
 
 if(BUILD_OPEN_PROJECT)
     target_link_libraries(hccl PRIVATE
-        $<BUILD_INTERFACE:intf_pub>
         -Wl,--no-as-needed
         hcomm
         c_sec

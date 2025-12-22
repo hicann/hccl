@@ -15,6 +15,8 @@ hccl_func_path="${curpath}/hccl_func.sh"
 pkg_version_path="${curpath}/../version.info"
 install_info_old="/etc/ascend_install.info"
 run_dir="$(echo "$2" | cut -d'-' -f 3-)"
+_RUN_PKG_INFO_FILE="${curpath}""/../scene.info"
+platform_data=$(grep -e "arch" "$_RUN_PKG_INFO_FILE" | cut --only-delimited -d"=" -f2-)
  
 . "${common_func_path}"
 . "${version_compat_func_path}"
@@ -1265,7 +1267,13 @@ fi
 if [ "$hetero_arch" = "y" ]; then
     log "INFO" "package is running in hetero arch mode!"
 fi
- 
+
+architecture=$(uname -m)
+if [ "${architecture}" != "${platform_data}" ]; then
+    log "INFO" "architecture of run package is inconsisent with the current enviroment need skip"
+    exit 0
+fi
+
 # 执行预检查
 if [ "$input_pre_check" = "y" ]; then
     log "INFO" "Hccl do pre check started."

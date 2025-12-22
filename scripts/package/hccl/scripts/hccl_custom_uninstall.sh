@@ -156,10 +156,6 @@ remove_last_license() {
     fi
 }
 
-WHL_SOFTLINK_INSTALL_DIR_PATH="${common_parse_dir}/hccl/python/site-packages"
-WHL_INSTALL_DIR_PATH="${common_parse_dir}/python/site-packages"
-HCCL_NAME="hccl"
-
 custom_uninstall() {
     if [ -z "$common_parse_dir/share/info/hccl" ]; then
         log "ERROR" "ERR_NO:0x0001;ERR_DES:hccl directory is empty"
@@ -170,30 +166,6 @@ custom_uninstall() {
         local arch_name="$(get_arch_name $common_parse_dir/share/info/hccl)"
     else
         local arch_name="$(get_arch_name $common_parse_dir/share/info/hccl)"
-    fi
-
-    if [ "$hetero_arch" != "y" ]; then
-        chmod +w -R "$curpath" 2> /dev/null
-        chmod +w -R "${WHL_INSTALL_DIR_PATH}/hccl" 2> /dev/null
-        chmod +w -R "${WHL_INSTALL_DIR_PATH}/hccl-0.1.0.dist-info" 2> /dev/null
-
-        log "INFO" "uninstall hccl tool begin..."
-        whl_uninstall_package "${HCCL_NAME}" "${WHL_INSTALL_DIR_PATH}"
-        log "INFO" "hccl tool uninstalled successfully!"
-    fi
-
-    test -d "$WHL_SOFTLINK_INSTALL_DIR_PATH" && rm -rf "$WHL_SOFTLINK_INSTALL_DIR_PATH" > /dev/null 2>&1
-    remove_empty_dir "${common_parse_dir}/hccl/python"
-
-    if [ "$hetero_arch" != "y" ]; then
-        if [ -d "${WHL_INSTALL_DIR_PATH}" ]; then
-            local python_path=$(dirname "$WHL_INSTALL_DIR_PATH")
-            chmod +w "${python_path}"
-            remove_last_license
-        fi
-
-        remove_empty_dir "${WHL_INSTALL_DIR_PATH}"
-        remove_empty_dir "${common_parse_dir}/python"
     fi
 
     return 0
