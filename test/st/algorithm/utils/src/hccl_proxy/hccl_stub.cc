@@ -29,6 +29,27 @@
 extern "C" {
 #endif  // __cplusplus
 
+HcclResult HcclGetInstSizeByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t *rankNum)
+{
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclGetNetLayers(HcclComm comm, uint32_t **netLayers, uint32_t *netLayerNum)
+{
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclGetInstSizeListByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t **instSizeList, uint32_t *listSize)
+{
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclGetLinks(HcclComm comm, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank,
+    CommLink **linkList, uint32_t *listSize)
+{
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclGetCommName(HcclComm commHandle, char *commName)
 {
     CHK_PTR_NULL(commName);

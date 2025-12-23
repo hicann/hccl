@@ -15,7 +15,7 @@
 GTEST_API_ int main(int argc, char **argv)
 {
     std::cout << "Start to run demo for hccl_checker_ops_stest." << std::endl;
-    // testing::GTEST_FLAG(filter) = "ST_SCATTER_TEST.st_scatter_opbase_test_origin";
+    testing::GTEST_FLAG(filter) = "ST_SCATTER_TEST.st_1";
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
