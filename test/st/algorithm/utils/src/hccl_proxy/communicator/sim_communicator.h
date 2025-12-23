@@ -38,7 +38,7 @@ public:
     HcclResult GetCommRankGraph(void **graph, uint32_t *len);
     HcclResult GetHcclBuffer(CommBuffer *buffer);
     HcclResult ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-        const ChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList);
+        const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList);
     HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, CommBuffer *buffer);
 
 private:

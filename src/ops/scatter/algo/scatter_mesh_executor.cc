@@ -37,11 +37,11 @@ HcclResult ScatterMeshExecutor::CalcResRequest(HcclComm comm, const OpParam& par
     resourceRequest.notifyNumPerThread = 1;
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
-    std::vector<ChannelDesc> level0Channels;
+    std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcLevel0ChannelRequest(param, topoInfo, algHierarchyInfo, algType, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
 
-    std::vector<ChannelDesc> level1Channels;
+    std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcLevel1ChannelRequest(param, topoInfo, algHierarchyInfo, algType, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
 

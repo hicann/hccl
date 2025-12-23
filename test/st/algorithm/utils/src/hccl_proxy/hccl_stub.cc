@@ -169,12 +169,13 @@ HcclResult HcclGetHcclBuffer(HcclComm comm, CommBuffer *buffer)
     return simComm->GetHcclBuffer(buffer);
 }
 
-HcclResult HcclChannelCreate(HcclComm comm, const char *channelTag, CommEngine engine,
-    const ChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
+HcclResult HcclChannelAcquire(HcclComm comm, CommEngine engine,
+    const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->ChannelCommCreate(simComm->GetIdentifier(), std::string(channelTag), engine, channelDescList, listNum, channelList);
+    std::string channelTag = "channelTag";
+    return simComm->ChannelCommCreate(simComm->GetIdentifier(), channelTag.c_str(), engine, channelDescList, listNum, channelList);
 }
 
 HcclResult HcclCreateEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
@@ -206,12 +207,12 @@ HcclResult HcclAllocThreadRes(
     return simComm->independentOpThreadMgr_->HcclAllocThreadRes(engine, threadNum, notifyNumPerThread, thread);
 }
 
-HcclResult HcclAllocThreadResByStream(
+HcclResult HcclThreadAcquireWithStream(
     HcclComm comm, CommEngine engine, aclrtStream stream, uint32_t notifyNum, ThreadHandle *thread)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->independentOpThreadMgr_->HcclAllocThreadResByStream(engine, stream, notifyNum, thread);
+    return simComm->independentOpThreadMgr_->HcclThreadAcquireWithStream(engine, stream, notifyNum, thread);
 }
 
 HcclResult HcclGetEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
@@ -236,9 +237,9 @@ HcclResult HcclCommDestroy(HcclComm comm)
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommInterThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyIdx, uint32_t timeout)
+HcclResult HcommThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyIdx, uint32_t timeout)
 #else
-int32_t HcommInterThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyIdx, uint32_t timeout)
+int32_t HcommThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyIdx, uint32_t timeout)
 #endif
 {
     // timeout 暂时未使用
@@ -261,9 +262,9 @@ int32_t HcommInterThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyI
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommInterThreadNotifyRecordOnThread(ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx)
+HcclResult HcommThreadNotifyRecordOnThread(ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx)
 #else
-int32_t HcommInterThreadNotifyRecordOnThread(ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx)
+int32_t HcommThreadNotifyRecordOnThread(ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx)
 #endif
 {
     // 1.获取当前rankId,NpuPos和stream
@@ -401,9 +402,9 @@ int32_t HcommReadOnThread(ThreadHandle thread, ChannelHandle channel, void *dst,
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx)
+HcclResult HcommChannelNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx)
 #else
-int32_t HcommNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx)
+int32_t HcommChannelNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx)
 #endif
 {
     // 1.获取当前rankId,NpuPos和stream
@@ -432,9 +433,9 @@ int32_t HcommNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, ui
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommNotifyWaitOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
+HcclResult HcommChannelNotifyWaitOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
 #else
-int32_t HcommNotifyWaitOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
+int32_t HcommChannelNotifyWaitOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
 #endif
 {
     //timeout 不参与 taskstubwait的构造
@@ -592,9 +593,9 @@ int32_t HcommReadReduceOnThread(ThreadHandle thread, ChannelHandle channel, void
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommInterOpNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
+HcclResult HcommAclrtNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
 #else
-int32_t HcommInterOpNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
+int32_t HcommAclrtNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
 #endif
 {
     HCCL_ERROR("[%s] not support.", __func__);
@@ -602,9 +603,9 @@ int32_t HcommInterOpNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotify
 }
 
 #ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommInterOpNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
+HcclResult HcommAclrtNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
 #else
-int32_t HcommInterOpNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
+int32_t HcommAclrtNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut)
 #endif
 {
     HCCL_ERROR("[%s] not support.", __func__);

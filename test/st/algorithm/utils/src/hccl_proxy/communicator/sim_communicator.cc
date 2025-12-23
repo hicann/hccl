@@ -119,7 +119,7 @@ HcclResult SimCommunicator::GetHcclBuffer(CommBuffer *buffer)
 }
 
 HcclResult SimCommunicator::ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-        const ChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
+        const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
 {
     return channelMgr_->ChannelCommCreate(commId, tag, engine, channelDescList, listNum, channelList);
 }

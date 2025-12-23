@@ -24,6 +24,77 @@
 #include "hcomm_primitives.h"
 #include "hccl_rank_graph.h"
 #include "hccl_rankgraph.h"
+
+// 解决与Hcomm仓合入问题，暂时定义为弱符号
+#ifndef HCCL_CHANNEL_ABI
+#ifdef __cplusplus
+extern "C" {
+#endif  // __cplusplus
+const uint32_t HCCL_CHANNEL_MAGIC_WORD = 0x0f0f0f0f;
+const uint32_t HCCL_CHANNEL_VERSION = 1;
+
+/**
+ * @brief 兼容Abi字段结构体
+ */
+typedef struct {
+    uint32_t version;
+    uint32_t magicWord;
+    uint32_t size;
+    uint32_t reserved;
+} HcclAbiHeader;
+
+typedef struct {
+    HcclAbiHeader header;
+    uint32_t remoteRank;    ///< 远端rankId
+    CommProtocol protocol;  ///< 通信协议
+    uint32_t notifyNum;  ///< channel上使用的通知消息数量
+    union {
+        HccsAttr hccsAttr;
+        RoCEAttr roceAttr;
+        UbAttr ubAttr;
+    };
+} HcclChannelDesc;
+
+inline void HcclChannelDescInit(HcclChannelDesc *channelDesc, uint32_t descNum)
+{
+    for (uint32_t idx = 0; idx < descNum; idx++) {
+        if (channelDesc != nullptr) {
+            // Abi字段初始化
+            channelDesc->header.version     = HCCL_CHANNEL_VERSION;
+            channelDesc->header.magicWord   = HCCL_CHANNEL_MAGIC_WORD;
+            channelDesc->header.size        = sizeof(HcclChannelDesc);
+            channelDesc->header.reserved    = 0;
+
+            // HcclChannelDesc内容初始化
+            channelDesc->remoteRank = ~0U;
+            channelDesc->protocol   = COMM_PROTOCOL_RESERVED;
+            channelDesc->notifyNum  = 0;
+            (void)memset_s(&(channelDesc->hccsAttr), sizeof(HccsAttr), 0, sizeof(HccsAttr));
+            (void)memset_s(&(channelDesc->roceAttr), sizeof(RoCEAttr), 0, sizeof(RoCEAttr));
+            (void)memset_s(&(channelDesc->ubAttr), sizeof(UbAttr), 0, sizeof(UbAttr));
+        }
+    }
+    return;
+}
+
+HcclResult HcclChannelAcquire(HcclComm comm, CommEngine engine, const HcclChannelDesc *channelDescList,
+    uint32_t listNum, ChannelHandle *channelList) __attribute__((weak));
+
+int32_t HcommAclrtNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) __attribute__((weak));
+int32_t HcommAclrtNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut) __attribute__((weak));
+
+int32_t HcommChannelNotifyRecordOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx) __attribute__((weak));
+int32_t HcommChannelNotifyWaitOnThread(ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout) __attribute__((weak));
+
+int32_t HcommThreadNotifyRecordOnThread(ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx) __attribute__((weak));
+int32_t HcommThreadNotifyWaitOnThread(ThreadHandle thread, uint32_t notifyIdx, uint32_t timeout) __attribute__((weak));
+HcclResult HcclThreadAcquireWithStream(HcclComm comm, CommEngine engine,
+    aclrtStream stream, uint32_t notifyNum, ThreadHandle *thread) __attribute__((weak));
+#ifdef __cplusplus
+}
+#endif  // __cplusplus
+#endif
+
 namespace ops_hccl {
 
 constexpr u32 COMM_INDENTIFIER_MAX_LENGTH = 128;
@@ -81,7 +152,7 @@ struct AlgResourceRequest {
     u32 notifyNumOnMainThread = 0;
     u32 slaveThreadNum = 0;
     u32 notifyNumPerThread = 0;
-    std::vector<std::vector<ChannelDesc>> channels;
+    std::vector<std::vector<HcclChannelDesc>> channels;
 };
 
 constexpr u32 HCCL_LOGIC_TOPO_LEVEL_NUM = 4; // HCCL逻辑拓扑层级最多4级

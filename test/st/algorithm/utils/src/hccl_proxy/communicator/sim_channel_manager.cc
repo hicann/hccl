@@ -27,7 +27,7 @@ std::string SimChannelMgr::GetChannelKey(std::shared_ptr<SimChannel> channel)
 }
 
 HcclResult SimChannelMgr::ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-    const ChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
+    const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
 {
     vector<pair<uint32_t, shared_ptr<SimChannel>>> tmpChannels{};
 

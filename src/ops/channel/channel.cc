@@ -20,7 +20,7 @@
 
 namespace ops_hccl {
 HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    const AlgType& algType, std::vector<ChannelDesc> &channels)
+    const AlgType& algType, std::vector<HcclChannelDesc> &channels)
 {
     (void) param;
     (void) topoInfo;
@@ -41,7 +41,8 @@ HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_HCCS;
     for (u32 rank: connectRanks) {
-        ChannelDesc channelDesc;
+        HcclChannelDesc channelDesc;
+        HcclChannelDescInit(&channelDesc, 1);
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL0, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.protocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
@@ -51,7 +52,7 @@ HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 }
 
 HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    const AlgType& algType, std::vector<ChannelDesc> &channels)
+    const AlgType& algType, std::vector<HcclChannelDesc> &channels)
 {
     (void) param;
     channels.clear();
@@ -80,7 +81,8 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 
     CommProtocol protocol = isUsedRdma ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_HCCS;
     for (u32 rank: connectRanks) {
-        ChannelDesc channelDesc;
+        HcclChannelDesc channelDesc;
+        HcclChannelDescInit(&channelDesc, 1);
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL1, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.protocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
@@ -90,7 +92,7 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 }
 
 HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-    const AlgType& algType, std::vector<ChannelDesc> &channels)
+    const AlgType& algType, std::vector<HcclChannelDesc> &channels)
 {
     (void) param;
     (void) topoInfo;
@@ -114,7 +116,8 @@ HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_ROCE;
 
     for (u32 rank: connectRanks) {
-        ChannelDesc channelDesc;
+        HcclChannelDesc channelDesc;
+        HcclChannelDescInit(&channelDesc, 1);
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL2, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.protocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
