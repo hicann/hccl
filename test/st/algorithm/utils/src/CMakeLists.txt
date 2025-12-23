@@ -61,6 +61,9 @@ if (BUILD_OPEN_PROJECT)
         ${ASCEND_HOME_PATH}/x86_64-linux/include/hccl
         ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/hccl
 
+        # mmpa头文件
+        ${ASCEND_HOME_PATH}/x86_64-linux/include/mmpa
+
         # 后续可能要根据大包安装目录改动
         ${ASCEND_HOME_PATH}/../cann/x86_64-linux/include/hccl
         ${ASCEND_HOME_PATH}/../cann/x86_64-linux/include

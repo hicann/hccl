@@ -37,6 +37,9 @@ TEST_F(ST_SCATTER_TEST, st_scatter_opbase_test_origin)
     TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910B);
 
+    // 设置展开模式为HOST_TS
+    setenv("HCCL_OP_EXPANSION_MODE", "HOST_TS", 1);
+
     // 算子执行参数设置
     auto root = 0;  // root节点
     auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)

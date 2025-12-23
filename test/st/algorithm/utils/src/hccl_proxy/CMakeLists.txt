@@ -13,6 +13,7 @@ target_sources(hccl-model-proxy PRIVATE
     hccl_stub.cc
     hcclinner_stub.cc
     log_stub.cc
+    mmpa_stub.cc
     communicator/sim_communicator.cc
     communicator/sim_thread_manager.cc
     communicator/sim_thread.cc
