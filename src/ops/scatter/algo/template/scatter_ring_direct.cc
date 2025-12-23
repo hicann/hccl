@@ -103,7 +103,7 @@ HcclResult ScatterRingDirect::OneRankMemcpy()
                    userRank_, dstSlice.offset, dstSlice.size);
         dst = static_cast<void *>(static_cast<u8 *>(outputMem_.addr) + dstSlice.offset);
     }
-    CHK_RET(HcommLocalCopyOnThread(thread_, dst, src, srcSlice.size));
+    CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, dst, src, srcSlice.size)));
     return HCCL_SUCCESS;
 }
 
@@ -182,16 +182,16 @@ HcclResult ScatterRingDirect::RunScatterOnOtherRank(const u32 stepsFromRank2Root
     bool needReceive = stepsFromRank2Root > 0 && stepsFromRank2Root <= (step + 1);
     // Ack
     if (needReceive) {
-        CHK_RET(HcommNotifyRecordOnThread(thread_, leftChannel_.handle, NOTIFY_IDX_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, leftChannel_.handle, NOTIFY_IDX_ACK)));
     }
     if (needSend) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, rightChannel_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, rightChannel_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
     }
 
     // 不同的rank会在不同的step开始持续发送操作，距离root节点越近，越早step开始发送操作
     if (needSend) {
         // TxAsync
-        CHK_RET(HcommNotifyRecordOnThread(thread_, rightChannel_.handle, NOTIFY_IDX_DATA_SIGNAL));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, rightChannel_.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     // 不同的rank会在不同的step开始持续发送操作，距离root节点越近，越早step开始发送操作
     if (needReceive) {
@@ -210,11 +210,11 @@ HcclResult ScatterRingDirect::RunScatterOnOtherRank(const u32 stepsFromRank2Root
             dst = static_cast<void *>(static_cast<u8 *>(inputMem_.addr) + rxSlice.offset);
         }
 
-        CHK_RET(HcommNotifyWaitOnThread(thread_, leftChannel_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, leftChannel_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
         void *srcMemPtr = leftChannel_.remoteInput.addr;
         void* src = static_cast<void *>(static_cast<s8 *>(srcMemPtr) + rxSlice.offset + baseOffset_);
         HCCL_DEBUG("[ScatterRing][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, rxSlice.size);
-        CHK_RET(HcommReadOnThread(thread_, leftChannel_.handle, dst, src, rxSlice.size));
+        CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, leftChannel_.handle, dst, src, rxSlice.size)));
     }
     return HCCL_SUCCESS;
 }
@@ -227,7 +227,7 @@ HcclResult ScatterRingDirect::RunScatterOnRootRank(const u32 step, const Slice &
                     "size[%llu] at userMemOut_", step, userRank_, lastStepOffset_, subSlice.size);
         void* src = static_cast<void *>(static_cast<u8 *>(inputMem_.addr) + cclSlice.offset);
         void* dst = static_cast<void *>(static_cast<u8 *>(opInfo_->outputAddr) + lastStepOffset_);
-        CHK_RET(HcommLocalCopyOnThread(thread_, dst, src, subSlice.size));
+        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, dst, src, subSlice.size)));
     }
     return HCCL_SUCCESS;
 }
