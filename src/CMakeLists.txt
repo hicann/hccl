@@ -149,8 +149,15 @@ target_include_directories(scatter_aicpu_kernel PRIVATE
 )
 
 target_compile_options(scatter_aicpu_kernel PRIVATE
-    -g
-    -O0
+    $<$<CONFIG:Debug>:-g>
+    -O3
+)
+
+target_link_options(scatter_aicpu_kernel PRIVATE
+    -Wl,-z,relro
+    -Wl,-z,now
+    -Wl,-z,noexecstack
+    $<$<CONFIG:Release>:-s>
 )
 
 target_compile_definitions(scatter_aicpu_kernel PRIVATE
@@ -204,8 +211,8 @@ target_compile_options(hccl PRIVATE
     -fno-common
     -fno-strict-aliasing
     -pipe
-    # -O3
-    -g -O0
+    -O3
+    $<$<CONFIG:Debug>:-g>
     -std=c++14
     -fstack-protector-all
 )
@@ -215,7 +222,7 @@ target_link_options(hccl PRIVATE
     -Wl,-z,relro
     -Wl,-z,now
     -Wl,-z,noexecstack
-    # -s
+    $<$<CONFIG:Release>:-s>
 )
 
 if(BUILD_OPEN_PROJECT)
