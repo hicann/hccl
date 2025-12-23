@@ -151,6 +151,7 @@ target_include_directories(scatter_aicpu_kernel PRIVATE
 target_compile_options(scatter_aicpu_kernel PRIVATE
     $<$<CONFIG:Debug>:-g>
     -O3
+    -fstack-protector-all
 )
 
 target_link_options(scatter_aicpu_kernel PRIVATE
