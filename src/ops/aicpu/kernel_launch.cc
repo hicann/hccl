@@ -51,10 +51,14 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     ThreadHandle* threadHandlePtr = reinterpret_cast<ThreadHandle *>(reinterpret_cast<u8 *>(param->resCtx) +
         sizeof(AlgResourceCtx));
     ThreadHandle thread = threadHandlePtr[0];
-#ifndef HCOMM_PRIMITIVES_H_MODIFIED
-    if (HcommSetLaunchMode(param->algTag, LAUNCH_MODE_BATCH) != HCCL_SUCCESS) {
+#ifdef HCOMM_BATCH_MODE_MODIFIED
+    if (HcommBatchModeStart(param->algTag) != HCCL_SUCCESS) {
 #else
-    if (HcommSetLaunchMode(param->algTag, HCOMM_LAUNCH_MODE_BATCH) != HCCL_SUCCESS) {
+    #ifndef HCOMM_PRIMITIVES_H_MODIFIED
+        if (HcommSetLaunchMode(param->algTag, LAUNCH_MODE_BATCH) != HCCL_SUCCESS) {
+    #else
+        if (HcommSetLaunchMode(param->algTag, HCOMM_LAUNCH_MODE_BATCH) != HCCL_SUCCESS) {
+    #endif
 #endif
         HCCL_ERROR("failed set batch mode, tag is %s.", param->algTag);
         return 1;
@@ -77,10 +81,14 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }
-#ifndef HCOMM_PRIMITIVES_H_MODIFIED
-    if (HcommSetLaunchMode(param->algTag, LAUNCH_MODE_EAGER) != HCCL_SUCCESS) {
+#ifdef HCOMM_BATCH_MODE_MODIFIED
+    if (HcommBatchModeEnd(param->algTag) != HCCL_SUCCESS) {
 #else
-    if (HcommSetLaunchMode(param->algTag, HCOMM_LAUNCH_MODE_EAGER) != HCCL_SUCCESS) {
+    #ifndef HCOMM_PRIMITIVES_H_MODIFIED
+        if (HcommSetLaunchMode(param->algTag, LAUNCH_MODE_EAGER) != HCCL_SUCCESS) {
+    #else
+        if (HcommSetLaunchMode(param->algTag, HCOMM_LAUNCH_MODE_EAGER) != HCCL_SUCCESS) {
+    #endif
 #endif
         HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);
         return 1;
