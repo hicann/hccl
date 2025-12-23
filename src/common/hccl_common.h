@@ -20,6 +20,8 @@
 #include <algorithm>
 #include "dtype_common.h"
 #include "log.h"
+#include "hccl_types.h"
+#include "hccl_res.h"
 
 #ifndef T_DESC
 #define T_DESC(_msg, _y) ((_y) ? true : false)
@@ -110,4 +112,23 @@ enum class HcclRtDeviceInfoType {
     HCCL_RT_DEVICE_INFO_RESERVED,
 };
 
+// 解决Hcomm仓合入问题
+#ifdef HCCL_CTX_API
+
+/**
+ * @enum HcclMemType
+ * @brief 内存类型枚举定义
+ */
+typedef enum {
+    HCCL_MEM_TYPE_DEVICE, ///< 设备侧内存（如NPU等）
+    HCCL_MEM_TYPE_HOST,   ///< 主机侧内存
+    HCCL_MEM_TYPE_NUM     ///< 内存类型数量
+} HcclMemType;
+
+typedef struct {
+    HcclMemType type;
+    void *addr;
+    uint64_t size;
+} HcclMem;
+#endif // HCCL_CTX_API
 #endif // HCCL_COMMON_H

@@ -183,12 +183,21 @@ HcclResult HcclBatchSendRecvInner(HcclSendRecvItem *sendRecvInfo, uint32_t itemN
     return HCCL_E_NOT_SUPPORT;
 }
 
+#ifdef HCCL_CTX_API
+HcclResult HcclGetHcclBuffer(HcclComm comm, void **buffer, uint64_t *size)
+{
+    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
+    CHK_PTR_NULL(simComm);
+    return simComm->GetHcclBuffer(buffer, size);
+}
+#else
 HcclResult HcclGetHcclBuffer(HcclComm comm, CommBuffer *buffer)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
     return simComm->GetHcclBuffer(buffer);
 }
+#endif
 
 HcclResult HcclChannelAcquire(HcclComm comm, CommEngine engine,
     const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
@@ -199,19 +208,28 @@ HcclResult HcclChannelAcquire(HcclComm comm, CommEngine engine,
     return simComm->ChannelCommCreate(simComm->GetIdentifier(), channelTag.c_str(), engine, channelDescList, listNum, channelList);
 }
 
-HcclResult HcclCreateEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
+HcclResult HcclEngineCtxCreate(HcclComm comm, const char *ctxTag, CommEngine engine, uint64_t size, void **ctx)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->contextManager_->CreateCommEngineCtx(std::string(engineTag), engine, engineCtx);
+    return simComm->contextManager_->CreateCommEngineCtx(std::string(ctxTag), engine, size, ctx);
 }
 
+#ifdef HCCL_CTX_API
+HcclResult HcclChannelGetHcclBuffer(HcclComm comm, ChannelHandle channel, void **buffer, uint64_t *size)
+{
+    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
+    CHK_PTR_NULL(simComm);
+    return simComm->ChannelCommGetHcclBuffer(channel, buffer, size);
+}
+#else
 HcclResult HcclChannelGetHcclBuffer(HcclComm comm, ChannelHandle channel, CommBuffer *buffer)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
     return simComm->ChannelCommGetHcclBuffer(channel, buffer);
 }
+#endif
 
 HcclResult HcclGetRankGraph(HcclComm comm, GraphType type, void **graph, uint32_t *len)
 {
@@ -236,11 +254,17 @@ HcclResult HcclThreadAcquireWithStream(
     return simComm->independentOpThreadMgr_->HcclThreadAcquireWithStream(engine, stream, notifyNum, thread);
 }
 
-HcclResult HcclGetEngineCtx(HcclComm comm, const char *engineTag, CommEngine engine, HcclMem *engineCtx)
+HcclResult HcclEngineCtxGet(HcclComm comm, const char *engineTag, CommEngine engine, void **ctx, uint64_t *size)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->contextManager_->GetCommEngineCtx(std::string(engineTag), engine, engineCtx);
+    return simComm->contextManager_->GetCommEngineCtx(std::string(engineTag), engine, ctx, size);
+}
+
+HcclResult HcclEngineCtxCopy(HcclComm comm, CommEngine engine, const char *ctxTag, const void *srcCtx,
+    uint64_t size, uint64_t dstCtxOffset)
+{
+    return HCCL_SUCCESS;
 }
 
 HcclResult HcclCommInitClusterInfo(const char *clusterInfo, uint32_t rank, HcclComm *comm)
