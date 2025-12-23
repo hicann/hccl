@@ -49,6 +49,11 @@ void Checker::CloseRankMemCheck()
 
 HcclResult Checker::GenAndCheckGraph(AllRankTaskQueues& allRankTaskQueues, TaskCheckOpSemantics& opSemanticsChcker)
 {
+    if (allRankTaskQueues.empty()) {
+        HCCL_ERROR("[Checker][GenAndCheckGraph] taskQueues is empty!");
+        return HCCL_E_PARA;
+    }
+
     // 打印Task队列
     PrintTask(allRankTaskQueues);
 
