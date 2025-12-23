@@ -36,10 +36,15 @@ public:
     uint32_t GetRankSize();
     std::string GetIdentifier();
     HcclResult GetCommRankGraph(void **graph, uint32_t *len);
+#ifdef HCCL_CTX_API
+    HcclResult GetHcclBuffer(void **buffer, uint64_t *size);
+    HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, void **buffer, uint64_t *size);
+#else
     HcclResult GetHcclBuffer(CommBuffer *buffer);
+    HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, CommBuffer *buffer);
+#endif
     HcclResult ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
         const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList);
-    HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, CommBuffer *buffer);
 
 private:
     HcclResult GetFileRealPath(const char *rankTable, std::string &realFilePath);

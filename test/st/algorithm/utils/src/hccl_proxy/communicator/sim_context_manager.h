@@ -37,13 +37,22 @@ struct HcclMemEqual {
     }
 };
 
+enum class HcclRtMemcpyKind {
+    HCCL_RT_MEMCPY_KIND_HOST_TO_HOST = 0, /**< host to host */
+    HCCL_RT_MEMCPY_KIND_HOST_TO_DEVICE,   /**< host to device */
+    HCCL_RT_MEMCPY_KIND_DEVICE_TO_HOST,   /**< device to host */
+    HCCL_RT_MEMCPY_KIND_DEVICE_TO_DEVICE, /**< device to device */
+    HCCL_RT_MEMCPY_ADDR_DEVICE_TO_DEVICE, /**< Level-2 address copy, device to device */
+    HCCL_RT_MEMCPY_KIND_RESERVED,
+};
+
 class SimContextMgr {
 public:
     SimContextMgr() = default;
     ~SimContextMgr();
 
-    HcclResult CreateCommEngineCtx(const std::string &tag, CommEngine engine, HcclMem *engineCtx);
-    HcclResult GetCommEngineCtx(const std::string &tag, CommEngine engine, HcclMem *engineCtx);
+    HcclResult CreateCommEngineCtx(const std::string &tag, CommEngine engine, uint64_t size, void **ctx);
+    HcclResult GetCommEngineCtx(const std::string &tag, CommEngine engine, void **ctx, uint64_t *size);
     HcclResult DestroyCommEngineCtx(const HcclMem *engineCtx);
 
 private:

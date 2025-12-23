@@ -27,9 +27,9 @@ SimContextMgr::~SimContextMgr()
     engineMap_.clear();
 }
 
-HcclResult SimContextMgr::CreateCommEngineCtx(const std::string &tag, CommEngine engine, HcclMem *engineCtx)
+HcclResult SimContextMgr::CreateCommEngineCtx(const std::string &tag, CommEngine engine, uint64_t size, void **ctx)
 {
-    CHK_PTR_NULL(engineCtx);
+    CHK_PTR_NULL(ctx);
     
     // 阻止重复创建
     if (contextMap_.find(tag) != contextMap_.end()) {
@@ -41,26 +41,27 @@ HcclResult SimContextMgr::CreateCommEngineCtx(const std::string &tag, CommEngine
 
     void* ctxMem = nullptr;
     // 暂时只支持HOST类型
+    HcclMemType type;
     if (engine == COMM_ENGINE_HOSTCPU || engine == COMM_ENGINE_HOSTCPU_TS) {
-        engineCtx->type = HCCL_MEM_TYPE_HOST;
-        ctxMem = malloc(engineCtx->size);
+        type = HCCL_MEM_TYPE_HOST;
+        ctxMem = malloc(size);
         CHK_PTR_NULL(ctxMem);
-        CHK_SAFETY_FUNC_RET(memset_s(ctxMem, engineCtx->size, 0, engineCtx->size));
+        CHK_SAFETY_FUNC_RET(memset_s(ctxMem, size, 0, size));
     } else {
         HCCL_ERROR("[%s] not support engine type[%d]", __func__, engine);
         return HCCL_E_PARA;
     }
 
-    contextMap_[tag][engine] = {engineCtx->type, ctxMem, engineCtx->size};
+    contextMap_[tag][engine] = {type, ctxMem, size};
     tagMap_[contextMap_[tag][engine]] = tag;
     engineMap_[contextMap_[tag][engine]] = engine;
-    *engineCtx = contextMap_[tag][engine];
+    *ctx = contextMap_[tag][engine].addr;
     HCCL_INFO("[%s] create context success, tag[%s], engine[%d]", __func__, tag.c_str(), engine);
 
     return HCCL_SUCCESS;
 }
 
-HcclResult SimContextMgr::GetCommEngineCtx(const std::string &tag, CommEngine engine, HcclMem *engineCtx)
+HcclResult SimContextMgr::GetCommEngineCtx(const std::string &tag, CommEngine engine, void **ctx, uint64_t *size)
 {
     // Ctx未创建返回
     if (contextMap_.find(tag) == contextMap_.end()) {
@@ -74,7 +75,8 @@ HcclResult SimContextMgr::GetCommEngineCtx(const std::string &tag, CommEngine en
         }
     }
 
-    *engineCtx = contextMap_[tag][engine];
+    *ctx = contextMap_[tag][engine].addr;
+    *size = contextMap_[tag][engine].size;
     HCCL_INFO("[%s] get context success, tag[%s], engine[%d]", __func__, tag.c_str(), engine);    
     return HCCL_SUCCESS;
 }

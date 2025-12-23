@@ -11,8 +11,14 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "hccl_types.h"
+#include "hccl_res.h"
 #include "hccl/base.h"
+// 解决Hcomm仓合入问题
+#ifndef HCCL_CTX_API
 #include "hccl_mem_defs.h"
+#endif
+#include "hccl_common.h"
 #include "log.h"
 
 namespace ops_hccl {

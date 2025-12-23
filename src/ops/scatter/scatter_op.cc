@@ -362,20 +362,20 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
 /* 算子级别基础拓扑解析，缓存在host上 */
 HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo)
 {
-    HcclMem topoInfoMem;
-    topoInfoMem.size = sizeof(TopoInfo);
+    uint64_t size = sizeof(TopoInfo);
+    void *ctx = nullptr;
     // 若获取Context失败，表示对应Context尚未缓存
-    if (HcclGetEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem) != HCCL_SUCCESS) {
+    if (HcclEngineCtxGet(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &ctx, &size) != HCCL_SUCCESS) {
         // 创建新的Context
-        CHK_RET(HcclCreateEngineCtx(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &topoInfoMem));
+        CHK_RET(HcclEngineCtxCreate(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, size, &ctx));
         // 将Context内存地址强转为TopoInfo
-        *topoInfo = static_cast<TopoInfo *>(topoInfoMem.addr);
+        *topoInfo = static_cast<TopoInfo *>(ctx);
         // 将对应拓扑信息填入到Context内存中
         CHK_RET(InitRankInfo(comm, *topoInfo));
         return HCCL_SUCCESS;
     }
 
-    *topoInfo = static_cast<TopoInfo *>(topoInfoMem.addr);
+    *topoInfo = static_cast<TopoInfo *>(ctx);
     return HCCL_SUCCESS;
 }
 
@@ -603,9 +603,10 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx, aclrtNotify* notifies)
 {
     // 这种情况下资源已经有了
-    HcclMem resCtxMem;
-    if (HcclGetEngineCtx(comm, param.algTag, param.engine, &resCtxMem) == HCCL_SUCCESS) {
-        *resCtx = static_cast<AlgResourceCtx *>(resCtxMem.addr);
+    void *ctx = nullptr;
+    uint64_t size = 0;
+    if (HcclEngineCtxGet(comm, param.algTag, param.engine, &ctx, &size) == HCCL_SUCCESS) {
+        *resCtx = static_cast<AlgResourceCtx *>(ctx);
         return HCCL_SUCCESS;
     }
 
@@ -615,22 +616,22 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     CHK_RET(executor->CalcResRequest(comm, param, topoInfo, algHierarchyInfo, resRequest, algType));
 
     // 开始计算资源Context的长度
-    resCtxMem.size = sizeof(AlgResourceCtx);
+    size = sizeof(AlgResourceCtx);
     // 计算变长数据区中threads占用的空间
-    resCtxMem.size += sizeof(ThreadHandle) * (resRequest.slaveThreadNum + 1);
+    size += sizeof(ThreadHandle) * (resRequest.slaveThreadNum + 1);
     // 计算变长数据区中channels占用的空间
     for (u32 level = 0; level < resRequest.channels.size(); level++) {
-        resCtxMem.size += sizeof(ChannelInfo) * algHierarchyInfo.infos[level].localRankSize;
+        size += sizeof(ChannelInfo) * algHierarchyInfo.infos[level].localRankSize;
     }
     // 创建Context
-    CHK_RET(HcclCreateEngineCtx(comm, param.algTag, param.engine, &resCtxMem));
+    CHK_RET(HcclEngineCtxCreate(comm, param.algTag, param.engine, size, &ctx));
     // 将内存强转为AlgResourceCtx结构体
-    *resCtx = static_cast<AlgResourceCtx *>(resCtxMem.addr);
+    *resCtx = static_cast<AlgResourceCtx *>(ctx);
 
     AlgResourceCtx* resCtxHost;
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // AICPU模式下分配一块Host内存用于填充资源
-        ACLCHECK(aclrtMallocHost(reinterpret_cast<void**>(&resCtxHost), resCtxMem.size));
+        ACLCHECK(aclrtMallocHost(reinterpret_cast<void**>(&resCtxHost), size));
     } else {
         resCtxHost = *resCtx;
     }
@@ -649,10 +650,9 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         return ret;
     }
 
+    CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0));
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 从Host内存拷贝到Device Context内存上
-        ACLCHECK(aclrtMemcpy(*resCtx, resCtxMem.size,
-            resCtxHost, resCtxMem.size, ACL_MEMCPY_HOST_TO_DEVICE));
         ACLCHECK(aclrtFreeHost(resCtxHost));
     }
     return HCCL_SUCCESS;
@@ -661,6 +661,19 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
 HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
     AlgResourceCtx* resCtxHost, aclrtNotify* notifies)
 {
+// 解决Hcomm仓合入问题
+#ifdef HCCL_CTX_API
+    void* cclBufferAddr;
+    uint64_t cclBufferSize;
+    // 从通信域获取CCL buffer的地址和大小
+    CHK_RET(HcclGetHcclBuffer(comm, &cclBufferAddr, &cclBufferSize));
+    u64 sizePerCcl = cclBufferSize / 2;
+    // CCL IN使用CCL Buffer的前一半
+    resCtxHost->cclInputMem = HcclMem{HCCL_MEM_TYPE_DEVICE, cclBufferAddr, sizePerCcl};
+    // CCL OUT使用CCL Buffer的后一半
+    resCtxHost->cclOutputMem = HcclMem{HCCL_MEM_TYPE_DEVICE,
+        static_cast<void*>(static_cast<char*>(cclBufferAddr) + sizePerCcl), sizePerCcl};
+#else
     CommBuffer cclBuffer;
     // 从通信域获取CCL buffer
     CHK_RET(HcclGetHcclBuffer(comm, &cclBuffer));
@@ -670,6 +683,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     // CCL OUT使用CCL Buffer的后一半
     resCtxHost->cclOutputMem = HcclMem{cclBuffer.type,
         static_cast<void*>(static_cast<char*>(cclBuffer.addr) + sizePerCcl), sizePerCcl};
+#endif
     resCtxHost->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
@@ -762,10 +776,19 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
             channels[levelRank].notifyNum = channelDesc.notifyNum;
             channels[levelRank].handle = levelNChannels[idx];
 
+// 解决Hcomm仓合入问题
+#ifdef HCCL_CTX_API
+            void* remoteBufferAddr;
+            uint64_t remoteBufferSize;
+            CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteBufferAddr, &remoteBufferSize));
+            channels[levelRank].remoteInput = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteBufferAddr, remoteBufferSize};
+            channels[levelRank].remoteOutput = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteBufferAddr, remoteBufferSize};
+#else
             CommBuffer remoteBuffer;
             CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteBuffer));
             channels[levelRank].remoteInput = HcclMem{remoteBuffer.type, remoteBuffer.addr, remoteBuffer.size};
             channels[levelRank].remoteOutput = HcclMem{remoteBuffer.type, remoteBuffer.addr, remoteBuffer.size};
+#endif
         }
         curPtr += sizeof(ChannelInfo) * subCommInfo.localRankSize; // 偏移指针
     }
