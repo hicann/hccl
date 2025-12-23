@@ -63,3 +63,9 @@ u64 GetDebugConfig()
     return 0;
 }
 }  // namespace hccl
+
+namespace error_message {
+    int32_t RegisterFormatErrorMessage(const char *error_msg, size_t error_msg_len) {
+        return 0;
+    }
+}
