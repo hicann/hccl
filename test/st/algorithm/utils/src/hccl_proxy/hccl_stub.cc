@@ -670,10 +670,20 @@ HcclResult CommFence(ThreadHandle thread, ChannelHandle channel)
     return HCCL_E_NOT_SUPPORT;
 }
 
-#ifndef HCOMM_PRIMITIVES_H_MODIFIED
-HcclResult HcommSetLaunchMode(const char *launchTag, LaunchMode mode)
+#ifdef HCOMM_BATCH_MODE_MODIFIED
+    int32_t HcommBatchModeStart(const char *batchTag)
+    {
+        HCCL_WARNING("[%s] not support.", __func__);
+        return HCCL_SUCCESS;
+    }
+
+    int32_t HcommBatchModeEnd(const char *batchTag)
 #else
-int32_t HcommSetLaunchMode(const char *launchTag, HcommLaunchMode mode)
+    #ifndef HCOMM_PRIMITIVES_H_MODIFIED
+        HcclResult HcommSetLaunchMode(const char *launchTag, LaunchMode mode)
+    #else
+        int32_t HcommSetLaunchMode(const char *launchTag, HcommLaunchMode mode)
+    #endif
 #endif
 {
     HCCL_WARNING("[%s] not support.", __func__);
