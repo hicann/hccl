@@ -236,7 +236,7 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
     if (IsAiCpuMode(deviceType, userRankSize)) {
         HCCL_DEBUG("is aicpu mode");
         CHK_RET(LoadAICPUKernel());
-        param.engine = CommEngine::COMM_ENGINE_AICPU;
+        param.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     } else {
         HCCL_DEBUG("is host mode");
         param.engine = CommEngine::COMM_ENGINE_HOSTCPU_TS;
@@ -290,7 +290,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
     CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx, g_notifies));
 
     // 算法执行
-    if (param.engine == COMM_ENGINE_AICPU) {
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 当前aicpu launch接口只能有一个输入参数，将Context指针放在param参数中
         param.resCtx = resCtx;
         // 将算法名字放在param参数中
@@ -628,7 +628,7 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     *resCtx = static_cast<AlgResourceCtx *>(resCtxMem.addr);
 
     AlgResourceCtx* resCtxHost;
-    if (param.engine == COMM_ENGINE_AICPU) {
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
         // AICPU模式下分配一块Host内存用于填充资源
         ACLCHECK(aclrtMallocHost(reinterpret_cast<void**>(&resCtxHost), resCtxMem.size));
     } else {
@@ -643,13 +643,13 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     HcclResult ret = AllocAlgResource(comm, param, resRequest, resCtxHost, notifies);
     if (ret != HCCL_SUCCESS) {
         HCCL_ERROR("failed to alloc alg resource.");
-        if (param.engine == COMM_ENGINE_AICPU) {
+        if (param.engine == COMM_ENGINE_AICPU_TS) {
             ACLCHECK(aclrtFreeHost(resCtxHost));
         }
         return ret;
     }
 
-    if (param.engine == COMM_ENGINE_AICPU) {
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 从Host内存拷贝到Device Context内存上
         ACLCHECK(aclrtMemcpy(*resCtx, resCtxMem.size,
             resCtxHost, resCtxMem.size, ACL_MEMCPY_HOST_TO_DEVICE));
@@ -702,7 +702,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     char* curPtr = reinterpret_cast<char *>(resCtxHost);
     curPtr += sizeof(AlgResourceCtx); // 偏移指针
     ThreadHandle* threads = reinterpret_cast<ThreadHandle *>(curPtr);
-    if (param.engine == COMM_ENGINE_AICPU) {
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
         CHK_RET(HcclAllocThreadRes(comm, param.engine, 1,
             resRequest.notifyNumOnMainThread, threads));
         HCCL_DEBUG("threads ptr is %p\n", *threads);
