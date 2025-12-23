@@ -38,7 +38,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     // ranksize为1时，只有当input!=ouput时候进行拷贝
     if (interRankSize_ == 1) {
         if (inputMem_.addr != outputMem_.addr) {
-            CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size));
+            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
         }
         return HCCL_SUCCESS;
     }
@@ -60,7 +60,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     if (inputMem_.addr != outputMem_.addr) {
         u32 targetIdx = sliceMap_[interRank_];
         void* src = static_cast<void *>(static_cast<u8 *>(inputMem_.addr) + slices_[targetIdx].offset);
-        CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, src, slices_[targetIdx].size));
+        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, src, slices_[targetIdx].size)));
     }
 
     // 运行scatter, NHR 算法
@@ -71,10 +71,10 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
 HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo)
 {
     if (channelRight.isValid) {
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK)));
     }
     if (channelLeft.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
         void* srcMemPtr = channelLeft.remoteOutput.addr;
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
@@ -82,12 +82,12 @@ HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRigh
             void* dst = static_cast<void *>(static_cast<u8 *>(outputMem_.addr) + rxSlice.offset);
             void* src = static_cast<void *>(static_cast<s8 *>(srcMemPtr) + baseOffset_ + rxSlice.offset);
             HCCL_DEBUG("[ScatterNHR][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, rxSlice.size);
-            CHK_RET(HcommReadOnThread(thread_, channelLeft.handle, dst, src, rxSlice.size));
+            CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, channelLeft.handle, dst, src, rxSlice.size)));
         }
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     if (channelRight.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
     }
     return HCCL_SUCCESS;
 }
@@ -97,11 +97,11 @@ HcclResult ScatterNHR::RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRi
     HcclResult ret = HCCL_SUCCESS;
 
     if (channelLeft.isValid) {
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
     }
 
     if (channelRight.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
         void* dstMemPtr = channelRight.remoteOutput.addr;
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
@@ -109,15 +109,15 @@ HcclResult ScatterNHR::RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRi
             void* dst = static_cast<void *>(static_cast<u8 *>(dstMemPtr) + txSlice.offset + baseOffset_);
             void* src = static_cast<void *>(reinterpret_cast<u8 *>(outputMem_.addr) + txSlice.offset);
             HCCL_DEBUG("[ScatterNHR][HcommWriteOnThread] src[%p] dst[%p] size[%llu]", src, dst, txSlice.size);
-            CHK_RET(HcommWriteOnThread(thread_, channelRight.handle, dst, src, txSlice.size));
+            CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread_, channelRight.handle, dst, src, txSlice.size)));
         }
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL)); // rdma数据发完
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL))); // rdma数据发完
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
     }
 
     if (channelLeft.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));  // rdma数据收完
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));  // rdma数据收完
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
     }
 
     if (barrierSwitchOn_) {
@@ -226,18 +226,18 @@ HcclResult ScatterNHR::GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize,
 HcclResult ScatterNHR::ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &channelRight)
 {
     if (channelLeft.isValid) {
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
     }
     if (channelRight.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     if (channelLeft.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
     }
     if (channelRight.isValid) {
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
     }
 
     return HCCL_SUCCESS;

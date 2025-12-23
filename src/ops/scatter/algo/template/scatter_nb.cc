@@ -26,7 +26,7 @@ HcclResult ScatterNB::RunScatterNB(std::vector<ChannelInfo> &channels)
     HcclResult ret = HCCL_SUCCESS;
     // 需要判断input不等于outputmem，scatter 输入只有一个input时不用拷贝
     if (inputMem_.addr != outputMem_.addr) {
-        CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size));
+        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
     }
 
     // 计算通信步数：ceiling(log2(rankSize))
@@ -68,7 +68,7 @@ HcclResult ScatterNB::RunScatterTx(const u32 step, std::vector<ChannelInfo> &cha
         sliceIdx = (sliceIdx + deltaSliceIndex) % interRankSize_;
     }
 
-    CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
     if (channelRight.protocol == COMM_PROTOCOL_ROCE) {
         ret = RdmaTx(channelRight, txSlices);
@@ -76,10 +76,10 @@ HcclResult ScatterNB::RunScatterTx(const u32 step, std::vector<ChannelInfo> &cha
             interRank_, step, nSlices), ret);
     }
 
-    CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL)));
 
     // 为了避免在大数据量场景下触发网卡轮询机制，这里添加一组Data Notify，确保对端数据接收完成才进行下一次通信任务
-    CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
     return HCCL_SUCCESS;
 }
 
@@ -103,9 +103,9 @@ HcclResult ScatterNB::RunScatterRx(const u32 step, std::vector<ChannelInfo> &cha
         slicesFlag_[sliceIdx] = true;
     }
 
-    CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
 
-    CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
     if (channelLeft.protocol != COMM_PROTOCOL_ROCE) {
         ret = SdmaRx(channelLeft, rxSlices);
         CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[Run][Scatter]rank[%u] step[%u] Right Link rx slices count [%u] "\
@@ -113,7 +113,7 @@ HcclResult ScatterNB::RunScatterRx(const u32 step, std::vector<ChannelInfo> &cha
     }
 
     // 为了避免在大数据量场景下触发网卡轮询机制，这里添加一组Data Notify，确保对端数据接收完成才进行下一次通信任务
-    CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL)));
     return HCCL_SUCCESS;
 }
 
@@ -148,7 +148,7 @@ HcclResult ScatterNB::RunAsync(const u32 rank, const u32 rankSize,
     // ranksize为1时，只有当input!=ouput 时候进行拷贝
     if (interRankSize_ == 1) {
         if (inputMem_.addr != outputMem_.addr) {
-            CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size));
+            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
         }
         return HCCL_SUCCESS;
     }
@@ -183,7 +183,7 @@ HcclResult ScatterNB::RdmaTx(ChannelInfo &channel, const std::vector<Slice> &txS
         void* dst = static_cast<void *>(static_cast<u8 *>(dstMemPtr) + txSlice.offset + baseOffset_);
         void* src = static_cast<void *>(reinterpret_cast<u8 *>(outputMem_.addr) + txSlice.offset);
         HCCL_DEBUG("[ScatterNB][HcommWriteOnThread] src[%p] dst[%p] size[%llu]", src, dst, txSlice.size);
-        CHK_RET(HcommWriteOnThread(thread_, channel.handle, dst, src, txSlice.size));
+        CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread_, channel.handle, dst, src, txSlice.size)));
     }
     return HCCL_SUCCESS;
 }
@@ -195,7 +195,7 @@ HcclResult ScatterNB::SdmaRx(ChannelInfo &channel, const std::vector<Slice> &rxS
         void* dst = static_cast<void *>(static_cast<u8 *>(outputMem_.addr) + rxSlice.offset);
         void* src = static_cast<void *>(static_cast<s8 *>(srcMemPtr) + rxSlice.offset + baseOffset_);
         HCCL_DEBUG("[ScatterNB][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, rxSlice.size);
-        CHK_RET(HcommReadOnThread(thread_, channel.handle, dst, src, rxSlice.size));
+        CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, channel.handle, dst, src, rxSlice.size)));
     }
     return HCCL_SUCCESS;
 }

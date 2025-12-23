@@ -114,7 +114,7 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
             for (u32 i = 0; i < topoInfo_->userRankSize; i++) {
                 void* src = (u8*)execMem.inputPtr + totalRecvSize * i;
                 void* dst = (u8*)execMem.inputMem.addr + curRecvSize * i;
-                CHK_RET(HcommLocalCopyOnThread(thread_, dst, src, curRecvSize));
+                CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, dst, src, curRecvSize)));
             }
         }
 
@@ -128,7 +128,7 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
         if (!DMAReduceFlag_) {
             void* src = execMem.outputMem.addr;
             void* dst = execMem.outputPtr;
-            CHK_RET(HcommLocalCopyOnThread(thread_, dst, src, curRecvSize));
+            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, dst, src, curRecvSize)));
         }
 
         curUserInputPtr += curRecvSize;

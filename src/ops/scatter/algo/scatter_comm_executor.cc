@@ -74,7 +74,7 @@ HcclResult ScatterCommExecutor::KernelRun(const OpParam &param, ExecMem &execMem
 
     // 从CCL_IN拷贝到CCL_OUT
     u8* src = static_cast<u8 *>(inputMem.addr) + outputMem.size * combinedCommInfo.localRank;
-    CHK_RET(HcommLocalCopyOnThread(thread_, outputMem.addr, src, outputMem.size));
+    CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem.addr, src, outputMem.size)));
     return HCCL_SUCCESS;
 }
 

@@ -113,7 +113,7 @@ HcclResult ScatterMeshExecutor::KernelRun(const OpParam &param, ExecMem &execMem
     CHK_RET(level0TempAlg->RunAsync(level0LocalRank, level0LocalRankSize, channels_[COMM_LEVEL0]));
 
     u8* src = static_cast<u8 *>(scatterMeshOutput.addr) + execMem.outputMem.size * level0LocalRank;
-    CHK_RET(HcommLocalCopyOnThread(thread_, execMem.outputMem.addr, src, execMem.outputMem.size));
+    CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, execMem.outputMem.addr, src, execMem.outputMem.size)));
     return HCCL_SUCCESS;
 }
 

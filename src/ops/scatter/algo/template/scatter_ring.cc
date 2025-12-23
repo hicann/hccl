@@ -30,7 +30,7 @@ HcclResult ScatterRing::RunScatterOnRootRank()
     HcclResult ret = HCCL_SUCCESS;
     // 需要判断input不等于outputmem，scatter 输入只有一个input时不用拷贝
     if (inputMem_.addr != outputMem_.addr) {
-        CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size));
+        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
     }
 
     // 数据向下一个rank发送，依次发送后继所有rank的数据
@@ -40,7 +40,7 @@ HcclResult ScatterRing::RunScatterOnRootRank()
         scatterResult = slices_[preRank].size;
 
         // 等待后一节点同步信号，进行下一轮操作
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
         // 向root rank的后一rank发送
         HCCL_DEBUG(" root rank[%u] sendto dstrank[%u] from srcmem offset[%llu] size[%llu]",
@@ -49,9 +49,9 @@ HcclResult ScatterRing::RunScatterOnRootRank()
         if (channelRight_.protocol == COMM_PROTOCOL_ROCE) {
             void* dst = static_cast<void *>(static_cast<u8 *>(channelRight_.remoteOutput.addr) + scatterOffset + baseOffset_);
             void* src = static_cast<void *>(static_cast<u8 *>(inputMem_.addr) + scatterOffset);
-            CHK_RET(HcommWriteOnThread(thread_, channelRight_.handle, dst, src, scatterResult));
+            CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread_, channelRight_.handle, dst, src, scatterResult)));
         }
-        CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight_.handle, NOTIFY_IDX_DATA_SIGNAL));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight_.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     return HCCL_SUCCESS;
 }
@@ -61,16 +61,16 @@ HcclResult ScatterRing::RunScatterOnEndRank()
     u64 scatterOffset = slices_[interRank_].offset;
     u64 scatterResult = slices_[interRank_].size;
     // 给前一节点发送同步，以便前一rank进行下一轮的操作
-    CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK)));
 
     HCCL_DEBUG("last rank[%u] rx data ouputoffset[%llu] size[%llu]", interRank_, scatterOffset, scatterResult);
 
-    CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+    CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
     if (channelLeft_.protocol != COMM_PROTOCOL_ROCE) {
         void* src = static_cast<void *>(static_cast<s8 *>(channelLeft_.remoteOutput.addr) + scatterOffset + baseOffset_);
         void* dst = static_cast<void *>(static_cast<s8 *>(outputMem_.addr) + scatterOffset);
         HCCL_DEBUG("[ScatterRing][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, scatterResult);
-        CHK_RET(HcommReadOnThread(thread_, channelLeft_.handle, dst, src, scatterResult));
+        CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, channelLeft_.handle, dst, src, scatterResult)));
     }
     return HCCL_SUCCESS;
 }
@@ -94,9 +94,9 @@ HcclResult ScatterRing::RunScatterOnMidRank()
 
         if (i != 1) {
             // 给前一节点发送同步，以便前一rank进行下一轮的操作
-            CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK));
+            CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK)));
             // 从后一rank接收同步信号
-            CHK_RET(HcommNotifyWaitOnThread(thread_, channelRight_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+            CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelRight_.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
             // 向后一rank发送数据
             HCCL_DEBUG("rank[%u] round[%u] tx async offset[%llu] size[%llu]", interRank_, \
                 i, scatterLastOffset, scatterLastResult);
@@ -104,17 +104,17 @@ HcclResult ScatterRing::RunScatterOnMidRank()
             if (channelRight_.protocol == COMM_PROTOCOL_ROCE) {
                 void* dst = static_cast<void *>(static_cast<u8 *>(channelRight_.remoteOutput.addr) + scatterLastOffset + baseOffset_);
                 void* src = static_cast<void *>(static_cast<u8 *>(outputMem_.addr) + scatterLastOffset);
-                CHK_RET(HcommWriteOnThread(thread_, channelRight_.handle, dst, src, scatterLastResult));
+                CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread_, channelRight_.handle, dst, src, scatterLastResult)));
             }
-            CHK_RET(HcommNotifyRecordOnThread(thread_, channelRight_.handle, NOTIFY_IDX_DATA_SIGNAL));
+            CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelRight_.handle, NOTIFY_IDX_DATA_SIGNAL)));
         } else {
             // 给前一节点发送同步，以便前一rank进行下一轮的操作
-            CHK_RET(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK));
+            CHK_RET(static_cast<HcclResult>(HcommNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK)));
         }
         HCCL_DEBUG("rank[%u] round[%u] rcv with rank[%u]'s offset[%llu] size[%llu]", \
             interRank_, i, dataRank, scatterOffset, scatterResult);
 
-        CHK_RET(HcommNotifyWaitOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+        CHK_RET(static_cast<HcclResult>(HcommNotifyWaitOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
         if (channelLeft_.protocol != COMM_PROTOCOL_ROCE) {
             void* remoteAddr = (interRank_ == ((root_ + 1) % interRankSize_)) ?
                 channelLeft_.remoteInput.addr : channelLeft_.remoteOutput.addr;
@@ -122,7 +122,7 @@ HcclResult ScatterRing::RunScatterOnMidRank()
             void* src = static_cast<void *>(static_cast<s8 *>(remoteAddr) + scatterOffset + baseOffset_);
             void* dst = static_cast<void *>(static_cast<s8 *>(outputMem_.addr) + scatterOffset);
             HCCL_DEBUG("[ScatterRing][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, scatterResult);
-            CHK_RET(HcommReadOnThread(thread_, channelLeft_.handle, dst, src, scatterResult));
+            CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, channelLeft_.handle, dst, src, scatterResult)));
         }
     }
     return HCCL_SUCCESS;
@@ -157,7 +157,7 @@ HcclResult ScatterRing::RunAsync(const u32 rank, const u32 rankSize, std::vector
     // ranksize为1时，只有当input!=ouput 时候进行拷贝
     if (interRankSize_ == 1) {
         if (inputMem_.addr != outputMem_.addr) {
-            CHK_RET(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size));
+            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
         }
         return HCCL_SUCCESS;
     }
