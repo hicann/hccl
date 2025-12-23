@@ -61,7 +61,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     }
 
     // 主thread等待Host stream的通知
-    if (HcommInterOpNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
+    if (HcommAclrtNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to wait notify[%d] from host main stream", param->resCtx->notifyIds[0]);
         return 1;
     }
@@ -73,7 +73,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (HcommInterOpNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
+    if (HcommAclrtNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }

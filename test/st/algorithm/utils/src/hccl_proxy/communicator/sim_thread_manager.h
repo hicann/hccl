@@ -25,7 +25,7 @@ public:
     ~SimThreadMgr() = default;
     HcclResult HcclAllocThreadRes(CommEngine engine, uint32_t threadNum,
         uint32_t notifyNumPerThread, ThreadHandle *thread);
-    HcclResult HcclAllocThreadResByStream(CommEngine engine,
+    HcclResult HcclThreadAcquireWithStream(CommEngine engine,
         rtStream_t stream, uint32_t notifyNum, ThreadHandle *thread);
     HcclResult CommGetNotifyNumInThread(ThreadHandle thread, uint32_t *notifyNum);
 

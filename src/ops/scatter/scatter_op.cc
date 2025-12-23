@@ -708,7 +708,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
         HCCL_DEBUG("threads ptr is %p\n", *threads);
     } else {
         // host模式下，将主流封装为thread，并创建主流上的notify
-        CHK_RET(HcclAllocThreadResByStream(comm, param.engine, param.stream,
+        CHK_RET(HcclThreadAcquireWithStream(comm, param.engine, param.stream,
             resRequest.notifyNumOnMainThread, threads));
     }
     curPtr += sizeof(ThreadHandle); // 指针向后偏移
@@ -730,7 +730,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     // 迭代每个子通信域的建链请求，创建链路
     for (u32 level = 0; level < resRequest.channels.size(); level++) {
         // 获取子通信域的建链请求
-        std::vector<ChannelDesc> &levelNChannelRequest = resRequest.channels[level];
+        std::vector<HcclChannelDesc> &levelNChannelRequest = resRequest.channels[level];
         // 获取子通信域的建链数量
         u32 validChannelNum = levelNChannelRequest.size();
         std::vector<ChannelHandle> levelNChannels;
@@ -738,7 +738,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
 
         if (validChannelNum > 0) {
             // 调用控制面接口创建链路
-            CHK_RET(HcclChannelCreate(comm, param.algTag, param.engine, levelNChannelRequest.data(),
+            CHK_RET(HcclChannelAcquire(comm, param.engine, levelNChannelRequest.data(),
                 validChannelNum, levelNChannels.data()));
         }
 
@@ -753,7 +753,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
         }
         for (u32 idx = 0; idx < validChannelNum; idx++) {
             // 对于真实建链的链路进行填充
-            ChannelDesc &channelDesc = levelNChannelRequest[idx];
+            HcclChannelDesc &channelDesc = levelNChannelRequest[idx];
             u32 levelRank;
             CHK_RET(GetSubCommRankByUserRank(channelDesc.remoteRank, level, resCtxHost->algHierarchyInfo, levelRank));
             channels[levelRank].isValid = true;
