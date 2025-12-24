@@ -16,7 +16,6 @@
 #include "log.h"
 #include "alg_param.h"
 #include "hccl_rank_graph.h"
-#include "hccl_rankgraph.h"
 #include "hccl_res.h"
 
 

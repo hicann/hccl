@@ -23,7 +23,6 @@
 #include "hccl_res.h"
 #include "hcomm_primitives.h"
 #include "hccl_rank_graph.h"
-#include "hccl_rankgraph.h"
 
 // 解决与Hcomm仓合入问题，暂时定义为弱符号
 #ifndef HCCL_CHANNEL_ABI
