@@ -1,32 +1,29 @@
 # HcclBatchSendRecv<a name="ZH-CN_TOPIC_0000002486993298"></a>
 
-## AI处理器支持情况<a name="zh-cn_topic_0000001811681609_section10594071513"></a>
+## 产品支持情况<a name="zh-cn_topic_0000001811681609_section10594071513"></a>
 
 <a name="zh-cn_topic_0000001811681609_table38301303189"></a>
-<table><thead align="left"><tr id="zh-cn_topic_0000001811681609_row20831180131817"><th class="cellrowborder" valign="top" width="57.99999999999999%" id="mcps1.1.3.1.1"><p id="zh-cn_topic_0000001811681609_p1883113061818"><a name="zh-cn_topic_0000001811681609_p1883113061818"></a><a name="zh-cn_topic_0000001811681609_p1883113061818"></a><span id="zh-cn_topic_0000001811681609_ph20833205312295"><a name="zh-cn_topic_0000001811681609_ph20833205312295"></a><a name="zh-cn_topic_0000001811681609_ph20833205312295"></a>AI处理器类型</span></p>
+<table><thead align="left"><tr id="zh-cn_topic_0000001811681609_row20831180131817"><th class="cellrowborder" valign="top" width="57.99999999999999%" id="mcps1.1.3.1.1"><p id="zh-cn_topic_0000001811681609_p1883113061818"><a name="zh-cn_topic_0000001811681609_p1883113061818"></a><a name="zh-cn_topic_0000001811681609_p1883113061818"></a><span id="zh-cn_topic_0000001811681609_ph20833205312295"><a name="zh-cn_topic_0000001811681609_ph20833205312295"></a><a name="zh-cn_topic_0000001811681609_ph20833205312295"></a>产品</span></p>
 </th>
 <th class="cellrowborder" align="center" valign="top" width="42%" id="mcps1.1.3.1.2"><p id="zh-cn_topic_0000001811681609_p783113012187"><a name="zh-cn_topic_0000001811681609_p783113012187"></a><a name="zh-cn_topic_0000001811681609_p783113012187"></a>是否支持</p>
 </th>
 </tr>
 </thead>
-<tbody><tr id="zh-cn_topic_0000001811681609_row220181016240"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000001811681609_p48327011813"><a name="zh-cn_topic_0000001811681609_p48327011813"></a><a name="zh-cn_topic_0000001811681609_p48327011813"></a><span id="zh-cn_topic_0000001811681609_ph583230201815"><a name="zh-cn_topic_0000001811681609_ph583230201815"></a><a name="zh-cn_topic_0000001811681609_ph583230201815"></a><term id="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"></a><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"></a>Ascend 910C</term></span></p>
+<tbody><tr id="zh-cn_topic_0000001811681609_row220181016240"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000001811681609_p48327011813"><a name="zh-cn_topic_0000001811681609_p48327011813"></a><a name="zh-cn_topic_0000001811681609_p48327011813"></a><span id="zh-cn_topic_0000001811681609_ph583230201815"><a name="zh-cn_topic_0000001811681609_ph583230201815"></a><a name="zh-cn_topic_0000001811681609_ph583230201815"></a><term id="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"></a><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term1253731311225"></a>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></span></p>
 </td>
 <td class="cellrowborder" align="center" valign="top" width="42%" headers="mcps1.1.3.1.2 "><p id="zh-cn_topic_0000001811681609_p7948163910184"><a name="zh-cn_topic_0000001811681609_p7948163910184"></a><a name="zh-cn_topic_0000001811681609_p7948163910184"></a>√</p>
 </td>
 </tr>
-<tr id="zh-cn_topic_0000001811681609_row173226882415"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000001811681609_p14832120181815"><a name="zh-cn_topic_0000001811681609_p14832120181815"></a><a name="zh-cn_topic_0000001811681609_p14832120181815"></a><span id="zh-cn_topic_0000001811681609_ph1292674871116"><a name="zh-cn_topic_0000001811681609_ph1292674871116"></a><a name="zh-cn_topic_0000001811681609_ph1292674871116"></a><term id="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"></a><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"></a>Ascend 910B</term></span></p>
+<tr id="zh-cn_topic_0000001811681609_row173226882415"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000001811681609_p14832120181815"><a name="zh-cn_topic_0000001811681609_p14832120181815"></a><a name="zh-cn_topic_0000001811681609_p14832120181815"></a><span id="zh-cn_topic_0000001811681609_ph1292674871116"><a name="zh-cn_topic_0000001811681609_ph1292674871116"></a><a name="zh-cn_topic_0000001811681609_ph1292674871116"></a><term id="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"></a><a name="zh-cn_topic_0000001811681609_zh-cn_topic_0000001312391781_term11962195213215"></a>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term></span></p>
 </td>
 <td class="cellrowborder" align="center" valign="top" width="42%" headers="mcps1.1.3.1.2 "><p id="zh-cn_topic_0000001811681609_p19948143911820"><a name="zh-cn_topic_0000001811681609_p19948143911820"></a><a name="zh-cn_topic_0000001811681609_p19948143911820"></a>√</p>
-</td>
-</tr>
-<tr id="zh-cn_topic_0000001811681609_row2049893215015"><td class="cellrowborder" colspan="2" valign="top" headers="mcps1.1.3.1.1 mcps1.1.3.1.2 "><p id="zh-cn_topic_0000001811681609_p5133163315209"><a name="zh-cn_topic_0000001811681609_p5133163315209"></a><a name="zh-cn_topic_0000001811681609_p5133163315209"></a><span id="zh-cn_topic_0000001811681609_ph71511010202"><a name="zh-cn_topic_0000001811681609_ph71511010202"></a><a name="zh-cn_topic_0000001811681609_ph71511010202"></a>注：AI处理器与昇腾产品的对应关系，请参见《<a href="https://www.hiascend.com/document/detail/zh/AscendFAQ/ProduTech/productform/hardwaredesc_0001.html" target="_blank" rel="noopener noreferrer">昇腾产品形态说明</a>》。</span></p>
 </td>
 </tr>
 </tbody>
 </table>
 
 > [!NOTE]说明 
-> 针对Ascend 910B，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
+> 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
 
 ## 功能说明<a name="zh-cn_topic_0000001811681609_section212645315215"></a>
 
@@ -90,7 +87,7 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 -   “异步”是指同一张卡上的接收和发送任务是异步的，不会相互阻塞。但是在卡间，收发任务依旧是同步的，因此，卡间的收发任务也同HcclSend、HcclRecv一样，必须是一一对应的。
 -   任务列表中不能有重复的send/recv任务，重复指向（从）同一rank发送（接收）的两个任务。
 -   当前版本此接口不支持Virtual Pipeline（VPP）开启的场景。
--   针对Ascend 910B，在大规模集群下（ranksize\>500）使用此接口时，并发执行数不能超过3个。
+-   针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，在大规模集群下（ranksize\>500）使用此接口时，并发执行数不能超过3个。
 -   针对[Atlas 200T A2 Box16 异构子框](https://support.huawei.com/enterprise/zh/doc/EDOC1100318274/287e0458)，若Server内卡间出现建链失败的情况（错误码：EI0010），需要将环境变量HCCL\_INTRA\_ROCE\_ENABLE配置为1，HCCL\_INTRA\_PCIE\_ENABLE配置为0，让Server内采用RoCE环路进行多卡间的通信（请确保Server上存在RoCE网卡，且具有send/recv收发关系的设备之间RDMA链路互通），环境变量配置示例如下：
 
     ```
