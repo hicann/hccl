@@ -1,32 +1,29 @@
 # HcclAllGatherV<a name="ZH-CN_TOPIC_0000002486992304"></a>
 
-## AI处理器支持情况<a name="zh-cn_topic_0000002139400230_section10594071513"></a>
+## 产品支持情况<a name="zh-cn_topic_0000002139400230_section10594071513"></a>
 
 <a name="zh-cn_topic_0000002139400230_table38301303189"></a>
-<table><thead align="left"><tr id="zh-cn_topic_0000002139400230_row20831180131817"><th class="cellrowborder" valign="top" width="57.99999999999999%" id="mcps1.1.3.1.1"><p id="zh-cn_topic_0000002139400230_p1883113061818"><a name="zh-cn_topic_0000002139400230_p1883113061818"></a><a name="zh-cn_topic_0000002139400230_p1883113061818"></a><span id="zh-cn_topic_0000002139400230_ph20833205312295"><a name="zh-cn_topic_0000002139400230_ph20833205312295"></a><a name="zh-cn_topic_0000002139400230_ph20833205312295"></a>AI处理器类型</span></p>
+<table><thead align="left"><tr id="zh-cn_topic_0000002139400230_row20831180131817"><th class="cellrowborder" valign="top" width="57.99999999999999%" id="mcps1.1.3.1.1"><p id="zh-cn_topic_0000002139400230_p1883113061818"><a name="zh-cn_topic_0000002139400230_p1883113061818"></a><a name="zh-cn_topic_0000002139400230_p1883113061818"></a><span id="zh-cn_topic_0000002139400230_ph20833205312295"><a name="zh-cn_topic_0000002139400230_ph20833205312295"></a><a name="zh-cn_topic_0000002139400230_ph20833205312295"></a>产品</span></p>
 </th>
 <th class="cellrowborder" align="center" valign="top" width="42%" id="mcps1.1.3.1.2"><p id="zh-cn_topic_0000002139400230_p783113012187"><a name="zh-cn_topic_0000002139400230_p783113012187"></a><a name="zh-cn_topic_0000002139400230_p783113012187"></a>是否支持</p>
 </th>
 </tr>
 </thead>
-<tbody><tr id="zh-cn_topic_0000002139400230_row220181016240"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000002139400230_p48327011813"><a name="zh-cn_topic_0000002139400230_p48327011813"></a><a name="zh-cn_topic_0000002139400230_p48327011813"></a><span id="zh-cn_topic_0000002139400230_ph583230201815"><a name="zh-cn_topic_0000002139400230_ph583230201815"></a><a name="zh-cn_topic_0000002139400230_ph583230201815"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"></a>Ascend 910C</term></span></p>
+<tbody><tr id="zh-cn_topic_0000002139400230_row220181016240"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000002139400230_p48327011813"><a name="zh-cn_topic_0000002139400230_p48327011813"></a><a name="zh-cn_topic_0000002139400230_p48327011813"></a><span id="zh-cn_topic_0000002139400230_ph583230201815"><a name="zh-cn_topic_0000002139400230_ph583230201815"></a><a name="zh-cn_topic_0000002139400230_ph583230201815"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225"></a>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></span></p>
 </td>
 <td class="cellrowborder" align="center" valign="top" width="42%" headers="mcps1.1.3.1.2 "><p id="zh-cn_topic_0000002139400230_p7948163910184"><a name="zh-cn_topic_0000002139400230_p7948163910184"></a><a name="zh-cn_topic_0000002139400230_p7948163910184"></a>√</p>
 </td>
 </tr>
-<tr id="zh-cn_topic_0000002139400230_row173226882415"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000002139400230_p14832120181815"><a name="zh-cn_topic_0000002139400230_p14832120181815"></a><a name="zh-cn_topic_0000002139400230_p14832120181815"></a><span id="zh-cn_topic_0000002139400230_ph1292674871116"><a name="zh-cn_topic_0000002139400230_ph1292674871116"></a><a name="zh-cn_topic_0000002139400230_ph1292674871116"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"></a>Ascend 910B</term></span></p>
+<tr id="zh-cn_topic_0000002139400230_row173226882415"><td class="cellrowborder" valign="top" width="57.99999999999999%" headers="mcps1.1.3.1.1 "><p id="zh-cn_topic_0000002139400230_p14832120181815"><a name="zh-cn_topic_0000002139400230_p14832120181815"></a><a name="zh-cn_topic_0000002139400230_p14832120181815"></a><span id="zh-cn_topic_0000002139400230_ph1292674871116"><a name="zh-cn_topic_0000002139400230_ph1292674871116"></a><a name="zh-cn_topic_0000002139400230_ph1292674871116"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term11962195213215"></a>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term></span></p>
 </td>
 <td class="cellrowborder" align="center" valign="top" width="42%" headers="mcps1.1.3.1.2 "><p id="zh-cn_topic_0000002139400230_p19948143911820"><a name="zh-cn_topic_0000002139400230_p19948143911820"></a><a name="zh-cn_topic_0000002139400230_p19948143911820"></a>√</p>
-</td>
-</tr>
-<tr id="zh-cn_topic_0000002139400230_row10869121074916"><td class="cellrowborder" colspan="2" valign="top" headers="mcps1.1.3.1.1 mcps1.1.3.1.2 "><p id="zh-cn_topic_0000002139400230_p5133163315209"><a name="zh-cn_topic_0000002139400230_p5133163315209"></a><a name="zh-cn_topic_0000002139400230_p5133163315209"></a><span id="zh-cn_topic_0000002139400230_ph71511010202"><a name="zh-cn_topic_0000002139400230_ph71511010202"></a><a name="zh-cn_topic_0000002139400230_ph71511010202"></a>注：AI处理器与昇腾产品的对应关系，请参见《<a href="https://www.hiascend.com/document/detail/zh/AscendFAQ/ProduTech/productform/hardwaredesc_0001.html" target="_blank" rel="noopener noreferrer">昇腾产品形态说明</a>》。</span></p>
 </td>
 </tr>
 </tbody>
 </table>
 
 > [!NOTE]说明 
-> 针对Ascend 910B，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
+> 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
 
 ## 功能说明<a name="zh-cn_topic_0000002139400230_section59721402"></a>
 
@@ -98,8 +95,8 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 <td class="cellrowborder" valign="top" width="17.169999999999998%" headers="mcps1.1.4.1.2 "><p id="zh-cn_topic_0000002139400230_p10038421"><a name="zh-cn_topic_0000002139400230_p10038421"></a><a name="zh-cn_topic_0000002139400230_p10038421"></a>输入</p>
 </td>
 <td class="cellrowborder" valign="top" width="62.629999999999995%" headers="mcps1.1.4.1.3 "><p id="zh-cn_topic_0000002139400230_p51201049151217"><a name="zh-cn_topic_0000002139400230_p51201049151217"></a><a name="zh-cn_topic_0000002139400230_p51201049151217"></a>AllGatherV操作的数据类型，<a href="HcclDataType.md#ZH-CN_TOPIC_0000002486992310">HcclDataType</a>类型。</p>
-<p id="zh-cn_topic_0000002139400230_p578154617218"><a name="zh-cn_topic_0000002139400230_p578154617218"></a><a name="zh-cn_topic_0000002139400230_p578154617218"></a> 针对<span id="zh-cn_topic_0000002139400230_ph15590543154217"><a name="zh-cn_topic_0000002139400230_ph15590543154217"></a><a name="zh-cn_topic_0000002139400230_ph15590543154217"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"></a>Ascend 910C</term></span>，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。</p>
-<p id="zh-cn_topic_0000002139400230_p94179211177"><a name="zh-cn_topic_0000002139400230_p94179211177"></a><a name="zh-cn_topic_0000002139400230_p94179211177"></a> 针对<span id="zh-cn_topic_0000002139400230_ph14880920154918"><a name="zh-cn_topic_0000002139400230_ph14880920154918"></a><a name="zh-cn_topic_0000002139400230_ph14880920154918"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"></a>Ascend 910B</term></span>，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。</p>
+<p id="zh-cn_topic_0000002139400230_p578154617218"><a name="zh-cn_topic_0000002139400230_p578154617218"></a><a name="zh-cn_topic_0000002139400230_p578154617218"></a> 针对<span id="zh-cn_topic_0000002139400230_ph15590543154217"><a name="zh-cn_topic_0000002139400230_ph15590543154217"></a><a name="zh-cn_topic_0000002139400230_ph15590543154217"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term1253731311225_1"></a>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term></span>，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。</p>
+<p id="zh-cn_topic_0000002139400230_p94179211177"><a name="zh-cn_topic_0000002139400230_p94179211177"></a><a name="zh-cn_topic_0000002139400230_p94179211177"></a> 针对<span id="zh-cn_topic_0000002139400230_ph14880920154918"><a name="zh-cn_topic_0000002139400230_ph14880920154918"></a><a name="zh-cn_topic_0000002139400230_ph14880920154918"></a><term id="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"></a><a name="zh-cn_topic_0000002139400230_zh-cn_topic_0000001312391781_term16184138172215"></a>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term></span>，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。</p>
 </td>
 </tr>
 <tr id="zh-cn_topic_0000002139400230_row3143429"><td class="cellrowborder" valign="top" width="20.200000000000003%" headers="mcps1.1.4.1.1 "><p id="zh-cn_topic_0000002139400230_p53291177"><a name="zh-cn_topic_0000002139400230_p53291177"></a><a name="zh-cn_topic_0000002139400230_p53291177"></a>comm</p>
@@ -126,6 +123,6 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 ## 约束说明<a name="zh-cn_topic_0000002139400230_section50358210"></a>
 
 -   所有rank的recvCounts、recvDispls、dataType均应相同。
--   针对Ascend 910C，仅支持单Server场景。
--   针对Ascend 910B，仅支持多机对称分布场景，不支持非对称分布（即卡数非对称）的场景。
+-   针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，仅支持单Server场景。
+-   针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，仅支持多机对称分布场景，不支持非对称分布（即卡数非对称）的场景。
 
