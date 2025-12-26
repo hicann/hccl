@@ -21,7 +21,6 @@
     </generate_info>
     <file_info value="hccl_script" copy_type="source" src_path="" dst_path="share/info/hccl" install_path="share/info/hccl">
         <file value="script" entity="true"/>
-        <file value="bin" entity="true"/>
         <file value="version.info" dst_path="share/info/hccl" install_path="share/info/hccl"/>
     </file_info>
     <block_info dependtree="false" dst_path="hccl" block_conf_path="ascend">
@@ -33,7 +32,6 @@
         <path value="share" install_mod="550"/>
         <path value="share/info" install_mod="750"/>
         <path value="share/info/hccl" install_mod="750"/>
-        <path value="share/info/hccl/bin" install_mod="550"/>
         <path value="share/info/hccl/script" install_mod="550"/>
     </dir_info>
 </config>

@@ -51,7 +51,7 @@ export MPI_HOME=/usr/local/mpich
 
 2、设置环境变量
 ```shell
-source /usr/local/Ascend/ascend-toolkit/latest/bin/setenv.bash
+source /usr/local/Ascend/cann/set_env.sh
 该脚本和装包路径有关
 ```
 3、执行前冒烟用例

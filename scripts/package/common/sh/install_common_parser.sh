@@ -1421,10 +1421,6 @@ version_install() {
         add_setenv "${install_path_full}" "${package_real}" "${setenv}" "${username}" "${usergroup}" "false" "${docker_root}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
 
-        # set prereq_check
-        add_prereq_check "${install_path_full}" "${package_real}" "${username}" "${usergroup}" "${docker_root}"
-        ret="$?" && [ $ret -ne 0 ] && return $ret
-
         # 调用组件自定义安装流程
         package_custom_install "${package_real}" "${install_path}" "${version_dir}" "${custom_options}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
@@ -1477,10 +1473,6 @@ version_uninstall() {
     if [ "${is_simple}" != "y" ]; then
         # unset env
         del_setenv "${install_path_full}" "${package_real}" "${username}" "${docker_root}"
-        ret="$?" && [ $ret -ne 0 ] && return $ret
-
-        # unset prereq_check
-        del_prereq_check "${install_path_full}" "${package_real}" "${docker_root}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
 
         # 调用组件自定义卸载流程，失败流程不中断

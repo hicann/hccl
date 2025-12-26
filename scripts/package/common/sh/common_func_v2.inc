@@ -1716,3 +1716,15 @@ all_common_dirs_blocks_in_filelist() {
     parse_filelist_v2 "$install_type" "all" "$filelist_path" "$feature_param" "filter_common_dirs" "" \
         | cut -d' ' -f8 | sort | uniq
 }
+
+# 是否为版本目录
+is_version_dirpath() {
+    local version_dirpath="$1"
+    if [ -d "$version_dirpath/share/info" ]; then
+        return 0
+    fi
+    if [ -f "$version_dirpath/var/ascend_package_db.info" ]; then
+        return 0
+    fi
+    return 1
+}
