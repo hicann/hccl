@@ -20,6 +20,16 @@
 using namespace ops_hccl;
 using HcclGetOpInfoCallback = void (*)(const void *opInfo, char *outPut, size_t size);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+HcclResult __attribute__((weak)) HcommRegOpInfo(const char* commId, void* opInfo, size_t size);
+HcclResult __attribute__((weak)) HcommRegOpTaskException(const char* commId, HcclGetOpInfoCallback callback);
+#ifdef __cplusplus
+}
+#endif
+
+
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
@@ -28,13 +38,15 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         return 1;
     }
 
-    if (HcommRegisterOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommRegisterOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
+    if (HcommRegOpInfo != nullptr &&
+        HcommRegOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommRegOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
             __func__, param->commName, param->algTag, param, sizeof(OpParam));
         return 1;
     }
 
-    if (HcommRegOpTaskException(param->commName, ops_hccl::GetScatterOpInfo) != HCCL_SUCCESS) {
+    if (HcommRegOpTaskException != nullptr &&
+        HcommRegOpTaskException(param->commName, ops_hccl::GetScatterOpInfo) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommRegOpTaskException fail, commName[%s], algTag[%s]", __func__, param->commName, param->algTag);
         return 1;
     }
