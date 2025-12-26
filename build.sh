@@ -46,7 +46,7 @@ function log() {
 
 function set_env()
 {
-    source $ASCEND_CANN_PACKAGE_PATH/bin/setenv.bash || echo "0"
+    source $ASCEND_CANN_PACKAGE_PATH/set_env.sh || echo "0"
 }
 
 function clean()

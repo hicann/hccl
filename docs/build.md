@@ -29,10 +29,10 @@
 
    ```shell
    # 默认路径，root用户安装
-   source /usr/local/Ascend/ascend-toolkit/latest/bin/setenv.bash
+   source /usr/local/Ascend/cann/set_env.sh
 
    # 默认路径，非root用户安装
-   source $HOME/Ascend/ascend-toolkit/latest/bin/setenv.bash
+   source $HOME/Ascend/cann/set_env.sh
    ```
 
 ## 源码下载

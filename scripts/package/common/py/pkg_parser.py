@@ -274,86 +274,122 @@ def render_cann_version(a_ver: int,
     return buffer.getvalue()
 
 
-def get_cann_version(version_dir: str) -> str:
-    """获取CANN版本号。"""
-    if not version_dir:
-        return ""
+def render_semver(package_name: str, version: str) -> Iterator[Tuple[str, str]]:
+    """
+    将语义化版本号转换为可比较的整数表达式，严格遵循SemVer规范
 
-    release_pattern = re.compile(r'(\d+)\.(\d+)\.(\d+)', re.IGNORECASE)
-    matched = release_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), int(matched.group(3)), None, None, None
-        )
+    排序规则：
+    1. 正式版本 > 所有对应预发布版本（如 8.0.5 > 8.0.5-rc.1）
+    2. 预发布类型优先级：rc > beta > alpha > 其他类型（如 rc.1 > beta.100）
+    3. 同类型预发布版本：序号越大优先级越高（如 alpha.10 > alpha.2）
+    4. 多段序号比较：从左到右逐段比较（如 alpha.1.2 > alpha.1.1）
+    """
+    expr_buffer = StringIO()
+    expr_buffer.write('(')
 
-    release_alpha_pattern = re.compile(r'(\d+)\.(\d+)\.(\d+)\.[a-z]*(\d+)', re.IGNORECASE)
-    matched = release_alpha_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), int(matched.group(3)), None, None,
-            int(matched.group(4))
-        )
+    # 移除构建元数据（+后面的内容不影响版本优先级）
+    version = version.split('+')[0]
 
-    rc_pattern = re.compile(r'(\d+)\.(\d+)\.RC(\d+)', re.IGNORECASE)
-    matched = rc_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), None, int(matched.group(3)), None, None
-        )
+    # 分离正式版本和预发布版本
+    pre_release = None
+    if '-' in version:
+        release_part, pre_release = version.split('-', 1)
+        release_part = release_part.split('.')
+    else:
+        release_part = version.split('.')
+        if len(release_part) > 3:
+            pre_release = '.'.join(release_part[3:])
+            release_part = release_part[:3]
 
-    test_pattern = re.compile(r'(\d+)\.(\d+)\.T(\d+)', re.IGNORECASE)
-    matched = test_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), None, None, int(matched.group(3)), None
-        )
+    # 解析正式版本号（主版本.次版本.修订号）
+    try:
+        major, minor, patch = map(int, release_part)
+    except (ValueError, TypeError) as ex:
+        raise IllegalVersionDir(f"无效的版本号格式: {version}") from ex
 
-    alpha_pattern = re.compile(r'(\d+)\.(\d+)\.RC(\d+)\.[a-z]*(\d+)', re.IGNORECASE)
-    matched = alpha_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), None, int(matched.group(3)), None,
-            int(matched.group(4))
-        )
+    yield f'{package_name}_VERSION_STR', f'"{version}"'
+    yield f'{package_name}_MAJOR', str(major)
+    yield f'{package_name}_MINOR', str(minor)
+    yield f'{package_name}_PATCH', str(patch)
+    # 计算基础版本值（主版本*10^7 + 次版本*10^5 + 修订号*10^3）
+    # 预留10^3空间用于预发布版本，确保不同正式版本区间不重叠
+    expr_buffer.write(f'({major} * 10000000) + ({minor} * 100000) + ({patch} * 1000)')
 
-    cann_pattern = re.compile(r'CANN-(\d+)\.(\d+)', re.IGNORECASE)
-    matched = cann_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), None, None, None, None
-        )
+    # 处理正式版本（无预发布部分）
+    if not pre_release:
+        expr_buffer.write(')')
+        yield f'{package_name}_PRERELEASE', '""'
+        yield f'{package_name}_VERSION_NUM', expr_buffer.getvalue()
+        return
 
-    beta_pattern = re.compile(r'(\d+)\.(\d+)\.(\d+)\-[a-z]*\.(\d+)', re.IGNORECASE)
-    matched = beta_pattern.fullmatch(version_dir)
-    if matched:
-        return render_cann_version(
-            int(matched.group(1)), int(matched.group(2)), int(matched.group(3)), None, None,
-            int(matched.group(4))
-        )
+    yield f'{package_name}_PRERELEASE', f'"{pre_release}"'
 
-    raise IllegalVersionDir(version_dir)
+    # 预发布类型权重（值越小优先级越高）
+    type_weights = {
+        'rc': 100,  # rc优先级最高
+        'beta': 200,  # beta次之
+        'alpha': 300,  # alpha最低
+    }
+
+    def calc_pre_release() -> Tuple[int, int]:
+        """计算预发布版本。"""
+        if '.' in pre_release:
+            pre_parts = pre_release.split('.')
+            pre_type = pre_parts[0]  # 提取预发布类型（rc/beta/alpha等）
+
+            # 提取序号部分（支持多段序号，非数字部分忽略）
+            pre_nums = []
+            for part in pre_parts[1:]:
+                if part.isdigit():
+                    pre_nums.append(int(part))
+            if not pre_nums:  # 无序号时默认0
+                pre_nums = [0]
+
+            # 未知类型权重设为400（优先级低于alpha）
+            pre_type_weight = type_weights.get(pre_type, 400)
+
+            # 计算序号值（支持多段和多位数）
+            num_str = ''.join(map(str, pre_nums))
+            # 转换为整数并返回
+            num_value = int(num_str)
+            return pre_type_weight, num_value
+
+        for pre_type in type_weights:
+            if pre_release.startswith(pre_type):
+                pre_type_weight = type_weights[pre_type]
+                num_value = int(pre_release[len(pre_type):])
+                return pre_type_weight, num_value
+
+        return None, None
+
+    try:
+        pre_type_weight, num_value = calc_pre_release()
+    except (ValueError, TypeError) as ex:
+        raise IllegalVersionDir(f"无效的预发布版本: {pre_release}") from ex
+
+    if not pre_type_weight:
+        raise IllegalVersionDir(f"无效的预发布版本: {pre_release}")
+
+    # 预发布版本最终值 = 基础值 - 类型权重 + 序号值
+    # 确保：预发布值 < 基础值（正式版本）
+    expr_buffer.write(f' - {pre_type_weight} + {num_value}')
+    expr_buffer.write(')')
+
+    yield f'{package_name}_VERSION_NUM', expr_buffer.getvalue()
 
 
-def get_cann_version_info(name: str, version_dir: str) -> List[Tuple[str, str]]:
+def get_cann_version_info(name: str, version: str) -> Iterator[Tuple[str, str]]:
     """获取CANN版本号信息。"""
     version_info = []
 
     # 删除字符串中的_VERSION
     package_name = name[:-8]
 
-    if not version_dir:
-        version_str = '0'
-    elif version_dir.startswith('CANN-'):
-        version_str = version_dir[5:]
-    else:
-        version_str = version_dir
+    if not version:
+        yield f'{package_name}_VERSION_STR', '"0"'
+        return
 
-    version_info.append((f'{package_name}_VERSION_STR', f'"{version_str}"'))
-
-    version = get_cann_version(version_dir)
-    version_info.append((f'{package_name}_VERSION', version))
-
-    return version_info
+    yield from render_semver(package_name, version)
 
 
 def get_default_env_items() -> Iterator[Tuple[str, str]]:

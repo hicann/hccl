@@ -1073,10 +1073,6 @@ add_latest_common_script() {
     add_setenv "${latest_path}" "${package}" "NA" "${username}" "${usergroup}" "true" "${docker_root}"
     ret="$?" && [ $ret -ne 0 ] && return $ret
 
-    # 给latest目录添加prereq_check条目
-    add_prereq_check "${latest_path}" "${package}" "${username}" "${usergroup}" "${docker_root}"
-    ret="$?" && [ $ret -ne 0 ] && return $ret
-
     # 恢复bin目录的权限
     chmod "${mod}" "${latest_path}/bin"
     ret="$?" && [ $ret -ne 0 ] && return $ret
@@ -1106,10 +1102,6 @@ del_latest_common_script() {
 
     # unsetenv
     del_setenv "${latest_path}" "${package}" "${username}" "${docker_root}"
-    ret="$?" && [ $ret -ne 0 ] && return $ret
-
-    # 给latest目录删除prereq_check条目
-    del_prereq_check "${latest_path}" "${package}" "${docker_root}"
     ret="$?" && [ $ret -ne 0 ] && return $ret
 
     # 恢复bin目录的权限

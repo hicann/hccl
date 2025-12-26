@@ -10,41 +10,50 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # ----------------------------------------------------------------------------
 
-# 创建列表
-_make_list() {
+# 获取版本号，用于版本兼容性对比
+get_package_compat_version() {
     local _outvar="$1"
-    eval "${_outvar}=\"\""
-}
+    local _version_info_path="$2"
+    local _result
 
-# 列表添加元素
-_append_list() {
-    local _outvar="$1"
-    local _item="$2"
-
-    local _value
-    eval "_value=\"\${${_outvar}}\""
-
-    if [ "${_value}" = "" ]; then
-        _value="${_item}"
-    else
-        _value="${_value} ${_item}"
+    if [ ! -f "${_version_info_path}" ]; then
+        read -r "$_outvar" <<EOF
+EOF
+        return 1
     fi
 
-    eval "${_outvar}=\"${_value}\""
+    read -r "$_outvar" <<EOF
+$(grep "^Version=" "$_version_info_path" | cut -d= -f2- | cut -d- -f1 | cut -d. -f-3)
+EOF
+}
+
+# 获取正式包名
+get_formal_package_name() {
+    local _outvar="$1"
+    local _package="$2"
+    read -r "$_outvar" <<EOF
+$(echo "$_package" | sed 's/_/-/g')
+EOF
+}
+
+# 获取非正式包名
+get_informal_package_name() {
+    local _outvar="$1"
+    local _package="$2"
+    read -r "$_outvar" <<EOF
+$(echo "$_package" | sed 's/-/_/g')
+EOF
 }
 
 # 获取需求包列表。
 _get_required_packages() {
-    local _outvar="$1"
-    local _version_info_path="$2"
-    local _packages
+    local _version_info_path="$1"
 
-    if [ ! -f "${_version_info_path}" ]; then
-        eval "${_outvar}=\"\""
-        return 1
+    if [ ! -f "$_version_info_path" ]; then
+        return 0
     fi
 
-    _packages=$(awk '
+    awk '
         function join(items, len, sep,  result, i) {
             if (len >= 1) {
                 result = items[1]
@@ -56,9 +65,6 @@ _get_required_packages() {
             return ""
         }
 
-        BEGIN {
-            len_packages = 0
-        }
         /^required_package_.+_version=/ {
             split($0, line_tokens, "=")
             len_require_tokens = split(line_tokens[1], require_tokens, "_")
@@ -68,20 +74,9 @@ _get_required_packages() {
                 package_names[len_package_names] = require_tokens[i]
             }
             package_name = join(package_names, len_package_names, "_")
-
-            len_packages += 1
-            packages[len_packages] = package_name
+	    print package_name
         }
-        END {
-            if (len_packages >= 1) {
-                printf("%s", packages[1])
-                for (i = 2; i <= len_packages; i++) {
-                    printf(" %s", packages[i])
-                }
-            }
-        }
-    ' "${_version_info_path}")
-    eval "${_outvar}=\"${_packages}\""
+    ' "${_version_info_path}"
 }
 
 # 获取需求包信息。
@@ -110,6 +105,8 @@ _check_version_required() {
     local version="$1"
     local require="$2"
     local script_dir="$3"
+    local src_pkg="$4"
+    local dst_pkg="$5"
     local result
 
     result=$(awk -f "${script_dir}/check_version_required.awk" -v version="${version}" -v all_required="${require}")
@@ -117,82 +114,62 @@ _check_version_required() {
         return 0
     fi
 
+    echo "Version compatibility check failed, $src_pkg required $dst_pkg version $require, but $dst_pkg version is $version!"
     return 1
 }
-
-# 检查包版本兼容性。
-_check_package_version_compatiable() {
-    local version_info_path="$1"
-    local pkg_version_info_path="$2"
-    local package="$3"
-    local script_dir="$4"
-
-    local pkg_version
-    local required
-
-    # get pkg_version
-    get_package_version "pkg_version" "${pkg_version_info_path}"
-    # get required
-    _get_required_package_info "required" "${version_info_path}" "${package}"
-    # check pkg_version and required
-    _check_version_required "${pkg_version}" "${required}" "${script_dir}"
-    if [ $? -eq 0 ]; then
-        comm_log "INFO" "${package} is installed, current version: ${pkg_version}, version check successfully."
-        return 0
-    fi
-
-    comm_log "ERROR" "${package} is installed, current version: ${pkg_version}, required version is ${required}, version check failed."
-    return 1
-}
-
 
 # 检查版本兼容性。
 _check_version_compatiable() {
-    local version_info_path="$1"
+    local package="$1"
     local install_path="$2"
     local script_dir="$3"
+    local version_info_path="$script_dir/../version.info"
+    local err_msgs package_formal self_version src_pkg src_pkg_formal dst_pkg dst_pkg_formal
+    local installed_version_info pkg_version_info_path
 
-    local check_result=0
-    local failed_list
-    local required_packages
-    local package
-    local self_version
-    local pkg_version_info_path
-    local pkg_installed
-    local driver_install_path
+    get_formal_package_name "package_formal" "$package"
+    get_package_compat_version "self_version" "$version_info_path"
 
-    _get_required_packages "required_packages" "${version_info_path}"
-    get_package_version "self_version" "${version_info_path}"
-
-    _make_list "failed_list"
-
-    for package in ${required_packages}; do
-        if [ "${package}" = "driver" ]; then
-            get_driver_install_path "driver_install_path" "${install_path}"
-            if [ "${driver_install_path}" != "" ]; then
-                pkg_installed="true"
-            else
-                pkg_installed="false"
-            fi
-            pkg_version_info_path="${driver_install_path}/${package}/version.info"
-        else
-            does_pkg_installed "${install_path}" "${package}" "pkg_installed"
-            pkg_version_info_path="${install_path}/${package}/version.info"
+    if [ -d "$install_path/share/info" ]; then
+        err_msgs="$(
+            ls "$install_path/share/info" | grep -v "^${package}$" | while read src_pkg; do
+                get_formal_package_name "src_pkg_formal" "$package"
+                installed_version_info="$install_path/share/info/$src_pkg/version.info"
+                grep "^required_package_${package_formal}_version=" "$installed_version_info" | cut -d= -f2- | tr -d '"' | while read required; do
+                    _check_version_required "$self_version" "$required" "$script_dir" "$src_pkg_formal" "$package_formal"
+                done
+            done
+    )"
+        if [ "$err_msgs" != "" ]; then
+            while read err_msg; do
+                comm_log "ERROR" "$err_msg"
+            done <<EOF
+$err_msgs
+EOF
+            return 1
         fi
-        if [ "${pkg_installed}" = "true" ] && [ -f "${pkg_version_info_path}" ]; then
-            _check_package_version_compatiable "${version_info_path}" "${pkg_version_info_path}" "${package}" "${script_dir}"
-            if [ $? -ne 0 ]; then
-                check_result=1
-                _append_list "failed_list" "${package}"
-            fi
-        else
-            comm_log "INFO" "${package} is not installed, does not need to check."
-        fi
-    done
-
-    if [ ${check_result} -ne 0 ]; then
-        comm_log "ERROR" "version check failed, please uninstall incompatible packages or install compatible packages. [$(echo ${failed_list} | sed 's/ /, /g')]"
     fi
-
-    return ${check_result}
+    err_msgs="$(
+        _get_required_packages "${version_info_path}" | while read dst_pkg_formal; do
+            get_informal_package_name "dst_pkg" "$dst_pkg_formal"
+            pkg_version_info_path="$install_path/share/info/$dst_pkg_formal/version.info"
+            if [ ! -f "$pkg_version_info_path" ]; then
+                pkg_version_info_path="$install_path/share/info/$dst_pkg/version.info"
+            fi
+            if [ -f "$pkg_version_info_path" ]; then
+                get_package_compat_version "pkg_version" "$pkg_version_info_path"
+                _get_required_package_info "required" "$version_info_path" "$dst_pkg_formal"
+                _check_version_required "$pkg_version" "$required" "$script_dir" "$package_formal" "$dst_pkg_formal"
+            fi
+        done
+    )"
+    if [ "$err_msgs" != "" ]; then
+        while read err_msg; do
+            comm_log "ERROR" "$err_msg"
+        done <<EOF
+$err_msgs
+EOF
+        return 1
+    fi
+    return 0
 }

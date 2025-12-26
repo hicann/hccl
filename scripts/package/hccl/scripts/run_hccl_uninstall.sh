@@ -18,6 +18,7 @@ if [ "$1" ]; then
     is_docker_install="${5}"  # 兼容跨版本调用保留参数
     docker_root="${6}"
     is_recreate_softlink="${7}"
+    pkg_version_dir="${8}"
 fi
 
 if [ "${is_recreate_softlink}" = "y" ]; then
@@ -35,7 +36,6 @@ fi
 get_version "pkg_version" "$pkg_version_path"
 is_multi_version_pkg "pkg_is_multi_version" "$pkg_version_path"
 if [ "$pkg_is_multi_version" = "true" ] && [ "$hetero_arch" != "y" ]; then
-    get_version_dir "pkg_version_dir" "$pkg_version_path"
     common_parse_dir="$common_parse_dir/$pkg_version_dir"
 fi
 
