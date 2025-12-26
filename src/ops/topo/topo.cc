@@ -17,6 +17,7 @@
 #include "adapter_acl.h"
 #include "channel.h"
 #include "hccl_common.h"
+#include "config_log.h"
 
 constexpr u32 FACTOR_NUM_TWO = 2;
 constexpr s32 DEVICE_PER_MODULE = 8;
@@ -42,6 +43,14 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
         // 获取本服务器内的链路信息
         CHK_RET(CalcLinkInfo(topoInfo, pairLinkCounter));
     }
+    HCCL_CONFIG_INFO(HCCL_ALG, "[InitRankInfo] userRank[%u] userRankSize[%u] serverIdx[%u] superPodIdx[%u] "
+        "deviceType[%u] deviceNumPerModule[%u] serverNumPerSuperPod[%u] serverNum[%u] moduleNum[%u] superPodNum[%u] moduleIdx[%u] "
+        "isDiffDeviceModule[%d] multiModuleDiffDeviceNumMode[%d] multiSuperPodDiffServerNumMode[%d] isHCCSSWNumEqualToTwiceSIONum[%d]",
+        topoInfo->userRank, topoInfo->userRankSize, topoInfo->serverIdx, topoInfo->superPodIdx,
+        topoInfo->deviceType, topoInfo->deviceNumPerModule, topoInfo->serverNumPerSuperPod,
+        topoInfo->serverNum, topoInfo->moduleNum, topoInfo->superPodNum, topoInfo->moduleIdx,
+        topoInfo->isDiffDeviceModule, topoInfo->multiModuleDiffDeviceNumMode, topoInfo->multiSuperPodDiffServerNumMode,
+        topoInfo->isHCCSSWNumEqualToTwiceSIONum);
 #endif
     return HCCL_SUCCESS;
 }

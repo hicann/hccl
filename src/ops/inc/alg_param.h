@@ -146,7 +146,6 @@ enum class TopoType {
 struct TopoInfo { // 通信域拓扑ctx
     u32 userRank; // rankId
     u32 userRankSize; // 通信域rankSize
-    u32 devicePhyId; // 在服务器上的物理槽位号
     u32 serverIdx = INVALID_UINT; // Server在ranktable中的自然顺序
     u32 superPodIdx = INVALID_UINT; // SuperPod在ranktable中的自然顺序
     DevType deviceType = DevType::DEV_TYPE_COUNT; // 硬件类型
