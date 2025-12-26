@@ -347,7 +347,7 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
     --enable-sign)
-        ENABLE_SIGN="false"
+        ENABLE_SIGN="true"
         shift
         ;;
     --sign-script)
