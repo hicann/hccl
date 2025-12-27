@@ -395,10 +395,7 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
 {
     // 需要当前sever里的pairLinkCounter
     pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_HCCS)] = 0;
-    pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_TCP)] = 0;
     pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_ROCE)] = 0;
-    pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_UB_CTP)] = 0;
-    pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_UB_TP)] = 0;
     pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_PCIE)] = 0;
     pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_SIO)] = 0;
 
@@ -427,15 +424,19 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
             for (uint32_t i = 0; i < listSize; ++i) {
                 CommLink& currentLink = linkList[i]; // 获取当前循环到的链路对象
 
-                // --- 在这里处理 currentLink ---
-                HCCL_DEBUG("  Link[%u] found between srcRank[%u] and dstRank[%u]:", i, srcRank, dstRank);
-                HCCL_DEBUG("    LinkType: %u", currentLink.protocol);     // 假设有 linkType 成员
-                HCCL_DEBUG("    srcEndPoint: %u", currentLink.srcEndPoint); // 假设有此成员
-                HCCL_DEBUG("    dstEndPoint: %u", currentLink.dstEndPoint); // 假设有此成员
+                // 双向兼容处理：先处理版本号1的字段
+                if (currentLink.header.version >= 1) {
+                    // --- 在这里处理 currentLink ---
+                    HCCL_DEBUG("  Link[%u] found between srcRank[%u] and dstRank[%u]:", i, srcRank, dstRank);
+                    HCCL_DEBUG("    LinkType: %u", currentLink.linkAttr.linkProtocol); // 假设有 linkType 成员
+                    HCCL_DEBUG("    srcEndpointDesc: %u", currentLink.srcEndpointDesc); // 假设有此成员
+                    HCCL_DEBUG("    dstEndpointDesc: %u", currentLink.dstEndpointDesc); // 假设有此成员
 
-                // 可以将链路类型统计起来
-                // 原始代码中的 pairLinkCounter 应该在这里使用
-                pairLinkCounter[static_cast<u32>(currentLink.protocol)]++;
+                    // 可以将链路类型统计起来
+                    // 原始代码中的 pairLinkCounter 应该在这里使用
+                    pairLinkCounter[static_cast<u32>(currentLink.linkAttr.linkProtocol)]++;
+                }
+                // 未来处理版本2及之后
             }
         }
     }
@@ -590,11 +591,9 @@ HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, TopoInfo* topoInfo, 
                 CommLink& currentLink = linkList[i]; // 获取当前循环到的链路对象
 
                 HCCL_DEBUG("  Link[%u] found between srcRank[%u] and dstRank[%u]:", i, srcRank, dstRank);
-                HCCL_DEBUG("    LinkType: %u", currentLink.protocol);
-                HCCL_DEBUG("    srcEndPoint: %u", currentLink.srcEndPoint);
-                HCCL_DEBUG("    dstEndPoint: %u", currentLink.dstEndPoint);
+                HCCL_DEBUG("    LinkType: %u", currentLink.linkAttr.linkProtocol);
 
-                if (currentLink.protocol == CommProtocol::COMM_PROTOCOL_HCCS) {
+                if (currentLink.linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_HCCS) {
                     rankModuleIdx = 0;
                     break;
                 }

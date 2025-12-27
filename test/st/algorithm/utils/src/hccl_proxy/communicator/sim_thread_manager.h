@@ -23,8 +23,8 @@ class SimThreadMgr {
 public:
     SimThreadMgr(std::string commId, u32 curRank);
     ~SimThreadMgr() = default;
-    HcclResult HcclAllocThreadRes(CommEngine engine, uint32_t threadNum,
-        uint32_t notifyNumPerThread, ThreadHandle *thread);
+    HcclResult HcclThreadAcquire(CommEngine engine, uint32_t threadNum,
+        uint32_t notifyNumPerThread, ThreadHandle *threads);
     HcclResult HcclThreadAcquireWithStream(CommEngine engine,
         rtStream_t stream, uint32_t notifyNum, ThreadHandle *thread);
     HcclResult CommGetNotifyNumInThread(ThreadHandle thread, uint32_t *notifyNum);
