@@ -239,7 +239,7 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
         param.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     } else {
         HCCL_DEBUG("is host mode");
-        param.engine = CommEngine::COMM_ENGINE_HOSTCPU_TS;
+        param.engine = CommEngine::COMM_ENGINE_CPU_TS;
     }
 
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());  // topoInfo的tag，所有算子可以共享
@@ -365,9 +365,9 @@ HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo)
     uint64_t size = sizeof(TopoInfo);
     void *ctx = nullptr;
     // 若获取Context失败，表示对应Context尚未缓存
-    if (HcclEngineCtxGet(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, &ctx, &size) != HCCL_SUCCESS) {
+    if (HcclEngineCtxGet(comm, param.tag, CommEngine::COMM_ENGINE_CPU_TS, &ctx, &size) != HCCL_SUCCESS) {
         // 创建新的Context
-        CHK_RET(HcclEngineCtxCreate(comm, param.tag, CommEngine::COMM_ENGINE_HOSTCPU_TS, size, &ctx));
+        CHK_RET(HcclEngineCtxCreate(comm, param.tag, CommEngine::COMM_ENGINE_CPU_TS, size, &ctx));
         // 将Context内存地址强转为TopoInfo
         *topoInfo = static_cast<TopoInfo *>(ctx);
         // 将对应拓扑信息填入到Context内存中
@@ -588,7 +588,7 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
     }
 
     // 在algTag中追加编排模式
-    const char* launchMode = (param.engine == CommEngine::COMM_ENGINE_HOSTCPU_TS ? "_aicpu" : "_host");
+    const char* launchMode = (param.engine == CommEngine::COMM_ENGINE_CPU_TS ? "_aicpu" : "_host");
     int ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
     if (ret != 0) {
         HCCL_ERROR("faled to fill param.algTag");
@@ -717,7 +717,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     curPtr += sizeof(AlgResourceCtx); // 偏移指针
     ThreadHandle* threads = reinterpret_cast<ThreadHandle *>(curPtr);
     if (param.engine == COMM_ENGINE_AICPU_TS) {
-        CHK_RET(HcclAllocThreadRes(comm, param.engine, 1,
+        CHK_RET(HcclThreadAcquire(comm, param.engine, 1,
             resRequest.notifyNumOnMainThread, threads));
         HCCL_DEBUG("threads ptr is %p\n", *threads);
     } else {
@@ -730,7 +730,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     if (resRequest.slaveThreadNum > 0) {
         threads = reinterpret_cast<ThreadHandle *>(curPtr);
         // 创建从流thread及对应的notify
-        CHK_RET(HcclAllocThreadRes(comm, param.engine, resRequest.slaveThreadNum,
+        CHK_RET(HcclThreadAcquire(comm, param.engine, resRequest.slaveThreadNum,
             resRequest.notifyNumPerThread, threads));
         curPtr += sizeof(ThreadHandle) * resCtxHost->slaveThreadNum; // 指针向后偏移
     }
@@ -772,7 +772,7 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
             CHK_RET(GetSubCommRankByUserRank(channelDesc.remoteRank, level, resCtxHost->algHierarchyInfo, levelRank));
             channels[levelRank].isValid = true;
             channels[levelRank].remoteRank = channelDesc.remoteRank;
-            channels[levelRank].protocol = channelDesc.protocol;
+            channels[levelRank].protocol = channelDesc.channelProtocol;
             channels[levelRank].notifyNum = channelDesc.notifyNum;
             channels[levelRank].handle = levelNChannels[idx];
 

@@ -21,8 +21,8 @@ SimThreadMgr::SimThreadMgr(std::string commId, u32 curRank) : commId_(commId), c
 HcclResult SimThreadMgr::CommEngineToNotifyLoadType(CommEngine engine, NotifyLoadType &type)
 {
     switch (engine) {
-        case COMM_ENGINE_HOSTCPU:
-        case COMM_ENGINE_HOSTCPU_TS:
+        case 0: // COMM_ENGINE_CPU
+        case 1: // COMM_ENGINE_CPU_TS
             type =  NotifyLoadType::HOST_NOTIFY;
             break;
         case COMM_ENGINE_AICPU:
@@ -53,8 +53,8 @@ HcclResult SimThreadMgr::HcclThreadAcquireWithStream(
     return HCCL_SUCCESS;
 }
 
-HcclResult SimThreadMgr::HcclAllocThreadRes(
-    CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle *thread)
+HcclResult SimThreadMgr::HcclThreadAcquire(
+    CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle *threads)
 {
     std::lock_guard<std::mutex> lock(threadMutex_);
     for (uint32_t i = 0; i < threadNum; ++i) {
@@ -64,7 +64,7 @@ HcclResult SimThreadMgr::HcclAllocThreadRes(
         CHK_RET(simThread->Init());
         threads_.push_back(simThread);
 
-        thread[i] = reinterpret_cast<ThreadHandle>(simThread.get());
+        threads[i] = reinterpret_cast<ThreadHandle>(simThread.get());
     }
     return HCCL_SUCCESS;
 }

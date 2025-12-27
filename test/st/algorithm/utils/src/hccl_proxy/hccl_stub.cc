@@ -231,19 +231,12 @@ HcclResult HcclChannelGetHcclBuffer(HcclComm comm, ChannelHandle channel, CommBu
 }
 #endif
 
-HcclResult HcclGetRankGraph(HcclComm comm, GraphType type, void **graph, uint32_t *len)
+HcclResult HcclThreadAcquire(
+    HcclComm comm, CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle *threads)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
-    return simComm->GetCommRankGraph(graph, len);
-}
-
-HcclResult HcclAllocThreadRes(
-    HcclComm comm, CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle *thread)
-{
-    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
-    CHK_PTR_NULL(simComm);
-    return simComm->independentOpThreadMgr_->HcclAllocThreadRes(engine, threadNum, notifyNumPerThread, thread);
+    return simComm->independentOpThreadMgr_->HcclThreadAcquire(engine, threadNum, notifyNumPerThread, threads);
 }
 
 HcclResult HcclThreadAcquireWithStream(

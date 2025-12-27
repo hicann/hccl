@@ -32,17 +32,22 @@ typedef struct {
     uint32_t magicWord;
     uint32_t size;
     uint32_t reserved;
-} HcclAbiHeader;
+} CommAbiHeader;
 
 typedef struct {
-    HcclAbiHeader header;
+    CommAbiHeader header;
     uint32_t remoteRank;    ///< 远端rankId
     CommProtocol protocol;  ///< 通信协议
     uint32_t notifyNum;  ///< channel上使用的通知消息数量
     union {
-        HccsAttr hccsAttr;
-        RoCEAttr roceAttr;
-        UbAttr ubAttr;
+        uint8_t raws[128]; ///< 通用缓存
+        struct {
+            uint32_t queueNum;        ///< QP数量
+            uint32_t retryCnt;        ///< 最大重传次数
+            uint32_t retryInterval;   ///< 重传间隔(ms)（对应协议计算公式）
+            uint8_t tc;               ///< 流量类别(QoS)
+            uint8_t sl;               ///< 服务等级(QoS)
+        } roceAttr;
     };
 } HcclChannelDesc;
 
@@ -60,9 +65,6 @@ inline void HcclChannelDescInit(HcclChannelDesc *channelDesc, uint32_t descNum)
             channelDesc->remoteRank = ~0U;
             channelDesc->protocol   = COMM_PROTOCOL_RESERVED;
             channelDesc->notifyNum  = 0;
-            (void)memset_s(&(channelDesc->hccsAttr), sizeof(HccsAttr), 0, sizeof(HccsAttr));
-            (void)memset_s(&(channelDesc->roceAttr), sizeof(RoCEAttr), 0, sizeof(RoCEAttr));
-            (void)memset_s(&(channelDesc->ubAttr), sizeof(UbAttr), 0, sizeof(UbAttr));
         }
     }
     return;

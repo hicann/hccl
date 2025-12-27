@@ -33,13 +33,13 @@ HcclResult SimChannelMgr::ChannelCommCreate(const std::string &commId, const std
 
     for (uint32_t i = 0; i < listNum; ++i) {
         string channelKey = tag + ":" + to_string(engine) + ":" +
-            to_string(channelDescList[i].remoteRank) + ":" + to_string(channelDescList[i].protocol);
+            to_string(channelDescList[i].remoteRank) + ":" + to_string(channelDescList[i].channelProtocol);
         if (channelMap_.find(channelKey) != channelMap_.end()) {
             // 已存在缓存
             channelList[i] = reinterpret_cast<ChannelHandle>(channelMap_[channelKey].get());
         } else {
             // 不存在缓存，创建新的channel
-            shared_ptr<SimChannel> channel = make_shared<SimChannel>(commId, tag, engine, channelDescList[i].protocol,
+            shared_ptr<SimChannel> channel = make_shared<SimChannel>(commId, tag, engine, channelDescList[i].channelProtocol,
                 curRank_, channelDescList[i].remoteRank, channelDescList[i].notifyNum);
             CHK_RET(channel->Init());
             tmpChannels.push_back({i, channel});
