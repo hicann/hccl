@@ -126,7 +126,7 @@ function(pack_built_in)
         COMMAND ${CMAKE_COMMAND} -E echo "host_only=true" >> ${CMAKE_CURRENT_BINARY_DIR}/version.info
     )
   endif()
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/version.info
+  install(FILES ${HCCL_VERSION_FILE}
       DESTINATION share/info/hccl
   )
   install(FILES ${CONF_FILES}
