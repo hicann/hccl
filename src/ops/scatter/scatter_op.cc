@@ -579,7 +579,8 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
     }
 
     // 在原先的tag中添加算法名字，得到algTag
-    if (GetWorkflowMode() == HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
+    bool isOpBase = GetWorkflowMode() == HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE;
+    if (isOpBase) {
         int ret = sprintf_s(param.algTag, sizeof(param.algTag), "%s_%s_%d", param.tag, algName.c_str(), param.root);
         if (ret <= 0) {
             HCCL_ERROR("faled to fill param.algTag");
@@ -596,6 +597,13 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
     }
 
     HCCL_INFO("[SelectAlg] Scatter algTag is [%s] algName is [%s]", param.algTag, algName.c_str());
+    HCCL_CONFIG_INFO(HCCL_ALG,
+            "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "\
+            "userRankSize[%u] level0Size[%u] level1Size[%u] "\
+            "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
+            __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
+            topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum / topoInfo->superPodNum,
+            topoInfo->superPodNum, launchMode, param.isZeroCopy, isOpBase);
     return HCCL_SUCCESS;
 }
 
