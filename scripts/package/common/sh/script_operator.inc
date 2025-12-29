@@ -428,50 +428,10 @@ get_shell_path_and_shell_path_real() {
 
 # 设置环境变量
 add_setenv() {
-    local install_path="$1"
-    local package="$2"
-    local setenv="$3"
-    local username="$4"
-    local usergroup="$5"
-    local add_multi_version_param="$6"
-    local docker_root="$7"
-
-    for type in ${ENV_SHELL_TYPES}; do
-        local shell_path_pair shell_path shell_path_real
-
-        get_shell_path_and_shell_path_real "shell_path_pair" "${install_path}" "${package}" "setenv.${type}" "${docker_root}"
-        __index_list "${shell_path_pair}" 0 "shell_path" 1 "shell_path_real"
-        [ ! -f "${shell_path_real}" ] && continue
-
-        add_env_rc "${install_path}" "${shell_path}" "${package}" "${type}" "${setenv}" "${username}" "${usergroup}" "${add_multi_version_param}" "${docker_root}"
-        if [ $? -ne 0 ]; then
-            log "ERROR" "failed to set ${package} ${type} env."
-            return 1
-        fi
-    done
-
     return 0
 }
 
 # 删除环境变量
 del_setenv() {
-    local install_path="$1"
-    local package="$2"
-    local username="$3"
-    local docker_root="$4"
-
-    for type in $ENV_SHELL_TYPES; do
-        local shell_path_pair shell_path shell_path_real
-
-        get_shell_path_and_shell_path_real "shell_path_pair" "${install_path}" "${package}" "setenv.${type}" "${docker_root}"
-        __index_list "${shell_path_pair}" 0 "shell_path" 1 "shell_path_real"
-
-        del_env_rc "${install_path}" "${shell_path}" "${type}" "${username}" "${docker_root}"
-        if [ $? -ne 0 ]; then
-            log "ERROR" "failed to unset ${package} ${type} env."
-            return 1
-        fi
-    done
-
     return 0
 }
