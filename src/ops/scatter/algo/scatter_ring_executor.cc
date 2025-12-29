@@ -264,7 +264,7 @@ HcclResult ScatterRingExecutor::MultiRingScatter(HcclMem inputMem, HcclMem outpu
 
             for (u32 ring = 0; ring < (ringNum - 1); ring++) {
                 // 主环等所有从环结束
-                CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(thread_, ring, CUSTOM_TIMEOUT)));
+                CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread_, ring, CUSTOM_TIMEOUT)));
             }
         }
     }
