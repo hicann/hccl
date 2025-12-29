@@ -754,7 +754,7 @@ const bool& GetExternalInputHcclEnableEntryLog()
 bool RunIndependentOpExpansion(DevType deviceType) {
     std::string opExpansionModeEnv = GetEnv(MM_ENV_HCCL_OP_EXPANSION_MODE);
     if (deviceType == DevType::DEV_TYPE_910_93) {
-        return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS";
+        return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
     }
     
     // HOST_TS为Host展开
