@@ -24,22 +24,6 @@
 #include "hcomm_primitives.h"
 #include "hccl_rank_graph.h"
 
-// 解决Hcomm仓合入问题
-#ifndef HCCL_CTX_API
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
-HcclResult HcclEngineCtxCreate(HcclComm comm, const char *ctxTag, CommEngine engine, uint64_t size, void **ctx) __attribute__((weak));
-HcclResult HcclEngineCtxGet(HcclComm comm, const char *ctxTag, CommEngine engine, void **ctx, uint64_t *size) __attribute__((weak));
-HcclResult HcclEngineCtxCopy(HcclComm comm, CommEngine engine, const char *ctxTag, const void *srcCtx,
-    uint64_t size, uint64_t dstCtxOffset) __attribute__((weak));
-
-#ifdef __cplusplus
-}
-#endif // __cplusplus
-#endif // HCCL_CTX_API
-
 namespace ops_hccl {
 
 constexpr u32 COMM_INDENTIFIER_MAX_LENGTH = 128;

@@ -112,9 +112,6 @@ enum class HcclRtDeviceInfoType {
     HCCL_RT_DEVICE_INFO_RESERVED,
 };
 
-// 解决Hcomm仓合入问题
-#ifdef HCCL_CTX_API
-
 /**
  * @enum HcclMemType
  * @brief 内存类型枚举定义
@@ -130,5 +127,4 @@ typedef struct {
     void *addr;
     uint64_t size;
 } HcclMem;
-#endif // HCCL_CTX_API
 #endif // HCCL_COMMON_H
