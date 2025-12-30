@@ -31,6 +31,12 @@ ENABLE_ST="off"
 CMAKE_BUILD_TYPE="Debug"
 ASCEND_3RD_LIB_PATH="${CURRENT_DIR}/output/third_party"
 
+# 自定义算子工程
+ENABLE_CUSTOM="off"
+CUSTOM_OPS_NAME=""
+CUSTOM_OPS_PATH=""
+CUSTOM_OPS_VENDOR=""
+
 if [ "${USER_ID}" != "0" ]; then
     DEFAULT_TOOLKIT_INSTALL_DIR="${HOME}/Ascend/ascend-toolkit/latest"
     DEFAULT_INSTALL_DIR="${HOME}/Ascend/latest"
@@ -230,6 +236,20 @@ function run_st() {
   fi
 }
 
+function build_custom() {
+    log "Info: build_custom"
+    cmake_config "-DENABLE_CUSTOM=ON
+                  -DCUSTOM_OPS_PATH=${CUSTOM_OPS_PATH} \
+                  -DCUSTOM_OPS_NAME=${CUSTOM_OPS_NAME} \
+                  -DCUSTOM_OPS_VENDOR=${CUSTOM_OPS_VENDOR} \
+                  -DENABLE_SIGN=${ENABLE_SIGN} \
+                  -DCUSTOM_SIGN_SCRIPT=${CUSTOM_SIGN_SCRIPT} \
+                  -DVERSION_INFO=${VERSION_INFO}"
+
+    # 编译，并打包 run 包
+    build package
+}
+
 # print usage message
 function usage() {
   echo "Usage:"
@@ -358,6 +378,24 @@ while [[ $# -gt 0 ]]; do
         VERSION_INFO="$2"
         shift 2
         ;;
+    --custom_ops_path=*)
+        OPTARG=$1
+        CUSTOM_OPS_PATH="$(realpath ${OPTARG#*=})"
+        ENABLE_CUSTOM="on"
+        shift
+        ;;
+    --ops=*)
+        OPTARG=$1
+        CUSTOM_OPS_NAME="${OPTARG#*=}"
+        ENABLE_CUSTOM="on"
+        shift
+        ;;
+    --vendor=*)
+        OPTARG=$1
+        CUSTOM_OPS_VENDOR="${OPTARG#*=}"
+        ENABLE_CUSTOM="on"
+        shift
+        ;;
     *)
         log "Error: Undefined option: $1"
         usage
@@ -423,6 +461,8 @@ elif [ -n "${TEST}" ];then
     build_test
 elif [ "${KERNEL}" == "true" ]; then
     build_kernel
+elif [ "${ENABLE_CUSTOM}" == "on" ]; then
+    build_custom
 elif [ "${FULL_MODE}" == "true" ]; then
     cd ..
     mkdir -p ${BUILD_DEVICE_DIR}

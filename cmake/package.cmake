@@ -24,34 +24,48 @@ function(pack_custom)
   else ()
       message(WARNING "Unknown architecture: ${CMAKE_SYSTEM_PROCESSOR}")
   endif ()
-  set(PACK_CUSTOM_NAME "cann-ops-math-${VENDOR_NAME}_linux-${ARCH}")
-  set(PATH_NAME "${VENDOR_NAME}_math")
-  npu_op_package(${PACK_CUSTOM_NAME}
-    TYPE RUN
-    CONFIG
-      ENABLE_SOURCE_PACKAGE True
-      ENABLE_BINARY_PACKAGE True
-      INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/
-      VENDOR_NAME ${PATH_NAME}
-      ENABLE_DEFAULT_PACKAGE_NAME_RULE False
+
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/custom/
+      DESTINATION ${CUSTOM_OPS_OPP_SCRIPTS_PATH}
+      FILE_PERMISSIONS
+      OWNER_READ OWNER_WRITE OWNER_EXECUTE  # 文件权限
+      GROUP_READ GROUP_EXECUTE
+      WORLD_READ WORLD_EXECUTE
+      DIRECTORY_PERMISSIONS
+      OWNER_READ OWNER_WRITE OWNER_EXECUTE  # 目录权限
+      GROUP_READ GROUP_EXECUTE
+      WORLD_READ WORLD_EXECUTE
   )
 
-  npu_op_package_add(${PACK_CUSTOM_NAME}
-    LIBRARY
-      cust_opapi
+  add_custom_target(version_info ALL
+      COMMAND cp -f ${CMAKE_SOURCE_DIR}/version.info ${CMAKE_CURRENT_BINARY_DIR}/version.info
+      COMMAND ${CMAKE_COMMAND} -E echo "host_only=false" >> ${CMAKE_CURRENT_BINARY_DIR}/version.info
   )
-  if (TARGET cust_proto)
-    npu_op_package_add(${PACK_CUSTOM_NAME}
-        LIBRARY
-        cust_proto
-    )
-  endif()
-  if (TARGET cust_opmaster)
-    npu_op_package_add(${PACK_CUSTOM_NAME}
-        LIBRARY
-        cust_opmaster
-    )
-  endif()
+
+  # ============= CPack =============
+  set(CPACK_PACKAGE_NAME "${ops_vendor}-${ops_name}")
+  set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}")
+
+  set(CPACK_INSTALL_PREFIX "/")
+
+  set(CPACK_CMAKE_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+  set(CPACK_CMAKE_BINARY_DIR "${CMAKE_BINARY_DIR}")
+  set(CPACK_CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
+  set(CPACK_CMAKE_CURRENT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(CPACK_ARCH "${ARCH}")
+  set(CPACK_SET_DESTDIR ON)
+  set(CPACK_GENERATOR External)
+  set(CPACK_EXTERNAL_PACKAGE_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/makeself_custom.cmake")
+  set(CPACK_EXTERNAL_ENABLE_STAGING true)
+  set(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
+
+  set(CPACK_CUSTOM_OPS_NAME "${CUSTOM_OPS_NAME}")
+  set(CPACK_CUSTOM_OPS_PATH "${CUSTOM_OPS_PATH}")
+  set(CPACK_CUSTOM_OPS_VENDOR "${CUSTOM_OPS_VENDOR}")
+  set(CPACK_CUSTOM_OPS_OPP_SCRIPTS_PATH "${CUSTOM_OPS_OPP_SCRIPTS_PATH}")
+
+  include(CPack)
 endfunction()
 
 function(pack_built_in)

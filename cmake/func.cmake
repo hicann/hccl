@@ -209,3 +209,122 @@ function(sign_file)
         set(${ARG_RESULT_VAR} "${output_sig}" PARENT_SCOPE)
     endif()
 endfunction()
+
+# =============================================================================
+# Function: package_aicpu_kernel
+#
+# Packages an AICPU kernel into a tar archive and installs it along with its
+# JSON configuration file.#
+#
+# Usage:
+#   package_aicpu_kernel(
+#       <target_name>          # CMake target name of the AICPU kernel
+#       <tar_directory>        # Directory where files are staged before packaging
+#       <tar_output_file>      # Full path of the output tar.gz archive
+#       <json_config_file>     # Path to the AICPU kernel JSON configuration file
+#   )
+#
+# =============================================================================
+function(package_aicpu_kernel TARGET_NAME TAR_FILE JSON_FILE)
+    if(NOT TARGET ${TARGET_NAME})
+        message(FATAL_ERROR 
+            "[package_aicpu_kernel] Target '${TARGET_NAME}' does not exist. "
+            "Ensure the target is defined before calling this function.")
+    endif()
+
+    set(TAR_DIR ${CMAKE_BINARY_DIR}/aicpu_kernels_device)
+
+    # POST_BUILD 阶段进行打包
+    add_custom_command(
+        TARGET ${TARGET_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${TAR_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${TARGET_NAME}> ${TAR_DIR}
+        COMMAND cd ${CMAKE_BINARY_DIR} && tar czf ${TAR_FILE} aicpu_kernels_device
+        COMMENT "[package_aicpu_kernel] Created package: ${TAR_FILE}"
+    )
+endfunction()
+
+# =============================================================================
+# Function: sign_aicpu_kernel
+#
+# Signs an AICPU kernel package using a custom signing script. Creates a signed
+# version of the input tar package and returns its path.
+#
+# Usage:
+#   sign_aicpu_kernel(
+#       <target_name>           # CMake target to associate signing with
+#       <input_tar_file>        # Input tar package to sign
+#       <config_file>           # Signing configuration file
+#       <output_tar_file_var>   # Output variable for signed package path
+#   )
+#
+# =============================================================================
+function(sign_aicpu_kernel TARGET_NAME TAR_FILE CONFIG_FILE OUTPUT_TAR_FILE_VAR)
+    if(NOT TARGET ${TARGET_NAME})
+        message(FATAL_ERROR
+            "[sign_aicpu_kernel] Target '${TARGET_NAME}' does not exist. "
+            "Ensure the target is defined before calling this function.")
+    endif()
+
+    if(DEFINED CUSTOM_SIGN_SCRIPT AND NOT CUSTOM_SIGN_SCRIPT STREQUAL "")
+        set(SIGN_SCRIPT ${CUSTOM_SIGN_SCRIPT})
+    else()
+        set(SIGN_SCRIPT)
+    endif()
+
+    if(ENABLE_SIGN)
+        set(SIGN_FLAG "true")
+    else()
+        set(SIGN_FLAG "false")
+    endif()
+
+    if(NOT EXISTS "${CONFIG_FILE}")
+        message(FATAL_ERROR "[sign_aicpu_kernel] Sign config file not found: ${CONFIG_FILE}")
+    endif()
+
+    if(NOT IS_ABSOLUTE "${TAR_FILE}")
+        set(TAR_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TAR_FILE}")
+        message(STATUS "[sign_aicpu_kernel] TAR_FILE = ${TAR_FILE}")
+    endif()
+
+    get_filename_component(TAR_FILE_NAME "${TAR_FILE}" NAME)  # 获取文件名
+    set(OUTPUT_TAR_DIR "${CMAKE_CURRENT_BINARY_DIR}/signatures")
+    set(OUTPUT_TAR_FILE "${OUTPUT_TAR_DIR}/${TAR_FILE_NAME}")
+
+    if(EXISTS "${SIGN_SCRIPT}")
+        get_filename_component(SCRIPT_EXT ${SIGN_SCRIPT} EXT)  # 获取文件扩展名
+
+        if(${SCRIPT_EXT} STREQUAL ".sh")
+            set(SIGN_CMD bash ${SIGN_SCRIPT} ${OUTPUT_TAR_FILE} ${CONFIG_FILE} ${SIGN_FLAG})
+        elseif(${SCRIPT_EXT} STREQUAL ".py")
+            set(SIGN_CMD
+                python3 ${CMAKE_SOURCE_DIR}/scripts/sign/add_header_sign.py
+                ${OUTPUT_TAR_DIR} ${SIGN_FLAG}
+                --bios_check_cfg=${CONFIG_FILE}
+                --sign_script=${SIGN_SCRIPT}
+                --version=${VERSION_INFO}
+            )
+        else()
+            message(WARNING "[sign_aicpu_kernel] Unsupported script type: ${SCRIPT_EXT}")
+        endif()
+    else()
+        message(WARNING "[sign_aicpu_kernel] Sign script not found: ${SIGN_SCRIPT}")
+        set(SIGN_CMD)
+    endif()
+
+    # POST_BUILD 阶段进行签名
+    add_custom_command(
+        TARGET ${TARGET_NAME}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${OUTPUT_TAR_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${TAR_FILE} ${OUTPUT_TAR_DIR}
+        COMMAND ${SIGN_CMD}
+        DEPENDS ${TAR_FILE} ${SIGN_SCRIPT} ${CONFIG_FILE}
+        COMMENT "[sign_aicpu_kernel] Signing package: ${OUTPUT_TAR_DIR}"
+        VERBATIM
+    )
+
+    # 签名包路径
+    set(${OUTPUT_TAR_FILE_VAR} ${OUTPUT_TAR_FILE} PARENT_SCOPE)
+endfunction()
