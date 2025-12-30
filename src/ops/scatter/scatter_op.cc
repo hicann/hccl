@@ -599,10 +599,10 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
     HCCL_INFO("[SelectAlg] Scatter algTag is [%s] algName is [%s]", param.algTag, algName.c_str());
     HCCL_CONFIG_INFO(HCCL_ALG,
             "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "\
-            "userRankSize[%u] level0Size[%u] level1Size[%u] "\
+            "userRankSize[%u] level0Size[%u] moduleNum[%u] "\
             "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
             __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
-            topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum / topoInfo->superPodNum,
+            topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum,
             topoInfo->superPodNum, launchMode, param.isZeroCopy, isOpBase);
     return HCCL_SUCCESS;
 }
