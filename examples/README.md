@@ -24,6 +24,10 @@
 - [PyTorch](./03_ai_framework/01_pytorch/)
 - [Tensorflow](./03_ai_framework/02_tensorflow/)
 
+## 自定义点对点通信算子
+
+- [自定义 Send/Recv 算子（基于 AICPU 通信引擎）](./04_custom_ops_p2p/)
+
 ## 依赖安装
 mpich下载地址，选择4.1.3版本
 ```bash
