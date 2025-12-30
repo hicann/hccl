@@ -669,8 +669,6 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
 HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
     AlgResourceCtx* resCtxHost, aclrtNotify* notifies)
 {
-// 解决Hcomm仓合入问题
-#ifdef HCCL_CTX_API
     void* cclBufferAddr;
     uint64_t cclBufferSize;
     // 从通信域获取CCL buffer的地址和大小
@@ -681,17 +679,6 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     // CCL OUT使用CCL Buffer的后一半
     resCtxHost->cclOutputMem = HcclMem{HCCL_MEM_TYPE_DEVICE,
         static_cast<void*>(static_cast<char*>(cclBufferAddr) + sizePerCcl), sizePerCcl};
-#else
-    CommBuffer cclBuffer;
-    // 从通信域获取CCL buffer
-    CHK_RET(HcclGetHcclBuffer(comm, &cclBuffer));
-    u64 sizePerCcl = cclBuffer.size / 2;
-    // CCL IN使用CCL Buffer的前一半
-    resCtxHost->cclInputMem = HcclMem{cclBuffer.type, cclBuffer.addr, sizePerCcl};
-    // CCL OUT使用CCL Buffer的后一半
-    resCtxHost->cclOutputMem = HcclMem{cclBuffer.type,
-        static_cast<void*>(static_cast<char*>(cclBuffer.addr) + sizePerCcl), sizePerCcl};
-#endif
     resCtxHost->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
@@ -783,20 +770,11 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
             channels[levelRank].protocol = channelDesc.channelProtocol;
             channels[levelRank].notifyNum = channelDesc.notifyNum;
             channels[levelRank].handle = levelNChannels[idx];
-
-// 解决Hcomm仓合入问题
-#ifdef HCCL_CTX_API
             void* remoteBufferAddr;
             uint64_t remoteBufferSize;
             CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteBufferAddr, &remoteBufferSize));
             channels[levelRank].remoteInput = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteBufferAddr, remoteBufferSize};
             channels[levelRank].remoteOutput = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteBufferAddr, remoteBufferSize};
-#else
-            CommBuffer remoteBuffer;
-            CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteBuffer));
-            channels[levelRank].remoteInput = HcclMem{remoteBuffer.type, remoteBuffer.addr, remoteBuffer.size};
-            channels[levelRank].remoteOutput = HcclMem{remoteBuffer.type, remoteBuffer.addr, remoteBuffer.size};
-#endif
         }
         curPtr += sizeof(ChannelInfo) * subCommInfo.localRankSize; // 偏移指针
     }

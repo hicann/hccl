@@ -108,7 +108,6 @@ HcclResult SimCommunicator::GetCommRankGraph(void **graph, uint32_t *len)
     return HCCL_SUCCESS;
 }
 
-#ifdef HCCL_CTX_API
 HcclResult SimCommunicator::GetHcclBuffer(void **buffer, uint64_t *size)
 {
     CHK_PTR_NULL(buffer);
@@ -119,17 +118,6 @@ HcclResult SimCommunicator::GetHcclBuffer(void **buffer, uint64_t *size)
     *size = memBlock.size;
     return HCCL_SUCCESS;
 }
-#else
-HcclResult SimCommunicator::GetHcclBuffer(CommBuffer *buffer)
-{
-    CHK_PTR_NULL(buffer);
-    SimNpu& npu = SimWorld::Global()->GetSimNpuByRankId(curRank_);
-    MemBlock memBlock = npu.GetMemBlock(BufferType::CCL);
-    buffer->addr = reinterpret_cast<void*>(memBlock.startAddr);
-    buffer->size = memBlock.size;
-    return HCCL_SUCCESS;
-}
-#endif
 
 HcclResult SimCommunicator::ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
         const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
@@ -137,7 +125,6 @@ HcclResult SimCommunicator::ChannelCommCreate(const std::string &commId, const s
     return channelMgr_->ChannelCommCreate(commId, tag, engine, channelDescList, listNum, channelList);
 }
 
-#ifdef HCCL_CTX_API
 HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, void **buffer, uint64_t *size)
 {
     CHK_PTR_NULL(buffer);
@@ -149,17 +136,5 @@ HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, void
     *size = memBlock.size;
     return HCCL_SUCCESS;
 }
-#else
-HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, CommBuffer *buffer)
-{
-    CHK_PTR_NULL(buffer);
-    auto* transport = reinterpret_cast<SimChannel*>(channel);
-    CHK_PTR_NULL(transport);
-    MemBlock memBlock = transport->GetRmtMem();
-    buffer->addr = reinterpret_cast<void*>(memBlock.startAddr);
-    buffer->size = memBlock.size;
-    return HCCL_SUCCESS;
-}
-#endif
 
 };
