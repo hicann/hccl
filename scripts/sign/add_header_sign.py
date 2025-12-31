@@ -331,7 +331,7 @@ def add_bios_esbc_header(root_dir, item_size_set, sign_file_dir):
         input_file = os.path.join(sign_file_dir, input_filename)
 
         if conf_item.nvcnt:
-            cmd = f'sudo {os.environ["HI_PYTHON"]} {os.path.join(bios_esbc_header_tool_path, "esbc_header.py")}'
+            cmd = f'{os.environ["HI_PYTHON"]} {os.path.join(bios_esbc_header_tool_path, "esbc_header.py")}'
             # 用esbc_header.py工具脚本添加esbc头
             cmd += f" -raw_img {input_file} -out_img {input_file}"
             cmd += f" -version {conf_item.version} -nvcnt {conf_item.nvcnt} -tag {conf_item.tag}"
@@ -423,7 +423,7 @@ def add_bios_header(item_size_set, sign_file_dir, bios_tool_path, sign_tool_path
         sign_file = os.path.realpath(os.path.join(sign_tmp_path, relative_path))
         sign_path = os.path.dirname(sign_file)
 
-        cmd = "sudo {} {}".format(os.environ["HI_PYTHON"], os.path.join(bios_tool_path, "image_pack.py"))
+        cmd = "{} {}".format(os.environ["HI_PYTHON"], os.path.join(bios_tool_path, "image_pack.py"))
         add_cmd = conf_item.additional
         # 镜像绑定cms签名,用image_pack.py工具脚本绑定cms签名信息
         if add_sign != "true" or conf_item.type == '':
