@@ -37,6 +37,7 @@ target_compile_options(hccl_custom_p2p PRIVATE
 )
 target_compile_definitions(hccl_custom_p2p PRIVATE
     _GLIBCXX_USE_CXX11_ABI=0
+    -DHOST_COMPILE
 )
 target_link_options(hccl_custom_p2p PRIVATE
     -Wl,-z,relro
@@ -51,53 +52,59 @@ target_link_libraries(hccl_custom_p2p PRIVATE
     -Wl,--no-as-needed
 )
 install(TARGETS hccl_custom_p2p
-    LIBRARY DESTINATION ${CUSTOM_OPS_OPP_LIB_PATH} OPTIONAL
+    LIBRARY DESTINATION ${CUSTOM_OPS_OPP_LIB_PATH}
 )
 install(FILES
     inc/hccl_custom_p2p.h
-    DESTINATION ${CUSTOM_OPS_OPP_INC_PATH} OPTIONAL
+    DESTINATION ${CUSTOM_OPS_OPP_INC_PATH}
 )
 
-# AICPU Kernel 动态链接库
-add_library(p2p_aicpu_kernel SHARED)
-target_include_directories(p2p_aicpu_kernel PRIVATE
-    ${HCCL_CUSTOM_OPS_INCLUDE_LIST}
-)
-target_compile_options(p2p_aicpu_kernel PRIVATE
-    -g
-    -O0
-)
-target_link_libraries(p2p_aicpu_kernel PRIVATE
-    -Wl,--no-as-needed
-    ccl_kernel
-    -Wl,--no-as-needed
-)
-
-# 打包：AICPU Kernel tar 包
 set(AICPU_KERNEL_TAR_FILE ${CMAKE_BINARY_DIR}/aicpu_hccl_custom_p2p.tar.gz)
 set(AICPU_KERNEL_JSON_FILE ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu/libp2p_aicpu_kernel.json)
-package_aicpu_kernel(
-    p2p_aicpu_kernel
-    ${AICPU_KERNEL_TAR_FILE}
-    ${AICPU_KERNEL_JSON_FILE}
-)
-# 签名：添加 AICPU Kernel tar 包的签名
-sign_aicpu_kernel(
-    p2p_aicpu_kernel
-    ${AICPU_KERNEL_TAR_FILE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/hccl_custom_p2p_check_cfg.xml
-    SIGNED_AICPU_KERNEL_TAR_FILE
-)
+if(KERNEL_MODE)
+    # AICPU Kernel 动态链接库
+    add_library(p2p_aicpu_kernel SHARED)
+    target_include_directories(p2p_aicpu_kernel PRIVATE
+        ${HCCL_CUSTOM_OPS_INCLUDE_LIST}
+    )
+    target_compile_definitions(p2p_aicpu_kernel PRIVATE
+        -DAICPU_COMPILE
+    )
+    target_compile_options(p2p_aicpu_kernel PRIVATE
+        -g
+        -O0
+    )
+    target_link_libraries(p2p_aicpu_kernel PRIVATE
+        -Wl,--no-as-needed
+        ccl_kernel
+        -Wl,--no-as-needed
+    )
+    register_custom_aicpu_target(p2p_aicpu_kernel)
 
-# 安装
-install(FILES
-    ${SIGNED_AICPU_KERNEL_TAR_FILE}
-    DESTINATION ${CUSTOM_OPS_OPP_AICPU_KERNEL_PATH} OPTIONAL
-)
-install(FILES
-    ${AICPU_KERNEL_JSON_FILE}
-    DESTINATION ${CUSTOM_OPS_OPP_AICPU_CONFIG_PATH} OPTIONAL
-)
+    # 打包：AICPU Kernel tar 包
+    package_aicpu_kernel(
+        p2p_aicpu_kernel
+        ${AICPU_KERNEL_TAR_FILE}
+        ${AICPU_KERNEL_JSON_FILE}
+    )
+    # 签名：添加 AICPU Kernel tar 包的签名
+    sign_aicpu_kernel(
+        p2p_aicpu_kernel
+        ${AICPU_KERNEL_TAR_FILE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/hccl_custom_p2p_check_cfg.xml
+        SIGNED_AICPU_KERNEL_TAR_FILE
+    )
+else()
+    # 安装
+    install(FILES
+        ${BUILD_DEVICE_DIR}/signatures/aicpu_hccl_custom_p2p.tar.gz
+        DESTINATION ${CUSTOM_OPS_OPP_AICPU_KERNEL_PATH}
+    )
+    install(FILES
+        ${AICPU_KERNEL_JSON_FILE}
+        DESTINATION ${CUSTOM_OPS_OPP_AICPU_CONFIG_PATH}
+    )
+endif()
 
 # 添加子目录
 add_subdirectory(op_host)

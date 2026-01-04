@@ -55,8 +55,8 @@ int Sample(void *arg)
     ACLCHECK(aclrtSetDevice(device));
 
     // 申请集合通信操作的 Device 内存
-    ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
-    ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
+    ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
 
     // 申请 Host 内存用于存放输入数据
     void *hostBuf = nullptr;

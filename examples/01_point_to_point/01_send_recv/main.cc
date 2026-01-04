@@ -66,7 +66,7 @@ int Sample(void *arg)
     // HcclSend 与 HcclRecv 接口采用同步调用方式，且必须配对使用
     if (device % 2 == 0) {
         // 申请 Device 内存用于存放输入数据
-        ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
+        ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
         // 申请 Host 内存用于设置输入数据，将内容初始化为 DeviceId
         void *hostBuf = nullptr;
         ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
@@ -80,7 +80,7 @@ int Sample(void *arg)
         HCCLCHECK(HcclSend(sendBuf, count, HCCL_DATA_TYPE_FP32, device + 1, hcclComm, stream));
     } else {
         // 申请 Device 内存用于接收数据
-        ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
+        ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
         // 执行 Recv 操作
         HCCLCHECK(HcclRecv(recvBuf, count, HCCL_DATA_TYPE_FP32, device - 1, hcclComm, stream));
     }

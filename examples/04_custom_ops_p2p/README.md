@@ -68,12 +68,11 @@ bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops
 自定义算子安装包在 `./build_out` 目录下：
 
 ```bash
-./build_out/cann-hccl_custom_p2p_<version>_linux-<arch>.run --install --install-path=<ascend_cann_path>
+./build_out/cann-hccl_custom_p2p_linux-<arch>.run --install --install-path=<ascend_cann_path>
 ```
 
 > 其中：
 > 
-> - `<version>` 是自定义算子包的版本号，内容是：[version.info](../../version.info) 中定义的版本号
 > - `<arch>` 是当前编译环境的系统架构
 > - `<ascend_cann_path>` 是 CANN 软件包安装目录
 
@@ -141,7 +140,7 @@ package_path:opp/vendors/cust/aicpu/kernel
 
 ### 3. 编译样例
 
-在 `examples/custom_p2p/testcase` 代码目录下执行如下命令：
+在 `examples/04_custom_ops_p2p/testcase` 代码目录下执行如下命令：
 
 ```bash
 # 编译样例

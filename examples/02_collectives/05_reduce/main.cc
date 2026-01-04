@@ -57,7 +57,7 @@ int Sample(void *arg)
     ACLCHECK(aclrtSetDevice(device));
 
     // 申请 Device 内存用于存放输入数据。并将内容初始化为：0~7
-    ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
     void *hostBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
     float *tmpHostBuf = static_cast<float *>(hostBuf);
@@ -70,7 +70,7 @@ int Sample(void *arg)
     ACLCHECK(aclrtFreeHost(hostBuf));
 
     // 申请 Device 内存用于接收 Reduce 结果
-    ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
 
     // 初始化集合通信域
     HcclComm hcclComm;

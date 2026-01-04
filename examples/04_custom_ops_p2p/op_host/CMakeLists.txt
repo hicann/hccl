@@ -18,6 +18,8 @@ target_sources(hccl_custom_p2p PRIVATE
     ${op_host_src_list}
 )
 
-target_sources(p2p_aicpu_kernel PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/exec_op.cc
-)
+if(KERNEL_MODE)
+    target_sources(p2p_aicpu_kernel PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/exec_op.cc
+    )
+endif()
