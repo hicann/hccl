@@ -16,14 +16,26 @@
 
 using namespace ops_hccl_p2p;
 
-HcclResult __attribute__((weak)) HcommInterOpNotifyWaitOnThread(ThreadHandle thread, uint64_t notifyId, uint32_t timeOut);
-HcclResult __attribute__((weak)) HcommInterOpNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId);
+#ifdef __cplusplus
+extern "C" {
+#endif
+HcclResult __attribute__((weak)) HcommRegOpInfo(const char* commId, void* opInfo, size_t size);
+#ifdef __cplusplus
+}
+#endif
 
 extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s]", __func__, param->commName, param->tag);
     if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
+        return 1;
+    }
+
+    if (HcommRegOpInfo != nullptr &&
+        HcommRegOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommRegOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
+            __func__, param->commName, param->algTag, param, sizeof(OpParam));
         return 1;
     }
 
@@ -35,7 +47,7 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
     }
 
     // 主thread等待Host stream的通知
-    if (HcommInterOpNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
+    if (HcommAclrtNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to wait notify[%d] from host main stream", param->resCtx->notifyIds[0]);
         return 1;
     }
@@ -47,7 +59,7 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (HcommInterOpNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
+    if (HcommAclrtNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }

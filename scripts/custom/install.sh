@@ -109,29 +109,18 @@ uninstall() {
         exit 1
     fi
 
-    while IFS= read -r -d '' file; do
-        rel_path="${file#$source_path/}"
-        target_file="$target_install_path/$rel_path"
+    while IFS= read -r -d '' item; do
+        rel_path="${item#$source_path/}"
+        target_item="$target_install_path/$rel_path"
 
-        if [ -e "$target_file" ]; then
-            rm -f "$target_file"
-            if [ $? -eq 0 ]; then
-                log "[Info] Removed file: ${target_file}"
-            else
-                log "[ERROR] Remove file failed: ${target_file}"
-            fi
+        # 删除文件
+        if [ -f "$target_item" ]; then
+            rm -f "$target_item" && log "[Info] Removed file: ${target_item}"
+        # 删除空目录
+        elif [ -d "$target_item" ] && [ -z "$(ls -A "$target_item" 2>/dev/null)" ]; then
+            rmdir "$target_item" 2>/dev/null && log "[Info] Removed empty directory: ${target_item}"
         fi
-    done < <(find "$source_path" -type f -print0)
-
-    # 尝试删除空目录
-    while IFS= read -r -d '' dir; do
-        rel_dir="${dir#$source_path/}"
-        target_dir="$target_install_path/$rel_dir"
-
-        if [ -d "$target_dir" ] && [ -z "$(ls -A "$target_dir" 2>/dev/null)" ]; then
-            rmdir "$target_dir" 2>/dev/null
-        fi
-    done < <(find "$source_path" -type d -print0 | sort -r)
+    done < <(find "$source_path" -depth -print0)
 
     log "[INFO] Uninstalled successfully"
 }

@@ -43,7 +43,7 @@ function(pack_custom)
   )
 
   # ============= CPack =============
-  set(CPACK_PACKAGE_NAME "${ops_vendor}-${ops_name}")
+  set(CPACK_PACKAGE_NAME "cann-hccl-${CUSTOM_OPS_NAME}-${CUSTOM_OPS_VENDOR}")
   set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
   set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}")
 

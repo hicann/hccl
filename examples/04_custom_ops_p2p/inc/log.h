@@ -31,6 +31,8 @@ typedef enum {
 #define UNLIKELY(x) (static_cast<bool>(__builtin_expect(static_cast<bool>(x), 0)))
 #endif
 
+#ifdef HOST_COMPILE
+
 #define HCCL_DEBUG(format, ...)                                                \
     do {                                                                       \
         if (LOG_LEVEL <= LOG_LEVEL_DEBUG) {                                    \
@@ -62,6 +64,15 @@ typedef enum {
                     __func__, __FILE__, __LINE__, ##__VA_ARGS__);              \
         }                                                                      \
     } while (0)
+
+#else
+
+#define HCCL_DEBUG(format, ...)    do {} while (0)
+#define HCCL_INFO(format, ...)     do {} while (0)
+#define HCCL_WARNING(format, ...)  do {} while (0)
+#define HCCL_ERROR(format, ...)    do {} while (0)
+
+#endif  // HOST_COMPILE
 
 /* 检查指针, 若指针为NULL, 则记录日志, 并返回错误 */
 #define CHK_PTR_NULL(ptr)                                                      \

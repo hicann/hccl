@@ -262,7 +262,7 @@ endfunction()
 # =============================================================================
 function(sign_aicpu_kernel TARGET_NAME TAR_FILE CONFIG_FILE OUTPUT_TAR_FILE_VAR)
     if(NOT TARGET ${TARGET_NAME})
-        message(FATAL_ERROR
+        message(FATAL_ERROR 
             "[sign_aicpu_kernel] Target '${TARGET_NAME}' does not exist. "
             "Ensure the target is defined before calling this function.")
     endif()
@@ -285,11 +285,11 @@ function(sign_aicpu_kernel TARGET_NAME TAR_FILE CONFIG_FILE OUTPUT_TAR_FILE_VAR)
 
     if(NOT IS_ABSOLUTE "${TAR_FILE}")
         set(TAR_FILE "${CMAKE_CURRENT_BINARY_DIR}/${TAR_FILE}")
-        message(STATUS "[sign_aicpu_kernel] TAR_FILE = ${TAR_FILE}")
+        message(WARNING "[sign_aicpu_kernel] TAR_FILE = ${TAR_FILE}")
     endif()
 
     get_filename_component(TAR_FILE_NAME "${TAR_FILE}" NAME)  # 获取文件名
-    set(OUTPUT_TAR_DIR "${CMAKE_CURRENT_BINARY_DIR}/signatures")
+    set(OUTPUT_TAR_DIR "${BUILD_DEVICE_DIR}/signatures")
     set(OUTPUT_TAR_FILE "${OUTPUT_TAR_DIR}/${TAR_FILE_NAME}")
 
     if(EXISTS "${SIGN_SCRIPT}")
@@ -327,4 +327,19 @@ function(sign_aicpu_kernel TARGET_NAME TAR_FILE CONFIG_FILE OUTPUT_TAR_FILE_VAR)
 
     # 签名包路径
     set(${OUTPUT_TAR_FILE_VAR} ${OUTPUT_TAR_FILE} PARENT_SCOPE)
+endfunction()
+
+# =============================================================================
+# Function: register_custom_aicpu_target
+#
+# Register a target for custom_aicpu build target.
+#
+# Usage:
+#   register_custom_aicpu_target(
+#       <target_name>           # CMake target to register
+#   )
+#
+# =============================================================================
+function(register_custom_aicpu_target TARGET_NAME)
+    add_dependencies(custom_aicpu ${TARGET_NAME})
 endfunction()

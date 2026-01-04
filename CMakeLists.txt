@@ -71,6 +71,8 @@ elseif(ENABLE_CUSTOM)
     message(STATUS "Custom ops vendor: ${CUSTOM_OPS_VENDOR}")
     message(STATUS "Custom ops path: ${CUSTOM_OPS_PATH}")
 
+    set(BUILD_DEVICE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build_device)
+    set(BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/build)
     set(CUSTOM_OPS_OPP_PATH "opp/vendors/${CUSTOM_OPS_VENDOR}")
     set(CUSTOM_OPS_OPP_INC_PATH "${CUSTOM_OPS_OPP_PATH}/include")
     set(CUSTOM_OPS_OPP_LIB_PATH "${CUSTOM_OPS_OPP_PATH}/lib64")
@@ -81,7 +83,12 @@ elseif(ENABLE_CUSTOM)
     include(cmake/config.cmake)
     include(cmake/func.cmake)
     include(cmake/package.cmake)
-    pack_custom("${CUSTOM_OPS_NAME}" "${CUSTOM_OPS_PATH}" "${CUSTOM_OPS_VENDOR}")
+
+    # AICPU Device 构建目标
+    add_custom_target(custom_aicpu)
+    # CPack 打包
+    pack_custom()
+    # 添加自定义算子工程
     add_subdirectory(${CUSTOM_OPS_PATH})
 
 elseif(BUILD_OPEN_PROJECT)
