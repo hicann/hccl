@@ -12,7 +12,6 @@
 #define UTILS_H
 
 #include "hccl_types.h"
-#include "hccl_res.h"
 #include "hccl/base.h"
 #include "hccl_common.h"
 #include "log.h"
