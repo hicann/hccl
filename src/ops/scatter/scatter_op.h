@@ -68,6 +68,8 @@ HcclResult CheckDataType(const HcclDataType dataType, bool needReduce);
 
 HcclResult CheckScatterInputPara(HcclComm comm, void *recvBuf);
 
+std::string SetLaunchMode(CommEngine engine);
+
 }
 
 #endif

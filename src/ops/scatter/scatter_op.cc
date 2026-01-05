@@ -556,6 +556,22 @@ HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType)
     return HCCL_SUCCESS;
 }
 
+std::string SetLaunchMode(CommEngine engine)
+{
+    std::string launchMode = "UNKONWN";
+    if (engine == CommEngine::COMM_ENGINE_CPU) {
+        launchMode = "HOST";
+    } else if (engine == CommEngine::COMM_ENGINE_CPU_TS) {
+        launchMode = "HOST_TS";
+    } else if ((engine == CommEngine::COMM_ENGINE_AICPU) ||
+               (engine == CommEngine::COMM_ENGINE_AICPU_TS)) {
+        launchMode = "AICPU";
+    } else if (engine == CommEngine::COMM_ENGINE_AIV) {
+        launchMode = "AIV";
+    }
+    return launchMode;
+}
+
 HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName)
 {
     (void) comm;
@@ -588,22 +604,27 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
         }
     }
 
-    // 在algTag中追加编排模式
-    const char* launchMode = (param.engine == CommEngine::COMM_ENGINE_CPU_TS ? "_aicpu" : "_host");
-    int ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
-    if (ret != 0) {
-        HCCL_ERROR("faled to fill param.algTag");
-        return HCCL_E_INTERNAL;
-    }
+    if (UNLIKELY(GetDebugConfig() & HCCL_ALG)) {
+        // 在algTag中追加编排模式
+        std::string opExpansionStr = SetLaunchMode(param.engine);
 
-    HCCL_INFO("[SelectAlg] Scatter algTag is [%s] algName is [%s]", param.algTag, algName.c_str());
-    HCCL_CONFIG_INFO(HCCL_ALG,
-            "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "\
-            "userRankSize[%u] level0Size[%u] moduleNum[%u] "\
-            "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
-            __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
-            topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum,
-            topoInfo->superPodNum, launchMode, param.isZeroCopy, isOpBase);
+        const char* launchMode = (((param.engine == CommEngine::COMM_ENGINE_AICPU) ||
+                                   (param.engine == CommEngine::COMM_ENGINE_AICPU_TS)) ? "_device" : "_host");
+        int ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
+        if (ret != 0) {
+            HCCL_ERROR("faled to fill param.algTag");
+            return HCCL_E_INTERNAL;
+        }
+
+        HCCL_INFO("[SelectAlg] Scatter algTag is [%s] algName is [%s]", param.algTag, algName.c_str());
+        HCCL_CONFIG_INFO(HCCL_ALG,
+                         "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "\
+                         "userRankSize[%u] level0Size[%u] moduleNum[%u] "\
+                         "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
+                         __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
+                         topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum,
+                         topoInfo->superPodNum, opExpansionStr.c_str(), param.isZeroCopy, isOpBase);
+    }
     return HCCL_SUCCESS;
 }
 
