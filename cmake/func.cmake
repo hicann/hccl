@@ -262,7 +262,7 @@ endfunction()
 # =============================================================================
 function(sign_aicpu_kernel TARGET_NAME TAR_FILE CONFIG_FILE OUTPUT_TAR_FILE_VAR)
     if(NOT TARGET ${TARGET_NAME})
-        message(FATAL_ERROR 
+        message(FATAL_ERROR
             "[sign_aicpu_kernel] Target '${TARGET_NAME}' does not exist. "
             "Ensure the target is defined before calling this function.")
     endif()

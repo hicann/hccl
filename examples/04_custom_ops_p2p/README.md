@@ -12,14 +12,14 @@
 ```text
 ├── CMakeLists.txt                      # 编译/构建配置文件
 ├── op_host/
-│   ├── exec_op.cc                      # 算子编排
 │   ├── send.cc                         # HcclSendCustom 算子实现源文件
-│   └── recv.cc                         # HcclRecvCustom 算子实现源文件
+│   ├── recv.cc                         # HcclRecvCustom 算子实现源文件
+│   ├── load_kernel.cc                  # AICPU Kernel 在 Host 侧的加载逻辑
+│   └── launch_kernel.cc                # AICPU Kernel 在 Host 侧的下发逻辑
 ├── op_kernel_aicpu/
 │   ├── libp2p_aicpu_kernel.json        # AICPU Kernel 算子描述文件
 │   ├── aicpu_kernel.cc                 # AICPU Kernel 实现逻辑
-│   ├── load_kernel.cc                  # AICPU Kernel 加载逻辑
-│   └── launch_kernel.cc                # AICPU Kernel 下发逻辑
+│   └── exec_op.cc                      # AICPU 算子编排逻辑
 ├── inc/
 │   ├── hccl_custom_p2p.h               # 自定义 send/recv 算子接口头文件
 │   ├── common.h                        # 公共类型头文件
@@ -82,6 +82,7 @@ bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops
 - 动态库：`${ASCEND_HOME_PATH}/opp/vendors/cust/lib64/libhccl_custom_p2p.so`
 - AICPU 算子描述文件：`${ASCEND_HOME_PATH}/opp/vendors/cust/aicpu/config/libp2p_aicpu_kernel.json`
 - AICPU 算子包：`${ASCEND_HOME_PATH}/opp/vendors/cust/aicpu/kernel/aicpu_hccl_custom_p2p.tar.gz`
+- 安装脚本：`${ASCEND_HOME_PATH}/opp/vendors/cust/scripts/install.sh`
 
 ## 四、执行自定义算子
 
@@ -89,8 +90,8 @@ bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops
 
 ```bash
 # 查询AI CPU算子用户自定义验签能力使能状态
-# 0：关闭用户自定义验签能力
-# 1：开启用户自定义验签能力
+# False：关闭用户自定义验签能力
+# True：开启用户自定义验签能力
 for i in {0..7}; do npu-smi info -t custom-op-secverify-enable -i $i; done
 
 # 设置AI CPU算子用户自定义验签能力使能状态，使能开关
