@@ -8,17 +8,13 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-set(aicpu_src_list
-    ${CMAKE_CURRENT_SOURCE_DIR}/load_kernel.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/launch_kernel.cc
-)
-
-target_sources(hccl_custom_p2p PRIVATE
-    ${aicpu_src_list}
+set(op_kernel_aicpu_src_list
+    ${CMAKE_CURRENT_SOURCE_DIR}/exec_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_kernel.cc
 )
 
 if(KERNEL_MODE)
     target_sources(p2p_aicpu_kernel PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_kernel.cc
+        ${op_kernel_aicpu_src_list}
     )
 endif()

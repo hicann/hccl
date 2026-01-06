@@ -267,7 +267,7 @@ function build_custom() {
 # print usage message
 function usage() {
   echo "Usage:"
-  echo "  sh build.sh --pkg [-h | --help] [-j<N>]"
+  echo "bash build.sh --pkg [-h | --help] [-j<N>]"
   echo "              [--cann_3rd_lib_path=<PATH>] [-p|--package-path <PATH>]"
   echo "              [--asan]"
   echo "              [--sign-script <PATH>] [--enable-sign] [--version <VERSION>]"
@@ -288,6 +288,12 @@ function usage() {
   echo "                   Enable to sign"
   echo "    --version <VERSION>"
   echo "                   Set sign version to <VERSION>"
+  echo "    --custom_ops_path=<CUSTOM_OPS_PATH>"
+  echo "                   Set custom ops project path to <VERSION>"
+  echo "    --ops=<OPS>"
+  echo "                   Set custom ops name to <OPS>"
+  echo "    --vendor=<VENDOR>"
+  echo "                   Set custom ops vendor to <VENDOR>"
   echo ""
 }
 

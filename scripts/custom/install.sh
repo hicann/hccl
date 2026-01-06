@@ -70,7 +70,15 @@ if [ -n "${INSTALL_PATH}" ]; then
             exit 1
         fi
     fi
-    target_install_path=${INSTALL_PATH}
+
+    # 若指定目录为 cann 的上级目录，则重新指定为 cann 目录
+    INSTALL_PATH=${INSTALL_PATH%*/}
+    if [[ "${INSTALL_PATH}" == */cann ]] || [[ "${INSTALL_PATH}" == */cann-* ]]; then
+        target_install_path="${INSTALL_PATH}"
+    else
+        target_install_path="${INSTALL_PATH}/cann"
+    fi
+
 elif [ -n "${ASCEND_CUSTOM_OPP_PATH}" ]; then
     if [ ! -d ${ASCEND_CUSTOM_OPP_PATH} ]; then
         mkdir -p ${ASCEND_CUSTOM_OPP_PATH} >> /dev/null 2>&1
