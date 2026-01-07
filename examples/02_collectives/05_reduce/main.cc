@@ -38,8 +38,8 @@
 
 struct ThreadContext {
     HcclRootInfo *rootInfo;
-    int32_t rootRank;
-    int32_t device;
+    uint32_t rootRank;
+    uint32_t device;
     uint32_t devCount;
 };
 
@@ -48,20 +48,20 @@ int Sample(void *arg)
     ThreadContext *ctx = (ThreadContext *)arg;
     void *sendBuf = nullptr;
     void *recvBuf = nullptr;
-    int32_t rootRank = ctx->rootRank;
-    int32_t device = ctx->device;
+    uint32_t rootRank = ctx->rootRank;
+    uint32_t device = ctx->device;
     uint64_t count = ctx->devCount;
     size_t mallocSize = count * sizeof(float);
 
     // 设置当前线程操作的设备
-    ACLCHECK(aclrtSetDevice(device));
+    ACLCHECK(aclrtSetDevice(static_cast<int32_t>(device)));
 
     // 申请 Device 内存用于存放输入数据。并将内容初始化为：0~7
     ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
     void *hostBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
     float *tmpHostBuf = static_cast<float *>(hostBuf);
-    for (uint32_t i = 0; i < count; ++i) {
+    for (uint64_t i = 0; i < count; ++i) {
         tmpHostBuf[i] = static_cast<float>(i);
     }
     // 将 Host 侧输入数据拷贝到 Device 侧
@@ -92,7 +92,7 @@ int Sample(void *arg)
     ACLCHECK(aclrtMemcpy(resultHostBuf, mallocSize, recvBuf, mallocSize, ACL_MEMCPY_DEVICE_TO_HOST));
     float *tmpResultBuf = static_cast<float *>(resultHostBuf);
     std::cout << "rankId: " << device << ", output: [";
-    for (uint32_t i = 0; i < count; ++i) {
+    for (uint64_t i = 0; i < count; ++i) {
         std::cout << " " << tmpResultBuf[i];
     }
     std::cout << " ]" << std::endl;
@@ -118,7 +118,7 @@ int main()
     ACLCHECK(aclrtGetDeviceCount(&devCount));
     std::cout << "Found " << devCount << " NPU device(s) available" << std::endl;
 
-    int rootRank = 0;
+    int32_t rootRank = 0;
     ACLCHECK(aclrtSetDevice(rootRank));
     // 生成 Root 节点信息，各线程使用同一份 RootInfo
     void *rootInfoBuf = nullptr;
@@ -131,7 +131,7 @@ int main()
     std::vector<ThreadContext> args(devCount);
     for (uint32_t i = 0; i < devCount; i++) {
         args[i].rootInfo = rootInfo;
-        args[i].rootRank = rootRank;
+        args[i].rootRank = static_cast<uint32_t>(rootRank);
         args[i].device = i;
         args[i].devCount = devCount;
         threads[i] = std::thread(Sample, (void *)&args[i]);
