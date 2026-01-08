@@ -36,6 +36,9 @@ if(BUILD_OPEN_PROJECT AND KERNEL_MODE)
 endif()
 project(hccl)
 
+set(CMAKE_C_FLAGS_RELEASE "")
+set(CMAKE_CXX_FLAGS_RELEASE "")
+
 set(CMAKE_CXX_COMPILE_OBJECT
     "<CMAKE_CXX_COMPILER> <DEFINES> -D__FILE__='\"$(notdir $(abspath <SOURCE>))\"' -Wno-builtin-macro-redefined <INCLUDES> <FLAGS> -o <OBJECT> -c <SOURCE>"
 )
