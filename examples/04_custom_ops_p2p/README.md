@@ -57,15 +57,40 @@ source /usr/local/Ascend/cann/set_env.sh
 
 ## 二、编译自定义算子包
 
-在代码仓根目录下，执行 `build.sh` 进行编译，通过 `custom_ops_path` 指定自定义算子工程路径：
+hccl代码仓提供了自定义算子编译打包工程，该工程依赖代码仓中的如下文件：
+
+```text
+├── build.sh                        # hccl代码仓根目录编译工程入口
+├── CMakeLists.txt                  # hccl代码仓根目录编译/构建配置文件
+├── cmake/
+│   ├── config.cmake                # CMake变量定义
+│   ├── func.cmake                  # CMake函数定义
+│   ├── package.cmake               # 签名、打包函数定义
+│   └── makeself_custom.cmake       # MakeSelf打包逻辑
+└── scripts/
+    ├── custom/install.sh           # 自定义算子包安装脚本
+    └── sign/add_header_sign.py     # AICPU 算子包签名脚本
+```
+
+因此，开发者首先需要下载hccl代码仓，然后在代码仓根目录下，执行 `build.sh` 进行编译，通过 `custom_ops_path` 指定自定义算子工程路径：
 
 ```bash
+# 下载hccl代码仓
+git clone https://gitcode.com/cann/hccl.git
+
+# 编译自定义算子包
 bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops_p2p
 ```
 
+> 其中：
+> 
+> - `--vendor` 参数表示自定义算子标识
+> - `--ops` 参数表示自定义算子名称
+> - `--custom_ops_path` 参数表示自定义算子工程路径
+
 ## 三、安装自定义算子包
 
-自定义算子安装包在 `./build_out` 目录下：
+自定义算子安装包在 `./build_out` 目录下，通过 `--install` 参数进行安装：
 
 ```bash
 ./build_out/cann-hccl_custom_p2p_linux-<arch>.run --install --install-path=<ascend_cann_path>
@@ -74,7 +99,7 @@ bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops
 > 其中：
 > 
 > - `<arch>` 是当前编译环境的系统架构
-> - `<ascend_cann_path>` 是 CANN 软件包安装目录
+> - `<ascend_cann_path>` 是可选参数，表示 CANN 软件包安装目录。默认为 `ASCEND_CUSTOM_OPP_PATH` 或 `ASCEND_OPP_PATH` 环境变量设置的路径
 
 自定义算子包安装信息如下：
 
@@ -161,8 +186,8 @@ make test
 
 ```text
 Found 8 NPU device(s) available
-rankId: 1, output: [ 0 0 0 0 ]
-rankId: 3, output: [ 2 2 2 2 ]
-rankId: 5, output: [ 4 4 4 4 ]
-rankId: 7, output: [ 6 6 6 6 ]
+rankId: 1, output: [ 0 0 0 0 0 0 0 0 ]
+rankId: 3, output: [ 2 2 2 2 2 2 2 2 ]
+rankId: 5, output: [ 4 4 4 4 4 4 4 4 ]
+rankId: 7, output: [ 6 6 6 6 6 6 6 6 ]
 ```
