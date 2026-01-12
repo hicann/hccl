@@ -1,4 +1,4 @@
-# 接口列表<a name="ZH-CN_TOPIC_0000002486851520"></a>
+# 通信算子接口列表
 
 HCCL提供了C语言的通信算子接口，框架开发者可以调用这些接口进行单算子模式下的框架适配，实现分布式能力。
 
@@ -59,11 +59,6 @@ HCCL提供了C语言的通信算子接口，框架开发者可以调用这些接
 <tr id="zh-cn_topic_0000001312721317_row178091240103313"><td class="cellrowborder" valign="top" width="25.46%" headers="mcps1.2.3.1.1 "><p id="zh-cn_topic_0000001312721317_p1580912402331"><a name="zh-cn_topic_0000001312721317_p1580912402331"></a><a name="zh-cn_topic_0000001312721317_p1580912402331"></a><a href="./context/HcclAlltoAllVC.md">HcclAlltoAllVC</a></p>
 </td>
 <td class="cellrowborder" valign="top" width="74.53999999999999%" headers="mcps1.2.3.1.2 "><p id="zh-cn_topic_0000001312721317_p88091440193317"><a name="zh-cn_topic_0000001312721317_p88091440193317"></a><a name="zh-cn_topic_0000001312721317_p88091440193317"></a>集合通信算子AlltoAllV<span id="zh-cn_topic_0000002417514657_ph20748105914110"><a name="zh-cn_topic_0000002417514657_ph20748105914110"></a><a name="zh-cn_topic_0000002417514657_ph20748105914110"></a>C</span>操作接口，向通信域内所有rank发送数据（数据量可以定制），并从所有rank接收数据。相比于AlltoAllV，AlltoAllV<span id="zh-cn_topic_0000002417514657_ph1509131064715"><a name="zh-cn_topic_0000002417514657_ph1509131064715"></a><a name="zh-cn_topic_0000002417514657_ph1509131064715"></a>C</span>通过输入参数sendCountMatrix传入所有rank的收发参数。</p>
-</td>
-</tr>
-<tr id="zh-cn_topic_0000001312721317_row2913102219481"><td class="cellrowborder" valign="top" width="25.46%" headers="mcps1.2.3.1.1 "><p id="zh-cn_topic_0000001312721317_p645175273118"><a name="zh-cn_topic_0000001312721317_p645175273118"></a><a name="zh-cn_topic_0000001312721317_p645175273118"></a><a href="./context/HcclBarrier.md">HcclBarrier</a></p>
-</td>
-<td class="cellrowborder" valign="top" width="74.53999999999999%" headers="mcps1.2.3.1.2 "><p id="zh-cn_topic_0000001312721317_p791372217484"><a name="zh-cn_topic_0000001312721317_p791372217484"></a><a name="zh-cn_topic_0000001312721317_p791372217484"></a>将指定通信域内所有rank的stream阻塞，直到所有rank都下发执行该操作为止。</p>
 </td>
 </tr>
 <tr id="zh-cn_topic_0000001312721317_row384384553515"><td class="cellrowborder" valign="top" width="25.46%" headers="mcps1.2.3.1.1 "><p id="zh-cn_topic_0000001312721317_p11538195022820"><a name="zh-cn_topic_0000001312721317_p11538195022820"></a><a name="zh-cn_topic_0000001312721317_p11538195022820"></a><a href="./context/HcclScatter.md">HcclScatter</a></p>

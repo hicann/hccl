@@ -125,8 +125,8 @@ uint64_t recvSize = recvCount * sizeof(float);
 
 // 申请集合通信操作的 Device 内存
 void *sendBuf = nullptr, *recvBuf = nullptr;
-aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_FIRST);
-aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_FIRST);
+aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
+aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
 
 // 初始化通信域和流
 HcclComm hcclComm;

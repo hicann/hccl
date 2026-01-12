@@ -2,10 +2,7 @@
 
 ## 文档
 
-- [HCCL使用指南](https://hiascend.com/document/redirect/CannCommunityHcclUg)：提供HCCL基本概念、算法介绍、如何使用HCCL进行集合通信功能的开发以及常见配置。
-- [通信算子开发指南](https://cann-doc.obs.cn-north-4.myhuaweicloud.com/hccl/%E9%80%9A%E4%BF%A1%E7%AE%97%E5%AD%90%E5%BC%80%E5%8F%91%E6%8C%87%E5%8D%97.pdf)：指导开发者如何基于通信编程API开发通信算子。
-
-  > 注意：当前通信算子开发功能处于试用阶段，后续版本可能会存在变更，暂不支持应用于商用产品。
+- [集合通信库用户指南](https://hiascend.com/document/redirect/CannCommunityHcclUg)：介绍HCCL基本概念、如何使用HCCL API进行集合通信功能的开发，如何开发通信算子，以及故障处理与常见配置。
 
 ## 技术文章
 
