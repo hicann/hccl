@@ -1,4 +1,4 @@
-# HCCL API
+# 通信算子API
 
 -   [集合通信](集合通信.md)
     -   [HcclAllReduce](HcclAllReduce.md)
@@ -11,7 +11,6 @@
     -   [HcclAlltoAll](HcclAlltoAll.md)
     -   [HcclAlltoAllV](HcclAlltoAllV.md)
     -   [HcclAlltoAllVC](HcclAlltoAllVC.md)
-    -   [HcclBarrier](HcclBarrier.md)
     -   [HcclScatter](HcclScatter.md)
 
 -   [点对点通信](点对点通信.md)

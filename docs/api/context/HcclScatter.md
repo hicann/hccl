@@ -121,10 +121,10 @@ size_t sendSize = sendCount * sizeof(float);
 size_t recvSize = recvCount * sizeof(float);
 
 // 申请 Device 内存用于接收 Scatter 结果
-ACLCHECK(aclrtMalloc(&recvBuf, recvCount, ACL_MEM_MALLOC_HUGE_FIRST));
+ACLCHECK(aclrtMalloc(&recvBuf, recvCount, ACL_MEM_MALLOC_HUGE_ONLY));
 // 在 root 节点，申请 Device 内存用于存放发送数据
 if (device == rootRank) {
-    ACLCHECK(aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_FIRST));
+    ACLCHECK(aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY));
 }
 
 // 初始化通信域

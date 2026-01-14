@@ -51,7 +51,7 @@ HCCL包含HCCL集合通信库与HCOMM（Huawei Communication）通信基础库�
 
 ## 📖 学习教程
 
-HCCL提供了使用指南、通信算子开发指南、技术文章、培训视频，详细可参见 [HCCL 参考资料](./docs/README.md)。
+HCCL提供了用户指南、技术文章、培训视频，详细可参见 [HCCL 参考资料](./docs/README.md)。
 
 ## 📝 相关信息
 

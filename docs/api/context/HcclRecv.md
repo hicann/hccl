@@ -124,14 +124,14 @@ aclrtCreateStream(&stream);
 // HcclSend 与 HcclRecv 接口采用同步调用方式，且必须配对使用
 if (deviceId % 2 == 0) {
     // 申请 Device 内存用于存放输入数据
-    aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
     // 初始化输入数据
     aclrtMemcpy(sendBuf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE);
     // 执行 Send 操作
     HcclSend(sendBuf, count, HCCL_DATA_TYPE_FP32, deviceId + 1, hcclComm, stream);
 } else {
     // 申请 Device 内存用于接收数据
-    aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST);
+    aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
     // 执行 Recv 操作
     HcclRecv(recvBuf, count, HCCL_DATA_TYPE_FP32, deviceId - 1, hcclComm, stream);
 }

@@ -111,7 +111,7 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
 void *buf = nullptr;    // 对于root节点，是数据源；对于非root节点，是数据接收buffer
 uint64_t count = 8;     // 参与broadcast操作的数据个数
 size_t mallocSize = count * sizeof(float);
-aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST);
+aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
 
 // 在 root 节点构造输入数据
 if (deviceId == rootRank) {    
