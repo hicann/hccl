@@ -144,8 +144,8 @@ void *sendBuf = nullptr;
 void *recvBuf = nullptr;
 uint64_t count = 8;
 size_t mallocSize = count * sizeof(float);
-aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST);
-aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_FIRST);
+aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
 
 // 初始化通信域
 uint32_t rankSize = 8;

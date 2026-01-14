@@ -115,8 +115,8 @@ uint32_t rankSize = 8;
 uint64_t sendCount = 1;  // 每个节点发送的数据个数
 size_t sendSize = sendCount * sizeof(float);
 size_t recvSize = rankSize * sendCount * sizeof(float);
-aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_FIRST);
-aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_FIRST);
+aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
+aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
 
 // 初始化通信域和流
 HcclComm hcclComm;
