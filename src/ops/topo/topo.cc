@@ -63,7 +63,7 @@ HcclResult CalcMyRankInfo(HcclComm comm, TopoInfo* topoInfo)
     CHK_RET(hrtGetDeviceType(topoInfo->deviceType));
     uint32_t *netlayers = nullptr;
     uint32_t netLayersNum = 0;
-    CHK_RET(HcclGetNetLayers(comm, &netlayers, &netLayersNum));
+    CHK_RET(HcclRankGraphGetLayers(comm, &netlayers, &netLayersNum));
 
     // 获取moduleIdx
     CHK_RET(CalcGroupIdx(comm, topoInfo, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0)));
@@ -150,15 +150,15 @@ HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo)
     std::vector<uint32_t> superPodToServerNum;
     uint32_t *netlayers = nullptr;
     uint32_t netLayersNum = 0;
-    CHK_RET(HcclGetNetLayers(comm, &netlayers, &netLayersNum));
+    CHK_RET(HcclRankGraphGetLayers(comm, &netlayers, &netLayersNum));
     if (netLayersNum == NET_LAYER_NUM_THREE) {
-        CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
             &level0SizeList, &level0RankListNum));
         for (uint32_t i = 0; i < level0RankListNum; i++) {
             HCCL_DEBUG("[SetSuperPodInfo]netLayer[%u] level0RankListNum[%u] level0SizeList[%u]=[%u]",
                 static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), level0RankListNum, i, level0SizeList[i]);
         }
-        CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L1),
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L1),
             &level1SizeList, &level1RankListNum));
         for (uint32_t i = 0; i < level1RankListNum; i++) {
             HCCL_DEBUG("[SetSuperPodInfo]netLayer[%u] level1RankListNum[%u] level1SizeList[%u]=[%u]",
@@ -176,7 +176,7 @@ HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo)
         HCCL_DEBUG("level0RankListNum[%u], level1RankListNum[%u], set superPodNum[%u], serverNumPerSuperPod[%u]",
             level0RankListNum, level1RankListNum, topoInfo->superPodNum, topoInfo->serverNumPerSuperPod);
     } else if (netLayersNum == NET_LAYER_NUM_TWO) {
-        CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
             &level0SizeList, &level0RankListNum));
         for (uint32_t i = 0; i < level0RankListNum; i++) {
             HCCL_DEBUG("[SetSuperPodInfo]netLayer[%u] level0RankListNum[%u] level0SizeList[%u]=[%u]",
@@ -359,7 +359,7 @@ HcclResult CalcGroupIdx(HcclComm comm, TopoInfo* topoInfo, uint32_t netLayer)
 {
     uint32_t rankListNum;
     uint32_t *rankSizeList;
-    CHK_RET(HcclGetInstSizeListByNetLayer(comm, netLayer, &rankSizeList, &rankListNum));
+    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, netLayer, &rankSizeList, &rankListNum));
     for (uint32_t i = 0; i < rankListNum; i++) {
         HCCL_DEBUG("[CalcGroupIdx]netLayer[%u] rankListNum[%u] rankSizeList[%u]=[%u]",
             netLayer, rankListNum, i, rankSizeList[i]);
@@ -411,7 +411,7 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
             CommLink *linkList = nullptr; // 必须初始化为nullptr
             uint32_t listSize = 0;
             HCCL_DEBUG("[GetPairLinkCounter]Getting links between srcRank[%u] and dstRank[%u]", srcRank, dstRank);
-            CHK_RET(HcclGetLinks(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
+            CHK_RET(HcclRankGraphGetLinks(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
                 srcRank, dstRank, &linkList, &listSize));
             // 如果listSize为0，表示这两个rank之间没有直接link，直接进入下一轮循环
             if (listSize == 0) {
@@ -454,7 +454,7 @@ uint32_t GetCurrentServerStartRank(HcclComm comm, TopoInfo* topoInfo)
     uint32_t *rankSizeList = nullptr;
     
     // 获取L0层级（服务器级别）的实例大小列表
-    CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
+    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
     
     // 确定当前rank属于哪个服务器
     uint32_t currentServerStartRank = 0;
@@ -472,7 +472,7 @@ uint32_t GetCurrentServerEndRank(HcclComm comm, TopoInfo* topoInfo)
     uint32_t *rankSizeList = nullptr;
     
     // 获取L0层级（服务器级别）的实例大小列表
-    CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
+    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
     
     // 确定当前rank属于哪个服务器
     uint32_t currentServerStartRank = 0;
@@ -507,7 +507,7 @@ HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32
         }
     } else {
         uint32_t rankNum = 0;
-        CHK_RET(HcclGetInstSizeByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankNum));
+        CHK_RET(HcclRankGraphGetRankSizeByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankNum));
         topoInfo->deviceNumPerModule = rankNum;
     }
     return HCCL_SUCCESS;
@@ -565,7 +565,7 @@ HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, TopoInfo* topoInfo, 
     uint32_t rankListNum = 0;
     uint32_t *rankSizeList = nullptr;
 
-    CHK_RET(HcclGetInstSizeListByNetLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
+    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
 
     for (u32 i = 0; i < rankListNum; ++i) {
         if (rank < accumulatedRanks + rankSizeList[i]) {
@@ -585,7 +585,7 @@ HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, TopoInfo* topoInfo, 
         uint32_t rankModuleIdx = 1;
         if (srcRank != dstRank) {
             HCCL_DEBUG("[GetModuleIdxByRank]Getting links between srcRank[%u] and dstRank[%u]", srcRank, dstRank);
-            CHK_RET(HcclGetLinks(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
+            CHK_RET(HcclRankGraphGetLinks(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0),
                 srcRank, dstRank, &linkList, &listSize));
             for (uint32_t i = 0; i < listSize; ++i) {
                 CommLink& currentLink = linkList[i]; // 获取当前循环到的链路对象
