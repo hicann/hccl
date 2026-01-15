@@ -84,6 +84,12 @@ HcclResult HcclGetRankId(HcclComm comm, uint32_t *rank)
     return HCCL_SUCCESS;
 }
 
+HcclResult HcclGetHeterogMode(HcclComm comm, HcclHeterogMode *mode)
+{
+    *mode = HcclHeterogMode::HCCL_HETEROG_MODE_HOMOGENEOUS;
+    return HCCL_SUCCESS;
+}
+
 // Inner后缀算子尚未实现走原始流程
 HcclResult HcclScatterInner(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
     HcclComm comm, aclrtStream stream)
