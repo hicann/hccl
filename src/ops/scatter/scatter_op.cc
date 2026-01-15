@@ -42,6 +42,14 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     // 入口的地方先解析环境变量
     CHK_RET(InitEnvConfig());
 
+    // 获取设备类型拦截混合组网
+    HcclHeterogMode allDeviceType;
+    CHK_RET(HcclGetHeterogMode(comm, &allDeviceType));
+    if(allDeviceType != HcclHeterogMode::HCCL_HETEROG_MODE_HOMOGENEOUS) {
+        HCCL_ERROR("[HcclScatter] Scatter only support singleDeviceType");
+        return HCCL_E_NOT_SUPPORT;
+    }
+
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
     if (!RunIndependentOpExpansion(deviceType)) {
