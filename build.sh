@@ -289,7 +289,7 @@ function usage() {
   echo "    --version <VERSION>"
   echo "                   Set sign version to <VERSION>"
   echo "    --custom_ops_path=<CUSTOM_OPS_PATH>"
-  echo "                   Set custom ops project path to <VERSION>"
+  echo "                   Set custom ops project path to <CUSTOM_OPS_PATH>"
   echo "    --ops=<OPS>"
   echo "                   Set custom ops name to <OPS>"
   echo "    --vendor=<VENDOR>"

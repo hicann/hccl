@@ -38,8 +38,8 @@
 
 struct ThreadContext {
     HcclRootInfo *rootInfo;
-    int32_t rootRank;
-    int32_t device;
+    uint32_t rootRank;
+    uint32_t device;
     uint32_t devCount;
 };
 
@@ -48,15 +48,15 @@ int Sample(void *arg)
     ThreadContext *ctx = (ThreadContext *)arg;
     void *sendBuf = nullptr;
     void *recvBuf = nullptr;
-    int32_t rootRank = ctx->rootRank;
-    int32_t device = ctx->device;
+    uint32_t rootRank = ctx->rootRank;
+    uint32_t device = ctx->device;
     uint64_t sendCount = ctx->devCount;
     uint64_t recvCount = 1U;
     size_t sendSize = sendCount * sizeof(float);
     size_t recvSize = recvCount * sizeof(float);
 
     // 设置当前线程操作的设备
-    ACLCHECK(aclrtSetDevice(device));
+    ACLCHECK(aclrtSetDevice(static_cast<int32_t>(device)));
 
     // 申请 Device 内存用于接收 Scatter 结果
     ACLCHECK(aclrtMalloc(&recvBuf, recvCount, ACL_MEM_MALLOC_HUGE_ONLY));
@@ -122,7 +122,7 @@ int main()
     ACLCHECK(aclrtGetDeviceCount(&devCount));
     std::cout << "Found " << devCount << " NPU device(s) available" << std::endl;
 
-    int rootRank = 0;
+    int32_t rootRank = 0;
     ACLCHECK(aclrtSetDevice(rootRank));
     // 生成 Root 节点信息，各线程使用同一份 RootInfo
     void *rootInfoBuf = nullptr;
@@ -135,7 +135,7 @@ int main()
     std::vector<ThreadContext> args(devCount);
     for (uint32_t i = 0; i < devCount; i++) {
         args[i].rootInfo = rootInfo;
-        args[i].rootRank = rootRank;
+        args[i].rootRank = static_cast<uint32_t>(rootRank);
         args[i].device = i;
         args[i].devCount = devCount;
         threads[i] = std::thread(Sample, (void *)&args[i]);

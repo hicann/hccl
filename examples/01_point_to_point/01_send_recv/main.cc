@@ -38,7 +38,7 @@
 
 struct ThreadContext {
     HcclRootInfo *rootInfo;
-    int32_t device;
+    uint32_t device;
     uint32_t devCount;
 };
 
@@ -47,12 +47,12 @@ int Sample(void *arg)
     ThreadContext *ctx = (ThreadContext *)arg;
     void *sendBuf = nullptr;
     void *recvBuf = nullptr;
-    int32_t device = ctx->device;
-    uint32_t count = ctx->devCount;
+    uint32_t device = ctx->device;
+    uint64_t count = ctx->devCount;
     size_t mallocSize = count * sizeof(float);
 
     // 设置当前线程操作的设备
-    ACLCHECK(aclrtSetDevice(device));
+    ACLCHECK(aclrtSetDevice(static_cast<int32_t>(device)));
 
     // 初始化集合通信域
     HcclComm hcclComm;
@@ -71,7 +71,7 @@ int Sample(void *arg)
         void *hostBuf = nullptr;
         ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
         float *tmpHostBuf = static_cast<float *>(hostBuf);
-        for (uint32_t i = 0; i < count; ++i) {
+        for (uint64_t i = 0; i < count; ++i) {
             tmpHostBuf[i] = static_cast<float>(device);
         }
         ACLCHECK(aclrtMemcpy(sendBuf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE));
@@ -96,7 +96,7 @@ int Sample(void *arg)
         ACLCHECK(aclrtMemcpy(resultHostBuf, mallocSize, recvBuf, mallocSize, ACL_MEMCPY_DEVICE_TO_HOST));
         float *tmpResultBuf = static_cast<float *>(resultHostBuf);
         std::cout << "rankId: " << device << ", output: [";
-        for (uint32_t i = 0; i < count; ++i) {
+        for (uint64_t i = 0; i < count; ++i) {
             std::cout << " " << tmpResultBuf[i];
         }
         std::cout << " ]" << std::endl;
@@ -125,7 +125,7 @@ int main()
     ACLCHECK(aclrtGetDeviceCount(&devCount));
     std::cout << "Found " << devCount << " NPU device(s) available" << std::endl;
 
-    int rootRank = 0;
+    int32_t rootRank = 0;
     ACLCHECK(aclrtSetDevice(rootRank));
     // 生成 Root 节点信息，各线程使用同一份 RootInfo
     void *rootInfoBuf = nullptr;
