@@ -30,6 +30,7 @@ ENABLE_UT="off"
 ENABLE_ST="off"
 CMAKE_BUILD_TYPE="Debug"
 ASCEND_3RD_LIB_PATH="${CURRENT_DIR}/output/third_party"
+BUILD_CB_TEST="false"
 
 # 自定义算子工程
 ENABLE_CUSTOM="off"
@@ -87,6 +88,11 @@ function build_package(){
     cmake_config
     log "Info: build_package"
     build package
+}
+
+function build_cb_test_verify(){
+    cd ${CURRENT_DIR}/examples/
+    bash build.sh
 }
 
 function build_test() {
@@ -288,6 +294,8 @@ function usage() {
   echo "                   Enable to sign"
   echo "    --version <VERSION>"
   echo "                   Set sign version to <VERSION>"
+  echo "    --cb_test_verify"
+  echo "                   Run smoke tests"
   echo "    --custom_ops_path=<CUSTOM_OPS_PATH>"
   echo "                   Set custom ops project path to <CUSTOM_OPS_PATH>"
   echo "    --ops=<OPS>"
@@ -384,6 +392,10 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
     --sign-script=*)
+        shift
+        ;;
+    --cb_test_verify)
+        BUILD_CB_TEST="true"
         shift
         ;;
     --enable-sign)
@@ -483,6 +495,15 @@ elif [ "${KERNEL}" == "true" ]; then
     build_kernel
 elif [ "${ENABLE_CUSTOM}" == "on" ]; then
     build_custom
+elif [ "${BUILD_CB_TEST}" == "true" ]; then
+    log "Info: Building cb_test_verify"
+    build_cb_test_verify
+    if grep -q "Make Failure" ${BUILD_DIR}/build.log || grep -q "Make test Failure" ${BUILD_DIR}/build.log; then
+        log "Info: Building cb_test_verify failed"
+        exit 1
+    else
+        log "Info: Building cb_test_verify success"
+    fi
 elif [ "${FULL_MODE}" == "true" ]; then
     cd ..
     mkdir -p ${BUILD_DEVICE_DIR}
