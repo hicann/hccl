@@ -38,7 +38,7 @@
 
 struct ThreadContext {
     HcclRootInfo *rootInfo;
-    int32_t device;
+    uint32_t device;
     uint32_t devCount;
 };
 
@@ -47,11 +47,12 @@ int Sample(void *arg)
     ThreadContext *ctx = (ThreadContext *)arg;
     void *sendBuf = nullptr;
     void *recvBuf = nullptr;
-    size_t count = ctx->devCount;
+    uint32_t device = ctx->device;
+    uint64_t count = ctx->devCount;
     size_t mallocSize = count * sizeof(float);
 
     // 设置当前线程操作的设备
-    ACLCHECK(aclrtSetDevice(ctx->device));
+    ACLCHECK(aclrtSetDevice(static_cast<int32_t>(device)));
 
     // 申请集合通信操作的 Device 内存
     ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
@@ -61,7 +62,7 @@ int Sample(void *arg)
     void *hostBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
     float *tmpHostBuff = static_cast<float *>(hostBuf);
-    for (uint32_t i = 0; i < count; ++i) {
+    for (uint64_t i = 0; i < count; ++i) {
         tmpHostBuff[i] = static_cast<float>(i);
     }
     // 将 Host 侧输入数据拷贝到 Device 侧
@@ -71,7 +72,7 @@ int Sample(void *arg)
 
     // 初始化集合通信域
     HcclComm hcclComm;
-    HCCLCHECK(HcclCommInitRootInfo(ctx->devCount, ctx->rootInfo, ctx->device, &hcclComm));
+    HCCLCHECK(HcclCommInitRootInfo(ctx->devCount, ctx->rootInfo, device, &hcclComm));
 
     // 创建任务流
     aclrtStream stream;
@@ -83,13 +84,13 @@ int Sample(void *arg)
     ACLCHECK(aclrtSynchronizeStream(stream));
 
     // 将 Device 侧集合通信任务结果拷贝到 Host，并打印结果
-    std::this_thread::sleep_for(std::chrono::seconds(ctx->device));
+    std::this_thread::sleep_for(std::chrono::seconds(device));
     void *resultBuff;
     ACLCHECK(aclrtMallocHost(&resultBuff, mallocSize));
     ACLCHECK(aclrtMemcpy(resultBuff, mallocSize, recvBuf, mallocSize, ACL_MEMCPY_DEVICE_TO_HOST));
     float *tmpResBuff = static_cast<float *>(resultBuff);
-    std::cout << "rankId: " << ctx->device << ", output: [";
-    for (uint32_t i = 0; i < count; ++i) {
+    std::cout << "rankId: " << device << ", output: [";
+    for (uint64_t i = 0; i < count; ++i) {
         std::cout << " " << tmpResBuff[i];
     }
     std::cout << " ]" << std::endl;
@@ -112,7 +113,7 @@ int main()
     ACLCHECK(aclrtGetDeviceCount(&devCount));
     std::cout << "Found " << devCount << " NPU device(s) available" << std::endl;
 
-    int rootRank = 0;
+    int32_t rootRank = 0;
     ACLCHECK(aclrtSetDevice(rootRank));
     // 生成 Root 节点信息，各线程使用同一份 RootInfo
     void *rootInfoBuf = nullptr;
