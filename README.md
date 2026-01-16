@@ -20,8 +20,8 @@ HCCL是CANN的核心组件，对上支持多种AI框架，对下使能多款昇�
 
 HCCL包含HCCL集合通信库与HCOMM（Huawei Communication）通信基础库：
 
-- HCCL集合通信库：提供多种通信算子的高性能实现，并支持开发者自定义集合通信算子。
-- HCOMM通信基础库：提供通信域及通信资源的管理能力。
+- HCCL集合通信库：包含内置通信算子和扩展通信算子，提供对外的通信算子接口。
+- [HCOMM通信基础库](https://gitcode.com/cann/hcomm)：采用分层解耦的设计思路，将通信能力划分为控制面和数据面两部分。
 
 > [!NOTE]说明
 > 为了更好的支持用户定制通信库，HCCL引入了一套全新的通信算子开发架构，并在该架构下提供了Scatter算子的参考实现。其余算子当前仍沿用HCOMM通信基础库中的现有实现。<br>
@@ -32,17 +32,23 @@ HCCL包含HCCL集合通信库与HCOMM（Huawei Communication）通信基础库�
 本项目关键目录如下所示：
 
 ```
-│── src                         # HCCL算子源码目录
-|    ├── common
-|    └── ops
-|        ├── channel
-|        ├── inc
-|        ├── registry
-|        ├── scatter        # Scatter 算子
-|        └── topo
-├── build.sh                # 源码编译脚本
-├── docs                    # 资料文档
-└── test                    # 测试代码目录
+│── src                     # HCCL算子源码目录
+|    ├── common             # 通用逻辑，包括类型定义、日志模块等
+|    └── ops                # HCCL算子实现
+|        ├── aicpu          # 通信算子Aicpu Kernel通用处理流程
+|        ├── channel        # 通信通道Channel资源计算
+|        ├── inc            # 头文件目录
+|        ├── interface      # 通信算子接口
+|        ├── registry       # 通信算法注册机制，支持模板化算法注册
+|        ├── scatter        # Scatter算子实现
+|        └── topo           # 通信域拓扑信息获取和转换
+├── include                 # HCCL对外头文件
+├── test                    # 测试代码目录
+|   ├── ut                  # 单元测试代码目录
+|   └── st                  # 系统测试代码目录
+├── docs                    # 资料文档目录
+├── examples                # 样例代码目录
+└── build.sh                # 编译构建脚本
 ```
 
 ## ⚡️ 快速开始

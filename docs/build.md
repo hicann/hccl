@@ -48,7 +48,10 @@ git clone https://gitcode.com/cann/hccl.git
 本项目提供一键式编译构建能力，进入代码仓根目录，执行如下命令：
 
 ```shell
+# 编译 host 包
 bash build.sh --pkg
+# 编译 host + device 包
+bash build.sh --pkg --full
 ```
 
 编译完成后会在`./build_out`目录下生成 `cann-hccl_<version>_linux-<arch>.run` 软件包。
