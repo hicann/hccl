@@ -129,17 +129,24 @@ function(pack_built_in)
       ${CMAKE_SOURCE_DIR}/scripts/package/common/cfg/path.cfg
   )
 
-  if (FULL_MODE)
-    add_custom_target(version_info ALL
-        COMMAND cp -f ${CMAKE_SOURCE_DIR}/version.info ${CMAKE_CURRENT_BINARY_DIR}/version.info
-        COMMAND ${CMAKE_COMMAND} -E echo "host_only=false" >> ${CMAKE_CURRENT_BINARY_DIR}/version.info
-    )
-  else()
-    add_custom_target(version_info ALL
-        COMMAND cp -f ${CMAKE_SOURCE_DIR}/version.info ${CMAKE_CURRENT_BINARY_DIR}/version.info
-        COMMAND ${CMAKE_COMMAND} -E echo "host_only=true" >> ${CMAKE_CURRENT_BINARY_DIR}/version.info
-    )
+  set(HCCL_VERSION_FILE ${CMAKE_CURRENT_BINARY_DIR}/version/version.info)
+  set(HOST_ONLY "false")
+  if (NOT FULL_MODE)
+    set(HOST_ONLY "true")
   endif()
+  add_custom_command(
+    OUTPUT ${HCCL_VERSION_FILE}
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/scripts/update_version_info/update_version_info.sh
+            ${CMAKE_CURRENT_SOURCE_DIR}/version.info
+            ${HCCL_VERSION_FILE}
+    COMMAND ${CMAKE_COMMAND} -E echo "host_only=${HOST_ONLY}" >> ${HCCL_VERSION_FILE}
+    DEPENDS 
+        ${CMAKE_CURRENT_SOURCE_DIR}/version.info
+    VERBATIM
+  )
+  add_custom_target(version_info ALL
+    DEPENDS ${HCCL_VERSION_FILE}
+  )
   install(FILES ${HCCL_VERSION_FILE}
       DESTINATION share/info/hccl
   )
