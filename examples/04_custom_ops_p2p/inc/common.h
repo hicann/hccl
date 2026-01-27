@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef CUSTOM_COMMON_H
-#define CUSTOM_COMMON_H
+#ifndef OPS_HCCL_P2P_COMMON_H
+#define OPS_HCCL_P2P_COMMON_H
 
 #include "hccl/hccl_types.h"
 #include "hccl/hccl_res.h"
@@ -18,20 +18,6 @@
 #include "log.h"
 
 namespace ops_hccl_p2p {
-
-#define UNLIKELY(x) (static_cast<bool>(__builtin_expect(static_cast<bool>(x), 0)))
-
-#define ACLCHECK(cmd)                                                                                           \
-    do {                                                                                                        \
-        aclError ret = cmd;                                                                                     \
-        if (ret != ACL_SUCCESS) {                                                                               \
-            HCCL_ERROR("acl interface return err %s:%d, retcode: %d.\n", __FILE__, __LINE__, ret);              \
-            if (ret == ACL_ERROR_RT_MEMORY_ALLOCATION) {                                                        \
-                HCCL_ERROR("memory allocation error, check whether the current memory space is sufficient.\n"); \
-            }                                                                                                   \
-            return HCCL_E_RUNTIME;                                                                              \
-        }                                                                                                       \
-    } while (0)
 
 constexpr uint32_t NOTIFY_IDX_ACK = 0;
 constexpr uint32_t NOTIFY_IDX_DATA_SIGNAL = 1;
@@ -71,4 +57,5 @@ constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof
     2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
     8, 2, 16, 2, 1, 1, 1, 1};
 }
-#endif
+
+#endif // OPS_HCCL_P2P_COMMON_H

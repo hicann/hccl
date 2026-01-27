@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCL_CUSTOM_OPS_H
-#define HCCL_CUSTOM_OPS_H
+#ifndef OPS_HCCL_P2P_CUSTOM_P2P_H
+#define OPS_HCCL_P2P_CUSTOM_P2P_H
 
 #include "hccl/hccl_comm.h"
 #include "hccl/hccl_res.h"
@@ -31,4 +31,5 @@ HcclResult HcclRecvCustom(
 #ifdef __cplusplus
 }
 #endif
-#endif
+
+#endif // OPS_HCCL_P2P_CUSTOM_P2P_H

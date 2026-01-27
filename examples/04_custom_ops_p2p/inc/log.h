@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef LOG_H
-#define LOG_H
+#ifndef OPS_HCCL_P2P_LOG_H
+#define OPS_HCCL_P2P_LOG_H
 
 #include <hccl/hccl_types.h>
 #include <cstdio>
@@ -109,4 +109,16 @@ typedef enum {
         }                                                                      \
     } while (0)
 
-#endif // LOG_H
+#define ACLCHECK(cmd)                                                                                           \
+    do {                                                                                                        \
+        aclError ret = cmd;                                                                                     \
+        if (UNLIKELY(ret != ACL_SUCCESS)) {                                                                     \
+            HCCL_ERROR("acl interface return err %s:%d, retcode: %d.\n", __FILE__, __LINE__, ret);              \
+            if (ret == ACL_ERROR_RT_MEMORY_ALLOCATION) {                                                        \
+                HCCL_ERROR("memory allocation error, check whether the current memory space is sufficient.\n"); \
+            }                                                                                                   \
+            return HCCL_E_RUNTIME;                                                                              \
+        }                                                                                                       \
+    } while (0)
+
+#endif // OPS_HCCL_P2P_LOG_H
