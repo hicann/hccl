@@ -14,6 +14,7 @@ target_sources(hccl-model-proxy PRIVATE
     hcclinner_stub.cc
     log_stub.cc
     mmpa_stub.cc
+    error_manager_stub.cc
     communicator/sim_communicator.cc
     communicator/sim_thread_manager.cc
     communicator/sim_thread.cc
@@ -22,7 +23,6 @@ target_sources(hccl-model-proxy PRIVATE
     communicator/sim_channel_exchange_handler.cc
     communicator/sim_context_manager.cc
     topo_model/topo_model.cc
-    topo_model/rank_table.cc
 )
 
 target_compile_options(hccl-model-proxy PRIVATE

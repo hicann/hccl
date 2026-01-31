@@ -17,6 +17,7 @@
 #include "dtype_common.h"
 #include "hccl_res.h"
 #include "hccl_sim_pub.h"
+#include "hccl_common.h"
 
 namespace HcclSim {
 

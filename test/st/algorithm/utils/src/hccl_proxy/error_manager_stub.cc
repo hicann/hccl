@@ -8,16 +8,26 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "mmpa_api.h"
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+#include <cstdarg>
 
-CHAR* mmSysGetEnv(mmEnvId id)
+namespace error_message {
+int32_t RegisterFormatErrorMessage(const char *error_msg, size_t error_msg_len)
 {
-    switch (id) {
-        case MM_ENV_HCCL_OP_EXPANSION_MODE:
-            return getenv("HCCL_OP_EXPANSION_MODE");
-        case MM_ENV_HCCL_ALGO:
-            return getenv("HCCL_ALGO");
-        default:
-            return nullptr;
-    }
+    return 0;
+}
+
+int32_t ReportInnerErrMsg(const char *file_name, const char *func, uint32_t line, const char *error_code,
+                          const char *format, ...)
+{
+    return 0;
+}
+
+int32_t ReportPredefinedErrMsg(const char *error_code, const std::vector<const char *> &key,
+                               const std::vector<const char *> &value)
+{
+    return 0;
+}
 }

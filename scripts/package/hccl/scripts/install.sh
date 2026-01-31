@@ -377,7 +377,7 @@ is_valid_path() {
                     exit 1
                 fi
                 if [ "${ret}" -ne 0 ]; then
-                    log "WARNING" "You are going to put run-files on a unsecure install-path, do you want to continue? [y/n]"
+                    log "WARNING" "You are going to put run-files on a insecure install-path, do you want to continue? [y/n]"
                     while true
                     do
                         read yn
@@ -1175,7 +1175,7 @@ fi
  
 if [ "$docker_install" = "y" ]; then
     log "ERROR" "ERR_NO:0x0004;ERR_DES:Unsupported parameters, operation failed."
-    log "INFO" "--docker not uesd in hccl"
+    log "INFO" "--docker not used in hccl"
     exit 1
 fi
  
@@ -1263,10 +1263,10 @@ fi
 
 architecture=$(uname -m)
 if [ "${architecture}" != "${platform_data}" ]; then
-    log "INFO" "architecture of run package is inconsisent with the current enviroment need skip"
+    log "INFO" "architecture of run package is inconsistent with the current environment need skip"
     exit 0
 fi
-
+ 
 # 执行预检查
 if [ "$input_pre_check" = "y" ]; then
     log "INFO" "Hccl do pre check started."
@@ -1315,7 +1315,7 @@ if [ "$input_install_for_all" = "n" ]; then
             usergroup_base=$(grep -i usergroup= "${install_info_old}" | cut -d"=" -f2-)
             check_group "${usergroup_base}" "${username}"
             if [ $? -ne 0 ]; then
-                log "ERROR" "ERR_NO:0x0093;ERR_DES:User is not belong to the dirver or firmware's installed usergroup! Please add the user (${username}) to the group (${usergroup_base})."
+                log "ERROR" "ERR_NO:0x0093;ERR_DES:User is not belong to the driver or firmware's installed usergroup! Please add the user (${username}) to the group (${usergroup_base})."
                 confirm=y
                 exit_install_log 1
             fi

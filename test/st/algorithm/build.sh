@@ -22,7 +22,7 @@ cd $SHELL_DIR
 mkdir -p ./build && cd ./build/ && rm -rf ../build/*
 
 # 编译用例工程，配置执行条件并执行
-cmake .. -DBUILD_OPEN_PROJECT=ON && make
+cmake .. -DBUILD_OPEN_PROJECT=ON && make -j8
 LIBRARY_DIR="${SHELL_DIR}/build/utils/src/hccl_depends_stub:"
 export LD_LIBRARY_PATH=${LIBRARY_DIR}${LD_LIBRARY_PATH} && ${SHELL_DIR}/build/testcase/hccl_checker_ops_stest
 

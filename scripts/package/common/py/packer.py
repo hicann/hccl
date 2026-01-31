@@ -95,7 +95,7 @@ def get_compress_tool() -> str:
         if path:
             return "--" + tool
     CommLog.cilog_error("The system does not come with a compression tool pre-installed."
-                        "Please ensure at least one of the folllowing compression tools is available: %s", tools)
+                        "Please ensure at least one of the following compression tools is available: %s", tools)
     return ""
 
 
@@ -124,7 +124,7 @@ def compose_makeself_command(params: MakeselfPkgParams) -> str:
             '--tar-extra', '--numeric-owner', '--tar-quietly'
         ],
         get_cleanup_commands(),
-        ['./', params.package_name, params.comments]
+        [params.package_name, params.comments]
     )
     
     command = ' '.join(commands)

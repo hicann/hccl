@@ -113,7 +113,7 @@ hccl_install_package() {
             log "INFO" "install ${_package} successfully!"
         fi
     else
-        log "ERROR" "ERR_NO:0x0080;ERR_DES:install ${_package} faied, can not find the matched package for this platform."
+        log "ERROR" "ERR_NO:0x0080;ERR_DES:install ${_package} failed, can not find the matched package for this platform."
         exit 1
     fi
 }

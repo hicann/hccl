@@ -144,7 +144,12 @@ HcclResult SingleTaskCheck:: CheckSingleTaskMem(TaskNodePtr curTask)
         CHK_RET(CheckSingleSlice(rankId, queueId, taskId, dstSlice, rankId));
         CHK_RET(CheckTwoSliceOverlap(rankId, queueId, taskId, srcSlice, dstSlice));
     } else if (taskType == TaskTypeStub::LOCAL_REDUCE) {
-        HCCL_ERROR("[SingleTaskCheck::CheckSingleTaskMem] TaskType LOCAL_REDUCE not support");
+        auto task = dynamic_cast<TaskStubLocalReduce *>(curTask->task);
+        const DataSlice& srcSlice = task->GetSrcSlice();
+        const DataSlice& dstSlice = task->GetDstSlice();
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, srcSlice, rankId));
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, dstSlice, rankId));
+        CHK_RET(CheckTwoSliceOverlap(rankId, queueId, taskId, srcSlice, dstSlice));
     } else if (taskType == TaskTypeStub::READ) {
         auto task = dynamic_cast<TaskStubRead *>(curTask->task);
         const DataSlice& localSlice = task->GetLocalSlice();
@@ -154,7 +159,12 @@ HcclResult SingleTaskCheck:: CheckSingleTaskMem(TaskNodePtr curTask)
         CHK_RET(CheckSingleSlice(rankId, queueId, taskId, remoteSlice, remoteRank));
     } 
     else if (taskType == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[SingleTaskCheck::CheckSingleTaskMem] TaskType READ_REDUCE not support");
+        auto task = dynamic_cast<TaskStubReadReduce *>(curTask->task);
+        const DataSlice& localSlice = task->GetLocalSlice();
+        RankId remoteRank = task->GetRemoteRank();
+        const DataSlice& remoteSlice = task->GetRemoteSlice();
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, localSlice, rankId));
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, remoteSlice, remoteRank));
     } else if (taskType == TaskTypeStub::WRITE) {
         auto task = dynamic_cast<TaskStubWrite *>(curTask->task);
         const DataSlice& localSlice = task->GetLocalSlice();
@@ -163,7 +173,12 @@ HcclResult SingleTaskCheck:: CheckSingleTaskMem(TaskNodePtr curTask)
         CHK_RET(CheckSingleSlice(rankId, queueId, taskId, localSlice, rankId));
         CHK_RET(CheckSingleSlice(rankId, queueId, taskId, remoteSlice, remoteRank));
     } else if (taskType == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[SingleTaskCheck::CheckSingleTaskMem] TaskType WRITE_REDUCE not support");
+        auto task = dynamic_cast<TaskStubWriteReduce *>(curTask->task);
+        const DataSlice& localSlice = task->GetLocalSlice();
+        RankId remoteRank = task->GetRemoteRank();
+        const DataSlice& remoteSlice = task->GetRemoteSlice();
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, localSlice, rankId));
+        CHK_RET(CheckSingleSlice(rankId, queueId, taskId, remoteSlice, remoteRank));
     }
     return HCCL_SUCCESS;
 }

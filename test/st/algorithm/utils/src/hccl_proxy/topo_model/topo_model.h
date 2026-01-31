@@ -14,18 +14,69 @@
 #include "hccl_sim_pub.h"
 #include "hccl_common.h"
 #include "hccl_rank_graph.h"
-#include "hccl_rankgraph.h"
 
 namespace HcclSim {
 class TopoModel {
 public:
     TopoModel() = delete;
-    TopoModel(std::vector<GraphRankInfo> rankGraphs) : rankGraphs_(rankGraphs) {}
+    TopoModel(const TopoMeta& topoMeta);
     ~TopoModel() = default;
     uint32_t GetRankSize() const;
+    void GetNetLayers(uint32_t **netLayers, uint32_t *netLayerNum);
+    void GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t *rankNum);
+    void GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink **linkList, uint32_t *listSize);
+    void GetInstSizeListByNetLayer(uint32_t netLayer, uint32_t **instSizeList, uint32_t *listSize);
+    void GetInstTopoTypeByNetLayer(DevType devType, uint32_t netLayer, CommTopo *topoType);
+    void GetInstRanksByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum);
+    // A5 topo
+    void GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum);
+    void GetRanksByTopoInst(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum);
+    void GetTopoType(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, CommTopo *topoType);
 
-public:
-    std::vector<GraphRankInfo> rankGraphs_;
+private:
+    void InitNetLayerInfo(uint32_t serverNum, uint32_t podNum);
+    void InitEndpointMap(uint32_t rankId, uint32_t phyId, uint32_t serverId, uint32_t superpodId, uint32_t& devIpStart);
+    void Init910BLinkMap();
+    void Init910CLinkMap();
+    void Init910DLinkMap();
+    void InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::vector<uint32_t> &phyIds);
+    std::vector<uint32_t> GetAllRanks(const std::vector<uint32_t> &phyIds, uint32_t rankId);
+    std::vector<uint32_t> CheckRowPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t rowId);
+    std::vector<uint32_t> CheckColPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t colId);
+    bool IsSamePod(uint32_t srcRank, uint32_t dstRank);
+    bool IsSameServer(uint32_t srcRank, uint32_t dstRank);
+    void Create910BLinks(uint32_t srcRank, uint32_t dstRank);
+    void Create910CLinks(uint32_t srcRank, uint32_t dstRank);
+    void Create910DLinks(uint32_t srcRank, uint32_t dstRank);
+    void InitL1L2TopoInsts(uint32_t podNum);
+
+private:
+    bool is2D{false};
+    std::vector<uint32_t> allRankList_;
+    std::map<uint32_t, std::vector<uint32_t>> serverId2RankList_;
+    std::map<uint32_t, std::vector<uint32_t>> podId2RankList_;
+    std::vector<uint32_t> netLayerList_;
+    std::map<uint32_t, EndpointDesc> rankId2Endpoint_;
+    std::map<uint32_t, uint32_t> rankId2PhyId_;
+    std::map<uint32_t, uint32_t> rankId2ServerId_;
+    std::map<uint32_t, uint32_t> rankId2PodId_;
+
+    std::vector<uint32_t> podServersGroup_;
+    std::vector<uint32_t> podRanksGroup_;
+    std::vector<uint32_t> allRankNum_;
+
+    // A5 topo
+    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> dev2TopoInsts_;  // serverId->每个dev对应的实例Id
+    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> instId2RankIds_;  // serverId->每个实例对应的rankId集合
+    std::map<uint32_t, std::vector<uint32_t>> level1TopoInsts_;
+    std::vector<uint32_t> level2TopoInsts_;
+
+    // links map
+    std::map<std::pair<uint32_t, uint32_t>, CommProtocol> link910b_;
+    std::map<std::pair<uint32_t, uint32_t>, CommProtocol> link910c_;
+    std::map<std::pair<uint32_t, uint32_t>, CommProtocol> link910d_;
+    //                srcRabkId  dstRankId           level     links
+    std::map<std::pair<uint32_t, uint32_t>, std::map<uint32_t, std::vector<CommLink>>> allLinkMap_;
 }; // TopoModel
 
 };

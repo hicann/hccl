@@ -11,11 +11,9 @@
 #include <iostream>
 #include "gtest/gtest.h"
 
-// rm -rf ../st/* && cmake ../cmake/superbuild/ -DHOST_PACKAGE=st -DBUILD_MOD=hccl_checker_ops && make -j16
 GTEST_API_ int main(int argc, char **argv)
 {
     std::cout << "Start to run demo for hccl_checker_ops_stest." << std::endl;
-    testing::GTEST_FLAG(filter) = "ST_SCATTER_TEST.st_1";
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

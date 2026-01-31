@@ -404,12 +404,14 @@ HcclResult GraphRevampBilateralSemantics::GetPeerRankByTaskNode(TaskNodePtr curr
         TaskStubRead *read = dynamic_cast<TaskStubRead *>(currNode->task);
         peerRank = read->GetRemoteRank();
     } else if (currNode->task->GetType() == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::GetPeerRankByTaskNode] TaskType READ_REDUCE not support");
+        TaskStubReadReduce *read = dynamic_cast<TaskStubReadReduce *>(currNode->task);
+        peerRank = read->GetRemoteRank();
     } else if (currNode->task->GetType() == TaskTypeStub::WRITE) {
         TaskStubWrite *write = dynamic_cast<TaskStubWrite *>(currNode->task);
         peerRank = write->GetRemoteRank();
     } else if (currNode->task->GetType() == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::GetPeerRankByTaskNode] TaskType WRITE_REDUCE not support");
+        TaskStubWriteReduce *write = dynamic_cast<TaskStubWriteReduce *>(currNode->task);
+        peerRank = write->GetRemoteRank();
     }
     return HCCL_SUCCESS;
 }
@@ -420,12 +422,14 @@ HcclResult GraphRevampBilateralSemantics::GetLinkProtoStubByTaskNode(TaskNodePtr
         TaskStubRead *read = dynamic_cast<TaskStubRead *>(currNode->task);
         link = read->GetLinkType();
     } else if (currNode->task->GetType() == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::GetLinkProtoStubByTaskNode] TaskType READ_REDUCE not support");
+        TaskStubReadReduce *read = dynamic_cast<TaskStubReadReduce *>(currNode->task);
+        link = read->GetLinkType();
     } else if (currNode->task->GetType() == TaskTypeStub::WRITE) {
         TaskStubWrite *write = dynamic_cast<TaskStubWrite *>(currNode->task);
         link = write->GetLinkType();
     } else if (currNode->task->GetType() == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::GetLinkProtoStubByTaskNode] TaskType WRITE_REDUCE not support");
+        TaskStubWriteReduce *write = dynamic_cast<TaskStubWriteReduce *>(currNode->task);
+        link = write->GetLinkType();
     }
     return HCCL_SUCCESS;
 }

@@ -32,7 +32,7 @@ HcclResult TaskGraphGenerator::GenGraph(const AllRankTaskQueues &allRankTaskQueu
 
     /*
     Mismatch may occur when: 1) fail to generate local dependency graph correctly --> ERROR
-                             2) a group prim is placed at the begining of the primitive queue
+                             2) a group prim is placed at the beginning of the primitive queue
     */
 
     CHK_RET(GenGraphInterRanks(dummyStart));
@@ -125,7 +125,7 @@ HcclResult TaskGraphGenerator::InitRankNodeQue(const SingleTaskQueue *rankTaskQu
         if (rankTaskQueues[0][qIdx].size() == 0) {
             continue;
         }
-        auto currNode = std::make_shared<TaskNode>(rankTaskQueues[0][qIdx][0].get(), rankIdx, 0, 0);
+        auto currNode = std::make_shared<TaskNode>(rankTaskQueues[0][qIdx][0].get(), rankIdx, qIdx, 0);
 
         CHK_PTR_NULL(currNode);
         nodes_.push_back(currNode);
@@ -228,7 +228,17 @@ HcclResult TaskGraphGenerator::ExecLocalWaitPrim(const SingleTaskQueue *rankTask
 
 bool TaskGraphGenerator::IsSemPeer(const TaskNodePtr postNode, const TaskNodePtr waitNode)
 {
-    return false;
+    if (postNode->task->GetType() != TaskTypeStub::LOCAL_POST_TO ||
+        waitNode->task->GetType() != TaskTypeStub::LOCAL_WAIT_FROM) {
+        return false;
+    }
+
+    TaskStubLocalPostTo* localPostTo = static_cast<TaskStubLocalPostTo *>(postNode->task);
+    TaskStubLocalWaitFrom* localWaitForm = static_cast<TaskStubLocalWaitFrom *>(waitNode->task);
+
+    return (localPostTo->GetTopicId() == localWaitForm->GetTopicId() &&
+            localPostTo->GetPostQid() == localWaitForm->GetPostQid() &&
+            localPostTo->GetWaitQid() == localWaitForm->GetWaitQid());
 }
 
 HcclResult TaskGraphGenerator::GenGraphInterRanks(TaskNodePtr dummyStart)

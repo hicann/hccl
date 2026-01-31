@@ -29,6 +29,13 @@ if (BUILD_OPEN_PROJECT)
     set(ASCEND_HOME_PATH $ENV{ASCEND_HOME_PATH})
     set(HCCL_DEV_BASE ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
     set(THIRD_PARTH_PATH ${HCCL_DEV_BASE}/output/third_party)
+
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64")
+        set(ASCEND_HOME_PATH "${ASCEND_HOME_PATH}/x86_64-linux")
+    else()
+        set(ASCEND_HOME_PATH "${ASCEND_HOME_PATH}/aarch64-linux")
+    endif()
+    message(STATUS "Final Ascend Path: ${ASCEND_HOME_PATH}")
 endif()
 
 add_subdirectory(testcase)

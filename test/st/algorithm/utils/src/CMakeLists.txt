@@ -15,6 +15,7 @@ add_subdirectory(sim_world)
 add_subdirectory(hccl_proxy)
 add_subdirectory(common)
 add_subdirectory(hccl_depends_stub)
+add_subdirectory(aicpu)
 
 target_compile_options(hccl-model-proxy PRIVATE
     -std=c++14
@@ -30,16 +31,14 @@ target_compile_options(hccl-model-proxy PRIVATE
 target_link_libraries(hccl-model-proxy PUBLIC
     # 链接hccl_depends_stub
     hcomm
-    ascend_hal
-    ascendcl
     unified_dlog
-    ascendalog
     mmpa
+    scatter_aicpu_kernel
 )
 
 if (BUILD_OPEN_PROJECT)
     target_link_libraries(hccl-model-proxy PUBLIC
-        ${ASCEND_HOME_PATH}/x86_64-linux/lib64/libc_sec.so
+        ${ASCEND_HOME_PATH}/lib64/libc_sec.so
     )
 
     target_include_directories(hccl-model-proxy PRIVATE
@@ -52,26 +51,22 @@ if (BUILD_OPEN_PROJECT)
         ${UTILS_DIR}/hccl_proxy/topo_model
 
         # Ascend安装包头文件
-        ${ASCEND_HOME_PATH}/x86_64-linux/include
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/base
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/runtime
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/profiling
-        ${ASCEND_HOME_PATH}/x86_64-linux/hcomm/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/hccl
+        ${ASCEND_HOME_PATH}/include
+        ${ASCEND_HOME_PATH}/pkg_inc
+        ${ASCEND_HOME_PATH}/pkg_inc/base
+        ${ASCEND_HOME_PATH}/pkg_inc/runtime
+        ${ASCEND_HOME_PATH}/pkg_inc/profiling
+        ${ASCEND_HOME_PATH}/hcomm/include/hccl
+        ${ASCEND_HOME_PATH}/include/hccl
+        ${ASCEND_HOME_PATH}/pkg_inc/hccl
 
         # mmpa头文件
-        ${ASCEND_HOME_PATH}/x86_64-linux/include/mmpa
-
-        # 后续可能要根据大包安装目录改动
-        ${ASCEND_HOME_PATH}/../cann/x86_64-linux/include/hccl
-        ${ASCEND_HOME_PATH}/../cann/x86_64-linux/include
-        ${ASCEND_HOME_PATH}/../cann/x86_64-linux/pkg_inc/hccl
-        ${ASCEND_HOME_PATH}/../cann/x86_64-linux/pkg_inc
+        ${ASCEND_HOME_PATH}/include/mmpa
 
         # 本仓代码头文件
         ${HCCL_DEV_BASE}/src/common
+        ${HCCL_DEV_BASE}/src/ops
+        ${HCCL_DEV_BASE}/src/ops/inc
     )
 
 else()

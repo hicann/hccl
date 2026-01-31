@@ -9,7 +9,6 @@
  */
 
 #include "sim_communicator.h"
-#include "rank_table.h"
 #include "sim_world.h"
 
 using namespace std;
@@ -33,11 +32,8 @@ HcclResult SimCommunicator::Init(const char *clusterInfo, uint32_t rank)
 HcclResult SimCommunicator::Init(const TopoMeta &topoMeta, uint32_t rank)
 {
     curRank_ = rank;
-
-    // 生成rankGraphs
-    std::vector<GraphRankInfo> rankGraphs;
-    CHK_PRT(GenGraphRankInfos(topoMeta, rankGraphs));
-    topoModel_ = make_unique<TopoModel>(rankGraphs);
+    // 构造topo模型
+    topoModel_ = make_unique<TopoModel>(topoMeta);
     HCCL_DEBUG("[SimCommunicator::%s] rankSize[%u], ", __func__, topoModel_->GetRankSize());
 
     // 获取默认commConfig
@@ -97,15 +93,6 @@ uint32_t SimCommunicator::GetRankSize()
 std::string SimCommunicator::GetIdentifier()
 {
     return identifier_;
-}
-
-HcclResult SimCommunicator::GetCommRankGraph(void **graph, uint32_t *len)
-{
-    *graph = topoModel_->rankGraphs_.data();
-    *len = topoModel_->rankGraphs_.size() * sizeof(GraphRankInfo);
-    HCCL_INFO("[%s] len[%u], rankSize[%u], sizeof(GraphRankInfo)[%u]",
-        __func__, *len, topoModel_->rankGraphs_.size(), sizeof(GraphRankInfo));
-    return HCCL_SUCCESS;
 }
 
 HcclResult SimCommunicator::GetHcclBuffer(void **buffer, uint64_t *size)

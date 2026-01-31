@@ -85,7 +85,6 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }
-
     if (HcommBatchModeEnd(param->algTag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);
         return 1;

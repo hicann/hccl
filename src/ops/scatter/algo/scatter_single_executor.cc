@@ -45,7 +45,7 @@ HcclResult ScatterSingleExecutor::Orchestrate(const OpParam &param, AlgResourceC
 
     HcclResult ret = KernelRun(param, execMem);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ScatterSingleExecutor][Orchestrate]errNo[0x%016llx]all reduce excutor kernel run failed",
+        HCCL_ERROR("[ScatterSingleExecutor][Orchestrate]errNo[0x%016llx]all reduce executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     HCCL_INFO("tag[%s] Scatter executor orchestrate success, take time [%lld]us.",
         param.tag, DURATION_US(TIME_NOW() - startut));

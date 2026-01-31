@@ -32,7 +32,7 @@ struct SliceOpPair {
     RankId    srcRank;
     RankId    dstRank;
     DataSlice srcSlice;
-    DataSlice dtsSlice;
+    DataSlice dstSlice;
     SliceOp   sliceOp;
 
     std::string Describe() const
@@ -41,7 +41,7 @@ struct SliceOpPair {
         ret << "src rank is " << srcRank << ", ";
         ret << "dst rank is " << dstRank << ", ";
         ret << "src slice is " << srcSlice.Describe() << ", ";
-        ret << "dst slice is " << dtsSlice.Describe() << ", ";
+        ret << "dst slice is " << dstSlice.Describe() << ", ";
         if (sliceOp == SliceOp::OVERRIDE) {
             ret << "sliceOp is "
                 << "SliceOp::OVERRIDE" << std::endl;
