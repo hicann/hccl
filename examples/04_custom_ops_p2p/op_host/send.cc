@@ -77,7 +77,7 @@ HcclResult HcclSendCustom(
         // STEP 2.2: 建立通信链路Channel，两个 rank 之间建立 1 个 channel
         // ==============================================
         HcclChannelDesc channelDesc;
-        HcclChannelDescInit(&channelDesc, 1);
+        CHK_RET(HcclChannelDescInit(&channelDesc, 1));
         channelDesc.remoteRank = destRank;
         channelDesc.channelProtocol = CommProtocol::COMM_PROTOCOL_HCCS;
         channelDesc.notifyNum = 2;
