@@ -93,7 +93,7 @@ HcclResult InitEnvConfig()
     RPT_ENV_ERR(ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"env", "tips"}),
         std::vector<std::string>({"HCCL_DEBUG_CONFIG", "Please check whether the env is valid"}));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InitEnvParam]errNo[0x%016llx] In init environtment param, parse "
+        HCCL_ERROR("[InitEnvParam]errNo[0x%016llx] In init environment param, parse "
         "HCCL_DEBUG_CONFIG failed. errorno[%d]", HCCL_ERROR_CODE(ret), ret), ret);
 
     g_algEnvConfig.initialized = true;

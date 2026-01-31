@@ -42,8 +42,8 @@ HcclResult SimContextMgr::CreateCommEngineCtx(const std::string &tag, CommEngine
     void* ctxMem = nullptr;
     // 暂时只支持HOST类型
     HcclMemType type;
-    if (engine == COMM_ENGINE_CPU || engine == COMM_ENGINE_CPU_TS) {
-        type = HCCL_MEM_TYPE_HOST;
+    if (engine == COMM_ENGINE_CPU || engine == COMM_ENGINE_CPU_TS || engine == COMM_ENGINE_AICPU_TS || engine == COMM_ENGINE_AICPU) {
+        type = HCCL_MEM_TYPE_HOST;  // LLT模式AICPU也分配HOST内存
         ctxMem = malloc(size);
         CHK_PTR_NULL(ctxMem);
         CHK_SAFETY_FUNC_RET(memset_s(ctxMem, size, 0, size));

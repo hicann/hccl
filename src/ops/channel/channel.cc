@@ -42,7 +42,7 @@ HcclResult CalcLevel0ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_HCCS;
     for (u32 rank: connectRanks) {
         HcclChannelDesc channelDesc;
-        HcclChannelDescInit(&channelDesc, 1);
+        CHK_RET(HcclChannelDescInit(&channelDesc, 1));
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL0, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.channelProtocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
@@ -82,7 +82,7 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     CommProtocol protocol = isUsedRdma ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_HCCS;
     for (u32 rank: connectRanks) {
         HcclChannelDesc channelDesc;
-        HcclChannelDescInit(&channelDesc, 1);
+        CHK_RET(HcclChannelDescInit(&channelDesc, 1));
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL1, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.channelProtocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
@@ -117,7 +117,7 @@ HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 
     for (u32 rank: connectRanks) {
         HcclChannelDesc channelDesc;
-        HcclChannelDescInit(&channelDesc, 1);
+        CHK_RET(HcclChannelDescInit(&channelDesc, 1));
         CHK_RET(GetUserRankBySubCommRank(rank, COMM_LEVEL2, algHierarchyInfo, channelDesc.remoteRank));
         channelDesc.channelProtocol = protocol;
         channelDesc.notifyNum = NORMAL_NOTIFY_NUM;

@@ -238,12 +238,12 @@ def parse_install_info(infos: List,
     """根据配置解析生成安装信息。"""
     for target_config in infos:
         target_name = get_target_name(target_config)
-        if target_config.get("optional") == 'true':
+        if target_config.get("optional") == 'true' and operate_type in ('copy', 'move'):
             path = os.path.join(TOP_DIR, DELIVERY_PATH, target_config.get('dst_path'))
-            vaule = os.path.join(TOP_DIR, DELIVERY_PATH, target_config.get('dst_path'), target_name)
+            value = os.path.join(TOP_DIR, DELIVERY_PATH, target_config.get('dst_path'), target_name)
             if not os.path.exists(path):
                 continue
-            if not os.path.exists(vaule):
+            if not os.path.exists(value):
                 continue
         if operate_type in ('copy', 'move'):
             relative_path_in_pkg = os.path.join(target_config.get('dst_path'), target_name)

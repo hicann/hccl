@@ -18,38 +18,8 @@ target_compile_options(hcomm PRIVATE
     -O0
 )
 
-add_library(ascend_hal SHARED hccl_depends_stub.cc)
-target_compile_options(ascend_hal PRIVATE
-    -std=c++14
-    -fno-common
-    -fno-strict-aliasing
-    -pipe
-    -g
-    -O0
-)
-
-add_library(ascendcl SHARED hccl_depends_stub.cc)
-target_compile_options(ascendcl PRIVATE
-    -std=c++14
-    -fno-common
-    -fno-strict-aliasing
-    -pipe
-    -g
-    -O0
-)
-
 add_library(unified_dlog SHARED hccl_depends_stub.cc)
 target_compile_options(unified_dlog PRIVATE
-    -std=c++14
-    -fno-common
-    -fno-strict-aliasing
-    -pipe
-    -g
-    -O0
-)
-
-add_library(ascendalog SHARED hccl_depends_stub.cc)
-target_compile_options(ascendalog PRIVATE
     -std=c++14
     -fno-common
     -fno-strict-aliasing

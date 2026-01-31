@@ -31,7 +31,7 @@ HcclResult TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics> &al
         u64 totalSize = 0;
         for (auto &ele : allRankMemSemantics[rankId][BufferType::INPUT]) {
             if (ele.startAddr != totalSize) {
-                HCCL_ERROR("[rankId:%u]Missing buffer semantic: exepected startAddr is %llu, while cur buffer semantic startAddr is %llu, cur buffer semantic is %s",
+                HCCL_ERROR("[rankId:%u]Missing buffer semantic: expected startAddr is %llu, while cur buffer semantic startAddr is %llu, cur buffer semantic is %s",
                     rankId, totalSize, ele.startAddr, ele.Describe().c_str());
                 return HcclResult::HCCL_E_PARA;
             }

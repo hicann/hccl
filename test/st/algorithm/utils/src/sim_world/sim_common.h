@@ -34,8 +34,8 @@ using PhyId = uint32_t;
 constexpr uint64_t SIM_MEM_BLOCK_SIZE = 0x10000000000;  // 内存分配起始地址
 constexpr uint64_t SIM_MEM_MASKER = 0xFFFFFF0000000000;
 constexpr uint64_t SIZE_200MB = 200ULL * 1024 * 1024;  // CCL 200MB
-constexpr uint32_t MAX_STREAM_COUNT = 40;
-constexpr uint32_t MAX_NOTIFY_COUNT = 64;
+constexpr uint32_t MAX_STREAM_COUNT = 1984;
+constexpr uint32_t MAX_NOTIFY_COUNT = 8192;
 
 using ChannelHandle = uint64_t;
 using ThreadHandle = uint64_t;

@@ -207,7 +207,7 @@ extern HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, con
  * @brief AlltoAll operator.
  *
  * @param sendBuff A pointer identifying the input data address of the operator.
- * @param sendCount Integer, number of elements to send to each proces.
+ * @param sendCount Integer, number of elements to send to each process.
  * @param sendType Datatype of send buffer elements, must be one of the following types: int8, int16, int32, int64,
  * uint8, uint16, uint32, uint64, float16, float32, float64, bfp16.
  * @param recvBuf A pointer identifying the output data address of the operator.

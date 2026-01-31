@@ -76,9 +76,14 @@ void GetCurTimeStr(char *timeStr, int len)
 
 void DlogPrintStub(int level, char *logBuffer)
 {
+    std::string logLevelStr = "[INFO]";
+    if (LOG_LEVEL_STR_MAP.find(level) != LOG_LEVEL_STR_MAP.end()) {
+        logLevelStr = LOG_LEVEL_STR_MAP[level];
+    }
+
     char timeBuffer[LOG_STUB_BUFFER_SIZE] = {0};
     GetCurTimeStr(timeBuffer, LOG_STUB_BUFFER_SIZE);
-    printf("[%-26s][pid:%u]%s%s\n", timeBuffer, getpid(), LOG_LEVEL_STR_MAP[level].c_str(), logBuffer);
+    printf("[%-26s][pid:%u]%s%s\n", timeBuffer, getpid(), logLevelStr.c_str(), logBuffer);
 }
 
 void DlogInner(int moduleId, int level, const char *fmt, ...)

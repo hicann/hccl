@@ -661,12 +661,14 @@ void CheckRankMem::GetReadSlice(TaskNode *node, std::vector<DataSlice> &slices)
         auto task = dynamic_cast<TaskStubLocalCopy *>(node->task);
         slices.push_back(task->GetSrcSlice());
     } else if (type == TaskTypeStub::LOCAL_REDUCE) {
-        HCCL_ERROR("[CheckRankMem::GetReadSlice] TaskType LOCAL_REDUCE not support");
+        auto task = dynamic_cast<TaskStubLocalReduce *>(node->task);
+        slices.push_back(task->GetSrcSlice());
     } else if (type == TaskTypeStub::WRITE) {
         auto task = dynamic_cast<TaskStubWrite *>(node->task);
         slices.push_back(task->GetLocalSlice());
     } else if (type == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[CheckRankMem::GetReadSlice] TaskType WRITE_REDUCE not support");
+        auto task = dynamic_cast<TaskStubWriteReduce *>(node->task);
+        slices.push_back(task->GetLocalSlice());
     }
     return;
 }
@@ -679,12 +681,14 @@ void CheckRankMem::GetWriteSlice(TaskNode *node, std::vector<DataSlice> &slices)
         auto task = dynamic_cast<TaskStubLocalCopy *>(node->task);
         slices.push_back(task->GetDstSlice());
     } else if (type == TaskTypeStub::LOCAL_REDUCE && !isGenFromSync) {
-        HCCL_ERROR("[CheckRankMem::GetWriteSlice] TaskType LOCAL_REDUCE not support");
+        auto task = dynamic_cast<TaskStubLocalReduce *>(node->task);
+        slices.push_back(task->GetDstSlice());
     } else if (type == TaskTypeStub::READ) {
         auto task = dynamic_cast<TaskStubRead *>(node->task);
         slices.push_back(task->GetLocalSlice());
     } else if (type == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[CheckRankMem::GetWriteSlice] TaskType READ_REDUCE not support");
+        auto task = dynamic_cast<TaskStubReadReduce *>(node->task);
+        slices.push_back(task->GetLocalSlice());
     }
     return;
 }

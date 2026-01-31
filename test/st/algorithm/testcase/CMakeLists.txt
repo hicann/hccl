@@ -22,15 +22,12 @@ if (BUILD_OPEN_PROJECT)
         ${THIRD_PARTH_PATH}/gtest_shared/include
 
         # Ascend安装包头文件
-        ${ASCEND_HOME_PATH}/x86_64-linux/include
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/base
-        ${ASCEND_HOME_PATH}/x86_64-linux/hcomm/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/hccl
-        
-        # 后续可能要根据大包安装目录改动
-        ${ASCEND_HOME_PATH}/../cann/x86_64-linux/include/hccl
+        ${ASCEND_HOME_PATH}/include
+        ${ASCEND_HOME_PATH}/pkg_inc
+        ${ASCEND_HOME_PATH}/pkg_inc/base
+        ${ASCEND_HOME_PATH}/hcomm/include/hccl
+        ${ASCEND_HOME_PATH}/include/hccl
+        ${ASCEND_HOME_PATH}/pkg_inc/hccl
 
         # 本仓代码头文件
         ${HCCL_DEV_BASE}/src/common
@@ -52,7 +49,7 @@ if (BUILD_OPEN_PROJECT)
         hccl-model-proxy
         hccl-verifier
         # 链接hccl库
-        ${ASCEND_HOME_PATH}/x86_64-linux/lib64/libhccl.so
+        ${ASCEND_HOME_PATH}/lib64/libhccl.so
     )
 
     target_compile_options(hccl_checker_ops_stest PRIVATE

@@ -34,14 +34,14 @@ message(STATUS "utils path= ${UTILS_DIR}")
 if (BUILD_OPEN_PROJECT)
     target_include_directories(hccl-verifier PRIVATE
         # Ascend安装包头文件
-        ${ASCEND_HOME_PATH}/x86_64-linux/include
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/base
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/runtime
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/profiling
-        ${ASCEND_HOME_PATH}/x86_64-linux/hcomm/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/include/hccl
-        ${ASCEND_HOME_PATH}/x86_64-linux/pkg_inc/hccl
+        ${ASCEND_HOME_PATH}/include
+        ${ASCEND_HOME_PATH}/pkg_inc
+        ${ASCEND_HOME_PATH}/pkg_inc/base
+        ${ASCEND_HOME_PATH}/pkg_inc/runtime
+        ${ASCEND_HOME_PATH}/pkg_inc/profiling
+        ${ASCEND_HOME_PATH}/hcomm/include/hccl
+        ${ASCEND_HOME_PATH}/include/hccl
+        ${ASCEND_HOME_PATH}/pkg_inc/hccl
 
         # hccl-dev头文件
         ${HCCL_DEV_BASE}/src/common

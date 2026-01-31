@@ -54,7 +54,7 @@ if(BUILD_OPEN_PROJECT)
         ${ASCEND_CANN_PACKAGE_PATH}/include/driver/
 
         # mmpa头文件
-        ${ASCEND_CANN_PACKAGE_PATH}/include/mmpa/
+        ${ASCEND_CANN_PACKAGE_PATH}/pkg_inc/mmpa/
 
         # driver头文件
         ${ASCEND_CANN_PACKAGE_PATH}/include/driver/
@@ -95,10 +95,9 @@ else()
         ${TOP_DIR}/metadef/inc
         ${TOP_DIR}/metadef/inc/common
         ${TOP_DIR}/metadef/inc/external
+        ${TOP_DIR}/runtime/pkg_inc/base
 
         ${TOP_DIR}/open_source/json/include
-
-        ${TOP_DIR}/runtime/pkg_inc/base
 
         ${TOP_DIR}/hcomm/inc
         ${TOP_DIR}/hcomm/inc/hccl

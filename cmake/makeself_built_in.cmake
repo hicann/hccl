@@ -78,6 +78,10 @@ file(STRINGS ${CPACK_CMAKE_BINARY_DIR}/makeself.txt script_output)
 string(REPLACE " " ";" makeself_param_string "${script_output}")
 string(REGEX MATCH "cann.*\\.run" package_name "${makeself_param_string}")
 
+list(LENGTH makeself_param_string LIST_LENGTH)
+math(EXPR INSERT_INDEX "${LIST_LENGTH} - 2")
+list(INSERT makeself_param_string ${INSERT_INDEX} "${STAGING_DIR}")
+
 message(STATUS "script output: ${script_output}")
 message(STATUS "makeself: ${makeself_param_string}")
 message(STATUS "package: ${package_name}")

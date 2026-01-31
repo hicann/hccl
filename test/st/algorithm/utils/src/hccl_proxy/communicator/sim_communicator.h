@@ -35,7 +35,6 @@ public:
     uint32_t GetRankId();
     uint32_t GetRankSize();
     std::string GetIdentifier();
-    HcclResult GetCommRankGraph(void **graph, uint32_t *len);
     HcclResult GetHcclBuffer(void **buffer, uint64_t *size);
     HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, void **buffer, uint64_t *size);
     HcclResult ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 

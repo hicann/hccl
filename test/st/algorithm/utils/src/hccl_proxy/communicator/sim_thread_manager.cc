@@ -9,7 +9,6 @@
  */
 
 #include "sim_communicator.h"
-#include "rank_table.h"
 
 using namespace std;
 

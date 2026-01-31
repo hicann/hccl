@@ -27,7 +27,7 @@ bool IsSendRecvType(HcclCMDType opType)
 void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType, u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank, RankId dstRank)
 {
     u32 unitSize = 0;
-    if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_BATCH_SEND_RECV &&
+    if (!IsAllToAllSeries(opType) &&
         opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V && opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
         unitSize = SIZE_TABLE[dataType];
     }
@@ -56,6 +56,9 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
     } else if (opType == HcclCMDType::HCCL_CMD_SCATTER) {
         inputSize = count * unitSize * rankSize;
         outputSize = count * unitSize;
+    } else if (opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
+        inputSize = count * unitSize * rankSize;
+        outputSize = count * unitSize * rankSize;
     } else {
         printf("CalcInputOutputSize not support\n");
     }
@@ -66,10 +69,6 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
 // 如果输入、输出的count大小一样的话，那么opParam中的count既可以指代输入，也可以指代输出
 void CalcDataSize(HcclCMDType opType, uint64_t count, HcclDataType dataType, u64 &dataSize)
 {
-    if (opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
-        printf("CalcDataSize not support\n");
-        return;
-    }
     // 当前AllToAll系列以及不等长算子不使用dataSize，如果后续使用的话，需要适配这个地方
     if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V &&
         opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {

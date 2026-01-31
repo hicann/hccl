@@ -57,7 +57,7 @@ HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx
 
     HcclResult ret = RunLoop(param);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ScatterExecutorBase][Orchestrate]errNo[0x%016llx]Scatter excutor kernel run failed",
+        HCCL_ERROR("[ScatterExecutorBase][Orchestrate]errNo[0x%016llx]Scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     HCCL_INFO("[ScatterExecutorBase][Orchestrate]tag[%s] Scatter executor orchestrate success, take time [%lld]us.",
         param.tag, DURATION_US(TIME_NOW() - startut));

@@ -16,15 +16,21 @@
 #include "hccl_verifier.h"
 #include "check_utils.h"
 #include <thread>
+#include "alg_env_config.h"
 
 using namespace HcclSim;
+using namespace ops_hccl;
 
 class ST_SCATTER_TEST : public ::testing::Test {
 protected:
     void SetUp() override
-    {}
+    {
+        ResetAlgEnvConfigInitState();
+    }
     void TearDown() override
-    {}
+    {
+        unsetenv("HCCL_OP_EXPANSION_MODE");
+    }
     static void SetUpTestCase()
     {}
     static void TearDownTestCase()

@@ -350,8 +350,8 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         attr.value.timeout = NOTIFY_DEFAULT_WAIT_TIME;
         cfg.numAttrs = 1;
         cfg.attrs = &attr;
-        constexpr u32 blockDim = 1;
-        aclError aclRet = aclrtLaunchKernelWithConfig(funcHandle, blockDim, param.stream, &cfg, argsHandle, nullptr);
+        constexpr u32 numBlocks = 1;
+        aclError aclRet = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
         CHK_PRT_RET(aclRet != ACL_SUCCESS,
                     HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret), HCCL_E_OPEN_FILE_FAILURE);
 
@@ -395,7 +395,7 @@ HcclResult SetAlgoLevel0(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
     }
 
     if (algoConfig != HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT && algoConfig != HcclAlgoType::HCCL_ALGO_TYPE_NA) {
-        HCCL_WARNING("level0:%d algo is not suported. the config is ignored.", algoConfig);
+        HCCL_WARNING("level0:%d algo is not supported. the config is ignored.", algoConfig);
     }
 
     CHK_RET(GetDefaultAlgoLevel0Module(topoInfo, algType));
@@ -478,7 +478,7 @@ HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
             break;
         case HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH:
         case HcclAlgoType::HCCL_ALGO_TYPE_PAIRWISE:
-            HCCL_WARNING("level1:fullmesh algo is not suported. the config is ignored.");
+            HCCL_WARNING("level1:fullmesh algo is not supported. the config is ignored.");
         default:
             algoConfigShadow = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
             break;
@@ -566,14 +566,14 @@ HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType)
 
 std::string SetLaunchMode(CommEngine engine)
 {
-    std::string launchMode = "UNKONWN";
+    std::string launchMode = "UNKNOWN";
     if (engine == CommEngine::COMM_ENGINE_CPU) {
         launchMode = "HOST";
     } else if (engine == CommEngine::COMM_ENGINE_CPU_TS) {
         launchMode = "HOST_TS";
     } else if ((engine == CommEngine::COMM_ENGINE_AICPU) ||
                (engine == CommEngine::COMM_ENGINE_AICPU_TS)) {
-        launchMode = "AICPU";
+        launchMode = "AI_CPU";
     } else if (engine == CommEngine::COMM_ENGINE_AIV) {
         launchMode = "AIV";
     }

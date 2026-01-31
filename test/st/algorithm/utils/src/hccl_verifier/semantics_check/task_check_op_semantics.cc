@@ -155,9 +155,9 @@ void TaskCheckOpSemantics::GetAffectedBufSemantics(SliceOpPair &slicePair, const
     GetSrcIntersectionAddr(slicePair, srcBufSemantic, srcStartAddr, srcEndAddr);
 
     RankId     dstRank    = slicePair.dstRank;
-    BufferType dstBufType = slicePair.dtsSlice.GetType();
+    BufferType dstBufType = slicePair.dstSlice.GetType();
 
-    s64 dstSrcOffset = slicePair.dtsSlice.GetOffset() - slicePair.srcSlice.GetOffset();
+    s64 dstSrcOffset = slicePair.dstSlice.GetOffset() - slicePair.srcSlice.GetOffset();
     u64 dstStartAddr = srcStartAddr + dstSrcOffset;
     u64 dstEndAddr   = srcEndAddr + dstSrcOffset;
 
@@ -176,11 +176,11 @@ void TaskCheckOpSemantics::GetAffectedBufSemantics(SliceOpPair &slicePair, const
 void TaskCheckOpSemantics::GetAffectedBufSemantics(SliceOpPair &slicePair,
                                                    std::vector<BufferSemantic *> &affectedDstBufSemantics)
 {
-    u64 dstStartAddr = slicePair.dtsSlice.GetOffset();
-    u64 dstEndAddr   = dstStartAddr + slicePair.dtsSlice.GetSize();
+    u64 dstStartAddr = slicePair.dstSlice.GetOffset();
+    u64 dstEndAddr   = dstStartAddr + slicePair.dstSlice.GetSize();
 
     RankId     dstRank    = slicePair.dstRank;
-    BufferType dstBufType = slicePair.dtsSlice.GetType();
+    BufferType dstBufType = slicePair.dstSlice.GetType();
 
     for (auto &ele : allRankMemSemantics_[dstRank][dstBufType]) {
         if (ele.startAddr + ele.size <= dstStartAddr) {
@@ -201,12 +201,12 @@ void TaskCheckOpSemantics::ApplyOverrideSrcBufSemantic(SliceOpPair &slicePair, c
     u64 srcEndAddr;
     GetSrcIntersectionAddr(slicePair, srcBufSemantic, srcStartAddr, srcEndAddr);
 
-    s64 dstSrcOffset = slicePair.dtsSlice.GetOffset() - slicePair.srcSlice.GetOffset();
+    s64 dstSrcOffset = slicePair.dstSlice.GetOffset() - slicePair.srcSlice.GetOffset();
     u64 dstStartAddr = srcStartAddr + dstSrcOffset;
     u64 dstEndAddr   = srcEndAddr + dstSrcOffset;
 
     RankId                    dstRank              = slicePair.dstRank;
-    BufferType                dstBufType           = slicePair.dtsSlice.GetType();
+    BufferType                dstBufType           = slicePair.dstSlice.GetType();
     std::set<BufferSemantic> &targetBufferSemantic = allRankMemSemantics_[dstRank][dstBufType];
 
     BufferSemantic dstBufSemantic(dstStartAddr, dstEndAddr - dstStartAddr, srcBufSemantic.isReduce,
@@ -274,7 +274,7 @@ HcclResult TaskCheckOpSemantics::ApplyReduceSrcBufSemantic(SliceOpPair &slicePai
     u64 srcEndAddr;
     GetSrcIntersectionAddr(slicePair, srcBufSemantic, srcStartAddr, srcEndAddr);
 
-    s64 dstSrcOffset = slicePair.dtsSlice.GetOffset() - slicePair.srcSlice.GetOffset();
+    s64 dstSrcOffset = slicePair.dstSlice.GetOffset() - slicePair.srcSlice.GetOffset();
     u64 dstStartAddr = srcStartAddr + dstSrcOffset;
     u64 dstEndAddr   = srcEndAddr + dstSrcOffset;
 
@@ -289,7 +289,7 @@ HcclResult TaskCheckOpSemantics::ApplyReduceSrcBufSemantic(SliceOpPair &slicePai
     }
 
     RankId     dstRank    = slicePair.dstRank;
-    BufferType dstBufType = slicePair.dtsSlice.GetType();
+    BufferType dstBufType = slicePair.dstSlice.GetType();
     // 分割尾节点
     BufferSemantic &lastDstBuf = *(affectedDstBufSemantics.back());
     if (lastDstBuf.startAddr + lastDstBuf.size > dstEndAddr) {
@@ -339,11 +339,11 @@ HcclResult TaskCheckOpSemantics::ApplyReduceSrcBufSemantic(SliceOpPair &slicePai
 void TaskCheckOpSemantics::RemoveAffectedBufSemantics(SliceOpPair                   &slicePair,
                                                       std::vector<BufferSemantic *> &affectedDstBufSemantics)
 {
-    u64 dstStartAddr = slicePair.dtsSlice.GetOffset();
-    u64 dstEndAddr   = dstStartAddr + slicePair.dtsSlice.GetSize();
+    u64 dstStartAddr = slicePair.dstSlice.GetOffset();
+    u64 dstEndAddr   = dstStartAddr + slicePair.dstSlice.GetSize();
 
     RankId                    dstRank              = slicePair.dstRank;
-    BufferType                dstBufType           = slicePair.dtsSlice.GetType();
+    BufferType                dstBufType           = slicePair.dstSlice.GetType();
     std::set<BufferSemantic> &targetBufferSemantic = allRankMemSemantics_[dstRank][dstBufType];
 
     // 一种特殊情况，对应的dst还未创建起来
@@ -477,18 +477,25 @@ void TaskCheckOpSemantics::GetSliceOpPair(TaskNode *simNode, std::vector<SliceOp
         pair.srcRank  = simNode->rankIdx;
         pair.dstRank  = simNode->rankIdx;
         pair.srcSlice = task->GetSrcSlice();
-        pair.dtsSlice = task->GetDstSlice();
+        pair.dstSlice = task->GetDstSlice();
         pair.sliceOp  = SliceOp::OVERRIDE;
         sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::LOCAL_REDUCE) {
-        HCCL_ERROR("[TaskCheckOpSemantics::GetSliceOpPair] TaskType LOCAL_REDUCE not support");
+        const TaskStubLocalReduce *task = dynamic_cast<const TaskStubLocalReduce *>(simNode->task);
+        SliceOpPair pair;
+        pair.srcRank = simNode->rankIdx;
+        pair.dstRank = simNode->rankIdx;
+        pair.srcSlice = task->GetSrcSlice();
+        pair.dstSlice = task->GetDstSlice();
+        pair.sliceOp = SliceOp::REDUCE;
+        sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::READ) {
         const TaskStubRead *readTask = dynamic_cast<const TaskStubRead *>(simNode->task);
         SliceOpPair pair;
         pair.srcRank  = readTask->GetRemoteRank();
         pair.dstRank  = simNode->rankIdx;
         pair.srcSlice = readTask->GetRemoteSlice();
-        pair.dtsSlice = readTask->GetLocalSlice();
+        pair.dstSlice = readTask->GetLocalSlice();
         pair.sliceOp  = SliceOp::OVERRIDE;
         sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::WRITE) {
@@ -497,13 +504,27 @@ void TaskCheckOpSemantics::GetSliceOpPair(TaskNode *simNode, std::vector<SliceOp
         pair.srcRank  = simNode->rankIdx;
         pair.dstRank  = writeTask->GetRemoteRank();
         pair.srcSlice = writeTask->GetLocalSlice();
-        pair.dtsSlice = writeTask->GetRemoteSlice();
+        pair.dstSlice = writeTask->GetRemoteSlice();
         pair.sliceOp  = SliceOp::OVERRIDE;
         sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[TaskCheckOpSemantics::GetSliceOpPair] TaskType READ_REDUCE not support");
+        const TaskStubReadReduce  *readReduceTask = dynamic_cast<const TaskStubReadReduce *>(simNode->task);
+        SliceOpPair pair;
+        pair.srcRank  = readReduceTask->GetRemoteRank();
+        pair.dstRank  = simNode->rankIdx;
+        pair.srcSlice = readReduceTask->GetRemoteSlice();
+        pair.dstSlice = readReduceTask->GetLocalSlice();
+        pair.sliceOp  = SliceOp::REDUCE;
+        sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[TaskCheckOpSemantics::GetSliceOpPair] TaskType WRITE_REDUCE not support");
+        const TaskStubWriteReduce  *writeReduceTask = dynamic_cast<const TaskStubWriteReduce *>(simNode->task);
+        SliceOpPair pair;
+        pair.srcRank  = simNode->rankIdx;
+        pair.dstRank  = writeReduceTask->GetRemoteRank();
+        pair.srcSlice = writeReduceTask->GetLocalSlice();
+        pair.dstSlice = writeReduceTask->GetRemoteSlice();
+        pair.sliceOp  = SliceOp::REDUCE;
+        sliceOpPairs.push_back(pair);
     } else if (taskType == TaskTypeStub::LOCAL_BATCH_REDUCE) {
         HCCL_ERROR("[TaskCheckOpSemantics::GetSliceOpPair] TaskType LOCAL_BATCH_REDUCE not support");
     }
