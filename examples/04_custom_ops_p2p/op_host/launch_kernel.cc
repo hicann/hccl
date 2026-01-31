@@ -39,9 +39,9 @@ HcclResult LaunchKernel(OpParam &param, aclrtStream stream)
     attr.value.timeout = NOTIFY_DEFAULT_WAIT_TIME;
     cfg.numAttrs = 1;
     cfg.attrs = &attr;
-    constexpr uint32_t blockDim = 1;
+    constexpr uint32_t numBlocks = 1;
 
-    ACLCHECK(aclrtLaunchKernelWithConfig(funcHandle, blockDim, stream, &cfg, argsHandle, nullptr));
+    ACLCHECK(aclrtLaunchKernelWithConfig(funcHandle, numBlocks, stream, &cfg, argsHandle, nullptr));
 
     // Host stream等待Device的通知
     ACLCHECK(aclrtWaitAndResetNotify(g_notifies[1], stream, CUSTOM_TIMEOUT));

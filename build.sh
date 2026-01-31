@@ -432,6 +432,7 @@ while [[ $# -gt 0 ]]; do
         log "Error: Undefined option: $1"
         usage
         exit 1
+        ;;
     esac
 done
 
