@@ -39,9 +39,6 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
 {
-    // 入口的地方先解析环境变量
-    CHK_RET(InitEnvConfig());
-
     // 获取设备类型拦截混合组网
     HcclHeterogMode allDeviceType;
     CHK_RET(HcclGetHeterogMode(comm, &allDeviceType));
@@ -55,6 +52,10 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     if (!RunIndependentOpExpansion(deviceType)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
+
+    // 入口的地方先解析环境变量
+    CHK_RET(InitEnvConfig());
+    
     // AclGraph引导到老的流程上面
     if (IsStreamCapture(stream)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
