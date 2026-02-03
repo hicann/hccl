@@ -49,6 +49,7 @@ set(CMAKE_C_COMPILE_OBJECT
 if(ENABLE_TEST)
     include(cmake/config.cmake)
     include(cmake/intf_pub_gccnative.cmake)
+    include(cmake/function.cmake)
     add_subdirectory(test)
 
 elseif(ENABLE_CUSTOM)

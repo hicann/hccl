@@ -13,6 +13,7 @@ CURRENT_DIR=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 BUILD_DIR=${CURRENT_DIR}/build
 BUILD_DEVICE_DIR="${CURRENT_DIR}/build_device"
 OUTPUT_DIR=${CURRENT_DIR}/build_out
+OUTPUT_PATH=${CURRENT_DIR}/output
 USER_ID=$(id -u)
 CPU_NUM=$(($(cat /proc/cpuinfo | grep "^processor" | wc -l)*2))
 JOB_NUM="-j${CPU_NUM}"
@@ -188,9 +189,12 @@ function mk_dir() {
 # create build path
 function build_ut() {
   echo "create build directory and build";
+  mk_dir "${OUTPUT_PATH}"
   mk_dir "${BUILD_DIR}"
+  local report_dir="${OUTPUT_PATH}/report/ut" && mk_dir "${report_dir}"
   cd "${BUILD_DIR}"
 
+  local LLT_KILL_TIME=1200
   CMAKE_ARGS="-DPRODUCT_SIDE=host \
               -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
               -DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR} \
@@ -199,7 +203,9 @@ function build_ut() {
               -DENABLE_COV=${ENABLE_COV} \
               -DENABLE_TEST=${ENABLE_TEST} \
               -DENABLE_UT=${ENABLE_UT} \
-              -DENABLE_ST=${ENABLE_ST}"
+              -DENABLE_ST=${ENABLE_ST} \
+              -DOUTPUT_PATH=${OUTPUT_PATH} \
+ 	          -DLLT_KILL_TIME=${LLT_KILL_TIME}"
 
   echo "CMAKE_ARGS=${CMAKE_ARGS}"
   cmake ${CMAKE_ARGS} ..
