@@ -273,7 +273,6 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
     return HCCL_SUCCESS;
 }
 
-aclrtNotify g_notifies[AICPU_CONTROL_NOTIFY_NUM];
 /* 执行通信算子 */
 HcclResult ExecOp(HcclComm comm, OpParam &param)
 {
@@ -295,8 +294,22 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
 
     // 获取资源
     AlgResourceCtx* resCtx;
-
-    CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx, g_notifies));
+    ThreadHandle cpuTsThread;
+    ThreadHandle exportedAicpuTsThread;
+    CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
+    // Export cpuTsThread
+    CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
+    CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx));
+    
+    // Export aicpu ts thread
+    ThreadHandle mainThread = topoInfo->mainThread;
+    ThreadHandle exportedCpuTsThread;
+    CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS, &exportedCpuTsThread));
+    // cpuTsThread 添加到ctx里
+    char* curPtr = reinterpret_cast<char *>(resCtx);
+    curPtr = curPtr + sizeof(AlgResourceCtx) - sizeof(TopoInfo) - sizeof(ThreadHandle); // 偏移指针
+    ACLCHECK(aclrtMemcpy(curPtr, sizeof(ThreadHandle), &exportedAicpuTsThread, sizeof(ThreadHandle),
+        ACL_MEMCPY_HOST_TO_DEVICE));
 
     // 算法执行
     if (param.engine == COMM_ENGINE_AICPU_TS) {
@@ -309,11 +322,9 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
             return HCCL_E_INTERNAL;
         }
 
-        // Host stream通知Device主thread
-        if (aclrtRecordNotify(g_notifies[0], param.stream) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to record aicpu stream");
-            return HCCL_E_INTERNAL;
-        }
+        // Host stream通知Device主thread，使用主流上idx最大的notify
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(cpuTsThread, exportedCpuTsThread,
+            topoInfo->notifyNumOnMainThread)));
 
         // 执行device测的算法编排
         std::string kernelName = "HcclLaunchAicpuKernel";
@@ -357,10 +368,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
                     HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret), HCCL_E_OPEN_FILE_FAILURE);
 
         // Host stream等待Device的通知
-        if (aclrtWaitAndResetNotify(g_notifies[1], param.stream, CUSTOM_TIMEOUT) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to wait from aicpu stream");
-            return HCCL_E_INTERNAL;
-        }
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, 0, NOTIFY_DEFAULT_WAIT_TIME)));
     } else {
         CHK_RET(executor->Orchestrate(param, resCtx));
     }
@@ -638,7 +646,7 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
 }
 
 HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase> &executor,
-    TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx, aclrtNotify* notifies)
+    TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx)
 {
     // 这种情况下资源已经有了
     void *ctx = nullptr;
@@ -674,12 +682,13 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         resCtxHost = *resCtx;
     }
 
+    topoInfo->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->topoInfo = *topoInfo;
     resCtxHost->algType = algType;
     resCtxHost->algHierarchyInfo = algHierarchyInfo;
 
-    // // 创建资源，并填充到Host内存上
-    HcclResult ret = AllocAlgResource(comm, param, resRequest, resCtxHost, notifies);
+    // 创建资源，并填充到Host内存上
+    HcclResult ret = AllocAlgResource(comm, param, resRequest, resCtxHost);
     if (ret != HCCL_SUCCESS) {
         HCCL_ERROR("failed to alloc alg resource.");
         if (param.engine == COMM_ENGINE_AICPU_TS) {
@@ -687,7 +696,8 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         }
         return ret;
     }
-
+    topoInfo->mainThread = resCtxHost->topoInfo.mainThread;
+ 
     CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0));
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 从Host内存拷贝到Device Context内存上
@@ -697,7 +707,7 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
 }
 
 HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
-    AlgResourceCtx* resCtxHost, aclrtNotify* notifies)
+    AlgResourceCtx* resCtxHost)
 {
     void* cclBufferAddr;
     uint64_t cclBufferSize;
@@ -713,37 +723,14 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
 
-    #define ACL_NOTIFY_DEFAULT          0x00000000U
-    // 先使用acl接口来分配notify
-    if (aclrtCreateNotify(&(notifies[0]), ACL_NOTIFY_DEFAULT) != ACL_SUCCESS) {
-        HCCL_ERROR("failed to alloc notify");
-        return HCCL_E_INTERNAL;
-    }
-
-    if (aclrtCreateNotify(&(notifies[1]), ACL_NOTIFY_DEFAULT) != ACL_SUCCESS) {
-        HCCL_ERROR("failed to alloc notify");
-        return HCCL_E_INTERNAL;
-    }
-
-    // 当前该接口未提供，需要先规避一下
-    // 创建两个notify，放入Context结构体中
-
-    for (u32 idx = 0; idx < AICPU_CONTROL_NOTIFY_NUM; idx++) {
-        uint32_t notifyId;
-        // 获取notify Id，放入Context中
-        if (aclrtGetNotifyId(notifies[idx], &notifyId) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to get notify id");
-            return HCCL_E_INTERNAL;
-        }
-        resCtxHost->notifyIds[idx] = notifyId;
-    }
-
     char* curPtr = reinterpret_cast<char *>(resCtxHost);
     curPtr += sizeof(AlgResourceCtx); // 偏移指针
     ThreadHandle* threads = reinterpret_cast<ThreadHandle *>(curPtr);
     if (param.engine == COMM_ENGINE_AICPU_TS) {
+        // 主流多申请1个notify用于host和device同步
         CHK_RET(HcclThreadAcquire(comm, param.engine, 1,
-            resRequest.notifyNumOnMainThread, threads));
+            resRequest.notifyNumOnMainThread + 1, threads));
+        resCtxHost->topoInfo.mainThread = *threads;
         HCCL_DEBUG("threads ptr is %p\n", *threads);
     } else {
         // host模式下，将主流封装为thread，并创建主流上的notify
