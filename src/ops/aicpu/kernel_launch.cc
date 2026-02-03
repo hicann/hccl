@@ -63,16 +63,17 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     ThreadHandle* threadHandlePtr = reinterpret_cast<ThreadHandle *>(reinterpret_cast<u8 *>(param->resCtx) +
         sizeof(AlgResourceCtx));
     ThreadHandle thread = threadHandlePtr[0];
+    ThreadHandle exportedAicpuTsThread = param->resCtx->opThread;
+    u32 notifyNumOnMainThread = param->resCtx->notifyNumOnMainThread;
     if (HcommBatchModeStart(param->algTag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed set batch mode, tag is %s.", param->algTag);
         return 1;
     }
 
     // 主thread等待Host stream的通知
-    if (HcommAclrtNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed to wait notify[%d] from host main stream", param->resCtx->notifyIds[0]);
-        return 1;
-    }
+    HCCL_DEBUG("[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
+        notifyNumOnMainThread, CUSTOM_TIMEOUT);
+    CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, notifyNumOnMainThread, CUSTOM_TIMEOUT)));
 
     // 执行算法编排
     if (executor->Orchestrate(*param, param->resCtx) != HCCL_SUCCESS) {
@@ -81,10 +82,11 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (HcommAclrtNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed to record host main stream");
-        return 1;
-    }
+    constexpr u32 DEFAULT_NOTIFY_IDX = 0;
+    HCCL_DEBUG("[%s]Notify record on srcThread[%llu], dstThread[%llu], notifyIdx[%u]",__func__, thread, exportedAicpuTsThread,
+        DEFAULT_NOTIFY_IDX);
+    CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(thread, exportedAicpuTsThread,
+        DEFAULT_NOTIFY_IDX)));
     if (HcommBatchModeEnd(param->algTag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);
         return 1;
