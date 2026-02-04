@@ -296,20 +296,25 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
     AlgResourceCtx* resCtx;
     ThreadHandle cpuTsThread;
     ThreadHandle exportedAicpuTsThread;
-    CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
-    // Export cpuTsThread
-    CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
-    CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx));
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
+        CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
+        // Export cpuTsThread
+        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
+    }
     
-    // Export aicpu ts thread
-    ThreadHandle mainThread = topoInfo->mainThread;
+    CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx));
     ThreadHandle exportedCpuTsThread;
-    CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS, &exportedCpuTsThread));
-    // cpuTsThread 添加到ctx里
-    char* curPtr = reinterpret_cast<char *>(resCtx);
-    curPtr = curPtr + sizeof(AlgResourceCtx) - sizeof(TopoInfo) - sizeof(ThreadHandle); // 偏移指针
-    ACLCHECK(aclrtMemcpy(curPtr, sizeof(ThreadHandle), &exportedAicpuTsThread, sizeof(ThreadHandle),
-        ACL_MEMCPY_HOST_TO_DEVICE));
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
+        // Export aicpu ts thread
+        ThreadHandle mainThread = topoInfo->mainThread;
+        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS, &exportedCpuTsThread));
+        // cpuTsThread 添加到ctx里
+        char* curPtr = reinterpret_cast<char *>(resCtx);
+        curPtr = curPtr + sizeof(AlgResourceCtx) - sizeof(TopoInfo) - sizeof(ThreadHandle); // 偏移指针
+        ACLCHECK(aclrtMemcpy(curPtr, sizeof(ThreadHandle), &exportedAicpuTsThread, sizeof(ThreadHandle),
+            ACL_MEMCPY_HOST_TO_DEVICE));
+    }
+    
 
     // 算法执行
     if (param.engine == COMM_ENGINE_AICPU_TS) {
@@ -678,11 +683,11 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // AICPU模式下分配一块Host内存用于填充资源
         ACLCHECK(aclrtMallocHost(reinterpret_cast<void**>(&resCtxHost), size));
+        topoInfo->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     } else {
         resCtxHost = *resCtx;
     }
 
-    topoInfo->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->topoInfo = *topoInfo;
     resCtxHost->algType = algType;
     resCtxHost->algHierarchyInfo = algHierarchyInfo;
@@ -696,7 +701,9 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         }
         return ret;
     }
-    topoInfo->mainThread = resCtxHost->topoInfo.mainThread;
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
+        topoInfo->mainThread = resCtxHost->topoInfo.mainThread;
+    }
  
     CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0));
     if (param.engine == COMM_ENGINE_AICPU_TS) {
