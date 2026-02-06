@@ -70,6 +70,8 @@ HcclResult CheckScatterInputPara(HcclComm comm, void *recvBuf);
 
 std::string SetLaunchMode(CommEngine engine);
 
+HcclResult ReportProfilingThread(HcclComm comm, const OpParam &param, AlgResourceCtx *resCtxHost, TopoInfo* topoInfo);
+
 }
 
 #endif

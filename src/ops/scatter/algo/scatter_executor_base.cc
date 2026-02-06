@@ -83,6 +83,13 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
     auto cclOutputMem = algResource_->cclOutputMem;
     CHK_PRT_RET((cclInputMem.size == 0), HCCL_ERROR("[ScatterExecutorBase][RunLoop]cclBuffer size is zero"), HCCL_E_PARA);
 
+    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
+        param.engine == CommEngine::COMM_ENGINE_CPU) {
+        int32_t ret = HcommAcquireComm(param.commName);
+        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ",
+            __func__, param.commName), static_cast<HcclResult>(ret));
+    }
+    
     // 中转内存单次最多能够接受的output count
     u64 maxCountPerLoop = cclInputMem.size / topoInfo_->userRankSize / HCCL_MIN_SLICE_ALIGN
         * HCCL_MIN_SLICE_ALIGN / unitSize_;
@@ -133,6 +140,12 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
 
         curUserInputPtr += curRecvSize;
         curUserOutputPtr += curRecvSize;
+    }
+    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
+        param.engine == CommEngine::COMM_ENGINE_CPU) {
+        int32_t ret = HcommReleaseComm(param.commName);
+        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommReleaseComm failed ", 
+                    __func__, param.commName), static_cast<HcclResult>(ret));
     }
     return HCCL_SUCCESS;
 }
