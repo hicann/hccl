@@ -27,6 +27,8 @@
 namespace ops_hccl {
 
 constexpr u32 COMM_INDENTIFIER_MAX_LENGTH = 128;
+constexpr u32 ALG_MAX_LENGTH = 128;
+constexpr u32 MAX_LENGTH = 128;
 constexpr uint32_t OP_NAME_LENGTH = 32;
 constexpr uint32_t TAG_LENGTH = OP_NAME_LENGTH + COMM_INDENTIFIER_MAX_LENGTH; // 算子相关的topo表达
 constexpr uint32_t OP_ALG_LENGTH = 128; // 存放算法 + host/device标记
@@ -136,6 +138,8 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     HcclReduceOp reduceType = HcclReduceOp::HCCL_REDUCE_RESERVED;
     u32 root = INVALID_VALUE_RANKID;
     CommEngine engine = CommEngine::COMM_ENGINE_RESERVED;
+    AlgType algType;
+    char algTypeStr[ALG_MAX_LENGTH];
     union {
         struct {
             u64 count;
@@ -163,5 +167,25 @@ struct Slice {
     u64 offset{0}; // Slice相对于input/output的偏移字节数，gather类操作取output，scatter类操作取input
     u64 size{0};    // Slice的数据大小，单位：字节
 };
+
+typedef struct HcomProInfo {
+    uint8_t dataType;
+    uint8_t cmdType;
+    uint64_t dataCount;
+    uint32_t rankSize;
+    uint32_t userRank;
+    uint32_t blockDim = 0;
+    uint64_t beginTime;
+    uint32_t root;
+    uint32_t slaveThreadNum;
+    uint64_t commNameLen;
+    uint64_t algTypeLen;
+    char tag[MAX_LENGTH];
+    char commName[MAX_LENGTH];
+    char algType[MAX_LENGTH];
+    bool isCapture = false;
+    bool isAiv = false;
+    uint8_t reserved[MAX_LENGTH];
+}HcomProInfo;
 }
 #endif

@@ -25,6 +25,13 @@ extern "C" {
 #endif
 HcclResult __attribute__((weak)) HcommRegOpInfo(const char* commId, void* opInfo, size_t size);
 HcclResult __attribute__((weak)) HcommRegOpTaskException(const char* commId, HcclGetOpInfoCallback callback);
+
+HcclResult __attribute__((weak)) HcommProfilingReportMainStreamAndFirstTask(ThreadHandle thread);
+HcclResult __attribute__((weak)) HcommProfilingReportMainStreamAndLastTask(ThreadHandle thread);
+//device侧的OP
+HcclResult __attribute__((weak)) HcommProfilingReportDeviceHcclOpInfo(HcomProInfo profInfo);
+HcclResult __attribute__((weak)) HcommProfilingInit(ThreadHandle *threads, u32 threadNum);
+HcclResult __attribute__((weak)) HcommProfilingEnd(ThreadHandle *threads, u32 threadNum);
 #ifdef __cplusplus
 }
 #endif
@@ -70,6 +77,18 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         return 1;
     }
 
+    if (HcommProfilingInit(threadHandlePtr, param->resCtx->slaveThreadNum+1) != HCCL_SUCCESS)
+    {
+        HCCL_ERROR("failed to init Profiling");
+        return 1;
+    }
+
+    // 上报主流和第一个task  wait之前
+    if (HcommProfilingReportMainStreamAndFirstTask(thread) != HCCL_SUCCESS) {
+        HCCL_ERROR("failed to report MainStream And FirstTask");
+        return 1;
+    }
+
     // 主thread等待Host stream的通知
     HCCL_DEBUG("[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
         notifyNumOnMainThread, CUSTOM_TIMEOUT);
@@ -81,14 +100,36 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         return 1;
     }
 
+    // 上报device侧的op 附加信息
+    HcomProInfo profInfo;
+    std::string algTypeStr(param->algTypeStr);
+    strcpy_s(profInfo.algType, sizeof(profInfo.algType), algTypeStr.c_str());
+    strcpy_s(profInfo.commName, sizeof(profInfo.commName), param->commName);
+    profInfo.commNameLen = strlen(param->commName);
+    profInfo.dataCount = param->DataDes.count;
+    profInfo.dataType = static_cast<uint8_t>(param->DataDes.dataType);
+    profInfo.rankSize = param->resCtx->topoInfo.userRankSize;
+    HcommProfilingReportDeviceHcclOpInfo(profInfo);
     // 主thread通知Host stream
     constexpr u32 DEFAULT_NOTIFY_IDX = 0;
     HCCL_DEBUG("[%s]Notify record on srcThread[%llu], dstThread[%llu], notifyIdx[%u]",__func__, thread, exportedAicpuTsThread,
         DEFAULT_NOTIFY_IDX);
     CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(thread, exportedAicpuTsThread,
         DEFAULT_NOTIFY_IDX)));
+    
+    // 上报主流和最后一个task 在notify之后
+    if (HcommProfilingReportMainStreamAndLastTask(thread) != HCCL_SUCCESS) {
+        HCCL_ERROR("failed to report MainStream And LastTask");
+        return 1;
+    }
+    
     if (HcommBatchModeEnd(param->algTag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);
+        return 1;
+    }
+
+    if (HcommProfilingEnd(threadHandlePtr, param->resCtx->slaveThreadNum + 1) != HCCL_SUCCESS) {
+        HCCL_ERROR("failed to End Profiling");
         return 1;
     }
 
