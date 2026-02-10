@@ -33,7 +33,7 @@
 
 ## 端口声明
 
-HCCL 开放的端口、端口使用的传输层协议、认证方式以及用途等信息可参见[《CANN通信矩阵》](https://hiascend.com/document/redirect/CannCommunityCommMatrix)。
+HCCL 开放的端口、端口使用的传输层协议、认证方式以及用途等信息可参见[《CANN通信矩阵》](https://hiascend.com/document/redirect/CannCommunityCommMatrix)中的“HCCL”页签。
 
 ## 漏洞机制说明
 
