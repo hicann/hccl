@@ -16,6 +16,19 @@ ExecutorBase::ExecutorBase() : workflowMode_(GetWorkflowMode())
 {
 }
 
+HcclResult ExecutorBase::CalcResRequest(HcclComm comm, const OpParam& param,
+    TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgResourceRequest& resourceRequest, AlgType& algType)
+{
+    (void)comm;
+    (void)param;
+    (void)topoInfo;
+    (void)algHierarchyInfo;
+    (void)resourceRequest;
+    (void)algType;
+    return HCCL_SUCCESS;
+}
+
 HcclResult ExecutorBase::KernelRun(const OpParam &param, ExecMem &execMem)
 {
     HCCL_WARNING("[ExecutorBase][KernelRun]Using the default kernel run, nothing is done.");

@@ -19,7 +19,6 @@
 #include "hccl_common.h"
 #include "hccl_types.h"
 #include "alg_type.h"
-#include "hcomm_primitives.h"
 #include "hccl_res.h"
 #include "hcomm_primitives.h"
 #include "hccl_rank_graph.h"
@@ -58,6 +57,12 @@ enum class TopoType {
     TOPO_TYPE_RESERVED
 };
 
+enum class Level0Shape {
+    CLOS    = 0,
+    MESH_1D = 1,
+    MESH_2D = 2
+};
+
 // 这个应该是公共的
 struct TopoInfo { // 通信域拓扑ctx
     u32 userRank; // rankId
@@ -77,6 +82,8 @@ struct TopoInfo { // 通信域拓扑ctx
     bool isHCCSSWNumEqualToTwiceSIONum = false; // A3 Server内链路属性
     ThreadHandle mainThread;    // 主流对应threadHandle
     u32 notifyNumOnMainThread = 0;  // mainThread上创建的notify数量
+    u32 topoLevelNums = 0;
+    Level0Shape level0Topo;
 };
 
 // A5用了cntNotify
@@ -109,6 +116,17 @@ struct ChannelInfo {
     HcclMem remoteOutput;
 };
 
+// DPU资源
+struct DPUAlgResourceCtx {
+    uint32_t tempIndex;
+    AlgHierarchyInfo algHierarchyInfo;
+    HcclMem cclInputMem; // 跨Rank缓存Buffer
+    HcclMem cclOutputMem; // 跨Rank缓存Buffer
+    u32 channelNum = 0;
+    ChannelInfo* channels = nullptr;
+    u64 sliceSize = 0;
+};
+
 // 算法ctx，key为通信域id+算法名，提前在device上
 // 头部需补充版本号和长度信息
 struct AlgResourceCtx {
@@ -120,7 +138,11 @@ struct AlgResourceCtx {
     u32 slaveThreadNum; // 需要的thread数量
     u32 notifyNumPerThread; // 每个thread需要的notify数量
     ThreadHandle opThread;  // 算子stream申请的thread，用于host、device同步
+    uint32_t notifyIds[AICPU_CONTROL_NOTIFY_NUM]; // aicpu 模式下控制notify
     TopoInfo topoInfo; // 提取的拓扑信息
+    void *npu2DpuShmemPtr;
+    void *dpu2NpuShmemPtr;
+    DPUAlgResourceCtx dpuResCtx;
     // 下面是变长数据区
     // ThreadHandle* threads; // threadNum个，主流和从流的thread句柄
     // ChannelInfo* channels; // 通信链路，数量可根据algHierarchyInfo字段进行推算
@@ -130,6 +152,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     char tag[TAG_LENGTH];
     char algTag[ALG_TAG_LENGTH];
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
+    DevType deviceType = DevType::DEV_TYPE_COUNT; // 硬件类型
     aclrtStream stream;
     void* inputPtr = nullptr;
     u64 inputSize = 0;

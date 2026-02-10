@@ -349,6 +349,12 @@ aclError aclrtGetResInCurrentThread(aclrtDevResLimitType type, uint32_t *value)
     return ACL_SUCCESS;
 }
 
+aclError aclrtSynchronizeStream(aclrtStream stream)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif  // __cplusplus

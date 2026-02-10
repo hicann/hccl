@@ -40,22 +40,24 @@ HcclResult __attribute__((weak)) HcommProfilingEnd(ThreadHandle *threads, u32 th
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
-    if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
+    if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
 
-    if (HcommRegOpInfo != nullptr &&
-        HcommRegOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommRegOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
-            __func__, param->commName, param->algTag, param, sizeof(OpParam));
-        return 1;
-    }
+    if (param->deviceType != DevType::DEV_TYPE_910_95) {
+        if (HcommRegOpInfo != nullptr &&
+            HcommRegOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
+            HCCL_ERROR("%s HcommRegOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
+                __func__, param->commName, param->algTag, param, sizeof(OpParam));
+            return 1;
+        }
 
-    if (HcommRegOpTaskException != nullptr &&
-        HcommRegOpTaskException(param->commName, ops_hccl::GetScatterOpInfo) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommRegOpTaskException fail, commName[%s], algTag[%s]", __func__, param->commName, param->algTag);
-        return 1;
+        if (HcommRegOpTaskException != nullptr &&
+            HcommRegOpTaskException(param->commName, ops_hccl::GetScatterOpInfo) != HCCL_SUCCESS) {
+            HCCL_ERROR("%s HcommRegOpTaskException fail, commName[%s], algTag[%s]", __func__, param->commName, param->algTag);
+            return 1;
+        }
     }
 
     // 根据算法名字获取executor

@@ -30,7 +30,8 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     const AlgType& algType, std::vector<HcclChannelDesc> &channels);
 HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
     const AlgType& algType, std::vector<HcclChannelDesc> &channels);
-
+HcclResult CalcLevel1ChannelRequestHostDpu(HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgType& algType, std::vector<HcclChannelDesc> &channels);
 }
 
 #endif

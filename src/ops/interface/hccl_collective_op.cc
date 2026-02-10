@@ -23,12 +23,6 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
     return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
 }
 
-HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-                             HcclReduceOp op, HcclComm comm, aclrtStream stream)
-{
-    return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
-}
-
 HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void *sendDispls,
     void *recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream)
 {

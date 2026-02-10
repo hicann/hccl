@@ -82,6 +82,21 @@ HcclResult AlgTemplateBase::RunAsync(const u32 rank, const u32 rankSize, std::ve
     return HCCL_SUCCESS;
 }
 
+HcclResult AlgTemplateBase::RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels, std::vector<ThreadHandle> slaveThreads)
+{
+    (void)rank;
+    (void)rankSize;
+    (void)channels;
+    (void)slaveThreads;
+    return HCCL_SUCCESS;
+}
+
+HcclResult AlgTemplateBase::RunAsync(const DPUAlgResourceCtx *dpuResCtx)
+{
+    (void) dpuResCtx;
+    return HCCL_SUCCESS;
+}
+
 HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread)
 {
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channel.handle, NOTIFY_IDX_ACK)));

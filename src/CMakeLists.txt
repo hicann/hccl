@@ -32,6 +32,10 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/topo
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/aicpu
+    # reduce scatter 算子
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algo
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algo/template
 )
 
 if(BUILD_OPEN_PROJECT)
@@ -133,6 +137,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/scatter_mesh_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/scatter_ring_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/scatter_single_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algo/reduce_scatter_mesh_executor.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/alg_template_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/template/nhr_base.cc
@@ -141,6 +146,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/template/scatter_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/template/scatter_ring_direct.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algo/template/scatter_ring.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algo/template/reduce_scatter_mesh_local_reduce_template.cc
 )
 
 target_include_directories(scatter_aicpu_kernel PRIVATE

@@ -73,6 +73,24 @@ inline std::string GetDataTypeEnumStr(HcclDataType dataType)
     }
 }
 
+const std::map<HcclReduceOp, std::string> HCOM_REDUCE_OP_STR_MAP{
+    {HcclReduceOp::HCCL_REDUCE_SUM, "sum"},
+    {HcclReduceOp::HCCL_REDUCE_PROD, "prod"},
+    {HcclReduceOp::HCCL_REDUCE_MAX, "max"},
+    {HcclReduceOp::HCCL_REDUCE_MIN, "min"},
+    {HcclReduceOp::HCCL_REDUCE_RESERVED, "reserved"}
+};
+
+inline std::string GetReduceOpEnumStr(HcclReduceOp reduceOp)
+{
+    auto iter = HCOM_REDUCE_OP_STR_MAP.find(reduceOp);
+    if (iter == HCOM_REDUCE_OP_STR_MAP.end()) {
+        return "HcclReduceOp(" + std::to_string(reduceOp) + ")";
+    } else {
+        return iter->second;
+    }
+}
+
 constexpr u32 HCCL_ALGO_LEVEL_0 = 0;        // HCCL 算法层级0
 constexpr u32 HCCL_ALGO_LEVEL_1 = 1;        // HCCL 算法层级1
 constexpr u32 HCCL_ALGO_LEVEL_2 = 2;        // HCCL 算法层级2

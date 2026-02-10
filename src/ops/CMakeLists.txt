@@ -9,6 +9,7 @@
 # -----------------------------------------------------------------------------------------------------------
 add_subdirectory(channel)
 add_subdirectory(scatter)
+add_subdirectory(reduce_scatter)
 add_subdirectory(topo)
 add_subdirectory(registry)
 add_subdirectory(aicpu)

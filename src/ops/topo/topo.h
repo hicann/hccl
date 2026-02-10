@@ -43,6 +43,7 @@ HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &
 HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
 HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
 HcclResult CalcGeneralTopoInfoForComm(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
+HcclResult CalcGeneralTopoInfoForCommHostDpu(TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
 
 HcclResult GetUserRankBySubCommRank(u32 subCommRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &userRank);
 HcclResult GetSubCommRankByUserRank(u32 userRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &subCommRank);
@@ -95,6 +96,10 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
                                        const std::vector<uint32_t> &l1Sizes,
                                        std::vector<uint32_t> &serversPerSuperPod);
 
+HcclResult InitRankInfoForA5(HcclComm comm, TopoInfo* topoInfo);
+HcclResult CalcMyRankInfoForA5(HcclComm comm, TopoInfo* topoInfo);
+
+HcclResult GetSomeTopoInfo(HcclComm comm, TopoInfo &topoInfo);
 }
 
 #endif

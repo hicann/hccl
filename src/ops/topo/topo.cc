@@ -11,6 +11,7 @@
 #include "topo.h"
 #include "hccl_rank_graph.h"
 #include "hcomm_primitives.h"
+#include "hccl_rank_graph.h"
 #include "hccl_res.h"
 #include "hcomm_primitives.h"
 #include "hccl.h"
@@ -51,6 +52,24 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
         topoInfo->serverNum, topoInfo->moduleNum, topoInfo->superPodNum, topoInfo->moduleIdx,
         topoInfo->isDiffDeviceModule, topoInfo->multiModuleDiffDeviceNumMode, topoInfo->multiSuperPodDiffServerNumMode,
         topoInfo->isHCCSSWNumEqualToTwiceSIONum);
+#endif
+    return HCCL_SUCCESS;
+}
+
+HcclResult InitRankInfoForA5(HcclComm comm, TopoInfo* topoInfo)
+{
+    // 提取本rank的信息
+    CHK_RET(CalcMyRankInfoForA5(comm, topoInfo));
+    return HCCL_SUCCESS;
+}
+
+HcclResult CalcMyRankInfoForA5(HcclComm comm, TopoInfo* topoInfo)
+{
+#ifndef AICPU_COMPILE
+    CHK_RET(HcclGetRankSize(comm, &(topoInfo->userRankSize)));
+    CHK_RET(HcclGetRankId(comm, &(topoInfo->userRank)));
+    CHK_RET(hrtGetDeviceType(topoInfo->deviceType));
+    // 其他信息暂时不需要
 #endif
     return HCCL_SUCCESS;
 }
@@ -319,6 +338,20 @@ HcclResult CalcGeneralTopoInfoForComm(HcclComm comm, TopoInfo* topoInfo, AlgHier
     algHierarchyInfo.infos[COMM_LEVEL1].localRankSize = topoInfo->userRankSize;
     HCCL_INFO("[CalcGeneralTopoInfoForComm] userRank[%u] serverIdx[%u] l1Rank[%u]",
         topoInfo->userRank, topoInfo->serverIdx, algHierarchyInfo.infos[COMM_LEVEL1].localRank);
+    return HCCL_SUCCESS;
+}
+
+/* 对于A5 HostDPU场景，只涉及level1间通信 */
+HcclResult CalcGeneralTopoInfoForCommHostDpu(TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
+{
+    algHierarchyInfo.levels = 2;
+    // Level0不使用，DPU网卡占用Level1，不进行解析
+
+    algHierarchyInfo.infos[1].localRank = topoInfo->userRank;
+    algHierarchyInfo.infos[1].localRankSize = topoInfo->userRankSize;
+
+    HCCL_INFO("[CalcGeneralTopoInfoForCommHostDpu] userRank[%u] serverIdx[%u] l1Rank[%u]",
+        algHierarchyInfo.infos[1].localRank, topoInfo->serverIdx, algHierarchyInfo.infos[1].localRankSize);
     return HCCL_SUCCESS;
 }
 
@@ -669,4 +702,57 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
     return HCCL_SUCCESS;
 }
 #endif
+
+HcclResult GetSomeTopoInfo(HcclComm comm, TopoInfo &topoInfo)
+{
+#ifndef AICPU_COMPILE
+    u32 rankSize;
+    CHK_RET(HcclGetRankSize(comm, &rankSize));
+    topoInfo.userRankSize = rankSize;
+
+    uint32_t rankListNum;
+    uint32_t *rankSizeList;
+    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, 0, &rankSizeList, &rankListNum));
+    topoInfo.serverNum = rankListNum;
+
+    uint32_t *netlayers = nullptr;
+    uint32_t netLayersNum = 0;
+    CHK_RET(HcclRankGraphGetLayers(comm, &netlayers, &netLayersNum));
+
+    std::vector<std::vector<u32>> instSizeListAllLevels;
+    std::vector<u32> instListNumAllLevels;
+    for (uint32_t levelIdx = 0; levelIdx < netLayersNum; levelIdx++) {
+        uint32_t *instSizeListSingleLevel = nullptr;
+        uint32_t instListNumSingleLevel = 0;
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, levelIdx, &instSizeListSingleLevel, &instListNumSingleLevel));
+        std::vector<u32> instSizeListSingleLevelTemp;
+        u32 currLayerRankSize = 0;
+        for (uint32_t index = 0; index < instListNumSingleLevel; index++) {
+            HCCL_INFO("[CalcTopoLevelNums] instListNumSingleLevel: [%u].", instListNumSingleLevel);
+            HCCL_INFO("[CalcTopoLevelNums] levelIdx: [%u], instSizeListSingleLevel: index [%u], value [%u].", levelIdx, index, instSizeListSingleLevel[index]);
+            currLayerRankSize += instSizeListSingleLevel[index];
+            instSizeListSingleLevelTemp.push_back(instSizeListSingleLevel[index]);
+        }
+        instSizeListAllLevels.push_back(instSizeListSingleLevelTemp);
+        HCCL_INFO("[CalcTopoLevelNums] Net layer[%u] instNum[%u]", levelIdx, instSizeListAllLevels[levelIdx].size());
+        CHK_PRT_RET(currLayerRankSize != topoInfo.userRankSize,
+            HCCL_ERROR(
+                "[CalcTopoLevelNums] NetLayer[%u], totalRankSize[%u] is not equal to comm rankSize[%u]",
+                levelIdx, currLayerRankSize, topoInfo.userRankSize), HCCL_E_PARA);
+        instListNumAllLevels.push_back(instListNumSingleLevel);
+    }
+
+    // 获取最小的能覆盖所有卡的 layer
+    for (uint32_t levelIdx = 0; levelIdx < netLayersNum; levelIdx++) {
+        if (instListNumAllLevels.at(levelIdx) == 1) {
+            // 当本层只有一个网络实例时, 认为这个就是当前的 topoLevelNum
+            topoInfo.topoLevelNums = levelIdx + 1;
+            break;
+        }
+    }
+    HCCL_INFO("[GetSomeTopoInfo] userRanksize[%u], serverNum[%u], topoLevelNums[%u].", topoInfo.userRankSize,
+        topoInfo.serverNum, topoInfo.topoLevelNums);
+#endif
+    return HCCL_SUCCESS;
+}
 }

@@ -77,7 +77,7 @@ HcclResult HcclRankGraphGetTopoTypeByLayer(HcclComm comm, uint32_t netLayer, Com
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetInstRanksByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum)
+HcclResult HcclRankGraphGetInstRanksByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -85,7 +85,7 @@ HcclResult HcclGetInstRanksByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetTopoInstsByLayer(HcclComm comm, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum)
+HcclResult HcclRankGraphGetTopoInstsByLayer(HcclComm comm, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -93,7 +93,7 @@ HcclResult HcclGetTopoInstsByLayer(HcclComm comm, uint32_t netLayer, uint32_t **
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetRanksByTopoInst(HcclComm comm, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum)
+HcclResult HcclRankGraphGetRanksByTopoInst(HcclComm comm, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -101,7 +101,7 @@ HcclResult HcclGetRanksByTopoInst(HcclComm comm, uint32_t netLayer, uint32_t top
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetTopoType(HcclComm comm, uint32_t netLayer, uint32_t topoInstId, CommTopo *topoType)
+HcclResult HcclRankGraphGetTopoType(HcclComm comm, uint32_t netLayer, uint32_t topoInstId, CommTopo *topoType)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);
@@ -736,6 +736,61 @@ int32_t HcommAcquireComm(const char* commId)
 
 int32_t HcommReleaseComm(const char* commId)
 {
+    return 0;
+}
+
+int32_t HcommWriteWithNotifyNbi(ChannelHandle channel, void *dst, const void *src,
+    uint64_t len, uint32_t remoteNotifyIdx)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcommFlush()
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+HcclResult HcclDevMemAcquire(HcclComm comm, const char *memTag, uint64_t *size, void **addr, bool *newCreated)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+int32_t HcommThreadSynchronize(ThreadHandle thread)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcommSendRequest(MsgHandle handle, const char* msgTag, const void *src, size_t sizeByte, uint32_t *msgId)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcommWaitResponse(MsgHandle handle, void *dst, size_t sizeByte, uint32_t *msgId)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcclTaskRegister(HcclComm comm, const char *msgTag, Callback cb)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcommChannelNotifyRecord(ChannelHandle channel, uint32_t remoteNotifyIdx)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
+int32_t HcommChannelNotifyWait(ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
     return 0;
 }
 

@@ -47,11 +47,11 @@ public:
     // 资源计算接口
     virtual HcclResult CalcResRequest(HcclComm comm, const OpParam& param,
         TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
-        AlgResourceRequest& resourceRequest, AlgType& algType) = 0;
+        AlgResourceRequest& resourceRequest, AlgType& algType);
     // 算法编排接口
     virtual HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) = 0;
 
-    virtual HcclResult KernelRun(const OpParam &param, ExecMem &execMem) = 0;
+    virtual HcclResult KernelRun(const OpParam &param, ExecMem &execMem);
     inline AlgDesc GetAlgDesc() {return desc_;}
 protected:
     HcclResult GetSubCommInfo(const CommPlane levelIndex, SubCommInfo &info);

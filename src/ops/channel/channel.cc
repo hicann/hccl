@@ -91,6 +91,43 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     return HCCL_SUCCESS;
 }
 
+HcclResult CalcLevel1ChannelRequestHostDpu(HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgType& algType, std::vector<HcclChannelDesc> &channels)
+{
+#ifndef AICPU_COMPILE
+    channels.clear();
+    SubCommInfo level1SubCommInfo = algHierarchyInfo.infos[1];
+
+    for (u32 idx = 0; idx < level1SubCommInfo.localRankSize; idx++) {
+        u32 remoteRank = idx;
+        if (remoteRank == level1SubCommInfo.localRank) {
+            continue;
+        }
+
+        HCCL_INFO("create channel between %d and %d", level1SubCommInfo.localRank, remoteRank);
+        HcclChannelDesc channelDesc;
+        CHK_RET(HcclChannelDescInit(&channelDesc, 1));
+        channelDesc.remoteRank = remoteRank;
+        CommLink *linkList;
+        uint32_t listSize;
+        CHK_RET(HcclRankGraphGetLinks(comm, 1, level1SubCommInfo.localRank, remoteRank, &linkList, &listSize));
+        for (u32 idx = 0; idx < listSize; idx++) {
+            CommLink link = linkList[idx];
+            if (link.linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_ROCE) {
+                channelDesc.localEndpoint = link.srcEndpointDesc;
+                channelDesc.remoteEndpoint = link.dstEndpointDesc;
+                channelDesc.channelProtocol = CommProtocol::COMM_PROTOCOL_ROCE;
+            }
+            break;
+        }
+
+        channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
+        channels.push_back(channelDesc);
+    }
+#endif
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
     const AlgType& algType, std::vector<HcclChannelDesc> &channels)
 {
