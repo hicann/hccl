@@ -40,12 +40,12 @@ HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo);
 HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName);
 
 HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase> &executor,
-    TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx);
+    TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx, aclrtNotify* notifies);
 
 HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType);
 
 HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
-    AlgResourceCtx* resCtxHost);
+    AlgResourceCtx* resCtxHost, aclrtNotify* notifies);
 
 HcclResult SetAlgoLevel0(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel0 &algType);
 

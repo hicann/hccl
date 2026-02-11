@@ -73,8 +73,6 @@ struct TopoInfo { // 通信域拓扑ctx
     bool multiModuleDiffDeviceNumMode = false;   // Server间卡数不一致
     bool multiSuperPodDiffServerNumMode = false; // 超节点间Server数不一致
     bool isHCCSSWNumEqualToTwiceSIONum = false; // A3 Server内链路属性
-    ThreadHandle mainThread;    // 主流对应threadHandle
-    u32 notifyNumOnMainThread = 0;  // mainThread上创建的notify数量
 };
 
 // A5用了cntNotify
@@ -117,7 +115,7 @@ struct AlgResourceCtx {
     u32 notifyNumOnMainThread; // 主流上的notify数量
     u32 slaveThreadNum; // 需要的thread数量
     u32 notifyNumPerThread; // 每个thread需要的notify数量
-    ThreadHandle opThread;  // 算子stream申请的thread，用于host、device同步
+    uint32_t notifyIds[AICPU_CONTROL_NOTIFY_NUM]; // aicpu 模式下控制notify
     TopoInfo topoInfo; // 提取的拓扑信息
     // 下面是变长数据区
     // ThreadHandle* threads; // threadNum个，主流和从流的thread句柄
