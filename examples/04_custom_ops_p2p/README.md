@@ -137,8 +137,6 @@ for i in {0..7}; do npu-smi info -t custom-op-secverify-mode -i $i; done
 for i in {0..7}; do npu-smi set -t custom-op-secverify-mode -i $i -d 0; done
 ```
 
-> 注意：关闭验签后，需重启机器才能生效
-
 ### 2. 修改 AICPU 白名单
 
 AICPU 默认只加载白名单中配置的包，用户自行开发的 AICPU 算子包需配置到白名单中：
