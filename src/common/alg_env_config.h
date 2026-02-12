@@ -42,6 +42,8 @@ struct AlgEnvConfig {
     u8 hcclDeterministic;
     bool aicpuUnfold; 
     bool aivMode;
+    bool ccuMSMode;
+    bool ccuSchedMode;
     bool enableFfts;
     bool hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_NUM];
     std::map<HcclCMDType, std::vector<HcclAlgoType>> hcclAlgoConfig;
@@ -126,6 +128,12 @@ const u32& GetExternalInputIntraRoceSwitch();
 
 const bool& GetExternalInputHcclAicpuUnfold();
 
+const bool& GetExternalInputHcclAivMode();
+
+const bool& GetExternalInputHcclCcuMSMode();
+
+const bool& GetExternalInputHcclCcuSchedMode();
+
 const bool& GetExternalInputInterHccsDisable();
 
 const bool& GetExternalInputIntraServerRetryEnable();
@@ -135,6 +143,8 @@ const bool& GetExternalInputInterServerRetryEnable();
 const bool& GetExternalInputInterSuperPodRetryEnable();
 
 const bool& GetExternalInputHcclEnableEntryLog();
+
+const std::map<HcclCMDType, std::vector<HcclAlgoType>> GetExternalInputHcclAlgoConfigAllType();
 
 bool RunIndependentOpExpansion(DevType deviceType);
 }

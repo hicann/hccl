@@ -18,6 +18,14 @@
     <file_info value="lib64" copy_type="delivery" src_path="build" dst_path="lib64" install_path="$(TARGET_ENV)/lib64" install_type="all" install_mod="440">
         <!-- hccl -->
         <file value="libhccl.so" file_type="shared"/>
+        <file value="hccl_aiv_reduce_scatter_op_910_95.o"/>
+        <file value="hccl_aiv_all_gather_op_910_95.o"/>
+        <file value="hccl_aiv_scatter_op_910_95.o"/>
+        <file value="hccl_aiv_all_reduce_op_910_95.o"/>
+        <file value="hccl_aiv_broadcast_op_910_95.o"/>
+        <file value="hccl_aiv_reduce_op_910_95.o"/>
+        <file value="hccl_aiv_all_to_all_v_op_910_95.o"/>
+        <file value="hccl_aiv_all_to_all_op_910_95.o"/>
     </file_info>
     <file_info value="device" copy_type="delivery" src_path="build" dst_path="Ascend/aicpu" install_path="opp/built-in/op_impl/aicpu/kernel" install_type="all" install_mod="440" optional="true">
         <file value="aicpu_hccl.tar.gz"/>

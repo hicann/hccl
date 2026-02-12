@@ -11,6 +11,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <string>
+#include <vector>
+#include <sstream>
+#include "securec.h"
 #include "hccl_types.h"
 #include "hccl/base.h"
 #include "hccl_common.h"
@@ -26,6 +30,22 @@ static inline u64 RoundUpWithDivisor(u64 value, u64 divisor)
     }
     // divisor必须大于等于1, 返回value向上取divisor的整数倍的值
     return ((value + (divisor - 1)) / divisor) * divisor;
+}
+
+template <typename... Args> inline std::string StringFormat(const char *format, Args... args)
+{
+    using namespace std;
+    constexpr size_t bufSize = BUFSIZ;
+    char             buffer[bufSize];
+    size_t           actualSize = snprintf_s(&buffer[0], bufSize, bufSize, format, args...);
+    actualSize++;
+
+    if (actualSize > bufSize) {
+        std::vector<char> newbuffer(actualSize);
+        snprintf_s(newbuffer.data(), actualSize, actualSize, format, args...);
+        return newbuffer.data();
+    }
+    return buffer;
 }
 }
 

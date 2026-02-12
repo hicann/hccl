@@ -24,7 +24,9 @@ bool IsSendRecvType(HcclCMDType opType)
     return opType == HcclCMDType::HCCL_CMD_SEND || opType == HcclCMDType::HCCL_CMD_RECEIVE;
 }
 
-void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType, u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank, RankId dstRank)
+void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType, 
+    u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank, RankId dstRank,
+    VDataDesTag vDataDes, All2AllDataDesTag all2AllDataDes)
 {
     u32 unitSize = 0;
     if (!IsAllToAllSeries(opType) &&
@@ -45,6 +47,7 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
         inputSize = 0;
         outputSize = count * unitSize;
     } else if (opType == HcclCMDType::HCCL_CMD_REDUCE) {
+        // 当前代码中非root节点还是会用到OUTPUT内存块
         outputSize = count * unitSize;
         inputSize = count * unitSize;
     } else if (opType == HcclCMDType::HCCL_CMD_ALLGATHER) {
@@ -56,11 +59,54 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
     } else if (opType == HcclCMDType::HCCL_CMD_SCATTER) {
         inputSize = count * unitSize * rankSize;
         outputSize = count * unitSize;
+    } else if (opType == HcclCMDType::HCCL_CMD_ALLTOALL || opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        u64 curSendOffset = 0;
+        u64 curRecvOffset = 0;
+        for (u32 j = 0; j < rankSize; j++) {
+            u64 curSendCounts = all2AllDataDes.sendCountMatrix[myRank * rankSize + j];
+            u64 curSendLength = curSendCounts * SIZE_TABLE[all2AllDataDes.sendType];
+            curSendOffset += curSendLength;
+            u64 curRecvCounts = all2AllDataDes.sendCountMatrix[myRank + rankSize * j];
+            u64 curRecvLength = curRecvCounts * SIZE_TABLE[all2AllDataDes.recvType];
+            curRecvOffset += curRecvLength;
+        }
+        inputSize = curSendOffset;
+        outputSize = curRecvOffset;
+    } else if (opType == HcclCMDType::HCCL_CMD_ALLTOALLV) {
+        u64 curSendOffset = 0;
+        u64 curRecvOffset = 0;
+        for (u32 i = 0; i < rankSize; i++) {
+            u64 curSendCounts = all2AllDataDes.sendCounts[i];
+            u64 curSendLength = curSendCounts * SIZE_TABLE[all2AllDataDes.sendType];
+            curSendOffset += curSendLength;
+
+            u64 curRecvCounts = all2AllDataDes.recvCounts[i];
+            u64 curRecvLength = curRecvCounts * SIZE_TABLE[all2AllDataDes.recvType];
+            curRecvOffset += curRecvLength;
+        }
+        inputSize = curSendOffset;
+        outputSize = curRecvOffset;
     } else if (opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
         inputSize = count * unitSize * rankSize;
         outputSize = count * unitSize * rankSize;
+    } else if (opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+        inputSize = 0;
+        for (u32 i = 0; i < rankSize; i++) {
+            u64 curCounts = vDataDes.counts[i];
+            u64 curLength = curCounts * SIZE_TABLE[vDataDes.dataType];
+            inputSize += curLength;
+        }
+        outputSize = vDataDes.counts[myRank] * SIZE_TABLE[vDataDes.dataType];
+    } else if (opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+        outputSize = 0;
+        for (u32 i = 0; i < rankSize; i++) {
+            u64 curCounts = vDataDes.counts[i];
+            u64 curLength = curCounts * SIZE_TABLE[vDataDes.dataType];
+            outputSize += curLength;
+        }
+        inputSize = vDataDes.counts[myRank] * SIZE_TABLE[vDataDes.dataType];
     } else {
-        printf("CalcInputOutputSize not support\n");
+        printf("CalcInputOutputSize not support HcclCMDType [%d]\n", opType);
     }
 }
 

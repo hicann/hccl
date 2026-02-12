@@ -32,6 +32,8 @@ public:
     void GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum);
     void GetRanksByTopoInst(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum);
     void GetTopoType(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, CommTopo *topoType);
+    void GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *num);
+    void GetEndpointDesc(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc);
 
 private:
     void InitNetLayerInfo(uint32_t serverNum, uint32_t podNum);
@@ -49,9 +51,11 @@ private:
     void Create910CLinks(uint32_t srcRank, uint32_t dstRank);
     void Create910DLinks(uint32_t srcRank, uint32_t dstRank);
     void InitL1L2TopoInsts(uint32_t podNum);
+    void InitHostDpuInfo(uint32_t serverNum);
 
 private:
     bool is2D{false};
+    bool isDpuEnable{false};
     std::vector<uint32_t> allRankList_;
     std::map<uint32_t, std::vector<uint32_t>> serverId2RankList_;
     std::map<uint32_t, std::vector<uint32_t>> podId2RankList_;
@@ -70,6 +74,7 @@ private:
     std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> instId2RankIds_;  // serverId->每个实例对应的rankId集合
     std::map<uint32_t, std::vector<uint32_t>> level1TopoInsts_;
     std::vector<uint32_t> level2TopoInsts_;
+    std::vector<EndpointDesc> dpuDesc_;  // 模拟dpu网卡
 
     // links map
     std::map<std::pair<uint32_t, uint32_t>, CommProtocol> link910b_;

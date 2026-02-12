@@ -12,11 +12,15 @@
 #include "hccl_types.h"
 #include "check_utils.h"
 
+#include "all2all_semantics_checker.h"
+#include "all2allv_semantics_checker.h"
 #include "allgather_semantics_checker.h"
+#include "allgather_v_semantics_checker.h"
 #include "allreduce_semantics_checker.h"
 #include "batchsendrecv_semantics_checker.h"
 #include "broadcast_semantics_checker.h"
 #include "reduce_scatter_semantics_checker.h"
+#include "reduce_scatter_v_semantics_checker.h"
 #include "reduce_semantics_checker.h"
 #include "scatter_semantics_checker.h"
 #include "send_recv_semantics_checker.h"
@@ -28,7 +32,8 @@ void TaskCheckOpSemantics::InitInputBuffer()
 {
     for (auto &child : graphHead_->children) {
         RankId rankId = child->rankIdx;
-        CalcInputOutputSize(opType_, graphHead_->children.size(), dataCount_, dataType_, inputDataSize_, outputDataSize_, rankId, srcRank_, dstRank_);
+        CalcInputOutputSize(opType_, graphHead_->children.size(), dataCount_, dataType_,
+            inputDataSize_, outputDataSize_, rankId, srcRank_, dstRank_, vDataDes_, all2AllDataDes_);
         BufferSemantic inputInitStatus(0, inputDataSize_);
         inputInitStatus.srcBufs.insert(SrcBufDes(rankId, BufferType::INPUT, 0));
         allRankMemSemantics_[rankId][BufferType::INPUT].insert(inputInitStatus);
@@ -41,7 +46,8 @@ void TaskCheckOpSemantics::InitInputBuffer(RankId root)
     for (auto &child : graphHead_->children) {
         RankId rankId = child->rankIdx;
         if (rankId == root) {
-            CalcInputOutputSize(opType_, graphHead_->children.size(), dataCount_, dataType_, inputDataSize_, outputDataSize_, rankId, srcRank_, dstRank_);
+            CalcInputOutputSize(opType_, graphHead_->children.size(), dataCount_, dataType_,
+                inputDataSize_, outputDataSize_, rankId, srcRank_, dstRank_, vDataDes_, all2AllDataDes_);
             BufferSemantic inputInitStatus(0, inputDataSize_);
             inputInitStatus.srcBufs.insert(SrcBufDes(rankId, BufferType::INPUT, 0));
             allRankMemSemantics_[rankId][BufferType::INPUT].insert(inputInitStatus);
@@ -678,15 +684,15 @@ HcclResult TaskCheckOpSemantics::Execute()
     } else if (opType_ == HcclCMDType::HCCL_CMD_ALLGATHER) {
         ret = TaskCheckAllGatherSemantics(allRankMemSemantics_, dataSize_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
-        HCCL_ERROR("[TaskCheckOpSemantics::Execute] not support ALLGATHER_V");
+        ret = TaskCheckAllGatherVSemantics(allRankMemSemantics_, vDataDes_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_REDUCE_SCATTER) {
         ret = TaskCheckReduceScatterSemantics(allRankMemSemantics_, dataSize_, reduceType_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
-        HCCL_ERROR("[TaskCheckOpSemantics::Execute] not support REDUCE_SCATTER_V");
+        ret = TaskCheckReduceScatterVSemantics(allRankMemSemantics_, reduceType_, vDataDes_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_ALLTOALL || opType_ == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        HCCL_ERROR("[TaskCheckOpSemantics::Execute] not support ALLTOALL or ALLTOALLVC");
+        ret = TaskCheckAll2AllSemantics(allRankMemSemantics_, all2AllDataDes_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_ALLTOALLV) {
-        HCCL_ERROR("[TaskCheckOpSemantics::Execute] not support ALLTOALLV");
+        ret = TaskCheckAll2AllVSemantics(allRankMemSemantics_, all2AllDataDes_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_SEND || opType_ == HcclCMDType::HCCL_CMD_RECEIVE) {
         ret = TaskCheckSendRecvSemantics(allRankMemSemantics_, dataSize_, srcRank_, dstRank_);
     } else if (opType_ == HcclCMDType::HCCL_CMD_BROADCAST) {

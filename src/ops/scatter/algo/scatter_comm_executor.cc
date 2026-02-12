@@ -1,12 +1,12 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "scatter_comm_executor.h"
 #include "config_log.h"
@@ -36,7 +36,9 @@ HcclResult ScatterCommExecutor::CalcResRequest(HcclComm comm, const OpParam& par
     u32 threadNum = level0RankSize > 1 ? level0RankSize - 1 : 1;
 
     resourceRequest.slaveThreadNum = threadNum - 1;
-    resourceRequest.notifyNumPerThread = 1;
+    for (u32 index = 0; index < threadNum - 1; index++) {
+        resourceRequest.notifyNumPerThread.push_back(1);
+    }
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     // level0 channel
@@ -50,7 +52,7 @@ HcclResult ScatterCommExecutor::CalcResRequest(HcclComm comm, const OpParam& par
 
     HCCL_INFO("[ScatterRingExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
         " level0Channels[%u] level1Channels[%u].",
-        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(), resourceRequest.notifyNumOnMainThread,
         level0Channels.size(), level1Channels.size());
     return HCCL_SUCCESS;
 }
@@ -69,7 +71,6 @@ HcclResult ScatterCommExecutor::KernelRun(const OpParam &param, ExecMem &execMem
     // 统一走server间
     SubCommInfo combinedCommInfo;
     CHK_RET(GetSubCommInfo(COMM_LEVEL1, combinedCommInfo));
-    // commIndex的作用是什么？
     CHK_RET(KernelRunLevel1(inputMem, count, dataType, commIndex, root, userRank, COMM_LEVEL1, thread_));
 
     // 从CCL_IN拷贝到CCL_OUT

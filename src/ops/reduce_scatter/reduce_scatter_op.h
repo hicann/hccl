@@ -11,55 +11,41 @@
 #ifndef OPS_HCCL_SRC_OPS_REDUCE_SCATTER_OP
 #define OPS_HCCL_SRC_OPS_REDUCE_SCATTER_OP
 
+#include <string>
+#include <memory>
 #include "hccl.h"
+
 #include "alg_param.h"
-#include "executor_base.h"
+#include "executor_v2_base.h"
+#include "alg_type.h"
+#include "execute_selector.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream);
+                             HcclReduceOp op, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }
 #endif
 
-namespace ops_hccl_reduce_scatter {
+namespace ops_hccl {
 HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
     HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag);
 
-HcclResult ExecOp(HcclComm comm, OpParam &param);
+HcclResult ReduceScatterExecOp(HcclComm comm, OpParam &param);
 
-HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo);
+HcclResult CheckReduceScatterInputPara(HcclComm comm, void *sendBuf, void *recvBuf, aclrtStream stream);
 
-HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType);
+HcclResult GetAlgResReduceScatter(HcclComm comm, OpParam &param, std::shared_ptr<InsCollAlgBase> &executor,
+    TopoInfo* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);
 
-HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName);
+HcclResult CheckDataTypeRS(const HcclDataType dataType, bool needReduce);
 
-HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase> &executor, TopoInfo *topoInfo,
-    AlgType &algType, AlgResourceCtx **resCtx, aclrtNotify* notifies, DPUAlgResourceCtx &dpuResCtx);
+std::string GetSupportDataTypeRS(bool needReduce);
 
-HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
-    AlgResourceCtx* resCtxHost, aclrtNotify* notifies);
-
-HcclResult AllocDpuAlgResource(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest,
-    DPUAlgResourceCtx &dpuResCtx);
-
-HcclResult CheckCount(const u64 count);
-
-HcclResult CheckDataType(const HcclDataType dataType, bool needReduce);
-
-std::string GetSupportDataType(bool needReduce);
-
-HcclResult CheckReduceScatterInputPara(HcclComm comm, void *sendBuf, void *recvBuf);
-
-int32_t HcclLaunchDpuKernel(uint64_t shmemPtr, int32_t DatSize);
-
-HcclResult CheckHostDPUOnly(HcclComm comm, const TopoInfo &topoInfo, bool &hostDPUOnly);
-
-bool CheckHCCLIndependentOp();
 }
 
 #endif

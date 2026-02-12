@@ -32,6 +32,8 @@ using namespace ops_hccl;
 extern "C" {
 #endif  // __cplusplus
 
+thread_local ThreadHandle curThread;
+
 HcclResult HcclRankGraphGetRankSizeByLayer(HcclComm comm, uint32_t netLayer, uint32_t *rankNum)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
@@ -117,14 +119,18 @@ HcclResult HcclRankGraphGetEndpointInfo(HcclComm comm, uint32_t rankId, const En
 
 HcclResult HcclRankGraphGetEndpointNum(HcclComm comm, uint32_t layer, uint32_t topoInstId, uint32_t *num)
 {
-    HCCL_ERROR("[%s] not support", __func__);
-    return HCCL_E_NOT_SUPPORT;
+    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
+    CHK_PTR_NULL(simComm);
+    simComm->topoModel_->GetEndpointNum(simComm->GetRankId(), layer, topoInstId, num);
+    return HCCL_SUCCESS;
 }
 
 HcclResult HcclRankGraphGetEndpointDesc(HcclComm comm, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc)
 {
-    HCCL_ERROR("[%s] not support", __func__);
-    return HCCL_E_NOT_SUPPORT;
+    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
+    CHK_PTR_NULL(simComm);
+    simComm->topoModel_->GetEndpointDesc(simComm->GetRankId(), layer, topoInstId, descNum, endpointDesc);
+    return HCCL_SUCCESS;
 }
 
 HcclResult HcclGetCommName(HcclComm commHandle, char *commName)
@@ -616,7 +622,7 @@ int32_t HcommWriteReduceOnThread(ThreadHandle thread, ChannelHandle channel, voi
     HcclSim::LinkInfo link(reinterpret_cast<HcclSim::SimChannel*>(channel)->GetLinkType());
 
     // 6.下发task
-    auto task = std::make_shared<HcclSim::TaskStubWriteReduce>(rmtRank, link, srcSlice, dstSlice, 
+    auto task = std::make_shared<HcclSim::TaskStubWriteReduce>(rmtRank, link, srcSlice, dstSlice,
         static_cast<HcclDataType>(dataType), static_cast<HcclReduceOp>(reduceOp));
     HcclSim::SimTaskQueue::Global()->AppendTask(pos, stream, task);
 
@@ -663,7 +669,7 @@ int32_t HcommReadReduceOnThread(ThreadHandle thread, ChannelHandle channel, void
     return HCCL_SUCCESS;
 }
 
-int32_t HcommAclrtNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId) 
+int32_t HcommAclrtNotifyRecordOnThread(ThreadHandle thread, uint64_t dstNotifyId)
 {
     auto curRank = reinterpret_cast<HcclSim::SimHcclThread*>(thread)->GetCurRank();
     auto npuPos = HcclSim::SimWorld::Global()->GetNpuPosByRankId(curRank);
@@ -739,11 +745,20 @@ int32_t HcommReleaseComm(const char* commId)
     return 0;
 }
 
+// stub for host dpu
 int32_t HcommWriteWithNotifyNbi(ChannelHandle channel, void *dst, const void *src,
     uint64_t len, uint32_t remoteNotifyIdx)
 {
-    HCCL_WARNING("[%s] not support.", __func__);
+    HcommWriteOnThread(curThread, channel, dst, src, len);
+    HcommChannelNotifyRecordOnThread(curThread, channel, remoteNotifyIdx);
     return 0;
+}
+
+HcclResult HcclDevMemAcquire(HcclComm comm, const char *memTag, uint64_t *size, void **addr, bool *newCreated)
+{
+    // 不真实分配host和dpu间通信的共享内存
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
 }
 
 int32_t HcommFlush()
@@ -752,21 +767,41 @@ int32_t HcommFlush()
     return 0;
 }
 
-HcclResult HcclDevMemAcquire(HcclComm comm, const char *memTag, uint64_t *size, void **addr, bool *newCreated)
-{
-    HCCL_WARNING("[%s] not support.", __func__);
-    return HCCL_SUCCESS;
-}
-
 int32_t HcommThreadSynchronize(ThreadHandle thread)
 {
-    HCCL_WARNING("[%s] not support.", __func__);
+    // 这里记录当前thread，因为dpu侧拿不到thread了
+    curThread = thread;
     return 0;
 }
 
-int32_t HcommSendRequest(MsgHandle handle, const char* msgTag, const void *src, size_t sizeByte, uint32_t *msgId)
+typedef std::function<int32_t(uint64_t, int32_t)> CallbackStub;
+std::map<std::string, CallbackStub> dpuCallbackMap;
+int32_t HcclTaskRegister(HcclComm comm, const char *msgTag, Callback cb)
 {
-    HCCL_WARNING("[%s] not support.", __func__);
+    dpuCallbackMap[msgTag] = std::function<int32_t(uint64_t, int32_t)>(cb);
+    return 0;
+}
+
+int32_t HcommSendRequest(MsgHandle handle, const char *msgTag, const void *src, size_t sizeByte, uint32_t *msgId)
+{
+    auto it = dpuCallbackMap.find(msgTag);
+    if (it != dpuCallbackMap.end()) {
+        it->second(reinterpret_cast<uint64_t>(src), sizeByte);
+    } else {
+        HCCL_ERROR("[HcommSendRequest] cannot find callback for %s", msgTag);
+    }
+    return 0;
+}
+
+int32_t HcommChannelNotifyRecord(ChannelHandle channel, uint32_t remoteNotifyIdx)
+{
+    HcommChannelNotifyRecordOnThread(curThread, channel, remoteNotifyIdx);
+    return 0;
+}
+
+int32_t HcommChannelNotifyWait(ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
+{
+    HcommChannelNotifyWaitOnThread(curThread, channel, localNotifyIdx, timeout);
     return 0;
 }
 
@@ -776,22 +811,52 @@ int32_t HcommWaitResponse(MsgHandle handle, void *dst, size_t sizeByte, uint32_t
     return 0;
 }
 
-int32_t HcclTaskRegister(HcclComm comm, const char *msgTag, Callback cb)
+HcclResult HcclChannelGetRemoteMems(HcclComm comm, ChannelHandle channel, uint32_t *memNum, CommMem **remoteMems,
+    char ***memTags)
 {
     HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclCommMemReg(HcclComm comm, const char *memTag, const CommMem *mem, HcclMemHandle *memHandle)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclThreadExportToCommEngine(HcclComm comm, uint32_t threadNum, const ThreadHandle *threads, CommEngine dstCommEngine, ThreadHandle *exportedThreads)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+uint64_t HcommGetProfilingSysCycleTime()
+{
     return 0;
 }
 
-int32_t HcommChannelNotifyRecord(ChannelHandle channel, uint32_t remoteNotifyIdx)
+HcclResult HcommProfilingRegThread(HcomProInfo proInfo, ThreadHandle *threads)
 {
     HCCL_WARNING("[%s] not support.", __func__);
-    return 0;
+    return HCCL_SUCCESS;
 }
 
-int32_t HcommChannelNotifyWait(ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout)
+HcclResult HcommProfilingUnRegThread(HcomProInfo proInfo, ThreadHandle *threads)
 {
     HCCL_WARNING("[%s] not support.", __func__);
-    return 0;
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcommProfilingReportKernel(uint64_t beginTime, const char *profName)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcommProfilingReportOp(HcomProInfo proInfo)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
 }
 
 #ifdef __cplusplus

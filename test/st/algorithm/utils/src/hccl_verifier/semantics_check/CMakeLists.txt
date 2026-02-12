@@ -11,12 +11,12 @@
 target_sources(hccl-verifier PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/task_check_op_semantics.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/allgather_semantics_checker.cc
-#   ${CMAKE_CURRENT_SOURCE_DIR}/allgather_v_semantics_checker.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/allgather_v_semantics_checker.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/allreduce_semantics_checker.cc
-#   ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_v_semantics_checker.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_v_semantics_checker.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_semantics_checker.cc
-#   ${CMAKE_CURRENT_SOURCE_DIR}/all2all_semantics_checker.cc
-#   ${CMAKE_CURRENT_SOURCE_DIR}/all2allv_semantics_checker.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/all2all_semantics_checker.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/all2allv_semantics_checker.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/broadcast_semantics_checker.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_semantics_checker.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/send_recv_semantics_checker.cc

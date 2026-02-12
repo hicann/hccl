@@ -91,7 +91,9 @@ struct BufferSemantic {
 using RankMemorySemantics = std::map<BufferType, std::set<BufferSemantic>>;
 
 void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType,
-    u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank = 0, RankId dstRank = 0);
+    u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank = 0, RankId dstRank = 0,
+    VDataDesTag vDataDes = VDataDesTag{}, All2AllDataDesTag all2AllDataDes = All2AllDataDesTag{});
+
 void CalcDataSize(HcclCMDType opType, uint64_t count, HcclDataType dataType, u64 &dataSize);
 bool IsAllToAllSeries(HcclCMDType opType);
 void GenTopoMeta(TopoMeta &topoMate, int superPodNum, int serverNum, int rankNum);

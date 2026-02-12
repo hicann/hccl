@@ -24,6 +24,7 @@
 #include "alg_env_config.h"
 #include "adapter_acl.h"
 #include "topo.h"
+#include "topo_host.h"
 #include "adapter_error_manager_pub.h"
 #include "hccl_inner.h"
 #include "hccl.h"
@@ -31,6 +32,7 @@
 #include "workflow.h"
 #include "load_kernel.h"
 #include "hcomm_primitives.h"
+#include "op_common.h"
 
 using namespace std;
 using namespace ops_hccl;
@@ -52,6 +54,12 @@ uint64_t __attribute__((weak)) HcommGetProfilingSysCycleTime();
 HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
 {
+    // 入口的地方先解析环境变量
+    CHK_RET(InitEnvConfig());
+    if (!CheckHCCLIndependentOp()) {
+        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
+    }
+
     // 获取设备类型拦截混合组网
     HcclHeterogMode allDeviceType;
     CHK_RET(HcclGetHeterogMode(comm, &allDeviceType));
@@ -79,21 +87,21 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
 
-    u32 rankSize = INVALID_VALUE_RANKSIZE;
-    CHK_RET(HcclGetRankSize(comm, &rankSize));
 
     // 图模式引导到老的流程上面
     if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
 
-    // Attention! 图模式、zeroCopy模式、recompute等先不支持，且当前不引导到老的流程上
+    // Attention! zeroCopy模式、recompute等先不支持，且当前不引导到老的流程上
 
     HcclUs startut = TIME_NOW(); // 走老流程的判断时间不统计在内
 
+    // 参数校验等工作
     CHK_PRT_RET(recvCount == 0, HCCL_WARNING("input recvCount is 0, return scatter success"), HCCL_SUCCESS);
     CHK_RET(CheckScatterInputPara(comm, recvBuf));
-
+    u32 rankSize = INVALID_VALUE_RANKSIZE;
+    CHK_RET(HcclGetRankSize(comm, &rankSize));
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
     if (userRank == root) {     // 本rank为root节点，send_buff不可以为空
@@ -101,12 +109,10 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
             std::vector<std::string>({"HcclScatter", "sendBuf", "nullptr", "please check sendBuf"}));
         CHK_PTR_NULL(sendBuf);
     }
-
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
     CHK_RET(HcclGetCommName(comm, commName));
     const string tag = "Scatter_" + string(commName);
-
-    CHK_RET_AND_PRINT_IDE(HcomCheckOpParam(tag.c_str(), recvCount, dataType, stream), tag.c_str());
+    CHK_RET(HcclCheckTag(tag.c_str()));
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, root), tag.c_str());
     CHK_RET(CheckCount(recvCount));
     CHK_RET(CheckDataType(dataType, false));
@@ -130,8 +136,7 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
         HCCL_RUN_INFO("%s", logInfo.c_str());
     }
 
-    CHK_RET_AND_PRINT_IDE(ScatterOutPlace(sendBuf, recvBuf, recvCount, dataType, root, comm, stream, tag),
-                          tag.c_str());
+    CHK_RET_AND_PRINT_IDE(ScatterOutPlace(sendBuf, recvBuf, recvCount, dataType, root, comm, stream, tag), tag.c_str());
 
     if (GetExternalInputHcclEnableEntryLog()) {
         HcclUs endut = TIME_NOW();
@@ -161,65 +166,6 @@ HcclResult CheckScatterInputPara(HcclComm comm, void *recvBuf)
         std::vector<std::string>({"HcclScatter", "recvBuf", "nullptr", "please check recvBuf"}));
     CHK_PTR_NULL(recvBuf);
 
-    return HCCL_SUCCESS;
-}
-
-HcclResult CheckCount(const u64 count)
-{
-    if (count > SYS_MAX_COUNT) {
-        HCCL_ERROR("[Check][Count]errNo[0x%016llx] count[%llu] is invalid(bigger than MAX count[%llu])",
-                    HCCL_ERROR_CODE(HCCL_E_PARA), count, SYS_MAX_COUNT);
-        return HCCL_E_PARA;
-    }
-    return HCCL_SUCCESS;
-}
-
-std::string GetSupportDataType(bool needReduce)
-{
-    std::vector<HcclDataType> supportList = {HCCL_DATA_TYPE_INT8, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT32,
-                                             HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_FP32};
-    if (needReduce) {
-        supportList.insert(supportList.end(), {HCCL_DATA_TYPE_BFP16, HCCL_DATA_TYPE_INT64});
-    } else {
-        supportList.insert(supportList.end(), {HCCL_DATA_TYPE_INT64, HCCL_DATA_TYPE_UINT8, HCCL_DATA_TYPE_UINT16,
-                                               HCCL_DATA_TYPE_UINT32, HCCL_DATA_TYPE_UINT64, HCCL_DATA_TYPE_FP64});
-        supportList.push_back(HCCL_DATA_TYPE_BFP16);
-    }
-
-    std::string supportInfo = "";
-    for (u32 i = 0; i < supportList.size(); i++) {
-        if (i != 0) {
-            supportInfo += ", ";
-        }
-        supportInfo += GetDataTypeEnumStr(supportList[i]);
-    }
-
-    return supportInfo;
-}
-
-HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
-{
-    const vector<string> infoTitle({"ccl_op", "parameter", "value", "tips"});
-    if (needReduce) {
-        if ((dataType == HCCL_DATA_TYPE_UINT64) ||
-            (dataType == HCCL_DATA_TYPE_UINT8) || (dataType == HCCL_DATA_TYPE_UINT16) ||
-            (dataType == HCCL_DATA_TYPE_UINT32) || (dataType == HCCL_DATA_TYPE_FP64) ||
-            (dataType == HCCL_DATA_TYPE_RESERVED)) {
-            RPT_INPUT_ERR(true, "EI0003", infoTitle, vector<string>({"CheckDataType", "dataType", GetDataTypeEnumStr(dataType), "please check dataType"}));
-            HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
-                        HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(),
-                        GetSupportDataType(needReduce).c_str());
-            return HCCL_E_NOT_SUPPORT;
-        }
-    } else {
-        if ((dataType >= HCCL_DATA_TYPE_RESERVED) || (dataType < HCCL_DATA_TYPE_INT8)) {
-            RPT_INPUT_ERR(true, "EI0003", infoTitle, vector<string>({"CheckDataType", "dataType", GetDataTypeEnumStr(dataType), "please check dataType"}));
-            HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
-                        HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(),
-                        GetSupportDataType(needReduce).c_str());
-            return HCCL_E_NOT_SUPPORT;
-        }
-    }
     return HCCL_SUCCESS;
 }
 
@@ -253,6 +199,7 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
 
     OpParam param;
     param.stream = stream;
+    param.opMode = OpMode::OPBASE;
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
@@ -279,30 +226,41 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
     param.DataDes.count = recvCount;
     param.DataDes.dataType = dataType;
     param.root = root;
-    // opType传下去的作用是什么
     param.opType = HcclCMDType::HCCL_CMD_SCATTER;
+    param.deviceType = deviceType;
 
-    CHK_RET(ExecOp(comm, param));
-        // 获取profiling op上报的信息
-    HcomProInfo profInfo;
-    std::string algTypeStr = TransferAlgTypeStr(param.algType);
-    CHK_SAFETY_FUNC_RET(strcpy_s(profInfo.algType, sizeof(profInfo.algType), algTypeStr.c_str()));
-    CHK_SAFETY_FUNC_RET(strcpy_s(profInfo.commName, sizeof(profInfo.commName), param.commName));
-    profInfo.beginTime = beginTime;
-    profInfo.dataCount = param.DataDes.count;
-    profInfo.dataType = static_cast<uint8_t>(param.DataDes.dataType);
-    profInfo.cmdType = static_cast<uint8_t>(param.opType);
-    CHK_PRT(HcommProfilingReportOp(profInfo));
-
-    if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
-        CHK_PTR_NULL(param.resCtx);
-        profInfo.slaveThreadNum = param.resCtx->slaveThreadNum;
-        char* curThreadPtr = reinterpret_cast<char*>(param.resCtx); // 拿到所有host下发的thread
-        curThreadPtr += sizeof(AlgResourceCtx);// 偏移指针
-        ThreadHandle* curThreads = reinterpret_cast<ThreadHandle *>(curThreadPtr);
-        CHK_PRT(HcommProfilingUnRegThread(profInfo,curThreads));
+    if (userRankSize == 1) {
+        HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
+        CHK_RET(SingleRankProc(param));
+        return HcclResult::HCCL_SUCCESS;
     }
 
+    if (deviceType == DevType::DEV_TYPE_910_95) {
+        CHK_RET(HcclExecOp(comm, param));
+    } else {
+        CHK_RET(ExecOp(comm, param));  //保留原有A3流程
+           // 获取profiling op上报的信息
+        HcomProInfo profInfo;
+        std::string algTypeStr = TransferAlgTypeStr(param.algType);
+        CHK_SAFETY_FUNC_RET(strcpy_s(profInfo.algType, sizeof(profInfo.algType), algTypeStr.c_str()));
+        CHK_SAFETY_FUNC_RET(strcpy_s(profInfo.commName, sizeof(profInfo.commName), param.commName));
+        profInfo.beginTime = beginTime;
+        profInfo.dataCount = param.DataDes.count;
+        profInfo.dataType = static_cast<uint8_t>(param.DataDes.dataType);
+        profInfo.cmdType = static_cast<uint8_t>(param.opType);
+        CHK_PRT(HcommProfilingReportOp(profInfo));
+
+        if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
+            CHK_PTR_NULL(param.resCtx);
+            AlgResourceCtx* tmpCtx = reinterpret_cast<AlgResourceCtx*>(param.resCtx);
+            profInfo.slaveThreadNum = tmpCtx->slaveThreadNum;
+            char* curThreadPtr = reinterpret_cast<char*>(param.resCtx); // 拿到所有host下发的thread
+            curThreadPtr += sizeof(AlgResourceCtx);// 偏移指针
+            ThreadHandle* curThreads = reinterpret_cast<ThreadHandle *>(curThreadPtr);
+            CHK_PRT(HcommProfilingUnRegThread(profInfo,curThreads));
+        }   
+    }
+    HCCL_INFO("Execute ScatterOutPlace success.");
     return HCCL_SUCCESS;
 }
 
@@ -352,7 +310,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
     // 算法执行
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 当前aicpu launch接口只能有一个输入参数，将Context指针放在param参数中
-        param.resCtx = resCtx;
+        param.resCtx = reinterpret_cast<void*>(resCtx);
         // 将算法名字放在param参数中
         int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
         if (result <= 0) {
@@ -775,7 +733,11 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
         static_cast<void*>(static_cast<char*>(cclBufferAddr) + sizePerCcl), sizePerCcl};
     resCtxHost->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
-    resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
+    if (resRequest.notifyNumPerThread.size() == 0) {
+        resCtxHost->notifyNumPerThread = 0;
+    } else {
+        resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread[0];
+    }
 
     char* curPtr = reinterpret_cast<char *>(resCtxHost);
     curPtr += sizeof(AlgResourceCtx); // 偏移指针
@@ -793,12 +755,12 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequ
     }
     curPtr += sizeof(ThreadHandle); // 指针向后偏移
 
-    if (resRequest.slaveThreadNum > 0) {
+    for (u32 index = 0; index < resRequest.slaveThreadNum; index++) {
         threads = reinterpret_cast<ThreadHandle *>(curPtr);
         // 创建从流thread及对应的notify
-        CHK_RET(HcclThreadAcquire(comm, param.engine, resRequest.slaveThreadNum,
-            resRequest.notifyNumPerThread, threads));
-        curPtr += sizeof(ThreadHandle) * resCtxHost->slaveThreadNum; // 指针向后偏移
+        CHK_RET(HcclThreadAcquire(comm, param.engine, 1,
+            resRequest.notifyNumPerThread[index], threads));
+        curPtr += sizeof(ThreadHandle); // 指针向后偏移
     }
     if (UNLIKELY(HcclCheckLogLevel(DLOG_DEBUG))) {
         HCCL_DEBUG("[AllocAlgResource] slaveThreadNum[%u]", resRequest.slaveThreadNum);

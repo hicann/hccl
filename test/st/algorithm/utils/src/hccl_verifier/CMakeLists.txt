@@ -57,26 +57,4 @@ if (BUILD_OPEN_PROJECT)
         ${UTILS_DIR}/hccl_verifier/mem_conflict_check
         ${UTILS_DIR}/hccl_verifier/singletask_check
     )
-
-else()
-    target_include_directories(hccl-verifier PRIVATE
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/sim_world
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/pub_inc
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/exception
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/utils
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/task_graph_generator
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/semantics_check
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/mem_conflict_check
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/singletask_check
-
-        ${TOP_DIR}/hcomm/include
-        ${TOP_DIR}/hcomm/include/hccl
-        ${TOP_DIR}/hcomm/pkg_inc
-        ${TOP_DIR}/hcomm/pkg_inc/hccl
-        ${TOP_DIR}/hccl/src/common
-        ${TOP_DIR}/abl/libc_sec/include
-        ${TOP_DIR}/abl/slog/inc/toolchain  # dlog_pub.h
-    )
 endif()

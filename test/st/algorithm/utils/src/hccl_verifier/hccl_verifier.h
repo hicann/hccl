@@ -132,4 +132,19 @@ HcclResult CheckScatter(
 HcclResult CheckBatchSendRecv(
     HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount);
 
+HcclResult CheckAll2All(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, u64 sendCount);
+
+HcclResult CheckAll2AllV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
+
+HcclResult CheckAll2AllVC(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
+
+HcclResult CheckAllGatherV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, VDataDesTag vDataDes);
+
+HcclResult CheckReduceScatterV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclReduceOp reduceType, VDataDesTag vDataDes);
+
 #endif

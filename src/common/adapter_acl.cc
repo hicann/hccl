@@ -11,6 +11,8 @@
 #include "adapter_acl.h"
 #include "acl_rt.h"
 #include "workflow.h"
+#include "mmpa_api.h"
+
 namespace ops_hccl {
 HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId)
 {
@@ -116,6 +118,33 @@ HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64 &val)
         HCCL_E_RUNTIME);
     HCCL_DEBUG("Call aclrtGetDeviceInfo, ret[%d], attr[%d], val[%ld]", ret, devAttr, val);
 #endif
+    return HCCL_SUCCESS;
+}
+
+HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode,
+    aclrtBinHandle &binHandle)
+{
+    CHK_PRT_RET(binPath == nullptr,
+        HCCL_ERROR("[Load][Binary]binary path is nullptr"),
+        HCCL_E_PTR);
+
+    char realPath[PATH_MAX] = {0};
+    CHK_PRT_RET(realpath(binPath, realPath) == nullptr,
+        HCCL_ERROR("LoadBinaryFromFile: %s is not a valid real path, err[%d]", binPath, errno),
+        HCCL_E_INTERNAL);
+    HCCL_INFO("[LoadBinaryFromFile]realPath: %s", realPath);
+
+    aclrtBinaryLoadOptions loadOptions = {0};
+    aclrtBinaryLoadOption option;
+    loadOptions.numOpt = 1;
+    loadOptions.options = &option;
+    option.type = optionType;
+    option.value.cpuKernelMode = cpuKernelMode;
+    aclError aclRet = aclrtBinaryLoadFromFile(realPath, &loadOptions, &binHandle); // ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE
+    CHK_PRT_RET(aclRet != ACL_SUCCESS,
+        HCCL_ERROR("[LoadBinaryFromFile]errNo[0x%016llx] load binary from file error.", aclRet),
+        HCCL_E_OPEN_FILE_FAILURE);
+
     return HCCL_SUCCESS;
 }
 

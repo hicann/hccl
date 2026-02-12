@@ -103,3 +103,70 @@ HcclResult CheckBatchSendRecv(
     CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
     return HCCL_SUCCESS;
 }
+
+HcclResult CheckAll2All(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, u64 sendCount)
+{
+    All2AllDataDesTag all2AllDataDes;
+    all2AllDataDes.sendType = sendType;
+    all2AllDataDes.recvType = sendType;
+    all2AllDataDes.sendCount = sendCount;
+    all2AllDataDes.recvCount = sendCount;
+    std::vector<u64> sendCountMatrix(rankSize * rankSize, sendCount);
+    all2AllDataDes.sendCountMatrix = sendCountMatrix;
+    Checker checker;
+    TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_ALLTOALL, sendType, sendCount);
+    opSemanticsChecker.SetAll2AllDataDes(all2AllDataDes);
+    CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
+    return HCCL_SUCCESS;
+}
+
+HcclResult CheckAll2AllV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix)
+{
+    All2AllDataDesTag all2AllDataDes;
+    all2AllDataDes.sendType = sendType;
+    all2AllDataDes.recvType = sendType;
+    all2AllDataDes.sendCountMatrix = sendCountMatrix;
+    Checker checker;
+    // 复用all2allVC的校验逻辑
+    TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_ALLTOALLVC, sendType, 0);
+    opSemanticsChecker.SetAll2AllDataDes(all2AllDataDes);
+    CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
+    return HCCL_SUCCESS;
+}
+
+HcclResult CheckAll2AllVC(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix)
+{
+    All2AllDataDesTag all2AllDataDes;
+    all2AllDataDes.sendType = sendType;
+    all2AllDataDes.recvType = sendType;
+    all2AllDataDes.sendCountMatrix = sendCountMatrix;
+    Checker checker;
+    TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_ALLTOALLVC, sendType, 0);
+    opSemanticsChecker.SetAll2AllDataDes(all2AllDataDes);
+    CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
+    return HCCL_SUCCESS;
+}
+
+HcclResult CheckAllGatherV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, VDataDesTag vDataDes)
+{
+    Checker checker;
+    TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_ALLGATHER_V, vDataDes.dataType, 0);
+    opSemanticsChecker.SetVDataDes(vDataDes);
+    CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
+    return HCCL_SUCCESS;
+}
+
+HcclResult CheckReduceScatterV(
+    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclReduceOp reduceType, VDataDesTag vDataDes)
+{
+    Checker checker;
+    TaskCheckOpSemantics opSemanticsChecker(rankSize, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, vDataDes.dataType, 0);
+    opSemanticsChecker.SetReduceType(reduceType);
+    opSemanticsChecker.SetVDataDes(vDataDes);
+    CHK_RET(checker.GenAndCheckGraph(taskQueues, opSemanticsChecker));
+    return HCCL_SUCCESS;
+}

@@ -59,6 +59,7 @@ if (BUILD_OPEN_PROJECT)
         ${ASCEND_HOME_PATH}/hcomm/include/hccl
         ${ASCEND_HOME_PATH}/include/hccl
         ${ASCEND_HOME_PATH}/pkg_inc/hccl
+        ${ASCEND_HOME_PATH}/pkg_inc/hcomm/ccu
 
         # mmpa头文件
         ${ASCEND_HOME_PATH}/include/mmpa
@@ -67,33 +68,7 @@ if (BUILD_OPEN_PROJECT)
         ${HCCL_DEV_BASE}/src/common
         ${HCCL_DEV_BASE}/src/ops
         ${HCCL_DEV_BASE}/src/ops/inc
-    )
-
-else()
-    target_link_libraries(hccl-model-proxy PUBLIC
-        c_sec
-    )
-    target_include_directories(hccl-model-proxy PRIVATE
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/sim_world
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/exception
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/utils
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/communicator
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/topo_model
-
-        ${TOP_DIR}/hcomm/include
-        ${TOP_DIR}/hcomm/include/hccl
-        ${TOP_DIR}/hcomm/pkg_inc
-        ${TOP_DIR}/hcomm/pkg_inc/hccl
-        ${TOP_DIR}/hccl/src/common
-
-        ${TOP_DIR}/ace/npuruntime/inc
-        ${TOP_DIR}/ace/npuruntime/inc/runtime
-        ${TOP_DIR}/abl/msprof/inc
-        ${TOP_DIR}/abl/libc_sec/include
-        ${TOP_DIR}/abl/slog/inc/toolchain
-        ${TOP_DIR}/runtime/include/external
+        ${HCCL_DEV_BASE}/src/ops/op_common/inc
     )
 endif()
 

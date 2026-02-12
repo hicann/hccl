@@ -10,7 +10,20 @@
 
 set(src_list
     main.cc
+    scatter_testcase_a3.cc
     scatter_testcase.cc
+    all_reduce_testcase.cc
+    all_reduce_parallel_testcase.cc
+    alltoall_testcase.cc
+    alltoallv_testcase.cc
+    alltoallvc_testcase.cc
+    all_gather_aicpu_testcase.cc
+    all_gather_v_testcase.cc
+    reduce_testcase.cc
+    send_recv_testcase.cc
+    reduce_scatter_v_testcase.cc
+    broadcast_testcase.cc
+    reduce_scatter_aicpu_testcase.cc
 )
 
 add_executable(hccl_checker_ops_stest ${src_list})
@@ -28,9 +41,11 @@ if (BUILD_OPEN_PROJECT)
         ${ASCEND_HOME_PATH}/hcomm/include/hccl
         ${ASCEND_HOME_PATH}/include/hccl
         ${ASCEND_HOME_PATH}/pkg_inc/hccl
+        ${ASCEND_HOME_PATH}/pkg_inc/hcomm/ccu
 
         # 本仓代码头文件
         ${HCCL_DEV_BASE}/src/common
+        ${HCCL_DEV_BASE}/src/ops/op_common/inc
 
         ${UTILS_DIR}/sim_world
         ${UTILS_DIR}/common/utils
@@ -61,54 +76,5 @@ if (BUILD_OPEN_PROJECT)
         -O0
         -g
         -D_GLIBCXX_USE_CXX11_ABI=0
-    )
-else()
-    set(HCCL_LIB_DIR ${TOP_DIR}/output/ascend/host/ubuntu20.04/x86_64/lib)
-    target_include_directories(hccl_checker_ops_stest PUBLIC
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/sim_world
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/utils
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/common/exception
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/semantics_check
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_verifier/task_graph_generator
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/communicator
-        ${TOP_DIR}/hccl/test/st/algorithm/utils/src/hccl_proxy/topo_model
-
-        ${TOP_DIR}/hcomm/include
-        ${TOP_DIR}/hcomm/include/hccl
-        ${TOP_DIR}/hcomm/pkg_inc
-        ${TOP_DIR}/hcomm/pkg_inc/hccl
-        ${TOP_DIR}/hccl/include
-        ${TOP_DIR}/hccl/src/common
-
-        ${TOP_DIR}/ace/npuruntime/inc
-        ${TOP_DIR}/ace/npuruntime/inc/runtime
-        ${TOP_DIR}/abl/msprof/inc
-        ${TOP_DIR}/abl/slog/inc/toolchain
-        ${TOP_DIR}/runtime/include/external
-    )
-
-    target_link_libraries(hccl_checker_ops_stest PRIVATE
-        $<BUILD_INTERFACE:intf_llt_pub>
-        hccl-model-proxy
-        hccl-verifier
-        # 链接hccl库
-        ${HCCL_LIB_DIR}/libhccl.so
-    )
-
-    target_compile_options(hccl_checker_ops_stest PRIVATE
-        -std=c++14
-        -Werror
-        -fno-common
-        -fno-strict-aliasing
-        -pipe
-        -O0
-        -g
-        -D_GLIBCXX_USE_CXX11_ABI=0
-    )
-
-    run_llt_test(
-        TARGET hccl_checker_ops_stest
     )
 endif()

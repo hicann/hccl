@@ -152,6 +152,12 @@ const std::vector<HcclAlgoType> GetExternalInputHcclAlgoConfig(HcclCMDType opTyp
     return g_algEnvConfig.hcclAlgoConfig[opType];
 }
 
+const std::map<HcclCMDType, std::vector<HcclAlgoType>> GetExternalInputHcclAlgoConfigAllType()
+{
+    std::lock_guard<std::mutex> lock(g_algEnvConfigMutex);
+    return g_algEnvConfig.hcclAlgoConfig;
+}
+
 HcclResult SetCommonAlgType(std::vector<std::string> &algos)
 {
     std::vector<HcclAlgoType> algType;
@@ -526,6 +532,8 @@ HcclResult ParseOpExpansion()
     std::string opExpansionModeEnv = GetEnv(MM_ENV_HCCL_OP_EXPANSION_MODE);
     g_algEnvConfig.aicpuUnfold = false;
     g_algEnvConfig.aivMode = false;
+    g_algEnvConfig.ccuMSMode = false;
+    g_algEnvConfig.ccuSchedMode = false;
 
     DevType deviceType;
     CHK_RET(hrtGetDeviceType(deviceType));
@@ -558,6 +566,11 @@ HcclResult ParseOpExpansion()
         } else {
             HCCL_WARNING("deviceType[%u] do not support HOST_TS", deviceType);
         }
+    } else if (opExpansionModeEnv == "CCU_MS") {
+        // todo: 判断芯片类型
+        g_algEnvConfig.ccuMSMode = true;
+    } else if (opExpansionModeEnv == "CCU_SCHED") {
+        g_algEnvConfig.ccuSchedMode = true;
     } else {
         HCCL_ERROR("HCCL_OP_EXPANSION_MODE is set to [%s], which is incorrect. Please check",
             opExpansionModeEnv.c_str());
@@ -726,6 +739,21 @@ const bool& GetExternalInputHcclAicpuUnfold()
     return g_algEnvConfig.aicpuUnfold;
 }
 
+const bool& GetExternalInputHcclAivMode()
+{
+    return g_algEnvConfig.aivMode;
+}
+
+const bool& GetExternalInputHcclCcuMSMode()
+{
+    return g_algEnvConfig.ccuMSMode;
+}
+
+const bool& GetExternalInputHcclCcuSchedMode()
+{
+    return g_algEnvConfig.ccuSchedMode;
+}
+
 const bool& GetExternalInputInterHccsDisable()
 {
     return g_algEnvConfig.interHccsDisable;
@@ -755,6 +783,10 @@ bool RunIndependentOpExpansion(DevType deviceType) {
     std::string opExpansionModeEnv = GetEnv(MM_ENV_HCCL_OP_EXPANSION_MODE);
     if (deviceType == DevType::DEV_TYPE_910_93) {
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
+    }
+
+    if (deviceType == DevType::DEV_TYPE_910_95) {
+        return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV";
     }
     
     // HOST_TS为Host展开

@@ -56,6 +56,26 @@ TopoModel::TopoModel(const TopoMeta& topoMeta)
     Init910CLinkMap();
     Init910DLinkMap();
     InitL1L2TopoInsts(superpodId);
+    InitHostDpuInfo(serverId);
+}
+
+void TopoModel::InitHostDpuInfo(uint32_t serverNum)
+{
+    char *dpnEnv = getenv("ENABLE_HOSTDPU_FOR_LLT");
+    if (dpnEnv == nullptr || serverNum < 2) {
+        return;
+    }
+
+    if (std::string(dpnEnv) != "1") {
+        return;
+    }
+
+    isDpuEnable = true;
+    dpuDesc_.clear();
+    EndpointDesc endpoint;
+    endpoint.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
+
+    dpuDesc_.push_back(endpoint);
 }
 
 void TopoModel::InitL1L2TopoInsts(uint32_t podNum)
@@ -307,6 +327,33 @@ void TopoModel::GetTopoType(uint32_t curRank, uint32_t netLayer, uint32_t topoIn
     }
 }
 
+void TopoModel::GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *num)
+{
+    auto serverId = rankId2ServerId_[curRank];
+    auto podId = rankId2PodId_[curRank];
+    if (layer == NetLayerL0) {
+        *num = serverId2RankList_[serverId].size();
+    } else if (layer == NetLayerL1) {
+        *num = podId2RankList_[podId].size();
+    } else {
+        *num = allRankList_.size();
+    }
+}
+
+void TopoModel::GetEndpointDesc(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc)
+{
+    // 仅支持hostdpu使用，暂时仅支持layer1的出框的通信对端查询
+    if (layer != NetLayerL1) {
+        printf("[ERROR][GetEndpointDesc] not support for layer[%u]\n", layer);
+        return;
+    }
+
+    *descNum = dpuDesc_.size();
+    for (auto i = 0; i < dpuDesc_.size(); i++) {
+        endpointDesc[i] = dpuDesc_[i];
+    }
+}
+
 void TopoModel::Init910BLinkMap()
 {
     // 910B按照A+X结构初始化
@@ -520,7 +567,11 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
 
     // level1 同pod才有level1链路
     if (IsSamePod(srcRank, dstRank)) {
-        link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+        // HostDPU场景出框的连接需要对端描述为Host
+        if (!IsSameServer(srcRank, dstRank) && isDpuEnable) {
+            link.dstEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
+        }
+        link.linkAttr.linkProtocol = isDpuEnable ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_UBC_CTP;
         allLinkMap_[rankPair][NetLayerL1].push_back(link);
     }
 

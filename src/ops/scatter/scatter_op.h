@@ -17,6 +17,7 @@
 #include "alg_param.h"
 #include "executor_base.h"
 #include "alg_type.h"
+#include "op_common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,10 +62,6 @@ HcclResult SetAlgoLevel2(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
 bool IsStreamCapture(aclrtStream stream);
 
 bool IsAiCpuMode(DevType deviceType, u32 rankSize);
-
-HcclResult CheckCount(const u64 count);
-
-HcclResult CheckDataType(const HcclDataType dataType, bool needReduce);
 
 HcclResult CheckScatterInputPara(HcclComm comm, void *recvBuf);
 

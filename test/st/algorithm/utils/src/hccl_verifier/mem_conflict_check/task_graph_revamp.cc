@@ -448,9 +448,15 @@ bool GraphRevampBilateralSemantics::IsReadWriteWithSameRank(RankId peerRank, Tas
             return true;
         }
     } else if (candNode->task->GetType() == TaskTypeStub::READ_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::IsReadWriteWithSameRank] TaskType READ_REDUCE not support");
+        TaskStubReadReduce *candReadReduce = dynamic_cast<TaskStubReadReduce *>(candNode->task);
+        if (candReadReduce->GetRemoteRank() == peerRank) {
+            return true;
+        }
     } else if (candNode->task->GetType() == TaskTypeStub::WRITE_REDUCE) {
-        HCCL_ERROR("[GraphRevampBilateralSemantics::IsReadWriteWithSameRank] TaskType WRITE_REDUCE not support");
+        TaskStubWriteReduce *candWriteReduce = dynamic_cast<TaskStubWriteReduce *>(candNode->task);
+        if (candWriteReduce->GetRemoteRank() == peerRank) {
+            return true;
+        }
     }
     return false;
 }

@@ -39,6 +39,9 @@ HcclResult haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus &captu
 HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId);
 
 HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64 &val);
+
+HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode,
+    aclrtBinHandle &binHandle);
 }
 
 #endif // ADAPTER_ACL_H

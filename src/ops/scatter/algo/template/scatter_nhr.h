@@ -34,7 +34,6 @@ private:
     HcclResult Rx(const ChannelInfo &channel, std::vector<Slice> &rxSlices);
 
     HcclResult GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep &stepInfo);
-    // 有点奇怪，这边为什么不用基类里面的函数呢
     HcclResult ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &channelRight);
 
     u32 interRank_;       // comm内的rank排序
