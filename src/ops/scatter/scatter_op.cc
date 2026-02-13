@@ -367,15 +367,14 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         aclError aclRet = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
         CHK_PRT_RET(aclRet != ACL_SUCCESS,
                     HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret), HCCL_E_OPEN_FILE_FAILURE);
-
-        // Host stream等待Device的通知
-        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, 0, NOTIFY_DEFAULT_WAIT_TIME)));
         std::string profName = "scatter";
         profName += "AicpuKernel"; // 标准后缀，类似于alltoallAicpuKernel;
         // 算子下发时间
         HCCL_DEBUG("[%s] profName = [%s]", __func__, profName);
         // 上报
         HcommProfilingReportKernel(beginTime, profName.c_str());
+        // Host stream等待Device的通知
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, 0, NOTIFY_DEFAULT_WAIT_TIME)));
     } else {
         CHK_RET(executor->Orchestrate(param, resCtx));
         param.resCtx = resCtx;
