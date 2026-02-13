@@ -16,7 +16,7 @@ namespace HcclSim {
 
 std::string TaskStubLocalCopy::Describe() const
 {
-    std::string buf = StringFormat("[LocalCopy] : [srcSlice=%s, dstSlice=%s]", srcSlice.Describe().c_str(),
+    std::string buf = StringFormat("[LocalCopy]:[srcSlice=%s, dstSlice=%s]", srcSlice.Describe().c_str(),
                         dstSlice.Describe().c_str());
     return buf;
 }
@@ -38,7 +38,7 @@ bool TaskStubLocalCopy::IsGenFromSync()
 
 std::string TaskStubLocalReduce::Describe() const
 {
-    return StringFormat("LocalReduce[dataType=%d, reduceOp=%d, srcSlice=%s, dstSlice=%s]",
+    return StringFormat("[LocalReduce]:[dataType=%d, reduceOp=%d, srcSlice=%s, dstSlice=%s]",
                         dataType, reduceOp, srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
 }
 
@@ -69,7 +69,7 @@ bool TaskStubLocalReduce::IsGenFromSync()
 
 std::string TaskStubRead::Describe() const
 {
-    return StringFormat("[Read] : [remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
+    return StringFormat("[Read]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
                         link.Describe().c_str(), localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
@@ -105,7 +105,7 @@ bool TaskStubRead::IsGenFromSync()
 std::string TaskStubReadReduce::Describe() const
 {
     return StringFormat(
-        "ReadReduce[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
+        "[ReadReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
         remoteRank, link.Describe().c_str(), dataType, reduceOp,
         localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
@@ -152,7 +152,7 @@ bool TaskStubReadReduce::IsGenFromSync()
 
 std::string TaskStubWrite::Describe() const
 {
-    return StringFormat("[Write] : [remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
+    return StringFormat("[Write]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
                         link.Describe().c_str(), localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
@@ -189,7 +189,7 @@ bool TaskStubWrite::IsGenFromSync()
 std::string TaskStubWriteReduce::Describe() const
 {
     return StringFormat(
-        "WriteReduce[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
+        "[WriteReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
         remoteRank, link.Describe().c_str(), dataType, reduceOp,
         localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
@@ -236,7 +236,7 @@ bool TaskStubWriteReduce::IsGenFromSync()
 
 std::string TaskStubPost::Describe() const
 {
-    return StringFormat("[Post] : [remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
+    return StringFormat("[Post]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
         remoteRank, topicId, link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
 }
 
@@ -270,7 +270,7 @@ const std::string TaskStubPost::GetTag() const
 
 std::string TaskStubWait::Describe() const
 {
-    return StringFormat("[Wait] : [remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
+    return StringFormat("[Wait]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
         remoteRank, topicId, link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
 }
 
@@ -307,7 +307,7 @@ const std::string TaskStubWait::GetTag() const
 
 std::string TaskStubLocalPostTo::Describe() const
 {
-    return StringFormat("[LocalPostTo] : [topicId=%d]", topicIdBack);
+    return StringFormat("[LocalPostTo]:[topicId=%d]", topicIdBack);
 }
 
 void TaskStubLocalPostTo::SetPostQid(uint32_t qid)
@@ -342,7 +342,7 @@ void TaskStubLocalPostTo::SetTopicId(uint32_t id)
 
 std::string TaskStubLocalWaitFrom::Describe() const
 {
-    return StringFormat("[LocalWaitFrom] : [topicId=%d]", topicId);
+    return StringFormat("[LocalWaitFrom]:[topicId=%d]", topicId);
 }
 
 void TaskStubLocalWaitFrom::SetPostQid(uint32_t qid)

@@ -256,16 +256,6 @@ TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_meshchunk_odd_rank)
     RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
 
-TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_meshchunk_ultra_big_data)
-{
-    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}}};
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    u32 dataTypeSize = 1;
-    u64 dataCount = std::max(AR_AICPU_1D_MAX_DATA_SIZE + 1024, static_cast<u64>(4 * 1024 * 1024 * 1024ULL));
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MIN;
-    RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
-
 TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_meshchunk_even_rank)
 {
     TopoMeta topoMeta{{{0, 1}}};

@@ -99,4 +99,7 @@ TEST_F(ST_REDUCESCATTERV_TEST, st_reducescatterV)
     auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
     HcclResult res = CheckReduceScatterV(taskQueues, rankSize, reduceOp, vDataDes);
     EXPECT_TRUE(res == HCCL_SUCCESS);
+
+    // 资源清理
+    SimWorld::Global()->Deinit();
 }
