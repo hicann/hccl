@@ -180,7 +180,9 @@ void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
     std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsIntra1) const
 {
     tempAlgParamsIntra1.buffInfo.inputPtr = resCtx.cclMem.addr;
+    tempAlgParamsIntra1.buffInfo.inputSize = resCtx.cclMem.size;
     tempAlgParamsIntra1.buffInfo.outputPtr = param.outputPtr;
+    tempAlgParamsIntra1.buffInfo.outputSize = param.outputSize;
     tempAlgParamsIntra1.buffInfo.hcclBuff = resCtx.cclMem;
     tempAlgParamsIntra1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsIntra1.buffInfo.outBuffType = BufferType::OUTPUT;

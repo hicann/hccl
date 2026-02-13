@@ -48,6 +48,7 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm 
     const std::vector<HcclChannelDesc>& firstVector = firstElement->second;
     if (firstVector.size() == 1) {
         dieNum = 1;
+        HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] only 1 channel, dieNum = 1.");
         return HcclResult::HCCL_SUCCESS;
     } else if (firstVector.size() == LINK_NUM_2) {
         // 检查2个channel是否在2个die上
@@ -57,8 +58,10 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm 
         GetChannelDieId(comm, myRank_, firstVector[1], dieId1);
         if (dieId0 == dieId1) {
             dieNum = LINK_NUM_1;
+            HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] 2 channels on the same die, dieNum = 1.");
         } else {
             dieNum = LINK_NUM_2;
+            HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] 2 channels on 2 dies, dieNum = 2.");
         }
         return HcclResult::HCCL_SUCCESS;
     } else {
@@ -122,9 +125,6 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpPara
     // 1.从获得的channelDesc，判断kernel发送到几个die上
     uint32_t enableDieNum = 0;
     CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
-
-    // todo: 先固定为1，调通算法
-    enableDieNum = 1;
     
     if (enableDieNum < 1 || enableDieNum > 2) {
         HCCL_ERROR("[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] get channelDescs fail");
@@ -132,8 +132,9 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpPara
     }
 
     uint32_t kernelNum = enableDieNum;
-    resourceRequest.notifyNumOnMainThread = kernelNum - 1;
-    resourceRequest.slaveThreadNum = kernelNum - 1;
+    // 无论几个kernel，都创建2条流
+    resourceRequest.notifyNumOnMainThread = 1;
+    resourceRequest.slaveThreadNum = 1;
     resourceRequest.ccuKernelNum.push_back(kernelNum);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG("[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
@@ -183,10 +184,12 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& pa
         die1Size = 0;
         return HcclResult::HCCL_SUCCESS;
     }
-    u8 die0PortGroupSize = 1;
-    u8 die1PortGroupSize = 1;
+    u8 die0BWcoeff = 1;
+    u8 die1BWcoeff = 1;
 
-    die0Size = (dataCount * die0PortGroupSize / (die0PortGroupSize + die1PortGroupSize)) * typeSize;
+    // todo: 查询带宽系数，按比例切分数据
+
+    die0Size = (dataCount * die0BWcoeff / (die0BWcoeff + die1BWcoeff)) * typeSize;
     die1Size = templateDataParams.sliceSize - die0Size;
     return HcclResult::HCCL_SUCCESS;
 }                                                            
@@ -237,6 +240,10 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(const OpParam& param,
     }
 
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
+        if ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0)) {
+            // 数据长度为0的kernel不下发
+            continue;
+        }
         std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgReduceScatterNHR1D>(
             inputAddr, outputAddr, token, die0Size, die1Size, inputSliceStride, outputSliceStride, inputRepeatStride,
             outputRepeatStride, repeatNum);
@@ -300,10 +307,9 @@ u64 CcuTempReduceScatterNHR1DMem2Mem::GetThreadNum()
 
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
 {
-    // todo：先只用1条主流，调通算法
-    resourceRequest.slaveThreadNum = 0;
+    resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
-    resourceRequest.notifyNumOnMainThread = 0;
+    resourceRequest.notifyNumOnMainThread = 1;
 
     return HCCL_SUCCESS;
 }

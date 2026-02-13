@@ -210,7 +210,6 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param)
             // 复用资源，则需从engineCtx取得res，进行反序列化
             char *ctx = static_cast<char*>(resCtxSequence);
             std::vector<char> seq(ctx, ctx + param.ctxSize);
-            printf("[DeSerialize] ctxSize = [%lu]", seq.size());
             resCtxHost->DeSerialize(seq);
         }
         CHK_RET(executor->Orchestrate(param, *resCtxHost));
@@ -524,6 +523,7 @@ HcclResult GetAlgResCcu(HcclComm comm, const OpParam& param, AlgResourceRequest&
 
     void *ctx = nullptr;
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, param.engine, size, &ctx));
+    memcpy_s(ctx, size, seq.data(), size);
     *resCtxSequence = ctx;
     ctxSize = size;
     HCCL_INFO("Execute GetAlgResCCU success.");
@@ -574,7 +574,15 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam &param, AlgResource
 HcclResult HcclGetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest,
                           std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
 {
-    // todo：检查ccuKernelNum和ccuKernelInfos是否对应
+    
+    u32 totalKernelNum = 0;
+    for (auto t: resRequest.ccuKernelNum) {
+        totalKernelNum += t;
+    }
+    CHK_PRT_RET(totalKernelNum != resRequest.ccuKernelInfos.size(),
+        HCCL_ERROR("[HcclGetCcuKernel]ccuKernel num not match!"),
+        HCCL_E_INTERNAL);
+
     for (CcuKernelInfo& kernelInfo: resRequest.ccuKernelInfos) {
 
         void* kernelArgPtr = static_cast<void*>(kernelInfo.kernelArg.get()); // 保证没有释放

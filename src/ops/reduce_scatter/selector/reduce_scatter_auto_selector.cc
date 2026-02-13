@@ -35,7 +35,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, Op
             opParam.reduceType),
         SelectorStatus::NOT_MATCH);
 
-    if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64 ||
+    if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64 ||
         opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
         opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
         HCCL_WARNING("[Algo][ReduceScatterAutoSelector] ccu_ms mode not support INT64, UINT64, FP64.");
