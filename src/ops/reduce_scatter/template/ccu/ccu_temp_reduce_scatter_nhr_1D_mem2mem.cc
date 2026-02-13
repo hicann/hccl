@@ -302,7 +302,7 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetStepInfo(u32 step, NHRStepInfo &
 
 u64 CcuTempReduceScatterNHR1DMem2Mem::GetThreadNum()
 {
-    return 1;
+    return 2;
 }
 
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
