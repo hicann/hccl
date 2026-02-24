@@ -18,6 +18,7 @@ set(HCCL_CUSTOM_OPS_INCLUDE_LIST
 
     # CANN Toolkit头文件
     ${ASCEND_CANN_PACKAGE_PATH}/include
+    ${ASCEND_CANN_PACKAGE_PATH}/include/hccl
     ${ASCEND_CANN_PACKAGE_PATH}/include/mmpa
 )
 
