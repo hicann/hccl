@@ -32,8 +32,9 @@ from .utils import pkg_utils
 from .filelist import FileItem, FileList, fill_is_common_path
 from .utils.pkg_utils import (
     ContainAsteriskError, FAIL, BLOCK_CONFIG_PATH,
-    BlockConfigError, EnvNotSupported, IllegalVersionDir, PackageError,
-    ParseOsArchError, config_feature_to_set,
+    BlockConfigError, EnvNotSupported, IllegalVersionDir,
+    InstallScriptFormatError, InstallScriptNotInPackageInfo, PackageError,
+    ParseOsArchError, VersionInfoNotExist, config_feature_to_set,
     flatten, star_pipe, merge_dict, yield_if
 )
 from .utils.funcbase import constant, dispatch, invoke, pipe, star_apply
@@ -1061,8 +1062,18 @@ def parse_blocks(root_ele: ET.Element,
     ]
 
 
-def read_version_info() -> Tuple[str, str]:
-    version_path = os.path.join(pkg_utils.TOP_DIR, "version.info")
+def read_version_info(delivery_dir: str, package_attr: PackageAttr) -> Tuple[str, str]:
+    if 'install_script' not in package_attr:
+        raise InstallScriptNotInPackageInfo()
+    install_script = package_attr['install_script']
+    install_script_paths = install_script.split('/')
+    if len(install_script_paths) < 2:
+        raise InstallScriptFormatError()
+
+    version_path = os.path.join(delivery_dir, *install_script_paths[:-2], "version.info")
+    if not os.path.isfile(version_path):
+        raise VersionInfoNotExist()
+
     with open(version_path, 'r') as file:
         line1 = file.readline().strip()
         line2 = file.readline().strip()
@@ -1090,7 +1101,17 @@ def parse_xml_config(filepath: str,
     default_config = xml_root.attrib.copy()
 
     package_attr = parse_package_attr(xml_root, args)
-    version, version_dir = read_version_info()
+    try:
+        version, version_dir = read_version_info(delivery_dir, package_attr)
+    except InstallScriptNotInPackageInfo:
+        CommLog.cilog_error("The install_script is not configured in the package_info in %s!", filepath)
+        sys.exit(FAIL)
+    except InstallScriptFormatError:
+        CommLog.cilog_error("The install_script format is illegel in %s! More directory levels are needed.", filepath)
+        sys.exit(FAIL)
+    except VersionInfoNotExist as ex:
+        CommLog.cilog_error("The version.info file %s does not exist in %s!", str(ex), filepath)
+        sys.exit(FAIL)
     if args.disable_multi_version:
         version_dir = None
     timestamp = get_timestamp(args)

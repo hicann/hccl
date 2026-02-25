@@ -558,11 +558,11 @@ check_pkg_ver_deps() {
 check_install_path_valid() {
     local install_path="$1"
     # 黑名单设置，不允许//，...这样的路径
-    if echo "${install_path}" | grep -Eq '\/{2,}|\.{3,}'; then
+    if echo "${install_path}" | grep -Eq '/{2,}|\.{3,}'; then
         return 1
     fi
     # 白名单设置，只允许常见字符
-    if echo "${install_path}" | grep -Eq '^\~?[a-zA-Z0-9./_-]*$'; then
+    if echo "${install_path}" | grep -Eq '^~?[a-zA-Z0-9./_-]*$'; then
         return 0
     else
         return 1

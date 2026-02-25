@@ -1,5 +1,0 @@
-Version=9.0.0
-version_dir=cann
-required_package_hcomm_version=">=8.5"
-required_package_runtime_version=">=8.5"
-required_package_metadef_version=">=8.5"
