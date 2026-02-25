@@ -29,7 +29,7 @@
         <block name="HcclLib"/>
     </block_info>
     <dir_info value="hccl" install_path="hccl" install_type="all">
-        <path value="share" install_mod="550"/>
+        <path value="share" install_mod="750"/>
         <path value="share/info" install_mod="750"/>
         <path value="share/info/hccl" install_mod="750"/>
         <path value="share/info/hccl/script" install_mod="550"/>
