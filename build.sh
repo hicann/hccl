@@ -30,7 +30,6 @@ VERSION_INFO="8.5.0"
 ENABLE_UT="off"
 ENABLE_ST="off"
 CMAKE_BUILD_TYPE="Debug"
-ASCEND_3RD_LIB_PATH="${CURRENT_DIR}/output/third_party"
 BUILD_CB_TEST="false"
 
 # 自定义算子工程
@@ -199,7 +198,7 @@ function build_ut() {
               -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
               -DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR} \
               -DASCEND_INSTALL_PATH=${ASCEND_INSTALL_PATH} \
-              -DASCEND_3RD_LIB_PATH=${ASCEND_3RD_LIB_PATH} \
+              -DCANN_3RD_LIB_PATH=${CANN_3RD_LIB_PATH} \
               -DENABLE_COV=${ENABLE_COV} \
               -DENABLE_TEST=${ENABLE_TEST} \
               -DENABLE_UT=${ENABLE_UT} \

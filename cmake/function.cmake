@@ -13,7 +13,7 @@ function(add_run_command TARGET_NAME TASK_NUM)
     add_custom_command(
         TARGET ${TARGET_NAME}
         POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${ASCEND_3RD_LIB_PATH}/gtest_shared/lib/ ASAN_OPTIONS=detect_leaks=0 timeout -s SIGKILL ${LLT_KILL_TIME}s ./${TARGET_NAME} --gtest_output=xml:${report_dir}/${TARGET_NAME}.xml
+        COMMAND ${CMAKE_COMMAND} -E env LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CANN_3RD_LIB_PATH}/gtest/lib/ ASAN_OPTIONS=detect_leaks=0 timeout -s SIGKILL ${LLT_KILL_TIME}s ./${TARGET_NAME} --gtest_output=xml:${report_dir}/${TARGET_NAME}.xml
         COMMAND echo "Task number: ${TASK_NUM} timeout=${LLT_KILL_TIME}"
         COMMENT "Run ops${TARGET_NAME} with task number ${TASK_NUM} ASAN(${ENABLE_ASAN})"
         DEPENDS ${TARGET_NAME}

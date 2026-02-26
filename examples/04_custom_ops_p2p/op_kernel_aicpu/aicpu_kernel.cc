@@ -16,26 +16,11 @@
 
 using namespace ops_hccl_p2p;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-HcclResult __attribute__((weak)) HcommRegOpInfo(const char* commId, void* opInfo, size_t size);
-#ifdef __cplusplus
-}
-#endif
-
 extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s]", __func__, param->commName, param->tag);
     if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
-        return 1;
-    }
-
-    if (HcommRegOpInfo != nullptr &&
-        HcommRegOpInfo(param->commName, reinterpret_cast<void *>(param), sizeof(OpParam)) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommRegOpInfo fail, commName[%s], algTag[%s], param[%p], size[%u]",
-            __func__, param->commName, param->algTag, param, sizeof(OpParam));
         return 1;
     }
 

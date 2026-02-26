@@ -9,15 +9,12 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(CMAKE_PREFIX_PATH
-    ${ASCEND_3RD_LIB_PATH}/json 
-    ${ASCEND_3RD_LIB_PATH}/gtest_shared/lib64
+    ${CANN_3RD_LIB_PATH}/gtest/lib64
     ${ASCEND_INSTALL_PATH}
 )
 
-# find_package(GTest REQUIRED)
-
 set(COMMON_INC_PATH
-    ${ASCEND_3RD_LIB_PATH}/gtest_shared/include
+    ${CANN_3RD_LIB_PATH}/gtest/include
 )
 
 # UT

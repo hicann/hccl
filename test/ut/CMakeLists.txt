@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(UT_COMMON_INCLUDE_LIST
-    ${ASCEND_3RD_LIB_PATH}/gtest_shared/include/
+    ${CANN_3RD_LIB_PATH}/gtest/include/
 )
 
 add_subdirectory(common/prepare_ut_env)

@@ -37,11 +37,6 @@ function(pack_custom)
       WORLD_READ WORLD_EXECUTE
   )
 
-  add_custom_target(version_info ALL
-      COMMAND cp -f ${CMAKE_SOURCE_DIR}/version.info ${CMAKE_CURRENT_BINARY_DIR}/version.info
-      COMMAND ${CMAKE_COMMAND} -E echo "host_only=false" >> ${CMAKE_CURRENT_BINARY_DIR}/version.info
-  )
-
   # ============= CPack =============
   set(CPACK_PACKAGE_NAME "cann-hccl-${CUSTOM_OPS_NAME}-${CUSTOM_OPS_VENDOR}")
   set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
@@ -59,6 +54,7 @@ function(pack_custom)
   set(CPACK_EXTERNAL_PACKAGE_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/makeself_custom.cmake")
   set(CPACK_EXTERNAL_ENABLE_STAGING true)
   set(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
+  set(CPACK_3RD_LIB_PATH "${CANN_3RD_LIB_PATH}")
 
   set(CPACK_CUSTOM_OPS_NAME "${CUSTOM_OPS_NAME}")
   set(CPACK_CUSTOM_OPS_PATH "${CUSTOM_OPS_PATH}")
@@ -178,6 +174,7 @@ function(pack_built_in)
   set(CPACK_EXTERNAL_PACKAGE_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/makeself_built_in.cmake")
   set(CPACK_EXTERNAL_ENABLE_STAGING true)
   set(CPACK_PACKAGE_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
+  set(CPACK_3RD_LIB_PATH "${CANN_3RD_LIB_PATH}")
 
   message(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
   include(CPack)

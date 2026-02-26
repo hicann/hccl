@@ -11,10 +11,10 @@
 # makeself.cmake - 自定义 makeself 打包脚本
 
 # 设置 makeself 路径
-set(MAKESELF_EXE ${CPACK_CMAKE_BINARY_DIR}/makeself/makeself.sh)
-set(MAKESELF_HEADER_EXE ${CPACK_CMAKE_BINARY_DIR}/makeself/makeself-header.sh)
+set(MAKESELF_EXE ${CPACK_3RD_LIB_PATH}/makeself/makeself.sh)
+set(MAKESELF_HEADER_EXE ${CPACK_3RD_LIB_PATH}/makeself/makeself-header.sh)
 if(NOT MAKESELF_EXE)
-    message(FATAL_ERROR "makeself not found! Install it with: sudo apt install makeself")
+    message(FATAL_ERROR "makeself not found")
 endif()
 
 # 创建临时安装目录

@@ -9,15 +9,8 @@
    - python: 3.7.x 至 3.11.4 版本
    - gcc >= 7.3.0
    - cmake >= 3.16.0
-   - ccache
-   - nlohmann_json
+   - ccache（可选，用于提高二次编译速度）
    - googletest（仅执行UT时依赖，建议版本 release-1.14.0）
-
-   nlohmann_json和googletest可通过`build_third_party.sh`进行编译安装，可通过`--output_path`参数指定安装目录，默认为`./output/third_party`：
-
-   ```shell
-   bash build_third_party.sh --output_path=${THIRD_LIB_PATH}
-   ```
 
 2. 安装社区版CANN Toolkit包
 
@@ -51,6 +44,17 @@ git clone https://gitcode.com/cann/hccl.git
 
 ## 编译
 
+### 开源第三方软件依赖
+
+编译本项目时，依赖的第三方开源软件列表如下：
+
+| 开源软件      | 版本                   | 下载地址                                                                                                                                                                                                    |
+| ------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| makeself      | 2.5.0                  | [makeself-release-2.5.0-patch1.tar.gz](https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz)                                     |
+| googletest    | 1.14.0                 | [googletest-1.14.0.tar.gz](https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz)                                                                          |
+
+### 源码编译
+
 本项目提供一键式编译构建能力，进入代码仓根目录，执行如下命令：
 
 ```shell
@@ -58,6 +62,13 @@ git clone https://gitcode.com/cann/hccl.git
 bash build.sh --pkg
 # 编译 host + device 包
 bash build.sh --pkg --full
+```
+
+若您的编译环境无法访问网络，您需要在联网环境中下载上述开源软件压缩包，并手动上传至编译环境中，并通过 `--cann_3rd_lib_path` 参数指定软件包路径：
+
+```shell
+# 指定软件包路径，默认为：./third_party
+bash build.sh --cann_3rd_lib_path={your_3rd_party_path}
 ```
 
 编译完成后会在`./build_out`目录下生成 `cann-hccl_<version>_linux-<arch>.run` 软件包。

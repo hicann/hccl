@@ -6,15 +6,9 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 
-json:
-  version: v3.11.3
-  type: run
 makeself:
   version: release-2.5.0-patch1.0
   type: build
-mockcpp:
-  version: v2.7-h2
-  type: test
 googletest:
   version: v1.14.0
   type: test
