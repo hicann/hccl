@@ -377,6 +377,10 @@ target_link_options(hccl PRIVATE
     $<$<CONFIG:Release>:-s>
 )
 
+target_link_directories(hccl PRIVATE
+    ${ASCEND_CANN_PACKAGE_PATH}/lib64
+)
+
 if(BUILD_OPEN_PROJECT)
     target_link_libraries(hccl PRIVATE
         -Wl,--no-as-needed

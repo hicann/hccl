@@ -67,14 +67,8 @@ function(generate_stub STUB)
         endforeach()
     endif()
 endfunction(generate_stub)
+
 set(STUBS
-    ascend_hal
-    c_sec
-    slog
-    unified_dlog
-    aicpu_sharder
-    mmpa
-    hcomm
     ccl_kernel
 )
 foreach(STUB ${STUBS})
