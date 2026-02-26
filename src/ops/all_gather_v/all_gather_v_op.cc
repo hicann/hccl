@@ -40,7 +40,9 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 {
     HCCL_INFO("Start to run execute HcclAllGatherV");
  
-    // 穿刺的时候只考虑A5
+    if (!CheckHCCLIndependentOp()) {
+        return HcclAllGatherVInner(sendBuf, sendCount, recvBuf, recvCounts, recvDispls, dataType, comm, stream);
+    }
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
     if (deviceType != DevType::DEV_TYPE_910_95) {
