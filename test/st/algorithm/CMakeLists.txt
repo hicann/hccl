@@ -12,17 +12,6 @@ cmake_minimum_required(VERSION 3.16.0)
 project(hccl_checker_ops_stest)
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../..)
 
-# 编译HCCL业务so文件
-if (NOT BUILD_OPEN_PROJECT)
-    execute_process(
-        COMMAND bash ${TOP_DIR}/hccl/test/st/algorithm/utils/script/build.sh
-        RESULT_VARIABLE HCCL_BUILD_RESULT
-    )
-    if(NOT HCCL_BUILD_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to execute hccl build script. Exit code: ${HCCL_BUILD_RESULT}")
-    endif()
-endif()
-
 if (BUILD_OPEN_PROJECT)
     set(UTILS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/utils/src)
     set(TESTCASE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/testcase)
@@ -37,6 +26,10 @@ if (BUILD_OPEN_PROJECT)
     endif()
     message(STATUS "Final Ascend Path: ${ASCEND_HOME_PATH}")
 endif()
+
+# 下载并编译gtest
+set(CANN_3RD_LIB_PATH ${HCCL_DEV_BASE}/third_party)
+include(${HCCL_DEV_BASE}/cmake/third_party/gtest.cmake)
 
 add_subdirectory(testcase)
 add_subdirectory(utils)

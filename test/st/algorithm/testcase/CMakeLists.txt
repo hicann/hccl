@@ -59,7 +59,7 @@ if (BUILD_OPEN_PROJECT)
     )
 
     target_link_libraries(hccl_checker_ops_stest PRIVATE
-        ${THIRD_PARTH_PATH}/gtest_shared/lib/libgtest.so
+        gtest
         pthread
         hccl-model-proxy
         hccl-verifier
