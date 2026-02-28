@@ -41,20 +41,15 @@ HcclResult HcclSend(
     if (!CheckHCCLIndependentOp()) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
     }
-    // 穿刺的时候只考虑A5
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
-    // 非95设备转到老流程
     if (deviceType != DevType::DEV_TYPE_910_95) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
     }
-    // 图模式引导到老的流程上面
     if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
     }
 
-    // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
-    // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
     // 参数校验
@@ -66,8 +61,7 @@ HcclResult HcclSend(
     CHK_RET(HcclGetRankId(comm, &userRank));
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
     CHK_RET(HcclGetCommName(comm, commName));
-    // 兼容同一通信域本rank既调用了send也调用了recv时重新建链报错
-    const string tag = "SendRecv_" + string(commName) + "_" + std::to_string(userRank) + "_" + std::to_string(destRank);
+    const string tag = "Send_" + string(commName) + "_" + std::to_string(userRank) + "_" + std::to_string(destRank);
     CHK_RET(HcclCheckTag(tag.c_str()));
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, destRank), tag.c_str());
@@ -75,7 +69,6 @@ HcclResult HcclSend(
     CHK_RET(CheckCount(count));
     CHK_RET(CheckDataType(dataType, false));
 
-    // 执行Send
     CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, tag), tag.c_str());
 
     HCCL_INFO("[HcclSend][%d]->[%d] Success.", userRank, destRank);

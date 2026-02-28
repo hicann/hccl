@@ -30,6 +30,7 @@ protected:
 
     void TearDown() override {
         unsetenv("HCCL_OP_EXPANSION_MODE");
+        unsetenv("HCCL_INDEPENDENT_OP");
     }
 
     static void SetUpTestCase() {
@@ -41,21 +42,41 @@ protected:
 
 using RankId = uint32_t;
 
-void SendRecvTest(
-    TopoMeta &topoMeta, const std::map<RankId, RankId> &sendRecvMap, u32 dataCount, HcclDataType dataType) {
+u32 GetRankSize(const TopoMeta &topoMeta) {
     u32 rankSize = 0;
     for (const auto &superPod: topoMeta)
         for (const auto &server: superPod)
             rankSize += server.size();
+    return rankSize;
+}
+
+std::unordered_set<RankId> GetRankIds(const std::map<RankId, RankId> &sendRecvMap) {
+    std::unordered_set<RankId> usedRankIds;
+    for (const auto &kv: sendRecvMap) {
+        usedRankIds.insert(kv.first);
+        usedRankIds.insert(kv.second);
+    }
+    return usedRankIds;
+}
+
+void SendRecvTest(
+    TopoMeta &topoMeta, const std::map<RankId, RankId> &sendRecvMap, u32 dataCount, HcclDataType dataType) {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
+    setenv("HCCL_INDEPENDENT_OP", "1", 1);
+
+    auto rankSize = GetRankSize(topoMeta);
+    auto usedRankIds = GetRankIds(sendRecvMap);
 
     // 多线程运行send&recv算子
     std::vector<std::thread> threads;
     for (auto rankId = 0; rankId < rankSize; ++rankId) {
+        if (!usedRankIds.count(rankId)) {
+            continue;
+        }
         threads.emplace_back([=]() {
             // 1.SetDevice
             aclrtSetDevice(rankId);

@@ -81,12 +81,11 @@ namespace ops_hccl {
 
     HcclResult InsRecvExecutor::Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) {
         opMode_ = param.opMode;
-        // ! 需要添加空指针判断，这里是暂时实现
         myRank_ = resCtx.topoInfo.userRank;
         remoteRank_ = param.sendRecvRemoteRank;
         HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Start.", myRank_, remoteRank_);
 
-        // maxTmpMemSize_设定为cclIn的大小，op中将申请的HcclBuff全给了cclIn
+        // maxTmpMemSize_设定为ccl buffer的大小
         maxTmpMemSize_ = resCtx.cclMem.size;
         dataCount_ = param.DataDes.count;
         dataType_ = param.DataDes.dataType;

@@ -39,7 +39,7 @@ namespace ops_hccl {
             HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
             const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
 
-        // 单算子还是图模式
+        // 单算子|图模式
         OpMode opMode_;
         u32 remoteRank_;
         std::vector<ThreadHandle> threads_;
