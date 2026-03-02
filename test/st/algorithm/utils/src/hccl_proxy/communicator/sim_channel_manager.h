@@ -32,7 +32,7 @@ private:
     std::string commId_;
     uint32_t curRank_;
 
-    std::unordered_map<std::string, std::shared_ptr<SimChannel>> channelMap_;
+    std::unordered_map<std::string, uint32_t> channelIdxMap_;
 };
 
 };

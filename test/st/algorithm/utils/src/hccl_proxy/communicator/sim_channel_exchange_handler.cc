@@ -37,14 +37,14 @@ void SimChannelExchangeHandler::PutChannel(std::shared_ptr<SimChannel> channel)
 {
     string key = SimChannelExchangeHandler::GetExchangeKey(channel);
     std::lock_guard<std::mutex> lock(mutex_);
-    channelMap_[key][channel->GetLocRankId()][channel->GetRmtRankId()] = channel;
+    channelMap_[key][channel->GetLocRankId()][channel->GetRmtRankId()][channel->GetChannelIdx()] = channel;
 }
 
 std::shared_ptr<SimChannel> SimChannelExchangeHandler::GetChannel(
-    const std::string& key, uint32_t srcRank, uint32_t dstRank)
+    const std::string& key, uint32_t srcRank, uint32_t dstRank, uint32_t channelIdx)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    return channelMap_[key][srcRank][dstRank];
+    return channelMap_[key][srcRank][dstRank][channelIdx];
 }
 
 }

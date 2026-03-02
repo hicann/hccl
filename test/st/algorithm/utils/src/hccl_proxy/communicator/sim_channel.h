@@ -22,7 +22,7 @@ namespace HcclSim {
 class SimChannel {
 public:
     SimChannel(const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol,
-        uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum);
+        uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx);
     ~SimChannel();
 
     HcclResult Init();
@@ -42,6 +42,7 @@ public:
     uint32_t GetRmtNotifyIdByIndex(uint32_t notifyIdx) const;
     const std::vector<SimNotify*>& GetLocNotifys() const { return locNotifys_; };
     const std::vector<SimNotify*>& GetRmtNotifys() const { return rmtNotifys_; };
+    uint32_t GetChannelIdx() const { return channelIdx_; };
 
     bool IsReady() const { return isReady_; };
     HcclResult ResExchange(std::shared_ptr<SimChannel> reverseChannel);
@@ -61,6 +62,7 @@ private:
     std::vector<SimNotify*> rmtNotifys_;
 
     bool isReady_{false};
+    uint32_t channelIdx_{0};
 };
 
 }   // namespace HcclSim

@@ -29,43 +29,38 @@ std::string SimChannelMgr::GetChannelKey(std::shared_ptr<SimChannel> channel)
 HcclResult SimChannelMgr::ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
     const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
 {
-    vector<pair<uint32_t, shared_ptr<SimChannel>>> tmpChannels{};
+    vector<shared_ptr<SimChannel>> tmpChannels{};
 
     for (uint32_t i = 0; i < listNum; ++i) {
         string channelKey = tag + ":" + to_string(engine) + ":" +
             to_string(channelDescList[i].remoteRank) + ":" + to_string(channelDescList[i].channelProtocol);
-        if (channelMap_.find(channelKey) != channelMap_.end()) {
-            // 已存在缓存
-            channelList[i] = reinterpret_cast<ChannelHandle>(channelMap_[channelKey].get());
-        } else {
-            // 不存在缓存，创建新的channel
-            shared_ptr<SimChannel> channel = make_shared<SimChannel>(commId, tag, engine, channelDescList[i].channelProtocol,
-                curRank_, channelDescList[i].remoteRank, channelDescList[i].notifyNum);
-            CHK_RET(channel->Init());
-            tmpChannels.push_back({i, channel});
-        }
+        auto channelIdx = channelIdxMap_[channelKey]++;
+        // channel不再支持复用
+        shared_ptr<SimChannel> channel = make_shared<SimChannel>(commId, tag, engine, channelDescList[i].channelProtocol,
+            curRank_, channelDescList[i].remoteRank, channelDescList[i].notifyNum, channelIdx);
+        CHK_RET(channel->Init());
+        tmpChannels.push_back(channel);
     }
 
     // 模拟建链
     auto timeout = std::chrono::milliseconds(WAIT_CHANNEL_READY_TIMEOUT_MS);
     auto startTime = std::chrono::steady_clock::now();
-    for (auto& pair : tmpChannels) {
-        SimChannelExchangeHandler::GetInstance().PutChannel(pair.second);
+    for (auto& channel : tmpChannels) {
+        SimChannelExchangeHandler::GetInstance().PutChannel(channel);
     }
     while (true) {
         uint32_t finCount = 0;
-        for (auto& pair : tmpChannels) {
-            auto& channelPtr = pair.second;
-            if (channelPtr->IsReady()) {
+        for (auto& channel : tmpChannels) {
+            if (channel->IsReady()) {
                 // 已完成资源交换，计数
                 finCount++;
                 continue;
             }
             // 尝试交换资源
-            string exchangeKey = SimChannelExchangeHandler::GetExchangeKey(channelPtr);
-            auto reverseChannel = SimChannelExchangeHandler::GetInstance().GetChannel(exchangeKey, channelPtr->GetRmtRankId(), channelPtr->GetLocRankId());
+            string exchangeKey = SimChannelExchangeHandler::GetExchangeKey(channel);
+            auto reverseChannel = SimChannelExchangeHandler::GetInstance().GetChannel(exchangeKey, channel->GetRmtRankId(), channel->GetLocRankId(), channel->GetChannelIdx());
             if (reverseChannel != nullptr) {
-                CHK_RET(channelPtr->ResExchange(reverseChannel));
+                CHK_RET(channel->ResExchange(reverseChannel));
             }
         }
 
@@ -81,10 +76,8 @@ HcclResult SimChannelMgr::ChannelCommCreate(const std::string &commId, const std
         }
     }
 
-    for (auto& pair : tmpChannels) {
-        string channelKey = SimChannelMgr::GetChannelKey(pair.second);
-        channelMap_.insert({channelKey, pair.second});
-        channelList[pair.first] = reinterpret_cast<ChannelHandle>(channelMap_[channelKey].get());
+    for (int i = 0; i < tmpChannels.size(); i++) {
+        channelList[i] = reinterpret_cast<ChannelHandle>(tmpChannels[i].get());
     }
     return HCCL_SUCCESS;
 }

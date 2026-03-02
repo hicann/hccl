@@ -27,7 +27,7 @@ public:
 
     void Clear();
     void PutChannel(std::shared_ptr<SimChannel> channel);
-    std::shared_ptr<SimChannel> GetChannel(const std::string& key, uint32_t srcRank, uint32_t dstRank);
+    std::shared_ptr<SimChannel> GetChannel(const std::string& key, uint32_t srcRank, uint32_t dstRank, uint32_t channelIdx);
 
 private:
     SimChannelExchangeHandler() = default;
@@ -35,8 +35,8 @@ private:
 
 private:
     std::mutex mutex_;
-    // <Exchange Key, Src rank, Dst rank, SimChannel>
-    std::unordered_map<std::string, std::map<uint32_t, std::map<uint32_t, std::shared_ptr<SimChannel>>>> channelMap_;
+    // <Exchange Key, Src rank, Dst rank, ChannelIdx, SimChannel>
+    std::unordered_map<std::string, std::map<uint32_t, std::map<uint32_t, std::map<uint32_t, std::shared_ptr<SimChannel>>>>> channelMap_;
 };
 
 }

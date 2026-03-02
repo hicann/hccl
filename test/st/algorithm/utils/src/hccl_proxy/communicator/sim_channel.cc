@@ -20,8 +20,8 @@ using namespace std;
 namespace HcclSim {
 
 SimChannel::SimChannel(const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol,
-    uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum)
-    : commId_(commId), tag_(tag), engine_(engine), protocol_(protocol), locRankId_(locRankId), rmtRankId_(rmtRankId), notifyNum_(notifyNum)
+    uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx)
+    : commId_(commId), tag_(tag), engine_(engine), protocol_(protocol), locRankId_(locRankId), rmtRankId_(rmtRankId), notifyNum_(notifyNum), channelIdx_(channelIdx)
 {}
 
 SimChannel::~SimChannel()
