@@ -45,6 +45,9 @@ target_link_options(hccl_custom_p2p PRIVATE
     -Wl,-z,now
     -Wl,-z,noexecstack
 )
+target_link_directories(hccl_custom_p2p PRIVATE
+    ${ASCEND_CANN_PACKAGE_PATH}/lib64
+)
 target_link_libraries(hccl_custom_p2p PRIVATE
     -Wl,--no-as-needed
     hcomm
