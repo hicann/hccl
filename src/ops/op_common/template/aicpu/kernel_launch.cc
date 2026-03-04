@@ -101,10 +101,11 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         }
 
         // 主thread等待Host stream的通知
-        if (HcommAclrtNotifyWaitOnThread(thread, resCtx.notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
-            HCCL_ERROR("failed to wait notify[%d] from host main stream", resCtx.notifyIds[0]);
-            return 1;
-        }
+        ThreadHandle exportedAicpuTsThread = param->opThread;
+        u32 notifyNumOnMainThread = resCtx.notifyNumOnMainThread;
+        HCCL_DEBUG("[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
+            notifyNumOnMainThread, CUSTOM_TIMEOUT);
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, notifyNumOnMainThread, CUSTOM_TIMEOUT)));
 
         std::shared_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param->opType, algName);
         if (executor.get() == nullptr) {
@@ -117,11 +118,12 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
             HCCL_ERROR("orchestrate failed for alg:%s", param->algName);
             return 1;
         }
-        // 主thread通知Host stream
-        if (HcommAclrtNotifyRecordOnThread(thread, resCtx.notifyIds[1]) != HCCL_SUCCESS) {
-            HCCL_ERROR("failed to record host main stream");
-            return 1;
-        }
+
+        constexpr u32 DEFAULT_NOTIFY_IDX = 0;
+        HCCL_DEBUG("[%s]Notify record on srcThread[%llu], dstThread[%llu], notifyIdx[%u]",__func__, thread, exportedAicpuTsThread,
+            DEFAULT_NOTIFY_IDX);
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(thread, exportedAicpuTsThread,
+            DEFAULT_NOTIFY_IDX)));
 
         if (HcommBatchModeEnd(param->algTag) != HCCL_SUCCESS) {
             HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);

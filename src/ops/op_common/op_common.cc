@@ -40,7 +40,6 @@
 #include "dpu/kernel_launch.h"
 
 namespace ops_hccl {
-thread_local aclrtNotify g_notifies_host_with_device[AICPU_CONTROL_NOTIFY_NUM];
 thread_local std::map<std::string, HcclMemHandle> g_memHandleCache; // 当前AIV存放注册内存的memHandle使用
 // 用于维护增量建链算子的host ctx信息
 thread_local std::map<std::string, std::unique_ptr<AlgResourceCtxSerializable>> g_hostCtx;
@@ -110,7 +109,28 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param)
     // 资源序列化结果
     void *resCtxSequence;
     bool isResourceReused = false;
+
+    ThreadHandle cpuTsThread;
+    ThreadHandle exportedAicpuTsThread;
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
+        CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
+        // Export cpuTsThread
+        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
+    }
+
     CHK_RET(HcclGetAlgRes(comm, param, executor, topoInfo, resCtxHost, &resCtxSequence, isResourceReused));
+
+    ThreadHandle exportedCpuTsThread;
+    ThreadHandle mainThread;
+    u32 notifyNumOnMainThread;
+    if (param.engine == COMM_ENGINE_AICPU_TS) {
+        // 获取主流信息
+        CHK_RET(GetMainThreadInfo(comm, param, mainThread, notifyNumOnMainThread));
+        // Export mainThread
+        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS, &exportedCpuTsThread));
+        // cpuTsThread 添加到param里
+        param.opThread = exportedAicpuTsThread;
+    }
 
     // 算法执行
     if ((param.engine == COMM_ENGINE_AICPU_TS) || (param.engine == COMM_ENGINE_CPU)) {
@@ -128,11 +148,10 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param)
             CHK_RET(static_cast<HcclResult>(HcclTaskRegister(comm, param.algTag, HcclLaunchDPUKernel)));
         }
 
-        // Host stream通知Device主thread，这里现在是直接用的acl的接口，是否有基础库的接口
-        if (aclrtRecordNotify(g_notifies_host_with_device[0], param.stream) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to record aicpu stream");
-            return HCCL_E_INTERNAL;
-        }
+        // Host stream通知Device主thread，使用主流上idx最大的notify
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(cpuTsThread, exportedCpuTsThread,
+            notifyNumOnMainThread)));
+
         // 执行device测的算法编排
         std::string kernelName = "HcclLaunchAicpuKernel";
         aclrtFuncHandle funcHandle;
@@ -180,10 +199,8 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param)
             HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret),
             HCCL_E_OPEN_FILE_FAILURE);
         // Host stream等待Device的通知
-        if (aclrtWaitAndResetNotify(g_notifies_host_with_device[1], param.stream, CUSTOM_TIMEOUT) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to wait from aicpu stream");
-            return HCCL_E_INTERNAL;
-        }
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, 0, NOTIFY_DEFAULT_WAIT_TIME)));
+
         if (aclrtSynchronizeStream(param.stream) != 0) {
             HCCL_ERROR("Stream Synchronize Failed");
             return HCCL_E_INTERNAL;
@@ -380,11 +397,11 @@ HcclResult HcclMemcpyCtxHostToDevice(HcclComm comm, const OpParam &param,
     void *ctx = nullptr;
     // 创建Context, aicpu和host dpu申请device内存
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, COMM_ENGINE_AICPU_TS, size, &ctx));
+    // 从Host内存拷贝到Device Context内存上
+    CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, seq.data(), size, 0));
     // 将内存强转为AlgResourceCtx结构体
     *resCtxSequence = ctx;
     ctxSize = size;
-    // 从Host内存拷贝到Device Context内存上
-    ACLCHECK(aclrtMemcpy(ctx, size, seq.data(), size, ACL_MEMCPY_HOST_TO_DEVICE));
     HCCL_INFO("Memcpy hostCtx to device success.");
     return HCCL_SUCCESS;
 }
@@ -403,35 +420,8 @@ HcclResult HcclAllocAlgResourceAICPU(
     resCtxHost->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
-    CHK_RET(HcclGetH2DNotify(resCtxHost));
     CHK_RET(HcclGetThread(comm, param, resRequest, resCtxHost));
     CHK_RET(HcclGetChannel(comm, param, resRequest, resCtxHost));
-    return HCCL_SUCCESS;
-}
-
-HcclResult HcclGetH2DNotify(std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
-{
-#define ACL_NOTIFY_DEFAULT 0x00000000U
-    // 先使用acl接口来分配notify
-    if (aclrtCreateNotify(&(g_notifies_host_with_device[0]), ACL_NOTIFY_DEFAULT) != ACL_SUCCESS) {
-        HCCL_ERROR("failed to alloc notify");
-        return HCCL_E_INTERNAL;
-    }
-
-    if (aclrtCreateNotify(&(g_notifies_host_with_device[1]), ACL_NOTIFY_DEFAULT) != ACL_SUCCESS) {
-        HCCL_ERROR("failed to alloc notify");
-        return HCCL_E_INTERNAL;
-    }
-
-    for (u32 idx = 0; idx < AICPU_CONTROL_NOTIFY_NUM; idx++) {
-        uint32_t notifyId;
-        // 获取notify Id，放入Context中
-        if (aclrtGetNotifyId(g_notifies_host_with_device[idx], &notifyId) != ACL_SUCCESS) {
-            HCCL_ERROR("failed to get notify id");
-            return HCCL_E_INTERNAL;
-        }
-        resCtxHost->notifyIds[idx] = notifyId;
-    }
     return HCCL_SUCCESS;
 }
 
@@ -442,6 +432,7 @@ HcclResult HcclGetThread(
     ThreadHandle thread;
     if ((param.engine == COMM_ENGINE_AICPU_TS) || (param.engine == COMM_ENGINE_CPU)) {
         CHK_RET(HcclThreadAcquire(comm, COMM_ENGINE_AICPU_TS, 1, resRequest.notifyNumOnMainThread, &thread));
+        CHK_RET(SaveMainThreadInfo(comm, param, thread, resRequest.notifyNumOnMainThread));
         HCCL_DEBUG("threads ptr is %p\n", &thread);
     } else {
         // host模式下，将主流封装为thread，并创建主流上的notify
@@ -463,6 +454,44 @@ HcclResult HcclGetThread(
             HCCL_DEBUG("[HcclGetThread] threads[%u]=[%llu]", i, resCtxHost->threads[i]);
         }
     }
+    return HCCL_SUCCESS;
+}
+
+HcclResult SaveMainThreadInfo(HcclComm comm, const OpParam &param, ThreadHandle thread, u32 notifyNum)
+{
+    uint64_t size = sizeof(ThreadHandle) + sizeof(u32);
+    void *ctx = nullptr;
+    // 申请一块host类型内存，保存主流信息
+    CHK_RET(HcclEngineCtxCreate(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, size, &ctx));
+    // 填充主流handle信息
+    ThreadHandle* threadPtr = reinterpret_cast<ThreadHandle *>(ctx);
+    *threadPtr = thread;
+    // 填充主流notify数量信息
+    char* curPtr = reinterpret_cast<char *>(ctx);
+    curPtr += sizeof(ThreadHandle);
+    u32 *notifyNumPtr = reinterpret_cast<u32 *>(curPtr);
+    *notifyNumPtr = notifyNum;
+    HCCL_INFO("[GetMainThreadInfo]threadPtr[%p], thread[%lu], notifyNumPtr[%p], notifyNum[%lu]", 
+        threadPtr, thread, notifyNumPtr, notifyNum);
+    return HCCL_SUCCESS;
+}
+
+HcclResult GetMainThreadInfo(HcclComm comm, const OpParam &param, ThreadHandle &thread, u32 &notifyNum)
+{
+    uint64_t size = sizeof(ThreadHandle) + sizeof(u32);
+    void *ctx = nullptr;
+    CHK_RET(HcclEngineCtxGet(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, &ctx, &size));
+
+    // 获取主流handle信息
+    ThreadHandle* threadPtr = reinterpret_cast<ThreadHandle *>(ctx);
+    thread = *threadPtr;
+    // 获取主流notify数量信息
+    char* curPtr = reinterpret_cast<char *>(ctx);
+    curPtr += sizeof(ThreadHandle);
+    u32 *notifyNumPtr = reinterpret_cast<u32 *>(curPtr);
+    notifyNum = *notifyNumPtr;
+    HCCL_INFO("[GetMainThreadInfo]threadPtr[%p], thread[%lu], notifyNumPtr[%p], notifyNum[%lu]", 
+        threadPtr, thread, notifyNumPtr, notifyNum);
     return HCCL_SUCCESS;
 }
 
@@ -544,7 +573,6 @@ HcclResult HcclAllocAlgResourceCcu(HcclComm comm, const OpParam& param, AlgResou
     resCtxHost->notifyNumOnMainThread = resRequest.notifyNumOnMainThread;
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
-    CHK_RET(HcclGetH2DNotify(resCtxHost));
     CHK_RET(HcclGetThread(comm, param, resRequest, resCtxHost));
     CHK_RET(HcclGetChannelForCcu(comm, param, resRequest, resCtxHost));
     CHK_RET(HcclGetCcuKernel(comm, param, resRequest, resCtxHost));

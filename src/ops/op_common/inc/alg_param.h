@@ -207,7 +207,6 @@ struct AlgResourceCtxSerializable {
     u32 notifyNumOnMainThread; // 主流上的notify数量
     u32 slaveThreadNum; // 需要的thread数量
     std::vector<u32> notifyNumPerThread; // 每个thread需要的notify数量
-    uint32_t notifyIds[AICPU_CONTROL_NOTIFY_NUM]; // aicpu 模式下控制notify
     TopoInfo topoInfo; // 提取的拓扑信息
     void* aivCommInfoPtr = nullptr;
     std::vector<ThreadHandle> threads;
@@ -230,9 +229,6 @@ struct AlgResourceCtxSerializable {
         binaryStream << notifyNumOnMainThread;
         binaryStream << slaveThreadNum;
         binaryStream << notifyNumPerThread;
-        for (uint32_t i = 0; i < AICPU_CONTROL_NOTIFY_NUM; i++) {
-            binaryStream << notifyIds[i];
-        }
         binaryStream << topoInfo;
         binaryStream << commInfoPtr;
         binaryStream << threads;
@@ -260,9 +256,6 @@ struct AlgResourceCtxSerializable {
         binaryStream >> notifyNumOnMainThread;
         binaryStream >> slaveThreadNum;
         binaryStream >> notifyNumPerThread;
-        for (uint32_t i = 0; i < AICPU_CONTROL_NOTIFY_NUM; i++) {
-            binaryStream >> notifyIds[i];
-        }
         binaryStream >> topoInfo;
         binaryStream >> commInfoPtr;
         binaryStream >> threads;
@@ -342,6 +335,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     s32 aivCountTag = 0;
     u64 ctxSize = 0;
     void* resCtx = nullptr;
+    ThreadHandle opThread = 0;
     u64 varMemSize{0};
     u8 varData[0];
 };
