@@ -52,7 +52,7 @@ SelectorStatus AllGatherAutoSelector::SelectMeshAlgo(TopoInfo *topoInfo, OpParam
         if (IsSmallData(opParam.inputSize)) {
             selectAlgName = "CcuAllGatherMesh1D";
         } else {
-            selectAlgName = "CcuAllGatherMesh1DMultiMission";
+            selectAlgName = "CcuAllGatherMesh1D";
         }
     }
     HCCL_DEBUG("[AllGatherAutoSelector][%s] end", __func__);
@@ -69,7 +69,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
                 selectAlgName = "CcuAllGatherParallelMesh1DNHR";
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "CcuAllGatherNHR1D";
+                selectAlgName = "CcuAllGatherNHR1DMem2Mem";
                 return SelectorStatus::MATCH;
             }
         } else {
@@ -86,10 +86,10 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     }
     if ((IsDefaultAlg(levle0Algo) || levle0Algo == HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) &&
         (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-        selectAlgName = "CcuAllGatherMeshMem2Mem1D";
+        selectAlgName = "CcuAllGatherMesh1DMem2Mem";
         return SelectorStatus::MATCH;
     } else if ((IsDefaultAlg(levle0Algo) || (levle0Algo == HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH))) {
-        selectAlgName = "CcuAllGatherMeshMem2Mem2D";
+        selectAlgName = "CcuAllGatherMesh2DMem2Mem";
         return SelectorStatus::MATCH;
     } else {
         HCCL_WARNING(

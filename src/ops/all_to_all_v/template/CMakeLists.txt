@@ -10,3 +10,4 @@
 
 add_subdirectory(aicpu)
 add_subdirectory(aiv)
+add_subdirectory(ccu)

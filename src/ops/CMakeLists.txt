@@ -9,7 +9,6 @@
 # -----------------------------------------------------------------------------------------------------------
 
 add_subdirectory(scatter)
-add_subdirectory(interface)
 add_subdirectory(op_common)
 add_subdirectory(reduce_scatter)
 add_subdirectory(all_gather)
@@ -21,3 +20,4 @@ add_subdirectory(recv)
 add_subdirectory(reduce_scatter_v)
 add_subdirectory(all_gather_v)
 add_subdirectory(reduce)
+add_subdirectory(batch_send_recv)

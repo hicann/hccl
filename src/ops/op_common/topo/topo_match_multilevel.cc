@@ -59,7 +59,6 @@ HcclResult TopoMatchMultilevel::TopoForLayer0(const HcclComm comm, uint32_t &lay
             uint32_t rankNum;
             CHK_RET(HcclRankGraphGetRanksByTopoInst(comm, 0, topoInsts[idx], &ranks, &rankNum));
 
-            // todo: 接口输出是否按顺序排列，还需要再排序吗？
             std::sort(ranks, ranks + rankNum);
             if (ranks[1] - ranks[0] == 1) {
                 ranks_x.assign(ranks, ranks + rankNum);

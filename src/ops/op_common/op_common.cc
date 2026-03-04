@@ -360,10 +360,11 @@ HcclResult GetAlgResAICPU(HcclComm comm, const OpParam &param, AlgResourceReques
         // 资源不能直接复用，需要增量建链(会直接在已有的hostCtx中填充)
         HcclResult ret = HcclGetChannel(comm, param, resRequest, g_hostCtx.at(tagStr));
         CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("failed to incrementally create channel."), ret);
-        // TODO: engineCtxDestroy，把device侧此tag的ctx释放
-
+        // 把device侧此tag的ctx销毁
+        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("failed to destroy device Ctx."), ret);
         ret = HcclMemcpyCtxHostToDevice(comm, param, g_hostCtx.at(tagStr), resCtxSequence, ctxSize);
         CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("failed to memcpy hostCtx to device."), ret);
+        HCCL_INFO("Incrementally add channel success");
     }
 
     HCCL_INFO("Execute GetAlgResAICPU success.");
@@ -732,13 +733,11 @@ HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
 {
     const std::vector<std::string> infoTitle({"ccl_op", "parameter", "value", "tips"});
     if (needReduce) {
-        if ((dataType == HCCL_DATA_TYPE_UINT64)  || (dataType == HCCL_DATA_TYPE_INT64)   ||
-            (dataType == HCCL_DATA_TYPE_UINT8)   || (dataType == HCCL_DATA_TYPE_UINT16)  ||
-            (dataType == HCCL_DATA_TYPE_UINT32)  || (dataType == HCCL_DATA_TYPE_FP64)    ||
-            (dataType == HCCL_DATA_TYPE_UINT8)   || (dataType == HCCL_DATA_TYPE_INT128)  ||
-            (dataType == HCCL_DATA_TYPE_HIF8)    || (dataType == HCCL_DATA_TYPE_FP8E4M3) ||
-            (dataType == HCCL_DATA_TYPE_FP8E5M2) || (dataType == HCCL_DATA_TYPE_FP8E8M0) ||
-            (dataType == HCCL_DATA_TYPE_RESERVED)) {
+        if ((dataType == HCCL_DATA_TYPE_UINT8)   || (dataType == HCCL_DATA_TYPE_UINT16)  ||
+            (dataType == HCCL_DATA_TYPE_UINT32)  || (dataType == HCCL_DATA_TYPE_UINT8)   ||
+            (dataType == HCCL_DATA_TYPE_INT128)  || (dataType == HCCL_DATA_TYPE_HIF8)    ||
+            (dataType == HCCL_DATA_TYPE_FP8E4M3) || (dataType == HCCL_DATA_TYPE_FP8E5M2) ||
+            (dataType == HCCL_DATA_TYPE_FP8E8M0) || (dataType == HCCL_DATA_TYPE_RESERVED)) {
             RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({"CheckDataType", "dataType", GetDataTypeEnumStr(dataType), "please check dataType"}));
             HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
                         HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(),
@@ -763,7 +762,8 @@ std::string GetSupportDataType(bool needReduce)
     std::vector<HcclDataType> supportList = {HCCL_DATA_TYPE_INT8, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT32,
                                              HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_FP32};
     if (needReduce) {
-        supportList.insert(supportList.end(), {HCCL_DATA_TYPE_BFP16});
+        supportList.insert(supportList.end(), {HCCL_DATA_TYPE_BFP16, HCCL_DATA_TYPE_INT64, HCCL_DATA_TYPE_UINT64,
+                                               HCCL_DATA_TYPE_FP64});
     } else {
         supportList.insert(supportList.end(), {HCCL_DATA_TYPE_UINT8, HCCL_DATA_TYPE_UINT16,
                                                HCCL_DATA_TYPE_UINT32, HCCL_DATA_TYPE_UINT64, HCCL_DATA_TYPE_FP64,

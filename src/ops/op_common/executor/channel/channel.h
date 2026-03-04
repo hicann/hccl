@@ -37,7 +37,7 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam& param, const Topo
 HcclResult CalcChannelRequestMesh2D(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
     std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc> &channels);
 HcclResult CreateChannelRequestByRankId(HcclComm comm, u32 myRank, u32 remoteRank,
-    std::vector<HcclChannelDesc> &channels);
+    std::vector<HcclChannelDesc> &channels, u32 channelRepeatNum = 1);
 }
 
 #endif

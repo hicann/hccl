@@ -48,6 +48,8 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/broadcast/selector
     ${HCCL_DEV_BASE}/src/ops/broadcast/template
     ${HCCL_DEV_BASE}/src/ops/broadcast/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/broadcast/template/ccu
+    ${HCCL_DEV_BASE}/src/ops/broadcast/template/ccu/kernel
     ${HCCL_DEV_BASE}/src/ops/broadcast/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v
@@ -63,6 +65,8 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/scatter/selector
     ${HCCL_DEV_BASE}/src/ops/scatter/template
     ${HCCL_DEV_BASE}/src/ops/scatter/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/scatter/template/ccu
+    ${HCCL_DEV_BASE}/src/ops/scatter/template/ccu/kernel
     ${HCCL_DEV_BASE}/src/ops/scatter/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/all_gather
@@ -70,6 +74,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/all_gather/selector
     ${HCCL_DEV_BASE}/src/ops/all_gather/template
     ${HCCL_DEV_BASE}/src/ops/all_gather/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/all_gather/template/ccu
     ${HCCL_DEV_BASE}/src/ops/all_gather/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/all_gather_v
@@ -83,6 +88,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/selector
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/template
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/template/ccu
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/all_reduce
@@ -90,6 +96,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/all_reduce/selector
     ${HCCL_DEV_BASE}/src/ops/all_reduce/template
     ${HCCL_DEV_BASE}/src/ops/all_reduce/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/all_reduce/template/ccu
     ${HCCL_DEV_BASE}/src/ops/all_reduce/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/send
@@ -103,7 +110,12 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/reduce/selector
     ${HCCL_DEV_BASE}/src/ops/reduce/template
     ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/reduce/template/ccu
     ${HCCL_DEV_BASE}/src/ops/reduce/template/aiv
+
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/executor
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/selector
 
 )
 
@@ -226,6 +238,13 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/broadcast/executor/ins_v2_broadcast_parallel_executor.cc
     ${HCCL_DEV_BASE}/src/ops/broadcast/template/aicpu/ins_temp_broadcast_mesh_1D_two_shot.cc
     ${HCCL_DEV_BASE}/src/ops/broadcast/template/aicpu/ins_temp_broadcast_nhr.cc
+
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/executor/ins_v2_batch_send_recv_executor.cc
+
+    ${HCCL_DEV_BASE}/src/ops/reduce/executor/reduce_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce/executor/reduce_parallel_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu/reduce_mesh_1D.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu/reduce_nhr.cc
 )
 
 target_include_directories(scatter_aicpu_kernel PRIVATE

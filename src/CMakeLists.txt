@@ -60,6 +60,8 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/executor
@@ -75,6 +77,8 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/executor
@@ -82,6 +86,8 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/executor
@@ -95,6 +101,7 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/ccu
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/executor
@@ -102,6 +109,8 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/send
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/executor
@@ -115,6 +124,12 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aiv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/ccu/kernel
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/executor
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/selector
 )
 
 if(BUILD_OPEN_PROJECT)
@@ -261,10 +276,10 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/executor/ins_v2_all_gather_sequence_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/template/aicpu/ins_temp_all_gather_nhr_dpu.cc
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/ins_v2_reduce_sole_executor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/ins_v2_reduce_parallel_executor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/ins_temp_reduce_mesh_1D.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/ins_temp_reduce_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/reduce_sole_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/reduce_parallel_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/reduce_mesh_1D.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/reduce_nhr.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/executor/ins_v2_all_gather_v_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/template/aicpu/ins_temp_all_gather_v_mesh_1D.cc
@@ -285,12 +300,14 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/executor/ins_v2_reduce_scatter_v_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter_v/template/aicpu/ins_temp_reduce_scatter_v_mesh_1D.cc
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/ins_v2_reduce_sole_executor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/ins_v2_reduce_parallel_executor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/ins_temp_reduce_mesh_1D.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/ins_temp_reduce_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/reduce_sole_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/executor/reduce_parallel_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/reduce_mesh_1D.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/template/aicpu/reduce_nhr.cc
     
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/registry/alg_v2_template_register.cc
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/executor/ins_v2_batch_send_recv_executor.cc
 )
 
 target_include_directories(scatter_aicpu_kernel PRIVATE

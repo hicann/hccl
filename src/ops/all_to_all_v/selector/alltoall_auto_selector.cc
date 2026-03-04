@@ -40,7 +40,13 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
         levle0Algo = it->second[0];
     }
     if (IsDefaultAlg(levle0Algo) || levle0Algo ==  HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) {
-        selectAlgName = "CcuAlltoAllMesh1D";
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+            HCCL_INFO("Setlect CcuAlltoAllMesh1D!");
+            selectAlgName = "CcuAlltoAllMesh1D";
+        } else {
+            HCCL_ERROR("hccl algo no match");
+            return SelectorStatus::NOT_MATCH;
+        }
         return SelectorStatus::MATCH;
     } else {
         HCCL_WARNING("[Algo][AlltoAllAutoSelector] algo[%u] is not supported yet for ccu_schedule mode, reset to default.", levle0Algo);

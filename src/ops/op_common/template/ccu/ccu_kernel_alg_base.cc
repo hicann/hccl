@@ -447,7 +447,6 @@ CcuKernelAlgBase::GroupOpSize CcuKernelAlgBase::CreateGroupOpSize()
 std::vector<CcuRep::CcuBuf> CcuKernelAlgBase::CreateBlockCcuBuf(uint32_t count)
 {
     std::vector<CcuRep::CcuBuf> res(count);
-    // todo: 结果校验
     CcuKernel::CreateBlockCcuBuf(count, res.data());
     return res;
 }
@@ -455,7 +454,6 @@ std::vector<CcuRep::CcuBuf> CcuKernelAlgBase::CreateBlockCcuBuf(uint32_t count)
 std::vector<CcuRep::Executor> CcuKernelAlgBase::CreateBlockExecutor(uint32_t count)
 {
     std::vector<CcuRep::Executor> res(count);
-    // todo: 结果校验
     CcuKernel::CreateBlockExecutor(count, res.data());
     return res;
 }
@@ -463,7 +461,6 @@ std::vector<CcuRep::Executor> CcuKernelAlgBase::CreateBlockExecutor(uint32_t cou
 std::vector<CcuRep::CompletedEvent> CcuKernelAlgBase::CreateBlockCompletedEvent(uint32_t count)
 {
     std::vector<CcuRep::CompletedEvent> res(count);
-    // todo: 结果校验
     CcuKernel::CreateBlockCompletedEvent(count, res.data());
     return res;
 }

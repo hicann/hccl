@@ -7,7 +7,6 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
 #ifndef HCCLV2_REDUCE_AUTO_SELECTOR
 #define HCCLV2_REDUCE_AUTO_SELECTOR
 
@@ -30,7 +29,6 @@ private:
     SelectorStatus SelectAivAlgo(TopoInfo *topoInfo, OpParam &opParam,
         const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
         std::string &selectAlgName) const override;
-    SelectorStatus SelectMeshAlgoAicpu(TopoInfo *topoInfo, OpParam &opParam, std::string &selectAlgName) const;
 };
 
 }  // namespace ops_hccl

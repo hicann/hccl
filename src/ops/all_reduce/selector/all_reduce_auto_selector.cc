@@ -12,6 +12,7 @@
 #include "selector_registry.h"
 
 namespace ops_hccl {
+constexpr u64 RS_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 AR_M2M_1D_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 AR_AICPU_1D_SMALL_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 AR_AICPU_1D_MAX_DATA_SIZE = 32 * 1024 * 1024;
@@ -21,7 +22,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpPara
                                                     std::string &selectAlgName) const
 {
     if (topoInfo->topoLevelNums > 1) {
-        HCCL_WARNING("[Algo][AllReduceAutoSelector] topoLevelNums > 1 is not supported yet for ccu_ms mode.");
+        HCCL_WARNING("[Algo][AllReduceAutoSelector] levelNum > 1 is not supported yet for ccu_ms mode.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -49,6 +50,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpPara
     if ((it != configAlgMap.end()) && (it->second.size() > 0)) {
         levle0Algo = it->second[0];
     }
+
     if (IsDefaultAlg(levle0Algo) || levle0Algo ==  HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) {
         return SelectMeshAlgo(topoInfo, opParam, selectAlgName);
     } else {
@@ -60,14 +62,83 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpPara
 SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(TopoInfo* topoInfo, OpParam &opParam,
                                                     std::string &selectAlgName) const
 {
+    (void)opParam;
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        if (IsSmallData(dataSize)) {
+            selectAlgName = "CcuAllReduceMesh1DOneShot";
+        } else {
+            selectAlgName = "CcuAllReduceMesh1D";
+        }
+    }
     return SelectorStatus::MATCH;
 }
 
 SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
-                                                    OpParam &opParam,
-                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                    std::string &selectAlgName) const
-{   
+                                                            OpParam &opParam,
+                                                            const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
+                                                            std::string &selectAlgName) const
+{    
+    // ccu 模式不支持 PROD
+    CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
+        HCCL_WARNING("[Algo][AllReduceAutoSelector] ReduceOp[%d] is not supported yet for ccu schedule mode.",
+            opParam.reduceType),
+        SelectorStatus::NOT_MATCH);
+
+    if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64 ||
+        opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
+        opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
+        HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_schedule mode not support INT64, UINT64, FP64.");
+        return SelectorStatus::NOT_MATCH;
+    }
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+
+    if (topoInfo->topoLevelNums > 1) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+            if (topoInfo->deviceNumPerModule > 1) {
+                // 性能优化改用MS做reduce后不支持int8
+                CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
+                    HCCL_WARNING("[Algo][AllReduceAutoSelector] dataType[%d] is not supported yet for ccu schedule "
+                                 "mode with ms reduce. levelNum[%u]",
+                        opParam.DataDes.dataType, topoInfo->topoLevelNums),
+                    SelectorStatus::NOT_MATCH);
+                selectAlgName = "CcuAllReduceParallelMesh1DNHR";
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "CcuAllReduceNHR1D";
+                return SelectorStatus::MATCH;
+            }
+        } else {
+            HCCL_WARNING("[Algo][AllReduceAutoSelector] level0Topo[%d] is not supported yet for ccu schedule mode.",
+                topoInfo->level0Topo);
+            return SelectorStatus::NOT_MATCH;
+        }
+    } else {
+        HcclAlgoType levle0Algo = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
+        auto it = configAlgMap.find(opParam.opType);
+        if ((it != configAlgMap.end()) && (it->second.size() > 0)) {
+            levle0Algo = it->second[0];
+        }
+        if ((IsDefaultAlg(levle0Algo) || levle0Algo == HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) &&
+            (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            // 性能优化改用MS做reduce后不支持int8
+            CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
+                HCCL_WARNING("[Algo][AllReduceAutoSelector] dataType[%d] is not supported yet for ccu schedule mode "
+                             "with ms reduce.",
+                    opParam.DataDes.dataType),
+                SelectorStatus::NOT_MATCH);
+            if (dataSize > AR_M2M_1D_MAX_DATA_SIZE) {
+                return SelectorStatus::NOT_MATCH;
+            }
+            selectAlgName = "CcuAllReduceMesh1DMem2Mem";
+            return SelectorStatus::MATCH;
+        } else {
+            HCCL_WARNING("[Algo][AllReduceAutoSelector] algo[%u] is not supported yet for ccu_schedule mode, reset to default.", levle0Algo);
+            return  SelectorStatus::NOT_MATCH;
+        }
+    }
     return SelectorStatus::MATCH;
 }
 

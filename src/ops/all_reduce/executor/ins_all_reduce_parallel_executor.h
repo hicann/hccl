@@ -58,16 +58,12 @@ private:
         const u64 sliceCount, const u64 scratchOffsetCount, TemplateDataParams &dataParams) const;
     void GenAlgParamsStage1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
         const u64 sliceCount, const u64 scratchOffsetCount, TemplateDataParams &dataParams) const;
-    
-    HcclResult PreSync(const std::vector<ThreadHandle> &threads);
-    HcclResult PostSync(const std::vector<ThreadHandle> &threads);
 
     std::vector<std::vector<u32>> AlgHierarchyInfoExector;
 
     std::vector<ThreadHandle> threads_;
     std::vector<ThreadHandle> intraThreads_;
     std::vector<ThreadHandle> interThreads_;
-    std::vector<ThreadHandle> syncThreads_;
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::map<u32, std::vector<ChannelInfo>> intraChannelInfo_;
@@ -80,8 +76,10 @@ private:
     u64 intraHcclBuffSizeStage1_{0};
     u64 interHcclBuffSizeStage1_{0};
 
-    std::vector<u32> preSyncNotifyList_;
-    std::vector<u32> postSyncNotifyList_;
+    ThreadHandle mainThread_;
+    std::vector<ThreadHandle> templateMainThreads_;
+    std::vector<u32> syncNotifyOnTemplates_;
+    std::vector<u32> syncNotifyOnMain_;
 };
  
 }  // namespace ops_hccl

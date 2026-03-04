@@ -79,6 +79,19 @@ struct SlicesList {
     }
 };
 
+struct A2ASendRecvInfo {
+    // 存放数据长度和偏移长度
+    std::vector<u64> sendLength;
+    std::vector<u64> sendOffset;
+    std::vector<u64> recvLength;
+    std::vector<u64> recvOffset;
+    // 存放数据个数和偏移个数
+    std::vector<u64> sendCounts;
+    std::vector<u64> sendDispls;
+    std::vector<u64> recvCounts;
+    std::vector<u64> recvDispls;
+};
+
 struct DataInfo {
     ChannelInfo channel_;
     SlicesList slices_;
@@ -167,6 +180,7 @@ struct TemplateDataParams {
     u64 inputRepeatStride{0};
     u64 outputRepeatStride{0};
     u64 tailSize{0};
+    u64 processedDataCount{0};
     std::vector<u64> allRankSliceSize;
     std::vector<u64> allRankDispls;
     std::vector<u64> allRankProcessedDataCount;

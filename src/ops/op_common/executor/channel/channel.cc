@@ -283,7 +283,7 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam& param, const Topo
 }
 
 HcclResult CreateChannelRequestByRankId(HcclComm comm, u32 myRank, u32 remoteRank,
-    std::vector<HcclChannelDesc> &channels)
+    std::vector<HcclChannelDesc> &channels, u32 channelRepeatNum)
 {
 #ifndef AICPU_COMPILE
     channels.clear();
@@ -312,7 +312,9 @@ HcclResult CreateChannelRequestByRankId(HcclComm comm, u32 myRank, u32 remoteRan
                 myRank, channelDesc.remoteRank, channelDesc.remoteEndpoint.protocol);
             channelDesc.channelProtocol = link.linkAttr.linkProtocol;
             channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
-            channels.push_back(channelDesc);
+            for (u32 repeatId = 0; repeatId < channelRepeatNum; repeatId++) {
+                channels.push_back(channelDesc);
+            }
         }
         if (listSize > 0) {
             findFlag = true;

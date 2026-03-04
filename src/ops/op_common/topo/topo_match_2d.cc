@@ -59,7 +59,6 @@ HcclResult TopoMatch2D::MatchTopo(const HcclComm comm, TopoInfo* topoInfo, AlgHi
         uint32_t rankNum;
         CHK_RET(HcclRankGraphGetRanksByTopoInst(comm, 0, topoInsts[idx], &ranks, &rankNum));
 
-        // todo: 接口输出是否按顺序排列，还需要再排序吗？
         std::sort(ranks, ranks + rankNum);
         // 区分x轴y轴
         if (rankNum == 1) {

@@ -13,6 +13,12 @@
 #include "alg_data_trans_wrapper.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr.h"
+#ifndef AICPU_COMPILE
+#include "ccu_temp_all_gather_nhr_1D_mem2mem.h"
+#include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
+#endif
+#include "alg_data_trans_wrapper.h"
+
 #include "topo_match_multilevel.h"
 
 namespace ops_hccl {
@@ -56,8 +62,22 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
                                               interTempRequest.notifyNumPerThread.begin(),
                                               interTempRequest.notifyNumPerThread.end());
-    resourceRequest.channels.emplace_back(intraTempRequest.channels[0]);
-    resourceRequest.channels.emplace_back(interTempRequest.channels[0]);
+    if (param.engine != COMM_ENGINE_CCU) {
+        resourceRequest.channels.emplace_back(intraTempRequest.channels[0]);
+        resourceRequest.channels.emplace_back(interTempRequest.channels[0]);
+    } else {
+        // ccu
+        HCCL_INFO("[InsAllGatherParallelExecutor][CalcRes] intraTemplate has [%d] kernels.", intraTempRequest.ccuKernelNum[0]);
+        resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(),
+                                            intraTempRequest.ccuKernelInfos.begin(),
+                                            intraTempRequest.ccuKernelInfos.end());
+        resourceRequest.ccuKernelNum.emplace_back(intraTempRequest.ccuKernelNum[0]);
+        HCCL_INFO("[InsAllGatherParallelExecutor][CalcRes] interTemplate has [%d] kernels.", interTempRequest.ccuKernelNum[0]);
+        resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(),
+                                            interTempRequest.ccuKernelInfos.begin(),
+                                            interTempRequest.ccuKernelInfos.end());
+        resourceRequest.ccuKernelNum.emplace_back(interTempRequest.ccuKernelNum[0]);
+    }
     HCCL_DEBUG("[InsV2AllGatherParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
                "channels[%u]",
                myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
@@ -224,7 +244,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     myRank_ = resCtx.topoInfo.userRank;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
-    if (param.engine != CommEngine::COMM_ENGINE_AIV) {
+    if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
         intraLinkMap_ = remoteRankToChannelInfo_[0];
         interLinkMap_ = remoteRankToChannelInfo_[1];
@@ -340,6 +360,17 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     TemplateDataParams tempAlgParamsInter1;
     TemplateDataParams tempAlgParamsIntra1;
 
+    if (param.engine == COMM_ENGINE_CCU) {
+        intraTempAlgRes.ccuKernels.insert(intraTempAlgRes.ccuKernels.end(),
+                                              resCtx.ccuKernels.begin(),
+                                              resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);
+        interTempAlgRes.ccuKernels.insert(interTempAlgRes.ccuKernels.end(),
+                                              resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0],
+                                              resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0] + resCtx.ccuKernelNum[1]);
+    } else {
+        intraTempAlgRes.channels = intraLinkMap_;
+        interTempAlgRes.channels = interLinkMap_;
+    }
     for (u32 loopIndex = 0; loopIndex < loopTimes; loopIndex++) {
         u64 currCount = (loopIndex == loopTimes - 1) ? (dataCount_ - loopIndex * maxCountPerLoop) : maxCountPerLoop;
         u64 dataCountPerLoopAixs0 = static_cast<u64>(dataSplitSize[0] * currCount);
@@ -380,4 +411,8 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHR,
                                InsV2AllGatherParallelExecutor, TopoMatchMultilevel, InsTempAllGatherMesh1D,
                                InsTempAllGatherNHR);
+#ifndef AICPU_COMPILE
+REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherParallelMesh1DNHR,
+    InsV2AllGatherParallelExecutor, TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+#endif
 // 算法注册

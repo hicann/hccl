@@ -110,8 +110,7 @@ HcclResult ReduceOutPlace(void *sendBuf, void *recvBuf, uint64_t count, HcclData
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
-    u64 outputSize = count * perDataSize;
-    u64 inputSize = outputSize * userRankSize;
+    u64 totalSize = count * perDataSize;
 
     OpParam param;
     CHK_RET(HcclGetCommName(comm, param.commName));
@@ -131,9 +130,9 @@ HcclResult ReduceOutPlace(void *sendBuf, void *recvBuf, uint64_t count, HcclData
 
     // 参数准备
     param.inputPtr = sendBuf;
-    param.inputSize = inputSize;
+    param.inputSize = totalSize;
     param.outputPtr = recvBuf;
-    param.outputSize = outputSize;
+    param.outputSize = totalSize;
     param.DataDes.count = count;
     param.DataDes.dataType = dataType;
     param.opType = HcclCMDType::HCCL_CMD_REDUCE;
