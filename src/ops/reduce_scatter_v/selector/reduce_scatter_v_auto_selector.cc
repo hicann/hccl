@@ -14,7 +14,7 @@
 namespace ops_hccl {
 constexpr u64 RS_2D_SMALL_DATA_SIZE = 1024 * 1024;
 
-SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
 {
@@ -55,7 +55,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, O
     }
 }
 
-SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                     std::string &selectAlgName) const
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -72,7 +72,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgo(TopoInfo* topoInfo, Op
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
+SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                     OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
@@ -121,7 +121,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoI
 }
 
 
-SelectorStatus ReduceScatterVAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo,
+SelectorStatus ReduceScatterVAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                       OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
@@ -154,7 +154,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo,
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoAicpu(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoAicpu(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                           std::string &selectAlgName) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D){
@@ -166,7 +166,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoAicpu(TopoInfo* topoInf
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterVAutoSelector::SelectAivAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterVAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                        const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                        std::string &selectAlgName) const
 {

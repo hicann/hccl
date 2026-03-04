@@ -17,13 +17,13 @@ namespace ops_hccl {
 
 class AlltoAllVAutoSelector : public AutoSelectorBase {
 private:
-    SelectorStatus SelectCcuScheduleAlgo(TopoInfo* topoInfo, OpParam &opParam,
+    SelectorStatus SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const override;
-    SelectorStatus SelectAicpuAlgo(TopoInfo* topoInfo, OpParam &opParam,
+    SelectorStatus SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string                                 &selectAlgName) const override;
-    SelectorStatus SelectAivAlgo(TopoInfo* topoInfo, OpParam &opParam, const std::map<HcclCMDType,
+    SelectorStatus SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam, const std::map<HcclCMDType,
                                  std::vector<HcclAlgoType>> &configAlgMap, std::string &selectAlgName) const override;
 };
 

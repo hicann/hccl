@@ -32,6 +32,7 @@ typedef enum {
 } HcclNetLayer;
 
 HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo);
+HcclResult InitRankInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult CalcMyRankInfo(HcclComm comm, TopoInfo* topoInfo);
 HcclResult SetServerModuleInfo(HcclComm comm, TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
@@ -89,10 +90,16 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
                                        const std::vector<uint32_t> &l1Sizes,
                                        std::vector<uint32_t> &serversPerSuperPod);
 
-HcclResult CalcTopoLevelNums(HcclComm comm, TopoInfo* topoInfo);
+HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
-HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfo* topoInfo);
+HcclResult ExtractNetLayerDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
+HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
+
+HcclResult Is2DieFullMesh(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
+
+template<typename T>
+bool is_uniform(const std::vector<T>& vec);
 }
 
 #endif

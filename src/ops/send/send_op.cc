@@ -139,7 +139,11 @@ namespace ops_hccl {
             return HcclResult::HCCL_SUCCESS;
         }
 
-        CHK_RET(HcclExecOp(comm, param));
+        OpExecuteConfig opExecuteConfig;
+        std::string algName;
+        std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+        CHK_RET(Selector(comm, param, topoInfo, algName, opExecuteConfig));
+        CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
 
         return HcclResult::HCCL_SUCCESS;
     }

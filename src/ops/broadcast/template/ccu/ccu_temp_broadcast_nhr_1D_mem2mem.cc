@@ -128,7 +128,7 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm, const
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                          AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> channelDescs;

@@ -29,7 +29,7 @@ u64 AivTempReduceScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, Buffe
     return scratchMultiple;
 }
 
-HcclResult AivTempReduceScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivTempReduceScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;

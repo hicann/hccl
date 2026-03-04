@@ -18,7 +18,7 @@ InsV2BatchSendRecvExecutor::InsV2BatchSendRecvExecutor()
 }
 
 HcclResult InsV2BatchSendRecvExecutor::CalcAlgHierarchyInfo(HcclComm comm,
-    TopoInfo* topoInfo,
+    TopoInfoWithNetLayerDetails* topoInfo,
     AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     algHierarchyInfo.infos.resize(1);
@@ -30,7 +30,7 @@ HcclResult InsV2BatchSendRecvExecutor::CalcAlgHierarchyInfo(HcclComm comm,
 }
 
 HcclResult InsV2BatchSendRecvExecutor::CalcRes(HcclComm comm, const OpParam& param,
-    const TopoInfo* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
     AlgResourceRequest& resourceRequest)
 {
     myRank_ = topoInfo->userRank;

@@ -79,7 +79,7 @@ HcclResult HcclRankGraphGetTopoTypeByLayer(HcclComm comm, uint32_t netLayer, Com
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclRankGraphGetInstRanksByNetLayer(HcclComm comm, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum)
+HcclResult HcclRankGraphGetRanksByLayer(HcclComm comm, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
     CHK_PTR_NULL(simComm);

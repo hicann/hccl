@@ -13,7 +13,7 @@
 
 namespace ops_hccl {
 
-SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
+SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                     OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
@@ -44,7 +44,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
     }
 }
 
-SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo,
+SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                       OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
@@ -71,7 +71,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo,
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus AlltoAllVAutoSelector::SelectAivAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus AlltoAllVAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                    std::string &selectAlgName) const
 {

@@ -27,7 +27,7 @@ CcuTempBroadcastMesh1D::~CcuTempBroadcastMesh1D()
 {
 }
 
-HcclResult CcuTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                       AlgResourceRequest& resourceRequest)
 {
     // 不需要从流

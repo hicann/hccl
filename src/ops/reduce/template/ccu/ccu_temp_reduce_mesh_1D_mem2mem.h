@@ -32,7 +32,7 @@ public:
 
     void SetRoot(u32 root);
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
     
     HcclResult GetRes(AlgResourceRequest& resourceRequest) override;

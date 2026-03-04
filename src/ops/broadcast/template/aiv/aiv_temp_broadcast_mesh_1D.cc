@@ -23,7 +23,7 @@ AivTempBroadcastMesh1D::~AivTempBroadcastMesh1D()
 {
 }
 
-HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;

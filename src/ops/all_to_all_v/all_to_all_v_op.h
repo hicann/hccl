@@ -44,7 +44,7 @@ HcclResult CheckAlltoAllVCInputPara(HcclComm comm, const void *sendBuf, const vo
     HcclDataType sendType, const void *recvBuf, HcclDataType recvType);
 HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const void *sdispls, const void *recvBuf,
     const void *recvCounts, const void *rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream,
-    const std::string &tag, HcclCMDType opType, u32 rankSize);
+    const std::string &tag, HcclCMDType opType, u32 rankSize, OpExecuteConfig& opExecuteConfig);
 }
 
 #endif

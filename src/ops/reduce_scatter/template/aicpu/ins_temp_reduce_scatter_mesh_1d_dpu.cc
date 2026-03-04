@@ -28,7 +28,7 @@ InsTempReduceScatterMesh1dDpu::~InsTempReduceScatterMesh1dDpu()
 }
 
 // ! 已编码完成
-HcclResult InsTempReduceScatterMesh1dDpu::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempReduceScatterMesh1dDpu::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     // host网卡资源，不新增从流和对应Notify，只申请DPU上面

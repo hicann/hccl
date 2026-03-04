@@ -49,7 +49,7 @@ void CcuTempScatterMesh1D::SetRoot(u32 root)
     }
 }
 
-HcclResult CcuTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+HcclResult CcuTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                                                 AlgResourceRequest &resourceRequest)
 {
     // 不需要从流

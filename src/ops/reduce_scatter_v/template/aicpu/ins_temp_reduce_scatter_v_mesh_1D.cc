@@ -22,7 +22,7 @@ InsTempReduceScatterVMesh1D::~InsTempReduceScatterVMesh1D()
 {
 }
 
-HcclResult InsTempReduceScatterVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempReduceScatterVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;

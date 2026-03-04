@@ -17,20 +17,20 @@ namespace ops_hccl {
 
 class AllGatherAutoSelector : public AutoSelectorBase {
 private:
-    SelectorStatus SelectCcuMsAlgo(TopoInfo *topoInfo, OpParam &opParam,
+    SelectorStatus SelectCcuMsAlgo(TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const override;
-    SelectorStatus SelectCcuScheduleAlgo(TopoInfo *topoInfo, OpParam &opParam,
+    SelectorStatus SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam,
                                          const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                          std::string &selectAlgName) const override;
-    SelectorStatus SelectAicpuAlgo(TopoInfo *topoInfo, OpParam &opParam,
+    SelectorStatus SelectAicpuAlgo(TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const override;
-    SelectorStatus SelectMeshAlgo(TopoInfo *topoInfo, OpParam &opParam, std::string &selectAlgName) const;
-    SelectorStatus SelectAivAlgo(TopoInfo *topoInfo, OpParam &opParam,
+    SelectorStatus SelectMeshAlgo(TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam, std::string &selectAlgName) const;
+    SelectorStatus SelectAivAlgo(TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const override;
-    SelectorStatus SelectDPUAlgo(TopoInfo* topoInfo, OpParam &opParam,
+    SelectorStatus SelectDPUAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const override;
 };

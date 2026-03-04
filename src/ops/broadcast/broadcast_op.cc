@@ -42,7 +42,6 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
     if (!CheckHCCLIndependentOp()) {
         return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
     }
-    // 穿刺的时候只考虑A5
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
     // 非95设备转到老流程
@@ -134,7 +133,11 @@ HcclResult BroadcastOutPlace(void *buf, uint64_t count, HcclDataType dataType, u
         CHK_RET(SingleRankProc(param));
         return HcclResult::HCCL_SUCCESS;
     }
-    CHK_RET(HcclExecOp(comm, param));
+    OpExecuteConfig opExecuteConfig;
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(Selector(comm, param, topoInfo, algName, opExecuteConfig));
+    CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute BroadcastOutPlace success.");
     return HCCL_SUCCESS;
 }

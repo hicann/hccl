@@ -31,7 +31,7 @@ public:
         return info;
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
     HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,

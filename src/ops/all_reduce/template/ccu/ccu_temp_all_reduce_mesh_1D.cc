@@ -70,7 +70,7 @@ HcclResult CcuTempAllReduceMesh1D::CalcSliceInfo(const u64 dataSize, RankSliceIn
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo, AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, AlgResourceRequest& resourceRequest)
 {
     // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;

@@ -40,7 +40,7 @@ HcclResult ReduceScatterVExecOp(HcclComm comm, OpParam &param);
 HcclResult CheckReduceScatterVInputPara(HcclComm comm, void *sendBuf, void *recvBuf, const void *sendCounts, const void *sendDispls, aclrtStream stream);
 
 HcclResult GetAlgResReduceScatterV(HcclComm comm, OpParam &param, std::shared_ptr<InsCollAlgBase> &executor,
-    TopoInfo* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);
+    TopoInfoWithNetLayerDetails* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);
 
 HcclResult CheckDataTypeRSV(const HcclDataType dataType, bool needReduce);
 

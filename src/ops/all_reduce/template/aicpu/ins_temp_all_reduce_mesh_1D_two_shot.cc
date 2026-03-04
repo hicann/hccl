@@ -27,7 +27,7 @@ u64 InsTempAllReduceMesh1DTwoShot::CalcScratchMultiple(BufferType inBuffType, Bu
 }
 
 HcclResult InsTempAllReduceMesh1DTwoShot::CalcRes(HcclComm comm, const OpParam& param,
-    const TopoInfo* topoInfo, AlgResourceRequest& resourceRequest)
+    const TopoInfoWithNetLayerDetails* topoInfo, AlgResourceRequest& resourceRequest)
 {
     CHK_RET(GetRes(resourceRequest));
 

@@ -30,18 +30,18 @@ public:
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 
     /* *************** 资源计算 *************** */
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                        const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
                        AlgResourceRequest &resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfo *topoInfo,
+    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
                                     AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
 
 protected:
     HcclResult CalcLocalRankSize();
     HcclResult InitExectorInfo(const OpParam &param);
 
-    HcclResult InitCommInfo(HcclComm comm, const OpParam &param, TopoInfo *topoInfo,
+    HcclResult InitCommInfo(HcclComm comm, const OpParam &param, TopoInfoWithNetLayerDetails *topoInfo,
                             AlgHierarchyInfo &algHierarchyInfo);
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
                                InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);

@@ -58,7 +58,7 @@ public:
 
     virtual std::string Describe() const = 0;
 
-    virtual HcclResult MatchTopo(const HcclComm comm, TopoInfo* topoInfo,
+    virtual HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 };
 

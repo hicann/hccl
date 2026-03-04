@@ -18,7 +18,7 @@ ExecuteSelector::ExecuteSelector()
 {
 }
 
-HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfo* topoInfo,
+HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
                                 std::string &selectAlgName, OpExecuteConfig &opExecuteConfig)
 {
     HCCL_DEBUG("[Algo][Selector] Run.");

@@ -26,7 +26,7 @@ u64 InsTempAllReduceNHR::CalcScratchMultiple(BufferType inBuffType, BufferType o
 }
 
 HcclResult InsTempAllReduceNHR::CalcRes(HcclComm comm, const OpParam& param, 
-    const TopoInfo* topoInfo, AlgResourceRequest& resourceRequest)
+    const TopoInfoWithNetLayerDetails* topoInfo, AlgResourceRequest& resourceRequest)
 {
     resourceRequest.slaveThreadNum = 0;  // 不需要从流
 

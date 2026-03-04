@@ -132,7 +132,7 @@ HcclResult TopoMatchMultilevel::CheckVecElementAllSame(uint32_t *instSizeList, u
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
     CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,

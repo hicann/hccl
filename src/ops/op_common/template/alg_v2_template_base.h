@@ -40,7 +40,7 @@ public:
         const std::vector<std::vector<uint32_t>>& subCommRanks);
 
     // calculate resources
-    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                AlgResourceRequest& resourceRequest);
     virtual HcclResult GetRes(AlgResourceRequest& resourceRequest);
     virtual u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType);

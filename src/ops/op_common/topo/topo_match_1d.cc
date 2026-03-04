@@ -19,7 +19,7 @@ TopoMatch1D::~TopoMatch1D()
 {
 }
 
-HcclResult TopoMatch1D::MatchTopo(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+HcclResult TopoMatch1D::MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
     CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,

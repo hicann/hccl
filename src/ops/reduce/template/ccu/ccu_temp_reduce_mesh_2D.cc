@@ -71,7 +71,7 @@ HcclResult CcuTempReduceMesh2D::PartitionChannels(const std::vector<HcclChannelD
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempReduceMesh2D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempReduceMesh2D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                       AlgResourceRequest& resourceRequest)
 {
     resourceRequest.notifyNumOnMainThread = 1;

@@ -27,7 +27,7 @@ public:
         return StringFormat("Template of AllReduce ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
 
     HcclResult KernelRun(const OpParam& param,

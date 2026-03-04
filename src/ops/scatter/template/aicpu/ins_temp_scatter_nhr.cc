@@ -31,7 +31,7 @@ void InsTempScatterNHR::SetRoot(u32 root)
     root_ = root;
 }
 
-HcclResult InsTempScatterNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempScatterNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                         AlgResourceRequest& resourceRequest)
 {
     GetRes(resourceRequest);

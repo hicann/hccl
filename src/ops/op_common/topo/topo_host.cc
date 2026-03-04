@@ -45,10 +45,6 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
         // 获取本服务器内的链路信息
         CHK_RET(CalcLinkInfo(topoInfo, pairLinkCounter));
     }
-    if (topoInfo->deviceType == DevType::DEV_TYPE_910_95) {
-        CHK_RET(CalcTopoLevelNums(comm, topoInfo));
-        CHK_RET(CalcLevel0TopoShape(comm, topoInfo));
-    }
     HCCL_CONFIG_INFO(HCCL_ALG, "[InitRankInfo] userRank[%u] userRankSize[%u] serverIdx[%u] superPodIdx[%u] "
         "deviceType[%u] deviceNumPerModule[%u] serverNumPerSuperPod[%u] serverNum[%u] moduleNum[%u] superPodNum[%u] moduleIdx[%u] "
         "isDiffDeviceModule[%d] multiModuleDiffDeviceNumMode[%d] multiSuperPodDiffServerNumMode[%d] isHCCSSWNumEqualToTwiceSIONum[%d]",
@@ -57,6 +53,13 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
         topoInfo->serverNum, topoInfo->moduleNum, topoInfo->superPodNum, topoInfo->moduleIdx,
         topoInfo->isDiffDeviceModule, topoInfo->multiModuleDiffDeviceNumMode, topoInfo->multiSuperPodDiffServerNumMode,
         topoInfo->isHCCSSWNumEqualToTwiceSIONum);
+    return HCCL_SUCCESS;
+}
+
+HcclResult InitRankInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    CHK_RET(InitRankInfo(comm, static_cast<TopoInfo*>(topoInfo)));
+    CHK_RET(CalcTopoShape(comm, topoInfo));
     return HCCL_SUCCESS;
 }
 
@@ -540,90 +543,253 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
     return HCCL_SUCCESS;
 }
 
-HcclResult CalcTopoLevelNums(HcclComm comm, TopoInfo* topoInfo)
+HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
-    uint32_t *netlayers = nullptr;
-    uint32_t netLayersNum = 0;
-    CHK_RET(HcclRankGraphGetLayers(comm, &netlayers, &netLayersNum));
+    u32 netLayer = 0;
+    CHK_PRT_RET(topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
+        HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] topoInstNumOfLayer size[%u] <= netLayer[%u]", netLayer),
+        HCCL_E_INTERNAL);
+    TopoInstDetails &level0TopoInstDetails = topoInfo->topoInstDetailsOfLayer[netLayer];
+    CHK_PRT_RET(topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
+        HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] localNetInsSizeOfLayer size[%u] <= netLayer[%u]", netLayer),
+        HCCL_E_INTERNAL);
+    u32 level0LocalRankSize = topoInfo->netLayerDetails.localNetInsSizeOfLayer[netLayer];
 
-    std::vector<std::vector<u32>> instSizeListAllLevels;
-    std::vector<u32> instListNumAllLevels;
-    for (uint32_t levelIdx = 0; levelIdx < netLayersNum; levelIdx++) {
+    auto &topoInstNum = level0TopoInstDetails.topoInstNum;
+    auto &rankNumForTopoType = level0TopoInstDetails.rankNumForTopoType;
+
+    if (topoInstNum == 1 && rankNumForTopoType[CommTopo::COMM_TOPO_1DMESH].size() == 1) {
+        // MESH_1D 拓扑校验
+        CHK_PRT_RET(rankNumForTopoType[CommTopo::COMM_TOPO_1DMESH][0] != level0LocalRankSize,
+            HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] MESH_1D rankSize[%u] is not equal to level0LocalRankSize[%u]",
+                rankNumForTopoType[CommTopo::COMM_TOPO_1DMESH][0],
+                level0LocalRankSize),
+            HCCL_E_INTERNAL);
+        topoInfo->level0Topo = Level0Shape::MESH_1D;
+        return HCCL_SUCCESS;
+    } else if (topoInstNum == 1 && rankNumForTopoType[CommTopo::COMM_TOPO_CLOS].size() == 1) {
+        // CLOS 拓扑校验
+        CHK_PRT_RET(rankNumForTopoType[CommTopo::COMM_TOPO_CLOS][0] != level0LocalRankSize,
+            HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] CLOS rankSize[%u] is not equal to level0LocalRankSize[%u]",
+                rankNumForTopoType[CommTopo::COMM_TOPO_CLOS][0],
+                level0LocalRankSize),
+            HCCL_E_INTERNAL);
+        topoInfo->level0Topo = Level0Shape::CLOS;
+        return HCCL_SUCCESS;
+    } else if (topoInstNum == 2 && rankNumForTopoType[CommTopo::COMM_TOPO_CLOS].size() == 1 &&
+               rankNumForTopoType[CommTopo::COMM_TOPO_1DMESH].size() == 1) {
+        // MESH_1D_CLOS 拓扑校验
+        CHK_PRT_RET(rankNumForTopoType[CommTopo::COMM_TOPO_CLOS][0] != level0LocalRankSize,
+            HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] CLOS rankSize[%u] is not equal to level0LocalRankSize[%u]",
+                rankNumForTopoType[CommTopo::COMM_TOPO_CLOS][0],
+                level0LocalRankSize),
+            HCCL_E_INTERNAL);
+        topoInfo->level0Topo = Level0Shape::MESH_1D_CLOS;
+        return HCCL_SUCCESS;
+    }
+    HCCL_ERROR("Unkown topo for level 0, topoInstNum[%u]", topoInstNum);
+    return HCCL_E_INTERNAL;
+}
+
+HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    CHK_RET(ExtractNetLayerDetails(comm, topoInfo));
+    CHK_RET(ExtractTopoDetails(comm, topoInfo));
+    CHK_RET(CalcLevel0TopoShape(comm, topoInfo));
+    CHK_RET(Is2DieFullMesh(comm, topoInfo));
+    return HCCL_SUCCESS;
+}
+
+HcclResult ExtractNetLayerDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    CHK_PRT_RET(comm == nullptr, HCCL_ERROR("[Topo][ExtractNetLayerDetails] comm is null"), HCCL_E_PTR);
+
+    auto &topoLevelNum = topoInfo->topoLevelNums;
+    auto &netLayerNum = topoInfo->netLayerDetails.netLayerNum;
+    auto &netLayers = topoInfo->netLayerDetails.netLayers;
+    auto &netInstNumOfLayer = topoInfo->netLayerDetails.netInstNumOfLayer;
+    auto &instSizeListOfLayer = topoInfo->netLayerDetails.instSizeListOfLayer;
+    auto &localNetInsSizeOfLayer = topoInfo->netLayerDetails.localNetInsSizeOfLayer;
+
+    uint32_t *netlayersTemp = nullptr;
+    CHK_RET(HcclRankGraphGetLayers(comm, &netlayersTemp, &netLayerNum));
+    for (uint32_t netLayerIdx = 0; netLayerIdx < netLayerNum; netLayerIdx++) {
+        netLayers.push_back(netlayersTemp[netLayerIdx]);
+    }
+    netInstNumOfLayer.resize(netLayerNum);    // 每层网络中有几个网络实例
+    instSizeListOfLayer.resize(netLayerNum);  // 每层网络中的各个网络实例的大小
+    localNetInsSizeOfLayer.resize(netLayerNum);
+
+    HcclResult ret;
+    // 获取并校验每一层的网路实例大小
+    for (auto layerIdx : netLayers) {
+        std::vector<u32> &currLayerInstSizeList = instSizeListOfLayer[layerIdx];
+        u32 &currLayerNetInstNum = netInstNumOfLayer[layerIdx];
         uint32_t *instSizeListSingleLevel = nullptr;
-        uint32_t instListNumSingleLevel = 0;
-        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, levelIdx, &instSizeListSingleLevel, &instListNumSingleLevel));
-        std::vector<u32> instSizeListSingleLevelTemp;
-        u32 currLayerRankSize = 0;
-        for (uint32_t index = 0; index < instListNumSingleLevel; index++) {
-            HCCL_INFO("[CalcTopoLevelNums] instListNumSingleLevel: [%u].", instListNumSingleLevel);
-            HCCL_INFO("[CalcTopoLevelNums] levelIdx: [%u], instSizeListSingleLevel: index [%u], value [%u].", levelIdx, index, instSizeListSingleLevel[index]);
-            currLayerRankSize += instSizeListSingleLevel[index];
-            instSizeListSingleLevelTemp.push_back(instSizeListSingleLevel[index]);
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, layerIdx, &instSizeListSingleLevel, &currLayerNetInstNum));
+        for (uint32_t index = 0; index < currLayerNetInstNum; index++) {
+            currLayerInstSizeList.push_back(instSizeListSingleLevel[index]);
         }
-        instSizeListAllLevels.push_back(instSizeListSingleLevelTemp);
-        HCCL_INFO("[CalcTopoLevelNums] Net layer[%u] instNum[%u]", levelIdx, instSizeListAllLevels[levelIdx].size());
+        u32 currLayerRankSize = std::accumulate(currLayerInstSizeList.begin(), currLayerInstSizeList.end(), 0);
+        HCCL_INFO("[BaseSelector][ExtractNetLayerDetails] Net layer[%u] instNum[%u]", layerIdx, currLayerNetInstNum);
         CHK_PRT_RET(currLayerRankSize != topoInfo->userRankSize,
             HCCL_ERROR(
-                "[CalcTopoLevelNums] NetLayer[%u], totalRankSize[%u] is not equal to comm rankSize[%u]",
-                levelIdx, currLayerRankSize, topoInfo->userRankSize), HCCL_E_PARA);
-        instListNumAllLevels.push_back(instListNumSingleLevel);
+                "[BaseSelector][ExtractNetLayerDetails] NetLayer[%u], totalRankSize[%u] is not equal to comm rankSize[%u]",
+                layerIdx, currLayerRankSize, topoInfo->userRankSize), HCCL_E_PARA);
+        uint32_t rankNum = 0;
+        uint32_t* ranks;
+        CHK_RET(HcclRankGraphGetRanksByLayer(comm, layerIdx, &ranks, &rankNum));
+        localNetInsSizeOfLayer[layerIdx] = rankNum;
     }
 
+    topoLevelNum = 0;
     // 获取最小的能覆盖所有卡的 layer
-    for (uint32_t levelIdx = 0; levelIdx < netLayersNum; levelIdx++) {
-        if (instListNumAllLevels.at(levelIdx) == 1) {
+    for (auto layerIdx : netLayers) {
+        if (netInstNumOfLayer[layerIdx] == 1) {
             // 当本层只有一个网络实例时, 认为这个就是当前的 topoLevelNum
-            topoInfo->topoLevelNums = levelIdx + 1;
+            topoLevelNum = layerIdx + 1;
             break;
         }
     }
 
-    HCCL_INFO("[Topo][CalcTopoLevelNums] topoLevelNums is [%d].", topoInfo->topoLevelNums);
+    HCCL_INFO(
+        "[BaseSelector][ExtractNetLayerDetails] topoLevelNum[%u], netLayerNum[%u], netLayers.size[%u]",
+        topoLevelNum, netLayerNum, netLayers.size());
+
+    CHK_PRT_RET(topoLevelNum == 0, HCCL_ERROR(
+        "[BaseSelector][ExtractNetLayerDetails] topoLevelNum[%u] is invalid, netLayerNum[%u]", topoLevelNum, netLayerNum),
+        HCCL_E_INTERNAL);
     return HCCL_SUCCESS;
 }
 
-HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfo* topoInfo) {
-    uint32_t *topoInsts = nullptr;
-    uint32_t topoInstNum = 0;
-    HcclRankGraphGetTopoInstsByLayer(comm, 0, &topoInsts, &topoInstNum);
+HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    HcclResult ret;
+    CHK_PRT_RET(comm == nullptr, HCCL_ERROR("[Topo][ExtractNetLayerDetails] comm is null"), HCCL_E_PTR);
+    u32 netLayerNum = topoInfo->netLayerDetails.netLayerNum;
 
-    uint32_t *instSizeListLevel0 = nullptr;
-    uint32_t instListNumLLevel0 = 0;
-    CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, 0, &instSizeListLevel0, &instListNumLLevel0));
-    // 在非对称topo的情况下，即instSizeListLevel0中的各个数不一样的情况下应该按照serverId来取
-    uint32_t rankSizeLevel0 = instSizeListLevel0[0];
-    std::vector<CommTopo> topoTypeList;
-    std::vector<u32> rankSizeList;
-    for (uint32_t topoInstId = 0; topoInstId < topoInstNum; topoInstId++) {
-        CommTopo topoType;
-        uint32_t *ranks;
-        uint32_t rankNum;
-        HcclRankGraphGetTopoType(comm, 0, topoInsts[topoInstId], &topoType);
-        HcclRankGraphGetRanksByTopoInst(comm, 0, topoInsts[topoInstId],  &ranks, &rankNum);
-        topoTypeList.emplace_back(topoType);
-        rankSizeList.emplace_back(rankNum);
-    }
+    // 初始化每一层的 TopoInstDetails
+    topoInfo->topoInstDetailsOfLayer.resize(netLayerNum);
+    topoInfo->topoInstDetailsOfLayerSize = netLayerNum;
+    for (u32 netLayerIdx = 0; netLayerIdx < netLayerNum; netLayerIdx++) {
+        auto& currentNetLayerTopoTopoDetail = topoInfo->topoInstDetailsOfLayer[netLayerIdx];
+        auto& currentLayerTopoSize = currentNetLayerTopoTopoDetail.sizeOfTopo;
+        auto& currentLayerTopoType = currentNetLayerTopoTopoDetail.typeOfTopo;
+        auto& currentLayerTopoRanks = currentNetLayerTopoTopoDetail.ranksInTopo;
+        auto& currentLayerTopo2SizeMap = currentNetLayerTopoTopoDetail.rankNumForTopoType;
+        auto& topoInstNum = currentNetLayerTopoTopoDetail.topoInstNum;
 
-    if (topoTypeList.size() >= 1) {
-        if (rankSizeList[0] != rankSizeLevel0) {
-            HCCL_ERROR("[Topo][CalcLevel0TopoShape] rankSize in TopoInst is [%d], "
-                        "not equal to rankSizeLevel0, which is [%d].",
-                        rankSizeList[0], rankSizeLevel0);
-            return HCCL_E_INTERNAL;
+        std::vector<u32> topoInsts;
+        uint32_t *topoInstsTemp = nullptr;
+        HcclRankGraphGetTopoInstsByLayer(comm, netLayerIdx, &topoInstsTemp, &topoInstNum);
+        for (uint32_t topoInstIdx = 0; topoInstIdx < topoInstNum; topoInstIdx++) {
+            topoInsts.push_back(topoInstsTemp[topoInstIdx]);
         }
-        if(topoTypeList[0] == CommTopo::COMM_TOPO_1DMESH){
-            HCCL_INFO("[Topo][CalcLevel0TopoShape] leve0Topo is MESH_1D.");
-            topoInfo->level0Topo = Level0Shape::MESH_1D;
-        } else if(topoTypeList[0] == CommTopo::COMM_TOPO_CLOS){
-            HCCL_INFO("[Topo][CalcLevel0TopoShape] leve0Topo is CLOS.");
-            topoInfo->level0Topo = Level0Shape::CLOS;
-        } else {
-            HCCL_ERROR("[Topo][CalcLevel0TopoShape] Other topology types except 1DMesh and Clos are not supported.");
-            return HCCL_E_INTERNAL;
+        HCCL_INFO("[BaseSelector][ExtractTopoDetails] netLayerIdx[%u], topoInstNum[%u]", netLayerIdx, topoInstNum);
+        // 初始化当前层的拓扑信息
+        currentLayerTopoSize.resize(topoInstNum);
+        currentLayerTopoType.resize(topoInstNum);
+        currentLayerTopoRanks.resize(topoInstNum);
+        currentLayerTopo2SizeMap.clear();
+
+        // 填充当前层的拓扑信息
+        for (u32 topoInstIdx = 0; topoInstIdx < topoInstNum; topoInstIdx++) {
+            u32& topoInstId = topoInsts[topoInstIdx];
+            u32& topoSize = currentLayerTopoSize[topoInstIdx];
+            CommTopo& topoType = currentLayerTopoType[topoInstIdx];
+            std::vector<u32>& ranks= currentLayerTopoRanks[topoInstIdx];
+
+            // 获取拓扑实例的类型
+            ret = HcclRankGraphGetTopoType(comm, netLayerIdx, topoInstId, &topoType);
+            CHK_PRT_RET(ret != HCCL_SUCCESS,
+                HCCL_ERROR("[BaseSelector][ExtractTopoDetails] GetTopoType failed, netLayerIdx[%u], topoInstId[%u]",
+                    netLayerIdx, topoInstId), ret);
+
+            // 获取拓扑实例中包含的rank
+            uint32_t *ranksTemp;
+            uint32_t rankNum;
+            HcclRankGraphGetRanksByTopoInst(comm, netLayerIdx, topoInstId, &ranksTemp, &rankNum);
+            for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {
+                ranks.push_back(ranksTemp[rankIdx]);
+            }
+            CHK_PRT_RET(ret != HCCL_SUCCESS,
+                HCCL_ERROR("[BaseSelector][ExtractTopoDetails] GetRanksByTopoInst failed, netLayerIdx[%u], topoInstId[%u]",
+                    netLayerIdx, topoInstId), ret);
+
+            // 将topoInstId按照topoType进行归类
+            currentLayerTopo2SizeMap[topoType].push_back(rankNum);
+
+            HCCL_INFO("[BaseSelector][ExtractTopoDetails] netLayerIdx[%u], topoInstIdx[%u] type is[%u], topoInstId is[%u], "
+                    "topoSize is[%u]", netLayerIdx, topoInstIdx, topoType, topoInstId, rankNum);
         }
     }
-
     return HCCL_SUCCESS;
+}
+
+HcclResult Is2DieFullMesh(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    topoInfo->is2DieFullMesh = false;
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D) {
+        return HCCL_SUCCESS;
+    }
+    uint32_t myRank = topoInfo->userRank;
+    u32 netLayer = 0;  // 0 级拓扑
+    uint32_t *ranks = nullptr;
+    uint32_t rankNum;
+    CHK_RET(HcclRankGraphGetRanksByLayer(comm, netLayer, &ranks, &rankNum));
+    if (rankNum <= 2) { // 小于2张卡的话，肯定不是2die全互连
+        return HCCL_SUCCESS;
+    }
+    // 遍历所有对端，校验是否和所有卡有全连链路，并判断链路中本端端口所所对应的 CCU die 是否一致;
+    u32 dieNum = 2;  // 一共2个die
+    std::vector<u32> dieLinkCounter(dieNum, 0);
+    for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {
+        if (rankIdx == myRank) {
+            continue;
+        }
+        CommLink *links = nullptr;
+        uint32_t linkNum;
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, ranks[rankIdx], &links, &linkNum));
+        CHK_PTR_NULL(links);
+        CHK_PRT_RET(linkNum == 0,
+            HCCL_INFO("[Topo][Is2DieFullMesh], Can not find path from Local[%u] to Rmt[%u], in netLayer %u. "
+                      "Topo is not mesh",
+                myRank,
+                ranks[rankIdx],
+                netLayer),
+            HCCL_E_INTERNAL);
+        EndpointDesc srcEndPointDesc = links[0].srcEndpointDesc;
+        EndpointAttrDieId  dieId;
+        uint32_t infoLen = sizeof(EndpointAttrDieId);
+        CHK_RET(HcclRankGraphGetEndpointInfo(comm, myRank, &srcEndPointDesc,
+            EndpointAttr::ENDPOINT_ATTR_DIE_ID, infoLen, &dieId));
+        CHK_PRT_RET(dieId >= dieNum,
+            HCCL_ERROR(
+                "[Topo][Is2DieFullMesh], Link from Local[%u] to Rmt[%u] die id[%u] is out of range[%u].",
+                myRank,
+                ranks[rankIdx],
+                dieId,
+                dieNum),
+            HCCL_E_INTERNAL);
+        dieLinkCounter[dieId]++;
+        HCCL_INFO("[Topo][Is2DieFullMesh], Link from Local[%u] to Rmt[%u] use die[%u], current counter[%u]",
+            myRank, ranks[rankIdx], dieId, dieLinkCounter[dieId]);
+    }
+    for (u32 i = 0; i < dieNum; i++) {
+        if (dieLinkCounter[i] == 0) {
+            return HCCL_SUCCESS;
+        }
+    }
+    topoInfo->is2DieFullMesh = true;
+    return HCCL_SUCCESS;
+}
+
+template<typename T>
+bool is_uniform(const std::vector<T>& vec)
+{
+    return vec.size() <= 1 ||
+           std::adjacent_find(vec.begin(), vec.end(),
+                              std::not_equal_to<T>()) == vec.end();
 }
 
 }

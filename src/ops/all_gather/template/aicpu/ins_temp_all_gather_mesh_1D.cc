@@ -19,7 +19,7 @@ InsTempAllGatherMesh1D::InsTempAllGatherMesh1D(const OpParam &param, const u32 r
 }
 InsTempAllGatherMesh1D::~InsTempAllGatherMesh1D() {}
 
-HcclResult InsTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+HcclResult InsTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                                            AlgResourceRequest &resourceRequest)
 {
     GetRes(resourceRequest);

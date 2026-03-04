@@ -23,7 +23,7 @@ AivTempAllGatherMesh1D::~AivTempAllGatherMesh1D()
 {
 }
 
-HcclResult AivTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;

@@ -19,7 +19,7 @@ TopoMatchBase::~TopoMatchBase()
 {
 }
 
-HcclResult TopoMatchBase::MatchTopo(const HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchBase::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
     (void)topoInfo;

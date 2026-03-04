@@ -36,7 +36,7 @@ u64 AivAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType ou
     return 1;
 }
 
-HcclResult AivAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                        AlgResourceRequest& resourceRequest)
 {
     (void)comm;

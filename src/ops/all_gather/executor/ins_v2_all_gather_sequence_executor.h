@@ -22,16 +22,16 @@ class InsV2AllGatherSequenceExecutor : public InsCollAlgBase {
 public:
     InsV2AllGatherSequenceExecutor() {}
     ~InsV2AllGatherSequenceExecutor() override {}
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfo* topoInfo,
+    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                     AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 
 private:
-    HcclResult InitCommInfo(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult InitCommInfo(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                             const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
 

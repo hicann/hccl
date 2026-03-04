@@ -17,7 +17,7 @@ namespace ops_hccl {
     }
 
     HcclResult InsSendExecutor::InitCommInfo(
-        HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
     {
         myRank_ = topoInfo->userRank;
@@ -37,7 +37,7 @@ namespace ops_hccl {
     }
 
     HcclResult InsSendExecutor::CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfo *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
     {
         // 初始化一些基本成员变量
         myRank_ = topoInfo->userRank;
@@ -60,7 +60,7 @@ namespace ops_hccl {
     }
 
     HcclResult InsSendExecutor::CalcRes(
-        HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
     {
         // 初始化一些基本成员变量

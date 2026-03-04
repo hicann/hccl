@@ -29,7 +29,7 @@ public:
         return StringFormat("Template of Reduce Scatter ccu mesh 1D with tempRankSize [%u].", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
 
     HcclResult KernelRun(const OpParam& param,

@@ -37,7 +37,7 @@ CcuTempAllReduceMesh1DOneShot::~CcuTempAllReduceMesh1DOneShot()
 {
 }
 
-HcclResult CcuTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                   AlgResourceRequest& resourceRequest)
 {
     // 不需要从流

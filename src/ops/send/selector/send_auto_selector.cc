@@ -13,7 +13,7 @@
 
 namespace ops_hccl {
     SelectorStatus SendAutoSelector::SelectAicpuAlgo(
-        TopoInfo *topoInfo, OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap,
+        TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap,
         std::string &selectAlgName) const {
         (void) topoInfo;
         HCCL_INFO("[SendAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);

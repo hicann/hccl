@@ -23,7 +23,7 @@ InsTempReduceScatterMesh1DMeshChunk::~InsTempReduceScatterMesh1DMeshChunk()
 }
 
 HcclResult InsTempReduceScatterMesh1DMeshChunk::CalcRes(
-    HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;

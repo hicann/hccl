@@ -25,17 +25,17 @@ public:
                                            const std::vector<std::vector<u32>> &subCommRanks);
     ~CcuTempAllReduceMesh1DOneShot() override;
 
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+                    AlgResourceRequest& resourceRequest) override;
+
+    HcclResult KernelRun(const OpParam& param,
+                        const TemplateDataParams& templateDataParams,
+                        const TemplateResource& templateResource) override;
+
     std::string Describe() const override
     {
         return StringFormat("Template of CcuTempAllReduceMesh1DOneShot subCommRanks_[0].size() [%u].", subCommRanks_[0].size());
     }
-
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
-
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 private:

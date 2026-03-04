@@ -116,7 +116,7 @@ void CcuTempReduceNHR1DMem2Mem::SetRoot(u32 root)
     return;
 }
 
-HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                       AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> channelDescs;

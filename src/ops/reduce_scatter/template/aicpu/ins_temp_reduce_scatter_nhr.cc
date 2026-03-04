@@ -22,7 +22,7 @@ InsTempReduceScatterNHR::~InsTempReduceScatterNHR()
 {
 }
 
-HcclResult InsTempReduceScatterNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempReduceScatterNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                             AlgResourceRequest& resourceRequest) 
 {
     // NHR 需要的 que Num 为 1

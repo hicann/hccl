@@ -110,6 +110,7 @@ void TopoModel::InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::
         // 单Rank场景
         if (rowRankIds.size() == 1 && colRankIds.size() == 1) {
             instId2RankIds_[serverId][rowInstId] = rowRankIds;
+            dev2TopoInsts_[serverId][phyId].push_back(rowInstId);
         }
 
         // 2D场景才有Z轴实例CLOS

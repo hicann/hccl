@@ -23,7 +23,7 @@ InsTempAllReduceMesh1DOneShot::~InsTempAllReduceMesh1DOneShot()
 {
 }
 
-HcclResult InsTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     // mesh 算法只做level 0 层级的

@@ -19,7 +19,7 @@ InsTempAllGatherVMesh1D::InsTempAllGatherVMesh1D(const OpParam &param, const u32
 }
 InsTempAllGatherVMesh1D::~InsTempAllGatherVMesh1D() {}
  
-HcclResult InsTempAllGatherVMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+HcclResult InsTempAllGatherVMesh1D::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                                            AlgResourceRequest &resourceRequest)
 {
     // mesh 算法只做level 0 层级的

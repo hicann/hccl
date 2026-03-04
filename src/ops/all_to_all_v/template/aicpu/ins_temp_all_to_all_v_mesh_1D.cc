@@ -22,7 +22,7 @@ InsTempAlltoAllVMesh1D::~InsTempAlltoAllVMesh1D()
 {
 }
 
-HcclResult InsTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_;

@@ -17,7 +17,7 @@ namespace ops_hccl {
     class SendAutoSelector : public AutoSelectorBase {
     public:
         SelectorStatus SelectAicpuAlgo(
-            TopoInfo *topoInfo, OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap,
+            TopoInfoWithNetLayerDetails *topoInfo, OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap,
             std::string &selectAlgName) const override;
     };
 } // namespace ops_hccl

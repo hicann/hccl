@@ -26,24 +26,22 @@ CcuTempReduceMesh1D::CcuTempReduceMesh1D(const OpParam& param, const u32 rankId,
     if (it != subCommRanks[0].end()) {
         mySubCommRank_ = std::distance(subCommRanks[0].begin(), it);
     }
+    dataType_ = param.DataDes.dataType;
     auto rootIt = std::find(subCommRanks[0].begin(), subCommRanks[0].end(), param.root);
     if (rootIt != subCommRanks[0].end()) {
         mySubCommRoot_ = std::distance(subCommRanks[0].begin(), rootIt);
     }
-    dataType_ = param.DataDes.dataType;
 }
 
 CcuTempReduceMesh1D::~CcuTempReduceMesh1D()
 {
 }
 
-HcclResult CcuTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                       AlgResourceRequest& resourceRequest)
 {
-    // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;
     resourceRequest.slaveThreadNum = 0;
-    // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG("[CcuTempReduceMesh1D::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
                resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);

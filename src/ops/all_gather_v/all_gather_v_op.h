@@ -45,7 +45,7 @@ HcclResult CheckDataTypeAGV(const HcclDataType dataType);
 
 std::string GetSupportDataTypeAGV();
 
-HcclResult CalcBaseTopoInfoAllGatherV(HcclComm comm, OpParam &param, TopoInfo **topoInfo);
+HcclResult CalcBaseTopoInfoAllGatherV(HcclComm comm, OpParam &param, TopoInfoWithNetLayerDetails **topoInfo);
 
 }  // namespace ops_hccl
 #endif

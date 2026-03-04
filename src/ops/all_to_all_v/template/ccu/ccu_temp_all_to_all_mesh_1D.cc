@@ -33,7 +33,7 @@ CcuTempAlltoAllMesh1D::~CcuTempAlltoAllMesh1D()
 {
 }
 
-HcclResult CcuTempAlltoAllMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempAlltoAllMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                       AlgResourceRequest& resourceRequest)
 {
     // 不需要从流

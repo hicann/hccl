@@ -23,7 +23,7 @@ public:
     {
         return "Topo Match for combined Algorithm: layer 0 Mesh, layer 1 NHR.";
     }
-    HcclResult MatchTopo(const HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 private:
     HcclResult TopoForLayer0(const HcclComm comm, uint32_t& layer0Size, uint32_t myRank,

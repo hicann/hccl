@@ -35,11 +35,11 @@ public:
 
     /* *************** 资源计算 *************** */
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
 
     HcclResult CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfo *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
 
 protected:
     /* *************** 算法编排 *************** */

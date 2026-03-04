@@ -19,7 +19,7 @@ InsTempAllGatherNHRDPU::InsTempAllGatherNHRDPU(const OpParam& param, const uint3
                                                const std::vector<std::vector<uint32_t>> &subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks) {}
 
-HcclResult InsTempAllGatherNHRDPU::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsTempAllGatherNHRDPU::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                            AlgResourceRequest& resourceRequest)
 {
     resourceRequest.slaveThreadNum = 0;

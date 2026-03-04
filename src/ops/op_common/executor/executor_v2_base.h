@@ -31,11 +31,11 @@ public:
 
     virtual std::string Describe() const;
 
-    virtual HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfo* topoInfo,
+    virtual HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                             AlgHierarchyInfoForAllLevel& algHierarchyInfo) = 0;
 
     virtual HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                               const TopoInfo* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+                               const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
                                AlgResourceRequest& resourceRequest) = 0;
 
     // device

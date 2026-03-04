@@ -27,7 +27,7 @@ u64 InsTempAllReduceMesh1DTwoShotMeshChunk::CalcScratchMultiple(BufferType inBuf
 }
 
 HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::CalcRes(
-    HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;

@@ -17,7 +17,7 @@ namespace ops_hccl {
 
 class BatchSendRecvAutoSelector : public AutoSelectorBase {
 private:
-    SelectorStatus SelectAicpuAlgo(TopoInfo* topoInfo,
+    SelectorStatus SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                    OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const override;

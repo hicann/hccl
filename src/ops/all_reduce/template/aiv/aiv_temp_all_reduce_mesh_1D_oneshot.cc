@@ -31,7 +31,7 @@ u64 AivTempAllReduceMesh1DOneShot::CalcScratchMultiple(BufferType inBuffType, Bu
     return scratchMultiple;
 }
 
-HcclResult AivTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;

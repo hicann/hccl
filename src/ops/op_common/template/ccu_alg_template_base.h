@@ -27,7 +27,7 @@ public:
 
     virtual std::string Describe() const = 0;
 
-    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                AlgResourceRequest& resourceRequest);
     virtual HcclResult KernelRun(const OpParam& param,
                                  const TemplateDataParams& templateDataParams,

@@ -35,7 +35,7 @@ CcuAlgTemplateBase::~CcuAlgTemplateBase()
 {
 }
 
-HcclResult CcuAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                        AlgResourceRequest& resourceRequest)
 {
     (void)comm;

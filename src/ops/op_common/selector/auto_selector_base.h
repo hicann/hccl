@@ -69,34 +69,42 @@ const std::unordered_map<std::string, std::string> RES_RESUSE_ALG = {
 
 class AutoSelectorBase {
 public:
-    SelectorStatus Select(OpParam &opParam, TopoInfo* topoInfo,
+    SelectorStatus Select(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
                           std::string &selectAlgName, OpExecuteConfig &opExecuteConfig);
     bool IsDefaultAlg(const HcclAlgoType algoType) const;
     bool IsSmallData(const u64 dataSize) const;
     bool IsLargeData(const u64 dataSize) const;
-    virtual SelectorStatus SelectCcuMsAlgo(TopoInfo* topoInfo,
+    virtual SelectorStatus SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                  OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const;
-    virtual SelectorStatus SelectCcuScheduleAlgo(TopoInfo* topoInfo,
+    virtual SelectorStatus SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                  OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const;
-    virtual SelectorStatus SelectAicpuAlgo(TopoInfo* topoInfo,
+    virtual SelectorStatus SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                    OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const;
-    virtual SelectorStatus SelectAivAlgo(TopoInfo* topoInfo,
+    virtual SelectorStatus SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                    OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const;
-    virtual SelectorStatus SelectDPUAlgo(TopoInfo* topoInfo,
+    virtual SelectorStatus SelectDPUAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                    OpParam &opParam,
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const;
-    HcclResult CheckHostDPUOnly(const TopoInfo* topoInfo, const OpParam &opParam, bool &hostDPUOnly) const;
+    HcclResult CheckHostDPUOnly(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam, bool &hostDPUOnly) const;
     bool IsStarsState(const OpExecuteConfig &opExecuteConfig) const;
+    bool IsLayerAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType) const;
 };
+
+inline bool Is64BitDataType(HcclDataType dataType)
+{
+    return dataType == HcclDataType::HCCL_DATA_TYPE_INT64 ||
+           dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
+           dataType == HcclDataType::HCCL_DATA_TYPE_FP64;
+}
 
 } // namespace Hccl
 #endif

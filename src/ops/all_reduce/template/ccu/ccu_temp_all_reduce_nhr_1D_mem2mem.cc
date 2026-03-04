@@ -63,7 +63,7 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::GetDieNumFromChannelDescs(HcclComm comm
     }
 }
 
-HcclResult CcuTempAllReduceNHRMem2Mem1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult CcuTempAllReduceNHRMem2Mem1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                   AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> channelDescs;

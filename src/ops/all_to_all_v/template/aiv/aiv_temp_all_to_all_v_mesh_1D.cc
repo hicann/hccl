@@ -24,7 +24,7 @@ AivTempAlltoAllVMesh1D::~AivTempAlltoAllVMesh1D()
 {
 }
 
-HcclResult AivTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult AivTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;

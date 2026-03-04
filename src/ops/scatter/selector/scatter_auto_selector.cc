@@ -13,7 +13,7 @@
 
 namespace ops_hccl {
 
-SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
 {
@@ -25,7 +25,7 @@ SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(TopoInfo* topoInfo, OpParam 
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
+SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                     OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
@@ -66,7 +66,7 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(TopoInfo* topoInfo,
 }
 
 
-SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
 {
@@ -100,7 +100,7 @@ SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(TopoInfo* topoInfo, OpParam 
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectAivAlgo(TopoInfo* topoInfo, OpParam &opParam,
+SelectorStatus ScatterAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                        const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                        std::string &selectAlgName) const
 {

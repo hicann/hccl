@@ -29,7 +29,7 @@ public:
         return "Topo Match for Mesh Algorithm (CURRENTLY only 910_95 is supported).";
     }
 
-    HcclResult MatchTopo(HcclComm comm, TopoInfo* topoInfo, AlgHierarchyInfoForAllLevel& AlgHierarchyInfoExector) override;
+    HcclResult MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& AlgHierarchyInfoExector) override;
 
 private:
     u32 myRank_;

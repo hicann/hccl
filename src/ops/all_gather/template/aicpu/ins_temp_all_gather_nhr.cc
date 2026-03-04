@@ -21,7 +21,7 @@ InsTempAllGatherNHR::InsTempAllGatherNHR(const OpParam &param, const u32 rankId,
 
 InsTempAllGatherNHR::~InsTempAllGatherNHR() {}
 
-HcclResult InsTempAllGatherNHR::CalcRes(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
+HcclResult InsTempAllGatherNHR::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                                         AlgResourceRequest &resourceRequest)
 {
     GetRes(resourceRequest);

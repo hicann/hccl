@@ -58,7 +58,7 @@ HcclResult InsAlgTemplateBase::DPUKernelRun(const TemplateDataParams& tempAlgPar
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult InsAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfo* topoInfo,
+HcclResult InsAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                        AlgResourceRequest& resourceRequest)
 {
     (void)comm;
