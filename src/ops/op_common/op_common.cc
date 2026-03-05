@@ -48,6 +48,7 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     std::string &algName, OpExecuteConfig &opExecuteConfig)
 {
     HCCL_INFO("Start to execute Selector.");
+    param.hcclComm = comm;
     CHK_RET(HcclGetOpExpansionMode(comm, param));
     // 获取基础拓扑
     CHK_RET(HcclCalcTopoInfo(comm, param, topoInfo));
@@ -74,7 +75,6 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
                       std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo, std::string &algName)
 {
     HCCL_INFO("Start to execute HcclExecOp.");
-    param.hcclComm = comm;
     // 在原先的commName中添加执行模式，得到commModeTag
     bool isOpBase = true;
     const char* opModeStr = isOpBase ? "_opbase" : "_offload";
@@ -549,7 +549,6 @@ HcclResult GetAlgResCcu(HcclComm comm, const OpParam& param, AlgResourceRequest&
         HCCL_ERROR("failed to alloc alg resource.");
         return ret;
     }
-    // todo : check resreq合法
     // 序列化
     std::vector<char> seq = resCtxHost->Serialize();
     uint64_t size = seq.size();

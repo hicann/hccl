@@ -148,7 +148,6 @@ void CcuKernelReduceNHR1DMem2Mem::DoReduceScatterNHRSingleStep(const NHRStepInfo
         sendSliceIdx = sendSliceIdxList[i];
 
         // cke用完了，等待上一轮结束在使用
-        // TODO x30067372 是否需要
         if (i != 0) {
             if (i % RANK_NUM_PER_CKE == 0) {
                 event_.SetMask((1 << RANK_NUM_PER_CKE) - 1);

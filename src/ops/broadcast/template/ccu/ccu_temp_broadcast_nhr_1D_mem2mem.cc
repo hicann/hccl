@@ -400,7 +400,6 @@ u64 CcuTempBroadcastNHR1DMem2Mem::GetThreadNum()
 
 HcclResult CcuTempBroadcastNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
 {
-    // todo：先只用1条主流，调通算法
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     resourceRequest.notifyNumOnMainThread = 1;

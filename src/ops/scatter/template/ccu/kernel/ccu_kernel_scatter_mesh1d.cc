@@ -129,6 +129,17 @@ void CcuKernelScatterMesh1D::DoRepeatScatter()
 {
     CcuRep::Variable repeatNumAdd = CreateVariable();
     repeatNumAdd = 1;
+    // 设置每张卡输入输出的起始地址
+    for (uint64_t curId = 0; curId < rankSize_; curId++) {
+        inputMem_[curId].token = token_[curId];   // 设置每张卡的输入token
+        outputMem_[curId].token = token_[curId];  // 设置每张卡的输出token
+
+        inputMem_[curId].addr = input_;  // 设置每张卡的输入地址，以root的起始地址为基准
+        for (uint64_t i = 0; i < curId; i++) {
+            inputMem_[curId].addr += currentRankSliceInputOffset_;  // 每张卡加上偏移量
+        }
+        outputMem_[curId].addr = output_[curId];  // 设置每张卡的输出地址
+    }
     if (rankId_ == rootId_) {
         CCU_WHILE(repeatNum_ != UINT64_MAX)
         {  // 循环UINT64_MAX - repeatNum_次
@@ -147,16 +158,6 @@ void CcuKernelScatterMesh1D::DoScatter()
     HCCL_INFO(
         "[CcuContextScatterMesh1D] RunSendScatter local rank[%u], root rank[%u], start send data", rankId_, rootId_);
 
-    for (uint64_t curId = 0; curId < rankSize_; curId++) {
-        inputMem_[curId].token = token_[curId];   // 设置每张卡的输入token
-        outputMem_[curId].token = token_[curId];  // 设置每张卡的输出token
-
-        inputMem_[curId].addr = input_;  // 设置每张卡的输入地址，以root的起始地址为基准
-        for (uint64_t i = 0; i < curId; i++) {
-            inputMem_[curId].addr += currentRankSliceInputOffset_;  // 每张卡加上偏移量
-        }
-        outputMem_[curId].addr = output_[curId];  // 设置每张卡的输出地址
-    }
     CCU_IF(flag_ != 0)
     {
         // 非第一轮执行时，src 和 dst 已经初始化，需要添加偏移量

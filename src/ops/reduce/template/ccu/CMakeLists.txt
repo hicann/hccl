@@ -13,8 +13,6 @@ add_subdirectory(kernel)
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_reduce_mesh_1D_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_reduce_mesh_1D.cc
-    #${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_reduce_mesh_2D_mem2mem.cc
-    #${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_reduce_mesh_2D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_reduce_nhr_1D_mem2mem.cc
 )
 
