@@ -98,6 +98,13 @@ enum class Level0Shape {
     MESH_1D_CLOS = 2,
 };
 
+enum class Level0MeshType {
+    NOT_MESH = 0,
+    SINGLE_DIE = 1,
+    TWO_DIE_REGULAR = 2,
+    TWO_DIE_NOT_REGULAR = 3,
+};
+
 struct NetLayerDetails {
     u32 netLayerNum;
     std::vector<u32> netLayers;
@@ -141,6 +148,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     bool Level1Nhr{false};
     bool is2DieFullMesh{false};
     u32 topoInstDetailsOfLayerSize = 0;
+    Level0MeshType level0MeshType;
     NetLayerDetails netLayerDetails;
     std::vector<TopoInstDetails> topoInstDetailsOfLayer;
 
@@ -170,6 +178,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream << Level1Nhr;
         binaryStream << is2DieFullMesh;
         binaryStream << topoInstDetailsOfLayerSize;
+        binaryStream << level0MeshType;
         binaryStream << netLayerDetails.netLayerNum;
         binaryStream << netLayerDetails.netLayers;
         binaryStream << netLayerDetails.netInstNumOfLayer;
@@ -213,6 +222,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream >> Level1Nhr;
         binaryStream >> is2DieFullMesh;
         binaryStream >> topoInstDetailsOfLayerSize;
+        binaryStream >> level0MeshType;
         binaryStream >> netLayerDetails.netLayerNum;
         binaryStream >> netLayerDetails.netLayers;
         binaryStream >> netLayerDetails.netInstNumOfLayer;
@@ -231,6 +241,8 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
 
 // ccu kernel register所需信息
 struct CcuKernelInfo {
+    // kernel资源组序号，group号不同时，资源复用
+    u32 resGroup = 0;
     // kernel构造函数
     hcomm::KernelCreator creator;
     // KernelArg实例

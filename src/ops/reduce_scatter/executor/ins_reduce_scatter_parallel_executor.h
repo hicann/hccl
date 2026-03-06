@@ -23,6 +23,7 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_base.h"
 #include "topo_match_multilevel.h"
+#include "topo_match_ubx.h"
 
 namespace ops_hccl {
 

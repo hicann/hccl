@@ -15,6 +15,9 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_mesh_1D_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_nhr_1D_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_nhr_mem2mem_1D_multi_jetty.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_mesh_1D_2die_oneshot.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_reduce_mesh_1D_mem2mem_2die_oneshot.cc
 )
 
 target_sources(hccl PRIVATE

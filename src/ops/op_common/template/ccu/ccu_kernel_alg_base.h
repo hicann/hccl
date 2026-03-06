@@ -43,7 +43,7 @@ protected:
         CcuRep::Variable parallelParam;     // loopgroup展开参数，包括展开次数、从第几个loop开始展开、共有几个loop
         CcuRep::Variable residual;          // 尾块数据size
     };
-    
+
     // 用于n和p部分数据loopgroup的参数
     GroupOpConfig       moConfig{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF};
     GroupOpSizeResource moRes;
@@ -63,10 +63,10 @@ protected:
     std::vector<CcuRep::CcuBuf> CreateBlockCcuBuf(uint32_t count);
     std::vector<CcuRep::Executor> CreateBlockExecutor(uint32_t count);
     std::vector<CcuRep::CompletedEvent> CreateBlockCompletedEvent(uint32_t count);
-  
+
     void LoopGroup(const std::vector<CcuRep::LoopCall> &loops, const std::vector<CcuRep::Variable> &loopCfg,
         const CcuRep::Variable &paraCfg, const CcuRep::Variable &offsetCfg);
-    
+
     // 高阶操作
     std::vector<uint64_t> CalGoSize(uint64_t size);
 
@@ -77,18 +77,26 @@ protected:
 
     HcclResult GroupBroadcast(const std::vector<ChannelHandle>& channels, std::vector<CcuRep::RemoteAddr> dst,
                               CcuRep::LocalAddr src, GroupOpSize goSize);
-
+    HcclResult GroupBroadcastWithoutMyRank(const std::vector<ChannelHandle>& channels, std::vector<CcuRep::RemoteAddr> dst,
+                              CcuRep::LocalAddr src, GroupOpSize goSize);
     HcclResult GroupReduce(const std::vector<ChannelHandle>& channels, CcuRep::LocalAddr dst,
                            std::vector<CcuRep::RemoteAddr> src, GroupOpSize goSize, HcclDataType dataType,
                            HcclDataType outputDataType, HcclReduceOp opType);
+
+    HcclResult GroupReduceWithoutMyRank(const std::vector<ChannelHandle> &ccuChannels, CcuRep::LocalAddr dst,
+                             std::vector<CcuRep::RemoteAddr> src, GroupOpSize goSize, HcclDataType dataType,
+                             HcclDataType outputDataType, HcclReduceOp opType);
 
     HcclResult GroupCopy(CcuRep::LocalAddr dst, CcuRep::LocalAddr src, GroupOpSize goSize);
 
 private:
     HcclResult CreateMultiOpCopy();
     HcclResult CreateMultiOpBroadcast(const std::vector<ChannelHandle> &channels);
+    HcclResult CreateMultiOpBroadcastWithoutMyRank(const std::vector<ChannelHandle> &channels);
     HcclResult CreateMultiOpReduce(const std::vector<ChannelHandle>& channels, HcclDataType dataType,
                                    HcclDataType outputDataType, HcclReduceOp opType);
+    HcclResult CreateMultiOpReduceWithoutMyRank(const std::vector<ChannelHandle> &ccuChannels, HcclDataType dataType,
+                                     HcclDataType outputDataType, HcclReduceOp opType);
 };
 
 }

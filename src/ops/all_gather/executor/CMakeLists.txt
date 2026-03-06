@@ -12,7 +12,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_all_gather_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_all_gather_parallel_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_all_gather_sequence_executor.cc
-
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_all_gather_concurrent_executor.cc
 )
 
 target_sources(hccl PRIVATE

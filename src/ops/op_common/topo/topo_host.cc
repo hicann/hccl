@@ -47,7 +47,7 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
     }
     HCCL_CONFIG_INFO(HCCL_ALG, "[InitRankInfo] userRank[%u] userRankSize[%u] serverIdx[%u] superPodIdx[%u] "
         "deviceType[%u] deviceNumPerModule[%u] serverNumPerSuperPod[%u] serverNum[%u] moduleNum[%u] superPodNum[%u] moduleIdx[%u] "
-        "isDiffDeviceModule[%d] multiModuleDiffDeviceNumMode[%d] multiSuperPodDiffServerNumMode[%d] isHCCSSWNumEqualToTwiceSIONum[%d]",
+        "isDiffDeviceModule[%d] multiModuleDiffDeviceNumMode[%d] multiSuperPodDiffServerNumMode[%d] isHCCSSWNumEqualToTwiceSIONum[%d],",
         topoInfo->userRank, topoInfo->userRankSize, topoInfo->serverIdx, topoInfo->superPodIdx,
         topoInfo->deviceType, topoInfo->deviceNumPerModule, topoInfo->serverNumPerSuperPod,
         topoInfo->serverNum, topoInfo->moduleNum, topoInfo->superPodNum, topoInfo->moduleIdx,
@@ -332,10 +332,10 @@ uint32_t GetCurrentServerStartRank(HcclComm comm, TopoInfo* topoInfo)
 {
     uint32_t rankListNum = 0;
     uint32_t *rankSizeList = nullptr;
-    
+
     // 获取L0层级（服务器级别）的实例大小列表
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
-    
+
     // 确定当前rank属于哪个服务器
     uint32_t currentServerStartRank = 0;
     for (u32 i = 0; i < topoInfo->serverIdx; ++i) {
@@ -349,10 +349,10 @@ uint32_t GetCurrentServerEndRank(HcclComm comm, TopoInfo* topoInfo)
 {
     uint32_t rankListNum = 0;
     uint32_t *rankSizeList = nullptr;
-    
+
     // 获取L0层级（服务器级别）的实例大小列表
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
-    
+
     // 确定当前rank属于哪个服务器
     uint32_t currentServerStartRank = 0;
     for (u32 i = 0; i < topoInfo->serverIdx; ++i) {
@@ -597,6 +597,7 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(ExtractTopoDetails(comm, topoInfo));
     CHK_RET(CalcLevel0TopoShape(comm, topoInfo));
     CHK_RET(Is2DieFullMesh(comm, topoInfo));
+    CHK_RET(CalcLevel0MeshType(comm, topoInfo));
     return HCCL_SUCCESS;
 }
 
@@ -784,12 +785,72 @@ HcclResult Is2DieFullMesh(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     return HCCL_SUCCESS;
 }
 
-template<typename T>
-bool is_uniform(const std::vector<T>& vec)
+HcclResult CalcLevel0MeshType(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo)
 {
-    return vec.size() <= 1 ||
-           std::adjacent_find(vec.begin(), vec.end(),
-                              std::not_equal_to<T>()) == vec.end();
-}
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D) {
+        topoInfo->level0MeshType = Level0MeshType::NOT_MESH;
+        return HCCL_SUCCESS;
+    }
+    uint32_t myRank = topoInfo->userRank;
+    u32 netLayer = 0;
+    uint32_t *ranks = nullptr;
+    uint32_t rankNum;
+    CHK_RET(HcclRankGraphGetRanksByLayer(comm, netLayer, &ranks, &rankNum));
+    if (rankNum <= 2) {  // 小于2张卡的话，肯定不是2die全互连
+        topoInfo->level0MeshType = Level0MeshType::SINGLE_DIE;
+        return HCCL_SUCCESS;
+    }
 
+    u32 dieNum = 2;  // 一共2个die
+    std::vector<u32> dieLinkCounter(dieNum, 0);
+    for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {
+        if (myRank == rankIdx) {
+            continue;
+        }
+        CommLink *links = nullptr;
+        uint32_t linkNum;
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, ranks[rankIdx], &links, &linkNum));
+        CHK_PTR_NULL(links);
+        CHK_PRT_RET(linkNum == 0,
+            HCCL_ERROR("[Topo][CalcLevel0MeshType] Can not find path from Local[%u] to Rmt[%u], in netLayer %u. "
+                       "Topo is not mesh",
+                myRank,
+                ranks[rankIdx],
+                netLayer),
+            HCCL_E_INTERNAL);
+        EndpointDesc srcEndpointDesc = links[0].srcEndpointDesc;
+        EndpointAttrDieId dieId;
+        uint32_t infoLen = sizeof(EndpointAttrDieId);
+        CHK_RET(HcclRankGraphGetEndpointInfo(
+            comm, myRank, &srcEndpointDesc, EndpointAttr::ENDPOINT_ATTR_DIE_ID, infoLen, &dieId));
+
+        CHK_PRT_RET(dieId >= dieNum,
+            HCCL_ERROR("[Topo][CalcLevel0MeshType], Link from Local[%u] to Rmt[%u] die id[%u] is out of range[%u].",
+                myRank,
+                ranks[rankIdx],
+                dieId,
+                dieNum),
+            HCCL_E_INTERNAL);
+        dieLinkCounter[dieId]++;
+    }
+
+    for (u32 i = 0; i < dieNum; i++) {
+        HCCL_INFO("[Topo][CalcLevel0MeshType] die[%u] link counter[%u].", i, dieLinkCounter[i]);
+    }
+    if (dieLinkCounter[0] == 0 || dieLinkCounter[1] == 0) {
+        topoInfo->level0MeshType = Level0MeshType::SINGLE_DIE;
+        HCCL_INFO("[Topo][CalcLevel0MeshType] one of the die have 0 links. Level 0 is 1DieFullMesh.");
+        return HCCL_SUCCESS;
+    }
+    HCCL_INFO("[Topo][CalcLevel0MeshType] Level 0 is 2DieFullMesh.");
+    if (dieLinkCounter[0] - dieLinkCounter[1] == 1 || dieLinkCounter[1] - dieLinkCounter[0] == 1) {
+        topoInfo->level0MeshType = Level0MeshType::TWO_DIE_REGULAR;
+        HCCL_INFO("[Topo][CalcLevel0MeshType] linkNum on 2 dies are off by 1. Level 0 is Regular.");
+    } else {
+        topoInfo->level0MeshType = Level0MeshType::TWO_DIE_NOT_REGULAR;
+        HCCL_INFO(
+            "[Topo][CalcLevel0MeshType] linkNum on 2 dies are not off by 1. Not regular shape.");
+    }
+    return HCCL_SUCCESS;
+}
 }

@@ -297,6 +297,5 @@ inline u64 RoundUp(const u64 dividend, const u64 divisor)
     }
     return dividend / divisor + ((dividend % divisor != 0) ? 1 : 0);
 }
-
 }
 #endif

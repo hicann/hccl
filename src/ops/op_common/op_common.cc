@@ -614,17 +614,30 @@ HcclResult HcclGetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceRequ
         HCCL_ERROR("[HcclGetCcuKernel]ccuKernel num not match!"),
         HCCL_E_INTERNAL);
 
-    for (CcuKernelInfo& kernelInfo: resRequest.ccuKernelInfos) {
-
-        void* kernelArgPtr = static_cast<void*>(kernelInfo.kernelArg.get()); // 保证没有释放
-        void* creatorPtr = static_cast<void*>(&kernelInfo.creator);
-        
-        HCCL_DEBUG("[AllocAlgResource] kernelArgPtr[%p], creator[%p]", kernelArgPtr, &(kernelInfo.creator));
-        CcuKernelHandle handle;
-        CHK_RET(HcclCcuKernelRegister(comm, &handle, creatorPtr, kernelArgPtr));
-        resCtxHost->ccuKernels.push_back(handle);
+    // 按照resgroup进行注册
+    u32 currentResGroup = 0;
+    u32 maxResGroup = 0;
+    resCtxHost->ccuKernels.resize(totalKernelNum);
+    while (currentResGroup <= maxResGroup) {
+        for (u32 i = 0; i < totalKernelNum; i++) {
+            CcuKernelInfo& kernelInfo = resRequest.ccuKernelInfos[i];
+            if (kernelInfo.resGroup > maxResGroup) {
+                maxResGroup = kernelInfo.resGroup;
+            }
+            if (kernelInfo.resGroup != currentResGroup) {
+                continue;
+            }
+            void* kernelArgPtr = static_cast<void*>(kernelInfo.kernelArg.get()); // 保证没有释放
+            void* creatorPtr = static_cast<void*>(&kernelInfo.creator);
+            
+            HCCL_DEBUG("[AllocAlgResource] kernelArgPtr[%p], creator[%p]", kernelArgPtr, &(kernelInfo.creator));
+            CcuKernelHandle handle;
+            CHK_RET(HcclCcuKernelRegister(comm, &handle, creatorPtr, kernelArgPtr));
+            resCtxHost->ccuKernels[i] = handle;
+        }
+        CHK_RET(HcclCcuKernelRegisterFinish(comm));
+        currentResGroup++;
     }
-    CHK_RET(HcclCcuKernelRegisterFinish(comm));
     resCtxHost->ccuKernelNum = resRequest.ccuKernelNum;
     return HCCL_SUCCESS;
 }
@@ -917,6 +930,37 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
     if (ret != 0) {
         HCCL_ERROR("faled to fill param.algTag");
         return HcclResult::HCCL_E_INTERNAL;
+    }
+
+    // ccu模式，考虑kernel是否能复用，需要添加dataType和reduceType
+    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+        HcclDataType tmpDataType;
+        if(param.opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
+           param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
+           param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+            tmpDataType = param.all2AllVDataDes.sendType;
+        } else {
+            tmpDataType = param.DataDes.dataType;
+        }
+        const char* dataType = HCOM_DATA_TYPE_STR_MAP.at(tmpDataType).c_str();
+        ret = strcat_s(param.algTag, sizeof(param.algTag), dataType);
+        if (ret != 0) {
+            HCCL_ERROR("failed to fill alg tag with ccu dataType");
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+
+        if (param.opType == HcclCMDType::HCCL_CMD_ALLREDUCE ||
+            param.opType == HcclCMDType::HCCL_CMD_REDUCE ||
+            param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
+            param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+            
+            const char* reduceType = HCOM_REDUCE_OP_STR_MAP.at(param.reduceType).c_str();
+            ret = strcat_s(param.algTag, sizeof(param.algTag), reduceType);
+            if (ret != 0) {
+                HCCL_ERROR("failed to fill alg tag with ccu reduceType");
+                return HcclResult::HCCL_E_INTERNAL;
+            }
+        }
     }
 
     return HcclResult::HCCL_SUCCESS;

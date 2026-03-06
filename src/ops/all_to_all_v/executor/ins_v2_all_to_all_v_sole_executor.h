@@ -24,6 +24,7 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
+#include "topo_match_ubx.h"
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate> class InsV2AlltoAllVSoleExecutor : public InsCollAlgBase {

@@ -50,8 +50,21 @@ HcclResult CcuTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
     kernelInfo.creator = [](const hcomm::CcuKernelArg &arg) {
                              return std::make_unique<CcuKernelAllGatherMesh1D>(arg);
                          };
+
     std::vector<HcclChannelDesc> channelDescs;
-    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
+    if(topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+        CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
+    } else {
+        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
+        for(auto channel : channelDescs){
+            if(channel.channelProtocol != COMM_PROTOCOL_UBC_CTP){
+                HCCL_ERROR("[CcuTempAllGatherMesh1D][CalcRes] channelProtocol: %u", channel.channelProtocol);
+                return HCCL_E_INTERNAL;
+            }
+        }
+    }
+    HCCL_DEBUG("[CcuTempAllGatherMesh1D::CalcRes] Get Mesh Channel Success!");
+
     kernelInfo.kernelArg = std::make_shared<CcuKernelArgAllGatherMesh1D>(subCommRanks_[0].size(),
                                                                                     mySubCommRank_,
                                                                                     param,

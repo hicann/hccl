@@ -22,6 +22,9 @@ CcuAlgTemplateBase::CcuAlgTemplateBase(const OpParam& param, const u32 rankId, /
 {
     opMode_ = param.opMode;
     root_ = param.root;
+    for (const auto &ranks : subCommRanks) {
+        templateRankSize_ += ranks.size();
+    }
 }
 
 void CcuAlgTemplateBase::InitCcuAlgTemplate(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

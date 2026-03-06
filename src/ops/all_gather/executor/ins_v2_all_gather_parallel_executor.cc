@@ -16,10 +16,12 @@
 #ifndef AICPU_COMPILE
 #include "ccu_temp_all_gather_nhr_1D_mem2mem.h"
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
+#include "ccu_temp_all_gather_nhr_1D_multi_jetty_mem2mem.h"
 #endif
 #include "alg_data_trans_wrapper.h"
 
 #include "topo_match_multilevel.h"
+#include "topo_match_ubx.h"
 
 namespace ops_hccl {
 
@@ -44,8 +46,24 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 {
     myRank_ = topoInfo->userRank;
     // 构建template
-    InsAlgTemplate0 intraTempAlg(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
-    InsAlgTemplate1 interTempAlg(param, topoInfo->userRank, algHierarchyInfo.infos[1]);
+    std::vector<std::vector<u32>> intraHierarchyInfo;
+    std::vector<std::vector<u32>> interHierarchyInfo;
+    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        intraHierarchyInfo = {algHierarchyInfo.infos[0][0]};
+        std::vector<u32> closRanks;
+        u32 meshSize = algHierarchyInfo.infos[0][0].size();
+        for(auto rank : algHierarchyInfo.infos[0][1]) {
+            if(rank % meshSize == topoInfo->userRank % meshSize) {
+                closRanks.push_back(rank);
+            }
+        }
+        interHierarchyInfo = {closRanks};
+    } else {
+        intraHierarchyInfo = algHierarchyInfo.infos[0];
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    }
+    InsAlgTemplate0 intraTempAlg(param, topoInfo->userRank, intraHierarchyInfo);
+    InsAlgTemplate1 interTempAlg(param, topoInfo->userRank, interHierarchyInfo);
 
     // 调用计算资源的函数
     AlgResourceRequest intraTempRequest;
@@ -254,8 +272,23 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
-    rankSizeLevel0_ = GetRankSize(resCtx.algHierarchyInfo.infos[0]);
-    rankSizeLevel1_ = GetRankSize(resCtx.algHierarchyInfo.infos[1]);
+
+    if(resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS) {
+        intraHierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][0]};
+        std::vector<u32> closRanks;
+        u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();
+        for(auto rank : resCtx.algHierarchyInfo.infos[0][1]) {
+            if(rank % meshSize == resCtx.topoInfo.userRank % meshSize) {
+                closRanks.push_back(rank);
+            }
+        }
+        interHierarchyInfo_ = {closRanks};
+    } else {
+        intraHierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    }
+    rankSizeLevel0_ = GetRankSize(intraHierarchyInfo_);
+    rankSizeLevel1_ = GetRankSize(interHierarchyInfo_);
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     // 实例化算法模板类
@@ -411,8 +444,15 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHR,
                                InsV2AllGatherParallelExecutor, TopoMatchMultilevel, InsTempAllGatherMesh1D,
                                InsTempAllGatherNHR);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHRUBX,
+                               InsV2AllGatherParallelExecutor, TopoMatchUBX, InsTempAllGatherMesh1D,
+                               InsTempAllGatherNHR);
 #ifndef AICPU_COMPILE
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherParallelMesh1DNHR,
     InsV2AllGatherParallelExecutor, TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+
+REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherParallelMesh1DNHRMemUBX,
+    InsV2AllGatherParallelExecutor, TopoMatchUBX, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMultiJettyMem2Mem);
+
 #endif
 // 算法注册

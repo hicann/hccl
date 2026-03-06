@@ -16,6 +16,7 @@
 #ifndef AICPU_COMPILE
 #include "ccu_temp_all_reduce_mesh_1D_mem2mem.h"
 #include "ccu_temp_all_reduce_nhr_1D_mem2mem.h"
+#include "ccu_temp_all_reduce_nhr_mem2mem_1D_multi_jetty.h"
 #endif
 
 namespace ops_hccl {
@@ -40,8 +41,25 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
     AlgResourceRequest& resourceRequest)
 {
-    InsAlgTemplate0 tempAlgIntra(param, topoInfo->userRank, algHierarchyInfo.infos.at(0));
-    InsAlgTemplate1 tempAlgInter(param, topoInfo->userRank, algHierarchyInfo.infos.at(1));
+    // 构建template
+    std::vector<std::vector<u32>> temp0HierarchyInfo;
+    std::vector<std::vector<u32>> temp1HierarchyInfo;
+    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
+        std::vector<u32> closRanks;
+        u32 meshSize = algHierarchyInfo.infos[0][0].size();
+        for(auto rank : algHierarchyInfo.infos[0][1]) {
+            if(rank % meshSize == topoInfo->userRank % meshSize) {
+                closRanks.push_back(rank);
+            }
+        }
+        temp1HierarchyInfo = {closRanks};
+    } else {
+        temp0HierarchyInfo = algHierarchyInfo.infos[0];
+        temp1HierarchyInfo = algHierarchyInfo.infos[1];
+    }
+    InsAlgTemplate0 tempAlgIntra(param, topoInfo->userRank, temp0HierarchyInfo);
+    InsAlgTemplate1 tempAlgInter(param, topoInfo->userRank, temp1HierarchyInfo);
 
     // 计算子算法所需资源
     AlgResourceRequest resReqIntra;
@@ -101,9 +119,26 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     maxTmpMemSize_ = resCtx.cclMem.size;
     threads_ = resCtx.threads;
 
+    std::vector<std::vector<u32>> temp0HierarchyInfo;
+    std::vector<std::vector<u32>> temp1HierarchyInfo;
+    if(resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS) {
+        temp0HierarchyInfo = {resCtx.algHierarchyInfo.infos[0][0]};
+        std::vector<u32> closRanks;
+        u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();
+        for(auto rank : resCtx.algHierarchyInfo.infos[0][1]) {
+            if(rank % meshSize == resCtx.topoInfo.userRank % meshSize) {
+                closRanks.push_back(rank);
+            }
+        }
+        temp1HierarchyInfo = {closRanks};
+    } else {
+        temp0HierarchyInfo = resCtx.algHierarchyInfo.infos[0];
+        temp1HierarchyInfo = resCtx.algHierarchyInfo.infos[1];
+    }
+    InsAlgTemplate0 tempAlgIntra(param, myRank_, temp0HierarchyInfo);
+    InsAlgTemplate1 tempAlgInter(param, myRank_, temp1HierarchyInfo);
+
     // 分配资源
-    InsAlgTemplate0 tempAlgIntra(param, myRank_, resCtx.algHierarchyInfo.infos.at(0));
-    InsAlgTemplate1 tempAlgInter(param, myRank_, resCtx.algHierarchyInfo.infos.at(1));
     CHK_RET(PrepareResForTemplate(param, resCtx, tempAlgIntra, tempAlgInter));
 
     // 算法展开
@@ -349,5 +384,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReducePara
 #ifndef AICPU_COMPILE
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceParallelMesh1DNHR, 
     InsAllReduceParallelExecutor, TopoMatchMultilevel, CcuTempAllReduceMeshMem2Mem1D, CcuTempAllReduceNHRMem2Mem1D);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceParallelNHR1DMutiJetty, 
+    InsAllReduceParallelExecutor, TopoMatchUBX, CcuTempAllReduceMeshMem2Mem1D, CcuTempAllReduceNhrMem2Mem1DMultiJetty);
 #endif
 }

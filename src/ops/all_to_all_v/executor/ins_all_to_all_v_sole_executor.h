@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCLV2_INS_ALL_TO_ALL_SOLE_EXECUTOR_H
-#define HCCLV2_INS_ALL_TO_ALL_SOLE_EXECUTOR_H
+#ifndef HCCLV2_INS_ALL_TO_ALL_V_SOLE_EXECUTOR_H
+#define HCCLV2_INS_ALL_TO_ALL_V_SOLE_EXECUTOR_H
 
 #include "alg_param.h"
 #include "topo_host.h"
@@ -25,6 +25,7 @@
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
 #include "topo_match_2d.h"
+#include "topo_match_ubx.h"
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate> class InsAlltoAllVSoleExecutor : public InsCollAlgBase {
@@ -49,6 +50,7 @@ public:
 protected:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
 
     std::vector<std::vector<std::vector<u32>>> algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;

@@ -102,6 +102,7 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/aiv
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/executor

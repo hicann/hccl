@@ -40,7 +40,7 @@ HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo);
 bool IsDiffDeviceModule(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
 
 HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
-
+HcclResult CalcLevel0MeshType(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 /**
  * Calculates the group index of the current process in the specified network layer.
  * This function determines the position index of the group that the current process belongs to

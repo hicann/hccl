@@ -12,6 +12,9 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_mesh1d_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_mesh1d.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_nhr1d_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_mesh1d_2die_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_nhr1d_multi_jetty_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_scatter_mesh2die.cc
 )
 
 target_sources(hccl PRIVATE
