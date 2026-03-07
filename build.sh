@@ -248,21 +248,6 @@ function run_st() {
 }
 
 function build_custom() {
-    # 编译 Device 包
-    log "Info: build_custom_device"
-    mk_dir ${BUILD_DEVICE_DIR}
-    cd ${BUILD_DEVICE_DIR}
-    cmake_config "-DKERNEL_MODE=ON \
-                  -DENABLE_CUSTOM=ON \
-                  -DCUSTOM_OPS_PATH=${CUSTOM_OPS_PATH} \
-                  -DCUSTOM_OPS_NAME=${CUSTOM_OPS_NAME} \
-                  -DCUSTOM_OPS_VENDOR=${CUSTOM_OPS_VENDOR} \
-                  -DENABLE_SIGN=${ENABLE_SIGN} \
-                  -DCUSTOM_SIGN_SCRIPT=${CUSTOM_SIGN_SCRIPT} \
-                  -DVERSION_INFO=${VERSION_INFO}"
-    # 编译 AICPU Kernel 包
-    build custom_aicpu
-
     # 编译 Host 包
     log "Info: build_custom_host"
     cd ${BUILD_DIR}

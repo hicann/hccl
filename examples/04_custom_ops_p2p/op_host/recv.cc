@@ -50,7 +50,6 @@ HcclResult HcclRecvCustom(
     // STEP 2: 创建资源
     // ==============================================
     CommEngine engine = CommEngine::COMM_ENGINE_AICPU;
-    CHK_RET(LoadAICPUKernel());
 
     void * ctx = nullptr;
     uint64_t size = sizeof(AlgResourceCtx);

@@ -17,31 +17,19 @@ namespace ops_hccl_p2p {
 
 thread_local aclrtNotify g_notifies[AICPU_CONTROL_NOTIFY_NUM];
 
-HcclResult LaunchKernel(OpParam &param, aclrtStream stream)
+HcclResult LaunchKernel(OpParam &param, aclrtStream stream, KernelLaunchMode mode)
 {
     // Host stream通知Device主thread
     ACLCHECK(aclrtRecordNotify(g_notifies[0], stream));
 
-    // 执行device侧的算法编排
-    std::string kernelName = "HcclLaunchP2PAicpuKernel";
-    aclrtFuncHandle funcHandle;
-    aclrtArgsHandle argsHandle;
-    ACLCHECK(aclrtBinaryGetFunction(g_binKernelHandle, kernelName.c_str(), &funcHandle));
-    ACLCHECK(aclrtKernelArgsInit(funcHandle, &argsHandle));
-    aclrtParamHandle paraHandle;
-    ACLCHECK(aclrtKernelArgsAppend(argsHandle, &param, sizeof(OpParam), &paraHandle));
-    ACLCHECK(aclrtKernelArgsFinalize(argsHandle));
-
-    uint16_t NOTIFY_DEFAULT_WAIT_TIME = 27 * 68;   // notifywait默认1836等待时长
-    aclrtLaunchKernelCfg cfg;
-    aclrtLaunchKernelAttr attr;
-    attr.id = ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT;
-    attr.value.timeout = NOTIFY_DEFAULT_WAIT_TIME;
-    cfg.numAttrs = 1;
-    cfg.attrs = &attr;
-    constexpr uint32_t numBlocks = 1;
-
-    ACLCHECK(aclrtLaunchKernelWithConfig(funcHandle, numBlocks, stream, &cfg, argsHandle, nullptr));
+    HCCL_INFO("[LAUNCH_KERNEL] Using BINARY mode with <<<>>> syntax");
+    // 调用使用 ASC 编译的函数，支持 <<<>>> 语法
+    HcclResult ret = LaunchKernelBinary(param, stream);
+    if (ret != HCCL_SUCCESS) {
+        HCCL_ERROR("[LAUNCH_KERNEL] Binary mode failed, ret[%d]", ret);
+        return ret;
+    }
+    HCCL_INFO("[LAUNCH_KERNEL] Binary mode completed successfully");
 
     // Host stream等待Device的通知
     ACLCHECK(aclrtWaitAndResetNotify(g_notifies[1], stream, CUSTOM_TIMEOUT));

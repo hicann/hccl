@@ -13,6 +13,8 @@ set(op_host_src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/recv.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/load_kernel.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/launch_kernel.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/launch_kernel_asc.asc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../op_kernel_aicpu/aicpu_kernel_asc.aicpu  # 包含 AICPU 编译的函数, 支持 <<<>>> 语法, 运行时自动加载，不需要手动loadkernel
 )
 
 target_sources(hccl_custom_p2p PRIVATE
