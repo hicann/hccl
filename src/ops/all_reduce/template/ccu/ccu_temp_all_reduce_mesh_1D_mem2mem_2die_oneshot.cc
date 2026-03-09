@@ -44,7 +44,7 @@ HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(HcclComm comm, cons
     resourceRequest.notifyNumOnMainThread = 1;
  
     // 多少个kernel
-    resourceRequest.ccuKernelNum.push_back(2);
+    resourceRequest.ccuKernelNum.push_back(DIE_NUM);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
                resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
@@ -60,7 +60,7 @@ HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(HcclComm comm, cons
     for (auto channel : channelDescs) {
         uint32_t dieId = 0;
         CHK_RET(GetChannelDieId(comm, myRank_, channel, dieId));
-        CHK_PRT_RET(dieId >= 2,
+        CHK_PRT_RET(dieId >= DIE_NUM,
             HCCL_ERROR("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot][CalcRes] dieId is invalid"), HCCL_E_INTERNAL);
         channelsForDie[dieId].push_back(channel);
         kernelRanks[dieId].push_back(channel.remoteRank);

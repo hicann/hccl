@@ -20,6 +20,12 @@
 namespace ops_hccl {
 using namespace std;
 constexpr uint32_t CONCURRENT_NUM = 2;
+constexpr uint32_t CONST_0 = 0;
+constexpr uint32_t CONST_1 = 1;
+constexpr uint32_t CONST_2 = 2;
+constexpr uint32_t CONST_3 = 3;
+constexpr uint32_t CONST_4 = 4;
+
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllConcurrentExecutor()
 {
@@ -200,16 +206,16 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
         u64 val = i / rankSize_;
         switch(val) {
-            case 0:
+            case CONST_0:
                 sendCounts_.push_back(data[i]);
                 break;
-            case 1:
+            case CONST_1:
                 recvCounts_.push_back(data[i]);
                 break;
-            case 2:
+            case CONST_2:
                 sdispls_.push_back(data[i]);
                 break;
-            case 3:
+            case CONST_3:
                 rdispls_.push_back(data[i]);
                 break;
             default:
@@ -233,7 +239,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
 
     // 按topo切分数据：0为topo 0，1为topo 1
     uint32_t factorMesh = rankSize_ - 1;
-    uint32_t factorClos = 4;                // 端口数获取
+    uint32_t factorClos = CONST_4;                // 端口数获取
     uint32_t factor = factorMesh + factorClos;
     for (u64 i = 0; i < rankSize_; i++) {
         uint64_t sendQuotient = sendCounts_[i] / factor;

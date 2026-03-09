@@ -12,6 +12,7 @@
 #include "selector_registry.h"
 
 namespace ops_hccl {
+constexpr uint32_t CONST_4 = 4;
 
 SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
                                                     OpParam &opParam,
@@ -38,7 +39,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayer
         CHK_PRT_RET(CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
                     HCCL_ERROR("[Algo][AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."),
                     SelectorStatus::NOT_MATCH);
-        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= 4)) { // 同一组4P，走并发算法
+        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONST_4)) { // 同一组4P，走并发算法
             selectAlgName = "CcuAllToAllVMesh1DConcurrent";
         } else {
             HCCL_WARNING("[Algo][AlltoAllVAutoSelector] algo is not supported yet for ccu_schedule mode, reset to default.");

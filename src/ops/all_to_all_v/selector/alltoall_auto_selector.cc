@@ -12,6 +12,8 @@
 #include "selector_registry.h"
 
 namespace ops_hccl {
+constexpr uint32_t CONCURRENT_RANK_LIMIT = 4;
+constexpr uint64_t BIG_DATA_SIZE_LIMIT = 512;
 SelectorStatus AlltoAllAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
@@ -51,7 +53,8 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerD
         CHK_PRT_RET(CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
                     HCCL_ERROR("[Algo][AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."),
                     SelectorStatus::NOT_MATCH);
-        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= 4) && (dataSize > 512)) { // 同一组4P且大数据量，走并发算法
+        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT)
+            && (dataSize > BIG_DATA_SIZE_LIMIT)) { // 同一组4P且大数据量，走并发算法
             selectAlgName = "CcuAllToAllMesh1DConcurrent";
         } else {
             selectAlgName = "CcuAlltoAllMesh1DMultiJetty";

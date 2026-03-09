@@ -17,6 +17,11 @@
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
+constexpr uint32_t CONST_0 = 0;
+constexpr uint32_t CONST_1 = 1;
+constexpr uint32_t CONST_2 = 2;
+constexpr uint32_t CONST_3 = 3;
+constexpr uint32_t CONST_4 = 4;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllVConcurrentExecutor()
@@ -75,19 +80,19 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         u64 val = i / rankSize_;
         u64 curRank = i % rankSize_;
         switch(val) {
-            case 0:
+            case CONST_0:
                 localSendRecvInfo.sendCounts[curRank] = data[i];
                 localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 1:
+            case CONST_1:
                 localSendRecvInfo.recvCounts[curRank] = data[i];
                 localSendRecvInfo.recvLength[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 2:
+            case CONST_2:
                 localSendRecvInfo.sendDispls[curRank] = data[i];
                 localSendRecvInfo.sendOffset[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 3:
+            case CONST_3:
                 localSendRecvInfo.recvDispls[curRank] = data[i];
                 localSendRecvInfo.recvOffset[curRank] = data[i] * dataTypeSize_;
                 break;
@@ -106,7 +111,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     HCCL_DEBUG("[SplitA2ASendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
 
     uint32_t factorMesh = rankSize_ - 1;
-    uint32_t factorClos = 4;
+    uint32_t factorClos = CONST_4;
     uint32_t factor = factorMesh + factorClos;
     // 初始化sendRecvInfoFirst
     sendRecvInfoFirst.sendCounts.resize(rankSize_, 0);
@@ -246,11 +251,11 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     jettyNums.resize(rankSize_, 0);
     for (int i = 0; i < rankSize_; i++) {
         if (i == myRank_) {
-            jettyNums[i] = 1;
+            jettyNums[i] = CONST_1;
         } else if (multijetty) {
-            jettyNums[i] = 4;
+            jettyNums[i] = CONST_4;
         } else {
-            jettyNums[i] = 1;
+            jettyNums[i] = CONST_1;
         }
     }
     return HcclResult::HCCL_SUCCESS;

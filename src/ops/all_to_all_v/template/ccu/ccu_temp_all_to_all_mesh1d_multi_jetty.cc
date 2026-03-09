@@ -16,7 +16,7 @@
 #include "../../../all_to_all_v/template/ccu/ccu_temp_all_to_all_mesh1d_multi_jetty.h"
 
 namespace ops_hccl {
-
+constexpr uint32_t STUB_JETTY_NUM = 4;
 CcuTempAllToAllMesh1dMultiJetty::CcuTempAllToAllMesh1dMultiJetty(const OpParam& param, const u32 rankId,
                                        const std::vector<std::vector<u32>> &subCommRanks)
 : CcuAlgTemplateBase(param, rankId, subCommRanks)
@@ -29,7 +29,7 @@ CcuTempAllToAllMesh1dMultiJetty::CcuTempAllToAllMesh1dMultiJetty(const OpParam& 
         }
     }
     // 获取本卡在子通信域(如果有)中的rankid
-    jettyNums_.assign(templateRankSize_, 4);
+    jettyNums_.assign(templateRankSize_, STUB_JETTY_NUM);
     auto it = std::find(ranks.begin(), ranks.end(), rankId);
     if (it != ranks.end()) {
         myRank_ = std::distance(ranks.begin(), it);

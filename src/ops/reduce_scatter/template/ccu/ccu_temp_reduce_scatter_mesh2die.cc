@@ -14,7 +14,7 @@
 #include "alg_data_trans_wrapper.h"
 
 #include "ccu_temp_reduce_scatter_mesh2die.h"
-#include "kernel/ccu_kernel_reduce_scatter_mesh2die.h"
+#include "ccu_kernel_reduce_scatter_mesh2die.h"
 
 namespace ops_hccl {
 CcuTempReduceScatterMesh2Die::CcuTempReduceScatterMesh2Die(const OpParam &param, RankId rankId,
@@ -36,7 +36,7 @@ u64 CcuTempReduceScatterMesh2Die::CalcScratchMultiple(BufferType inBuffType, Buf
 {
     (void)inBuffType;
     (void)outBuffType;
-    return 2;
+    return SCRATCH_MULTIPLE_COUNT_2;
 }
 
 HcclResult CcuTempReduceScatterMesh2Die::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,

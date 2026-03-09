@@ -15,7 +15,7 @@
 #include "ccu_temp_all_gather_2dies_mesh_1D.h"
 #include "alg_data_trans_wrapper.h"
 namespace ops_hccl {
-
+constexpr u32 ALL_GATHER_DIE_NUM = 2;
 CcuTempAllGather2DiesMesh1D::CcuTempAllGather2DiesMesh1D(const OpParam& param, const u32 rankId,
                                        const std::vector<std::vector<u32>> &subCommRanks)
 : CcuAlgTemplateBase(param, rankId, subCommRanks)
@@ -38,7 +38,7 @@ HcclResult CcuTempAllGather2DiesMesh1D::CalcRes(HcclComm comm, const OpParam& pa
     //双die，声明一个从流
     resourceRequest.notifyNumOnMainThread = 1;
     resourceRequest.slaveThreadNum = 1;
-    resourceRequest.ccuKernelNum.push_back(2);
+    resourceRequest.ccuKernelNum.push_back(ALL_GATHER_DIE_NUM);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     uint32_t rankId = mySubCommRank_;
     EndpointAttrDieId tmpDieId {};
@@ -60,7 +60,7 @@ HcclResult CcuTempAllGather2DiesMesh1D::CalcRes(HcclComm comm, const OpParam& pa
     };
     for (u32 j = 0; j < channelDescs.size(); j++) {
         CHK_RET(GetChannelDieId(comm, rankId, channelDescs[j], tmpDieId));
-        if (tmpDieId == 0) {//dieId == 0
+        if (tmpDieId == 0) {
             kernelInfo0.channels.push_back(channelDescs[j]);
             rankIdGroup0.push_back(channelDescs[j].remoteRank);
         } else {
@@ -117,7 +117,7 @@ HcclResult CcuTempAllGather2DiesMesh1D::KernelRun(const OpParam& param, const Te
     CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     
     //双die模式，下发两个kernel
-    for (uint64_t i = 0; i < 2; i++) {
+    for (uint64_t i = 0; i < ALL_GATHER_DIE_NUM; i++) {
         std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgAllGather2DiesMesh1D>(inputAddr, outputAddr,
                                                                                                          sliceSize, offSet, token);
         void* taskArgPtr = static_cast<void*>(taskArg.get());
@@ -141,7 +141,7 @@ u64 CcuTempAllGather2DiesMesh1D::CalcScratchMultiple(BufferType inBuffType, Buff
 
 u64 CcuTempAllGather2DiesMesh1D::GetThreadNum()
 {
-    return 2;
+    return ALL_GATHER_DIE_NUM;
 }
 HcclResult CcuTempAllGather2DiesMesh1D::GetRes(AlgResourceRequest& resourceRequest)
 {

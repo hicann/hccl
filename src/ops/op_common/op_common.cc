@@ -953,7 +953,6 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
             param.opType == HcclCMDType::HCCL_CMD_REDUCE ||
             param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
             param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
-            
             const char* reduceType = HCOM_REDUCE_OP_STR_MAP.at(param.reduceType).c_str();
             ret = strcat_s(param.algTag, sizeof(param.algTag), reduceType);
             if (ret != 0) {
@@ -962,7 +961,6 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
             }
         }
     }
-
     return HcclResult::HCCL_SUCCESS;
 }
 

@@ -15,6 +15,7 @@
 #include "ccu_temp_all_gather_2dies_mesh_1d_mem2mem.h"
 #include "alg_data_trans_wrapper.h"
 namespace ops_hccl {
+#define ALL_GATHER_2DIES_M2M_THREAD_NUM 2
 CcuTempAllGather2DiesMeshMem2Mem1D::CcuTempAllGather2DiesMeshMem2Mem1D(const OpParam& param, const u32 rankId,
                                        const std::vector<std::vector<u32>> &subCommRanks)
 : CcuAlgTemplateBase(param, rankId, subCommRanks)
@@ -35,7 +36,7 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes(HcclComm comm, const OpPa
 {   
     resourceRequest.notifyNumOnMainThread = 1;
     resourceRequest.slaveThreadNum = 1;
-    resourceRequest.ccuKernelNum.push_back(2);
+    resourceRequest.ccuKernelNum.push_back(ALL_GATHER_2DIES_M2M_THREAD_NUM);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     uint32_t rankId = mySubCommRank_;
     EndpointAttrDieId tmpDieId {};
@@ -105,7 +106,7 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::KernelRun(const OpParam& param, c
     std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
     std::vector<u32> notifyIdxMainToSub(1, 0);
     CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
-    for (uint64_t i = 0; i < 2; i++) {
+    for (uint64_t i = 0; i < ALL_GATHER_2DIES_M2M_THREAD_NUM; i++) {
         std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgAllGather2DiesMeshMem2Mem1D>(inputAddr, outputAddr,
                                                                                                          sliceSize, offSet, token);
         void* taskArgPtr = static_cast<void*>(taskArg.get());
@@ -126,7 +127,7 @@ u64 CcuTempAllGather2DiesMeshMem2Mem1D::CalcScratchMultiple(BufferType inBuffTyp
 
 u64 CcuTempAllGather2DiesMeshMem2Mem1D::GetThreadNum()
 {
-    return 2;
+    return ALL_GATHER_2DIES_M2M_THREAD_NUM;
 }
 HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::GetRes(AlgResourceRequest& resourceRequest)
 {
