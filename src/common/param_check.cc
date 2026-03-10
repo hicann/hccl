@@ -84,7 +84,8 @@ HcclResult HcomCheckCount(const u64 count)
 
 HcclResult HcomCheckDataType(const HcclDataType dataType)
 {
-    if (HCOM_DATA_TYPE_STR_MAP.find(dataType) == HCOM_DATA_TYPE_STR_MAP.end()) {
+    if (HCOM_DATA_TYPE_STR_MAP.find(dataType) == HCOM_DATA_TYPE_STR_MAP.end() ||
+        dataType == HCCL_DATA_TYPE_RESERVED) {
         HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported",
             HCOM_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str());
         return HCCL_E_NOT_SUPPORT;
@@ -94,7 +95,8 @@ HcclResult HcomCheckDataType(const HcclDataType dataType)
 
 HcclResult HcomCheckReductionOp(const HcclReduceOp op)
 {
-    if (HCOM_REDUCE_OP_STR_MAP.find(op) == HCOM_REDUCE_OP_STR_MAP.end()) {
+    if (HCOM_REDUCE_OP_STR_MAP.find(op) == HCOM_REDUCE_OP_STR_MAP.end() ||
+        op == HCCL_REDUCE_RESERVED) {
         HCCL_ERROR("[Check][ReduceOp]errNo[0x%016llx] reduce op type[%s] not supported",
             HCOM_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetReduceOpEnumStr(op).c_str());
         return HCCL_E_NOT_SUPPORT;
