@@ -297,7 +297,8 @@ HcclResult InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     u64 sliceCount = std::min(static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_, dataCount_);
     if (multiple > 0 && maxTmpMemSize_ > 0) {
         u64 scratchCount = maxTmpMemSize_ / dataTypeSize_;  // 按照count来切分
-        sliceCount = static_cast<u64>(float(scratchCount) / multiple);  // 向下取整，防止Scratch溢出
+        u64 sliceCountCcl = static_cast<u64>(float(scratchCount) / multiple);  // 向下取整，防止Scratch溢出
+        sliceCount = std::min(sliceCount, sliceCountCcl);
     }
 
     u64 sliceCountPart0 = static_cast<u64>(float(sliceCount) * dataSplitSize.at(0));
