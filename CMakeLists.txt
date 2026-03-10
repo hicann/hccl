@@ -19,7 +19,20 @@ if(CCAHE_PROGRAM)
 endif()
 
 if(BUILD_OPEN_PROJECT AND KERNEL_MODE)
-    # 使用<<<>>>调用方式的话，会与原来的hcc编译方式冲突，存在交叉编译的问题
+    # need to switch
+    set(CMAKE_SYSTEM_NAME Linux)
+    #Change the path to the absolute path of the cross compilation tool after the toolkit package is decompressed
+    # set cross compile toolchain dir
+    set(TOOLCHAIN_DIR ${CUSTOM_ASCEND_CANN_PACKAGE_PATH}/toolkit/toolchain/hcc/)
+    #Specify cross compiler
+    message(STATUS "TOOLCHAIN_DIR=${TOOLCHAIN_DIR}")
+    if (NOT "x${TOOLCHAIN_DIR}" STREQUAL "x")
+        if (NOT IS_DIRECTORY ${TOOLCHAIN_DIR})
+            message(FATAL_ERROR "specify cross compile toolchain directory(${TOOLCHAIN_DIR}) is not exist")
+        endif()
+    endif()
+    set(CMAKE_CXX_COMPILER ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++)
+    set(CMAKE_C_COMPILER   ${TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-gcc)
 endif()
 project(hccl)
 

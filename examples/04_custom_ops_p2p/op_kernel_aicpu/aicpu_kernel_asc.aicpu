@@ -51,9 +51,9 @@ extern "C" {
 __global__ __aicpu__ uint32_t HcclP2PAicpuKernelAsc(void *args)
 {
     OpParam *param = reinterpret_cast<OpParam*>(args);
-    HCCL_INFO("[ASC_KERNEL] Entry-[s%], commName[%s], tag[%s], __func__", param->commName, param->tag);
+    HCCL_INFO("[ASC_KERNEL] Entry-[%s], commName[%s], tag[%s]", __func__, param->commName, param->tag);
     if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
-        HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
+        HCCL_ERROR("[%s] HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
 
