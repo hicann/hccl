@@ -29,8 +29,7 @@ namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2AllReduceSoleExecutor()
-{
-    
+{    
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>

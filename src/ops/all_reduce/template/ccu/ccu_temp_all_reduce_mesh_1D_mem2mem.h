@@ -33,11 +33,11 @@ public:
                          const TemplateDataParams& templateDataParams,
                          const TemplateResource& templateResource) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 private:
     HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec);
-    uint64_t RoundUp(uint64_t dividend, uint64_t divisor);
+    uint64_t RoundUp(uint64_t dividend, uint64_t divisor) const;
     uint32_t mySubCommRank_ = 0;
 };
 

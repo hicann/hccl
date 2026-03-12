@@ -95,10 +95,10 @@ HcclResult CcuTempReduceScatterMesh1D::KernelRun(const OpParam& param,
                               DataTypeSizeGet(dataType);  // 膨胀的倍数是输出类型/输入类型
     HCCL_INFO("[CcuTempReduceScatterMesh1D::KernelRun] dataType[%d] outputDatatype[%d]", param.DataDes.dataType,
               param.DataDes.outputType);
-    uint64_t inputAddr          = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
+    uint64_t baseInputAddr      = PointerToAddr(buffInfo_.inputPtr);
+    uint64_t inputAddr          = baseInputAddr + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
-    uint64_t token              = hcomm::CcuRep::GetTokenInfo(reinterpret_cast<uint64_t>(buffInfo_.inputPtr),
-                                                       static_cast<uint64_t>(buffInfo_.inputSize));
+    uint64_t token              = hcomm::CcuRep::GetTokenInfo(baseInputAddr, static_cast<uint64_t>(buffInfo_.inputSize));
     uint64_t sliceSize          = templateDataParams.sliceSize;
     uint64_t inputSliceStride   = templateDataParams.inputSliceStride;
     uint64_t offset             = inputSliceStride * mySubCommRank_;
@@ -121,12 +121,12 @@ u64 CcuTempReduceScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, Buffe
     return 0;
 }
 
-u64 CcuTempReduceScatterMesh1D::GetThreadNum()
+u64 CcuTempReduceScatterMesh1D::GetThreadNum() const
 {
     return 1;
 }
 
-HcclResult CcuTempReduceScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempReduceScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;

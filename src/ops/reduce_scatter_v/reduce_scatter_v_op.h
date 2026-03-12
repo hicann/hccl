@@ -37,7 +37,7 @@ HcclResult ReduceScatterVOutPlace(void *sendBuf, const void *sendDispls, const v
 
 HcclResult ReduceScatterVExecOp(HcclComm comm, OpParam &param);
 
-HcclResult CheckReduceScatterVInputPara(HcclComm comm, void *sendBuf, void *recvBuf, const void *sendCounts, const void *sendDispls, aclrtStream stream);
+HcclResult CheckReduceScatterVInputPara(const HcclComm comm, const void *sendBuf, const void *recvBuf, const void *sendCounts, const void *sendDispls, const aclrtStream stream);
 
 HcclResult GetAlgResReduceScatterV(HcclComm comm, OpParam &param, std::shared_ptr<InsCollAlgBase> &executor,
     TopoInfoWithNetLayerDetails* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);

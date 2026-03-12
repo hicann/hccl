@@ -26,7 +26,7 @@ HcclResult HcclRecv(
 #endif
 
 namespace ops_hccl {
-    HcclResult CheckRecvInputPara(HcclComm comm, const void *recvBuf);
+    HcclResult CheckRecvInputPara(const HcclComm comm, const void *recvBuf);
 
     HcclResult RecvExec(
         void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm,

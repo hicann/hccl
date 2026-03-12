@@ -18,20 +18,11 @@ CcuAlgTemplateBase::CcuAlgTemplateBase()
 
 CcuAlgTemplateBase::CcuAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
                                        const std::vector<std::vector<u32>> &subCommRanks)
-    : myRank_(rankId), subCommRanks_(subCommRanks)
+    : myRank_(rankId), subCommRanks_(subCommRanks), opMode_(param.opMode), root_(param.root)
 {
-    opMode_ = param.opMode;
-    root_ = param.root;
     for (const auto &ranks : subCommRanks) {
         templateRankSize_ += ranks.size();
     }
-}
-
-void CcuAlgTemplateBase::InitCcuAlgTemplate(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                const std::vector<std::vector<u32>> &subCommRanks)
-{
-    opMode_ = param.opMode;
-    root_ = param.root;
 }
 
 CcuAlgTemplateBase::~CcuAlgTemplateBase()
@@ -59,12 +50,12 @@ HcclResult CcuAlgTemplateBase::KernelRun(const OpParam& param, const TemplateDat
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-u64 CcuAlgTemplateBase::GetThreadNum()
+u64 CcuAlgTemplateBase::GetThreadNum() const
 {
     return 0;
 }
 
-HcclResult CcuAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest) const
 {
     (void)resourceRequest;
     HCCL_ERROR("[CcuAlgTemplateBase] Unsupported interface of resource calculation!");
@@ -79,7 +70,7 @@ u64 CcuAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType ou
 }
 
 
-uint64_t CcuAlgTemplateBase::PointerToAddr(void* pointer)
+uint64_t CcuAlgTemplateBase::PointerToAddr(void* pointer) const
 {
     if (pointer != nullptr) {
         return reinterpret_cast<uint64_t>(pointer);
@@ -89,7 +80,7 @@ uint64_t CcuAlgTemplateBase::PointerToAddr(void* pointer)
 }
 
 HcclResult CcuAlgTemplateBase::RestoreChannelMap(const std::vector<HcclChannelDesc>& channelDescs,
-                                                 std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
+                                                 std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc) const
 {
     for (auto &channel: channelDescs) {
         u32 remoteRank = channel.remoteRank;
@@ -99,7 +90,7 @@ HcclResult CcuAlgTemplateBase::RestoreChannelMap(const std::vector<HcclChannelDe
 }
 
 HcclResult CcuAlgTemplateBase::GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc,
-                                               uint32_t& dieId)
+                                               uint32_t& dieId) const
 {
     EndpointAttrDieId tmpDieId{};
     uint32_t infoLen = sizeof(EndpointAttrDieId);

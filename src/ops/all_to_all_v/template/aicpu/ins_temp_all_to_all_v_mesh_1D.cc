@@ -171,7 +171,7 @@ HcclResult InsTempAlltoAllVMesh1D::RunALLtoALL(
 }
 
 HcclResult InsTempAlltoAllVMesh1D::PostCopy(
-    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const
 {
     // ccl buffer的数据搬运到usrout
     for (u32 queIdx = 0; queIdx < threadNum_; queIdx++) {

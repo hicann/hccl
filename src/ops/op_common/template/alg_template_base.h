@@ -177,13 +177,13 @@ public:
     }
 
 protected:
-    HcclResult ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread);
-    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel);
-    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, ThreadHandle thread);
+    HcclResult ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread) const;
+    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel) const;
+    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, ThreadHandle thread) const;
 
     // 下面这组是否需要？
-    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx);
-    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx, ThreadHandle thread);
+    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx) const;
+    HcclResult ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx, ThreadHandle thread) const;
 
     std::vector<Slice> slicesDummy_;
     std::vector<Slice> &slices_;

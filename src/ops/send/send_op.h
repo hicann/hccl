@@ -27,7 +27,7 @@ HcclResult HcclSend(
 #endif
 
 namespace ops_hccl {
-    HcclResult CheckSendInputPara(HcclComm comm, const void *sendBuf);
+    HcclResult CheckSendInputPara(const HcclComm comm, const void *sendBuf);
 
     HcclResult SendExec(void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm,
                         aclrtStream stream, const std::string &tag);

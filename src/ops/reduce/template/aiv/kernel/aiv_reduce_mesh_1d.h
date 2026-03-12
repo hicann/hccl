@@ -44,8 +44,7 @@ public:
                 PipeBarrier<PIPE_ALL>();
             }
             // 写同步：将aivTag写入root上的数据同步标志位，表示数据搬运完成
-            uint64_t flagOffset;
-            flagOffset = rank_ * block_num + block_idx;
+            uint64_t flagOffset = rank_ * block_num + block_idx;
             Record(root_, flagOffset, tag_);
         } else {
             // 本地拷贝：将自身core负责的Input数据搬运至本地Output上

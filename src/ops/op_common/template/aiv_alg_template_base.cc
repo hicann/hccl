@@ -14,17 +14,15 @@ namespace ops_hccl {
 
 
 AivAlgTemplateBase::AivAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                       const std::vector<std::vector<u32>>& subCommRanks)
+                                       const std::vector<std::vector<u32>>& subCommRanks):
+    opMode_(param.opMode),
+    root_(param.root),
+    myRank_(rankId),
+    tempRankSize_(subCommRanks[0].size()),
+    subCommRanks_(subCommRanks),
+    reduceOp_(param.reduceType),
+    enableDetour_(param.enableDetour)
 {
-    opMode_            = param.opMode;
-    root_              = param.root;
-    myRank_            = rankId;
-    tempRankSize_      = subCommRanks[0].size();
-    subCommRanks_      = subCommRanks;
-
-    reduceOp_          = param.reduceType;
-    // 从OpParam中获取
-    enableDetour_      = param.enableDetour;
 }
 
 AivAlgTemplateBase::~AivAlgTemplateBase()

@@ -31,7 +31,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsBroadcastParallelExecutor : public InsCollAlgBase {
 public:
     explicit InsBroadcastParallelExecutor();
-    ~InsBroadcastParallelExecutor() = default;
+    ~InsBroadcastParallelExecutor() final = default;
 
     std::string Describe() const override
     {
@@ -41,22 +41,21 @@ public:
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
                        AlgResourceRequest& resourceRequest) override;
 
-
     // AICPU 接口
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 private:
     void GetParallelDataSplit(std::vector<float> &splitDataSize) const;
-    uint64_t GetRankSize(const std::vector<std::vector<u32>> &vTopo);
+    uint64_t GetRankSize(const std::vector<std::vector<u32>> &vTopo) const;
     HcclResult CalcLocalRoot();
 
     // Aicpu
-    HcclResult PrepareResForTemplate(const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);
+    HcclResult PrepareResForTemplate(InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);
     void GenDataParams(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 sliceCount,
                        const u64 scratchOffsetCount, TemplateDataParams &dataParams) const;
         
-    HcclResult GenInsQues(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra0, InsAlgTemplate1 &tempAlgInter0);
+    HcclResult GenInsQues(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);
 
     u32 intraLocalRankSize_{0};  // server内算法rankSize
     u32 interLocalRankSize_{0};  // server间算法rankSize
@@ -76,7 +75,7 @@ private:
     std::vector<ThreadHandle> intraThreads_;
     std::vector<ThreadHandle> interThreads_;
 
-    ThreadHandle mainThread_;
+    ThreadHandle mainThread_{0};
     std::vector<ThreadHandle> templateMainThreads_;
     std::vector<u32> syncNotifyOnTemplates_;
     std::vector<u32> syncNotifyOnMain_;

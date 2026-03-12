@@ -11,7 +11,6 @@
 #ifndef AICPU_REDUCE_MESH_1D_H
 #define AICPU_REDUCE_MESH_1D_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -35,14 +34,14 @@ public:
     // 现在的Kernel就是之前的GenExtIns
     HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
         const TemplateResource &templateResource) override;
-    void SetRoot(u32 root);
+    void SetRoot(u32 root) const;
     HcclResult CalcRes(
         HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
     HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
 
-    u64 GetThreadNum();
+    u64 GetThreadNum() const override;
 
 private:
     HcclResult RunReduce(const std::map<u32, std::vector<ChannelInfo>> &channels,
@@ -54,8 +53,8 @@ private:
         const std::vector<ThreadHandle> &threads);
     u32 GetAlgRank(u32 rank) const;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub);
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain);
+    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 
     u64 processSize_{0};
     u64 count_{0};

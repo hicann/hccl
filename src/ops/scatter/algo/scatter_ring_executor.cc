@@ -275,7 +275,7 @@ HcclResult ScatterRingExecutor::MultiRingScatter(HcclMem inputMem, HcclMem outpu
 }
 
 HcclResult ScatterRingExecutor::MutliSegSlicePrepare(const std::vector<Slice> &dataSegsSlice, u32 ringNum,
-    std::vector<std::vector<Slice>> &mutliSegsSlices)
+    std::vector<std::vector<Slice>> &mutliSegsSlices) const
 {
     std::vector<Slice> singleSegSlices;
     singleSegSlices.reserve(ringNum);

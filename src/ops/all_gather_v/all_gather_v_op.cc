@@ -9,18 +9,17 @@
  */
 
 #include <algorithm>
-#include <future>
 #include <map>
+#include <future>
 #include <string>
 #include <hccl/hccl_types.h>
 #include "hccl/base.h"
 #include "sal.h"
-#include "error_codes/rt_error_codes.h"
-#include "mmpa_api.h"
 #include "param_check.h"
+#include "mmpa_api.h"
 #include "executor_base.h"
-#include "coll_alg_v2_exec_registry.h"
 #include "alg_env_config.h"
+#include "coll_alg_v2_exec_registry.h"
 #include "adapter_acl.h"
 #include "adapter_error_manager_pub.h"
 #include "hccl_inner.h"
@@ -75,7 +74,7 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 }
  
 namespace ops_hccl {
-HcclResult CheckAllGatherVInputPara(HcclComm comm, void *sendBuf, void *recvBuf)
+HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf)
 {
     // 入参合法性校验
     RPT_INPUT_ERR(comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),
@@ -106,7 +105,7 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     }  // 结果为recvCount中的数据之和
 
     // 申请OpParam参数结构体内存
-    u64 varMemSize = userRankSize * 2 * sizeof(u64);
+    u64 varMemSize = (userRankSize + userRankSize) * sizeof(u64);
     void* paramMem = malloc(sizeof(OpParam) + varMemSize);
     if (!paramMem) {
         // 内存分配失败
@@ -135,19 +134,17 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     param.outputPtr = recvBuf;
     param.outputSize = outputSize;
     param.DataDes.count = sendCount;
-    // param.DataDes.dataType = dataType;
     param.vDataDes.dataType = dataType;
-
 
     // 带V算子的参数
     param.varMemSize = varMemSize;
     // 从源内存地址按字节直接拷贝数据到目标地址
-    std::vector<u64> merged(userRankSize * 2);
+    std::vector<u64> merged(userRankSize + userRankSize); 
     const uint64_t *countsPtr = reinterpret_cast<const uint64_t *>(recvCounts);
     const uint64_t *displsPtr = reinterpret_cast<const uint64_t *>(recvDispls);
     std::copy(countsPtr, countsPtr + userRankSize, merged.begin());
     std::copy(displsPtr, displsPtr + userRankSize, merged.begin() + userRankSize);
-    memcpy(param.varData, merged.data(), varMemSize);
+    memcpy_s(param.varData, varMemSize, merged.data(), varMemSize);
     param.opType = HcclCMDType::HCCL_CMD_ALLGATHER_V;
     param.enableDetour = false;
     param.deviceType = deviceType;

@@ -70,8 +70,9 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     AlgResourceRequest interTempRequest;
     intraTempAlg.CalcRes(comm, param, topoInfo, intraTempRequest);
     interTempAlg.CalcRes(comm, param, topoInfo, interTempRequest);
-    resourceRequest.notifyNumOnMainThread = 2;  // 用于两个template间同步
-    resourceRequest.slaveThreadNum = intraTempRequest.slaveThreadNum + interTempRequest.slaveThreadNum + 2;
+    constexpr u32 SUB_MAIN_THREAD_NUM = 2;
+    resourceRequest.notifyNumOnMainThread = SUB_MAIN_THREAD_NUM;  // 用于两个template间同步
+    resourceRequest.slaveThreadNum = intraTempRequest.slaveThreadNum + interTempRequest.slaveThreadNum + SUB_MAIN_THREAD_NUM;
     resourceRequest.notifyNumPerThread.emplace_back(intraTempRequest.notifyNumOnMainThread + 1);
     resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
                                               intraTempRequest.notifyNumPerThread.begin(),
@@ -244,7 +245,7 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 uint64_t InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetRankSize(
-    const std::vector<std::vector<u32>> &vTopo)
+    const std::vector<std::vector<u32>> &vTopo) const
 {
     uint64_t count = 1;
     for (const auto &i : vTopo) {
@@ -296,7 +297,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     InsAlgTemplate0 intraTempAlg(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
     InsAlgTemplate1 interTempAlg(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[1]);
     // 将计算资源分配个每个算法
-    PrepareResForTemplate(param, resCtx, intraTempAlg, interTempAlg);
+    PrepareResForTemplate(intraTempAlg, interTempAlg);
     // 算法展开
 
     HcclResult ret = OrchestrateLoop(param, resCtx, intraTempAlg, interTempAlg);
@@ -310,8 +311,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::PrepareResForTemplate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra,
-    InsAlgTemplate1 &tempAlgInter)
+    InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter)
 {
     AlgResourceRequest intraTempRequest;
     AlgResourceRequest interTempRequest;
@@ -337,7 +337,6 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     std::vector<float> &splitDataSize) const
 {
-    // to do 先做等分，后续根据性能做调整
     double splitData = 0.5;
     splitDataSize.push_back(splitData);
     splitDataSize.push_back(splitData);

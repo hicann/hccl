@@ -17,6 +17,11 @@
 #include "ccu_temp_all_to_all_mesh2die.h"
 #include "ccu_temp_all_to_all_mesh1d_multi_jetty.h"
 #endif
+
+#define CONST_ZERO 0
+#define CONST_ONE 1
+#define CONST_TWO 2
+#define CONST_THREE 3
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -93,16 +98,16 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             u64 val = i / rankSize_;
             u64 curRank = i % rankSize_;
             switch(val) {
-                case 0:
+                case CONST_ZERO:
                     localSendRecvInfo_.sendCounts[curRank] = data[i];
                     break;
-                case 1:
+                case CONST_ONE:
                     localSendRecvInfo_.recvCounts[curRank] = data[i];
                     break;
-                case 2:
+                case CONST_TWO:
                     localSendRecvInfo_.sendDispls[curRank] = data[i];
                     break;
-                case 3:
+                case CONST_THREE:
                     localSendRecvInfo_.recvDispls[curRank] = data[i];
                     break;
                 default:
@@ -176,16 +181,16 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             u64 val = i / rankSize_;
             u64 curRank = i % rankSize_;
             switch(val) {
-                case 0:
+                case CONST_ZERO:
                     sendCounts[curRank] = data[i];
                     break;
-                case 1:
+                case CONST_ONE:
                     recvCounts[curRank] = data[i];
                     break;
-                case 2:
+                case CONST_TWO:
                     sdispls[curRank] = data[i];
                     break;
-                case 3:
+                case CONST_THREE:
                     rdispls[curRank] = data[i];
                     break;
                 default:

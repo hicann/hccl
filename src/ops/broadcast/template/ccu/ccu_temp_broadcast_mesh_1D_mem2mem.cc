@@ -117,12 +117,12 @@ void CcuTempBroadcastMesh1DMem2Mem::SetRoot(u32 root)
     HCCL_INFO("[CcuTempBroadcastMesh1DMem2Mem][SetRoot] myRank_ [%u], set root_ [%u] subCommRanks[%u]", myRank_, root, subCommRootId_);
 }
 
-u64 CcuTempBroadcastMesh1DMem2Mem::GetThreadNum()
+u64 CcuTempBroadcastMesh1DMem2Mem::GetThreadNum() const
 {
     return 1;
 }
 
-HcclResult CcuTempBroadcastMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempBroadcastMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;

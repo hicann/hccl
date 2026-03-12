@@ -63,7 +63,7 @@ bool IsStreamCapture(aclrtStream stream);
 
 bool IsAiCpuMode(DevType deviceType, u32 rankSize);
 
-HcclResult CheckScatterInputPara(HcclComm comm, void *recvBuf);
+HcclResult CheckScatterInputPara(const HcclComm comm, const void *recvBuf);
 
 std::string SetLaunchMode(CommEngine engine);
 

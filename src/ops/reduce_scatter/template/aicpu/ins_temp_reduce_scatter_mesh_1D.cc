@@ -201,13 +201,13 @@ void InsTempReduceScatterMesh1D::GetNotifyIdxSubToMain(std::vector<u32> &notifyI
     }
 }
 
-u64 InsTempReduceScatterMesh1D::GetThreadNum()
+u64 InsTempReduceScatterMesh1D::GetThreadNum() const
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
     return threadNum;
 }
 
-HcclResult InsTempReduceScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult InsTempReduceScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest) const
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
     resourceRequest.slaveThreadNum = threadNum - 1;

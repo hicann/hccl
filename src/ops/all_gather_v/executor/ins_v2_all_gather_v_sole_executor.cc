@@ -95,7 +95,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     const u64 *varData = reinterpret_cast<const u64 *>(param.varData);
     std::vector<u64> counts;
     counts.assign(varData, varData + rankSize_);
-    tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + rankSize_ * 2);
+    tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + rankSize_ + rankSize_);
     HCCL_DEBUG("[InsV2AllGatherVSoleExecutor][OrchestrateLoop] Rank[%u], inputPtr[%#llx] outputPtr[%#llx], "
                "cclAddr[%#llx], cclSize[%u]",
         myRank_,

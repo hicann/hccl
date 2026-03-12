@@ -105,11 +105,11 @@ HcclResult GetAivOpBinaryPath(const std::string &aivBinaryName, std::string &bin
 s8* GetFuncKey(HcclCMDType cmdType, HcclDataType dataType, KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER)
 {
     return reinterpret_cast<s8*>(
-        (((static_cast<s64>(cmdType) << SIG_MOVE_LEFT_BITS) + static_cast<s64>(dataType)) << SIG_MOVE_LEFT_BITS) +
-        static_cast<s64>(argsType));
+        (((static_cast<u64>(cmdType) << SIG_MOVE_LEFT_BITS) + static_cast<u64>(dataType)) << SIG_MOVE_LEFT_BITS) +
+        static_cast<u64>(argsType));
 }
 
-HcclResult RegisterBinaryKernel(const char* funcName, const aclrtBinHandle binHandle, s8* funcKey)
+HcclResult RegisterBinaryKernel(const char* funcName, const aclrtBinHandle binHandle, const s8* funcKey)
 {
     if (funcKey == nullptr) {
         return HCCL_E_PARA;
@@ -120,17 +120,17 @@ HcclResult RegisterBinaryKernel(const char* funcName, const aclrtBinHandle binHa
     CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_ERROR("[RegisterBinaryKernel]errNo[0x%016llx] get function from binary error.", aclRet),
         HCCL_E_NOT_FOUND);
 
-    g_aivFuncMap[funcKey] = funcHandle;
+    g_aivFuncMap[const_cast<s8*>(funcKey)] = funcHandle;
 
     return HCCL_SUCCESS;
 }
 
-HcclResult GetKernelFunc(aclrtFuncHandle& funcHandle, s8* funcKey)
+HcclResult GetKernelFunc(aclrtFuncHandle& funcHandle, const s8* funcKey)
 {
-    if (funcKey == nullptr || g_aivFuncMap.find(funcKey) == g_aivFuncMap.end()) {
+    if (funcKey == nullptr || g_aivFuncMap.find(const_cast<s8*>(funcKey)) == g_aivFuncMap.end()) {
         return HCCL_E_PARA;
     }
-    funcHandle = g_aivFuncMap[funcKey];
+    funcHandle = g_aivFuncMap[const_cast<s8*>(funcKey)];
     return HCCL_SUCCESS;
 }
 
@@ -205,6 +205,8 @@ HcclResult GetAivCountTag(const std::string &commTag, u32 rank, s32 &aivCountTag
 // 满足isAivClearEnable条件时，在KernelLaunch前调用，清零标记区
 HcclResult ClearAivSyncBuf(const OpParam &param, AlgResourceCtxSerializable& resCtx)
 {
+    // param 暂时未使用
+    static_cast<void>(param);
     ACLCHECK(aclrtMemcpy(static_cast<u8*>(resCtx.aivCommInfoPtr) + AIV_FLAG_ADDR_OFFSET, AIV_FLAG_AREA_SIZE,
         static_cast<u8*>(resCtx.aivCommInfoPtr) + AIV_FLAG_CLEAR_OFFSET, AIV_FLAG_AREA_SIZE, ACL_MEMCPY_DEVICE_TO_DEVICE));
     HCCL_INFO("[ClearAivSyncBuf] clearaiv done.");

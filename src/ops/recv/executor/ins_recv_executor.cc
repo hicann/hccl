@@ -21,6 +21,8 @@ namespace ops_hccl {
         HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
     {
+        (void) comm;
+        (void) algHierarchyInfo;
         myRank_ = topoInfo->userRank;
         rankSize_ = topoInfo->userRankSize;
         devType_ = topoInfo->deviceType;
@@ -106,69 +108,82 @@ namespace ops_hccl {
             HcclResult::HCCL_E_NOT_FOUND);
         const ChannelInfo &channel = *channelIt;
         // 使用的是PUT DMAMode，所以无论图模式还是单算子，数据都是从对端的input buffer来
-        // 此处channel.remoteInput不是对端input buffer
-        // 但因为使用的是PUT模式此地址无用，且无法获取对端input buffer地址，此处仅示意作用
-        void *srcBufferPtr = static_cast<void *>(channel.remoteInput.addr);
-        void *dstBufferPtr = nullptr;
+        // channel.remoteInput不是对端input buffer
+        // 但因为使用的是PUT模式srcBufferPtr无用，且无法获取对端input buffer地址，仅示意作用
         if (opMode_ == OpMode::OFFLOAD) {
-            // 图模式直接到本端output buffer
-            dstBufferPtr = static_cast<void *>(param.outputPtr);
-            // UB传输最大数据量
-            maxLoopTransSize_ = UB_MAX_DATA_SIZE;
-            // 一次搬运最大数据个数
-            maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
-
-            u64 dataCountToRecv = dataCount_;
-            u64 currentOffset = 0;
-            std::vector<DataSlice> srcSlices;
-            std::vector<DataSlice> dstSlices;
-            HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
-            // 根据UB大小限制，对数据进行切分
-            // 因使用的是PUT模式，此处循环和srcSlices、dstSlices其实无实际使用，仅示意
-            while (dataCountToRecv > 0) {
-                u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
-                u64 transferSize = transferCount * dataTypeSize_;
-                srcSlices.emplace_back(srcBufferPtr, currentOffset, transferSize, transferCount);
-                dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
-                currentOffset = currentOffset + transferSize;
-                dataCountToRecv = dataCountToRecv - transferCount;
-            }
-            SlicesList recvSlicesList{srcSlices, dstSlices};
-            DataInfo recvInfo{channel, recvSlicesList};
-            // 给对端发送ready信号，最后等待对端发送fin信号
-            CHK_RET(RecvWrite(recvInfo, thread));
+            CHK_RET(OrchestrateOffload(param, resCtx, thread, channel));
         } else {
-            // 单算子模式到本端ccl buffer(scratch buffer)
-            dstBufferPtr = static_cast<void *>(resCtx.cclMem.addr);
-            // UB和ccl Buffer取小为一次传输最大数据量
-            maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, maxTmpMemSize_);
-            // 一次搬运最大数据个数
-            maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
-
-            u64 dataCountToRecv = dataCount_;
-            u64 currentOffset = 0;
-            HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
-            // 根据UB和ccl buffer大小限制，对数据进行切分
-            while (dataCountToRecv > 0) {
-                u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
-                u64 transferSize = transferCount * dataTypeSize_;
-                // 因使用的是PUT模式，此处srcSlices其实无实际使用，仅示意
-                DataSlice srcSlice{srcBufferPtr, currentOffset, transferSize, transferCount};
-                // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
-                DataSlice cclSlice{dstBufferPtr, 0, transferSize, transferCount};
-                SlicesList recvSlicesList{{srcSlice}, {cclSlice}};
-                DataInfo recvInfo{channel, recvSlicesList};
-                // 因本端需要把ccl buffer数据localCopy到output buffer，所以此处每片数据都调用一次RecvWrite
-                // 给对端发送ready信号后，等待对端发送fin信号
-                CHK_RET(RecvWrite(recvInfo, thread));
-                // 把ccl buffer数据localCopy到output buffer
-                DataSlice outputSlice{param.outputPtr, currentOffset, transferSize, transferCount};
-                CHK_RET(LocalCopy(thread, cclSlice, outputSlice));
-                currentOffset = currentOffset + transferSize;
-                dataCountToRecv = dataCountToRecv - transferCount;
-            }
+            CHK_RET(OrchestrateOpbase(param, resCtx, thread, channel));
         }
         HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Success.", myRank_, remoteRank_);
+
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    HcclResult InsRecvExecutor::OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
+        (void) resCtx;
+        void *srcBufferPtr = static_cast<void *>(channel.remoteInput.addr);
+        // 图模式直接到本端output buffer
+        void *dstBufferPtr = static_cast<void *>(param.outputPtr);
+        // UB传输最大数据量
+        maxLoopTransSize_ = UB_MAX_DATA_SIZE;
+        // 一次搬运最大数据个数
+        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+
+        u64 dataCountToRecv = dataCount_;
+        u64 currentOffset = 0;
+        std::vector<DataSlice> srcSlices;
+        std::vector<DataSlice> dstSlices;
+        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
+        // 根据UB大小限制，对数据进行切分
+        // 因使用的是PUT模式，此处循环和srcSlices、dstSlices其实无实际使用，仅示意
+        while (dataCountToRecv > 0) {
+            u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
+            u64 transferSize = transferCount * dataTypeSize_;
+            srcSlices.emplace_back(srcBufferPtr, currentOffset, transferSize, transferCount);
+            dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
+            currentOffset = currentOffset + transferSize;
+            dataCountToRecv = dataCountToRecv - transferCount;
+        }
+        SlicesList recvSlicesList{srcSlices, dstSlices};
+        DataInfo recvInfo{channel, recvSlicesList};
+        // 给对端发送ready信号，最后等待对端发送fin信号
+        CHK_RET(RecvWrite(recvInfo, thread));
+
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    HcclResult InsRecvExecutor::OrchestrateOpbase(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
+        void *srcBufferPtr = static_cast<void *>(channel.remoteInput.addr);
+        // 单算子模式到本端ccl buffer(scratch buffer)
+        void *dstBufferPtr = static_cast<void *>(resCtx.cclMem.addr);
+        // UB和ccl Buffer取小为一次传输最大数据量
+        maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, maxTmpMemSize_);
+        // 一次搬运最大数据个数
+        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+
+        u64 dataCountToRecv = dataCount_;
+        u64 currentOffset = 0;
+        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
+        // 根据UB和ccl buffer大小限制，对数据进行切分
+        while (dataCountToRecv > 0) {
+            u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
+            u64 transferSize = transferCount * dataTypeSize_;
+            // 因使用的是PUT模式，此处srcSlices其实无实际使用，仅示意
+            DataSlice srcSlice{srcBufferPtr, currentOffset, transferSize, transferCount};
+            // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
+            DataSlice cclSlice{dstBufferPtr, 0, transferSize, transferCount};
+            SlicesList recvSlicesList{{srcSlice}, {cclSlice}};
+            DataInfo recvInfo{channel, recvSlicesList};
+            // 因本端需要把ccl buffer数据localCopy到output buffer，所以此处每片数据都调用一次RecvWrite
+            // 给对端发送ready信号后，等待对端发送fin信号
+            CHK_RET(RecvWrite(recvInfo, thread));
+            // 把ccl buffer数据localCopy到output buffer
+            DataSlice outputSlice{param.outputPtr, currentOffset, transferSize, transferCount};
+            CHK_RET(LocalCopy(thread, cclSlice, outputSlice));
+            currentOffset = currentOffset + transferSize;
+            dataCountToRecv = dataCountToRecv - transferCount;
+        }
 
         return HcclResult::HCCL_SUCCESS;
     }

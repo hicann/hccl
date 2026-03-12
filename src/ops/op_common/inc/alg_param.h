@@ -484,7 +484,7 @@ struct Slice {
     u64 size{0};    // Slice的数据大小，单位：字节
 };
 
-typedef struct HcomProInfo {
+struct HcomProInfo {
     uint8_t dataType;
     uint8_t cmdType;
     uint64_t dataCount;
@@ -502,6 +502,6 @@ typedef struct HcomProInfo {
     bool isCapture = false;
     bool isAiv = false;
     uint8_t reserved[MAX_LENGTH];
-}HcomProInfo;
+};
 }
 #endif

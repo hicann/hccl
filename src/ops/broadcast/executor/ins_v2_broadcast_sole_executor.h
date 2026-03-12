@@ -24,14 +24,13 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
-#include "topo_match_2d.h"
 
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate> class InsV2BroadcastSoleExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BroadcastSoleExecutor();
-    ~InsV2BroadcastSoleExecutor() = default;
+    ~InsV2BroadcastSoleExecutor() final = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
     
@@ -41,8 +40,6 @@ public:
                        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,  AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
-
-
 private:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);

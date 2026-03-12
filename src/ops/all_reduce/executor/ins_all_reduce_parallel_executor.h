@@ -33,7 +33,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsAllReduceParallelExecutor : public InsCollAlgBase {
 public:
     explicit InsAllReduceParallelExecutor();
-    ~InsAllReduceParallelExecutor();
+    ~InsAllReduceParallelExecutor() override;
  
     std::string Describe() const override
     {
@@ -56,9 +56,9 @@ private:
     HcclResult CalcSendDataSize(u64 &memBlockSize, float &SplitRate, u32 &multipleIntra, u32 &multipleInter);
     
     void GenAlgParamsStage0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
-        const u64 sliceCount, const u64 scratchOffsetCount, TemplateDataParams &dataParams) const;
+        const u64 dataCount, const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const;
     void GenAlgParamsStage1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
-        const u64 sliceCount, const u64 scratchOffsetCount, TemplateDataParams &dataParams) const;
+        const u64 dataCount, const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const;
 
     std::vector<std::vector<u32>> AlgHierarchyInfoExector;
 
@@ -77,7 +77,7 @@ private:
     u64 intraHcclBuffSizeStage1_{0};
     u64 interHcclBuffSizeStage1_{0};
 
-    ThreadHandle mainThread_;
+    ThreadHandle mainThread_{0};
     std::vector<ThreadHandle> templateMainThreads_;
     std::vector<u32> syncNotifyOnTemplates_;
     std::vector<u32> syncNotifyOnMain_;

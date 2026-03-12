@@ -37,7 +37,7 @@ HcclResult InsTempReduceScatterNHR::CalcRes(HcclComm comm, const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempReduceScatterNHR::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult InsTempReduceScatterNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;
@@ -45,7 +45,7 @@ HcclResult InsTempReduceScatterNHR::GetRes(AlgResourceRequest& resourceRequest)
     return HCCL_SUCCESS;
 }
 
-u64 InsTempReduceScatterNHR::GetThreadNum()
+u64 InsTempReduceScatterNHR::GetThreadNum() const
 {
     return 1;
 }

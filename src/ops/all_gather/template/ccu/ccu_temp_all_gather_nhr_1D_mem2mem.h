@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_ALL_GATHER_NHR_1D
 #define HCCL_CCU_TEMP_ALL_GATHER_NHR_1D
  
+#include "utils.h"
 #include "ccu_alg_template_base.h"
 
 using NHRStepInfo = struct NHRStepInfoDef {
@@ -47,16 +48,16 @@ public:
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
                          const TemplateResource& templateResource) override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest);
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum();
+    u64 GetThreadNum() const override;
  
 private:
     uint32_t mySubCommRank_ = 0;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
+    HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
     HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,

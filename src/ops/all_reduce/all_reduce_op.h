@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
+HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType,
                              HcclReduceOp op, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
@@ -35,7 +35,7 @@ namespace ops_hccl {
 HcclResult AllReduceOutPlace(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType,
     HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag);
 
-HcclResult CheckAllReduceInputPara(HcclComm comm, void *sendBuf, void *recvBuf, aclrtStream stream);
+HcclResult CheckAllReduceInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream);
 }
 
 #endif

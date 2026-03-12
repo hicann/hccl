@@ -35,7 +35,7 @@ namespace ops_hccl {
 HcclResult BatchSendRecvOutPlace(HcclSendRecvItem *sendRecvInfo, uint32_t itemNum,
     HcclComm comm, aclrtStream stream, const std::string &tag);
 
-HcclResult CheckBatchSendRecvInputPara(HcclComm &comm, HcclSendRecvItem *sendRecvInfo, aclrtStream stream);
+HcclResult CheckBatchSendRecvInputPara(const HcclComm &comm, const HcclSendRecvItem *sendRecvInfo, const aclrtStream stream);
 
 }
 

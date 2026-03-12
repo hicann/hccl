@@ -29,7 +29,7 @@ template <typename AlgTopoMatch, typename AlgTemplate>
 class ReduceSoleExecutor : public InsCollAlgBase {
 public:
     explicit ReduceSoleExecutor();
-    ~ReduceSoleExecutor() = default;
+    ~ReduceSoleExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 

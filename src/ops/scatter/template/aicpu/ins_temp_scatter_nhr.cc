@@ -19,7 +19,7 @@ InsTempScatterNHR::InsTempScatterNHR(const OpParam& param, const u32 rankId, // 
 InsTempScatterNHR::~InsTempScatterNHR()
 {}
 
-u64 InsTempScatterNHR::GetThreadNum()
+u64 InsTempScatterNHR::GetThreadNum() const
 {
     u64 threadNum = 1;
     return threadNum;
@@ -42,7 +42,7 @@ HcclResult InsTempScatterNHR::CalcRes(HcclComm comm, const OpParam& param, const
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempScatterNHR::GetRes(AlgResourceRequest &resourceRequest)
+HcclResult InsTempScatterNHR::GetRes(AlgResourceRequest &resourceRequest) const
 {
     // NHR算法主需要一条主流
     resourceRequest.slaveThreadNum = 0;
@@ -136,7 +136,7 @@ HcclResult InsTempScatterNHR::KernelRun(const OpParam& param, const TemplateData
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempScatterNHR::PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+HcclResult InsTempScatterNHR::PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const
 {
     if (u32(myRank_) != root_ || tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER) {
         return HCCL_SUCCESS;
@@ -158,7 +158,7 @@ HcclResult InsTempScatterNHR::PreCopy(const TemplateDataParams &tempAlgParams, c
 }
 
 HcclResult InsTempScatterNHR::PostCopy(
-    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const
 {
     u32 myAlgRank;
     GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);

@@ -18,18 +18,16 @@
 #include "hccl_rank_graph.h"
 #include "hccl_res.h"
 
-
 using namespace ops_hccl;
-
 namespace ops_hccl {
 
 constexpr s32 DEVICE_PER_MODULE_A2 = 8;
-typedef enum {
+enum class HcclNetLayer {
     HCCL_NetLayer_L0 = 0,
     HCCL_NetLayer_L1,
     HCCL_NetLayer_L2,
     HCCL_NetLayer_MAX,
-} HcclNetLayer;
+};
 
 HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo);
 HcclResult InitRankInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
@@ -37,7 +35,7 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 HcclResult CalcMyRankInfo(HcclComm comm, TopoInfo* topoInfo);
 HcclResult SetServerModuleInfo(HcclComm comm, TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
 HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo);
-bool IsDiffDeviceModule(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
+bool IsDiffDeviceModule(const TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
 
 HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
 HcclResult CalcLevel0MeshType(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
@@ -73,10 +71,10 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
  * @return HCCL_SUCCESS on success, other values indicate failure
  */
 HcclResult GetModuleIdx(HcclComm comm, TopoInfo* topoInfo);
-HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, TopoInfo* topoInfo, uint32_t &moduleIdx);
+HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topoInfo, uint32_t &moduleIdx);
 HcclResult GetModuleMap(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>> &moduleMap);
-uint32_t GetCurrentServerStartRank(HcclComm comm, TopoInfo* topoInfo);
-uint32_t GetCurrentServerEndRank(HcclComm comm, TopoInfo* topoInfo);
+uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo);
+uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo);
 HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>> &moduleMap);
 /**
  * Calculates the number of servers per superpod based on netlayer L0 and L1 rank information.

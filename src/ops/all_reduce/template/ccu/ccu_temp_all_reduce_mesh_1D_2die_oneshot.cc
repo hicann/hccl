@@ -132,12 +132,12 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempAllreduceMesh1D2DieOneShot::GetThreadNum()
+u64 CcuTempAllreduceMesh1D2DieOneShot::GetThreadNum() const
 {
     return 2;
 }
 
-HcclResult CcuTempAllreduceMesh1D2DieOneShot::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllreduceMesh1D2DieOneShot::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);

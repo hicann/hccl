@@ -40,9 +40,9 @@ public:
     
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    HcclResult GetRes(AlgResourceRequest &resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
 
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
 
 protected:
     HcclResult CalcNHRInfo(std::vector<NHRStepInfo> &stepInfoVector);

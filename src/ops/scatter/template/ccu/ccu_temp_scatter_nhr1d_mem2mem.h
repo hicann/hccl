@@ -28,17 +28,17 @@ public:
                             subCommRanks_[0].size());
     }
 
+    HcclResult KernelRun(const OpParam& param,
+                        const TemplateDataParams& templateDataParams,
+                        const TemplateResource& templateResource) override;
+
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
-
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
-
+    
+    u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     void SetRoot(u32 root);
-    u64 GetThreadNum();
-    HcclResult GetRes(AlgResourceRequest& resourceRequest);
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
 private:
     uint32_t mySubCommRank_ = 0;
@@ -46,7 +46,7 @@ private:
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
+    HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
     HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,

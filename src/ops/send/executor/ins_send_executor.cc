@@ -17,9 +17,9 @@ namespace ops_hccl {
     }
 
     HcclResult InsSendExecutor::InitCommInfo(
-        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo)
     {
+        (void) comm;
         myRank_ = topoInfo->userRank;
         rankSize_ = topoInfo->userRankSize;
         devType_ = topoInfo->deviceType;
@@ -64,7 +64,7 @@ namespace ops_hccl {
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
     {
         // 初始化一些基本成员变量
-        InitCommInfo(comm, param, topoInfo, algHierarchyInfo);
+        InitCommInfo(comm, param, topoInfo);
         HCCL_DEBUG("[InsSendExecutor][CalcRes][%d]->[%d] Start.", myRank_, remoteRank_);
 
         resourceRequest.notifyNumOnMainThread = 0;
@@ -104,61 +104,74 @@ namespace ops_hccl {
             HCCL_ERROR("[InsSendExecutor][Orchestrate] Channel[%d]-[%d] not found.", myRank_, remoteRank_),
             HcclResult::HCCL_E_NOT_FOUND);
         const ChannelInfo &channel = *channelIt;
-        void *dstBufferPtr = nullptr;
         if (opMode_ == OpMode::OFFLOAD) {
-            // 图模式本端可拿到对端output buffer地址，所以直接从本端input buffer到对端output buffer
-            dstBufferPtr = static_cast<void *>(channel.remoteOutput.addr);
-            // UB传输最大数据量
-            maxLoopTransSize_ = UB_MAX_DATA_SIZE;
-            // 一次搬运最大数据个数
-            maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
-
-            u64 dataCountToSend = dataCount_;
-            u64 currentOffset = 0;
-            std::vector<DataSlice> srcSlices;
-            std::vector<DataSlice> dstSlices;
-            HCCL_DEBUG("[InsSendExecutor][Orchestrate][%d]->[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
-            // 根据UB大小限制，对数据进行切分
-            while (dataCountToSend > 0) {
-                u64 transferCount = dataCountToSend > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToSend;
-                u64 transferSize = transferCount * dataTypeSize_;
-                srcSlices.emplace_back(param.inputPtr, currentOffset, transferSize, transferCount);
-                dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
-                currentOffset = currentOffset + transferSize;
-                dataCountToSend = dataCountToSend - transferCount;
-            }
-            SlicesList sendSlicesList{srcSlices, dstSlices};
-            DataInfo sendInfo{channel, sendSlicesList};
-            // 等待对端ready后，根据数据切片一片片往对端写，最后给对端发送fin信号
-            CHK_RET(SendWrite(sendInfo, thread));
+            CHK_RET(OrchestrateOffload(param, resCtx, thread, channel));
         } else {
-            // 单算子模式本端仅可拿到对端ccl buffer地址，所以从本端input buffer到对端ccl buffer
-            dstBufferPtr = static_cast<void *>(channel.remoteCclMem.addr);
-            // UB和ccl Buffer取小为一次传输最大数据量
-            maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, channel.remoteCclMem.size);
-            // 一次搬运最大数据个数
-            maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
-
-            u64 dataCountToSend = dataCount_;
-            u64 currentOffset = 0;
-            HCCL_DEBUG("[InsSendExecutor][Orchestrate][%d]->[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
-            // 根据UB和ccl buffer大小限制，对数据进行切分
-            while (dataCountToSend > 0) {
-                u64 transferCount = dataCountToSend > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToSend;
-                u64 transferSize = transferCount * dataTypeSize_;
-                DataSlice srcSlice{param.inputPtr, currentOffset, transferSize, transferCount};
-                // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
-                DataSlice dstSlice{dstBufferPtr, 0, transferSize, transferCount};
-                SlicesList sendSlicesList{{srcSlice}, {dstSlice}};
-                DataInfo sendInfo{channel, sendSlicesList};
-                // 因对端需要把ccl buffer数据localCopy到output buffer，所以此处每片数据都调用一次SendWrite
-                // 等待对端ready后，把这一片数据往对端写，再给对端发送fin信号
-                CHK_RET(SendWrite(sendInfo, thread));
-                currentOffset = currentOffset + transferSize;
-                dataCountToSend = dataCountToSend - transferCount;
-            }
+            CHK_RET(OrchestrateOpbase(param, resCtx, thread, channel));
         }
         HCCL_DEBUG("[InsSendExecutor][Orchestrate][%d]->[%d] Success.", myRank_, remoteRank_);
+
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    HcclResult InsSendExecutor::OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
+        (void) resCtx;
+        // 图模式本端可拿到对端output buffer地址，所以直接从本端input buffer到对端output buffer
+        void *dstBufferPtr = static_cast<void *>(channel.remoteOutput.addr);
+        // UB传输最大数据量
+        maxLoopTransSize_ = UB_MAX_DATA_SIZE;
+        // 一次搬运最大数据个数
+        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+
+        u64 dataCountToSend = dataCount_;
+        u64 currentOffset = 0;
+        std::vector<DataSlice> srcSlices;
+        std::vector<DataSlice> dstSlices;
+        HCCL_DEBUG("[InsSendExecutor][Orchestrate][%d]->[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
+        // 根据UB大小限制，对数据进行切分
+        while (dataCountToSend > 0) {
+            u64 transferCount = dataCountToSend > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToSend;
+            u64 transferSize = transferCount * dataTypeSize_;
+            srcSlices.emplace_back(param.inputPtr, currentOffset, transferSize, transferCount);
+            dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
+            currentOffset = currentOffset + transferSize;
+            dataCountToSend = dataCountToSend - transferCount;
+        }
+        SlicesList sendSlicesList{srcSlices, dstSlices};
+        DataInfo sendInfo{channel, sendSlicesList};
+        // 等待对端ready后，根据数据切片一片片往对端写，最后给对端发送fin信号
+        CHK_RET(SendWrite(sendInfo, thread));
+
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    HcclResult InsSendExecutor::OrchestrateOpbase(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
+        (void) resCtx;
+        // 单算子模式本端仅可拿到对端ccl buffer地址，所以从本端input buffer到对端ccl buffer
+        void *dstBufferPtr = static_cast<void *>(channel.remoteCclMem.addr);
+        // UB和ccl Buffer取小为一次传输最大数据量
+        maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, channel.remoteCclMem.size);
+        // 一次搬运最大数据个数
+        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+
+        u64 dataCountToSend = dataCount_;
+        u64 currentOffset = 0;
+        HCCL_DEBUG("[InsSendExecutor][Orchestrate][%d]->[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
+        // 根据UB和ccl buffer大小限制，对数据进行切分
+        while (dataCountToSend > 0) {
+            u64 transferCount = dataCountToSend > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToSend;
+            u64 transferSize = transferCount * dataTypeSize_;
+            DataSlice srcSlice{param.inputPtr, currentOffset, transferSize, transferCount};
+            // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
+            DataSlice dstSlice{dstBufferPtr, 0, transferSize, transferCount};
+            SlicesList sendSlicesList{{srcSlice}, {dstSlice}};
+            DataInfo sendInfo{channel, sendSlicesList};
+            // 因对端需要把ccl buffer数据localCopy到output buffer，所以此处每片数据都调用一次SendWrite
+            // 等待对端ready后，把这一片数据往对端写，再给对端发送fin信号
+            CHK_RET(SendWrite(sendInfo, thread));
+            currentOffset = currentOffset + transferSize;
+            dataCountToSend = dataCountToSend - transferCount;
+        }
 
         return HcclResult::HCCL_SUCCESS;
     }

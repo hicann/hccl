@@ -123,7 +123,7 @@ HcclResult InsTempAllGatherNHRDPU::DPUKernelRun(const TemplateDataParams& tempAl
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempAllGatherNHRDPU::GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo)
+HcclResult InsTempAllGatherNHRDPU::GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo) const
 {
     uint32_t rankIdx = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], rankIdx));
@@ -159,7 +159,7 @@ HcclResult InsTempAllGatherNHRDPU::GetStepInfo(uint32_t step, uint32_t nSteps, A
     return HcclResult::HCCL_SUCCESS;
 }
 
-u32 InsTempAllGatherNHRDPU::GetRankFromMap(const uint32_t rankIdx)
+u32 InsTempAllGatherNHRDPU::GetRankFromMap(const uint32_t rankIdx) const
 {
     return subCommRanks_[0].at(rankIdx);
 }
@@ -187,7 +187,7 @@ HcclResult InsTempAllGatherNHRDPU::LocalDataCopy(const TemplateDataParams& tempA
 }
 
 HcclResult InsTempAllGatherNHRDPU::RunNHR(const TemplateDataParams& tempAlgParams,
-                                          const std::map<u32, std::vector<ChannelInfo>>& channels)
+                                          const std::map<u32, std::vector<ChannelInfo>>& channels) const
 {
 #ifndef AICPU_COMPILE
     const uint32_t nSteps = GetNHRStepNum(templateRankSize_);

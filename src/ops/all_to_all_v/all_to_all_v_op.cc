@@ -15,7 +15,6 @@
 #include <hccl/hccl_types.h>
 #include "hccl/base.h"
 #include "sal.h"
-#include "error_codes/rt_error_codes.h"
 #include "mmpa_api.h"
 #include "param_check.h"
 #include "executor_base.h"
@@ -225,8 +224,8 @@ HcclResult HcclAlltoAllVC(const void *sendBuf, const void *sendCountMatrix, Hccl
 
 namespace ops_hccl {
 
-HcclResult CheckAlltoAllInputPara(HcclComm comm, const void *sendBuf, uint64_t sendCount, HcclDataType sendType,
-    const void *recvBuf, uint64_t recvCount, HcclDataType recvType)
+HcclResult CheckAlltoAllInputPara(const HcclComm comm, const void *sendBuf, const uint64_t sendCount,
+    const HcclDataType sendType, const void *recvBuf, const uint64_t recvCount, const HcclDataType recvType)
 {
     // 入参合法性校验
     CHK_PRT_RET(sendCount == 0 && recvCount == 0,
@@ -254,8 +253,8 @@ HcclResult CheckAlltoAllInputPara(HcclComm comm, const void *sendBuf, uint64_t s
     return HCCL_SUCCESS;
 }
 
-HcclResult CheckAlltoAllVInputPara(HcclComm comm, const void *sendBuf, const void *sendCounts, const void *sdispls,
-    HcclDataType sendType, const void *recvBuf, const void *recvCounts, const void *rdispls, HcclDataType recvType)
+HcclResult CheckAlltoAllVInputPara(const HcclComm comm, const void *sendBuf, const void *sendCounts, const void *sdispls,
+    const HcclDataType sendType, const void *recvBuf, const void *recvCounts, const void *rdispls, const HcclDataType recvType)
 {
     RPT_INPUT_ERR(comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\
         std::vector<std::string>({"HcclAlltoAllV", "comm", "nullptr", "please check comm"}));
@@ -289,8 +288,8 @@ HcclResult CheckAlltoAllVInputPara(HcclComm comm, const void *sendBuf, const voi
     return HCCL_SUCCESS;
 }
 
-HcclResult CheckAlltoAllVCInputPara(HcclComm comm, const void *sendBuf, const void *sendCountMatrix,
-    HcclDataType sendType, const void *recvBuf, HcclDataType recvType)
+HcclResult CheckAlltoAllVCInputPara(const HcclComm comm, const void *sendBuf, const void *sendCountMatrix,
+    const HcclDataType sendType, const void *recvBuf, const HcclDataType recvType)
 {
     RPT_INPUT_ERR(comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\
         std::vector<std::string>({"HcclAlltoAllVC", "comm", "nullptr", "please check comm"}));
@@ -330,10 +329,17 @@ HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const 
     void *paramMem = malloc(sizeof(OpParam) + varMemSize);
     if (!paramMem) {
         // 内存分配失败
-        HCCL_ERROR("malloc OpParam failed!");
+        HCCL_ERROR("[AlltoAllVOutPlace] malloc OpParam failed!");
         return HCCL_E_INTERNAL;
     }
-    OpParam *paramPtr = new (paramMem)OpParam();
+    OpParam* tmpParamPtr = new (paramMem) OpParam();
+    auto deleter = [](OpParam* p) {
+        if (p) {
+            p->~OpParam();
+            free(p);
+        }
+    };
+    std::unique_ptr<OpParam, decltype(deleter)> paramPtr(tmpParamPtr, deleter);
     OpParam &param = *paramPtr;
 
     CHK_RET(HcclGetCommName(comm, param.commName));
@@ -407,8 +413,6 @@ HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const 
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
-    paramPtr->~OpParam();
-    free(paramMem);
     HCCL_INFO("Execute AlltoAllVOutPlace success.");
     return HCCL_SUCCESS;
 }

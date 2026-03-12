@@ -74,8 +74,7 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm
     }
 }
 
-HcclResult CcuTempBroadcastNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
-                                                            std::vector<NHRStepInfo>& stepInfoVector,
+HcclResult CcuTempBroadcastNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector,
                                                             std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
                                                             std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
@@ -139,7 +138,9 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     uint32_t enableDieNum = 0;
     CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
 
-    if (enableDieNum < 1 || enableDieNum > 2) {
+    constexpr uint32_t NUMONE = 1;
+    constexpr uint32_t NUMTWO = 2;
+    if (enableDieNum < NUMONE || enableDieNum > NUMTWO) { // 目前只支持1个或2个die
         HCCL_ERROR("[CcuTempBroadcastNHR1DMem2Mem::CalcRes] get channelDescs fail");
         return HCCL_E_INTERNAL;
     }
@@ -158,7 +159,7 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     std::vector<NHRStepInfo> stepInfoVector;
     channelsPerDie.resize(enableDieNum);
 
-    CHK_RET(ProcessNHRStepInfo(comm, channelDescs, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
 
     // 3.构造kernelInfo
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
@@ -393,12 +394,13 @@ void CcuTempBroadcastNHR1DMem2Mem::SetRoot(u32 root)
     HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem][SetRoot] myRank_ [%u], set root_ [%u] subCommRootId[%u]", myRank_, root, subCommRootId_);
 }
 
-u64 CcuTempBroadcastNHR1DMem2Mem::GetThreadNum()
+u64 CcuTempBroadcastNHR1DMem2Mem::GetThreadNum() const
 {
-    return 2;
+    u64 twoNum = 2;
+    return twoNum;
 }
 
-HcclResult CcuTempBroadcastNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempBroadcastNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);

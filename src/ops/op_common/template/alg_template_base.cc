@@ -97,7 +97,7 @@ HcclResult AlgTemplateBase::RunAsync(const DPUAlgResourceCtx *dpuResCtx)
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread)
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread) const
 {
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channel.handle, NOTIFY_IDX_ACK)));
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, channel.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
@@ -107,12 +107,12 @@ HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle th
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel)
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel) const
 {
     return ExecuteBarrier(preChannel, aftChannel, thread_);
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, ThreadHandle thread)
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, ThreadHandle thread) const
 {
     // 同步与preChannel保证数据收发已结束
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, preChannel.handle, NOTIFY_IDX_ACK)));
@@ -125,12 +125,12 @@ HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo 
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx)
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx) const
 {
     return ExecuteBarrier(preChannel, aftChannel, notifyIdx, thread_);
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx, ThreadHandle thread)
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx, ThreadHandle thread) const
 {
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, aftChannel.handle, notifyIdx)));
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, preChannel.handle, notifyIdx, CUSTOM_TIMEOUT)));

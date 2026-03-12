@@ -58,9 +58,9 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::Cal
     intraTempAlg.CalcRes(comm, param, topoInfo, intraTempRequest);
     interTempAlg.CalcRes(comm, param, topoInfo, interTempRequest);
     // 申请一条控制thread作为主thread，该thread仅用于两个template之间同步
-    resourceRequest.notifyNumOnMainThread = 2;
+    resourceRequest.notifyNumOnMainThread = templateNum_;
     // 由于主thread被单独作为控制thread，因此总的slaveThread需要额外加上两个template的主thread
-    resourceRequest.slaveThreadNum = intraTempRequest.slaveThreadNum + interTempRequest.slaveThreadNum + 2;
+    resourceRequest.slaveThreadNum = intraTempRequest.slaveThreadNum + interTempRequest.slaveThreadNum + templateNum_;
     // 第一个template的主thread需要的notify数量，+1是因为需要和控制thread做同步
     resourceRequest.notifyNumPerThread.emplace_back(intraTempRequest.notifyNumOnMainThread + 1);
     resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
@@ -162,8 +162,6 @@ void ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::GenTempla
     tempAlgParams1.buffInfo.outputPtr = param.outputPtr;
     tempAlgParams1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams1.buffInfo.hcclBuff = resCtx.cclMem;
-    // tempAlgParams1.buffInfo.inBuffBaseOff = othScratchOffset;
-    // tempAlgParams1.buffInfo.inBuffBaseOff = dataOffset;
     tempAlgParams1.buffInfo.inputSize = param.inputSize;
     tempAlgParams1.buffInfo.outputSize = param.outputSize;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -240,7 +238,7 @@ void ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::GenTempla
 
 template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1>
 uint64_t ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::GetRankSize(
-    const std::vector<std::vector<u32>> &vTopo)
+    const std::vector<std::vector<u32>> &vTopo) const
 {
     uint64_t count = 1;
     for (const auto &i : vTopo) {
@@ -292,7 +290,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::Orc
     AlgTemplate0 intraTempAlg(paramIntra, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos.at(0));
     AlgTemplate1 interTempAlg(paramInter, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos.at(1));
     // 将计算资源分配个每个算法
-    PrepareResForTemplate(param, resCtx, intraTempAlg, interTempAlg);
+    PrepareResForTemplate(intraTempAlg, interTempAlg);
     // 算法展开
 
     HcclResult ret = OrchestrateLoop(param, resCtx, intraTempAlg, interTempAlg);
@@ -304,8 +302,8 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::Orc
 }
 
 template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1>
-HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::PrepareResForTemplate(const OpParam &param,
-    const AlgResourceCtxSerializable &resCtx, AlgTemplate0 &tempAlgIntra, AlgTemplate1 &tempAlgInter)
+HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1>::PrepareResForTemplate(
+    AlgTemplate0 &tempAlgIntra, AlgTemplate1 &tempAlgInter)
 {
     AlgResourceRequest intraTempRequest;
     AlgResourceRequest interTempRequest;

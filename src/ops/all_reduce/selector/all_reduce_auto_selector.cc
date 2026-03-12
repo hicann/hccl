@@ -18,7 +18,7 @@ constexpr u64 AR_AICPU_1D_SMALL_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 AR_AICPU_1D_MAX_DATA_SIZE = 32 * 1024 * 1024;
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 
-SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
 {
@@ -60,7 +60,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetail
     }
 }
 
-SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     std::string &selectAlgName) const
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -110,8 +110,8 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(TopoInfoWithNetLayerDetails
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                            OpParam &opParam,
+SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                            const OpParam &opParam,
                                                             const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                             std::string &selectAlgName) const
 {
@@ -210,8 +210,8 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayer
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                      OpParam &opParam,
+SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                      const OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
 {
@@ -250,7 +250,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetail
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                           std::string &selectAlgName) const
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -304,9 +304,9 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(TopoInfoWithNetLayerDe
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus AllReduceAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
-                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                       std::string &selectAlgName) const
+SelectorStatus AllReduceAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
+                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
+                                                    std::string &selectAlgName) const
 {
     std::vector<HcclAlgoType> algos = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
     auto it = configAlgMap.find(opParam.opType);

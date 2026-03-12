@@ -28,7 +28,7 @@ std::string InsCollAlgBase::Describe() const
 }
 
 HcclResult InsCollAlgBase::RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-    std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo)
+    std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const
 {
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo = resCtx.algHierarchyInfo;
     rankIdToChannelInfo.resize(algHierarchyInfo.infos.size());

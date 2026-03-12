@@ -46,10 +46,10 @@ private:
     A2ASendRecvInfo localSendRecvInfo_;
     u32             concurrentSendRecvNum_ = 8;
     u64 buffBlockSize_ = 0;
-    BuffInfo buffInfo_;
+    BuffInfo buffInfo_{0};
     uint64_t sendStrideSize_ = 0;  // Bytes
     uint64_t recvStrideSize_ = 0;  // Bytes
-    uint32_t typeSize_;
+    uint32_t typeSize_ = 0;
     uint32_t mySubCommRank_ = 0;
     uint32_t tempRankSize_ = 0;
     std::vector<u64> sendCounts_;

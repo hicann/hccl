@@ -42,7 +42,7 @@ public:
     virtual HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) = 0;
 
     HcclResult RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-                                 std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo);
+                                 std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const;
 
 protected:
     // CollAlg base params

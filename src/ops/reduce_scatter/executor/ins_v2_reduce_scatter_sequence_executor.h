@@ -30,7 +30,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2ReduceScatterSequenceExecutor : public InsCollAlgBase {
 public:
     explicit InsV2ReduceScatterSequenceExecutor();
-    ~InsV2ReduceScatterSequenceExecutor() = default;
+    ~InsV2ReduceScatterSequenceExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
 

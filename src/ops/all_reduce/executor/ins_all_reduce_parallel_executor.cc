@@ -67,11 +67,12 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     CHK_RET(tempAlgIntra.CalcRes(comm, param, topoInfo, resReqIntra));
     CHK_RET(tempAlgInter.CalcRes(comm, param, topoInfo, resReqInter));
 
+    constexpr u32 SUB_MAIN_THREAD_NUM = 2;
     // 用第intra算法的主流作为Executor的主流
-    resourceRequest.slaveThreadNum = resReqIntra.slaveThreadNum + resReqInter.slaveThreadNum + 2;
+    resourceRequest.slaveThreadNum = resReqIntra.slaveThreadNum + resReqInter.slaveThreadNum + SUB_MAIN_THREAD_NUM;
 
     // 每个算法的主流需要1个额外Notify用于算法之间同步
-    resourceRequest.notifyNumOnMainThread = 2;
+    resourceRequest.notifyNumOnMainThread = SUB_MAIN_THREAD_NUM;
     resourceRequest.notifyNumPerThread.emplace_back(resReqIntra.notifyNumOnMainThread + 1);
     resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
         resReqIntra.notifyNumPerThread.begin(), resReqIntra.notifyNumPerThread.end());
@@ -153,7 +154,6 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     std::vector<float> &splitDataSize) const
 {
-    // to do 先做等分，后续根据性能做调整
     double splitData = 0.5;
     splitDataSize.push_back(splitData);
     splitDataSize.push_back(splitData);
@@ -324,8 +324,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenAlgParamsStage0(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCount, 
-    const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const
+    const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
+    const u64 dataCount, const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const
 {
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;
     tempAlgParams.buffInfo.outputPtr = param.outputPtr;
@@ -352,8 +352,8 @@ void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenAlgParamsStage1(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCount,
-    const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const
+    const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
+    const u64 dataCount, const u64 hcclBuffBaseOff, TemplateDataParams &tempAlgParams) const
 {
     tempAlgParams.buffInfo.inputPtr = param.outputPtr;
     tempAlgParams.buffInfo.outputPtr = param.outputPtr;

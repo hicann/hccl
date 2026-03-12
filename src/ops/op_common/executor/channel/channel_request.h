@@ -12,6 +12,7 @@
 #define OPS_HCCL_SRC_OPS_CHANNEL_REQUEST
 
 #include <set>
+#include <vector>
 #include "hccl/base.h"
 
 namespace ops_hccl {

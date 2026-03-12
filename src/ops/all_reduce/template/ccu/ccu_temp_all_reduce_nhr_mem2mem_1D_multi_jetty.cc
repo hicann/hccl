@@ -261,7 +261,7 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::ProcessNHRStepInfo(std::vecto
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetRes(AlgResourceRequest& resourceRequest) const
 {
     // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;

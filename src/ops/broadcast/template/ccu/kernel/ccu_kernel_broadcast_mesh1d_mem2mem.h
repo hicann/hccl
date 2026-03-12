@@ -83,7 +83,7 @@ public:
     CcuKernelBroadcastMesh1DMem2Mem(const CcuKernelArg &arg);
     ~CcuKernelBroadcastMesh1DMem2Mem() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
 
 private:
@@ -96,13 +96,12 @@ private:
     void DoAllGather(const CcuRep::LocalAddr &src, const std::vector<CcuRep::RemoteAddr> &dst);
     void PostSync(int CKE_id);
 
-    uint64_t rankSize_{0};
     uint32_t rankId_{0};
-    uint32_t repeatNum_{0};
     uint32_t rootId_{0};
+    uint64_t rankSize_{0};
+    std::vector<ChannelHandle> channels_;
     HcclDataType dataType_;
     HcclDataType outputDataType_;
-    std::vector<ChannelHandle> channels_;
     std::vector<CcuRep::Variable> input_;
     std::vector<CcuRep::Variable> output_;
     std::vector<CcuRep::Variable> token_;

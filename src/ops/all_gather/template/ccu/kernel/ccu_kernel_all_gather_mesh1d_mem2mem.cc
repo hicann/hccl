@@ -76,7 +76,6 @@ HcclResult CcuKernelAllGatherMesh1DMem2Mem::InitResource()
     isInputOutputEqual_           = CreateVariable();
     localGoSize_                  = CreateGroupOpSize();
 
-
     src = CreateLocalAddr();
     src_loccopy = CreateLocalAddr();
     remote_src= CreateLocalAddr();

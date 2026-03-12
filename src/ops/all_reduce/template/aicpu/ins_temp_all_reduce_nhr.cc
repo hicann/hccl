@@ -40,14 +40,14 @@ HcclResult InsTempAllReduceNHR::CalcRes(HcclComm comm, const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempAllReduceNHR::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult InsTempAllReduceNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;
     return HCCL_SUCCESS;
 }
 
-u64 InsTempAllReduceNHR::GetThreadNum()
+u64 InsTempAllReduceNHR::GetThreadNum() const
 {
     return 1;
 }
@@ -148,7 +148,7 @@ HcclResult InsTempAllReduceNHR::SplitData()
 }
 
 HcclResult InsTempAllReduceNHR::PreCopy(const TemplateDataParams &tempAlgParams,
-    const std::vector<ThreadHandle> &threads)
+    const std::vector<ThreadHandle> &threads) const
 {
     HCCL_INFO("[InsTempAllReduceNHR] PreCopy data from input to hccl buffer");
 
@@ -278,7 +278,7 @@ HcclResult InsTempAllReduceNHR::RunAllGather(const TemplateDataParams &tempAlgPa
 }
 
 HcclResult InsTempAllReduceNHR::PostCopy(const TemplateDataParams &tempAlgParams, 
-    const std::vector<ThreadHandle> &threads)
+    const std::vector<ThreadHandle> &threads) const
 {
     HCCL_INFO("[InsTempAllReduceNHR][PostCopy] Opbase copy from scratchBuffer to userOut");
 
@@ -377,7 +377,7 @@ HcclResult InsTempAllReduceNHR::GetAllGatherStepInfoList(std::vector<NHRStepInfo
     return HcclResult::HCCL_SUCCESS;
 }
 
-u32 InsTempAllReduceNHR::GetNHRStepNum()
+u32 InsTempAllReduceNHR::GetNHRStepNum() const
 {
     u32 nSteps = 0;
     for (u32 tmp = templateRankSize_ - 1; tmp != 0; tmp >>= 1, nSteps++) {

@@ -87,7 +87,6 @@ HcclResult CcuTempReduceMesh1D::KernelRun(const OpParam& param,
     uint64_t                      lastSliceSize           = templateDataParams.tailSize;
     uint64_t                      repeatNumVar            = UINT64_MAX - repeatNum;
     
-
     std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgReduceMesh1D>(
         inputAddr, outputAddr, token, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride,
         outputRepeatStride, normalSliceSize, lastSliceSize, repeatNumVar);

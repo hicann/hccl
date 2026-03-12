@@ -11,7 +11,6 @@
 #ifndef AIV_TEMP_ALL_REDUCE_MESH_1D_TWOSHOT
 #define AIV_TEMP_ALL_REDUCE_MESH_1D_TWOSHOT
 
-#include <cstring>
 #include "aiv_alg_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"

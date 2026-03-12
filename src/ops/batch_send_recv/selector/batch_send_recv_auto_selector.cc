@@ -13,8 +13,8 @@
 
 namespace ops_hccl {
 
-SelectorStatus BatchSendRecvAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                      OpParam &opParam,
+SelectorStatus BatchSendRecvAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                      const OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
 {

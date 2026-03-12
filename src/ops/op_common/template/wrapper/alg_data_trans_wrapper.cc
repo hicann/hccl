@@ -529,6 +529,7 @@ HcclResult PostSyncInterThreads(const ThreadHandle &mainThread, const std::vecto
 HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice,
     const HcclDataType dataType, const HcclReduceOp reduceOp)
 {
+    (void) thread;
     CHK_PRT_RET(srcSlice.size_ != dstSlice.size_,
         HCCL_ERROR(
             "[AlgDataTransWrapper] [AicpuReduce] AicpuReduce: src slice size [%u] is not equal to dst slice size [%u].",

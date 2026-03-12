@@ -20,8 +20,9 @@ TopoMatchMultilevel::~TopoMatchMultilevel()
 {
 }
 
-HcclResult TopoMatchMultilevel::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size, uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchMultilevel::TopoForLayer0(
+    const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
 #ifndef AICPU_COMPILE
     uint32_t *topoInsts;
@@ -74,8 +75,9 @@ HcclResult TopoMatchMultilevel::TopoForLayer0(const HcclComm comm, uint32_t &lay
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchMultilevel::TopoForLayer1(const HcclComm comm, uint32_t layer0Size, uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchMultilevel::TopoForLayer1(
+    const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
     HCCL_DEBUG("[TopoMatchMultilevel::MeshNHRTopoForLayer1] layer0Size [%d]", layer0Size);
 #ifndef AICPU_COMPILE
@@ -117,7 +119,7 @@ HcclResult TopoMatchMultilevel::TopoForLayer1(const HcclComm comm, uint32_t laye
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchMultilevel::CheckVecElementAllSame(uint32_t *instSizeList, uint32_t listSize)
+HcclResult TopoMatchMultilevel::CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const
 {
 #ifndef AICPU_COMPILE
     uint32_t firstSize = instSizeList[0];
@@ -135,7 +137,7 @@ HcclResult TopoMatchMultilevel::CheckVecElementAllSame(uint32_t *instSizeList, u
 HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,
+    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > COMM_LAYER_SIZE_2,
         HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.",
             topoInfo->topoLevelNums),
         HCCL_E_INTERNAL);

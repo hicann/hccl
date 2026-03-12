@@ -34,7 +34,7 @@ namespace ops_hccl {
 HcclResult BroadcastOutPlace(void *buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream, const std::string &tag);
 
 
-HcclResult CheckBroadcastInputPara(HcclComm comm, void *buf);
+HcclResult CheckBroadcastInputPara(const HcclComm comm, const void *buf);
 
 }
 

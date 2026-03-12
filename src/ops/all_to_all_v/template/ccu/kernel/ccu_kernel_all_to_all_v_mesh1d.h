@@ -74,7 +74,7 @@ public:
     CcuKernelAlltoAllVMesh1D(const hcomm::CcuKernelArg &arg);
     ~CcuKernelAlltoAllVMesh1D() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
 
 private:
@@ -126,7 +126,6 @@ private:
     void PostSync();
     void DoAll2AllVMultiLoop();
     void CalcGroupSrcDst();
-
 };
 
 }// namespace ops_hccl

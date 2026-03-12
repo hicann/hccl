@@ -13,6 +13,10 @@
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
 
 namespace ops_hccl {
+
+// 序列执行器需要的层级数
+constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
+
 // ! 已经编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2ReduceScatterSequenceExecutor()
@@ -61,8 +65,8 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     HCCL_DEBUG("[InsV2ReduceScatterSequenceExecutor]CalcRes start");
     // 初始化一些基本成员变量
     InitCommInfo(param, topoInfo, algHierarchyInfo);
-    if (algHierarchyInfo.infos.size() != 2) {
-        HCCL_ERROR("algHierarchyInfo size should be 2");
+    if (algHierarchyInfo.infos.size() != SEQUENCE_EXECUTOR_LEVEL_NUM) {
+        HCCL_ERROR("algHierarchyInfo size should be %u", SEQUENCE_EXECUTOR_LEVEL_NUM);
         return HCCL_E_INTERNAL;
     }
     HCCL_INFO("algHierarchyInfo.infos[0][0] size is %u", algHierarchyInfo.infos[0][0].size());
@@ -80,7 +84,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     resourceRequest.notifyNumPerThread = std::max(resReqInter.notifyNumPerThread, resReqIntra.notifyNumPerThread);
     resourceRequest.notifyNumOnMainThread = std::max(resReqInter.notifyNumOnMainThread, resReqIntra.notifyNumOnMainThread);
     HCCL_INFO("notifyNumOnMainThread is %u", resourceRequest.notifyNumOnMainThread);
-    resourceRequest.channels.resize(2);
+    resourceRequest.channels.resize(SEQUENCE_EXECUTOR_LEVEL_NUM);
     resourceRequest.channels[0] = resReqInter.channels[0];
     resourceRequest.channels[1] = resReqIntra.channels[0];
     HCCL_INFO("level 1 chanel size [%u], level 2 channel size [%u]",

@@ -88,12 +88,10 @@ HcclResult CcuTempScatterNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm, 
 }
 
 HcclResult CcuTempScatterNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm,
-                                                          const std::vector<HcclChannelDesc> &channelDescs,
                                                           std::vector<NHRStepInfo> &stepInfoVector,
                                                           std::map<u32, u32> &rank2ChannelIdx, u32 enableDieNum,
                                                           std::vector<std::vector<HcclChannelDesc>> &channelsPerDie)
 {
-    
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     for (u32 step = 0; step < nSteps; step++) {
         NHRStepInfo stepInfo;
@@ -143,7 +141,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &par
     uint32_t enableDieNum = 0;
     CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
 
-    if (enableDieNum < 1 || enableDieNum > 2) {
+    if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) { // 目前只支持1个或2个die
         HCCL_ERROR("[CcuTempScatterNHR1DMem2Mem::CalcRes] get channelDescs fail");
         return HcclResult::HCCL_E_INTERNAL;
     }
@@ -162,7 +160,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &par
     std::map<u32, u32> rank2ChannelIdx;
     std::vector<NHRStepInfo> stepInfoVector;
 
-    CHK_RET(ProcessNHRStepInfo(comm, channelDescs, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    CHK_RET(ProcessNHRStepInfo(comm,  stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
 
     // 3.构造kernelInfo
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
@@ -333,12 +331,13 @@ HcclResult CcuTempScatterNHR1DMem2Mem::GetStepInfo(u32 step, u32 nSteps, NHRStep
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempScatterNHR1DMem2Mem::GetThreadNum()
+u64 CcuTempScatterNHR1DMem2Mem::GetThreadNum() const
 {
-    return 2;
+    constexpr uint32_t KERNEL_NUM_2 = 2;
+    return KERNEL_NUM_2;
 }
 
-HcclResult CcuTempScatterNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempScatterNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);

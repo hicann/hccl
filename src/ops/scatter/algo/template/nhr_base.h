@@ -40,7 +40,7 @@ public:
 protected:
     void ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32> &tree, std::vector<u32> &tmp);
 
-    u32 GetStepNumInterServer(u32 rankSize);
+    u32 GetStepNumInterServer(u32 rankSize) const;
 
     std::vector<u32> sliceMap_;
 

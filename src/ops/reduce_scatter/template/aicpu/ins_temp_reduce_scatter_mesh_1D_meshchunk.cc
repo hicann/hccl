@@ -97,7 +97,7 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::KernelRun(const OpParam& param,
 
 HcclResult InsTempReduceScatterMesh1DMeshChunk::PreCopy(
     const TemplateDataParams &tempAlgParams,
-    const std::vector<ThreadHandle> &threads)
+    const std::vector<ThreadHandle> &threads) const
 {
     HCCL_INFO("[InsTempReduceScatterMesh1DMeshChunk][PreCopy], copy from userIn to scratch");
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {

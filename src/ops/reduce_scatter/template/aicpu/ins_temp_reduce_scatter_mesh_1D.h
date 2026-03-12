@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_REDUCE_SCATTER_MESH_1D_H
 #define INS_TEMP_REDUCE_SCATTER_MESH_1D_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_v2_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -37,9 +36,9 @@ public:
                          const TemplateResource& templateResource) override;
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                         AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
     HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads); 
     
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;

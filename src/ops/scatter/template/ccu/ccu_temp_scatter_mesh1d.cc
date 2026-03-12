@@ -124,7 +124,7 @@ u64 CcuTempScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType 
     return 0;
 }
 
-u64 CcuTempScatterMesh1D::GetThreadNum()
+u64 CcuTempScatterMesh1D::GetThreadNum() const
 {
     return 1;
 }

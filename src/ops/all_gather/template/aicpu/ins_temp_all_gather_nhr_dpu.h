@@ -42,10 +42,10 @@ public:
                             const std::vector<std::vector<uint32_t>>& subCommRanks) override;
 
 private:
-    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo);
-    u32 GetRankFromMap(const uint32_t rankIdx);
+    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo) const;
+    u32 GetRankFromMap(const uint32_t rankIdx) const;
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
-    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels);
+    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels) const;
     HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override {}
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override {}

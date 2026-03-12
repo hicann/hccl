@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_ALL_REDUCE_1D_MESH_TWO_SHOT
 #define INS_TEMP_ALL_REDUCE_1D_MESH_TWO_SHOT
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -43,8 +42,8 @@ public:
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
-    u64 GetThreadNum() override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
+    u64 GetThreadNum() const override;
 
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;

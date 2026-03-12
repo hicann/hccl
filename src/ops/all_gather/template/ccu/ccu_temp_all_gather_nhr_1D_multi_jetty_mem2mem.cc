@@ -217,12 +217,12 @@ u64 CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcScratchMultiple(BufferType inBuf
     return 0;
 }
 
-u64 CcuTempAllGatherNHR1DMultiJettyMem2Mem::GetThreadNum()
+u64 CcuTempAllGatherNHR1DMultiJettyMem2Mem::GetThreadNum() const
 {
     return 1;
 }
 
-HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::GetRes(AlgResourceRequest &resourceRequest)
+HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::GetRes(AlgResourceRequest &resourceRequest) const
 {
     resourceRequest.notifyNumOnMainThread = 0;
     resourceRequest.slaveThreadNum = 0;

@@ -19,6 +19,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(HcclComm comm,
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void) comm;
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataType_ = param.DataDes.dataType;

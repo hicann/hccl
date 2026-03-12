@@ -33,14 +33,14 @@ public:
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
                          const TemplateResource& templateResource) override;
-    u64 GetThreadNum() override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override; 
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 private:
-    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo);
-    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
+    HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const;
+    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
+    HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector,
                                   std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
                                   std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);

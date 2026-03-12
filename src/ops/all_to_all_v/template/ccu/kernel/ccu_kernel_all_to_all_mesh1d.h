@@ -74,7 +74,7 @@ public:
     CcuKernelAlltoAllMesh1D(const hcomm::CcuKernelArg &arg);
     ~CcuKernelAlltoAllMesh1D() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
 
 private:
@@ -108,7 +108,6 @@ private:
     void DoAlltoAll();
     void LocalCopyByLoopGroup(hcomm::CcuRep::LocalAddr dst, hcomm::CcuRep::LocalAddr src);
     void CreateLocalCopyLoop();
-
 };
 
 }// namespace ops_hccl

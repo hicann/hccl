@@ -36,12 +36,12 @@ HcclResult HcclAlltoAllVC(const void *sendBuf, const void *sendCountMatrix, Hccl
 #endif
 
 namespace ops_hccl {
-HcclResult CheckAlltoAllInputPara(HcclComm comm, const void *sendBuf, uint64_t sendCount, HcclDataType sendType,
-    const void *recvBuf, uint64_t recvCount, HcclDataType recvType);
-HcclResult CheckAlltoAllVInputPara(HcclComm comm, const void *sendBuf, const void *sendCounts, const void *sdispls,
-    HcclDataType sendType, const void *recvBuf, const void *recvCounts, const void *rdispls, HcclDataType recvType);
-HcclResult CheckAlltoAllVCInputPara(HcclComm comm, const void *sendBuf, const void *sendCountMatrix,
-    HcclDataType sendType, const void *recvBuf, HcclDataType recvType);
+HcclResult CheckAlltoAllInputPara(const HcclComm comm, const void *sendBuf, uint64_t sendCount, const HcclDataType sendType,
+    const void *recvBuf, const uint64_t recvCount, const HcclDataType recvType);
+HcclResult CheckAlltoAllVInputPara(const HcclComm comm, const void *sendBuf, const void *sendCounts, const void *sdispls,
+    const HcclDataType sendType, const void *recvBuf, const void *recvCounts, const void *rdispls, const HcclDataType recvType);
+HcclResult CheckAlltoAllVCInputPara(const HcclComm comm, const void *sendBuf, const void *sendCountMatrix,
+    const HcclDataType sendType, const void *recvBuf, const HcclDataType recvType);
 HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const void *sdispls, const void *recvBuf,
     const void *recvCounts, const void *rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream,
     const std::string &tag, HcclCMDType opType, u32 rankSize);

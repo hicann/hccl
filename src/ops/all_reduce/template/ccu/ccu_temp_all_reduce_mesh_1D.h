@@ -37,7 +37,7 @@ public:
 private:
     HcclResult CalcSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec);
     HcclResult CheckCcuDataType() const;
-    uint64_t RoundUp(uint64_t dividend, uint64_t divisor);
+    uint64_t RoundUp(uint64_t dividend, uint64_t divisor) const;
     HcclDataType outputDataType_;
     HcclCMDType opType_;
     uint32_t mySubCommRank_ = 0;

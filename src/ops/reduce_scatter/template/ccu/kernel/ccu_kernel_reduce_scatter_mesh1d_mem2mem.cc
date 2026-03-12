@@ -72,7 +72,6 @@ HcclResult CcuKernelReduceScatterMesh1DMem2Mem::InitResource()
             CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
             token_.push_back(tokenVar);
             channelIdx++;
-
         }
     }
     output_                      = CreateVariable();

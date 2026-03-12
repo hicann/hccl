@@ -66,7 +66,7 @@ public:
     CcuKernelBroadcastMesh1D(const hcomm::CcuKernelArg &arg);
     ~CcuKernelBroadcastMesh1D() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
 
 private:
@@ -76,12 +76,12 @@ private:
     void PostSync();
     void BroadcastFromRootToAll();
 
-    uint64_t rankSize_{0};
     uint32_t rankId_{0};
     uint32_t rootId_{0};
+    uint64_t rankSize_{0};
+    std::vector<ChannelHandle> channels_;
     HcclDataType dataType_;
     HcclDataType outputDataType_;
-    std::vector<ChannelHandle> channels_;
     hcomm::CcuRep::Variable input_;
     std::vector<hcomm::CcuRep::Variable> output_;
     std::vector<hcomm::CcuRep::Variable> token_;

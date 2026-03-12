@@ -31,7 +31,7 @@ HcclResult InsTempAllGatherNHR::CalcRes(HcclComm comm, const OpParam &param, con
     HCCL_WARNING("Resource calculation is temporarily not performed in the template.");
     return HCCL_SUCCESS;
 }
-HcclResult InsTempAllGatherNHR::GetRes(AlgResourceRequest &resourceRequest)
+HcclResult InsTempAllGatherNHR::GetRes(AlgResourceRequest &resourceRequest) const
 {
     // NHR算法主需要一条主流
     resourceRequest.slaveThreadNum = 0;
@@ -39,7 +39,7 @@ HcclResult InsTempAllGatherNHR::GetRes(AlgResourceRequest &resourceRequest)
     resourceRequest.notifyNumOnMainThread = 0;  // 没有从流
     return HCCL_SUCCESS;
 }
-u64 InsTempAllGatherNHR::GetThreadNum()
+u64 InsTempAllGatherNHR::GetThreadNum() const
 {
     return 1;
 }
@@ -129,7 +129,7 @@ HcclResult InsTempAllGatherNHR::RunAllGatherNHR(const std::vector<ThreadHandle> 
     }
     return HcclResult::HCCL_SUCCESS;
 }
-u32 InsTempAllGatherNHR::GetRankFromMap(const u32 algRankIdx)
+u32 InsTempAllGatherNHR::GetRankFromMap(const u32 algRankIdx) const
 {
     return subCommRanks_[0].at(algRankIdx);
 }

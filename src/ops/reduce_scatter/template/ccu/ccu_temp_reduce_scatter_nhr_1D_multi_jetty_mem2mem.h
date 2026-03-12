@@ -38,8 +38,8 @@ public:
                          const TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
 protected: 
     u32 GetNhrStepNum(u32 rankSize) const;

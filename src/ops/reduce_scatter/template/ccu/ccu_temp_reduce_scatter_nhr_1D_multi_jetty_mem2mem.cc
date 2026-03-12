@@ -83,7 +83,7 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes(HcclComm comm, co
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetRes(AlgResourceRequest& resourceRequest) const
 {
     // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;
@@ -222,7 +222,7 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetStepInfo(u32 step, NHR
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetThreadNum()
+u64 CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetThreadNum() const
 {
     return 1;
 }

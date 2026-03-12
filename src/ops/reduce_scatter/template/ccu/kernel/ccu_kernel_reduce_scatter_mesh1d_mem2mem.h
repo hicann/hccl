@@ -97,7 +97,6 @@ private:
         GroupOpSize goSize, HcclDataType dataType, HcclDataType outputDataType, HcclReduceOp opType);
  
     const std::string LOOP_BLOCK_TAG{"_local_copy_reduce_loop_"};
- 
 
     uint64_t rankSize_{0};
     uint32_t rankId_{0};

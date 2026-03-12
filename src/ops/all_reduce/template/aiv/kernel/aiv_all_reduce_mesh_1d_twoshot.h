@@ -223,8 +223,7 @@ __aicore__ inline void SmallCoreAllgather()
         CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, rankChunkSize);
         pipe_barrier(PIPE_ALL);
     }
-}
- 
+} 
 };
  
 /*

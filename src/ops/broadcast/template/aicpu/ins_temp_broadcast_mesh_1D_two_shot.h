@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_BROADCAST_MESH_1D_TWO_SHOT_H
 #define INS_TEMP_BROADCAST_MESH_1D_TWO_SHOT_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -38,15 +37,15 @@ public:
                          const TemplateResource& templateResource) override;
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, 
                        AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest &resourceReques) override;
+    HcclResult GetRes(AlgResourceRequest &resourceReques) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
     void SetRoot(u32 root);
 
 private:
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
     HcclResult CalcCommRankSetforScatter(const u32 groupRankSize, std::vector<u32> &commRanks) const;
     HcclResult CalcCommRankSetforAllGather(const u32 groupRankSize, std::vector<u32> &commRanks) const;
     HcclResult RunScatter(const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams,
@@ -58,11 +57,10 @@ private:
     HcclResult RankRecvData(const u64 memOffset, const u32 remoteRank, const TemplateDataParams &tempAlgParams,
             const std::vector<ThreadHandle> &threads, const u32 id, const std::map<u32, std::vector<ChannelInfo>> &channels, const RankSliceInfo &sliceInfoVec) const;
     
-    HcclResult CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
 
     u64 dataTypeSize_{0};
     std::map<u32, u32> tempVirtRankMap_;
-    
 };
 
 } // namespace Hccl

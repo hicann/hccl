@@ -23,14 +23,14 @@ namespace ops_hccl {
 class InsV2BatchSendRecvExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BatchSendRecvExecutor();
-    ~InsV2BatchSendRecvExecutor() = default;
+    ~InsV2BatchSendRecvExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 
     HcclResult CalcRes(HcclComm comm, const OpParam& param,
         const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         AlgResourceRequest& resourceRequest) override;
-    
+
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
@@ -73,8 +73,8 @@ private:
     HcclResult RunLoopSendRecv();
 
     static constexpr u32 channelNumPerRankPair_ = 2;
-    const HcclSendRecvItem* itemPtr_;
-    HcclMem cclMem_;
+    const HcclSendRecvItem* itemPtr_ = nullptr;
+    HcclMem cclMem_{HCCL_MEM_TYPE_DEVICE, nullptr, 0};
     u32 itemNum_ = 0;
     u64 maxRoundTransferSize_ = 0; // 单轮最多能够传输的size
     std::set<u32> commTargetUserRankSet_; // 所有需要通信的remoteRank ID集合

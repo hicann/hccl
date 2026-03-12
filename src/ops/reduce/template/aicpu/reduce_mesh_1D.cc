@@ -21,8 +21,9 @@ ReduceMesh1D::ReduceMesh1D(const OpParam &param,
 ReduceMesh1D::~ReduceMesh1D()
 {}
 
-void ReduceMesh1D::SetRoot(u32 root)
+void ReduceMesh1D::SetRoot(u32 root) const
 {
+    (void)root;
     return;
 }
 
@@ -269,7 +270,7 @@ void ReduceMesh1D::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
     std::iota(notifyIdxSubToMain.begin(), notifyIdxSubToMain.end(), 0);
 }
 
-u64 ReduceMesh1D::GetThreadNum()
+u64 ReduceMesh1D::GetThreadNum() const
 {
     return templateRankSize_;
 }

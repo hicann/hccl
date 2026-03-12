@@ -69,7 +69,7 @@ public:
     CcuKernelAllGatherMesh1D(const hcomm::CcuKernelArg &arg);
     ~CcuKernelAllGatherMesh1D() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
 
 private:

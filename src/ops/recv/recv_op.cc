@@ -77,7 +77,7 @@ HcclResult HcclRecv(
 }
 
 namespace ops_hccl {
-    HcclResult CheckRecvInputPara(HcclComm comm, const void *recvBuf) {
+    HcclResult CheckRecvInputPara(const HcclComm comm, const void *recvBuf) {
         // 入参合法性校验
         RPT_INPUT_ERR(
             comm == nullptr,

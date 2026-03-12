@@ -47,7 +47,7 @@ u64 InsTempAllReduceMesh1DOneShot::CalcScratchMultiple(BufferType inBuffType, Bu
     return scratchMultiple;
 }
 
-HcclResult InsTempAllReduceMesh1DOneShot::CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec)
+HcclResult InsTempAllReduceMesh1DOneShot::CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec) const
 {
     std::vector<SliceInfo> tmp(1);
     sliceInfoVec.resize(templateRankSize_, tmp);

@@ -36,7 +36,7 @@ HcclResult InsTempBroadcastNHR::CalcRes(HcclComm comm, const OpParam& param, con
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::GetRes(AlgResourceRequest &resourceRequest)
+HcclResult InsTempBroadcastNHR::GetRes(AlgResourceRequest &resourceRequest) const
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -55,16 +55,15 @@ u64 InsTempBroadcastNHR::CalcScratchMultiple(BufferType inBuffType, BufferType o
     return scratchMultiple;
 }
 
-u64 InsTempBroadcastNHR::GetThreadNum()
+u64 InsTempBroadcastNHR::GetThreadNum() const
 {
     u32 threadNum = 1;
     return threadNum;
 }
 
 // SliceInfoVec for NHR
-HcclResult InsTempBroadcastNHR::CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec)
+HcclResult InsTempBroadcastNHR::CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec) const
 {
-
     sliceInfoVec.clear();
     sliceInfoVec.resize(templateRankSize_);
     u64 chunkSize = RoundUp(dataSize, (templateRankSize_ * dataTypeSize_)) * dataTypeSize_;
@@ -94,8 +93,6 @@ HcclResult InsTempBroadcastNHR::PostCopy(const TemplateDataParams &tempAlgParams
         DataSlice usrInSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, inOffset, tempAlgParams.sliceSize, tempAlgParams.count);
         DataSlice usrOutSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.outBuffBaseOff,
                     tempAlgParams.sliceSize, tempAlgParams.count);
-
-
         CHK_RET(LocalCopy(threads[0], usrInSlice, usrOutSlice));
     } else {
         HCCL_INFO("[InsTempBroadcastNHR][PostCopy] Offload Model, skip postcopy");
@@ -363,7 +360,6 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
 HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
     const RankSliceInfo &sliceInfoVec, u64 memOffset)const
 {
-
     const ChannelInfo &linkSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
     const ChannelInfo &linkRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
     TxRxChannels linkSendRecv = {linkSend, linkRecv};
@@ -416,15 +412,10 @@ HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDa
     }
     RankSliceInfo sliceInfoVec;
     CHK_RET(CalcDataSliceInfo(tempAlgParams.sliceSize, sliceInfoVec));
-
     threadNum_ = templateResource.threads.size();
-
-
     HCCL_INFO("[InsTempBroadcastNHR Run]RankID:[%d], root:[%u]", myRank_, root_);
 
     CHK_RET(PreCopy(tempAlgParams, templateResource.threads));
-
-
     CHK_RET(RunScatter(sliceInfoVec, templateResource.channels, templateResource.threads));
     CHK_RET(RunAllGather(sliceInfoVec, templateResource.channels, templateResource.threads));
     CHK_RET(PostCopy(tempAlgParams, templateResource.threads));

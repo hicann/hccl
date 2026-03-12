@@ -86,7 +86,9 @@ HcclResult HcclReduceScatterV(void *sendBuf,  const void *sendCounts, const void
 }
 
 namespace ops_hccl {
-HcclResult CheckReduceScatterVInputPara(HcclComm comm, void *sendBuf, void *recvBuf, const void *sendCounts, const void *sendDispls, aclrtStream stream)
+HcclResult CheckReduceScatterVInputPara(
+    const HcclComm comm, const void *sendBuf, const void *recvBuf, 
+    const void *sendCounts, const void *sendDispls, const aclrtStream stream)
 {
     // 入参合法性校验
     RPT_INPUT_ERR(stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),\

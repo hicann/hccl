@@ -11,7 +11,6 @@
 #ifndef HCCLV2_INS_TEMP_ALL_REDUCE_MESH_1D_ONE_SHOT
 #define HCCLV2_INS_TEMP_ALL_REDUCE_MESH_1D_ONE_SHOT
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -43,10 +42,10 @@ public:
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 
 private:
-    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
     HcclResult RunAllReduce(const std::map<u32, std::vector<ChannelInfo>> &channels,
                             const std::vector<ThreadHandle> &threads,
-                            const TemplateDataParams &tempAlgParam,
+                            const TemplateDataParams &tempAlgParams,
                             const RankSliceInfo &sliceInfoVec);
     u64 processSize_{0};
     u64 count_{0};

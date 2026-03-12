@@ -15,7 +15,7 @@ namespace ops_hccl {
 constexpr u64 RS_2D_SMALL_DATA_SIZE = 1024 * 1024;
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 
-SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
 {
@@ -56,7 +56,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(TopoInfoWithNetLayerDe
     }
 }
 
-SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     std::string &selectAlgName) const
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -99,11 +99,11 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgo(TopoInfoWithNetLayerDet
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                    OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                    const OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
-{
+{   
     // ccu 模式不支持 PROD
     CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
         HCCL_WARNING("[Algo][ReduceScatterAutoSelector] ReduceOp[%d] is not supported yet for ccu schedule mode.",
@@ -186,8 +186,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(TopoInfoWithNetL
 }
 
 
-SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                      OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                      const OpParam &opParam,
                                                       const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                       std::string &selectAlgName) const
 {
@@ -224,67 +224,26 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(TopoInfoWithNetLayerDe
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpu(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpu(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                           std::string &selectAlgName) const
 {
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D){
-        if (Is64BitDataType(opParam.DataDes.dataType)) {
-            selectAlgName = "InsReduceScatterAicpuReduce";
+        if (Is64BitDataType(opParam.DataDes.dataType) || dataSize < LARGE_COUNT_1024KB) {
+            selectAlgName = "InsReduceScatterMesh1D";
         } else {
-            u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-            u64 dataSize = opParam.DataDes.count * perDataSize;
-            if (dataSize >= LARGE_COUNT_1024KB) {
-                selectAlgName = "InsReduceScatterMesh1DMeshChunk";
-            } else {
-                selectAlgName = "InsReduceScatterMesh1D";
-            }
+            selectAlgName = "InsReduceScatterMesh1DMeshChunk";
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        if (Is64BitDataType(opParam.DataDes.dataType) ||
-            opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
+        if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
             HCCL_WARNING("[ReduceScatterAutoSelector] topo not match");
             return SelectorStatus::NOT_MATCH;
         } else {
             selectAlgName = "InsReduceScatterNHR";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-        u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        u64 dataSize = opParam.DataDes.count * perDataSize;
-        bool isClosNumMultipleOfMeshNum = false;
-        CHK_PRT_RET(CheckClosNumMultipleOfMeshNum(topoInfo, isClosNumMultipleOfMeshNum) != HCCL_SUCCESS,
-            HCCL_ERROR("[Algo][ReduceScatterAutoSelector] CheckClosNumMultipleOfMeshNum failed."), SelectorStatus::NOT_MATCH);
-        if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
-            if (Is64BitDataType(opParam.DataDes.dataType) ||
-                opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                selectAlgName = "InsReduceScatterAicpuReduce";
-            } else if (!IsSmallData(dataSize)) {
-                selectAlgName = "InsReduceScatterConcurrentMeshNHR";
-            } else {
-                double ratio; // 以8卡为基线确定ratio，用来表示不同卡数对下发的影响系数
-                if (topoInfo->userRankSize == 0) {
-                    HCCL_WARNING("[ReduceScatterAutoSelector]the selector is not set RankSize_]");
-                    ratio = 1;
-                } else {
-                    ratio = (8.0 / topoInfo->userRankSize) * (8.0 / topoInfo->userRankSize);
-                }
-                if (dataSize * ratio > LARGE_COUNT_1024KB) {
-                    selectAlgName = "InsReduceScatterMesh1DMeshChunk";
-                } else {
-                    selectAlgName = "InsReduceScatterMesh1D";
-                }
-            }
-        } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
-            selectAlgName = "InsReduceScatterParallelMesh1DNHR";
-        } else {
-            if (Is64BitDataType(opParam.DataDes.dataType) ||
-                opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                HCCL_ERROR("[SelectAicpuAlgo] INT64, UINT64, FP64, PROD only support in-box fullmesh algo type now.");
-                return SelectorStatus::NOT_MATCH;
-            } else {
-                selectAlgName = "InsReduceScatterNHR";
-            }
-        }
+        return SelectMeshAlgoAicpuMeshClos(topoInfo, opParam, selectAlgName);
     } else {
         HCCL_WARNING("[ReduceScatterAutoSelector] topo not match");
         return SelectorStatus::NOT_MATCH;
@@ -292,7 +251,49 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpu(TopoInfoWithNetLay
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDetails* topoInfo, OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuMeshClos(const TopoInfoWithNetLayerDetails* topoInfo,
+    const OpParam &opParam, std::string &selectAlgName) const
+{
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+    bool isClosNumMultipleOfMeshNum = false;
+    CHK_PRT_RET(CheckClosNumMultipleOfMeshNum(topoInfo, isClosNumMultipleOfMeshNum) != HCCL_SUCCESS,
+        HCCL_ERROR("[Algo][ReduceScatterAutoSelector] CheckClosNumMultipleOfMeshNum failed."), SelectorStatus::NOT_MATCH);
+    if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+        // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
+        if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
+            selectAlgName = "InsReduceScatterAicpuReduce";
+        } else if (!IsSmallData(dataSize)) {
+            selectAlgName = "InsReduceScatterConcurrentMeshNHR";
+        } else {
+            double ratio; // 以8卡为基线确定ratio，用来表示不同卡数对下发的影响系数
+            if (topoInfo->userRankSize == 0) {
+                HCCL_WARNING("[ReduceScatterAutoSelector]the selector is not set RankSize_]");
+                ratio = 1;
+            } else {
+                ratio = (DEFAULT_RANK_SIZE / topoInfo->userRankSize) * (DEFAULT_RANK_SIZE / topoInfo->userRankSize);
+            }
+            if (dataSize * ratio > LARGE_COUNT_1024KB) {
+                selectAlgName = "InsReduceScatterMesh1DMeshChunk";
+            } else {
+                selectAlgName = "InsReduceScatterMesh1D";
+            }
+        }
+    } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
+        selectAlgName = "InsReduceScatterParallelMesh1DNHR";
+    } else {
+        if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
+            HCCL_ERROR("[SelectAicpuAlgo] INT64, UINT64, FP64, PROD only support in-box fullmesh algo type now.");
+            return SelectorStatus::NOT_MATCH;
+        } else {
+            selectAlgName = "InsReduceScatterNHR";
+        }
+    }
+    HCCL_DEBUG("[ReduceScatterAutoSelector] selectAlgName: %s", selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
+SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                        const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                        std::string &selectAlgName) const
 {
@@ -326,8 +327,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(TopoInfoWithNetLayerDeta
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(TopoInfoWithNetLayerDetails* topoInfo,
-                                                        OpParam &opParam,
+SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                        const OpParam &opParam,
                                                         const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                         std::string &selectAlgName) const
 {

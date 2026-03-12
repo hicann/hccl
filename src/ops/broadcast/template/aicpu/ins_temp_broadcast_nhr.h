@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_BROADCAST_NHR_H
 #define INS_TEMP_BROADCAST_NHR_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -38,9 +37,9 @@ public:
                          const TemplateResource& templateResource) override;
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                         AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest &resourceReques) override;
+    HcclResult GetRes(AlgResourceRequest &resourceReques) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
     void SetRoot(u32 root);
@@ -63,7 +62,7 @@ private:
     HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
         const RankSliceInfo &sliceInfoVec, u64 memOffset) const;
     u32 GetRankFromMap(const u32 rankIdx) const;
-    HcclResult CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
     u64 dataTypeSize_{0};
     std::map<u32, u32> tempVirtRankMap_;
 };

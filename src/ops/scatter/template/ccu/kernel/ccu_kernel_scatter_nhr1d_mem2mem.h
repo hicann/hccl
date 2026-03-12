@@ -210,7 +210,6 @@ private:
     CcuRep::Variable repeatNumVar_;                    // 重复次数变量
     CcuRep::Variable isOutputScratch_;                // 输出是否使用scratch buffer变量
 
-
     // 临时变量
     CcuRep::Variable repeatNumVarTemp_;                // 临时重复次数变量
     CcuRep::Variable repeatTimeflag_;                 // 重复时间标志

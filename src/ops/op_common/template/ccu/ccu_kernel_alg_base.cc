@@ -18,6 +18,7 @@ HcclResult CcuKernelAlgBase::LocalReduceNb(const std::vector<CcuRep::CcuBuf> &bu
                      HcclDataType outputDataType, HcclReduceOp opType,
                      const CcuRep::Variable &len, CcuRep::CompletedEvent event)
 {
+    (void)count;
     return CcuKernel::LocalReduceNb(bufs.data(), bufs.size(), dataType, outputDataType, opType, len, event);
 }
 
@@ -118,7 +119,8 @@ HcclResult CcuKernelAlgBase::CreateMultiOpBroadcast(const std::vector<ChannelHan
         return HCCL_SUCCESS;
     }
 
-    uint32_t size = channels.size() + 1;
+    uint32_t channelSize = channels.size();
+    uint32_t size = channelSize + 1;
 
     for (uint32_t index = 0; index < 2; index++) { // 需要实现化2个Loop
         CcuRep::LocalAddr src = CreateLocalAddr();
@@ -146,7 +148,7 @@ HcclResult CcuKernelAlgBase::CreateMultiOpBroadcast(const std::vector<ChannelHan
             CHK_RET(WriteNb(channels[i], dst[i], buf, len, event));
         }
         CcuRep::LocalAddr &localDst = *reinterpret_cast<CcuRep::LocalAddr*>(&dst[size - 1]);
-        event.mask = 1 << (size - 1);
+        event.mask = 1 << channelSize;
         LocalCopyNb(localDst, buf, len, event);
         event.mask = (1 << size) - 1;
         WaitEvent(event);
@@ -221,7 +223,8 @@ HcclResult CcuKernelAlgBase::CreateMultiOpReduce(const std::vector<ChannelHandle
         return HCCL_SUCCESS;
     }
 
-    uint32_t size         = channels.size() + 1;
+    uint32_t channelSize = channels.size();
+    uint32_t size = channelSize + 1;
     uint32_t expansionNum = GetReduceExpansionNum(opType, dataType, outputDataType);
     uint32_t usedBufNum   = size > expansionNum ? size : expansionNum;
 
@@ -247,7 +250,7 @@ HcclResult CcuKernelAlgBase::CreateMultiOpReduce(const std::vector<ChannelHandle
         }
 
         CcuRep::LocalAddr &localSrc = *reinterpret_cast<CcuRep::LocalAddr*>(&src[size - 1]);
-        event.mask = 1 << (size - 1);
+        event.mask = 1 << channelSize;
         LocalCopyNb(bufs[size - 1], localSrc, len, event);
         event.mask = (1 << size) - 1;
         WaitEvent(event);
@@ -357,7 +360,6 @@ HcclResult CcuKernelAlgBase::GroupReduce(const std::vector<ChannelHandle> &chann
         offsetCfg = GetOffsetParam(moConfig.memSlice, moConfig.msInterleave, 1);
 
         LoopGroup({lc}, {loopParam}, paraCfg, offsetCfg);
-
     }
 
     // 第二个loopgroup，包含1或2个loop，搬运n和p部分数据。

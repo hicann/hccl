@@ -80,14 +80,14 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         // 还原变长指针
         HcclResult ret = HCCL_SUCCESS;
         if (param->opType == HCCL_CMD_BATCH_SEND_RECV) {
-            ret = RestoreVarDataBatchSendRecv(*param);
+            ret = ops_hccl::RestoreVarDataBatchSendRecv(*param);
         } else if (param->opType == HCCL_CMD_ALLTOALLV || param->opType == HCCL_CMD_ALLTOALLVC ||
                    param->opType == HCCL_CMD_ALLTOALL) {
-            ret = RestoreVarDataAlltoAllV(*param, resCtx);
+            ret = ops_hccl::RestoreVarDataAlltoAllV(*param, resCtx);
         } else if (param->opType == HCCL_CMD_REDUCE_SCATTER_V) {
-            ret = RestoreVarDataReduceScatterV(*param, resCtx);
+            ret = ops_hccl::RestoreVarDataReduceScatterV(*param, resCtx);
         } else if (param->opType == HCCL_CMD_ALLGATHER_V) {
-            ret = RestoreVarDataAllGatherV(*param, resCtx);
+            ret = ops_hccl::RestoreVarDataAllGatherV(*param, resCtx);
         }
         if (ret != HCCL_SUCCESS) {
             HCCL_ERROR("failed to restore optype [%d] data and counts.", param->opType);
@@ -218,7 +218,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
     return 0;
 }
 
-HcclResult RestoreVarDataBatchSendRecv(OpParam &param)
+HcclResult ops_hccl::RestoreVarDataBatchSendRecv(OpParam &param)
 {
     u64 sendRecvItemSize = static_cast<u64>(sizeof(HcclSendRecvItem));
     u64 itemNum = static_cast<u64>(param.batchSendRecvDataDes.itemNum);
@@ -234,7 +234,7 @@ HcclResult RestoreVarDataBatchSendRecv(OpParam &param)
     return HCCL_SUCCESS;
 }
 
-HcclResult RestoreVarDataAlltoAllV(OpParam &param, AlgResourceCtxSerializable &resCtx)
+HcclResult ops_hccl::RestoreVarDataAlltoAllV(OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
     CHK_PRT_RET(param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64),
@@ -246,16 +246,21 @@ HcclResult RestoreVarDataAlltoAllV(OpParam &param, AlgResourceCtxSerializable &r
             sizeof(u64)),
         HCCL_E_PARA);
 
+    constexpr u32 ALL_TO_ALL_V_OFFSET_SCOUNTS = 0;
+    constexpr u32 ALL_TO_ALL_V_OFFSET_RECV_COUNTS = 1;
+    constexpr u32 ALL_TO_ALL_V_OFFSET_SDISPLS = 2;
+    constexpr u32 ALL_TO_ALL_V_OFFSET_RDISPLS = 3;
+
     u64 *data = reinterpret_cast<u64 *>(param.varData);
     param.all2AllVDataDes.sendCounts = data;
-    param.all2AllVDataDes.recvCounts = data + rankSize;
-    param.all2AllVDataDes.sdispls = data + 2 * rankSize;
-    param.all2AllVDataDes.rdispls = data + 3 * rankSize;
+    param.all2AllVDataDes.recvCounts = data + ALL_TO_ALL_V_OFFSET_RECV_COUNTS * rankSize;
+    param.all2AllVDataDes.sdispls = data + ALL_TO_ALL_V_OFFSET_SDISPLS * rankSize;
+    param.all2AllVDataDes.rdispls = data + ALL_TO_ALL_V_OFFSET_RDISPLS * rankSize;
 
     return HCCL_SUCCESS;
 }
 
-HcclResult RestoreVarDataReduceScatterV(OpParam &param, AlgResourceCtxSerializable &resCtx)
+HcclResult ops_hccl::RestoreVarDataReduceScatterV(OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
     HCCL_INFO("rankSize:%u", rankSize);
@@ -274,7 +279,7 @@ HcclResult RestoreVarDataReduceScatterV(OpParam &param, AlgResourceCtxSerializab
     return HCCL_SUCCESS;
 }
 
-HcclResult RestoreVarDataAllGatherV(OpParam &param, AlgResourceCtxSerializable &resCtx)
+HcclResult ops_hccl::RestoreVarDataAllGatherV(OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
     HCCL_INFO("rankSize:%u", rankSize);

@@ -69,7 +69,7 @@ HcclResult InsAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, cons
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult InsAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult InsAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest) const
 {
     (void)resourceRequest;
     HCCL_ERROR("[InsAlgTemplateBase] Unsupported interface of resource calculation!");
@@ -81,7 +81,7 @@ u64 InsAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType ou
     return 0;
 }
 
-u64 InsAlgTemplateBase::GetThreadNum()
+u64 InsAlgTemplateBase::GetThreadNum() const
 {
     return 0;
 }

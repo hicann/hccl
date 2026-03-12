@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_ALL_GATHER_NHR_H
 #define INS_TEMP_ALL_GATHER_NHR_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 
@@ -34,10 +33,10 @@ public:
                          const TemplateResource &templateResource) override;
     HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                        AlgResourceRequest &resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest &resourceReques) override;
+    HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainnToSub) override {};
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override{};
 private:
@@ -47,7 +46,7 @@ private:
     HcclResult PostLocalCopy(const std::vector<ThreadHandle> &threads);
     HcclResult RunAllGatherNHR(const std::vector<ThreadHandle> &threads,
                                const std::map<u32, std::vector<ChannelInfo>> &channels);
-    u32 GetRankFromMap(u32 algRankId);
+    u32 GetRankFromMap(const u32 algRankIdx) const;
     TemplateDataParams tempAlgParams_;
 };
 

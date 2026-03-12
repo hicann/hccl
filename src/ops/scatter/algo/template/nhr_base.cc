@@ -93,7 +93,7 @@ void NHRBase::ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32> &tre
 }
 
 // NHR的算法步数
-u32 NHRBase::GetStepNumInterServer(u32 rankSize)
+u32 NHRBase::GetStepNumInterServer(u32 rankSize) const
 {
     u32 nSteps = 0;
     for (u32 tmp = rankSize - 1; tmp != 0; tmp >>= 1, nSteps++) {

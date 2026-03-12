@@ -76,7 +76,7 @@ HcclResult HcclSend(
 }
 
 namespace ops_hccl {
-    HcclResult CheckSendInputPara(HcclComm comm, const void *sendBuf) {
+    HcclResult CheckSendInputPara(const HcclComm comm, const void *sendBuf) {
         // 入参合法性校验
         RPT_INPUT_ERR(
             comm == nullptr,

@@ -11,7 +11,6 @@
 #ifndef AIV_TEMP_REDUCE_MESH_1D
 #define AIV_TEMP_REDUCE_MESH_1D
 
-#include <cstring>
 #include "aiv_alg_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"

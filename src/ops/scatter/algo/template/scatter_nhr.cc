@@ -68,7 +68,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo)
+HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const
 {
     if (channelRight.isValid) {
         CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK)));

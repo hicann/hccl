@@ -95,7 +95,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
     bool isResourceReused = false;
 
     ThreadHandle cpuTsThread;
-    ThreadHandle exportedAicpuTsThread;
+    ThreadHandle exportedAicpuTsThread{0};
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
         // Export cpuTsThread
@@ -330,7 +330,7 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::shared_ptr<InsCollA
         CHK_RET(GetAlgResAICPU(comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence,
                                size, increCreateChannelFlag));
     } else if (param.engine == COMM_ENGINE_AIV) {
-        CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence, size));
+        CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence));
     } else if (param.engine == COMM_ENGINE_CCU) {
         CHK_RET(GetAlgResCcu(comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size));
     } else {
@@ -576,13 +576,12 @@ HcclResult HcclAllocAlgResourceCcu(HcclComm comm, const OpParam& param, AlgResou
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
     CHK_RET(HcclGetThread(comm, param, resRequest, resCtxHost));
-    CHK_RET(HcclGetChannelForCcu(comm, param, resRequest, resCtxHost));
-    CHK_RET(HcclGetCcuKernel(comm, param, resRequest, resCtxHost));
+    CHK_RET(HcclGetChannelForCcu(comm, param, resRequest));
+    CHK_RET(HcclGetCcuKernel(comm, resRequest, resCtxHost));
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest,
-                          std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
+HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest)
 {
     // 以kernel为粒度申请channel
     for (CcuKernelInfo& kernelInfo: resRequest.ccuKernelInfos) {
@@ -602,7 +601,7 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam &param, AlgResource
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest,
+HcclResult HcclGetCcuKernel(HcclComm comm, AlgResourceRequest &resRequest,
                           std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
 {
     
@@ -643,7 +642,7 @@ HcclResult HcclGetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceRequ
 }
 
 HcclResult GetAlgResAiv(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest, TopoInfoWithNetLayerDetails *topoInfo,
-    AlgHierarchyInfoForAllLevel &algHierarchyInfo, void **resCtxSequence, uint64_t& ctxSize)
+    AlgHierarchyInfoForAllLevel &algHierarchyInfo, void **resCtxSequence)
 {
     uint64_t size = sizeof(AlgResourceCtxSerializable);
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, size, resCtxSequence));

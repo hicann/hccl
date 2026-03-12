@@ -95,7 +95,7 @@ public:
     CcuKernelBroadcastNhr1DMem2Mem(const CcuKernelArg &arg);
     ~CcuKernelBroadcastNhr1DMem2Mem() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
 
 private:
@@ -113,14 +113,14 @@ private:
     // 构造函数
     uint32_t rankId_{0};
     uint32_t axisId_{0};
-    uint32_t dimSize_{0};
     uint32_t axisSize_{0};
-    uint32_t localSize_{0};
-    uint32_t myRankIdx_{0};
-    HcclDataType dataType_;
+    uint32_t dimSize_{0};
     std::vector<NHRStepInfo> stepInfoVector_;
     std::map<u32, u32> rank2ChannelIdx_;
+    uint32_t localSize_{0};
+    uint32_t myRankIdx_{0};
     std::vector<ChannelHandle> channels_;
+    HcclDataType dataType_;
 
     // load进来参数
     CcuRep::Variable input_;

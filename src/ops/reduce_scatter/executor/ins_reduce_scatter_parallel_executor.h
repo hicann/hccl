@@ -59,9 +59,9 @@ private:
     void GenTemplateAlgParamsInter0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAixs0, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter0) const;
     void GenTemplateAlgParamsInter1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAixs1, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter1) const;
     void GetParallelDataSplit(std::vector<float> &splitDataSize) const;
-    HcclResult PrepareResForTemplate(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);
-    uint64_t GetRankSize(const std::vector<std::vector<u32>> &subCommRanks);
+    HcclResult PrepareResForTemplate(const AlgResourceCtxSerializable &resCtx,
+        const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter);
+    uint64_t GetRankSize(const std::vector<std::vector<u32>> &subCommRanks) const;
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};
@@ -69,7 +69,7 @@ private:
     uint64_t rankIdxLevel0_{0};
     uint64_t rankIdxLevel1_{0};
 
-    ThreadHandle              controlThread_;
+    ThreadHandle              controlThread_{0};
     std::vector<ThreadHandle> templateMainThreads_;
     std::vector<u32>          notifyIdxControlToTemplates_;
     std::vector<u32>          notifyIdxTemplatesToControl_;

@@ -29,11 +29,11 @@ public:
         return "Topo Match for Mesh Algorithm (CURRENTLY only 910_95 is supported).";
     }
 
-    HcclResult MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& AlgHierarchyInfoExector) override;
+    HcclResult MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
 
 private:
-    u32 myRank_;
-    std::vector<u32> rankIds_; // virtualTopoRank
+    u32 myRank_{0};
+    std::vector<u32> rankIds_;
 };
 } // namespace Hccl
 

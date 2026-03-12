@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_REDUCE_SCATTER_NHR_H
 #define INS_TEMP_REDUCE_SCATTER_NHR_H
 
-#include <cstring>
 #include "alg_v2_template_base.h"
 #include "executor_v2_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -33,15 +32,15 @@ public:
 
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest)  override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& tempAlgParams,
                          const TemplateResource& templateResource) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum() override;
+    u64 GetThreadNum() const override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub);
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain);
+    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 private:
     HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList);
     HcclResult LocalDataCopy(const std::vector<ThreadHandle> &threads);

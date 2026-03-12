@@ -44,8 +44,8 @@ HcclResult AivTempAllGatherMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
 HcclResult AivTempAllGatherMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
     (void) dataSize;
-    // numBlocks = numBlocksLimit;
-    numBlocks = 4;
+    constexpr u32 NUM_BLOCKS_FOUR = 4;
+    numBlocks = NUM_BLOCKS_FOUR;
     HCCL_INFO("[AivTempAllGatherMesh1D] Actually use core num[%u]", numBlocks);
     return HcclResult::HCCL_SUCCESS;
 }

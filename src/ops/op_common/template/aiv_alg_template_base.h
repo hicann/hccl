@@ -14,7 +14,6 @@
 #include <memory>
 #include <map>
 #include <vector>
-#include <cstring>
 #include <list>
 #include "alg_template_base.h"
 #include "alg_param.h"

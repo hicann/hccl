@@ -93,7 +93,7 @@ public:
     CcuKernelReduceNHR1DMem2Mem(const hcomm::CcuKernelArg &arg);
     ~CcuKernelReduceNHR1DMem2Mem() override {}
 
-    HcclResult Algorithm();
+    HcclResult Algorithm() override;
     std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
 
 private:

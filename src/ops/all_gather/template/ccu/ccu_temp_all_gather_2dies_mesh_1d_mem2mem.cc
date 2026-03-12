@@ -124,11 +124,11 @@ u64 CcuTempAllGather2DiesMeshMem2Mem1D::CalcScratchMultiple(BufferType inBuffTyp
     return 1;
 }
 
-u64 CcuTempAllGather2DiesMeshMem2Mem1D::GetThreadNum()
+u64 CcuTempAllGather2DiesMeshMem2Mem1D::GetThreadNum() const
 {
     return 2;
 }
-HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumOnMainThread = 1;

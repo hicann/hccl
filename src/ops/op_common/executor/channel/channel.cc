@@ -74,7 +74,7 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 
     // level1走rdma的几种条件：A2单机A+X开启switch；A2多机；A3开启disableHccs；A3跨超卡数不一致
     bool isA2UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910B && (topoInfo->serverNum > 1 ||
-        (topoInfo->serverNum == 1 && topoInfo->isDiffDeviceModule && GetExternalInputIntraRoceSwitch()));
+        (topoInfo->serverNum == 1 && topoInfo->isDiffDeviceModule && GetExternalInputIntraRoceSwitch() > 0));
     bool isA3UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910_93 &&
         ((topoInfo->superPodNum > 1 && (topoInfo->multiSuperPodDiffServerNumMode || topoInfo->multiModuleDiffDeviceNumMode)) ||
         (topoInfo->superPodNum == 1 && topoInfo->serverNum > 1 && GetExternalInputInterHccsDisable()));
@@ -128,9 +128,10 @@ HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 }
 
 HcclResult CalcChannelRequestMesh1D(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-    std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc> &channels)
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc> &channels)
 {
 #ifndef AICPU_COMPILE
+    (void) param;
     channels.clear();
     auto it = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), topoInfo->userRank); 
     CHK_PRT_RET((it == subcommInfo[COMM_LEVEL0].end()),
@@ -189,7 +190,7 @@ HcclResult CalcChannelRequestMesh2D(HcclComm comm, const OpParam& param, const T
     u32 myRank = topoInfo->userRank; // 全局rankId
 
     std::set<u32> connectRanks;
-    if (subcommInfo.size() == 2) {
+    if (subcommInfo.size() == 2) { // 2D Mesh
         CHK_RET(CalcMesh2DChannelConnect(myRank, subcommInfo, connectRanks));
     }
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
@@ -235,6 +236,7 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam& param, const Topo
     std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc> &channels)
 {
 #ifndef AICPU_COMPILE
+    (void) param;
     channels.clear();
     std::set<u32> connectRanks;
     u32 myRank = topoInfo->userRank; // 全局rankId

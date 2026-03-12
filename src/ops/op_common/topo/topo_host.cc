@@ -26,6 +26,8 @@ constexpr u32 FACTOR_NUM_TWO = 2;
 constexpr s32 DEVICE_PER_MODULE = 8;
 constexpr uint32_t NET_LAYER_NUM_TWO = 2;
 constexpr uint32_t NET_LAYER_NUM_THREE = 3;
+constexpr u32 DEVICE_NO_HCCS_LINK_COUNT = 2; // 设备没有与自身和通过同一SIO链路连接的companion设备的HCCS_SW链路
+constexpr u32 TOPO_INST_NUM_MESH_1D_CLOS = 2; // MESH_1D_CLOS拓扑类型的实例数量
 
 namespace ops_hccl {
 
@@ -187,7 +189,7 @@ HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo)
 }
 
 /* 用于标识集群中是否存在A2 A+X形态 */
-bool IsDiffDeviceModule(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter)
+bool IsDiffDeviceModule(const TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter)
 {
     bool isDiffMeshAggregation = false;
     if (topoInfo->deviceType != DevType::DEV_TYPE_910B || topoInfo->userRankSize == 0) {
@@ -229,9 +231,8 @@ HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &
     if (hccsSWNum == 0 || sioNum == 0) {
         topoInfo->isHCCSSWNumEqualToTwiceSIONum = false;
     } else {
-        // The following 2 means that the device has no HCCS_SW link with itself and its companion linked by same SIO link.
         topoInfo->isHCCSSWNumEqualToTwiceSIONum =
-            (hccsSWNum == (topoInfo->deviceNumPerModule - 2) * topoInfo->deviceNumPerModule) &&
+            (hccsSWNum == (topoInfo->deviceNumPerModule - DEVICE_NO_HCCS_LINK_COUNT) * topoInfo->deviceNumPerModule) &&
            (sioNum == topoInfo->deviceNumPerModule);
     }
     return HCCL_SUCCESS;
@@ -328,7 +329,7 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
 }
 
 // 获取当前服务器的startRank
-uint32_t GetCurrentServerStartRank(HcclComm comm, TopoInfo* topoInfo)
+uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo)
 {
     uint32_t rankListNum = 0;
     uint32_t *rankSizeList = nullptr;
@@ -345,7 +346,7 @@ uint32_t GetCurrentServerStartRank(HcclComm comm, TopoInfo* topoInfo)
 }
 
 // 获取当前服务器的EndRank
-uint32_t GetCurrentServerEndRank(HcclComm comm, TopoInfo* topoInfo)
+uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo)
 {
     uint32_t rankListNum = 0;
     uint32_t *rankSizeList = nullptr;
@@ -433,7 +434,7 @@ HcclResult GetModuleIdx(HcclComm comm, TopoInfo* topoInfo)
     return HCCL_SUCCESS;
 }
 
-HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, TopoInfo* topoInfo, uint32_t &moduleIdx)
+HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topoInfo, uint32_t &moduleIdx)
 {
     uint32_t rankServerIdx = 0;
     uint32_t accumulatedRanks = 0;
@@ -545,6 +546,7 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
 
 HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
+    static_cast<void>(comm);
     u32 netLayer = 0;
     CHK_PRT_RET(topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
         HCCL_ERROR("[BaseSelector][CalcLevel0TopoShape] topoInstNumOfLayer size[%u] <= netLayer[%u]", netLayer),
@@ -576,7 +578,7 @@ HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoI
             HCCL_E_INTERNAL);
         topoInfo->level0Topo = Level0Shape::CLOS;
         return HCCL_SUCCESS;
-    } else if (topoInstNum == 2 && rankNumForTopoType[CommTopo::COMM_TOPO_CLOS].size() == 1 &&
+    } else if (topoInstNum == TOPO_INST_NUM_MESH_1D_CLOS && rankNumForTopoType[CommTopo::COMM_TOPO_CLOS].size() == 1 &&
                rankNumForTopoType[CommTopo::COMM_TOPO_1DMESH].size() == 1) {
         // MESH_1D_CLOS 拓扑校验
         CHK_PRT_RET(rankNumForTopoType[CommTopo::COMM_TOPO_CLOS][0] != level0LocalRankSize,

@@ -26,7 +26,7 @@ constexpr u32 HCCL_RETRY_ENABLE_LEVEL_1 = 1;        // HCCL 重执行层级1
 constexpr u32 HCCL_RETRY_ENABLE_LEVEL_2 = 2;        // HCCL 重执行层级2
 constexpr u32 HCCL_RETRY_ENABLE_LEVEL_NUM = 3;     // HCCL 重执行层级最多3级
 
-using DeterministicEnableLevel = enum {
+enum class DeterministicEnableLevel {
     DETERMINISTIC_DISABLE = 0,          // 不支持确定性
     DETERMINISTIC_ENABLE,               // 支持确定性，不支持规约保序
     DETERMINISTIC_STRICT                // 支持确定性以及规约保序
@@ -58,7 +58,7 @@ struct AlgEnvConfig {
         interHccsDisable = false;
         enableEntryLog = false;
         intraRoceSwitch = 0;     // server内的通信方式 与intraPcieSwitch组合使用，默认为0
-        hcclDeterministic = DETERMINISTIC_DISABLE;// 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
+        hcclDeterministic = static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_DISABLE);// 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
         enableFfts = true;
         // 环境变量参数
         for (u32 opType = 0; opType < static_cast<u32>(HcclCMDType::HCCL_CMD_MAX); opType++) {

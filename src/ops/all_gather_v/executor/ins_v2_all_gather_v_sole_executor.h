@@ -28,7 +28,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 class InsV2AllGatherVSoleExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllGatherVSoleExecutor();
-    ~InsV2AllGatherVSoleExecutor() = default;
+    ~InsV2AllGatherVSoleExecutor() override = default;
  
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
  

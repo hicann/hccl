@@ -15,12 +15,13 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
+
+constexpr uint32_t CCU_DIE_NUM_MAX_2 = 2;
+
 class CcuAlgTemplateBase {
 public:
     explicit CcuAlgTemplateBase();
     explicit CcuAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                const std::vector<std::vector<u32>> &subCommRanks);
-    virtual void InitCcuAlgTemplate(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
                                 const std::vector<std::vector<u32>> &subCommRanks);
 
     virtual ~CcuAlgTemplateBase();
@@ -33,27 +34,27 @@ public:
                                  const TemplateDataParams& templateDataParams,
                                  const TemplateResource& templateResource);
                                  
-    virtual HcclResult GetRes(AlgResourceRequest& resourceRequest);
-    virtual u64 GetThreadNum();
+    virtual HcclResult GetRes(AlgResourceRequest& resourceRequest) const;
+    virtual u64 GetThreadNum() const;
 
     virtual u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType);
 
-    uint64_t PointerToAddr(void* pointer);
+    uint64_t PointerToAddr(void* pointer) const;
 
-    HcclResult GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc, uint32_t& dieId);
+    HcclResult GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc, uint32_t& dieId) const;
 
 protected:
-    OpMode                        opMode_;              // 单算子还是图模式
-    u32                           root_         = 0;    // 一般是scatter、broadcast需要
-    u32                           myRank_       = INVALID_VALUE_RANKID;
-    u32                           templateRankSize_ = 0;
+    OpMode          opMode_             = OpMode::OPBASE;
+    u32             myRank_             = INVALID_VALUE_RANKID;
+    u32             root_               = 0;
+    u32             templateRankSize_   = 0;
+    uint64_t        scratchBufferSize_  = 0;
+    HcclDataType    dataType_           = HcclDataType::HCCL_DATA_TYPE_RESERVED;
+    HcclReduceOp    reduceOp_           = HcclReduceOp::HCCL_REDUCE_RESERVED;
+    BuffInfo        buffInfo_{};
     std::vector<std::vector<u32>> subCommRanks_;
-    BuffInfo buffInfo_;
-    HcclReduceOp reduceOp_;
-    HcclDataType dataType_;
-    uint64_t scratchBufferSize_ = 0;
     HcclResult RestoreChannelMap(const std::vector<HcclChannelDesc>& channelDescs,
-                                 std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc);
+                                 std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc) const;
 };
 }
 #endif // HCCLV2_CCU_ALG_TEMPLATE_BASE

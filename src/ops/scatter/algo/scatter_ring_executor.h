@@ -34,7 +34,7 @@ private:
         const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcomCollOpInfo *opInfo,
         const u64 baseOffset);
     HcclResult MutliSegSlicePrepare(const std::vector<Slice> &dataSegsSlice, u32 ringNum,
-        std::vector<std::vector<Slice>> &mutliSegsSlices);
+        std::vector<std::vector<Slice>> &mutliSegsSlices) const;
     HcclResult PrepareMultiRingSlice(const std::vector<Slice> &dataSegsSlice, u32 &ringNum,
         std::vector<std::vector<Slice>> &mutliRingsSlices, std::vector<std::vector<u32>> &rankOrders);
 

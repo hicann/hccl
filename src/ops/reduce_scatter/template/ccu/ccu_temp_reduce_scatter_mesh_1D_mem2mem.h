@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_1D_MEM2MEM_H
 #define HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_1D_MEM2MEM_H
 
+#include "utils.h"
 #include "ccu_alg_template_base.h"
 
 namespace ops_hccl {
@@ -31,13 +32,11 @@ public:
 
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
-
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
                          const TemplateResource& templateResource) override;
-    u64 GetThreadNum() override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
-
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:

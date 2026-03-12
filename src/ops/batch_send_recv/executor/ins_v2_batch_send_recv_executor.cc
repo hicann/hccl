@@ -313,7 +313,6 @@ HcclResult InsV2BatchSendRecvExecutor::GetRecvChannel(u32 remoteRank, ChannelInf
 HcclResult InsV2BatchSendRecvExecutor::ProcessSendDataSlice(SendRecvSlice& sendSlice, ThreadHandle& thread) const
 {
     // 数据从input mem copy到CCL buffer上
-    void* cclBufferPtr = static_cast<void*>(cclMem_.addr);
     DataSlice srcSlice(sendSlice.addr_, 0, sendSlice.size_);
     DataSlice dstSlice(cclMem_.addr, 0, sendSlice.size_);
     CHK_RET(LocalCopy(thread, srcSlice, dstSlice));

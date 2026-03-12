@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D
 #define HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D
 
+#include "utils.h"
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_reduce_scatter_nhr1d_mem2mem.h"
 
@@ -35,8 +36,8 @@ public:
                          const TemplateDataParams& templateDataParams,
                          const TemplateResource& templateResource) override;
                          
-    u64 GetThreadNum() override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) override;
+    u64 GetThreadNum() const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:
@@ -44,7 +45,7 @@ private:
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetStepInfo(u32 step, NHRStepInfo &stepInfo);
-    HcclResult ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
+    HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
     HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,

@@ -299,7 +299,6 @@ std::vector<uint64_t> CcuKernelAllGatherNHR1DMem2Mem::GeneArgs(const CcuTaskArg 
             die0Size,           die1Size,          repeatNum,
             inputSliceStride,   outputSliceStride, inputRepeatStride,
             outputRepeatStride, isInputOutputEqual};
-
 }
 
 } // namespace ops_hccl

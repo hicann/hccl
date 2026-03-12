@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_SCATTER_MESH_1D__H
 #define HCCL_CCU_TEMP_SCATTER_MESH_1D__H
 
+#include "utils.h"
 #include "ccu_alg_template_base.h"
 
 namespace ops_hccl {
@@ -35,7 +36,7 @@ public:
                          const TemplateResource &templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    u64 GetThreadNum();
+    u64 GetThreadNum() const override;
     void SetRoot(u32 root);
 
 private:

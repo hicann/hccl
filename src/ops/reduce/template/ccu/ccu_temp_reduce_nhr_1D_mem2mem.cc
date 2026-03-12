@@ -65,7 +65,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm, u
     }
 }
 
-HcclResult CcuTempReduceNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs,
+HcclResult CcuTempReduceNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm,
                                                          std::vector<NHRStepInfo>& stepInfoVector,
                                                          std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
                                                          std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
@@ -127,7 +127,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& para
     uint32_t enableDieNum = 0;
     CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
     
-    if (enableDieNum < 1 || enableDieNum > 2) {
+    if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) { // 目前只支持1个或2个die
         HCCL_ERROR("[CcuTempReduceNHR1DMem2Mem::CalcRes] get channelDescs fail");
         return HcclResult::HCCL_E_INTERNAL;
     }
@@ -146,7 +146,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& para
     std::map<u32, u32> rank2ChannelIdx;
     std::vector<NHRStepInfo> stepInfoVector;
     
-    CHK_RET(ProcessNHRStepInfo(comm, channelDescs, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
 
     // 3.构造kernelInfo
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
@@ -202,7 +202,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& param,
  * 输入的 dataSize 是一张卡上完整的数据量
  * 函数会将 dataSize 切分成 rankSize 份，最后一份尾块可能会比其他的切分出来的子块大。
  */
-HcclResult CcuTempReduceNHR1DMem2Mem::CalcSliceInfoAllReduce(const u64 dataSize, RankSliceInfo &sliceInfoVec)
+HcclResult CcuTempReduceNHR1DMem2Mem::CalcSliceInfoAllReduce(const u64 dataSize, RankSliceInfo &sliceInfoVec) const
 {
     sliceInfoVec.clear();
     sliceInfoVec.resize(templateRankSize_);
@@ -286,7 +286,6 @@ HcclResult CcuTempReduceNHR1DMem2Mem::KernelRun(const OpParam& param,
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     }
 
-
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
         if ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0)) {
             continue;
@@ -325,7 +324,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetStepInfo(u32 step, u32 nSteps, NHRStepI
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempReduceNHR1DMem2Mem::GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo)
+HcclResult CcuTempReduceNHR1DMem2Mem::GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const
 {
     u32 virtRankIdx = mySubCommRank_;
     stepInfo.txSliceIdxs.clear();
@@ -394,12 +393,12 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetAllGatherStepInfo(u32 step, u32 nSteps,
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempReduceNHR1DMem2Mem::GetThreadNum()
+u64 CcuTempReduceNHR1DMem2Mem::GetThreadNum() const
 {
     return 2;
 }
 
-HcclResult CcuTempReduceNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempReduceNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
