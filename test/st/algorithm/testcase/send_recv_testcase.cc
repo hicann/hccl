@@ -62,7 +62,7 @@ std::unordered_set<RankId> GetRankIds(const std::map<RankId, RankId> &sendRecvMa
 enum class SendRecvOpType {
     SEND = 0,
     RECV = 1,
-}
+};
 
 HcclResult RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType opType, u32 dataCount, HcclDataType dataType) {
     // 1.SetDevice
@@ -150,7 +150,7 @@ void SendRecvTest(
 
     // 资源清理
     SimWorld::Global()->Deinit();
-};
+}
 
 // 2卡1机100个int32
 TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_test) {
