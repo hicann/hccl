@@ -118,7 +118,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
             HCCL_INFO("[Algo][%s] TWO_DIE_NOT_REGULAR not match", __func__);
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuAllGatherMeshMem2Mem1D";
+            selectAlgName = "CcuAllGatherMesh1DMem2Mem";
         }
         return SelectorStatus::MATCH;
     } else if (isDefaultOrFullMesh && (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS)) {
