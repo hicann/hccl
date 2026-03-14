@@ -19,7 +19,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-HcclResult __attribute__((weak)) HcommThreadJoin(ThreadHandle thread, uint32_t timeout);
+int32_t __attribute__((weak)) HcommThreadJoin(ThreadHandle thread, uint32_t timeout);
 #ifdef __cplusplus
 }
 #endif
