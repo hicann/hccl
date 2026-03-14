@@ -20,7 +20,7 @@ namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate> class InsV2AlltoAllVSoleExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AlltoAllVSoleExecutor();
-    ~InsV2AlltoAllVSoleExecutor() = default;
+    ~InsV2AlltoAllVSoleExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 

@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_
 #define HCCL_CCU_TEMP_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_
 
+#include "utils.h"
 #include "alg_param.h"
 #include "ccu_alg_template_base.h"
 
@@ -39,7 +40,7 @@ public:
 
     void SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo);
 
-    HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty);
+    HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const;
 
 private:
     A2ASendRecvInfo localSendRecvInfo_;

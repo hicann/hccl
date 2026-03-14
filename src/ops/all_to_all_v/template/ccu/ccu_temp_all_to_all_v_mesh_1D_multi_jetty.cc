@@ -96,7 +96,7 @@ void CcuTempAllToAllVMesh1DMultiJetty::SetA2ASendRecvInfo(const A2ASendRecvInfo 
     localSendRecvInfo_ = sendRecvInfo;
 }
 
-HcclResult CcuTempAllToAllVMesh1DMultiJetty::SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty)
+HcclResult CcuTempAllToAllVMesh1DMultiJetty::SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const
 {
     jettyNums.resize(templateRankSize_, 0);
     for (int i = 0; i < templateRankSize_; i++) {

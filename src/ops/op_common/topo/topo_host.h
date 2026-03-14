@@ -18,7 +18,6 @@
 #include "hccl_rank_graph.h"
 #include "hccl_res.h"
 
-using namespace ops_hccl;
 namespace ops_hccl {
 
 constexpr s32 DEVICE_PER_MODULE_A2 = 8;
@@ -90,7 +89,7 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
 
 HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
-HcclResult ExtractNetLayerDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
+HcclResult ExtractNetLayerDetails(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 

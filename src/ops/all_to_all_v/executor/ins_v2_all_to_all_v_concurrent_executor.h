@@ -20,7 +20,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2AllToAllVConcurrentExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllToAllVConcurrentExecutor();
-    ~InsV2AllToAllVConcurrentExecutor() = default;
+    ~InsV2AllToAllVConcurrentExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 
@@ -35,9 +35,9 @@ public:
 
 protected:
     HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
-    HcclResult GetAlltoAllLocalSendRecvInfo(const OpParam &param, A2ASendRecvInfo &localSendRecvInfo);
+    HcclResult SetAlltoAllLocalSendRecvInfo(const OpParam &param);
     HcclResult SplitA2ASendRecvInfo(A2ASendRecvInfo &sendRecvInfoFirst, A2ASendRecvInfo &sendRecvInfoLast);
-    HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty);
+    HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const;
     A2ASendRecvInfo localSendRecvInfo_;
 };
 }

@@ -35,7 +35,7 @@ public:
 private:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-                               InsAlgTemplate0 &algTemplateMesh, InsAlgTemplate1 &algTemplateNhr);
+                               InsAlgTemplate0 &algTemplate0, InsAlgTemplate1 &algTemplate1);
 
     HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
                             const AlgHierarchyInfoForAllLevel &algHierarchyInfo);

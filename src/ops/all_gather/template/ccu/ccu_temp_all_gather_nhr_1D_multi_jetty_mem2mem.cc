@@ -92,7 +92,7 @@ HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcRes(HcclComm comm, const 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcNHRInfo(std::vector<NHRStepInfo> &stepInfoVector)
+HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcNHRInfo(std::vector<NHRStepInfo> &stepInfoVector) const
 {
     u32 nSteps = GetNHRStepNum(tempRankSize_);
     for (u32 step = 0; step < nSteps; step++) {

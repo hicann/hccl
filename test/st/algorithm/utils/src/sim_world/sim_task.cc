@@ -11,7 +11,6 @@
 #include <sstream>
 #include "sim_task.h"
 
-
 namespace HcclSim {
 
 std::string TaskStubLocalCopy::Describe() const

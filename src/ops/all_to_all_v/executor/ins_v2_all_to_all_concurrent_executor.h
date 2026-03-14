@@ -22,7 +22,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2AllToAllConcurrentExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllToAllConcurrentExecutor();
-    ~InsV2AllToAllConcurrentExecutor() = default;
+    ~InsV2AllToAllConcurrentExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
 
@@ -53,17 +53,17 @@ private:
         std::vector<u64> rdispls;
     };
 
-    HcclResult SetTemplateDataParams(TemplateDataParams &tempAlgParams, const SendRecvData &splitData,u32 loop,
-        u64 currDataCount, u64 processedDataCount, u64 maxDataCountPerLoop);
+    HcclResult SetTemplateDataParams(TemplateDataParams &tempAlgParams, const SendRecvData &splitData, u32 loop,
+        u64 currDataCount, u64 processedDataCount, u64 maxDataCountPerLoop) const;
     HcclResult FillTemplateResource(const OpParam &param, const AlgResourceCtxSerializable& resCtx,
         TemplateResource& templateAlgRes, uint32_t index);
     HcclResult InitTemplateDataParams(const OpParam &param, const AlgResourceCtxSerializable& resCtx,
-        TemplateDataParams& tempAlgParams);
+        TemplateDataParams& tempAlgParams) const;
     HcclResult RestoreSendRecvData(const OpParam &param);
     HcclResult SplitSendRecvData(std::vector<SendRecvData>& splitData);
-    HcclResult GetMaxSendRecvDataCount(u64& maxSendRecvDataCount, const SendRecvData& splitData);
+    HcclResult GetMaxSendRecvDataCount(u64& maxSendRecvDataCount, const SendRecvData& splitData) const;
     HcclResult CalcMaxDataCountPerLoop(const OpParam &param, const std::vector<u64> scratchMulti,
-        std::vector<u64>& maxDataCountPerLoop);
+        std::vector<u64>& maxDataCountPerLoop) const;
 
     std::vector<u64> sendCounts_;
     std::vector<u64> recvCounts_;

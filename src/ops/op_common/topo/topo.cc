@@ -60,7 +60,7 @@ u32 CalGCD(std::vector<u32> &nums)
 }
 
 /* 针对A2对称拓扑通用的拓扑信息获取方式，支持A+X */
-HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
+HcclResult CalcGeneralTopoInfoForA2(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
     (void) comm;
     algHierarchyInfo.levels = 2;
@@ -75,7 +75,7 @@ HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, const TopoInfo* topoInfo, Alg
 }
 
 /* 针对A3对称拓扑通用的拓扑信息获取方式 */
-HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
+HcclResult CalcGeneralTopoInfoForA3(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
     (void) comm;
     algHierarchyInfo.levels = 3;
@@ -99,7 +99,7 @@ HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, const TopoInfo* topoInfo, Alg
 }
 
 /* 针对非对称场景打平拓扑通用的拓扑信息获取方式 */
-HcclResult CalcGeneralTopoInfoForComm(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
+HcclResult CalcGeneralTopoInfoForComm(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
     (void) comm;
     algHierarchyInfo.levels = 2;

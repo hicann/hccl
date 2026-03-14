@@ -615,7 +615,6 @@ void TaskCheckOpSemantics::AddChildrenToQueue(TaskNode *node, std::set<TaskNode 
     return;
 }
 
-
 HcclResult TaskCheckOpSemantics::GenMemSemantics()
 {
     std::set<TaskNode *>   visitedNodes;
@@ -656,7 +655,6 @@ HcclResult TaskCheckOpSemantics::GenMemSemantics()
 
     return HcclResult::HCCL_SUCCESS;
 }
-
 
 HcclResult TaskCheckOpSemantics::Execute()
 {

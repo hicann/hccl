@@ -20,7 +20,7 @@ AlgTemplateRegistry &AlgTemplateRegistry::Instance()
 
 AlgTemplateRegistry::AlgTemplateRegistry()
 {
-    tempCreators_.resize(TemplateType::TEMPLATE_CUSTOM_MAX_NUM, nullptr);
+    tempCreators_.resize(static_cast<size_t>(TemplateType::TEMPLATE_CUSTOM_MAX_NUM), nullptr);
 }
 
 HcclResult AlgTemplateRegistry::Register(const TemplateType type, const AlgTemplateCreator &algTemplateCreator)
@@ -32,11 +32,11 @@ HcclResult AlgTemplateRegistry::Register(const TemplateType type, const AlgTempl
     }
 
     const std::lock_guard<std::mutex> lock(mu_);
-    if (tempCreators_[type] != nullptr) {
+    if (tempCreators_[static_cast<size_t>(type)] != nullptr) {
         HCCL_ERROR("[AlgTemplateRegistry]template type[%d] already registered.", type);
         return HcclResult::HCCL_E_INTERNAL;
     }
-    tempCreators_[type] = algTemplateCreator;
+    tempCreators_[static_cast<size_t>(type)] = algTemplateCreator;
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -48,12 +48,12 @@ std::unique_ptr<AlgTemplateBase> AlgTemplateRegistry::GetAlgTemplate(const Templ
         return nullptr;
     }
 
-    if (tempCreators_[type] == nullptr) {
+    if (tempCreators_[static_cast<size_t>(type)] == nullptr) {
         HCCL_DEBUG("[AlgTemplateRegistry]Creator for template type[%d] has not registered.", type);
         return nullptr;
     }
     HCCL_DEBUG("[AlgTemplateRegistry][GetAlgTemplate]get template by type[%d]", type);
-    return std::unique_ptr<AlgTemplateBase>(tempCreators_[type]());
+    return std::unique_ptr<AlgTemplateBase>(tempCreators_[static_cast<size_t>(type)]());
 }
 
 }

@@ -120,5 +120,4 @@ HcclResult TaskCheckAll2AllSemantics(std::map<RankId, RankMemorySemantics> &allR
     return HcclResult::HCCL_SUCCESS;
 }
 
-
 } // namespace checker

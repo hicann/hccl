@@ -19,7 +19,6 @@
 #include "ccu_temp_reduce_scatter_nhr_1D_multi_jetty_mem2mem.h"
 #endif
 
-
 namespace ops_hccl {
 
 // 并行执行器中两个 template 算法所需的 notify 数量
@@ -239,6 +238,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::PrepareResForTemplate(
     const AlgResourceCtxSerializable &resCtx, const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter)
 {
+    (void) resCtx;
     u64 intraThreadsNum = tempAlgIntra.GetThreadNum();
     u64 interThreadsNum = tempAlgInter.GetThreadNum();
     intraThreads_.assign(threads_.begin() + 1, threads_.begin() + 1 + intraThreadsNum);

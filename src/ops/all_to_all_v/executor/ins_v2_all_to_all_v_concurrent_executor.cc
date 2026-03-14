@@ -17,6 +17,11 @@
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
+constexpr uint32_t CONST_0 = 0;
+constexpr uint32_t CONST_1 = 1;
+constexpr uint32_t CONST_2 = 2;
+constexpr uint32_t CONST_3 = 3;
+constexpr uint32_t CONST_4 = 4;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllVConcurrentExecutor()
@@ -52,19 +57,19 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlltoAllLocalSendRecvInfo(
-    const OpParam &param, A2ASendRecvInfo &localSendRecvInfo)
+HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SetAlltoAllLocalSendRecvInfo(
+    const OpParam &param)
 {
-    HCCL_DEBUG("[GetAlltoAllLocalSendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
-    localSendRecvInfo.sendCounts.resize(rankSize_, 0);
-    localSendRecvInfo.sendDispls.resize(rankSize_, 0);
-    localSendRecvInfo.sendLength.resize(rankSize_, 0);
-    localSendRecvInfo.sendOffset.resize(rankSize_, 0);
+    HCCL_DEBUG("[SetAlltoAllLocalSendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
+    localSendRecvInfo_.sendCounts.resize(rankSize_, 0);
+    localSendRecvInfo_.sendDispls.resize(rankSize_, 0);
+    localSendRecvInfo_.sendLength.resize(rankSize_, 0);
+    localSendRecvInfo_.sendOffset.resize(rankSize_, 0);
 
-    localSendRecvInfo.recvCounts.resize(rankSize_, 0);
-    localSendRecvInfo.recvDispls.resize(rankSize_, 0);
-    localSendRecvInfo.recvLength.resize(rankSize_, 0);
-    localSendRecvInfo.recvOffset.resize(rankSize_, 0);
+    localSendRecvInfo_.recvCounts.resize(rankSize_, 0);
+    localSendRecvInfo_.recvDispls.resize(rankSize_, 0);
+    localSendRecvInfo_.recvLength.resize(rankSize_, 0);
+    localSendRecvInfo_.recvOffset.resize(rankSize_, 0);
 
     CHK_PRT_RET(param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
     HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] param.varMemSize [%llu] is invalid",
@@ -75,27 +80,27 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         u64 val = i / rankSize_;
         u64 curRank = i % rankSize_;
         switch(val) {
-            case 0:
-                localSendRecvInfo.sendCounts[curRank] = data[i];
-                localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize_;
+            case CONST_0:
+                localSendRecvInfo_.sendCounts[curRank] = data[i];
+                localSendRecvInfo_.sendLength[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 1:
-                localSendRecvInfo.recvCounts[curRank] = data[i];
-                localSendRecvInfo.recvLength[curRank] = data[i] * dataTypeSize_;
+            case CONST_1:
+                localSendRecvInfo_.recvCounts[curRank] = data[i];
+                localSendRecvInfo_.recvLength[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 2:
-                localSendRecvInfo.sendDispls[curRank] = data[i];
-                localSendRecvInfo.sendOffset[curRank] = data[i] * dataTypeSize_;
+            case CONST_2:
+                localSendRecvInfo_.sendDispls[curRank] = data[i];
+                localSendRecvInfo_.sendOffset[curRank] = data[i] * dataTypeSize_;
                 break;
-            case 3:
-                localSendRecvInfo.recvDispls[curRank] = data[i];
-                localSendRecvInfo.recvOffset[curRank] = data[i] * dataTypeSize_;
+            case CONST_3:
+                localSendRecvInfo_.recvDispls[curRank] = data[i];
+                localSendRecvInfo_.recvOffset[curRank] = data[i] * dataTypeSize_;
                 break;
             default:
                 break;
         }
     }
-    HCCL_DEBUG("[GetAlltoAllLocalSendRecvInfo] GetAlltoAllLocalSendRecvInfo success");
+    HCCL_DEBUG("[SetAlltoAllLocalSendRecvInfo] SetAlltoAllLocalSendRecvInfo success");
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -241,7 +246,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SetJettyNums(
-    std::vector<uint32_t>& jettyNums, const bool multijetty)
+    std::vector<uint32_t>& jettyNums, const bool multijetty) const
 {
     jettyNums.resize(rankSize_, 0);
     for (int i = 0; i < rankSize_; i++) {
@@ -280,7 +285,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::shared_ptr<InsAlgTemplate1> algTemplateMesh =
         std::make_shared<InsAlgTemplate1>(param, resCtx.topoInfo.userRank, subCommRanks1);
 
-    CHK_PRT_RET(GetAlltoAllLocalSendRecvInfo(param, localSendRecvInfo_),
+    CHK_PRT_RET(SetAlltoAllLocalSendRecvInfo(param),
         HCCL_ERROR("[InitCommInfo] unable to init DataInfo."),
         HcclResult::HCCL_E_PARA);
 

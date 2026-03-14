@@ -152,7 +152,6 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     return HCCL_SUCCESS;
 }
 
-
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastMesh1DTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D, 
                  InsTempBroadcastMesh1DTwoShot);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,

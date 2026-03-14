@@ -10,7 +10,6 @@
 
 #include "ccu_kernel_reduce_mesh1d.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

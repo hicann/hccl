@@ -77,7 +77,6 @@ HcclResult CcuTempReduceScatterMesh1D::CalcRes(HcclComm comm, const OpParam& par
     return HcclResult::HCCL_SUCCESS;
 }
 
-
 HcclResult CcuTempReduceScatterMesh1D::KernelRun(const OpParam& param,
                                                  const TemplateDataParams& templateDataParams,
                                                  const TemplateResource& templateResource)

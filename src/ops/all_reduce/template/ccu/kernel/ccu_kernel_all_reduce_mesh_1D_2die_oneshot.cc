@@ -178,7 +178,7 @@ void CcuKernelAllreduceMesh1D2DieOneShot::DoRmtReduce()
     HCCL_INFO("[CcuKernelAllreduceMesh1D2DieOneShot] Step1 RmtReduce run finished");
 }
 
-std::string CcuKernelAllreduceMesh1D2DieOneShot::GetLoopBlockTag(std::string loopType, int32_t index)
+std::string CcuKernelAllreduceMesh1D2DieOneShot::GetLoopBlockTag(std::string loopType, int32_t index) const
 {
     return loopType + LOCAL_REDUCE_LOOP_BLOCK_TAG + std::to_string(index);
 }

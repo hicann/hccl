@@ -154,8 +154,7 @@ HcclResult InsV2BatchSendRecvExecutor::GetPairWiseList(const HcclSendRecvItem *s
             recvDeque_.push_back(sendRecvInfo);
         } else {
             HCCL_ERROR("[InsV2BatchSendRecvExecutor][GetPairWiseList] sendRecvType wrong sendrecvType is %d, "\
-                "rankID is %d, remoteRank is %u.", sendRecvInfo->sendRecvType, myRank_,
-                sendRecvInfo->remoteRank);
+                "rankID is %d, remoteRank is %u.", sendRecvInfo->sendRecvType, myRank_, sendRecvInfo->remoteRank);
             return HcclResult::HCCL_E_PARA;
         }
         sendRecvInfo++;
@@ -179,8 +178,7 @@ HcclResult InsV2BatchSendRecvExecutor::GetPairWiseList(const HcclSendRecvItem *s
     std::stable_sort(recvDeque_.begin(), recvDeque_.end(), recvCompare);
 
     // 筛选自收发任务
-    while ((!sendDeque_.empty() && sendDeque_.front()->remoteRank == 
-        static_cast<uint32_t>(myRank_)) &&
+    while ((!sendDeque_.empty() && sendDeque_.front()->remoteRank == static_cast<uint32_t>(myRank_)) &&
         (!recvDeque_.empty() && recvDeque_.front()->remoteRank == static_cast<uint32_t>(myRank_))) {
             sendToSelfDeque_.push_back(sendDeque_.front());
             recvFromSelfDeque_.push_back(recvDeque_.front());

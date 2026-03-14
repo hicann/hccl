@@ -13,6 +13,9 @@
 #include "ins_temp_reduce_nhr_dpu.h"
 
 namespace ops_hccl {
+// 序列执行器需要的层级数
+constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
+
 // ! 已经编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2ReduceSequenceExecutor()
@@ -85,7 +88,7 @@ HcclResult InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     resourceRequest.notifyNumOnMainThread =
         std::max(resReqInter.notifyNumOnMainThread, resReqIntra.notifyNumOnMainThread);
 
-    resourceRequest.channels.resize(2);
+    resourceRequest.channels.resize(SEQUENCE_EXECUTOR_LEVEL_NUM);
     resourceRequest.channels[0] = resReqInter.channels[0];
     resourceRequest.channels[1] = resReqIntra.channels[0];
     return HCCL_SUCCESS;

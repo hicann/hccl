@@ -10,7 +10,6 @@
 #include "ccu_kernel_reduce_scatter_nhr1d_multi_jetty_mem2mem.h"
 #include "ccu_kernel_alg_base.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

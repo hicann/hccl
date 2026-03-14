@@ -215,7 +215,6 @@ TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_5)
     RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
 }
 
-
 TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_6)
 {
     TopoMeta topoMeta {{{0, 1}}};  // 三维数组指定超节点-Server-Device信息

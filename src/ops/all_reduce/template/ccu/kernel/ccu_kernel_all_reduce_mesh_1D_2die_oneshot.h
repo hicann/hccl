@@ -81,7 +81,7 @@ private:
     void PostSync(uint32_t signalIndex);
     void MissionSync(uint32_t maskIndex);
     void DoRmtReduce();
-    std::string GetLoopBlockTag(std::string loopType, int32_t index);
+    std::string GetLoopBlockTag(std::string loopType, int32_t index) const;
     void DoLocalReduce();
     void ReduceLoopGroup(CcuRep::LocalAddr &outDstOrg, std::vector<CcuRep::LocalAddr> &srcOrg,
         GroupOpSize goSize, HcclDataType dataType, HcclDataType outputDataType, HcclReduceOp opType);

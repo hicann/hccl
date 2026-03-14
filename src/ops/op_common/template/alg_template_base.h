@@ -45,7 +45,7 @@ constexpr u32 BEST_SPLIT_VALUE_SR = 87;
 constexpr u32 BEST_SPLIT_VALUE_DR = 90;
 constexpr u64 HCCL_SPLIT_SIZE_INTER_SERVER = 8388608; // 每卡通信量的切分边界
 
-enum TemplateType {
+enum class TemplateType {
     TEMPLATE_SCATTER_MESH = 0,               // ScatterMesh
     TEMPLATE_SCATTER_RING = 1,               // ScatterRing
     TEMPLATE_SCATTER_NB = 2,                 // ScatterNB

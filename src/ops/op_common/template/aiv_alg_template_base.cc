@@ -11,8 +11,6 @@
 #include "aiv_alg_template_base.h"
 
 namespace ops_hccl {
-
-
 AivAlgTemplateBase::AivAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
                                        const std::vector<std::vector<u32>>& subCommRanks):
     opMode_(param.opMode),

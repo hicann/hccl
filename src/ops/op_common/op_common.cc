@@ -939,8 +939,8 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
         } else {
             tmpDataType = param.DataDes.dataType;
         }
-        const char* dataType = HCOM_DATA_TYPE_STR_MAP.at(tmpDataType).c_str();
-        ret = strcat_s(param.algTag, sizeof(param.algTag), dataType);
+        const std::string dataType = HCOM_DATA_TYPE_STR_MAP.at(tmpDataType);
+        ret = strcat_s(param.algTag, sizeof(param.algTag), dataType.c_str());
         if (ret != 0) {
             HCCL_ERROR("failed to fill alg tag with ccu dataType");
             return HcclResult::HCCL_E_INTERNAL;
@@ -950,9 +950,8 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
             param.opType == HcclCMDType::HCCL_CMD_REDUCE ||
             param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
             param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
-            
-            const char* reduceType = HCOM_REDUCE_OP_STR_MAP.at(param.reduceType).c_str();
-            ret = strcat_s(param.algTag, sizeof(param.algTag), reduceType);
+            const std::string reduceType = HCOM_REDUCE_OP_STR_MAP.at(param.reduceType);
+            ret = strcat_s(param.algTag, sizeof(param.algTag), reduceType.c_str());
             if (ret != 0) {
                 HCCL_ERROR("failed to fill alg tag with ccu reduceType");
                 return HcclResult::HCCL_E_INTERNAL;

@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #include "alg_template_register.h"
 #include "scatter_nhr.h"
 
@@ -242,7 +241,6 @@ HcclResult ScatterNHR::ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &cha
 
     return HCCL_SUCCESS;
 }
-
 
 REGISTER_TEMPLATE(TemplateType::TEMPLATE_SCATTER_NHR, ScatterNHR);
 }

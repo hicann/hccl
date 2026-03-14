@@ -11,6 +11,7 @@
 #ifndef HCCL_CCU_TEMP_ALL_TO_ALL_MESH_1D_MULTI_JETTY_H
 #define HCCL_CCU_TEMP_ALL_TO_ALL_MESH_1D_MULTI_JETTY_H
 
+#include "utils.h"
 #include "ccu_alg_template_base.h"
 
 namespace ops_hccl {

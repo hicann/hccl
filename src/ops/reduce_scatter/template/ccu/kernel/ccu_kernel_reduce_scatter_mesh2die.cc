@@ -134,7 +134,6 @@ void CcuKernelReduceScatterMesh2Die::RmtReduce()
     }
 }
 
-
 HcclResult CcuKernelReduceScatterMesh2Die::Algorithm()
 {
     HCCL_INFO("[ccuReduceScatterMesh2Die_kernel] ReduceScatterMesh2Die run.");

@@ -22,7 +22,6 @@ InsTempBroadcastNHR::~InsTempBroadcastNHR()
 {
 }
 
-
 HcclResult InsTempBroadcastNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                         AlgResourceRequest& resourceRequest)
 {

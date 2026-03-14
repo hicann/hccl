@@ -20,9 +20,9 @@
 
 namespace ops_hccl {
 
-HcclResult CalcGeneralTopoInfoForA2(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
-HcclResult CalcGeneralTopoInfoForA3(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
-HcclResult CalcGeneralTopoInfoForComm(HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
+HcclResult CalcGeneralTopoInfoForA2(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
+HcclResult CalcGeneralTopoInfoForA3(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
+HcclResult CalcGeneralTopoInfoForComm(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
 
 HcclResult GetUserRankBySubCommRank(u32 subCommRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &userRank);
 HcclResult GetSubCommRankByUserRank(u32 userRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &subCommRank);

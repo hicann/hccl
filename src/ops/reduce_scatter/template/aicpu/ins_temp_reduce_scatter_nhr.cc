@@ -99,7 +99,6 @@ HcclResult InsTempReduceScatterNHR::LocalDataCopy(const std::vector<ThreadHandle
     return HcclResult::HCCL_SUCCESS;
 }
 
-
 HcclResult InsTempReduceScatterNHR::PostLocalCopy(const std::vector<ThreadHandle> &threads)
 {
     CHK_PRT_RET(threads.empty(),

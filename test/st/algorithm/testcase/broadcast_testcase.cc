@@ -311,7 +311,6 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_one_four_test_bigdata)
     // 仿真模型初始化
     TopoMeta topoMeta {{{0},{0},{0},{0}}};
 
-
     // 算子执行参数设置
     auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)
     uint64_t count = 500000;  // 数据量
@@ -321,7 +320,6 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_one_four_test_bigdata)
     RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
 
 }
-
 
 TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_Mesh1DNHR_server_two_two_test)
 {

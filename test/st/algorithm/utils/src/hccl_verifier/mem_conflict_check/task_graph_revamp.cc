@@ -434,7 +434,6 @@ HcclResult GraphRevampBilateralSemantics::GetLinkProtoStubByTaskNode(TaskNodePtr
     return HCCL_SUCCESS;
 }
 
-
 bool GraphRevampBilateralSemantics::IsReadWriteWithSameRank(RankId peerRank, TaskNodePtr candNode)
 {
     if (candNode->task->GetType() == TaskTypeStub::READ) {

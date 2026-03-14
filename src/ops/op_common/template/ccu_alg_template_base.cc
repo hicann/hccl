@@ -69,7 +69,6 @@ u64 CcuAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType ou
     return 0;
 }
 
-
 uint64_t CcuAlgTemplateBase::PointerToAddr(void* pointer) const
 {
     if (pointer != nullptr) {

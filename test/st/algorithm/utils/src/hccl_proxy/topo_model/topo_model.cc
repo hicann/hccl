@@ -477,7 +477,6 @@ void TopoModel::Init910DLinkMap()
     }
 }
 
-
 bool TopoModel::IsSamePod(uint32_t srcRank, uint32_t dstRank)
 {
     uint32_t srcPodId = rankId2PodId_[srcRank];

@@ -10,7 +10,6 @@
 
 #include "ccu_kernel_reduce_nhr1d_mem2mem.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

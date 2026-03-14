@@ -11,7 +11,6 @@
 #include "ccu_kernel_broadcast_nhr1d_mem2mem.h"
 #include "ccu_kernel_alg_base.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

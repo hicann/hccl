@@ -11,7 +11,6 @@
 #include "ccu_kernel_all_to_all_mesh1d_multi_jetty.h"
 #include "ccu_kernel_alg_base.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 
@@ -108,7 +107,6 @@ HcclResult CcuKernelAllToAllMesh1DMultiJetty::InitResource()
     HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] InitResource success!");
     return HcclResult::HCCL_SUCCESS;
 }
-
 
 HcclResult CcuKernelAllToAllMesh1DMultiJetty::PreSync()
 {

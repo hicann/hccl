@@ -544,7 +544,7 @@ HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
     return HCCL_SUCCESS;
 }
 
-HcclResult CalcLevel0TopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+HcclResult CalcLevel0TopoShape(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     static_cast<void>(comm);
     u32 netLayer = 0;
@@ -603,7 +603,7 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     return HCCL_SUCCESS;
 }
 
-HcclResult ExtractNetLayerDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+HcclResult ExtractNetLayerDetails(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     CHK_PRT_RET(comm == nullptr, HCCL_ERROR("[Topo][ExtractNetLayerDetails] comm is null"), HCCL_E_PTR);
 

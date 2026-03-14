@@ -21,7 +21,7 @@ TopoMatchUBX::~TopoMatchUBX()
 }
 
 HcclResult TopoMatchUBX::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size, uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
 #ifndef AICPU_COMPILE
     uint32_t *topoInsts;
@@ -66,7 +66,7 @@ HcclResult TopoMatchUBX::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size
 }
 
 HcclResult TopoMatchUBX::TopoForLayer1(const HcclComm comm, uint32_t layer0Size, uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
     HCCL_DEBUG("[TopoMatchUBX::MeshNHRTopoForLayer1] layer0Size [%d]", layer0Size);
 #ifndef AICPU_COMPILE
@@ -106,7 +106,7 @@ HcclResult TopoMatchUBX::TopoForLayer1(const HcclComm comm, uint32_t layer0Size,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchUBX::CheckVecElementAllSame(uint32_t *instSizeList, uint32_t listSize)
+HcclResult TopoMatchUBX::CheckVecElementAllSame(const uint32_t *instSizeList, uint32_t listSize) const
 {
 #ifndef AICPU_COMPILE
     uint32_t firstSize = instSizeList[0];

@@ -11,7 +11,6 @@
 #include "ccu_kernel_alg_base.h"
 #include "ccu_kernel_reduce_scatter_mesh1d_mem2mem.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

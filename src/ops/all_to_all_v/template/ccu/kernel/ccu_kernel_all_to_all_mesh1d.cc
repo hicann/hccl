@@ -11,7 +11,6 @@
 #include "ccu_kernel_alg_base.h"
 #include "ccu_kernel_all_to_all_mesh1d.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 
@@ -213,7 +212,6 @@ void CcuKernelAlltoAllMesh1D::LocalCopyByLoopGroup(hcomm::CcuRep::LocalAddr dst,
         LoopGroup({lc0, lc1}, {loopCfg0, loopCfg1}, groupOpSize_.parallelParam, offsetCfg);
     }
 }
-
 
 void CcuKernelAlltoAllMesh1D::DoAlltoAll()
 {

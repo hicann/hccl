@@ -56,7 +56,6 @@ HcclResult CcuKernelAllGather2DiesMeshMem2Mem1D::Algorithm()
     return HcclResult::HCCL_SUCCESS;
 }
 
-
 std::vector<uint64_t> CcuKernelAllGather2DiesMeshMem2Mem1D::GeneArgs(const hcomm::CcuTaskArg &arg)
 {
     const CcuTaskArgAllGather2DiesMeshMem2Mem1D *taskArg

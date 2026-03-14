@@ -11,7 +11,6 @@
 #include "ccu_kernel_all_gather_mesh1d.h"
 #include "ccu_kernel_alg_base.h"
 
-
 namespace ops_hccl {
 using namespace hcomm;
 

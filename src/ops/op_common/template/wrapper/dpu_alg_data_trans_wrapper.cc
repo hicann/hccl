@@ -40,5 +40,4 @@ HcclResult SendRecvWrite(const SendRecvInfo &sendRecvInfo) {
     return HCCL_SUCCESS;
 }
 
-
 } // END
