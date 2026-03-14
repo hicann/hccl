@@ -64,7 +64,7 @@ HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx
     return HCCL_SUCCESS;
 }
 
-bool ScatterExecutorBase::IsHugeData(u64 curSize)
+bool ScatterExecutorBase::IsHugeData(u64 curSize) const
 {
     bool hugeData = curSize * topoInfo_->userRankSize / HCCL_INTERNODE_MAX_DATA_RATE > RDMA_SEND_MAX_SIZE ||
         curSize > SDMA_SEND_MAX_SIZE;

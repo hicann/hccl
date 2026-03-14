@@ -222,7 +222,7 @@ HcclResult ScatterNHR::GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize,
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &channelRight)
+HcclResult ScatterNHR::ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &channelRight) const
 {
     if (channelLeft.isValid) {
         CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));

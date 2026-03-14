@@ -78,7 +78,7 @@ void NHRBase::GetRankMapping(const u32 rankSize, bool keepOrder)
     return;
 }
 
-void NHRBase::ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32> &tree, std::vector<u32> &tmp)
+void NHRBase::ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32> &tree, std::vector<u32> &tmp) const
 {
     const u32 DIVIDE_TWO = 2;
 

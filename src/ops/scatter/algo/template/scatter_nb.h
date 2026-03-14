@@ -21,7 +21,7 @@ public:
     ~ScatterNB() override;
 
     HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
-    u32 CalcCeilLog2(const u32 num)
+    u32 CalcCeilLog2(const u32 num) const
     {
         u32 ans = 0;
         for (u32 tmp = num - 1; tmp != 0; tmp >>= 1, ++ans) {}

@@ -38,7 +38,7 @@ protected:
     /* *************** 通用工具 *************** */
     virtual HcclResult PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum,
         std::vector<Slice> &dataSlice);
-    bool IsHugeData(u64 curSize);
+    bool IsHugeData(u64 curSize) const;
 
     bool DMAReduceFlag_{false}; // 是否DMA消减的标志
 
