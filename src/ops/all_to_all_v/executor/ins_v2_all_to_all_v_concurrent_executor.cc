@@ -111,7 +111,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     HCCL_DEBUG("[SplitA2ASendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
 
     uint32_t factorMesh = rankSize_ - 1;
-    uint32_t factorClos = 4;
+    uint32_t factorClos = CONST_4;
     uint32_t factor = factorMesh + factorClos;
     // 初始化sendRecvInfoFirst
     sendRecvInfoFirst.sendCounts.resize(rankSize_, 0);
@@ -251,11 +251,11 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     jettyNums.resize(rankSize_, 0);
     for (int i = 0; i < rankSize_; i++) {
         if (i == myRank_) {
-            jettyNums[i] = 1;
+            jettyNums[i] = CONST_1;
         } else if (multijetty) {
-            jettyNums[i] = 4;
+            jettyNums[i] = CONST_4;
         } else {
-            jettyNums[i] = 1;
+            jettyNums[i] = CONST_1;
         }
     }
     return HcclResult::HCCL_SUCCESS;

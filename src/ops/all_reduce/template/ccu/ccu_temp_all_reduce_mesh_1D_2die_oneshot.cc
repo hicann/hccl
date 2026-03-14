@@ -16,6 +16,7 @@
 #include "ccu_temp_all_reduce_mesh_1D_2die_oneshot.h"
 
 namespace ops_hccl {
+constexpr u32 ALL_REDUCE_DIE_NUM = 2;
 
 CcuTempAllreduceMesh1D2DieOneShot::CcuTempAllreduceMesh1D2DieOneShot(const OpParam& param, const u32 rankId,
                                        const std::vector<std::vector<u32>> &subCommRanks)
@@ -42,7 +43,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpPar
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     // 多少个kernel
-    resourceRequest.ccuKernelNum.push_back(2);
+    resourceRequest.ccuKernelNum.push_back(ALL_REDUCE_DIE_NUM);
     HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
                resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
     std::vector<HcclChannelDesc> channelDescs;
@@ -67,7 +68,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpPar
         channelIdx++;
     }
 
-    for (uint32_t die = 0; die < 2; die++) {
+    for (uint32_t die = 0; die < ALL_REDUCE_DIE_NUM; die++) {
         // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
         
@@ -118,7 +119,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
     uint64_t sliceSize    = templateDataParams.sliceSize;
 
     uint64_t repeatNum = UINT64_MAX - repeatNumTmp;
-    uint32_t dieNum             = 2;
+    uint32_t dieNum             = ALL_REDUCE_DIE_NUM;
 
     std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgAllreduceMesh1D2DieOneShot>(
         inputAddr, outputAddr, token, scratchAddr, sliceSize);
@@ -134,7 +135,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
 
 u64 CcuTempAllreduceMesh1D2DieOneShot::GetThreadNum() const
 {
-    return 2;
+    return ALL_REDUCE_DIE_NUM;
 }
 
 HcclResult CcuTempAllreduceMesh1D2DieOneShot::GetRes(AlgResourceRequest& resourceRequest) const
@@ -151,6 +152,6 @@ u64 CcuTempAllreduceMesh1D2DieOneShot::CalcScratchMultiple(BufferType inBuffType
     // one shot 场景，scratch Buffer 需要是 usrIn的rankSize倍
     (void)inBuffType;
     (void)outBuffType;
-    return 2;
+    return ALL_REDUCE_DIE_NUM;
 }
 } // namespace ops_hccl

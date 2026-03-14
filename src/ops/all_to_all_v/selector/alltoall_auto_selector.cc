@@ -56,7 +56,8 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
         CHK_PRT_RET(CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
                     HCCL_ERROR("[Algo][AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."),
                     SelectorStatus::NOT_MATCH);
-        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= 4) && (dataSize > 512)) { // 同一组4P且大数据量，走并发算法
+        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT)
+            && (dataSize > BIG_DATA_SIZE_LIMIT)) { // 同一组4P且大数据量，走并发算法
             selectAlgName = "CcuAllToAllMesh1DConcurrent";
         } else {
             selectAlgName = "CcuAlltoAllMesh1DMultiJetty";

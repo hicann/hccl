@@ -37,7 +37,7 @@ public:
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 private:
     HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
     HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const;
     HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
     HcclResult ProcessNHRStepInfo(HcclComm comm,

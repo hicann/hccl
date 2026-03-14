@@ -401,7 +401,6 @@ HcclResult CcuKernelAlgBase::GroupReduce(const std::vector<ChannelHandle> &chann
         offsetCfg = GetOffsetParam(moConfig.memSlice, moConfig.msInterleave, 1);
 
         LoopGroup({lc0, lc1}, {loopCfg0, loopCfg1}, goSize.parallelParam, offsetCfg);
-
     }
     return HCCL_SUCCESS;
 }

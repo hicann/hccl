@@ -90,7 +90,7 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
      // 强制类型转换
     const u64* varData = reinterpret_cast<const u64*>(param.varData);
     // 从0长数组中还原出任务信息
-    tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + 2 * rankSize_);
+    tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + rankSize_ + rankSize_);
     // 单位转换为字节
     for (size_t i = 0; i < tempAlgParams.allRankDispls.size(); ++i) {
     tempAlgParams.allRankDispls[i] *= dataTypeSize_;   

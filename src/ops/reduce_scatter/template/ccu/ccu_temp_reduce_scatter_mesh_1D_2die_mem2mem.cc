@@ -44,7 +44,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(HcclComm comm, const O
     resourceRequest.notifyNumOnMainThread = 1;
     resourceRequest.slaveThreadNum = 1;
     // 多少个kernel
-    resourceRequest.ccuKernelNum.push_back(2);
+    resourceRequest.ccuKernelNum.push_back(DIE_NUM);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG("[CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes] "
                 "notifyNumOnMainThread[%u] slaveThreadNum[%u] ccuKernelNum[%u]",
@@ -65,7 +65,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(HcclComm comm, const O
     for (auto channel : channelDescs) {
         uint32_t dieId = 0;
         CHK_RET(GetChannelDieId(comm, myRank_, channel, dieId));
-        CHK_PRT_RET(dieId >= 2,
+        CHK_PRT_RET(dieId >= DIE_NUM,
             HCCL_ERROR("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot][CalcRes] dieId is invalid"), HCCL_E_INTERNAL);
         channelDescsVec[dieId].push_back(channel);
         subRankGroup[dieId].push_back(channel.remoteRank);
@@ -143,7 +143,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::KernelRun(const OpParam& param
 
     // 使用SDMA inlinereduce做localcopy scratch -> output
     uint64_t hcclBuffOffset = buffInfo_.hcclBuffBaseOff;
-    hcclBuffOffset += normalSliceSize * (templateRankSize_ / 2);
+    hcclBuffOffset += normalSliceSize * (templateRankSize_ / DIE_NUM);
     DataSlice srcSlice(buffInfo_.hcclBuff.addr, hcclBuffOffset, normalSliceSize, normalSliceSize / DATATYPE_SIZE_TABLE[param.DataDes.dataType]);
     DataSlice dstSlice(buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, normalSliceSize, normalSliceSize / DATATYPE_SIZE_TABLE[param.DataDes.dataType]);
     CHK_RET(LocalReduce(templateResource.threads[0], srcSlice, dstSlice, param.DataDes.dataType, param.reduceType));

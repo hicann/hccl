@@ -30,7 +30,7 @@ public:
         return StringFormat("Template of Reduce ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    void SetRoot(u32 root);
+    void SetRoot(u32 root) const;
 
     HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                        AlgResourceRequest& resourceRequest) override;
@@ -49,8 +49,8 @@ private:
 
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const;
-    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
+    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
     HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);

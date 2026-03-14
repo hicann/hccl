@@ -157,8 +157,8 @@ if (!paramMem) {
     param.outputSize = outputSize;
     param.vDataDes.dataType = dataType;
 
-    // 参数准备
-    std::vector<u64> countsAndDispls(userRankSize*2);
+    // 参数准备，sendDispls和sendCounts的长度等于userRankSize
+    std::vector<u64> countsAndDispls(userRankSize + userRankSize);
     const u64* sendDisplsAddr = reinterpret_cast<const u64*>(sendDispls);
     const u64* sendCountsAddr = reinterpret_cast<const u64*>(sendCounts);
     std::copy(sendCountsAddr, sendCountsAddr + userRankSize, countsAndDispls.begin());
