@@ -39,46 +39,10 @@
 #include "aiv_kernel_def.h"
 #include "dpu/kernel_launch.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// 兼容性处理
-uint64_t __attribute__((weak)) HcommGetProfilingSysCycleTime();
-HcclResult __attribute__((weak))  HcclDfxRegOpInfo(HcclComm comm, void* dfxOpInfo);
-HcclResult __attribute__((weak)) HcclProfilingReportOp(HcclComm comm, uint64_t beginTime);
-HcclResult __attribute__((weak)) HcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, char *kernelName);
-struct HcclDfxOpInfo {
-    CommAbiHeader       header;
-    //DfxOpInfo_base
-    uint64_t            beginTime = 0;
-    uint64_t            endTime = 0;
-    //baseCollOperator
-    uint32_t            opMode = 0; // 单算子和图模式
-    uint32_t            opType = 0; // 算子名称类型
-    uint32_t            reduceOp = 0;
-    uint32_t            dataType = 0;
-    uint32_t            outputType = 0; //暂不删除，考虑后续算子使用
-    uint64_t            dataCount = 0;
-    uint32_t            root = INVALID_VALUE_RANKID;
-    char                algTag[288]; // 算法名 = "算子类型 + 通信域id + 选择的算法"
-    CommEngine          engine = COMM_ENGINE_RESERVED;
-    //task_exception
-    uint64_t            cpuTsThread = 0; // host侧算子主流的threadhandle
-    uint32_t            cpuWaitAicpuNotifyIdx = INVALID_UINT; // host wait device notifyIdx
-    uint32_t            cpuWaitAicpuNotifyId = INVALID_UINT; // host wait device notifyId
-    int8_t              reserve[128]; // 预留扩展字段
-};
-
-#ifdef __cplusplus
-}
-#endif
-
 namespace ops_hccl {
 thread_local std::map<std::string, HcclMemHandle> g_memHandleCache; // 当前AIV存放注册内存的memHandle使用
 // 用于维护增量建链算子的host ctx信息
 thread_local std::map<std::string, std::unique_ptr<AlgResourceCtxSerializable>> g_hostCtx;
-constexpr u32 HOST_WAIT_AICPU_NOTIFYIDX = 0;// host主流wait aicpu流的notify idx
 
 HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo,
     std::string &algName)
@@ -107,27 +71,11 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     return HCCL_SUCCESS;
 }
 
-void SetHcclDfxOpInfoDataCount(HcclDfxOpInfo &dfxOpInfo, const OpParam &param, const u32 &rankSize) {
-    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
-        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
-        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        u64 sendCount = 0;
-        for (u64 i = 0; i < rankSize; i++) {
-            sendCount += *(static_cast<const u64 *>(param.all2AllVDataDes.sendCounts) + i);
-        }
-        dfxOpInfo.dataCount = sendCount;
-    } else {
-        return;
-    }
-}
-
 HcclResult HcclExecOp(HcclComm comm, OpParam &param,
                       std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo, std::string &algName)
 {
-    uint64_t beginTime = HcommGetProfilingSysCycleTime();
-    HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp.HcommGetProfilingSysCycleTime.%llu", beginTime);
+    HCCL_INFO("Start to execute HcclExecOp.");
     // 在原先的commName中添加执行模式，得到commModeTag
-    param.hcclComm = comm;
     bool isOpBase = true;
     const char* opModeStr = isOpBase ? "_opbase" : "_offload";
     auto ret = sprintf_s(param.commModeTag, sizeof(param.commModeTag), "%s_%s", param.commName, opModeStr);
@@ -156,27 +104,6 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
 
     CHK_RET(HcclGetAlgRes(comm, param, executor, topoInfo.get(), resCtxHost, &resCtxSequence, isResourceReused));
 
-    // Op注册
-    HcclDfxOpInfo hcclDfxOpInfo{};
-    hcclDfxOpInfo.opMode = static_cast<u32>(param.opMode);
-    hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
-    hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
-    hcclDfxOpInfo.dataType = static_cast<u32>(param.DataDes.dataType);
-    hcclDfxOpInfo.dataCount = static_cast<u32>(param.DataDes.count);
-    hcclDfxOpInfo.root = param.root;
-    hcclDfxOpInfo.engine = param.engine;
-    hcclDfxOpInfo.cpuTsThread = cpuTsThread;
-    hcclDfxOpInfo.cpuWaitAicpuNotifyIdx = HOST_WAIT_AICPU_NOTIFYIDX;
-    s32 sRet = strncpy_s(hcclDfxOpInfo.algTag, ALG_TAG_LENGTH, param.algTag, ALG_TAG_LENGTH);
-    CHK_PRT_RET(sRet != EOK, HCCL_ERROR("%s call strncpy_s failed, param.algTag %s,  return %d.", __func__, param.algTag, sRet), HCCL_E_MEMORY);
-
-    // rankSize获取指定算子的dataCount
-    u32 userRankSize{0};
-    CHK_RET(HcclGetRankSize(comm, &userRankSize));
-    SetHcclDfxOpInfoDataCount(hcclDfxOpInfo, param, userRankSize);
-    HcclDfxOpInfo *tempOp = &hcclDfxOpInfo;
-
-    CHK_RET(HcclDfxRegOpInfo(comm, static_cast<void*>(tempOp)));
     ThreadHandle exportedCpuTsThread;
     ThreadHandle mainThread;
     u32 notifyNumOnMainThread;
@@ -207,8 +134,6 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
         }
         CHK_RET(executor->Orchestrate(param, *resCtxHost));
     }
-    // op上报
-    CHK_RET(HcclProfilingReportOp(comm, beginTime));
     HCCL_INFO("Execute HcclExecOp success.");
     return HCCL_SUCCESS;
 }
@@ -233,21 +158,11 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
     // Host stream通知Device主thread，使用主流上idx最大的notify
     CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(cpuTsThread, exportedCpuTsThread,
         notifyNumOnMainThread - 1)));
-    // AicpuKernel report
-    uint64_t beginTime = HcommGetProfilingSysCycleTime();
-    CHK_RET(AicpuKernelLaunch(param));
-    CHK_PTR_NULL(comm);
-    std::string kernelName = "HcclLaunchAicpuKernel";
-    char* kernelNameCStr = const_cast<char*>(kernelName.c_str());
-    HcclResult ret = HcclReportAicpuKernel(comm, beginTime, kernelNameCStr);
-    if (ret != HCCL_SUCCESS) {
-        HCCL_ERROR("[HcclAicpuKernelEntranceLaunch] HcclReportAicpuKernel failed, beginTime %lu, kernelNameCStr %s, ret %d ", beginTime, kernelNameCStr, ret);
-        return ret;
-    }
 
+    CHK_RET(AicpuKernelLaunch(param));
     // Host stream等待Device的通知
     u16 NOTIFY_WAIT_TIME = 27 * 68;
-    CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, HOST_WAIT_AICPU_NOTIFYIDX, NOTIFY_WAIT_TIME)));
+    CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(cpuTsThread, 0, NOTIFY_WAIT_TIME)));
     
     if (param.engine == COMM_ENGINE_CPU) {
         if (aclrtSynchronizeStream(param.stream) != 0) {
@@ -255,7 +170,6 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
             return HCCL_E_INTERNAL;
         }
     }
-
     return HCCL_SUCCESS;
 }
 
