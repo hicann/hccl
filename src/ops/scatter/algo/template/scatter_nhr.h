@@ -28,13 +28,13 @@ protected:
 private:
     void PrepareSlicesData(const u32 unitSize, const u64 totalCount, const u32 rankSize) const;
     HcclResult SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const;
-    HcclResult RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo);
+    HcclResult RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const;
     HcclResult RdmaTxRx();
     HcclResult Tx(const ChannelInfo &channel, std::vector<Slice> &txSlices);
     HcclResult Rx(const ChannelInfo &channel, std::vector<Slice> &rxSlices);
 
     HcclResult GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep &stepInfo);
-    HcclResult ExecuteBarrier(ChannelInfo &channelLeft, ChannelInfo &channelRight) const;
+    HcclResult ExecuteBarrierNhr(ChannelInfo &channelLeft, ChannelInfo &channelRight) const;
 
     u32 interRank_;       // comm内的rank排序
     u32 interRankSize_;  // 本comm内ranksize总数

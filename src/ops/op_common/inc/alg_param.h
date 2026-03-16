@@ -276,10 +276,10 @@ struct AlgHierarchyInfo {
 struct ChannelInfo {
     bool isValid = false;
     u32 remoteRank = INVALID_VALUE_RANKID;
-    CommProtocol protocol;
-    EndpointLocType locationType;
-    u32 notifyNum;
-    ChannelHandle handle;
+    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_RESERVED;
+    EndpointLocType locationType = EndpointLocType::ENDPOINT_LOC_TYPE_RESERVED;
+    u32 notifyNum = 0;
+    ChannelHandle handle = 0;
     HcclMem remoteCclMem; // A5用的
     HcclMem remoteInput;  // A3用的
     HcclMem remoteOutput; // A3用的
