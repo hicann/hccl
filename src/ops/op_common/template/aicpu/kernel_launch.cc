@@ -118,10 +118,15 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 
         // 主thread等待Host stream的通知
         ThreadHandle exportedAicpuTsThread = param->opThread;
-        u32 notifyNumOnMainThread = resCtx.notifyNumOnMainThread;
-        HCCL_DEBUG("[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
-            notifyNumOnMainThread, CUSTOM_TIMEOUT);
-        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, notifyNumOnMainThread, CUSTOM_TIMEOUT)));
+        u32 maxNotifyNum = resCtx.notifyNumOnMainThread;
+        for (u32 i = 0; i < resCtx.notifyNumPerThread.size(); i++) {
+            if (resCtx.notifyNumPerThread[i] > maxNotifyNum) {
+                maxNotifyNum = resCtx.notifyNumPerThread[i];
+            }
+        }
+        HCCL_DEBUG("[%s]Notify wait on thread[%llu], maxNotifyNum[%u], timeout[%u]", __func__, thread,
+            maxNotifyNum, CUSTOM_TIMEOUT);
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, maxNotifyNum, CUSTOM_TIMEOUT)));
 
         std::shared_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param->opType, algName);
         if (executor.get() == nullptr) {
