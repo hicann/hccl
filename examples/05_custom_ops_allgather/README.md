@@ -44,7 +44,7 @@
 
 ### 2. 安装 CANN Toolkit 开发套件包
 
-请参考昇腾官方文档安装最新版本的 CANN Toolkit 开发套件包。
+参考 [昇腾文档中心-CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)，安装最新版本 CANN Toolkit 开发套件包。
 
 ### 3. 配置环境变量
 
