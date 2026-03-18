@@ -18,24 +18,6 @@
 extern "C" {
 #endif  // __cplusplus
 
-constexpr uint32_t ALG_CONFIG_SIZE = 128;
-struct HcclOpArgs {
-    HcclDataType srcDataType;
-    HcclDataType dstDataType;
-    HcclReduceOp reduceType;
-    uint64_t count;
-    char algConfig[ALG_CONFIG_SIZE];
-    CommEngine commEngine;
-    uint64_t reverse;
-
-    void Init() {
-        srcDataType = HCCL_DATA_TYPE_FP16;
-        dstDataType = HCCL_DATA_TYPE_FP16;
-        reduceType = HCCL_REDUCE_SUM;
-        count = 0;
-    }
-};
-
 /**
  * @brief  Alloc HcclOpArgs memory
  * @param opArgs A pointer to the allocated HcclOpArgs memory.

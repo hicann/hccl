@@ -17,6 +17,24 @@
 
 using namespace ops_hccl;
 
+constexpr uint32_t ALG_CONFIG_SIZE = 128;
+struct HcclOpArgs {
+    HcclDataType srcDataType;
+    HcclDataType dstDataType;
+    HcclReduceOp reduceType;
+    uint64_t count;
+    char algConfig[ALG_CONFIG_SIZE];
+    CommEngine commEngine;
+    uint64_t reverse;
+
+    void Init() {
+        srcDataType = HCCL_DATA_TYPE_FP16;
+        dstDataType = HCCL_DATA_TYPE_FP16;
+        reduceType = HCCL_REDUCE_SUM;
+        count = 0;
+    }
+};
+
 HcclResult HcclKfcAllocOpArgs(void **opArgs)
 {
     CHK_PTR_NULL(opArgs);
