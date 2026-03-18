@@ -39,7 +39,11 @@ protected:
     {
         // 仿真模型初始化
         // TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
+        #ifdef MACRO_DEV_TYPE_NEW
+        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+        #else
         SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
+        #endif
     
         // 设置展开模式为HOST_TS
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);

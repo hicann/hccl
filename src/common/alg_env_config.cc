@@ -855,7 +855,11 @@ bool RunIndependentOpExpansion(DevType deviceType)
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
     }
 
+    #ifdef MACRO_DEV_TYPE_NEW
+    if (deviceType == DevType::DEV_TYPE_950) {
+    #else
     if (deviceType == DevType::DEV_TYPE_910_95) {
+    #endif
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" ||
                opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV" ||
                opExpansionModeEnv == "CCU_SCHED" || opExpansionModeEnv == "CCU_MS";

@@ -42,7 +42,11 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
 
+    #ifdef MACRO_DEV_TYPE_NEW
+    if (param->deviceType != DevType::DEV_TYPE_950) {
+    #else
     if (param->deviceType != DevType::DEV_TYPE_910_95) {
+    #endif
         ScatterOpInfo opInfo;
         if (CreateScatter(param, &opInfo) != HCCL_SUCCESS) {
             HCCL_ERROR("%s CreateScatter fail", __func__);
@@ -71,7 +75,11 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 
     // 根据算法名字获取executor
     std::string algName = std::string(param->algName);
+    #ifdef MACRO_DEV_TYPE_NEW
+    if (param->deviceType == DevType::DEV_TYPE_950) {
+    #else
     if (param->deviceType == DevType::DEV_TYPE_910_95) {
+    #endif
         AlgResourceCtxSerializable resCtx;
 
         char *ctx = static_cast<char *>(param->resCtx);

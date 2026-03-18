@@ -220,7 +220,11 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
         return HcclResult::HCCL_SUCCESS;
     }
 
+    #ifdef MACRO_DEV_TYPE_NEW
+    if (deviceType == DevType::DEV_TYPE_950) {
+    #else
     if (deviceType == DevType::DEV_TYPE_910_95) {
+    #endif
         std::string algName;
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
         CHK_RET(Selector(comm, param, topoInfo, algName));

@@ -57,7 +57,11 @@ void RunReduceScatterAicpuA5(const TopoMeta &topoMeta, const u64 &recvCount, con
     const HcclReduceOp &reduceOp)
 {
     // 仿真模型初始化
+    #ifdef MACRO_DEV_TYPE_NEW
+    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+    #else
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
+    #endif
  
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
