@@ -94,6 +94,8 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/selector
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/template/aicpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/template/ccu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/template/ccu/kernel
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/executor

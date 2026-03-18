@@ -18,83 +18,31 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
     std::string &selectAlgName) const
 {
-    HCCL_DEBUG("[AllGatherVAutoSelector][%s] start", __func__);
-    HCCL_DEBUG("[AllGatherVAutoSelector][%s] topoInfo topoLevelNums[%u]", __func__, topoInfo->topoLevelNums);
-    if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "CcuAllGatherVParallelMeshNHR";
-        } else {
-            HCCL_WARNING("[Algo][AllGatherVAutoSelector] levelNum > 1 is not supported yet for 2d ccu_ms mode.");
-            return SelectorStatus::NOT_MATCH;
-        }
-    }
-    HcclAlgoType levle0Algo = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
-    auto it = configAlgMap.find(opParam.opType);
-    if ((it != configAlgMap.end()) && (it->second.size() > 0)) {
-        levle0Algo = it->second[0];
-    }
-    if (IsDefaultAlg(levle0Algo) || levle0Algo == HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) {
-        HCCL_DEBUG("[AllGatherVAutoSelector][%s] SelectMeshAlgo", __func__);
-        return SelectMeshAlgo(topoInfo, opParam, selectAlgName);
-    } else {
-        HCCL_WARNING("[Algo][AllGatherVAutoSelector] algo[%u] is not supported yet for ccu_ms mode, reset to default.",
-                     levle0Algo);
-        return SelectorStatus::NOT_MATCH;
-    }
+    HCCL_WARNING("[Algo][AllGatherVAutoSelector] allgatherv is not supported yet for ccu_ms mode, reset to default.");
+    return SelectorStatus::NOT_MATCH;
     HCCL_DEBUG("[AllGatherVAutoSelector][%s] end", __func__);
 }
- 
-SelectorStatus AllGatherVAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-                                                     std::string &selectAlgName) const
-{
-    HCCL_DEBUG("[AllGatherVAutoSelector][%s] start", __func__);
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        if (IsSmallData(opParam.inputSize)) {
-            selectAlgName = "CcuAllGatherVMesh1D";
-        } else {
-            selectAlgName = "CcuAllGatherVMesh1DMultiMission";
-        }
-    } 
-    HCCL_DEBUG("[AllGatherVAutoSelector][%s] end", __func__);
-    return SelectorStatus::MATCH;
-}
- 
+
 SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
     const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
     std::string &selectAlgName) const
 {
-    if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (topoInfo->deviceNumPerModule > 1) {
-                selectAlgName = "CcuAllGatherVParallelMesh1DNHR";
-                return SelectorStatus::MATCH;
-            } else {
-                selectAlgName = "CcuAllGatherVNHR1D";
-                return SelectorStatus::MATCH;
-            }
-        } else {
-            HCCL_WARNING("[Algo][AllGatherVAutoSelector] level0Topo[%d] is not supported yet for ccu schedule mode.",
-                         topoInfo->level0Topo);
-            return SelectorStatus::NOT_MATCH;
-        }
-    }
- 
-    HcclAlgoType levle0Algo = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
+    std::vector<HcclAlgoType> algos =
+        std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
     auto it = configAlgMap.find(opParam.opType);
-    if ((it != configAlgMap.end()) && (it->second.size() > 0)) {
-        levle0Algo = it->second[0];
+    if (it != configAlgMap.end()) {
+        algos = it->second;
     }
-    if ((IsDefaultAlg(levle0Algo) || levle0Algo == HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH) &&
-        (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-        selectAlgName = "CcuAllGatherVMeshMem2Mem1D";
-        return SelectorStatus::MATCH;
-    }  else {
-        HCCL_WARNING(
-            "[Algo][AllGatherVAutoSelector] algo[%u] is not supported yet for ccu_schedule mode, reset to default.",
-            levle0Algo);
+    HCCL_INFO("hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType,
+              algos[0], algos[1], algos[2], algos[3]);
+ 
+    if (topoInfo->topoLevelNums  == 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        selectAlgName = "CcuAllGatherVMesh1D";
+    } else {
+        HCCL_WARNING("[AllGatherVAutoSelector] topo not match");
         return SelectorStatus::NOT_MATCH;
     }
-    return SelectorStatus::NOT_MATCH;
+    return SelectorStatus::MATCH;
 }
  
 SelectorStatus AllGatherVAutoSelector::SelectAicpuAlgo(
@@ -123,22 +71,9 @@ SelectorStatus AllGatherVAutoSelector::SelectAivAlgo(
     const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam, const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
     std::string &selectAlgName) const
 {
-    std::vector<HcclAlgoType> algos =
-        std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
-    auto it = configAlgMap.find(opParam.opType);
-    if (it != configAlgMap.end()) {
-        algos = it->second;
-    }
- 
-    HCCL_INFO("hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType,
-              algos[0], algos[1], algos[2], algos[3]);
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D && topoInfo->topoLevelNums <= 1) {
-        selectAlgName = "AivAllGatherVMesh1D";
-    } else {
-        HCCL_WARNING("[AllGatherVAutoSelector] topo not match for aiv algo");
-        return SelectorStatus::NOT_MATCH;
-    }
-    return SelectorStatus::MATCH;
+    HCCL_WARNING("[Algo][AllGatherVAutoSelector] allgatherv is not supported yet for aiv mode, reset to default.");
+    return SelectorStatus::NOT_MATCH;
+    HCCL_DEBUG("[AllGatherVAutoSelector][%s] end", __func__);
 }
  
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_ALLGATHER_V, 18, AllGatherVAutoSelector);

@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------------------------------------
 add_subdirectory(executor)
 add_subdirectory(selector)
-add_subdirectory(template/aicpu)
+add_subdirectory(template)
  
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/all_gather_v_op.cc
