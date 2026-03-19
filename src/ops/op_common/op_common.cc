@@ -107,18 +107,26 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     return HCCL_SUCCESS;
 }
 
-void SetHcclDfxOpInfoDataCount(HcclDfxOpInfo &dfxOpInfo, const OpParam &param, const u32 &rankSize) {
+uint64_t GetHcclDfxOpInfoDataCount(const OpParam &param, const u32 &rankSize) {
+    u64 sendCount = 0;
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
         || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
         || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        u64 sendCount = 0;
         for (u64 i = 0; i < rankSize; i++) {
-            sendCount += *(static_cast<const u64 *>(param.all2AllVDataDes.sendCounts) + i);
+            sendCount += *(reinterpret_cast<const u64*>(param.all2AllVDataDes.sendCounts) + i);
         }
-        dfxOpInfo.dataCount = sendCount;
+    } else if (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+        for (u64 i = 0; i < rankSize; i++) {
+            sendCount += *(reinterpret_cast<const u64*>(param.varData) + i);
+        }
+    } else if (param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+        for (u64 i = rankSize; i < 2*rankSize; i++) {
+            sendCount += *(reinterpret_cast<const u64*>(param.varData) + i);
+        }
     } else {
-        return;
+        sendCount = static_cast<u64>(param.DataDes.count);
     }
+    return sendCount;
 }
 
 uint32_t GetHcclDfxOpInfoDataType(const OpParam &param) {
@@ -179,18 +187,17 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
     hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
     hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
     hcclDfxOpInfo.dataType = GetHcclDfxOpInfoDataType(param);
-    hcclDfxOpInfo.dataCount = static_cast<u32>(param.DataDes.count);
+
+    // rankSize获取指定算子的dataCount
+    u32 userRankSize{0};
+    CHK_RET(HcclGetRankSize(comm, &userRankSize));
+    hcclDfxOpInfo.dataCount = GetHcclDfxOpInfoDataCount(param, userRankSize);
     hcclDfxOpInfo.root = param.root;
     hcclDfxOpInfo.engine = param.engine;
     hcclDfxOpInfo.cpuTsThread = cpuTsThread;
     hcclDfxOpInfo.cpuWaitAicpuNotifyIdx = HOST_WAIT_AICPU_NOTIFYIDX;
     s32 sRet = strncpy_s(hcclDfxOpInfo.algTag, ALG_TAG_LENGTH, param.algTag, ALG_TAG_LENGTH);
     CHK_PRT_RET(sRet != EOK, HCCL_ERROR("%s call strncpy_s failed, param.algTag %s,  return %d.", __func__, param.algTag, sRet), HCCL_E_MEMORY);
-
-    // rankSize获取指定算子的dataCount
-    u32 userRankSize{0};
-    CHK_RET(HcclGetRankSize(comm, &userRankSize));
-    SetHcclDfxOpInfoDataCount(hcclDfxOpInfo, param, userRankSize);
     HcclDfxOpInfo *tempOp = &hcclDfxOpInfo;
 
     CHK_RET(HcclDfxRegOpInfo(comm, static_cast<void*>(tempOp)));

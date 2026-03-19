@@ -22,7 +22,6 @@
 
 using namespace ops_hccl;
 using HcclGetOpInfoCallback = void (*)(const void *opInfo, char *outPut, size_t size);
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,8 +41,15 @@ HcclResult __attribute__((weak)) HcommProfilingReportKernelEndTask(uint64_t thre
 
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
 {
+    if (param == nullptr) {
+        HCCL_ERROR("%s param is nullptr", __func__);
+        return 1;
+    }
     HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
-
+    if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) {
+        HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
+        return 1;
+    }
     #ifdef MACRO_DEV_TYPE_NEW
     if (param->deviceType != DevType::DEV_TYPE_950) {
     #else
@@ -52,11 +58,6 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         ScatterOpInfo opInfo;
         if (CreateScatter(param, &opInfo) != HCCL_SUCCESS) {
             HCCL_ERROR("%s CreateScatter fail", __func__);
-            return 1;
-        }
-
-        if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) {
-            HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
             return 1;
         }
         
