@@ -24,9 +24,19 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
     HcclReduceOp op, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("Start to run execute HcclReduceScatter");
+    // 入口的地方先解析环境变量
+    CHK_RET(InitEnvConfig());
+
+    if ((GetHcommVersion() < 90000000) ||
+        GetExternalInputHcclCcuMSMode() ||
+        GetExternalInputHcclCcuSchedMode()) { // compat handle
+        return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
+    }
+
     if (!CheckHCCLIndependentOp()) {
         return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
     }
+
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
     // 非95设备转到老流程
@@ -37,12 +47,6 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
 #endif
         return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
     }
-    // 图模式引导到老的流程上面
-    if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
-        return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
-    }
-    // 入口的地方先解析环境变量
-    CHK_RET(InitEnvConfig());
 
     // 参数校验等工作
     CHK_PRT_RET(recvCount == 0, HCCL_WARNING("input recvCount is 0, return reduce scatter success"), HCCL_SUCCESS);

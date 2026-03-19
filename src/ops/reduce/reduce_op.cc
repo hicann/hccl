@@ -24,6 +24,16 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     uint32_t root, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("Start to run execute HcclReduce");
+    // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
+    // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
+    CHK_RET(InitEnvConfig());
+
+    if ((GetHcommVersion() < 90000000) ||
+        GetExternalInputHcclCcuMSMode() ||
+        GetExternalInputHcclCcuSchedMode()) { // compat handle
+        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
+    }
+
     if (!CheckHCCLIndependentOp()) {
         return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
     }
@@ -37,13 +47,6 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     #endif
         return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
     }
-    // 图模式引导到老的流程上面
-    if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
-        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
-    }
-    // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
-    // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
-    CHK_RET(InitEnvConfig());
 
     // 参数校验等工作
     CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return reduce success"), HCCL_SUCCESS);

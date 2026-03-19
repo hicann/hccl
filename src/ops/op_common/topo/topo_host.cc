@@ -10,17 +10,16 @@
 
 #include <numeric>
 #include "topo_host.h"
-#include "hccl_rank_graph.h"
-#include "hcomm_primitives.h"
-#include "hccl_rank_graph.h"
-#include "hccl_res.h"
-#include "hcomm_primitives.h"
+#include "hccl_rank_graph_dl.h"
+#include "hcomm_primitives_dl.h"
+#include "hccl_res_dl.h"
 #include "hccl.h"
 #include "adapter_acl.h"
 #include "channel.h"
 #include "hccl_common.h"
 #include "config_log.h"
 #include "topo.h"
+#include "dtype_common_dl.h"
 
 constexpr u32 FACTOR_NUM_TWO = 2;
 constexpr s32 DEVICE_PER_MODULE = 8;

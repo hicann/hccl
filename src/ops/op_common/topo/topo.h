@@ -15,8 +15,8 @@
 #include "hccl/base.h"
 #include "log.h"
 #include "alg_param.h"
-#include "hccl_rank_graph.h"
-#include "hccl_res.h"
+#include "hccl_rank_graph_dl.h"
+#include "hccl_res_dl.h"
 
 namespace ops_hccl {
 

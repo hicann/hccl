@@ -9,10 +9,9 @@
  */
 
 #include "topo.h"
-#include "hccl_rank_graph.h"
-#include "hcomm_primitives.h"
-#include "hccl_res.h"
-#include "hcomm_primitives.h"
+#include "hccl_rank_graph_dl.h"
+#include "hcomm_primitives_dl.h"
+#include "hccl_res_dl.h" 
 #include "hccl.h"
 #include "adapter_acl.h"
 #include "channel.h"

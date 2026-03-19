@@ -24,7 +24,7 @@ HcclResult HcclRecv(
     void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("[HcclRecv] Start.");
-    if (!CheckHCCLIndependentOp()) {
+    if (!CheckHCCLIndependentOp() || (GetHcommVersion() < 90000000)) {
         return HcclRecvInner(recvBuf, count, dataType, srcRank, comm, stream);
     }
     DevType deviceType = DevType::DEV_TYPE_COUNT;
@@ -34,9 +34,6 @@ HcclResult HcclRecv(
     #else
     if (deviceType != DevType::DEV_TYPE_910_95) {
     #endif
-        return HcclRecvInner(recvBuf, count, dataType, srcRank, comm, stream);
-    }
-    if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
         return HcclRecvInner(recvBuf, count, dataType, srcRank, comm, stream);
     }
 

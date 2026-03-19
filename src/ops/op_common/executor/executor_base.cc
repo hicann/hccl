@@ -12,7 +12,7 @@
 #include "workflow.h"
 namespace ops_hccl {
 
-ExecutorBase::ExecutorBase() : workflowMode_(GetWorkflowMode())
+ExecutorBase::ExecutorBase()
 {
 }
 

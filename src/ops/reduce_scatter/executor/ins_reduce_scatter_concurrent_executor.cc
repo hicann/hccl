@@ -13,11 +13,7 @@
 #include "ins_reduce_scatter_concurrent_executor.h"
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "ins_temp_reduce_scatter_mesh_1D.h"
-#ifndef AICPU_COMPILE
-#include "ccu_temp_reduce_scatter_nhr_1D_multi_jetty_mem2mem.h"
-#include "ccu_temp_reduce_scatter_mesh_1D_mem2mem.h"
-#include "ccu_temp_reduce_scatter_mesh_1D.h"
-#endif
+
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -360,10 +356,4 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterConcurrentMeshNHR, InsReduceScatterConcurrentExecutor, TopoMatchUBX,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
-#ifndef AICPU_COMPILE
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterConcurrentMeshNHRSche, InsReduceScatterConcurrentExecutor, TopoMatchUBX,
-    CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterConcurrentMeshNHRMs, InsReduceScatterConcurrentExecutor, TopoMatchUBX,
-    CcuTempReduceScatterMesh1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
-#endif
 }

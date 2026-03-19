@@ -11,7 +11,7 @@
 #ifndef DPU_ALG_DATA_TRANS_WRAPPER
 #define DPU_ALG_DATA_TRANS_WRAPPER
 
-#include "hcomm_primitives.h"
+#include "hcomm_primitives_dl.h"
 #include "hccl_types.h"
 #include "alg_param.h"
 #include "template_utils.h"

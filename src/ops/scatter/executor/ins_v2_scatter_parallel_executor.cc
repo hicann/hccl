@@ -11,11 +11,6 @@
 #include "ins_v2_scatter_parallel_executor.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
-#ifndef AICPU_COMPILE
-#include "ccu_temp_scatter_mesh1d.h"
-#include "ccu_temp_scatter_nhr1d_mem2mem.h"
-#include "ccu_kernel_scatter_nhr1d_mem2mem.h"
-#endif
 
 namespace ops_hccl {
 constexpr uint32_t NUM_CONTROL_THREADS = 2;
@@ -466,8 +461,4 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_SCATTER, InsScatterParallelMesh1DNHR, InsV2ScatterParallelExecutor,
     TopoMatchMultilevel, InsTempScatterMesh1D, InsTempScatterNHR);
-#ifndef AICPU_COMPILE
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_SCATTER, CcuScatterParallelMesh1DNHR, InsV2ScatterParallelExecutor,
-    TopoMatchMultilevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);
-#endif
 }  // namespace ops_hccl

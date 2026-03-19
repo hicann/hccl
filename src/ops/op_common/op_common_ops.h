@@ -17,12 +17,13 @@
 #include "executor_base.h"
 #include "hccl.h"
 #include "hccl/base.h"
-#include "hccl_inner.h"
+#include "hccl_inner_dl.h"
 #include "mmpa_api.h"
 #include "op_common.h"
 #include "param_check.h"
 #include "sal.h"
 #include "workflow.h"
 #include <hccl/hccl_types.h>
+#include "hcomm_dlsym.h"
 
 #endif

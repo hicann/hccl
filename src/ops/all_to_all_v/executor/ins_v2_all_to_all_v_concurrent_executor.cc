@@ -10,10 +10,6 @@
 
 #include "channel.h"
 #include "ins_v2_all_to_all_v_concurrent_executor.h"
-#ifndef AICPU_COMPILE
-#include "ccu_temp_all_to_all_v_mesh_1D_multi_jetty.h"
-#include "ccu_kernel_all_to_all_v_mesh1d_multi_jetty.h"
-#endif
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
@@ -219,22 +215,12 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     std::vector<uint32_t> jettyNums;
     CHK_RET(SetJettyNums(jettyNums, true));
-    resReq0.ccuKernelInfos[0].kernelArg = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>(subCommRanks0[0].size(),
-                                                                                    topoInfo->userRank,
-                                                                                    param,
-                                                                                    subCommRanks0,
-                                                                                    jettyNums);
 
     std::vector<HcclChannelDesc> channelDescs1;
     CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks1, channelDescs1, CommTopo::COMM_TOPO_1DMESH));
     resReq1.ccuKernelInfos[0].channels = channelDescs1;
 
     CHK_RET(SetJettyNums(jettyNums, false));
-    resReq1.ccuKernelInfos[0].kernelArg = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>(subCommRanks1[0].size(),
-                                                                                    topoInfo->userRank,
-                                                                                    param,
-                                                                                    subCommRanks1,
-                                                                                    jettyNums);
 
     resourceRequest.ccuKernelNum.emplace_back(resReq0.ccuKernelNum[0]);
     resourceRequest.ccuKernelNum.emplace_back(resReq1.ccuKernelNum[0]);
@@ -347,14 +333,5 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][Orchestrate] Orchestrate End");
     return HcclResult::HCCL_SUCCESS;
 }
-
-#ifndef AICPU_COMPILE
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLTOALLV,
-                                CcuAllToAllVMesh1DConcurrent,
-                                InsV2AllToAllVConcurrentExecutor,
-                                TopoMatchUBX,
-                                CcuTempAllToAllVMesh1DMultiJetty,
-                                CcuTempAllToAllVMesh1DMultiJetty);
-#endif
 
 }

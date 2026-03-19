@@ -12,7 +12,7 @@
 #define ADAPTER_ACL_H
 
 #include "log.h"
-#include "dtype_common.h"
+#include "dtype_common_dl.h"
 #include "hccl_common.h"
 #include "acl_base.h"
 #include "acl_rt.h"

@@ -9,7 +9,7 @@
  */
 
 #include "dpu_alg_data_trans_wrapper.h"
-#include "hcomm_primitives.h"
+#include "hcomm_primitives_dl.h"
 
 namespace ops_hccl {
 

@@ -10,12 +10,6 @@
  
 #include "ins_v2_allreduce_sequence2die_executor.h"
 #include "alg_data_trans_wrapper.h"
-#ifndef AICPU_COMPILE
-#include "ccu_temp_all_gather_2dies_mesh_1d_mem2mem.h"
-#include "ccu_temp_reduce_scatter_mesh_1D_2die_mem2mem.h"
-#include "ccu_temp_all_gather_2dies_mesh_1D.h"
-#include "ccu_temp_reduce_scatter_mesh2die.h"
-#endif
 
 namespace ops_hccl {
 
@@ -263,11 +257,4 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     HCCL_INFO("[InsV2AllReduceSequence2DieExecutor][OrchestrateLoop] End.");
     return HCCL_SUCCESS;
 }
-#ifndef AICPU_COMPILE
-
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigMs,
-    InsV2AllReduceSequence2DieExecutor, TopoMatch1D, CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigSche,
-    InsV2AllReduceSequence2DieExecutor, TopoMatch1D, CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
-#endif
 }

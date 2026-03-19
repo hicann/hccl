@@ -13,10 +13,6 @@
 #include "ins_v2_all_to_all_concurrent_executor.h"
 #include "aicpu/ins_temp_all_to_all_v_mesh_1D.h"
 
-#ifndef AICPU_COMPILE
-#include "ccu/ccu_temp_all_to_all_mesh1d_multi_jetty.h"
-#endif
-
 namespace ops_hccl {
 using namespace std;
 constexpr uint32_t CONCURRENT_NUM = 2;
@@ -472,13 +468,5 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLTOALLV,
                                 TopoMatchUBX,
                                 InsTempAlltoAllVMesh1D,
                                 InsTempAlltoAllVMesh1D);
-#ifndef AICPU_COMPILE
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLTOALL,
-                                CcuAllToAllMesh1DConcurrent,
-                                InsV2AllToAllConcurrentExecutor,
-                                TopoMatchUBX,
-                                CcuTempAllToAllMesh1dMultiJetty,
-                                CcuTempAllToAllMesh1dMultiJetty);
-#endif
 
 }

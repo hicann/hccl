@@ -24,3 +24,5 @@ set(src_list
 target_sources(hccl PRIVATE
     ${src_list}
 )
+
+add_subdirectory(hcomm_dlsym)

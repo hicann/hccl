@@ -12,7 +12,7 @@
 #include "log.h"
 #include "sal.h"
 #include "alg_env_config.h"
-#include "hccl_inner.h"
+#include "hccl_inner_dl.h"
 #include "param_check.h"
 
 using namespace ops_hccl;
