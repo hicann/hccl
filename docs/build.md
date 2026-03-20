@@ -14,7 +14,7 @@
 
 2. 安装社区版CANN Toolkit包
 
-   编译本项目依赖CANN Toolkit开发套件包，请根据操作系统架构，从[CANN软件包归档页面](https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-release/software/master/)中下载最新的CANN Toolkit安装包，参考[昇腾文档中心-CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)中的“安装CANN-安装Toolkit开发套件包”章节进行安装：
+   编译本项目依赖CANN Toolkit开发套件包，请根据操作系统架构，从[CANN软件包归档页面](https://ascend.devcloud.huaweicloud.com/artifactory/cann-run-mirror/software/master/)中下载最新的CANN Toolkit安装包，参考[昇腾文档中心-CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)中的“安装CANN-安装Toolkit开发套件包”章节进行安装：
 
    ```shell
    # 安装命令，其中--install-path为可选参数，用于指定安装路径
