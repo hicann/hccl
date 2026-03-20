@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <acl/acl.h>
 
-static void* gLibHandle = NULL;
+static void* gLibHandle = nullptr;
 static int gHcommVersion = 0;
 
 int GetHcommVersion(void) {
@@ -41,7 +41,7 @@ int GetHcommVersion(void) {
 
 bool HcommIsProfilingSupported()
 {
-    if (GetHcommVersion() >= 90000000) {
+    if (GetHcommVersion() >= VERSION_NUMBER) {
         return true;
     } else {
         return false;
@@ -50,7 +50,7 @@ bool HcommIsProfilingSupported()
 
 bool HcommIsExportThreadSupported()
 {
-    if (GetHcommVersion() >= 90000000 && HcommIsSupportHcclThreadExportToCommEngine()) {
+    if (GetHcommVersion() >= VERSION_NUMBER && HcommIsSupportHcclThreadExportToCommEngine()) {
         return true;
     } else {
         return false;
@@ -59,7 +59,7 @@ bool HcommIsExportThreadSupported()
 
 // 初始化
 void HcommDlInit(void) {
-    if (gLibHandle != NULL) return;
+    if (gLibHandle != nullptr) return;
 
     gLibHandle = dlopen("libhcomm.so", RTLD_NOW);
     if (!gLibHandle) {
@@ -95,7 +95,7 @@ void HcommDlFini(void) {
         HcomDlFini();
 
         dlclose(gLibHandle);
-        gLibHandle = NULL;
+        gLibHandle = nullptr;
     }
 }
 

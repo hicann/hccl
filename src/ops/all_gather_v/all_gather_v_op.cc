@@ -26,12 +26,12 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
     // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclAllGatherVInner(sendBuf, sendCount, recvBuf, recvCounts, recvDispls, dataType, comm, stream);
     }
- 
+
     if (!CheckHCCLIndependentOp()) {
         return HcclAllGatherVInner(sendBuf, sendCount, recvBuf, recvCounts, recvDispls, dataType, comm, stream);
     }
@@ -60,13 +60,13 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
     CHK_RET(CheckCount(sendCount));
     CHK_RET(CheckDataType(dataType, false));
- 
+
     // 执行AllGatherV
     CHK_RET_AND_PRINT_IDE(AllGatherVOutPlace(sendBuf, recvBuf, sendCount, recvCounts, recvDispls, dataType, comm, stream, tag), tag.c_str());
- 
+
     return HCCL_SUCCESS;
 }
- 
+
 namespace ops_hccl {
 HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf)
 {
@@ -80,10 +80,10 @@ HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void* sendBuf, co
     RPT_INPUT_ERR(recvBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "parameter", "value", "tips"}),
                   std::vector<std::string>({"HcclAllGatherV", "recvBuf", "nullptr", "please check recvBuf"}));
     CHK_PTR_NULL(recvBuf);
- 
+
     return HCCL_SUCCESS;
 }
- 
+
 HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,const void *recvCounts,const void *recvDispls,
     HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag)
 {
@@ -92,7 +92,7 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 inputSize = sendCount * perDataSize;    // all gather v 每个rank上一份数据
-    u64 outputSize = 0;  
+    u64 outputSize = 0;
     const u64 *u64RecvCount = reinterpret_cast<const u64 *>(recvCounts);
     for (u64 i = 0; i < userRankSize; i++) {
         outputSize += u64RecvCount[i] * perDataSize;
@@ -111,17 +111,17 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     CHK_RET(HcclGetCommName(comm, param.commName));
     param.stream = stream;
     param.opMode = OpMode::OPBASE;
- 
+
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
- 
+
     // topoInfo的tag，所有相同的算子可以共享
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
     if (ret <= 0) {
         HCCL_ERROR("failed to fill param.tag");
         return HCCL_E_INTERNAL;
     }
- 
+
     // 参数准备
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;
@@ -133,7 +133,7 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     // 带V算子的参数
     param.varMemSize = varMemSize;
     // 从源内存地址按字节直接拷贝数据到目标地址
-    std::vector<u64> merged(userRankSize + userRankSize); 
+    std::vector<u64> merged(userRankSize + userRankSize);
     const uint64_t *countsPtr = reinterpret_cast<const uint64_t *>(recvCounts);
     const uint64_t *displsPtr = reinterpret_cast<const uint64_t *>(recvDispls);
     std::copy(countsPtr, countsPtr + userRankSize, merged.begin());
@@ -152,5 +152,5 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     HCCL_INFO("Execute AllGatherVOutPlace success.");
     return HCCL_SUCCESS;
 }
- 
+
 }  // namespace ops_hccl

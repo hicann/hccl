@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 #ifndef HCCL_E_NOT_SUPPORTED
-#define HCCL_E_NOT_SUPPORTED  ((HcclResult)(-2))
+#define HCCL_E_NOT_SUPPORTED  (static_cast<HcclResult>(-2))
 #endif
 
 // 对外 API 的包装函数声明

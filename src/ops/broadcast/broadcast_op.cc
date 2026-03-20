@@ -27,7 +27,7 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
     // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclBroadcastInner(buf, count, dataType, root, comm, stream);

@@ -29,7 +29,7 @@ HcclResult HcclReduceScatterV(void *sendBuf,  const void *sendCounts, const void
     // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclReduceScatterVInner(sendBuf, sendCounts, sendDispls, recvBuf, recvCount, dataType, op, comm, stream);
@@ -56,9 +56,9 @@ HcclResult HcclReduceScatterV(void *sendBuf,  const void *sendCounts, const void
     CHK_RET(HcclGetRankSize(comm, &rankSize));
     // 校验sendCounts全部为0的情况
     const u64* sendCountsAddr = reinterpret_cast<const u64*>(sendCounts);
-    CHK_PRT_RET(std::all_of(sendCountsAddr, sendCountsAddr + rankSize, [](auto count) { return count == 0; }), 
-            HCCL_WARNING("input all %u elements in sendCounts are 0, return success", rankSize), 
-            HCCL_SUCCESS);  
+    CHK_PRT_RET(std::all_of(sendCountsAddr, sendCountsAddr + rankSize, [](auto count) { return count == 0; }),
+            HCCL_WARNING("input all %u elements in sendCounts are 0, return success", rankSize),
+            HCCL_SUCCESS);
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
@@ -78,7 +78,7 @@ HcclResult HcclReduceScatterV(void *sendBuf,  const void *sendCounts, const void
 
 namespace ops_hccl {
 HcclResult CheckReduceScatterVInputPara(
-    const HcclComm comm, const void *sendBuf, const void *recvBuf, 
+    const HcclComm comm, const void *sendBuf, const void *recvBuf,
     const void *sendCounts, const void *sendDispls, const aclrtStream stream)
 {
     // 入参合法性校验

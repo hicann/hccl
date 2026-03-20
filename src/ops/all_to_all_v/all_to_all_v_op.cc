@@ -28,7 +28,7 @@ HcclResult HcclAlltoAll(const void *sendBuf, uint64_t sendCount, HcclDataType se
     // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclAlltoAllInner(sendBuf, sendCount, sendType, recvBuf, recvCount, recvType, comm, stream);
@@ -87,7 +87,7 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 {
     HCCL_INFO("Start to run execute HcclAlltoAllV");
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclAlltoAllVInner(sendBuf, sendCounts, sdispls, sendType, recvBuf, recvCounts, rdispls, recvType, comm, stream);

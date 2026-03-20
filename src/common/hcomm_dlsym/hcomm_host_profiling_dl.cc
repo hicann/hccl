@@ -15,14 +15,14 @@
 #include <stdlib.h>
 
 // 定义全局函数指针
-HcclResult (*hcommProfilingRegThreadPtr)(HcomProInfoTmp, ThreadHandle*) = NULL;
-HcclResult (*hcommProfilingUnRegThreadPtr)(HcomProInfoTmp, ThreadHandle*) = NULL;
-HcclResult (*hcommProfilingReportKernelPtr)(uint64_t, const char*) = NULL;
-HcclResult (*hcommProfilingReportOpPtr)(HcomProInfoTmp) = NULL;
-uint64_t (*hcommGetProfilingSysCycleTimePtr)() = NULL;
-HcclResult (*hcclDfxRegOpInfoPtr)(HcclComm comm, void* dfxOpInfo) = NULL;
-HcclResult (*hcclProfilingReportOpPtr)(HcclComm comm, uint64_t beginTime) = NULL;
-HcclResult (*hcclReportAicpuKernelPtr)(HcclComm comm, uint64_t beginTime, char *kernelName) = NULL;
+HcclResult (*hcommProfilingRegThreadPtr)(HcomProInfoTmp, ThreadHandle*) = nullptr;
+HcclResult (*hcommProfilingUnRegThreadPtr)(HcomProInfoTmp, ThreadHandle*) = nullptr;
+HcclResult (*hcommProfilingReportKernelPtr)(uint64_t, const char*) = nullptr;
+HcclResult (*hcommProfilingReportOpPtr)(HcomProInfoTmp) = nullptr;
+uint64_t (*hcommGetProfilingSysCycleTimePtr)() = nullptr;
+HcclResult (*hcclDfxRegOpInfoPtr)(HcclComm comm, void* dfxOpInfo) = nullptr;
+HcclResult (*hcclProfilingReportOpPtr)(HcclComm comm, uint64_t beginTime) = nullptr;
+HcclResult (*hcclReportAicpuKernelPtr)(HcclComm comm, uint64_t beginTime, char *kernelName) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hcommProfilingRegThreadSupported = false;
@@ -81,10 +81,10 @@ static HcclResult StubHcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, c
 
 // 初始化
 void HcommProfilingDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
                 HCCL_DEBUG("[HcclWrapper] %s not supported", name); \
@@ -93,14 +93,14 @@ void HcommProfilingDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hcommProfilingRegThreadPtr, "HcommProfilingRegThread", StubHcommProfilingRegThread, g_hcommProfilingRegThreadSupported);
-    SET_PTR(hcommProfilingUnRegThreadPtr, "HcommProfilingUnRegThread", StubHcommProfilingUnRegThread, g_hcommProfilingUnRegThreadSupported);
-    SET_PTR(hcommProfilingReportKernelPtr, "HcommProfilingReportKernel", StubHcommProfilingReportKernel, g_hcommProfilingReportKernelSupported);
-    SET_PTR(hcommProfilingReportOpPtr, "HcommProfilingReportOp", StubHcommProfilingReportOp, g_hcommProfilingReportOpSupported);
-    SET_PTR(hcommGetProfilingSysCycleTimePtr, "HcommGetProfilingSysCycleTime", StubHcommGetProfilingSysCycleTime, g_hcommGetProfilingSysCycleTimeSupported);
-    SET_PTR(hcclDfxRegOpInfoPtr, "HcclDfxRegOpInfo", StubHcclDfxRegOpInfo, g_hcclDfxRegOpInfoSupported);
-    SET_PTR(hcclProfilingReportOpPtr, "HcclProfilingReportOp", StubHcclProfilingReportOp, g_hcclProfilingReportOpSupported);
-    SET_PTR(hcclReportAicpuKernelPtr, "HcclReportAicpuKernel", StubHcclReportAicpuKernel, g_hcclReportAicpuKernelSupported);
+    SET_PTR(hcommProfilingRegThreadPtr, libHcommHandle, "HcommProfilingRegThread", StubHcommProfilingRegThread, g_hcommProfilingRegThreadSupported);
+    SET_PTR(hcommProfilingUnRegThreadPtr, libHcommHandle, "HcommProfilingUnRegThread", StubHcommProfilingUnRegThread, g_hcommProfilingUnRegThreadSupported);
+    SET_PTR(hcommProfilingReportKernelPtr, libHcommHandle, "HcommProfilingReportKernel", StubHcommProfilingReportKernel, g_hcommProfilingReportKernelSupported);
+    SET_PTR(hcommProfilingReportOpPtr, libHcommHandle, "HcommProfilingReportOp", StubHcommProfilingReportOp, g_hcommProfilingReportOpSupported);
+    SET_PTR(hcommGetProfilingSysCycleTimePtr, libHcommHandle, "HcommGetProfilingSysCycleTime", StubHcommGetProfilingSysCycleTime, g_hcommGetProfilingSysCycleTimeSupported);
+    SET_PTR(hcclDfxRegOpInfoPtr, libHcommHandle, "HcclDfxRegOpInfo", StubHcclDfxRegOpInfo, g_hcclDfxRegOpInfoSupported);
+    SET_PTR(hcclProfilingReportOpPtr, libHcommHandle, "HcclProfilingReportOp", StubHcclProfilingReportOp, g_hcclProfilingReportOpSupported);
+    SET_PTR(hcclReportAicpuKernelPtr, libHcommHandle, "HcclReportAicpuKernel", StubHcclReportAicpuKernel, g_hcclReportAicpuKernelSupported);
 
     #undef SET_PTR
 }

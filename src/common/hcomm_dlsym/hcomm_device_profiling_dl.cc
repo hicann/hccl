@@ -15,14 +15,14 @@
 #include <stdlib.h>
 
 // 定义全局函数指针
-HcclResult (*hcommProfilingReportMainStreamAndFirstTaskPtr)(ThreadHandle) = NULL;
-HcclResult (*hcommProfilingReportMainStreamAndLastTaskPtr)(ThreadHandle) = NULL;
-HcclResult (*hcommProfilingReportDeviceHcclOpInfoPtr)(HcomProInfoTmp) = NULL;
-HcclResult (*hcommProfilingInitPtr)(ThreadHandle*, uint32_t) = NULL;
-HcclResult (*hcommProfilingEndPtr)(ThreadHandle*, uint32_t) = NULL;
-HcclResult (*hcommProfilingReportDeviceOpPtr)(const char* groupname) = NULL;
-HcclResult (*hcommProfilingReportKernelStartTaskPtr)(uint64_t thread, const char* groupname) = NULL;
-HcclResult (*hcommProfilingReportKernelEndTaskPtr)(uint64_t thread, const char* groupname) = NULL;
+HcclResult (*hcommProfilingReportMainStreamAndFirstTaskPtr)(ThreadHandle) = nullptr;
+HcclResult (*hcommProfilingReportMainStreamAndLastTaskPtr)(ThreadHandle) = nullptr;
+HcclResult (*hcommProfilingReportDeviceHcclOpInfoPtr)(HcomProInfoTmp) = nullptr;
+HcclResult (*hcommProfilingInitPtr)(ThreadHandle*, uint32_t) = nullptr;
+HcclResult (*hcommProfilingEndPtr)(ThreadHandle*, uint32_t) = nullptr;
+HcclResult (*hcommProfilingReportDeviceOpPtr)(const char* groupname) = nullptr;
+HcclResult (*hcommProfilingReportKernelStartTaskPtr)(uint64_t thread, const char* groupname) = nullptr;
+HcclResult (*hcommProfilingReportKernelEndTaskPtr)(uint64_t thread, const char* groupname) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hcommProfilingReportMainStreamAndFirstTaskSupported = false;
@@ -84,10 +84,10 @@ static HcclResult StubHcommProfilingReportKernelEndTask(uint64_t thread, const c
 
 // 初始化
 void HcommDeviceProfilingDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
                 HCCL_DEBUG("[HcclWrapper] %s not supported", name); \
@@ -96,21 +96,21 @@ void HcommDeviceProfilingDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hcommProfilingReportMainStreamAndFirstTaskPtr, "HcommProfilingReportMainStreamAndFirstTask",
+    SET_PTR(hcommProfilingReportMainStreamAndFirstTaskPtr, libHcommHandle, "HcommProfilingReportMainStreamAndFirstTask",
             StubHcommProfilingReportMainStreamAndFirstTask, g_hcommProfilingReportMainStreamAndFirstTaskSupported);
-    SET_PTR(hcommProfilingReportMainStreamAndLastTaskPtr, "HcommProfilingReportMainStreamAndLastTask",
+    SET_PTR(hcommProfilingReportMainStreamAndLastTaskPtr, libHcommHandle, "HcommProfilingReportMainStreamAndLastTask",
             StubHcommProfilingReportMainStreamAndLastTask, g_hcommProfilingReportMainStreamAndLastTaskSupported);
-    SET_PTR(hcommProfilingReportDeviceHcclOpInfoPtr, "HcommProfilingReportDeviceHcclOpInfo",
+    SET_PTR(hcommProfilingReportDeviceHcclOpInfoPtr, libHcommHandle, "HcommProfilingReportDeviceHcclOpInfo",
             StubHcommProfilingReportDeviceHcclOpInfo, g_hcommProfilingReportDeviceHcclOpInfoSupported);
-    SET_PTR(hcommProfilingInitPtr, "HcommProfilingInit",
+    SET_PTR(hcommProfilingInitPtr, libHcommHandle, "HcommProfilingInit",
             StubHcommProfilingInit, g_hcommProfilingInitSupported);
-    SET_PTR(hcommProfilingEndPtr, "HcommProfilingEnd",
+    SET_PTR(hcommProfilingEndPtr, libHcommHandle, "HcommProfilingEnd",
             StubHcommProfilingEnd, g_hcommProfilingEndSupported);
-    SET_PTR(hcommProfilingReportDeviceOpPtr, "HcommProfilingReportDeviceOp",
+    SET_PTR(hcommProfilingReportDeviceOpPtr, libHcommHandle, "HcommProfilingReportDeviceOp",
         StubHcommProfilingReportDeviceOp, g_hcommProfilingReportDeviceOpSupported);
-    SET_PTR(hcommProfilingReportKernelStartTaskPtr, "HcommProfilingReportKernelStartTask",
+    SET_PTR(hcommProfilingReportKernelStartTaskPtr, libHcommHandle, "HcommProfilingReportKernelStartTask",
         StubHcommProfilingReportKernelStartTask, g_hcommProfilingReportKernelStartTaskSupported);
-    SET_PTR(hcommProfilingReportKernelEndTaskPtr, "HcommProfilingReportKernelEndTask",
+    SET_PTR(hcommProfilingReportKernelEndTaskPtr, libHcommHandle, "HcommProfilingReportKernelEndTask",
         StubHcommProfilingReportKernelEndTask, g_hcommProfilingReportKernelEndTaskSupported);
 
     #undef SET_PTR

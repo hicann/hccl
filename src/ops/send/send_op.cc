@@ -24,7 +24,7 @@ HcclResult HcclSend(
     void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("[HcclSend] Start.");
-    if (!CheckHCCLIndependentOp() || (GetHcommVersion() < 90000000)) {
+    if (!CheckHCCLIndependentOp() || (GetHcommVersion() < VERSION_NUMBER)) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
     }
     DevType deviceType = DevType::DEV_TYPE_COUNT;

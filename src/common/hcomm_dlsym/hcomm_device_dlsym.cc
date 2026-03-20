@@ -20,11 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static void* gLibHandle = NULL;
+static void* gLibHandle = nullptr;
 
 // 初始化
 void HcommDeviceDlInit(void) {
-    if (gLibHandle != NULL) return;
+    if (gLibHandle != nullptr) return;
 
     gLibHandle = dlopen("libccl_kernel.so", RTLD_NOW);
     if (!gLibHandle) {
@@ -48,7 +48,7 @@ void HcommDeviceDlFini(void) {
         DtypeCommonDlFini();
 
         dlclose(gLibHandle);
-        gLibHandle = NULL;
+        gLibHandle = nullptr;
     }
 }
 

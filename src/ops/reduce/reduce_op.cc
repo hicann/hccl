@@ -28,7 +28,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);

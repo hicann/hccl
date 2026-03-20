@@ -15,19 +15,19 @@
 #include <stdlib.h>
 
 // 定义全局函数指针（小驼峰）
-HcclResult (*hcclRegisterMemPtr)(HcclComm, u32, int, void*, u64, HcclMemDesc*) = NULL;
-HcclResult (*hcclDeregisterMemPtr)(HcclComm, HcclMemDesc*) = NULL;
-HcclResult (*hcclExchangeMemDescPtr)(HcclComm, u32, HcclMemDescs*, int, HcclMemDescs*, u32*) = NULL;
-HcclResult (*hcclEnableMemAccessPtr)(HcclComm, HcclMemDesc*, HcclMem*) = NULL;
-HcclResult (*hcclDisableMemAccessPtr)(HcclComm, HcclMemDesc*) = NULL;
-HcclResult (*hcclBatchPutPtr)(HcclComm, u32, HcclOneSideOpDesc*, u32, rtStream_t) = NULL;
-HcclResult (*hcclBatchGetPtr)(HcclComm, u32, HcclOneSideOpDesc*, u32, rtStream_t) = NULL;
-HcclResult (*hcclRemapRegistedMemoryPtr)(HcclComm*, HcclMem*, u64, u64) = NULL;
-HcclResult (*hcclRegisterGlobalMemPtr)(const HcclMem*, void**) = NULL;
-HcclResult (*hcclDeregisterGlobalMemPtr)(void*) = NULL;
-HcclResult (*hcclCommBindMemPtr)(HcclComm, void*) = NULL;
-HcclResult (*hcclCommUnbindMemPtr)(HcclComm, void*) = NULL;
-HcclResult (*hcclCommPreparePtr)(HcclComm, const HcclPrepareConfig*, const int) = NULL;
+HcclResult (*hcclRegisterMemPtr)(HcclComm, u32, int, void*, u64, HcclMemDesc*) = nullptr;
+HcclResult (*hcclDeregisterMemPtr)(HcclComm, HcclMemDesc*) = nullptr;
+HcclResult (*hcclExchangeMemDescPtr)(HcclComm, u32, HcclMemDescs*, int, HcclMemDescs*, u32*) = nullptr;
+HcclResult (*hcclEnableMemAccessPtr)(HcclComm, HcclMemDesc*, HcclMem*) = nullptr;
+HcclResult (*hcclDisableMemAccessPtr)(HcclComm, HcclMemDesc*) = nullptr;
+HcclResult (*hcclBatchPutPtr)(HcclComm, u32, HcclOneSideOpDesc*, u32, rtStream_t) = nullptr;
+HcclResult (*hcclBatchGetPtr)(HcclComm, u32, HcclOneSideOpDesc*, u32, rtStream_t) = nullptr;
+HcclResult (*hcclRemapRegistedMemoryPtr)(HcclComm*, HcclMem*, u64, u64) = nullptr;
+HcclResult (*hcclRegisterGlobalMemPtr)(const HcclMem*, void**) = nullptr;
+HcclResult (*hcclDeregisterGlobalMemPtr)(void*) = nullptr;
+HcclResult (*hcclCommBindMemPtr)(HcclComm, void*) = nullptr;
+HcclResult (*hcclCommUnbindMemPtr)(HcclComm, void*) = nullptr;
+HcclResult (*hcclCommPreparePtr)(HcclComm, const HcclPrepareConfig*, const int) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hcclRegisterMemSupported = false;
@@ -113,10 +113,10 @@ static HcclResult StubHcclCommPrepare(HcclComm comm, const HcclPrepareConfig* pr
 
 // ---------- 初始化函数 ----------
 void HcclOneSidedServicesDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
             } else { \
@@ -124,19 +124,19 @@ void HcclOneSidedServicesDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hcclRegisterMemPtr, "HcclRegisterMem", StubHcclRegisterMem, g_hcclRegisterMemSupported);
-    SET_PTR(hcclDeregisterMemPtr, "HcclDeregisterMem", StubHcclDeregisterMem, g_hcclDeregisterMemSupported);
-    SET_PTR(hcclExchangeMemDescPtr, "HcclExchangeMemDesc", StubHcclExchangeMemDesc, g_hcclExchangeMemDescSupported);
-    SET_PTR(hcclEnableMemAccessPtr, "HcclEnableMemAccess", StubHcclEnableMemAccess, g_hcclEnableMemAccessSupported);
-    SET_PTR(hcclDisableMemAccessPtr, "HcclDisableMemAccess", StubHcclDisableMemAccess, g_hcclDisableMemAccessSupported);
-    SET_PTR(hcclBatchPutPtr, "HcclBatchPut", StubHcclBatchPut, g_hcclBatchPutSupported);
-    SET_PTR(hcclBatchGetPtr, "HcclBatchGet", StubHcclBatchGet, g_hcclBatchGetSupported);
-    SET_PTR(hcclRemapRegistedMemoryPtr, "HcclRemapRegistedMemory", StubHcclRemapRegistedMemory, g_hcclRemapRegistedMemorySupported);
-    SET_PTR(hcclRegisterGlobalMemPtr, "HcclRegisterGlobalMem", StubHcclRegisterGlobalMem, g_hcclRegisterGlobalMemSupported);
-    SET_PTR(hcclDeregisterGlobalMemPtr, "HcclDeregisterGlobalMem", StubHcclDeregisterGlobalMem, g_hcclDeregisterGlobalMemSupported);
-    SET_PTR(hcclCommBindMemPtr, "HcclCommBindMem", StubHcclCommBindMem, g_hcclCommBindMemSupported);
-    SET_PTR(hcclCommUnbindMemPtr, "HcclCommUnbindMem", StubHcclCommUnbindMem, g_hcclCommUnbindMemSupported);
-    SET_PTR(hcclCommPreparePtr, "HcclCommPrepare", StubHcclCommPrepare, g_hcclCommPrepareSupported);
+    SET_PTR(hcclRegisterMemPtr, libHcommHandle, "HcclRegisterMem", StubHcclRegisterMem, g_hcclRegisterMemSupported);
+    SET_PTR(hcclDeregisterMemPtr, libHcommHandle, "HcclDeregisterMem", StubHcclDeregisterMem, g_hcclDeregisterMemSupported);
+    SET_PTR(hcclExchangeMemDescPtr, libHcommHandle, "HcclExchangeMemDesc", StubHcclExchangeMemDesc, g_hcclExchangeMemDescSupported);
+    SET_PTR(hcclEnableMemAccessPtr, libHcommHandle, "HcclEnableMemAccess", StubHcclEnableMemAccess, g_hcclEnableMemAccessSupported);
+    SET_PTR(hcclDisableMemAccessPtr, libHcommHandle, "HcclDisableMemAccess", StubHcclDisableMemAccess, g_hcclDisableMemAccessSupported);
+    SET_PTR(hcclBatchPutPtr, libHcommHandle, "HcclBatchPut", StubHcclBatchPut, g_hcclBatchPutSupported);
+    SET_PTR(hcclBatchGetPtr, libHcommHandle, "HcclBatchGet", StubHcclBatchGet, g_hcclBatchGetSupported);
+    SET_PTR(hcclRemapRegistedMemoryPtr, libHcommHandle, "HcclRemapRegistedMemory", StubHcclRemapRegistedMemory, g_hcclRemapRegistedMemorySupported);
+    SET_PTR(hcclRegisterGlobalMemPtr, libHcommHandle, "HcclRegisterGlobalMem", StubHcclRegisterGlobalMem, g_hcclRegisterGlobalMemSupported);
+    SET_PTR(hcclDeregisterGlobalMemPtr, libHcommHandle, "HcclDeregisterGlobalMem", StubHcclDeregisterGlobalMem, g_hcclDeregisterGlobalMemSupported);
+    SET_PTR(hcclCommBindMemPtr, libHcommHandle, "HcclCommBindMem", StubHcclCommBindMem, g_hcclCommBindMemSupported);
+    SET_PTR(hcclCommUnbindMemPtr, libHcommHandle, "HcclCommUnbindMem", StubHcclCommUnbindMem, g_hcclCommUnbindMemSupported);
+    SET_PTR(hcclCommPreparePtr, libHcommHandle, "HcclCommPrepare", StubHcclCommPrepare, g_hcclCommPrepareSupported);
 
     #undef SET_PTR
 }

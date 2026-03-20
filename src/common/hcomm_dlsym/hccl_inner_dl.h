@@ -18,8 +18,10 @@ extern "C" {
 #endif
 
 #ifndef HCCL_E_NOT_SUPPORTED
-#define HCCL_E_NOT_SUPPORTED  ((HcclResult)(-2))
+#define HCCL_E_NOT_SUPPORTED  (static_cast<HcclResult>(-2))
 #endif
+
+constexpr int VERSION_NUMBER = 90000000;
 
 // 声明全局函数指针（小驼峰命名）
 extern HcclResult (*hcclAllReduceInnerPtr)(void*, void*, uint64_t, HcclDataType, HcclReduceOp, HcclComm, aclrtStream);

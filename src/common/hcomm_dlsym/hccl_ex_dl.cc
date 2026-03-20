@@ -15,15 +15,15 @@
 #include <stdlib.h>
 
 // 定义全局函数指针（小驼峰）
-static HcclResult (*hcclCreateComResourcePtr)(const char*, u32, void**) = NULL;
-static HcclResult (*hcclGetAicpuOpStreamNotifyPtr)(const char*, rtStream_t*, void**) = NULL;
-static HcclResult (*hcclAllocComResourcePtr)(HcclComm, u32, void**) = NULL;
-static HcclResult (*hcclAllocComResourceByTilingPtr)(HcclComm, void*, void*, void**) = NULL;
-static HcclResult (*hcclGetAicpuOpStreamAndNotifyPtr)(HcclComm, rtStream_t*, u8, void**) = NULL;
-static HcclResult (*hcclGetTopoDescPtr)(HcclComm, HcclTopoDescs*, uint32_t) = NULL;
-static HcclResult (*hcclCommRegisterPtr)(HcclComm, void*, uint64_t, void**, uint32_t) = NULL;
-static HcclResult (*hcclCommDeregisterPtr)(HcclComm, void*) = NULL;
-static HcclResult (*hcclCommExchangeMemPtr)(HcclComm, void*, uint32_t*, uint32_t) = NULL;
+static HcclResult (*hcclCreateComResourcePtr)(const char*, u32, void**) = nullptr;
+static HcclResult (*hcclGetAicpuOpStreamNotifyPtr)(const char*, rtStream_t*, void**) = nullptr;
+static HcclResult (*hcclAllocComResourcePtr)(HcclComm, u32, void**) = nullptr;
+static HcclResult (*hcclAllocComResourceByTilingPtr)(HcclComm, void*, void*, void**) = nullptr;
+static HcclResult (*hcclGetAicpuOpStreamAndNotifyPtr)(HcclComm, rtStream_t*, u8, void**) = nullptr;
+static HcclResult (*hcclGetTopoDescPtr)(HcclComm, HcclTopoDescs*, uint32_t) = nullptr;
+static HcclResult (*hcclCommRegisterPtr)(HcclComm, void*, uint64_t, void**, uint32_t) = nullptr;
+static HcclResult (*hcclCommDeregisterPtr)(HcclComm, void*) = nullptr;
+static HcclResult (*hcclCommExchangeMemPtr)(HcclComm, void*, uint32_t*, uint32_t) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hcclCreateComResourceSupported = false;
@@ -85,10 +85,10 @@ static HcclResult StubHcclCommExchangeMem(HcclComm comm, void* windowHandle, uin
 
 // ---------- 初始化函数 ----------
 void HcclExDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
             } else { \
@@ -96,15 +96,15 @@ void HcclExDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hcclCreateComResourcePtr, "HcclCreateComResource", StubHcclCreateComResource, g_hcclCreateComResourceSupported);
-    SET_PTR(hcclGetAicpuOpStreamNotifyPtr, "HcclGetAicpuOpStreamNotify", StubHcclGetAicpuOpStreamNotify, g_hcclGetAicpuOpStreamNotifySupported);
-    SET_PTR(hcclAllocComResourcePtr, "HcclAllocComResource", StubHcclAllocComResource, g_hcclAllocComResourceSupported);
-    SET_PTR(hcclAllocComResourceByTilingPtr, "HcclAllocComResourceByTiling", StubHcclAllocComResourceByTiling, g_hcclAllocComResourceByTilingSupported);
-    SET_PTR(hcclGetAicpuOpStreamAndNotifyPtr, "HcclGetAicpuOpStreamAndNotify", StubHcclGetAicpuOpStreamAndNotify, g_hcclGetAicpuOpStreamAndNotifySupported);
-    SET_PTR(hcclGetTopoDescPtr, "HcclGetTopoDesc", StubHcclGetTopoDesc, g_hcclGetTopoDescSupported);
-    SET_PTR(hcclCommRegisterPtr, "HcclCommRegister", StubHcclCommRegister, g_hcclCommRegisterSupported);
-    SET_PTR(hcclCommDeregisterPtr, "HcclCommDeregister", StubHcclCommDeregister, g_hcclCommDeregisterSupported);
-    SET_PTR(hcclCommExchangeMemPtr, "HcclCommExchangeMem", StubHcclCommExchangeMem, g_hcclCommExchangeMemSupported);
+    SET_PTR(hcclCreateComResourcePtr, libHcommHandle, "HcclCreateComResource", StubHcclCreateComResource, g_hcclCreateComResourceSupported);
+    SET_PTR(hcclGetAicpuOpStreamNotifyPtr, libHcommHandle, "HcclGetAicpuOpStreamNotify", StubHcclGetAicpuOpStreamNotify, g_hcclGetAicpuOpStreamNotifySupported);
+    SET_PTR(hcclAllocComResourcePtr, libHcommHandle, "HcclAllocComResource", StubHcclAllocComResource, g_hcclAllocComResourceSupported);
+    SET_PTR(hcclAllocComResourceByTilingPtr, libHcommHandle, "HcclAllocComResourceByTiling", StubHcclAllocComResourceByTiling, g_hcclAllocComResourceByTilingSupported);
+    SET_PTR(hcclGetAicpuOpStreamAndNotifyPtr, libHcommHandle, "HcclGetAicpuOpStreamAndNotify", StubHcclGetAicpuOpStreamAndNotify, g_hcclGetAicpuOpStreamAndNotifySupported);
+    SET_PTR(hcclGetTopoDescPtr, libHcommHandle, "HcclGetTopoDesc", StubHcclGetTopoDesc, g_hcclGetTopoDescSupported);
+    SET_PTR(hcclCommRegisterPtr, libHcommHandle, "HcclCommRegister", StubHcclCommRegister, g_hcclCommRegisterSupported);
+    SET_PTR(hcclCommDeregisterPtr, libHcommHandle, "HcclCommDeregister", StubHcclCommDeregister, g_hcclCommDeregisterSupported);
+    SET_PTR(hcclCommExchangeMemPtr, libHcommHandle, "HcclCommExchangeMem", StubHcclCommExchangeMem, g_hcclCommExchangeMemSupported);
 
     #undef SET_PTR
 }

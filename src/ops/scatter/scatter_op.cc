@@ -51,7 +51,7 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
 
     // 入口的地方先解析环境变量, 调用位置有特殊要求，不要变化
     CHK_RET(InitEnvConfig());
-    
+
     // AclGraph引导到老的流程上面
     if (IsStreamCapture(stream)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
@@ -161,7 +161,7 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
     uint64_t beginTime;
     if (HcommIsProfilingSupported()) {
         beginTime = HcommGetProfilingSysCycleTime();
-    } 
+    }
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
@@ -208,9 +208,9 @@ HcclResult ScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, Hcc
     }
 
     #ifdef MACRO_DEV_TYPE_NEW
-    if (deviceType == DevType::DEV_TYPE_950 && (GetHcommVersion() >= 90000000)) {
+    if (deviceType == DevType::DEV_TYPE_950 && (GetHcommVersion() >= VERSION_NUMBER)) {
     #else
-    if (deviceType == DevType::DEV_TYPE_910_95 && (GetHcommVersion() >= 90000000)) {
+    if (deviceType == DevType::DEV_TYPE_910_95 && (GetHcommVersion() >= VERSION_NUMBER)) {
     #endif
         std::string algName;
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
@@ -281,7 +281,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
             // Export cpuTsThread
             CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
         }
-        
+
         CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &resCtx));
 
         if (param.engine == COMM_ENGINE_AICPU_TS) {
@@ -302,7 +302,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         ACLCHECK(aclrtMemcpy(curPtr, sizeof(ThreadHandle), &exportedAicpuTsThread, sizeof(ThreadHandle),
             ACL_MEMCPY_HOST_TO_DEVICE));
     }
-    
+
     // 算法执行
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 当前aicpu launch接口只能有一个输入参数，将Context指针放在param参数中
@@ -333,7 +333,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         uint64_t beginTime;
         if (HcommIsProfilingSupported()) {
             beginTime = HcommGetProfilingSysCycleTime();
-        } 
+        }
         std::string kernelName = "HcclLaunchAicpuKernel";
         aclrtFuncHandle funcHandle;
         aclrtArgsHandle argsHandle;
@@ -726,7 +726,7 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         topoInfo->mainThread = resCtxHost->topoInfo.mainThread;
     }
- 
+
     CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0));
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 从Host内存拷贝到Device Context内存上
@@ -874,16 +874,16 @@ HcclResult ReportProfilingThread(HcclComm comm, const OpParam &param, AlgResourc
     profInfo.userRank = topoInfo->userRank;
     profInfo.dataCount = param.DataDes.count;
     profInfo.dataType = static_cast<uint8_t>(param.DataDes.dataType);
-    
+
     profInfo.root = param.root;
 
     if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
         profInfo.slaveThreadNum = resCtxHost->slaveThreadNum;
-        
+
         HCCL_DEBUG("[%s] algType[%s], commName[%s], rankSize[%u], userRank[%u], dataCount[%u], dataType[%u], slaveThreadNum[%u], root[%u]",
-            __func__, profInfo.algType, profInfo.commName, profInfo.rankSize, 
+            __func__, profInfo.algType, profInfo.commName, profInfo.rankSize,
             profInfo.userRank, profInfo.dataCount, profInfo.dataType, profInfo.slaveThreadNum, profInfo.root);
-        
+
         char* curThreadPtr = reinterpret_cast<char*>(resCtxHost); // 拿到所有host下发的thread
         curThreadPtr += sizeof(AlgResourceCtx);// 偏移指针
         ThreadHandle* curThreads = reinterpret_cast<ThreadHandle *>(curThreadPtr);

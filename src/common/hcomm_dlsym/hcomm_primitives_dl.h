@@ -12,13 +12,14 @@
 #define HCOMM_PRIMITIVES_DL_H
 
 #include "hcomm_primitives.h"   // 原头文件，包含所有类型和定义
+#include "hccl_res.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifndef HCCL_E_NOT_SUPPORTED
-#define HCCL_E_NOT_SUPPORTED  ((HcclResult)(-2))
+#define HCCL_E_NOT_SUPPORTED  (static_cast<HcclResult>(-2))
 #endif
 
 // 声明全局函数指针（小驼峰命名）

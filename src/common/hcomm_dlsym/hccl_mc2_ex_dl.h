@@ -11,12 +11,15 @@
 #ifndef HCCL_MC2_EX_DL_H
 #define HCCL_MC2_EX_DL_H
 
+#include <cstdint>
+#include "hccl_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifndef HCCL_E_NOT_SUPPORTED
-#define HCCL_E_NOT_SUPPORTED  ((HcclResult)(-2))
+#define HCCL_E_NOT_SUPPORTED  (static_cast<HcclResult>(-2))
 #endif
 
 // 对外 API 包装函数声明

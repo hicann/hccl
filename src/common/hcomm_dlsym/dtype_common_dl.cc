@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 // 定义全局函数指针
-HcclResult (*hrtGetDeviceTypePtr)(DevType &devType) = NULL;
+HcclResult (*hrtGetDeviceTypePtr)(DevType &devType) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hrtGetDeviceTypeSupported = false;
@@ -29,10 +29,10 @@ static HcclResult StubHrtGetDeviceType(DevType &devType) {
 
 // 初始化
 void DtypeCommonDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
                 HCCL_DEBUG("[HcclWrapper] %s not supported", name); \
@@ -41,7 +41,7 @@ void DtypeCommonDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hrtGetDeviceTypePtr, "hrtGetDeviceType", StubHrtGetDeviceType, g_hrtGetDeviceTypeSupported);
+    SET_PTR(hrtGetDeviceTypePtr, libHcommHandle, "hrtGetDeviceType", StubHrtGetDeviceType, g_hrtGetDeviceTypeSupported);
 
     #undef SET_PTR
 }

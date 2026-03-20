@@ -12,13 +12,14 @@
 #define HCCL_RES_DL_H
 
 #include "hccl_res.h"
+#include "hcomm_primitives.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifndef HCCL_E_NOT_SUPPORTED
-#define HCCL_E_NOT_SUPPORTED  ((HcclResult)(-2))
+#define HCCL_E_NOT_SUPPORTED  (static_cast<HcclResult>(-2))
 #endif
 
 // ---------- 对外API实现（通过函数指针转发）----------

@@ -28,7 +28,7 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
     // A3是：export HCCL_OP_EXPANSION_MODE="AI_CPU"，A5的接口还没提供
     CHK_RET(InitEnvConfig());
 
-    if ((GetHcommVersion() < 90000000) ||
+    if ((GetHcommVersion() < VERSION_NUMBER) ||
         GetExternalInputHcclCcuMSMode() ||
         GetExternalInputHcclCcuSchedMode()) { // compat handle
         return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
@@ -129,14 +129,14 @@ HcclResult AllReduceOutPlace(void *sendBuf, void *recvBuf, uint64_t count, HcclD
     param.opType = HcclCMDType::HCCL_CMD_ALLREDUCE;
     param.enableDetour = false;
     param.deviceType = deviceType;
-    
+
     // 单卡校验
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(param));
         return HcclResult::HCCL_SUCCESS;
     }
-    
+
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));

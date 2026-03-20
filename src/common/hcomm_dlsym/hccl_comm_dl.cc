@@ -15,47 +15,47 @@
 #include <stdlib.h>
 
 // 定义全局函数指针（小驼峰）
-HcclResult (*hcclGetRankIdPtr)(HcclComm, uint32_t*) = NULL;
-HcclResult (*hcclGetRankSizePtr)(HcclComm, uint32_t*) = NULL;
-HcclResult (*hcclCommInitClusterInfoPtr)(const char*, uint32_t, HcclComm*) = NULL;
-HcclResult (*hcclCommInitClusterInfoConfigPtr)(const char*, uint32_t, HcclCommConfig*, HcclComm*) = NULL;
-HcclResult (*hcclCreateSubCommConfigPtr)(HcclComm*, uint32_t, uint32_t*, uint64_t, uint32_t, HcclCommConfig*, HcclComm*) = NULL;
-HcclResult (*hcclGetRootInfoPtr)(HcclRootInfo*) = NULL;
-HcclResult (*hcclCommInitRootInfoPtr)(uint32_t, const HcclRootInfo*, uint32_t, HcclComm*) = NULL;
-HcclResult (*hcclCommInitRootInfoConfigPtr)(uint32_t, const HcclRootInfo*, uint32_t, const HcclCommConfig*, HcclComm*) = NULL;
-HcclResult (*hcclSetConfigPtr)(HcclConfig, HcclConfigValue) = NULL;
-HcclResult (*hcclGetConfigPtr)(HcclConfig, HcclConfigValue*) = NULL;
-HcclResult (*hcclGetCommNamePtr)(HcclComm, char*) = NULL;
-HcclResult (*hcclCommGetHandleWithNamePtr)(const char*, HcclComm*) = NULL;
-HcclResult (*hcclBarrierPtr)(HcclComm, aclrtStream) = NULL;
-HcclResult (*hcclCommDestroyPtr)(HcclComm) = NULL;
-HcclResult (*hcclCommInitAllPtr)(uint32_t, int32_t*, HcclComm*) = NULL;
-HcclResult (*hcclGetCommAsyncErrorPtr)(HcclComm, HcclResult*) = NULL;
-const char* (*hcclGetErrorStringPtr)(HcclResult) = NULL;
-uint32_t (*hcclGetCommConfigCapabilityPtr)(void) = NULL;
-HcclResult (*hcclCommSuspendPtr)(HcclComm) = NULL;
-HcclResult (*hcclCommResumePtr)(HcclComm) = NULL;
-HcclResult (*hcclCommSetMemoryRangePtr)(HcclComm, void*, size_t, size_t, uint64_t) = NULL;
-HcclResult (*hcclCommUnsetMemoryRangePtr)(HcclComm, void*) = NULL;
-HcclResult (*hcclCommActivateCommMemoryPtr)(HcclComm, void*, size_t, size_t, aclrtDrvMemHandle, uint64_t) = NULL;
-HcclResult (*hcclCommDeactivateCommMemoryPtr)(HcclComm, void*) = NULL;
-HcclResult (*hcclCommWorkingDevNicSetPtr)(HcclComm, uint32_t*, bool*, uint32_t) = NULL;
-HcclResult (*hcclGroupStartPtr)(void) = NULL;
-HcclResult (*hcclGroupEndPtr)(void) = NULL;
-HcclResult (*hcclCommSymWinRegisterPtr)(HcclComm, void*, uint64_t, CommSymWindow*, uint32_t) = NULL;
-HcclResult (*hcclCommSymWinDeregisterPtr)(CommSymWindow) = NULL;
-HcclResult (*hcclCommSymWinGetPtr)(HcclComm, void*, size_t, CommSymWindow*, size_t*) = NULL;
-static HcclResult (*hcclGetRawCommHandlePtr)(const char*, HcclComm*) = NULL;
-static HcclResult (*hcclGetCcuTaskInfoPtr)(HcclComm, void*, void*) = NULL;
-static HcclResult (*commGetLocalCCLBufPtr)(HcclComm, void**, uint64_t*) = NULL;
-static HcclResult (*commGetRemoteCCLBufPtr)(HcclComm, uint32_t, void**, uint64_t*) = NULL;
-static HcclResult (*commGetKFCWorkSpacePtr)(HcclComm, void**, uint64_t*) = NULL;
-static HcclResult (*commGetCCLBufSizeCfgPtr)(HcclComm, uint64_t*) = NULL;
+HcclResult (*hcclGetRankIdPtr)(HcclComm, uint32_t*) = nullptr;
+HcclResult (*hcclGetRankSizePtr)(HcclComm, uint32_t*) = nullptr;
+HcclResult (*hcclCommInitClusterInfoPtr)(const char*, uint32_t, HcclComm*) = nullptr;
+HcclResult (*hcclCommInitClusterInfoConfigPtr)(const char*, uint32_t, HcclCommConfig*, HcclComm*) = nullptr;
+HcclResult (*hcclCreateSubCommConfigPtr)(HcclComm*, uint32_t, uint32_t*, uint64_t, uint32_t, HcclCommConfig*, HcclComm*) = nullptr;
+HcclResult (*hcclGetRootInfoPtr)(HcclRootInfo*) = nullptr;
+HcclResult (*hcclCommInitRootInfoPtr)(uint32_t, const HcclRootInfo*, uint32_t, HcclComm*) = nullptr;
+HcclResult (*hcclCommInitRootInfoConfigPtr)(uint32_t, const HcclRootInfo*, uint32_t, const HcclCommConfig*, HcclComm*) = nullptr;
+HcclResult (*hcclSetConfigPtr)(HcclConfig, HcclConfigValue) = nullptr;
+HcclResult (*hcclGetConfigPtr)(HcclConfig, HcclConfigValue*) = nullptr;
+HcclResult (*hcclGetCommNamePtr)(HcclComm, char*) = nullptr;
+HcclResult (*hcclCommGetHandleWithNamePtr)(const char*, HcclComm*) = nullptr;
+HcclResult (*hcclBarrierPtr)(HcclComm, aclrtStream) = nullptr;
+HcclResult (*hcclCommDestroyPtr)(HcclComm) = nullptr;
+HcclResult (*hcclCommInitAllPtr)(uint32_t, int32_t*, HcclComm*) = nullptr;
+HcclResult (*hcclGetCommAsyncErrorPtr)(HcclComm, HcclResult*) = nullptr;
+const char* (*hcclGetErrorStringPtr)(HcclResult) = nullptr;
+uint32_t (*hcclGetCommConfigCapabilityPtr)(void) = nullptr;
+HcclResult (*hcclCommSuspendPtr)(HcclComm) = nullptr;
+HcclResult (*hcclCommResumePtr)(HcclComm) = nullptr;
+HcclResult (*hcclCommSetMemoryRangePtr)(HcclComm, void*, size_t, size_t, uint64_t) = nullptr;
+HcclResult (*hcclCommUnsetMemoryRangePtr)(HcclComm, void*) = nullptr;
+HcclResult (*hcclCommActivateCommMemoryPtr)(HcclComm, void*, size_t, size_t, aclrtDrvMemHandle, uint64_t) = nullptr;
+HcclResult (*hcclCommDeactivateCommMemoryPtr)(HcclComm, void*) = nullptr;
+HcclResult (*hcclCommWorkingDevNicSetPtr)(HcclComm, uint32_t*, bool*, uint32_t) = nullptr;
+HcclResult (*hcclGroupStartPtr)(void) = nullptr;
+HcclResult (*hcclGroupEndPtr)(void) = nullptr;
+HcclResult (*hcclCommSymWinRegisterPtr)(HcclComm, void*, uint64_t, CommSymWindow*, uint32_t) = nullptr;
+HcclResult (*hcclCommSymWinDeregisterPtr)(CommSymWindow) = nullptr;
+HcclResult (*hcclCommSymWinGetPtr)(HcclComm, void*, size_t, CommSymWindow*, size_t*) = nullptr;
+static HcclResult (*hcclGetRawCommHandlePtr)(const char*, HcclComm*) = nullptr;
+static HcclResult (*hcclGetCcuTaskInfoPtr)(HcclComm, void*, void*) = nullptr;
+static HcclResult (*commGetLocalCCLBufPtr)(HcclComm, void**, uint64_t*) = nullptr;
+static HcclResult (*commGetRemoteCCLBufPtr)(HcclComm, uint32_t, void**, uint64_t*) = nullptr;
+static HcclResult (*commGetKFCWorkSpacePtr)(HcclComm, void**, uint64_t*) = nullptr;
+static HcclResult (*commGetCCLBufSizeCfgPtr)(HcclComm, uint64_t*) = nullptr;
 HcclResult (*hcclCommInitClusterInfoMemConfigPtr)(const char *rankTableString, uint32_t rank,
-                                            HcclCommConfig *config, HcclComm *comm) = NULL;
-static HcclResult (*hcclSnapshotSavePtr)(void*, uint32_t, uint32_t) = NULL;
-static HcclResult (*hcclSnapshotGetBufSizePtr)(uint32_t, uint32_t*) = NULL;
-static HcclResult (*hcclSnapshotRecoverAllCommsPtr)(const char*, const char*, void*, uint32_t) = NULL;
+                                            HcclCommConfig *config, HcclComm *comm) = nullptr;
+static HcclResult (*hcclSnapshotSavePtr)(void*, uint32_t, uint32_t) = nullptr;
+static HcclResult (*hcclSnapshotGetBufSizePtr)(uint32_t, uint32_t*) = nullptr;
+static HcclResult (*hcclSnapshotRecoverAllCommsPtr)(const char*, const char*, void*, uint32_t) = nullptr;
 
 // 添加支持标志（静态，默认 false）
 static bool g_hcclGetRankIdSupported = false;
@@ -305,10 +305,10 @@ static HcclResult StubHcclSnapshotRecoverAllComms(const char* clusterInfo, const
 
 // ---------- 初始化函数 ----------
 void HcclCommDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, name, stub, support_flag) \
+    #define SET_PTR(ptr, handle, name, stub, support_flag) \
         do { \
-            ptr = (decltype(ptr))dlsym(libHcommHandle, name); \
-            if (ptr == NULL) { \
+            ptr = (decltype(ptr))dlsym(handle, name); \
+            if (ptr == nullptr) { \
                 ptr = stub; \
                 support_flag = false; \
             } else { \
@@ -316,46 +316,46 @@ void HcclCommDlInit(void* libHcommHandle) {
             } \
         } while(0)
 
-    SET_PTR(hcclGetRankIdPtr, "HcclGetRankId", StubHcclGetRankId, g_hcclGetRankIdSupported);
-    SET_PTR(hcclGetRankSizePtr, "HcclGetRankSize", StubHcclGetRankSize, g_hcclGetRankSizeSupported);
-    SET_PTR(hcclCommInitClusterInfoPtr, "HcclCommInitClusterInfo", StubHcclCommInitClusterInfo, g_hcclCommInitClusterInfoSupported);
-    SET_PTR(hcclCommInitClusterInfoConfigPtr, "HcclCommInitClusterInfoConfig", StubHcclCommInitClusterInfoConfig, g_hcclCommInitClusterInfoConfigSupported);
-    SET_PTR(hcclCreateSubCommConfigPtr, "HcclCreateSubCommConfig", StubHcclCreateSubCommConfig, g_hcclCreateSubCommConfigSupported);
-    SET_PTR(hcclGetRootInfoPtr, "HcclGetRootInfo", StubHcclGetRootInfo, g_hcclGetRootInfoSupported);
-    SET_PTR(hcclCommInitRootInfoPtr, "HcclCommInitRootInfo", StubHcclCommInitRootInfo, g_hcclCommInitRootInfoSupported);
-    SET_PTR(hcclCommInitRootInfoConfigPtr, "HcclCommInitRootInfoConfig", StubHcclCommInitRootInfoConfig, g_hcclCommInitRootInfoConfigSupported);
-    SET_PTR(hcclSetConfigPtr, "HcclSetConfig", StubHcclSetConfig, g_hcclSetConfigSupported);
-    SET_PTR(hcclGetConfigPtr, "HcclGetConfig", StubHcclGetConfig, g_hcclGetConfigSupported);
-    SET_PTR(hcclGetCommNamePtr, "HcclGetCommName", StubHcclGetCommName, g_hcclGetCommNameSupported);
-    SET_PTR(hcclCommGetHandleWithNamePtr, "HcclCommGetHandleWithName", StubHcclCommGetHandleWithName, g_hcclCommGetHandleWithNameSupported);
-    SET_PTR(hcclBarrierPtr, "HcclBarrier", StubHcclBarrier, g_hcclBarrierSupported);
-    SET_PTR(hcclCommDestroyPtr, "HcclCommDestroy", StubHcclCommDestroy, g_hcclCommDestroySupported);
-    SET_PTR(hcclCommInitAllPtr, "HcclCommInitAll", StubHcclCommInitAll, g_hcclCommInitAllSupported);
-    SET_PTR(hcclGetCommAsyncErrorPtr, "HcclGetCommAsyncError", StubHcclGetCommAsyncError, g_hcclGetCommAsyncErrorSupported);
-    SET_PTR(hcclGetErrorStringPtr, "HcclGetErrorString", StubHcclGetErrorString, g_hcclGetErrorStringSupported);
-    SET_PTR(hcclGetCommConfigCapabilityPtr, "HcclGetCommConfigCapability", StubHcclGetCommConfigCapability, g_hcclGetCommConfigCapabilitySupported);
-    SET_PTR(hcclCommSuspendPtr, "HcclCommSuspend", StubHcclCommSuspend, g_hcclCommSuspendSupported);
-    SET_PTR(hcclCommResumePtr, "HcclCommResume", StubHcclCommResume, g_hcclCommResumeSupported);
-    SET_PTR(hcclCommSetMemoryRangePtr, "HcclCommSetMemoryRange", StubHcclCommSetMemoryRange, g_hcclCommSetMemoryRangeSupported);
-    SET_PTR(hcclCommUnsetMemoryRangePtr, "HcclCommUnsetMemoryRange", StubHcclCommUnsetMemoryRange, g_hcclCommUnsetMemoryRangeSupported);
-    SET_PTR(hcclCommActivateCommMemoryPtr, "HcclCommActivateCommMemory", StubHcclCommActivateCommMemory, g_hcclCommActivateCommMemorySupported);
-    SET_PTR(hcclCommDeactivateCommMemoryPtr, "HcclCommDeactivateCommMemory", StubHcclCommDeactivateCommMemory, g_hcclCommDeactivateCommMemorySupported);
-    SET_PTR(hcclCommWorkingDevNicSetPtr, "HcclCommWorkingDevNicSet", StubHcclCommWorkingDevNicSet, g_hcclCommWorkingDevNicSetSupported);
-    SET_PTR(hcclGroupStartPtr, "HcclGroupStart", StubHcclGroupStart, g_hcclGroupStartSupported);
-    SET_PTR(hcclGroupEndPtr, "HcclGroupEnd", StubHcclGroupEnd, g_hcclGroupEndSupported);
-    SET_PTR(hcclCommSymWinRegisterPtr, "HcclCommSymWinRegister", StubHcclCommSymWinRegister, g_hcclCommSymWinRegisterSupported);
-    SET_PTR(hcclCommSymWinDeregisterPtr, "HcclCommSymWinDeregister", StubHcclCommSymWinDeregister, g_hcclCommSymWinDeregisterSupported);
-    SET_PTR(hcclCommSymWinGetPtr, "HcclCommSymWinGet", StubHcclCommSymWinGet, g_hcclCommSymWinGetSupported);
-    SET_PTR(hcclGetRawCommHandlePtr, "HcclGetRawCommHandle", StubHcclGetRawCommHandle, g_hcclGetRawCommHandleSupported);
-    SET_PTR(hcclGetCcuTaskInfoPtr, "HcclGetCcuTaskInfo", StubHcclGetCcuTaskInfo, g_hcclGetCcuTaskInfoSupported);
-    SET_PTR(commGetLocalCCLBufPtr, "CommGetLocalCCLBuf", StubCommGetLocalCCLBuf, g_commGetLocalCCLBufSupported);
-    SET_PTR(commGetRemoteCCLBufPtr, "CommGetRemoteCCLBuf", StubCommGetRemoteCCLBuf, g_commGetRemoteCCLBufSupported);
-    SET_PTR(commGetKFCWorkSpacePtr, "CommGetKFCWorkSpace", StubCommGetKFCWorkSpace, g_commGetKFCWorkSpaceSupported);
-    SET_PTR(commGetCCLBufSizeCfgPtr, "CommGetCCLBufSizeCfg", StubCommGetCCLBufSizeCfg, g_commGetCCLBufSizeCfgSupported);
-    SET_PTR(hcclCommInitClusterInfoMemConfigPtr, "HcclCommInitClusterInfoMemConfig", StubHcclCommInitClusterInfoMemConfig, g_hcclCommInitClusterInfoMemConfigSupported);
-    SET_PTR(hcclSnapshotSavePtr, "HcclSnapshotSave", StubHcclSnapshotSave, g_hcclSnapshotSaveSupported);
-    SET_PTR(hcclSnapshotGetBufSizePtr, "HcclSnapshotGetBufSize", StubHcclSnapshotGetBufSize, g_hcclSnapshotGetBufSizeSupported);
-    SET_PTR(hcclSnapshotRecoverAllCommsPtr, "HcclSnapshotRecoverAllComms",
+    SET_PTR(hcclGetRankIdPtr, libHcommHandle, "HcclGetRankId", StubHcclGetRankId, g_hcclGetRankIdSupported);
+    SET_PTR(hcclGetRankSizePtr, libHcommHandle, "HcclGetRankSize", StubHcclGetRankSize, g_hcclGetRankSizeSupported);
+    SET_PTR(hcclCommInitClusterInfoPtr, libHcommHandle, "HcclCommInitClusterInfo", StubHcclCommInitClusterInfo, g_hcclCommInitClusterInfoSupported);
+    SET_PTR(hcclCommInitClusterInfoConfigPtr, libHcommHandle, "HcclCommInitClusterInfoConfig", StubHcclCommInitClusterInfoConfig, g_hcclCommInitClusterInfoConfigSupported);
+    SET_PTR(hcclCreateSubCommConfigPtr, libHcommHandle, "HcclCreateSubCommConfig", StubHcclCreateSubCommConfig, g_hcclCreateSubCommConfigSupported);
+    SET_PTR(hcclGetRootInfoPtr, libHcommHandle, "HcclGetRootInfo", StubHcclGetRootInfo, g_hcclGetRootInfoSupported);
+    SET_PTR(hcclCommInitRootInfoPtr, libHcommHandle, "HcclCommInitRootInfo", StubHcclCommInitRootInfo, g_hcclCommInitRootInfoSupported);
+    SET_PTR(hcclCommInitRootInfoConfigPtr, libHcommHandle, "HcclCommInitRootInfoConfig", StubHcclCommInitRootInfoConfig, g_hcclCommInitRootInfoConfigSupported);
+    SET_PTR(hcclSetConfigPtr, libHcommHandle, "HcclSetConfig", StubHcclSetConfig, g_hcclSetConfigSupported);
+    SET_PTR(hcclGetConfigPtr, libHcommHandle, "HcclGetConfig", StubHcclGetConfig, g_hcclGetConfigSupported);
+    SET_PTR(hcclGetCommNamePtr, libHcommHandle, "HcclGetCommName", StubHcclGetCommName, g_hcclGetCommNameSupported);
+    SET_PTR(hcclCommGetHandleWithNamePtr, libHcommHandle, "HcclCommGetHandleWithName", StubHcclCommGetHandleWithName, g_hcclCommGetHandleWithNameSupported);
+    SET_PTR(hcclBarrierPtr, libHcommHandle, "HcclBarrier", StubHcclBarrier, g_hcclBarrierSupported);
+    SET_PTR(hcclCommDestroyPtr, libHcommHandle, "HcclCommDestroy", StubHcclCommDestroy, g_hcclCommDestroySupported);
+    SET_PTR(hcclCommInitAllPtr, libHcommHandle, "HcclCommInitAll", StubHcclCommInitAll, g_hcclCommInitAllSupported);
+    SET_PTR(hcclGetCommAsyncErrorPtr, libHcommHandle, "HcclGetCommAsyncError", StubHcclGetCommAsyncError, g_hcclGetCommAsyncErrorSupported);
+    SET_PTR(hcclGetErrorStringPtr, libHcommHandle, "HcclGetErrorString", StubHcclGetErrorString, g_hcclGetErrorStringSupported);
+    SET_PTR(hcclGetCommConfigCapabilityPtr, libHcommHandle, "HcclGetCommConfigCapability", StubHcclGetCommConfigCapability, g_hcclGetCommConfigCapabilitySupported);
+    SET_PTR(hcclCommSuspendPtr, libHcommHandle, "HcclCommSuspend", StubHcclCommSuspend, g_hcclCommSuspendSupported);
+    SET_PTR(hcclCommResumePtr, libHcommHandle, "HcclCommResume", StubHcclCommResume, g_hcclCommResumeSupported);
+    SET_PTR(hcclCommSetMemoryRangePtr, libHcommHandle, "HcclCommSetMemoryRange", StubHcclCommSetMemoryRange, g_hcclCommSetMemoryRangeSupported);
+    SET_PTR(hcclCommUnsetMemoryRangePtr, libHcommHandle, "HcclCommUnsetMemoryRange", StubHcclCommUnsetMemoryRange, g_hcclCommUnsetMemoryRangeSupported);
+    SET_PTR(hcclCommActivateCommMemoryPtr, libHcommHandle, "HcclCommActivateCommMemory", StubHcclCommActivateCommMemory, g_hcclCommActivateCommMemorySupported);
+    SET_PTR(hcclCommDeactivateCommMemoryPtr, libHcommHandle, "HcclCommDeactivateCommMemory", StubHcclCommDeactivateCommMemory, g_hcclCommDeactivateCommMemorySupported);
+    SET_PTR(hcclCommWorkingDevNicSetPtr, libHcommHandle, "HcclCommWorkingDevNicSet", StubHcclCommWorkingDevNicSet, g_hcclCommWorkingDevNicSetSupported);
+    SET_PTR(hcclGroupStartPtr, libHcommHandle, "HcclGroupStart", StubHcclGroupStart, g_hcclGroupStartSupported);
+    SET_PTR(hcclGroupEndPtr, libHcommHandle, "HcclGroupEnd", StubHcclGroupEnd, g_hcclGroupEndSupported);
+    SET_PTR(hcclCommSymWinRegisterPtr, libHcommHandle, "HcclCommSymWinRegister", StubHcclCommSymWinRegister, g_hcclCommSymWinRegisterSupported);
+    SET_PTR(hcclCommSymWinDeregisterPtr, libHcommHandle, "HcclCommSymWinDeregister", StubHcclCommSymWinDeregister, g_hcclCommSymWinDeregisterSupported);
+    SET_PTR(hcclCommSymWinGetPtr, libHcommHandle, "HcclCommSymWinGet", StubHcclCommSymWinGet, g_hcclCommSymWinGetSupported);
+    SET_PTR(hcclGetRawCommHandlePtr, libHcommHandle, "HcclGetRawCommHandle", StubHcclGetRawCommHandle, g_hcclGetRawCommHandleSupported);
+    SET_PTR(hcclGetCcuTaskInfoPtr, libHcommHandle, "HcclGetCcuTaskInfo", StubHcclGetCcuTaskInfo, g_hcclGetCcuTaskInfoSupported);
+    SET_PTR(commGetLocalCCLBufPtr, libHcommHandle, "CommGetLocalCCLBuf", StubCommGetLocalCCLBuf, g_commGetLocalCCLBufSupported);
+    SET_PTR(commGetRemoteCCLBufPtr, libHcommHandle, "CommGetRemoteCCLBuf", StubCommGetRemoteCCLBuf, g_commGetRemoteCCLBufSupported);
+    SET_PTR(commGetKFCWorkSpacePtr, libHcommHandle, "CommGetKFCWorkSpace", StubCommGetKFCWorkSpace, g_commGetKFCWorkSpaceSupported);
+    SET_PTR(commGetCCLBufSizeCfgPtr, libHcommHandle, "CommGetCCLBufSizeCfg", StubCommGetCCLBufSizeCfg, g_commGetCCLBufSizeCfgSupported);
+    SET_PTR(hcclCommInitClusterInfoMemConfigPtr, libHcommHandle, "HcclCommInitClusterInfoMemConfig", StubHcclCommInitClusterInfoMemConfig, g_hcclCommInitClusterInfoMemConfigSupported);
+    SET_PTR(hcclSnapshotSavePtr, libHcommHandle, "HcclSnapshotSave", StubHcclSnapshotSave, g_hcclSnapshotSaveSupported);
+    SET_PTR(hcclSnapshotGetBufSizePtr, libHcommHandle, "HcclSnapshotGetBufSize", StubHcclSnapshotGetBufSize, g_hcclSnapshotGetBufSizeSupported);
+    SET_PTR(hcclSnapshotRecoverAllCommsPtr, libHcommHandle, "HcclSnapshotRecoverAllComms",
             StubHcclSnapshotRecoverAllComms, g_hcclSnapshotRecoverAllCommsSupported);
 
     #undef SET_PTR
