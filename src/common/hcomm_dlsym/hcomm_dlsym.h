@@ -86,7 +86,7 @@ bool HcommIsSupportHcommSymWinGetPeerPointer(void);
 bool HcommIsSupportHcommThreadSynchronize(void);
 bool HcommIsSupportHcommSendRequest(void);
 bool HcommIsSupportHcommWaitResponse(void);
-bool HcommIsSupportHcommFenchOnThread(void);
+bool HcommIsSupportHcommFenceOnThread(void);
 bool HcommIsSupportHcommChannelFenceOnThread(void);
 
 #ifdef __cplusplus

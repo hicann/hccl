@@ -40,7 +40,7 @@ HcclResult (*hcommSymWinGetPeerPointerPtr)(CommSymWindow, size_t, uint32_t, void
 int32_t (*hcommThreadSynchronizePtr)(ThreadHandle) = nullptr;
 int32_t (*hcommSendRequestPtr)(MsgHandle, const char*, const void*, size_t, uint32_t*) = nullptr;
 int32_t (*hcommWaitResponsePtr)(MsgHandle, void*, size_t, uint32_t*) = nullptr;
-int32_t (*hcommFenchOnThreadPtr)(ThreadHandle) = nullptr;
+int32_t (*hcommFenceOnThreadPtr)(ThreadHandle) = nullptr;
 int32_t (*hcommChannelFenceOnThreadPtr)(ThreadHandle, ChannelHandle) = nullptr;
 
 // 添加支持标志（静态，默认 false）
@@ -69,7 +69,7 @@ static bool g_hcommSymWinGetPeerPointerSupported = false;
 static bool g_hcommThreadSynchronizeSupported = false;
 static bool g_hcommSendRequestSupported = false;
 static bool g_hcommWaitResponseSupported = false;
-static bool g_hcommFenchOnThreadSupported = false;
+static bool g_hcommFenceOnThreadSupported = false;
 static bool g_hcommChannelFenceOnThreadSupported = false;
 
 // ---------- 桩函数定义（签名与真实API完全一致）----------
@@ -229,9 +229,9 @@ static int32_t StubHcommWaitResponse(MsgHandle handle, void* dst, size_t sizeByt
     return -1;
 }
 
-static int32_t StubHcommFenchOnThread(ThreadHandle thread) {
+static int32_t StubHcommFenceOnThread(ThreadHandle thread) {
     (void)thread;
-    HCCL_ERROR("[HcclWrapper] HcommFenchOnThread not supported");
+    HCCL_ERROR("[HcclWrapper] HcommFenceOnThread not supported");
     return -1;
 }
 
@@ -281,7 +281,7 @@ void HcommPrimitivesDlInit(void* libHcommHandle) {
     SET_PTR(hcommThreadSynchronizePtr, libHcommHandle, "HcommThreadSynchronize", StubHcommThreadSynchronize, g_hcommThreadSynchronizeSupported);
     SET_PTR(hcommSendRequestPtr, libHcommHandle, "HcommSendRequest", StubHcommSendRequest, g_hcommSendRequestSupported);
     SET_PTR(hcommWaitResponsePtr, libHcommHandle, "HcommWaitResponse", StubHcommWaitResponse, g_hcommWaitResponseSupported);
-    SET_PTR(hcommFenchOnThreadPtr, libHcommHandle, "HcommFenchOnThread", StubHcommFenchOnThread, g_hcommFenchOnThreadSupported);
+    SET_PTR(hcommFenceOnThreadPtr, libHcommHandle, "HcommFenceOnThread", StubHcommFenceOnThread, g_hcommFenceOnThreadSupported);
     SET_PTR(hcommChannelFenceOnThreadPtr, libHcommHandle, "HcommChannelFenceOnThread", StubHcommChannelFenceOnThread, g_hcommChannelFenceOnThreadSupported);
 
     #undef SET_PTR
@@ -313,7 +313,7 @@ void HcommPrimitivesDlFini(void) {
     hcommThreadSynchronizePtr = StubHcommThreadSynchronize;
     hcommSendRequestPtr = StubHcommSendRequest;
     hcommWaitResponsePtr = StubHcommWaitResponse;
-    hcommFenchOnThreadPtr = StubHcommFenchOnThread;
+    hcommFenceOnThreadPtr = StubHcommFenceOnThread;
     hcommChannelFenceOnThreadPtr = StubHcommChannelFenceOnThread;
 }
 
@@ -393,8 +393,8 @@ extern "C" bool HcommIsSupportHcommSendRequest(void) {
 extern "C" bool HcommIsSupportHcommWaitResponse(void) {
     return g_hcommWaitResponseSupported;
 }
-extern "C" bool HcommIsSupportHcommFenchOnThread(void) {
-    return g_hcommFenchOnThreadSupported;
+extern "C" bool HcommIsSupportHcommFenceOnThread(void) {
+    return g_hcommFenceOnThreadSupported;
 }
 extern "C" bool HcommIsSupportHcommChannelFenceOnThread(void) {
     return g_hcommChannelFenceOnThreadSupported;
