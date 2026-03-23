@@ -42,7 +42,7 @@ HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclD
     #endif
         return HcclAllGatherInner(sendBuf, recvBuf, sendCount, dataType, comm, stream);
     }
-    
+    CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all gather success"), HCCL_SUCCESS);
     std::string opTag;
     CHK_RET(AllGatherInitAndCheck(comm, sendBuf, recvBuf, sendCount, dataType, stream, opTag));
 
@@ -59,7 +59,7 @@ HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     HcclComm comm = nullptr;
     HCCL_INFO("[HcclAllGatherGraphMode] get group name: %s", group);
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));
-    
+    CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all gather success"), HCCL_SUCCESS);
     std::string opTag;
     CHK_RET(AllGatherInitAndCheck(comm, sendBuf, recvBuf, sendCount, dataType, stream, opTag));
     
@@ -95,7 +95,6 @@ HcclResult AllGatherInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, ui
     // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
     CHK_RET(InitEnvConfig());
     // 参数校验等工作
-    CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all gather success"), HCCL_SUCCESS);
     // 检查入参指针有效性
     CHK_RET(CheckAllGatherInputPara(comm, sendBuf, recvBuf, stream));
     // tag有效性,是否过长
