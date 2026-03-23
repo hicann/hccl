@@ -153,9 +153,9 @@ HcclResult ParseHcclAlgo()
     std::string hcclAlgo = GetEnv(MM_ENV_HCCL_ALGO);
     if (hcclAlgo != "EmptyString") {
         CHK_RET(SetHcclAlgoConfig(hcclAlgo));
-        HCCL_RUN_INFO("HCCL_ALGO set by environment to [%s]", hcclAlgo.c_str());
+        HCCL_INFO("HCCL_ALGO set by environment to [%s]", hcclAlgo.c_str());
     } else {
-        HCCL_RUN_INFO("HCCL_ALGO is not set");
+        HCCL_INFO("HCCL_ALGO is not set");
     }
     return HCCL_SUCCESS;
 }
@@ -165,7 +165,7 @@ HcclResult SetHcclAlgoConfig(const std::string &hcclAlgo)
     std::string algoConfig = hcclAlgo;
     algoConfig.erase(std::remove(algoConfig.begin(), algoConfig.end(), ' '), algoConfig.end());
     if (algoConfig.empty()) {
-        HCCL_RUN_INFO("hccl algo config is empty, HCCL use built-in algo selection.");
+        HCCL_INFO("hccl algo config is empty, HCCL use built-in algo selection.");
         return HCCL_SUCCESS;
     }
     std::vector<std::string> algoPerOptype;
@@ -346,7 +346,7 @@ HcclResult ParseAlgoString(std::string opName, std::string &algoString, std::vec
     auto level1Iter = HcclAlgoTypeMap.find(algType[HCCL_ALGO_LEVEL_1]);
     auto level2Iter = HcclAlgoTypeMap.find(algType[HCCL_ALGO_LEVEL_2]);
     auto level3Iter = HcclAlgoTypeMap.find(algType[HCCL_ALGO_LEVEL_3]);
-    HCCL_RUN_INFO("hccl algo op %s config: config level0:%s, level1:%s, level2:%s, level3:%s",
+    HCCL_INFO("hccl algo op %s config: config level0:%s, level1:%s, level2:%s, level3:%s",
         opName.c_str(),
         level0Iter->second.c_str(),
         level1Iter->second.c_str(),
@@ -450,7 +450,7 @@ HcclResult ParseInterLinkType()
 {
     std::string interHccsDisableEnv = GetEnv(MM_ENV_HCCL_INTER_HCCS_DISABLE);
     if (interHccsDisableEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_INTER_HCCS_DISABLE is not set, default value is %s.",
+        HCCL_INFO("HCCL_INTER_HCCS_DISABLE is not set, default value is %s.",
             g_algEnvConfig.interHccsDisable ? "TRUE" : "FALSE");
         return HCCL_SUCCESS;
     }
@@ -463,7 +463,7 @@ HcclResult ParseInterLinkType()
         HCCL_ERROR("HCCL_INTER_HCCS_DISABLE %s is invalid, expect true or false.", interHccsDisableEnv.c_str());
         return HCCL_E_PARA;
     }
-    HCCL_RUN_INFO("environmental variable HCCL_INTER_HCCS_DISABLE is set to [%s], interHccsDisable[%d]",
+    HCCL_INFO("environmental variable HCCL_INTER_HCCS_DISABLE is set to [%s], interHccsDisable[%d]",
         interHccsDisableEnv.c_str(),
         g_algEnvConfig.interHccsDisable);
     return HCCL_SUCCESS;
@@ -479,7 +479,7 @@ HcclResult ParseIntraLinkType()
 
     // 两个通信域环境变量均未设置，默认走pcie
     if (intraPcieEnv == "EmptyString" && intraRoceEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_INTRA_PCIE_ENABLE set by default to [%u], HCCL_INTRA_ROCE_ENABLE set by default to [%u]",
+        HCCL_INFO("HCCL_INTRA_PCIE_ENABLE set by default to [%u], HCCL_INTRA_ROCE_ENABLE set by default to [%u]",
             intraPcie,
             intraRoce);
         return HCCL_SUCCESS;
@@ -522,7 +522,7 @@ HcclResult ParseIntraLinkType()
         } else {  // roce环境变量值为1，走roce
             intraPcie = 0;
         }
-        HCCL_RUN_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
+        HCCL_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
                       "HCCL_INTRA_ROCE_ENABLE set by environment to [%u]",
             intraPcie,
             intraRoce);
@@ -535,7 +535,7 @@ HcclResult ParseIntraLinkType()
                        "HCCL_INTRA_ROCE_ENABLE");
             return HCCL_E_PARA;
         }
-        HCCL_RUN_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
+        HCCL_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
                       "HCCL_INTRA_ROCE_ENABLE set by default to [%u]",
             intraPcie,
             intraRoce);
@@ -544,7 +544,7 @@ HcclResult ParseIntraLinkType()
     // pcie和roce环境变量同时配置且不相等
     if (intraPcieEnv != "EmptyString" && intraRoceEnv != "EmptyString") {
         if ((intraPcie == 0 && intraRoce == 1) || (intraPcie == 1 && intraRoce == 0)) {
-            HCCL_RUN_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
+            HCCL_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
                           "HCCL_INTRA_ROCE_ENABLE set by environment to [%u]",
                 intraPcie,
                 intraRoce);
@@ -561,7 +561,7 @@ HcclResult ParseIntraLinkType()
             HCCL_WARNING("Pcie and Roce Env both set to zero at the same time, intra comm is default Pcie");
             intraPcie = 1;
         }
-        HCCL_RUN_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
+        HCCL_INFO("HCCL_INTRA_PCIE_ENABLE set by environment to [%u], "
                       "HCCL_INTRA_ROCE_ENABLE set by environment to [%u]",
             intraPcie,
             intraRoce);
@@ -575,7 +575,7 @@ HcclResult ParseEntryLogEnable()
 {
     std::string enableEntryLogEnv = GetEnv(MM_ENV_HCCL_ENTRY_LOG_ENABLE);
     if (enableEntryLogEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_ENTRY_LOG_ENABLE set by default to [0]");
+        HCCL_INFO("HCCL_ENTRY_LOG_ENABLE set by default to [0]");
         return HCCL_SUCCESS;
     }
     if (enableEntryLogEnv != "0" && enableEntryLogEnv != "1") {
@@ -588,7 +588,7 @@ HcclResult ParseEntryLogEnable()
     if (enableEntryLogEnv == "1") {
         g_algEnvConfig.enableEntryLog = true;
     }
-    HCCL_RUN_INFO("HCCL_ENTRY_LOG_ENABLE set by environment to [%u]", g_algEnvConfig.enableEntryLog);
+    HCCL_INFO("HCCL_ENTRY_LOG_ENABLE set by environment to [%u]", g_algEnvConfig.enableEntryLog);
     return HCCL_SUCCESS;
 }
 
@@ -607,7 +607,7 @@ HcclResult ParseOpExpansion()
         g_algEnvConfig.aicpuUnfold = true;
     }
     if (opExpansionModeEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_OP_EXPANSION_MODE is not set, aicpuUnfold is [%u], aivMode is [%u]",
+        HCCL_INFO("HCCL_OP_EXPANSION_MODE is not set, aicpuUnfold is [%u], aivMode is [%u]",
             g_algEnvConfig.aicpuUnfold,
             g_algEnvConfig.aivMode);
         return HCCL_SUCCESS;
@@ -641,7 +641,7 @@ HcclResult ParseOpExpansion()
             "HCCL_OP_EXPANSION_MODE is set to [%s], which is incorrect. Please check", opExpansionModeEnv.c_str());
         return HCCL_E_PARA;
     }
-    HCCL_RUN_INFO("environmental variable HCCL_OP_EXPANSION_MODE is [%s], aicpuUnfold[%u], aivMode[%u], enableFfts[%u]",
+    HCCL_INFO("environmental variable HCCL_OP_EXPANSION_MODE is [%s], aicpuUnfold[%u], aivMode[%u], enableFfts[%u]",
         opExpansionModeEnv.c_str(),
         g_algEnvConfig.aicpuUnfold,
         g_algEnvConfig.aivMode,
@@ -736,7 +736,7 @@ HcclResult ParseRetryEnable()
     }
     std::string hcclRetryEnable = GetEnv(MM_ENV_HCCL_OP_RETRY_ENABLE);
     if (hcclRetryEnable == "EmptyString") {
-        HCCL_RUN_INFO(
+        HCCL_INFO(
             "[ParseRetryEnable] HCCL_OP_RETRY_ENABLE is not set. The retryEnable of all levels is set to false.");
         return HCCL_SUCCESS;
     }
@@ -745,7 +745,7 @@ HcclResult ParseRetryEnable()
     retryConfig.erase(std::remove(retryConfig.begin(), retryConfig.end(), ' '), retryConfig.end());
 
     if (retryConfig.empty()) {
-        HCCL_RUN_INFO("[ParseRetryEnable] Hccl retry config is empty. The retryEnable of all levels is set to false.");
+        HCCL_INFO("[ParseRetryEnable] Hccl retry config is empty. The retryEnable of all levels is set to false.");
         return HCCL_SUCCESS;
     }
 
@@ -758,7 +758,7 @@ HcclResult ParseRetryEnable()
         ret);
 
     CHK_RET(CollectRetryEnableFromConfig(retryEnables));
-    HCCL_RUN_INFO("[ParseRetryEnable] HCCL_OP_RETRY_ENABLE set by environment variable to [%s].", retryConfig.c_str());
+    HCCL_INFO("[ParseRetryEnable] HCCL_OP_RETRY_ENABLE set by environment variable to [%s].", retryConfig.c_str());
     return HCCL_SUCCESS;
 }
 
@@ -766,7 +766,7 @@ HcclResult ParseDeterministic()
 {
     std::string hcclDeterministicEnv = GetEnv(MM_ENV_HCCL_DETERMINISTIC);
     if (hcclDeterministicEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_DETERMINISTIC set by default to [false]");
+        HCCL_INFO("HCCL_DETERMINISTIC set by default to [false]");
         return HCCL_SUCCESS;
     }
 
@@ -794,7 +794,7 @@ HcclResult ParseDeterministic()
     } else {
         g_algEnvConfig.hcclDeterministic = static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_DISABLE);
     }
-    HCCL_RUN_INFO("HCCL_DETERMINISTIC set by environment to [%s], hcclDeterministic[%u]",
+    HCCL_INFO("HCCL_DETERMINISTIC set by environment to [%s], hcclDeterministic[%u]",
         hcclDeterministicEnv.c_str(),
         g_algEnvConfig.hcclDeterministic);
     return HCCL_SUCCESS;
