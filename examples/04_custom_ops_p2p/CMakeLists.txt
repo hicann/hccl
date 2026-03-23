@@ -9,10 +9,16 @@
 # -----------------------------------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.16.0)
-project(hccl_examples_custom_ops_p2p)
 
+# 添加 ASC 和 AICPU 支持
+find_package(ASC REQUIRED)
+find_package(AICPU REQUIRED)
+project(hccl_examples_custom_ops_p2p LANGUAGES CXX AICPU ASC) # 支持CXX、AICPU和ASC编译
+
+set(HCCL_CUSTOM_OPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(HCCL_CUSTOM_OPS_INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/op_host
     ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu
 
@@ -20,14 +26,18 @@ set(HCCL_CUSTOM_OPS_INCLUDE_LIST
     ${ASCEND_CANN_PACKAGE_PATH}/include
     ${ASCEND_CANN_PACKAGE_PATH}/include/hccl
     ${ASCEND_CANN_PACKAGE_PATH}/include/mmpa
+    ${ASCEND_CANN_PACKAGE_PATH}/asc/include/aicpu_api
 )
 
 # Host 动态链接库
 add_library(hccl_custom_p2p SHARED)
+# 明确指定host库使用CXX编译
+set_target_properties(hccl_custom_p2p PROPERTIES LINKER_LANGUAGE CXX)
 target_include_directories(hccl_custom_p2p PRIVATE
     ${HCCL_CUSTOM_OPS_INCLUDE_LIST}
 )
 target_compile_options(hccl_custom_p2p PRIVATE
+    -U_FORTIFY_SOURCE
     -Werror
     -fno-common
     -fno-strict-aliasing
@@ -45,15 +55,26 @@ target_link_options(hccl_custom_p2p PRIVATE
     -Wl,-z,now
     -Wl,-z,noexecstack
 )
+target_compile_options(hccl_custom_p2p PRIVATE
+    $<$<COMPILE_LANGUAGE:ASC>:--npu-arch=dav-2201>  # Atlas A2/A3系列产品
+)
 target_link_directories(hccl_custom_p2p PRIVATE
     ${ASCEND_CANN_PACKAGE_PATH}/lib64
+    ${ASCEND_CANN_PACKAGE_PATH}/lib64/device/lib64 # 包含 AICPU 动态链接库
 )
 target_link_libraries(hccl_custom_p2p PRIVATE
-    -Wl,--no-as-needed
     hcomm
     c_sec
     unified_dlog
-    -Wl,--no-as-needed
+
+    ascendc_runtime
+    profapi
+    ascendalog
+    ascendcl
+    runtime
+    mmpa
+    error_manager
+    ascend_dump
 )
 install(TARGETS hccl_custom_p2p
     LIBRARY DESTINATION ${CUSTOM_OPS_OPP_LIB_PATH}
@@ -65,6 +86,7 @@ install(FILES
 
 set(AICPU_KERNEL_TAR_FILE ${CMAKE_BINARY_DIR}/aicpu_hccl_custom_p2p.tar.gz)
 set(AICPU_KERNEL_JSON_FILE ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu/libp2p_aicpu_kernel.json)
+
 if(KERNEL_MODE)
     # AICPU Kernel 动态链接库
     add_library(p2p_aicpu_kernel SHARED)
@@ -79,12 +101,11 @@ if(KERNEL_MODE)
         -O0
     )
     target_link_directories(p2p_aicpu_kernel PRIVATE
+        ${ASCEND_CANN_PACKAGE_PATH}/lib64/device/lib64
         ${ASCEND_CANN_PACKAGE_PATH}/devlib/device
     )
     target_link_libraries(p2p_aicpu_kernel PRIVATE
-        -Wl,--no-as-needed
         ccl_kernel
-        -Wl,--no-as-needed
     )
     register_custom_aicpu_target(p2p_aicpu_kernel)
 

@@ -10,7 +10,7 @@
 
 #include <string>
 #include <memory>
-#include "hccl/hcomm_primitives.h"
+#include <hccl/hcomm_primitives.h>
 #include "common.h"
 #include "exec_op.h"
 

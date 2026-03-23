@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <mmpa_api.h>
 #include "load_kernel.h"
-#include "mmpa_api.h"
 
 namespace ops_hccl_p2p {
 
@@ -46,7 +46,7 @@ HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType opt
     CHK_PRT_RET(realpath(binPath, realPath) == nullptr,
         HCCL_ERROR("LoadBinaryFromFile: %s is not a valid real path, err[%d]", binPath, errno),
         HCCL_E_INTERNAL);
-    HCCL_INFO("[LoadBinaryFromFile]realPath: %s", realPath);
+    HCCL_INFO("[LoadBinaryFromFile] realPath: %s", realPath);
 
     aclrtBinaryLoadOptions loadOptions = {0};
     aclrtBinaryLoadOption option;

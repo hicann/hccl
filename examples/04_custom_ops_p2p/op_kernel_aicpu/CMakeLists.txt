@@ -1,4 +1,4 @@
-# -----------------------------------------------------------------------------------------------------------
+ # -----------------------------------------------------------------------------------------------------------
 # Copyright (c) 2025 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
@@ -9,8 +9,8 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(op_kernel_aicpu_src_list
-    ${CMAKE_CURRENT_SOURCE_DIR}/exec_op.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_kernel.cc
+    ${HCCL_CUSTOM_OPS_ROOT}/common/exec_op.cc
 )
 
 if(KERNEL_MODE)

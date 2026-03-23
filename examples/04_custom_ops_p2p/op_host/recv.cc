@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "hccl/hccl_types.h"
-#include "hccl/hcomm_primitives.h"
+#include <hccl/hccl_types.h>
+#include <hccl/hcomm_primitives.h>
 #include "log.h"
 #include "common.h"
 #include "hccl_custom_p2p.h"
@@ -50,15 +50,16 @@ HcclResult HcclRecvCustom(
     // STEP 2: 创建资源
     // ==============================================
     CommEngine engine = CommEngine::COMM_ENGINE_AICPU;
-    CHK_RET(LoadAICPUKernel());
 
     void * ctx = nullptr;
     uint64_t size = sizeof(AlgResourceCtx);
     if (HcclEngineCtxGet(comm, param.tag, engine, &ctx, &size) == HCCL_SUCCESS) {
         // device资源已经存在
+        HCCL_INFO("[HcclRecvCustom] Engine context already exists");
         param.resCtx = static_cast<AlgResourceCtx *>(ctx);
     } else {
         // 不存在，新创建Context
+        HCCL_INFO("[HcclRecvCustom] Creating engine context");
         CHK_RET(HcclEngineCtxCreate(comm, param.tag, engine, size, &ctx));
         param.resCtx = static_cast<AlgResourceCtx *>(ctx);
 
