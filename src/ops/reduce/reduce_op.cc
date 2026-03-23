@@ -23,6 +23,9 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op,
     uint32_t root, HcclComm comm, aclrtStream stream)
 {
+    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
+        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
+    }
     HCCL_INFO("Start to run execute HcclReduce");
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));

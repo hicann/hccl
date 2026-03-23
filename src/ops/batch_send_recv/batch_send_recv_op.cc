@@ -22,6 +22,9 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 
 HcclResult HcclBatchSendRecv(HcclSendRecvItem *sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream)
 {
+    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
+        return HcclBatchSendRecvInner(sendRecvInfo, itemNum, comm, stream);
+    }
     HCCL_INFO("Start to run execute HcclBatchSendRecv.");
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));

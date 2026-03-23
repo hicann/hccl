@@ -23,6 +23,9 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclAlltoAll(const void *sendBuf, uint64_t sendCount, HcclDataType sendType, const void *recvBuf,
     uint64_t recvCount, HcclDataType recvType, HcclComm comm, aclrtStream stream)
 {
+    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
+        return HcclAlltoAllInner(sendBuf, sendCount, sendType, recvBuf, recvCount, recvType, comm, stream);
+    }
     HCCL_INFO("Start to run execute HcclAlltoAll");
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
@@ -82,6 +85,9 @@ HcclResult HcclAlltoAll(const void *sendBuf, uint64_t sendCount, HcclDataType se
 HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void *sdispls, HcclDataType sendType,
     const void *recvBuf, const void *recvCounts, const void *rdispls, HcclDataType recvType, HcclComm comm, aclrtStream stream)
 {
+    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
+        return HcclAlltoAllVInner(sendBuf, sendCounts, sdispls, sendType, recvBuf, recvCounts, rdispls, recvType, comm, stream);
+    }
     HCCL_INFO("Start to run execute HcclAlltoAllV");
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
@@ -134,6 +140,9 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 HcclResult HcclAlltoAllVC(const void *sendBuf, const void *sendCountMatrix, HcclDataType sendType,
     const void *recvBuf, HcclDataType recvType, HcclComm comm, aclrtStream stream)
 {
+    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
+        return HcclAlltoAllVCInner(sendBuf, sendCountMatrix, sendType, recvBuf, recvType, comm, stream);
+    }
     HCCL_INFO("Start to run execute HcclAlltoAllVC");
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
