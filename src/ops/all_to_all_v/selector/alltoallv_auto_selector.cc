@@ -68,8 +68,13 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayer
     (void)opParam;
     (void)configAlgMap;
     if (topoInfo->topoLevelNums > 1) {
-        HCCL_ERROR("[AlltoAllVAutoSelector][%s] hccl algo no match");
-        return SelectorStatus::NOT_MATCH;
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS ||
+            topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            selectAlgName = "InsAlltoAllVMesh1D";
+        } else {
+            HCCL_ERROR("[AlltoAllVAutoSelector][%s] hccl algo no match");
+            return SelectorStatus::NOT_MATCH;
+        }
     }
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {

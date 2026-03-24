@@ -48,10 +48,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLaye
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)opParam;
     (void)configAlgMap;
-    if (topoInfo->topoLevelNums > 1) {
-        HCCL_ERROR("[AlltoAllVCAutoSelector][%s] hccl algo no match");
-        return SelectorStatus::NOT_MATCH;
-    }
+
     selectAlgName = "InsAlltoAllVCMesh1D";
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
