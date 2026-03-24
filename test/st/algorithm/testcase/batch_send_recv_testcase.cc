@@ -31,6 +31,8 @@ protected:
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
+        unsetenv("HCCL_INDEPENDENT_OP");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
     static void SetUpTestCase()
     {}
@@ -90,15 +92,12 @@ HcclResult MultiThreadExecOp(u32 rankSize, u64 sendBufSize, u64 sendCount, HcclD
 void RunBatchSendRecvTest(TopoMeta topoMeta, u32 rankSize, u64 dataCount, HcclDataType dataType, u64 unitSize)
 {
     // 仿真模型初始化
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * unitSize;
@@ -307,15 +306,12 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_016)
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 8);
     // 仿真模型初始化
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * 1;
@@ -382,15 +378,12 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_017)
     // 仿真模型初始化
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 8);
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     u64 dataCount = 100;
@@ -409,15 +402,12 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_run_twice)
 {
     // 仿真模型初始化
     TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)

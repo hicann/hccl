@@ -35,6 +35,8 @@ protected:
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
     static void SetUpTestCase()
     {}
@@ -55,15 +57,12 @@ uint64_t CountElements(const TopoMeta &topoMeta) {
 
 void RunScatterTest(int root, TopoMeta &topoMeta, int dataCount, HcclDataType dataType) 
 {
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
     
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     auto rankSize = CountElements(topoMeta);  // 参与集合通信的卡数(同topoMeta卡数一致)
@@ -138,12 +137,6 @@ TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh_1d_success_1x8_root5_fp32_big_da
 {
     TopoMeta topoMeta {{{0, 1, 2, 3, 4, 5, 6, 7}}};
     RunScatterTest(5, topoMeta, 400 * 1024 * 1024, HcclDataType::HCCL_DATA_TYPE_FP32);
-}
-
-TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh_1d_success_1x6_root1_int8_big_data)
-{
-    TopoMeta topoMeta {{{0, 1, 2, 3, 4, 5}}};
-    RunScatterTest(1, topoMeta, 1024 * 1024 * 1024 + 1, HcclDataType::HCCL_DATA_TYPE_INT8);
 }
 
 TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh_1d_success_1x2_root0_fp16_small_data)

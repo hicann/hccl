@@ -35,6 +35,7 @@ protected:
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_BUFFSIZE");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
 
     static void SetUpTestCase()
@@ -85,13 +86,10 @@ protected:
         const TopoMeta &topoMeta, u64 recvCount, HcclDataType dataType, HcclReduceOp reduceOp, uint32_t root)
     {
         // 初始化仿真环境
-        #ifdef MACRO_DEV_TYPE_NEW
         SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-        #else
-        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-        #endif
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
+        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
         std::vector<std::thread> threads;
         u32 rankSize = GetRankSize(topoMeta);
@@ -132,11 +130,7 @@ protected:
     const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp, const u32 root)
     {
         // 仿真模型初始化
-        #ifdef MACRO_DEV_TYPE_NEW
         SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
-        #else
-        SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_910_95);
-        #endif
 
         // 设置展开模式为HOST_TS
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);

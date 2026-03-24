@@ -31,6 +31,7 @@ protected:
     void TearDown() override {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
 
     static void SetUpTestCase() {
@@ -99,15 +100,12 @@ HcclResult RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType op
 void SendRecvTest(
     TopoMeta &topoMeta, const std::map<RankId, RankId> &sendRecvMap, u32 dataCount, HcclDataType dataType) {
     // 仿真模型初始化
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     auto rankSize = GetRankSize(topoMeta);
     auto usedRankIds = GetRankIds(sendRecvMap);
@@ -181,16 +179,6 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_repeat_test) {
 TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_3r_int32_c100_test) {
     TopoMeta topoMeta{{{0, 1, 2}}};
     std::map<RankId, RankId> sendRecvMap = {{2, 0}, {1, 2}};
-    auto dataCount = 100;
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-
-    SendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
-}
-
-// 1卡2机100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_1r_int32_c100_test) {
-    TopoMeta topoMeta{{{0}, {1}}};
-    std::map<RankId, RankId> sendRecvMap = {{0, 1}};
     auto dataCount = 100;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
 

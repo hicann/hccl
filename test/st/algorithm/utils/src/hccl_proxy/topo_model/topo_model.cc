@@ -169,6 +169,7 @@ void TopoModel::InitEndpointMap(uint32_t rankId, uint32_t phyId, uint32_t server
     endpoint.loc.device.devPhyId = phyId;
     endpoint.loc.device.superPodIdx = superpodId;
     endpoint.loc.device.serverIdx = serverId;
+    endpoint.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE;
     rankId2Endpoint_[rankId] = endpoint;
 }
 

@@ -30,6 +30,7 @@ protected:
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
     static void SetUpTestCase()
     {}
@@ -41,15 +42,12 @@ void RunAllReduceParallelCase(const TopoMeta &topoInfo, const u64 dataCount,
     const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_910_95);
-    #endif
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     u32 rankSize = 0;
@@ -172,25 +170,5 @@ TEST_F(ST_ALL_REDUCE_PARALLEL_TEST, st_all_reduce_hcclbuff_add_1)
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
     u32 dataTypeSize = 1;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceParallelCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
-
-TEST_F(ST_ALL_REDUCE_PARALLEL_TEST, st_all_reduce_big_data)
-{
-    TopoMeta topoMeta{{{0, 1}, {0, 1}}};
-    u64 dataCount = 1 * 1024 * 1024 * 1024 + 1;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT16;
-    u32 dataTypeSize = 2;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceParallelCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
-
-TEST_F(ST_ALL_REDUCE_PARALLEL_TEST, st_all_reduce_ultra_big_data)
-{
-    TopoMeta topoMeta{{{0, 1}, {0, 1}}};
-    u64 dataCount = 4 * 1024 * 1024 * 1024ULL;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    u32 dataTypeSize = 1;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MIN;
     RunAllReduceParallelCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }

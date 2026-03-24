@@ -35,6 +35,7 @@ protected:
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
     static void SetUpTestCase()
     {}
@@ -57,15 +58,13 @@ void RunReduceScatterAicpuA5(const TopoMeta &topoMeta, const u64 &recvCount, con
     const HcclReduceOp &reduceOp)
 {
     // 仿真模型初始化
-    #ifdef MACRO_DEV_TYPE_NEW
     SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
-    #else
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_95);
-    #endif
  
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+
     // 算子执行参数设置
     auto rankSize = CalsRankSize(topoMeta);  // 参与集合通信的卡数(同topoMeta卡数一致)
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE_REDUCE_SCATTER[dataType];

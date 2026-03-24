@@ -31,6 +31,7 @@ protected:
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
     static void SetUpTestCase()
     {}
@@ -47,6 +48,8 @@ TEST_F(ST_SCATTER_TEST_A2A3, st_scatter_opbase_test_origin)
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "HOST_TS", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+
     // 算子执行参数设置
     auto root = 0;  // root节点
     auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)
