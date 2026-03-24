@@ -253,6 +253,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/reduce/executor/reduce_parallel_executor.cc
     ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu/reduce_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu/reduce_nhr.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce/template/aicpu/reduce_aicpu_reduce_nhr.cc
 )
 
 target_include_directories(scatter_aicpu_kernel PRIVATE

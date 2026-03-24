@@ -11,6 +11,7 @@
 #include "reduce_sole_executor.h"
 #include "../template/aicpu/reduce_mesh_1D.h"
 #include "../template/aicpu/reduce_nhr.h"
+#include "../template/aicpu/reduce_aicpu_reduce_nhr.h"
 #include "topo_match_1d.h"
 #ifndef AICPU_COMPILE
 #include "ccu_temp_reduce_mesh_1D_mem2mem.h"
@@ -171,6 +172,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::OrchestrateLoop(
 // 第二个参数是Reduce的template文件
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE, ReduceMesh1D, ReduceSoleExecutor, TopoMatch1D, ReduceMesh1D);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE, ReduceNHR, ReduceSoleExecutor, TopoMatch1D, ReduceNHR);
+REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE, ReduceAicpuReduceNHR, ReduceSoleExecutor, TopoMatch1D, ReduceAicpuReduceNHR);
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
