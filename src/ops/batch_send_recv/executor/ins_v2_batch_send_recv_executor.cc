@@ -67,7 +67,7 @@ HcclResult InsV2BatchSendRecvExecutor::CalcRes(HcclComm comm, const OpParam& par
         } else {
             std::vector<HcclChannelDesc> channelByRank;
             // 和同一个远端之间的send和recv在不同流上，所以需要申请2条channel
-            CHK_RET(CreateChannelRequestByRankId(comm, myRank_, remoteRank, channelByRank, channelNumPerRankPair_));
+            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank, channelByRank, channelNumPerRankPair_));
             // 直接插入到channelLevel0末尾，同一个level的所有rank的所有channel都放在同一级vector中
             channelLevel0.insert(channelLevel0.end(), channelByRank.begin(), channelByRank.end());
         }

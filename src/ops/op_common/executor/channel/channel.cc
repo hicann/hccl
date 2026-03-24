@@ -524,51 +524,38 @@ HcclResult CalcChannelRequestNHRWithPriorityTopo(HcclComm comm, const OpParam& p
     return HCCL_SUCCESS;
 }
 
-HcclResult CreateChannelRequestByRankId(HcclComm comm, u32 myRank, u32 remoteRank,
+HcclResult CreateChannelRequestByRankId(HcclComm comm, const OpParam& param, u32 myRank, u32 remoteRank,
     std::vector<HcclChannelDesc> &channels, u32 channelRepeatNum)
 {
 #ifndef AICPU_COMPILE
     channels.clear();
+    std::vector<CommProtocol> expectedProtocols;
+    CHK_RET(GetProtocolByEngine(param, expectedProtocols));
 
     uint32_t *netLayers;
     uint32_t netLayerNum;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
     std::vector<uint32_t> netLayersVector = std::vector<uint32_t>(netLayers, netLayers + netLayerNum);
-    bool findFlag = false;
 
     for (auto netLayer : netLayersVector) {
         CommLink *linkList = nullptr;
         u32 listSize;
         CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, remoteRank, &linkList, &listSize));
-        for (u32 idx = 0; idx < listSize; idx++) {
-            HcclChannelDesc channelDesc;
-            HcclChannelDescInit(&channelDesc, 1);
-            channelDesc.remoteRank = remoteRank;
-            CommLink link = linkList[idx];
-            channelDesc.localEndpoint.protocol = link.srcEndpointDesc.protocol;
-            channelDesc.localEndpoint.commAddr = link.srcEndpointDesc.commAddr;
-            channelDesc.localEndpoint.loc = link.srcEndpointDesc.loc;
-            channelDesc.remoteEndpoint.protocol = link.dstEndpointDesc.protocol;
-            channelDesc.remoteEndpoint.commAddr = link.dstEndpointDesc.commAddr;
-            channelDesc.remoteEndpoint.loc = link.dstEndpointDesc.loc;
-            HCCL_INFO("[CreateChannelRequestByRankId] Add channel request between %zu and %zu with protocol %zu", \
-                myRank, channelDesc.remoteRank, channelDesc.remoteEndpoint.protocol);
-            channelDesc.channelProtocol = link.linkAttr.linkProtocol;
-            channelDesc.notifyNum = NORMAL_NOTIFY_NUM;
-            for (u32 repeatId = 0; repeatId < channelRepeatNum; repeatId++) {
-                channels.push_back(channelDesc);
-            }
+        if (listSize == 0) {
+            continue;
         }
-        if (listSize > 0) {
-            findFlag = true;
+        std::vector<CommLink> links(linkList, linkList + listSize);
+        bool protocolFound = false;
+        CHK_RET(ProcessLinkForProtocol(comm, expectedProtocols, links, myRank, remoteRank, netLayer, channels, protocolFound,
+            std::string("[CreateChannelRequestByRankId]")));
+
+        if (channels.size() > 0) {
             break;
         }
     }
-    if (!findFlag) {
-        HCCL_ERROR("[CreateChannelRequestByRankId] My rank %zu has no link with remote rank %zu", \
-            myRank, remoteRank);
-        return HCCL_E_INTERNAL;
-    }
+    CHK_PRT_RET(channels.size() == 0,
+        HCCL_ERROR("[CreateChannelRequestByRankId] Failed to create channel between myRank=%u and rank=%u, there is no link.",
+            myRank, remoteRank), HcclResult::HCCL_E_INTERNAL);
 
 #endif
     return HCCL_SUCCESS;

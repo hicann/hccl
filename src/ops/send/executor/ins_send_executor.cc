@@ -71,7 +71,7 @@ namespace ops_hccl {
         resourceRequest.slaveThreadNum = 0;
 
         std::vector<HcclChannelDesc> level0Channels;
-        CHK_RET(CreateChannelRequestByRankId(comm, myRank_, remoteRank_, level0Channels));
+        CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
         resourceRequest.channels.push_back(level0Channels);
 
         HCCL_DEBUG("[InsSendExecutor][CalcRes][%d]->[%d] Success.", myRank_, remoteRank_);
