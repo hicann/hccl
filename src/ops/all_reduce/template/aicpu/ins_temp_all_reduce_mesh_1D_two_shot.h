@@ -54,7 +54,7 @@ public:
 private:
     HcclResult SplitData();
 
-    HcclResult RunReduceScatter(const TemplateDataParams &tempAlgParams,
+    HcclResult RunReduceScatter(const OpParam& param, const TemplateDataParams &tempAlgParams,
         const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
     HcclResult ScatterData(const TemplateDataParams &tempAlgParams,
         const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
@@ -68,6 +68,7 @@ private:
     HcclResult PreSync(const std::vector<ThreadHandle> &threads);
     HcclResult PostSync(const std::vector<ThreadHandle> &threads);
 
+    bool needAicpuReduce_{false};
     u32 dataTypeSize_{0};
     u64 count_{0};
     u64 processSize_{0};

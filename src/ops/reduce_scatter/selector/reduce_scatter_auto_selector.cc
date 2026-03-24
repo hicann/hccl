@@ -42,11 +42,6 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetL
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->topoLevelNums > 1) {
-        HCCL_WARNING("[ReduceScatterAutoSelector] levelNum > 1 is not supported yet for ccu_ms mode.");
-        return SelectorStatus::NOT_MATCH;
-    }
-
     SelectorStatus ret = SelectMeshAlgoCcums(topoInfo, opParam, selectAlgName);
      if (ret == SelectorStatus::MATCH) {
         HCCL_INFO("[ReduceScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());

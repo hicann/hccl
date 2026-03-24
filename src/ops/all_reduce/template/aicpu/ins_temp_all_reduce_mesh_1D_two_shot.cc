@@ -100,6 +100,9 @@ HcclResult InsTempAllReduceMesh1DTwoShot::KernelRun(const OpParam& param,
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
+    needAicpuReduce_ = 
+        dataType_ == HcclDataType::HCCL_DATA_TYPE_INT64 || dataType_ == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
+        dataType_ == HcclDataType::HCCL_DATA_TYPE_FP64 || param.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
 
     if (count_ == 0) {
         HCCL_WARNING("[InsTempAllReduceMesh1DTwoShot][KernelRun] data count is 0.");
@@ -113,7 +116,7 @@ HcclResult InsTempAllReduceMesh1DTwoShot::KernelRun(const OpParam& param,
             sliceInfoList_.size(), templateRankSize_), HcclResult::HCCL_E_INTERNAL);
 
     // TwoShot算法，第一步ReduceScatter
-    CHK_RET(RunReduceScatter(tempAlgParams, templateResource.channels, templateResource.threads));
+    CHK_RET(RunReduceScatter(param, tempAlgParams, templateResource.channels, templateResource.threads));
 
     // TwoShot算法，第二步AllGather
     CHK_RET(RunAllGather(tempAlgParams, templateResource.channels, templateResource.threads));
@@ -156,8 +159,10 @@ HcclResult InsTempAllReduceMesh1DTwoShot::SplitData()
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempAllReduceMesh1DTwoShot::RunReduceScatter(const TemplateDataParams &tempAlgParams,
-    const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads)
+HcclResult InsTempAllReduceMesh1DTwoShot::RunReduceScatter(const OpParam& param, 
+                                                           const TemplateDataParams &tempAlgParams,
+                                                           const std::map<u32, std::vector<ChannelInfo>> &channels, 
+                                                           const std::vector<ThreadHandle> &threads)
 {
     // 主线程向从线程发送启动信号
     PreSync(threads);
@@ -166,6 +171,16 @@ HcclResult InsTempAllReduceMesh1DTwoShot::RunReduceScatter(const TemplateDataPar
 
     // 从线程往主线程返回结束信号
     PostSync(threads);
+
+    // 增加thread synchronize以支持64类数据类型
+    if (needAicpuReduce_) {
+        // 启动任务并等待所有threads任务执行完成
+        CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
+        CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(param.algTag)));
+        for (const auto &thread : threads) {
+            CHK_RET(static_cast<HcclResult>(HcommThreadJoin(thread, CUSTOM_TIMEOUT)));
+        }
+    }
 
     // 将数据reduce到第0片数据的位置
     CHK_RET(ReduceData(tempAlgParams, threads));
