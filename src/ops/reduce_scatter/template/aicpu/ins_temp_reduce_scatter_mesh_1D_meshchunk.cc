@@ -28,10 +28,11 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::CalcRes(
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
+    const u32 NOTIFY_NUM_PER_SLAVE_THREAD = 2;
     for (u32 index = 0; index < threadNum - 1; index++) {
-        resourceRequest.notifyNumPerThread.push_back(1);
+        resourceRequest.notifyNumPerThread.push_back(NOTIFY_NUM_PER_SLAVE_THREAD);
     }
-    resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    resourceRequest.notifyNumOnMainThread = (threadNum - 1) * NOTIFY_NUM_PER_SLAVE_THREAD;
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
@@ -214,9 +215,9 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::DoMeshChunk(
         }
         if (threadNum_ > 1 && stepIdx < (templateRankSize_ - rankNum)) {
             std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.end());
-            GetNotifyIdxMainToSub(notifyIdxMainToSub_);
+            NotifyIdxMainToSubInMeshChunk(notifyIdxMainToSub_);
             CHK_RET(PreSyncInterThreads(threads[0], subThreads, notifyIdxMainToSub_));
-            GetNotifyIdxSubToMain(notifyIdxSubToMain_);
+            NotifyIdxSubToMainInMeshChunk(notifyIdxSubToMain_);
             CHK_RET(PostSyncInterThreads(threads[0], subThreads, notifyIdxSubToMain_));
         }
     }
@@ -259,6 +260,26 @@ void InsTempReduceScatterMesh1DMeshChunk::GetNotifyIdxSubToMain(std::vector<u32>
     u32 notifyNum = threadNum - 1;
     for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
         notifyIdxSubToMain.push_back(notifyIdx);
+    }
+}
+
+void InsTempReduceScatterMesh1DMeshChunk::NotifyIdxMainToSubInMeshChunk(std::vector<u32> &notifyIdxMainToSub)
+{
+    notifyIdxMainToSub.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 slaveThreadNum = threadNum - 1;
+    for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
+        notifyIdxMainToSub.push_back(1);
+    }
+}
+
+void InsTempReduceScatterMesh1DMeshChunk::NotifyIdxSubToMainInMeshChunk(std::vector<u32> &notifyIdxSubToMain)
+{
+    notifyIdxSubToMain.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
+    u32 notifyNum = threadNum - 1;
+    for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
+        notifyIdxSubToMain.push_back(notifyIdx + threadNum);
     }
 }
 } // namespace Hccl

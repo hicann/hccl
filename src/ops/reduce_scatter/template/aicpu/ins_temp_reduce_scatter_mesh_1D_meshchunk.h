@@ -53,6 +53,8 @@ private:
         const TemplateDataParams &tempAlgParams, const std::vector<uint64_t> &sliceSize, const u32 &repeatIdx,
         const u32 &myAlgRank, uint64_t &sliceSendOffset_, uint64_t &sliceRecvOffset_,
         const uint64_t &sliceRecvBaseOffset);
+    void NotifyIdxMainToSubInMeshChunk(std::vector<u32> &notifyIdxMainToSub);
+    void NotifyIdxSubToMainInMeshChunk(std::vector<u32> &notifyIdxSubToMain);
     u64 processSize_{0};
     u32 rankIdx_{0};
     u64 count_{0};
