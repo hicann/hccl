@@ -16,7 +16,7 @@ namespace ops_hccl {
 ScatterRingExecutor::ScatterRingExecutor() : ScatterExecutorBase()
 {
     // 只有ring算法使能了DMA消减
-    DMAReduceFlag_ = workflowMode_ == HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE;
+    DMAReduceFlag_ = true; // 单算子模式下使能，当前executor只支持单算子模式
     desc_.level1SupportedAlgos = {
         AlgTypeLevel1::ALG_LEVEL1_NHR,
         AlgTypeLevel1::ALG_LEVEL1_NB,

@@ -58,7 +58,6 @@ protected:
     HcclResult GetSubCommInfo(const CommPlane levelIndex, SubCommInfo &info);
     HcclResult RefreshAlgType(AlgType& algType);
     std::string tag_;
-    HcclWorkflowMode workflowMode_;
     TopoInfo* topoInfo_ = nullptr;
     AlgResourceCtx* algResource_ = nullptr;
     AlgType algType_;
