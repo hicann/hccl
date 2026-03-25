@@ -664,11 +664,9 @@ prompt_set_env() {
     fi
     if [ "$hetero_arch" = "y" ]; then
         echo "Please make sure that
-            - PATH includes ${install_path}/share/info/hccl/bin
             - LD_LIBRARY_PATH includes ${install_path}/lib64"
     else
         echo "Please make sure that
-            - PATH includes ${install_path}/share/info/hccl/bin
             - LD_LIBRARY_PATH includes ${install_path}/lib64
             - PYTHONPATH includes ${install_path}/python/site-packages"
     fi
