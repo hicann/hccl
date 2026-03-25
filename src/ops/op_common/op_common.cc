@@ -259,7 +259,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
     // 将算法名字放在param参数中
     int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
     if (result <= 0) {
-        HCCL_ERROR("faled to fill param.algName");
+        HCCL_ERROR("failed to fill param.algName");
         return HCCL_E_INTERNAL;
     }
 
@@ -805,7 +805,7 @@ HcclResult RegGraphModeBuffers(HcclComm comm, const OpParam &param, std::vector<
     auto retIn = sprintf_s(inputBuffTag, MAX_MEM_TAG_LENGTH, "%s_%s", param.algTag, "InputBuffer");
     auto retOut =  sprintf_s(outputBuffTag, MAX_MEM_TAG_LENGTH, "%s_%s", param.algTag, "OutputBuffer");
     if (retIn <= 0 || retOut <= 0){
-        HCCL_ERROR("[RegGraphModeBuffers]faled to fill BuffTag");
+        HCCL_ERROR("[RegGraphModeBuffers]failed to fill BuffTag");
         return HcclResult::HCCL_E_INTERNAL;
     }
 
@@ -1214,7 +1214,7 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
     // 原有tag + algName + 编排模式，得到基础algTag
     int len = snprintf_s(param.algTag, sizeof(param.algTag), sizeof(param.algTag), "%s_%s_%s", param.tag, temp.c_str(), launchMode);
     if (len < 0|| len >= sizeof(param.algTag)) {
-        HCCL_ERROR("faled to fill param.algTag");
+        HCCL_ERROR("failed to fill param.algTag");
         return HcclResult::HCCL_E_INTERNAL;
     }
 

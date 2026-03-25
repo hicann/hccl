@@ -308,7 +308,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         // 将算法名字放在param参数中
         int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
         if (result <= 0) {
-            HCCL_ERROR("faled to fill param.algName");
+            HCCL_ERROR("failed to fill param.algName");
             return HCCL_E_INTERNAL;
         }
         std::string algTypeStr = TransferAlgTypeStr(param.algType);
@@ -637,7 +637,7 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
     if (isOpBase) {
         int ret = sprintf_s(param.algTag, sizeof(param.algTag), "%s_%s_%u", param.tag, algName.c_str(), param.root);
         if (ret <= 0) {
-            HCCL_ERROR("faled to fill param.algTag");
+            HCCL_ERROR("failed to fill param.algTag");
             return HCCL_E_INTERNAL;
         }
     }
@@ -650,7 +650,7 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
                                    (param.engine == CommEngine::COMM_ENGINE_AICPU_TS)) ? "_device" : "_host");
         int ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
         if (ret != 0) {
-            HCCL_ERROR("faled to fill param.algTag");
+            HCCL_ERROR("failed to fill param.algTag");
             return HCCL_E_INTERNAL;
         }
 
