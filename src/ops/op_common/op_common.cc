@@ -146,7 +146,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
     // 将算法名字放在param参数中
     int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
     if (result <= 0) {
-        HCCL_ERROR("faled to fill param.algName");
+        HCCL_ERROR("failed to fill param.algName");
         return HCCL_E_INTERNAL;
     }
 
@@ -811,7 +811,7 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
     // 在原先的tag中添加算法名字，得到algTag
     int ret = sprintf_s(param.algTag, sizeof(param.algTag), "%s_%s", param.tag, temp.c_str());
     if (ret <= 0) {
-        HCCL_ERROR("faled to fill param.algTag");
+        HCCL_ERROR("failed to fill param.algTag");
         return HcclResult::HCCL_E_INTERNAL;
     }
     // 在algTag中追加编排模式
@@ -819,7 +819,7 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
                                 (param.engine == CommEngine::COMM_ENGINE_AICPU_TS)) ? "_device" : "_host");
     ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
     if (ret != 0) {
-        HCCL_ERROR("faled to fill param.algTag");
+        HCCL_ERROR("failed to fill param.algTag");
         return HcclResult::HCCL_E_INTERNAL;
     }
 
