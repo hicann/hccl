@@ -16,8 +16,8 @@
 
 namespace ops_hccl_p2p {
 
-HcclResult LoadAICPUKernel(void);
 extern thread_local aclrtBinHandle g_binKernelHandle;
+HcclResult LoadAICPUKernel(void);
 
 }
 

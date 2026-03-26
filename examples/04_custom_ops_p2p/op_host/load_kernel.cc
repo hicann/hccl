@@ -9,6 +9,7 @@
  */
 
 #include <mmpa_api.h>
+#include "log.h"
 #include "load_kernel.h"
 
 namespace ops_hccl_p2p {

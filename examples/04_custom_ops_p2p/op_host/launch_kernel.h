@@ -13,15 +13,7 @@
 
 #include <string>
 
-// 调用方式配置选项
-enum KernelLaunchMode {
-    KERNEL_LAUNCH_ACLRT,      // 传统 ACL API 调用方式
-    KERNEL_LAUNCH_ASC      // <<<>>> 尖括号调用方式
-};
-
 namespace ops_hccl_p2p {
-
-extern thread_local aclrtNotify g_notifies[AICPU_CONTROL_NOTIFY_NUM];
 
 // 使用 ASC 编译的二进制调用函数
 extern HcclResult LaunchKernelAsc(OpParam &param, aclrtStream stream);

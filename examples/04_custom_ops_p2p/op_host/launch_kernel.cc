@@ -15,12 +15,10 @@
 
 namespace ops_hccl_p2p {
 
-thread_local aclrtNotify g_notifies[AICPU_CONTROL_NOTIFY_NUM];
-
 HcclResult LaunchKernelWithAsc(OpParam &param, aclrtStream stream)
 {
     // Host stream通知Device主thread
-    ACLCHECK(aclrtRecordNotify(g_notifies[0], stream));
+    CHK_RET(HcommThreadNotifyRecordOnThread(param.cpuThread, param.aicpuThreadOnCpu, 0));
 
     // 调用使用 ASC 编译的函数，支持 <<<>>> 语法
     HcclResult ret = LaunchKernelAsc(param, stream);
@@ -30,7 +28,7 @@ HcclResult LaunchKernelWithAsc(OpParam &param, aclrtStream stream)
     }
 
     // Host stream等待Device的通知
-    ACLCHECK(aclrtWaitAndResetNotify(g_notifies[1], stream, CUSTOM_TIMEOUT));
+    CHK_RET(HcommThreadNotifyWaitOnThread(param.cpuThread, 0, CUSTOM_TIMEOUT));
     return HCCL_SUCCESS;
 }
 
@@ -40,7 +38,7 @@ HcclResult LaunchKernelWithAclrt(OpParam &param, aclrtStream stream)
     CHK_RET(LoadAICPUKernel());
 
     // Host stream通知Device主thread
-    ACLCHECK(aclrtRecordNotify(g_notifies[0], stream));
+    CHK_RET(HcommThreadNotifyRecordOnThread(param.cpuThread, param.aicpuThreadOnCpu, 0));
 
     // 获取 Kernel 函数句柄
     std::string kernelName = "HcclLaunchP2PAicpuKernel";
@@ -66,29 +64,22 @@ HcclResult LaunchKernelWithAclrt(OpParam &param, aclrtStream stream)
     ACLCHECK(aclrtLaunchKernelWithConfig(funcHandle, numBlocks, stream, &cfg, argsHandle, nullptr));
 
     // Host stream等待Device的通知
-    ACLCHECK(aclrtWaitAndResetNotify(g_notifies[1], stream, CUSTOM_TIMEOUT));
+    CHK_RET(HcommThreadNotifyWaitOnThread(param.cpuThread, 0, CUSTOM_TIMEOUT));
     return HCCL_SUCCESS;
 }
 
 HcclResult LaunchKernel(OpParam &param, aclrtStream stream)
 {
     // 通过环境变量判断 Kernel 下发方式，默认使用 aclrt 接口方式
-    char *kernelMode = getenv("HCCL_CUSTOM_KERNEL_LAUNCH_ASC");
-    HCCL_INFO("[LaunchKernel] HCCL_CUSTOM_KERNEL_LAUNCH_ASC: %s", kernelMode);
-    KernelLaunchMode mode = (kernelMode != nullptr && strcmp(kernelMode, "1") == 0)
-            ? KERNEL_LAUNCH_ASC : KERNEL_LAUNCH_ACLRT;
-    if (mode == KERNEL_LAUNCH_ASC) {
+    char *kernelLaunchAscPtr = getenv("HCCL_CUSTOM_KERNEL_LAUNCH_ASC");
+    if (kernelLaunchAscPtr != nullptr && strcmp(kernelLaunchAscPtr, "1") == 0) {
         // <<<>>> 尖括号调用方式
         HCCL_INFO("[LaunchKernel] Launching kernel with ascendc");
         return LaunchKernelWithAsc(param, stream);
-    } else if (mode == KERNEL_LAUNCH_ACLRT) {
+    } else {
         // 传统 ACL API 方式
         HCCL_INFO("[LaunchKernel] Launching kernel with aclrt");
         return LaunchKernelWithAclrt(param, stream);
-    } else {
-        HCCL_ERROR("[LaunchKernel] Invalid launch mode: %d", static_cast<int>(mode));
-        return HCCL_E_PARA;
     }
-    return HCCL_SUCCESS;
 }
 }

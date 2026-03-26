@@ -15,7 +15,8 @@
 │   ├── send.cc                         # HcclSendCustom 算子实现源文件
 │   ├── recv.cc                         # HcclRecvCustom 算子实现源文件
 │   ├── load_kernel.cc                  # AICPU Kernel 在 Host 侧的加载逻辑
-│   └── launch_kernel.cc                # AICPU Kernel 在 Host 侧的下发逻辑
+│   ├── launch_kernel.cc                # AICPU Kernel 在 Host 侧的下发逻辑
+│   └── utils.cc                        # 工具模块
 ├── op_kernel_aicpu/
 │   ├── libp2p_aicpu_kernel.json        # AICPU Kernel 算子描述文件
 │   ├── aicpu_kernel.cc                 # AICPU Kernel 实现逻辑
@@ -42,7 +43,9 @@
 
 本样例支持以下昇腾产品：
 
+- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
 - <term>Atlas A3 训练系列产品</term> / <term>Atlas A3 推理系列产品</term>
+- <term>Atlas A2 训练系列产品</term>
 
 ### 2. 安装 CANN Toolkit 开发套件包
 
@@ -50,9 +53,15 @@
 
 ### 3. 配置环境变量
 
+设置CANN环境变量：
+
 ```bash
-# 设置 CANN 环境变量，以 root 用户默认安装路径为例
+# 默认路径安装，以root用户为例
 source /usr/local/Ascend/cann/set_env.sh
+# 默认路径安装，以非root用户为例
+source $HOME/Ascend/cann/set_env.sh
+# 指定路径安装
+source ${install_path}/cann/set_env.sh
 ```
 
 ## 二、编译自定义算子包

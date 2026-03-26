@@ -11,13 +11,10 @@
 #ifndef OPS_HCCL_P2P_COMMON_H
 #define OPS_HCCL_P2P_COMMON_H
 
-#include "hccl/hccl_types.h"
-#include "hccl/hccl_res.h"
-#include "hccl/hcomm_primitives.h"
-#include "acl/acl_rt.h"
-#include "log.h"
-
-namespace ops_hccl_p2p {
+#include <hccl/hccl_types.h>
+#include <hccl/hccl_res.h>
+#include <hccl/hcomm_primitives.h>
+#include <acl/acl_rt.h>
 
 constexpr uint32_t NOTIFY_IDX_ACK = 0;
 constexpr uint32_t NOTIFY_IDX_DATA_SIGNAL = 1;
@@ -29,17 +26,24 @@ constexpr uint32_t TAG_LENGTH = OP_NAME_LENGTH + COMM_INDENTIFIER_MAX_LENGTH;
 
 constexpr uint32_t AICPU_CONTROL_NOTIFY_NUM = 2;
 
+// 设备类型
+enum DeviceType {
+    DEVICE_TYPE_A2 = 0,
+    DEVICE_TYPE_A3 = 1,
+    DEVICE_TYPE_A5 = 2,
+};
+
 typedef struct {
     void *addr;
     uint64_t size;
 } CommBuffer;
 
 struct AlgResourceCtx {
-    ThreadHandle threadHandle;
+    ThreadHandle aicpuThread;
+    ThreadHandle cpuThreadOnAicpu;
     CommBuffer localBuffer;
     CommBuffer remoteBuffer;
     ChannelHandle channelHandle;
-    uint32_t notifyIds[AICPU_CONTROL_NOTIFY_NUM]; // aicpu 模式下device侧控制notify
 };
 
 struct OpParam {
@@ -48,14 +52,16 @@ struct OpParam {
     void* inputPtr = nullptr;
     void* outputPtr = nullptr;
     uint64_t count = 0;
+    DeviceType devType;
     HcclDataType dataType = HCCL_DATA_TYPE_RESERVED;
     HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID;
+    ThreadHandle cpuThread;
+    ThreadHandle aicpuThreadOnCpu;
     AlgResourceCtx* resCtx = nullptr;
 };
 
 constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
     2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
     8, 2, 16, 2, 1, 1, 1, 1};
-}
 
 #endif // OPS_HCCL_P2P_COMMON_H

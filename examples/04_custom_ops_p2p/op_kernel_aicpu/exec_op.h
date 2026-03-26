@@ -12,8 +12,8 @@
 #define OPS_HCCL_P2P_EXEC_OP_H
 
 #include <string>
+#include <hccl/hcomm_primitives.h>
 #include "common.h"
-#include "hccl/hcomm_primitives.h"
 
 namespace ops_hccl_p2p {
 HcclResult ExecOp(OpParam &param, AlgResourceCtx* resCtx);

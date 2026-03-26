@@ -11,6 +11,8 @@
 #include <string>
 #include <memory>
 #include <hccl/hcomm_primitives.h>
+#include "log.h"
+#include "utils.h"
 #include "common.h"
 #include "exec_op.h"
 
@@ -19,21 +21,21 @@ using namespace ops_hccl_p2p;
 extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s]", __func__, param->commName, param->tag);
-    if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) { 
-        HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
-        return 1;
+    if (param->devType == DEVICE_TYPE_A2 || param->devType == DEVICE_TYPE_A3) {
+        if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) {
+            HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
+            return 1;
+        }
     }
 
-    // 获取Device侧主thread
-    ThreadHandle thread = param->resCtx->threadHandle;
     if (HcommBatchModeStart(param->tag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed start batch mode");
         return 1;
     }
 
     // 主thread等待Host stream的通知
-    if (HcommAclrtNotifyWaitOnThread(thread, param->resCtx->notifyIds[0], CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed to wait notify[%d] from host main stream", param->resCtx->notifyIds[0]);
+    if (HcommThreadNotifyWaitOnThread(param->resCtx->aicpuThread, 0, CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
+        HCCL_ERROR("failed to wait notify from host main stream");
         return 1;
     }
 
@@ -44,7 +46,7 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (HcommAclrtNotifyRecordOnThread(thread, param->resCtx->notifyIds[1]) != HCCL_SUCCESS) {
+    if (HcommThreadNotifyRecordOnThread(param->resCtx->aicpuThread, param->resCtx->cpuThreadOnAicpu, 0) != HCCL_SUCCESS) {
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }
@@ -54,9 +56,11 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
         return 1;
     }
 
-    if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
-        return 1;
+    if (param->devType == DEVICE_TYPE_A2 || param->devType == DEVICE_TYPE_A3) {
+        if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
+            HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
+            return 1;
+        }
     }
     HCCL_INFO("%s success, commName[%s], tag[%s]", __func__, param->commName, param->tag);
     return 0;

@@ -8,28 +8,16 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef OPS_HCCL_P2P_CUSTOM_P2P_H
-#define OPS_HCCL_P2P_CUSTOM_P2P_H
+#ifndef OPS_HCCL_P2P_COMMON_UTILS_H
+#define OPS_HCCL_P2P_COMMON_UTILS_H
 
-#include <acl/acl.h>
-#include <hccl/hccl_comm.h>
 #include <hccl/hccl_res.h>
-#include <hccl/hccl_types.h>
+#include <hccl/hccl_rank_graph.h>
+#include "common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* 自定义 Send 算子 */
-HcclResult HcclSendCustom(
-    void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream);
-
-/* 自定义 Recv 算子 */
-HcclResult HcclRecvCustom(
-    void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream);
-
-#ifdef __cplusplus
+namespace ops_hccl_p2p {
+HcclResult GetDeviceType(DeviceType *deviceType);
+HcclResult AcquireChannel(HcclComm comm, CommEngine engine, DeviceType devType,
+                          uint32_t srcRank, uint32_t dstRank, ChannelHandle *channel);
 }
 #endif
-
-#endif // OPS_HCCL_P2P_CUSTOM_P2P_H

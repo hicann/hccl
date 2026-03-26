@@ -18,7 +18,6 @@ project(hccl_examples_custom_ops_p2p LANGUAGES CXX AICPU ASC) # 支持CXX、AICP
 set(HCCL_CUSTOM_OPS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(HCCL_CUSTOM_OPS_INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/op_host
     ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu
 
@@ -84,9 +83,6 @@ install(FILES
     DESTINATION ${CUSTOM_OPS_OPP_INC_PATH}
 )
 
-set(AICPU_KERNEL_TAR_FILE ${CMAKE_BINARY_DIR}/aicpu_hccl_custom_p2p.tar.gz)
-set(AICPU_KERNEL_JSON_FILE ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu/libp2p_aicpu_kernel.json)
-
 if(KERNEL_MODE)
     # AICPU Kernel 动态链接库
     add_library(p2p_aicpu_kernel SHARED)
@@ -107,21 +103,26 @@ if(KERNEL_MODE)
     target_link_libraries(p2p_aicpu_kernel PRIVATE
         ccl_kernel
     )
-    register_custom_aicpu_target(p2p_aicpu_kernel)
 
     # 打包：AICPU Kernel tar 包
-    package_aicpu_kernel(
-        p2p_aicpu_kernel
-        ${AICPU_KERNEL_TAR_FILE}
-        ${AICPU_KERNEL_JSON_FILE}
+    pack_targets_and_files(
+        OUTPUT_TARGET "package_aicpu_hccl_custom_p2p"
+        OUTPUT "aicpu_hccl_custom_p2p.tar.gz"
+        TARGETS p2p_aicpu_kernel
+        MANIFEST "bin_hash.cfg"
+        TAR_ROOT_DIR "aicpu_kernels_device"
     )
+
     # 签名：添加 AICPU Kernel tar 包的签名
-    sign_aicpu_kernel(
-        p2p_aicpu_kernel
-        ${AICPU_KERNEL_TAR_FILE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/hccl_custom_p2p_check_cfg.xml
-        SIGNED_AICPU_KERNEL_TAR_FILE
+    sign_file(
+        INPUT "aicpu_hccl_custom_p2p.tar.gz"
+        CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/scripts/hccl_custom_p2p_check_cfg.xml
+        RESULT_VAR "sign_aicpu_hccl_custom_p2p_result"
+        DEPENDS package_aicpu_hccl_custom_p2p
     )
+
+    # 设置依赖
+    register_custom_aicpu_target(sign_aicpu_hccl_custom_p2p)
 else()
     # 安装
     install(FILES
@@ -129,7 +130,7 @@ else()
         DESTINATION ${CUSTOM_OPS_OPP_AICPU_KERNEL_PATH}
     )
     install(FILES
-        ${AICPU_KERNEL_JSON_FILE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/op_kernel_aicpu/libp2p_aicpu_kernel.json
         DESTINATION ${CUSTOM_OPS_OPP_AICPU_CONFIG_PATH}
     )
 endif()

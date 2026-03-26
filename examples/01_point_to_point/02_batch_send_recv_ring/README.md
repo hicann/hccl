@@ -60,12 +60,12 @@ make test
 
 ```text
 Found 8 NPU device(s) available
-rankId: 0, output: [ 7 7 7 7 ]
-rankId: 1, output: [ 0 0 0 0 ]
-rankId: 2, output: [ 1 1 1 1 ]
-rankId: 3, output: [ 2 2 2 2 ]
-rankId: 4, output: [ 3 3 3 3 ]
-rankId: 5, output: [ 4 4 4 4 ]
-rankId: 6, output: [ 5 5 5 5 ]
-rankId: 7, output: [ 6 6 6 6 ]
+rankId: 0, output: [ 7 7 7 7 7 7 7 7 ]
+rankId: 1, output: [ 0 0 0 0 0 0 0 0 ]
+rankId: 2, output: [ 1 1 1 1 1 1 1 1 ]
+rankId: 3, output: [ 2 2 2 2 2 2 2 2 ]
+rankId: 4, output: [ 3 3 3 3 3 3 3 3 ]
+rankId: 5, output: [ 4 4 4 4 4 4 4 4 ]
+rankId: 6, output: [ 5 5 5 5 5 5 5 5 ]
+rankId: 7, output: [ 6 6 6 6 6 6 6 6 ]
 ```
