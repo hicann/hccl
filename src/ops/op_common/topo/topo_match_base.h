@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "log.h"
+#include "hccl_comm.h"
 #include "alg_param.h"
 
 namespace ops_hccl {
