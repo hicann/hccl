@@ -49,7 +49,7 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     CHK_RET(InitEnvConfig());
     
     // AclGraph引导到老的流程上面
-    if (IsStreamCapture(stream)) {
+    if (deviceType != DevType::DEV_TYPE_950 && IsStreamCapture(stream)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
     // 重执行引导到老的流程上面
