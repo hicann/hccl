@@ -97,7 +97,8 @@ HcclResult CcuTempReduceScatterMesh1D::KernelRun(const OpParam& param,
     uint64_t baseInputAddr      = PointerToAddr(buffInfo_.inputPtr);
     uint64_t inputAddr          = baseInputAddr + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
-    uint64_t token              = hcomm::CcuRep::GetTokenInfo(baseInputAddr, static_cast<uint64_t>(buffInfo_.inputSize));
+    uint64_t token;
+    CHK_RET(GetToken(buffInfo_, token));
     uint64_t sliceSize          = templateDataParams.sliceSize;
     uint64_t inputSliceStride   = templateDataParams.inputSliceStride;
     uint64_t offset             = inputSliceStride * mySubCommRank_;

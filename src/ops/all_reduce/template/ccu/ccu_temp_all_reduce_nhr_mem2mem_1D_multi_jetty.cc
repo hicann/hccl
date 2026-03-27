@@ -100,7 +100,13 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::KernelRun(const OpParam& para
 
     const uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     const uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
-    const uint64_t outputToken = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffInfo_.outputPtr), buffInfo_.outputSize);
+    uint64_t outputToken;
+    {
+        auto tokenBuffInfo = buffInfo_;
+        tokenBuffInfo.inputPtr = nullptr; // 让 GetToken 走 outputPtr 分支
+        tokenBuffInfo.inputSize = 0;
+        CHK_RET(GetToken(tokenBuffInfo, outputToken));
+    }
     const uint64_t isInplace = inputAddr == outputAddr ? 1 : 0;
     const uint64_t dataCount = templateDataParams.count; // 总count数
     const uint64_t unitSize = DataTypeSizeGet(dataType_);

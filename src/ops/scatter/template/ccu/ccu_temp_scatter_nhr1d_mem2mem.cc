@@ -231,8 +231,8 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(const OpParam &param, const Tem
     uint64_t scratchAddr = PointerToAddr(buffInfo_.hcclBuff.addr) + buffInfo_.hcclBuffBaseOff;
     HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] buffInfo_.inputPtr [%p].", buffInfo_.inputPtr);
     HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] buffInfo_.inputSize [%llu].", buffInfo_.inputSize);
-    uint64_t token = hcomm::CcuRep::GetTokenInfo(reinterpret_cast<uint64_t>(buffInfo_.inputPtr),
-                                                 static_cast<uint64_t>(buffInfo_.inputSize));
+    uint64_t token;
+    CHK_RET(GetToken(buffInfo_, token));
     uint64_t sliceSize = templateDataParams.sliceSize;
     uint64_t repeatNum = templateDataParams.repeatNum;
     uint64_t inputSliceStride = templateDataParams.inputSliceStride;

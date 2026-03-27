@@ -40,6 +40,8 @@ public:
     virtual u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType);
 
     uint64_t PointerToAddr(void* pointer) const;
+    
+    HcclResult GetToken(const BuffInfo &buffinfo, uint64_t &token) const;
 
     HcclResult GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc, uint32_t& dieId) const;
 

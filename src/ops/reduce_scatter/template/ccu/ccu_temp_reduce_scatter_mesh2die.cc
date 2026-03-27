@@ -118,8 +118,8 @@ HcclResult CcuTempReduceScatterMesh2Die::KernelRun(const OpParam &param, const T
     uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
     uint64_t scratchAddr = PointerToAddr(buffInfo_.hcclBuff.addr) + buffInfo_.hcclBuffBaseOff;
     uint64_t sliceSize             = templateDataParams.sliceSize;
-    uint64_t token = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffInfo_.inputPtr),
-                                                       static_cast<uint64_t>(buffInfo_.inputSize));
+    uint64_t token;
+    CHK_RET(GetToken(buffInfo_, token));
     uint64_t inputSliceStride = templateDataParams.inputSliceStride;
     uint64_t offsetSliceSize = templateDataParams.sliceSize;
    HCCL_INFO("[CcuTempReduceScatterMesh2Die] inputAddr[%llu], outputAddr[%llu], scratchAddr0[%llu], "

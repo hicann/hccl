@@ -100,4 +100,23 @@ HcclResult CcuAlgTemplateBase::GetChannelDieId(HcclComm comm, uint32_t rankId, c
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult CcuAlgTemplateBase::GetToken(const BuffInfo &buffinfo, uint64_t &token) const
+{
+    if (buffinfo.inputPtr != nullptr) {
+        token = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffinfo.inputPtr),
+                                     static_cast<uint64_t>(buffinfo.inputSize));
+        return HCCL_SUCCESS;
+    } else if (buffinfo.outputPtr != nullptr) {
+        token = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffinfo.outputPtr),
+                                     static_cast<uint64_t>(buffinfo.outputSize));
+        return HCCL_SUCCESS;
+    } else if (buffinfo.hcclBuff.addr != nullptr) {
+        token = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffinfo.hcclBuff.addr),
+                                     static_cast<uint64_t>(buffinfo.hcclBuff.size));
+        return HCCL_SUCCESS;
+    }
+    HCCL_WARNING("[GetToken] inputMem, outputMem and hcclBuff are all null");
+    return HCCL_E_PTR;
+}
+
 } // namespace ops_hccl

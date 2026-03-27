@@ -76,7 +76,8 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, con
 
     uint64_t inputAddr          = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
-    uint64_t token              = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffInfo_.outputPtr), buffInfo_.outputSize);
+    uint64_t token;
+    CHK_RET(GetToken(buffInfo_, token));
     uint64_t srcOffset = 0; // alltoallv假设src起始地址为发送rank的对应块起始地址
     uint64_t dstOffset = 0; // alltoallv假设dst起始地址为接收rank的对应块起始地址
 

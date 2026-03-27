@@ -89,7 +89,8 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::KernelRun(const OpParam& param, cons
 
     uint64_t inputAddr          = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
-    uint64_t token              = hcomm::CcuRep::GetTokenInfo(PointerToAddr(buffInfo_.inputPtr), buffInfo_.inputSize);
+    uint64_t token;
+    CHK_RET(GetToken(buffInfo_, token));
     uint64_t sliceSize    = templateDataParams.sliceSize;
     uint64_t totalSliceSize = (sdispls_[1] - sdispls_[0]) * dataTypeSize; // Bytes
     uint64_t srcStride = totalSliceSize;
