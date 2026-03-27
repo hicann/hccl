@@ -115,7 +115,7 @@ namespace ops_hccl {
     HcclResult InsSendExecutor::OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
         (void) resCtx;
         // 图模式本端可拿到对端output buffer地址，所以直接从本端input buffer到对端output buffer
-        void *dstBufferPtr = static_cast<void *>(channel.remoteOutput.addr);
+        void *dstBufferPtr = static_cast<void *>(channel.remoteOutputGraphMode.addr);
         // UB传输最大数据量
         maxLoopTransSize_ = UB_MAX_DATA_SIZE;
         // 一次搬运最大数据个数

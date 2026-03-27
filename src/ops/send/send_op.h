@@ -21,16 +21,26 @@ extern "C" {
 
 HcclResult HcclSend(
     void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream);
+HcclResult HcclSendGraphMode(
+    void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, const char* group, aclrtStream stream,
+    const char *tag, void **streams, size_t streamCount, void *scratchMemAddr, uint64_t scratchMemSize);
 
 #ifdef __cplusplus
 }
 #endif
 
 namespace ops_hccl {
-    HcclResult CheckSendInputPara(const HcclComm comm, const void *sendBuf);
+    HcclResult GetAndCheckSendPara(
+        const HcclComm comm, const void *sendBuf, const uint64_t count, const HcclDataType dataType,
+        const uint32_t destRank, u32 &rankSize, u32 &userRank, std::string &opTag);
+    HcclResult GenerateSendOpParam(
+        OpParam &param, void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank,
+        const HcclComm comm, const aclrtStream stream, const std::string &tag);
 
-    HcclResult SendExec(void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm,
-                        aclrtStream stream, const std::string &tag);
+    HcclResult SendExec(
+        void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank,
+        const HcclComm comm, const aclrtStream stream, const u32 &rankSize,
+        const OpMode &opMode, const std::string &tag, const ResPackGraphMode &resPack = ResPackGraphMode());
 } // namespace ops_hccl
 
 // ifndef OPS_HCCL_SRC_OPS_SEND_OP

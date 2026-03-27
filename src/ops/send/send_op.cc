@@ -42,33 +42,68 @@ HcclResult HcclSend(
     }
 
     CHK_RET(InitEnvConfig());
-
-    // 参数校验
-    CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return send success"), HcclResult::HCCL_SUCCESS);
-    CHK_RET(CheckSendInputPara(comm, sendBuf));
     u32 rankSize = INVALID_VALUE_RANKSIZE;
-    CHK_RET(HcclGetRankSize(comm, &rankSize));
     u32 userRank = INVALID_VALUE_RANKID;
-    CHK_RET(HcclGetRankId(comm, &userRank));
-    char commName[COMM_INDENTIFIER_MAX_LENGTH];
-    CHK_RET(HcclGetCommName(comm, commName));
-    const string tag = "Send_" + string(commName) + "_" + std::to_string(userRank) + "_" + std::to_string(destRank);
-    CHK_RET(HcclCheckTag(tag.c_str()));
-    CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
-    CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, destRank), tag.c_str());
-    CHK_PRT_RET(userRank == destRank, HCCL_ERROR("[HcclSend] destRank cannot be equal to self."), HcclResult::HCCL_E_NOT_SUPPORT);
-    CHK_RET(CheckCount(count));
-    CHK_RET(CheckDataType(dataType, false));
+    std::string tag;
+    // 参数获取和校验
+    CHK_PRT_RET(count == 0, HCCL_WARNING("[HcclSend] input count is 0, return send success"), HcclResult::HCCL_SUCCESS);
+    CHK_RET(GetAndCheckSendPara(comm, sendBuf, count, dataType, destRank, rankSize, userRank, tag));
 
-    CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, tag), tag.c_str());
+    CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, rankSize, OpMode::OPBASE, tag), tag.c_str());
 
     HCCL_INFO("[HcclSend][%d]->[%d] Success.", userRank, destRank);
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult HcclSendGraphMode(
+    void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, const char* group, aclrtStream stream,
+    const char *tag, void **streams, size_t streamCount, void *scratchMemAddr, uint64_t scratchMemSize)
+{
+    HCCL_INFO("[HcclSendGraphMode] Start.");
+    // 根据group获取通信域
+    HcclComm comm = nullptr;
+    HCCL_INFO("[HcclSendGraphMode] get group name: %s", group);
+    HcomGetCommHandleByGroup(group, &comm);
+    
+    CHK_RET(InitEnvConfig());
+    u32 rankSize = INVALID_VALUE_RANKSIZE;
+    u32 userRank = INVALID_VALUE_RANKID;
+    std::string opTag(tag ? tag : "");
+    // 参数获取和校验
+    CHK_PRT_RET(count == 0, HCCL_WARNING("[HcclSendGraphMode] input count is 0, return send success"), HcclResult::HCCL_SUCCESS);
+    CHK_RET(GetAndCheckSendPara(comm, sendBuf, count, dataType, destRank, rankSize, userRank, opTag));
+
+    // 拼装ResPackGraphMode
+    ResPackGraphMode resPack;
+    // 设置tag
+    s32 fillTagRet = strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1);
+    CHK_PRT_RET(
+        fillTagRet != EOK,
+        HCCL_ERROR("[HcclSendGraphMode] failed to fill resPack.tag, tag %s, return %d.", tag, fillTagRet),
+        HcclResult::HCCL_E_INTERNAL);
+    // 设置streams
+    if (streams != nullptr && streamCount > 0) {
+        for (size_t i = 0; i < streamCount; i++) {
+            resPack.streams.push_back(static_cast<aclrtStream>(streams[i]));
+        }
+    }
+    // 设置scratchMem
+    resPack.scratchMemAddr = scratchMemAddr;
+    resPack.scratchMemSize = scratchMemSize;
+
+    // 执行Send
+    CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, rankSize, OpMode::OFFLOAD, opTag, resPack), opTag.c_str());
+
+    HCCL_INFO("[HcclSendGraphMode][%d]->[%d] Success.", userRank, destRank);
+    return HcclResult::HCCL_SUCCESS;
+}
+
 namespace ops_hccl {
-    HcclResult CheckSendInputPara(const HcclComm comm, const void *sendBuf) {
-        // 入参合法性校验
+    HcclResult GetAndCheckSendPara(
+        const HcclComm comm, const void *sendBuf, const uint64_t count, const HcclDataType dataType,
+        const uint32_t destRank, u32 &rankSize, u32 &userRank, std::string &tag)
+    {
+        // 参数校验
         RPT_INPUT_ERR(
             comm == nullptr,
             "EI0003",
@@ -81,23 +116,30 @@ namespace ops_hccl {
             std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
             std::vector<std::string>({"HcclSend", "nullptr", "sendBuf", "non-null pointer"}));
         CHK_PTR_NULL(sendBuf);
-
+        CHK_RET(CheckCount(count));
+        CHK_RET(CheckDataType(dataType, false));
+        CHK_RET(HcclGetRankSize(comm, &rankSize));
+        CHK_RET(HcclGetRankId(comm, &userRank));
+        CHK_PRT_RET(userRank == destRank, HCCL_ERROR("[HcclSend] destRank cannot be equal to self."), HcclResult::HCCL_E_NOT_SUPPORT);
+        if (tag.empty()) {
+            char commName[COMM_INDENTIFIER_MAX_LENGTH];
+            CHK_RET(HcclGetCommName(comm, commName));
+            tag = "SendRecv_" + string(commName) + "_" + std::to_string(userRank) + "_" + std::to_string(destRank);
+        }
+        CHK_RET(HcclCheckTag(tag.c_str()));
+        CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
+        CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, destRank), tag.c_str());
         return HcclResult::HCCL_SUCCESS;
     }
 
-    HcclResult SendExec(
-        void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm,
-        aclrtStream stream, const std::string &tag)
+    HcclResult GenerateSendOpParam(
+        OpParam &param, void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank,
+        const HcclComm comm, const aclrtStream stream, const std::string &tag)
     {
-        HCCL_DEBUG("[SendExec][%s] Start.", tag);
-        u32 userRankSize;
-        CHK_RET(HcclGetRankSize(comm, &userRankSize));
-
+        // 获取通信域名称
+        CHK_RET(HcclGetCommName(comm, param.commName));
         u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType];
         u64 dataSize = count * dataTypeSize;
-
-        // 参数构建
-        OpParam param;
         param.opType = HcclCMDType::HCCL_CMD_SEND;
         param.enableDetour = false;
 
@@ -105,38 +147,52 @@ namespace ops_hccl {
         CHK_RET(hrtGetDeviceType(deviceType));
         param.deviceType = deviceType;
 
-        // 获取通信域名称
-        CHK_RET(HcclGetCommName(comm, param.commName));
-
         // topoInfo的tag，所有相同的算子可以共享
-        int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
-        if (ret <= 0) {
-            HCCL_ERROR("failed to fill param.tag");
-            return HcclResult::HCCL_E_INTERNAL;
-        }
+        auto fillTagRet = strncpy_s(param.tag, sizeof(param.tag), tag.c_str(), sizeof(param.tag) - 1);
+        CHK_PRT_RET(
+            fillTagRet != EOK,
+            HCCL_ERROR("[GenerateSendOpParam] failed to fill param.tag, tag %s, return %d.", tag.c_str(), fillTagRet),
+            HcclResult::HCCL_E_INTERNAL);
 
         param.stream = stream;
-        param.opMode = OpMode::OPBASE;
         param.inputPtr = sendBuf;
         param.inputSize = dataSize;
         param.sendRecvRemoteRank = destRank;
         param.outputPtr = nullptr;
-        param.outputSize = dataSize;
+        param.outputSize = 0;
         param.DataDes.count = count;
         param.DataDes.dataType = dataType;
-        if (userRankSize == 1) {
-            HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
-            CHK_RET(SingleRankProc(param));
-            return HcclResult::HCCL_SUCCESS;
-        }
+
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    HcclResult SendExec(
+        void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank,
+        const HcclComm comm, const aclrtStream stream, const u32 &rankSize,
+        const OpMode &opMode, const std::string &tag, const ResPackGraphMode &resPack)
+    {
+        HCCL_DEBUG("[SendExec][%s][%s] Start.", tag.c_str(), opMode == OpMode::OPBASE ? "OPBASE" : "OFFLOAD");
+
+        // 参数构建
+        OpParam param;
+        CHK_RET(GenerateSendOpParam(param, sendBuf, count, dataType, destRank, comm, stream, tag));
+        param.opMode = opMode;
 
         std::string algName;
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
         CHK_RET(Selector(comm, param, topoInfo, algName));
-        if (param.opExecuteConfig != OpExecuteConfig::AICPU_TS && param.opExecuteConfig != OpExecuteConfig::HOSTCPU) {
+
+        if (ShouldUseInnerOp(param.opExecuteConfig)) {
             return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
         }
-        CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
+        if (rankSize == 1) {
+            HCCL_WARNING("[SendExec][%s][%s] ranksize == 1, enter SingleRankProc", tag.c_str(),
+                opMode == OpMode::OPBASE ? "OPBASE" : "OFFLOAD");
+            CHK_RET(SingleRankProc(param));
+            return HcclResult::HCCL_SUCCESS;
+        }
+
+        CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
 
         return HcclResult::HCCL_SUCCESS;
     }

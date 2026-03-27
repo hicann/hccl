@@ -120,7 +120,7 @@ namespace ops_hccl {
 
     HcclResult InsRecvExecutor::OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
         (void) resCtx;
-        void *srcBufferPtr = static_cast<void *>(channel.remoteInput.addr);
+        void *srcBufferPtr = static_cast<void *>(channel.remoteInputGraphMode.addr);
         // 图模式直接到本端output buffer
         void *dstBufferPtr = static_cast<void *>(param.outputPtr);
         // UB传输最大数据量
