@@ -203,23 +203,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAivAlgo(const TopoInfoWithNetLa
                                                        std::string &selectAlgName) const
 {
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
-    (void)configAlgMap;
-
-    //aiv 模式不支持 PROD
-    CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
-        HCCL_WARNING("[ReduceScatterVAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.",
-            opParam.reduceType),
-        SelectorStatus::NOT_MATCH);
-
-    if (opParam.vDataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64 ||
-        opParam.vDataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
-        opParam.vDataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] aiv mode not support INT64, UINT64, FP64.");
-        return SelectorStatus::NOT_MATCH;
-    }
-
-    selectAlgName = "AivReduceScatterVMesh1D";
-    return SelectorStatus::MATCH;
+    HCCL_DEBUG("[Algo][ReduceScatterVAutoSelector] is not supported yet for AIV mode, reverting to AICPU mode.");
+    return SelectorStatus::NOT_MATCH;
 }
 
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, 18, ReduceScatterVAutoSelector);
