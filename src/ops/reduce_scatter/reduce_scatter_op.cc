@@ -32,7 +32,6 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
     }
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
-    // 非95设备转到老流程
 #ifdef MACRO_DEV_TYPE_NEW
     if (deviceType != DevType::DEV_TYPE_950) {
 #else
@@ -66,6 +65,53 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
     return HCCL_SUCCESS;
 }
 
+HcclResult HcclReduceScatterGraphMode(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
+ 	     HcclReduceOp op, const char* group, aclrtStream stream, const char* tag, void** streams,
+ 	     size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
+{
+    HCCL_INFO("Start to run execute HcclReduceScatterGraphMode");
+    HcclComm comm = nullptr;
+    HcomGetCommHandleByGroup(group, &comm);
+    HCCL_INFO("[HcclReduceScatterGraphMode] get group name: %s", group);
+
+    CHK_RET(InitEnvConfig());
+    CHK_PRT_RET(recvCount == 0, HCCL_WARNING("input recvCount is 0, return reduce scatter success"), HCCL_SUCCESS);
+    CHK_RET(CheckReduceScatterInputPara(comm, sendBuf, recvBuf, stream));
+
+    char commName[COMM_INDENTIFIER_MAX_LENGTH];
+    CHK_RET(HcclGetCommName(comm, commName));
+    const string opTag = "ReduceScatter_" + string(commName);
+    CHK_RET(HcclCheckTag(opTag.c_str()));
+    CHK_RET(HcclCheckTag(tag));
+
+    CHK_RET(CheckCount(recvCount));
+    CHK_RET(CheckDataType(dataType, true));
+
+    u32 rankSize = INVALID_VALUE_RANKSIZE;
+    CHK_RET(HcclGetRankSize(comm, &rankSize));
+    u32 userRank = INVALID_VALUE_RANKID;
+    CHK_RET(HcclGetRankId(comm, &userRank));
+    CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), opTag.c_str());
+
+    ResPackGraphMode resPack;
+    strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1);
+
+    if (streams != nullptr && streamCount > 0) {
+        for (size_t i = 0; i < streamCount; i++) {
+            resPack.streams.push_back(static_cast<aclrtStream>(streams[i]));
+        }
+    }
+
+    resPack.scratchMemAddr = scratchMemAddr;
+    resPack.scratchMemSize = scratchMemSize;
+
+    CHK_RET_AND_PRINT_IDE(
+        ReduceScatterOutPlaceGraphMode(sendBuf, recvBuf, recvCount, dataType, op, comm, stream, tag, resPack),
+        opTag);
+
+    return HCCL_SUCCESS;
+}
+
 namespace ops_hccl {
 HcclResult CheckReduceScatterInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream)
 {
@@ -86,10 +132,10 @@ HcclResult CheckReduceScatterInputPara(const HcclComm comm, const void* sendBuf,
     return HCCL_SUCCESS;
 }
 
-HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag)
+static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag,
+ 	OpMode opMode)
 {
-    HCCL_INFO("Start to execute ReduceScatterOutPlace");
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
@@ -97,23 +143,20 @@ HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCoun
     u64 outputSize = recvCount * perDataSize;
     u64 inputSize = outputSize * userRankSize;
 
-    OpParam param;
     CHK_RET(HcclGetCommName(comm, param.commName));
     param.stream = stream;
     param.reduceType = op;
-    param.opMode = OpMode::OPBASE;
+    param.opMode = opMode;
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
 
-    // topoInfo的tag，所有相同的算子可以共享
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
     if (ret <= 0) {
         HCCL_ERROR("failed to fill param.tag");
         return HCCL_E_INTERNAL;
     }
 
-    // 参数准备
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;
     param.outputPtr = recvBuf;
@@ -123,6 +166,19 @@ HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCoun
     param.opType = HcclCMDType::HCCL_CMD_REDUCE_SCATTER;
     param.enableDetour = false;
     param.deviceType = deviceType;
+
+    return HCCL_SUCCESS;
+}
+
+HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
+    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag)
+{
+    HCCL_INFO("Start to execute ReduceScatterOutPlace");
+    OpParam param;
+    CHK_RET(PrepareReduceScatterParam(param, sendBuf, recvBuf, recvCount, dataType, op, comm, stream, tag,
+ 	    OpMode::OPBASE));
+    u32 userRankSize;
+    CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
@@ -137,6 +193,30 @@ HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCoun
     }
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute ReduceScatterOutPlace success.");
+    return HCCL_SUCCESS;
+}
+
+HcclResult ReduceScatterOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
+ 	HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack)
+{
+    HCCL_INFO("Start to execute ReduceScatterOutPlaceGraphMode");
+    OpParam param;
+    CHK_RET(PrepareReduceScatterParam(param, sendBuf, recvBuf, recvCount, dataType, op, comm, stream, tag,
+        OpMode::OFFLOAD));
+
+    u32 userRankSize;
+    CHK_RET(HcclGetRankSize(comm, &userRankSize));
+
+    if (userRankSize == 1) {
+        HCCL_WARNING("[%s] rankSize == 1, enter SingleRankProc", __func__);
+        CHK_RET(SingleRankProc(param));
+        return HcclResult::HCCL_SUCCESS;
+    }
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+    CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
+    HCCL_INFO("Execute ReduceScatterOutPlaceGraphMode success.");
     return HCCL_SUCCESS;
 }
 }
