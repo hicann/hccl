@@ -32,8 +32,9 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::CalcRes(
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
     resourceRequest.slaveThreadNum = threadNum - 1; // 主thread可以通过接口传入的stream来做转换
-    resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
-    resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    const u32 NOTIFY_NUM_PER_SLAVE_THREAD = 3;
+    resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, NOTIFY_NUM_PER_SLAVE_THREAD);
+    resourceRequest.notifyNumOnMainThread = (threadNum - 1) * NOTIFY_NUM_PER_SLAVE_THREAD;
 
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
@@ -186,7 +187,7 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::ReduceScatterMeshChunk(const 
             sliceTxOffset_ += sliceSize[toRank][m];
         }
 
-        const ChannelInfo &linkRecv = channels.at(fromRank)[0]; // linkRecv - 从fromRank接收的链路
+        const ChannelInfo &linkRecv = channels.at(toRank)[0]; // linkRecv - 从fromRank接收的链路
         const ChannelInfo &linkSend = channels.at(toRank)[0]; // linkSend - 向toRank发送的链路
 
         std::vector<DataSlice> rxSrcSlices;
@@ -225,10 +226,10 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::ReduceScatterMeshChunk(const 
     if (stepIndex < (templateRankSize_ - rankNum)) {
         if (threadNum_ > 1) {
             std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.end());
-            GetNotifyIdxSubToMain(notifyIdxSubToMain_);
-            CHK_RET(PostSyncInterThreads(threads[0], subThreads, notifyIdxSubToMain_));
-            GetNotifyIdxMainToSub(notifyIdxMainToSub_);
+            NotifyIdxMainToSubInRSMeshChunk(notifyIdxMainToSub_);
             CHK_RET(PreSyncInterThreads(threads[0], subThreads, notifyIdxMainToSub_));
+            NotifyIdxSubToMainInRSMeshChunk(notifyIdxSubToMain_);
+            CHK_RET(PostSyncInterThreads(threads[0], subThreads, notifyIdxSubToMain_));
         }
     }
     return HcclResult::HCCL_SUCCESS;
@@ -241,7 +242,7 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::RunAllgather(const std::map<u
     // sync:前同步
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.end());
-        GetNotifyIdxMainToSub(notifyIdxMainToSub_);
+        NotifyIdxMainToSubInAG(notifyIdxMainToSub_);
         CHK_RET(PreSyncInterThreads(threads[0], subThreads, notifyIdxMainToSub_));
     }
 
@@ -298,7 +299,7 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::RunAllgather(const std::map<u
     }
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.end());
-        GetNotifyIdxSubToMain(notifyIdxSubToMain_);
+        NotifyIdxSubToMainInAG(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(threads[0], subThreads, notifyIdxSubToMain_));
     }
     return HcclResult::HCCL_SUCCESS;
@@ -348,4 +349,46 @@ void InsTempAllReduceMesh1DTwoShotMeshChunk::GetNotifyIdxSubToMain(std::vector<u
     }
 }
 
-} // ops_hccl
+void InsTempAllReduceMesh1DTwoShotMeshChunk::NotifyIdxMainToSubInRSMeshChunk(std::vector<u32> &notifyIdxMainToSub)
+{
+    notifyIdxMainToSub.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
+    u32 slaveThreadNum = threadNum - 1;
+    for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
+        notifyIdxMainToSub.push_back(1);
+    }
+}
+
+void InsTempAllReduceMesh1DTwoShotMeshChunk::NotifyIdxSubToMainInRSMeshChunk(std::vector<u32> &notifyIdxSubToMain)
+{
+    notifyIdxSubToMain.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
+    u32 notifyNum = threadNum - 1;
+    for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
+        notifyIdxSubToMain.push_back(notifyIdx + notifyNum);
+    }
+}
+
+void InsTempAllReduceMesh1DTwoShotMeshChunk::NotifyIdxMainToSubInAG(std::vector<u32> &notifyIdxMainToSub)
+{
+    notifyIdxMainToSub.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
+    u32 slaveThreadNum = threadNum - 1;
+    u32 AGThreadIndex = 2;
+    for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
+        notifyIdxMainToSub.push_back(AGThreadIndex);
+    }
+}
+
+void InsTempAllReduceMesh1DTwoShotMeshChunk::NotifyIdxSubToMainInAG(std::vector<u32> &notifyIdxSubToMain)
+{
+    notifyIdxSubToMain.clear();
+    u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
+    u32 notifyNum = threadNum - 1;
+    u32 AGThreadNum = 3;
+    for (u32 notifyIdx = 0; notifyIdx < notifyNum; notifyIdx++) {
+        notifyIdxSubToMain.push_back(AGThreadNum * (threadNum - 1) - notifyIdx - 1);
+    }
+}
+
+} // ops_hccla
