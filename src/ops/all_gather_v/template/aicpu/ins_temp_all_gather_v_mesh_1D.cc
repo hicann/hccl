@@ -49,13 +49,17 @@ u64 InsTempAllGatherVMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferTy
 {
     (void)inBuffType;
     (void)outBuffType;
-    u64 scratchMultiple = templateRankSize_;
+    u64 scratchMultiple = 0;
+ 	if (opMode_ == OpMode::OPBASE){
+ 	  	scratchMultiple = templateRankSize_;
+ 	}
     return scratchMultiple;
 }
  
 HcclResult InsTempAllGatherVMesh1D::KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
                                              const TemplateResource &templateResource)
 {
+    enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     HCCL_INFO("[InsTempAllGatherVMesh1D] Run start");
     if (tempAlgParams.sliceSize == 0) {
         HCCL_INFO("[InsTempAllGatherVMesh1D] Rank [%d], get slicesize zero.", myRank_);
@@ -84,6 +88,9 @@ HcclResult InsTempAllGatherVMesh1D::KernelRun(const OpParam &param, const Templa
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
     }
     CHK_RET(PostLocalCopy(templateResource.threads));
+    if (opMode_ == OpMode::OPBASE) {
+ 	    CHK_RET(PostLocalCopy(templateResource.threads));
+ 	}
     HCCL_INFO("[InsTempAllGatherVMesh1D] Run End");
     return HcclResult::HCCL_SUCCESS;
 }
@@ -123,15 +130,15 @@ HcclResult InsTempAllGatherVMesh1D::RunAllGatherVMesh(const std::vector<ThreadHa
  
             u64 txOutOffset = tempAlgParams_.allRankDispls[myAlgRank] * dataTypeSize_ + outBaseOff;
             u64 txScratchOffset = scratchBase + tempAlgParams_.sliceSize * myAlgRank;
-            u64 txDstOffset = txScratchOffset;
+            u64 txDstOffset = (!enableRemoteMemAccess_) ? txScratchOffset : txOutOffset;
  
             u64 rxOutOffset = tempAlgParams_.allRankDispls[connectedAlgRank] * dataTypeSize_ + outBaseOff;
             u64 rxScratchOffset = scratchBase + tempAlgParams_.sliceSize * connectedAlgRank;
-            u64 rxSrcOffset = rxScratchOffset;
+            u64 rxSrcOffset = (!enableRemoteMemAccess_) ? rxScratchOffset : rxOutOffset;
  
             void *txSrcPtr = tempAlgParams_.buffInfo.outputPtr;
-            void *txDstPtr = remoteCclBuffAddr;
-            void *rxSrcPtr = remoteCclBuffAddr;
+            void *txDstPtr = (!enableRemoteMemAccess_) ? remoteCclBuffAddr : linkRemote.remoteOutputGraphMode.addr;
+            void *rxSrcPtr = (!enableRemoteMemAccess_) ? remoteCclBuffAddr : linkRemote.remoteOutputGraphMode.addr;
             void *rxDstPtr = tempAlgParams_.buffInfo.outputPtr;
             // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
             // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait

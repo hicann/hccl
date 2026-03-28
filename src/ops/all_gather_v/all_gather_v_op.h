@@ -19,6 +19,7 @@
 #include "executor_v2_base.h"
 #include "alg_type.h"
 #include "execute_selector.h"
+#include "alg_param.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,6 +28,10 @@ extern "C" {
 HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, const void *recvCounts,
     const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream);
 
+HcclResult HcclAllGatherVGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount,const void *recvCounts,
+ 	const void *recvDispls,  HcclDataType dataType, const char* group, aclrtStream stream, const char *tag, 
+ 	void **streams, size_t streamCount, void *scratchMemAddr, uint64_t scratchMemSiz);
+
 #ifdef __cplusplus
 }
 #endif
@@ -34,6 +39,9 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 namespace ops_hccl {
 HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
     const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag);
+
+HcclResult AllGatherVOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
+ 	const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack);
 
 HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf);
 
