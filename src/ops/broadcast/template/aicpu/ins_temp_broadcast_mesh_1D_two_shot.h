@@ -61,6 +61,8 @@ private:
 
     u64 dataTypeSize_{0};
     std::map<u32, u32> tempVirtRankMap_;
+    BufferType srcBufferType_ = BufferType::INPUT;
+    BufferType dstBufferType_ = BufferType::INPUT;
 };
 
 } // namespace Hccl

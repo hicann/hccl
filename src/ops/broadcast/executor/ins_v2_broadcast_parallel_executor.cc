@@ -229,6 +229,7 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     dataParams.buffInfo.inBuffType = BufferType::INPUT;
     dataParams.buffInfo.outBuffType = BufferType::INPUT;
     dataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    dataParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
     dataParams.buffInfo.inBuffBaseOff = dataOffset;
     dataParams.buffInfo.outBuffBaseOff = dataOffset;
     dataParams.buffInfo.hcclBuffBaseOff = scratchOffsetCount * dataTypeSize_;

@@ -50,7 +50,10 @@ u64 InsTempBroadcastNHR::CalcScratchMultiple(BufferType inBuffType, BufferType o
 {
     (void)inBuffType;
     (void)outBuffType;
-    u64 scratchMultiple = 1;
+    u64 scratchMultiple = 0;
+    if (!enableRemoteMemAccess_){
+        scratchMultiple = 1;
+    }
     return scratchMultiple;
 }
 
@@ -85,7 +88,7 @@ HcclResult InsTempBroadcastNHR::CalcDataSliceInfo(const u64 dataSize, RankSliceI
 HcclResult InsTempBroadcastNHR::PostCopy(const TemplateDataParams &tempAlgParams,
                                             const std::vector<ThreadHandle> &threads) const
 {
-    if (u32(myRank_) != root_) {
+    if ((!enableRemoteMemAccess_) && (u32(myRank_) != root_)) {
         HCCL_INFO("[InsTempBroadcastNHR][PostCopy] Opbase && isBottom, copy from outBuff to userOut");
         u64 inOffset = tempAlgParams.buffInfo.hcclBuffBaseOff;
 
@@ -103,7 +106,7 @@ HcclResult InsTempBroadcastNHR::PostCopy(const TemplateDataParams &tempAlgParams
 HcclResult InsTempBroadcastNHR::PreCopy(const TemplateDataParams &tempAlgParams,
                                             const std::vector<ThreadHandle> &threads) const
 {
-    if (u32(myRank_) == root_){
+    if ((!enableRemoteMemAccess_) && (u32(myRank_) == root_)){
             DataSlice usrInSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff,
                     tempAlgParams.sliceSize, tempAlgParams.count);
             DataSlice usrOutSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff,
@@ -248,7 +251,7 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const RankSliceInfo &sliceInfoVec,
 {
     u32 nSteps = GetNHRStepNum(templateRankSize_);
 
-    u64 memOffset = buffInfo_.hcclBuffBaseOff;
+    u64 memOffset = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuffBaseOff : buffInfo_.outBuffBaseOff;
 
     for (u32 step = 0; step < nSteps; step++) {
         AicpuNHRStepInfo stepInfo;
@@ -270,12 +273,14 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const RankSliceInfo &sliceInfoVec,
             u64 txSize     = sliceInfoVec[stepInfo.txSliceIdxs[i]][0].size;
             u64 rxOffset   = sliceInfoVec[stepInfo.rxSliceIdxs[i]][0].offset + memOffset;
             u64 rxSize     = sliceInfoVec[stepInfo.rxSliceIdxs[i]][0].size;
-            void* remoteSendCclBuffAddr = linkSend.remoteCclMem.addr;
-            void* remoteRecvCclBuffAddr = linkRecv.remoteCclMem.addr;
-            DataSlice txSrcSlice = DataSlice(buffInfo_.hcclBuff.addr, txOffset, txSize);
-            DataSlice txDstSlice = DataSlice(remoteSendCclBuffAddr, txOffset, txSize);
-            DataSlice rxSrcSlice = DataSlice(remoteRecvCclBuffAddr, rxOffset, rxSize);
-            DataSlice rxDstSlice = DataSlice(buffInfo_.hcclBuff.addr, rxOffset, rxSize);
+            void* remoteSendBuffAddr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : buffInfo_.outputPtr;
+            void* remoteRecvBuffAddr = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : buffInfo_.outputPtr;
+            void* rxsrc = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.outputPtr;
+            void* rxdst = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.outputPtr;
+            DataSlice txSrcSlice = DataSlice(rxsrc, txOffset, txSize);
+            DataSlice txDstSlice = DataSlice(remoteSendBuffAddr, txOffset, txSize);
+            DataSlice rxSrcSlice = DataSlice(remoteRecvBuffAddr, rxOffset, rxSize);
+            DataSlice rxDstSlice = DataSlice(rxdst, rxOffset, rxSize);
             txSrcSlices.push_back(txSrcSlice);
             txDstSlices.push_back(txDstSlice);
             rxSrcSlices.push_back(rxSrcSlice);
@@ -297,7 +302,7 @@ HcclResult InsTempBroadcastNHR::BatchTxRx(AicpuNHRStepInfo &stepInfo, const std:
     const RankSliceInfo &sliceInfoVec)
 {
     HCCL_INFO("[InsTempBroadcastNHR]BatchTxRx entry:[%d], root:[%u]", myRank_, root_);
-    u64 memOffset = buffInfo_.hcclBuffBaseOff;
+    u64 memOffset = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuffBaseOff : buffInfo_.inBuffBaseOff;
     // 只有Tx,使用send指令
     if (stepInfo.txSliceIdxs.size() > 0 && stepInfo.rxSliceIdxs.size() == 0) {
         CHK_RET(BatchSend(stepInfo, channels, threads, sliceInfoVec, memOffset));
@@ -321,9 +326,10 @@ HcclResult InsTempBroadcastNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std:
     std::vector<DataSlice> txDstSlices;
     for (u32 i = 0; i < stepInfo.txSliceIdxs.size(); i++) {
         u32 txId = stepInfo.txSliceIdxs[i];
-        void* remoteCclBuffAddr = linkSend.remoteCclMem.addr;
-        DataSlice txSrcSlice = DataSlice(buffInfo_.hcclBuff.addr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
-        DataSlice txDstSlice = DataSlice(remoteCclBuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
+        void* srcBuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
+        void* remoteBuffAddr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+        DataSlice txSrcSlice = DataSlice(srcBuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
+        DataSlice txDstSlice = DataSlice(remoteBuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
         txSrcSlices.push_back(txSrcSlice);
         txDstSlices.push_back(txDstSlice);
     }
@@ -343,9 +349,10 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
     std::vector<DataSlice> rxDstSlices;
     for (u32 i = 0; i < stepInfo.rxSliceIdxs.size(); i++) {
         u32 rxId = stepInfo.rxSliceIdxs[i];
-        void* remoteCclBuffAddr = linkRecv.remoteCclMem.addr;
-        DataSlice rxSrcSlice = DataSlice(remoteCclBuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
-        DataSlice rxDstSlice = DataSlice(buffInfo_.hcclBuff.addr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
+        void* remoteBuffAddr = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
+        void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
+        DataSlice rxSrcSlice = DataSlice(remoteBuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
+        DataSlice rxDstSlice = DataSlice(BuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
         rxSrcSlices.push_back(rxSrcSlice);
         rxDstSlices.push_back(rxDstSlice);
     }
@@ -367,9 +374,10 @@ HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::m
     std::vector<DataSlice> txDstSlices;
     for (u32 i = 0; i < stepInfo.txSliceIdxs.size(); i++) {
         u32 txId = stepInfo.txSliceIdxs[i];
-        void* remoteSendCclBuffAddr = linkSend.remoteCclMem.addr;
-        DataSlice txSrcSlice = DataSlice(buffInfo_.hcclBuff.addr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
-        DataSlice txDstSlice = DataSlice(remoteSendCclBuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
+        void* remoteSendBuffAddr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+        void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
+        DataSlice txSrcSlice = DataSlice(BuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
+        DataSlice txDstSlice = DataSlice(remoteSendBuffAddr, memOffset + sliceInfoVec[txId][0].offset, sliceInfoVec[txId][0].size);
         txSrcSlices.push_back(txSrcSlice);
         txSrcSlices.push_back(txDstSlice);
     }
@@ -378,9 +386,10 @@ HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::m
     std::vector<DataSlice> rxDstSlices;
     for (u32 i = 0; i < stepInfo.rxSliceIdxs.size(); i++) {
         u32 rxId = stepInfo.rxSliceIdxs[i];
-        void* remoteRecvCclBuffAddr = linkRecv.remoteCclMem.addr;
-        DataSlice rxSrcSlice = DataSlice(remoteRecvCclBuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
-        DataSlice rxDstSlice = DataSlice(buffInfo_.hcclBuff.addr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
+        void* remoteRecvBuffAddr = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
+        void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
+        DataSlice rxSrcSlice = DataSlice(remoteRecvBuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
+        DataSlice rxDstSlice = DataSlice(BuffAddr, memOffset + sliceInfoVec[rxId][0].offset, sliceInfoVec[rxId][0].size);
         rxSrcSlices.push_back(rxSrcSlice);              
         rxDstSlices.push_back(rxDstSlice);
     }
@@ -402,7 +411,7 @@ HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDa
                                           const TemplateResource& templateResource)
 {
     buffInfo_     = tempAlgParams.buffInfo;
-    dataTypeSize_ = tempAlgParams.sliceSize/tempAlgParams.count;
+    dataTypeSize_  = DATATYPE_SIZE_TABLE[dataType_];
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR entry.");
 
     for (int i = 0; i < subCommRanks_[0].size(); i++) {
