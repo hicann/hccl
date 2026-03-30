@@ -106,8 +106,6 @@ private:
     void PreSync();
     void PostSync();
     void DoAlltoAll();
-    void LocalCopyByLoopGroup(hcomm::CcuRep::LocalAddr dst, hcomm::CcuRep::LocalAddr src);
-    void CreateLocalCopyLoop();
 };
 
 }// namespace ops_hccl

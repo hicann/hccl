@@ -67,16 +67,7 @@ HcclResult CcuKernelAlltoAllMesh1D::InitResource()
     srcStride_   = CreateVariable();
     srcOffset_   = CreateVariable();
     dstOffset_   = CreateVariable();
-    groupOpSize_ = CreateGroupOpSize(); // 有问题
-
-    moConfig.loopCount = 8; // loop展开8次、16次
-    moConfig.msInterleave = LOCAL_COPY_MS; // 一个loop 8个MS
-    moConfig.memSlice = LOCAL_COPY_MS * CCU_MS_SIZE; // 32k
-    if (moRes.executor.size() == 0) {
-        moRes.executor = CreateBlockExecutor(moConfig.loopCount);
-        moRes.completedEvent = CreateBlockCompletedEvent(moConfig.loopCount); //CreateCompletedEvent();
-        moRes.ccuBuf = CreateBlockCcuBuf(moConfig.loopCount * moConfig.msInterleave);
-    }
+    groupOpSize_ = CreateGroupOpSize();
 
     // 创建GSA， src为本地的各片HBM地址GSA列表，dst为所有对端的HBM地址GSA列表
     for (uint64_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
@@ -138,81 +129,6 @@ void CcuKernelAlltoAllMesh1D::PostSync()
     }
 }
 
-void CcuKernelAlltoAllMesh1D::CreateLocalCopyLoop()
-{
-    std::string loopType = "all_to_all";
-    if (registeredLoop.find(loopType) != registeredLoop.end()) {
-        return;
-    }
- 
-    for (uint32_t index = 0; index < 2; index++) { // 需要2个Loop
-        hcomm::CcuRep::LocalAddr              src = CreateLocalAddr();
-        hcomm::CcuRep::LocalAddr              dst = CreateLocalAddr();
-        hcomm::CcuRep::Variable            len = CreateVariable();
-        hcomm::CcuRep::LoopBlock           lb(this, loopType + "_localcopy_loop_" + std::to_string(index));
-        lb(src, dst, len);
-
-        // 存疑，MaskSignal好像改了
-        hcomm::CcuRep::CompletedEvent sem = moRes.completedEvent[index];
-        std::vector<hcomm::CcuRep::CcuBuf> bufs;
-        for (uint32_t i = 0; i < LOCAL_COPY_MS; i++) {
-            bufs.push_back(moRes.ccuBuf[i]);
-        }
- 
-        LocalCopyNb(bufs[0], src, len, sem);
-        WaitEvent(sem);
-        LocalCopyNb(dst, bufs[0], len, sem);
-        WaitEvent(sem);
-    }
-    registeredLoop.insert(loopType);
-    return;
-}
-
-void CcuKernelAlltoAllMesh1D::LocalCopyByLoopGroup(hcomm::CcuRep::LocalAddr dst, hcomm::CcuRep::LocalAddr src)
-{
-    CreateLocalCopyLoop();
- 
-    CCU_IF(groupOpSize_.addrOffset != 0)
-    {
-        hcomm::CcuRep::Variable loopParam = CreateVariable();
-        loopParam =GetLoopParam(0, moConfig.memSlice * moConfig.loopCount, 0);
-        loopParam += groupOpSize_.loopParam;
- 
-        hcomm::CcuRep::Variable sliceSize = CreateVariable();
-        sliceSize = moConfig.memSlice;
-        auto lc   = Loop("all_to_all_localcopy_loop_0")(src, dst, sliceSize);
- 
-        hcomm::CcuRep::Variable paraCfg = CreateVariable();
-        paraCfg = GetParallelParam(moConfig.loopCount - 1, 0, 1);
-        hcomm::CcuRep::Variable offsetCfg = CreateVariable();
-        offsetCfg = GetOffsetParam(moConfig.memSlice, moConfig.msInterleave, 1);
-        LoopGroup({lc}, {loopParam}, paraCfg, offsetCfg);
-    }
- 
-    CCU_IF(groupOpSize_.parallelParam != 0)
-    {
-        hcomm::CcuRep::Condition cond(this, groupOpSize_.parallelParam != 0);
- 
-        src.addr += groupOpSize_.addrOffset;
-        dst.addr += groupOpSize_.addrOffset;
-        auto lc0 = Loop("all_to_all_localcopy_loop_0")(src, dst, groupOpSize_.residual);
- 
-        src.addr += groupOpSize_.residual;
-        dst.addr += groupOpSize_.residual;
-        hcomm::CcuRep::Variable sliceSize = CreateVariable();
-        sliceSize = moConfig.memSlice;
-        auto lc1  = Loop("all_to_all_localcopy_loop_1")(src, dst, sliceSize);
- 
-        hcomm::CcuRep::Variable loopCfg0 = CreateVariable();
-        loopCfg0 = GetLoopParam(0, 0, 1);
-        hcomm::CcuRep::Variable loopCfg1 = CreateVariable();
-        loopCfg1 = GetLoopParam(0, 0, 1);
-        hcomm::CcuRep::Variable offsetCfg = CreateVariable();
-        offsetCfg = GetOffsetParam(moConfig.memSlice, moConfig.msInterleave, 1);
-        LoopGroup({lc0, lc1}, {loopCfg0, loopCfg1}, groupOpSize_.parallelParam, offsetCfg);
-    }
-}
-
 void CcuKernelAlltoAllMesh1D::DoAlltoAll()
 {
     HCCL_INFO("DoAlltoAll Start.");
@@ -263,7 +179,7 @@ void CcuKernelAlltoAllMesh1D::DoAlltoAll()
                 channelId++;
             }
         }
-        LocalCopyByLoopGroup(myDst_, srcAddr_[rankId_]);
+        GroupCopy(myDst_, srcAddr_[rankId_], groupOpSize_);
         event_.SetMask(allBit);
         WaitEvent(event_);
     }

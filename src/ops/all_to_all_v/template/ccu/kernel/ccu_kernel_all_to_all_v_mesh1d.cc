@@ -228,7 +228,6 @@ void CcuKernelAlltoAllVMesh1D::DoAll2AllVMultiLoop()
                         if (loadFromMem_) {
                             LocalCopyNb(myDst_, src_[rankId_], sendRecvInfo_[rankId_].tailSize, event_);
                         } else {
-                            // 待修改， GroupCopy已删除
                             GroupCopy(myDst_, src_[rankId_], sendRecvInfo_[rankId_].tailGoSize);
                             RecordEvent(event_);
                         }
