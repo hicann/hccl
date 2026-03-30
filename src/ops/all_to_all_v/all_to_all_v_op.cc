@@ -322,11 +322,7 @@ HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const 
 
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
-
     u64 varMemSize = ALL_TO_ALL_V_VECTOR_NUM * userRankSize * sizeof(u64);
-    void *paramMem = malloc(sizeof(OpParam) + varMemSize);
-    if (!paramMem) {
-        // 内存分配失败
         HCCL_ERROR("[AlltoAllVOutPlace] malloc OpParam failed!");
         return HCCL_E_INTERNAL;
     }
@@ -404,13 +400,5 @@ HcclResult AlltoAllVOutPlace(const void *sendBuf, const void *sendCounts, const 
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(param));
-        return HcclResult::HCCL_SUCCESS;
-    }
-    std::string algName;
-    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
-    HCCL_INFO("Execute AlltoAllVOutPlace success.");
-    return HCCL_SUCCESS;
 }
 }
