@@ -59,6 +59,7 @@ if (BUILD_OPEN_PROJECT)
         ${ASCEND_HOME_PATH}/pkg_inc/profiling
         ${ASCEND_HOME_PATH}/hcomm/include/hccl
         ${ASCEND_HOME_PATH}/include/hccl
+        ${ASCEND_HOME_PATH}/include/hcomm
         ${ASCEND_HOME_PATH}/pkg_inc/hccl
         ${ASCEND_HOME_PATH}/pkg_inc/hcomm/ccu
 
@@ -67,6 +68,7 @@ if (BUILD_OPEN_PROJECT)
 
         # 本仓代码头文件
         ${HCCL_DEV_BASE}/src/common
+        ${HCCL_DEV_BASE}/src/common/hcomm_dlsym
         ${HCCL_DEV_BASE}/src/ops
         ${HCCL_DEV_BASE}/src/ops/inc
         ${HCCL_DEV_BASE}/src/ops/op_common/inc

@@ -64,7 +64,9 @@ const std::map<HcclDataType, std::string> HCOM_DATA_TYPE_STR_MAP{
     {HcclDataType::HCCL_DATA_TYPE_FP8E4M3, "fp8e4m3"},
     {HcclDataType::HCCL_DATA_TYPE_FP8E5M2, "fp8e5m2"},
     {HcclDataType::HCCL_DATA_TYPE_FP8E8M0, "fp8e8m0"},
+#if defined(HCCL_DATA_TYPE_MXFP8)
     {HcclDataType::HCCL_DATA_TYPE_MXFP8, "mxfp8"},
+#endif
     {HcclDataType::HCCL_DATA_TYPE_RESERVED, "reserved"}
 };
 
@@ -139,11 +141,13 @@ enum class HcclRtDeviceInfoType {
  * @enum HcclMemType
  * @brief 内存类型枚举定义
  */
+#if !defined(HCCL_MEM_TYPE_DEVICE)
 typedef enum {
     HCCL_MEM_TYPE_DEVICE, ///< 设备侧内存（如NPU等）
     HCCL_MEM_TYPE_HOST,   ///< 主机侧内存
     HCCL_MEM_TYPE_NUM     ///< 内存类型数量
 } HcclMemType;
+#endif
 
 
 struct HcclMem {

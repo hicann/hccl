@@ -12,6 +12,7 @@
 #define HCOMM_PRIMITIVES_DL_H
 
 #include "hcomm_primitives.h"   // 原头文件，包含所有类型和定义
+#include "hccl_types.h"          
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,16 +42,16 @@ extern int32_t (*hcommBatchModeStartPtr)(const char*);
 extern int32_t (*hcommBatchModeEndPtr)(const char*);
 extern int32_t (*hcommAcquireCommPtr)(const char*);
 extern int32_t (*hcommReleaseCommPtr)(const char*);
-extern HcclResult (*hcommSymWinGetPeerPointerPtr)(CommSymWindow, size_t, uint32_t, void**);
+extern HcclResult (*hcommSymWinGetPeerPointerPtr)(HcclCommSymWindow, size_t, uint32_t, void**);
 extern int32_t (*hcommThreadSynchronizePtr)(ThreadHandle);
-extern int32_t (*hcommSendRequestPtr)(MsgHandle, const char*, const void*, size_t, uint32_t*);
-extern int32_t (*hcommWaitResponsePtr)(MsgHandle, void*, size_t, uint32_t*);
+extern int32_t (*hcommSendRequestPtr)(uint64_t, const char*, const void*, size_t, uint32_t*);
+extern int32_t (*hcommWaitResponsePtr)(uint64_t, void*, size_t, uint32_t*);
 extern int32_t (*hcommFlushPtr)();
 extern int32_t (*hcommChannelFencePtr)(ChannelHandle);
 extern int32_t (*hcommWriteWithNotifyNbiOnThreadPtr)(ThreadHandle, ChannelHandle, void*, const void*, uint64_t, uint32_t);
 extern int32_t (*hcommFenceOnThreadPtr)(ThreadHandle);
 extern int32_t (*hcommChannelFenceOnThreadPtr)(ThreadHandle, ChannelHandle);
-extern HcclResult (*hcommThreadJoinPtr)(ThreadHandle, uint32_t timeout);
+extern int32_t (*hcommThreadJoinPtr)(ThreadHandle, uint32_t timeout);
 
 // 宏：将原始API名映射为函数指针调用（保持API名大驼峰）
 #define HcommLocalCopyOnThread               (*hcommLocalCopyOnThreadPtr)

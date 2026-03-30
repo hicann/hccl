@@ -29,6 +29,7 @@
 #include "topo_host.h"
 #include "adapter_error_manager_pub.h"
 #include "hccl_inner_dl.h"
+#include "../../common/hcomm_dlsym/hccl_comm_dl.h"
 #include "hccl.h"
 #include "config_log.h"
 #include "workflow.h"
@@ -1297,6 +1298,9 @@ HcclResult HcclGetOpExpansionMode(HcclComm comm, OpParam &param)
     return HCCL_SUCCESS;
 }
 
+static constexpr uint32_t opExpansionModeCcuSched = 5;
+static constexpr uint32_t opExpansionModeCcuMs = 4;
+
 HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode &finalMode)
 {
     HcclOpExpansionMode configOpExpansionMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_INVALID;
@@ -1304,13 +1308,13 @@ HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode &finalMo
     CHK_RET(HcclConfigGetInfo(comm, HcclConfigType::HCCL_CONFIG_TYPE_OP_EXPANSION_MODE, infoLen, &configOpExpansionMode));
     finalMode = configOpExpansionMode;
     if (GetExternalInputHcclAicpuUnfold() == true) {
-        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_AI_CPU;
+        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AI_CPU;
     } else if (GetExternalInputHcclAivMode() == true) {
-        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV;
+        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AIV;
     } else if (GetExternalInputHcclCcuMSMode()) {
-        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_CCU_MS;
+        finalMode = static_cast<HcclOpExpansionMode>(opExpansionModeCcuMs);
     } else if (GetExternalInputHcclCcuSchedMode()) {
-        finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_CCU_SCHED;
+        finalMode = static_cast<HcclOpExpansionMode>(opExpansionModeCcuSched);
     }
 
     if (configOpExpansionMode != finalMode) {
@@ -1323,24 +1327,24 @@ HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode &finalMo
 HcclResult ApplyOpExpansionMode(OpParam &param, HcclOpExpansionMode finalMode)
 {
     switch (finalMode) {
-        case HcclOpExpansionMode::HCCL_OP_EXPANSION_AI_CPU:
+        case HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AI_CPU:
             param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
             param.engine = CommEngine::COMM_ENGINE_AICPU_TS;
             CHK_RET(LoadAICPUKernel());
             HCCL_DEBUG("[ApplyOpExpansionMode] AICPU mode selected.");
             break;
-        case HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV:
+        case HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AIV:
             param.opExecuteConfig = OpExecuteConfig::AIV;
             param.engine = CommEngine::COMM_ENGINE_AIV;
             CHK_RET(RegisterKernel(param.opType, g_aivKernelInfoMap[param.opType].first, g_aivKernelInfoMap[param.opType].second));
             HCCL_DEBUG("[ApplyOpExpansionMode] AIV mode selected.");
             break;
-        case HcclOpExpansionMode::HCCL_OP_EXPANSION_CCU_MS:
+        case static_cast<HcclOpExpansionMode>(opExpansionModeCcuMs):
             param.opExecuteConfig = OpExecuteConfig::CCU_MS;
             param.engine = CommEngine::COMM_ENGINE_CCU;
             HCCL_DEBUG("[ApplyOpExpansionMode] CCU_MS mode selected.");
             break;
-        case HcclOpExpansionMode::HCCL_OP_EXPANSION_CCU_SCHED:
+        case static_cast<HcclOpExpansionMode>(opExpansionModeCcuSched):
             param.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
             param.engine = CommEngine::COMM_ENGINE_CCU;
             HCCL_DEBUG("[ApplyOpExpansionMode] CCU_SCHED mode selected.");
