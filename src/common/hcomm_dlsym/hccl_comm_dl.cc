@@ -42,9 +42,9 @@ HcclResult (*hcclCommDeactivateCommMemoryPtr)(HcclComm, void*) = nullptr;
 HcclResult (*hcclCommWorkingDevNicSetPtr)(HcclComm, uint32_t*, bool*, uint32_t) = nullptr;
 HcclResult (*hcclGroupStartPtr)(void) = nullptr;
 HcclResult (*hcclGroupEndPtr)(void) = nullptr;
-HcclResult (*hcclCommSymWinRegisterPtr)(HcclComm, void*, uint64_t, CommSymWindow*, uint32_t) = nullptr;
-HcclResult (*hcclCommSymWinDeregisterPtr)(CommSymWindow) = nullptr;
-HcclResult (*hcclCommSymWinGetPtr)(HcclComm, void*, size_t, CommSymWindow*, size_t*) = nullptr;
+HcclResult (*hcclCommSymWinRegisterPtr)(HcclComm, void*, uint64_t, HcclCommSymWindow*, uint32_t) = nullptr;
+HcclResult (*hcclCommSymWinDeregisterPtr)(HcclCommSymWindow) = nullptr;
+HcclResult (*hcclCommSymWinGetPtr)(HcclComm, void*, size_t, HcclCommSymWindow*, size_t*) = nullptr;
 static HcclResult (*hcclGetRawCommHandlePtr)(const char*, HcclComm*) = nullptr;
 static HcclResult (*hcclGetCcuTaskInfoPtr)(HcclComm, void*, void*) = nullptr;
 static HcclResult (*commGetLocalCCLBufPtr)(HcclComm, void**, uint64_t*) = nullptr;
@@ -234,17 +234,17 @@ static HcclResult StubHcclGroupEnd(void) {
     HCCL_ERROR("[HcclWrapper] HcclGroupEnd not supported");
     return HCCL_E_NOT_SUPPORTED;
 }
-static HcclResult StubHcclCommSymWinRegister(HcclComm comm, void* addr, uint64_t size, CommSymWindow* winHandle, uint32_t flag) {
+static HcclResult StubHcclCommSymWinRegister(HcclComm comm, void* addr, uint64_t size, HcclCommSymWindow* winHandle, uint32_t flag) {
     (void)comm; (void)addr; (void)size; (void)winHandle; (void)flag;
     HCCL_ERROR("[HcclWrapper] HcclCommSymWinRegister not supported");
     return HCCL_E_NOT_SUPPORTED;
 }
-static HcclResult StubHcclCommSymWinDeregister(CommSymWindow winHandle) {
+static HcclResult StubHcclCommSymWinDeregister(HcclCommSymWindow winHandle) {
     (void)winHandle;
     HCCL_ERROR("[HcclWrapper] HcclCommSymWinDeregister not supported");
     return HCCL_E_NOT_SUPPORTED;
 }
-static HcclResult StubHcclCommSymWinGet(HcclComm comm, void* ptr, size_t size, CommSymWindow* winHandle, size_t* offset) {
+static HcclResult StubHcclCommSymWinGet(HcclComm comm, void* ptr, size_t size, HcclCommSymWindow* winHandle, size_t* offset) {
     (void)comm; (void)ptr; (void)size; (void)winHandle; (void)offset;
     HCCL_ERROR("[HcclWrapper] HcclCommSymWinGet not supported");
     return HCCL_E_NOT_SUPPORTED;
@@ -524,13 +524,13 @@ HcclResult HcclGroupStart(void) {
 HcclResult HcclGroupEnd(void) {
     return hcclGroupEndPtr();
 }
-HcclResult HcclCommSymWinRegister(HcclComm comm, void* addr, uint64_t size, CommSymWindow* winHandle, uint32_t flag) {
+HcclResult HcclCommSymWinRegister(HcclComm comm, void* addr, uint64_t size, HcclCommSymWindow* winHandle, uint32_t flag) {
     return hcclCommSymWinRegisterPtr(comm, addr, size, winHandle, flag);
 }
-HcclResult HcclCommSymWinDeregister(CommSymWindow winHandle) {
+HcclResult HcclCommSymWinDeregister(HcclCommSymWindow winHandle) {
     return hcclCommSymWinDeregisterPtr(winHandle);
 }
-HcclResult HcclCommSymWinGet(HcclComm comm, void* ptr, size_t size, CommSymWindow* winHandle, size_t* offset) {
+HcclResult HcclCommSymWinGet(HcclComm comm, void* ptr, size_t size, HcclCommSymWindow* winHandle, size_t* offset) {
     return hcclCommSymWinGetPtr(comm, ptr, size, winHandle, offset);
 }
 HcclResult HcclGetRawCommHandle(const char* commName, HcclComm* commHandle) {

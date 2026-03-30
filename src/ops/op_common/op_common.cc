@@ -28,6 +28,7 @@
 #include "topo_host.h"
 #include "adapter_error_manager_pub.h"
 #include "hccl_inner_dl.h"
+#include "../../common/hcomm_dlsym/hccl_comm_dl.h"
 #include "hccl.h"
 #include "config_log.h"
 #include "workflow.h"

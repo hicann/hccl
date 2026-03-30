@@ -13,7 +13,6 @@
 
 #include "hccl/hccl_comm.h"   // 原头文件，包含所有类型和 inline 函数
 #include "hccl/hccl_types.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -50,11 +49,6 @@ HcclResult HcclCommDeactivateCommMemory(HcclComm comm, void* virPtr);
 HcclResult HcclCommWorkingDevNicSet(HcclComm comm, uint32_t* ranks, bool* useBackup, uint32_t nRanks);
 HcclResult HcclGroupStart(void);
 HcclResult HcclGroupEnd(void);
-HcclResult HcclCommSymWinRegister(HcclComm comm, void* addr, uint64_t size, CommSymWindow* winHandle, uint32_t flag);
-HcclResult HcclCommSymWinDeregister(CommSymWindow winHandle);
-HcclResult HcclCommSymWinGet(HcclComm comm, void* ptr, size_t size, CommSymWindow* winHandle, size_t* offset);
-HcclResult HcclGetRawCommHandle(const char* commName, HcclComm* commHandle);
-HcclResult HcclGetCcuTaskInfo(HcclComm comm, void* tilingData, void* ccuTaskGroup);
 HcclResult CommGetLocalCCLBuf(HcclComm comm, void **addr, uint64_t *size);
 HcclResult CommGetRemoteCCLBuf(HcclComm comm, uint32_t remoteRank, void **addr, uint64_t *size);
 HcclResult CommGetKFCWorkSpace(HcclComm comm, void **addr, uint64_t *size);
@@ -65,7 +59,6 @@ HcclResult HcclSnapshotSave(void* snapshotBuf, uint32_t size, uint32_t step);
 HcclResult HcclSnapshotGetBufSize(uint32_t step, uint32_t* size);
 HcclResult HcclSnapshotRecoverAllComms(const char* clusterInfo, const char* changedInfo,
                                        void* snapshotBuf, uint32_t snapshotBufSize);
-
 // 查询函数声明
 bool HcommIsSupportHcclCommInitClusterInfo(void);
 bool HcommIsSupportHcclCommInitClusterInfoConfig(void);
