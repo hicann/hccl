@@ -116,11 +116,13 @@ public:
      * @param outputRepeatStride 输出重复步长
      * @param repeatNum 重复次数
      * @param isOutputScratch 输出是否使用scratch buffer
+     * @param isInputOutputEqual 输入输出地址是否相等
      */
     explicit CcuTaskArgScatterNHRMem2Mem1D(uint64_t inputAddr, uint64_t outputAddr, uint64_t scratchAddr,
                                            uint64_t token, uint64_t sliceSize, uint64_t die0Size, uint64_t die1Size,
-                                           uint64_t inputSliceStride, uint64_t inputRepeatStride,
-                                           uint64_t outputRepeatStride, uint64_t repeatNum, uint64_t isOutputScratch)
+                                           uint64_t inputSliceStride, uint64_t outputSliceStride ,uint64_t inputRepeatStride,
+                                           uint64_t outputRepeatStride, uint64_t repeatNum, uint64_t isOutputScratch, uint64_t isInputOutputEqual,
+                                           uint64_t die0TailSize, uint64_t die1TailSize)
         : inputAddr_(inputAddr),
           outputAddr_(outputAddr),
           scratchAddr_(scratchAddr),
@@ -129,16 +131,21 @@ public:
           die0Size_(die0Size),
           die1Size_(die1Size),
           inputSliceStride_(inputSliceStride),
+          outputSliceStride_(outputSliceStride),
           inputRepeatStride_(inputRepeatStride),
           outputRepeatStride_(outputRepeatStride),
           repeatNum_(repeatNum),
-          isOutputScratch_(isOutputScratch)
+          isOutputScratch_(isOutputScratch),
+          isInputOutputEqual_(isInputOutputEqual),
+          die0TailSize_(die0TailSize),
+          die1TailSize_(die1TailSize)
     {
-        HCCL_DEBUG("[CcuTaskArgScatterNHRMem2Mem1D] inputAddr: %lu, outputAddr: %lu, scratchAddr: %lu, "
-                   "sliceSize: %lu, die0Size: %lu, die1Size: %lu, inputSliceStride: %lu, inputRepeatStride: %lu, "
-                   "outputRepeatStride: %lu, repeatNum: %lu, isOutputScratch: %lu",
-                   inputAddr_, outputAddr_, scratchAddr_, sliceSize_, die0Size_, die1Size_,
-                   inputSliceStride_, inputRepeatStride_, outputRepeatStride_, repeatNum_, isOutputScratch_);
+        HCCL_DEBUG("[CcuTaskArgScatterNHRMem2Mem1D] inputAddr: %lu, outputAddr: %lu, scratchAddr: %lu, token: %lu, "
+                   "sliceSize: %lu, die0Size: %lu, die1Size: %lu, inputSliceStride: %lu, outputSliceStride:%lu, "
+                   "inputRepeatStride: %lu, outputRepeatStride: %lu, repeatNum: %lu, isOutputScratch: %lu, isInputOutputEqual: %lu"
+                   "die0TailSize: %lu, die1TailSize: %lu",
+                   inputSliceStride_, outputSliceStride_, inputRepeatStride_, outputRepeatStride_, repeatNum_, isOutputScratch_,
+                   isInputOutputEqual, die0TailSize_, die1TailSize_);
     }
 
     uint64_t inputAddr_;           // 输入缓冲区地址
@@ -149,10 +156,14 @@ public:
     uint64_t die0Size_;            // Die0切片大小
     uint64_t die1Size_;            // Die1切片大小
     uint64_t inputSliceStride_;    // 输入切片步长（每个rank的数据大小）
+    uint64_t outputSliceStride_;    // 输出切片步长（每个rank的数据大小）
     uint64_t inputRepeatStride_;   // 输入重复步长
     uint64_t outputRepeatStride_;  // 输出重复步长
     uint64_t repeatNum_;           // 重复次数
     uint64_t isOutputScratch_;     // 输出是否使用scratch buffer
+    uint64_t isInputOutputEqual_;  // 输入输出地址是否相等
+    uint64_t die0TailSize_;         // die0尾块数据大小
+    uint64_t die1TailSize_;         // die1尾块数据大小
 };
 
 /**
@@ -181,7 +192,11 @@ private:
     void DoScatterNHR();
     void DoScatterNHRSingleStep(const NHRStepInfo &nhrStepInfo);
     void DoSendRecvSlice(const u32 &toRank, CcuRep::LocalAddr &src, CcuRep::RemoteAddr &dst,
-                        u32 signalIndex);
+                        u32 signalIndex, bool isLastSlice);
+     void DoLocalCopyNb(CcuRep::LocalAddr &dst, CcuRep::LocalAddr &src, CcuRep::Variable &sliceSize,
+    CcuRep::CompletedEvent &event_);
+    void DoWriteNb(ChannelHandle &sendChannel, CcuRep::RemoteAddr &dst,
+    CcuRep::LocalAddr &src, CcuRep::Variable &sliceSize, CcuRep::CompletedEvent &event_);
 
     uint64_t dimSize_{0};                                    // Rank数量
     uint32_t rankId_{0};                                      // 当前rank ID（在子通信域中的rank ID）
@@ -191,6 +206,7 @@ private:
     uint32_t localSize_{0};                                   // 本rank需要通信的rank数量（rank2ChannelIdx的大小）
     uint32_t myRankIdx_{0};                                   // 本rank在rank2ChannelIdx中的索引
     uint32_t signalNum_{0};                                   // 需要使用的signal数量
+    std::vector<std::vector<uint32_t>> subCommRanks_;  // 子通信域rank列表
     HcclDataType dataType_;                                   // 数据类型
     std::vector<NHRStepInfo> stepInfoVector_;            // NHR步骤信息向量
     std::map<u32, u32> rank2ChannelIdx_;                             // 虚拟rank ID到channel索引的映射
@@ -204,11 +220,16 @@ private:
     CcuRep::Variable die0Size_;                       // Die0切片大小变量
     CcuRep::Variable die1Size_;                       // Die1切片大小变量
     CcuRep::Variable inputSliceStride_;               // 输入切片步长变量
+    CcuRep::Variable outputSliceStride_;               // 输出切片步长变量
     CcuRep::Variable curScratchStride_;               // 当前Scratch步长变量
     CcuRep::Variable inputRepeatStride_;              // 输入重复步长变量
     CcuRep::Variable outputRepeatStride_;             // 输出重复步长变量
     CcuRep::Variable repeatNumVar_;                    // 重复次数变量
     CcuRep::Variable isOutputScratch_;                // 输出是否使用scratch buffer变量
+    CcuRep::Variable isInputOutputEqual_;             // 输入输出地址是否相等
+    CcuRep::Variable die0TailSize_;                   // die0尾块数据大小
+    CcuRep::Variable die1TailSize_;                   // die1尾块数据大小
+    CcuRep::Variable isSliceSizeZero_;
 
     // 临时变量
     CcuRep::Variable repeatNumVarTemp_;                // 临时重复次数变量

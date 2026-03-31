@@ -42,7 +42,7 @@ void CcuTempScatterMesh1D::SetRoot(u32 root)
     std::vector<u32> ranks = subCommRanks_[0];
     std::string ranksStr = "";
     for (auto r : ranks) { ranksStr += std::to_string(r) + " "; }
-    HCCL_INFO("[CcuTempScatterNHR1DMem2Mem][SetSubCommRoot] ranks = subCommRanks[0] is: %s", ranksStr.c_str());
+    HCCL_INFO("[CcuTempScatterMesh1D][SetRoot] ranks = subCommRanks[0] is: %s", ranksStr.c_str());
     auto itRoot = std::find(ranks.begin(), ranks.end(), root);
     if (itRoot != ranks.end()) {
         subCommRootId_  = std::distance(ranks.begin(), itRoot);
@@ -83,7 +83,7 @@ HcclResult CcuTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam &param, co
 HcclResult CcuTempScatterMesh1D::KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
                                                   const TemplateResource &templateResource)
 {
-    if (templateDataParams.sliceSize == 0) {
+    if (templateDataParams.sliceSize == 0 && templateDataParams.tailSize == 0) {
         HCCL_INFO("[CcuTempScatterMesh1D] sliceSize is 0, no need do, just success.");
         return HcclResult::HCCL_SUCCESS;
     }
@@ -95,21 +95,23 @@ HcclResult CcuTempScatterMesh1D::KernelRun(const OpParam &param, const TemplateD
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
     uint64_t inputSliceStride = templateDataParams.inputSliceStride;
+    uint64_t outputSliceStride = templateDataParams.outputSliceStride;
     uint64_t inputRepeatStride = templateDataParams.inputRepeatStride;
     uint64_t outputRepeatStride = templateDataParams.outputRepeatStride;
     uint64_t normalSliceSize = templateDataParams.sliceSize;
     uint64_t lastSliceSize = templateDataParams.tailSize;
 
+    uint64_t isInputOutputEqual = inputAddr == outputAddr ? 1 : 0;
     uint64_t repeatNum = UINT64_MAX - repeatNumTmp;
 
-    HCCL_INFO("[CcuTempScatterMesh1D] create CcuTaskArgScatterMesh1D, normalSliceSize [%u] ", normalSliceSize);
+    HCCL_INFO("[CcuTempScatterMesh1D] create CcuTaskArgScatterMesh1D, normalSliceSize [%u]", normalSliceSize);
     std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgScatterMesh1D>(
-        inputAddr, outputAddr, token, inputSliceStride, inputRepeatStride, outputRepeatStride, normalSliceSize,
-        lastSliceSize, repeatNum);
+        inputAddr, outputAddr, token, inputSliceStride, outputSliceStride, inputRepeatStride, outputRepeatStride, normalSliceSize,
+        lastSliceSize, repeatNum, isInputOutputEqual);
 
     void *taskArgPtr = static_cast<void *>(taskArg.get());
 
-    HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[0], templateResource.ccuKernels[0], taskArgPtr);
+    CHK_RET(HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[0], templateResource.ccuKernels[0], taskArgPtr));
 
     HCCL_DEBUG("[CcuTempScatterMesh1D::KernelRun] end");
 
@@ -129,4 +131,11 @@ u64 CcuTempScatterMesh1D::GetThreadNum() const
     return 1;
 }
 
+HcclResult CcuTempScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest) const
+{
+    resourceRequest.slaveThreadNum = 0;
+    resourceRequest.notifyNumOnMainThread = 0;
+
+    return HCCL_SUCCESS;
+}
 }  // namespace ops_hccl

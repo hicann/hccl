@@ -96,12 +96,16 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::KernelRun(const OpParam& param,
     uint64_t normalSliceSize    = templateDataParams.sliceSize;
     uint64_t lastSliceSize      = templateDataParams.tailSize;
     uint64_t isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
+    if (templateDataParams.tailSize != 0 && mySubCommRank_ == templateRankSize_ - 1) {
+        normalSliceSize = templateDataParams.tailSize;
+    }
+    HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem][KernelRun] normalSliceSize [%u]", normalSliceSize);
 
     HcclDataType dataType       = param.DataDes.dataType;
     uint64_t dataTypeSize       = DataTypeSizeGet(dataType);
     uint64_t dataCount          = normalSliceSize / dataTypeSize;
     if (dataCount == 0 && lastSliceSize == 0) {
-        HCCL_INFO("[CcuTempAllGatherMesh1D] DataCount == 0 && lastSliceSize == 0, Template Run Ends.");
+        HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem] DataCount == 0 && lastSliceSize == 0, Template Run Ends.");
         return HcclResult::HCCL_SUCCESS;
     }
 
@@ -133,7 +137,6 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceReq
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;
-    resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     return HCCL_SUCCESS;
 }
 } // namespace ops_hccl

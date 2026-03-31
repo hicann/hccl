@@ -71,10 +71,12 @@ public:
     explicit CcuTaskArgAllGatherNHR1D(uint64_t inputAddr, uint64_t outputAddr, uint64_t token, uint64_t die0Size,
                                         uint64_t die1Size, uint64_t repeatNum, uint64_t inputSliceStride,
                                         uint64_t outputSliceStride, uint64_t inputRepeatStride,
-                                        uint64_t outputRepeatStride, uint64_t isInputOutputEqual)
+                                        uint64_t outputRepeatStride, uint64_t isInputOutputEqual,
+                                        uint64_t die0LastSize, uint64_t die1LastSize)
         : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), die0Size_(die0Size), die1Size_(die1Size),
           repeatNum_(repeatNum), inputSliceStride_(inputSliceStride), outputSliceStride_(outputSliceStride),
-          inputRepeatStride_(inputRepeatStride), outputRepeatStride_(outputRepeatStride),isInputOutputEqual_(isInputOutputEqual)
+          inputRepeatStride_(inputRepeatStride), outputRepeatStride_(outputRepeatStride),isInputOutputEqual_(isInputOutputEqual),
+          die0LastSize_(die0LastSize), die1LastSize_(die1LastSize)
     {
     }
 
@@ -89,6 +91,8 @@ public:
     uint64_t inputRepeatStride_;
     uint64_t outputRepeatStride_;
     uint64_t isInputOutputEqual_;
+    uint64_t die0LastSize_;
+    uint64_t die1LastSize_;
 };
 
 class CcuKernelAllGatherNHR1DMem2Mem : public hcomm::CcuKernel {
@@ -108,7 +112,7 @@ private:
     void DoRepeatAllGatherNHR();
     void DoRepeatAllGatherNHRSingleStep(const NHRStepInfo &nhrStepInfo);
     void DoRepeatSendRecvSlices(const u32 &toRank, hcomm::CcuRep::LocalAddr &src, hcomm::CcuRep::RemoteAddr &dst,
-                                                      u32 signalIndex);
+                                                      u32 signalIndex, bool islastSlice);
 
     // 构造函数中
     uint32_t mySubCommRankId_{0};
@@ -143,6 +147,8 @@ private:
     CcuRep::Variable              constVar1_;
     CcuRep::Variable              ckeBitCounter_;
     CcuRep::Variable              repeatTimeflag_;
+    CcuRep::Variable              die0LastSize_;
+    CcuRep::Variable              die1LastSize_;
 
     // 跨轴同步信号
     std::string        localAxisEventName_;

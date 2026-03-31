@@ -56,12 +56,13 @@ HcclResult InsTempAllGatherNHR::KernelRun(const OpParam &param, const TemplateDa
                                           const TemplateResource &templateResource)
 {
     HCCL_INFO("[InsTempAllGatherNHR] Run start");
-    if (tempAlgParams.sliceSize == 0) {
+    if (tempAlgParams.sliceSize == 0 && tempAlgParams.tailSize == 0) {
         HCCL_INFO("[InsTempAllGatherNHR] Rank [%d], get slicesize zero.", myRank_);
         return HCCL_SUCCESS;
     }
     threadNum_ = 1;
     tempAlgParams_ = tempAlgParams;
+    dataType_ = param.DataDes.dataType;
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     CHK_PRT_RET(threadNum_ != templateResource.threads.size(),
                 HCCL_ERROR("[InsTempAllGatherNHR] Rank [%d], requiredQueNum [%u] not equals templateQueNum [%zu].",
@@ -79,7 +80,7 @@ HcclResult InsTempAllGatherNHR::RunAllGatherNHR(const std::vector<ThreadHandle> 
                                                 const std::map<u32, std::vector<ChannelInfo>> &channels)
 {
     const u32 nSteps = GetNHRStepNum(templateRankSize_);  // NHR 通信步数， celi(log2(rankSize))
-
+    const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
         const u64 scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
@@ -105,19 +106,18 @@ HcclResult InsTempAllGatherNHR::RunAllGatherNHR(const std::vector<ThreadHandle> 
             for (u32 i = 0; i < stepInfo.nSlices; ++i) {
                 const u32 txIdx = stepInfo.txSliceIdxs[i];
                 const u32 rxIdx = stepInfo.rxSliceIdxs[i];
-
                 const u64 txScratchOff = scratchBase + tempAlgParams_.sliceSize * txIdx;
-
                 const u64 rxScratchOff = scratchBase + tempAlgParams_.sliceSize * rxIdx;
 
-                txSrcSlices.emplace_back(tempAlgParams_.buffInfo.hcclBuff.addr, txScratchOff, tempAlgParams_.sliceSize,
-                                         tempAlgParams_.count);
-                txDstSlices.emplace_back(sendCclBuffAddr, txScratchOff, tempAlgParams_.sliceSize, tempAlgParams_.count);
-                rxSrcSlices.emplace_back(recvCclBuffAddr, rxScratchOff, tempAlgParams_.sliceSize, tempAlgParams_.count);
-                rxDstSlices.emplace_back(tempAlgParams_.buffInfo.hcclBuff.addr, rxScratchOff, tempAlgParams_.sliceSize,
-                                         tempAlgParams_.count);
+                const u64 txSliceSize = (txIdx == templateRankSize_ - 1 && tempAlgParams_.tailSize != 0) ? tempAlgParams_.tailSize: tempAlgParams_.sliceSize;
+                const u64 rxSliceSize = (rxIdx == templateRankSize_ - 1 && tempAlgParams_.tailSize != 0) ? tempAlgParams_.tailSize: tempAlgParams_.sliceSize;
+
+                txSrcSlices.emplace_back(tempAlgParams_.buffInfo.hcclBuff.addr, txScratchOff, txSliceSize, txSliceSize / dataTypeSize);
+                txDstSlices.emplace_back(sendCclBuffAddr, txScratchOff, txSliceSize, txSliceSize / dataTypeSize);
+                rxSrcSlices.emplace_back(recvCclBuffAddr, rxScratchOff, rxSliceSize, rxSliceSize / dataTypeSize);
+                rxDstSlices.emplace_back(tempAlgParams_.buffInfo.hcclBuff.addr, rxScratchOff, rxSliceSize, rxSliceSize / dataTypeSize);
             }
-            // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
+            // write模式使用tx, rx地址不生效，仅使用对端link做Post/Wait
             // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
             TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
             TxRxChannels sendRecvChannels(channelSend, channelRecv);
@@ -172,20 +172,28 @@ HcclResult InsTempAllGatherNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepIn
 HcclResult InsTempAllGatherNHR::LocalDataCopy(const std::vector<ThreadHandle> &threads)
 
 {
-    u32 algRankIdx = 0;
-    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], algRankIdx));
+    u32 myAlgRank = 0;
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
+    u64 sliceSize = tempAlgParams_.sliceSize;
+    const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
+    // 尾块模式
+    if (tempAlgParams_.tailSize !=0 && myAlgRank == templateRankSize_ -1) {
+        sliceSize = tempAlgParams_.tailSize;
+    }
     for (u64 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         const u64 inBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff + rpt * tempAlgParams_.inputRepeatStride;
         const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
         const u64 scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
 
-        const u64 inOff = tempAlgParams_.inputSliceStride * algRankIdx + inBaseOff;
-        const u64 scOff = tempAlgParams_.sliceSize * algRankIdx + scratchBaseoff;
-
-        DataSlice srcSlices(tempAlgParams_.buffInfo.inputPtr, inOff, tempAlgParams_.sliceSize, tempAlgParams_.count);
-        DataSlice dstSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scOff, tempAlgParams_.sliceSize,
-                           tempAlgParams_.count);
+        const u64 inOff = tempAlgParams_.inputSliceStride * myAlgRank + inBaseOff;
+        const u64 scOff = tempAlgParams_.sliceSize * myAlgRank + scratchBaseoff;
+        if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.hcclBuff.addr && inOff == scOff) {
+            continue;
+        }
+        u64 sliceCount = sliceSize / dataTypeSize;
+        DataSlice srcSlices(tempAlgParams_.buffInfo.inputPtr, inOff, sliceSize, sliceCount);
+        DataSlice dstSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scOff, sliceSize, sliceCount);
         LocalCopy(threads[0], srcSlices, dstSlice);
     }
     return HcclResult::HCCL_SUCCESS;
@@ -193,6 +201,12 @@ HcclResult InsTempAllGatherNHR::LocalDataCopy(const std::vector<ThreadHandle> &t
 
 HcclResult InsTempAllGatherNHR::PostLocalCopy(const std::vector<ThreadHandle> &threads)
 {
+    if (tempAlgParams_.buffInfo.outputPtr == tempAlgParams_.buffInfo.hcclBuff.addr) {
+        HCCL_INFO("[InsTempAllGatherNHR] PostLocalCopy skip because output is scratch" );
+        return HcclResult::HCCL_SUCCESS;
+    }
+    u64 sliceSize = tempAlgParams_.sliceSize;
+    const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
         const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
@@ -201,12 +215,15 @@ HcclResult InsTempAllGatherNHR::PostLocalCopy(const std::vector<ThreadHandle> &t
         for (auto rank : subCommRanks_[0]) {
             u32 algRank = 0;
             CHK_RET(GetAlgRank(rank, subCommRanks_[0], algRank));
+                        // 尾块模式
+            if (tempAlgParams_.tailSize !=0 && algRank == templateRankSize_ -1) {
+                sliceSize = tempAlgParams_.tailSize;
+            }
+            u64 sliceCount = sliceSize / dataTypeSize;
             u64 scratchOffset = tempAlgParams_.sliceSize * algRank + scratchBase;
             u64 outOffset = tempAlgParams_.outputSliceStride * algRank + outBaseOff;
-            DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, tempAlgParams_.sliceSize,
-                               tempAlgParams_.count);
-            DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, tempAlgParams_.sliceSize,
-                               tempAlgParams_.count);
+            DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
+            DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
             LocalCopy(threads[0], srcSlice, dstSlice);
         }
     }

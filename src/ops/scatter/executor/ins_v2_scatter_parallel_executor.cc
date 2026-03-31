@@ -367,6 +367,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra0.buffInfo.outBuffBaseOff = scratchOffset;
     tempAlgParamsIntra0.buffInfo.hcclBuffBaseOff = scratchOffset;
     tempAlgParamsIntra0.sliceSize = dataCountPerLoopAixs0 * dataTypeSize_;
+    tempAlgParamsIntra0.tailSize = tempAlgParamsIntra0.sliceSize;
 
     tempAlgParamsIntra0.inputSliceStride = dataSize_;
     tempAlgParamsIntra0.outputSliceStride = 0;
@@ -393,6 +394,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter0.buffInfo.outBuffBaseOff = dataOffset;
     tempAlgParamsInter0.buffInfo.hcclBuffBaseOff = scratchOffset;
     tempAlgParamsInter0.sliceSize = dataCountPerLoopAixs0 * dataTypeSize_;
+    tempAlgParamsInter0.tailSize = tempAlgParamsInter0.sliceSize;
 
     tempAlgParamsInter0.inputSliceStride = tempAlgParamsInter0.sliceSize;
     tempAlgParamsInter0.outputSliceStride = 0;
@@ -419,6 +421,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter1.buffInfo.outBuffBaseOff = scratchOffset;
     tempAlgParamsInter1.buffInfo.hcclBuffBaseOff = scratchOffset;
     tempAlgParamsInter1.sliceSize = dataCountPerLoopAixs1 * dataTypeSize_;
+    tempAlgParamsInter1.tailSize = tempAlgParamsInter1.sliceSize;
 
     tempAlgParamsInter1.inputSliceStride = dataSize_ * rankSizeLevel0_;
     tempAlgParamsInter1.outputSliceStride = 0;
@@ -445,6 +448,7 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra1.buffInfo.outBuffBaseOff = dataOffset;
     tempAlgParamsIntra1.buffInfo.hcclBuffBaseOff = scratchOffset;
     tempAlgParamsIntra1.sliceSize = dataCountPerLoopAixs1 * dataTypeSize_;
+    tempAlgParamsIntra1.tailSize = tempAlgParamsIntra1.sliceSize;
 
     tempAlgParamsIntra1.inputSliceStride = tempAlgParamsIntra1.sliceSize;
     tempAlgParamsIntra1.outputSliceStride = 0;

@@ -38,11 +38,10 @@ CcuKernelAllGatherNHR1DMem2Mem::CcuKernelAllGatherNHR1DMem2Mem(const CcuKernelAr
     rank2ChannelIdx_                      = kernelArg->rank2ChannelIdx_;
     localSize_                            = rank2ChannelIdx_.size();
     myRankIdx_                            = rank2ChannelIdx_.size();
-    eventNum_                             = (dimSize_ + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE; // 每个CKE有16个bit
 
     HCCL_INFO(
-        "[CcuKernelAllGatherNHR1DMem2Mem] Init, KernelArgs are mySubCommRankId[%u], axisId_[%u], axisSize_[%u], stepInfoVector_.size[%u], myRankIdx_[%u]",
-        mySubCommRankId_, axisId_, axisSize_, stepInfoVector_.size(), myRankIdx_);
+        "[CcuKernelAllGatherNHR1DMem2Mem] Init, KernelArgs are mySubCommRankId[%u], axisId_[%u], axisSize_[%u], stepInfoVector_.size[%u], myRankIdx_[%u] localSize[%u]",
+        mySubCommRankId_, axisId_, axisSize_, stepInfoVector_.size(), myRankIdx_, localSize_);
 }
 
 HcclResult CcuKernelAllGatherNHR1DMem2Mem::InitResource()
@@ -59,6 +58,8 @@ HcclResult CcuKernelAllGatherNHR1DMem2Mem::InitResource()
     isInputOutputEqual_     = CreateVariable();
     myrankInputSliceOffset_ = CreateVariable();
     tmpSliceOffset_         = CreateVariable();
+    die0LastSize_           = CreateVariable();
+    die1LastSize_           = CreateVariable();
     for (u64 i = 0; i < dimSize_; i++) {
         outputSliceOffset_.push_back(CreateVariable());
     }
@@ -66,17 +67,15 @@ HcclResult CcuKernelAllGatherNHR1DMem2Mem::InitResource()
     constVar1_ = 1;
 
     localEvent_     = CreateCompletedEvent();
-    localAxisEvent_ = CreateCompletedEvent();
 
     input_ = CreateVariable();
     for (uint32_t channelIdx = 0; channelIdx < localSize_; channelIdx++) {
-        HCCL_INFO("[CcuKernelAllGatherNHR1DMem2Mem] mySubCommRankId[%u], channelId[%u]", mySubCommRankId_, channelIdx);
-        CcuRep::Variable inputVar, scratchVar, tokenVar;
-        CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &inputVar));
-        output_.push_back(inputVar); // 获取channel中id=0的Var来传递output
+        HCCL_INFO("[CcuKernelAllGatherNHR1DMem2Mem] mySubCommRankId[%u], channelId[%u] localSize[%u]", mySubCommRankId_, channelIdx, localSize_);
+        CcuRep::Variable outputVar, tokenVar;
+        CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &outputVar));
+        output_.push_back(outputVar); // 获取channel中id=0的Var来传递output
         CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
         token_.push_back(tokenVar);
-        channelIdx++;
     }
     output_.push_back(CreateVariable());
     token_.push_back(CreateVariable());
@@ -102,6 +101,8 @@ void CcuKernelAllGatherNHR1DMem2Mem::LoadArgs()
     Load(inputRepeatStride_);
     Load(outputRepeatStride_);
     Load(isInputOutputEqual_);
+    Load(die0LastSize_);
+    Load(die1LastSize_);
 
     HCCL_DEBUG("[CcuKernelAllGatherNHR1DMem2Mem] LoadArgs run finished");
 }
@@ -134,6 +135,7 @@ void CcuKernelAllGatherNHR1DMem2Mem::PostSync()
 
 void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatAllGatherNHR()
 {
+    CcuRep::Variable localSliceSize = CreateVariable();
     tmpSliceOffset_         = 0;
     myrankInputSliceOffset_ = 0;
     for (u64 i = 0; i < mySubCommRankId_; i++) {
@@ -154,8 +156,11 @@ void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatAllGatherNHR()
     localDst_.token = token_[myRankIdx_];
     tmpCopyRepeatNum_ = repeatNum_;
     repeatTimeflag_   = 0;
+    bool islastSlice = (mySubCommRankId_ + 1 == dimSize_);
     CCU_WHILE(tmpCopyRepeatNum_ != UINT64_MAX)
     {
+        localSliceSize = (axisId_ == 0) ? (islastSlice? die0LastSize_ : die0Size_)
+                : (islastSlice? die1LastSize_ : die1Size_);
         tmpCopyRepeatNum_ += constVar1_;
         CCU_IF(repeatTimeflag_ != 0)
         {
@@ -166,22 +171,27 @@ void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatAllGatherNHR()
         CCU_IF(repeatTimeflag_ == 0)
         {
             if (axisId_ == 1) {
-                srcMem_.addr += die0Size_;
-                dstMem_.addr += die0Size_;
-                localDst_.addr += die0Size_;
+                srcMem_.addr += (islastSlice? die0LastSize_ : die0Size_);
+                dstMem_.addr += (islastSlice? die0LastSize_ : die0Size_);
+                localDst_.addr += (islastSlice? die0LastSize_ : die0Size_);
             }
         }
         CCU_IF(isInputOutputEqual_ == 0)
         {
-            localEvent_.SetMask(1 << mySubCommRankId_);
-            LocalCopyNb(localDst_, srcMem_, axisId_ == 0 ? die0Size_ : die1Size_, localEvent_);
+            localEvent_.SetMask(1);
+            CCU_IF(localSliceSize != 0) {
+                LocalCopyNb(localDst_, srcMem_, localSliceSize, localEvent_);
+            }
+            CCU_IF(localSliceSize == 0) {
+                RecordEvent(localEvent_);
+            }
         }
         CCU_IF(isInputOutputEqual_ != 0)
         {
-            localEvent_.SetMask(1 << mySubCommRankId_);
+            localEvent_.SetMask(1);
             RecordEvent(localEvent_);
         }
-        localEvent_.SetMask(1 << mySubCommRankId_);
+        localEvent_.SetMask(1);
         WaitEvent(localEvent_);
         repeatTimeflag_ = 1;
     }
@@ -202,7 +212,7 @@ void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatAllGatherNHRSingleStep(const NHRSte
     HCCL_INFO("sendSliceIdxList.size()[%zu]", sendSliceIdxList.size());
     srcMem_.token                            = token_[myRankIdx_];
     dstMem_.token                            = token_[toRankIdx];
-    for (u32 i = 0; i < sendSliceIdxList.size(); i++) { ////这里写的可能有问题
+    for (u32 i = 0; i < sendSliceIdxList.size(); i++) {
         sendSliceIdx = sendSliceIdxList[i];
         if (i != 0) {
             if (i % BIT_NUM_PER_CKE == 0) {
@@ -219,32 +229,29 @@ void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatAllGatherNHRSingleStep(const NHRSte
         }
         dstMem_.addr = output_[toRankIdx];
         dstMem_.addr += outputSliceOffset_[sendSliceIdx];
+        bool islastSlice = false;
+        islastSlice = (sendSliceIdx + 1 == dimSize_);
         HCCL_INFO("mySubCommRankId[%zu], myRankIdx[%zu], toRankIdx[%zu], sendSliceIdx[%zu]", mySubCommRankId_, myRankIdx_, toRankIdx, sendSliceIdx);
-        DoRepeatSendRecvSlices(nhrStepInfo.toRank, srcMem_, dstMem_, i % BIT_NUM_PER_CKE);
+        DoRepeatSendRecvSlices(nhrStepInfo.toRank, srcMem_, dstMem_, i % BIT_NUM_PER_CKE, islastSlice);
     }
-    localEvent_.SetMask((1 << (sendSliceIdxList.size() % BIT_NUM_PER_CKE)) - 1);
-    WaitEvent(localEvent_);
 
     if (nhrStepInfo.step + 1 != stepInfoVector_.size()){
-        uint16_t selfEventId = mySubCommRankId_ / BIT_NUM_PER_CKE;
-        uint16_t selfBit      = 1 << (mySubCommRankId_ % BIT_NUM_PER_CKE);
-        NotifyRecord(sendChannel, selfEventId + eventNum_ * CKE_IDX_0, selfBit);
-        uint16_t recvEventId = nhrStepInfo.fromRank / BIT_NUM_PER_CKE;
-        uint16_t recvBit      = 1 << (nhrStepInfo.fromRank % BIT_NUM_PER_CKE);
-        NotifyRecord(recvChannel, recvEventId + eventNum_ * CKE_IDX_0, recvBit);
+        NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID);
+        NotifyWait(recvChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID);
     }
 }
 
 void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatSendRecvSlices(const u32 &toRank, hcomm::CcuRep::LocalAddr &src, hcomm::CcuRep::RemoteAddr &dst,
-                                                      u32 signalIndex)
+                                                      u32 signalIndex, bool islastSlice)
 {
     ChannelHandle           sendChannel = channels_[rank2ChannelIdx_[toRank]];
-    const CcuRep::Variable &sliceSize     = axisId_ == 0 ? die0Size_ : die1Size_;
     repeatTimeflag_                       = 0;
+    CcuRep::Variable tmpRepeatNum       = CreateVariable();
+    tmpRepeatNum = repeatNum_;
 
-    CCU_WHILE(repeatNum_ != UINT64_MAX)
+    CCU_WHILE(tmpRepeatNum != UINT64_MAX)
     {
-        repeatNum_ += constVar1_;
+        tmpRepeatNum += constVar1_;
         CCU_IF(repeatTimeflag_ == 1)
         {
             src.addr += inputRepeatStride_;
@@ -253,12 +260,17 @@ void CcuKernelAllGatherNHR1DMem2Mem::DoRepeatSendRecvSlices(const u32 &toRank, h
         CCU_IF(repeatTimeflag_ == 0)
         {
             if (axisId_ == 1) {
-                src.addr += die0Size_;
-                dst.addr += die0Size_;
+                src.addr += (islastSlice? die0LastSize_ : die0Size_);
+                dst.addr += (islastSlice? die0LastSize_ : die0Size_);
             }
         }
+        CcuRep::Variable &sliceSize = (axisId_ == 0) ? (islastSlice? die0LastSize_ : die0Size_)
+                                    : (islastSlice? die1LastSize_ : die1Size_);
         localEvent_.SetMask(1 << signalIndex);
-        WriteNb(sendChannel, dst, src, sliceSize, localEvent_);
+        CCU_IF(sliceSize != 0) {
+            WriteNb(sendChannel, dst, src, sliceSize, localEvent_);
+            WaitEvent(localEvent_);
+        }
         repeatTimeflag_ = 1;
     }
 }
@@ -289,16 +301,19 @@ std::vector<uint64_t> CcuKernelAllGatherNHR1DMem2Mem::GeneArgs(const CcuTaskArg 
     uint64_t inputRepeatStride  = taskArg->inputRepeatStride_;
     uint64_t outputRepeatStride = taskArg->outputRepeatStride_;
     uint64_t isInputOutputEqual = taskArg->isInputOutputEqual_;
+    uint64_t die0LastSize       = taskArg->die0LastSize_;
+    uint64_t die1LastSize       = taskArg->die1LastSize_;
 
     HCCL_INFO("[CcuKernelAllGatherNHR1DMem2Mem] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
-              "die0Size[%llu], die1Size[%llu], repeatNum[%llu]"
-              "inputSliceStride[%llu], outputSliceStride[%llu], inputRepeatStride[%llu], outputRepeatStride[%llu]",
+              "die0Size[%llu], die1Size[%llu], repeatNum[%llu],"
+              "inputSliceStride[%llu], outputSliceStride[%llu], inputRepeatStride[%llu], outputRepeatStride[%llu],"
+              "die0LastSize[%llu], die1LastSize[%llu]",
               inputAddr, outputAddr, die0Size, die1Size, repeatNum, inputSliceStride, outputSliceStride,
-              inputRepeatStride, outputRepeatStride);
+              inputRepeatStride, outputRepeatStride, die0LastSize, die1LastSize);
     return {inputAddr,          outputAddr,        token,
             die0Size,           die1Size,          repeatNum,
             inputSliceStride,   outputSliceStride, inputRepeatStride,
-            outputRepeatStride, isInputOutputEqual};
+            outputRepeatStride, isInputOutputEqual, die0LastSize, die1LastSize};
 }
 
 } // namespace ops_hccl

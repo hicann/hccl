@@ -123,16 +123,14 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     uint32_t enableDieNum = 0;
     CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
 
-    enableDieNum = 1;
-
     if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) { // 目前只支持1个或2个die
         HCCL_ERROR("[CcuTempAllGatherNHR1DMem2Mem::CalcRes] get channelDescs fail");
         return HcclResult::HCCL_E_INTERNAL;
     }
 
     uint32_t kernelNum = enableDieNum;
-    resourceRequest.notifyNumOnMainThread = kernelNum - 1;
-    resourceRequest.slaveThreadNum = kernelNum - 1;
+    resourceRequest.notifyNumOnMainThread = 1;
+    resourceRequest.slaveThreadNum = 1;
     resourceRequest.ccuKernelNum.push_back(kernelNum);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG("[CcuTempAllGatherNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
@@ -143,8 +141,6 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     channelsPerDie.resize(enableDieNum);
     std::map<u32, u32> rank2ChannelIdx;
     std::vector<NHRStepInfo> stepInfoVector;
-
-    std::vector<uint64_t> dimSize;
 
     CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
 
@@ -202,7 +198,7 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::KernelRun(const OpParam& param,
     buffInfo_ = templateDataParams.buffInfo;
     u32 kernelNum = templateResource.ccuKernels.size();
 
-    if (templateDataParams.sliceSize == 0) {
+    if (templateDataParams.sliceSize == 0 && templateDataParams.tailSize == 0) {
         HCCL_INFO("[CcuTempAllGatherNHR1DMem2Mem] sliceSize is 0, no need do, just success.");
         return HCCL_SUCCESS;
     }
@@ -225,6 +221,8 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::KernelRun(const OpParam& param,
     uint64_t inputRepeatStride = templateDataParams.inputRepeatStride;
     uint64_t outputRepeatStride = templateDataParams.outputRepeatStride;
     uint64_t repeatNumVar = UINT64_MAX - repeatNum;
+    uint64_t die0LastSize = templateDataParams.tailSize / kernelNum;
+    uint64_t die1LastSize = templateDataParams.tailSize - die0LastSize;
     HCCL_INFO("[CcuTempAllGatherNHR1DMem2Mem] dimSize[%llu], die0Size[%llu], die1Size[%llu], inputAddr[%llu],"\
         "outputAddr[%llu], repeatNum[%llu], inputSliceStride[%llu], outputSliceStride[%llu],"\
         "inputRepeatStride[%llu], outputRepeatStride[%llu]",
@@ -240,10 +238,14 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::KernelRun(const OpParam& param,
     }
 
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
+        if ((templateDataParams.tailSize == 0) && ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0))) {
+            // 数据长度为0的kernel不下发
+            continue;
+        }
         uint64_t                     isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
         std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgAllGatherNHR1D>(
             inputAddr, outputAddr, token, die0Size, die1Size, repeatNum, inputSliceStride, outputSliceStride,
-            inputRepeatStride, outputRepeatStride, isInputOutputEqual);
+            inputRepeatStride, outputRepeatStride, isInputOutputEqual, die0LastSize, die1LastSize);
 
         void* taskArgPtr = static_cast<void*>(taskArg.get());
 
@@ -286,6 +288,9 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::GetStepInfo(u32 step, u32 nSteps, NHRSt
     stepInfo.toRank = ranks[sendTo];        //  从虚拟rankid转换至通信域真实rankid
     stepInfo.fromRank = ranks[recvFrom];
 
+    HCCL_INFO("[CcuTempAllGatherNHR1DMem2Mem][GetStepInfo] nSlices[%u] toRank[%u] fromRank[%u]",
+                nSlices, stepInfo.toRank, stepInfo.fromRank);
+
     // 计算本rank在本轮收/发中的slice编号
     for (u32 i = 0; i < nSlices; i++) {
         stepInfo.txSliceIdxs.push_back(txSliceIdx);
@@ -299,13 +304,13 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::GetStepInfo(u32 step, u32 nSteps, NHRSt
 
 u64 CcuTempAllGatherNHR1DMem2Mem::GetThreadNum() const
 {
-    return 1;
+    return 2;
 }
  
 HcclResult CcuTempAllGatherNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
-    resourceRequest.slaveThreadNum = 0;
-    resourceRequest.notifyNumOnMainThread = 0;
+    resourceRequest.slaveThreadNum = 1;
+    resourceRequest.notifyNumOnMainThread = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     return HCCL_SUCCESS;
 }

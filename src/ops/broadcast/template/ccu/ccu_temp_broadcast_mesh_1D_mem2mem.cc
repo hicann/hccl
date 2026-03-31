@@ -100,7 +100,7 @@ HcclResult CcuTempBroadcastMesh1DMem2Mem::KernelRun(const OpParam& param,
 
     void* taskArgPtr = static_cast<void*>(taskArg.get());
 
-    HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[0], templateResource.ccuKernels[0], taskArgPtr);
+    CHK_RET(HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[0], templateResource.ccuKernels[0], taskArgPtr));
 
     HCCL_DEBUG("[CcuTempBroadcastMesh1DMem2Mem::KernelRun] end");
 

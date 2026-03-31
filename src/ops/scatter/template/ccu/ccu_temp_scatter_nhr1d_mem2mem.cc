@@ -54,7 +54,7 @@ u64 CcuTempScatterNHR1DMem2Mem::CalcScratchMultiple(BufferType inBuffType, Buffe
 {
     (void)inBuffType;
     (void)outBuffType;
-    return 0;
+    return subCommRanks_[0].size();
 }
 
 HcclResult CcuTempScatterNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum)
@@ -214,7 +214,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(const OpParam &param, const Tem
     buffInfo_ = templateDataParams.buffInfo;
     u32 kernelNum = templateResource.ccuKernels.size();
 
-    if (templateDataParams.sliceSize == 0) {
+    if (templateDataParams.sliceSize == 0 && templateDataParams.tailSize == 0) {
         HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] sliceSize is 0, no need do, just success.");
         return HCCL_SUCCESS;
     }
@@ -240,11 +240,17 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(const OpParam &param, const Tem
     uint64_t inputRepeatStride = templateDataParams.inputRepeatStride;
     uint64_t outputRepeatStride = templateDataParams.outputRepeatStride;
     uint64_t isOutputScratch = (buffInfo_.outBuffType == BufferType::HCCL_BUFFER) ? 1 : 0;
+    uint64_t isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
+
+    uint64_t die0TailSize = templateDataParams.tailSize / kernelNum;
+    uint64_t die1TailSize = templateDataParams.tailSize - die0TailSize;
     HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] dimSize[%llu], inputAddr[%llu], outputAddr[%llu], scratchAddr[%llu],"
-              "sliceSize[%llu], die0Size[%llu], die1Size[%llu], inputSliceStride[%llu],"
-              "inputRepeatStride[%llu], outputRepeatStride[%llu], repeatNum[%llu], isOutputScratch[%llu]",
+              "sliceSize[%llu], die0Size[%llu], die1Size[%llu], inputSliceStride[%llu], outputSliceStride[%llu],"
+              "inputRepeatStride[%llu], outputRepeatStride[%llu], repeatNum[%llu], isOutputScratch[%llu], die0TailSize[%llu],"
+              "die1TailSize[%llu]",
               templateRankSize_, inputAddr, outputAddr, scratchAddr, sliceSize, die0Size, die1Size, inputSliceStride,
-              inputRepeatStride, outputRepeatStride, repeatNum, isOutputScratch);
+              outputSliceStride, inputRepeatStride, outputRepeatStride, repeatNum, isOutputScratch, isInputOutputEqual,
+              die0TailSize, die1TailSize);
 
     // 前流同步
     if (kernelNum > 1) {
@@ -255,13 +261,14 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(const OpParam &param, const Tem
     }
 
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
-        if ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0)) {
+        if ((templateDataParams.tailSize == 0) && ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0))) {
             // 数据长度为0的kernel不下发
             continue;
         }
         std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgScatterNHRMem2Mem1D>(
             inputAddr, outputAddr, scratchAddr, token, sliceSize, die0Size, die1Size, inputSliceStride,
-            inputRepeatStride, outputRepeatStride, repeatNum, isOutputScratch);
+            outputSliceStride, inputRepeatStride, outputRepeatStride, repeatNum, isOutputScratch, isInputOutputEqual,
+            die0TailSize, die1TailSize);
 
         void *taskArgPtr = static_cast<void *>(taskArg.get());
 
