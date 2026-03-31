@@ -49,6 +49,7 @@ HcclResult HcclCommDeactivateCommMemory(HcclComm comm, void* virPtr);
 HcclResult HcclCommWorkingDevNicSet(HcclComm comm, uint32_t* ranks, bool* useBackup, uint32_t nRanks);
 HcclResult HcclGroupStart(void);
 HcclResult HcclGroupEnd(void);
+HcclResult HcclGetCcuTaskInfo(HcclComm comm, void* tilingData, void* ccuTaskGroup);
 HcclResult CommGetLocalCCLBuf(HcclComm comm, void **addr, uint64_t *size);
 HcclResult CommGetRemoteCCLBuf(HcclComm comm, uint32_t remoteRank, void **addr, uint64_t *size);
 HcclResult CommGetKFCWorkSpace(HcclComm comm, void **addr, uint64_t *size);
