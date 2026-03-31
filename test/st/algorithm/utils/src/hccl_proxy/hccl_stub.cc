@@ -695,7 +695,7 @@ int32_t HcclTaskRegister(HcclComm comm, const char *msgTag, Callback cb)
     return 0;
 }
 
-static int32_t HcommSendRequestStub(MsgHandle handle, const char *msgTag, const void *src, size_t sizeByte, uint32_t *msgId)
+static int32_t HcommSendRequestStub(uint64_t handle, const char *msgTag, const void *src, size_t sizeByte, uint32_t *msgId)
 {
     std::string msgTagStr(msgTag);
     std::lock_guard<std::mutex> lock(g_mutex);
@@ -714,7 +714,7 @@ static int32_t HcommChannelFenceOnThreadStub(ThreadHandle thread, ChannelHandle 
     return 0;
 }
 
-static int32_t HcommWaitResponseStub(MsgHandle handle, void *dst, size_t sizeByte, uint32_t *msgId)
+static int32_t HcommWaitResponseStub(uint64_t handle, void *dst, size_t sizeByte, uint32_t *msgId)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return 0;
@@ -757,7 +757,7 @@ HcclResult HcclEngineCtxDestroy(HcclComm comm, const char *ctxTag, CommEngine en
     return HCCL_SUCCESS;
 }
 
-static HcclResult HcommThreadJoinStub(ThreadHandle thread, uint32_t timeout)
+static int32_t HcommThreadJoinStub(ThreadHandle thread, uint32_t timeout)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return HCCL_SUCCESS;
@@ -812,7 +812,7 @@ static int32_t HcommChannelFenceStub(ChannelHandle channel)
     return -1;
 }
 
-static HcclResult HcommSymWinGetPeerPointerStub(CommSymWindow winHandle, size_t offset, uint32_t peerRank, void** ptr)
+static HcclResult HcommSymWinGetPeerPointerStub(HcclCommSymWindow winHandle, size_t offset, uint32_t peerRank, void** ptr)
 {
     HCCL_ERROR("[%s] not support.", __func__);
     return HCCL_E_NOT_SUPPORT;
