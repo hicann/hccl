@@ -41,78 +41,37 @@ u64 CcuTempReduceScatterNHR1DMem2Mem::CalcScratchMultiple(BufferType inBuffType,
     return 0;
 }
 
-HcclResult CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum)
-{
-    constexpr u32 LINK_NUM_1 = 2;
-    constexpr u32 LINK_NUM_2 = 2;
-    auto firstElement = rankIdToChannelDesc_.begin();
-    const std::vector<HcclChannelDesc>& firstVector = firstElement->second;
-    if (firstVector.size() == 1) {
-        dieNum = 1;
-        HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] only 1 channel, dieNum = 1.");
-        return HcclResult::HCCL_SUCCESS;
-    } else if (firstVector.size() == LINK_NUM_2) {
-        // 检查2个channel是否在2个die上
-        uint32_t dieId0 = 0;
-        uint32_t dieId1 = 0;
-        GetChannelDieId(comm, myRank_, firstVector[0], dieId0);
-        GetChannelDieId(comm, myRank_, firstVector[1], dieId1);
-        if (dieId0 == dieId1) {
-            dieNum = LINK_NUM_1;
-            HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] 2 channels on the same die, dieNum = 1.");
-        } else {
-            dieNum = LINK_NUM_2;
-            HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem::GetDieNumFromChannelDescs] 2 channels on 2 dies, dieNum = 2.");
-        }
-        return HcclResult::HCCL_SUCCESS;
-    } else {
-        HCCL_ERROR("[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] get channelDescs fail: there are [] link to rank []",
-                   firstVector.size(), firstElement->first);
-        return HcclResult::HCCL_E_INTERNAL;
-    }
-}
-
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm,
                                                             std::vector<NHRStepInfo>& stepInfoVector,
-                                                            std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
+                                                            std::map<u32, u32>& rank2ChannelIdx,
+                                                            u32 enableDieNum, u32 enableDieId,
                                                             std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
+    constexpr u32 DIE_NUM_1 = 1;
+    constexpr u32 DIE_NUM_2 = 2;
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     for (u32 step = 0; step < nSteps; step++) {
         NHRStepInfo stepInfo;
         CHK_RET(GetStepInfo(step, stepInfo));
         stepInfoVector.push_back(stepInfo);
-        if (rank2ChannelIdx.count(stepInfo.fromRank) == 0) {
-            // 存储 rankid → channelIdx 的索引
-            u32 curChannelIdx = channelsPerDie[0].size();
-            rank2ChannelIdx[stepInfo.fromRank] = curChannelIdx;
-            
-            for (HcclChannelDesc channel: rankIdToChannelDesc_.at(stepInfo.fromRank)) {
-                uint32_t dieId = 0;
-                CHK_RET(GetChannelDieId(comm, myRank_, channel, dieId));
-                // 如果是2个die的算法，则分别加入到2个vector中，否则只加入到1个vector
-                uint32_t vecIdx = dieId % enableDieNum;
-                // 限制只加入一个channel
-                if (channelsPerDie[vecIdx].size() == curChannelIdx) {
-                    channelsPerDie[vecIdx].push_back(channel);
-                }
-            }
-        }
-        if (rank2ChannelIdx.count(stepInfo.toRank) == 0) {
-            u32 curChannelIdx = channelsPerDie[0].size();
-            rank2ChannelIdx[stepInfo.toRank] = curChannelIdx;
-            
-            for (HcclChannelDesc channel: rankIdToChannelDesc_.at(stepInfo.toRank)) {
-                u32 dieId = 0;
-                CHK_RET(GetChannelDieId(comm, myRank_, channel, dieId));
-                u32 vecIdx = dieId % enableDieNum;
-                if (channelsPerDie[vecIdx].size() == curChannelIdx) {
-                    channelsPerDie[vecIdx].push_back(channel);
-                }
-            }
+        if (enableDieNum = DIE_NUM_1) {
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.fromRank, rankIdToChannelDesc_, enableDieId, 
+                rank2ChannelIdx, channelsPerDie[0]));
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.toRank, rankIdToChannelDesc_, enableDieId, 
+                rank2ChannelIdx, channelsPerDie[0]));
+        } else if (enableDieNum = DIE_NUM_2) {
+            // 加入fromRank 2个die的链路
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.fromRank, rankIdToChannelDesc_, 0, 
+                rank2ChannelIdx, channelsPerDie[0]));
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.fromRank, rankIdToChannelDesc_, 1, 
+                rank2ChannelIdx, channelsPerDie[1]));
+            // 加入toRank 2个die的链路
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.toRank, rankIdToChannelDesc_, 0, 
+                rank2ChannelIdx, channelsPerDie[0]));
+            CHK_RET(SelectChannelToVec(comm, myRank_, stepInfo.toRank, rankIdToChannelDesc_, 1, 
+                rank2ChannelIdx, channelsPerDie[1]));
         }
     }
-    
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -125,7 +84,8 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpPara
 
     // 1.从获得的channelDesc，判断kernel发送到几个die上
     uint32_t enableDieNum = 0;
-    CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
+    uint32_t enableDieId = 0;
+    CHK_RET(GetDieInfoFromChannelDescs(comm, rankIdToChannelDesc_, myRank_, enableDieNum, enableDieId));
     
     if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) { // 目前只支持1个或2个die
         HCCL_ERROR("[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] get channelDescs fail");
@@ -147,7 +107,7 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpPara
     std::map<u32, u32> rank2ChannelIdx;
     std::vector<NHRStepInfo> stepInfoVector;
     
-    CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, enableDieId, channelsPerDie));
 
     // 3.构造kernelInfo
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {

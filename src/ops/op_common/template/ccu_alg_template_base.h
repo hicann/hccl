@@ -57,6 +57,14 @@ protected:
     std::vector<std::vector<u32>> subCommRanks_;
     HcclResult RestoreChannelMap(const std::vector<HcclChannelDesc>& channelDescs,
                                  std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc) const;
+                        
+    HcclResult SelectChannelToVec(const HcclComm comm, const u32 myRankId, const u32 rmtRankId,
+        const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, const u32 dieId, 
+        std::map<u32, u32>& rank2ChannelIdx, std::vector<HcclChannelDesc>& channels);
+    
+    HcclResult GetDieInfoFromChannelDescs(HcclComm comm, 
+        const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, 
+        u32 myRankId, uint32_t &dieNum, uint32_t &dieId);
 };
 }
 #endif // HCCLV2_CCU_ALG_TEMPLATE_BASE

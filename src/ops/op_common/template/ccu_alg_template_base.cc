@@ -100,6 +100,90 @@ HcclResult CcuAlgTemplateBase::GetChannelDieId(HcclComm comm, uint32_t rankId, c
     return HcclResult::HCCL_SUCCESS;
 }
 
+/* nhr算法，需要遍历得到的channelDesc，判断使用几个die，如果是1个die，则还需要得到dieId。
+   以便于算法挑选相应dieId的channelDesc */
+HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(HcclComm comm, 
+    const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, 
+    u32 myRankId, uint32_t &dieNum, uint32_t &dieId)
+{
+    constexpr u32 LINK_NUM_1 = 1;
+    constexpr u32 LINK_NUM_2 = 2;
+    // 遍历每个对端有几个channel
+    for (const auto& pair: rankIdToChannelDesc) {
+        u32 rmtRankId = pair.first;
+        const std::vector<HcclChannelDesc> &channels = pair.second;
+        if (channels.size() == LINK_NUM_1) {
+            dieNum = 1;
+            GetChannelDieId(comm, myRankId, channels[0], dieId);
+            HCCL_INFO("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] only 1 channel, dieNum = 1, dieId = %u.", dieId);
+            return HcclResult::HCCL_SUCCESS;
+        } 
+        
+        if (channels.size() == LINK_NUM_2) {
+            // 检查2个channel是否在2个die上
+            uint32_t dieId0 = 0;
+            uint32_t dieId1 = 0;
+            GetChannelDieId(comm, myRankId, channels[0], dieId0);
+            GetChannelDieId(comm, myRankId, channels[1], dieId1);
+            if (dieId0 == dieId1) {
+                dieNum = LINK_NUM_1;
+                dieId = dieId0;
+                HCCL_INFO("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] 2 channels on the same die, dieNum = 1, dieId = %u.", dieId);
+                return HcclResult::HCCL_SUCCESS;
+            }
+        } else {
+            HCCL_ERROR("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] get channelDescs fail: there are [%u] link to rank [%u]",
+                    channels.size(), rmtRankId);
+            return HcclResult::HCCL_E_INTERNAL;
+        }
+
+    }
+    // 为适配不对称场景，当前nhr仅使能1个die
+    dieNum = LINK_NUM_1;
+    HCCL_INFO("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] 2 channels on 2 dies, dieNum = 2.");
+    return HcclResult::HCCL_SUCCESS;
+}
+
+/* 从rankIdToChannelDesc的map中，挑选出指定die上的channel加入到vec中，并将Index放入rank2ChannelIdx*/
+HcclResult CcuAlgTemplateBase::SelectChannelToVec(const HcclComm comm, const u32 myRankId, const u32 rmtRankId,
+    const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, const u32 dieId, 
+    std::map<u32, u32>& rank2ChannelIdx, std::vector<HcclChannelDesc>& channels)
+{
+    auto it = rank2ChannelIdx.find(rmtRankId);
+    if (it != rank2ChannelIdx.end()) {
+        // 已经有对应channel，直接返回成功
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    auto vecIt = rankIdToChannelDesc.find(rmtRankId);
+    if (vecIt == rankIdToChannelDesc.end()) {
+        // 不存在到对端rank的channel，报错
+        HCCL_ERROR("[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u]", myRankId, rmtRankId);
+        return HcclResult::HCCL_E_INTERNAL;
+    }
+
+    u32 curChannelIdx = channels.size();
+    bool isFound = false;
+    for (const HcclChannelDesc &channel: rankIdToChannelDesc.at(rmtRankId)) {
+        uint32_t tmpDieId = 0;
+        CHK_RET(GetChannelDieId(comm, myRankId, channel, tmpDieId));
+        if (tmpDieId == dieId) {
+            channels.push_back(channel);
+            rank2ChannelIdx[rmtRankId] = curChannelIdx;
+            isFound = true;
+            break;
+        }
+    }
+    if (!isFound) {
+        HCCL_ERROR("[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u] on die[%u]",
+             myRankId, rmtRankId, dieId);
+        return HcclResult::HCCL_E_INTERNAL;
+    }
+    HCCL_INFO("[CcuAlgTemplateBase::SelectChannelToVec] find channel rank[%u] to rank[%u] on die[%u] succeed."
+        "Index=[%u]", myRankId, rmtRankId, dieId, curChannelIdx);
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult CcuAlgTemplateBase::GetToken(const BuffInfo &buffinfo, uint64_t &token) const
 {
     if (buffinfo.inputPtr != nullptr) {
