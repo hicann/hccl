@@ -48,4 +48,18 @@ bash run_tensorflow.sh
 ```
 INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
 device:0 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:1 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:2 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:3 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:4 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:5 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:6 tensorflow hccl test success
+INFO:tensorflow:{'allreduce_sum_output': array([ 0., 8., 16., 24., 32., 40., 48., 56. ], dtype=float32)}
+device:7 tensorflow hccl test success
 ```
