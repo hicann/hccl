@@ -19,7 +19,7 @@
 #include "mmpa_api.h"
 #include "config_log.h"
 #include "sal.h"
-#include "dtype_common_dl.h"
+#include "dtype_common.h"
 
 namespace ops_hccl {
 

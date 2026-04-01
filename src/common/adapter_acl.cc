@@ -12,7 +12,7 @@
 #include "acl_rt.h"
 #include "workflow.h"
 #include "mmpa_api.h"
-#include "dtype_common_dl.h"
+#include "dtype_common.h"
 
 namespace ops_hccl {
 HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId)

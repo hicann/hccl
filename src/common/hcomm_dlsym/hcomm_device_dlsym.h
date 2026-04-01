@@ -17,38 +17,6 @@ extern "C" {
 
 // 动态库管理接口（大驼峰命名）
 void HcommDeviceDlInit(void);
-void HcommDeviceDlFini(void);
-
-bool HcommIsSupportHcommLocalCopyOnThread(void);
-bool HcommIsSupportHcommLocalReduceOnThread(void);
-bool HcommIsSupportHcommThreadNotifyRecordOnThread(void);
-bool HcommIsSupportHcommThreadNotifyWaitOnThread(void);
-bool HcommIsSupportHcommAclrtNotifyRecordOnThread(void);
-bool HcommIsSupportHcommAclrtNotifyWaitOnThread(void);
-bool HcommIsSupportHcommWriteOnThread(void);
-bool HcommIsSupportHcommWriteReduceOnThread(void);
-bool HcommIsSupportHcommWriteWithNotifyOnThread(void);
-bool HcommIsSupportHcommWriteReduceWithNotifyOnThread(void);
-bool HcommIsSupportHcommReadOnThread(void);
-bool HcommIsSupportHcommReadReduceOnThread(void);
-bool HcommIsSupportHcommWriteNbi(void);
-bool HcommIsSupportHcommWriteWithNotifyNbi(void);
-bool HcommIsSupportHcommReadNbi(void);
-bool HcommIsSupportHcommChannelNotifyRecordOnThread(void);
-bool HcommIsSupportHcommChannelNotifyRecord(void);
-bool HcommIsSupportHcommChannelNotifyWaitOnThread(void);
-bool HcommIsSupportHcommChannelNotifyWait(void);
-bool HcommIsSupportHcommBatchModeStart(void);
-bool HcommIsSupportHcommBatchModeEnd(void);
-bool HcommIsSupportHcommAcquireComm(void);
-bool HcommIsSupportHcommReleaseComm(void);
-bool HcommIsSupportHcommSymWinGetPeerPointer(void);
-bool HcommIsSupportHcommThreadSynchronize(void);
-bool HcommIsSupportHcommSendRequest(void);
-bool HcommIsSupportHcommWaitResponse(void);
-bool HcommIsSupportHcommFlush(void);
-bool HcommIsSupportHcommChannelFence(void);
-bool HcommIsSupportHcommWriteWithNotifyNbiOnThread(void);
 
 #ifdef __cplusplus
 }

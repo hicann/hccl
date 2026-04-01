@@ -9,7 +9,7 @@
  */
 
 #include "dpu_alg_data_trans_wrapper.h"
-#include "hcomm_primitives_dl.h"
+#include "hcomm_primitives.h"
 
 namespace ops_hccl {
 constexpr u32 DPU_TIMEOUT = 180000;

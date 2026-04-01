@@ -19,6 +19,7 @@
     <file_info value="lib64" copy_type="delivery" src_path="build" dst_path="lib64" install_path="$(TARGET_ENV)/lib64" install_type="all" install_mod="440">
         <!-- hccl -->
         <file value="libhccl.so" file_type="shared"/>
+        <file value="libhccl_compat.so" file_type="shared"/>
         <file value="hccl_aiv_reduce_scatter_op_910_95.o"/>
         <file value="hccl_aiv_all_gather_op_910_95.o"/>
         <file value="hccl_aiv_scatter_op_910_95.o"/>

@@ -8,64 +8,16 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "log.h"
 #include "hcomm_diag_dl.h"
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-// 定义全局函数指针
-HcclResult (*hcommRegOpInfoPtr)(const char*, void*, size_t) = nullptr;
-HcclResult (*hcommRegOpTaskExceptionPtr)(const char*, HcommGetOpInfoCallback) = nullptr;
-
-// 添加支持标志（静态，默认 false）
-static bool g_hcommRegOpInfoSupported = false;
-static bool g_hcommRegOpTaskExceptionSupported = false;
-
-// ---------- 桩函数定义 ----------
-static HcclResult StubHcommRegOpInfo(const char* commId, void* opInfo, size_t size) {
-    (void)commId; (void)opInfo; (void)size;
-    HCCL_ERROR("[HcclWrapper] HcommRegOpInfo not supported");
-    return HCCL_E_NOT_SUPPORT;
-}
-
-static HcclResult StubHcommRegOpTaskException(const char* commId, HcommGetOpInfoCallback callback) {
-    (void)commId; (void)callback;
-    HCCL_ERROR("[HcclWrapper] HcommRegOpTaskException not supported");
-    return HCCL_E_NOT_SUPPORT;
-}
+DEFINE_WEAK_FUNC(HcclResult, HcommRegOpInfo, const char* commId, void* opInfo, size_t size);
+DEFINE_WEAK_FUNC(HcclResult, HcommRegOpTaskException, const char* commId, HcommGetOpInfoCallback callback);
 
 // 初始化
 void HcommDiagDlInit(void* libHcommHandle) {
-    #define SET_PTR(ptr, handle, name, stub, support_flag) \
-        do { \
-            ptr = (decltype(ptr))dlsym(handle, name); \
-            if (ptr == nullptr) { \
-                ptr = stub; \
-                support_flag = false; \
-                HCCL_DEBUG("[HcclWrapper] %s not supported", name); \
-            } else { \
-                support_flag = true; \
-            } \
-        } while(0)
-
-    SET_PTR(hcommRegOpInfoPtr, libHcommHandle, "HcommRegOpInfo", StubHcommRegOpInfo, g_hcommRegOpInfoSupported);
-    SET_PTR(hcommRegOpTaskExceptionPtr, libHcommHandle, "HcommRegOpTaskException", StubHcommRegOpTaskException, g_hcommRegOpTaskExceptionSupported);
-
-    #undef SET_PTR
-}
-
-void HcommDiagDlFini(void) {
-    hcommRegOpInfoPtr = StubHcommRegOpInfo;
-    g_hcommRegOpInfoSupported = false;
-    hcommRegOpTaskExceptionPtr = StubHcommRegOpTaskException;
-    g_hcommRegOpTaskExceptionSupported = false;
-}
-
-// ---------- 对外提供的查询接口 ----------
-extern "C" bool HcommIsSupportHcommRegOpInfo(void) {
-    return g_hcommRegOpInfoSupported;
-}
-extern "C" bool HcommIsSupportHcommRegOpTaskException(void) {
-    return g_hcommRegOpTaskExceptionSupported;
+    INIT_SUPPORT_FLAG(libHcommHandle, HcommRegOpInfo);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcommRegOpTaskException);
 }

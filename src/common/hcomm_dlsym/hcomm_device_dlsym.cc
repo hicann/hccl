@@ -8,13 +8,12 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "hcomm_dlsym.h"
+#include "hcomm_device_dlsym.h"
 #include "hccl_res_dl.h"
 #include "hccl_rank_graph_dl.h"
 #include "hcomm_primitives_dl.h"
 #include "hcomm_device_profiling_dl.h"
 #include "hcomm_diag_dl.h"
-#include "dtype_common_dl.h"
 #include <pthread.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -37,23 +36,4 @@ void HcommDeviceDlInit(void) {
     HcommPrimitivesDlInit(gLibHandle);
     HcommDeviceProfilingDlInit(gLibHandle);
     HcommDiagDlInit(gLibHandle);
-    DtypeCommonDlInit(gLibHandle);
-}
-
-void HcommDeviceDlFini(void) {
-    if (gLibHandle) {
-        HcommPrimitivesDlFini();
-        HcommDeviceProfilingDlFini();
-        HcommDiagDlFini();
-        DtypeCommonDlFini();
-
-        dlclose(gLibHandle);
-        gLibHandle = nullptr;
-    }
-}
-
-__attribute__((constructor)) void InitHcommDeviceDlsym()
-{
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    pthread_once(&once, HcommDeviceDlInit);
 }

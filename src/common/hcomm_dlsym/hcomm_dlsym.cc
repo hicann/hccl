@@ -12,13 +12,8 @@
 #include "hccl_res_dl.h"
 #include "hccl_rank_graph_dl.h"
 #include "hcomm_primitives_dl.h"
-#include "hccl_comm_dl.h"
 #include "hccl_inner_dl.h"
-#include "dtype_common_dl.h"
 #include "hcomm_host_profiling_dl.h"
-#include "hccl_one_sided_services_dl.h"
-#include "hccl_ex_dl.h"
-#include "hcom_dl.h"
 #include <pthread.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -72,35 +67,6 @@ void HcommDlInit(void) {
     HcclResDlInit(gLibHandle);
     HcclRankGraphDlInit(gLibHandle);
     HcommPrimitivesDlInit(gLibHandle);
-    HcclCommDlInit(gLibHandle);
     HcclInnerDlInit(gLibHandle);
-    DtypeCommonDlInit(gLibHandle);
     HcommProfilingDlInit(gLibHandle);
-    HcclOneSidedServicesDlInit(gLibHandle);
-    HcclExDlInit(gLibHandle);
-    HcomDlInit(gLibHandle);
-}
-
-void HcommDlFini(void) {
-    if (gLibHandle) {
-        HcclResDlFini();
-        HcclRankGraphDlFini();
-        HcommPrimitivesDlFini();
-        HcclCommDlFini();
-        HcclInnerDlFini();
-        DtypeCommonDlFini();
-        HcommProfilingDlFini();
-        HcclOneSidedServicesDlFini();
-        HcclExDlFini();
-        HcomDlFini();
-
-        dlclose(gLibHandle);
-        gLibHandle = nullptr;
-    }
-}
-
-__attribute__((constructor)) void InitHcommDlsym()
-{
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    pthread_once(&once, HcommDlInit);
 }

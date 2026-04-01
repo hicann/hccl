@@ -11,7 +11,7 @@
 #ifndef HCCL_RES_DL_H
 #define HCCL_RES_DL_H
 
-#include "hccl/hccl_types.h"
+#include "dlsym_common.h"
 #include "hccl_res.h"
 #include "hccl_res_expt.h"
 
@@ -19,38 +19,9 @@
 extern "C" {
 #endif
 
-// ---------- 对外API实现（通过函数指针转发）----------
-HcclResult HcclGetHcclBuffer(HcclComm comm, void **buffer, uint64_t *size);
-HcclResult HcclGetRemoteIpcHcclBuf(HcclComm comm, uint64_t remoteRank, void **addr, uint64_t *size);
-HcclResult HcclThreadAcquire(HcclComm comm, CommEngine engine, uint32_t threadNum,
-                              uint32_t notifyNumPerThread, ThreadHandle *threads);
-HcclResult HcclThreadAcquireWithStream(HcclComm comm, CommEngine engine, aclrtStream stream,
-                                       uint32_t notifyNum, ThreadHandle *thread);
-HcclResult HcclChannelAcquire(HcclComm comm, CommEngine engine, const HcclChannelDesc *channelDescs,
-                              uint32_t channelNum, ChannelHandle *channels);
-HcclResult HcclChannelGetHcclBuffer(HcclComm comm, ChannelHandle channel, void **buffer, uint64_t *size);
-HcclResult HcclEngineCtxCreate(HcclComm comm, const char *ctxTag, CommEngine engine,
-                               uint64_t size, void **ctx);
-HcclResult HcclEngineCtxGet(HcclComm comm, const char *ctxTag, CommEngine engine,
-                            void **ctx, uint64_t *size);
-HcclResult HcclEngineCtxCopy(HcclComm comm, CommEngine engine, const char *ctxTag,
-                             const void *srcCtx, uint64_t size, uint64_t dstCtxOffset);
-int32_t HcclTaskRegister(HcclComm comm, const char *msgTag, Callback cb);
-int32_t HcclTaskUnRegister(HcclComm comm, const char *msgTag);
-HcclResult HcclDevMemAcquire(HcclComm comm, const char *memTag, uint64_t *size,
-                             void **addr, bool *newCreated);
-HcclResult HcclThreadExportToCommEngine(HcclComm comm, uint32_t threadNum,
-                                        const ThreadHandle *threads, CommEngine dstCommEngine,
-                                        ThreadHandle *exportedThreads);
-HcclResult HcclChannelGetRemoteMems(HcclComm comm, ChannelHandle channel,
-                                   uint32_t *memNum, CommMem **remoteMems, char ***memTags);
-HcclResult HcclCommMemReg(HcclComm comm, const char *memTag, const CommMem *mem,
-                          HcclMemHandle *memHandle);
-HcclResult HcclEngineCtxDestroy(HcclComm comm, const char *ctxTag, CommEngine engine);
-
+DECL_SUPPORT_FLAG(HcclThreadExportToCommEngine);
 // 动态库管理接口（大驼峰命名）
 void HcclResDlInit(void* libHcommHandle);
-void HcclResDlFini(void);
 
 #ifdef __cplusplus
 }

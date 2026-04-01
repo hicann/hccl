@@ -11,6 +11,7 @@
 #ifndef HCOMM_HOST_PROFILING_DL_H
 #define HCOMM_HOST_PROFILING_DL_H
 
+#include "dlsym_common.h"
 #include "hccl_res_dl.h"
 
 #ifdef __cplusplus
@@ -38,40 +39,17 @@ typedef struct HcomProInfoTmp {
     uint8_t reserved[MAX_LENGTH];
 }HcomProInfoTmp;
 
-// 声明全局函数指针（小驼峰命名）
-extern HcclResult (*hcommProfilingRegThreadPtr)(HcomProInfoTmp, ThreadHandle*);
-extern HcclResult (*hcommProfilingUnRegThreadPtr)(HcomProInfoTmp, ThreadHandle*);
-extern HcclResult (*hcommProfilingReportKernelPtr)(uint64_t, const char*);
-extern HcclResult (*hcommProfilingReportOpPtr)(HcomProInfoTmp);
-extern uint64_t (*hcommGetProfilingSysCycleTimePtr)();
-extern HcclResult (*hcclDfxRegOpInfoPtr)(HcclComm comm, void* dfxOpInfo);
-extern HcclResult (*hcclProfilingReportOpPtr)(HcclComm comm, uint64_t beginTime);
-extern HcclResult (*hcclReportAicpuKernelPtr)(HcclComm comm, uint64_t beginTime, char *kernelName);
-
-
-// 宏：将原始API名映射为函数指针调用
-#define HcommProfilingRegThread                (*hcommProfilingRegThreadPtr)
-#define HcommProfilingUnRegThread               (*hcommProfilingUnRegThreadPtr)
-#define HcommProfilingReportKernel               (*hcommProfilingReportKernelPtr)
-#define HcommProfilingReportOp                    (*hcommProfilingReportOpPtr)
-#define HcommGetProfilingSysCycleTime              (*hcommGetProfilingSysCycleTimePtr)
-#define HcclDfxRegOpInfo                         (*hcclDfxRegOpInfoPtr)
-#define HcclProfilingReportOp                         (*hcclProfilingReportOpPtr)
-#define HcclReportAicpuKernel                         (*hcclReportAicpuKernelPtr)
-
-// 查询函数声明
-bool HcommIsSupportHcommProfilingRegThread(void);
-bool HcommIsSupportHcommProfilingUnRegThread(void);
-bool HcommIsSupportHcommProfilingReportKernel(void);
-bool HcommIsSupportHcommProfilingReportOp(void);
-bool HcommIsSupportHcommGetProfilingSysCycleTime(void);
-bool HcommIsSupportHcclDfxRegOpInfo(void);
-bool HcommIsSupportHcclProfilingReportOp(void);
-bool HcommIsSupportHcclProfilingReportOp(void);
+DECL_WEAK_FUNC(HcclResult, HcommProfilingRegThread, HcomProInfoTmp profInfo, ThreadHandle* threads);
+DECL_WEAK_FUNC(HcclResult, HcommProfilingUnRegThread, HcomProInfoTmp profInfo, ThreadHandle* threads);
+DECL_WEAK_FUNC(HcclResult, HcommProfilingReportKernel, uint64_t beginTime, const char* profName);
+DECL_WEAK_FUNC(HcclResult, HcommProfilingReportOp, HcomProInfoTmp profInfo);
+DECL_WEAK_FUNC(uint64_t, HcommGetProfilingSysCycleTime);
+DECL_WEAK_FUNC(HcclResult, HcclDfxRegOpInfo, HcclComm comm, void* dfxOpInfo);
+DECL_WEAK_FUNC(HcclResult, HcclProfilingReportOp, HcclComm comm, uint64_t beginTime);
+DECL_WEAK_FUNC(HcclResult, HcclReportAicpuKernel, HcclComm comm, uint64_t beginTime, char *kernelName);
 
 // 动态库管理接口
 void HcommProfilingDlInit(void* libHcommHandle);
-void HcommProfilingDlFini(void);
 
 #ifdef __cplusplus
 }

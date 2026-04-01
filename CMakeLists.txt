@@ -115,6 +115,7 @@ elseif(BUILD_OPEN_PROJECT)
         if(KERNEL_MODE)
             set(CCL_KERNEL_TAR_LIBS
                 ${CCL_KERNEL_TAR_DIR}/aicpu_kernels_device/libscatter_aicpu_kernel.so
+                ${CCL_KERNEL_TAR_DIR}/aicpu_kernels_device/libhccl_kernel_compat.so
             )
             pack_targets_and_files(
                 OUTPUT_TARGET "generate_device_aicpu_package"

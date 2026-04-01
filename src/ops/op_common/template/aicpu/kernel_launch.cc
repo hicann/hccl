@@ -15,7 +15,7 @@
 #include "executor_base.h"
 #include "coll_alg_exec_registry.h"
 #include "coll_alg_v2_exec_registry.h"
-#include "hcomm_primitives_dl.h"
+#include "hcomm_primitives.h"
 #include "dfx/task_exception_fun.h"
 #include "kernel_launch.h"
 #include "hcomm_diag_dl.h"

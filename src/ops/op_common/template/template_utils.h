@@ -19,6 +19,7 @@
 #include "alg_param.h"
 #include "binary_stream.h"
 
+HcclResult __attribute__((weak)) HcommThreadJoin(ThreadHandle thread, uint32_t timeout);
 namespace ops_hccl {
 
 # define UINT32_MAX     (4294967295U)
