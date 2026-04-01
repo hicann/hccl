@@ -241,7 +241,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcSliceInfoAllReduce(const u64 dataSize,
 
 HcclResult CcuTempReduceNHR1DMem2Mem::KernelRun(const OpParam& param,
                                                 const TemplateDataParams& templateDataParams,
-                                                const TemplateResource& templateResource)
+                                                TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempReduceNHR1DMem2Mem] Template KernelRun start.");
     

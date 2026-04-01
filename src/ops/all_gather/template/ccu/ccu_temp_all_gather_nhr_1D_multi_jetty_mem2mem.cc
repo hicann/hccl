@@ -157,7 +157,7 @@ uint32_t CcuTempAllGatherNHR1DMultiJettyMem2Mem::RemoteRankId2RankId(const uint3
 
 HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempAllGatherNHR1DMultiJettyMem2Mem] Template Run start.");
     buffInfo_ = templateDataParams.buffInfo;

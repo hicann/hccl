@@ -30,7 +30,7 @@ HcclResult CollAlgExecRegistryV2::Register(const HcclCMDType type, const std::st
     return HcclResult::HCCL_SUCCESS;
 }
 
-std::shared_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDType type,
+std::unique_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDType type,
     const std::string &tag)
 {
     if (execCreators_.count(type) == 0 || execCreators_[type].count(tag) == 0) {
@@ -38,7 +38,7 @@ std::shared_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDT
         return nullptr;
     }
     HCCL_DEBUG("[CollAlgExecRegistryV2][GetAlgExec]get executor by algName[%s].", tag.c_str());
-    return std::shared_ptr<InsCollAlgBase>(execCreators_[type][tag]());
+    return std::unique_ptr<InsCollAlgBase>(execCreators_[type][tag]());
 }
 
 }

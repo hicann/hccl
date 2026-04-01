@@ -169,6 +169,12 @@ struct BuffInfo {
     u64        hcclBuffBaseOff    = 0;
 };
 
+struct TemplateFastLaunchCtx {
+    BuffInfo buffInfo;
+    std::vector<ThreadHandle> threads;
+    std::vector<CcuKernelSubmitInfo> ccuKernelSubmitInfos;
+};
+
 struct TemplateDataParams {
     BuffInfo buffInfo;
     u64 count{0};
@@ -249,6 +255,7 @@ struct TemplateResource {
     std::map<u32, std::vector<ChannelInfo>> channels;
     std::vector<ThreadHandle> threads;
     std::vector<CcuKernelHandle> ccuKernels;
+    std::vector<CcuKernelSubmitInfo> submitInfos;
     void *npu2DpuShmemPtr;
     void *dpu2NpuShmemPtr;
     void* aivCommInfoPtr = nullptr;
@@ -323,5 +330,24 @@ inline u64 RoundUp(const u64 dividend, const u64 divisor)
     }
     return dividend / divisor + ((dividend % divisor != 0) ? 1 : 0);
 }
+
+// ccu快速下发arg填充
+template <typename... Args>
+HcclResult FillCachedArgs(CcuKernelSubmitInfo &info, Args... args)
+{
+    size_t argNum = sizeof...(Args);
+    if (UNLIKELY(argNum > CCU_MAX_TASK_ARG_NUM)) {
+        HCCL_ERROR("[FillCachedArgs] argNum is bigger than CCU_MAX_TASK_ARG_NUM[%d]", CCU_MAX_TASK_ARG_NUM);
+        return HcclResult::HCCL_E_INTERNAL;
+    }
+    uint64_t temp[] = { static_cast<uint64_t>(args)... };
+
+    for (size_t i = 0; i < argNum; i++) {
+        info.cachedArgs[i] = temp[i];
+    }
+
+    return HcclResult::HCCL_SUCCESS;
+}
+
 }
 #endif

@@ -89,7 +89,7 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcRes(HcclComm comm, const 
 }
 
 HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::KernelRun(const OpParam& param,
-    const TemplateDataParams& templateDataParams, const TemplateResource& templateResource)
+    const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     HCCL_DEBUG("[%s] begin.", __func__);
     buffInfo_ = templateDataParams.buffInfo;

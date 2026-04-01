@@ -36,7 +36,7 @@ public:
 
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
+                         TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override; // 此template需要将buffer分几块用
 private:

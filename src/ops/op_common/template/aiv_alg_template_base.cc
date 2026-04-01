@@ -11,6 +11,10 @@
 #include "aiv_alg_template_base.h"
 
 namespace ops_hccl {
+AivAlgTemplateBase::AivAlgTemplateBase()
+{
+}
+
 AivAlgTemplateBase::AivAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
                                        const std::vector<std::vector<u32>>& subCommRanks):
     opMode_(param.opMode),
@@ -30,6 +34,14 @@ AivAlgTemplateBase::~AivAlgTemplateBase()
 u64 AivAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     return 1;
+}
+
+HcclResult AivAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
+{
+    (void)param;
+    (void)tempFastLaunchCtx;
+    HCCL_ERROR("[AivAlgTemplateBase] Unsupported interface of AivAlgTemplateBase::FastLaunch!");
+    return HcclResult::HCCL_E_INTERNAL;
 }
 
 HcclResult AivAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

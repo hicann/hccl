@@ -112,7 +112,7 @@ void CcuTempAlltoAllVMesh1D::InitInsAlgTemplate(
 
 HcclResult CcuTempAlltoAllVMesh1D::KernelRun(const OpParam& param, 
                                             const TemplateDataParams& templateDataParams,
-                                            const TemplateResource& templateResource)
+                                            TemplateResource& templateResource)
 {
     // 遗留：localSendRecvInfo_ 从哪里传入呢？
     HCCL_INFO("[CcuTempAlltoAllVMesh1D] KernelRun");

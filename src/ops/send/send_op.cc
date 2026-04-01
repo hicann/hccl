@@ -54,7 +54,7 @@ HcclResult HcclSend(
         
     CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, rankSize, OpMode::OPBASE, tag), tag.c_str());
 
-    CHK_RET(LogHcclExit("HcclSend", tag, startut));
+    CHK_RET(LogHcclExit("HcclSend", tag.c_str(), startut));
 
     HCCL_INFO("[HcclSend][%d]->[%d] Success.", userRank, destRank);
     return HcclResult::HCCL_SUCCESS;
@@ -103,7 +103,7 @@ HcclResult HcclSendGraphMode(
     // 执行Send
     CHK_RET_AND_PRINT_IDE(SendExec(sendBuf, count, dataType, destRank, comm, stream, rankSize, OpMode::OFFLOAD, opTag, resPack), opTag.c_str());
 
-    CHK_RET(LogHcclExit("HcclSendGraphMode", opTag, startut));
+    CHK_RET(LogHcclExit("HcclSendGraphMode", opTag.c_str(), startut));
 
     HCCL_INFO("[HcclSendGraphMode][%d]->[%d] Success.", userRank, destRank);
     return HcclResult::HCCL_SUCCESS;

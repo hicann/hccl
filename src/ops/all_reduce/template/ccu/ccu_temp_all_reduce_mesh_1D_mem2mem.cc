@@ -130,7 +130,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::GetRes(AlgResourceRequest& resourceReq
 }
 
 HcclResult CcuTempAllReduceMeshMem2Mem1D::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                    const TemplateResource& templateResource)
+                                                    TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

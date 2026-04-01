@@ -653,7 +653,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateIntra0(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate0 &tempAlgIntra)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate0 &tempAlgIntra)
 {
     // step1 - parallel 0: RS mesh
     u64 inputOffset = 0;
@@ -670,7 +670,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateInter1(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter)
 {
     // step1 - parallel 1: RS nhr
     u64 inputOffset = 0;
@@ -687,7 +687,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateInter0(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter)
 {
     // step2 - parallel 0: RS nhr
     u64 inputOffset = 0;
@@ -708,7 +708,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateIntra1(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate0 &tempAlgIntra)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate0 &tempAlgIntra)
 {
     // step2 - parallel 1: RS mesh
     u64 inputOffset = 0;
@@ -731,7 +731,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateInter01(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
 {
     // step3 - parallel 0: AG nhr
     u64 inputOffset = currCountPart * dataTypeSize_;
@@ -752,7 +752,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateIntra11(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
 {
     // step3 - parallel 1: AG mesh
     u64 inputOffset = currCountPart * dataTypeSize_;
@@ -773,7 +773,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateIntra01(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
 {
     // step4 - parallel 0: AG mesh
     u64 inputOffset = currCountPart * dataTypeSize_;
@@ -790,7 +790,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::RunTemplateInter11(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount,
-    TemplateDataParams &dataParams, const TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
+    TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
 {
     // step4 - parallel 1: AG nhr
     u64 inputOffset = currCountPart * dataTypeSize_;

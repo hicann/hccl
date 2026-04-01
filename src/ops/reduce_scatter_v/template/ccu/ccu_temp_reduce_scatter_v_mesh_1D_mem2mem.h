@@ -34,9 +34,9 @@ public:
 
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
-    u64 GetThreadNum();
+                         TemplateResource& templateResource) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest);
+    u64 GetThreadNum();
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:

@@ -36,8 +36,8 @@ HcclResult HcclReduceScatterGraphMode(void *sendBuf, void *recvBuf, uint64_t rec
 #endif
 
 namespace ops_hccl {
-HcclResult ReduceScatterOutPlace(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag);
+HcclResult ReduceScatterOutPlace(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
+    HcclReduceOp op, HcclComm comm, aclrtStream stream, u32 userRankSize);
 
 HcclResult ReduceScatterOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
  	HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack);
@@ -50,7 +50,7 @@ HcclResult GetAlgResReduceScatter(HcclComm comm, OpParam &param, std::shared_ptr
     TopoInfoWithNetLayerDetails* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);
     
 HcclResult ReduceScatterEntryLog(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op,
-    aclrtStream stream, const std::string &tag, const std::string &opName);
+    aclrtStream stream, const char *tag, const std::string &opName);
 
 }
 

@@ -98,7 +98,7 @@ HcclResult CcuTempAllToAllMesh2Die::PartitionChannels(HcclComm comm, const std::
 }
 
 HcclResult CcuTempAllToAllMesh2Die::KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-    const TemplateResource &templateResource)
+    TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempAllToAllMesh2Die] Run");
     opMode_ = param.opMode;

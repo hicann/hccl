@@ -70,7 +70,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::CalcRes(HcclComm comm, const OpPara
 }
 
 HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

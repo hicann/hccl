@@ -54,28 +54,28 @@ private:
     void GenDataParamsAllRank(const u64 sliceCount, const u32 LocalRankSize, TemplateDataParams &dataParams) const;
     HcclResult RunTemplateIntra0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate0 &tempAlgInter);
+                                  TemplateResource& templateResource, InsAlgTemplate0 &tempAlgInter);
     HcclResult RunTemplateInter1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter);
+                                  TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter);
     HcclResult RunTemplateInter0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter);
+                                  TemplateResource& templateResource, InsAlgTemplate1 &tempAlgInter);
     HcclResult RunTemplateIntra1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate0 &tempAlgInter);
+                                  TemplateResource& templateResource, InsAlgTemplate0 &tempAlgInter);
     HcclResult RunTemplateInter01(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1);
+                                  TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1);
     HcclResult RunTemplateIntra11(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                   const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                  const TemplateResource& templateResource, InsAlgTemplate2 &tempAlgInter1);
+                                  TemplateResource& templateResource, InsAlgTemplate2 &tempAlgInter1);
     HcclResult RunTemplateIntra01(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                         const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                        const TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1);
+                                        TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1);
     HcclResult RunTemplateInter11(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
                                         const u64 currCountPart, const u64 scratchOffsetCount, TemplateDataParams &dataParams,
-                                        const TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1);
+                                        TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1);
     HcclResult GenInsQues(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra0,
                           InsAlgTemplate1 &tempAlgInter0, InsAlgTemplate2 &tempAlgIntra1, InsAlgTemplate3 &tempAlgInter1);
     // rounddown func for uint

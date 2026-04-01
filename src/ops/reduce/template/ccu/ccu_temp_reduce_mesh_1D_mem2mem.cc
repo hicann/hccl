@@ -82,7 +82,7 @@ HcclResult CcuTempReduceMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam& par
 
 HcclResult CcuTempReduceMesh1DMem2Mem::KernelRun(const OpParam& param,
                                                  const TemplateDataParams& templateDataParams,
-                                                 const TemplateResource& templateResource)
+                                                 TemplateResource& templateResource)
 {
     if (templateDataParams.sliceSize == 0) {
         HCCL_INFO("[CcuTempReduceMesh1DMem2Mem] sliceSize is 0, no need do, just success.");

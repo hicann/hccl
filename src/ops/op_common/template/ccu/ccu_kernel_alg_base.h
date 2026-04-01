@@ -38,7 +38,7 @@ protected:
     };
 
     struct GroupOpSize {
-        CcuRep::Variable addrOffset;        // loop展开时的addr步长
+        CcuRep::Variable addrOffset;        // 第二个loopGroup搬运的起始偏移
         CcuRep::Variable loopParam;         // loop串行重复执行次数
         CcuRep::Variable parallelParam;     // loopgroup展开参数，包括展开次数、从第几个loop开始展开、共有几个loop
         CcuRep::Variable residual;          // 尾块数据size

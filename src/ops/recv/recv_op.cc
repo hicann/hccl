@@ -53,7 +53,7 @@ HcclResult HcclRecv(
     CHK_RET(RecvEntryLog(recvBuf, count, dataType, srcRank, stream, tag, "HcclRecv"));
 
     CHK_RET_AND_PRINT_IDE(RecvExec(recvBuf, count, dataType, srcRank, comm, stream, rankSize, OpMode::OPBASE, tag), tag.c_str());
-    CHK_RET(LogHcclExit("HcclRecv", tag, startut));
+    CHK_RET(LogHcclExit("HcclRecv", tag.c_str(), startut));
     HCCL_INFO("[HcclRecv][%d]<-[%d] Success.", userRank, srcRank);
     return HcclResult::HCCL_SUCCESS;
 }
@@ -102,7 +102,7 @@ HcclResult HcclRecvGraphMode(
     // 执行Recv
     CHK_RET_AND_PRINT_IDE(RecvExec(recvBuf, count, dataType, srcRank, comm, stream, rankSize, OpMode::OFFLOAD, opTag, resPack), opTag.c_str());
 
-    CHK_RET(LogHcclExit("HcclRecvGraphMode", opTag, startut));
+    CHK_RET(LogHcclExit("HcclRecvGraphMode", opTag.c_str(), startut));
         
     HCCL_INFO("[HcclRecvGraphMode][%d]<-[%d] Success.", userRank, srcRank);
     return HcclResult::HCCL_SUCCESS;

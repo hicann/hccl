@@ -56,7 +56,7 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
     CHK_RET_AND_PRINT_IDE(AllReduceOutPlace(sendBuf, recvBuf, count, dataType, op, comm, stream, opTag),
                           opTag.c_str());
 
-    CHK_RET(LogHcclExit("HcclAllReduce", opTag, startut));
+    CHK_RET(LogHcclExit("HcclAllReduce", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }
@@ -99,7 +99,7 @@ HcclResult HcclAllReduceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     CHK_RET(AllReduceEntryLog(sendBuf, recvBuf, sendCount, dataType, op, stream, opTag, "HcclAllReduceGraphMode"));
     // 执行AllReduce
     CHK_RET_AND_PRINT_IDE(AllReduceOutPlaceGraphMode(sendBuf, recvBuf, sendCount, dataType, op, comm, stream, tagStr, resPack), tagStr.c_str());
-    CHK_RET(LogHcclExit("HcclAllReduceGraphMode", opTag, startut));
+    CHK_RET(LogHcclExit("HcclAllReduceGraphMode", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }

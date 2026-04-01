@@ -53,7 +53,7 @@ HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclD
     // 执行AllGather
     CHK_RET_AND_PRINT_IDE(AllGatherOutPlace(sendBuf, recvBuf, sendCount, dataType, comm, stream, opTag), opTag.c_str());
 
-    CHK_RET(LogHcclExit("HcclAllGather", opTag, startut));
+    CHK_RET(LogHcclExit("HcclAllGather", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }
@@ -97,7 +97,7 @@ HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     // 执行AllGather
     CHK_RET_AND_PRINT_IDE(AllGatherOutPlaceGraphMode(sendBuf, recvBuf, sendCount, dataType, comm, stream, tagStr, resPack), tagStr.c_str());
 
-    CHK_RET(LogHcclExit("HcclAllGatherGraphMode", opTag, startut));
+    CHK_RET(LogHcclExit("HcclAllGatherGraphMode", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }

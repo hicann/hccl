@@ -157,7 +157,7 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& param,
 
 HcclResult CcuTempAllGatherNHR1DMem2Mem::KernelRun(const OpParam& param,
                                                        const TemplateDataParams& templateDataParams,
-                                                       const TemplateResource& templateResource)
+                                                       TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempAllGatherNHR1DMem2Mem] Template KernelRun start.");
     opMode_ = param.opMode;

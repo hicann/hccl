@@ -32,7 +32,7 @@ public:
 
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
+                         TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 private:

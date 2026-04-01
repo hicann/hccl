@@ -105,7 +105,7 @@ void CcuTempAlltoAllMesh1D::InitInsAlgTemplate(
 
 HcclResult CcuTempAlltoAllMesh1D::KernelRun(const OpParam& param,
                                             const TemplateDataParams& templateDataParams,
-                                            const TemplateResource& templateResource)
+                                            TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempAllToAllMesh1D] Run");
     buffInfo_ = templateDataParams.buffInfo;

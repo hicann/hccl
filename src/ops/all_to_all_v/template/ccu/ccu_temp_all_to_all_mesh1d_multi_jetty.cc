@@ -75,7 +75,7 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::CalcRes(HcclComm comm, const OpParam
 }
 
 HcclResult CcuTempAllToAllMesh1dMultiJetty::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     sendCounts_ = templateDataParams.sendCounts;

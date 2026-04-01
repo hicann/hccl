@@ -17,7 +17,7 @@ namespace ops_hccl {
 
 HcclResult HcomCheckGroupName(const char *group)
 {
-    if (group != nullptr) {
+    if (UNLIKELY(group != nullptr)) {
         u32 groupLen = strnlen(group, GROUP_NAME_MAX_LEN + 1);
         if (groupLen == (GROUP_NAME_MAX_LEN + 1) || groupLen == 0) {
             HCCL_ERROR("[Check][GroupName]errNo[0x%016llx] group name[%s] length[%lu] is invalid",

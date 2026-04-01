@@ -19,6 +19,7 @@ using RankId = u32;
 using RankGroup = std::vector<RankId>;
 class CcuTempReduceScatterMesh2Die : public CcuAlgTemplateBase{
 public:
+    CcuTempReduceScatterMesh2Die() = default;
     explicit CcuTempReduceScatterMesh2Die(const OpParam &param, RankId rankId,
     const std::vector<std::vector<u32>> &subCommRanks);
     ~CcuTempReduceScatterMesh2Die() override;
@@ -32,7 +33,7 @@ public:
         AlgResourceRequest &resourceRequest) override;
 
     HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-        const TemplateResource &templateResource) override;
+        TemplateResource& templateResource) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 private:
     HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs);

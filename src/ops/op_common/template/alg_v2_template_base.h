@@ -32,6 +32,7 @@ public:
     virtual HcclResult KernelRun(const OpParam& param,
                                  const TemplateDataParams& tempAlgParams,
                                  const TemplateResource& templateResource);
+    virtual HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx);
 
     virtual HcclResult DPUKernelRun(const TemplateDataParams& tempAlgParam,
         const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,

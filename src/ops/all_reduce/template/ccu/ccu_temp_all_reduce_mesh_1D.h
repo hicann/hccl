@@ -33,7 +33,7 @@ public:
 
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
+                         TemplateResource& templateResource) override;
 private:
     HcclResult CalcSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec);
     HcclResult CheckCcuDataType() const;

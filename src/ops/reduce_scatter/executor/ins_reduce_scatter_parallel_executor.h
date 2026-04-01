@@ -41,6 +41,11 @@ public:
     
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                     AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+#ifndef AICPU_COMPILE
+    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx) override;
+    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgResIntra,
+                                 const TemplateResource &templateAlgResInter);
+#endif
 
 private:
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra,
@@ -50,8 +55,7 @@ private:
     void GenTemplateAlgParamsInter0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAixs0, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter0) const;
     void GenTemplateAlgParamsInter1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAixs1, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter1) const;
     void GetParallelDataSplit(std::vector<float> &splitDataSize) const;
-    HcclResult PrepareResForTemplate(const AlgResourceCtxSerializable &resCtx,
-        const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter);
+    HcclResult PrepareResForTemplate(const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter);
     uint64_t GetRankSize(const std::vector<std::vector<u32>> &subCommRanks) const;
 
     uint64_t rankSizeLevel0_{0};
@@ -59,6 +63,11 @@ private:
 
     uint64_t rankIdxLevel0_{0};
     uint64_t rankIdxLevel1_{0};
+
+    u32 ccuKernelLaunchNumIntra0_{0};
+    u32 ccuKernelLaunchNumInter0_{0};
+    u32 ccuKernelLaunchNumIntra1_{0};
+    u32 ccuKernelLaunchNumInter1_{0};
 
     ThreadHandle              controlThread_{0};
     std::vector<ThreadHandle> templateMainThreads_;

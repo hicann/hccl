@@ -106,7 +106,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(HcclComm comm, const O
  
 HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
  

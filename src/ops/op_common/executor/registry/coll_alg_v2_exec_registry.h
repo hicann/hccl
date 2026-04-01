@@ -34,7 +34,7 @@ class CollAlgExecRegistryV2 {
 public:
     static CollAlgExecRegistryV2 &Instance();
     HcclResult Register(const HcclCMDType type, const std::string &tag, const CollExecCreatorV2 &collExecCreator);
-    std::shared_ptr<InsCollAlgBase> GetAlgExec(const HcclCMDType type, const std::string &tag);
+    std::unique_ptr<InsCollAlgBase> GetAlgExec(const HcclCMDType type, const std::string &tag);
 
 private:
     std::map<HcclCMDType, std::map<std::string, const CollExecCreatorV2>> execCreators_;

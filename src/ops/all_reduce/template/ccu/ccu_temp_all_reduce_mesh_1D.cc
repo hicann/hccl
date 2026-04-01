@@ -134,7 +134,7 @@ HcclResult CcuTempAllReduceMesh1D::CheckCcuDataType() const
 }
 
 HcclResult CcuTempAllReduceMesh1D::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                             const TemplateResource& templateResource)
+                                             TemplateResource& templateResource)
 {
     if (outputDataType_ == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         outputDataType_ = dataType_;

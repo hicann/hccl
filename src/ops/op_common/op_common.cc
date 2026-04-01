@@ -175,8 +175,100 @@ uint32_t GetHcclDfxOpInfoDataType(const OpParam &param) {
     return dataType;
 }
 
+HcclResult SetOpParamFastLaunchTag(OpParam &param)
+{
+    HcclDataType tmpDataType;
+    if(param.opType == HcclCMDType::HCCL_CMD_ALLTOALL || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
+        param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        tmpDataType = param.all2AllVDataDes.sendType;
+    } else {
+        tmpDataType = param.DataDes.dataType;
+    }
+    
+    const std::string dataType = HCOM_DATA_TYPE_STR_MAP.at(tmpDataType);
+    // 1.通信域tag + 数据类型，得到基础FastLaunchTag
+    std::string tagBuilder = std::string(param.tag) + "_" + dataType;
+    // 2.reduceType
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLREDUCE || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
+        param.opType == HcclCMDType::HCCL_CMD_REDUCE || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+        const std::string reduceType = HCOM_REDUCE_OP_STR_MAP.at(param.reduceType);
+        tagBuilder += "_" + reduceType;
+    }
+    // 3.count
+    if (param.opType != HcclCMDType::HCCL_CMD_ALLTOALLV) {
+        std::string count = std::to_string(param.DataDes.count); //todo: alltoall 的count不是从这里取
+        tagBuilder += "_" + count;
+    }
+    // 4.root
+    if (param.opType == HcclCMDType::HCCL_CMD_REDUCE || param.opType == HcclCMDType::HCCL_CMD_SCATTER ||
+        param.opType == HcclCMDType::HCCL_CMD_BROADCAST) {
+        std::string root = std::to_string(param.root);
+        tagBuilder += "_r" + root;
+    }
+    CHK_PRT_RET((tagBuilder.length() >= sizeof(param.fastLaunchTag)), 
+        "failed to fill fastLaunchTag, tag too long", HcclResult::HCCL_E_INTERNAL);
+    snprintf_s(param.fastLaunchTag, sizeof(param.fastLaunchTag), sizeof(param.fastLaunchTag), "%s", tagBuilder.c_str());
+
+    HCCL_INFO("[SetOpParamFastLaunchTag] fastLaunchTag: [%s]", param.fastLaunchTag);
+    return HcclResult::HCCL_SUCCESS;
+}
+
+bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam &param, CcuFastLaunchCtx **ccuFastLaunchCtx)
+{
+    param.hcclComm = comm;
+    
+    // 1. 是ccu模式
+    if (GetExternalInputHcclCcuMSMode()) {
+        HCCL_DEBUG("[HcclExecOp] is ccu ms mode");
+        param.opExecuteConfig = OpExecuteConfig::CCU_MS;
+        param.engine = CommEngine::COMM_ENGINE_CCU;
+    } else if (GetExternalInputHcclCcuSchedMode()) {
+        HCCL_DEBUG("[HcclExecOp] is ccu sched mode");
+        param.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
+        param.engine = CommEngine::COMM_ENGINE_CCU;
+    } else {
+        // 非CCU模式，返回走正常流程
+        return false;
+    }
+
+    CHK_RET(SetOpParamFastLaunchTag(param));
+    
+    // 2. 查到engineCtx
+    uint64_t size = 0;
+    void *fastLaunchCtxPtr = nullptr;
+    if (HcclEngineCtxGet(comm, param.fastLaunchTag, CommEngine::COMM_ENGINE_CCU, &fastLaunchCtxPtr, &size) == HCCL_SUCCESS) {
+        HCCL_INFO("[ShouldGoCcuFastLaunch] get fastLaunchCtx success, size is %u", size);
+        *ccuFastLaunchCtx = reinterpret_cast<CcuFastLaunchCtx*>(fastLaunchCtxPtr);
+        return true;
+    }
+    return false;
+}
+
+HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastLaunchCtx *ccuFastLaunchCtx)
+{
+    HCCL_INFO("[HcclExecOpCcuFastLaunch] HcclExecOpCcuFastLaunch start");
+    std::string algName = ccuFastLaunchCtx->algName;
+    HCCL_DEBUG("[HcclExecOpCcuFastLaunch] algName: [%s]", algName.c_str());
+    std::unique_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param.opType, algName);
+    CHK_PRT_RET(
+        executor.get() == nullptr, HCCL_ERROR("Fail to find executor for algName[%s]", algName.c_str()), HCCL_E_PARA);
+    
+    void *cclBufferAddr;
+    uint64_t cclBufferSize;
+    // 从通信域获取CCL buffer
+    CHK_RET(HcclGetHcclBuffer(comm, &cclBufferAddr, &cclBufferSize));
+    // CCL IN使用所有的CCL Buffer，这个其实就是scratch buffer
+    param.hcclBuff = HcclMem{HCCL_MEM_TYPE_DEVICE, cclBufferAddr, cclBufferSize};
+    
+    HCCL_INFO("[HcclExecOpCcuFastLaunch] FastLaunch start");
+    CHK_RET(executor->FastLaunch(param, ccuFastLaunchCtx));
+    
+    HCCL_INFO("[HcclExecOpCcuFastLaunch] HcclExecOpCcuFastLaunch end");
+    return HCCL_SUCCESS;
+}
+
 HcclResult ExecuteAivCacheLogic(OpParam &param, const std::string &algName,
-                                std::shared_ptr<InsCollAlgBase> executor,
+                                std::unique_ptr<InsCollAlgBase> &executor,
                                 AlgResourceCtxSerializable &resCtxHost)
 {
     // Cache Logic
@@ -232,7 +324,6 @@ HcclResult ExecuteAivCacheLogic(OpParam &param, const std::string &algName,
             g_baseOutputAddr = 0;
         }
     }
-
     return HCCL_SUCCESS;
 }
 
@@ -251,7 +342,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
         return HCCL_E_INTERNAL;
     }
 
-    std::shared_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param.opType, algName);
+    std::unique_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param.opType, algName);
     CHK_PRT_RET(
         executor.get() == nullptr, HCCL_ERROR("Fail to find executor for algName[%s]", algName.c_str()), HCCL_E_PARA);
 
@@ -322,6 +413,11 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
             char *ctx = static_cast<char*>(resCtxSequence);
             std::vector<char> seq(ctx, ctx + param.ctxSize);
             resCtxHost->DeSerialize(seq);
+        }
+        int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
+        if (result <= 0) {
+            HCCL_ERROR("faled to fill param.algName");
+            return HCCL_E_INTERNAL;
         }
         if (resCtxHost->slaveThreadNum > 0) {
             CHK_RET(CaptureSlaveStreams(comm, param.stream, resCtxHost->threads));
@@ -524,7 +620,7 @@ void CompReqChannelWithExistChannel(const std::vector<std::vector<ChannelInfo>>&
     return;
 }
 
-HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::shared_ptr<InsCollAlgBase>& executor, TopoInfoWithNetLayerDetails* topoInfo,
+HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollAlgBase>& executor, TopoInfoWithNetLayerDetails* topoInfo,
                          std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost, void** resCtxSequence, bool &isResourceReused)
 {
     HCCL_INFO("Start to execute HcclGetAlgRes.");
@@ -1157,7 +1253,7 @@ HcclResult GetAlgResDPU(HcclComm comm, const OpParam &param, AlgResourceRequest 
 
 HcclResult CheckCount(const u64 count)
 {
-    if (count > SYS_MAX_COUNT) {
+    if (UNLIKELY(count > SYS_MAX_COUNT)) {
         HCCL_ERROR("[Check][Count]errNo[0x%016llx] count[%llu] is invalid(bigger than MAX count[%llu])",
                     HCCL_ERROR_CODE(HCCL_E_PARA), count, SYS_MAX_COUNT);
         return HCCL_E_PARA;
@@ -1293,7 +1389,7 @@ HcclResult HcclCheckTag(const char *tag)
     CHK_PTR_NULL(tag);
 
     u32 tagLen = strnlen(tag, TAG_MAX_LEN + 1);
-    if (tagLen == (TAG_MAX_LEN + 1) || tagLen == 0) {
+    if (UNLIKELY((tagLen == (TAG_MAX_LEN + 1) || tagLen == 0))) {
         HCCL_ERROR("[Check][Tag]errNo[0x%016llx] tag is too long", HCOM_ERROR_CODE(HCCL_E_PARA));
         return HCCL_E_PARA;
     }
@@ -1530,7 +1626,7 @@ bool ShouldUseInnerOp(OpExecuteConfig opExecuteConfig)
     return false;
 }
 
-HcclResult LogHcclExit(const std::string &opName, const std::string &tag, HcclUs startut)
+HcclResult LogHcclExit(const std::string &opName, const char *tag, HcclUs startut)
 {
     if (GetExternalInputHcclEnableEntryLog()) {
         HcclUs endut = TIME_NOW();

@@ -176,7 +176,7 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::CalcSlice(const u64 dataSize, RankSlice
 }
 
 HcclResult CcuTempAllReduceNHRMem2Mem1D::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                           const TemplateResource& templateResource)
+                                                           TemplateResource& templateResource)
 {
     uint64_t dataCount = (templateDataParams.sliceSize / DataTypeSizeGet(dataType_));
     if (dataCount == 0) {

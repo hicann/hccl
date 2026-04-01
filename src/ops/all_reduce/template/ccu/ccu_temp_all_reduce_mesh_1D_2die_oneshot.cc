@@ -99,7 +99,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpPar
 
 HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

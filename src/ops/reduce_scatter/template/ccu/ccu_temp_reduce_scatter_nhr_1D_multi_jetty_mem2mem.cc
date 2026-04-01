@@ -94,7 +94,7 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::GetRes(AlgResourceRequest
 
 HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

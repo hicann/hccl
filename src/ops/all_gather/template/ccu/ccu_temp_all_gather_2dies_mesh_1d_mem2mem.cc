@@ -93,7 +93,7 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes(HcclComm comm, const OpPa
 }
  
 HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     uint32_t rankId = mySubCommRank_;

@@ -43,6 +43,7 @@ constexpr uint32_t MAX_TAG_LENGTH = 255;
 constexpr uint32_t AICPU_CONTROL_NOTIFY_NUM = 2;
 constexpr uint32_t MAX_MEM_TAG_LENGTH = OP_ALG_LENGTH + 32;
 constexpr uint32_t RES_PACK_TAG_LENGTH = 255;
+constexpr uint32_t MAX_TEMP_NUM_IN_ALGO = 8; // 单个算法中最大template数量
 
 // 是否再拆分一个comm头文件
 constexpr u32 LOCAL_NOTIFY_IDX_ZERO = 0;
@@ -253,6 +254,48 @@ struct CcuKernelInfo {
     std::vector<HcclChannelDesc> channels;
 };
 
+// 算法taskArg入参最大个数，用于快速下发缓存
+#define CCU_MAX_TASK_ARG_NUM 30
+
+struct CcuKernelSubmitInfo {
+    CcuKernelHandle kernelHandle;
+    uint64_t cachedArgs[CCU_MAX_TASK_ARG_NUM];
+};
+
+// ccu快速下发上下文
+struct CcuFastLaunchCtx {
+    char algName[OP_ALG_LENGTH];
+    u32 threadNum;
+    u32 ccuKernelNum[MAX_TEMP_NUM_IN_ALGO];  // 每次调用template的KernelRun下发的kernel数量
+    // 紧接ThreadHandle数组
+    // 紧接CcuKernelSubmitInfo数组
+
+    ThreadHandle *GetThreadHandlePtr() const
+    {
+        size_t offset = offsetof(CcuFastLaunchCtx, ccuKernelNum)
+                        + sizeof(u32) * MAX_TEMP_NUM_IN_ALGO;
+        return reinterpret_cast<ThreadHandle*>(
+                    reinterpret_cast<char*>(const_cast<CcuFastLaunchCtx*>(this)) + offset
+                );
+    }
+    CcuKernelSubmitInfo *GetCcuKernelSubmitInfoPtr() const
+    {
+        size_t offset = offsetof(CcuFastLaunchCtx, ccuKernelNum)
+                        + sizeof(u32) * MAX_TEMP_NUM_IN_ALGO 
+                        + sizeof(ThreadHandle) * threadNum;
+        return reinterpret_cast<CcuKernelSubmitInfo*>(
+                    reinterpret_cast<char*>(const_cast<CcuFastLaunchCtx*>(this)) + offset
+                );
+    }
+
+    static u64 GetCtxSize(u32 threadNum, u32 totalCcuKernelNum)
+    {
+        return sizeof(CcuFastLaunchCtx) 
+               + sizeof(ThreadHandle) * threadNum 
+               + sizeof(CcuKernelSubmitInfo) * totalCcuKernelNum;
+    }
+};
+
 // A5用了cntNotify
 struct AlgResourceRequest {
     u32 notifyNumOnMainThread = 0;
@@ -398,6 +441,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     void* hcclComm;
     char tag[TAG_LENGTH]; // 保存topoInfo的key值
     char algTag[ALG_TAG_LENGTH]; // 保存资源的key值，和算法绑定
+    char fastLaunchTag[ALG_TAG_LENGTH]; // 快速下发的key值
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
     char commModeTag[TAG_LENGTH]; // 保存与执行模式相关的资源信息的key值
     aclrtStream stream;
@@ -405,6 +449,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     u64 inputSize = 0;
     void* outputPtr = nullptr;
     u64 outputSize = 0;
+    HcclMem hcclBuff;   // 当前仅快速下发时使用此处的地址
     HcclReduceOp reduceType = HcclReduceOp::HCCL_REDUCE_RESERVED;
     u32 root = INVALID_VALUE_RANKID;
     u32 sendRecvRemoteRank = INVALID_VALUE_RANKID;

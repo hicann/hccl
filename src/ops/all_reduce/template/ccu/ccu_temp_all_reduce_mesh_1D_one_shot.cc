@@ -71,7 +71,7 @@ HcclResult CcuTempAllReduceMesh1DOneShot::CalcRes(HcclComm comm, const OpParam& 
 
 HcclResult CcuTempAllReduceMesh1DOneShot::KernelRun(const OpParam& param,
                                                     const TemplateDataParams& templateDataParams,
-                                                    const TemplateResource& templateResource)
+                                                    TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     HCCL_INFO("CcuTempAllReduceMesh1DOneShot KernelRun inputPtr(%p), inputSize(%d)", buffInfo_.inputPtr, buffInfo_.inputSize);

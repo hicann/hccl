@@ -36,7 +36,7 @@ public:
 
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
-                         const TemplateResource& templateResource) override;
+                         TemplateResource& templateResource) override;
 
     void SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo);
 

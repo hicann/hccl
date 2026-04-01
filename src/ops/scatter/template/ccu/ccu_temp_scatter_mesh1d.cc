@@ -81,7 +81,7 @@ HcclResult CcuTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam &param, co
 }
 
 HcclResult CcuTempScatterMesh1D::KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-                                                  const TemplateResource &templateResource)
+                                                  TemplateResource& templateResource)
 {
     if (templateDataParams.sliceSize == 0 && templateDataParams.tailSize == 0) {
         HCCL_INFO("[CcuTempScatterMesh1D] sliceSize is 0, no need do, just success.");

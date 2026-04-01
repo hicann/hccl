@@ -70,6 +70,35 @@ const std::map<HcclDataType, std::string> HCOM_DATA_TYPE_STR_MAP{
     {HcclDataType::HCCL_DATA_TYPE_RESERVED, "reserved"}
 };
 
+// 返回const char*，避免string和map查找开销
+inline const char* GetHcclDataTypeStr(HcclDataType type) noexcept
+{
+    switch (type)
+    {
+        case HcclDataType::HCCL_DATA_TYPE_INT8: return "int8";
+        case HcclDataType::HCCL_DATA_TYPE_INT16: return "int16";
+        case HcclDataType::HCCL_DATA_TYPE_INT32: return "int32";
+        case HcclDataType::HCCL_DATA_TYPE_INT64: return "int64";
+        case HcclDataType::HCCL_DATA_TYPE_UINT64: return "uint64";
+        case HcclDataType::HCCL_DATA_TYPE_FP16: return "float16";
+        case HcclDataType::HCCL_DATA_TYPE_FP32: return "float32";
+        case HcclDataType::HCCL_DATA_TYPE_UINT8: return "uint8";
+        case HcclDataType::HCCL_DATA_TYPE_UINT16: return "uint16";
+        case HcclDataType::HCCL_DATA_TYPE_UINT32: return "uint32";
+        case HcclDataType::HCCL_DATA_TYPE_FP64: return "float64";
+        case HcclDataType::HCCL_DATA_TYPE_BFP16: return "bfloat16";
+        case HcclDataType::HCCL_DATA_TYPE_INT128: return "int128";
+        case HcclDataType::HCCL_DATA_TYPE_HIF8: return "hif8";
+        case HcclDataType::HCCL_DATA_TYPE_FP8E4M3: return "fp8e4m3";
+        case HcclDataType::HCCL_DATA_TYPE_FP8E5M2: return "fp8e5m2";
+        case HcclDataType::HCCL_DATA_TYPE_FP8E8M0: return "fp8e8m0";
+        case HcclDataType::HCCL_DATA_TYPE_MXFP8: return "mxfp8";
+        case HcclDataType::HCCL_DATA_TYPE_RESERVED: return "reserved";
+        default:
+            return nullptr;
+    }
+}
+
 inline std::string GetDataTypeEnumStr(HcclDataType dataType)
 {
     auto iter = HCOM_DATA_TYPE_STR_MAP.find(dataType);
@@ -87,6 +116,20 @@ const std::map<HcclReduceOp, std::string> HCOM_REDUCE_OP_STR_MAP{
     {HcclReduceOp::HCCL_REDUCE_MIN, "min"},
     {HcclReduceOp::HCCL_REDUCE_RESERVED, "reserved"}
 };
+
+inline const char* GetHcclReduceOpStr(HcclReduceOp op) noexcept
+{
+    switch (op)
+    {
+        case HcclReduceOp::HCCL_REDUCE_SUM:         return "sum";
+        case HcclReduceOp::HCCL_REDUCE_PROD:        return "prod";
+        case HcclReduceOp::HCCL_REDUCE_MAX:         return "max";
+        case HcclReduceOp::HCCL_REDUCE_MIN:         return "min";
+        case HcclReduceOp::HCCL_REDUCE_RESERVED:    return "reserved";
+        default:
+            return nullptr;
+    }
+}
 
 inline std::string GetReduceOpEnumStr(HcclReduceOp reduceOp)
 {

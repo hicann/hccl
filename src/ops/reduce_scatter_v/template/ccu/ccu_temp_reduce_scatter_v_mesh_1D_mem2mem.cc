@@ -98,7 +98,7 @@ uint64_t CcuTempReduceScatterVMesh1DMem2Mem::GetTokenWithFallback(const BuffInfo
 
 HcclResult CcuTempReduceScatterVMesh1DMem2Mem::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

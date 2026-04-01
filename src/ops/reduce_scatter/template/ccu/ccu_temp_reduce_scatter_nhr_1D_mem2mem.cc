@@ -132,6 +132,40 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpPara
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult CcuTempReduceScatterNHR1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
+{
+    HCCL_DEBUG("[CcuTempReduceScatterMesh1D::FastLaunch] start");
+    u32 kernelNum = tempFastLaunchCtx.ccuKernelSubmitInfos.size();
+    buffInfo_ = tempFastLaunchCtx.buffInfo;
+    const uint64_t *args = tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs;
+    // 前流同步
+    if (kernelNum > 1) {
+        std::vector<ThreadHandle> subThreads(tempFastLaunchCtx.threads.begin() + 1, tempFastLaunchCtx.threads.end());
+        std::vector<u32> notifyIdxMainToSub(1, 0);
+        CHK_RET(PreSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxMainToSub));
+    }
+
+    for (u32 kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
+        CcuTaskArgReduceScatterNHR1D taskArg(
+            PointerToAddr(buffInfo_.inputPtr) + args[0],
+            PointerToAddr(buffInfo_.outputPtr) + args[1],
+            args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11]);
+    
+        void* taskArgPtr = static_cast<void*>(&taskArg);
+    
+        CHK_RET(HcclCcuKernelLaunch(param.hcclComm, tempFastLaunchCtx.threads[0], 
+            tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle, taskArgPtr));
+    }
+    // 后流同步
+    if (kernelNum > 1) {
+        std::vector<ThreadHandle> subThreads(tempFastLaunchCtx.threads.begin() + 1, tempFastLaunchCtx.threads.end());
+        std::vector<u32> notifyIdxSubToMain(1, 0);
+        CHK_RET(PostSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxSubToMain));
+    }
+    HCCL_DEBUG("[CcuTempReduceScatterMesh1D::FastLaunch] end");
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& param, const uint64_t sliceSize,
                                                                uint64_t& die0Size, uint64_t& die1Size) const
 {
@@ -154,7 +188,7 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& pa
 
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(const OpParam& param,
                                                        const TemplateDataParams& templateDataParams,
-                                                       const TemplateResource& templateResource)
+                                                       TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem] Template KernelRun start.");
     opMode_ = param.opMode;
@@ -198,7 +232,6 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(const OpParam& param,
     if (kernelNum > 1) {
         std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
         std::vector<u32> notifyIdxMainToSub(1, 0);
-        
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     }
 
@@ -217,13 +250,21 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(const OpParam& param,
 
         CHK_RET(HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgPtr));
     }
-
     // 后流同步
     if (kernelNum > 1) {
         std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
         std::vector<u32> notifyIdxSubToMain(1, 0);
-        
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain));
+    }
+    // 所有task下发完后再保存参数信息
+    CcuKernelSubmitInfo submitInfo;
+    CHK_RET(FillCachedArgs(submitInfo, buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, token, die0Size, die1Size,
+        die0LastSliceSize, die1LastSliceSize, inputSliceStride, outputSliceStride, inputRepeatStride,
+        outputRepeatStride, repeatNum));
+    for (u32 i = 0; i < kernelNum; i++) { 
+        // 2个kernel的TaskArg相同
+        submitInfo.kernelHandle = templateResource.ccuKernels[i];
+        templateResource.submitInfos.push_back(submitInfo);
     }
 
     HCCL_INFO("[CcuTempReduceScatterNHR1DMem2Mem] Template Run for all steps Ends.");

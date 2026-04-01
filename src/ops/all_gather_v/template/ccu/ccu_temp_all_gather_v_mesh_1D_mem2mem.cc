@@ -79,7 +79,7 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam&
 
 HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
                                                         const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

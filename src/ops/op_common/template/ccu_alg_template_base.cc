@@ -41,12 +41,20 @@ HcclResult CcuAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, cons
 }
 
 HcclResult CcuAlgTemplateBase::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                         const TemplateResource& templateResource)
+                                         TemplateResource& templateResource)
 {
     (void)param;
     (void)templateDataParams;
     (void)templateResource;
     HCCL_ERROR("[CcuAlgTemplateBase] Unsupported interface of CcuAlgTemplateBase::KernelRun!");
+    return HcclResult::HCCL_E_INTERNAL;
+}
+
+HcclResult CcuAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
+{
+    (void)param;
+    (void)tempFastLaunchCtx;
+    HCCL_ERROR("[CcuAlgTemplateBase] Unsupported interface of CcuAlgTemplateBase::FastLaunch!");
     return HcclResult::HCCL_E_INTERNAL;
 }
 

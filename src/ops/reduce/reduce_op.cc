@@ -67,7 +67,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     // 执行Reduce
     CHK_RET_AND_PRINT_IDE(ReduceOutPlace(sendBuf, recvBuf, count, dataType, op, root, comm, stream, tag), tag.c_str());
 
-    CHK_RET(LogHcclExit("HcclReduce", tag, startut));
+    CHK_RET(LogHcclExit("HcclReduce", tag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }

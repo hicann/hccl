@@ -70,7 +70,7 @@ HcclResult CcuTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, con
 
 HcclResult CcuTempReduceMesh1D::KernelRun(const OpParam& param,
                                           const TemplateDataParams& templateDataParams,
-                                          const TemplateResource& templateResource)
+                                          TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

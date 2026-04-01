@@ -51,7 +51,7 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
     CHK_RET_AND_PRINT_IDE(BroadcastOutPlace(buf, count, dataType, root, comm, stream, opTag),
                           opTag.c_str());
 
-    CHK_RET(LogHcclExit("HcclBroadcast", opTag, startut));
+    CHK_RET(LogHcclExit("HcclBroadcast", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }
@@ -93,7 +93,7 @@ HcclResult HcclBroadcastGraphMode(void *buf, uint64_t count, HcclDataType dataTy
     // 执行Broadcast
     CHK_RET_AND_PRINT_IDE(BroadcastOutPlaceGraphMode(buf, count, dataType, root, comm, stream, tagStr, resPack), tagStr.c_str());
 
-    CHK_RET(LogHcclExit("HcclBroadcastGraphMode", opTag, startut));
+    CHK_RET(LogHcclExit("HcclBroadcastGraphMode", opTag.c_str(), startut));
 
     return HCCL_SUCCESS;
 }

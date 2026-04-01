@@ -99,7 +99,7 @@ HcclResult CcuTempAllGather2DiesMesh1D::CalcRes(HcclComm comm, const OpParam& pa
 }
  
 HcclResult CcuTempAllGather2DiesMesh1D::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                        const TemplateResource& templateResource)
+                                                        TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 

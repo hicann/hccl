@@ -422,7 +422,7 @@ target_compile_options(hccl PRIVATE
     -fno-common
     -fno-strict-aliasing
     -pipe
-    $<$<CONFIG:Release>:-O3>
+    -O3
     $<$<CONFIG:Debug>:-g>
     -std=c++14
     -fstack-protector-all

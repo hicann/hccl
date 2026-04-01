@@ -41,5 +41,21 @@ HcclResult InsCollAlgBase::RestoreChannelMap(const AlgResourceCtxSerializable &r
     }
     return HCCL_SUCCESS;
 }
+    
+HcclResult InsCollAlgBase::SetTempFastLaunchAddr(TemplateFastLaunchCtx &tempFastLaunchCtx, 
+    void* inputPtr, void* outputPtr, const HcclMem &hcclBuff) const
+{
+    tempFastLaunchCtx.buffInfo.inputPtr = inputPtr;
+    tempFastLaunchCtx.buffInfo.outputPtr = outputPtr;
+    tempFastLaunchCtx.buffInfo.hcclBuff = hcclBuff;
+    return HCCL_SUCCESS;
+}
 
+HcclResult InsCollAlgBase::FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx)
+{
+    (void)param;
+    (void)resCtx;
+    HCCL_ERROR("[InsCollAlgBase] Unsupported interface of InsCollAlgBase::FastLaunch!");
+    return HcclResult::HCCL_E_INTERNAL;
+}
 }

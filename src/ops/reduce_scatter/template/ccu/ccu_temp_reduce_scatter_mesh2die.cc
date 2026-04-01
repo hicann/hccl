@@ -109,7 +109,7 @@ HcclResult CcuTempReduceScatterMesh2Die::PartitionChannels(HcclComm comm, const 
 }
 
 HcclResult CcuTempReduceScatterMesh2Die::KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-    const TemplateResource &templateResource)
+    TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempReduceScatterMesh2Die] Run");
     buffInfo_ = templateDataParams.buffInfo;
