@@ -693,19 +693,19 @@ HcclResult ParseOpExpansion()
         g_algEnvConfig.ccuSchedMode = true;
         return HCCL_SUCCESS;
     } 
-
-    if (opExpansionModeEnv == "EmptyString") {
-        HCCL_RUN_INFO("HCCL_OP_EXPANSION_MODE is not set, aicpuUnfold is [%u], aivMode is [%u]",
-            g_algEnvConfig.aicpuUnfold,
-            g_algEnvConfig.aivMode);
-        return HCCL_SUCCESS;
-    }
     
     DevType deviceType;
     CHK_RET(hrtGetDeviceType(deviceType));
     // 910_93默认打开AICPU展开
     if (deviceType == DevType::DEV_TYPE_910_93) {
         g_algEnvConfig.aicpuUnfold = true;
+    }
+
+    if (opExpansionModeEnv == "EmptyString") {
+        HCCL_RUN_INFO("HCCL_OP_EXPANSION_MODE is not set, aicpuUnfold is [%u], aivMode is [%u]",
+            g_algEnvConfig.aicpuUnfold,
+            g_algEnvConfig.aivMode);
+        return HCCL_SUCCESS;
     }
 
     if (opExpansionModeEnv == "AI_CPU") {
