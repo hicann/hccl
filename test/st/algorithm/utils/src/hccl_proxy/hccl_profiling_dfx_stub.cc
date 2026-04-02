@@ -57,13 +57,19 @@ HcclResult HcommRegOpTaskException(const char* commId, HcommGetOpInfoCallback ca
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, char *kernelName)
+HcclResult HcclDfxRegOpInfoByCommId(char* commId, void* hcclDfxOpInfo)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclDfxRegOpInfo(HcclComm comm, void* dfxOpInfo)
+HcclResult HcclReportAivKernel(HcclComm comm, uint64_t beginTime)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, char *kernelName)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return HCCL_SUCCESS;
@@ -119,7 +125,6 @@ bool HcommIsSupportHcommRegOpTaskException()
 {
     return false;
 }
-
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
