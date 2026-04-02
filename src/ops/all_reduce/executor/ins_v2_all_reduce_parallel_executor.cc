@@ -553,7 +553,6 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     if (multiple > 0 && maxTmpMemSize_ > 0) {
         u64 scratchCount = maxTmpMemSize_ / dataTypeSize_;  // 按照count来切分
         sliceCount = std::min(static_cast<u64>(float(scratchCount) / multiple), sliceCountUB0);
-        sliceCount = std::min(sliceCount, dataCount_);
     }
     HCCL_DEBUG("[InsAllReduceParallelExecutor][GenInsQues] dataCount_[%lu], myRank_[%d], sliceCountUB[%d], sliceCountUB0[%d], sliceCount[%d]",
               dataCount_, myRank_, sliceCountUB, sliceCountUB0, sliceCount);
