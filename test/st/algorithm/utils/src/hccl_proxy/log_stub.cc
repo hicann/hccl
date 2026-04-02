@@ -10,6 +10,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <sys/time.h>
