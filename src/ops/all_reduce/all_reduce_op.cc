@@ -124,6 +124,7 @@ HcclResult AllReduceInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, ui
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), opTag.c_str());
     CHK_RET(CheckCount(count));
     CHK_RET(CheckDataType(dataType, true));
+    CHK_RET(CheckReduceOp(dataType, op));
 
     return HCCL_SUCCESS;
 }

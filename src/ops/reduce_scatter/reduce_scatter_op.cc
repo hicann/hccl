@@ -59,6 +59,7 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
     int ret = sprintf_s(param.tag, sizeof(param.tag), "ReduceScatter_%s", param.commName);
     CHK_PRT_RET((ret <= 0), "failed to fill param.tag", HCCL_E_INTERNAL);
     CHK_RET(HcclCheckTag(param.tag));
+    CHK_RET(CheckReduceOp(dataType, op));
 
     /* 接口交互信息日志 */
     CHK_RET(ReduceScatterEntryLog(sendBuf, recvBuf, recvCount, dataType, op, stream, param.tag, "HcclReduceScatter"));
@@ -92,6 +93,7 @@ HcclResult HcclReduceScatterGraphMode(void *sendBuf, void *recvBuf, uint64_t rec
 
     CHK_RET(CheckCount(recvCount));
     CHK_RET(CheckDataType(dataType, true));
+    CHK_RET(CheckReduceOp(dataType, op));
 
     u32 rankSize = INVALID_VALUE_RANKSIZE;
     CHK_RET(HcclGetRankSize(comm, &rankSize));

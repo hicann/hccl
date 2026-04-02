@@ -60,6 +60,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
     CHK_RET(CheckCount(count));
     CHK_RET(CheckDataType(dataType, true));
+    CHK_RET(CheckReduceOp(dataType, op));
 
     /* 接口交互信息日志 */
     CHK_RET(ReduceEntryLog(sendBuf, recvBuf, count, dataType, op, root, stream, tag, "HcclReduce"));
