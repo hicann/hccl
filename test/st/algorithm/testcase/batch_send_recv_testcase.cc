@@ -96,7 +96,7 @@ void RunBatchSendRecvTest(TopoMeta topoMeta, u32 rankSize, u64 dataCount, HcclDa
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+    
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * unitSize;
@@ -310,7 +310,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_016)
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+    
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * 1;
@@ -381,7 +381,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_017)
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+    
 
     // 算子执行参数设置
     u64 dataCount = 100;
@@ -405,7 +405,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_run_twice)
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+    
 
     // 算子执行参数设置
     auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)

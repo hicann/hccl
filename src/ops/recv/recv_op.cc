@@ -23,9 +23,6 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclRecv(
     void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream)
 {
-    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
-        return HcclRecvInner(recvBuf, count, dataType, srcRank, comm, stream);
-    }
     HCCL_INFO("[HcclRecv] Start.");
     if (GetHcommVersion() < 90000000) {
         return HcclRecvInner(recvBuf, count, dataType, srcRank, comm, stream);

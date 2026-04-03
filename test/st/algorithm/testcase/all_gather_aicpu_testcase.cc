@@ -59,7 +59,6 @@ void RunAllGatherAicpuA5(const TopoMeta &topoInfo, const u64 &sendCount, const H
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE_ALL_GATHER_ST[dataType];
     auto rankSize = AnalyseRankSize(topoInfo);

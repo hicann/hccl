@@ -1545,10 +1545,10 @@ bool HcclCheckAicpuEnableOpen()
     const char* envValue = std::getenv("HCCL_ENABLE_OPEN_AICPU");
 
     if (envValue != nullptr && std::strcmp(envValue, "1") == 0) {
-        return true;
+        return false;
     }
 
-    return false;
+    return true;
 }
 
 HcclResult HcclRegstryBuff(HcclComm comm, const char *memTag, void *bufferPtr, uint64_t bufferSize, HcclMemHandle *memHandle)

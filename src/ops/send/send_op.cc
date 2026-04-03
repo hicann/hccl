@@ -23,9 +23,6 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclSend(
     void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream)
 {
-    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
-        return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
-    }
     HCCL_INFO("[HcclSend] Start.");
     if (GetHcommVersion() < 90000000) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);

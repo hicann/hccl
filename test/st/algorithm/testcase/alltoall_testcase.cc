@@ -47,7 +47,7 @@ protected:
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_BUFFSIZE", "200", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+        
 
         // 设置收发数据量，收发数据量相同
         u64 sendDataCount = dataCount;
@@ -105,7 +105,7 @@ protected:
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+        
 
         // 设置发送数据量和接收数据量相同
         u64 sendDataCount = dataCount;

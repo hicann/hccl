@@ -45,7 +45,7 @@ protected:
         // 设置展开模式为HOST_TS
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+        
 
         // // 算子执行参数设置
         // auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)

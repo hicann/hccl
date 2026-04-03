@@ -105,7 +105,7 @@ void SendRecvTest(
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+    
 
     auto rankSize = GetRankSize(topoMeta);
     auto usedRankIds = GetRankIds(sendRecvMap);

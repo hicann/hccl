@@ -89,7 +89,7 @@ protected:
         SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+        
 
         std::vector<std::thread> threads;
         u32 rankSize = GetRankSize(topoMeta);
@@ -136,7 +136,7 @@ protected:
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
+        
 
         // 算子执行参数设置
         u32 rankSize = 0;

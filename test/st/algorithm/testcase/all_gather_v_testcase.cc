@@ -46,7 +46,6 @@ TEST_F(ST_ALL_GATHER_V_TEST, st_all_gather_v_a5_aicpu_test)
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
-    setenv("HCCL_ENABLE_OPEN_AICPU", "1", 1);
 
     // 算子执行参数设置
     auto rankSize = 2;                                   // 参与集合通信的卡数(同topoMeta卡数一致)

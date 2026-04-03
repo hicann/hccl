@@ -22,9 +22,6 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 
 HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
 {
-    if (!HcclCheckAicpuEnableOpen() && !HcclCheckCcuEnableOpen() && !HcclCheckAivEnableOpen()) {
-        return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
-    }
     HCCL_INFO("Start to run execute HcclBroadcast");
     if (GetHcommVersion() < 90000000) { // compat handle
         return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
