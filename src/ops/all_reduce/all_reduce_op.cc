@@ -33,7 +33,6 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
 
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
-    // 非95设备转到老流程
     #ifdef MACRO_DEV_TYPE_NEW
     if (deviceType != DevType::DEV_TYPE_950) {
     #else
@@ -41,10 +40,8 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
     #endif
         return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
     }
-    // 图模式引导到老的流程上面
-    if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
-        return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
-    }
+    CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return all reduce success"), HCCL_SUCCESS);
+    
     HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
     std::string opTag;
     CHK_RET(AllReduceInitAndCheck(comm, sendBuf, recvBuf, count, dataType, op, stream, opTag));
@@ -69,6 +66,7 @@ HcclResult HcclAllReduceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     HcclComm comm = nullptr;
     HCCL_INFO("[HcclAllReduceGraphMode] get group name: %s", group);
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));
+    CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all reduce success"), HCCL_SUCCESS);
 
     HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
     std::string opTag;
@@ -111,7 +109,6 @@ HcclResult AllReduceInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, ui
     CHK_RET(InitEnvConfig());
     
     // 参数校验等工作
-    CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return all reduce success"), HCCL_SUCCESS);
     CHK_RET(CheckAllReduceInputPara(comm, sendBuf, recvBuf, stream));
     u32 rankSize = INVALID_VALUE_RANKSIZE;
     CHK_RET(HcclGetRankSize(comm, &rankSize));
@@ -191,12 +188,7 @@ HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count,
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
     if (ShouldUseInnerOp(param.opExecuteConfig)) {
-        if (opMode == OpMode::OPBASE) {
-            return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
-        } else {
-            HCCL_ERROR("AllReduceGraphMode but not set enable flag.");
-            return HCCL_E_INTERNAL;
-        }
+        return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
     }
     // 单卡校验
     if (userRankSize == 1) {
@@ -204,7 +196,7 @@ HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count,
         CHK_RET(SingleRankProc(param));
         return HcclResult::HCCL_SUCCESS;
     }
-    CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
+    CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllReduceOutPlace success.");
     return HCCL_SUCCESS;
 }
