@@ -189,6 +189,7 @@ private:
     HcclResult InitResource();
     void LoadArgs();
     void PreSync();
+    void PostSync();
     void DoScatterNHR();
     void DoScatterNHRSingleStep(const NHRStepInfo &nhrStepInfo);
     void DoSendRecvSlice(const u32 &toRank, CcuRep::LocalAddr &src, CcuRep::RemoteAddr &dst,
