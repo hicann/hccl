@@ -25,5 +25,5 @@ RFC文件命名格式：`{编号}-{简短描述}.md`
 
 ## 相关链接
 
-- [贡献指南](../CONTRIBUTING.md)
+- [贡献指南](../../../CONTRIBUTING.md)
 - [SIG例会](https://etherpad-cann.meeting.osinfra.cn/p/sig-hccl)

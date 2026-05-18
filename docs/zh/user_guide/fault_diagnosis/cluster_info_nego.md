@@ -47,7 +47,7 @@ HCCL在集群信息协商时（基于root节点信息创建通信域的场景）
 
 ### 关键日志信息
 
-- 在通信域的创建环节中，HCCL会在调用通信域创建接口时记录关键日志信息，日志记录存储在CANN日志下run目录的plog文件中，可以根据对应的日志判断某个进程是否调用了对应的通信域创建接口，详细日志信息可参考[HCCL相关日志说明](定位思路.md#hccl相关日志说明)。
+- 在通信域的创建环节中，HCCL会在调用通信域创建接口时记录关键日志信息，日志记录存储在CANN日志下run目录的plog文件中，可以根据对应的日志判断某个进程是否调用了对应的通信域创建接口，详细日志信息可参考[HCCL相关日志说明](./debug_thinking.md#hccl相关日志说明)。
 - 通信域协商阶段如果有rank未成功建立起与root节点的socket连接，root节点会在超时退出前打印已连接的rank信息，同时向已经建链成功的rank广播缺失的rank信息，可根据该信息找到未连接的rank进一步确认问题根因，详细日志信息可参考[部分rank未连接到server节点（EI0015）](#部分rank未连接到server节点ei0015)。
 
 ## server节点端口绑定失败（EI0019）
@@ -60,7 +60,7 @@ HCCL在集群信息协商时（基于root节点信息创建通信域的场景）
 [PID: 2267203] 2025-11-21-11:38:29.575.404 Communication_Error_Bind_IP_Port(EI0019): Failed to enable listening for the host network adapter socket.Reason: The IP address 192.168.1.100 and port 50001 have already been bound.
 ```
 
-在CANN日志中存在关键字"socket type\[2\], \*\*\* Please check the port status and whether the port is being used by other process."，如下所示。**此外需注意在通信算子下发时参数面建链阶段也会有端口绑定失败问题，可以根据报错日志中的"socket type"判断，type为2，则为通信域集群协商时host侧网卡端口绑定失败。针对Atlas A3 训练系列产品/Atlas A3 推理系列产品与Atlas A2 训练系列产品/Atlas A2 推理系列产品，若type为0或者1，则为参数面端口绑定失败，可参考**[参数面端口绑定失败（EI0019）](./参数面建链阶段.md#参数面端口绑定失败ei0019)。
+在CANN日志中存在关键字"socket type\[2\], \*\*\* Please check the port status and whether the port is being used by other process."，如下所示。**此外需注意在通信算子下发时参数面建链阶段也会有端口绑定失败问题，可以根据报错日志中的"socket type"判断，type为2，则为通信域集群协商时host侧网卡端口绑定失败。针对Atlas A3 训练系列产品/Atlas A3 推理系列产品与Atlas A2 训练系列产品/Atlas A2 推理系列产品，若type为0或者1，则为参数面端口绑定失败，可参考**[参数面端口绑定失败（EI0019）](./param_link_stage.md#参数面端口绑定失败ei0019)。
 
 ```text
 [ERROR] HCCL(3626636,all_reduce_test):2025-11-21-13:18:47.639.860 [hccl_socket.cc:110] [3626636][InitChannelStage][RanktableDetect] socket type[2], listen on ip[192.168.1.100%enp53s0f2] and specific port[60000] fail. Please check the port status and whether the port is being used by other process.

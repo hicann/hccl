@@ -2,16 +2,23 @@
 
 ## 产品支持情况
 
-- Ascend 950PR/Ascend 950DT：支持
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+<cann-filter npu-type="950">
+
+- Ascend 950PR/Ascend 950DT：支持</cann-filter>
+<cann-filter npu-type="A3">
+- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持</cann-filter>
+<cann-filter npu-type="910b">
+- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持</cann-filter>
 <cann-filter npu-type="310p">
 - Atlas 推理系列产品：不支持</cann-filter>
 <cann-filter npu-type="910">
 - Atlas 训练系列产品：不支持</cann-filter>
 
+<cann-filter npu-type="910b">
+
 > [!NOTE]说明
 > 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
+</cann-filter>
 
 ## 功能说明
 

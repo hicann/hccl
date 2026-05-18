@@ -17,5 +17,5 @@ AI框架主要有三种编程执行形态，单算子模式、图模式（Ascend
 
 ## 示例代码
 
-- [PyTorch框架调用](../../examples/03_ai_framework/01_pytorch)
-- [TensorFlow框架调用](../../examples/03_ai_framework/02_tensorflow)
+- [PyTorch框架调用](../../../examples/03_ai_framework/01_pytorch)
+- [TensorFlow框架调用](../../../examples/03_ai_framework/02_tensorflow)

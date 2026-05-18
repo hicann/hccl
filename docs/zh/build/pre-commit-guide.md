@@ -97,7 +97,7 @@ git commit --no-verify -m "emergency fix"
 
 ### 1. clang-format
 
-自动格式化 C/C++ 代码，遵循项目根目录下 [.clang-format](../../.clang-format) 配置：
+自动格式化 C/C++ 代码，遵循项目根目录下 [.clang-format](../../../.clang-format) 配置：
 
 ### 2. OAT Compliance Check
 

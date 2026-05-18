@@ -65,7 +65,7 @@ hccn_tool -i {deviceId} -ip -inet6 -g
 
 1. 查询集合通信的各服务器TLS状态开关。
 
-    在服务器中执行如下命令，获取TLS开关使能状态。
+    在服务器中执行如下命令，获取TLS开关状态。
 
     ```bash
     hccn_tool -i <device_id> -tls -g
@@ -109,10 +109,10 @@ hccn_tool -i {deviceId} -ip -inet6 -g
     ... ...
     ```
 
-    其中tls switch\[0\]代表TLS状态为关闭，switch\[1\]代表TLS状态为使能。
+    其中tls switch\[0\]代表TLS状态为关闭，switch\[1\]代表TLS状态为开启。
 
 2. 判断各服务器中所有Device的TLS状态开关是否一致。
-    - 若不一致，建议统一修改TLS状态为使能。若TLS开关关闭，集合通信时会存在信息被窃听、篡改、仿冒的风险。
+    - 若不一致，建议统一修改TLS状态为开启。若TLS开关关闭，集合通信时会存在信息被窃听、篡改、仿冒的风险。
 
         您可以通过如下命令修改TLS状态开关：
 
@@ -120,9 +120,9 @@ hccn_tool -i {deviceId} -ip -inet6 -g
         hccn_tool -i <device_id> -tls -s enable 1
         ```
 
-        enable为使能开关，配置为1代表使能，配置为0代表关闭。
+        enable为状态开关，配置为1代表开启，配置为0代表关闭。
 
-    - 若一致且状态为使能，建议您继续执行步骤3判断各节点的TLS证书信息是否一致。
+    - 若一致且状态为开启，建议您继续执行步骤3判断各节点的TLS证书信息是否一致。
 
 3. 查看所有服务器中各Device的TLS证书信息是否一致。
 

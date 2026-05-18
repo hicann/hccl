@@ -298,7 +298,7 @@ Solution: 1. Check whether the network devices between the two ends are abnormal
 
 #### 问题现象
 
-针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，在通过export HCCL_OP_EXPANSION_MODE="AIV"使能AIV模式之后，部分场景下HCCL会以kernel的执行方式实现HCCL通信算子的编排及执行，此时若通信算子执行异常，在日志中会有一行如下关键日志打印"fault kernel_name=aiv_all_reduce_***"表明当前为HCCL的aiv算子执行失败：
+针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，在通过export HCCL_OP_EXPANSION_MODE="AIV"启用AIV模式之后，部分场景下HCCL会以kernel的执行方式实现HCCL通信算子的编排及执行，此时若通信算子执行异常，在日志中会有一行如下关键日志打印"fault kernel_name=aiv_all_reduce_***"表明当前为HCCL的aiv算子执行失败：
 
 ```text
 [ERROR] RUNTIME(699131,python):2025-04-24-21:54:17.707.236 [davinci_kernel_task.cc:1268]699131 PrintErrorInfoForDavinciTask:[INIT][DEFAULT]Aicore kernel execute failed, device_id=0, stream_id=2, report_stream_id=2, task_id=55873, flip_num=2073, fault kernel_name=aiv_all_reduce_***, fault kernel info ext=aiv_all_reduce_910b_bfloat16_t, program id=42, hash=9645272693770703471.
