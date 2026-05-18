@@ -212,7 +212,7 @@ HcclResult AppendFastLaunchTag(OpParam &param, const char* dataTypeStr,
         goto fail;
     }
     *dst = '\0';
-    HCCL_DEBUG("[SetOpParamFastLaunchTag] fastLaunchTag: [%s]", param.fastLaunchTag);
+    HCCL_INFO("[SetOpParamFastLaunchTag] fastLaunchTag: [%s]", param.fastLaunchTag);
     return HcclResult::HCCL_SUCCESS;
 
 fail:
@@ -488,7 +488,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
                       std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo, std::string &algName, const ResPackGraphMode &resPack)
 {
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
-    HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp.HcommGetProfilingSysCycleTime.%llu", beginTime);
+    HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu]", beginTime);
     // 当前通信域的某个算法回退过，则下次直接回退
     void * fallbackCtx = nullptr;
     uint64_t fallbackCtxSize = 0;
@@ -800,10 +800,37 @@ void CompReqChannelWithExistChannel(const std::vector<std::vector<ChannelInfo>>&
     return;
 }
 
+static HcclResult TryReuseResource(HcclComm comm, OpParam& param, bool increCreateChannelFlag,
+    void** resCtxSequence, uint64_t& size, bool &isResourceReused)
+{
+    // 图模式不支持资源复用，且不存在增量建链场景
+    if (increCreateChannelFlag || param.opMode != OpMode::OPBASE) {
+        return HCCL_E_NOT_FOUND;
+    }
+    void *ctx = nullptr;
+    // 这种情况下资源已经有了
+    CommEngine ctxEngine = param.engine;
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        // AIV模式固定利用利用algTag申请1块host内存resCtx
+        ctxEngine = COMM_ENGINE_CPU_TS;
+    } else if (param.engine == COMM_ENGINE_CPU) {
+        // host dpu申请device内存用于存放resctx
+        ctxEngine = COMM_ENGINE_AICPU_TS;
+    }
+    if (HcclEngineCtxGet(comm, param.algTag, ctxEngine, &ctx, &size) == HCCL_SUCCESS) {
+        HCCL_DEBUG("Already have context, skip create, ctxSize is %u", param.ctxSize);
+        isResourceReused = true;
+        *resCtxSequence = ctx;
+        param.ctxSize = size;
+        return HCCL_SUCCESS;
+    }
+    return HCCL_E_NOT_FOUND;
+}
+
 HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollAlgBase>& executor, TopoInfoWithNetLayerDetails* topoInfo,
                          std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost, void** resCtxSequence, bool &isResourceReused)
 {
-    HCCL_INFO("Start to execute HcclGetAlgRes.");
+    HCCL_INFO("[HcclGetAlgRes] Start to execute HcclGetAlgRes.");
 
     bool increCreateChannelFlag = false;
     if (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV && param.opMode == OpMode::OPBASE) {
@@ -811,25 +838,8 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollA
         increCreateChannelFlag = true;
     }
     uint64_t size = 0;
-    // 图模式不支持资源复用，且不存在增量建链场景
-    if (!increCreateChannelFlag && param.opMode == OpMode::OPBASE) {
-        void *ctx = nullptr;
-        // 这种情况下资源已经有了
-        CommEngine ctxEngine = param.engine;
-        if (param.engine == CommEngine::COMM_ENGINE_AIV) {
-            // AIV模式固定利用利用algTag申请1块host内存resCtx
-            ctxEngine = COMM_ENGINE_CPU_TS;
-        } else if (param.engine == COMM_ENGINE_CPU) {
-            // host dpu申请device内存用于存放resctx
-            ctxEngine = COMM_ENGINE_AICPU_TS;
-        }
-        if (HcclEngineCtxGet(comm, param.algTag, ctxEngine, &ctx, &size) == HCCL_SUCCESS) {
-            HCCL_DEBUG("Already have context, skip create, ctxSize is %u", param.ctxSize);
-            isResourceReused = true;
-            *resCtxSequence = ctx;
-            param.ctxSize = size;
-            return HCCL_SUCCESS;
-        }
+    if (TryReuseResource(comm, param, increCreateChannelFlag, resCtxSequence, size, isResourceReused) == HCCL_SUCCESS) {
+        return HCCL_SUCCESS;
     }
 
     // 计算AlgHierarchyInfo
@@ -855,7 +865,6 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollA
     } else if (param.engine == COMM_ENGINE_AIV) {
         CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence));
     } else if (param.engine == COMM_ENGINE_CCU) {
-        // 添加资源回退。SetCommEngine
         auto ret = GetAlgResCcu(comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size);
         if (ret == HCCL_E_UNAVAIL) {
             return HCCL_E_UNAVAIL;
@@ -866,6 +875,18 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollA
         return HCCL_E_PARA;
     }
     param.ctxSize = size;
+    if (resCtxHost != nullptr) {
+        // 拼接各level的channel数量信息
+        std::string channelNumInfo;
+        for (size_t i = 0; i < resCtxHost->channels.size(); i++) {
+            if (i > 0) channelNumInfo += ", ";
+            channelNumInfo += "level" + std::to_string(i) + "[" + std::to_string(resCtxHost->channels[i].size()) + "]";
+        }
+        HCCL_RUN_INFO("[HcclGetAlgRes] engine[%d], algTag[%s], resource allocated: thread num[%u], "
+            "channel num per level[%s], ccu kernel num[%u].",
+            static_cast<int>(param.engine), param.algTag,
+            resCtxHost->threads.size(), channelNumInfo.c_str(), resCtxHost->ccuKernels.size());
+    }
     return HCCL_SUCCESS;
 }
 
