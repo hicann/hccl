@@ -7,105 +7,81 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "aiv_communication_base_v2.h"
- 
+
 using namespace AscendC;
- 
+
 template<typename T>
-class AivAlltoAllMesh1D : public AivCommBase {
+class AivScatterMesh1D : public AivCommBase {
 public:
-    __aicore__ inline AivAlltoAllMesh1D() {}
- 
+    __aicore__ inline AivScatterMesh1D() {}
+
     __aicore__ inline void InitCommon(uint32_t sliceId)
     {
         uint64_t smallDataSize = 512 * 1024;
         dataSize_ = len_ * sizeof(T);
         coreIdx_ = GetBlockIdx();
-        coreNum_ = rankSize_;
+        coreNum_ = block_num;
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
     }
- 
+
     __aicore__ inline void Process()
     {
-        if (coreIdx_ >= coreNum_) {
-            return;
-        }
-
-        ProcessMultiCore();
+        ProcessCoreCtrl();
     }
- 
+
 private:
-    __aicore__ inline void ProcessMultiCore()
+    __aicore__ inline void ProcessCoreCtrl()
     {
-        // 下发核数由上层框架保证符合控核公式，算子内不校验
-        uint32_t coreNumPerDstRank = coreNum_ / rankSize_;
-        uint32_t dstRank = coreIdx_ / coreNumPerDstRank;
-        uint32_t coreIdxForDstRank = coreIdx_ % coreNumPerDstRank;
- 
-        // 按核切分数据
-        uint64_t sliceOffset;
-        uint64_t sliceCount;
-        SplitData(len_, coreNumPerDstRank, coreIdxForDstRank, sliceOffset, sliceCount);
-        uint64_t sliceOffsetSize = sliceOffset * sizeof(T);
-        uint64_t sliceSize = sliceCount * sizeof(T);
- 
-        // PreCopy阶段
-        srcOffset_ = input_ + dstRank * inputSliceStride_ + sliceOffsetSize;
-        dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * dataSize_ + sliceOffsetSize;
-        CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, sliceCount);
-        pipe_barrier(PIPE_ALL);
- 
-        uint64_t setFlagIdx = coreIdx_;
-        Record(rank_, setFlagIdx, curTag_);
- 
-        // ReadRemote阶段
-        uint64_t waitFlagIdx = rank_ * coreNumPerDstRank + coreIdxForDstRank;
-        WaitFlag(dstRank, waitFlagIdx, curTag_);
- 
-        if(dstRank == root_){
-            srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * dataSize_ + sliceOffsetSize;
-            dstOffset_ = output_ + sliceOffsetSize;
-            CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, sliceCount);
-        }
-        pipe_barrier(PIPE_ALL);
-    }
+        uint32_t remainRankSize = rankSize_ % coreNum_;
+        uint32_t copyNumThisCore = coreIdx_ < remainRankSize ? rankSize_ / coreNum_ + 1 : rankSize_ / coreNum_;
 
-    __aicore__ inline void SplitData(uint64_t dataCount, uint64_t splitNum, uint64_t idx,
-        uint64_t& sliceOffset, uint64_t& sliceCount)
-    {
-        // 防止idx越界
-        if (idx >= splitNum) {
-            sliceOffset = 0;
-            sliceCount = 0;
+        if(copyNumThisCore == 0){
             return;
         }
-        uint64_t baseSliceCount = dataCount / splitNum;
-        uint64_t remainSize = dataCount % splitNum;  // remainSize必然小于splitNum
+        // PreCopy阶段
+        uint32_t dstRank;
+        if (rank_ == root_) {
+            for (int i = 0; i < copyNumThisCore; i++) {
+                dstRank = i * coreNum_ + coreIdx_;
+                srcOffset_ = input_ + dstRank * inputSliceStride_;
+                dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]);
+                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, len_);
+                pipe_barrier(PIPE_ALL);
+            }
+        }
 
-        // 将remainSize均分给前remainSize个核，每个核多1
-        if (idx < remainSize) {
-            sliceCount = baseSliceCount + 1;
-            sliceOffset = idx * (baseSliceCount + 1);
-        } else {
-            sliceCount = baseSliceCount;
-            sliceOffset = remainSize * (baseSliceCount + 1) + (idx - remainSize) * baseSliceCount;
+        for (int i = 0; i < copyNumThisCore; i++) {
+            dstRank = i * coreNum_ + coreIdx_;
+            Record(dstRank, rank_, curTag_);
+        }
+
+        for (int i = 0; i < copyNumThisCore; i++) {
+            dstRank = i * coreNum_ + coreIdx_;
+            WaitFlag(rank_, dstRank, curTag_);
+            if (dstRank == root_) {
+                srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]);
+                dstOffset_ = output_;
+                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, len_);
+                pipe_barrier(PIPE_ALL);
+            }
         }
     }
- 
+
     uint32_t coreNum_;
     uint32_t coreIdx_;
- 
+
     uint64_t dataSize_;  // 要给每个rank搬运的数据大小
- 
+
     uint64_t srcOffset_;
     uint64_t dstOffset_;
 };
- 
+
 template<typename T>
 __aicore__ inline void AivScatterV2Mesh1D(KERNEL_ARGS_DEF)
 {
-    AivAlltoAllMesh1D<T> op;
+    AivScatterMesh1D<T> op;
     op.Init(KERNEL_CLASS_INIT, true);
     op.InitCommon(sliceId);
     if (op.IsFirstOP(sliceId)) {
