@@ -120,7 +120,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerD
         if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT) &&
             (opParam.all2AllDataDes.sendCount > BIG_DATA_SIZE_LIMIT)) {
             // 同一组4P且大数据量，不走并发
-            selectAlgName = "InsAllToAllMesh1DConcurrent";
+            selectAlgName = "InsAlltoAllMesh1DUBX";
         } else {
             selectAlgName = "InsAlltoAllMesh1DUBX";
         }
