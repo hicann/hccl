@@ -17,7 +17,7 @@ using namespace hcomm;
 constexpr int INPUT_XN_ID   = 0;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID   = 2;
-constexpr int POST_SYNC_ID = 4;
+constexpr int POST_SYNC_ID = 3;
 constexpr int CKE_IDX_0     = 0;
 
 CcuKernelAllToAllMesh1DMultiJetty::CcuKernelAllToAllMesh1DMultiJetty(const CcuKernelArg &arg)

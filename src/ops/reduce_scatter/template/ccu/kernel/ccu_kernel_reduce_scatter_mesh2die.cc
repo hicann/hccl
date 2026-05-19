@@ -14,7 +14,7 @@
 
 constexpr int CKE_IDX_0   = 0;
 constexpr int INPUT_XN_ID = 0;
-constexpr int TOKEN_XN_ID = 1;
+constexpr int TOKEN_XN_ID = 2;
 constexpr int POST_SYNC_ID = 3;
 constexpr int LOOP_NUM    = 128;
 

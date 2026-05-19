@@ -14,9 +14,9 @@
 namespace ops_hccl {
 using namespace hcomm;
 
-constexpr int OUTPUT_XN_ID = 0;
-constexpr int TOKEN_XN_ID  = 1;
-constexpr int POST_SYNC_ID  = 2;
+constexpr int OUTPUT_XN_ID = 1;
+constexpr int TOKEN_XN_ID  = 2;
+constexpr int POST_SYNC_ID  = 3;
 constexpr int CKE_IDX_0    = 0;
 
 CcuKernelAllToAllVMesh1DMultiJetty::CcuKernelAllToAllVMesh1DMultiJetty(const CcuKernelArg &arg)
