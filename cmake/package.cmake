@@ -134,19 +134,11 @@ function(pack_built_in)
       COMPONENT hccl
   )
   install(FILES ${CONF_FILES}
-      DESTINATION hccl/conf
+      DESTINATION ${CMAKE_SYSTEM_PROCESSOR}-linux/conf
       COMPONENT hccl
   )
   install(FILES ${PACKAGE_FILES}
       DESTINATION share/info/hccl/script
-      COMPONENT hccl
-  )
-  install(FILES ${LATEST_MANGER_FILES}
-      DESTINATION latest_manager
-      COMPONENT hccl
-  )
-  install(DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/package/latest_manager/scripts/
-      DESTINATION latest_manager
       COMPONENT hccl
   )
 

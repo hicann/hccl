@@ -33,6 +33,7 @@ from .utils.pkg_utils import (
     ContainAsteriskError, FAIL, BLOCK_CONFIG_PATH,
     BlockConfigError, EnvNotSupported, IllegalVersionDir,
     InstallScriptFormatError, InstallScriptNotInPackageInfo, PackageError,
+    MultiPkgModError, MultiPkgSoftlinkError, PkgInnerSoftlinkNotAllowed,
     ParseOsArchError, VersionInfoNotExist, config_feature_to_set,
     flatten, star_pipe, merge_dict, yield_if
 )
@@ -103,6 +104,7 @@ class ParseEnv(NamedTuple):
     parse_option: ParseOption
     delivery_dir: str
     top_dir: str
+    package_attr: Dict
 
 
 class BlockElement(NamedTuple):
@@ -137,6 +139,18 @@ class FileInfoParsedResult(NamedTuple):
     expand_infos: List[Dict[str, str]]
 
 
+class PkgMod(NamedTuple):
+    """包内文件权限。"""
+    path: str
+    mod: int
+
+    
+class PkgSoftlink(NamedTuple):
+    """包内软链接。"""
+    dst_path: str
+    src_path: str
+
+
 class BlockConfig(NamedTuple):
     """块配置。"""
 
@@ -144,16 +158,18 @@ class BlockConfig(NamedTuple):
     move_files: List[FileInfo]
     expand_content_list: List[Dict]
     package_content_list: List[Dict]
+    pkg_mods: List[PkgMod]
+    pkg_softlinks: List[PkgSoftlink]
     generate_infos: List[GenerateInfo]
 
 
 class PackerConfig(NamedTuple):
-    """安装相关配置。"""
+    """打包相关配置。"""
     fill_is_common_path: Callable[[FileList], Iterator[FileItem]]
 
 
 class XmlConfig(NamedTuple):
-    """安装xml配置。"""
+    """打包xml配置。"""
     default_config: Dict[str, str]
     package_attr: PackageAttr
     version_info: VersionInfo
@@ -183,6 +199,14 @@ class XmlConfig(NamedTuple):
     @property
     def package_content_list(self):
         return self._collect_list('package_content_list')
+    
+    @property
+    def pkg_mods(self) -> List[PkgMod]:
+        return self._collect_list('pkg_mods')
+    
+    @property
+    def pkg_softlinks(self) -> List[PkgSoftlink]:
+        return self._collect_list('pkg_softlinks')
 
     @property
     def generate_infos(self) -> List[GenerateInfo]:
@@ -207,7 +231,7 @@ def parse_package_info(package_info_ele: Optional[ET.Element]) -> Dict:
         # gen_version_info: 是否生成version.info文件
         bool_attrs = (
             'expand_asterisk', 'parallel', 'parallel_limit', 'package_check', 'check_features',
-            'use_move', 'gen_version_info'
+            'use_move', 'gen_version_info', 'copy_all'
         )
         bool_values = ('t', 'true', 'y', 'yes')
         if ele.tag in bool_attrs:
@@ -311,6 +335,7 @@ def render_semver(package_name: str, version: str) -> Iterator[Tuple[str, str]]:
     yield f'{package_name}_MAJOR', str(major)
     yield f'{package_name}_MINOR', str(minor)
     yield f'{package_name}_PATCH', str(patch)
+
     # 计算基础版本值（主版本*10^7 + 次版本*10^5 + 修订号*10^3）
     # 预留10^3空间用于预发布版本，确保不同正式版本区间不重叠
     expr_buffer.write(f'({major} * 10000000) + ({minor} * 100000) + ({patch} * 1000)')
@@ -617,6 +642,11 @@ def evaluate_info(info: Dict[str, str],
     replace_env_func = partial(replace_env, env_dict)
     add_dst_path_func = partial(join_dst_path, loaded_block.dst_path)
 
+    def split_pkg_softlink(key: str, value: str) -> Tuple[str, str]:
+        if key == 'pkg_softlink':
+            return key, value.split(';')
+        return key, value
+    
     def upper_value(key: str, value: str) -> Tuple[str, str]:
         if key == 'configurable':
             return key, value.upper()
@@ -633,7 +663,7 @@ def evaluate_info(info: Dict[str, str],
             return key, 'NA'
         return key, value
 
-    def merge_feature(key: str, value: str) -> Tuple[str, str]:
+    def merge_feature(key: str, value: str) -> Tuple[str, Set[str]]:
         if key in ('chip', 'feature'):
             config_features = config_feature_to_set(value, key)
             return key, config_features | getattr(loaded_block, f'{key}s')
@@ -685,7 +715,18 @@ def parse_dir_info_elements(loaded_block: LoadedBlockElement,
     return dir_infos
 
 
-def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], str]):
+def get_target_name(target_conf) -> str:
+    """获取目标名。"""
+    rename = target_conf.get('rename')
+    if rename:
+        return rename
+
+    value_list = target_conf.get('value').split('/')
+    target_name = value_list[-1] if value_list[-1] else value_list[-2]
+    return target_name
+
+
+def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], str], env: ParseEnv):
     """
     如果file_info中配置的路径是文件夹，需要展开到文件
     """
@@ -708,8 +749,8 @@ def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], st
     if subdir_mod is not None:
         dir_info_copy['install_mod'] = subdir_mod
     # 被展开的当前目录不需要设置softlink
-    dir_info_copy['install_softlink'] = 'NA'
-    dir_info_copy['pkg_inner_softlink'] = 'NA'
+    dir_info_copy['install_softlink'] = ''
+    dir_info_copy['pkg_inner_softlink'] = ''
     dir_info_list.append(dir_info_copy)
 
     for root, dirs, files in os.walk(dst_target, followlinks=True):
@@ -724,8 +765,9 @@ def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], st
             if os.path.islink(dirname) and not need_dereference(file_info):
                 copy_file_info = create_file_info(dirname, dst_target, file_info, name, target_name)
                 # 被展开的子文件不需要设置softlink
-                copy_file_info['install_softlink'] = 'NA'
-                copy_file_info['pkg_inner_softlink'] = 'NA'
+                copy_file_info['install_softlink'] = ''
+                copy_file_info['pkg_inner_softlink'] = ''
+                deal_with_copy_all(copy_file_info, env.package_attr)
                 file_info_list.append(copy_file_info)
                 dirs_to_remove.append(name)
                 continue
@@ -736,8 +778,8 @@ def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], st
                 file_info.get('install_path', ''), target_name, relative_dirname
             )
             # 被展开的子目录不需要设置softlink
-            dir_info_copy['install_softlink'] = 'NA'
-            dir_info_copy['pkg_inner_softlink'] = 'NA'
+            dir_info_copy['install_softlink'] = ''
+            dir_info_copy['pkg_inner_softlink'] = ''
             # 子目录的权限按照xml中subdir_mod配置，如果没有配置subdir_mod按照install_mod配置
             subdir_mod = file_info.get("subdir_mod", None)
             if subdir_mod is not None:
@@ -746,6 +788,7 @@ def expand_dir(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], st
         for name in files:
             filename = os.path.join(root, name)
             copy_file_info = create_file_info(filename, dst_target, file_info, name, target_name)
+            deal_with_copy_all(copy_file_info, env.package_attr)
             file_info_list.append(copy_file_info)
 
         for name in dirs_to_remove:
@@ -824,14 +867,29 @@ def need_expand(file_info: FileInfo, get_dst_target_func: Callable[[FileInfo], s
     return False
 
 
+def deal_with_copy_all(file_info: FileInfo, package_attr: PackageAttr):
+    """处理copy_all选项。"""
+    if not package_attr.get('copy_all'):
+        return
+    if file_info.get('pkg_inner_softlink'):
+        raise PkgInnerSoftlinkNotAllowed(file_info)
+    file_info['dst_path'] = file_info['install_path']
+    if file_info.get('install_softlink'):
+        file_info['pkg_softlink'] = file_info['install_softlink'].split(';')
+    if file_info.get('install_mod'):
+        file_info['pkg_mod'] = file_info['install_mod']
+
+
 def expand_file_info(parsed_result: FileInfoParsedResult,
-                     use_move: bool,
-                     get_dst_target_func: Callable[[FileInfo], str]) -> FileInfoParsedResult:
+                    use_move: bool,
+                    get_dst_target_func: Callable[[FileInfo], str],
+                    env: ParseEnv) -> FileInfoParsedResult:
     """展开FileInfoParsedResult中的目录。"""
+    deal_with_copy_all(parsed_result.file_info, env.package_attr)
     file_info = parsed_result.file_info
     if need_expand(file_info, get_dst_target_func):
         # 如果当前是文件夹，需要展开计算
-        expand_infos, dir_infos = expand_dir(file_info, get_dst_target_func)
+        expand_infos, dir_infos = expand_dir(file_info, get_dst_target_func, env)
         # 实测发现，对于opp包，整体目录cp的安装速度要快于目录中各文件mv
         # 可能的原因是，cp遍历目录的速度较快，并且目录中的文件都比较小。mv依赖shell迭代目录中的所有文件。
         return FileInfoParsedResult(
@@ -877,7 +935,8 @@ def parse_file_element(file_ele: ET.Element,
             partial(
                 expand_file_info,
                 use_move=loaded_block.use_move,
-                get_dst_target_func=partial(get_dst_target, env=env)
+                get_dst_target_func=partial(get_dst_target, env=env),
+                env=env
             )
         ),
     )
@@ -904,6 +963,70 @@ def parse_file_info_elements(loaded_block: LoadedBlockElement,
             )
 
 
+def get_path_infos(pkg_ele: ET.Element,
+                    default_config: Dict[str, str],
+                    loaded_block: LoadedBlockElement,
+                    env: ParseEnv) -> List[Dict[str, str]]:
+    """获取路径信息。"""
+    return invoke(
+        pipe(
+            list,
+            partial(map, attrgetter('attrib')),
+            partial(map, partial(merge_dict, default_config)),
+            partial(
+                map,
+                partial(evaluate_info, loaded_block=loaded_block, env_dict=env.env_dict, pkg=True)
+            ),
+        ),
+        pkg_ele
+    )
+    
+    
+def get_path_infos_by_eles(pkg_eles: List[ET.Element],
+                        default_config: Dict[str, str],
+                        loaded_block: LoadedBlockElement,
+                        env: ParseEnv) -> List[Dict[str, str]]:
+    """根据节点列表获取路径信息。""" 
+    return flatten([
+        get_path_infos(pkg_ele, default_config, loaded_block, env)
+        for pkg_ele in pkg_eles
+    ])
+
+
+def parse_pkg_mods(path_infos: List[Dict[str, str]]) -> List[PkgMod]:
+    """解析pkg元素。"""
+    return [
+        PkgMod(
+            path_info['value'],
+            int(path_info['pkg_mod'], 8)
+        )
+        for path_info in path_infos
+    ]
+
+
+def parse_pkg_softlinks(path_infos: List[Dict[str, str]]) -> List[PkgSoftlink]:
+    """解析pkg_softlink元素。"""
+    return [
+        PkgSoftlink(
+            dst_path=path_info['value'],
+            src_path=path_info['src_path'],
+        )
+        for path_info in path_infos
+    ]
+
+
+def parse_paths_element(root_ele: ET.Element,
+                        tag_name: str,
+                        ex: PackageError,
+                        parse_func: Callable[[List[ET.Element]], List]) -> List:
+    """解析路径列表元素。"""
+    tag_eles = root_ele.findall(tag_name)
+    if len(tag_eles) > 1:
+        raise ex
+    
+    return parse_func(tag_eles)
+
+
 def unique_infos(infos: Iterable) -> List[Dict[str, str]]:
     """infos去重。"""
     cache: Set[str] = set()
@@ -917,28 +1040,42 @@ def unique_infos(infos: Iterable) -> List[Dict[str, str]]:
     return new_infos
 
 
-def parse_block_config(loaded_block: LoadedBlockElement,
-                       package_attr: PackageAttr,
-                       parse_env: ParseEnv):
+def parse_block_config(loaded_block: LoadedBlockElement, package_attr: PackageAttr, parse_env: ParseEnv):
     """解析块配置。"""
     default_config = copy.copy(loaded_block.attrs)
     default_config.update(loaded_block.root_ele.attrib)
 
     dir_infos = parse_dir_info_elements(
-        loaded_block,
-        default_config,
-        package_attr,
-        parse_env,
+        loaded_block, default_config,
+        package_attr, parse_env,
     )
     file_info_results = list(
         chain(
             parse_file_info_elements(
-                loaded_block,
-                default_config,
-                package_attr,
-                parse_env,
+                loaded_block, default_config,
+                package_attr, parse_env,
             )
         )
+    )
+
+    get_path_infos_func = partial(
+            get_path_infos_by_eles, default_config=default_config,
+            loaded_block=loaded_block, env=parse_env
+        )
+
+    parse_pkg_mods_func = pipe(get_path_infos_func, parse_pkg_mods)
+    pkg_mods = parse_paths_element(
+        loaded_block.root_ele, 'pkg_mod',
+        MultiPkgModError(),
+        # tar.gz才处理pkg_mod元素
+        lambda x: parse_pkg_mods_func(x) if package_attr.get('suffix') == 'tar.gz' else [],
+    )
+
+    parse_pkg_softlinks_func = pipe(get_path_infos_func, parse_pkg_softlinks)
+    pkg_softlinks = parse_paths_element(
+        loaded_block.root_ele, 'pkg_softlink',
+        MultiPkgSoftlinkError(),
+        parse_pkg_softlinks_func,
     )
 
     generate_infos = parse_generate_infos_by_loaded_block(
@@ -954,7 +1091,9 @@ def parse_block_config(loaded_block: LoadedBlockElement,
         list(flatten(map(attrgetter('move_infos'), file_info_results))),
         list(flatten(map(attrgetter('expand_infos'), file_info_results))),
         [result.file_info for result in file_info_results if result.file_info],
-        generate_infos,
+        pkg_mods,
+        pkg_softlinks,
+        generate_infos
     )
 
 
@@ -1125,8 +1264,9 @@ def parse_xml_config(filepath: str,
         )
         sys.exit(FAIL)
 
+
     parse_env = ParseEnv(
-        env_dict, parse_option, delivery_dir, pkg_utils.TOP_SOURCE_DIR
+        env_dict, parse_option, delivery_dir, pkg_utils.TOP_SOURCE_DIR, package_attr
     )
 
     blocks = parse_blocks(

@@ -945,10 +945,6 @@ do_del_cann_uninstall() {
 
 # 删除ascend_install.info文件
 del_ascend_install_info() {
-    local install_path="$1"
-    local package="$2"
-    local package_dirpath
-
     rm -f "$curpath/../ascend_install.info"
 }
 
@@ -961,21 +957,26 @@ do_copy_files() {
     local feature_param="$5"
     local total_uninstall_path exec_mode ret
 
-    if [ "$PARALLEL" = "true" ]; then
-        exec_mode="concurrency"
+    if [ "$COPY_ALL" = "y" ]; then   
+        cp -af * "$install_path"
+        ret="$?" && [ $ret -ne 0 ] && return $ret
     else
-        exec_mode="normal"
+        if [ "$PARALLEL" = "true" ]; then
+            exec_mode="concurrency"
+        else
+            exec_mode="normal"
+        fi
+        if [ "${USE_MOVE}" = "true" ]; then
+            foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "move" "$filelist_path" "${feature_param}" \
+                            "no" "$exec_mode" "--move"
+            foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "copy copy_entity" "$filelist_path" "${feature_param}" \
+                            "no" "$exec_mode"
+        else
+            foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "copy copy_entity move" "$filelist_path" "${feature_param}" \
+                            "no" "$exec_mode"
+        fi
+        ret="$?" && [ $ret -ne 0 ] && return $ret
     fi
-    if [ "${USE_MOVE}" = "true" ]; then
-        foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "move" "$filelist_path" "${feature_param}" \
-                         "no" "$exec_mode" "--move"
-        foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "copy copy_entity" "$filelist_path" "${feature_param}" \
-                         "no" "$exec_mode"
-    else
-        foreach_filelist "NA" "copy_files" "$install_type" "$install_path" "copy copy_entity move" "$filelist_path" "${feature_param}" \
-                         "no" "$exec_mode"
-    fi
-    ret="$?" && [ $ret -ne 0 ] && return $ret
 
     if [ "${package}" != "" ] && [ "${SET_CANN_UNINSTALL}" = "y" ]; then
         add_cann_uninstall_package "${install_path}" "${package}" "${USERNAME}" "${USERGROUP}" "${INSTALL_FOR_ALL}"
@@ -1057,8 +1058,10 @@ do_chmod_file_dir() {
     local package="$5"
     local ret
 
-    foreach_filelist "NA" "change_mod_and_own_files" "$install_type" "$install_path" "copy del move" "$filelist_path" "${feature_param}" "no" "concurrency"
-    ret="$?" && [ $ret -ne 0 ] && return $ret
+    if [ "$COPY_ALL" != "y" ] || [ "$INSTALL_FOR_ALL" = "y" ]; then
+        foreach_filelist "NA" "change_mod_and_own_files" "$install_type" "$install_path" "copy del move" "$filelist_path" "${feature_param}" "no" "concurrency"
+        ret="$?" && [ $ret -ne 0 ] && return $ret
+    fi
 
     foreach_filelist "NA" "change_mod_and_own_files_recursive" "$install_type" "$install_path" "copy_entity" "$filelist_path" "${feature_param}" "no" "concurrency"
     ret="$?" && [ $ret -ne 0 ] && return $ret
@@ -1420,6 +1423,10 @@ version_install() {
         add_setenv "${install_path_full}" "${package_real}" "${setenv}" "${username}" "${usergroup}" "false" "${docker_root}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
 
+        # set prereq_check
+        add_prereq_check "${install_path_full}" "${package_real}" "${username}" "${usergroup}" "${docker_root}"
+        ret="$?" && [ $ret -ne 0 ] && return $ret
+
         # 调用组件自定义安装流程
         package_custom_install "${package_real}" "${install_path}" "${version_dir}" "${custom_options}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
@@ -1474,6 +1481,10 @@ version_uninstall() {
         del_setenv "${install_path_full}" "${package_real}" "${username}" "${docker_root}"
         ret="$?" && [ $ret -ne 0 ] && return $ret
 
+        # unset prereq_check
+        del_prereq_check "${install_path_full}" "${package_real}" "${docker_root}"
+        ret="$?" && [ $ret -ne 0 ] && return $ret
+
         # 调用组件自定义卸载流程，失败流程不中断
         package_custom_uninstall "${package_real}" "${install_path}" "${version_dir}" "${custom_options}"
         ret="$?" && [ $ret -ne 0 ] && total_ret="$ret"
@@ -1507,8 +1518,6 @@ do_install() {
     check_ret_error "$?" "Set log package name failed in install!"
     ret="$?" && [ ${ret} -ne 0 ] && return ${ret}
 
-    expand_version_file
-
     # 获取filelist.csv文件真实路径
     get_realpath "filelist_path" "${filelist_path}"
     # 获取install_path真实路径
@@ -1523,6 +1532,8 @@ do_install() {
     else
         install_path_real="${install_path}"
     fi
+
+    expand_version_file "$install_path_real"
 
     if [ "${VERSION}" != "" ] && [ "${VERSION_DIR}" != "" ]; then
         multi_version_install "${install_type}" "${install_path_real}" "${filelist_path}" "${package}" "${feature_param}" \
@@ -1571,6 +1582,8 @@ do_uninstall() {
     else
         install_path_real="${install_path}"
     fi
+
+    expand_version_file "$install_path_real"
 
     if [ "${VERSION}" != "" ] && [ "${VERSION_DIR}" != "" ]; then
         multi_version_uninstall "${install_type}" "${install_path_real}" "${filelist_path}" "${package}" "${feature_param}" \
@@ -1937,7 +1950,7 @@ IS_RECREATE_SOFTLINK=""
 WITH_DOCKER_ROOT_PREFIX=""
 FEATURE_EXCLUDE_ALL="n"
 REMOVE_INSTALL_INFO="n"  # 卸载时移除ascend_install.info文件
-USE_SHARE_INFO="n" # 包信息安装到share/info目录下
+USE_SHARE_INFO="n"       # 包信息安装到share/info目录下
 CHIP="all"
 FEATURE="all"
 INCREMENT="n"  # 增量安装
@@ -1956,9 +1969,14 @@ DOCKER_ROOT=""
 INSTALL_PATH=""
 # 输入的latest_dir
 INPUT_LATEST_DIR=""
+COPY_ALL=""
 
 while true; do
     case "$1" in
+    --copy_all)
+        COPY_ALL="y"
+        shift
+        ;;
     --spc-install | -i)
         OPERATE_TYPE="spc_install"
         shift

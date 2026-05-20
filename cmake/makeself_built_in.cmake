@@ -69,9 +69,33 @@ configure_file(
 )
 configure_file(
     ${NN_VERSION_OUT_PUT}
-    ${STAGING_DIR}/share/info/hccl/
+    ${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/include/version/hccl_version.h
     COPYONLY
 )
+
+ # 统一修正文件权限
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/conf/path.cfg")
+    execute_process(COMMAND chmod 440 "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/conf/path.cfg")
+endif()
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/bin")
+    execute_process(COMMAND find "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/bin" -type f -exec chmod 550 {} +)
+endif()
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64")
+    execute_process(COMMAND find "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/lib64" -type f -exec chmod 440 {} +)
+endif()
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/devlib")
+    execute_process(COMMAND find "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/devlib" -type f -exec chmod 440 {} +)
+endif()
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/include")
+    execute_process(COMMAND find "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/include" -type f -exec chmod 440 {} +)
+endif()
+if(EXISTS "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/pkg_inc")
+    execute_process(COMMAND find "${STAGING_DIR}/${CMAKE_SYSTEM_PROCESSOR}-linux/pkg_inc" -type f -exec chmod 440 {} +)
+endif()
+if(EXISTS "${STAGING_DIR}/opp/built-in/op_impl")
+    execute_process(COMMAND find "${STAGING_DIR}/opp/built-in/op_impl" -type f -exec chmod 440 {} +)
+endif()
+
 # makeself打包
 file(STRINGS ${CPACK_CMAKE_BINARY_DIR}/makeself.txt script_output)
 string(REPLACE " " ";" makeself_param_string "${script_output}")

@@ -9,8 +9,9 @@
         <version>package/hccl/version.xml</version>
         <parallel>true</parallel>
         <check_features>true</check_features>
+        <copy_all>true</copy_all>
     </package_info>
-    <generate_info value="hccl_version.h" dst_path="share/info/hccl" install_path="$(TARGET_ENV)/include/version" install_mod="440" install_type="devel" generator="version_header">
+    <generate_info value="hccl_version.h" dst_path="$(TARGET_ENV)/include/version" install_path="$(TARGET_ENV)/include/version" install_mod="440" install_type="devel" generator="version_header">
        <HCCL_VERSION>$(ASCEND_VER)</HCCL_VERSION>
        <HCCL_TIMESTAMP>$(TIMESTAMP_NO)</HCCL_TIMESTAMP>
     </generate_info>
@@ -23,7 +24,7 @@
         <file value="script" entity="true"/>
         <file value="version.info" dst_path="share/info/hccl" install_path="share/info/hccl"/>
     </file_info>
-    <block_info dependtree="false" dst_path="hccl" block_conf_path="ascend">
+    <block_info dependtree="false" dst_path="" block_conf_path="ascend">
         <block name="EngineeringCommon"/>
         <block name="EngineeringFiles"/>
         <block name="HcclLib"/>

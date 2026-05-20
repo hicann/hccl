@@ -431,7 +431,7 @@ if(NOT KERNEL_MODE)
     )
     add_custom_target(aicpu_kernel_json DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libscatter_aicpu_kernel.json)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libscatter_aicpu_kernel.json
-        DESTINATION ${INSTALL_AICPU_KERNEL_JSON_DIR} 
+        DESTINATION ${INSTALL_AICPU_KERNEL_JSON_DIR}/config
         ${INSTALL_OPTIONAL}
         COMPONENT hccl
     )
