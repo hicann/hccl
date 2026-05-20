@@ -382,7 +382,7 @@ void CcuKernelAllReduceMeshMem2Mem1D::ReduceRmtToLoc(const std::vector<CcuRep::V
 
         reduceScatterDst_[rankIdx].addr = myScratch_;
         reduceScatterDst_[rankIdx].addr += scratchOffset;
-        scratchOffset += normalSliceSize_;
+        scratchOffset += sliceSize_;
         reduceScatterDst_[rankIdx].token = token_[rankId_];
     }
 
