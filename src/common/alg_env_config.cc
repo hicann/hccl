@@ -771,12 +771,6 @@ HcclResult ParseOpExpansion()
             HCCL_WARNING("Deterministic do not support aiv");
         }
         g_algEnvConfig.aivMode = true;
-    } else if (opExpansionModeEnv == "AIV_ONLY") {
-        if (g_algEnvConfig.hcclDeterministic == true) {
-            HCCL_WARNING("Deterministic do not support aiv only");
-        }
-        g_algEnvConfig.aivMode = true;
-        g_algEnvConfig.aivOnlyMode = true;
     } else if (opExpansionModeEnv == "HOST") {
         g_algEnvConfig.aivMode = false;
         g_algEnvConfig.aicpuUnfold = false;
@@ -1027,7 +1021,7 @@ bool RunIndependentOpExpansion(DevType deviceType)
     #endif
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" ||
                opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV" ||
-               opExpansionModeEnv == "AIV_ONLY" || opExpansionModeEnv == "CCU_SCHED" ||
+               opExpansionModeEnv == "CCU_SCHED" ||
                opExpansionModeEnv == "CCU_MS";
     }
 
