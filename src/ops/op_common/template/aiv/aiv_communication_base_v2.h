@@ -85,7 +85,7 @@ constexpr uint64_t AIV_PING_PONG_FACTOR_TWO = 2;
 constexpr uint32_t NUM_BLOCKS_FOUR_PER_RANK_A3 = 4;
 constexpr uint32_t MAX_NUM_BLOCKS = 48;
 
-constexpr uint64_t FLAG_SIZE = 256;
+constexpr uint64_t FLAG_SIZE = 128;
 constexpr uint64_t UB_ALIGN_SIZE = 32;
 constexpr uint64_t UB_FLAG_SIZE = 32;
 constexpr uint64_t UB_FLAG_SIZE_4 = UB_FLAG_SIZE * 4;
