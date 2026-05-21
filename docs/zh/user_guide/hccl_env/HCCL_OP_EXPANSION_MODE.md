@@ -66,7 +66,8 @@
     - 该配置项下，集合通信支持控核能力，建议业务根据实际使用场景中计算算子与通信算子的并发情况进行Vector Core核数的配置。
 
       - 针对Broadcast算子，建议至少分配ranksize个vector核。
-      - 针对AllReduce、ReduceScatter、AllGather、AlltoAll、AlltoAllV、AlltoAllVC算子，建议最少分配max\(2, ranksize/20 + 1\)个vector核。
+      - 针对AllGather、非确定性ReduceScatter算子，建议最少分配max\(2, ranksize/20 + 1\)个vector核。
+      - 针对AllReduce、确定性ReduceScatter、AlltoAll、AlltoAllV、AlltoAllVC算子，建议最少分配max\(2, ranksize/20 + 1\)个vector核，且核数需为偶数（若计算结果为奇数则向上取整至下一个偶数）。
 
         若业务编译分配的Vector Core核数无法满足算法编排的要求，HCCL会报错并提示所需要的最低Vector Core核数。
 
