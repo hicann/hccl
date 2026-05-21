@@ -118,6 +118,7 @@ private:
     void PostSync();
     void DoRepeatScatter();
     void DoScatter();
+	void DoScatterLocalCopy();
 
     uint64_t rankSize_{0};
     uint32_t rankId_{0};

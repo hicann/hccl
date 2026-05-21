@@ -192,10 +192,7 @@ void CcuKernelScatterMesh1D::DoScatter()
     }
     CCU_IF(isInputOutputEqual_ == 0)
     {
-        CcuRep::LocalAddr myOutput = CreateLocalAddr();
-        myOutput.addr = outputMem_[rankId_].addr;
-        myOutput.token = outputMem_[rankId_].token;
-        GroupCopy(myOutput, inputMem_[rankId_], localGoSize_);
+        DoScatterLocalCopy();
     }
     CCU_IF(isInputOutputEqual_ != 0)
     {
@@ -203,15 +200,23 @@ void CcuKernelScatterMesh1D::DoScatter()
         {
             if (rootId_ != 0)
             {
-                CcuRep::LocalAddr myOutput = CreateLocalAddr();
-                myOutput.addr = outputMem_[rankId_].addr;
-                myOutput.token = outputMem_[rankId_].token;
-                GroupCopy(myOutput, inputMem_[rankId_], localGoSize_);
+                DoScatterLocalCopy();
             }
         }
     }
     event_.SetMask((1 << rankSize_) - 1);
     WaitEvent(event_);
+}
+
+void CcuKernelScatterMesh1D::DoScatterLocalCopy()
+{
+    CcuRep::LocalAddr myOutput = CreateLocalAddr();
+	CcuRep::LocalAddr myInput = CreateLocalAddr();
+    myOutput.addr = outputMem_[rankId_].addr;
+    myOutput.token = outputMem_[rankId_].token;
+	myInput.addr = inputMem_[rankId_].addr;
+    myInput.token = inputMem_[rankId_].token;
+    GroupCopy(myOutput, myInput, localGoSize_);
 }
 
 HcclResult CcuKernelScatterMesh1D::Algorithm()
