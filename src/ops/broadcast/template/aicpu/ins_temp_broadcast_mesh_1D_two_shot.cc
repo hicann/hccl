@@ -161,8 +161,8 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RootSendData(const u64 memOffset,
     std::vector<DataSlice> sendSrcSliceVec0 = {sendSrcSlice0};
     std::vector<DataSlice> sendDstSliceVec0 = {sendDstSlice0};
     SlicesList sendDataSlice0(sendSrcSliceVec0, sendDstSliceVec0);
-    DataInfo sendDataInfo0(linkSend, sendDataSlice0);
-    CHK_RET(SendWrite(sendDataInfo0, threads[id]));
+    DataInfo sendDataInfo0(linkSend, sendDataSlice0, dataType_);
+    CHK_RET(SendBatchWrite(sendDataInfo0, threads[id]));
 
     // root将自己数据分片发送至对端
     u64 sendSrcOffset1 = sliceInfoVec[myRankIdx][0].offset + memOffset;
@@ -185,8 +185,8 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RootSendData(const u64 memOffset,
     std::vector<DataSlice> sendSrcSliceVec1 = {sendSrcSlice1};
     std::vector<DataSlice> sendDstSliceVec1 = {sendDstSlice1};
     SlicesList sendDataSlice1(sendSrcSliceVec1, sendDstSliceVec1);
-    DataInfo sendDataInfo1(linkSend, sendDataSlice1);
-    CHK_RET(SendWrite(sendDataInfo1, threads[id]));
+    DataInfo sendDataInfo1(linkSend, sendDataSlice1, dataType_);
+    CHK_RET(SendBatchWrite(sendDataInfo1, threads[id]));
 
     return HcclResult::HCCL_SUCCESS;
 }
@@ -360,8 +360,8 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RunAllGather(const std::vector<u32> &c
         TxRxSlicesList sendRecvSlice(sendDataSlice, recvDataSlice);
         TxRxChannels  sendRecvLinks(linkSendRecv, linkSendRecv);
 
-        SendRecvInfo sendRecvInfo(sendRecvLinks, sendRecvSlice);
-        CHK_RET(SendRecvWrite(sendRecvInfo, threads[i]));
+        SendRecvInfo sendRecvInfo(sendRecvLinks, sendRecvSlice, dataType_);
+        CHK_RET(SendRecvBatchWrite(sendRecvInfo, threads[i]));
     }
 
     if (commRanks.size() > 1) {

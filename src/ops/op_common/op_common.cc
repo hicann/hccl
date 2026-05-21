@@ -44,6 +44,7 @@
 #include "hccl_rank_graph_dl.h"
 #include "rt_external.h"
 #include "dlhcomm_function.h"
+#include "hcomm_primitives_dl.h"
 #include "hcomm_diag_dl.h"
 #include "hcom.h"
 
@@ -522,6 +523,8 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
 
     // 资源结构体
     std::unique_ptr<AlgResourceCtxSerializable> resCtxHost = std::make_unique<AlgResourceCtxSerializable>();
+    resCtxHost->isHcommBatchTransferOnThreadSupported =
+        HcommIsSupportHcommBatchTransferOnThread();
     // 资源序列化结果
     void *resCtxSequence = nullptr;
     bool isResourceReused = false;

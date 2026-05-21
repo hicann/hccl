@@ -247,16 +247,16 @@ HcclResult InsTempAllReduceMesh1DTwoShot::ScatterData(const TemplateDataParams &
         } else if (recvSize == 0) {
             // 接收数据片为0时，只发送数据
             SlicesList sendSlicesList(sendSrcSlicesList, sendDstSlicesList);
-            DataInfo sendInfo(sendRecvChannel, sendSlicesList);
-            CHK_PRT_RET(SendWrite(sendInfo, threads.at(remoteIdx)),
+            DataInfo sendInfo(sendRecvChannel, sendSlicesList, dataType_);
+            CHK_PRT_RET(SendBatchWrite(sendInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] Send failed."),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
             TxRxChannels sendRecvChannels(sendRecvChannel, sendRecvChannel);  // 收发双向用同一个Channel
             TxRxSlicesList sendRecvSlicesList({sendSrcSlicesList, sendDstSlicesList},
                 {recvSrcSlicesList, recvDstSlicesList});
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads.at(remoteIdx)),
+            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
+            CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] SendRecv failed."),
                 HcclResult::HCCL_E_INTERNAL);
         }
@@ -358,14 +358,14 @@ HcclResult InsTempAllReduceMesh1DTwoShot::GatherData(const TemplateDataParams &t
         if (sendSize == 0) {
             // 发送数据片为0时，只接收数据
             SlicesList recvSlicesList(recvSrcSlicesList, recvDstSlicesList);
-            DataInfo recvInfo(sendRecvChannel, recvSlicesList);
-            CHK_PRT_RET(RecvRead(recvInfo, threads.at(remoteIdx)),
+            DataInfo recvInfo(sendRecvChannel, recvSlicesList, dataType_);
+            CHK_PRT_RET(RecvBatchRead(recvInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] Recv failed."),
                 HcclResult::HCCL_E_INTERNAL);
         } else if (recvSize == 0) {
             // 接收数据片为0时，只发送数据
             SlicesList sendSlicesList(sendSrcSlicesList, sendDstSlicesList);
-            DataInfo sendInfo(sendRecvChannel, sendSlicesList);
+            DataInfo sendInfo(sendRecvChannel, sendSlicesList, dataType_);
             CHK_PRT_RET(SendRead(sendInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] Send failed."),
                 HcclResult::HCCL_E_INTERNAL);
@@ -373,8 +373,8 @@ HcclResult InsTempAllReduceMesh1DTwoShot::GatherData(const TemplateDataParams &t
             TxRxChannels sendRecvChannels(sendRecvChannel, sendRecvChannel);  // 收发双向用同一个Channel
             TxRxSlicesList sendRecvSlicesList({sendSrcSlicesList, sendDstSlicesList},
                 {recvSrcSlicesList, recvDstSlicesList});
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads.at(remoteIdx)),
+            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
+            CHK_PRT_RET(SendRecvBatchRead(sendRecvInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] SendRecv failed."),
                 HcclResult::HCCL_E_INTERNAL);
         }

@@ -157,15 +157,15 @@ HcclResult InsTempAllGatherNHR::RunAllGatherNHR(const std::vector<ThreadHandle> 
         // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
         TxRxSlicesList sendRecvSlicesList({txSrcSlicesAll, txDstSlicesAll}, {rxSrcSlicesAll, rxDstSlicesAll});
         TxRxChannels sendRecvChannels(channelSend, channelRecv);
-        SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+        SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
 
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[channelIdx]),
-                HCCL_ERROR("[InsTempAllGatherNHR] sendrecv failed (step=%u)", step),
+            CHK_PRT_RET(SendRecvBatchRead(sendRecvInfo, threads[channelIdx]),
+                HCCL_ERROR("[InsTempAllGatherNHR] sendrecv batch failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[channelIdx]),
-                HCCL_ERROR("[InsTempAllGatherNHR] sendrecv failed (step=%u)", step),
+            CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads[channelIdx]),
+                HCCL_ERROR("[InsTempAllGatherNHR] sendrecv batch failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         }
     }

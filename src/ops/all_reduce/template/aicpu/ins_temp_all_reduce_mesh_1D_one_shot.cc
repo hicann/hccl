@@ -151,8 +151,8 @@ HcclResult InsTempAllReduceMesh1DOneShot::RunAllReduce(const OpParam& param,
         rxDstSlices.push_back(rxDstSlice);
 
         SendRecvInfo sendRecvInfo{{linkSend, linkRecv},
-                             {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
-        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[queIdx]),
+                             {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_};
+        CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads[queIdx]),
             HCCL_ERROR("[InsTempAllReduceMesh1DOneShot] RunAllReduce SendRecv failed"),
             HcclResult::HCCL_E_INTERNAL);
     }

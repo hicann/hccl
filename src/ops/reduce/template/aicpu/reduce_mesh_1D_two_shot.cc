@@ -183,8 +183,8 @@ HcclResult ReduceMesh1DTwoShot::SendRecvDataToPeers(const TemplateDataParams &te
 
             TxRxChannels sendRecvChannels(sendRecvChannel, sendRecvChannel);
             TxRxSlicesList sendRecvSlicesList({sendSrcSlicesList, sendDstSlicesList}, {recvSrcSlicesList, recvDstSlicesList});
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads.at(remoteIdx)),
+            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
+            CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads.at(remoteIdx)),
                 HCCL_ERROR("[InsTempReduceMesh1DTwoShot][SendRecvDataToPeers] SendRecv failed."),
                 HcclResult::HCCL_E_INTERNAL);
         }

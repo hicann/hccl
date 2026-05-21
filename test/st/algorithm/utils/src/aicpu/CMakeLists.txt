@@ -158,6 +158,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/common/log.cc
     ${HCCL_DEV_BASE}/src/common/adapter_error_manager_pub.cc
     ${HCCL_DEV_BASE}/src/common/alg_env_config.cc
+    ${HCCL_DEV_BASE}/src/common/hcomm_dlsym/hcomm_primitives_dl.cc
 
     ${HCCL_DEV_BASE}/src/ops/op_common/exec_timeout_manager.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/executor/channel/channel.cc

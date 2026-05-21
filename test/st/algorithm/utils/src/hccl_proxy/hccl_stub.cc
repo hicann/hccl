@@ -10,6 +10,7 @@
 
 #include "hccl/hccl_types.h"
 #include "hccl/base.h"
+#include "hccl_host_comm_dl.h"
 #include "hccl_res.h"
 #include "dtype_common.h"
 #include "hccl_common.h"
@@ -936,6 +937,11 @@ HcclResult HcommSymWinGetPeerPointer(HcclCommSymWindow winHandle, size_t offset,
 {
     HCCL_ERROR("[%s] not support.", __func__);
     return HCCL_E_NOT_SUPPORT;
+}
+
+bool HcommIsSupportHcommBatchTransferOnThread()
+{
+    return false;
 }
 
 #ifdef __cplusplus

@@ -153,10 +153,10 @@ HcclResult ReduceMesh1D::SendData(const TemplateDataParams &dataParams,
         buffInfo.inBuffBaseOff,
         buffInfo.hcclBuffBaseOff);
     SlicesList sendSlicesList({srcDataSlice}, {dstDataSlice});
-    DataInfo sendInfo(sendChannel, sendSlicesList);
+    DataInfo sendInfo(sendChannel, sendSlicesList, dataType_);
 
     CHK_PRT_RET(
-        SendWrite(sendInfo, threads.at(0)), HCCL_ERROR("[ReduceMesh1D] Send data failed"), HcclResult::HCCL_E_INTERNAL);
+        SendBatchWrite(sendInfo, threads.at(0)), HCCL_ERROR("[ReduceMesh1D] Send data failed"), HcclResult::HCCL_E_INTERNAL);
 
     return HcclResult::HCCL_SUCCESS;
 }
