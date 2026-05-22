@@ -59,7 +59,7 @@ HcclResult ProcessMeshInfo(HcclComm comm,const std::vector<std::vector<u32>>& su
                         u32 enableDieNum, u32 enableDieId,
                         std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
 {
-#if !defined(AICPU_COMPILE) && (CANN_VERSION_NUM >= CANN_VERSION_9_0_0)
+#ifndef AICPU_COMPILE
     constexpr u32 DIE_NUM_1 = 1;
     constexpr u32 DIE_NUM_2 = 2;
     constexpr u32 DIE_0 = 0;
@@ -83,16 +83,12 @@ HcclResult ProcessMeshInfo(HcclComm comm,const std::vector<std::vector<u32>>& su
         }
     }
     return HcclResult::HCCL_SUCCESS;
-#else
-    (void)comm; (void)subcommInfo; (void)rank2ChannelIdx; (void)myRank;
-    (void)channelsPerDie; (void)enableDieNum; (void)enableDieId; (void)rankIdToChannelDesc;
-    return HcclResult::HCCL_E_NOT_SUPPORT;
 #endif
 }
 
 HcclResult ProcessFlattenLink(HcclComm comm, u32 myRank, const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc> &channels)
 {
-#if !defined(AICPU_COMPILE) && (CANN_VERSION_NUM >= CANN_VERSION_9_0_0)
+#ifndef AICPU_COMPILE
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc;
     CHK_RET(CcuAlgTemplateBase::RestoreChannelMap(channels, rankIdToChannelDesc));
     uint32_t enableDieNum = 0;
@@ -112,9 +108,6 @@ HcclResult ProcessFlattenLink(HcclComm comm, u32 myRank, const std::vector<std::
     }
     channels = channelsPerDie[0];
     return HcclResult::HCCL_SUCCESS;
-#else
-    (void)comm; (void)myRank; (void)subcommInfo; (void)channels;
-    return HcclResult::HCCL_E_NOT_SUPPORT;
 #endif
 }
 
@@ -196,7 +189,7 @@ HcclResult CalcLevel2ChannelRequest(const OpParam& param, const TopoInfo* topoIn
 HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol> &protocols)
 {
     protocols.clear();
-#if CANN_VERSION_NUM >= CANN_VERSION_9_1_0
+#if CANN_VERSION_NUM >= 90000000
     switch (param.engine) {
         case CommEngine::COMM_ENGINE_AICPU:
         case CommEngine::COMM_ENGINE_AICPU_TS:
@@ -229,7 +222,7 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol> &
     }
 #else
     // 8.5.0 CANN 无 UBC_CTP/UB_MEM 等枚举值；此函数所在的 CalcChannelRequestXxx/CreateChannelRequestByRankId 通路
-    // 仅 9.0.0 新路径使用，运行时已由算子入口 GetHcommVersion() < CANN_VERSION_9_0_0 分流到 HcclXxxInner，
+    // 仅 9.0.0 新路径使用，运行时已由算子入口 GetHcommVersion() < 90000000 分流到 HcclXxxInner，
     // 8.5.0 下不会真正走到。这里保留空桩让 libhccl.so 外部链接（hccl_test 等）能解析符号。
     (void)param;
 #endif
@@ -520,7 +513,7 @@ HcclResult CalcChannelRequestMesh2D(HcclComm comm, const OpParam& param, const T
     if (subcommInfo.size() == 2) { // 2D Mesh
         CHK_RET(CalcMesh2DChannelConnect(myRank, subcommInfo, connectRanks));
     }
-#if CANN_VERSION_NUM >= CANN_VERSION_9_1_0
+#if CANN_VERSION_NUM >= 90000000
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
     if (param.engine == CommEngine::COMM_ENGINE_AIV) {
         protocol = CommProtocol::COMM_PROTOCOL_UB_MEM;
@@ -631,7 +624,7 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam& param, const Topo
     return HCCL_SUCCESS;
 }
 
-#if CANN_VERSION_NUM >= CANN_VERSION_9_1_0
+#if CANN_VERSION_NUM >= 90000000
 static bool IsEndPointEqual(EndpointDesc &endPoint0, EndpointDesc &endPoint1)
 {
     HCCL_INFO("endPoint0:phyId[%u], protocol[%u], addr.type[%u], addr.id[%u]",
@@ -654,12 +647,12 @@ static bool IsEndPointEqual(EndpointDesc &endPoint0, EndpointDesc &endPoint1)
     }
 
 }
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_1_0 */
+#endif /* CANN_VERSION_NUM >= 90000000 */
 
 HcclResult GetTopoTypeByLink(HcclComm comm, uint32_t netLayer, CommLink &link, CommTopo &topoType)
 {
-#if defined(AICPU_COMPILE) || CANN_VERSION_NUM < CANN_VERSION_9_1_0
-    // 9.1.0 之前不使用 HcclRankGraphGetEndpointNum / GetEndpointDesc / GetTopoType 等新 API，
+#if defined(AICPU_COMPILE) || CANN_VERSION_NUM < 90000000
+    // 8.5.0 CANN 无 HcclRankGraphGetEndpointNum / GetEndpointDesc / GetTopoType 等 9.0.0-only API，
     // 且 CommAddr.eid 字段也不存在；整函数在 8.5.0 下不提供真实实现（上游在 9.0.0 新路径里调用，
     // 入口版本号守护后 8.5.0 永远走不到这里）。
     (void)comm; (void)netLayer; (void)link; (void)topoType;

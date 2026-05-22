@@ -11,12 +11,8 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_recv_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_recv_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_recv_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_recv_dpu_executor.cc
 )
-if(NOT HCCL_CANN_COMPAT_850)
-    list(APPEND src_list
-        ${CMAKE_CURRENT_SOURCE_DIR}/ins_recv_dpu_executor.cc
-    )
-endif()
 
 target_sources(hccl PRIVATE
     ${src_list}

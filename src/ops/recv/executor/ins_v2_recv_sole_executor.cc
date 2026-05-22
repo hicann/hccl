@@ -149,7 +149,7 @@ namespace ops_hccl
         return HCCL_SUCCESS;
     }
 
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if !defined(HCCL_CANN_COMPAT_850)
     REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_RECEIVE, InsRecvDPU, InsV2RecvSoleExecutor, InsTempRecvDpu);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
+#endif /* !HCCL_CANN_COMPAT_850 */
 } // namespace ops_hccl

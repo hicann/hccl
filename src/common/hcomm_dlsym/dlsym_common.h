@@ -11,18 +11,14 @@
 #ifndef DLSYM_COMMON_H
 #define DLSYM_COMMON_H
 
-/* CANN 版本号常量，与 CMake 注入的 CANN_VERSION_NUM 配套使用 */
-#define CANN_VERSION_9_0_0 90000000
-#define CANN_VERSION_9_1_0 90100000
-
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "dlog_pub.h"
 
 #include "hccl/hccl_types.h"
 
-/* 9.1.0 之前提供桩类型，兼容 9.0.0 和 8.5.0 环境 */
-#if CANN_VERSION_NUM < CANN_VERSION_9_1_0
+/* 8.5.0 桩: HcclCommStatus (来自 hccl_types.h，9.0.0 新增) */
+#if CANN_VERSION_NUM < 90000000
 typedef enum {
     HCCL_COMM_STATUS_READY = 0,
     HCCL_COMM_STATUS_SUSPENDING = 1,

@@ -28,7 +28,7 @@
 #include "hccl_rank_graph_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "binary_stream.h"
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if CANN_VERSION_NUM >= 90000000
 #include "hccl_ccu_res.h"
 #else
 typedef void *CcuKernelHandle; // 8.5.0 下无 hccl_ccu_res.h，用 opaque 占位
@@ -266,7 +266,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
 struct CcuKernelInfo {
     // kernel资源组序号，group号不同时，资源复用
     u32 resGroup = 0;
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if CANN_VERSION_NUM >= 90000000
     // kernel构造函数
     hcomm::KernelCreator creator;
     // KernelArg实例

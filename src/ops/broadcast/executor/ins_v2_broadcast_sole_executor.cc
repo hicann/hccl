@@ -13,11 +13,11 @@
 #include "ins_temp_broadcast_nhr.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_broadcast_mesh_1D.h"
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if !defined(HCCL_CANN_COMPAT_850)
 #include "ccu_temp_broadcast_mesh_1D_mem2mem.h"
 #include "ccu_temp_broadcast_mesh_1D.h"
 #include "ccu_temp_broadcast_nhr_1D_mem2mem.h"
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
+#endif /* !HCCL_CANN_COMPAT_850 */
 #endif
 
 namespace ops_hccl {
@@ -240,17 +240,17 @@ REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastNHR, InsV2Broadcas
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastMesh1D, InsV2BroadcastSoleExecutor, TopoMatch1D,
                 AivTempBroadcastMesh1D);
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastMesh1DMem2Mem, InsV2BroadcastSoleExecutor, TopoMatch1D,
                 CcuTempBroadcastMesh1DMem2Mem);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#endif /* !HCCL_CANN_COMPAT_850 */
+#if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastMesh1D, InsV2BroadcastSoleExecutor, TopoMatch1D,
                 CcuTempBroadcastMesh1D);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#endif /* !HCCL_CANN_COMPAT_850 */
+#if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastNHR1DMem2Mem, InsV2BroadcastSoleExecutor, TopoMatch1D,
                 CcuTempBroadcastNHR1DMem2Mem);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
+#endif /* !HCCL_CANN_COMPAT_850 */
 #endif
 }

@@ -273,13 +273,11 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
     return HCCL_SUCCESS;
 }
 
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_REDUCE_SCATTER,
                                 InsReduceScatterSequenceMesh1DNhr,
                                 InsV2ReduceScatterSequenceExecutorAicpu,
                                 TopoMatchMultilevel,
                                 InsTempReduceScatterMesh1DZAxisDetour,
                                 InsTempReduceScatterNHR);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
 
 }

@@ -11,12 +11,12 @@
 #include "ins_v2_allreduce_sequence2die_executor.h"
 #include "alg_data_trans_wrapper.h"
 #ifndef AICPU_COMPILE
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if !defined(HCCL_CANN_COMPAT_850)
 #include "ccu_temp_all_gather_2dies_mesh_1d_mem2mem.h"
 #include "ccu_temp_reduce_scatter_mesh_1D_2die_mem2mem.h"
 #include "ccu_temp_all_gather_2dies_mesh_1D.h"
 #include "ccu_temp_reduce_scatter_mesh2die.h"
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
+#endif /* !HCCL_CANN_COMPAT_850 */
 #endif
 
 namespace ops_hccl {
@@ -267,13 +267,13 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 }
 #ifndef AICPU_COMPILE
 
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigMs,
     InsV2AllReduceSequence2DieExecutor, TopoMatch1D, CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
-#if CANN_VERSION_NUM >= CANN_VERSION_9_0_0
+#endif /* !HCCL_CANN_COMPAT_850 */
+#if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigSche,
     InsV2AllReduceSequence2DieExecutor, TopoMatch1D, CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
-#endif /* CANN_VERSION_NUM >= CANN_VERSION_9_0_0 */
+#endif /* !HCCL_CANN_COMPAT_850 */
 #endif
 }

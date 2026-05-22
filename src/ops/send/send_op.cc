@@ -54,7 +54,7 @@ HcclResult HcclSend(
         return HcclSendNext(sendBuf, count, dataType, destRank, comm, stream);
     }
 
-    if (GetHcommVersion() < CANN_VERSION_9_0_0) {
+    if (GetHcommVersion() < 90000000) {
         return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
     }
 

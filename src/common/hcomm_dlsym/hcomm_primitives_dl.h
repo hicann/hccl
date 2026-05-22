@@ -16,7 +16,7 @@
 #include "hccl_types.h"
 
 /* 8.5.0 桩: HcclCommSymWindow (来自 hccl_types.h) */
-#if CANN_VERSION_NUM < CANN_VERSION_9_0_0
+#if CANN_VERSION_NUM < 90000000
 typedef void *HcclCommSymWindow;
 #endif
 

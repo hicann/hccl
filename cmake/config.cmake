@@ -120,6 +120,40 @@ set(ASCEND_MOCKCPP_PACKAGE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 #     message(FATAL_ERROR "${THIRD_PARTY_NLOHMANN_PATH} does not exist, please check the setting of THIRD_PARTY_NLOHMANN_PATH.")
 # endif()
 
+# ------------------------------------------------------------
+# 前向兼容：探测 CANN 版本号，设置 HCCL_CANN_COMPAT_850
+# ------------------------------------------------------------
+set(HCCL_CANN_VERSION_NUM 0)
+set(_hccl_cann_version_header "${ASCEND_CANN_PACKAGE_PATH}/include/version/cann_version.h")
+message(STATUS "Checking CANN version header: ${_hccl_cann_version_header}")
+if(EXISTS "${_hccl_cann_version_header}")
+    file(STRINGS "${_hccl_cann_version_header}" _hccl_cann_ver_line
+         REGEX "^#define[ \t]+CANN_VERSION_NUM[ \t]+")
+    message(STATUS "CANN version line: [${_hccl_cann_ver_line}]")
+    if(_hccl_cann_ver_line)
+        # 形如: #define CANN_VERSION_NUM ((8 * 10000000) + (5 * 100000) + (0 * 1000))
+        string(REGEX MATCH
+               "\\(([0-9]+) \\* 10000000\\) \\+ \\(([0-9]+) \\* 100000\\) \\+ \\(([0-9]+) \\* 1000\\)"
+               _ "${_hccl_cann_ver_line}")
+        message(STATUS "Matched: m1=[${CMAKE_MATCH_1}] m2=[${CMAKE_MATCH_2}] m3=[${CMAKE_MATCH_3}]")
+        if(NOT CMAKE_MATCH_1 STREQUAL "" AND NOT CMAKE_MATCH_2 STREQUAL "" AND NOT CMAKE_MATCH_3 STREQUAL "")
+            math(EXPR HCCL_CANN_VERSION_NUM
+                 "${CMAKE_MATCH_1} * 10000000 + ${CMAKE_MATCH_2} * 100000 + ${CMAKE_MATCH_3} * 1000")
+        endif()
+    endif()
+endif()
+message(STATUS "Detected CANN_VERSION_NUM = ${HCCL_CANN_VERSION_NUM}")
+if(HCCL_CANN_VERSION_NUM GREATER 0 AND HCCL_CANN_VERSION_NUM LESS 90000000)
+    set(HCCL_CANN_COMPAT_850 ON)
+    message(STATUS "HCCL_CANN_COMPAT_850 = ON (forward-compat mode for CANN < 9.0.0)")
+else()
+    set(HCCL_CANN_COMPAT_850 OFF)
+endif()
+# 把版本号作为编译期宏，供 .cc/.h 内 `#if CANN_VERSION_NUM >= 90000000` 直接判断
+if(HCCL_CANN_VERSION_NUM GREATER 0)
+    add_compile_definitions(CANN_VERSION_NUM=${HCCL_CANN_VERSION_NUM})
+endif()
+
 #execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/check_version_compatiable.sh
 #                             ${ASCEND_CANN_PACKAGE_PATH}
 #                             hccl

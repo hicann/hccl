@@ -8,12 +8,10 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-if(NOT HCCL_CANN_COMPAT_850)
-    set(src_list
-        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_send_host_nic_dpu.cc
-    )
+set(src_list
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_send_host_nic_dpu.cc
+)
 
-    target_sources(hccl PRIVATE
-        ${src_list}
-    )
-endif()
+target_sources(hccl PRIVATE
+    ${src_list}
+)

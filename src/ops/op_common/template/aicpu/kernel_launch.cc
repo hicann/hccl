@@ -24,6 +24,9 @@
 #include <unordered_map>
 #include <shared_mutex>
 #include <atomic>
+#if CANN_VERSION_NUM >= 90000000
+#include "hccl_diag.h"
+#endif
 #include "hccl_device_comm_dl.h"
 #include "exec_timeout_manager.h"
 #include "alg_data_trans_wrapper.h"
