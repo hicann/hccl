@@ -23,6 +23,16 @@ AivTempReduceMesh1D::~AivTempReduceMesh1D()
 {
 }
 
+u64 AivTempReduceMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void) inBuffType;
+    (void) outBuffType;
+    // TwoShot场景部分数据量切分会有尾快，且需要确定性计算，需要2倍scratch才能保证数据不溢出
+    u64 multiple = 2;
+    HCCL_INFO("[AivTempReduceMesh1D] scratch multiple is [%llu]", multiple);
+    return multiple;
+}
+
 HcclResult AivTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                                                AlgResourceRequest& resourceRequest)
 {
