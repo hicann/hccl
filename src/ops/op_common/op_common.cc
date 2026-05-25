@@ -2021,11 +2021,11 @@ HcclResult SetMultipleDimensionSplitRatio(OpParam &param) {
     const double DEFAULT_MULT_RATIO = 0.5;
     if (!GetExternalInputMultipleDimensionSplitRatio(ratioValue)) {
         param.multipleDimensionSplitRatio = DEFAULT_MULT_RATIO;
-        HCCL_INFO("[OpCommon] Ratio is not set, use default value: %u seconds", DEFAULT_MULT_RATIO);
+        HCCL_INFO("[OpCommon] Ratio is not set, use default value: %f", DEFAULT_MULT_RATIO);
     } else {
         // 验证转换后的值是否合理
         if (ratioValue < 0 || ratioValue > 1) {
-            HCCL_WARNING("[OpCommon] Ratio value %.2f out of range, use default: %u seconds", 
+            HCCL_WARNING("[OpCommon] Ratio value %.2f out of range, use default value: %f", 
                         ratioValue, DEFAULT_MULT_RATIO);
             param.multipleDimensionSplitRatio = DEFAULT_MULT_RATIO;
         } else {
