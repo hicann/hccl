@@ -8,14 +8,4 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include <cstdint>
-
-// 打桩HCCL依赖so所需符号
-extern "C" int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent)
-{
-    (void)moduleId;
-    if (enableEvent != nullptr) {
-        *enableEvent = 0;
-    }
-    return 0x03;
-}
+// 打桩HCCL依赖so所需空文件
