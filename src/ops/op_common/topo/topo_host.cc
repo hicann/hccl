@@ -310,11 +310,9 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
                 // 双向兼容处理：先处理版本号1的字段
                 if (currentLink.header.version >= 1) {
                     // --- 在这里处理 currentLink ---
-                    HCCL_DEBUG("  Link[%u] found between srcRank[%u] and dstRank[%u]:", i, srcRank, dstRank);
-                    HCCL_DEBUG("    LinkType: %u", currentLink.linkAttr.linkProtocol); // 假设有 linkType 成员
-                    HCCL_DEBUG("    srcEndpointDesc: %u", currentLink.srcEndpointDesc); // 假设有此成员
-                    HCCL_DEBUG("    dstEndpointDesc: %u", currentLink.dstEndpointDesc); // 假设有此成员
-
+                    HCCL_DEBUG("Link[%u] found between srcRank[%u] and dstRank[%u]:"
+                               "LinkType: %u, srcEndpointDesc: %u, dstEndpointDesc: %u",
+                    i, srcRank, dstRank, currentLink.linkAttr.linkProtocol, currentLink.srcEndpointDesc, currentLink.dstEndpointDesc);
                     // 可以将链路类型统计起来
                     // 原始代码中的 pairLinkCounter 应该在这里使用
                     pairLinkCounter[static_cast<u32>(currentLink.linkAttr.linkProtocol)]++;

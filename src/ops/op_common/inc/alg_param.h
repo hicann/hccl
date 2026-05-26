@@ -93,8 +93,8 @@ enum class OpExecuteConfig {
 };
 
 enum class OpMode {
-    OPBASE = 0,
-    OFFLOAD = 1
+    OFFLOAD = 0,
+    OPBASE = 1
 };
 
 enum class Level0Shape {
