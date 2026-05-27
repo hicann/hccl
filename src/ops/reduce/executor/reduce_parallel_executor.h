@@ -20,8 +20,7 @@ template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, t
     typename AlgTemplate3>
 class ReduceParallelExecutor : public InsCollAlgBase {
 public:
-    static constexpr u32 dataSplitPart_{2};             // 每次loop中将数据拆分为2份
-    static constexpr long double dataSplitSize0_{0.5};  // 每次loop中将数据拆分为2份，第一份占2份的比例
+    static constexpr u32 dataSplitPart_{2};
     static constexpr u32 stageSize_{2};
     static constexpr u32 stepSize_{2};
 
@@ -104,7 +103,7 @@ private:
     std::array<u64, dataSplitPart_> dataCountPerLoop_{0, 0};
     std::vector<std::vector<u32>> temp0HierarchyInfo_;
     std::vector<std::vector<u32>> temp1HierarchyInfo_;
-    
+    double multipleDimensionSplitRatio_{0.5};
 };
 }  // namespace ops_hccl
 

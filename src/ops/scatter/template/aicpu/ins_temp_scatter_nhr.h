@@ -41,23 +41,28 @@ public:
     HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
     void SetRoot(u32 root);
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainnToSub) override {};
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override{};
+    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainnToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 
 private:
     HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
     HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
     HcclResult RunNHR(const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const TemplateDataParams &tempAlgParam);
+        const TemplateDataParams &tempAlgParams);
     HcclResult BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const ThreadHandle &thread, const TemplateDataParams &tempAlgParam, u32 repeat) const;
+        const ThreadHandle &thread, const TemplateDataParams &tempAlgParams, u32 channelId) const;
     HcclResult BatchRecv(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const ThreadHandle &thread, const TemplateDataParams &tempAlgParam, u32 repeat) const;
+        const ThreadHandle &thread, const TemplateDataParams &tempAlgParams, u32 channelId) const;
     HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const ThreadHandle &thread, const TemplateDataParams &tempAlgParam, u32 repeat) const;
+        const ThreadHandle &thread, const TemplateDataParams &tempAlgParams, u32 channelId) const;
+    HcclResult PreprareDataSplitForMultiChannel(const TemplateResource &templateResource, const TemplateDataParams &tempAlgParams);
     u64 processSize_{0};
     u64 count_{0};
     bool isDmaRead_{false};
+    std::vector<u64> dataSplit_;
+    std::vector<u64> dataOffset_;
+    std::vector<u64> dataSplitTail_;
+    std::vector<u64> dataOffsetTail_;
 };
 
 }  // namespace ops_hccl

@@ -231,7 +231,10 @@ HcclResult InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     InsAlgTemplate1 tempAlgInter(param, resCtx.topoInfo.userRank, temp1HierarchyInfo_);
     InsAlgTemplate2 tempAlgIntra1(param, resCtx.topoInfo.userRank, temp0HierarchyInfo_);
     InsAlgTemplate3 tempAlgInter1(param, resCtx.topoInfo.userRank, temp1HierarchyInfo_);
-
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
+        tempAlgInter.SetchannelsPerRank(interLinks_);
+        tempAlgInter1.SetchannelsPerRank(interLinks_);
+    }
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx, tempAlgIntra, tempAlgInter, tempAlgIntra1, tempAlgInter1);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
@@ -244,10 +247,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::GetParallelDataSplit(
     std::vector<float> &splitDataSize) const
 {
-    // to do 先做等分，后续根据性能做调整
-    double splitData = 0.5;
+    double splitData = multipleDimensionSplitRatio_;
     splitDataSize.push_back(splitData);
-    splitDataSize.push_back(splitData);
+    splitDataSize.push_back(1 - splitData);
+    HCCL_INFO("[InsBroadcastParallelExecutor] splitDataSize is %f, %f", splitDataSize[0], splitDataSize[1]);
     return;
 }
 
@@ -509,6 +512,7 @@ HcclResult InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     CHK_PTR_NULL(param.outputPtr);
     CHK_PTR_NULL(resCtx.cclMem.addr);
 
+    multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(dataSplitSize);
 
@@ -757,6 +761,7 @@ HcclResult InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     CcuKernelSubmitInfo *ccuKernelSubmitInfos = ctx->GetCcuKernelSubmitInfoPtr();
 
+    multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(dataSplitSize);
     dataCount_ = param.DataDes.count;
