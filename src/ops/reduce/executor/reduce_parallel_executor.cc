@@ -267,6 +267,10 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     algTemplatePtrArr_.at(0).at(1) = std::make_shared<AlgTemplate1>(param, myRank_, temp1HierarchyInfo_);
     algTemplatePtrArr_.at(1).at(0) = std::make_shared<AlgTemplate2>(param, myRank_, temp0HierarchyInfo_);
     algTemplatePtrArr_.at(1).at(1) = std::make_shared<AlgTemplate3>(param, myRank_, temp1HierarchyInfo_);
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
+        algTemplatePtrArr_.at(0).at(1)->SetchannelsPerRank(interLinks_);
+        algTemplatePtrArr_.at(1).at(1)->SetchannelsPerRank(interLinks_);
+    }
 
     // 算法展开
     CHK_RET(OrchestrateImpl());
@@ -448,7 +452,10 @@ HcclResult
 
     const u64 scratchMemBlockSize = maxTmpMemSize_ / totalScratchMultiple;
     CHK_PRT_RET(dataTypeSize_ == 0, "[ReduceParallelExecutor][OrchestrateImpl] dataTypeSize_ is 0", HCCL_E_INTERNAL);
-    const u64 maxCountPerLoop = std::min<u64>(scratchMemBlockSize, UB_MAX_DATA_SIZE) / dataTypeSize_;
+    u64 maxCountPerLoop = scratchMemBlockSize / dataTypeSize_;
+    if (param_.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
+        maxCountPerLoop = std::min<u64>(scratchMemBlockSize, UB_MAX_DATA_SIZE) / dataTypeSize_;
+    }
     CHK_PRT_RET(maxCountPerLoop == 0, "[ReduceParallelExecutor][OrchestrateImpl] maxCountPerLoop is 0", HCCL_E_INTERNAL);
     const u32 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
 
