@@ -25,6 +25,7 @@
 #include "topo_match_base.h"
 #include "topo_match_multilevel.h"
 #include "topo_match_ubx.h"
+#include "topo_match_pcie_mix.h"
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
@@ -57,11 +58,11 @@ protected:
         std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo);
 
     HcclResult InitOmniPipeScratchParam(OmniPipeScratchParam& scratchParam, const OpParam &param,
-        const std::vector<EndpointAttrBwCoeff>& endpointAttrBwNew,
+        const std::vector<double>& endpointAttrBwNew,
         std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap);
 
     HcclResult InitOmniPipeSliceParam(OmniPipeSliceParam& scratchParam, const OpParam &param,
-        const std::vector<EndpointAttrBwCoeff>& endpointAttrBwNew,
+        const std::vector<double>& endpointAttrBwNew,
         std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap, u64 maxCountPerLoop);
 
     HcclResult CalcResLevel(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
@@ -72,7 +73,8 @@ protected:
 
     HcclResult InitSubCommRanks(std::vector<std::vector<u32>>& subCommRanks0,
         std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2);
+        std::vector<std::vector<u32>>& subCommRanks2,
+        const TopoInfoWithNetLayerDetails* topoInfo);
 
     HcclResult InitTemplate(const OpParam &param, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
         const std::vector<std::vector<u32>>& subCommRanks0,

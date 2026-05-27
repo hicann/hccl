@@ -50,30 +50,31 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(const std::vector<Thread
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     const u32 nSteps = GetNHRStepNum(templateRankSize_);  // NHR 通信步数， celi(log2(rankSize))
+    bool isPcieProtocal = IsPcieProtocol(channels);  // 判断是否存在pcie链路
 
-    for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-        for (u32 step = 0; step < nSteps; ++step) {
-            AicpuNHRStepInfo stepInfo;
-            CHK_RET(GetStepInfo(step, nSteps, stepInfo));  // 计算当前step要通信的卡，数据
+    for (u32 step = 0; step < nSteps; ++step) {
+        AicpuNHRStepInfo stepInfo;
+        CHK_RET(GetStepInfo(step, nSteps, stepInfo));  // 计算当前step要通信的卡，数据
 
-            const ChannelInfo& channelRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
-            const ChannelInfo& channelSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
-            // 构造SendRecv， 都是Scratch到Scratch的传输，没有DMA消减
-            std::vector<DataSlice> txSrcSlices;
-            std::vector<DataSlice> txDstSlices;
-            std::vector<DataSlice> rxSrcSlices;
-            std::vector<DataSlice> rxDstSlices;
+        const ChannelInfo& channelRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
+        const ChannelInfo& channelSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
+        // 构造SendRecv， 都是Scratch到Scratch的传输，没有DMA消减
+        std::vector<DataSlice> txSrcSlices;
+        std::vector<DataSlice> txDstSlices;
+        std::vector<DataSlice> rxSrcSlices;
+        std::vector<DataSlice> rxDstSlices;
 
-            void* sendCclBuffAddr = channelSend.remoteCclMem.addr;
-            void* recvCclBuffAddr = channelRecv.remoteCclMem.addr;
+        void* sendCclBuffAddr = channelSend.remoteCclMem.addr;
+        void* recvCclBuffAddr = channelRecv.remoteCclMem.addr;
 
-            HCCL_DEBUG(
-                "[InsTempAllGatherNHR] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] nSteps[%u] nSlices[%u]",
-                myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
+        HCCL_DEBUG(
+            "[InsTempAllGatherNHR] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] nSteps[%u] nSlices[%u]",
+            myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
 
-            for (u32 i = 0; i < stepInfo.nSlices; ++i) {
-                const u32 txIdx = stepInfo.txSliceIdxs[i];
-                const u32 rxIdx = stepInfo.rxSliceIdxs[i];
+        for (u32 i = 0; i < stepInfo.nSlices; ++i) {
+            const u32 txIdx = stepInfo.txSliceIdxs[i];
+            const u32 rxIdx = stepInfo.rxSliceIdxs[i];
+            for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
                 uint64_t txScratchBase = tempAlgParams_.buffInfo.inBuffBaseOff +
                                          tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt];
                 uint64_t rxScratchBase = tempAlgParams_.buffInfo.outBuffBaseOff +
@@ -97,13 +98,19 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(const std::vector<Thread
             }
             // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
             // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
-            TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
-            TxRxChannels sendRecvChannels(channelSend, channelRecv);
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+        }
+        TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
+        TxRxChannels sendRecvChannels(channelSend, channelRecv);
+        SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
 
+        if (isPcieProtocal) {
+            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[0]),
+                    HCCL_ERROR("[InsTempAllGatherNHR] sendrecv failed (step=%u)", step),
+                    HcclResult::HCCL_E_INTERNAL);
+        }else {
             CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[0]),
-                        HCCL_ERROR("[InsTempAllGatherNHR] sendrecv failed (step=%u, rpt=%u)", step, rpt),
-                        HcclResult::HCCL_E_INTERNAL);
+                    HCCL_ERROR("[InsTempAllGatherNHR] sendrecv failed (step=%u)", step),
+                    HcclResult::HCCL_E_INTERNAL);
         }
     }
     return HcclResult::HCCL_SUCCESS;

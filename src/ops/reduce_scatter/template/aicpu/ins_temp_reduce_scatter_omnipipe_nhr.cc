@@ -33,6 +33,7 @@ HcclResult InsTempReduceScatterOmniPipeNHR::CalcRes(HcclComm comm, const OpParam
     std::vector<HcclChannelDesc> channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, channels));
     resourceRequest.channels.push_back(channels);
+    HCCL_INFO("InsTempReduceScatterOmniPipeNHR--CalcRes],level0Channels.size()=[%u]",channels.size());
     HCCL_INFO("[InsTempReduceScatterOmniPipeNHR][CalcRes] slaveThreadNum: [%u], notifyNumOnMainThread: [%u].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread);
     return HcclResult::HCCL_SUCCESS;
@@ -121,44 +122,43 @@ HcclResult InsTempReduceScatterOmniPipeNHR::RunNHR(const std::vector<ThreadHandl
         HCCL_ERROR("[RS-NHR][RunNHR] empty queue"), HcclResult::HCCL_E_INTERNAL);
 
     if (templateRankSize_ <= 1) return HcclResult::HCCL_SUCCESS;
-
+    bool isPcieProtocal = IsPcieProtocol(channels_);
     // 步进参数，片数由inputOmniPipeSliceStride确定
     const u64 rptNum = std::max<u64>(1, tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[0].size());
 
     // 预计算步骤列表（算法序）
     std::vector<AicpuNHRStepInfo> steps;
     CHK_RET(GetStepInfoList(steps));
-    HCCL_DEBUG("MT");
-    for (u64 rpt = 0; rpt < rptNum; ++rpt) {
-        // 基础位置由 hcclBuffBaseOff 和 inputOmniPipeSliceStride 确定
-        for (u32 s = 0; s < steps.size(); ++s) {
-            const auto &st = steps[s];
-            const u32 recvFromRank = subCommRanks_[0].at(st.fromRank);
-            const u32 sendToRank   = subCommRanks_[0].at(st.toRank);
-            CHK_PRT_RET(recvFromRank == static_cast<u32>(-1) || sendToRank == static_cast<u32>(-1),
-                HCCL_ERROR("[RS-NHR][RunNHR] rank map failed: from[%u] to[%u]", st.fromRank, st.toRank),
-                HcclResult::HCCL_E_INTERNAL);
+    // 基础位置由 hcclBuffBaseOff 和 inputOmniPipeSliceStride 确定
+    for (u32 s = 0; s < steps.size(); ++s) {
+        const auto &st = steps[s];
+        const u32 recvFromRank = subCommRanks_[0].at(st.fromRank);
+        const u32 sendToRank   = subCommRanks_[0].at(st.toRank);
+        CHK_PRT_RET(recvFromRank == static_cast<u32>(-1) || sendToRank == static_cast<u32>(-1),
+            HCCL_ERROR("[RS-NHR][RunNHR] rank map failed: from[%u] to[%u]", st.fromRank, st.toRank),
+            HcclResult::HCCL_E_INTERNAL);
 
-            CHK_PRT_RET(channels_.count(recvFromRank) == 0 || channels_.count(sendToRank) == 0 ||
-                        channels_[recvFromRank].size() == 0 || channels_[sendToRank].size() == 0,
-                        HCCL_ERROR("[RS-NHR][RunNHR] link missing: recvFrom=%d sendTo=%d", recvFromRank, sendToRank),
-                HcclResult::HCCL_E_INTERNAL);
+        CHK_PRT_RET(channels_.count(recvFromRank) == 0 || channels_.count(sendToRank) == 0 ||
+                    channels_[recvFromRank].size() == 0 || channels_[sendToRank].size() == 0,
+                    HCCL_ERROR("[RS-NHR][RunNHR] link missing: recvFrom=%d sendTo=%d", recvFromRank, sendToRank),
+            HcclResult::HCCL_E_INTERNAL);
 
-            ChannelInfo linkRecv = channels_[recvFromRank].at(0);
-            ChannelInfo linkSend = channels_[sendToRank].at(0);
-            HCCL_DEBUG("recvFromRank=[%u], sendToRank=[%u], linkRecv.remoteRank=[%u], linkSend.remoteRank=[%u]", recvFromRank, sendToRank, linkRecv.remoteRank, linkSend.remoteRank);
+        ChannelInfo linkRecv = channels_[recvFromRank].at(0);
+        ChannelInfo linkSend = channels_[sendToRank].at(0);
+        HCCL_DEBUG("recvFromRank=[%u], sendToRank=[%u], linkRecv.remoteRank=[%u], linkSend.remoteRank=[%u]", recvFromRank, sendToRank, linkRecv.remoteRank, linkSend.remoteRank);
 
-            std::vector<DataSlice> txSrcSlices;
-            std::vector<DataSlice> txDstSlices;
-            std::vector<DataSlice> rxSrcSlices;
-            std::vector<DataSlice> rxDstSlices;
+        std::vector<DataSlice> txSrcSlices;
+        std::vector<DataSlice> txDstSlices;
+        std::vector<DataSlice> rxSrcSlices;
+        std::vector<DataSlice> rxDstSlices;
 
-            void* sendCclBuffAddr = linkSend.remoteCclMem.addr;
-            void* recvCclBuffAddr = linkRecv.remoteCclMem.addr;
-            // RS：在 SCRATCH 上进行规约交换
-            for (u32 i = 0; i < st.nSlices; ++i) {
-                const u32 txIdx = st.txSliceIdxs[i]; // 算法序
-                const u32 rxIdx = st.rxSliceIdxs[i];
+        void* sendCclBuffAddr = linkSend.remoteCclMem.addr;
+        void* recvCclBuffAddr = linkRecv.remoteCclMem.addr;
+        // RS：在 SCRATCH 上进行规约交换
+        for (u32 i = 0; i < st.nSlices; ++i) {
+            const u32 txIdx = st.txSliceIdxs[i]; // 算法序
+            const u32 rxIdx = st.rxSliceIdxs[i];
+            for (u64 rpt = 0; rpt < rptNum; ++rpt) {
                 u64 scratchBaseTx = tempAlgParams_.buffInfo.inBuffBaseOff + tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt];
                 u64 scratchBaseRx = tempAlgParams_.buffInfo.inBuffBaseOff + tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[rxIdx][rpt];
                 // 已对齐，这边都用input
@@ -174,29 +174,29 @@ HcclResult InsTempReduceScatterOmniPipeNHR::RunNHR(const std::vector<ThreadHandl
                     tempAlgParams_.stepSliceInfo.stepCount[txIdx][rpt]);  // 发送目标
                 DataSlice rxSrcSlice = DataSlice(recvCclBuffAddr,
                     rxScOff,
-                    tempAlgParams_.stepSliceInfo.stepSliceSize[txIdx][rpt],
-                    tempAlgParams_.stepSliceInfo.stepCount[txIdx][rpt]);
+                    tempAlgParams_.stepSliceInfo.stepSliceSize[rxIdx][rpt],
+                    tempAlgParams_.stepSliceInfo.stepCount[rxIdx][rpt]);
                 DataSlice rxDstSlice = DataSlice(tempAlgParams_.buffInfo.hcclBuff.addr,
                     rxScOff,
-                    tempAlgParams_.stepSliceInfo.stepSliceSize[txIdx][rpt],
-                    tempAlgParams_.stepSliceInfo.stepCount[txIdx][rpt]);
+                    tempAlgParams_.stepSliceInfo.stepSliceSize[rxIdx][rpt],
+                    tempAlgParams_.stepSliceInfo.stepCount[rxIdx][rpt]);
                 txSrcSlices.emplace_back(txSrcSlice);
                 txDstSlices.emplace_back(txDstSlice);
                 rxSrcSlices.emplace_back(rxSrcSlice);
                 rxDstSlices.emplace_back(rxDstSlice);
             }
-
-            SendRecvReduceInfo info{
-                { linkSend, linkRecv }, { { txSrcSlices, txDstSlices }, { rxSrcSlices, rxDstSlices } }, dataType_, reduceOp_
-            };
-
+        }
+        SendRecvReduceInfo info{
+            { linkSend, linkRecv }, { { txSrcSlices, txDstSlices }, { rxSrcSlices, rxDstSlices } }, dataType_, reduceOp_
+        };
+        if (isPcieProtocal) {
+            CHK_PRT_RET(SendRecvReadReduce(info, threads[0]),
+                HCCL_ERROR("[RS-NHR][RunNHR] SendRecvReduce failed (step=%u)", st.step), HcclResult::HCCL_E_INTERNAL);
+        } else {
             CHK_PRT_RET(SendRecvWriteReduce(info, threads[0]),
-                HCCL_ERROR("[RS-NHR][RunNHR] SendRecvReduce failed (step=%u, rpt=%llu)",
-                    st.step, static_cast<unsigned long long>(rpt)),
-                HcclResult::HCCL_E_INTERNAL);
+                HCCL_ERROR("[RS-NHR][RunNHR] SendRecvReduce failed (step=%u)", st.step), HcclResult::HCCL_E_INTERNAL);
         }
     }
-
     return HcclResult::HCCL_SUCCESS;
 }
 

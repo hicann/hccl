@@ -60,53 +60,62 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunAllGatherMesh(const std::vector<Th
 
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
-    for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-        const u64 txBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff +
-                              tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank][rpt];
-        for (u32 threadIdx = 0; threadIdx < subCommRanks_[0].size() - 1; threadIdx++) {
-            u32 connectedRank = subCommRanks_[0][(myAlgRank + 1 + threadIdx) % subCommRanks_[0].size()];
 
-            u32 connectedAlgRank = 0;
-            CHK_RET(GetAlgRank(connectedRank, subCommRanks_[0], connectedAlgRank));
-            HCCL_INFO("[InsTempAllGatherOmniPipeMesh1D] RunAllGatherMesh RankIDs[%d], connectedRank[%d], "
-                      "connectedAlgRank[%d].",
-                      myRank_, connectedRank, connectedAlgRank);
+    for (u32 threadIdx = 0; threadIdx < subCommRanks_[0].size() - 1; threadIdx++) {
+        u32 connectedRank = subCommRanks_[0][(myAlgRank + 1 + threadIdx) % subCommRanks_[0].size()];
+
+        u32 connectedAlgRank = 0;
+        CHK_RET(GetAlgRank(connectedRank, subCommRanks_[0], connectedAlgRank));
+        HCCL_INFO("[InsTempAllGatherOmniPipeMesh1D] RunAllGatherMesh RankIDs[%d], connectedRank[%d], "
+                    "connectedAlgRank[%d].",
+                    myRank_, connectedRank, connectedAlgRank);
+        
+        // 异常检查
+        CHK_PRT_RET(threadIdx >= threads.size() || !channels.count(connectedRank),
+                    HCCL_ERROR("[InsTempAllGatherOmniPipeMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
+                                "connectedRank=%d, channels.size=%u",
+                                myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
+                    HcclResult::HCCL_E_INTERNAL);
+
+        ThreadHandle currQue = threads[threadIdx];
+        // 预留兼容offload模式
+        const ChannelInfo& linkRemote = channels.at(connectedRank)[0];
+        void* remoteCclBuffAddr = linkRemote.remoteCclMem.addr;
+
+        void* txSrcPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
+        void* txDstPtr = remoteCclBuffAddr;
+        void* rxSrcPtr = remoteCclBuffAddr;
+        void* rxDstPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
+        // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
+        // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
+        std::vector<DataSlice> txSrcSlices;
+        std::vector<DataSlice> txDstSlices;
+        std::vector<DataSlice> rxSrcSlices;
+        std::vector<DataSlice> rxDstSlices;
+        for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
+            u64 txBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff +
+                              tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank][rpt];
             u64 rxBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff +
                             tempAlgParams_.stepSliceInfo.outputOmniPipeSliceStride[connectedAlgRank][rpt];
-            // 异常检查
-            CHK_PRT_RET(threadIdx >= threads.size() || !channels.count(connectedRank),
-                        HCCL_ERROR("[InsTempAllGatherOmniPipeMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
-                                   "connectedRank=%d, channels.size=%u",
-                                   myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
-                        HcclResult::HCCL_E_INTERNAL);
-
-            ThreadHandle currQue = threads[threadIdx];
-            // 预留兼容offload模式
-            const ChannelInfo& linkRemote = channels.at(connectedRank)[0];
-            void* remoteCclBuffAddr = linkRemote.remoteCclMem.addr;
-
             u64 txOffset = tempAlgParams_.stepSliceInfo.stepInputSliceStride[myAlgRank] + txBaseOff;
             u64 rxOffset = tempAlgParams_.stepSliceInfo.stepOutputSliceStride[connectedAlgRank] + rxBaseOff;
-
-            void* txSrcPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
-            void* txDstPtr = remoteCclBuffAddr;
-            void* rxSrcPtr = remoteCclBuffAddr;
-            void* rxDstPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
-            // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
-            // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
-            std::vector<DataSlice> txSrcSlices{
+            DataSlice txSrcSlice =
                 DataSlice(txSrcPtr, txOffset, tempAlgParams_.stepSliceInfo.stepSliceSize[myAlgRank][rpt],
-                          tempAlgParams_.stepSliceInfo.stepCount[myAlgRank][rpt])};  // 本地(send)
-            std::vector<DataSlice> txDstSlices{
+                          tempAlgParams_.stepSliceInfo.stepCount[myAlgRank][rpt]);  // 本地(send)
+            DataSlice txDstSlice =
                 DataSlice(txDstPtr, txOffset, tempAlgParams_.stepSliceInfo.stepSliceSize[myAlgRank][rpt],
-                          tempAlgParams_.stepSliceInfo.stepCount[myAlgRank][rpt])};  // 远程(send)
+                          tempAlgParams_.stepSliceInfo.stepCount[myAlgRank][rpt]);  // 远程(send)
             // read模式使用rx
-            std::vector<DataSlice> rxDstSlices{
+            DataSlice rxDstSlice =
                 DataSlice(rxDstPtr, rxOffset, tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt],
-                          tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt])};  // 本地(recv)
-            std::vector<DataSlice> rxSrcSlices{
+                          tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt]);  // 本地(recv)
+            DataSlice rxSrcSlice =
                 DataSlice(rxSrcPtr, rxOffset, tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt],
-                          tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt])};  // 远程(recv)
+                          tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt]);  // 远程(recv)
+            rxSrcSlices.push_back(rxSrcSlice);
+            rxDstSlices.push_back(rxDstSlice);
+            txSrcSlices.push_back(txSrcSlice);
+            txDstSlices.push_back(txDstSlice);
 
             HCCL_DEBUG("[InsTempAllGatherOmniPipeMesh1D][RunAllGatherMesh] rankId [%d] connectedRank [%d] txSrcSlices: "
                        "offset[%d] sliceSize[%d] count[%d].",
@@ -129,15 +138,14 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunAllGatherMesh(const std::vector<Th
                        myRank_, connectedRank, rxOffset,
                        tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt],
                        tempAlgParams_.stepSliceInfo.stepSliceSize[connectedAlgRank][rpt]);
-
-            TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
-            TxRxChannels sendRecvChannels(linkRemote, linkRemote);
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[threadIdx]),
-                        HCCL_ERROR("[InsTempAllGatherOmniPipeMesh1D] RunAllGather Send failed"),
-                        HcclResult::HCCL_E_INTERNAL);
         }
+        TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
+        TxRxChannels sendRecvChannels(linkRemote, linkRemote);
+        SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+
+        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[threadIdx]),
+                    HCCL_ERROR("[InsTempAllGatherOmniPipeMesh1D] RunAllGather Send failed"),
+                    HcclResult::HCCL_E_INTERNAL);
     }
     return HcclResult::HCCL_SUCCESS;
 }

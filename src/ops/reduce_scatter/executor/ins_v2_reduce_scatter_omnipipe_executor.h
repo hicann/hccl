@@ -53,7 +53,7 @@ protected:
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
         std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap);
     HcclResult InitCommInfo(
-        const OpParam &param, const TopoInfo *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+        const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
     HcclResult PrepareResForTemplateLevel(u32 level, std::shared_ptr<InsAlgTemplateBase> &tempBase);
     HcclResult GenTemplateAlgParamsByDimData(TemplateDataParams &tempAlgParams, const StepSliceInfo &stepSliceInfo);
     HcclResult CalcResLevel(HcclComm comm, const OpParam &param, const TopoInfo *topoInfo,
@@ -91,7 +91,7 @@ protected:
     std::vector<ThreadHandle> level2Threads_;
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
-    std::vector<std::map<u32 ,std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
+    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;                 // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 };
 }

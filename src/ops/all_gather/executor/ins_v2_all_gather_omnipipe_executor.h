@@ -40,7 +40,6 @@ public:
                                     AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
 
 protected:
-    HcclResult InitExectorInfo(const OpParam &param);
     HcclResult GenTemplateAlgParamsByDimData(TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo);
 
     HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,

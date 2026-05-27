@@ -97,20 +97,24 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
                                 AlgResourceRequest& resourceRequest)
 {
     // 初始化一些基本成员变量
-    auto topoinfo_local = const_cast<TopoInfoWithNetLayerDetails*>(topoInfo);
-    auto& algHierarchyInfo_local = const_cast<ops_hccl::AlgHierarchyInfoForAllLevel&>(algHierarchyInfo);
-
-    InitCommInfo(comm, param, topoinfo_local, algHierarchyInfo_local);
+    myRank_ = topoInfo->userRank;
+    rankSize_ = topoInfo->userRankSize;
+    devType_ = topoInfo->deviceType;
+    reduceOp_ = param.reduceType;
+    dataType_ = param.DataDes.dataType;
+    dataCount_ = param.DataDes.count;
+    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    algHierarchyInfo_ = algHierarchyInfo;
 
     //后续确认分层是否需要修改
-    rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
-
-    if (algHierarchyInfo_.infos[1].size() > 0 && algHierarchyInfo_.infos[1][0].size() > 0) {
-        rankSizeLevel2_ = algHierarchyInfo.infos[1][0].size();
-    } else {
-        rankSizeLevel2_ = 1;
-    }
+    std::vector<std::vector<u32>> subCommRanks0;
+    std::vector<std::vector<u32>> subCommRanks1;
+    std::vector<std::vector<u32>> subCommRanks2;
+    // 初始化通信域
+    CHK_RET(InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2, topoInfo));
+    rankSizeLevel0_ = subCommRanks0[0].size();
+    rankSizeLevel1_ = subCommRanks1[0].size();
+    rankSizeLevel2_ = subCommRanks2[0].size();
 
     HCCL_DEBUG("[InsV2AllReduceOmniPipeExecutor] L0[%u], L1[%u], L2[%u]", rankSizeLevel0_, rankSizeLevel1_,
                rankSizeLevel2_);
@@ -122,11 +126,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     rankIdxLevel1_ = (myRank_ % intraSuperpodDeviceNum) / rankSizeLevel0_;
     rankIdxLevel2_ = myRank_ / intraSuperpodDeviceNum;
 
-    std::vector<std::vector<u32>> subCommRanks0;
-    std::vector<std::vector<u32>> subCommRanks1;
-    std::vector<std::vector<u32>> subCommRanks2;
-
-    InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2);
+    HCCL_INFO("InsV2AllReduceOmniPipeExecutor--CalcRes,subCommRanks0.size()[%u],subCommRanks1.size()[%u],subCommRanks2.size()[%u]", subCommRanks0.size(),subCommRanks1.size(),subCommRanks2.size());
 
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap;
 
@@ -200,14 +200,14 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     threads_ = resCtx.threads;
 
     //后续确认分层是否需要修改
-    rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo_.infos[0][1].size() / rankSizeLevel0_;
-
-    if (algHierarchyInfo_.infos[1].size() > 0 && algHierarchyInfo_.infos[1][0].size() > 0) {
-        rankSizeLevel2_ = algHierarchyInfo_.infos[1][0].size();
-    } else {
-        rankSizeLevel2_ = 1;
-    }
+    std::vector<std::vector<u32>> subCommRanks0;
+    std::vector<std::vector<u32>> subCommRanks1;
+    std::vector<std::vector<u32>> subCommRanks2;
+    // 初始化通信域
+    CHK_RET(InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2, &(resCtx.topoInfo)));
+    rankSizeLevel0_ = subCommRanks0[0].size();
+    rankSizeLevel1_ = subCommRanks1[0].size();
+    rankSizeLevel2_ = subCommRanks2[0].size();
 
     // 超节点内设备数量
     uint32_t intraSuperpodDeviceNum = rankSizeLevel0_ * rankSizeLevel1_;
@@ -216,7 +216,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     rankIdxLevel1_ = (myRank_ % intraSuperpodDeviceNum) / rankSizeLevel0_;
     rankIdxLevel2_ = myRank_ / intraSuperpodDeviceNum;
 
-    HCCL_ERROR("[InsV2AllReduceOmniPipeExecutor][InitExectorInfo] threads_[%u], dataTypeSize_[%u], dataCount_[%d], "
+    HCCL_INFO("[InsV2AllReduceOmniPipeExecutor][InitExectorInfo] threads_[%u], dataTypeSize_[%u], dataCount_[%d], "
                "L0[%u], L1[%u], L2[%u]",
                threads_.size(), dataTypeSize_, dataCount_, rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_);
 
@@ -354,7 +354,7 @@ template <typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTe
 HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::InitOmniPipeScratchParam(OmniPipeScratchParam& scratchParam, const OpParam& param,
-                                                 const std::vector<EndpointAttrBwCoeff>& endpointAttrBwNew,
+                                                 const std::vector<double>& endpointAttrBwNew,
                                                  std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap)
 {
     std::vector<u64> levelRankSizeVec = {rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_};
@@ -388,7 +388,7 @@ template <typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTe
 HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::InitOmniPipeSliceParam(OmniPipeSliceParam& sliceParam, const OpParam& param,
-                                               const std::vector<EndpointAttrBwCoeff>& endpointAttrBwNew,
+                                               const std::vector<double>& endpointAttrBwNew,
                                                std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
                                                u64 maxCountPerLoop)
 {
@@ -496,29 +496,32 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::InitSubCommRanks(std::vector<std::vector<u32>>& subCommRanks0,
                                          std::vector<std::vector<u32>>& subCommRanks1,
-                                         std::vector<std::vector<u32>>& subCommRanks2)
+                                         std::vector<std::vector<u32>>& subCommRanks2,
+                                         const TopoInfoWithNetLayerDetails* topoInfo)
 {
     subCommRanks0.clear();
     subCommRanks1.clear();
     subCommRanks2.clear();
 
-    subCommRanks0.push_back(algHierarchyInfo_.infos[0][0]);
-
-    if (rankSizeLevel2_ > 1) {
-        subCommRanks2.push_back(algHierarchyInfo_.infos[1][0]);
+    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
+        std::vector<u32> closRanks;
+        u32 meshSize = algHierarchyInfo_.infos[0][0].size();
+        for(auto rank : algHierarchyInfo_.infos[0][1]) {
+            if(rank % meshSize == topoInfo->userRank % meshSize) {
+                closRanks.push_back(rank);
+            }
+        }
+        subCommRanks1 = {closRanks};
+        subCommRanks2 = algHierarchyInfo_.infos[1];
     } else {
+        subCommRanks0 = algHierarchyInfo_.infos[0];
+        subCommRanks1 = algHierarchyInfo_.infos[1];
         subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     }
 
-    u32 intraLevel0DeviceNum = algHierarchyInfo_.infos[0][0].size();
-    u32 intraLevel1DeviceNum = algHierarchyInfo_.infos[0][1].size() / intraLevel0DeviceNum;
-    u32 intraSuperPodsDeviceNum = algHierarchyInfo_.infos[0][1].size();
+    HCCL_INFO("InsV2AllReduceOmniPipeExecutor--InitSubCommRanks,subCommRanks0.size()[%u],subCommRanks1.size()[%u],subCommRanks2.size()[%u]", subCommRanks0.size(),subCommRanks1.size(),subCommRanks2.size());
 
-    subCommRanks1.resize(1);
-
-    for (int i = myRank_ % intraLevel0DeviceNum; i < intraSuperPodsDeviceNum; i += intraLevel0DeviceNum) {
-        subCommRanks1[0].push_back(algHierarchyInfo_.infos[0][1][i]);
-    }
     return HCCL_SUCCESS;
 }
 
@@ -534,7 +537,8 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     std::vector<std::vector<u32>> subCommRanks2;
 
     // 初始化通信域
-    CHK_RET(InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2));
+    CHK_RET(InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2, &(resCtx.topoInfo)));
+    HCCL_INFO("InsV2AllReduceOmniPipeExecutor--OrchestrateLoop,subCommRanks0.size()[%u],subCommRanks1.size()[%u],subCommRanks2.size()[%u]", subCommRanks0.size(),subCommRanks1.size(),subCommRanks2.size());
 
     // 初始化template
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap;
@@ -545,20 +549,43 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     std::map<u32, TemplateDataParams> tempAlgParamMap;
     CHK_RET(InitTemplateParams(param, resCtx, tempMap, tempResMap, tempAlgParamMap));
 
-    // 1.计算带宽
-    std::vector<std::vector<EndpointAttrBwCoeff>> endpointAttrBw;
-    CHK_RET(CalAllLevelEndpointAttrBwCoeff(param.hcclComm, myRank_, 3, endpointAttrBw));
 
-    // 需要转化成平均带宽
-    std::vector<EndpointAttrBwCoeff> endpointAttrBwNew;
-    endpointAttrBwNew.resize(endpointAttrBw.size());
-    u64 bwIndex = 0;
-    for (u64 i = 0; i < endpointAttrBw.size(); i++) {
-        for (u64 j = 0; j < endpointAttrBw[i].size(); ++j) {
-            endpointAttrBw[i][j] /= algHierarchyInfo_.infos[i][j].size() - 1;
-            endpointAttrBwNew[bwIndex++] = endpointAttrBw[i][j];
+    double bw_ag_l0=BW_OMNI_DEFAULT;
+    double bw_ag_l1=BW_OMNI_DEFAULT;
+    double bw_ag_l2=BW_OMNI_DEFAULT;
+    double bw_rs_l0=BW_OMNI_DEFAULT;
+    double bw_rs_l1=BW_OMNI_DEFAULT;
+    double bw_rs_l2=BW_OMNI_DEFAULT;
+
+    if (resCtx.topoInfo.level0PcieMix) {
+        if (rankSizeLevel1_==2) {
+            bw_ag_l1=BW_OMNI_PCIE_EIGHT_AG_CLOS;
+            bw_rs_l1=BW_OMNI_PCIE_EIGHT_RS_CLOS;
+        } else if (rankSizeLevel1_==4) {
+            bw_ag_l1=BW_OMNI_PCIE_SIXTEEN_AG_CLOS;
+            bw_rs_l1=BW_OMNI_PCIE_SIXTEEN_RS_CLOS;
         }
     }
+
+    //计算等价带宽
+    double eqBw0 = bw_ag_l0;//L0 mesh
+    double eqBw1 = bw_ag_l1;//L1 NHR
+    double eqBw2 = bw_ag_l2;//L2 NHR
+
+    //level0为mesh,等价mesh为其本身
+    //level1为nhr
+    //level2, ranksize = 1
+    eqBw1 = rankSizeLevel1_ > 1 ? eqBw1 / (rankSizeLevel1_ - 1) : eqBw1;
+    eqBw2 = rankSizeLevel2_ > 1 ? eqBw2 / (rankSizeLevel2_ - 1) : eqBw2;
+    std::vector<double> endpointAttrBwAG{eqBw0, eqBw1, eqBw2};
+
+    double eqBw3 = bw_rs_l0;
+    double eqBw4 = bw_rs_l1;
+    double eqBw5 = bw_rs_l2;
+    eqBw4 = rankSizeLevel1_ > 1 ? eqBw4 / (rankSizeLevel1_ - 1) : eqBw4;
+    eqBw5 = rankSizeLevel2_ > 1 ? eqBw5 / (rankSizeLevel2_ - 1) : eqBw5;
+    std::vector<double> endpointAttrBwNew{eqBw3, eqBw4, eqBw5};
+    
 
     // 2.1 计算scratch
     OmniPipeScratchParam scratchParam;
@@ -607,7 +634,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
         if (loop == 0 || !isSameLoop(multiLoopAllRankSplitData[loop - 1], multiLoopAllRankSplitData[loop])) {
             sliceParam.dataSizePerLoop = CalcCountToDataSize(multiLoopAllRankSplitData[loop], dataTypeSize_);
             sliceParam.dataWholeSize = sliceParam.dataSizePerLoop;
+
+            sliceParam.endpointAttrBw=endpointAttrBwNew;
             OmniPipeSliceInfoRS = CalcRSOmniPipeSliceInfo(sliceParam);
+            sliceParam.endpointAttrBw=endpointAttrBwAG;
             OmniPipeSliceInfoAG = CalcAGOmniPipeSliceInfo(sliceParam);
         }
 
@@ -680,7 +710,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
         interPodStepNum = OmniPipeSliceInfoAG.dataSliceLevel2.size();
         intraPodStepNum = OmniPipeSliceInfoAG.dataSliceLevel0.size() / OmniPipeSliceInfoAG.dataSliceLevel2.size();
 
-        HCCL_ERROR(
+        HCCL_INFO(
             "[InsV2AllReduceOmniPipeExecutor][InitExectorInfo] curloop[%d] loopTimes[%d], AG-interPodStepNum[%d], "
             "AG-intraPodStepNum[%d], AG-level0Step[%d], AG-level1Step[%d], AG-level2Step[%d]",
             loop, loopTimes, interPodStepNum, intraPodStepNum, level0Step, level1Step, level2Step);
@@ -764,6 +794,14 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     return HcclResult::HCCL_SUCCESS;
 }
 
+REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipeMultilevel, InsV2AllReduceOmniPipeExecutor,
+                       TopoMatchMultilevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeMesh1D,
+                       InsTempReduceScatterOmniPipeMesh1dDpu, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeMesh1D,
+                       InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipePcie, InsV2AllReduceOmniPipeExecutor,
+                       TopoMatchPcieMix, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
+                       InsTempReduceScatterOmniPipeMesh1dDpu, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,
+                       InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipe, InsV2AllReduceOmniPipeExecutor,
                        TopoMatchUBX, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
                        InsTempReduceScatterOmniPipeMesh1dDpu, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,

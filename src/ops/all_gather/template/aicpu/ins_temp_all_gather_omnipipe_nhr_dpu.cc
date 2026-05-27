@@ -98,28 +98,28 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     const uint32_t nSteps = GetNHRStepNum(templateRankSize_);
 
-    for (uint32_t rpt = 0; rpt < tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-        for (uint32_t step = 0; step < nSteps; ++step) {
-            AicpuNHRStepInfo stepInfo;
-            CHK_RET(GetStepInfo(step, nSteps, stepInfo));
+    for (uint32_t step = 0; step < nSteps; ++step) {
+        AicpuNHRStepInfo stepInfo;
+        CHK_RET(GetStepInfo(step, nSteps, stepInfo));
 
-            HCCL_DEBUG("[InsTempAllGatherOmniPipeNHRDPU] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] "
-                       "nSteps[%u] nSlices[%u]",
-                       myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
+        HCCL_DEBUG("[InsTempAllGatherOmniPipeNHRDPU] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] "
+                    "nSteps[%u] nSlices[%u]",
+                    myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
 
-            auto rxChannel = channels.at(GetRankFromMap(stepInfo.fromRank));
-            auto txChannel = channels.at(GetRankFromMap(stepInfo.toRank));
+        auto rxChannel = channels.at(GetRankFromMap(stepInfo.fromRank));
+        auto txChannel = channels.at(GetRankFromMap(stepInfo.toRank));
 
-            std::vector<DataSlice> txSrcSlices;
-            std::vector<DataSlice> txDstSlices;
-            std::vector<DataSlice> rxSrcSlices;
-            std::vector<DataSlice> rxDstSlices;
-            void* sendCclBuffAddr = txChannel[0].remoteCclMem.addr;
-            void* recvCclBuffAddr = rxChannel[0].remoteCclMem.addr;
+        std::vector<DataSlice> txSrcSlices;
+        std::vector<DataSlice> txDstSlices;
+        std::vector<DataSlice> rxSrcSlices;
+        std::vector<DataSlice> rxDstSlices;
+        void* sendCclBuffAddr = txChannel[0].remoteCclMem.addr;
+        void* recvCclBuffAddr = rxChannel[0].remoteCclMem.addr;
 
-            for (u32 i = 0; i < stepInfo.nSlices; ++i) {
-                const u32 txIdx = stepInfo.txSliceIdxs[i];
-                const u32 rxIdx = stepInfo.rxSliceIdxs[i];
+        for (u32 i = 0; i < stepInfo.nSlices; ++i) {
+            const u32 txIdx = stepInfo.txSliceIdxs[i];
+            const u32 rxIdx = stepInfo.rxSliceIdxs[i];
+            for (uint32_t rpt = 0; rpt < tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
 
                 uint64_t txScratchBase = tempAlgParams.buffInfo.inBuffBaseOff +
                                          tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt];
@@ -142,17 +142,17 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
                                          tempAlgParams.stepSliceInfo.stepSliceSize[rxIdx][rpt],
                                          tempAlgParams.stepSliceInfo.stepCount[rxIdx][rpt]);
             }
-            // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
-            // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
-            TxRxChannels sendRecvChannels(txChannel[0], rxChannel[0]);
-            TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
-            SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-
-            CHK_PRT_RET(
-                SendRecvWrite(sendRecvInfo),
-                HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] SendRecvWrite failed (step=%u, rpt=%u)", step, rpt),
-                HcclResult::HCCL_E_INTERNAL);
         }
+        // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
+        // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
+        TxRxChannels sendRecvChannels(txChannel[0], rxChannel[0]);
+        TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
+        SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+
+        CHK_PRT_RET(
+            SendRecvWrite(sendRecvInfo),
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] SendRecvWrite failed (step=%u)", step),
+            HcclResult::HCCL_E_INTERNAL);
     }
 #endif
     return HcclResult::HCCL_SUCCESS;
