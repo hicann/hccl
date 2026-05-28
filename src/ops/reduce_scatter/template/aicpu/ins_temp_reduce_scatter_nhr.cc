@@ -307,7 +307,7 @@ HcclResult InsTempReduceScatterNHR::RunNHR(const std::vector<ThreadHandle> &thre
         };
 
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchReadReduce(info, threads[channelIdx]),
+            CHK_PRT_RET(SendRecvReadReduce(info, threads[channelIdx]),
                 HCCL_ERROR("[RS-NHR][RunNHR] SendRecvReduce failed (step=%u)",
                     st.step),
                 HcclResult::HCCL_E_INTERNAL);

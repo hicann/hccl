@@ -290,7 +290,7 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const RankSliceInfo &sliceInfoVec,
 
         SendRecvInfo sendRecvInfo(sendRecvLinks, sendRecvSlicesList, dataType_);
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchRead(sendRecvInfo, threads[0]),
+            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[0]),
                 HCCL_ERROR("[InsTempBroadcastNHR] RunAllGather send failed"), HcclResult::HCCL_E_INTERNAL);
         } else {
             CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads[0]),
@@ -367,7 +367,7 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
     SlicesList rxSlicesList(rxSrcSlices, rxDstSlices);
     DataInfo recvData(linkRecv, rxSlicesList, dataType_);
     if (isDmaRead_) {
-        CHK_PRT_RET(RecvBatchRead(recvData, threads[0]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
+        CHK_PRT_RET(RecvRead(recvData, threads[0]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
             HcclResult::HCCL_E_INTERNAL);
     } else {
         CHK_PRT_RET(RecvWrite(recvData, threads[0]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
