@@ -23,7 +23,6 @@ constexpr int MISSION_SYNC_ID_1 = 4;
 
 constexpr int CKE_IDX_0     = 0;
 constexpr int CKE_IDX_1     = 1;
-constexpr int CKE_IDX_2     = 2;
 
 constexpr int LOOP_NUM = 64;
 constexpr int DIE_WORK = 2;
@@ -142,11 +141,11 @@ void CcuKernelAllreduceMesh1D2DieOneShot::PreSync()
 void CcuKernelAllreduceMesh1D2DieOneShot::PostSync(uint32_t signalIndex)
 {
     for (auto channel : channels_) {
-        NotifyRecord(channel, CKE_IDX_1, 1 << signalIndex);
+        NotifyRecord(channel, CKE_IDX_0, 1 << signalIndex);
     }
 
     for (auto channel : channels_) {
-        NotifyWait(channel, CKE_IDX_1, 1 << signalIndex);
+        NotifyWait(channel, CKE_IDX_0, 1 << signalIndex);
     }
     HCCL_INFO("[CcuKernelAllreduceMesh1D2DieOneShot] PostSync run finished");
 }
@@ -360,8 +359,8 @@ void CcuKernelAllreduceMesh1D2DieOneShot::MissionSync(uint32_t maskIndex)
     HCCL_INFO("[CcuKernelAllreduceMesh1D2DieOneShot] MissionSync, missionSyncMybit_[%u], missionSyncWaitBit_[%u]",
              missionSyncMybit_, missionSyncWaitBit_);
     uint32_t coreIdx = rmtReduceWithMyRank_ ? 1 : 0;
-    LocalNotifyRecord(1 - coreIdx, CKE_IDX_2, missionSyncMybit_ << (DIE_WORK * maskIndex));
-    LocalNotifyWait(coreIdx, CKE_IDX_2, missionSyncWaitBit_ << (DIE_WORK * maskIndex));
+    LocalNotifyRecord(1 - coreIdx, CKE_IDX_1, missionSyncMybit_ << (DIE_WORK * maskIndex));
+    LocalNotifyWait(coreIdx, CKE_IDX_1, missionSyncWaitBit_ << (DIE_WORK * maskIndex));
     HCCL_INFO("[CcuKernelAllreduceMesh1D2DieOneShot] MissionSync run finished");
 }
 
@@ -397,7 +396,6 @@ std::vector<uint64_t> CcuKernelAllreduceMesh1D2DieOneShot::GeneArgs(const CcuTas
 {
     const CcuTaskArgAllreduceMesh1D2DieOneShot *taskArg = dynamic_cast<const CcuTaskArgAllreduceMesh1D2DieOneShot *>(&arg);
 
-    moConfig.loopCount = LOOP_NUM;
     uint64_t myInput   = taskArg->inputAddr_;
     uint64_t myOutput  = taskArg->outputAddr_;
     uint64_t myToken   = taskArg->token_;
