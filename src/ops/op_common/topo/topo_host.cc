@@ -418,7 +418,7 @@ HcclResult GetModuleMap(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::ve
             ranksStr += std::to_string(pair.second[i]);
         }
         ranksStr += "}";
-        HCCL_DEBUG("[GetModuleMap]  ModuleIdx[%u]: %s", pair.first, ranksStr.c_str());
+        HCCL_DEBUG("[GetModuleMap] ModuleIdx[%u]: %s", pair.first, ranksStr.c_str());
     }
 
     return HCCL_SUCCESS;
