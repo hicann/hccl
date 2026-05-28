@@ -624,11 +624,35 @@ static HcclResult CalcLevel1Nhr(const HcclComm comm, TopoInfoWithNetLayerDetails
     return HCCL_SUCCESS;
 }
 
+static HcclResult CalcLevel1Hd(TopoInfoWithNetLayerDetails* topoInfo)
+{
+    if (topoInfo->topoLevelNums <= 1 || topoInfo->netLayerDetails.netLayers.size() <= 1) {
+        return HCCL_SUCCESS;
+    }
+    const u32 level1Idx = topoInfo->netLayerDetails.netLayers[1];
+    CHK_PRT_RET(topoInfo->topoInstDetailsOfLayer.size() <= level1Idx,
+        HCCL_WARNING("[TopoHost][CalcLevel1Hd] topoInstDetailsOfLayer size[%zu] <= level1Idx[%u]",
+            topoInfo->topoInstDetailsOfLayer.size(), level1Idx), HCCL_SUCCESS);
+
+    const auto &rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[level1Idx].rankNumForTopoType;
+    auto closIter = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
+    if (closIter == rankNumForTopoType.end() || closIter->second.size() != 1) {
+        return HCCL_SUCCESS;
+    }
+
+    const u32 closRankSize = closIter->second[0];
+    topoInfo->Level1Hd = closRankSize != 0 && (closRankSize & (closRankSize - 1)) == 0;
+    HCCL_INFO("[TopoHost][CalcLevel1Hd] level1Idx[%u], closRankSize[%u], Level1Hd[%d]", level1Idx,
+        closRankSize, topoInfo->Level1Hd);
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     CHK_RET(ExtractNetLayerDetails(comm, topoInfo));
     CHK_RET(CalcLevel1Nhr(comm, topoInfo));
     CHK_RET(ExtractTopoDetails(comm, topoInfo));
+    CHK_RET(CalcLevel1Hd(topoInfo));
     CHK_RET(CalcLevel0TopoShape(comm, topoInfo));
     CHK_RET(Is2DieFullMesh(comm, topoInfo));
     CHK_RET(IsLevel0PcieMix(comm, topoInfo));

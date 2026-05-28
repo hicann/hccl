@@ -318,8 +318,12 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayer
             selectAlgName = "InsAllReduceNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             if (dataSize > AR_AICPU_1D_64P_SMALL_DATA_SIZE) {
-                selectAlgName = (dataSize > AR_AICPU_SEQUENCE_DATA_SIZE) ?
-                    "InsAllReduceSequenceMesh1DNhr" : "InsAllReduceParallelRSAG";
+                if (topoInfo->Level1Hd) {
+                    selectAlgName = "InsAllReduceFourTemplateMesh1DHD";
+                } else {
+                    selectAlgName = (dataSize > AR_AICPU_SEQUENCE_DATA_SIZE) ?
+                        "InsAllReduceSequenceMesh1DNhr" : "InsAllReduceParallelRSAG";
+                }
             } else {
                 selectAlgName = "InsAllReduceNHR";
             }

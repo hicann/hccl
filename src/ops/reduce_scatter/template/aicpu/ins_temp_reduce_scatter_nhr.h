@@ -41,8 +41,9 @@ public:
     u64 GetThreadNum() const override;
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+protected:
+    virtual HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList);
 private:
-    HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList);
     HcclResult LocalDataCopy(const std::vector<ThreadHandle> &threads, u32 channelIdx);
     HcclResult RunNHR(const std::vector<ThreadHandle> &threads, u32 channelIdx);
     HcclResult PostLocalCopy(const std::vector<ThreadHandle> &threads, u32 channelIdx);
