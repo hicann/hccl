@@ -510,6 +510,8 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra0.repeatNum = rankSizeLevel1_;
     tempAlgParamsIntra0.inputRepeatStride = dataSize_ * rankSizeLevel0_;
     tempAlgParamsIntra0.outputRepeatStride = tempAlgParamsIntra0.sliceSize;
+    HCCL_INFO("[GenTemplateAlgParamsIntra0] data0 setp1 intra, repeatNum[%llu], sliceSize[%llu], tailSize[%llu]",
+        tempAlgParamsIntra0.repeatNum, tempAlgParamsIntra0.sliceSize, tempAlgParamsIntra0.tailSize);
     return;
 }
 
@@ -537,6 +539,8 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter0.repeatNum = 1;
     tempAlgParamsInter0.inputRepeatStride = 0;
     tempAlgParamsInter0.outputRepeatStride = 0;
+    HCCL_INFO("[tempAlgParamsInter0] data0 setp2 inter, repeatNum[%llu], sliceSize[%llu], tailSize[%llu]",
+            tempAlgParamsInter0.repeatNum, tempAlgParamsInter0.sliceSize, tempAlgParamsInter0.tailSize);
     return;
 }
 
@@ -564,6 +568,8 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsInter1.repeatNum = rankSizeLevel0_;
     tempAlgParamsInter1.inputRepeatStride = dataSize_;
     tempAlgParamsInter1.outputRepeatStride = tempAlgParamsInter1.sliceSize;
+    HCCL_INFO("[tempAlgParamsInter1] data1 setp1 inter, repeatNum[%llu], sliceSize[%llu], tailSize[%llu]",
+                tempAlgParamsInter1.repeatNum, tempAlgParamsInter1.sliceSize, tempAlgParamsInter1.tailSize);
     return;
 }
 
@@ -591,6 +597,8 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     tempAlgParamsIntra1.repeatNum = 1;
     tempAlgParamsIntra1.inputRepeatStride = 0;
     tempAlgParamsIntra1.outputRepeatStride = 0;
+    HCCL_INFO("[tempAlgParamsIntra1] data1 setp2 intra, repeatNum[%llu], sliceSize[%llu], tailSize[%llu]",
+                    tempAlgParamsIntra1.repeatNum, tempAlgParamsIntra1.sliceSize, tempAlgParamsIntra1.tailSize);
     return;
 }
 
