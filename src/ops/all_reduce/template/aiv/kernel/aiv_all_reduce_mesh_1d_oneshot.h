@@ -71,6 +71,8 @@ public:
         } else if(GetBlockIdx() < coreNumPerStage + coreNumPerRank){
             SyncAll<true>();
             Consumer();
+        } else {
+            SyncAll<true>();
         }
     }
  
