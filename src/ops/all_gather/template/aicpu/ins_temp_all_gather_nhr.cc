@@ -160,7 +160,7 @@ HcclResult InsTempAllGatherNHR::RunAllGatherNHR(const std::vector<ThreadHandle> 
         SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
 
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchRead(sendRecvInfo, threads[channelIdx]),
+            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[channelIdx]),
                 HCCL_ERROR("[InsTempAllGatherNHR] sendrecv batch failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         } else {

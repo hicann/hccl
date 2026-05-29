@@ -208,7 +208,7 @@ HcclResult ReduceNHR::RunReduce(const std::map<u32, std::vector<ChannelInfo>> &c
             {channelSend, channelRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_, reduceOp_};
 
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchReadReduce(sendRecvReduceInfo, thread_),
+            CHK_PRT_RET(SendRecvReadReduce(sendRecvReduceInfo, thread_),
                 HCCL_ERROR("[ReduceNHR] RunReduce SendRecvReduce failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
@@ -258,7 +258,7 @@ HcclResult ReduceNHR::RunGather(const std::map<u32, std::vector<ChannelInfo>> &c
 
         SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList, dataType_);
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchRead(sendRecvInfo, thread_), HCCL_ERROR("[ReduceNHR] RunGather send/recv failed"),
+            CHK_PRT_RET(SendRecvRead(sendRecvInfo, thread_), HCCL_ERROR("[ReduceNHR] RunGather send/recv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
             CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, thread_), HCCL_ERROR("[ReduceNHR] RunGather send/recv failed"),

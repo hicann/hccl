@@ -218,7 +218,7 @@ HcclResult InsTempAllReduceNHR::RunReduceScatter(const TemplateDataParams &tempA
             {{sendSrcSlicesList, sendDstSlicesList}, {recvSrcSlicesList, recvDstSlicesList}}, dataType_, reduceOp_};
 
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvBatchReadReduce(sendRecvReduceInfo, threads.at(0)),
+            CHK_PRT_RET(SendRecvReadReduce(sendRecvReduceInfo, threads.at(0)),
                 HCCL_ERROR("[InsTempAllReduceNHR] RunReduceScatter SendRecvReduce failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
