@@ -22,6 +22,9 @@ DECL_WEAK_FUNC(HcclResult, HcclCommAddExchangeInfo, HcclComm comm, const void *d
 DECL_WEAK_FUNC(HcclResult, HcclCommGetExchangeInfo, HcclComm comm, uint32_t remoteRank, uint32_t length, void *data,
     uint32_t *actualLength);
 DECL_WEAK_FUNC(HcclResult, HcclCommResetExchangeInfo, HcclComm comm);
+DECL_SUPPORT_FLAG(HcclCommAddExchangeInfo);
+DECL_SUPPORT_FLAG(HcclCommGetExchangeInfo);
+DECL_SUPPORT_FLAG(HcclCommResetExchangeInfo);
 
 void HcclResExptDlInit(void *libHcommHandle);
 

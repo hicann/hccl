@@ -886,13 +886,15 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollA
     std::string tagStr = param.algTag;
     bool isChecked = GetInconsistentCheckSwitch() == 0 &&
         (g_inconsistentCheckedList.find(tagStr) != g_inconsistentCheckedList.end());
-    if (GetInconsistentCheckSwitch() == -1 || (isChecked && !increCreateChannelFlag)) {
-        isChecked = true; // isChecked 为 false 时做参数比较
-    } else {
-        CHK_RET(FillOpExchangeInfo(comm, param, exchangeInfo));
-        CHK_RET(HcclCommAddExchangeInfo(comm, &exchangeInfo, sizeof(exchangeInfo)));
-        g_inconsistentCheckedList.insert(tagStr);
-        isChecked = false;
+    if (HcommIsSupportHcclCommAddExchangeInfo()) {
+        if (GetInconsistentCheckSwitch() == -1 || (isChecked && !increCreateChannelFlag)) {
+            isChecked = true; // isChecked 为 false 时做参数比较
+        } else {
+            CHK_RET(FillOpExchangeInfo(comm, param, exchangeInfo));
+            CHK_RET(HcclCommAddExchangeInfo(comm, &exchangeInfo, sizeof(exchangeInfo)));
+            g_inconsistentCheckedList.insert(tagStr);
+            isChecked = false;
+        }
     }
 
     CHK_RET(GetAlgResWithEngine(comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size,
@@ -909,15 +911,17 @@ HcclResult HcclGetAlgRes(HcclComm comm, OpParam& param, std::unique_ptr<InsCollA
             resCtxHost->threads.size(), channelNumInfo.c_str(), resCtxHost->ccuKernels.size());
     }
 
-    // 参数一致性校验
-    if (!isChecked) {
-        if (param.engine != COMM_ENGINE_CCU) {
-            for (u32 level = 0; level < resRequest.channels.size(); level++) {
-                CHK_RET(CompareOpExchangeInfos(comm, exchangeInfo, resRequest.channels[level]));
-            }
-        } else {
-            for (CcuKernelInfo& kernelInfo: resRequest.ccuKernelInfos) {
-                CHK_RET(CompareOpExchangeInfos(comm, exchangeInfo, kernelInfo.channels));
+    if (HcommIsSupportHcclCommGetExchangeInfo()) {
+        // 参数一致性校验
+        if (!isChecked) {
+            if (param.engine != COMM_ENGINE_CCU) {
+                for (u32 level = 0; level < resRequest.channels.size(); level++) {
+                    CHK_RET(CompareOpExchangeInfos(comm, exchangeInfo, resRequest.channels[level]));
+                }
+            } else {
+                for (CcuKernelInfo& kernelInfo: resRequest.ccuKernelInfos) {
+                    CHK_RET(CompareOpExchangeInfos(comm, exchangeInfo, kernelInfo.channels));
+                }
             }
         }
     }
@@ -1052,8 +1056,10 @@ HcclResult GetAlgResAICPU(HcclComm comm, const OpParam &param, AlgResourceReques
             if (ret == HCCL_SUCCESS) {
                 *resCtxSequence = ctx;
                 ctxSize = size;
-                // 算子参数信息已注册，但BatchSendRecv在此处判断资源可复用，不会进行数据交换即不会被读清，需要手动reset
-                CHK_RET(HcclCommResetExchangeInfo(comm));
+                if (HcommIsSupportHcclCommResetExchangeInfo()) {
+                    // 算子参数信息已注册，但BatchSendRecv在此处判断资源可复用，不会进行数据交换即不会被读清，需要手动reset
+                    CHK_RET(HcclCommResetExchangeInfo(comm));
+                }
             } else {
                 HCCL_ERROR("failed to get device ctx.");
             }

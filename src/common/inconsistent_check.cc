@@ -66,8 +66,8 @@ HcclResult CompareOpExchangeInfos(HcclComm comm, const OpExchangeInfo &exchangeI
                 std::to_string(rmtExchangeInfo.count)));
         }
         if (exchangeInfo.aivCoreLimit != rmtExchangeInfo.aivCoreLimit) {
-            CHK_RET(ReportOpExchangeInfoCheckFailed(exchangeInfo, "AivCoreLimit", exchangeInfo.aivCoreLimit,
-                rmtExchangeInfo.aivCoreLimit));
+            HCCL_RUN_WARNING("[CompareOpExchangeInfos]op information aivCoreLimit check fail."
+                " expectValue[%u] remotePara[%u]", exchangeInfo.aivCoreLimit, rmtExchangeInfo.aivCoreLimit);
         }
         if (strncmp(exchangeInfo.group, rmtExchangeInfo.group, MAX_LENGTH) != 0) {
             CHK_RET(ReportOpExchangeInfoCheckFailed(exchangeInfo, "GroupName", exchangeInfo.group,
