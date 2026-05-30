@@ -65,6 +65,7 @@ HcclResult AivTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, con
 HcclResult AivTempReduceMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
     (void) dataSize;
+    HCCL_INFO("[AivTempReduceMesh1D] Limit core num[%u]", numBlocksLimit);
     numBlocks = numBlocksLimit;
     HCCL_INFO("[AivTempReduceMesh1D] Actually use core num[%u]", numBlocks);
     return HcclResult::HCCL_SUCCESS;

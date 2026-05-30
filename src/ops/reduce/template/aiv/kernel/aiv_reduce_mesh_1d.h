@@ -19,17 +19,26 @@ public:
     {
     }
 
-    uint32_t coreNumPerRank;
-    uint32_t coreNumFirstStage;
-    uint32_t coreNumTotal;
-    uint32_t innerId;
-    uint32_t targetRank;
-    uint64_t rankChunkSize;
-    uint64_t innerChunkSize;
-    uint64_t rankChunkStride;
-    uint64_t innerChunkStride;
-    int32_t curTag;
-    uint64_t ipcReduceFlagOffset {1024};
+    __aicore__ inline void Process(int32_t sliceId)
+    {
+        maxCoreNum_ = static_cast<uint32_t>(numBlocks_);
+        if (maxCoreNum_ >= rankSize_ + 1) {
+            ProcessMultiCore(sliceId);
+        } else if (maxCoreNum_ >= 1) {
+            ProcessMultiRank(sliceId);
+        } else {
+            // 下发0核场景，算子不操作，由Template层处理异常场景
+            return;
+        }
+    }
+
+private:
+    __aicore__ inline void ProcessMultiCore(int32_t sliceId)
+    {
+        InitCoreInfo(sliceId);
+        ReduceScatter();
+        GatherToRoot();
+    }
 
     __aicore__ inline uint64_t RoundUp(uint64_t dividend, uint64_t divisor)
     {
@@ -114,74 +123,113 @@ public:
         pipe_barrier(PIPE_ALL);
     }
 
-    __aicore__ inline void SmallCoreReduceScatter(uint32_t stepTag)
+    __aicore__ inline void ProcessMultiRank(int32_t sliceId)
     {
-        uint64_t dataCount = len_;
-        rankChunkStride = RoundUp(dataCount, rankSize_);
-        ipcReduceFlagOffset = rankSize_;
-        curTag = static_cast<int32_t>(stepTag);
-
-        for (uint32_t i = 0; block_idx + i * numBlocks_ < rankSize_; i++) {
-            targetRank = block_idx + i * numBlocks_;
-            rankChunkSize = ((targetRank + 1) * rankChunkStride <= dataCount)
-                ? rankChunkStride
-                : (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-
-            if (rankChunkSize > 0) {
-                uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
-                uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) +
-                    (rank_ * rankChunkSize) * sizeof(T);
-                CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, rankChunkSize);
-                pipe_barrier(PIPE_ALL);
-            }
-            Record(targetRank, rank_, curTag);
-        }
-
-        if (block_idx == numBlocks_ - 1) {
-            uint64_t myRankChunkSize = ((rank_ + 1) * rankChunkStride <= dataCount)
-                ? rankChunkStride
-                : (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
-            if (myRankChunkSize > 0) {
-                for (uint32_t i = 0; i < rankSize_; i++) {
-                    WaitFlag(rank_, i, curTag);
-                    if (i == 0) {
-                        continue;
-                    }
-                    uint64_t inputOffset =
-                        reinterpret_cast<uint64_t>(GM_IN[rank_]) + (i * myRankChunkSize) * sizeof(T);
-                    uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]);
-                    CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, myRankChunkSize, reduceOp_);
-                    pipe_barrier(PIPE_ALL);
-                }
-            }
-            Record(rank_, ipcReduceFlagOffset + 1, curTag);
-        }
+        InitMultiRank(sliceId);
+        ReduceScatterMultiRank();
+        GatherMultiRank();
     }
 
-    __aicore__ inline void SmallCoreGatherToRoot()
+    __aicore__ inline void InitMultiRank(int32_t sliceId)
     {
+        useCoreNum_ = maxCoreNum_;  // 少核场景使用全核
+        maxRankPerCore_ = (rankSize_ + maxCoreNum_ - 1) / maxCoreNum_;  // 向上取整
+        coreIdx_ = static_cast<uint32_t>(GetBlockIdx());
+
+        uint64_t dataCount = len_;
+        sliceCount_ = dataCount / rankSize_;
+        tailCount_ = dataCount - (rankSize_ - 1) * sliceCount_;
+
+        syncTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
+        reduceTagOffset_ = rankSize_;  // reduce流程的tag起始偏移
+    }
+
+    __aicore__ inline void ReduceScatterMultiRank()
+    {
+        // 向远端写数据
+        for (uint32_t i = 0; i < maxRankPerCore_; ++i) {
+            // 每个core负责的rank间隔为useCoreNum_
+            uint32_t targetRank = i * useCoreNum_ + coreIdx_;
+            if (targetRank >= rankSize_) {
+                break;
+            }
+
+            uint64_t processCount = (targetRank == rankSize_ - 1) ? tailCount_ : sliceCount_;
+            if (processCount > 0) {
+                uint64_t srcOffset = input_ + targetRank * sliceCount_ * sizeof(T);
+                uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + rank_ * processCount * sizeof(T);
+                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, processCount);
+                pipe_barrier(PIPE_ALL);
+            }
+            Record(targetRank, rank_, syncTag_);
+        }
+
+        // 本地reduce
+        if (coreIdx_ != useCoreNum_ - 1) {
+            return;
+        }
+        // 用最后一个core做reduce，reduce至首片数据位置
+        uint64_t reduceCount = sliceCount_;
+        if (rank_ == rankSize_ - 1) {
+            reduceCount = tailCount_;
+        }
+        WaitFlag(rank_, 0, syncTag_);
+        for (uint32_t sliceIdx = 1; sliceIdx < rankSize_; ++sliceIdx) {
+            WaitFlag(rank_, sliceIdx, syncTag_);
+            if (reduceCount > 0) {
+                uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + sliceIdx * reduceCount * sizeof(T);
+                uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]);
+                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, reduceCount, reduceOp_);
+                pipe_barrier(PIPE_ALL);
+            }
+        }
+        Record(rank_, reduceTagOffset_, syncTag_);
+    }
+
+    __aicore__ inline void GatherMultiRank()
+    {
+        // root读远端数据
         if (rank_ != root_) {
             return;
         }
-
-        uint64_t dataCount = len_;
-        for (uint32_t i = 0; block_idx + i * numBlocks_ < rankSize_; i++) {
-            targetRank = block_idx + i * numBlocks_;
-            rankChunkSize = ((targetRank + 1) * rankChunkStride <= dataCount)
-                ? rankChunkStride
-                : (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-
-            if (rankChunkSize == 0) {
-                continue;
+        for (uint32_t i = 0; i < maxRankPerCore_; ++i) {
+            // 每个core负责的rank间隔为useCoreNum_
+            uint32_t targetRank = i * useCoreNum_ + coreIdx_;
+            if (targetRank >= rankSize_) {
+                break;
             }
 
-            WaitFlag(targetRank, ipcReduceFlagOffset + 1, curTag);
-            uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]);
-            uint64_t outputOffset = output_ + (targetRank * rankChunkStride) * sizeof(T);
-            CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, rankChunkSize);
-            pipe_barrier(PIPE_ALL);
+            uint64_t processCount = (targetRank == rankSize_ - 1) ? tailCount_ : sliceCount_;
+            if (processCount > 0) {
+                WaitFlag(targetRank, reduceTagOffset_, syncTag_);
+                uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]);
+                uint64_t dstOffset = output_ + targetRank * sliceCount_ * sizeof(T);
+                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, processCount);
+                pipe_barrier(PIPE_ALL);
+            }
         }
     }
+
+    uint32_t coreNumPerRank;
+    uint32_t coreNumFirstStage;
+    uint32_t coreNumTotal;
+    uint32_t innerId;
+    uint32_t targetRank;
+    uint64_t rankChunkSize;
+    uint64_t innerChunkSize;
+    uint64_t rankChunkStride;
+    uint64_t innerChunkStride;
+    int32_t curTag;
+    uint64_t ipcReduceFlagOffset{1024};
+
+    uint32_t syncTag_{0};
+    uint32_t maxCoreNum_{0};
+    uint32_t useCoreNum_{0};
+    uint32_t coreIdx_{0};
+    uint32_t maxRankPerCore_{0};
+    uint64_t sliceCount_{0};
+    uint64_t tailCount_{0};
+    uint64_t reduceTagOffset_{0};
 };
 
 template<typename T>
@@ -286,15 +334,12 @@ public:
 template<typename T>
 __aicore__ inline void AivReduceV2Mesh1D(KERNEL_ARGS_DEF)
 {
-    constexpr static uint64_t TWO_SHOT_SLICE_NUM = 256 * 1024;
     AivReduceMesh1DTwoShot<T> op;
     op.Init(KERNEL_CLASS_INIT, true);
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    op.InitCoreInfo(sliceId);
-    op.ReduceScatter();
-    op.GatherToRoot();    
+    op.Process(sliceId);
     SyncAll<true>();
-    op.BarrierAll();    
+    op.BarrierAll();
 }
