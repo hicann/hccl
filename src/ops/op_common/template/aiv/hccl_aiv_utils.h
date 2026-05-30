@@ -21,7 +21,7 @@
 namespace ops_hccl {
 constexpr u32 MAX_RANK_SIZE = 128; // 注意要和device侧的一致
  
-constexpr s32 TOPO_LEN = 64;
+constexpr s32 TOPO_LEN = 128;
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
