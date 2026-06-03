@@ -12,27 +12,329 @@
 > - 本节表格中“√”代表支持，“×”代表不支持，“NA”代表不涉及，Atlas 训练系列产品不支持单算子零拷贝与重执行。
 > - 未列出的算子与网络运行模式代表不支持。
 
-| 算子 | 网络运行模式 | 单算子零拷贝 | 确定性计算 | 重执行 | 节点内通信 | 节点间通信 |
-| --- | --- | --- | --- | --- | --- | --- |
-| Broadcast | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| AllGather | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| Reduce | 单算子模式 | × | √ | × | √ | √ |
-| 图模式Ascend IR | × | √ | × | √ | √ |  |
-| AllReduce | 单算子模式 | × | √ | × | √ | √ |
-| 图模式Ascend IR | × | √ | × | √ | √ |  |
-| Scatter | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| ReduceScatter | 单算子模式 | × | √ | × | √ | √ |
-| 图模式Ascend IR | × | √ | × | √ | √ |  |
-| AlltoAll | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| AlltoAllV | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| Send | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| Recv | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
-| BatchSendRecv | 单算子模式 | × | NA | × | √ | √ |
-| 图模式Ascend IR | × | NA | × | √ | √ |  |
+<table><thead align="left"><tr><th><p>算子</p>
+</th>
+<th><p>网络运行模式</p>
+</th>
+<th><p>单算子零拷贝</p>
+</th>
+<th><p>确定性计算</p>
+</th>
+<th><p>重执行</p>
+</th>
+<th><p>节点内通信</p>
+</th>
+<th><p>节点间通信</p>
+</th>
+</tr>
+</thead>
+<tbody><tr><td rowspan="2"><p>Broadcast</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>AllGather</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>Reduce</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>AllReduce</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>Scatter</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>ReduceScatter</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>AlltoAll</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>AlltoAllV</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>Send</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>Recv</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td rowspan="2"><p>BatchSendRecv</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>√</p>
+</td>
+</tr>
+</tbody>
+</table>

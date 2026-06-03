@@ -14,42 +14,480 @@
 
 ## HOST
 
-| 算子 | 网络运行模式 | 单算子零拷贝 | 确定性计算 | 重执行 | 节点内通信 | 节点间通信 |
-| --- | --- | --- | --- | --- | --- | --- |
-| AllGather | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| AllGatherV | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| AllReduce | 单算子模式 | × | √ | × | √ | × |
-| 图模式Ascend IR | × | √ | × | √ | × |  |
-| 图捕获模式aclgraph | × | × | × | √ | × |  |
-| ReduceScatter | 单算子模式 | × | √ | × | √ | × |
-| 图模式Ascend IR | × | √ | × | √ | × |  |
-| 图捕获模式aclgraph | × | × | × | √ | × |  |
-| ReduceScatterV | 单算子模式 | × | √ | × | √ | × |
-| 图模式Ascend IR | × | √ | × | √ | × |  |
-| 图捕获模式aclgraph | × | × | × | √ | × |  |
-| AlltoAll | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| AlltoAllV | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| Send | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| Recv | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
-| BatchSendRecv | 单算子模式 | × | NA | × | √ | × |
-| 图模式Ascend IR | × | NA | × | √ | × |  |
-| 图捕获模式aclgraph | × | NA | × | √ | × |  |
+<table><thead align="left"><tr><th><p>算子</p>
+</th>
+<th><p>网络运行模式</p>
+</th>
+<th><p>单算子零拷贝</p>
+</th>
+<th><p>确定性计算</p>
+</th>
+<th><p>重执行</p>
+</th>
+<th><p>节点内通信</p>
+</th>
+<th><p>节点间通信</p>
+</th>
+</tr>
+</thead>
+<tbody><tr><td rowspan="3"><p>AllGather</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>AllGatherV</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>AllReduce</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>ReduceScatter</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>ReduceScatterV</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>AlltoAll</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>AlltoAllV</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>Send</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>Recv</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td rowspan="3"><p>BatchSendRecv</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>NA</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+</tbody>
+</table>
 
 ## AI CPU
 
-| 算子 | 网络运行模式 | 单算子零拷贝 | 确定性计算 | 重执行 | 节点内通信 | 节点间通信 |
-| --- | --- | --- | --- | --- | --- | --- |
-| AllReduce | 单算子模式 | × | √ | × | √ | × |
-| 图模式Ascend IR | × | √ | × | √ | × |  |
+<table><thead align="left"><tr><th><p>算子</p>
+</th>
+<th><p>网络运行模式</p>
+</th>
+<th><p>单算子零拷贝</p>
+</th>
+<th><p>确定性计算</p>
+</th>
+<th><p>重执行</p>
+</th>
+<th><p>节点内通信</p>
+</th>
+<th><p>节点间通信</p>
+</th>
+</tr>
+</thead>
+<tbody><tr><td rowspan="2"><p>AllReduce</p>
+</td>
+<td><p>单算子模式</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+<tr><td><p>图模式Ascend IR</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+<td><p>√</p>
+</td>
+<td><p>×</p>
+</td>
+</tr>
+</tbody>
+</table>
