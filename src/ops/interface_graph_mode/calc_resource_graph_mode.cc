@@ -190,7 +190,7 @@ HcclResult HcclSetAivCoreLimitGraphMode(const char *group, u32 aivCoreLimit)
 }
 
 HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType,
-                           u32 aivCoreLimit, bool *ifAiv, char **algName)
+                           u32 aivCoreLimit, bool *ifAiv, char *algName)
 {
     HCCL_INFO("[HcclSelectAlgGraphMode] Start: group[%s] count[%llu] dataType[%u] reduceOp[%u] opType[%u] aivCoreLimit[%u]",
         group, count, dataType, op, opType, aivCoreLimit);
@@ -276,15 +276,10 @@ HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dat
     
     *ifAiv = (param.engine == CommEngine::COMM_ENGINE_AIV);
     
-    // 分配内存并拷贝字符串
-    *algName = (char*)malloc(localAlgName.size() + 1);
-    if (*algName == nullptr) {
-        HCCL_ERROR("[HcclSelectAlgGraphMode] malloc failed for algName");
-        return HCCL_E_INTERNAL;
-    }
-    strncpy_s(*algName, localAlgName.size() + 1, localAlgName.c_str(), localAlgName.size());
+    // 拷贝字符串
+    strncpy_s(algName, ALG_NAME_MAX_LEN, localAlgName.c_str(), ALG_NAME_MAX_LEN - 1);
     
-    HCCL_INFO("[HcclSelectAlgGraphMode] Success. ifAiv=%d, algName=%s", *ifAiv, *algName);
+    HCCL_INFO("[HcclSelectAlgGraphMode] Success. ifAiv=%d, algName=%s", *ifAiv, algName);
     return HCCL_SUCCESS;
 }
 

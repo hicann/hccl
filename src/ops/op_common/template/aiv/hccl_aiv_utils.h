@@ -34,6 +34,13 @@ constexpr u32 AIV_MAX_CCL_LOOP_NUM = 16;
 
 constexpr u32 AIV_ATTRNUM_THREE = 3;
 
+constexpr u32 AIV_CACHE_CTX_TAG_MAX_LENGTH = 64;
+constexpr u32 AIV_CACHE_INDEX_MAX_ENTRY = 8192;
+constexpr u32 AIV_CACHE_INDEX_CLEAR_PERCENT = 20;
+constexpr u64 FNV_OFFSET_BASIS = 14695981039346656037ULL;
+constexpr u64 FNV_PRIME = 1099511628211ULL;
+constexpr char AIV_CACHE_INDEX_CTX_TAG[] = "AivCacheIndex";
+
 enum class KernelArgsType {
     ARGS_TYPE_SERVER = 0, // kernel参数为单机内
     ARGS_TYPE_TWO_SHOT = 1,
@@ -133,6 +140,19 @@ struct AivOpCacheArgs {
     }
 };
 
+struct AivCacheCtxHeader {
+    u64 keyHash;
+    u32 insCount;
+    // insCount个instruction
+};
+
+struct AivCacheIndexCtx {
+    u32 head = 0; // 起始位置
+    u32 tail = 0; // 尾巴位置
+    u32 size = 0; // 当前元素数
+    char ctxTags[AIV_CACHE_INDEX_MAX_ENTRY][AIV_CACHE_CTX_TAG_MAX_LENGTH];
+};
+
 struct AivInstruction {
     AivOpArgs opArgs;
     u64 inputOffset;
@@ -186,6 +206,18 @@ HcclResult UnRegisterAivKernel();
 HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 argsSize);
  
 HcclResult ExecuteKernelLaunch(const AivOpArgs &opArgs);
+
+u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey);
+
+HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string &ctxTag);
+
+HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx **indexCtx);
+
+HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx);
+
+HcclResult ReplayAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, OpParam &param, bool &cacheHit);
+
+HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, AivCacheIndexCtx *indexCtx);
 }
  
 #endif // HCCL_AIV_UTILS_H

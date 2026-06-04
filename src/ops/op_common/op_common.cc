@@ -53,7 +53,6 @@
 
 namespace ops_hccl {
 // 用于维护增量建链算子的host ctx信息
-thread_local std::map<AivOpCacheArgs, std::shared_ptr<InsQueue>> g_hcclCacheMap;
 thread_local std::set<std::string> g_inconsistentCheckedList;
 constexpr u32 HOST_WAIT_AICPU_NOTIFYIDX = 0;// host主流wait aicpu流的notify idx
 constexpr u32 HOST_NOTIFY_TIMEOUT_OFFSET = 27;  // host等待Device通知的超时时间偏移量
@@ -371,7 +370,7 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastL
 #endif
 }
 
-HcclResult ExecuteAivCacheLogic(OpParam &param, const std::string &algName,
+HcclResult ExecuteAivCacheLogic(HcclComm comm, OpParam &param, const std::string &algName,
                                 std::unique_ptr<InsCollAlgBase> &executor,
                                 AlgResourceCtxSerializable &resCtxHost)
 {
@@ -398,35 +397,35 @@ HcclResult ExecuteAivCacheLogic(OpParam &param, const std::string &algName,
         }
     }
 
-    if (useCache && g_hcclCacheMap.find(cacheKey) != g_hcclCacheMap.end()) {
-        // Hit
-        auto queue = g_hcclCacheMap[cacheKey];
-        for (auto& ins : *queue) {
-            AivOpArgs newArgs = ins.opArgs;
-            newArgs.stream = param.stream;
+    std::string ctxTag;
+    u64 keyHash = 0;
+    if (useCache) {
+        keyHash = CalcAivCacheKeyHash(cacheKey);
+        CHK_RET(BuildAivCacheCtxTag(keyHash, ctxTag));
+        bool cacheHit = false;
+        CHK_RET(ReplayAivCacheCtx(comm, ctxTag, keyHash, param, cacheHit));
 
-            // Update addresses
-            newArgs.input = (u64)param.inputPtr + ins.inputOffset;
-            newArgs.output = (u64)param.outputPtr + ins.outputOffset;
-
-            CHK_RET(ExecuteKernelLaunch(newArgs));
+        // Hit, return
+        if (cacheHit) {
+            return HCCL_SUCCESS;
         }
-    } else {
-        // Miss
-        if (useCache) {
-            g_recordingQueue = std::make_shared<InsQueue>();
-            g_baseInputAddr = (u64)param.inputPtr;
-            g_baseOutputAddr = (u64)param.outputPtr;
-        }
+        // Miss, continue start recording
+        g_recordingQueue = std::make_shared<InsQueue>();
+        g_baseInputAddr = reinterpret_cast<u64>(param.inputPtr);
+        g_baseOutputAddr = reinterpret_cast<u64>(param.outputPtr);
+    }
 
-        CHK_RET(executor->Orchestrate(param, resCtxHost));
+    CHK_RET(executor->Orchestrate(param, resCtxHost));
 
-        if (useCache && g_recordingQueue) {
-            g_hcclCacheMap[cacheKey] = g_recordingQueue;
-            g_recordingQueue = nullptr;
-            g_baseInputAddr = 0;
-            g_baseOutputAddr = 0;
-        }
+    // 插入cache
+    if (useCache && g_recordingQueue) {
+        AivCacheIndexCtx *indexCtx = nullptr;
+        CHK_RET(GetOrCreateAivCacheIndexCtx(comm, &indexCtx));
+        CHK_RET(EvictAivCacheIfNeeded(comm, indexCtx));
+        CHK_RET(StoreAivCacheCtx(comm, ctxTag, keyHash, indexCtx));
+        g_recordingQueue = nullptr;
+        g_baseInputAddr = 0;
+        g_baseOutputAddr = 0;
     }
     return HCCL_SUCCESS;
 }
@@ -585,7 +584,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
         param.resCtx = resCtxSequence;
         AlgResourceCtxSerializable &aivResCtxHost = *static_cast<AlgResourceCtxSerializable *>(resCtxSequence);
         CHK_RET(HcclAivKernelEntranceLaunch(comm, param, topoInfo, aivResCtxHost));
-        CHK_RET(ExecuteAivCacheLogic(param, algName, executor, aivResCtxHost));
+        CHK_RET(ExecuteAivCacheLogic(comm, param, algName, executor, aivResCtxHost));
         CHK_RET(HcclReportAivKernel(comm, aivBeginTime));
     } else if (param.engine == COMM_ENGINE_CCU) {
         if (isResourceReused) {

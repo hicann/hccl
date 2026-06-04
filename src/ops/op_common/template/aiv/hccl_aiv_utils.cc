@@ -543,6 +543,162 @@ HcclResult UnRegisterAivKernel()
     return result;
 }
 
+// cache工具接口
+void HashAppend(u64 &hash, const void *data, size_t size)
+{
+    const u8 *bytes = static_cast<const u8 *>(data);
+    for (size_t i = 0; i < size; ++i) {
+        hash ^= bytes[i];
+        hash *= FNV_PRIME;
+    }
+}
+
+void HashAppendString(u64 &hash, const std::string &value)
+{
+    HashAppend(hash, value.data(), value.size());
+    const char separator = '\0';
+    HashAppend(hash, &separator, sizeof(separator));
+}
+
+template <typename T>
+void HashAppendValue(u64 &hash, const T &value)
+{
+    HashAppend(hash, &value, sizeof(T));
+}
+
+u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey)
+{
+    u64 hash = FNV_OFFSET_BASIS;
+    // ctx本身是通信域粒度的，不需要commName
+    HashAppendString(hash, cacheKey.algName);
+    HashAppendValue(hash, cacheKey.count);
+    HashAppendValue(hash, cacheKey.dataType);
+    HashAppendValue(hash, cacheKey.opType);
+    HashAppendValue(hash, cacheKey.reduceOp);
+    HashAppendValue(hash, cacheKey.root);
+    HashAppendValue(hash, cacheKey.sendType);
+    HashAppendValue(hash, cacheKey.recvType);
+    HashAppendValue(hash, cacheKey.sendCount);
+    HashAppendValue(hash, cacheKey.recvCount);
+    HCCL_INFO("[%s] hashKey[%llu]", __func__, hash);
+    return hash;
+}
+
+HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string &ctxTag)
+{
+    char tag[AIV_CACHE_CTX_TAG_MAX_LENGTH] = {};
+    int ret = snprintf_s(tag, sizeof(tag), sizeof(tag) - 1, "AivCache_%016llx", keyHash);
+    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[%s] failed to fill aiv cache ctx tag", __func__), HCCL_E_INTERNAL);
+    ctxTag = tag;
+    return HCCL_SUCCESS;
+}
+
+HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx **indexCtx)
+{
+    CHK_PTR_NULL(indexCtx);
+    void *ctx = nullptr;
+    uint64_t ctxSize = 0;
+    HcclResult ret = HcclEngineCtxGet(comm, AIV_CACHE_INDEX_CTX_TAG, CommEngine::COMM_ENGINE_CPU_TS, &ctx, &ctxSize);
+    if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
+        HCCL_INFO("[%s] aiv cache indexCtx not created", __func__);
+        CHK_RET(HcclEngineCtxCreate(comm, AIV_CACHE_INDEX_CTX_TAG, CommEngine::COMM_ENGINE_CPU_TS,
+            sizeof(AivCacheIndexCtx), &ctx));
+        *indexCtx = static_cast<AivCacheIndexCtx *>(ctx);
+        // 初始化
+        (*indexCtx)->head = 0;
+        (*indexCtx)->tail = 0;
+        (*indexCtx)->size = 0;
+        return HCCL_SUCCESS;
+    } else if (ret == HCCL_SUCCESS) {
+        HCCL_DEBUG("[%s] aiv cache indexCtx already created", __func__);
+        *indexCtx = static_cast<AivCacheIndexCtx *>(ctx);
+        return HCCL_SUCCESS;
+    } else {
+        return ret;
+    }
+}
+
+HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx)
+{
+    if (indexCtx->size < AIV_CACHE_INDEX_MAX_ENTRY) {
+        return HCCL_SUCCESS;
+    }
+    HCCL_INFO("[%s] begin to clean aiv cache", __func__);
+
+    u32 clearCount = static_cast<u32>(AIV_CACHE_INDEX_MAX_ENTRY * AIV_CACHE_INDEX_CLEAR_PERCENT / 100);
+    for (u32 i = 0; i < clearCount; ++i) {
+        u32 evictIndex = indexCtx->head;
+        const char *ctxTag = indexCtx->ctxTags[evictIndex];
+        HcclResult ret = HcclEngineCtxDestroy(comm, ctxTag, CommEngine::COMM_ENGINE_CPU_TS);
+        CHK_PRT_RET(ret != HCCL_SUCCESS,
+            HCCL_ERROR("[%s] failed to destroy aiv cache ctx, tag[%s]", __func__, ctxTag), ret);
+        indexCtx->size--;
+        indexCtx->head = (evictIndex + 1) % AIV_CACHE_INDEX_MAX_ENTRY;
+        HCCL_DEBUG("[%s] cur head[%u] tail[%u] size[%u]", __func__, indexCtx->head, indexCtx->tail, indexCtx->size);
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult ReplayAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, OpParam &param, bool &cacheHit)
+{
+    cacheHit = false;
+    void *ctx = nullptr;
+    uint64_t ctxSize = 0;
+    HcclResult ret = HcclEngineCtxGet(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &ctx, &ctxSize);
+    if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
+        return HCCL_SUCCESS;
+    }
+    CHK_RET(ret);
+
+    AivCacheCtxHeader *header = static_cast<AivCacheCtxHeader *>(ctx);
+    CHK_PRT_RET(header->keyHash != keyHash,
+        HCCL_ERROR("[%s] invalid aiv cache ctx header, tag[%s], keyHash[%llu]",
+            __func__, ctxTag.c_str(), header->keyHash), HCCL_E_INTERNAL);
+    uint64_t expectedSize = sizeof(AivCacheCtxHeader) + header->insCount * sizeof(AivInstruction);
+    CHK_PRT_RET(ctxSize != expectedSize,
+        HCCL_ERROR("[%s] invalid aiv cache ctx size[%llu], expected[%llu], tag[%s]",
+            __func__, ctxSize, expectedSize, ctxTag.c_str()), HCCL_E_INTERNAL);
+
+    HCCL_INFO("[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], ins size[%u]",
+        __func__, ctxTag.c_str(), header->keyHash, header->insCount);
+    AivInstruction *instructions = reinterpret_cast<AivInstruction *>(
+        static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader));
+    for (uint64_t i = 0; i < header->insCount; ++i) {
+        AivOpArgs newArgs = instructions[i].opArgs;
+        newArgs.stream = param.stream;
+        newArgs.input = reinterpret_cast<u64>(param.inputPtr) + instructions[i].inputOffset;
+        newArgs.output = reinterpret_cast<u64>(param.outputPtr) + instructions[i].outputOffset;
+        CHK_RET(ExecuteKernelLaunch(newArgs));
+    }
+    cacheHit = true;
+    return HCCL_SUCCESS;
+}
+
+HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, AivCacheIndexCtx *indexCtx)
+{
+    const InsQueue &queue = *g_recordingQueue;
+    uint64_t ctxSize = sizeof(AivCacheCtxHeader) + queue.size() * sizeof(AivInstruction);
+    void *ctx = nullptr;
+    CHK_RET(HcclEngineCtxCreate(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, ctxSize, &ctx));
+    AivCacheCtxHeader header { keyHash, static_cast<u32>(queue.size()) };
+    CHK_SAFETY_FUNC_RET(memcpy_s(ctx, ctxSize, &header, sizeof(header)));
+    if (!queue.empty()) {
+        CHK_SAFETY_FUNC_RET(memcpy_s(static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader),
+            ctxSize - sizeof(AivCacheCtxHeader), queue.data(), queue.size() * sizeof(AivInstruction)));
+    }
+    // 增加index中的记录
+    u32 pushIndex = indexCtx->tail;
+    char *ctxTagPtr = indexCtx->ctxTags[pushIndex];
+    s32 ret = strncpy_s(ctxTagPtr, AIV_CACHE_CTX_TAG_MAX_LENGTH, ctxTag.c_str(), AIV_CACHE_CTX_TAG_MAX_LENGTH - 1);
+    CHK_PRT_RET(ret != EOK, HCCL_ERROR("[%s] failed to copy aiv cache ctx tag, ret[%d]", __func__, ret),
+        HCCL_E_MEMORY);
+    indexCtx->tail = (pushIndex + 1) % AIV_CACHE_INDEX_MAX_ENTRY;
+    indexCtx->size++;
+    HCCL_INFO("[%s] ctxTag[%s] keyHash[%llu] cur head[%u] tail[%u] size[%u]",
+        __func__, ctxTag.c_str(), keyHash, indexCtx->head, indexCtx->tail, indexCtx->size);
+    return HCCL_SUCCESS;
+}
+
 // KernelLaunch内部接口
 HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 argsSize)
 {
