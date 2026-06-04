@@ -11,6 +11,7 @@
 #ifndef INS_TEMP_REDUCE_SCATTER_NHR_H
 #define INS_TEMP_REDUCE_SCATTER_NHR_H
 
+#include <set>
 #include "alg_v2_template_base.h"
 #include "executor_v2_base.h"
 #include "alg_data_trans_wrapper.h"
@@ -55,6 +56,8 @@ private:
     std::vector<u64> elemOffsetTail_;
     bool isDmaRead_{false};
     bool doPreCopy_{false};
+    bool skipStep0TxPreCopy_{false};
+    std::set<u32> step0TxSliceIdxs_;
 };
 
 } // namespace Hccl

@@ -748,7 +748,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     u32 multipleIntra = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 multipleInter = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    u32 defaultMultiple = 3;
+    u32 defaultMultiple = 2;
     if (multipleIntra > 0 || multipleInter > 0) {
         multipleIntra = defaultMultiple;
         multipleInter = defaultMultiple;
@@ -904,7 +904,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     // step1 - parallel 0: RS mesh
     u64 inputOffset = 0;
     u64 outputOffset = 0;
-    u64 hcclBuffOffset = 2 * currCountPart * dataTypeSize_;
+    u64 hcclBuffOffset = 1 * currCountPart * dataTypeSize_;
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
         GenDataParamstempAlg(param, resCtx, dataOffset, currCountPart, scratchOffsetCount, dataParams, intraLocalRankSize_, inputOffset, outputOffset, hcclBuffOffset);
@@ -921,7 +921,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     // step1 - parallel 1: RS nhr
     u64 inputOffset = 0;
     u64 outputOffset = 0;
-    u64 hcclBuffOffset = 2 * currCountPart * dataTypeSize_;
+    u64 hcclBuffOffset = 0;
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
         GenDataParamstempAlg(param, resCtx, dataOffset, currCountPart, scratchOffsetCount, dataParams, interLocalRankSize_, inputOffset, outputOffset, hcclBuffOffset);
@@ -937,8 +937,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 {
     // step2 - parallel 0: RS nhr
     u64 inputOffset = 0;
-    u64 hcclBuffOffset = 2 * currCountPart * dataTypeSize_;
-    u64 outputOffset = currCountPart * dataTypeSize_;
+    u64 hcclBuffOffset = 0;
+    u64 outputOffset = 0;
     PrePareDataParamstempAlgInter(dataOffset, currCountPart, scratchOffsetCount);
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
@@ -958,8 +958,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 {
     // step2 - parallel 1: RS mesh
     u64 inputOffset = 0;
-    u64 hcclBuffOffset = 2 * currCountPart * dataTypeSize_;
-    u64 outputOffset = currCountPart * dataTypeSize_;
+    u64 hcclBuffOffset = 1 * currCountPart * dataTypeSize_;
+    u64 outputOffset = 0;
     PrePareDataParamstempAlgIntra(dataOffset, currCountPart, scratchOffsetCount);
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
@@ -978,9 +978,9 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
 {
     // step3 - parallel 0: AG nhr
-    u64 inputOffset = currCountPart * dataTypeSize_;
-    u64 hcclBuffOffset = currCountPart * dataTypeSize_;
-    u64 outputOffset = currCountPart * dataTypeSize_;
+    u64 inputOffset = 0;
+    u64 outputOffset = 0;
+    u64 hcclBuffOffset = 0;
     PrePareDataParamstempAlgInter(dataOffset, currCountPart, scratchOffsetCount);
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
@@ -999,9 +999,9 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
 {
     // step3 - parallel 1: AG mesh
-    u64 inputOffset = currCountPart * dataTypeSize_;
-    u64 hcclBuffOffset = currCountPart * dataTypeSize_;
-    u64 outputOffset = currCountPart * dataTypeSize_;
+    u64 inputOffset = 0;
+    u64 hcclBuffOffset = 0;
+    u64 outputOffset = 0;
     PrePareDataParamstempAlgIntra(dataOffset, currCountPart, scratchOffsetCount);
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, dataParams);
@@ -1020,8 +1020,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate2 &tempAlgIntra1)
 {
     // step4 - parallel 0: AG mesh
-    u64 inputOffset = currCountPart * dataTypeSize_;
-    u64 hcclBuffOffset = currCountPart * dataTypeSize_;
+    u64 inputOffset = 0;
+    u64 hcclBuffOffset = 0;
     u64 outputOffset = 0;
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER, dataParams);
@@ -1037,8 +1037,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     TemplateDataParams &dataParams, TemplateResource& templateResource, InsAlgTemplate3 &tempAlgInter1)
 {
     // step4 - parallel 1: AG nhr
-    u64 inputOffset = currCountPart * dataTypeSize_;
-    u64 hcclBuffOffset = currCountPart * dataTypeSize_;
+    u64 inputOffset = 0;
+    u64 hcclBuffOffset = 0;
     u64 outputOffset = 0;
     if (currCountPart > 0) {
         GenDataParamsBufferType(BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER, dataParams);
