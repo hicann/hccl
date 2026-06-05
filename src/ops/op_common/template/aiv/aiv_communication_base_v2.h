@@ -327,12 +327,6 @@ public:
 
     __aicore__ inline void BarrierAll();
 
-    __aicore__ inline void SubBarrierAllForAlltoAllV(uint32_t (&sendRecvRank)[MAX_RANK_SIZE], uint64_t loop);
-
-    __aicore__ inline void PreBarrierAllForAlltoAllV(uint32_t tag, uint64_t loopTimes);
-
-    __aicore__ inline void PostBarrierAllForAlltoAllV(uint32_t tag);
-
     __aicore__ inline void SendRecvBarrierAll(uint32_t myRank, uint32_t remoteRank);
 
     __aicore__ inline bool IsFirstOP(int32_t sliceId);
@@ -580,80 +574,6 @@ __aicore__ inline void AivCommBase::BarrierAll()
     for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
         uint64_t flag_offset = BASE_FLAG_OFFSET + rank * FLAG_SIZE;
         WaitFlag(rank_, flag_offset / FLAG_SIZE, 1);
-        Record(rank_, flag_offset / FLAG_SIZE, 0);
-    }
-}
-
-__aicore__ inline void AivCommBase::SubBarrierAllForAlltoAllV(uint32_t (&sendRecvRank)[MAX_RANK_SIZE], uint64_t loop)
-{
-    SyncAll<true>();
-    // 每个核分配多个rank
-    uint32_t perCoreRankNum = rankSize_ / numBlocks_;
-    uint32_t remainRankNum = rankSize_ % numBlocks_;
-    uint32_t curCoreRankNum = block_idx < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
-    uint32_t startRank = block_idx < remainRankNum
-                        ? (perCoreRankNum + 1) * block_idx
-                        : perCoreRankNum * block_idx + remainRankNum;
-    uint64_t flag_offset = BASE_FLAG_OFFSET + rank_ * FLAG_SIZE;
-    for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        // loop为0的时候，给对端初始化置为0
-        if (loop == 0 && sendRecvRank[rank] == 0) {
-            Record(rank, flag_offset / FLAG_SIZE, 0);
-        }
-        if (sendRecvRank[rank] == 1) {
-            if (loop > 0) {
-                WaitFlag(rank, flag_offset / FLAG_SIZE, 0); // 防止后续record 0 之前重入
-            }
-            Record(rank, flag_offset / FLAG_SIZE, 1);
-        }
-    }
-    PipeBarrier<PIPE_ALL>();
-    for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        if (sendRecvRank[rank] == 1) {
-            uint64_t flag_offset = BASE_FLAG_OFFSET + rank * FLAG_SIZE;
-            WaitFlag(rank_, flag_offset / FLAG_SIZE, 1);
-            Record(rank_, flag_offset / FLAG_SIZE, 0);
-        }
-    }
-    SyncAll<true>();
-}
-
-__aicore__ inline void AivCommBase::PreBarrierAllForAlltoAllV(uint32_t tag, uint64_t loopTimes)
-{
-    SyncAll<true>();
-    // 每个核分配多个rank
-    uint32_t perCoreRankNum = rankSize_ / numBlocks_;
-    uint32_t remainRankNum = rankSize_ % numBlocks_;
-    uint32_t curCoreRankNum = block_idx < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
-    uint32_t startRank = block_idx < remainRankNum
-                        ? (perCoreRankNum + 1) * block_idx
-                        : perCoreRankNum * block_idx + remainRankNum;
-    uint64_t flag_offset = BASE_FLAG_OFFSET + rank_ * FLAG_SIZE;
-    for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        if (loopTimes > 0) {
-            // loopTimes>0的时候，SubBarrierAllForAlltoAllV会给全部rank置0，这里肯定可以wait到
-            WaitFlag(rank, flag_offset / FLAG_SIZE, 0); // 防止重入
-        }
-        Record(rank, flag_offset / FLAG_SIZE, tag);
-    }
-    PipeBarrier<PIPE_ALL>();
-}
-
-__aicore__ inline void AivCommBase::PostBarrierAllForAlltoAllV(uint32_t tag)
-{
-    SyncAll<true>();
-
-    // 每个核分配多个rank
-    uint32_t perCoreRankNum = rankSize_ / numBlocks_;
-    uint32_t remainRankNum = rankSize_ % numBlocks_;
-    uint32_t curCoreRankNum = block_idx < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
-    uint32_t startRank = block_idx < remainRankNum
-                        ? (perCoreRankNum + 1) * block_idx
-                        : perCoreRankNum * block_idx + remainRankNum;
-
-    for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-        uint64_t flag_offset = BASE_FLAG_OFFSET + rank * FLAG_SIZE;
-        WaitFlag(rank_, flag_offset / FLAG_SIZE, tag);
         Record(rank_, flag_offset / FLAG_SIZE, 0);
     }
 }
