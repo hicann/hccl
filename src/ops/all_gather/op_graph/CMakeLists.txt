@@ -12,6 +12,8 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/all_gather_proto.cc
 )
 
-target_sources(opgraph_hccl PRIVATE
-    ${src_list}
-)
+if(TARGET opgraph_hccl)
+    target_sources(opgraph_hccl PRIVATE
+        ${src_list}
+    )
+endif()
