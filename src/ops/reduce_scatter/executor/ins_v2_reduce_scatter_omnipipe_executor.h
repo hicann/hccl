@@ -11,7 +11,6 @@
 #ifndef HCCLV2_INS_V2_REDUCE_SCATTER_OMNIPIPE_EXECUTOR_H
 #define HCCLV2_INS_V2_REDUCE_SCATTER_OMNIPIPE_EXECUTOR_H
 
-#include <cmath>
 #include "alg_param.h"
 #include "topo_host.h"
 #include "channel.h"
@@ -45,7 +44,7 @@ public:
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                     AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
     HcclResult RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-        std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const;
+        std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const override;
 
 protected:
     /* *************** 算法编排 *************** */

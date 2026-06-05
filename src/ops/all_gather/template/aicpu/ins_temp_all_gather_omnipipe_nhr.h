@@ -11,7 +11,6 @@
 #ifndef INS_TEMP_ALL_GATHER_OMNIPIPE_NHR_H
 #define INS_TEMP_ALL_GATHER_OMNIPIPE_NHR_H
 
-#include <cstring>
 #include "ins_temp_all_gather_nhr.h"
 
 namespace ops_hccl {

@@ -41,7 +41,7 @@ namespace ops_hccl {
         // 图模式&单算子
         HcclResult OrchestrateImpl(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
 
-        HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit);
+        HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) const;
 
         // 单算子|图模式
         OpMode opMode_;

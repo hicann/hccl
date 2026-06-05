@@ -730,7 +730,7 @@ HcclResult AicpuKernelLaunch(HcclComm comm, OpParam &param, ThreadHandle unfoldT
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclAivKernelEntranceLaunch(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo,
+HcclResult HcclAivKernelEntranceLaunch(HcclComm comm, OpParam &param, const std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo,
     AlgResourceCtxSerializable &resCtxHost)
 {
     (void) topoInfo;

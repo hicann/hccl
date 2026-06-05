@@ -269,7 +269,6 @@ static const char* get_safe_base_path(void) {
     const char* env_path;
 
     env_path = getenv("ASCEND_HOME_PATH");
-
     if (env_path != NULL && is_safe_path(env_path)) {
         if (safe_strcpy(safe_path, sizeof(safe_path), env_path) == 0) {
             return safe_path;
@@ -303,7 +302,6 @@ static int build_safe_path(const char* base_path, const char* relative_path,
 
     base_len = strlen(base_path);
     rel_len = strlen(relative_path);
-
     /* 检查总长度是否溢出 */
     if (base_len + rel_len + 2 > output_size) {
         HCCL_ERROR("Combined path too long");

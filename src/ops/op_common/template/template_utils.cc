@@ -45,7 +45,7 @@ HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
 
     std::vector<u32> portGroups;
     u32 totalPorts = 0;
-    u32 taskCount =  ((int)channels.size() > channelsPerRank) ? channelsPerRank : (int)channels.size();
+    u32 taskCount =  (static_cast<int>(channels.size()) > channelsPerRank) ? channelsPerRank : static_cast<int>(channels.size());
     for (u32 i = 0; i < taskCount; i++) {
         const auto &ch = channels[i];
         portGroups.push_back(ch.portGroupSize);

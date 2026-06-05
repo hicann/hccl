@@ -126,7 +126,8 @@ HcclResult InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         interTempRequestFinal.notifyNumPerThread = interTempRequest0.notifyNumPerThread;
     }
 
-    resourceRequest.notifyNumOnMainThread = 2;  // 用于broadcast两个template间同步
+    u32 threadNum = 2;
+    resourceRequest.notifyNumOnMainThread = threadNum;  // 用于broadcast两个template间同步
     resourceRequest.slaveThreadNum = slaveThreadNumIntra + slaveThreadNumInter + 4;
     resourceRequest.notifyNumPerThread.emplace_back(intraTempRequest.notifyNumOnMainThread + 1);
     resourceRequest.notifyNumPerThread.emplace_back(intraTempRequest0.notifyNumOnMainThread + 1);

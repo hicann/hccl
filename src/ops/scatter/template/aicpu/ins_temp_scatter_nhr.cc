@@ -404,13 +404,13 @@ HcclResult InsTempScatterNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::map
     }
     return HcclResult::HCCL_SUCCESS;
 }
-void InsTempScatterNHR::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub)
+void InsTempScatterNHR::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub)
 {
-    notifyIdxMianToSub.clear();
+    notifyIdxMainToSub.clear();
     u32 threadNum = GetThreadNum();
     u32 slaveThreadNum = threadNum - 1;
     for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
-        notifyIdxMianToSub.push_back(0);
+        notifyIdxMainToSub.push_back(0);
     }
 }
 

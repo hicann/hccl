@@ -81,7 +81,7 @@ HcclResult TopoMatchPcieMix::CheckVecElementAllSame(const uint32_t *instSizeList
 }
 
 HcclResult TopoMatchPcieMix::TopoForLayer0(const HcclComm comm, const uint32_t myRank,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
 #ifndef AICPU_COMPILE
     uint32_t netLayer = 0;

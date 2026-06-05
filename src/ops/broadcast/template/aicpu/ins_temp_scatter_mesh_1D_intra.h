@@ -43,7 +43,6 @@ public:
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 
- 
 private:
     HcclResult LocalCopyforMyRank(
         const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);

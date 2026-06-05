@@ -51,7 +51,6 @@ public:
     void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
 
-
 private:
     HcclResult SplitData();
 
