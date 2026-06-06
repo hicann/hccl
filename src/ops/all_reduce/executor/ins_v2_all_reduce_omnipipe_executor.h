@@ -132,6 +132,22 @@ protected:
         OMNIPIPE_AG_LEVEL2 = 5,
         OMNIPIPE_AR_LEVEL_NUM = 6
     };
+
+    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
+    TopoType topoType_ = TopoType::UBX_2LEVEL;
+
+    HcclResult BuildSubCommAndTempMap(
+        const OpParam& param,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        std::vector<std::vector<u32>>& subCommRanks0,
+        std::vector<std::vector<u32>>& subCommRanks1,
+        std::vector<std::vector<u32>>& subCommRanks2,
+        std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
+        const TopoInfoWithNetLayerDetails* topoInfo);
+
+    std::vector<std::vector<u32>> subCommRanks0_;
+    std::vector<std::vector<u32>> subCommRanks1_;
+    std::vector<std::vector<u32>> subCommRanks2_;
 };
 }  // namespace ops_hccl
 
