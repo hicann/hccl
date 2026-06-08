@@ -233,7 +233,11 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(const TopoInfoWithNetLaye
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (topoInfo->level0PcieMix) {
             if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-                selectAlgName = "ReduceMesh1D";
+                if (dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
+                    selectAlgName = "ReduceMesh1DTwoShot";
+                } else {
+                    selectAlgName = "ReduceMesh1D";
+                }
             } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
                 selectAlgName = "ReduceAicpuReduceNHR";
             } else {
