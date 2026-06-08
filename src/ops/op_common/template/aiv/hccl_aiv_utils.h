@@ -21,7 +21,7 @@
 namespace ops_hccl {
 constexpr u32 MAX_RANK_SIZE = 128; // 注意要和device侧的一致
  
-constexpr s32 TOPO_LEN = 128;
+constexpr s32 TOPO_LEN = MAX_RANK_SIZE; // 当前一级拓扑，暂时和MAX_RANK_SIZE保持一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
@@ -80,6 +80,7 @@ struct OpCounterInfo {
 struct AivOpArgs {
     HcclCMDType cmdType = HcclCMDType::HCCL_CMD_MAX;
     std::string comm = {};
+    HcclComm hcclComm = nullptr;
     u32 numBlocks = MAX_NUM_BLOCKS;
     rtStream_t stream = nullptr;
     uint64_t beginTime = 0;
@@ -165,6 +166,8 @@ extern thread_local std::shared_ptr<InsQueue> g_recordingQueue;
 extern thread_local bool g_recordOnlyMode;
 extern thread_local u64 g_baseInputAddr;
 extern thread_local u64 g_baseOutputAddr;
+extern thread_local HcclComm g_aivCurrentComm;
+extern thread_local std::string g_aivCurrentCommName;
 
 using AivSuperKernelArgs = struct AivSuperKernelArgsDef {
     const void* buffersIn = nullptr; // 注册的CCLIN地址，所有卡可访问
@@ -198,6 +201,8 @@ using AivSuperKernelArgs = struct AivSuperKernelArgsDef {
     }
     AivSuperKernelArgsDef() {}
 };
+
+void ProcessAivExceptionCallBack(aclrtExceptionInfo *exceptionInfo);
 
 HcclResult RegisterKernel();
 

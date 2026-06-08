@@ -23,9 +23,7 @@ static const struct FunLevelKType kernel_name##_kernel_type_section __attribute_
 
 constexpr uint32_t MAX_RANK_SIZE = 128; // server内最大卡数
 constexpr uint64_t BUFFER_OUT_ADDR_OFFSET = 16 * 1024;
-constexpr uint64_t TOPO_ADDR_OFFSET = 32 * 1024;
 constexpr uint64_t FLAG_ADDR_OFFSET = 40 * 1024;
-constexpr uint64_t TOPO_LEN = 128;
 constexpr uint64_t TOPO_LEN_Y_OFFSET = 8;
 constexpr uint64_t TOPO_LEN_Z_OFFSET = 16;
 constexpr uint64_t LOCAL_FLAG_BUF_LEN = 2560;
@@ -278,9 +276,6 @@ public:
             GM_IN[i] = (GM_ADDR)ipcBufferGlobal.GetValue(i);
             GM_OUT[i] = (GM_ADDR)ipcBufferGlobal.GetValue(BUFFER_OUT_ADDR_OFFSET / sizeof(uint64_t) + i) + FLAG_ADDR_OFFSET;
         }
-        for(int i=0; i< TOPO_LEN ;i++){
-            TOPO_[i] = (uint64_t)ipcBufferGlobal.GetValue(TOPO_ADDR_OFFSET / sizeof(uint64_t) + i);
-        }
         pipe_barrier(PIPE_ALL);
     }
 
@@ -351,7 +346,6 @@ public:
 
     GM_ADDR GM_IN[MAX_RANK_SIZE];
     GM_ADDR GM_OUT[MAX_RANK_SIZE];
-    uint64_t TOPO_[TOPO_LEN];
     uint32_t rank_;
     uint32_t sendRecvRemoteRank_;
     uint32_t root_;

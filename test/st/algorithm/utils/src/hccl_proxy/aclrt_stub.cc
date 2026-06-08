@@ -370,6 +370,43 @@ aclError aclrtGetOpTimeOutInterval(uint64_t *interval)
     return ACL_SUCCESS;
 }
 
+uint32_t aclrtGetTaskIdFromExceptionInfo(const aclrtExceptionInfo *info)
+{
+    if (info == nullptr) {
+        return 0;
+    }
+    const rtExceptionInfo_t *exceptionInfo = reinterpret_cast<const rtExceptionInfo_t *>(info);
+    return exceptionInfo->taskid;
+}
+
+uint32_t aclrtGetStreamIdFromExceptionInfo(const aclrtExceptionInfo *info)
+{
+    if (info == nullptr) {
+        return 0;
+    }
+    const rtExceptionInfo_t *exceptionInfo = reinterpret_cast<const rtExceptionInfo_t *>(info);
+    return exceptionInfo->streamid;
+}
+
+uint32_t aclrtGetDeviceIdFromExceptionInfo(const aclrtExceptionInfo *info)
+{
+    if (info == nullptr) {
+        return 0;
+    }
+    const rtExceptionInfo_t *exceptionInfo = reinterpret_cast<const rtExceptionInfo_t *>(info);
+    return exceptionInfo->deviceid;
+}
+
+rtError_t rtGetTaskIdAndStreamID(uint32_t *taskId, uint32_t *streamId)
+{
+    if (taskId == nullptr || streamId == nullptr) {
+        return RT_ERROR_NONE;
+    }
+    *taskId = 0;
+    *streamId = 0;
+    return RT_ERROR_NONE;
+}
+
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
