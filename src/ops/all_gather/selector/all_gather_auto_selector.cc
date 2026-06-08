@@ -176,7 +176,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
 {
     HCCL_DEBUG("[AllGatherAutoSelector][%s] start", __func__);
     (void)configAlgMap;
-    u32 ccuSize = 64;
+    u32 ccuSize = 32;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->topoLevelNums > 1) {
