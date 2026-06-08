@@ -71,6 +71,7 @@ HcclResult HcclAllGatherVGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCo
 {
  	HCCL_INFO("Start to run execute HcclAllGatherVGraphMode");
  	// 根据group获取通信域
+ 	CHK_PTR_NULL(group);
  	HcclComm comm = nullptr;
     HCCL_INFO("[HcclAllGatherVGraphMode] get group name: %s", group);
  	CHK_RET(HcomGetCommHandleByGroup(group, &comm));

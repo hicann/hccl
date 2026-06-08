@@ -60,6 +60,7 @@ HcclResult HcclAllReduceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
 {
     HCCL_INFO("Start to run execute HcclAllReduceGraphMode");
     // 根据group获取通信域
+    CHK_PTR_NULL(group);
     HcclComm comm = nullptr;
     HCCL_INFO("[HcclAllReduceGraphMode] get group name: %s", group);
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));

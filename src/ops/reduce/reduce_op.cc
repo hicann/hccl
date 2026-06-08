@@ -64,9 +64,10 @@ HcclResult HcclReduceGraphMode(void *sendBuf, void *recvBuf, uint64_t count, Hcc
 {
     HCCL_INFO("Start to run execute HcclReduceGraphMode");
     // 根据group获取通信域
+    CHK_PTR_NULL(group);
     HcclComm comm = nullptr;
     HCCL_INFO("[HcclReduceGraphMode] get group name: %s", group);
-    HcomGetCommHandleByGroup(group, &comm);
+    CHK_RET(HcomGetCommHandleByGroup(group, &comm));
 
     HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
     CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return reduce success"), HCCL_SUCCESS);

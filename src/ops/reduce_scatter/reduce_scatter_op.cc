@@ -74,8 +74,9 @@ HcclResult HcclReduceScatterGraphMode(void *sendBuf, void *recvBuf, uint64_t rec
  	     size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
 {
     HCCL_INFO("Start to run execute HcclReduceScatterGraphMode");
+    CHK_PTR_NULL(group);
     HcclComm comm = nullptr;
-    HcomGetCommHandleByGroup(group, &comm);
+    CHK_RET(HcomGetCommHandleByGroup(group, &comm));
     HCCL_INFO("[HcclReduceScatterGraphMode] get group name: %s", group);
     HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
     CHK_RET(InitEnvConfig());
