@@ -957,12 +957,6 @@ HcclResult HcclCommGetExchangeInfo(HcclComm comm, uint32_t remoteRank, uint32_t 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclCommResetExchangeInfo(HcclComm comm)
-{
-    HCCL_WARNING("[%s] not support.", __func__);
-    return HCCL_SUCCESS;
-}
-
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
