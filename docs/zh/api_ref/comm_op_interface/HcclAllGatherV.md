@@ -46,7 +46,7 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 | --- | --- | --- |
 | sendBuf | 输入 | 源数据buffer地址。 |
 | sendCount | 输入 | 参与AllGatherV操作的sendBuf的数据size。 |
-| recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。 |
+| recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。<br>recvBuf与sendBuf配置的地址不能相同。 |
 | recvCounts | 输出 | 参与AllGatherV操作的每个rank在recvBuf中的数据size，为uint64类型的数组。<br>该数组的第i个元素表示需要从rank i接收的数据量，且该数据量需要与rank i的sendCount值相同。 |
 | recvDispls | 输出 | 参与AllGatherV操作的每个rank的数据在recvBuf中的偏移量（单位为dataType），为uint64类型的数组。<br>该数组的第i个元素表示从rank i接收的数据应该放置在recvBuf中的起始偏移量。 |
 | dataType | 输入 | AllGatherV操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。<br>针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。<br>针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。<cann-filter npu-type="310p"><br>针对Atlas 300I Duo 推理卡，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。</cann-filter> |
