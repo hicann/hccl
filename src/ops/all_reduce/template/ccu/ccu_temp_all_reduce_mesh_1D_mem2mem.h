@@ -40,6 +40,18 @@ public:
 private:
     HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec);
     uint64_t RoundUp(uint64_t dividend, uint64_t divisor) const;
+    void BuildTaskArgs(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
+                       const uint64_t scratchAddr, const uint64_t currentRankSliceInputOffset,
+                       const uint64_t currentRankSliceOutputOffset, const uint64_t normalSliceSize,
+                       const uint64_t lastSliceSize, const uint64_t mySliceSize, const uint64_t sliceOffset,
+                       const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
+                       std::vector<uint64_t>& taskArgs) const;
+    void SaveSubmitInfo(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
+                        const uint64_t scratchAddr, const uint64_t currentRankSliceInputOffset,
+                        const uint64_t currentRankSliceOutputOffset, const uint64_t normalSliceSize,
+                        const uint64_t lastSliceSize, const uint64_t mySliceSize, const uint64_t sliceOffset,
+                        const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
+                        TemplateResource& templateResource) const;
     uint32_t mySubCommRank_ = 0;
 };
 

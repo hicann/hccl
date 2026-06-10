@@ -13,116 +13,58 @@
 
 #include <vector>
 #include <ios>
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
+constexpr uint64_t LOCAL_COPY_MS = 8;
+constexpr uint64_t LOOP_NUM = 8;
 
-class CcuKernelArgReduceMesh1DMem2Mem : public hcomm::CcuKernelArg {
-public:
-    explicit CcuKernelArgReduceMesh1DMem2Mem(uint64_t dimSize, uint32_t rankId, uint32_t rootId, const OpParam& opParam,
-                                                    const std::vector<std::vector<uint32_t>>& subCommRanks)
-        : dimSize_(dimSize),
-          rankId_(rankId),
-          rootId_(rootId),
-          opParam_(opParam),
-          subCommRanks_(subCommRanks)
-    {
-        HCCL_DEBUG("[CcuKernelArgReduceMesh1DMem2Mem] dimSize: %lu, rankId: %u, rootId: %u, reduceOp: %d, dataType: %d",
-                   dimSize_, rankId_, rootId_, opParam.reduceType, opParam.DataDes.dataType);
-    }
-    hcomm::CcuKernelSignature GetKernelSignature() const override
-    {
-        hcomm::CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgReduceMesh1DMem2Mem", opParam_, subCommRanks_);
-        return signature;
-    }
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    uint32_t                                rootId_;
-    OpParam                                 opParam_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
+struct CcuKernelArgReduceMesh1DMem2Mem: CcuKernelArgBase {
+    uint64_t                                rankSize;
+    uint32_t                                rankId;
+    uint32_t                                rootId;
+    OpParam                                 opParam;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
 };
 
-class CcuTaskArgReduceMeshMem2Mem1D : public hcomm::CcuTaskArg {
-public:
-    explicit CcuTaskArgReduceMeshMem2Mem1D(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-                                           uint64_t bigDataSliceNum, uint64_t bigDataSliceSize, uint64_t smallDataSliceNum,
-                                           uint64_t smallDataSliceSize, uint64_t inputRepeatStride, uint64_t outputRepeatStride,
-                                           uint64_t normalSliceSize, uint64_t lastSliceSize, uint64_t repeatNumVar)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), bigDataSliceNum_(bigDataSliceNum),
-          bigDataSliceSize_(bigDataSliceSize), smallDataSliceNum_(smallDataSliceNum), smallDataSliceSize_(smallDataSliceSize),
-          inputRepeatStride_(inputRepeatStride), outputRepeatStride_(outputRepeatStride),
-          normalSliceSize_(normalSliceSize), lastSliceSize_(lastSliceSize), repeatNumVar_(repeatNumVar)
-    {
-        HCCL_DEBUG("[CcuTaskArgReduceMeshMem2Mem1D] inputAddr: %lu, outputAddr: %lu, bigDataSliceNum: %lu, "
-                   "bigDataSliceSize: %lu, smallDataSliceNum: %lu, smallDataSliceSize: %lu, inputRepeatStride: %lu, "
-                   "outputRepeatStride: %lu, normalSliceSize: %lu, lastSliceSize: %lu, repeatNumVar: %lu",
-                   inputAddr_, outputAddr_, bigDataSliceNum_, bigDataSliceSize_, smallDataSliceNum_,
-                   smallDataSliceSize_, inputRepeatStride_, outputRepeatStride_, normalSliceSize_, lastSliceSize_, repeatNumVar_);
-    }
-
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t token_;
-    uint64_t bigDataSliceNum_;
-    uint64_t bigDataSliceSize_;
-    uint64_t smallDataSliceNum_;
-    uint64_t smallDataSliceSize_;
-    uint64_t inputRepeatStride_;
-    uint64_t outputRepeatStride_;
-    uint64_t normalSliceSize_;
-    uint64_t lastSliceSize_;
-    uint64_t repeatNumVar_;
+struct GroupReduceMesh1DMem2MemVar {
+    ccu::LocalAddr src[2];
+    ccu::LocalAddr dst[2];
+    ccu::Variable  len[2];
 };
 
-class CcuKernelReduceMesh1DMem2Mem : public CcuKernelAlgBase {
-public:
-    CcuKernelReduceMesh1DMem2Mem(const hcomm::CcuKernelArg &arg);
-    ~CcuKernelReduceMesh1DMem2Mem() override {}
+struct ReduceMesh1DMem2MemContext: CcuKernelCtxBase {
+    const CcuKernelArgReduceMesh1DMem2Mem *arg;
 
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
 
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    void PreSync();
-    void DoRepeatReduce(const std::vector<hcomm::CcuRep::Variable> &srcAddr, const hcomm::CcuRep::Variable &dstAddr);
-    void PostSync();
+    std::vector<ccu::Variable> input;
+    std::vector<ccu::Variable> output;
+    std::vector<ccu::Variable> token;
 
-    std::vector<ChannelHandle> channels_;
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-    uint32_t rootId_{0}; // 当rankid == rootid时，为root节点 则跳过write操作
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    HcclReduceOp reduceOp_;
-    std::vector<hcomm::CcuRep::Variable> input_; // 输入地址信息
-    std::vector<hcomm::CcuRep::Variable> output_;
-    std::vector<hcomm::CcuRep::Variable> token_;
-    hcomm::CcuRep::Variable inputRepeatStride_;
-    hcomm::CcuRep::Variable outputRepeatStride_;
-    hcomm::CcuRep::Variable normalSliceSize_;
-    hcomm::CcuRep::Variable lastSliceSize_;
-    hcomm::CcuRep::Variable repeatNumVar_;
-    hcomm::CcuRep::Variable flag_; // 用以判断是否是第一次重复
+    ccu::Variable inputRepeatStride;
+    ccu::Variable outputRepeatStride;
+    ccu::Variable normalSliceSize;
+    ccu::Variable lastSliceSize;
+    ccu::Variable repeatNumVar;
+    ccu::Variable flag;
+    ccu::Variable isInputOutputEqual;
+    std::vector<ccu::Variable> chunkSize;
+    ccu::Variable chunkOffset;
 
-    hcomm::CcuRep::CompletedEvent event_;
+    ccu::Event event;
 
-    hcomm::CcuRep::LocalAddr                   myInputAddr_;
-    hcomm::CcuRep::RemoteAddr                  remoteInputAddr_;
-    hcomm::CcuRep::LocalAddr                   dstAddr_;
-    GroupOpSize                                localGoSize_;
+    ccu::LocalAddr myInputAddr;
+    ccu::RemoteAddr remoteInputAddr;
+    ccu::LocalAddr dstAddr;
 
-    hcomm::CcuRep::Variable              isInputOutputEqual_;
-
-    std::vector<hcomm::CcuRep::Variable> chunkSize_;
-    hcomm::CcuRep::Variable              chunkOffset_;
-    void                                 CreateLocalCopyLoop();  
-    void                                 LocalCopyByLoopGroup(hcomm::CcuRep::LocalAddr dst, hcomm::CcuRep::LocalAddr src);
+    GroupOpSizeVars localGoSize;
 };
+
+CcuResult CcuReduceMesh1DMem2MemKernel(CcuKernelArg arg);
 
 }// namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_MESH_1D_MEM2MEM

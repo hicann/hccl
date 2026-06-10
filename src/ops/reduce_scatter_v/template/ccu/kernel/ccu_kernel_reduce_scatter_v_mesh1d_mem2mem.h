@@ -14,105 +14,40 @@
 #include <vector>
 #include <ios>
 #include "utils.h"
-#include "ccu_kernel.h"
+#include "log.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-using namespace hcomm;
 
-class CcuKernelArgReduceScatterVMesh1DMem2Mem : public CcuKernelArg {
-public:
-    explicit CcuKernelArgReduceScatterVMesh1DMem2Mem(uint64_t dimSize, uint32_t rankId, const OpParam& opParam,
-                                                    const std::vector<std::vector<uint32_t>>& subCommRanks)
-        : dimSize_(dimSize),
-          rankId_(rankId),
-          opParam_(opParam),
-          subCommRanks_(subCommRanks)
-    {
-        HCCL_DEBUG("[CcuKernelArgReduceScatterVMesh1DMem2Mem] dimSize: %lu, rankId: %u, reduceOp: %d, dataType: %d",
-                   dimSize_, rankId_, opParam.reduceType, opParam.DataDes.dataType);
-    }
-    CcuKernelSignature GetKernelSignature() const override
-    {
-        CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgReduceScatterVMesh1DMem2Mem", opParam_, subCommRanks_);
-        return signature;
-    }
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    OpParam                                 opParam_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
+struct CcuKernelArgReduceScatterVMesh1DMem2Mem: CcuKernelArgBase{
+    uint64_t                                rankSize;
+    uint32_t                                rankId;
+    OpParam                                 opParam;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
 };
 
-class CcuTaskArgReduceScatterVMesh1DMem2Mem : public CcuTaskArg {
-public:
-    explicit CcuTaskArgReduceScatterVMesh1DMem2Mem(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-                                                    uint64_t scratchAddr, uint64_t scratchInterval,
-                                                    uint64_t sliceSize, uint64_t offset)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), scratchAddr_(scratchAddr),
-          scratchInterval_(scratchInterval), sliceSize_(sliceSize), offset_(offset)
-    {
-        HCCL_DEBUG("[CcuTaskArgReduceScatterVMesh1DMem2Mem] inputAddr: %lu, outputAddr: %lu, scratchAddr: %lu, "
-                   "scratchInterval: %lu, sliceSize: %lu, offset: %lu",
-                   inputAddr_, outputAddr_, scratchAddr_, scratchInterval, sliceSize, offset);
-    }
-
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t token_;
-    uint64_t scratchAddr_;
-    uint64_t scratchInterval_;
-    uint64_t sliceSize_;
-    uint64_t offset_;
+struct ReduceScatterVMesh1DMem2MemContext: CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterVMesh1DMem2Mem *arg;
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
+    std::vector<ccu::Variable> input;
+    ccu::Variable output;
+    std::vector<ccu::Variable> token;
+    ccu::Variable offset;
+    ccu::Variable scratchInterval;
+    ccu::Variable scratch;
+    ccu::Variable sliceSize;
+    GroupOpSizeVars reduceGosize;
+    ccu::Event event;
+    ccu::LocalAddr scr;
+    std::vector<ccu::RemoteAddr> dst;
+    std::vector<ccu::RemoteAddr> reduceScatterVSrc;
+    std::vector<ccu::LocalAddr> reduceScatterVDst;
 };
 
-class CcuKernelReduceScatterVMesh1DMem2Mem : public CcuKernelAlgBase {
-public:
-    CcuKernelReduceScatterVMesh1DMem2Mem(const CcuKernelArg &arg);
-    ~CcuKernelReduceScatterVMesh1DMem2Mem() override {}
-
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
-
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    void PreSync();
-    void PostSync();
-    void DoRepeatReduceScatterV();
-    void DoReduceScatterV();
-    void PrepareReduceScatterVData(std::vector<CcuRep::RemoteAddr>& reduceScatterVSrc,
-        std::vector<CcuRep::LocalAddr>& reduceScatterVDst);
-    void CollectAllRanksSlice(std::vector<CcuRep::RemoteAddr>& tmpSrc,
-        std::vector<CcuRep::LocalAddr>& tmpDst);
-
-    std::string GetLoopBlockTag(std::string loopType, int32_t index);
-    void CreateReduceLoop(uint32_t size, HcclDataType dataType, HcclDataType outputDataType, HcclReduceOp opType);
-    void ReduceLoopGroup(CcuRep::LocalAddr outDstOrg, CcuRep::LocalAddr srcOrg, std::vector<CcuRep::LocalAddr> &scratchOrg,
-        GroupOpSize goSize, HcclDataType dataType, HcclDataType outputDataType, HcclReduceOp opType);
-
-    const std::string LOOP_BLOCK_TAG{"_local_copy_reduce_loop_"};
-
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    HcclReduceOp reduceOp_;
-    std::vector<CcuRep::Variable> input_;
-    CcuRep::Variable output_;
-    CcuRep::Variable scratch_;
-    std::vector<CcuRep::Variable> token_;
-    CcuRep::Variable scratchInterval_;
-    CcuRep::Variable sliceSize_;
-    CcuRep::Variable offset_;
-    CcuRep::LocalAddr src;
-    std::vector<CcuRep::RemoteAddr> dst;
-    std::vector<CcuRep::RemoteAddr> reduceScatterVSrc_;
-    std::vector<CcuRep::LocalAddr> reduceScatterVDst_;
-    GroupOpSize reduceGosize_;
-    CcuRep::CompletedEvent event_;
-};
+CcuResult CcuReduceScatterVMesh1DMem2MemKernel(CcuKernelArg arg);
 
 }// namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_V_MESH_1D_MEM2MEM

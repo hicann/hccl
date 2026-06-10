@@ -10,6 +10,10 @@
 
 #include "hcomm_dlsym.h"
 #include "hccl_res_dl.h"
+#include "ccu_res_dl.h"
+#include "hccl_ccu_res_dl.h"
+#include "ccu_launch_dl.h"
+#include "ccu_primitives_impl_dl.h"
 #include "hccl_rank_graph_dl.h"
 #include "hcomm_primitives_dl.h"
 #include "hccl_inner_dl.h"
@@ -73,4 +77,8 @@ void HcommDlInit(void) {
     HcommProfilingDlInit(gLibHandle);
     HcclCommDlInit(gLibHandle);
     HcclResExptDlInit(gLibHandle);
+    CcuResDlInit(gLibHandle);
+    HcclCcuResDlInit(gLibHandle);
+    CcuLaunchDlInit(gLibHandle);
+    CcuPrimitivesImplDlInit(gLibHandle);
 }

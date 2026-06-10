@@ -221,12 +221,14 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     std::vector<uint32_t> jettyNums;
     CHK_RET(SetJettyNums(jettyNums, true));
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-    resReq0.ccuKernelInfos[0].kernelArg = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>(subCommRanks0[0].size(),
-                                                                                    topoInfo->userRank,
-                                                                                    param,
-                                                                                    subCommRanks0,
-                                                                                    jettyNums);
+#if !defined(HCCL_CANN_COMPAT_850)
+    auto kernelArg0 = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>();
+    kernelArg0->rankSize = subCommRanks0[0].size();
+    kernelArg0->rankId = topoInfo->userRank;
+    kernelArg0->opParam = param;
+    kernelArg0->subCommRanks = subCommRanks0;
+    kernelArg0->jettyNums = jettyNums;
+    resReq0.ccuKernelInfos[0].setKernelArg(kernelArg0);
 #endif
 
     std::vector<HcclChannelDesc> channelDescs1;
@@ -234,12 +236,14 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     resReq1.ccuKernelInfos[0].channels = channelDescs1;
 
     CHK_RET(SetJettyNums(jettyNums, false));
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-    resReq1.ccuKernelInfos[0].kernelArg = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>(subCommRanks1[0].size(),
-                                                                                    topoInfo->userRank,
-                                                                                    param,
-                                                                                    subCommRanks1,
-                                                                                    jettyNums);
+#if !defined(HCCL_CANN_COMPAT_850)
+    auto kernelArg1 = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>();
+    kernelArg1->rankSize = subCommRanks1[0].size();
+    kernelArg1->rankId = topoInfo->userRank;
+    kernelArg1->opParam = param;
+    kernelArg1->subCommRanks = subCommRanks1;
+    kernelArg1->jettyNums = jettyNums;
+    resReq1.ccuKernelInfos[0].setKernelArg(kernelArg1);
 #endif
 
     resourceRequest.ccuKernelNum.emplace_back(resReq0.ccuKernelNum[0]);

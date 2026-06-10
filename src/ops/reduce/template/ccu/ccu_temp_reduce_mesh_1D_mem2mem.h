@@ -13,6 +13,7 @@
 
 #include "ccu_alg_template_base.h"
 #include "utils.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
@@ -46,6 +47,7 @@ public:
     u64 GetThreadNum() const override;
 
 private:
+    HcclResult SubmitKernelInfo(TemplateResource& templateResource, const std::vector<uint64_t>& taskArgs) const;
     uint32_t mySubCommRank_ = 0;
     uint32_t mySubCommRoot_ = 0;
 };

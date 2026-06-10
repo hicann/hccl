@@ -1,181 +1,137 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "ccu_kernel_all_gather_v_mesh1d_mem2mem.h"
-#include "ccu_kernel_alg_base.h"
-
+#include "ccu_launch_dl.h"
 
 namespace ops_hccl {
-using namespace hcomm;
 
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID = 2;
-constexpr int CKE_IDX_0 = 0;
-constexpr int CKE_IDX_1 = 1;
-constexpr uint64_t CCU_MS_SIZE = 4096;
+constexpr int TOKEN_XN_ID  = 2;
+constexpr int CKE_IDX_0    = 0;
+constexpr int CKE_IDX_1    = 1;
+
 constexpr uint64_t LOCAL_COPY_MS = 8;
-constexpr int POST_SYNC_ID = 3;  
+constexpr int POST_SYNC_ID       = 3;
 
-CcuKernelAllGatherVMesh1DMem2Mem::CcuKernelAllGatherVMesh1DMem2Mem(const CcuKernelArg &arg)
-    : CcuKernelAlgBase(arg)
+static CcuResult InitResource(AllGatherVMesh1DMem2MemContext &ctx)
 {
-    const CcuKernelArgAllGatherVMesh1DMem2Mem *kernelArg
-        = dynamic_cast<const CcuKernelArgAllGatherVMesh1DMem2Mem *>(&arg);
-    rankId_         = kernelArg->rankId_;
-    rankSize_       = kernelArg->dimSize_;
-    channels_       = kernelArg->channels;
-
-    HCCL_INFO(
-        "[CcuKernelAllGatherVMesh1DMem2Mem] Init, KernelArgs are rankId[%u], rankSize_[%u]",
-        rankId_, rankSize_);
-}
-
-HcclResult CcuKernelAllGatherVMesh1DMem2Mem::InitResource()
-{
-    input_  = CreateVariable();
-    uint16_t channelIdx = 0;
-    if (channels_.size() == 0) {
+    const auto *arg = ctx.arg;
+    uint32_t channelIdx = 0;
+    if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllGatherVMesh1DMem2Mem] channels is empty!");
-        return HcclResult::HCCL_E_INTERNAL;
+        return CcuResult::CCU_E_INTERNAL;
     }
-
-    // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求给框架返回的Link同样是按顺序排列的
-    for (uint64_t peerId = 0; peerId < rankSize_; peerId++) {
-        if (peerId == rankId_) {
-            output_.push_back(CreateVariable());
-            token_.push_back(CreateVariable());
-        } else {
-            HCCL_DEBUG("[CcuKernelAllGatherVMesh1DMem2Mem] MyRank[%u], PeerId[%u], ChannelId[%u]",
-                       rankId_, peerId, channelIdx);
-            CcuRep::Variable outputVar, scratchVar, tokenVar;
-            CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &outputVar));
-            output_.push_back(outputVar); // 获取channel中id=0的Var来传递output
-            CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
-            token_.push_back(tokenVar);
+    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] channels.size: [%u]", arg->channelCount);
+    // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求算法返回的Link同样是按顺序排列的
+    ctx.output.resize(arg->rankSize);
+    ctx.token.resize(arg->rankSize);
+    ctx.dst.resize(arg->rankSize);
+    for (uint64_t peerId = 0; peerId < arg->rankSize; peerId++) {
+        if (peerId != arg->rankId) {
+            ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
+            ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
         }
     }
-    mySliceSize_ = CreateVariable();
-    mySliceSizeOutputOffset_ = CreateVariable();
-
-    src = CreateLocalAddr();
-    localDst = CreateLocalAddr();
-    for (uint64_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-        if (rankIdx == rankId_) {
-            dst.push_back({});
-        }
-        else {
-            dst.push_back(CreateRemoteAddr());
-        }
-    }
-    event_ = CreateCompletedEvent();
-    localGoSize_ = CreateGroupOpSize();
-    return HcclResult::HCCL_SUCCESS;
+    ctx.resourceAllocated = false;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelAllGatherVMesh1DMem2Mem::LoadArgs()
+static CcuResult LoadArgs(AllGatherVMesh1DMem2MemContext &ctx)
 {
-    Load(input_);
-    Load(output_[rankId_]);
-    Load(token_[rankId_]);
-    Load(mySliceSize_);
-    Load(mySliceSizeOutputOffset_);
-    Load(localGoSize_);
-    return;
+    const auto *arg = ctx.arg;
+    uint32_t cnt = 0;
+    CCU_CHK_RET(ccu::LoadArg(ctx.input, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.token[arg->rankId], cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.mySliceSize, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.mySliceSizeOutputOffset, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.localGoSize.addrOffset, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.localGoSize.loopParam, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.localGoSize.parallelParam, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.localGoSize.residual, cnt++));
+    return CCU_SUCCESS;
 }
 
-void CcuKernelAllGatherVMesh1DMem2Mem::PreSync()
+static void PreSync(AllGatherVMesh1DMem2MemContext &ctx)
 {
-    for (ChannelHandle channel : channels_) {
-        NotifyRecord(channel, CKE_IDX_0, OUTPUT_XN_ID, output_[rankId_], 1 << OUTPUT_XN_ID);
-        NotifyRecord(channel, CKE_IDX_0, TOKEN_XN_ID, token_[rankId_], 1 << TOKEN_XN_ID);
+    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D PreSync begin");
+ 	const auto *arg = ctx.arg;
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
-
-    uint16_t allBit  = 1 << OUTPUT_XN_ID | 1 << TOKEN_XN_ID;
-    for (ChannelHandle channel : channels_) {
-        NotifyWait(channel, CKE_IDX_0, allBit);
-    }
-    return;
+    uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+ 	    ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit);
+ 	}
+    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D PreSync end");
 }
 
-void CcuKernelAllGatherVMesh1DMem2Mem::PostSync()
+static void PostSync(AllGatherVMesh1DMem2MemContext &ctx)
 {
-    for (ChannelHandle channel : channels_) {
-        NotifyRecord(channel, CKE_IDX_0, 1 << POST_SYNC_ID);         // bit index = 4, 用作后同步。cke都可以用同一个，所以都是CKE_IDX_0
+    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D post sync start");
+    const auto *arg = ctx.arg;
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    for (ChannelHandle channel : channels_) {
-        NotifyWait(channel, CKE_IDX_0, 1 << POST_SYNC_ID);
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        ccu::NotifyWait(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
+    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D post sync end");
 }
 
-void CcuKernelAllGatherVMesh1DMem2Mem::DoAllGatherV()
+static void DoAllGatherV(AllGatherVMesh1DMem2MemContext &ctx)
 {
+    const auto *arg = ctx.arg;
     uint32_t channelId = 0;
-    CCU_IF(mySliceSize_ != 0) {
-        for (uint32_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-            src.addr = input_;
-            src.token = token_[rankId_];
-            if (rankIdx == rankId_) {
-                localDst.addr = output_[rankId_];
-                localDst.addr += mySliceSizeOutputOffset_;
-                localDst.token = token_[rankId_];
-                event_.SetMask(1 << rankIdx);
-                RecordEvent(event_);
+    CCU_IF(ctx.mySliceSize != 0) {
+        for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
+            ctx.src.addr = ctx.input;
+            ctx.src.token = ctx.token[arg->rankId];
+            if (rankIdx == arg->rankId) {
+                ctx.localDst.addr = ctx.output[arg->rankId];
+                ctx.localDst.addr += ctx.mySliceSizeOutputOffset;
+                ctx.localDst.token = ctx.token[arg->rankId];
+                ccu::EventRecord(ctx.event, 1 << rankIdx);
             } else {
-                dst[rankIdx].addr = output_[rankIdx];
-                dst[rankIdx].addr += mySliceSizeOutputOffset_;
-                dst[rankIdx].token = token_[rankIdx];
-                CCU_IF(mySliceSize_ != 0)
+                ctx.dst[rankIdx].addr = ctx.output[rankIdx];
+                ctx.dst[rankIdx].addr += ctx.mySliceSizeOutputOffset;
+                ctx.dst[rankIdx].token = ctx.token[rankIdx];
+                CCU_IF(ctx.mySliceSize != 0)
                 {
-                    event_.SetMask(1 << rankIdx);
-                    WriteNb(channels_[channelId], dst[rankIdx], src, mySliceSize_, event_);
+                    ccu::Write(arg->channels[channelId], ctx.dst[rankIdx], ctx.src, ctx.mySliceSize, ctx.event, 1 << rankIdx);
                 }
                 channelId++;
             }
         }
-        GroupCopy(localDst, src, localGoSize_);
-        event_.SetMask((1 << rankSize_) - 1);
-        WaitEvent(event_);
+        GroupCopy(ctx, ctx.localDst, ctx.src, ctx.localGoSize);
+        ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
     }
 }
 
-HcclResult CcuKernelAllGatherVMesh1DMem2Mem::Algorithm()
+CcuResult CcuAllGatherVMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D run.");
-    InitResource();
-    LoadArgs();
-    PreSync();
-    DoAllGatherV();
-    PostSync();
-    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D end.");
-    return HcclResult::HCCL_SUCCESS;
-}
-
-std::vector<uint64_t> CcuKernelAllGatherVMesh1DMem2Mem::GeneArgs(const CcuTaskArg &arg)
-{
-    const CcuTaskArgAllGatherVMesh1DMem2Mem *taskArg
-        = dynamic_cast<const CcuTaskArgAllGatherVMesh1DMem2Mem *>(&arg);
-    uint64_t inputAddr                   = taskArg->inputAddr_;
-    uint64_t outputAddr                  = taskArg->outputAddr_;
-    uint64_t token                       = taskArg->token_;
-    uint64_t mySliceSize                 = taskArg->mySliceSize_;
-    uint64_t mySliceSizeOutputOffset     = taskArg->mySliceSizeOutputOffset_;
-    auto goSize                          = CalGoSize(mySliceSize);
-
-    std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, mySliceSize, mySliceSizeOutputOffset,
-        goSize[0], goSize[1], goSize[2], goSize[3]};
-
-    HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
-        "mySliceSize[%llu], mySliceSizeOutputOffset[%llu], ",
-        inputAddr, outputAddr, mySliceSize, mySliceSizeOutputOffset);
-    return taskArgs;
+    auto *kernelArg = static_cast<CcuKernelArgAllGatherVMesh1DMem2Mem *>(arg);
+    AllGatherVMesh1DMem2MemContext ctx;
+    ctx.resourceAllocated = false;
+    ctx.arg = kernelArg;
+    CCU_CHK_RET(InitResource(ctx));
+    CCU_CHK_RET(LoadArgs(ctx));
+    PreSync(ctx);
+    DoAllGatherV(ctx);
+    PostSync(ctx);
+    return CCU_SUCCESS;
 }
 
 } // namespace ops_hccl

@@ -12,255 +12,184 @@
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-using namespace hcomm;
 
-constexpr uint16_t OUTPUT_XN_ID = 1;
-constexpr uint16_t TOKEN_XN_ID = 2;
-constexpr uint16_t POST_SYNC_ID = 3;
-constexpr uint16_t CKE_IDX_0 = 0;
+constexpr uint16_t OUTPUT_XN_ID   = 0;
+constexpr uint16_t TOKEN_XN_ID    = 1;
+constexpr uint16_t POST_SYNC_ID   = 3;
+constexpr uint16_t CKE_IDX_0      = 0;
 
-CcuKernelScatterMesh1D::CcuKernelScatterMesh1D(const CcuKernelArg &arg) : CcuKernelAlgBase(arg)
+static CcuResult ParseKernelArg(ScatterMesh1DContext &ctx, CcuKernelArgScatterMesh1D *kernelArg)
 {
-    const CcuKernelArgScatterMesh1D *kernelArg = dynamic_cast<const CcuKernelArgScatterMesh1D *>(&arg);
-    rankId_ = kernelArg->rankId_;
-    rankSize_ = kernelArg->dimSize_;
-    channels_ = kernelArg->channels;
-    rootId_ = kernelArg->rootId_;
-    dataType_ = kernelArg->opParam_.DataDes.dataType;
-    outputDataType_ = kernelArg->opParam_.DataDes.outputType;
-    if (outputDataType_ == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
-        outputDataType_ = dataType_;
-        HCCL_DEBUG("[CcuKernelScatterMesh1D] outputDataType is [INVALID], set outputDataType to[%d]", outputDataType_);
+    ctx.arg = kernelArg;
+    ctx.rankSize = kernelArg->rankSize;
+    ctx.rankId = kernelArg->rankId;
+    ctx.rootId = kernelArg->rootId;
+    ctx.dataType = kernelArg->opParam.DataDes.dataType;
+    ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
+    if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
+        ctx.outputDataType = ctx.dataType;
     }
-    HCCL_INFO("[CcuKernelScatterMesh1D] Init, KernelArgs are rankId[%u], rankSize_[%u], dataType[%d], "
-              "outputDataType[%d], rootId[%u]",
-        rankId_,
-        rankSize_,
-        dataType_,
-        outputDataType_,
-        rootId_);
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelScatterMesh1D::InitResource()
+static CcuResult InitResource(ScatterMesh1DContext &ctx)
 {
     uint16_t channelIdx = 0;
-    if (channels_.size() == 0) {
-        HCCL_ERROR("[CcuKernelScatterMesh1D] channels is empty!");
-        return HcclResult::HCCL_E_INTERNAL;
+    if (ctx.arg->channelCount == 0) {
+        HCCL_ERROR("[CcuScatterMesh1DKernel] channels is empty!");
+        return CCU_E_INTERNAL;
     }
 
-    // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求给框架返回的Link同样是按顺序排列的
-    for (uint64_t peerId = 0; peerId < rankSize_; peerId++) {
-        if (peerId == rankId_) {
-            output_.push_back(CreateVariable());
-            token_.push_back(CreateVariable());
-        } else {
-            HCCL_DEBUG("[CcuKernelScatterMesh1D] MyRank[%u], PeerId[%u], ChannelId[%u]", rankId_, peerId, channelIdx);
-            CcuRep::Variable outputVar, tokenVar;
-            CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &outputVar));  // 获取channel中id=0的Var来传递output
-            output_.push_back(outputVar);
-            CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
-            token_.push_back(tokenVar);
+    ctx.output.resize(ctx.rankSize);
+    ctx.token.resize(ctx.rankSize);
+    for (uint64_t peerId = 0; peerId < ctx.rankSize; peerId++) {
+        if (peerId != ctx.rankId) {
+			ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], OUTPUT_XN_ID);
+            ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
-        }
-    }
-    input_ = CreateVariable();
-    currentRankSliceInputOffset_ = CreateVariable();
-    outputSliceStride_ = CreateVariable();
-    normalSliceSize_ = CreateVariable();
-    lastSliceSize_ = CreateVariable();
-    inputRepeatStride_ = CreateVariable();
-    outputRepeatStride_ = CreateVariable();
-    repeatNum_ = CreateVariable();
-    flag_ = CreateVariable();
-    flag_ = 0;
-
-    selfBit_ = 1 << rankId_;  // 仅rankid位为1，其他位为0，代表本端准备好了
-    allBit_ = ((1 << rankSize_) - 1) & (~(1 << rankId_));  // 仅rankid位为0，其他位为1，代表远端准备好了
-    outputMem_.reserve(rankSize_);
-    inputMem_.reserve(rankSize_);
-    for (uint64_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-        inputMem_.push_back(CreateLocalAddr());
-        outputMem_.push_back(CreateRemoteAddr());
+		}
     }
 
-    event_ = CreateCompletedEvent();
-    return HcclResult::HCCL_SUCCESS;
+    ctx.flag = 0;
+    ctx.inputMem.resize(ctx.rankSize);
+    ctx.outputMem.resize(ctx.rankSize);
+    return CCU_SUCCESS;
 }
 
-void CcuKernelScatterMesh1D::LoadArgs()
+static CcuResult LoadArgs(ScatterMesh1DContext &ctx)
 {
-    Load(input_);
-    Load(output_[rankId_]);
-    Load(token_[rankId_]);
-    Load(currentRankSliceInputOffset_);
-    Load(outputSliceStride_);
-    Load(inputRepeatStride_);
-    Load(outputRepeatStride_);
-    Load(normalSliceSize_);
-    Load(lastSliceSize_);
-    Load(repeatNum_);
-    return;
+	uint32_t argId = 0;
+    CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.output[ctx.rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.token[ctx.rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.currentRankSliceInputOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.outputSliceStride, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.inputRepeatStride, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.outputRepeatStride, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.normalSliceSize, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.lastSliceSize, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.repeatNum, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.isInputOutputEqual, argId++));
+    return CCU_SUCCESS;
 }
 
-void CcuKernelScatterMesh1D::PreSync()
+static CcuResult PreSync(ScatterMesh1DContext &ctx)
 {
-    uint32_t allBit = 1 << OUTPUT_XN_ID | 1 << TOKEN_XN_ID;
-    for (auto channel : channels_) {                                                           // 遍历所有通道
-        NotifyRecord(channel, CKE_IDX_0, OUTPUT_XN_ID, output_[rankId_], 1 << OUTPUT_XN_ID);  // 广播output地址
-        NotifyRecord(channel, CKE_IDX_0, TOKEN_XN_ID, token_[rankId_], 1 << TOKEN_XN_ID);     // 广播token
+    uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
+    for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
+        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.output[ctx.rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.token[ctx.rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
-    for (auto channel : channels_) {
-        NotifyWait(channel, CKE_IDX_0, allBit);
+    for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
+        ccu::NotifyWait(ctx.arg->channels[i], CKE_IDX_0, allBit);
     }
-    return;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelScatterMesh1D::PostSync()
+static CcuResult PostSync(ScatterMesh1DContext &ctx)
 {
-    for (auto channel : channels_) {  // 通知所有通道操作完成
-        NotifyRecord(channel, CKE_IDX_0, 1 << POST_SYNC_ID);
+    for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
+        ccu::NotifyRecord(ctx.arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    for (auto channel : channels_) {
-        NotifyWait(channel, CKE_IDX_0, 1 << POST_SYNC_ID);
+    for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
+        ccu::NotifyWait(ctx.arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    return;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelScatterMesh1D::DoRepeatScatter()
+static CcuResult DoScatterOnce(ScatterMesh1DContext &ctx)
 {
-    CcuRep::Variable repeatNumAdd = CreateVariable();
-    repeatNumAdd = 1;
-    // 设置每张卡输入输出的起始地址
-    for (uint64_t curId = 0; curId < rankSize_; curId++) {
-        inputMem_[curId].token = token_[curId];   // 设置每张卡的输入token
-        outputMem_[curId].token = token_[curId];  // 设置每张卡的输出token
-
-        inputMem_[curId].addr = input_;  // 设置每张卡的输入地址，以root的起始地址为基准
-        outputMem_[curId].addr = output_[curId];  // 设置每张卡的输出地址
-        for (uint64_t i = 0; i < curId; i++) {
-            inputMem_[curId].addr += currentRankSliceInputOffset_;  // 每张卡加上偏移量
-            outputMem_[curId].addr += outputSliceStride_;
-        }
-    }
-    if (rankId_ == rootId_) {
-        CCU_WHILE(repeatNum_ != UINT64_MAX)
-        {  // 循环UINT64_MAX - repeatNum_次
-            DoScatter();
-            repeatNum_ += repeatNumAdd;
-            flag_ = 1;
-        }
-    } else {
-        HCCL_INFO(
-            "[CcuContextScatterMesh1D] RunRecvScatter local rank[%u], root rank[%u], do nothing", rankId_, rootId_);
-    }
-}
-
-void CcuKernelScatterMesh1D::DoScatter()
-{
-    HCCL_INFO(
-        "[CcuContextScatterMesh1D] RunSendScatter local rank[%u], root rank[%u], start send data", rankId_, rootId_);
-
-    CCU_IF(flag_ != 0)
-    {
-        // 非第一轮执行时，src 和 dst 已经初始化，需要添加偏移量
-        for (auto &i : inputMem_) {
-            i.addr += inputRepeatStride_;
-        }
-        for (auto &r : outputMem_) {
-            r.addr += outputRepeatStride_;
-        }
-    }
-
     uint32_t channelId = 0;
 
-    // 为root写到自己的地址专门创建一个LocalAddr变量
-    CcuRep::LocalAddr myOutput = CreateLocalAddr();
-    myOutput.addr = outputMem_[rankId_].addr;
-    myOutput.token = outputMem_[rankId_].token;
+    ccu::LocalAddr myOutput;
+    myOutput.addr = ctx.outputMem[ctx.rankId].addr;
+    myOutput.token = ctx.outputMem[ctx.rankId].token;
 
-    CcuRep::Variable sliceSize = CreateVariable();
-    // root卡的数据发送到所有卡
-    for (uint64_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-        event_.SetMask(1 << rankIdx);
-        sliceSize = rankIdx == rankSize_ - 1 ? lastSliceSize_ : normalSliceSize_;
-        CCU_IF(sliceSize != 0) {
-            if (rankIdx == rankId_) {
-                LocalCopyNb(myOutput, inputMem_[rankIdx], sliceSize, event_);
+    ccu::Variable sliceSize;
+
+    for (uint64_t rankIdx = 0; rankIdx < ctx.rankSize; rankIdx++) {
+		uint16_t mask = 1 << rankIdx;
+        sliceSize = (rankIdx == ctx.rankSize - 1) ? ctx.lastSliceSize : ctx.normalSliceSize;
+        CCU_IF(sliceSize != 0)
+        {
+            if (rankIdx == ctx.rankId) {
+                CCU_IF(ctx.isInputOutputEqual == 0)
+                {
+                    ccu::LocalCopy(myOutput, ctx.inputMem[rankIdx], sliceSize, ctx.event, mask);
+                }
+                CCU_IF(ctx.isInputOutputEqual != 0)
+                {
+                    ccu::EventRecord(ctx.event, mask);
+                }
             } else {
-                WriteNb(channels_[channelId], outputMem_[rankIdx], inputMem_[rankIdx], sliceSize, event_);
+                ccu::Write(ctx.arg->channels[channelId], ctx.outputMem[rankIdx],
+				             ctx.inputMem[rankIdx], sliceSize, ctx.event, mask);
                 channelId++;
             }
         }
-        CCU_IF(sliceSize == 0) {
-            RecordEvent(event_);
+        CCU_IF(sliceSize == 0)
+        {
+            ccu::EventRecord(ctx.event, mask);
         }
     }
 
-    // 等待数据传输完成
-    event_.SetMask((1 << rankSize_) - 1);
-    WaitEvent(event_);
-    return;
+    ccu::EventWait(ctx.event, (1 << ctx.rankSize) - 1);
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelScatterMesh1D::Algorithm()
+static CcuResult DoRepeatScatter(ScatterMesh1DContext &ctx)
 {
-    HCCL_INFO("[CcuKernelScatterMesh1D] ScatterMesh1D run");
+    ccu::Variable repeatNumAdd;
+    repeatNumAdd = 1;
 
-    CHK_RET(InitResource());
+    // 初始化每张卡 input/output 逻辑地址
+    for (uint64_t curId = 0; curId < ctx.rankSize; curId++) {
+        ctx.inputMem[curId].token = ctx.token[curId];
+        ctx.outputMem[curId].token = ctx.token[curId];
 
-    LoadArgs();
+        ctx.inputMem[curId].addr = ctx.input;
+        ctx.outputMem[curId].addr = ctx.output[curId];
+        for (uint64_t i = 0; i < curId; i++) {
+            ctx.inputMem[curId].addr += ctx.currentRankSliceInputOffset;
+            ctx.outputMem[curId].addr += ctx.outputSliceStride;
+        }
+    }
 
-    PreSync();
+    if (ctx.rankId != ctx.rootId) {
+        return CCU_SUCCESS;
+    }
 
-    DoRepeatScatter();
-
-    PostSync();
-
-    HCCL_INFO("[CcuKernelScatterMesh1D] ScatterMesh1D end");
-
-    return HcclResult::HCCL_SUCCESS;
+    CCU_WHILE(ctx.repeatNum != UINT64_MAX)
+    {
+        CCU_IF(ctx.flag != 0)
+        {
+            for (auto &i : ctx.inputMem) {
+                i.addr += ctx.inputRepeatStride;
+            }
+            for (auto &r : ctx.outputMem) {
+                r.addr += ctx.outputRepeatStride;
+            }
+        }
+        CCU_CHK_RET(DoScatterOnce(ctx));
+        ctx.repeatNum += repeatNumAdd;
+        ctx.flag = 1;
+    }
+    return CCU_SUCCESS;
 }
 
-std::vector<uint64_t> CcuKernelScatterMesh1D::GeneArgs(const CcuTaskArg &arg)
+CcuResult CcuScatterMesh1DKernel(CcuKernelArg arg)
 {
-    const CcuTaskArgScatterMesh1D *taskArg = dynamic_cast<const CcuTaskArgScatterMesh1D *>(&arg);
-    uint64_t inputAddr = taskArg->inputAddr_;
-    uint64_t outputAddr = taskArg->outputAddr_;
-    uint64_t tokenInfo = taskArg->token_;
-    uint64_t currentRankSliceInputOffset = taskArg->inputSliceStride_;
-    uint64_t outputSliceStride = taskArg->outputSliceStride_;
-    uint64_t inputRepeatStride = taskArg->inputRepeatStride_;
-    uint64_t outputRepeatStride = taskArg->outputRepeatStride_;
-    uint64_t normalSliceSize = taskArg->normalSliceSize_;
-    uint64_t lastSliceSize = taskArg->lastSliceSize_;
-    uint64_t repeatNum = taskArg->repeatNum_;
+    auto *kernelArg = static_cast<CcuKernelArgScatterMesh1D *>(arg);
+    ScatterMesh1DContext ctx;
 
-    std::vector<uint64_t> taskArgs = {inputAddr,
-        outputAddr,
-        tokenInfo,
-        currentRankSliceInputOffset,
-        outputSliceStride,
-        inputRepeatStride,
-        outputRepeatStride,
-        normalSliceSize,
-        lastSliceSize,
-        repeatNum};
+    CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
+    CCU_CHK_RET(InitResource(ctx));
+    CCU_CHK_RET(LoadArgs(ctx));
 
-    HCCL_INFO("[CcuKernelScatterMesh1D] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
-              "currentRankSliceInputOffset[%llu], outputSliceStride[%llu], inputRepeatStride[%llu],"
-              "outputRepeatStride[%llu], normalSliceSize[%llu], lastSliceSize[%llu],"
-              "repeatNum[%llu]",
-        inputAddr,
-        outputAddr,
-        currentRankSliceInputOffset,
-        outputSliceStride,
-        inputRepeatStride,
-        outputRepeatStride,
-        normalSliceSize,
-        lastSliceSize,
-        repeatNum);
-    return taskArgs;
+    CCU_CHK_RET(PreSync(ctx));
+    CCU_CHK_RET(DoRepeatScatter(ctx));
+    CCU_CHK_RET(PostSync(ctx));
+    return CCU_SUCCESS;
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

@@ -15,74 +15,34 @@
 #include <ios>
 #include "log.h"
 #include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_alg_base.h"
 #include "alg_param.h"
 #include "ccu_kernel_utils.h"
 
 namespace ops_hccl {
 
-class CcuKernelArgAllReduceMesh1DOneShot : public hcomm::CcuKernelArg {
-public:
-    explicit CcuKernelArgAllReduceMesh1DOneShot(uint64_t dSize, uint32_t rId, const OpParam& opParam,
-                                                const std::vector<std::vector<uint32_t>>& subCommRanks)
-        : dimSize_(dSize), rankId_(rId), opParam_(opParam), subCommRanks_(subCommRanks)
-    {
-    }
-    hcomm::CcuKernelSignature GetKernelSignature() const override
-    {
-        hcomm::CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgAllReduceMesh1DOneShot", opParam_, subCommRanks_);
-        return signature;
-    }
-
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    OpParam                                 opParam_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
+struct CcuKernelArgAllReduceMesh1DOneShot : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-class CcuTaskArgAllReduceMesh1DOneShot : public hcomm::CcuTaskArg {
-public:
-    explicit CcuTaskArgAllReduceMesh1DOneShot(uint64_t inputAddr, uint64_t outputAddr, uint64_t sliceSize,
-        uint64_t token) :
-        inputAddr_(inputAddr), outputAddr_(outputAddr), sliceSize_(sliceSize), token_(token) {}
+struct AllReduceMesh1DOneShotContext : CcuKernelCtxBase {
+    const CcuKernelArgAllReduceMesh1DOneShot *arg;
 
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t sliceSize_;
-    uint64_t token_;
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
+
+    std::vector<ccu::Variable> input;
+    ccu::Variable output;
+    std::vector<ccu::Variable> token;
+    GroupOpSizeVars groupOpSize;
 };
 
-class CcuKernelAllReduceMesh1DOneShot : public CcuKernelAlgBase {
-public:
-    CcuKernelAllReduceMesh1DOneShot(const hcomm::CcuKernelArg &arg);
-    ~CcuKernelAllReduceMesh1DOneShot() override{}
+CcuResult CcuAllReduceMesh1DOneShotKernel(CcuKernelArg arg);
 
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
+} // namespace ops_hccl
 
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    void Presync();
-    void Postsync();
-    void DoGroupReduce();
-
-    std::vector<ChannelHandle> channels_;
-
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    HcclReduceOp reduceOp_;
-
-    std::vector<hcomm::CcuRep::Variable> input_;
-    hcomm::CcuRep::Variable output_;
-    std::vector<hcomm::CcuRep::Variable> token_;
-    hcomm::CcuRep::Variable offSet_;
-    GroupOpSize groupOpSize_;
-};
-} // namespace Hccl
-
-#endif // HCCLV2_CCU_CONTEXT_ALL_REDUCE_MESH_1D_H_
+#endif // HCCL_CCU_KERNEL_ALL_REDUCE_MESH_1D_ONE_SHOT_H_

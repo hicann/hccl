@@ -18,7 +18,7 @@
 #include "ccu_temp_reduce_scatter_nhr_1D_multi_jetty_mem2mem.h"
 #include "ccu_temp_reduce_scatter_mesh_1D_mem2mem.h"
 #include "ccu_temp_reduce_scatter_mesh_1D.h"
-#endif
+#endif // #if !defined(HCCL_CANN_COMPAT_850)
 #endif
 namespace ops_hccl {
 

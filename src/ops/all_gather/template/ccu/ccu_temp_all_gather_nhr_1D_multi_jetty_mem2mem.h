@@ -49,6 +49,8 @@ protected:
     u32 GetNHRStepNum(u32 rankSize) const;
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
     uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
+    HcclResult PrepareLaunchArgs(const OpParam& param, const TemplateDataParams& templateDataParams,
+                                 std::vector<uint64_t>& taskArgs, uint64_t& argSize);
 
 private:
     uint32_t mySubCommRank_ = 0;

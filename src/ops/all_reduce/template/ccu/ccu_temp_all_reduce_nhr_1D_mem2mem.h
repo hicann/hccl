@@ -45,6 +45,16 @@ private:
     HcclResult ProcessNHRStepInfo(HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
     HcclResult SplitDataFor2Dies(uint64_t dataCount, uint64_t &die0Size, uint64_t &die1Size) const;
+    void BuildTaskArgs(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
+                       const uint64_t isInputOutputEqual, const uint64_t die0Size, const uint64_t die1Size,
+                       const RankSliceInfo& die0SliceInfoVec, const RankSliceInfo& die1SliceInfoVec,
+                       std::vector<uint64_t>& taskArgs) const;
+    HcclResult LaunchKernels(const std::vector<uint64_t>& taskArgs, const uint64_t die0Size,
+                             const uint64_t die1Size, TemplateResource& templateResource) const;
+    void SaveSubmitInfo(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
+                        const uint64_t isInputOutputEqual, const uint64_t die0Size, const uint64_t die1Size,
+                        const RankSliceInfo& die0SliceInfoVec, const RankSliceInfo& die1SliceInfoVec,
+                        TemplateResource& templateResource) const;
     uint32_t mySubCommRank_ = 0;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
 };

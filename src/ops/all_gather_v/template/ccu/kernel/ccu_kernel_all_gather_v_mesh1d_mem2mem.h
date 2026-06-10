@@ -13,89 +13,36 @@
 
 #include <vector>
 #include <ios>
+#include "log.h"
 #include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
-class CcuKernelArgAllGatherVMesh1DMem2Mem : public hcomm::CcuKernelArg {
-public:
-    explicit CcuKernelArgAllGatherVMesh1DMem2Mem(uint64_t dimSize, uint32_t rankId, const OpParam& opParam,
-                                                    const std::vector<std::vector<uint32_t>>& subCommRanks)
-        : dimSize_(dimSize),
-          rankId_(rankId),
-          opParam_(opParam),
-          subCommRanks_(subCommRanks)
-    {
-        HCCL_DEBUG("[CcuKernelArgAllGatherVMesh1DMem2Mem] dimSize: %lu, rankId: %u", dimSize_, rankId_);
-    }
-    hcomm::CcuKernelSignature GetKernelSignature() const override
-    {
-        hcomm::CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgAllGatherVMesh1DMem2Mem", opParam_, subCommRanks_);
-        return signature;
-    }
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    OpParam                                 opParam_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
+struct CcuKernelArgAllGatherVMesh1DMem2Mem: CcuKernelArgBase{
+    uint64_t                                rankSize;
+    uint32_t                                rankId;
+    OpParam                                 opParam;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
 };
 
-class CcuTaskArgAllGatherVMesh1DMem2Mem : public hcomm::CcuTaskArg {
-public:
-    explicit CcuTaskArgAllGatherVMesh1DMem2Mem(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-                                                        uint64_t mySliceSize, uint64_t mySliceSizeOutputOffset)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), mySliceSize_(mySliceSize),
-          mySliceSizeOutputOffset_(mySliceSizeOutputOffset)
-    {
-        HCCL_DEBUG("[CcuTaskArgAllGatherVMesh1DMem2Mem] inputAddr: %lu, outputAddr: %lu, inputSliceStride: %lu, "
-                   "outputSliceStride: %lu",
-                   inputAddr_, outputAddr_, mySliceSize, mySliceSizeOutputOffset);
-    }
-
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t token_;
-    uint64_t mySliceSize_;
-    uint64_t mySliceSizeOutputOffset_;
+struct AllGatherVMesh1DMem2MemContext: CcuKernelCtxBase {
+    const CcuKernelArgAllGatherVMesh1DMem2Mem *arg;
+    ccu::Variable input;
+    std::vector<ccu::Variable> output;
+    std::vector<ccu::Variable> token;
+    ccu::Variable sliceSize;
+    ccu::Variable mySliceSize;
+    ccu::Variable mySliceSizeOutputOffset;
+    GroupOpSizeVars localGoSize;
+    ccu::Event event;
+    ccu::LocalAddr src;
+    ccu::LocalAddr localDst;
+    std::vector<ccu::RemoteAddr> dst;
 };
 
-class CcuKernelAllGatherVMesh1DMem2Mem : public CcuKernelAlgBase {
-public:
-    CcuKernelAllGatherVMesh1DMem2Mem(const hcomm::CcuKernelArg &arg);
-    ~CcuKernelAllGatherVMesh1DMem2Mem() override {}
-
-    HcclResult Algorithm();
-    std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
-
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    void PreSync();
-    void PostSync();
-    void DoAllGatherV();
-
-    // CcuKernelAlgDataWrapper algWrapper;
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-
-    CcuRep::Variable              input_;
-    std::vector<CcuRep::Variable> output_;
-    std::vector<CcuRep::Variable> token_;
-    CcuRep::Variable              mySliceSize_;
-    CcuRep::Variable              mySliceSizeOutputOffset_;
-    GroupOpSize                   localGoSize_;
-
-    hcomm::CcuRep::LocalAddr src;
-    hcomm::CcuRep::LocalAddr localDst;
-    std::vector<hcomm::CcuRep::RemoteAddr> dst;
-
-    uint16_t selfBit_{0};
-    uint16_t allBit_{0};
-    CcuRep::CompletedEvent event_;
-};
+CcuResult CcuAllGatherVMesh1DMem2MemKernel(CcuKernelArg arg);
 
 }// namespace ops_hccl
 #endif // HCCLV2_CCU_KERNEL_ALL_GATHER_V_MESH_1D_MEM2MEM_H

@@ -13,6 +13,7 @@
 
 #include "common_alg_template_base.h"
 
+
 namespace ops_hccl {
 
 constexpr uint32_t CCU_DIE_NUM_MAX_2 = 2;

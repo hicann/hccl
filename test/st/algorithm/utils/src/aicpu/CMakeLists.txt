@@ -12,6 +12,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/include
     ${HCCL_DEV_BASE}/src/common
     ${HCCL_DEV_BASE}/src/common/hcomm_dlsym
+    ${HCCL_DEV_BASE}/src/common/hcomm_dlsym/ccu
 
     ${HCCL_DEV_BASE}/src/ops
     ${HCCL_DEV_BASE}/src/ops/op_common
@@ -74,6 +75,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/all_gather/template
     ${HCCL_DEV_BASE}/src/ops/all_gather/template/aicpu
     ${HCCL_DEV_BASE}/src/ops/all_gather/template/ccu
+    ${HCCL_DEV_BASE}/src/ops/all_gather/template/ccu/kernel
     ${HCCL_DEV_BASE}/src/ops/all_gather/template/aiv
 
     ${HCCL_DEV_BASE}/src/ops/all_gather_v
@@ -129,6 +131,7 @@ list(APPEND INCLUDE_LIST
     # hcomm头文件
     ${ASCEND_HOME_PATH}/include/hccl
     ${ASCEND_HOME_PATH}/include/hcomm
+    ${ASCEND_HOME_PATH}/include/hcomm/ccu
 
     # runtime头文件
     ${ASCEND_HOME_PATH}/include/

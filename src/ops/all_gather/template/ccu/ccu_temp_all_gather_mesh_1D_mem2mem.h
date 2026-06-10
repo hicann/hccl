@@ -13,6 +13,7 @@
 
 #include "utils.h"
 #include "ccu_alg_template_base.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
@@ -40,6 +41,8 @@ public:
     u64 GetThreadNum() const override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+    HcclResult PrepareLaunchArgs(const OpParam& param, const TemplateDataParams& templateDataParams,
+                                 std::vector<uint64_t>& taskArgs, uint64_t& argSize);
 
 private:
     uint32_t mySubCommRank_ = 0;

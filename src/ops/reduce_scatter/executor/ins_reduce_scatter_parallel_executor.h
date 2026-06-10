@@ -58,6 +58,7 @@ private:
     void GetParallelDataSplit(std::vector<float> &splitDataSize) const;
     HcclResult PrepareResForTemplate(const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter);
     uint64_t GetRankSize(const std::vector<std::vector<u32>> &subCommRanks) const;
+    CommEngine engine_{CommEngine::COMM_ENGINE_AICPU};
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};

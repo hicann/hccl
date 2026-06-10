@@ -9,7 +9,6 @@
  */
 #include "alg_data_trans_wrapper.h"
 #include "channel.h"
-#include "hccl_ccu_res.h"
 #include "ins_v2_all_to_all_concurrent_executor.h"
 #include "aicpu/ins_temp_all_to_all_v_mesh_1D.h"
 

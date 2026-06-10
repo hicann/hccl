@@ -13,6 +13,7 @@
 
 #include "utils.h"
 #include "ccu_alg_template_base.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
@@ -45,6 +46,15 @@ private:
     std::vector<u64> recvCounts_;
     std::vector<u64> sdispls_;
     std::vector<u64> rdispls_;
+
+    void CalcJettySlices(uint64_t sliceSize, std::vector<uint64_t>& jettySlice,
+                         std::vector<uint64_t>& jettySliceTail);
+    std::vector<uint64_t> BuildTaskArgs(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
+                         uint64_t sliceSize, uint64_t srcStride, uint64_t srcOffset, uint64_t dstOffset,
+                         const std::vector<uint64_t>& goSize, const std::vector<uint64_t>& jettySlice,
+                         const std::vector<uint64_t>& jettySliceTail);
+    void BuildSubmitInfo(TemplateResource& templateResource, const std::vector<uint64_t>& taskArgs,
+                         uint64_t argSize);
 };
 
 }// namespace ops_hccl

@@ -16,6 +16,7 @@
 #include <map>
 #include <set>
 #include <unordered_set>
+#include <memory>
 #include <functional>
 #include <functional>
 #include <memory>
@@ -28,11 +29,8 @@
 #include "hccl_rank_graph_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "binary_stream.h"
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-#include "hccl_ccu_res.h"
-#else
-typedef void *CcuKernelHandle; // 8.5.0 下无 hccl_ccu_res.h，用 opaque 占位
-#endif
+#include "hccl_ccu_res_dl.h"
+#include "ccu_types_dl.h"
 
 namespace ops_hccl {
 
@@ -75,6 +73,8 @@ constexpr uint64_t GE_PARALLEL = 36;
 constexpr uint64_t AICPU_ALIGN_SIZE = 4096;
 // Z axis detour 需要
 constexpr u32 MESH_CHANNELS_NUM = 1;
+
+constexpr uint64_t CCU_MAX_RANK_SIZE = 16;
 
 enum class TopoType {
     TOPO_TYPE_COMMON = 0,           // 普通拓扑类型 ，default单层拓扑使用
@@ -165,6 +165,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     Level0Shape level0Topo;
     bool Level0Nhr{false};
     bool Level1Nhr{false};
+    bool Level1Hd{false};
     bool is2DieFullMesh{false};
     bool level0PcieMix{false};
     bool level0BigClosRange{false};
@@ -197,6 +198,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream << level0Topo;
         binaryStream << Level0Nhr;
         binaryStream << Level1Nhr;
+        binaryStream << Level1Hd;
         binaryStream << is2DieFullMesh;
         binaryStream << level0PcieMix;
         binaryStream << level0BigClosRange;
@@ -243,6 +245,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream >> level0Topo;
         binaryStream >> Level0Nhr;
         binaryStream >> Level1Nhr;
+        binaryStream >> Level1Hd;
         binaryStream >> is2DieFullMesh;
         binaryStream >> level0PcieMix;
         binaryStream >> level0BigClosRange;
@@ -264,18 +267,34 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     }
 };
 
+struct CcuKernelArgBase {
+    // std::vector<ChannelHandle> channels;
+    ChannelHandle channels[CCU_MAX_RANK_SIZE];
+    uint32_t      channelCount;
+};
+
 // ccu kernel register所需信息
 struct CcuKernelInfo {
     // kernel资源组序号，group号不同时，资源复用
     u32 resGroup = 0;
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-    // kernel构造函数
-    hcomm::KernelCreator creator;
-    // KernelArg实例
-    std::shared_ptr<hcomm::CcuKernelArg> kernelArg;
-#endif
+    // kernel名 string？
+    char kernelFuncName[64];
+    // kernel函数
+    void* kernelFunc;
+    // KernelArg实例指针
+    void *kernelArg;
     // kernel所需channel
     std::vector<HcclChannelDesc> channels;
+
+private:
+    std::shared_ptr<CcuKernelArgBase> kernelArgSmartPtr;
+
+public:
+    template<typename T>
+    void setKernelArg(std::shared_ptr<T> arg) {
+        kernelArgSmartPtr = std::static_pointer_cast<CcuKernelArgBase>(arg);
+        kernelArg = static_cast<void*>(arg.get());
+    }
 };
 
 // 算法taskArg入参最大个数，用于快速下发缓存

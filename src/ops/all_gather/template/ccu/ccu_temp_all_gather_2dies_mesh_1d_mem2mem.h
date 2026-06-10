@@ -7,11 +7,13 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #ifndef HCCL_CCU_TEMP_ALL_GATHER_2DIES_MESH_1D_MEM2MEM_H
 #define HCCL_CCU_TEMP_ALL_GATHER_2DIES_MESH_1D_MEM2MEM_H
 
 #include "utils.h"
 #include "ccu_alg_template_base.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 class CcuTempAllGather2DiesMeshMem2Mem1D : public CcuAlgTemplateBase {
@@ -29,15 +31,18 @@ public:
                             subCommRanks_[0].size());
     }
  
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, 
-                       const TopoInfoWithNetLayerDetails* topoInfo,AlgResourceRequest& resourceRequest) override;
- 
+    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+                       AlgResourceRequest& resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult KernelRun(const OpParam& param,
                          const TemplateDataParams& templateDataParams,
                          TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
+    HcclResult ClassifyChannelByDieId(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+                                      std::vector<HcclChannelDesc>& channelDescs,
+                                      std::vector<uint32_t>& rankIdGroup0, std::vector<uint32_t>& rankIdGroup1,
+                                      bool& if0HandleSelfRank);
 private:
     uint32_t mySubCommRank_ = 0;
 };

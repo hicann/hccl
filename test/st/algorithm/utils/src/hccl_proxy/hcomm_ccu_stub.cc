@@ -8,8 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "ccu_kernel.h"
-#include "ccu_rep_loopcall_v1.h"
 #include <vector>
 #include <string>
 

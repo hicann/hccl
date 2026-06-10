@@ -1,179 +1,162 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "ccu_kernel_broadcast_mesh1d.h"
-#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-using namespace hcomm;
 
-constexpr int INPUT_XN_ID  = 0;
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int POST_SYNC_ID = 3;
+constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
+constexpr int POST_SYNC_ID = 3;
 
-CcuKernelBroadcastMesh1D::CcuKernelBroadcastMesh1D(const CcuKernelArg &arg)
-    : CcuKernelAlgBase(arg)
+static CcuResult ParseKernelArg(BroadcastMesh1DContext &ctx, CcuKernelArgBroadcastMesh1D *kernelArg)
 {
-    const CcuKernelArgBroadcastMesh1D *kernelArg
-        = dynamic_cast<const CcuKernelArgBroadcastMesh1D *>(&arg);
-    rankId_         = kernelArg->rankId_;
-    rootId_         = kernelArg->rootId_;
-    rankSize_       = kernelArg->dimSize_;
-    channels_       = kernelArg->channels;
-    dataType_       = kernelArg->opParam_.DataDes.dataType;
-    outputDataType_ = kernelArg->opParam_.DataDes.outputType;
-    if (outputDataType_ == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
-        outputDataType_ = dataType_;
-        HCCL_DEBUG(
-            "[CcuKernelBroadcastMesh1D] outputDataType is [INVALID], set outputDataType to[%d]",
-            outputDataType_);
-    }
-    HCCL_INFO("[CcuKernelBroadcastMesh1D] Init, KernelArgs are rootId[%u] rankId[%u], rankSize_[%u], dataType[%d], "
-        "outputDataType[%d]",
-        rootId_, rankId_, rankSize_, dataType_, outputDataType_);
+    ctx.arg = kernelArg;
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelBroadcastMesh1D::InitResource()
+static CcuResult InitResource(BroadcastMesh1DContext &ctx)
 {
-    uint16_t channelIdx = 0;
-    if (channels_.size() == 0) {
+    const auto *arg = ctx.arg;
+    uint32_t channelIdx = 0;
+
+    if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelBroadcastMesh1D] channels is empty!");
-        return HCCL_E_INTERNAL;
+        return CcuResult::CCU_E_INTERNAL;
     }
-    input_ = CreateVariable();
-    // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求给框架返回的Link同样是按顺序排列的
-    for (uint64_t peerId = 0; peerId < rankSize_; peerId++) {
-        if (peerId == rankId_) {
-            output_.push_back(CreateVariable());
-            token_.push_back(CreateVariable());
-        } else {
-            HCCL_DEBUG("[CcuKernelBroadcastMesh1D] MyRank[%u], PeerId[%u], ChannelId[%u]",
-                       rankId_, peerId, channelIdx);
-            CcuRep::Variable outputVar, tokenVar;
-            CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &outputVar));
-            output_.push_back(outputVar);
-            CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
-            token_.push_back(tokenVar);
+    HCCL_INFO("[CcuKernelBroadcastMesh1D] channels.size: [%u]", arg->channelCount);
+
+    ctx.output.resize(arg->rankSize);
+    ctx.token.resize(arg->rankSize);
+
+    for (uint64_t peerId = 0; peerId < arg->rankSize; peerId++) {
+        if (peerId != arg->rankId) {
+            ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
+            ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
         }
     }
-    offSet_                 = CreateVariable();
-    slicesize_              = CreateVariable();
-    groupOpSize_            = CreateGroupOpSize();
-
-    return HCCL_SUCCESS;
+    ctx.resourceAllocated = false;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelBroadcastMesh1D::LoadArgs()
+static CcuResult LoadArgs(BroadcastMesh1DContext &ctx)
 {
-    Load(input_);
-    Load(output_[rankId_]);
-    Load(token_[rankId_]);
-    Load(offSet_);
-    Load(slicesize_);
-    Load(groupOpSize_);
-    return;
+    const auto *arg = ctx.arg;
+    uint32_t argId = 0;
+
+    CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.token[arg->rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.offset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.addrOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.loopParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.parallelParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.residual, argId++));
+
+    return CCU_SUCCESS;
 }
 
-void CcuKernelBroadcastMesh1D::PreSync()
+static CcuResult PreSync(BroadcastMesh1DContext &ctx)
 {
-    for (ChannelHandle channel : channels_) {
-        HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D LocalPost begin");
-        NotifyRecord(channel, CKE_IDX_0, OUTPUT_XN_ID, output_[rankId_], 1 << OUTPUT_XN_ID);
-        NotifyRecord(channel, CKE_IDX_0, TOKEN_XN_ID, token_[rankId_], 1 << TOKEN_XN_ID);
+    const auto *arg = ctx.arg;
+
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId],
+            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
+            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
-    uint32_t allBit = 1 << OUTPUT_XN_ID | 1 << TOKEN_XN_ID;
-    for (ChannelHandle channel : channels_) {
-        NotifyWait(channel, CKE_IDX_0, allBit);
+
+    uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit));
     }
-    HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D wait all end");
-    return;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelBroadcastMesh1D::PostSync()
+static CcuResult PostSync(BroadcastMesh1DContext &ctx)
 {
-    for (auto &ch : channels_) {
-        NotifyRecord(ch, CKE_IDX_0, 1 << POST_SYNC_ID);
+    const auto *arg = ctx.arg;
+
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    for (auto &ch : channels_) {
-        NotifyWait(ch, CKE_IDX_0, 1 << POST_SYNC_ID);
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        ccu::NotifyWait(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D groupwait end");
-    return;
+    return CCU_SUCCESS;
 }
 
-void CcuKernelBroadcastMesh1D::BroadcastFromRootToAll()
+static CcuResult DoBroadcast(BroadcastMesh1DContext &ctx)
 {
-    std::vector<CcuRep::RemoteAddr> dst;
-    for (uint32_t index = 0; index < rankSize_; index++) {
-        dst.emplace_back(CreateRemoteAddr());
-    }
-    CcuRep::LocalAddr src = CreateLocalAddr();
-    src.addr = input_;
-    src.token = token_[rankId_];
+    const auto *arg = ctx.arg;
+    ccu::LocalAddr src;
+    ccu::LocalAddr localdst;
+    std::vector<ccu::RemoteAddr> dst;
+    dst.resize(arg->rankSize - 1);
+
+    src.addr = ctx.input;
+    src.token = ctx.token[arg->rankId];
+
+    uint32_t dstId = 0;
     uint32_t curId = 0;
-    for (uint32_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-        if (rankIdx != rootId_) {
-            dst[curId].addr  = output_[rankIdx];
-            dst[curId].token = token_[rankIdx];
-            curId++;
+    for (uint64_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
+        if (rankIdx != arg->rootId) {
+            curId = dstId;
+            dst[curId].addr = ctx.output[rankIdx];
+            dst[curId].addr += ctx.offset;
+            dst[curId].token = ctx.token[rankIdx];
+            dstId++;
+        } else {
+            localdst.addr = ctx.output[rankIdx];
+            localdst.addr += ctx.offset;
+            localdst.token = ctx.token[rankIdx];
         }
     }
-    dst[rankSize_ - 1].addr = output_[rankId_];
-    dst[rankSize_ - 1].token = token_[rankId_];
-    GroupBroadcast(channels_, dst, src, groupOpSize_);
-    HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D GroupBroadcast end");
-    return;
+
+    CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount,
+        localdst, dst, src, ctx.goSize));
+
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelBroadcastMesh1D::Algorithm()
+CcuResult CcuBroadcastMesh1DKernel(CcuKernelArg arg)
 {
+    auto *kernelArg = static_cast<CcuKernelArgBroadcastMesh1D *>(arg);
+
+    BroadcastMesh1DContext ctx;
+    ctx.resourceAllocated = false;
+    ctx.moConfig.msInterleave = 0;
+    ctx.moConfig.loopCount = 0;
+    ctx.moConfig.memSlice = 0;
+    ctx.moRes.eventCount = 0;
+    ctx.moRes.bufCount = 0;
+    ctx.enginePool = 0;
+
     HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D run");
-    CHK_RET(InitResource());
-    LoadArgs();
-    PreSync();
+    CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
+    CCU_CHK_RET(InitResource(ctx));
+    CCU_CHK_RET(LoadArgs(ctx));
 
-    if (rankId_ == rootId_) {
-        BroadcastFromRootToAll();
+    CCU_CHK_RET(PreSync(ctx));
+
+    if (ctx.arg->rankId == ctx.arg->rootId) {
+        CCU_CHK_RET(DoBroadcast(ctx));
     }
-    PostSync();
 
+    CCU_CHK_RET(PostSync(ctx));
     HCCL_INFO("[CcuKernelBroadcastMesh1D] BroadcastMesh1D end");
-    return HCCL_SUCCESS;
-}
 
-std::vector<uint64_t> CcuKernelBroadcastMesh1D::GeneArgs(const CcuTaskArg &arg)
-{
-    const CcuTaskArgBroadcastMesh1D *taskArg = dynamic_cast<const CcuTaskArgBroadcastMesh1D *>(&arg);
-    uint64_t inputAddr  = taskArg->inputAddr_;
-    uint64_t outputAddr = taskArg->outputAddr_;
-    uint64_t tokenInfo  = taskArg->token_;
-    uint64_t offset     = taskArg->offSet_;
-    uint64_t sliceSize  = taskArg->sliceSize_;
-    auto     goSize     = CalGoSize(sliceSize);
-    HCCL_INFO("[CcuKernelBroadcastMesh1D][GeneArgs] inputAddr[%p] outputAddr[%p] offset[%llu] sliceSize[%llu]",
-                inputAddr, outputAddr, offset, sliceSize);
-    std::vector<uint64_t> taskArgs                     = {
-        inputAddr,
-        outputAddr,
-        tokenInfo,
-        offset,
-        sliceSize,
-        goSize[0],
-        goSize[1],
-        goSize[2],
-        goSize[3],
-    };
-    return taskArgs;
+    return CCU_SUCCESS;
 }
 
 } // namespace ops_hccl

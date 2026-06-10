@@ -48,7 +48,9 @@ public:
     HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const;
 
 private:
+    HcclResult AddTaskArgA2AInfo(A2ASendRecvInfo &localSendRecvInfo, std::vector<uint64_t> &taskArgs);
     A2ASendRecvInfo localSendRecvInfo_;
+    std::vector<uint32_t> jettyNums_;
     CommTopo priorityTopo_ = CommTopo::COMM_TOPO_1DMESH;
 };
 

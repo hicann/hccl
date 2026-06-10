@@ -11,87 +11,45 @@
 #ifndef HCCL_CCU_KERNEL_ALLGATHER_2DIES_MESH_1D_MEM2MEM_H
 #define HCCL_CCU_KERNEL_ALLGATHER_2DIES_MESH_1D_MEM2MEM_H
 
-#include <cstdint>
 #include <vector>
 #include <ios>
-#include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-class CcuKernelArgAllGather2DiesMeshMem2Mem1D : public hcomm::CcuKernelArg {
-public:
-    explicit CcuKernelArgAllGather2DiesMeshMem2Mem1D(uint64_t dimSize, uint32_t rankId,
-            std::vector<uint32_t> &rankIdGroup, bool ifHandleSelfRank, const std::vector<std::vector<uint32_t>>& subCommRanks, const OpParam& opParam)
-            : dimSize_(dimSize), rankId_(rankId), rankIdGroup_(rankIdGroup), ifHandleSelfRank_(ifHandleSelfRank),
-              subCommRanks_(subCommRanks), opParam_(opParam)
-        {
-            HCCL_DEBUG("[CcuKernelArgAllGather2DiesMeshMem2Mem1D] dimSize: %lu, rankId: %u",
-                   dimSize_, rankId_);
-        }
-    hcomm::CcuKernelSignature GetKernelSignature() const override
-    {
-        hcomm::CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgAllGather2DiesMeshMem2Mem1D", opParam_, subCommRanks_);
-        return signature;
-    }
 
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    std::vector<uint32_t>                   rankIdGroup_;
-    bool                                    ifHandleSelfRank_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
-    OpParam                                 opParam_;
+constexpr int OUTPUT_XN_ID = 1;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int POST_SYNC_ID = 3;
+constexpr int CKE_IDX_0 = 0;
+
+struct CcuKernelArgAllGather2DiesMeshMem2Mem1D : CcuKernelArgBase {
+    uint64_t                                dimSize;
+    uint32_t                                rankId;
+    std::vector<uint32_t>                   rankIdGroup;
+    bool                                    ifHandleSelfRank;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
+    OpParam                                 opParam;
 };
 
-class CcuTaskArgAllGather2DiesMeshMem2Mem1D : public hcomm::CcuTaskArg {
-public:
-    explicit CcuTaskArgAllGather2DiesMeshMem2Mem1D(uint64_t inputAddr, uint64_t outputAddr, uint64_t sliceSize,
-                                                uint64_t offSet, uint64_t token)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), sliceSize_(sliceSize), offSet_(offSet), token_(token)
-    {
-        HCCL_DEBUG("[CcuTaskArgReduceScatterMeshMem2Mem1D] inputAddr: %lu, outputAddr: %lu, sliceSize: %u, offSet: %u",
-                   inputAddr_, outputAddr_, sliceSize_, offSet_);
-    }
- 
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t sliceSize_;
-    uint64_t offSet_;
-    uint64_t token_;
+struct AllGather2DiesMeshMem2Mem1DContext : CcuKernelCtxBase {
+    const CcuKernelArgAllGather2DiesMeshMem2Mem1D *arg;
+
+    uint64_t rankSize;
+    std::vector<ccu::Variable> input;
+    std::vector<ccu::Variable> output;
+    std::vector<ccu::Variable> token;
+    ccu::Variable offSet;
+    ccu::Variable sliceSize;
+    std::vector<uint32_t> rankIdGroup;
+    bool ifHandleSelfRank;
+    GroupOpSizeVars localGoSize;
+
+    ccu::Event event;
+    ccu::Event localCopyEvent;
 };
 
-class CcuKernelAllGather2DiesMeshMem2Mem1D : public CcuKernelAlgBase {
-public:
-    CcuKernelAllGather2DiesMeshMem2Mem1D(const hcomm::CcuKernelArg &arg);
-    ~CcuKernelAllGather2DiesMeshMem2Mem1D() override {}
- 
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const hcomm::CcuTaskArg &arg) override;
- 
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    void PreSync();
-    void PostSync();
-    void DoAllGather();
-
-    uint32_t rankId_{0};
-    uint64_t rankSize_{0};
-    std::vector<CcuRep::Variable> input_;
-    std::vector<CcuRep::Variable> output_;
-    std::vector<CcuRep::Variable> token_;
-    CcuRep::Variable offSet_;
-    CcuRep::Variable sliceSize_;
-    std::vector<uint32_t> rankIdGroup_;
-    bool ifHandleSelfRank_;
-    std::vector<ChannelHandle> channels_;
-    hcomm::CcuRep::CompletedEvent event_;
-    hcomm::CcuRep::CompletedEvent localCopyEvent_;
-    GroupOpSize localGoSize_;
-};
+CcuResult CcuAllGather2DiesMeshMem2Mem1DKernel(CcuKernelArg arg);
 
 }//namespace ops_hccl
-
 #endif//HCCL_CCU_KERNEL_ALLGATHER_2DIES_MESH_1D_MEM2MEM_H

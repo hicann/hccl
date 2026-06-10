@@ -9,8 +9,7 @@
  */
 
 #include "channel.h"
-#include "hccl_ccu_res.h"
-#include "ccu_assist_pub.h"
+#include "ccu_launch_dl.h"
 #include "ccu/ccu_temp_broadcast_nhr_1D_mem2mem.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -165,16 +164,19 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
         // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
+        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuBroadcastNhr1DMem2MemKernel");
+        kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuBroadcastNhr1DMem2MemKernel);
 
-        kernelInfo.creator = [](const hcomm::CcuKernelArg &arg) {
-                                return std::make_unique<CcuKernelBroadcastNhr1DMem2Mem>(arg);
-                            };
-        kernelInfo.kernelArg = std::make_shared<CcuKernelArgBroadcastNhr1DMem2Mem>(myRank_,  // 通信域全局rankid
-                                                                                kernelIdx,
-                                                                                enableDieNum,
-                                                                                subCommRanks_[0],
-                                                                                stepInfoVector, rank2ChannelIdx,
-                                                                                param, subCommRanks_);
+        auto kernelArg = std::make_shared<CcuKernelArgBroadcastNhr1DMem2Mem>();
+        kernelArg->rankId = myRank_;  // 通信域全局rankid
+        kernelArg->axisId = kernelIdx;
+        kernelArg->axisSize = enableDieNum;
+        kernelArg->dimSize = subCommRanks_[0].size();
+        kernelArg->stepInfoVector = stepInfoVector;
+        kernelArg->rank2ChannelIdx = rank2ChannelIdx;
+        kernelArg->opParam = param;
+        kernelArg->subCommRanks = subCommRanks_;
+        kernelInfo.setKernelArg(kernelArg);
         kernelInfo.channels = channelsPerDie[kernelIdx];
         resourceRequest.ccuKernelInfos.push_back(kernelInfo);
         HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem::CalcRes] kernelIdx[%u] channels Size[%zu]", kernelIdx, kernelInfo.channels.size());
@@ -193,10 +195,18 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::FastLaunch(const OpParam& param, const 
         HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
     }
-    HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] start");
+    HCCL_DEBUG("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] start");
     u32 kernelNum = tempFastLaunchCtx.ccuKernelSubmitInfos.size();
-    buffInfo_ = tempFastLaunchCtx.buffInfo;
-    const uint64_t *args = tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs;
+    uint64_t *args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
+    constexpr u32 inputIdx = 0;
+    constexpr u32 outputIdx = 1;
+    constexpr u32 inputOffsetIdx = 9;
+    constexpr u32 outputOffsetIdx = 10;
+    uint64_t argSize = 9;
+
+    args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
+    args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
+
     // 前流同步
     if (kernelNum > 1) {
         std::vector<ThreadHandle> subThreads(tempFastLaunchCtx.threads.begin() + 1, tempFastLaunchCtx.threads.end());
@@ -204,16 +214,15 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::FastLaunch(const OpParam& param, const 
         CHK_RET(PreSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxMainToSub));
     }
 
+    void *taskArgs = reinterpret_cast<void*>(args);
     for (u32 kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
-        CcuTaskArgBroadcastNhr1DMem2Mem taskArg(
-            PointerToAddr(buffInfo_.inputPtr) + args[0],
-            PointerToAddr(buffInfo_.outputPtr) + args[1],
-            args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-
-        void* taskArgPtr = static_cast<void*>(&taskArg);
-
-        CHK_RET(HcclCcuKernelLaunch(param.hcclComm, tempFastLaunchCtx.threads[kernelIdx],
-            tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle, taskArgPtr));
+        CcuResult launchRet = HcommCcuKernelLaunch(tempFastLaunchCtx.threads[kernelIdx],
+                                                   tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle,
+                                                   taskArgs, argSize);
+        if (launchRet != CCU_SUCCESS) {
+            HCCL_ERROR("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+            return ConvertCcuToHccl(launchRet);
+        }
     }
     // 后流同步
     if (kernelNum > 1) {
@@ -221,7 +230,7 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::FastLaunch(const OpParam& param, const 
         std::vector<u32> notifyIdxSubToMain(1, 0);
         CHK_RET(PostSyncInterThreads(tempFastLaunchCtx.threads[0], subThreads, notifyIdxSubToMain));
     }
-    HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] end");
+    HCCL_DEBUG("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] end");
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -289,18 +298,23 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::KernelRun(const OpParam& param,
         std::vector<u32> notifyIdxMainToSub(1, 0);
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     }
+
+    std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, die0Size, die1Size, die0SliceSize,
+                                       die1SliceSize, die0LastSliceSize, die1LastSliceSize};
+    uint64_t argSize = 9;
+
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
         if ((axisId == 0 && die0Size == 0) || (axisId == 1 && die1Size == 0)) {
             // 数据长度为0的kernel不下发
             continue;
         }
-        std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgBroadcastNhr1DMem2Mem>(
-            inputAddr, outputAddr, token, die0Size, die1Size, die0SliceSize, die1SliceSize, die0LastSliceSize,
-            die1LastSliceSize);
-
-        void* taskArgPtr = static_cast<void*>(taskArg.get());
-
-        CHK_RET(HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgPtr));
+        CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[axisId],
+                                                    templateResource.ccuKernels[axisId],
+                                                    taskArgs.data(), argSize);
+        if (launchRet != CCU_SUCCESS) {
+            HCCL_ERROR("[CcuTempBroadcastNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+            return ConvertCcuToHccl(launchRet);
+        }
     }
     if (kernelNum > 1) {
         // 后流同步
@@ -311,8 +325,9 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::KernelRun(const OpParam& param,
 
     // 所有task下发完后再保存参数信息
     CcuKernelSubmitInfo submitInfo;
-    CHK_RET(FillCachedArgs(submitInfo, buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, token, die0Size,
-        die1Size, die0SliceSize, die1SliceSize, die0LastSliceSize, die1LastSliceSize));
+    CHK_RET(FillCachedArgs(submitInfo, inputAddr, outputAddr, token, die0Size,
+        die1Size, die0SliceSize, die1SliceSize, die0LastSliceSize, die1LastSliceSize,
+        buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff));
     for (u32 i = 0; i < kernelNum; i++) {
         // 2个kernel的TaskArg相同
         submitInfo.kernelHandle = templateResource.ccuKernels[i];

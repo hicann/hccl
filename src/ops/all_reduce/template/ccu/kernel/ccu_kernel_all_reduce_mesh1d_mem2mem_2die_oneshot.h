@@ -13,118 +13,59 @@
  
 #include <vector>
 #include <ios>
+#include <string>
 #include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
  
 namespace ops_hccl {
-using namespace hcomm;
- 
-class CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot : public CcuKernelArg {
-public:
-    explicit CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot(uint64_t dimSize, uint32_t rankId, const OpParam& opParam,
-                                                    const std::vector<uint32_t>& kernelRanks, 
-                                                    const std::vector<std::vector<uint32_t>>& subCommRanks,
-                                                    bool rmtReduceWithMyRank)
-        : dimSize_(dimSize),
-          rankId_(rankId),
-          opParam_(opParam),
-          kernelRanks_(kernelRanks),
-          subCommRanks_(subCommRanks),
-          rmtReduceWithMyRank_(rmtReduceWithMyRank)
-    {
-        HCCL_DEBUG("[CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot] dimSize: %lu, rankId: %u, reduceOp: %d, dataType: %d",
-                   dimSize_, rankId_, opParam.reduceType, opParam.DataDes.dataType);
-    }
-    CcuKernelSignature GetKernelSignature() const override
-    {
-        CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot", opParam_, subCommRanks_);
-        return signature;
-    }
-    uint64_t                                dimSize_;
-    uint32_t                                rankId_;
-    OpParam                                 opParam_;
-    std::vector<uint32_t>                   kernelRanks_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
-    bool                                    rmtReduceWithMyRank_;
-    std::vector<ChannelHandle>              kernelChannels;
-};
- 
-class CcuTaskArgAllReduceMesh1DMem2Mem2DieOneShot : public CcuTaskArg {
-public:
-    explicit CcuTaskArgAllReduceMesh1DMem2Mem2DieOneShot(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-                                                uint64_t scratchAddr, uint64_t normalSliceSize)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), scratchAddr_(scratchAddr), normalSliceSize_(normalSliceSize)
-    {
-        HCCL_DEBUG("[CcuTaskArgAllReduceMesh1DMem2Mem2DieOneShot] inputAddr: %lu, outputAddr: %lu, scratchAddr: %lu, "
-                   "normalSliceSize: %lu", inputAddr_, outputAddr_, scratchAddr_, normalSliceSize_);
-    }
- 
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t token_;
-    uint64_t scratchAddr_;
-    uint64_t normalSliceSize_;
-};
- 
-class CcuKernelAllReduceMesh1DMem2Mem2DieOneShot : public CcuKernelAlgBase {
-public:
-    CcuKernelAllReduceMesh1DMem2Mem2DieOneShot(const CcuKernelArg &arg);
-    ~CcuKernelAllReduceMesh1DMem2Mem2DieOneShot() override {}
- 
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
- 
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    HcclResult PreSync();
-    HcclResult PostSync();
-    HcclResult RmtReduce();
-    void DoLocalReduce();
-    void ReduceLoopGroup(CcuRep::LocalAddr &outDstOrg, std::vector<CcuRep::LocalAddr> &srcOrg,
-                                                        GroupOpSize goSize, HcclDataType dataType, HcclDataType outputDataType,
-                                                        HcclReduceOp opType, std::string loopName);
-    std::string GetLoopBlockTag(std::string loopType, int32_t index) const;
-    void CreateReduceLoop(uint32_t size, HcclDataType dataType, HcclDataType outputDataType,
-                                                         HcclReduceOp opType, std::string loopName);
-    HcclResult MissionSync(uint32_t maskIndex);
- 
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-    std::vector<ChannelHandle> channels_;
- 
-    bool rmtReduceWithMyRank_;
-    uint32_t rmtReduceRankNum_;
 
-    uint32_t missionSyncMybit_;
-    uint32_t missionSyncWaitBit_;
- 
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    HcclReduceOp reduceOp_;
- 
-    CcuRep::Variable myInput_;
-    CcuRep::Variable myOutput_;
-    CcuRep::Variable myScratch_;
-    CcuRep::Variable myToken_;
-    std::vector<CcuRep::Variable> peerInput_;
-    std::vector<CcuRep::Variable> peerToken_;
- 
-    CcuRep::Variable scratchBaseOffset0_;
-    CcuRep::Variable scratchBaseOffset1_;
-    CcuRep::Variable normalSliceSize_;
-    CcuRep::Variable localReduceSliceOffset0_;
-    CcuRep::Variable localReduceSliceOffset1_;
- 
-    GroupOpSize localReduceGoSize_;
-    GroupOpSize localReduceGoSize0_;
-    GroupOpSize localReduceGoSize1_;
- 
-    CcuRep::CompletedEvent event_;
+struct CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot : CcuKernelArgBase {
+    uint64_t rankSize{0};
+    uint32_t rankId{0};
+    OpParam opParam;
+    std::vector<uint32_t> kernelRanks;
+    std::vector<std::vector<uint32_t>> subCommRanks;
+    bool rmtReduceWithMyRank{false};
 };
  
+struct AllReduceMesh1DMem2Mem2DieOneShotContext : CcuKernelCtxBase {
+    const CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot *arg;
+
+    uint64_t rankSize{0};
+    uint32_t rankId{0};
+
+    bool rmtReduceWithMyRank{false};
+    uint32_t rmtReduceRankNum{0};
+
+    uint32_t missionSyncMybit{0};
+    uint32_t missionSyncWaitBit{0};
+
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
+
+    ccu::Variable myInput;
+    ccu::Variable myOutput;
+    ccu::Variable myScratch;
+    ccu::Variable myToken;
+    std::vector<ccu::Variable> peerInput;
+    std::vector<ccu::Variable> peerToken;
+
+    ccu::Variable scratchBaseOffset0;
+    ccu::Variable scratchBaseOffset1;
+    ccu::Variable normalSliceSize;
+    ccu::Variable localReduceSliceOffset0;
+    ccu::Variable localReduceSliceOffset1;
+
+    GroupOpSizeVars localReduceGoSize;
+    GroupOpSizeVars localReduceGoSize0;
+    GroupOpSizeVars localReduceGoSize1;
+
+    ccu::Event event;
+};
+
+CcuResult CcuAllReduceMesh1DMem2Mem2DieOneShotKernel(CcuKernelArg arg);
+
 } // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_ALL_REDUCE_MESH_1D_MEM2MEM_2DIE_ONESHOT

@@ -13,8 +13,32 @@
 
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_scatter_nhr1d_mem2mem.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
+
+struct KernalRunTempArgs {
+    u32 kernelNum;
+    uint64_t die0Size;
+    uint64_t die1Size;
+    uint64_t inputAddr;
+    uint64_t outputAddr;
+    uint64_t scratchAddr;
+    uint64_t token;
+    uint64_t sliceSize;
+    uint64_t repeatNum;
+    uint64_t inputSliceStride;
+    uint64_t outputSliceStride;
+    uint64_t inputRepeatStride;
+    uint64_t outputRepeatStride;
+    uint64_t isOutputScratch;
+    uint64_t isInputOutputEqual;
+    uint64_t die0TailSize;
+    uint64_t die1TailSize;
+    uint64_t isSliceSizeZero;
+};
+
+
 class CcuTempScatterNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempScatterNHR1DMem2Mem() = default;
@@ -50,8 +74,11 @@ private:
     HcclResult ProcessNHRStepInfo(HcclComm comm,
                                   std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
                                   u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
-    HcclResult SplitDataFor2Dies(const OpParam& param, u64 sliceSize, uint64_t& die0Size,
+    HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
                                  uint64_t& die1Size) const;
+    void FillKernelRunTempArgs(const TemplateDataParams &templateDataParams, KernalRunTempArgs &tempArgs) const;
+    HcclResult FillKernelRunArgs(const KernalRunTempArgs &tempArgs, const TemplateDataParams &templateDataParams, const TemplateResource& templateResource) const;
+    void SaveSubmitInfo(const KernalRunTempArgs &tempArgs, TemplateResource& templateResource) const;
 };
 
 } // namespace ops_hccl

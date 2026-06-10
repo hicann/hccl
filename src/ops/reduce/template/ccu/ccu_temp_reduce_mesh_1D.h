@@ -13,12 +13,13 @@
 
 #include "ccu_alg_template_base.h"
 #include "utils.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
 class CcuTempReduceMesh1D : public CcuAlgTemplateBase {
 public:
-	CcuTempReduceMesh1D() = default;
+        CcuTempReduceMesh1D() = default;
     explicit  CcuTempReduceMesh1D(const OpParam& param,
                                          const u32 rankId, // 传通信域的rankId，userRank
                                          const std::vector<std::vector<u32>> &subCommRanks);

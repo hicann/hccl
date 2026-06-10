@@ -1,18 +1,17 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "channel.h"
-#include "hccl_ccu_res.h"
-#include "ccu_assist_pub.h"
 #include "ccu_kernel_all_gather_v_mesh1d_mem2mem.h"
 #include "ccu_temp_all_gather_v_mesh_1D_mem2mem.h"
+#include "ccu_launch_dl.h"
 
 namespace ops_hccl {
 
@@ -45,10 +44,9 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam&
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
-    
-    kernelInfo.creator = [](const hcomm::CcuKernelArg &arg) {
-                             return std::make_unique<CcuKernelAllGatherVMesh1DMem2Mem>(arg);
-                         };
+    strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllGatherVMesh1DMem2Mem");
+    kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllGatherVMesh1DMem2MemKernel);
+
     std::vector<HcclChannelDesc> channelDescs;
     if(topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
@@ -62,11 +60,12 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam&
         }
     }
     HCCL_DEBUG("[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] Get Mesh Channel Success!");
-
-    kernelInfo.kernelArg = std::make_shared<CcuKernelArgAllGatherVMesh1DMem2Mem>(subCommRanks_[0].size(),
-                                                                                    mySubCommRank_,
-                                                                                    param,
-                                                                                    subCommRanks_);
+    auto kernelArg = std::make_shared<CcuKernelArgAllGatherVMesh1DMem2Mem>();
+    kernelArg->rankSize = subCommRanks_[0].size();
+    kernelArg->rankId = mySubCommRank_;
+    kernelArg->opParam = param;
+    kernelArg->subCommRanks = subCommRanks_;
+    kernelInfo.setKernelArg(kernelArg);
     kernelInfo.channels = channelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
@@ -82,7 +81,6 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
                                                         TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
-
     uint32_t rankId = mySubCommRank_;
     u64 dataTypeSize = DATATYPE_SIZE_TABLE[param.vDataDes.dataType];
     uint64_t mySliceSize = templateDataParams.allRankSliceSize[rankId];
@@ -92,13 +90,26 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
     uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + templateDataParams.tailSize * dataTypeSize;
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
+    LoopGroupConfig config{};
+    config.msInterleave = CCU_MS_INTERLEAVE;
+    config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
+    auto goSize = CalGoSize(mySliceSize, config);
+    // 代替GeneArgs
+    std::vector<uint64_t> taskArgs = {
+        inputAddr, outputAddr, token, mySliceSize, mySliceSizeOutputOffset, goSize[0], goSize[1], goSize[2], goSize[3]};
+    uint64_t argSize = 9;
 
-    std::unique_ptr<hcomm::CcuTaskArg> taskArg = std::make_unique<CcuTaskArgAllGatherVMesh1DMem2Mem>(
-        inputAddr, outputAddr, token, mySliceSize, mySliceSizeOutputOffset);
-    
-    void* taskArgPtr = static_cast<void*>(taskArg.get());
-    CHK_RET(HcclCcuKernelLaunch(param.hcclComm, templateResource.threads[0], templateResource.ccuKernels[0], taskArgPtr));
+    HCCL_INFO("[CcuTempAllGatherVMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
+               "mySliceSize[%llu], mySliceSizeOutputOffset[%llu]",
+               inputAddr, outputAddr, mySliceSize, mySliceSizeOutputOffset);
 
+    CcuResult launchRet
+        = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), argSize);
+    if (launchRet != CCU_SUCCESS) {
+        HCCL_ERROR("[CcuTempAllGatherVMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+        return ConvertCcuToHccl(launchRet);
+    }
     return HcclResult::HCCL_SUCCESS;
 }
 

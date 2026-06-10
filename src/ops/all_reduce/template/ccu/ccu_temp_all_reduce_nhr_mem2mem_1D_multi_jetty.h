@@ -50,6 +50,17 @@ private:
     uint32_t GetNHRStepNum(const uint32_t rankSize) const;
     uint32_t localRank2UserRank(const uint32_t localRank) const;
     HcclResult ProcessNHRStepInfo(std::vector<NHRStepInfo> &algStepInfoList) const;
+    void CalcSliceParams(const uint64_t dataCount, uint64_t& dataSizePerRank, uint64_t& dataSizePerPort,
+                         uint64_t& lastRankSliceSize, uint64_t& lastPortSliceSize) const;
+    void BuildTaskArgsAndGoSize(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t outputToken,
+                                const uint64_t isInplace, const uint64_t dataSizePerRank, const uint64_t dataSizePerPort,
+                                const uint64_t lastRankSliceSize, const uint64_t lastPortSliceSize,
+                                std::vector<uint64_t>& taskArgs, std::vector<uint64_t>& localCopyGoSize,
+                                std::vector<uint64_t>& localCopyGoSizeLastSlice) const;
+    void FillSubmitInfo(const uint64_t outputToken, const uint64_t isInplace, const uint64_t dataSizePerRank,
+                        const uint64_t dataSizePerPort, const uint64_t lastRankSliceSize, const uint64_t lastPortSliceSize,
+                        const std::vector<uint64_t>& localCopyGoSize, const std::vector<uint64_t>& localCopyGoSizeLastSlice,
+                        TemplateResource& templateResource) const;
     HcclDataType dataType_;
     uint32_t localRank_{INVALID_VALUE_RANKID}; // 所在子通信域的rank id
     uint32_t portNum_{0}; // 端口数量

@@ -13,66 +13,32 @@
 
 #include <vector>
 #include <ios>
-#include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-class CcuKernelArgAllReduceMesh1D : public CcuKernelArg {
-public:
-    explicit CcuKernelArgAllReduceMesh1D(const std::vector<uint64_t> &dSize, uint32_t rId, const OpParam &opParam,
-        const std::vector<std::vector<uint32_t>> &tempVTopo) :
-            dimSize_(dSize), rankId_(rId), opParam_(opParam), tempVTopo_(tempVTopo) {}
-    CcuKernelSignature GetKernelSignature() const override
-    {
-        CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgAllReduceMesh1D", opParam_, tempVTopo_);
-        return signature;
-    }
-    std::vector<uint64_t> dimSize_;
-    uint32_t rankId_;
-    OpParam opParam_;
-    std::vector<std::vector<uint32_t>> tempVTopo_;
+
+struct CcuKernelArgAllReduceMesh1D: CcuKernelArgBase{
+    uint64_t                                rankSize;
+    uint32_t                                rankId;
+    OpParam                                 opParam;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
 };
 
-class CcuTaskArgAllReduceMesh1D : public CcuTaskArg {
-public:
-    explicit CcuTaskArgAllReduceMesh1D(uint64_t inputAddr, uint64_t outputAddr, uint64_t sliceSize, uint64_t offSet,
-        uint64_t token) :
-        inputAddr_(inputAddr), outputAddr_(outputAddr), sliceSize_(sliceSize), offSet_(offSet), token_(token) {}
-
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t sliceSize_;
-    uint64_t offSet_;
-    uint64_t token_;
+struct AllReduceMesh1DContext: CcuKernelCtxBase {
+    const CcuKernelArgAllReduceMesh1D *arg;
+    
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
+    std::vector<ccu::Variable> input;
+    std::vector<ccu::Variable> output;
+    std::vector<ccu::Variable> token;
+    ccu::Variable offset;
+    GroupOpSizeVars goSize;
 };
 
-class CcuKernelAllReduceMesh1D : public CcuKernelAlgBase {
-public:
-    CcuKernelAllReduceMesh1D(const hcomm::CcuKernelArg &arg);
-    ~CcuKernelAllReduceMesh1D() override {}
-
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
-private:
-    void RunBroadcast(std::vector<CcuRep::RemoteAddr> &dst, CcuRep::LocalAddr &src);
-    void RunReduce(CcuRep::LocalAddr &dst, std::vector<CcuRep::RemoteAddr> &src);
-
-    uint64_t rankSize_{0};
-    uint32_t rankId_{0};
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    HcclReduceOp reduceOp_;
-    std::vector<CcuRep::Variable> input_;
-    std::vector<CcuRep::Variable> output_;
-    std::vector<CcuRep::Variable> token_;
-    CcuRep::Variable offSet_;
-    GroupOpSize groupOpSize_;
-    GroupOpSize groupOpSizeV2_;
-    std::vector<ChannelHandle> channels_;
-};
-}
+CcuResult CcuAllReduceMesh1DKernel(CcuKernelArg arg);
+} // namespace ops_hccl
 
 #endif

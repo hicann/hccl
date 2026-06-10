@@ -1,268 +1,241 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #include "ccu_kernel_all_to_all_mesh1d_multi_jetty.h"
-#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
-using namespace hcomm;
 
 constexpr int INPUT_XN_ID   = 0;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID   = 2;
 constexpr int POST_SYNC_ID = 3;
 constexpr int CKE_IDX_0     = 0;
+constexpr int CKE_IDX_1     = 1;
 
-CcuKernelAllToAllMesh1DMultiJetty::CcuKernelAllToAllMesh1DMultiJetty(const CcuKernelArg &arg)
-    : CcuKernelAlgBase(arg)
+static CcuResult InitResource(AllToAllMesh1DMultiJettyContext &ctx)
 {
-    const CcuKernelArgAllToAllMesh1DMultiJetty *kernelArg
-        = dynamic_cast<const CcuKernelArgAllToAllMesh1DMultiJetty *>(&arg);
-    rankId_         = kernelArg->rankId_;
-    channels_       = kernelArg->channels;
-    jettyNums_      = kernelArg->jettyNums_;
-    rankSize_       = kernelArg->rankSize_;
-    HCCL_INFO(
-        "[CcuKernelAllToAllMesh1DMultiJetty] Init, KernelArgs are rankId[%u], rankSize_[%u]",
-        rankId_, rankSize_);
-}
+    const auto *arg = ctx.arg;
+    uint32_t channelIdx = 0;
 
-std::vector<uint64_t> CcuKernelAllToAllMesh1DMultiJetty::GeneArgs(const CcuTaskArg &arg)
-{
-    const CcuTaskArgAllToAllMesh1DMultiJetty *taskArg
-        = dynamic_cast<const CcuTaskArgAllToAllMesh1DMultiJetty *>(&arg);
-    uint64_t inputAddr  = taskArg->inputAddr_;
-    uint64_t outputAddr = taskArg->outputAddr_;
-    uint64_t tokenInfo  = taskArg->token_;
-    uint64_t srcStride = taskArg->srcStride_;
-    uint64_t srcOffset = taskArg->srcOffset_;
-    uint64_t dstOffset = taskArg->dstOffset_;
-    uint64_t sliceSize  = taskArg->sliceSize_;
-    std::vector<uint64_t> jettySlice = taskArg->jettySlice_;
-    std::vector<uint64_t> jettySliceTail = taskArg->jettySliceTail_;
-    auto     goSize     = CalGoSize(sliceSize);
-    HCCL_INFO("[%s] inputAddr[%llu], outputAddr[%llu], sliceSize[%llu], srcStride[%llu], srcOffset[%llu], "
-              "dstOffset[%llu].", __FUNCTION__,
-              inputAddr, outputAddr, sliceSize, srcStride, srcOffset, dstOffset);
-    for (u32 i = 0; i < jettySlice.size(); i++) {
-        HCCL_INFO("[%s]jettySlice[%u]=%lu, jettySliceTail[%u]=%lu", __FUNCTION__, 
-                i, jettySlice[i], i, jettySliceTail[i]);
-    }
-    std::vector<uint64_t> res = {inputAddr, outputAddr, tokenInfo, sliceSize, srcStride, srcOffset, dstOffset,
-                                goSize[0], goSize[1], goSize[2], goSize[3]};
-    res.insert(res.end(), jettySlice.begin(), jettySlice.end());
-    res.insert(res.end(), jettySliceTail.begin(), jettySliceTail.end());
-    return res;
-}
-
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::InitResource()
-{
-    uint16_t channelIdx = 0;
-    if (channels_.size() == 0) {
+    if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllToAllMesh1DMultiJetty] channels is empty!");
-        return HcclResult::HCCL_E_INTERNAL;
+        return CcuResult::CCU_E_INTERNAL;
     }
 
-    // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求给框架返回的Link同样是按顺序排列的
-    for (uint64_t peerId = 0; peerId < rankSize_; peerId++) {
-        if (peerId == rankId_) {
-            input_.push_back(CreateVariable());
-            output_.push_back(CreateVariable());
-            token_.push_back(CreateVariable());
-        } else {
-            HCCL_DEBUG("[CcuKernelAllToAllMesh1DMultiJetty] MyRank[%u], PeerId[%u], ChannelId[%u]",
-                       rankId_, peerId, channelIdx);
-            CcuRep::Variable inputVar, scratchVar, tokenVar;
-            CHK_RET(CreateVariable(channels_[channelIdx], INPUT_XN_ID, &inputVar));
-            input_.push_back(inputVar); // 获取channel中id=0的Var来传递output
-            CHK_RET(CreateVariable(channels_[channelIdx], OUTPUT_XN_ID, &scratchVar));
-            output_.push_back(scratchVar);
-            CHK_RET(CreateVariable(channels_[channelIdx], TOKEN_XN_ID, &tokenVar));
-            token_.push_back(tokenVar);
-            channelIdx++;
+    ctx.peerInput.resize(arg->rankSize);
+    ctx.peerOutput.resize(arg->rankSize);
+    ctx.peerToken.resize(arg->rankSize);
+
+    for (uint64_t peerId = 0; peerId < arg->rankSize; peerId++) {
+        if (peerId == arg->rankId) {
+            continue;
         }
-    }
-    sliceSize_   = CreateVariable();
-    srcStride_   = CreateVariable();
-    srcOffset_   = CreateVariable();
-    dstOffset_   = CreateVariable();
-    groupOpSize_ = CreateGroupOpSize();
-
-    for (uint64_t peerId = 0; peerId < rankSize_; peerId++) {
-        eventList_.push_back(CreateCompletedEvent());
-        jettySlice_.push_back(CreateVariable());
+        HCCL_DEBUG("[CcuKernelAllToAllMesh1DMultiJetty] MyRank[%u], PeerId[%u], ChannelId[%u]",
+                    arg->rankId, peerId, channelIdx);
+        ctx.peerOutput[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
+        ctx.peerToken[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
+        channelIdx++;
     }
 
-    for (uint32_t peerId = 0; peerId < rankSize_; peerId++) {
-        jettySliceTail_.push_back(CreateVariable());
-    }
+    ctx.eventList.resize(arg->rankSize);
+    ctx.jettySlice.resize(arg->rankSize);
+    ctx.jettySliceTail.resize(arg->rankSize);
 
+    ctx.resourceAllocated = false;
     HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] InitResource success!");
-    return HcclResult::HCCL_SUCCESS;
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::PreSync()
+static CcuResult LoadArgs(AllToAllMesh1DMultiJettyContext &ctx)
 {
-    for (ChannelHandle channel : channels_) {
-        CHK_RET(NotifyRecord(channel, CKE_IDX_0, INPUT_XN_ID, input_[rankId_], 1 << INPUT_XN_ID));
-        CHK_RET(NotifyRecord(channel, CKE_IDX_0, OUTPUT_XN_ID, output_[rankId_], 1 << OUTPUT_XN_ID));
-        CHK_RET(NotifyRecord(channel, CKE_IDX_0, TOKEN_XN_ID, token_[rankId_], 1 << TOKEN_XN_ID));
+    const auto *arg = ctx.arg;
+    uint32_t argId = 0;
+
+    CCU_CHK_RET(ccu::LoadArg(ctx.peerInput[arg->rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.peerOutput[arg->rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.peerToken[arg->rankId], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.sliceSize, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.srcStride, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.srcOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.dstOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.addrOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.loopParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.parallelParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.residual, argId++));
+
+    for (uint64_t i = 0; i < arg->rankSize; i++) {
+        CCU_CHK_RET(ccu::LoadArg(ctx.jettySlice[i], argId++));
+    }
+    for (uint64_t i = 0; i < arg->rankSize; i++) {
+        CCU_CHK_RET(ccu::LoadArg(ctx.jettySliceTail[i], argId++));
     }
 
-    uint32_t allBit = (1 << INPUT_XN_ID) | (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
-    for (ChannelHandle channel : channels_) {
-        CHK_RET(NotifyWait(channel, CKE_IDX_0, allBit));
+    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] LoadArgs success, total argId=%u!", argId);
+    return CCU_SUCCESS;
+}
+
+static CcuResult PreSync(AllToAllMesh1DMultiJettyContext &ctx)
+{
+    const auto *arg = ctx.arg;
+
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.peerOutput[arg->rankId],
+            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.peerToken[arg->rankId],
+            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+    }
+
+    uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit));
     }
 
     HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] PreSync success!");
-    return HcclResult::HCCL_SUCCESS;
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::PostSync()
+static void CalcAddresses(AllToAllMesh1DMultiJettyContext &ctx,
+    std::vector<ccu::LocalAddr> &remoteSrc, std::vector<ccu::RemoteAddr> &remoteDst,
+    ccu::LocalAddr &localSrc, ccu::LocalAddr &localDst)
 {
-    for (auto &ch : channels_) {
-        CHK_RET(NotifyRecord(ch, CKE_IDX_0, 1 << POST_SYNC_ID));
-    }
-    for (auto &ch : channels_) {
-        CHK_RET(NotifyWait(ch, CKE_IDX_0, 1 << POST_SYNC_ID));
-    }
-
-    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] PostSync success!");
-    return HcclResult::HCCL_SUCCESS;
-}
-
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::LoadArgs()
-{
-    Load(input_[rankId_]);
-    Load(output_[rankId_]);
-    Load(token_[rankId_]);
-    Load(sliceSize_);
-    Load(srcStride_);
-    Load(srcOffset_);
-    Load(dstOffset_);
-    Load(groupOpSize_);
-    for (int i = 0; i < rankSize_; i++) {
-        Load(jettySlice_[i]);
-    }
-    for (int i = 0; i < rankSize_; i++) {
-        Load(jettySliceTail_[i]);
-    }
-
-    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] LoadArgs success!");
-    return HcclResult::HCCL_SUCCESS;
-}
-
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::CalcAddrs()
-{
-    srcOffset_ += input_[rankId_];
-    remoteSrc_.resize(rankSize_);
-    remoteDst_.resize(rankSize_);
-
-    for (uint32_t rankIdx = 0; rankIdx < rankSize_; rankIdx++) {
-        if (rankIdx == rankId_) {
-            localSrc_ = CreateLocalAddr();
-            localDst_ = CreateLocalAddr();
-            localSrc_.addr = srcOffset_;
-        for (uint32_t i = 0; i < rankIdx; i++) {
-                localSrc_.addr += srcStride_;
-            }
-            localSrc_.token = token_[rankIdx];
-            localDst_.addr = output_[rankIdx];
-            localDst_.token = token_[rankIdx];
-            localDst_.addr += dstOffset_;
-        } else {
-            remoteSrc_[rankIdx] = CreateLocalAddr();
-            remoteDst_[rankIdx] = CreateRemoteAddr();
-            remoteSrc_[rankIdx].addr = srcOffset_;
+    const auto *arg = ctx.arg;
+    for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
+        if (rankIdx == arg->rankId) {
+            localSrc.addr = ctx.srcOffset;
             for (uint32_t i = 0; i < rankIdx; i++) {
-                remoteSrc_[rankIdx].addr += srcStride_;
+                localSrc.addr += ctx.srcStride;
             }
-            remoteSrc_[rankIdx].token = token_[rankIdx];
-            remoteDst_[rankIdx].addr = output_[rankIdx];
-            remoteDst_[rankIdx].token = token_[rankIdx];
-            remoteDst_[rankIdx].addr += dstOffset_;
+            localSrc.token = ctx.peerToken[rankIdx];
+            localDst.addr = ctx.peerOutput[rankIdx];
+            localDst.token = ctx.peerToken[rankIdx];
+            localDst.addr += ctx.dstOffset;
+        } else {
+            remoteSrc[rankIdx].addr = ctx.srcOffset;
+            for (uint32_t i = 0; i < rankIdx; i++) {
+                remoteSrc[rankIdx].addr += ctx.srcStride;
+            }
+            remoteSrc[rankIdx].token = ctx.peerToken[rankIdx];
+            remoteDst[rankIdx].addr = ctx.peerOutput[rankIdx];
+            remoteDst[rankIdx].token = ctx.peerToken[rankIdx];
+            remoteDst[rankIdx].addr += ctx.dstOffset;
         }
     }
-
-    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] CalcAddrs success!");
-    return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::SendData(ChannelHandle channel, hcomm::CcuRep::RemoteAddr remoteDst,
-    hcomm::CcuRep::LocalAddr remoteSrc, hcomm::CcuRep::Variable sliceLength, hcomm::CcuRep::CompletedEvent event)
+static CcuResult RemoteWrite(AllToAllMesh1DMultiJettyContext &ctx,
+    std::vector<ccu::LocalAddr> &remoteSrc, std::vector<ccu::RemoteAddr> &remoteDst)
 {
-    CCU_IF(sliceLength != 0) {
-        CHK_RET(WriteNb(channel, remoteDst, remoteSrc, sliceLength, event));
-    }
-    CCU_IF(sliceLength == 0) {
-        CHK_RET(RecordEvent(event));
-    }
-    return HcclResult::HCCL_SUCCESS;;
-}
-
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::DoAllToAll()
-{
+    const auto *arg = ctx.arg;
     uint32_t channelId = 0;
-    for (uint64_t r = 0; r < rankSize_; r++) {
-        if (r == rankId_) {
+    for (uint64_t r = 0; r < arg->rankSize; r++) {
+        if (r == arg->rankId) {
             continue;
         }
-        for (uint32_t jettyIdx = 0; jettyIdx < jettyNums_[r]; jettyIdx++) {
-            eventList_[r].SetMask(1 << jettyIdx);
-            if (jettyIdx == (jettyNums_[r] - 1)) {
-                CHK_RET(SendData(channels_[channelId], remoteDst_[r], remoteSrc_[r], jettySliceTail_[r], eventList_[r]));
+        for (uint32_t jettyIdx = 0; jettyIdx < arg->jettyNums[r]; jettyIdx++) {
+            uint16_t jettyMask = 1 << jettyIdx;
+            if (jettyIdx == (arg->jettyNums[r] - 1)) {
+                CCU_IF(ctx.jettySliceTail[r] != 0) {
+                    CCU_CHK_RET(ccu::Write(arg->channels[channelId], remoteDst[r], remoteSrc[r],
+                                           ctx.jettySliceTail[r], ctx.eventList[r], jettyMask));
+                } CCU_ELSE {
+                    CCU_CHK_RET(ccu::EventRecord(ctx.eventList[r], jettyMask));
+                }
             } else {
-                CHK_RET(SendData(channels_[channelId], remoteDst_[r], remoteSrc_[r], jettySlice_[r], eventList_[r]));
+                CCU_IF(ctx.jettySlice[r] != 0) {
+                    CCU_CHK_RET(ccu::Write(arg->channels[channelId], remoteDst[r], remoteSrc[r],
+                                           ctx.jettySlice[r], ctx.eventList[r], jettyMask));
+                } CCU_ELSE {
+                    CCU_CHK_RET(ccu::EventRecord(ctx.eventList[r], jettyMask));
+                }
             }
-            remoteDst_[r].addr += jettySlice_[r];
-            remoteSrc_[r].addr += jettySlice_[r];
+            if (jettyIdx == (arg->jettyNums[r] - 1)) {
+                remoteDst[r].addr += ctx.jettySliceTail[r];
+                remoteSrc[r].addr += ctx.jettySliceTail[r];
+            } else {
+                remoteDst[r].addr += ctx.jettySlice[r];
+                remoteSrc[r].addr += ctx.jettySlice[r];
+            }
         }
         channelId++;
     }
-
-    // 本地拷贝以及同步等待
-    CHK_RET(GroupCopy(localDst_, localSrc_, groupOpSize_));
-    eventList_[rankId_].SetMask(1);
-    CHK_RET(RecordEvent(eventList_[rankId_]));
-
-    for (uint64_t r = 0; r < rankSize_; r++) {
-        if (r == rankId_) {
-            eventList_[r].SetMask(1);
-        } else {
-            eventList_[r].SetMask((1 << jettyNums_[r]) - 1);
-        }
-        CHK_RET(WaitEvent(eventList_[r]));
-    }
-
-    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] DoAllToAll success!");
-    return HcclResult::HCCL_SUCCESS;
+    return CCU_SUCCESS;
 }
 
-HcclResult CcuKernelAllToAllMesh1DMultiJetty::Algorithm()
+static CcuResult WaitEvents(AllToAllMesh1DMultiJettyContext &ctx)
 {
-    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] AllToAllMesh1DMultiJetty run");
+    const auto *arg = ctx.arg;
+    for (uint64_t r = 0; r < arg->rankSize; r++) {
+        uint16_t waitMask = (r == arg->rankId) ? 1 : ((1 << arg->jettyNums[r]) - 1);
+        CCU_CHK_RET(ccu::EventWait(ctx.eventList[r], waitMask));
+    }
+    return CCU_SUCCESS;
+}
 
-    CHK_RET(InitResource());
+static CcuResult DoAllToAll(AllToAllMesh1DMultiJettyContext &ctx)
+{
+    const auto *arg = ctx.arg;
+    ctx.srcOffset += ctx.peerInput[arg->rankId];
+    std::vector<ccu::LocalAddr> remoteSrc(arg->rankSize);
+    std::vector<ccu::RemoteAddr> remoteDst(arg->rankSize);
+    ccu::LocalAddr localSrc;
+    ccu::LocalAddr localDst;
 
-    CHK_RET(LoadArgs());
+    CalcAddresses(ctx, remoteSrc, remoteDst, localSrc, localDst);
+    CCU_CHK_RET(RemoteWrite(ctx, remoteSrc, remoteDst));
+    CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize));
+    CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], 1));
+    CCU_CHK_RET(WaitEvents(ctx));
 
-    CHK_RET(PreSync());
+    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] DoAllToAll success!");
+    return CCU_SUCCESS;
+}
 
-    CHK_RET(CalcAddrs());
+static CcuResult PostSync(AllToAllMesh1DMultiJettyContext &ctx)
+{
+    const auto *arg = ctx.arg;
 
-    CHK_RET(DoAllToAll());
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_1, 1 << POST_SYNC_ID));
+    }
+    for (uint32_t i = 0; i < arg->channelCount; i++) {
+        CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], CKE_IDX_1, 1 << POST_SYNC_ID));
+    }
 
-    CHK_RET(PostSync());
+    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] PostSync success!");
+    return CCU_SUCCESS;
+}
 
+CcuResult CcuAllToAllMesh1DMultiJettyKernel(CcuKernelArg arg)
+{
+    auto *kernelArg = static_cast<CcuKernelArgAllToAllMesh1DMultiJetty *>(arg);
+
+    AllToAllMesh1DMultiJettyContext ctx;
+    ctx.arg = kernelArg;
+    ctx.resourceAllocated = false;
+    ctx.moConfig.msInterleave = 0;
+    ctx.moConfig.loopCount = 0;
+    ctx.moConfig.memSlice = 0;
+    ctx.moRes.eventCount = 0;
+    ctx.moRes.bufCount = 0;
+    ctx.enginePool = 0;
+
+    HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] AllToAllMesh1DMultiJetty run, rankSize=%llu, rankId=%u",
+              kernelArg->rankSize, kernelArg->rankId);
+    CCU_CHK_RET(InitResource(ctx));
+    CCU_CHK_RET(LoadArgs(ctx));
+    CCU_CHK_RET(PreSync(ctx));
+    CCU_CHK_RET(DoAllToAll(ctx));
+    CCU_CHK_RET(PostSync(ctx));
     HCCL_INFO("[CcuKernelAllToAllMesh1DMultiJetty] AllToAllMesh1DMultiJetty end");
-    return HcclResult::HCCL_SUCCESS;
+
+    return CCU_SUCCESS;
 }
 
 } // namespace ops_hccl

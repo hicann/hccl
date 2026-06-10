@@ -14,6 +14,7 @@
 #include "ccu_alg_template_base.h"
 #include "utils.h"
 #include "ins_temp_all_reduce_nhr.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 
@@ -48,7 +49,10 @@ private:
     uint32_t rootId_        = 0;
     // rank对应的channel，size为1-2
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
-
+    HcclResult HandlePreSync(u32 kernelNum, TemplateResource& templateResource);
+    HcclResult HandlePostSync(u32 kernelNum, TemplateResource& templateResource);
+    void CalculateDieSizes(const OpParam& param, const TemplateDataParams& templateDataParams,
+                           u32 kernelNum, uint64_t& die0Size, uint64_t& die1Size);
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const;
     HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;

@@ -7,135 +7,78 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #ifndef HCCL_CCU_KERNEL_REDUCE_SCATTER_MESH_1D_DUO_MEM2MEM_H
 #define HCCL_CCU_KERNEL_REDUCE_SCATTER_MESH_1D_DUO_MEM2MEM_H
- 
+
 #include <vector>
 #include <ios>
-#include "utils.h"
-#include "ccu_kernel.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
- 
+
 namespace ops_hccl {
-using namespace hcomm;
- 
-class CcuKernelArgReduceScatterMeshMem2Mem1D2Die : public CcuKernelArg {
-public:
-    explicit CcuKernelArgReduceScatterMeshMem2Mem1D2Die(uint64_t gRankSize,
-                                                        uint64_t rankSize,
-                                                        bool isReduceToOutput,
-                                                        uint32_t rankId,
-                                                        const OpParam& opParam,
-                                                        const std::vector<uint32_t>& subRankGroup,
-                                                        const std::vector<std::vector<uint32_t>>& subCommRanks)
-        : gRankSize_(gRankSize),
-          rankSize_(rankSize),
-          isReduceToOutput_(isReduceToOutput),
-          rankId_(rankId),
-          opParam_(opParam),
-          subRankGroup_(subRankGroup),
-          subCommRanks_(subCommRanks)
-    {
-        HCCL_DEBUG("[CcuKernelArgReduceScatterMeshMem2Mem1D2Die] dimSize: %lu, rankId: %u, reduceOp: %d, dataType: %d",
-                   rankSize_, rankId_, opParam.reduceType, opParam.DataDes.dataType);
-    }
-    CcuKernelSignature GetKernelSignature() const override
-    {
-        CcuKernelSignature signature;
-        GenerateCcuKernelSignature(signature, "CcuKernelArgReduceScatterMeshMem2Mem1D2Die", opParam_, subCommRanks_);
-        return signature;
-    }
-    uint32_t                                rankId_;
-    uint32_t                                rankSize_;
-    uint32_t                                gRankSize_;
-    bool                                    isReduceToOutput_;
-    OpParam                                 opParam_;
-    std::vector<uint32_t>                   subRankGroup_;
-    std::vector<std::vector<uint32_t>>      subCommRanks_;
+
+constexpr uint64_t REDUCE_MS_CNT = 8;
+constexpr uint16_t REDUCE_SCATTER_2DIE_GROUP_REDUCE_MAX_PIECE_CNT = 8;
+
+constexpr int INPUT_XN_ID        = 0;
+constexpr int SCRATCH_XN_ID      = 1;
+constexpr int TOKEN_XN_ID        = 2;
+constexpr int POST_SYNC_ID       = 3;
+constexpr int CKE_IDX_0          = 0;
+
+struct CcuKernelArgReduceScatterMesh1D2DieMem2Mem : CcuKernelArgBase {
+    uint32_t                                gRankSize;
+    uint32_t                                rankSize;
+    uint32_t                                rankId;
+    bool                                    isReduceToOutput;
+    OpParam                                 opParam;
+    std::vector<uint32_t>                   subRankGroup;
+    std::vector<std::vector<uint32_t>>      subCommRanks;
 };
- 
-class CcuTaskArgReduceScatterMeshMem2Mem1D2Die : public CcuTaskArg {
-public:
-    explicit CcuTaskArgReduceScatterMeshMem2Mem1D2Die(uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-                                                uint64_t scratchAddr,
-                                                uint64_t inputSliceStride,
-                                                uint64_t inputRepeatStride, uint64_t outputRepeatStride,
-                                                uint64_t normalSliceSize, uint64_t lastSliceSize, uint64_t repeatNum)
-        : inputAddr_(inputAddr), outputAddr_(outputAddr), token_(token), scratchAddr_(scratchAddr),
-        inputSliceStride_(inputSliceStride), inputRepeatStride_(inputRepeatStride), outputRepeatStride_(outputRepeatStride),
-        normalSliceSize_(normalSliceSize), sliceSize_(lastSliceSize), repeatNum_(repeatNum) 
-    {
-        HCCL_DEBUG("[CcuTaskArgReduceScatterMeshMem2Mem1D2Die] inputAddr: %lu, outputAddr: %lu, scratchAddr: %lu, "
-                   "inputSliceStride: %lu, inputRepeatStride: %lu, outputRepeatStride: %lu, normalSliceSize: %lu, "
-                   "lastSliceSize: %lu, repeatNum: %lu",
-                   inputAddr_, outputAddr_, scratchAddr_, inputSliceStride_, inputRepeatStride_,
-                   outputRepeatStride_, normalSliceSize_, sliceSize_, repeatNum_);
-    }
- 
-    uint64_t inputAddr_;
-    uint64_t outputAddr_;
-    uint64_t token_;
-    uint64_t scratchAddr_;
-    uint64_t inputSliceStride_;
-    uint64_t inputRepeatStride_;
-    uint64_t outputRepeatStride_;
-    uint64_t normalSliceSize_;
-    uint64_t sliceSize_;
-    uint64_t repeatNum_;
+
+struct ReduceScatterMesh1D2DieMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterMesh1D2DieMem2Mem *arg;
+
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
+
+    uint64_t rankSize;
+    uint64_t gRankSize;
+    uint32_t rankId;
+    std::vector<uint32_t> subRankGroup;
+    bool isReduceToOutput;
+
+    std::vector<ccu::Variable> input;
+    ccu::Variable output;
+    std::vector<ccu::Variable> scratch;
+    std::vector<ccu::Variable> token;
+    ccu::Variable currentRankSliceInputOffset;
+    ccu::Variable inputRepeatStride;
+    ccu::Variable outputRepeatStride;
+    ccu::Variable sliceSize;
+    ccu::Variable repeatNum;
+    ccu::Variable flag;
+    GroupOpSizeVars sliceGoSize;
+
+    ccu::LocalAddr myInput;
+    std::vector<ccu::RemoteAddr> remoteInput;
+    std::vector<ccu::LocalAddr> scratchMem;
+    ccu::LocalAddr outputTmp;
+    ccu::Event event;
+
+    uint32_t myRankIdx;
+
+    // Loop机制相关变量
+    std::array<std::vector<ccu::LocalAddr>, 2> loopScratch;
+    ccu::LocalAddr loopSrc[2];
+    ccu::LocalAddr loopDst[2];
+    ccu::Variable  loopLen[2];
+    ccu::Variable  loopLenExp[2];
 };
- 
-class CcuKernelReduceScatterMesh1D2DieMem2Mem : public CcuKernelAlgBase {
-public:
-    CcuKernelReduceScatterMesh1D2DieMem2Mem(const CcuKernelArg &arg);
-    ~CcuKernelReduceScatterMesh1D2DieMem2Mem() override {}
- 
-    HcclResult Algorithm() override;
-    std::vector<uint64_t> GeneArgs(const CcuTaskArg &arg) override;
- 
-private:
-    HcclResult InitResource();
-    void LoadArgs();
-    HcclResult PreSync();
-    HcclResult RmtReduce();
-    HcclResult PostSync();
-    HcclResult DoReduceScatter();
-    void ReduceLoopGroup(CcuRep::LocalAddr outDstOrg, std::vector<CcuRep::LocalAddr> &scratchOrg);
-    std::string GetLoopBlockTag(std::string loopType, int32_t index) const;
-    void GroupCopy(CcuRep::LocalAddr dst, CcuRep::LocalAddr src);
-    void CreateGroupCopy();
-    void CreateReduceLoop(uint32_t size);
- 
-    uint64_t rankSize_{0};
-    uint64_t gRankSize_{0};
-    uint32_t rankId_{0};
-    HcclDataType dataType_;
-    HcclDataType outputDataType_;
-    CcuRep::Variable repeatNum_;
-    HcclReduceOp reduceOp_;
-    std::vector<ChannelHandle> channels_;
-    std::vector<CcuRep::Variable> input_;
-    CcuRep::Variable output_;
-    std::vector<CcuRep::Variable> scratch_;
-    std::vector<CcuRep::Variable> token_;
-    std::vector<uint32_t> subRankGroup_;
-    CcuRep::Variable currentRankSliceInputOffset_;
-    CcuRep::Variable inputRepeatStride_;
-    CcuRep::Variable outputRepeatStride_;
-    CcuRep::Variable sliceSize_;
-    CcuRep::LocalAddr                   myInput_;
-    std::vector<CcuRep::RemoteAddr>     remoteInput_;
-    std::vector<CcuRep::LocalAddr>      scratchMem_;
-    CcuRep::LocalAddr                   outputTmp_;
-    CcuRep::CompletedEvent event_;
-    CcuRep::Variable flag_; // 用以判断是否是第一次重复
-    bool isReduceToOutput_;
-    GroupOpSize sliceGoSize_;
-    CcuRep::Variable scratchOffset0_;
-    CcuRep::Variable scratchOffset1_;
-    uint32_t myRankIdx_{0};
-};
- 
-}// namespace ops_hccl
+
+CcuResult CcuReduceScatterMesh1D2DieMem2MemKernel(CcuKernelArg arg);
+
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_MESH_1D_DUO_MEM2MEM_H
