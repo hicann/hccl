@@ -276,6 +276,7 @@ else()
         ${TOP_DIR}/hcomm/pkg_inc/hcomm/ccu
         ${TOP_DIR}/hcomm/include
         ${TOP_DIR}/hcomm/include/hccl
+        ${TOP_DIR}/hcomm/include/ccu
     )
 endif()
 
