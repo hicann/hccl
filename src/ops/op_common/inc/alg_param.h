@@ -633,7 +633,6 @@ struct OpExchangeInfo {
     uint64_t cclBufferSize{0};
     u32 root = INVALID_VALUE_RANKID;
     HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID;
-    CommEngine engine = CommEngine::COMM_ENGINE_RESERVED;
     OpExecuteConfig opExecuteConfig = OpExecuteConfig::DEFAULT;
     HcclReduceOp reduceType = HcclReduceOp::HCCL_REDUCE_RESERVED;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_RESERVED;
