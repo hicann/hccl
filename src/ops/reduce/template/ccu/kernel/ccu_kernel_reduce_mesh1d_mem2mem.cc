@@ -86,7 +86,7 @@ static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::Loca
 
 		loops.loopParam[0] = loopParam;
  	    std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
- 	    ccu::LoopGroup group(paraCfg, offsetCfg, 1, grpLoops);
+ 	    ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     CCU_IF(ctx.localGoSize.parallelParam != 0)
@@ -121,7 +121,7 @@ static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::Loca
 		loops.loopParam[0] = loopCfg0;
  	    loops.loopParam[1] = loopCfg1;
  	    std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
- 	    ccu::LoopGroup group(ctx.localGoSize.parallelParam, offsetCfg, GROUP_NUM, grpLoops);
+ 	    ccu::LoopGroup group(ctx.localGoSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
     return CCU_SUCCESS;
 }

@@ -386,7 +386,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1DMem2MemContext &ctx, ccu::Lo
 
         loops.loopParam[0] = loopParam;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
-        ccu::LoopGroup group(paraCfg, offsetCfg, 1, grpLoops);
+        ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     // 第二个loopgroup，处理n和p部分数据
@@ -453,7 +453,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1DMem2MemContext &ctx, ccu::Lo
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
-        ccu::LoopGroup group(ctx.goSize.parallelParam, offsetCfg, 2, grpLoops);
+        ccu::LoopGroup group(ctx.goSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     return CCU_SUCCESS;

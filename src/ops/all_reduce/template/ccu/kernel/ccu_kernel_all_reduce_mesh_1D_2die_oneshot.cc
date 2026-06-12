@@ -250,7 +250,7 @@ static CcuResult ReduceLoopGroup(AllreduceMesh1D2DieOneShotContext &ctx,
 
         loops.loopParam[0] = loopParam;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
-        ccu::LoopGroup group(paraCfg, offsetCfg, 1, grpLoops);
+        ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     CCU_IF(goSize.parallelParam != 0) {
@@ -305,7 +305,7 @@ static CcuResult ReduceLoopGroup(AllreduceMesh1D2DieOneShotContext &ctx,
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
-        ccu::LoopGroup group(goSize.parallelParam, offsetCfg, MAX_LOOP_NUM, grpLoops);
+        ccu::LoopGroup group(goSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     return CCU_SUCCESS;
