@@ -263,8 +263,18 @@ HcclResult InsTempAllGatherNHR::RunStepNHR(const std::vector<ThreadHandle> &thre
 {
     AicpuNHRStepInfo stepInfo;
     CHK_RET(GetStepInfo(step, nSteps, stepInfo));
-    const ChannelInfo &channelRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[channelIdx];
-    const ChannelInfo &channelSend = channels.at(GetRankFromMap(stepInfo.toRank))[channelIdx];
+    u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
+    u32 toRankKey = GetRankFromMap(stepInfo.toRank);
+    CHK_PRT_RET(channels.count(fromRankKey) == 0 || channelIdx >= channels.at(fromRankKey).size() ||
+                channels.count(toRankKey) == 0 || channelIdx >= channels.at(toRankKey).size(),
+        HCCL_ERROR("[InsTempAllGatherNHR] rank[%u] invalid channel access, fromRankKey[%u] toRankKey[%u] channelIdx[%u] "
+                   "channels.size[%zu] fromChannelSize[%zu] toChannelSize[%zu]",
+            __func__, myRank_, fromRankKey, toRankKey, channelIdx, channels.size(),
+            channels.count(fromRankKey) ? channels.at(fromRankKey).size() : 0,
+            channels.count(toRankKey) ? channels.at(toRankKey).size() : 0),
+        HCCL_E_INTERNAL);
+    const ChannelInfo &channelRecv = channels.at(fromRankKey)[channelIdx];
+    const ChannelInfo &channelSend = channels.at(toRankKey)[channelIdx];
     HCCL_DEBUG("[InsTempAllGatherNHR] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] nSteps[%u] nSlices[%u]",
         myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
 

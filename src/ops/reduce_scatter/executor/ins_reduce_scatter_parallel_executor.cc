@@ -398,6 +398,9 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     TemplateResource templateAlgResIntra;
     TemplateResource templateAlgResInter;
     if (param.engine == COMM_ENGINE_CCU) {
+        CHK_PRT_RET(resCtx.ccuKernelNum.size() <= 1,
+            HCCL_ERROR("[%s] ccuKernelNum size[%zu] is less than 2", __func__, resCtx.ccuKernelNum.size()),
+            HCCL_E_INTERNAL);
         templateAlgResIntra.ccuKernels.insert(templateAlgResIntra.ccuKernels.end(),
                                               resCtx.ccuKernels.begin(),
                                               resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);

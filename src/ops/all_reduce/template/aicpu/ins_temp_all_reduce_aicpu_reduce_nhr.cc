@@ -73,6 +73,8 @@ HcclResult InsTempAllReduceAicpuReduceNHR::KernelRun(
 
     CHK_PRT_RET(
         templateRankSize_ == 0, HCCL_ERROR("[InsTempAllReduceAicpuReduceNHR] rankSize is 0"), HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        subCommRanks_.size() == 0, HCCL_ERROR("[InsTempAllReduceAicpuReduceNHR] subCommRanks_ is empty"), HcclResult::HCCL_E_INTERNAL);
 
     thread_ = templateResource.threads.at(0);
     buffInfo_ = tempAlgParams.buffInfo;

@@ -231,12 +231,13 @@ HcclResult InsTempAlltoAllVMesh1D::RunSendRecvByLoop(const std::vector<u32> &com
     for (u32 rankIdx = 0; rankIdx < commRanks.size(); rankIdx++) {
         u32 remoteRank = commRanks[rankIdx];
         // 取出本次通信对端的channel
-        if (channels.find(remoteRank) == channels.end()) {
+        auto it = channels.find(remoteRank);
+        if (it == channels.end()) {
             HCCL_ERROR("[InsTempAlltoAllVMesh1D][RunSendRecvByLoop] remoteRank[%u] "\
                 "does not exist in channels map!", remoteRank);
             return HCCL_E_PARA;
         }
-        const std::vector<ChannelInfo> &curChannels = channels.at(remoteRank);
+        const std::vector<ChannelInfo> &curChannels = it->second;
         u32 curValidChannelsSize = std::min(static_cast<u32>(curChannels.size()), channelsPerRank_);
         // send数据按照channel分片
         CHK_RET(CalcDataSplitByPortGroupCommon(tempAlgParams.sendCounts[remoteRank], dataTypeSize_, curChannels,

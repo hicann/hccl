@@ -404,6 +404,7 @@ HcclResult InsTempBroadcastMesh1DTwoShot::KernelRun(const OpParam& param, const 
     dataTypeSize_  = DATATYPE_SIZE_TABLE[dataType_];
     opMode_            = param.opMode;
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
+    CHK_PRT_RET(templateRankSize_ == 0, HCCL_ERROR("[%s] templateRankSize_ is 0", __func__), HCCL_E_INTERNAL);
 
     if (!enableRemoteMemAccess_) {
         srcBufferType_ = BufferType::HCCL_BUFFER;

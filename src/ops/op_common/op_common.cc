@@ -763,8 +763,11 @@ HcclResult HcclAivKernelEntranceLaunch(HcclComm comm, OpParam &param, const std:
         AivParamStorage *aivParam = nullptr;
         HcclResult ret = GetAivParamStorageByComm(comm, &aivParam);
         if (ret == HCCL_SUCCESS && aivParam != nullptr) {
-        numBlocksLimit = aivParam->aivCoreLimit;
-    }
+            numBlocksLimit = aivParam->aivCoreLimit;
+        } else {
+            HCCL_ERROR("[%s] GetAivParamStorageByComm faile, ret[%d], aivParam[%p]", __func__, ret, aivParam);
+            return HCCL_E_INTERNAL;
+        }
     } else {
         ACLCHECK(aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &numBlocksLimit));
     }

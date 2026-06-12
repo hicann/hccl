@@ -829,7 +829,7 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         TemplateResource intraTempAlgRes;
         TemplateResource interTempAlgRes;
         CHK_RET(PrepareResForTemplate(tempAlgIntra, tempAlgInter, tempAlgIntra1));
-        PrepareResForTemplateResource(param, resCtx, intraTempAlgRes, interTempAlgRes, true);
+        CHK_RET(PrepareResForTemplateResource(param, resCtx, intraTempAlgRes, interTempAlgRes, true));
         //server 间地址偏移
         for (int i = 0; i < temp0HierarchyInfo_[0].size(); i++) {
             tempVirtRankMapInter_.insert(std::make_pair(temp0HierarchyInfo_[0][i], i));
@@ -842,8 +842,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         CalcInterDataAllRank(currCountPart1, interLocalRankSize_, intraLocalRankSize_, nhrPartDataMap_);
         // 第一步开始前同步
         CHK_RET(PreSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnTemplates_));
-        RunTemplateIntra0(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountIntraStage0, tempAlgParamsIntra0, intraTempAlgRes, tempAlgIntra);
-        RunTemplateInter1(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountInterStage0, tempAlgParamsInter1, interTempAlgRes, tempAlgInter);
+        CHK_RET(RunTemplateIntra0(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountIntraStage0, tempAlgParamsIntra0, intraTempAlgRes, tempAlgIntra));
+        CHK_RET(RunTemplateInter1(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountInterStage0, tempAlgParamsInter1, interTempAlgRes, tempAlgInter));
         // 第一步做完后回到主流做尾同步
         CHK_RET(PostSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnMain_));
 
@@ -856,8 +856,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
         // 第二步开始前同步
         CHK_RET(PreSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnTemplates_));
-        RunTemplateInter0(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountInterStage1, tempAlgParamsInter0, interTempAlgRes, tempAlgInter);
-        RunTemplateIntra1(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountIntraStage1, tempAlgParamsIntra1, intraTempAlgRes, tempAlgIntra);
+        CHK_RET(RunTemplateInter0(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountInterStage1, tempAlgParamsInter0, interTempAlgRes, tempAlgInter));
+        CHK_RET(RunTemplateIntra1(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountIntraStage1, tempAlgParamsIntra1, intraTempAlgRes, tempAlgIntra));
         // 尾同步
         CHK_RET(PostSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnMain_));
 
@@ -872,12 +872,12 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         TemplateResource intraTempAlgRes1;
         TemplateResource interTempAlgRes1;
         CHK_RET(PrepareResForTemplate23(tempAlgIntra, tempAlgIntra1, tempAlgInter1));
-        PrepareResForTemplateResource(param, resCtx, intraTempAlgRes1, interTempAlgRes1, false);
+        CHK_RET(PrepareResForTemplateResource(param, resCtx, intraTempAlgRes1, interTempAlgRes1, false));
 
         // 第三步开始前同步
         CHK_RET(PreSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnTemplates_));
-        RunTemplateInter01(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountInterStage1, tempAlgParamsInter01, interTempAlgRes1, tempAlgInter1);
-        RunTemplateIntra11(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountIntraStage1, tempAlgParamsIntra11, intraTempAlgRes1, tempAlgIntra1);
+        CHK_RET(RunTemplateInter01(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountInterStage1, tempAlgParamsInter01, interTempAlgRes1, tempAlgInter1));
+        CHK_RET(RunTemplateIntra11(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountIntraStage1, tempAlgParamsIntra11, intraTempAlgRes1, tempAlgIntra1));
         // 尾同步
         CHK_RET(PostSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnMain_));
 
@@ -890,8 +890,8 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
         // 第四步开始前同步
         CHK_RET(PreSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnTemplates_));
-        RunTemplateIntra01(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountIntraStage0, tempAlgParamsIntra01, intraTempAlgRes1, tempAlgIntra1);
-        RunTemplateInter11(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountInterStage0, tempAlgParamsInter11, interTempAlgRes1, tempAlgInter1);
+        CHK_RET(RunTemplateIntra01(param, resCtx, dataOffset0, currCountPart0, scratchOffsetCountIntraStage0, tempAlgParamsIntra01, intraTempAlgRes1, tempAlgIntra1));
+        CHK_RET(RunTemplateInter11(param, resCtx, dataOffset1, currCountPart1, scratchOffsetCountInterStage0, tempAlgParamsInter11, interTempAlgRes1, tempAlgInter1));
         // 第四步做完后回到主流做尾同步
         CHK_RET(PostSyncInterThreads(mainThread_, templateMainThreads_, syncNotifyOnMain_));
 

@@ -210,10 +210,10 @@ HcclResult InsTempScatterNHR::PostCopy(
     const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const
 {
     u32 myAlgRank;
+    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     u32 curSliceSize = tempAlgParams.tailSize !=0 && myAlgRank == templateRankSize_ - 1? tempAlgParams.tailSize : processSize_;
     u32 curCount = curSliceSize / dataTypeSize;
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         u64 srcOffset = r * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff +
                         myAlgRank * tempAlgParams.sliceSize;

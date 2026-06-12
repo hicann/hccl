@@ -255,8 +255,15 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const RankSliceInfo &sliceInfoVec,
         AicpuNHRStepInfo stepInfo;
         CHK_RET(GetAllGatherStepInfo(step, nSteps, stepInfo));
 
-        const ChannelInfo &linkRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
-        const ChannelInfo &linkSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
+        u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
+        u32 toRankKey = GetRankFromMap(stepInfo.toRank);
+        auto itRecv = channels.find(fromRankKey);
+        auto itSend = channels.find(toRankKey);
+        CHK_PRT_RET(itRecv == channels.end() || itSend == channels.end(), 
+            HCCL_ERROR("[%s] rank[%u] channel not found, fromRankKey[%u] found[%d] toRankKey[%u] found[%d]",
+            __func__, myRank_, fromRankKey, itRecv != channels.end(), toRankKey, itSend != channels.end()), HCCL_E_INTERNAL);
+        const ChannelInfo &linkRecv = itRecv->second[0];
+        const ChannelInfo &linkSend = itSend->second[0];
 
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
@@ -324,7 +331,11 @@ HcclResult InsTempBroadcastNHR::BatchTxRx(AicpuNHRStepInfo &stepInfo, const std:
 HcclResult InsTempBroadcastNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
     const RankSliceInfo &sliceInfoVec, u64 memOffset) const
 {
-    const ChannelInfo &linkSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
+    u32 toRankKey = GetRankFromMap(stepInfo.toRank);
+    auto itSend = channels.find(toRankKey);
+    CHK_PRT_RET(itSend == channels.end(),
+        HCCL_ERROR("[%s] rank[%u] toRankKey[%u] not found in channels", __func__, myRank_, toRankKey), HCCL_E_INTERNAL);
+    const ChannelInfo &linkSend = itSend->second[0];
     std::vector<DataSlice> txSrcSlices;
     std::vector<DataSlice> txDstSlices;
     for (u32 i = 0; i < stepInfo.txSliceIdxs.size(); i++) {
@@ -352,7 +363,11 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
     const RankSliceInfo &sliceInfoVec, u64 memOffset) const
 {
     HCCL_INFO("[InsTempBroadcastNHR]BatchRecv entry:[%d], root:[%u]", myRank_, root_);
-    const ChannelInfo &linkRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
+    u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
+    auto itRecv = channels.find(fromRankKey);
+    CHK_PRT_RET(itRecv == channels.end(),
+        HCCL_ERROR("[%s] rank[%u] fromRankKey[%u] not found in channels", __func__, myRank_, fromRankKey), HCCL_E_INTERNAL);
+    const ChannelInfo &linkRecv = itRecv->second[0];
     std::vector<DataSlice> rxSrcSlices;
     std::vector<DataSlice> rxDstSlices;
     for (u32 i = 0; i < stepInfo.rxSliceIdxs.size(); i++) {
@@ -379,8 +394,15 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
 HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
     const RankSliceInfo &sliceInfoVec, u64 memOffset)const
 {
-    const ChannelInfo &linkSend = channels.at(GetRankFromMap(stepInfo.toRank))[0];
-    const ChannelInfo &linkRecv = channels.at(GetRankFromMap(stepInfo.fromRank))[0];
+    u32 toRankKey = GetRankFromMap(stepInfo.toRank);
+    u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
+    auto itSend = channels.find(toRankKey);
+    auto itRecv = channels.find(fromRankKey);
+    CHK_PRT_RET(itSend == channels.end() || itRecv == channels.end(),
+        HCCL_ERROR("[%s] rank[%u] channel not found, toRankKey[%u] found[%d] fromRankKey[%u] found[%d]",
+            __func__, myRank_, toRankKey, itSend != channels.end(), fromRankKey, itRecv != channels.end()), HCCL_E_INTERNAL);
+    const ChannelInfo &linkSend = itSend->second[0];
+    const ChannelInfo &linkRecv = itRecv->second[0];
     TxRxChannels linkSendRecv = {linkSend, linkRecv};
 
     std::vector<DataSlice> txSrcSlices;

@@ -420,6 +420,9 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     TemplateDataParams tempAlgParamsIntra1;
 
     if (param.engine == COMM_ENGINE_CCU) {
+        CHK_PRT_RET(resCtx.ccuKernelNum.size() <= 1,
+            HCCL_ERROR("[InsV2AllGatherParallelExecutor] ccuKernelNum size[%zu] is less than 2",
+            resCtx.ccuKernelNum.size()), HCCL_E_INTERNAL);
         intraTempAlgRes.ccuKernels.insert(intraTempAlgRes.ccuKernels.end(),
                                               resCtx.ccuKernels.begin(),
                                               resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);

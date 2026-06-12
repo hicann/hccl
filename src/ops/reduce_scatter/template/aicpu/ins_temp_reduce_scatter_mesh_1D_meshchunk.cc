@@ -74,6 +74,8 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::KernelRun(const OpParam& param,
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
+    CHK_PRT_RET(templateRankSize_ == 0, HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk] templateRankSize_ is 0"),
+        HCCL_E_INTERNAL);
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], rankIdx_));
     RankSliceInfo sliceInfoVec;
     CHK_RET(CalcSliceInfoVec(tempAlgParams.sliceSize, sliceInfoVec));
