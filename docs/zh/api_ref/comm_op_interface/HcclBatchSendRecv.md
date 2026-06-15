@@ -38,7 +38,7 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 | stream | 输入 | 本rank所使用的stream。 |
 
 ### 数据类型说明
- 	 
+
 - 针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。
 - 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
 - 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
@@ -62,7 +62,7 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 ## 调用示例
 
 ```c
-// 申请集合通信操作的 Device 内存
+// 申请集合通信操作的Device内存
 void *sendBuf = nullptr;
 void *recvBuf = nullptr;
 uint64_t count = 8;
@@ -79,8 +79,8 @@ HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
 aclrtStream stream;
 aclrtCreateStream(&stream);
 
-// 执行 Send/Recv，将数据发送至下一节点，同时接收上一节点的数据
-// HcclBatchSendRecv 可以同时下发本 rank 上的多个收发任务
+// 执行Send/Recv，将数据发送至下一节点，同时接收上一节点的数据
+// HcclBatchSendRecv可以同时下发本rank上的多个收发任务
 uint32_t next = (deviceId + 1) % count;
 uint32_t prev = (deviceId - 1 + count) % count;
 HcclSendRecvItem sendRecvInfo[2];
@@ -92,8 +92,8 @@ HcclBatchSendRecv(sendRecvInfo, 2, hcclComm, stream);
 ACLCHECK(aclrtSynchronizeStream(stream));
 
 // 释放资源
-aclrtFree(sendBuf);          // 释放 Device 侧内存
-aclrtFree(recvBuf);          // 释放 Device 侧内存
+aclrtFree(sendBuf);          // 释放Device侧内存
+aclrtFree(recvBuf);          // 释放Device侧内存
 aclrtDestroyStream(stream);  // 销毁任务流
 HcclCommDestroy(hcclComm);   // 销毁通信域
 ```

@@ -6,12 +6,12 @@
 
 rank size是2的幂时，NB算法的通信过程如下图所示（以rank size等于4为例）。
 
-**图 1**  rank size为4时NB算法通信过程
+**图1**  rank size为4时NB算法通信过程
 ![](figures/nb_algo_4rank_flow.png "rank-size为4时NB算法通信过程")
 
 rank size不是2的幂时，NB算法的通信过程如下图所示（以rank size等于5为例）。
 
-**图 2**  rank size为5时NB算法通信过程  
+**图2**  rank size为5时NB算法通信过程  
 ![](figures/nb_algo_5rank_flow.png "rank-size为5时NB算法通信过程")
 
 对于ReduceScatter和AllGather算子，通信步数均为$⌈log_2⁡N⌉$。
@@ -23,7 +23,7 @@ NB算法同样适用于“星型”和“胖树”拓扑，算法的时间复杂
 
 ## 耗时计算
 
-**表 1**  NB算法中各操作耗时
+**表1**  NB算法中各操作耗时
 
 | 操作          | 耗时                                                         |
 | ------------- | ------------------------------------------------------------ |

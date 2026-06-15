@@ -10,7 +10,7 @@
 
 以AllGather为例，Server间通信选择Ring算法，Server内通信选择FullMesh算法，如下图所示。
 
-**图 1**  AllGather算子Pipeline算法示意图
+**图1**  AllGather算子Pipeline算法示意图
 
 ![](figures/pipeline.png)
 
@@ -18,7 +18,7 @@
 
 在Rank0视角上，全部传输任务编排如下图所示，LocalCopy操作仅在输入输出内存不同的场景中执行，用于将数据块从输入内存移动到输出内存，在输入输出内存相同场景中，则无需执行该操作。
 
-**图 2**  AllGather算子Pipeline算法时序示意图
+**图2**  AllGather算子Pipeline算法时序示意图
 
 ![](figures/allgather_pipeline.png)
 

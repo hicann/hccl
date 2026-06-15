@@ -96,10 +96,10 @@ rank table配置文件说明如下所示：
 > [!NOTE]说明
 > 如果组网中存在多个超节点，请将属于同一超节点内的AI Server信息配置在一起。假设有两个超节点，标识分别为“0”和“1”，请先配置“0”中的AI Server信息，再配置“1”中的AI Server信息，不支持“0”中的AI Server信息与“1”中的AI Server信息交叉配置。
 
-**图 1**  借轨通信切换示例<a id="figure1"></a>  
+**图1**  借轨通信切换示例<a id="figure1"></a>  
 ![](figures/borrow_comm_switch_example.png "借轨通信切换示例")
 
-**图 2**  同一NPU仅支持一次借轨示例<a id="figure2"></a>  
+**图2**  同一NPU仅支持一次借轨示例<a id="figure2"></a>  
 ![](figures/npu_single_borrow_example.png "同一NPU仅支持一次借轨示例")
 
 ## 典型集群组网（即AI Server模式）

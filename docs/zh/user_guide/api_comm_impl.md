@@ -105,7 +105,7 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
         环境变量HCCL_IF_IP的优先级高于HCCL_SOCKET_IFNAME。如果不配置HCCL_IF_IP或HCCL_SOCKET_IFNAME，系统将按照如下优先级自动选择网卡。若当前节点选择的网卡与root节点选择的网卡链路不通，将导致HCCL建链失败。
 
         ```text
-        docker/lo以外网卡(网卡名称的字典序升序) > docker 网卡 > lo网卡
+        docker/lo以外网卡(网卡名称的字典序升序) > docker网卡 > lo网卡
         ```
 
     3. 在root节点调用[HcclGetRootInfo](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/HcclGetRootInfo.md)接口，生成root节点rank标识信息“rootInfo”，包括device ip、device id等信息。
@@ -178,7 +178,7 @@ config.hcclBufferSize = 50;
 strcpy(config.hcclCommName, "comm_1");
 // 初始化子通信域
 HcclComm hcclComm;
-uint32_t rankIds[4] = {0, 1, 2, 3};  // 子通信域的 Rank 列表
+uint32_t rankIds[4] = {0, 1, 2, 3};  // 子通信域的Rank列表
 HcclCreateSubCommConfig(&globalHcclComm, 4, rankIds, 1, devId, &config, &hcclComm);
 ```
 

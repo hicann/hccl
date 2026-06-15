@@ -81,7 +81,7 @@ uint64_t recvCount = 1;  // 每个节点接收的数据数量
 uint64_t sendSize = rankSize * recvCount * sizeof(float);
 uint64_t recvSize = recvCount * sizeof(float);
 
-// 申请集合通信操作的 Device 内存
+// 申请集合通信操作的Device内存
 void *sendBuf = nullptr, *recvBuf = nullptr;
 aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
 aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
@@ -90,14 +90,14 @@ aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
 HcclComm hcclComm;
 HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
 
-// 执行 ReduceScatter，将所有 rank 的 sendBuf 相加后，再把结果按照 rank_id 顺序均匀分散到各个 rank 的 recvBuf
+// 执行ReduceScatter，将所有rank的sendBuf相加后，再把结果按照rank_id顺序均匀分散到各个rank的recvBuf
 HcclReduceScatter(sendBuf, recvBuf, recvCount, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream);
 // 阻塞等待任务流中的集合通信任务执行完成
 aclrtSynchronizeStream(stream);
 
 // 释放资源
-aclrtFree(sendBuf);          // 释放 Device 侧内存
-aclrtFree(recvBuf);          // 释放 Device 侧内存
+aclrtFree(sendBuf);          // 释放Device侧内存
+aclrtFree(recvBuf);          // 释放Device侧内存
 aclrtDestroyStream(stream);  // 销毁任务流
 HcclCommDestroy(hcclComm);   // 销毁通信域
 ```

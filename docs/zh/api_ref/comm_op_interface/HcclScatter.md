@@ -67,9 +67,9 @@ uint64_t recvCount = 1;
 size_t sendSize = sendCount * sizeof(float);
 size_t recvSize = recvCount * sizeof(float);
 
-// 申请 Device 内存用于接收 Scatter 结果
+// 申请Device内存用于接收Scatter结果
 ACLCHECK(aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY));
-// 在 root 节点，申请 Device 内存用于存放发送数据
+// 在root节点，申请Device内存用于存放发送数据
 if (device == rootRank) {
     ACLCHECK(aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY));
 }
@@ -83,14 +83,14 @@ HcclCommInitRootInfo(rankSize, &rootInfo, device, &hcclComm);
 aclrtStream stream;
 aclrtCreateStream(&stream);
 
-// 执行 Scatter，将通信域内 root 节点的数据均分并散布至其他 rank
+// 执行Scatter，将通信域内root节点的数据均分并散布至其他rank
 HcclScatter(sendBuf, recvBuf, recvCount, HCCL_DATA_TYPE_FP32, rootRank, hcclComm, stream);
 // 阻塞等待任务流中的集合通信任务执行完成
 aclrtSynchronizeStream(stream);
 
 // 释放资源
-aclrtFree(sendBuf);          // 释放 Device 侧内存
-aclrtFree(recvBuf);          // 释放 Device 侧内存
+aclrtFree(sendBuf);          // 释放Device侧内存
+aclrtFree(recvBuf);          // 释放Device侧内存
 aclrtDestroyStream(stream);  // 销毁任务流
 HcclCommDestroy(hcclComm);   // 销毁通信域
 ```

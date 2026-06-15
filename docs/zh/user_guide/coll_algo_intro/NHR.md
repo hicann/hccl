@@ -10,12 +10,12 @@ NHR（Nonuniform Hierarchical Ring，非均衡的层次环）算法对N个节点
 
 rank size是2的整数次幂时（以rank size等于4为例），NHR算法的通信过程如下图所示，可以看到过程中每一步的收发数据份数均为1，因为地址连续的数据切片能够被连续发送。
 
-**图 1**  rank size为4时NHR算法通信过程 
+**图1**  rank size为4时NHR算法通信过程 
 ![](figures/nhr_algo_4rank_flow.png "rank-size为4时NHR算法通信过程")
 
 rank size不是2的整数次幂时（以rank size等于5为例），NHR算法的通信过程如下图所示，大部分的数据切片可以连续收发，只有少部分卡间的数据切片是离散的。
 
-**图 2**  rank size为5时NHR算法通信过程 
+**图2**  rank size为5时NHR算法通信过程 
 ![](figures/nhr_algo_5rank_flow.png "rank-size为5时NHR算法通信过程")
 
 NHR算法同样适用于“星型”或“胖树”拓扑互联，算法的时间复杂度是$⌈log_2⁡N⌉$。

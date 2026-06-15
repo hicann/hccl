@@ -71,7 +71,7 @@ rankId: 7, output: [ 0 8 16 24 32 40 48 56 ]
     ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
     ACLCHECK(aclrtMalloc(&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
     
-    // 申请 Host 内存用于存放输入数据，并将内容初始化为：0~7
+    // 申请Host内存用于存放输入数据，并将内容初始化为：0~7
     void *hostBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
     float *tmpHostBuff = static_cast<float *>(hostBuf);
@@ -97,7 +97,7 @@ rankId: 7, output: [ 0 8 16 24 32 40 48 56 ]
     aclrtStream stream;
     ACLCHECK(aclrtCreateStream(&stream));
     
-    // 执行 AllReduce，将通信域内所有节点的 sendBuf 进行相加后，再把结果发送到所有节点的 recvBuf
+    // 执行AllReduce，将通信域内所有节点的sendBuf进行相加后，再把结果发送到所有节点的recvBuf
     HCCLCHECK(HcclAllReduce(sendBuf, recvBuf, count, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream));
     // 阻塞等待任务流中的集合通信任务执行完成
     ACLCHECK(aclrtSynchronizeStream(stream));
@@ -106,9 +106,9 @@ rankId: 7, output: [ 0 8 16 24 32 40 48 56 ]
 5. 释放资源。
 
     ```c
-    ACLCHECK(aclrtFree(sendBuf));          // 释放 Device 侧内存
-    ACLCHECK(aclrtFree(recvBuf));          // 释放 Device 侧内存
-    ACLCHECK(aclrtFreeHost(hostBuf));      // 释放 Host 侧内存
+    ACLCHECK(aclrtFree(sendBuf));          // 释放Device侧内存
+    ACLCHECK(aclrtFree(recvBuf));          // 释放Device侧内存
+    ACLCHECK(aclrtFreeHost(hostBuf));      // 释放Host 侧内存
     ACLCHECK(aclrtDestroyStream(stream));  // 销毁任务流
     HCCLCHECK(HcclCommDestroy(hcclComm));  // 销毁通信域
     ACLCHECK(aclFinalize());               // 设备去初始化
