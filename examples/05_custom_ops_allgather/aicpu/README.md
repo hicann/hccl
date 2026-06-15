@@ -205,5 +205,4 @@ rankId：1, input: [1 1]
 rankId: 0, input: [0 0]
 rankId: 0, output: [ 0 0 1 1 ]
 rankId: 1, output: [ 0 0 1 1 ]
-AllGatherCustom test completed successfully
 ```
