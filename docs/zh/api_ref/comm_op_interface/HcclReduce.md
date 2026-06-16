@@ -39,7 +39,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
 | sendBuf | 输入 | 源数据buffer地址。 |
 | recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。 |
 | count | 输入 | 参与reduce操作的数据个数，比如只有一个int32数据参与，则count=1。 |
-| dataType | 输入 | reduce操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、int16、int32、int64、uint64、float16、float32、float64、bfp16。针对int64、uint64、float64，当前仅支持节点内通信。<br>针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。<br>针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。需要注意，针对int64数据类型，性能会有一定的劣化。<br>针对Atlas 训练系列产品，支持数据类型：int8、int32、int64、float16、float32。 |
+| dataType | 输入 | reduce操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/9.1.0-beta.3/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、int16、int32、int64、uint64、float16、float32、float64、bfp16。针对int64、uint64、float64，当前仅支持节点内通信。<br>针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。<br>针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。需要注意，针对int64数据类型，性能会有一定的劣化。<br>针对Atlas 训练系列产品，支持数据类型：int8、int32、int64、float16、float32。 |
 | op | 输入 | reduce的操作类型，目前支持操作类型为sum、prod、max、min。<br> 说明： 针对Ascend 950PR/Ascend 950DT，支持的操作类型为sum、max、min。<br>针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，当前版本“prod”操作不支持int16、bfp16数据类型。<cann-filter npu-type="910"><br>针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，当前版本“prod”操作不支持int16、bfp16数据类型。</cann-filter> |
 | root | 输入 | 作为reduce root的rank id。 |
 | comm | 输入 | 集合通信操作所在的通信域。 |
@@ -47,7 +47,7 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/9.1.0-beta.3/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
 
 ## 约束说明
 

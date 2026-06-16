@@ -17,6 +17,6 @@
 
 - [系统约束与限制](constraints.md)
 - [API参考](api_ref.md)
-  - [通信域管理接口（C语言）<a name="sub_menu"></a>](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/README.md)
-  - [通信域管理接口（Python语言）<a name="sub_menu"></a>](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_python/README.md)
+  - [通信域管理接口（C语言）<a name="sub_menu"></a>](https://gitcode.com/cann/hcomm/blob/9.1.0-beta.3/docs/zh/api_ref/comm_mgr_c/README.md)
+  - [通信域管理接口（Python语言）<a name="sub_menu"></a>](https://gitcode.com/cann/hcomm/blob/9.1.0-beta.3/docs/zh/api_ref/comm_mgr_python/README.md)
   - [通信算子接口<a name="sub_menu"></a>](../api_ref/comm_op_interface/README.md)

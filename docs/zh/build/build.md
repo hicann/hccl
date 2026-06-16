@@ -174,7 +174,7 @@ bash build.sh --ut
       配套使用Ascend HDK 25.5.T2.B001及以上版本，并通过该Ascend HDK自带的npu-smi工具关闭验签。以下为参考命令，需要以root用户在物理机上执行（以device 0为例）。
 
       ```shell
-      npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 使能验签配置
+      npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 开启验签配置
       npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 关闭客户自定义验签
       ```
 

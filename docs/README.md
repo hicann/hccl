@@ -1,7 +1,7 @@
 # HCCL文档总览
 
 - [集合通信库用户指南](./zh//user_guide/README.md)：介绍HCCL基本概念、如何使用HCCL API进行集合通信功能的开发，如何开发通信算子，以及故障处理与常见配置。
-- [通信算子开发指南](https://gitcode.com/cann/hcomm/blob/master/docs/zh/comm_op_dev_guide/README.md)：介绍如何基于HCOMM通信基础库提供的相关接口进行通信算子的开发。
+- [通信算子开发指南](https://gitcode.com/cann/hcomm/blob/9.1.0-beta.3/docs/zh/comm_op_dev_guide/README.md)：介绍如何基于HCOMM通信基础库提供的相关接口进行通信算子的开发。
 
 ## 技术文章
 

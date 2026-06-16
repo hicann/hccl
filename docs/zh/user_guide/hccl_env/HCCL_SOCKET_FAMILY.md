@@ -21,6 +21,11 @@
 
   例如，该环境变量指定为IPv6协议，但Device侧只存在IPv4协议的网卡，则实际会使用IPv4协议的网卡。
 
+针对Ascend 950PR/Ascend 950DT：该环境变量不支持配置Device侧通信网卡IP协议版本，该机型Device侧网卡IP协议的使用情况如下：
+
+- Device侧网卡使用UB协议通信，只支持使用IPv6协议进行Socket建链。
+- Device侧网卡使用UBoE协议通信，只支持使用IPv4协议进行Socket建链。
+
 ## 配置示例
 
 ```bash

@@ -71,7 +71,7 @@
 | edge_list |  | 必选。<br>物理连接边列表。 |
 |  | net_layer | 必选。<br>当前物理链路所属的网络层次，取值范围：[0,7]。 |
 |  | link_type | 必选。<br>当前物理链路的连接类型，支持以下取值：<br>  - PEER2PEER<br>  - PEER2NET |
-|  | protocols | 必选。<br>当前链路支持的协议列表，支持以下取值：<br>  - UB-CTP<br>  - UB_TP<br>  - ROCE<br>  - HCCS<br>  - TCP<br>  - UB_MEM<br>  - UB_OE |
+|  | protocols | 必选。<br>当前链路支持的协议列表，支持以下取值：<br>  - UB_CTP<br>  - UB_TP<br>  - ROCE<br>  - HCCS<br>  - TCP<br>  - UB_MEM<br>  - UBOE |
 |  | local_a | 必选。<br>通信链路一端NPU的物理ID。<br>该ID须存在于“peer_list”中。 |
 |  | local_a_ports | 必选。<br>当前层次的通信链路在“local_a”对应的NPU中使用的端口列表，字符串类型，长度为1~32，列表中每个值的格式为：Die ID/端口ID。<br>例如："local_a_ports": ["1/0"]，代表Die1的0号端口。 |
 |  | local_b | 必选。<br>通信链路另一端NPU的物理ID。<br>该ID须存在于“peer_list”中。 |
@@ -95,6 +95,7 @@
             "local_id": 0,
             "device_id": 0,
             "device_port": 16666,
+            "host_port": 60001,
             "level_list":  [
                 {
                     "net_layer": 0,                 // Server内连接
@@ -134,6 +135,7 @@
             "local_id": 1,
             "device_id": 1,
             "device_port": 16667,
+            "host_port": 60002,
             "level_list": [
                 {
                     "net_layer": 0,
@@ -172,6 +174,7 @@
             "local_id": 0,
             "device_id": 0,
             "device_port": 16668,
+            "host_port": 60003,
             "level_list": [
                 {
                     "net_layer": 0,
@@ -211,6 +214,7 @@
             "local_id": 1,
             "device_id": 1,
             "device_port": 16669,
+            "host_port": 60004,
             "level_list": [
                 {
                     "net_layer": 0,
@@ -261,6 +265,7 @@ rank table文件配置说明如下所示：
 |  | local_id |  |  | 必选。<br>NPU在当前AI Server中的唯一标识。请从0开始配置，取值范围：[0,64]。 |
 |  | device_id |  |  | 必选。<br>NPU的物理ID，取值范围：[0,64]。 |
 |  | device_port |  |  | 可选。<br>Device网卡的通信端口，取值范围为[1,65535]，需要确保指定的端口未被其他进程占用。需要注意，[1,1023]为系统保留端口，应避免使用这些端口。<br>单卡多进程的业务场景下，建议配置此字段，并且不同的业务进程需要设置不同的端口号，否则业务可能会因为端口冲突运行失败。 |
+|  | host_port |  |  | 可选。<br>Host网卡的通信端口，取值范围为[1,65535]，需要确保指定的端口未被其他进程占用。需要注意，[1,1023]为系统保留端口，应避免使用这些端口。<br>Host网卡集合通信的业务场景下，建议配置此字段，并且不同的业务进程需要设置不同的端口号，否则业务可能会因为端口冲突运行失败。 |
 |  | level_list |  |  | 必选。<br>rank在每个网络层次的资源信息。<br>此列表下数组长度不能超过8。 |
 |  |  | net_layer |  | 必选。<br>网络层次，取值范围：[0,7]。<br>net_layer需要从0开始编号，以升序的形式排列。 |
 |  |  | net_instance_id |  | 必选。<br>该网络层次下的实例ID，用户自定义，同一个net_layer下保持唯一，长度不超过1024。 |

@@ -22,7 +22,7 @@
 
 - [HCCL_ENTRY_LOG_ENABLE](../hccl_env/HCCL_ENTRY_LOG_ENABLE.md)
 
-  HCCL算子级入参记录开关，如果集群行为一致性问题无法通过其他手段锁定异常原因时，可以使能此环境变量，记录不同rank上的集合通信行为，通过卡间横向比对辅助找到行为差异引入点。
+  HCCL算子级入参记录开关，如果集群行为一致性问题无法通过其他手段锁定异常原因时，可以启用此环境变量，记录不同rank上的集合通信行为，通过卡间横向比对辅助找到行为差异引入点。
 
 - [HCCL_DEBUG_CONFIG](../hccl_env/HCCL_DEBUG_CONFIG.md)
 

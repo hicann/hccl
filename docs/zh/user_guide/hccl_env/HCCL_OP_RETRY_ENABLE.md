@@ -37,12 +37,13 @@
 
 - 开启重执行特性后会有一定的性能损失，针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，Server间与超节点间，会经过光互联域，稳定性较低，建议开启HCCL重执行。
 - 此环境变量在各个超节点上的配置需要保持一致，否则超节点间建链会超时。
+- 重执行开启场景不建议通信域数量超过5个，否则可能会由于通信算子将AI CPU核占满导致AI CPU计算算子无法执行，引起业务异常。
 
 ## 重执行使用须知
 
 开启HCCL重执行特性时，需要满足以下约束条件，约束条件不满足时重执行会失败。
 
-1. 通信算子的展开模式为AI_CPU。重执行特性仅在AI_CPU调度模式下使能，需要通过环境变量[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)设置，非AI_CPU调度模式下会采用无重执行流程。
+1. 通信算子的展开模式为AI_CPU。重执行特性仅在AI_CPU调度模式下支持，需要通过环境变量[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)设置，非AI_CPU调度模式下会采用无重执行流程。
 
     ```bash
     export HCCL_OP_EXPANSION_MODE="AI_CPU"
