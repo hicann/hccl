@@ -28,7 +28,7 @@ constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
 constexpr u32 AIV_TOPO_BUFF_LEN = 8 * 1024;
 constexpr u32 AIV_FLAG_ADDR_OFFSET = 40 * 1024;
 constexpr u32 AIV_FLAG_AREA_SIZE = 1000 * 1024;
-constexpr u32 AIV_TAG_BUFF_LEN = 33 * 1024 * 1024;
+constexpr u32 AIV_TAG_BUFF_LEN = 65 * 1024 * 1024;
 
 constexpr u32 AIV_MAX_CCL_LOOP_NUM = 16;
 
