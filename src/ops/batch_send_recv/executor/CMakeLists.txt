@@ -10,6 +10,7 @@
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_batch_send_recv_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_batch_send_recv_sole_executor.cc
 )
 
 target_sources(hccl PRIVATE

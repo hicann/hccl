@@ -27,5 +27,19 @@ SelectorStatus BatchSendRecvAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetL
     return SelectorStatus::MATCH;
 }
 
+SelectorStatus BatchSendRecvAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
+                                                      const OpParam &opParam,
+                                                      const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
+                                                      std::string &selectAlgName) const
+{
+    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
+    (void)opParam;
+    (void)configAlgMap;
+
+    selectAlgName = "InsBatchSendRecvDPU";
+    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, 18, BatchSendRecvAutoSelector);
 } // namespace ops_hccl
