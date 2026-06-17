@@ -129,7 +129,7 @@ static CcuResult DoAllGather(AllGatherMesh1DMem2MemContext &ctx, const ccu::Loca
     CCU_IF(ctx.isInputOutputEqual == 0)
     {
         // 处理本卡情况
-        CCU_CHK_RET(GroupCopy(ctx, ctx.localDst, ctx.src_loccopy, ctx.goSize));
+        CCU_CHK_RET(GroupCopy(ctx, ctx.localDst, src, ctx.goSize));
     }
 
     for (uint32_t i = 0; i < eventNum; i++) {
@@ -160,10 +160,6 @@ static CcuResult DoRepeatAllGather(AllGatherMesh1DMem2MemContext &ctx)
     src.addr = ctx.input;
     src.addr += ctx.currentRankSliceInputOffset;
     src.token = ctx.token[arg->rankId];
-
-    ctx.src_loccopy.addr = ctx.input;
-    ctx.src_loccopy.addr += ctx.currentRankSliceInputOffset;
-    ctx.src_loccopy.token = ctx.token[arg->rankId];
 
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
         if (rankIdx == arg->rankId) {
