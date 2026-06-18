@@ -95,4 +95,8 @@
     <file_info value="lib64" copy_type="delivery" dst_path="$(TARGET_ENV)/lib64" install_path="$(TARGET_ENV)/lib64" install_type="all" install_mod="550">
         <file value="libes_hccl.so" file_type="shared"/>
     </file_info>
+    <dir_info value="ops_hccl" install_path="ops_hccl" install_mod="550" install_type="all">
+        <path value="python" install_mode="750"/>
+        <path value="python/site-packages" install_mode="750"/>
+    </dir_info>
 </block>

@@ -316,6 +316,28 @@ clear_kernel_cache_dir() {
     fi
 }
 
+install_es_whl() {
+    local _whl_dir="${WHL_INSTALL_DIR_PATH}"
+    local _find_dir="${common_parse_dir}/ops_hccl/es_packages/whl"
+    local _whl_file=""
+    _whl_file=$(find "${_find_dir}" -maxdepth 1 -name "es_hccl-*.whl" -type f 2>/dev/null | head -n 1)
+    if [ -z "${_whl_file}" ]; then
+        log "WARNING" "no es_hccl whl package found in ${_find_dir}, skip whl install."
+        return 0
+    fi
+
+    hccl_install_package "${_whl_file}" "${_whl_dir}"
+
+    chmod -R 755 "${_whl_dir}"/es_hccl 2> /dev/null
+    chmod -R 755 "${_whl_dir}"/es_hccl-*.dist-info 2> /dev/null
+
+    if [ -d "${common_parse_dir}/ops_hccl" ]; then
+        rm -rf "${common_parse_dir}/ops_hccl"
+    fi
+}
+
+WHL_INSTALL_DIR_PATH="${common_parse_dir}/python/site-packages"
+
 custom_install() {
     if [ -z "$common_parse_dir/share/info/hccl" ]; then
         log "ERROR" "ERR_NO:0x0001;ERR_DES:hccl directory is empty"
@@ -339,6 +361,9 @@ custom_install() {
             fi
         fi
     fi
+
+    install_es_whl
+
     return 0
 }
 

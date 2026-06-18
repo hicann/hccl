@@ -154,6 +154,7 @@ set(INSTALL_DEVICE_TAR_DIR compat)
 
 set(INSTALL_OPGRAPH_LIBRARY_DIR opp/built-in/op_graph/lib/linux/${CMAKE_SYSTEM_PROCESSOR})
 set(INSTALL_OPGRAPH_INCLUDE_DIR opp/built-in/op_graph/inc)
+set(WHL_INSTALL_DIR ops_hccl)
 
 if (ENABLE_TEST)
     set(CMAKE_SKIP_RPATH FALSE)
