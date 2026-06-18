@@ -129,41 +129,28 @@ HcclResult CcuTempScatterNHR1DMem2Mem::ProcessNHRStepInfo(HcclComm comm,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                                               AlgResourceRequest &resourceRequest)
+HcclResult CcuTempScatterNHR1DMem2Mem::CalcChannelDescs(HcclComm comm, const OpParam &param,
+    const TopoInfoWithNetLayerDetails *topoInfo, std::vector<HcclChannelDesc> &channelDescs)
 {
-    std::vector<HcclChannelDesc> channelDescs;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, channelDescs));
-    CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
-
-    // 1.从获得的channelDesc，判断kernel发送到几个die上
-    uint32_t enableDieNum = 0;
-    CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
-
-    if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) { // 目前只支持1个或2个die
-        HCCL_ERROR("[CcuTempScatterNHR1DMem2Mem::CalcRes] get channelDescs fail");
-        return HcclResult::HCCL_E_INTERNAL;
+    std::vector<HcclChannelDesc> myChannelDescs;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        CHK_RET(CalcChannelRequestNHRWithPriorityTopo(comm, param, topoInfo, subCommRanks_, myChannelDescs, CommTopo::COMM_TOPO_CLOS));
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+                channelDescs.push_back(channel);
+            }
+        }
+    } else {
+        CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, channelDescs));
     }
+    return HcclResult::HCCL_SUCCESS;
+}
 
-    uint32_t kernelNum = enableDieNum;
-    resourceRequest.notifyNumOnMainThread = 1;
-    resourceRequest.slaveThreadNum = 1;
-    resourceRequest.ccuKernelNum.push_back(kernelNum);
-    resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
-    HCCL_DEBUG("[CcuTempScatterNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
-
-    // 2.将channelDescs分到2个die
-    std::vector<std::vector<HcclChannelDesc>> channelsPerDie;
-    channelsPerDie.resize(enableDieNum);
-    std::map<u32, u32> rank2ChannelIdx;
-    std::vector<NHRStepInfo> stepInfoVector;
-
-    CHK_RET(ProcessNHRStepInfo(comm,  stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
-
-    // 3.构造kernelInfo
-    for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
-        // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
+HcclResult CcuTempScatterNHR1DMem2Mem::BuildKernelInfos(const OpParam &param, u32 enableDieNum,
+    const std::vector<NHRStepInfo> &stepInfoVector, const std::map<u32, u32> &rank2ChannelIdx,
+    const std::vector<std::vector<HcclChannelDesc>> &channelsPerDie, AlgResourceRequest &resourceRequest)
+{
+    for (uint32_t kernelIdx = 0; kernelIdx < enableDieNum; kernelIdx++) {
         CcuKernelInfo kernelInfo;
         CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuScatterNHR1DMem2MemKernel"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuScatterNHR1DMem2MemKernel);
@@ -181,11 +168,40 @@ HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &par
         kernelInfo.channels = channelsPerDie[kernelIdx];
         resourceRequest.ccuKernelInfos.push_back(kernelInfo);
     }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
+                                               AlgResourceRequest &resourceRequest)
+{
+    std::vector<HcclChannelDesc> channelDescs;
+    CHK_RET(CalcChannelDescs(comm, param, topoInfo, channelDescs));
+    CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
+
+    uint32_t enableDieNum = 0;
+    CHK_RET(GetDieNumFromChannelDescs(comm, enableDieNum));
+    if (enableDieNum < 1 || enableDieNum > CCU_DIE_NUM_MAX_2) {
+        HCCL_ERROR("[CcuTempScatterNHR1DMem2Mem::CalcRes] get channelDescs fail");
+        return HcclResult::HCCL_E_INTERNAL;
+    }
+
+    resourceRequest.notifyNumOnMainThread = 1;
+    resourceRequest.slaveThreadNum = 1;
+    resourceRequest.ccuKernelNum.push_back(enableDieNum);
+    resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
+    HCCL_DEBUG("[CcuTempScatterNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+
+    std::vector<std::vector<HcclChannelDesc>> channelsPerDie(enableDieNum);
+    std::map<u32, u32> rank2ChannelIdx;
+    std::vector<NHRStepInfo> stepInfoVector;
+    CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+
+    CHK_RET(BuildKernelInfos(param, enableDieNum, stepInfoVector, rank2ChannelIdx, channelsPerDie, resourceRequest));
 
     HCCL_DEBUG("[CcuTempScatterNHR1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
                "ccuKernelInfos.size()=%llu",
                channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
-
     return HcclResult::HCCL_SUCCESS;
 }
 

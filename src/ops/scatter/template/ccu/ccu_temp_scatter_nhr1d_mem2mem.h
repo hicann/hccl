@@ -69,6 +69,13 @@ private:
     uint32_t mySubCommRank_ = 0;
     uint32_t subCommRootId_ = 0;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
+    HcclResult CalcChannelDescs(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
+                                std::vector<HcclChannelDesc> &channelDescs);
+    HcclResult BuildKernelInfos(const OpParam &param, u32 enableDieNum,
+                                const std::vector<NHRStepInfo> &stepInfoVector,
+                                const std::map<u32, u32> &rank2ChannelIdx,
+                                const std::vector<std::vector<HcclChannelDesc>> &channelsPerDie,
+                                AlgResourceRequest &resourceRequest);
     HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
     HcclResult ProcessNHRStepInfo(HcclComm comm,

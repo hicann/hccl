@@ -298,7 +298,7 @@ public:
 };
 
 // 算法taskArg入参最大个数，用于快速下发缓存
-#define CCU_MAX_TASK_ARG_NUM 30
+#define CCU_MAX_TASK_ARG_NUM 48
 
 struct CcuKernelSubmitInfo {
     CcuKernelHandle kernelHandle;
