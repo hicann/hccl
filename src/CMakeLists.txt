@@ -822,7 +822,7 @@ if(BUILD_OPEN_PROJECT)
     list(APPEND CMAKE_MODULE_PATH "${ASCEND_CANN_PACKAGE_PATH}/include/ge/cmake")
     find_package(GenerateEsPackage REQUIRED)
 
-    add_es_library_and_whl(
+    add_es_library(
         ES_LINKABLE_AND_ALL_TARGET es_hccl
         OPP_PROTO_TARGET opgraph_hccl
         OUTPUT_PATH ${CMAKE_BINARY_DIR}/es_output
@@ -832,12 +832,6 @@ if(BUILD_OPEN_PROJECT)
 
     install(DIRECTORY ${CMAKE_BINARY_DIR}/es_output/include/es_hccl
         DESTINATION ${INSTALL_INCLUDE_DIR}/es/
-        ${INSTALL_OPTIONAL}
-        COMPONENT hccl
-    )
-
-    install(DIRECTORY ${CMAKE_BINARY_DIR}/es_output/whl/
-        DESTINATION ${WHL_INSTALL_DIR}/es_packages/whl
         ${INSTALL_OPTIONAL}
         COMPONENT hccl
     )
