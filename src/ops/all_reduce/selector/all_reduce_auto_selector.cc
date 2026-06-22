@@ -272,6 +272,10 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(const To
 SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0Algo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                  std::string &selectAlgName, const u64 dataSize) const
 {
+    // ccu 模式不支持 inplace 场景
+    CHK_PRT_RET(IsInputOutputOverlap(opParam) == true,
+        HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_sched does not support inplace allreduce."),
+        SelectorStatus::NOT_MATCH);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, opParam, selectAlgName, dataSize);
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {

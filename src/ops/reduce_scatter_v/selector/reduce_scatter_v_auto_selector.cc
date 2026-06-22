@@ -21,6 +21,10 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNet
 {
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
+    // ccu ms 模式不支持 inplace 场景
+    CHK_PRT_RET(IsInputOutputOverlap(opParam) == true,
+        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu ms does not support inplace reduce_scatter_v."),
+        SelectorStatus::NOT_MATCH);
     // MS 模式不支持 int8
     CHK_PRT_RET(opParam.vDataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
         HCCL_WARNING("[ReduceScatterVAutoSelector] dataType[%d] is not supported yet for ccu_ms mode.",
@@ -94,6 +98,10 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoW
 {
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
+    // ccu schedule 模式不支持 inplace 场景
+    CHK_PRT_RET(IsInputOutputOverlap(opParam) == true,
+        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu schedule does not support inplace reduce_scatter_v."),
+        SelectorStatus::NOT_MATCH);
     // ccu 模式不支持 PROD
     CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
         HCCL_WARNING("[ReduceScatterVAutoSelector] ReduceOp[%d] is not supported yet for ccu schedule mode.",
