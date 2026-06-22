@@ -70,10 +70,12 @@ __aicore__ inline void AivBroadcastMesh1D::Process(uint64_t curCount, uint64_t s
     if (rank_ == root_) {
         CpGM2GM(cclGM, inputGM, countPerCore);
         PipeBarrier<PIPE_ALL>();
-        Record(peerRank, block_idx, curTag_);
+        for (uint32_t i = 0; i < rankSize_; i++) {
+            Record(peerRank, block_idx % coreNumPerRank + i * coreNumPerRank, curTag_);
+        }
     }
     // allgather
-    WaitFlag(rank_, block_idx % coreNumPerRank + rank_ * coreNumPerRank, curTag_);
+    WaitFlag(rank_, block_idx, curTag_);
     Record(peerRank, curStageCoreNum + block_idx % coreNumPerRank + rank_ * coreNumPerRank, curTag_);
     WaitFlag(rank_, curStageCoreNum + block_idx % coreNumPerRank + peerRank * coreNumPerRank, curTag_);
     CpGM2GM(inputGM, cclGM, countPerCore);
