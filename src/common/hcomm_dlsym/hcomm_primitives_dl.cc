@@ -29,6 +29,10 @@ DEFINE_WEAK_FUNC(int32_t, HcommReadReduceOnThread, ThreadHandle thread, ChannelH
     HcommDataType dataType, HcommReduceOp reduceOp);
 DEFINE_WEAK_FUNC(int32_t, HcommChannelNotifyRecord, ChannelHandle channel, uint32_t remoteNotifyIdx);
 DEFINE_WEAK_FUNC(int32_t, HcommChannelNotifyWait, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeout);
+DEFINE_WEAK_FUNC(int32_t, HcommThreadNotifyRecordOnThread, ThreadHandle thread, ThreadHandle dstThread, uint32_t dstNotifyIdx);
+DEFINE_WEAK_FUNC(int32_t, HcommThreadNotifyWaitOnThread, ThreadHandle thread, uint32_t notifyIdx, uint32_t timeOut);
+DEFINE_WEAK_FUNC(int32_t, HcommChannelNotifyRecordOnThread, ThreadHandle thread, ChannelHandle channel, uint32_t remoteNotifyIdx);
+DEFINE_WEAK_FUNC(int32_t, HcommChannelNotifyWaitOnThread, ThreadHandle thread, ChannelHandle channel, uint32_t localNotifyIdx, uint32_t timeOut);
 DEFINE_WEAK_FUNC(HcclResult, HcommSymWinGetPeerPointer, HcclCommSymWindow winHandle, size_t offset, uint32_t peerRank, void** ptr);
 DEFINE_WEAK_FUNC(int32_t, HcommThreadSynchronize, ThreadHandle thread);
 DEFINE_WEAK_FUNC(int32_t, HcommSendRequest, uint64_t handle, const char* msgTag, const void* src, size_t sizeByte, uint32_t* msgId);
@@ -79,6 +83,10 @@ void HcommPrimitivesDlInit(void* libHcommHandle) {
     INIT_SUPPORT_FLAG(libHcommHandle, HcommReadReduceOnThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyRecord);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyWait);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcommThreadNotifyRecordOnThread);
+ 	INIT_SUPPORT_FLAG(libHcommHandle, HcommThreadNotifyWaitOnThread);
+ 	INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyRecordOnThread);
+ 	INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyWaitOnThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommSymWinGetPeerPointer);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommThreadSynchronize);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommSendRequest);
