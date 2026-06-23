@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------------
 # Copyright (c) 2026 Huawei Technologies Co., Ltd.
-# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
@@ -129,7 +129,6 @@ add_library(scatter_aicpu_kernel SHARED
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/registry/alg_v2_template_register.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/executor/ins_v2_batch_send_recv_executor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/executor/ins_v2_batch_send_recv_sole_executor.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/executor/ins_v2_recv_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/executor/ins_v2_send_sole_executor.cc
@@ -174,6 +173,7 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/template/ins_temp_send_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/template/ins_temp_recv_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/template/ins_temp_batch_send_recv_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/executor/ins_v2_batch_send_recv_sole_executor.cc
     )
 endif()
 
@@ -205,12 +205,20 @@ target_link_directories(scatter_aicpu_kernel PRIVATE
     ${ASCEND_CANN_PACKAGE_PATH}/devlib/device
 )
 
-target_link_libraries(scatter_aicpu_kernel PRIVATE
-    -Wl,--no-as-needed
-    ccl_kernel
-    hccl_kernel_compat
-    -Wl,--no-as-needed
-)
+if(NOT HCCL_CANN_COMPAT_850)
+    target_link_libraries(scatter_aicpu_kernel PRIVATE
+        -Wl,--no-as-needed
+        ccl_kernel
+        hccl_kernel_compat
+        -Wl,--no-as-needed
+    )
+else()
+    target_link_libraries(scatter_aicpu_kernel PRIVATE
+        -Wl,--no-as-needed
+        hccl_kernel_compat
+        -Wl,--no-as-needed
+    )
+endif()
 add_dependencies(scatter_aicpu_kernel hccl_kernel_compat)
 
 
