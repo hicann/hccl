@@ -133,6 +133,11 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
         HCCL_DEBUG("[Selector] is aicpu mode");
         CHK_RET(LoadAICPUKernel()); // 该函数内部有防止重复加载的逻辑
     }
+    // 如果一开始读取到的Engine不是aiv，经过算法选择后回退到aiv，则需要重新RegisterKernel
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        HCCL_DEBUG("[Selector] is aiv mode");
+        CHK_RET(RegisterKernel()); // 该函数内部有防止重复加载的逻辑
+    }
     CHK_RET(SetOpParamAlgTag(param, algName));
     // 设定执行超时时间
     CHK_RET(SetExecTimeout(param));
