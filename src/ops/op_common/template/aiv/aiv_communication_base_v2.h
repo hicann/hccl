@@ -352,7 +352,7 @@ public:
         uint64_t flag_offset = BASE_FLAG_OFFSET - gmOutOffset + rank_ * FLAG_SIZE + barrierStage * rankSize_ * FLAG_SIZE;
         for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
             WaitFlag(rank, flag_offset / FLAG_SIZE, DOUBLE);
-            Record(rank_, flag_offset / FLAG_SIZE, 0);
+            Record(rank, flag_offset / FLAG_SIZE, 0);
         }
     }
 
