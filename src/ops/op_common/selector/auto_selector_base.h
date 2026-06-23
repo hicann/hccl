@@ -119,4 +119,13 @@ inline bool Is64BitDataType(const HcclDataType dataType)
 }
 
 } // namespace Hccl
+
+// AIV_ONLY 额外打 ERROR（前缀 Failed to select AIV algorithm while configured as AIV_ONLY.，直接报错不回退，原因同 BASE_LOG）
+#define HCCL_AIV_NOT_MATCH_LOG(opParam, BASE_LOG, fmt, ...) do { \
+    BASE_LOG(fmt, ##__VA_ARGS__); \
+    if ((opParam).opExecuteConfig == OpExecuteConfig::AIV_ONLY) { \
+        HCCL_ERROR("Failed to select AIV algorithm while configured as AIV_ONLY. " fmt, ##__VA_ARGS__); \
+    } \
+} while (0)
+
 #endif

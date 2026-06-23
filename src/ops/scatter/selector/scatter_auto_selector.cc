@@ -134,23 +134,22 @@ SelectorStatus ScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDeta
                                                   const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                   std::string &selectAlgName) const
 {
-    (void)opParam;
     (void)configAlgMap;
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE) {
-        HCCL_DEBUG("[ScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
 
     void *cclBufferAddr;
     uint64_t cclBufferSize;
     CHK_PRT_RET(HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
-        HCCL_WARNING("[ScatterAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ScatterAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 totalSize = opParam.DataDes.count * perDataSize * topoInfo->userRankSize;
     if (totalSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
-        HCCL_DEBUG("[ScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]", __func__, totalSize, cclBufferSize);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]", __func__, totalSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
 

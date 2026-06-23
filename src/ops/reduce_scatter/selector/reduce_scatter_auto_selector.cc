@@ -417,34 +417,34 @@ SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLay
     
     // 保序模式不支持AIV，需要回退到AICPU
     CHK_PRT_RET(IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize),
-        HCCL_DEBUG("[ReduceScatterAutoSelector] DETERMINISTIC_STRICT mode not supported for AIV, fallback to AICPU."),
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ReduceScatterAutoSelector] DETERMINISTIC_STRICT mode is not supported yet for AIV mode."),
         SelectorStatus::NOT_MATCH);
     
     //aiv 模式不支持 PROD
     CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
-        HCCL_WARNING("[ReduceScatterAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.",
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceScatterAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.",
             opParam.reduceType),
         SelectorStatus::NOT_MATCH);
 
     if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
         opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_WARNING("[ReduceScatterAutoSelector] aiv mode not support UINT64, FP64.");
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceScatterAutoSelector] aiv mode not support UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE) {
-        HCCL_DEBUG("[ReduceScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ReduceScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
 
     void *cclBufferAddr;
     uint64_t cclBufferSize;
     CHK_PRT_RET(HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
-        HCCL_WARNING("[ReduceScatterAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceScatterAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 totalSize = opParam.DataDes.count * perDataSize * topoInfo->userRankSize;
     if (totalSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
-        HCCL_DEBUG("[ReduceScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]", __func__, totalSize, cclBufferSize);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ReduceScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]", __func__, totalSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
 

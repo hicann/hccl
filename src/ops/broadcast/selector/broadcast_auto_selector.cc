@@ -177,23 +177,22 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDe
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
 {
-    (void)opParam;
     (void)configAlgMap;
     std::vector<HcclAlgoType> algos = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE_V) {
-        HCCL_DEBUG("[BroadcastAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
 
     void *cclBufferAddr;
     uint64_t cclBufferSize;
     CHK_PRT_RET(HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
-        HCCL_WARNING("[BroadcastAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[BroadcastAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (dataSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
-        HCCL_DEBUG("[BroadcastAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__, dataSize, cclBufferSize);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__, dataSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
     selectAlgName = "AivBroadcastMesh1D";

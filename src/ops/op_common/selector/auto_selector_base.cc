@@ -291,7 +291,6 @@ bool AutoSelectorBase::ProcessAivConfig(OpParam &opParam, TopoInfoWithNetLayerDe
     ret = SelectAivAlgo(topoInfo, opParam, configAlgMap, selectAlgName);
     if (ret == SelectorStatus::NOT_MATCH) {
         if (opParam.opExecuteConfig == OpExecuteConfig::AIV_ONLY) {
-            HCCL_ERROR("[Algo][AutoSelectorBase] Failed to select AIV algorithm while configured as AIV_ONLY.");
             return true;
         }
         opParam.opExecuteConfig = OpExecuteConfig::CCU_FAIL;

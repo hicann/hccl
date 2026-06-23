@@ -496,34 +496,34 @@ SelectorStatus AllReduceAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDe
     
     // 保序模式不支持AIV，需要回退到AICPU
     CHK_PRT_RET(IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize),
-        HCCL_DEBUG("[Algo][AllReduceAutoSelector] DETERMINISTIC_STRICT mode not supported for AIV, fallback to AICPU."),
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[Algo][AllReduceAutoSelector] DETERMINISTIC_STRICT mode is not supported yet for AIV mode."),
         SelectorStatus::NOT_MATCH);
     
     //aiv 模式不支持 PROD
     CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
-        HCCL_DEBUG("[Algo][AllReduceAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.",
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[Algo][AllReduceAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.",
             opParam.reduceType),
         SelectorStatus::NOT_MATCH);
 
     if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
         opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_DEBUG("[Algo][AllReduceAutoSelector] aiv mode not support UINT64, FP64.");
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[Algo][AllReduceAutoSelector] aiv mode not support UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE) {
-        HCCL_DEBUG("[Algo][AllReduceAutoSelector] rankSize[%u] larger than [%u]", topoInfo->userRankSize, MAX_RANK_SIZE);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[AllReduceAutoSelector] rankSize[%u] larger than [%u]", topoInfo->userRankSize, MAX_RANK_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
  
     void *cclBufferAddr;
     uint64_t cclBufferSize;
     CHK_PRT_RET(HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
-        HCCL_WARNING("[AllReduceAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[AllReduceAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (dataSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
-        HCCL_DEBUG("[AllReduceAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__, dataSize, cclBufferSize);
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[AllReduceAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__, dataSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
 
