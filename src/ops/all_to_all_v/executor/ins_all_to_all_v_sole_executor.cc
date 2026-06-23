@@ -15,6 +15,7 @@
 #include "ccu_temp_all_to_all_v_mesh_1D.h"
 #include "ccu_temp_all_to_all_v_mesh2die.h"
 #include "ccu_temp_all_to_all_v_mesh_1D_multi_jetty.h"
+#include "ccu_temp_all_to_all_v_mesh1d_2Die.h"
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #endif
 
@@ -222,7 +223,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSav
     const OpParam &param, const TemplateResource &templateAlgRes, u32 notifyNumOnMainThread) const
 {
     HCCL_INFO("[InsAlltoAllVSoleExecutor] save fast launch ctx.");
-    u32 threadNum = 1;
+    u32 threadNum = static_cast<u32>(templateAlgRes.threads.size());
     u32 ccuKernelNum = templateAlgRes.submitInfos.size();
     if (ccuKernelNum < 1) {
         HCCL_INFO("[InsAlltoAllVSoleExecutor] ccu kernel num is 0, no need to save.");
@@ -246,12 +247,16 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSav
     ccuFastLaunchCtx->threadNum = threadNum;
     ccuFastLaunchCtx->notifyNumOnMainThread = notifyNumOnMainThread;
     ThreadHandle *threads = ccuFastLaunchCtx->GetThreadHandlePtr();
-    threads[0] = templateAlgRes.threads[0];
+    for (u32 i = 0; i < threadNum; i++) {
+        threads[i] = templateAlgRes.threads[i];
+    }
 
     // 3 ccu kernel handle, taskArg入参
     ccuFastLaunchCtx->ccuKernelNum[0] = ccuKernelNum;
     CcuKernelSubmitInfo *kernels = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
-    kernels[0] = templateAlgRes.submitInfos[0];
+    for (u32 i = 0; i < ccuKernelNum; i++) {
+        kernels[i] = templateAlgRes.submitInfos[i];
+    }
     return HCCL_SUCCESS;
 }
 
@@ -299,6 +304,8 @@ REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALLV, CcuAllToAllVMesh2Die, InsAllto
 #endif /* !HCCL_CANN_COMPAT_850 */
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALLV, CcuAlltoAllVMesh1D2Die, InsAlltoAllVSoleExecutor, TopoMatch1D,
+    CcuTempAlltoAllVMesh1D2Die);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALLV,
                 CcuAllToAllVMesh1DMultiJetty,
                 InsAlltoAllVSoleExecutor,
