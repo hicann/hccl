@@ -123,20 +123,31 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::RunReduceScatter(
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
     uint64_t sliceNum = templateRankSize_ - 1;
-    uint64_t mySliceSize = sliceInfoVec[myAlgRank][0].size;  // 获取本rank需要处理的数据量
+    uint64_t mySliceSize = sliceInfoVec[myAlgRank][0].size;  // 获取本rank需要处理的数据量，executor已按4K对齐
     uint64_t mySliceCount = mySliceSize / DATATYPE_SIZE_TABLE[dataType_];
-    // 数据切分为sliceNum块，当数据量不能均匀切分时，后面smallDataSliceNum个数据块比前面bigDataSliceNum个数据块每块少1个数据
-    uint64_t bigDataSliceNum = mySliceCount % sliceNum;
-    uint64_t bigDataSliceSize = (mySliceCount / sliceNum + 1) * DATATYPE_SIZE_TABLE[dataType_];
-    uint64_t smallDataSliceNum = sliceNum - mySliceCount % sliceNum;
-    uint64_t smallDataSliceSize = mySliceCount / sliceNum * DATATYPE_SIZE_TABLE[dataType_];
 
     std::vector<uint64_t> sliceSize;
-    for (uint64_t i = 0; i < bigDataSliceNum; i++) {
-        sliceSize.push_back(bigDataSliceSize);
-    }
-    for (uint64_t i = 0; i < smallDataSliceNum; i++) {
-        sliceSize.push_back(smallDataSliceSize);
+    // 数据切分为sliceNum块，前sliceNum-1块每块按4K向下对齐，最后一块取余数(无需对齐)。
+    // 选向下对齐是为了保证DoMeshChunk第0步接收区[mySliceSize-lastBlock, mySliceSize-lastBlock+sliceSize[0])
+    // 不越界(需sliceSize[0] <= lastBlock)；若向上对齐则sliceSize[0] > lastBlock，会跨块越界读取。
+    uint64_t alignSliceSize = (mySliceSize / sliceNum) / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE;
+    if (sliceNum >= 2 && alignSliceSize > 0) {
+        for (uint64_t i = 0; i < sliceNum - 1; i++) {
+            sliceSize.push_back(alignSliceSize);
+        }
+        sliceSize.push_back(mySliceSize - alignSliceSize * (sliceNum - 1));
+    } else {
+        // 数据量过小无法按4K对齐切分时，回退到原有按元素均分(大/小块)逻辑，避免0尺寸分块
+        uint64_t bigDataSliceNum = mySliceCount % sliceNum;
+        uint64_t bigDataSliceSize = (mySliceCount / sliceNum + 1) * DATATYPE_SIZE_TABLE[dataType_];
+        uint64_t smallDataSliceNum = sliceNum - mySliceCount % sliceNum;
+        uint64_t smallDataSliceSize = mySliceCount / sliceNum * DATATYPE_SIZE_TABLE[dataType_];
+        for (uint64_t i = 0; i < bigDataSliceNum; i++) {
+            sliceSize.push_back(bigDataSliceSize);
+        }
+        for (uint64_t i = 0; i < smallDataSliceNum; i++) {
+            sliceSize.push_back(smallDataSliceSize);
+        }
     }
     uint64_t sliceRecvBaseOffset = 0;
     uint16_t rankNum = 2;
