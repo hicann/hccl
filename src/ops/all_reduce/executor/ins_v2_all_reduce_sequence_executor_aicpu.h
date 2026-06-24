@@ -42,6 +42,14 @@ public:
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
                                     AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+#ifndef AICPU_COMPILE
+    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx) override;
+    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgResStepOne,
+                                 const TemplateResource &templateAlgResStepTwo,
+                                 const TemplateResource &templateAlgResStepThree,
+                                 const TemplateResource &templateAlgResStepFour, u32 notifyNumOnMainThread);
+#endif
+
 protected:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
@@ -72,6 +80,19 @@ protected:
     uint64_t inCclBuffSize_{0};
     uint64_t outCclBuffOffset_{0};
     uint64_t inCclBuffOffset_{0};
+
+    u64 scratchBlockSize_{0};
+    CommEngine engine_{CommEngine::COMM_ENGINE_AICPU};
+
+    u32 ccuKernelLaunchNumStepOne_{0};
+    u32 ccuKernelLaunchNumStepTwo_{0};
+    u32 ccuKernelLaunchNumStepThree_{0};
+    u32 ccuKernelLaunchNumStepFour_{0};
+
+    std::vector<CcuKernelHandle> stepOneCcuKernels_;
+    std::vector<CcuKernelHandle> stepTwoCcuKernels_;
+    std::vector<CcuKernelHandle> stepThreeCcuKernels_;
+    std::vector<CcuKernelHandle> stepFourCcuKernels_;
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;

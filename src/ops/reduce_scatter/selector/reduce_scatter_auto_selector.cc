@@ -24,6 +24,7 @@ constexpr u64 RS_AICPU_1D_TWO_LEVER_DATA_SIZE_THRESHOLD = 1536 * 1024 * 1024;
 
 constexpr u64 RS_CCU_CLOS_1D_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_64P_MIN_DATA_SIZE = 128 * 1024 * 1024;
+constexpr u64 RS_CCU_64P_SEQ_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 RS_CCU_8P_MIN_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 RS_AICPU_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
 constexpr u64 OMNI_PCIE_RS_DATA_SIZE = 4 * 1024 * 1024;
@@ -164,13 +165,13 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWi
                 CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
                 HCCL_WARNING("[ReduceScatterAutoSelector] dataType[%d] is not supported yet for ccu schedule mode.",
                     opParam.DataDes.dataType), SelectorStatus::NOT_MATCH);
-                if ((dataSize * topoInfo->userRankSize) <= RS_FLATTEN_MAX_DATA_SIZE && topoInfo->userRankSize <= ccuSize && (!IsInputOutputOverlap(opParam))) {
+                if ((dataSize * topoInfo->userRankSize) <= RS_FLATTEN_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize && (!IsInputOutputOverlap(opParam))) {
                     selectAlgName = "CcuReduceScatterMesh1DMem2Mem";
                     return SelectorStatus::MATCH;
-                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_MIN_DATA_SIZE && topoInfo->userRankSize == ccuSize){
-                    selectAlgName = "CcuReduceScatterParallelMesh1DNHR";//64M以下跑ccu
+                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_SEQ_DATA_SIZE && topoInfo->userRankSize == ccuSize) {
+                    selectAlgName = "CcuReduceScatterSequenceMeshMesh";
                     return SelectorStatus::MATCH;
-                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_8P_MIN_DATA_SIZE) {
+                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_MIN_DATA_SIZE && topoInfo->userRankSize == ccuSize) {
                     selectAlgName = "CcuReduceScatterParallelMesh1DNHR";//64M以下跑ccu
                     return SelectorStatus::MATCH;
                 } else {
