@@ -170,7 +170,7 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::PrepareLaunchArgs(const OpParam& param
     HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
                "currentRankSliceInputOffset[%llu], currentRankSliceOutputOffset[%llu], "
                "repeatNum[%llu],inputRepeatStride[%llu], outputRepeatStride[%llu], normalSliceSize[%llu], lastSliceSize[%llu]",
-               inputAddr, outputAddr, currentRankSliceInputOffset, currentRankSliceOutputOffset, tmpRepeatNum,
+               inputAddr, outputAddr, currentRankSliceInputOffset, currentRankSliceOutputOffset, repeatNum,
                inputRepeatStride, outputRepeatStride, normalSliceSize, lastSliceSize);
 
     return HcclResult::HCCL_SUCCESS;

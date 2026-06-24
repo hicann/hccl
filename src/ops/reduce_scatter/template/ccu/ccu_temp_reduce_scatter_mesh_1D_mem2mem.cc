@@ -90,10 +90,10 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::FastLaunch(const OpParam& param, c
     constexpr u32 outputIdx = 1;
     constexpr u32 scratchIdx = 3;
     
-    constexpr u32 inputOffsetIdx = 15;   // inBuffBaseOff
-    constexpr u32 outputOffsetIdx = 16;  // outBuffBaseOff
-    constexpr u32 scratchOffsetIdx = 17; // hcclBuffBaseOff
-    uint64_t argSize = 15;
+    constexpr u32 inputOffsetIdx = 16;   // inBuffBaseOff
+    constexpr u32 outputOffsetIdx = 17;  // outBuffBaseOff
+    constexpr u32 scratchOffsetIdx = 18; // hcclBuffBaseOff
+    uint64_t argSize = 16;
 
     args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
     args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
@@ -134,10 +134,11 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::KernelRun(const OpParam& param,
     uint64_t normalSliceSize    = templateDataParams.sliceSize;
     uint64_t lastSliceSize      = templateDataParams.tailSize;
     uint64_t repeatNum          = UINT64_MAX - templateDataParams.repeatNum;
+    uint64_t scratchRepeatStride = templateRankSize_ * normalSliceSize;
 
     uint64_t currentRankSliceInputOffset = inputSliceStride * mySubCommRank_;
     uint64_t currentRankSliceOutputOffset = outputSliceStride * mySubCommRank_;
-    
+
     LoopGroupConfig  config{};
     config.msInterleave = REDUCE_MS_CNT;
     config.loopCount    = REDUCE_SCATTER_LOOP_COUNT;
@@ -145,27 +146,27 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::KernelRun(const OpParam& param,
     auto goSize = (mySubCommRank_ == (templateRankSize_ - 1)) ? CalGoSize(lastSliceSize, config) : 
                    CalGoSize(normalSliceSize, config);
 
-    HCCL_INFO("[CcuTempReduceScatterMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
-              "scratchAddr[%llu], inputOffset[%llu], outputOffset[%llu], inputRepeatStride[%llu], "
-              "outputRepeatStride[%llu], normalSliceSize[%llu], lastSliceSize[%llu], repeatNum[%llu]",
+    HCCL_INFO("[CcuTempReduceScatterMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], scratchAddr[%llu], "
+              "inputOffset[%llu], outputOffset[%llu], inputRepeatStride[%llu], outputRepeatStride[%llu], "
+              "normalSliceSize[%llu], lastSliceSize[%llu], scratchRepeatStride[%llu], repeatNum[%llu]",
               inputAddr, outputAddr, scratchAddr, currentRankSliceInputOffset, currentRankSliceOutputOffset,
-              inputRepeatStride, outputRepeatStride, normalSliceSize, lastSliceSize, UINT64_MAX - repeatNum);
+              inputRepeatStride, outputRepeatStride, normalSliceSize, lastSliceSize,
+              scratchRepeatStride, UINT64_MAX - repeatNum);
 
     std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, scratchAddr,
-                                      currentRankSliceInputOffset, currentRankSliceOutputOffset,
-                                      inputRepeatStride, outputRepeatStride, normalSliceSize, lastSliceSize,
-                                      repeatNum, goSize[0], goSize[1], goSize[2], goSize[3]};
+        currentRankSliceInputOffset, currentRankSliceOutputOffset, inputRepeatStride, outputRepeatStride,
+        normalSliceSize, lastSliceSize, scratchRepeatStride, repeatNum, goSize[0], goSize[1], goSize[2], goSize[3]};
     
     CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], 
                                                taskArgs.data(), taskArgs.size());
-    CHK_PRT_RET(launchRet != CCU_SUCCESS, 
-        HCCL_ERROR("[CcuTempReduceScatterMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet), ConvertCcuToHccl(launchRet));
+    CHK_PRT_RET(launchRet != CCU_SUCCESS, HCCL_ERROR(
+        "[CcuTempReduceScatterMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet), ConvertCcuToHccl(launchRet));
 
     CcuKernelSubmitInfo submitInfo;
     submitInfo.kernelHandle = templateResource.ccuKernels[0];
     CHK_RET(FillCachedArgs(submitInfo, inputAddr, outputAddr, token, scratchAddr,
         currentRankSliceInputOffset, currentRankSliceOutputOffset, inputRepeatStride, outputRepeatStride,
-        normalSliceSize, lastSliceSize, repeatNum, goSize[0], goSize[1], goSize[2], goSize[3],
+        normalSliceSize, lastSliceSize, scratchRepeatStride, repeatNum, goSize[0], goSize[1], goSize[2], goSize[3],
         buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, buffInfo_.hcclBuffBaseOff));
     templateResource.submitInfos.push_back(submitInfo);
 

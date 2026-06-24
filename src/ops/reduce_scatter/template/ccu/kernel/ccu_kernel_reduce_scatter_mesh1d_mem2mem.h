@@ -21,6 +21,7 @@ namespace ops_hccl {
 constexpr uint64_t REDUCE_MS_CNT = 8;
 constexpr uint16_t REDUCE_SCATTER_GROUP_REDUCE_MAX_PIECE_CNT = 8;
 constexpr uint16_t REDUCE_SCATTER_LOOP_COUNT = 16;
+constexpr uint32_t RS_UNROLL_NUM = 16; // 最多支持8 * 16 = 128个rank
 
 struct CcuKernelArgReduceScatterMesh1DMem2Mem: CcuKernelArgBase {
     uint64_t                                rankSize;
@@ -47,6 +48,7 @@ struct ReduceScatterMesh1DMem2MemContext: CcuKernelCtxBase {
     ccu::Variable lastSliceSize;
     ccu::Variable inputRepeatStride;
     ccu::Variable outputRepeatStride;
+    ccu::Variable scratchRepeatStride;
     ccu::Variable repeatNum;
     ccu::Variable flag;
     GroupOpSizeVars goSize;
@@ -56,6 +58,12 @@ struct ReduceScatterMesh1DMem2MemContext: CcuKernelCtxBase {
     ccu::LocalAddr myInput;
     std::vector<ccu::RemoteAddr> remoteInput;
     std::vector<ccu::LocalAddr> scratchMem;
+
+    // 3阶段设计新增变量
+    ccu::Variable constVar1;
+    ccu::Variable sliceSize;
+    ccu::Variable readRepeatNum;
+    ccu::Variable waitRepeatNum;
 
     // Loop机制相关变量
     std::array<std::vector<ccu::LocalAddr>, 2> loopScratch;
