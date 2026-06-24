@@ -43,20 +43,24 @@ HcclResult AivTempAlltoAllMesh1D::CalcRes(HcclComm comm, const OpParam& param, c
 
 HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    (void) dataSize;
     HCCL_INFO("[AivTempAlltoAllMesh1D] Limit core num[%u]", numBlocksLimit);
 
-    // 小于1的场景
-    if (numBlocksLimit < 1) {
-        numBlocks = numBlocksLimit;
-        return HcclResult::HCCL_SUCCESS;
-    }
+    // 0核场景报错
+    CHK_PRT_RET(numBlocksLimit == 0, HCCL_ERROR("[AivTempAlltoAllMesh1D][CalNumBlocks] Available core Num is 0"),
+        HcclResult::HCCL_E_INTERNAL);
 
-    if (numBlocksLimit >= tempRankSize_) {
-        numBlocks = numBlocksLimit / tempRankSize_ * tempRankSize_;
-    } else {
+    u64 smallDataSize = 512 * 1024;
+    HCCL_DEBUG("[AivTempAlltoAllMesh1D] dataSize is [%llu]", dataSize);
+    if (numBlocksLimit < tempRankSize_) {
+        // 少核场景
         u32 rankPerCore = (tempRankSize_ + numBlocksLimit - 1) / numBlocksLimit;  // 向上取整
         numBlocks = (tempRankSize_ + rankPerCore - 1) / rankPerCore;  // 向上取整
+    } else if (dataSize <= smallDataSize) {
+        // 多核小数据量场景
+        numBlocks = tempRankSize_;
+    } else {
+        // 多核大数据量场景
+        numBlocks = numBlocksLimit / tempRankSize_ * tempRankSize_;
     }
 
     HCCL_INFO("[AivTempAlltoAllMesh1D] Actually use core num[%u]", numBlocks);
@@ -106,8 +110,7 @@ HcclResult AivTempAlltoAllMesh1D::KernelRun(const OpParam& param, const Template
         }
     }
 
-    u64 dataSize = tempAlgParams.inputSliceStride;
-    CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, dataSize, param.numBlocksLimit));
+    CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 
     aivAlltoAllArgs.inputSliceStride =
         reinterpret_cast<u64*>(param.all2AllVDataDes.sendCounts)[0] * DATATYPE_SIZE_TABLE[dataType_];
