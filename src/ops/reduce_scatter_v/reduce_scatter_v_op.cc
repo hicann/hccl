@@ -112,7 +112,10 @@ HcclResult HcclReduceScatterVGraphMode(void *sendBuf,  const void *sendCounts, c
     // 拼装ResPackGraphMode
     ResPackGraphMode resPack;
     // 设置tag
-    strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1);
+    if (strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1) != 0) {
+        HCCL_ERROR("failed to fill resPack.tag");
+        return HCCL_E_INTERNAL;
+    }
     // 设置streams
     if (streams != nullptr && streamCount > 0) {
         for (size_t i = 0; i < streamCount; i++) {
@@ -203,9 +206,12 @@ HcclResult PrepareReduceScatterVParam(void *sendBuf, const void *sendDispls, con
     std::vector<u64> countsAndDispls(userRankSize * rankNum);
     const u64* sendDisplsAddr = reinterpret_cast<const u64*>(sendDispls);
     const u64* sendCountsAddr = reinterpret_cast<const u64*>(sendCounts);
-
-    param.inputSize = (sendDisplsAddr[userRankSize-1] + sendCountsAddr[userRankSize-1]) * perDataSize;
-
+    
+    u64 maxInputCount = 0;
+    for (u32 i = 0; i < userRankSize; i++) {
+        maxInputCount = std::max(maxInputCount, sendDisplsAddr[i] + sendCountsAddr[i]);
+    }
+    param.inputSize = maxInputCount * perDataSize;
     std::copy(sendCountsAddr, sendCountsAddr + userRankSize, countsAndDispls.begin());
     std::copy(sendDisplsAddr, sendDisplsAddr + userRankSize, countsAndDispls.begin() + userRankSize);
     param.varMemSize = varMemSize;

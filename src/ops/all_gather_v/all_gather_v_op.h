@@ -45,7 +45,8 @@ HcclResult AllGatherVEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, 
 HcclResult AllGatherVOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
  	const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack);
 
-HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void *recvCounts, const void *recvDispls, const aclrtStream stream);
+HcclResult CheckAllGatherVInputPara(const HcclComm comm, const void *recvCounts, const void *recvDispls,
+    const aclrtStream stream, void *sendBuf, uint64_t sendCount);
 
 HcclResult CheckAllGatherVRecvAndGetRank(const HcclComm comm, const void *recvBuf, const void *recvCounts,
     u32 &rankSize, u32 &userRank, bool &allRecvCountsZero);

@@ -137,7 +137,7 @@ HcclResult InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
-
+    root_ = param.root;
     // 计算框内的root同号卡
     intraLocalRoot_ = root_ % rankSizeLevel0_ + rankIdxLevel1_ * rankIdxLevel0_;
 

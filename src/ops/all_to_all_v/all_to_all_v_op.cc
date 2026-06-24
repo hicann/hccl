@@ -365,7 +365,10 @@ HcclResult GenResPack(const char* tag, void** streams, const size_t streamCount,
     void* scratchMemAddr, const uint64_t scratchMemSize, ResPackGraphMode &resPack)
 {
     // 设置tag
-    strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1);
+    if (strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1) != 0) {
+        HCCL_ERROR("failed to fill resPack.tag");
+        return HCCL_E_INTERNAL;
+    }
     // 设置streams
     if (streams != nullptr && streamCount > 0) {
         for (size_t i = 0; i < streamCount; i++) {

@@ -1678,6 +1678,8 @@ HcclResult HcclAllocAlgResourceAiv(
 
         for (u32 idx = 0; idx < validChannelNum; idx++) {
             HcclChannelDesc &channelDesc = levelNChannelRequest[idx];
+            CHK_PRT_RET(channelDesc.remoteRank >= MAX_RANK_SIZE,
+                HCCL_ERROR("[%s] remoteRank[%u] exceeds MAX_RANK_SIZE[%u]", __func__, channelDesc.remoteRank, MAX_RANK_SIZE), HCCL_E_PARA);
             void* remoteBufferAddr;
             uint64_t remoteBufferSize;
             CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteBufferAddr, &remoteBufferSize));
