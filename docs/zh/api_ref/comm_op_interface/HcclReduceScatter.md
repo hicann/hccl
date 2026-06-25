@@ -52,7 +52,7 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
 
 ### op说明
 
-- 针对Ascend 950PR/Ascend 950DT，支持的操作类型为sum、prod、max、min，其中prod操作仅支持int64、uint64、float64数据类型。
+- 针对Ascend 950PR/Ascend 950DT，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 - 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 - 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 - 针对Atlas 300I Duo 推理卡，支持的操作类型为sum、prod、max、min，其中prod、max、min操作不支持int16数据类型。

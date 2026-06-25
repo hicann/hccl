@@ -12,8 +12,24 @@
 #define ALG_DATA_TRANS_WRAPPER
 
 #include "alg_v2_template_base.h"
+#include <type_traits>
 
 namespace ops_hccl {
+
+template <typename T>
+struct WiderType {
+    using Type = T;
+};
+
+template <>
+struct WiderType<int8_t> {
+    using Type = int32_t;
+};
+
+template <>
+struct WiderType<int32_t> {
+    using Type = int64_t;
+};
 
 HcclResult InitHcommBatchTransferOnThreadSupported(bool isSupported);
 
@@ -77,7 +93,29 @@ HcclResult PostSyncInterThreads(const ThreadHandle &mainThread, const std::vecto
 
 HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice,
                        const HcclDataType dataType, const HcclReduceOp reduceOp);
- 
+
+float Fp16ToFp32(uint16_t fp16Bits);
+
+uint16_t Fp32ToFp16(float value);
+
+HcclResult AicpuReduceFp16(u8 *dst, u8 *src, u64 size, const HcclReduceOp reduceOp);
+
+template <typename T>
+typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedAdd(T a, T b);
+
+template <typename T>
+typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedAdd(T a, T b);
+
+template <typename T>
+typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedMul(T a, T b);
+
+template <typename T>
+typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedMul(T a, T b);
+
 template <typename T>
 HcclResult AicpuReduceTemplate(T* dst, u64 dstSize, T* src, u64 srcSize, const HcclReduceOp reduceOp);
 }

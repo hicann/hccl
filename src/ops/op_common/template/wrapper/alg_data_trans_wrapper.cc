@@ -12,6 +12,9 @@
 #include "exec_timeout_manager.h"
 #include "hcomm_primitives_dl.h"
 #include <atomic>
+#include <limits>
+#include <algorithm>
+#include <vector>
 
 namespace ops_hccl {
 
@@ -994,43 +997,208 @@ HcclResult PostSyncInterThreads(const ThreadHandle &mainThread, const std::vecto
     return HcclResult::HCCL_SUCCESS;
 }
 
+// FP16: 1位符号 + 5位指数(bias=15) + 10位尾数
+// FP32: 1位符号 + 8位指数(bias=127) + 23位尾数
+float Fp16ToFp32(uint16_t fp16Bits)
+{
+    uint32_t sign = (fp16Bits >> 15) & 0x1;
+    uint32_t exponent = (fp16Bits >> 10) & 0x1F;
+    uint32_t mantissa = fp16Bits & 0x3FF;
+
+    if (exponent == 0) {
+        // FP16零或非规格化数（exponent=0）
+        if (mantissa == 0) {
+            // ±0: 符号位保留，指数和尾数全零
+            uint32_t result = sign << 31;
+            float f;
+            memcpy_s(&f, sizeof(f), &result, sizeof(f));
+            return f;
+        }
+        // FP16非规格化数: 无隐含1，实际指数为-14
+        // 需要找到mantissa中最高有效1，将其规格化为FP32的隐含1形式
+        // while循环左移mantissa直到bit10=1（对应FP16隐含1的位置），shift记录左移次数
+        int shift = 0;
+        while ((mantissa & 0x400) == 0) {
+            mantissa <<= 1;
+            shift++;
+        }
+        mantissa &= 0x3FF; // 去掉隐含1，保留10位尾数
+        // FP32指数 = FP16实际指数(-14) + bias(127) - shift = 127 - 15 + 1 - shift
+        // shift越大说明原值越小，fp32Exp可能<=0，此时值太小FP32也无法表示，返回±0
+        int32_t fp32Exp = 127 - 15 + 1 - shift;
+        if (fp32Exp <= 0) {
+            uint32_t result = sign << 31;
+            float f;
+            memcpy_s(&f, sizeof(f), &result, sizeof(f));
+            return f;
+        }
+        // 组装FP32规格化数: 符号 + 偏移后指数 + 尾数左移13位对齐到23位
+        uint32_t result = (sign << 31) | (static_cast<uint32_t>(fp32Exp) << 23) | (mantissa << 13);
+        float f;
+        memcpy_s(&f, sizeof(f), &result, sizeof(f));
+        return f;
+    }
+    if (exponent == 0x1F) {
+        // FP16 Inf或NaN（exponent全1）
+        // mantissa==0: Inf; mantissa!=0: NaN。统一构造FP32的Inf/NaN:
+        // 指数=0xFF，尾数=mantissa<<13（mantissa为0时就是Inf，非0时就是NaN）
+        uint32_t result = (sign << 31) | (0xFF << 23) | (mantissa << 13);
+        float f;
+        memcpy_s(&f, sizeof(f), &result, sizeof(f));
+        return f;
+    }
+    // FP16规格化数（1<=exponent<=30）
+    // FP32指数 = exponent - FP16bias(15) + FP32bias(127) = exponent + 112
+    // FP32尾数 = FP16尾数左移13位（10位扩展到23位，低位补零）
+    uint32_t result = (sign << 31) | ((exponent + 112) << 23) | (mantissa << 13);
+    float f;
+    memcpy_s(&f, sizeof(f), &result, sizeof(f));
+    return f;
+}
+
+// FP32: 1位符号 + 8位指数(bias=127) + 23位尾数
+// FP16: 1位符号 + 5位指数(bias=15) + 10位尾数
+// FP32规格化数下溢到FP16非规格化数或±0
+// fp16Exp = exponent - 127 + 15 <= 0
+uint16_t Fp32DenormToFp16(uint32_t sign, uint32_t mantissa, int32_t fp16Exp)
+{
+    if (fp16Exp < -10) {
+        // 太小连FP16非规格化数都无法表示（FP16非规格化数最小有效移位为10），返回±0
+        return static_cast<uint16_t>(sign << 15);
+    }
+    // FP16非规格化数: 无隐含1，需要将FP32的隐含1和尾数一起右移
+    // totalShift = 将23位尾数移到FP16非规格化10位尾数所需的右移量
+    mantissa |= 0x800000; // 将隐含1放入mantissa高位
+    int32_t totalShift = 14 - fp16Exp;
+    // round-to-nearest-even舍入: 取guard bit和sticky bit
+    uint32_t roundBit = (mantissa >> (totalShift - 1)) & 0x1;
+    uint32_t truncated = mantissa & ((1U << (totalShift - 1)) - 1);
+    uint32_t sticky = (truncated != 0) ? 1 : 0;
+    uint16_t fp16Mant = static_cast<uint16_t>(mantissa >> totalShift);
+    fp16Mant += roundBit && (sticky || (fp16Mant & 0x1));
+    if (fp16Mant & 0x400) {
+        // 舍入进位后尾数溢出，升级为FP16最小规格化数（exponent=1, mantissa=0）
+        return static_cast<uint16_t>((sign << 15) | (1 << 10));
+    }
+    return static_cast<uint16_t>((sign << 15) | fp16Mant);
+}
+
+uint16_t Fp32ToFp16(float value)
+{
+    uint32_t fp32Bits;
+    memcpy_s(&fp32Bits, sizeof(fp32Bits), &value, sizeof(fp32Bits));
+    uint32_t sign = (fp32Bits >> 31) & 0x1;
+    uint32_t exponent = (fp32Bits >> 23) & 0xFF;
+    uint32_t mantissa = fp32Bits & 0x7FFFFF;
+
+    if (exponent == 0) {
+        // FP32零或非规格化数（exponent=0），值太小无法用FP16表示，返回±0
+        return static_cast<uint16_t>(sign << 15);
+    } else if (exponent == 0xFF) {
+        // FP32 Inf或NaN（exponent全1）
+        if (mantissa == 0) {
+            // Inf: FP16 exponent全1 + 尾数全0
+            return static_cast<uint16_t>((sign << 15) | 0x7C00);
+        }
+        // NaN: FP16 exponent全1 + 尾数非零；若FP32尾数截断后为0则强制置1确保仍是NaN
+        uint16_t fp16Mant = static_cast<uint16_t>(mantissa >> 13);
+        if (fp16Mant == 0) {
+            fp16Mant = 1;
+        }
+        return static_cast<uint16_t>((sign << 15) | 0x7C00 | fp16Mant);
+    }
+
+    // FP32规格化数: 计算FP16目标指数 fp16Exp = exponent - FP32bias(127) + FP16bias(15)
+    int32_t fp16Exp = static_cast<int32_t>(exponent) - 127 + 15;
+
+    if (fp16Exp >= 31) {
+        // 上溢: 超出FP16规格化数范围（FP16最大指数=30），饱和到±Inf
+        return static_cast<uint16_t>((sign << 15) | 0x7C00);
+    } else if (fp16Exp <= 0) {
+        return Fp32DenormToFp16(sign, mantissa, fp16Exp);
+    }
+
+    // 正常规格化数: 截断23位尾数到10位，做round-to-nearest-even舍入
+    uint32_t discarded = mantissa & 0x1FFF; // 被丢弃的低13位
+    uint16_t fp16Mant = static_cast<uint16_t>(mantissa >> 13);
+    uint32_t roundBit = (discarded >> 12) & 0x1; // guard bit: 被丢弃的最高位
+    uint32_t sticky = (discarded & 0xFFF) ? 1 : 0; // sticky bit: 被丢弃的其余位是否有1
+    fp16Mant += roundBit && (sticky || (fp16Mant & 0x1));
+    if (fp16Mant == 0x400) {
+        // 舍入进位导致10位尾数溢出，指数+1，尾数归零
+        fp16Mant = 0;
+        fp16Exp++;
+    }
+    if (fp16Exp >= 31) {
+        // 进位后指数溢出，饱和到±Inf
+        return static_cast<uint16_t>((sign << 15) | 0x7C00);
+    }
+    return static_cast<uint16_t>((sign << 15) | (fp16Exp << 10) | fp16Mant);
+}
+
+HcclResult AicpuReduceFp16(u8 *dst, u8 *src, u64 size, const HcclReduceOp reduceOp)
+{
+    u64 count = size / sizeof(uint16_t);
+    std::vector<float> srcFp32(count);
+    std::vector<float> dstFp32(count);
+    uint16_t *srcFp16 = reinterpret_cast<uint16_t *>(src);
+    uint16_t *dstFp16 = reinterpret_cast<uint16_t *>(dst);
+    for (u64 i = 0; i < count; ++i) {
+        srcFp32[i] = Fp16ToFp32(srcFp16[i]);
+        dstFp32[i] = Fp16ToFp32(dstFp16[i]);
+    }
+    HcclResult ret = AicpuReduceTemplate<float>(dstFp32.data(),
+        dstFp32.size() * sizeof(float),
+        srcFp32.data(),
+        srcFp32.size() * sizeof(float),
+        reduceOp);
+    CHK_PRT_RET(ret != HcclResult::HCCL_SUCCESS,
+        HCCL_ERROR("[AicpuReduceFp16] AicpuReduceTemplate failed, ret[%d].", static_cast<int>(ret)),
+        ret);
+    for (u64 i = 0; i < count; ++i) {
+        dstFp16[i] = Fp32ToFp16(dstFp32[i]);
+    }
+    return ret;
+}
+
 HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice,
     const HcclDataType dataType, const HcclReduceOp reduceOp)
 {
     (void) thread;
-    CHK_PRT_RET(srcSlice.size_ != dstSlice.size_,
-        HCCL_ERROR(
-            "[AlgDataTransWrapper] [AicpuReduce] AicpuReduce: src slice size [%u] is not equal to dst slice size [%u].",
-            srcSlice.size_,
-            dstSlice.size_),
-        HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(srcSlice.size_ != dstSlice.size_, HCCL_ERROR("[AlgDataTransWrapper] [AicpuReduce] AicpuReduce: src slice size [%u] "\
+        "is not equal to dst slice size [%u].", srcSlice.size_, dstSlice.size_), HcclResult::HCCL_E_INTERNAL);
 
     auto ret = HcclResult::HCCL_SUCCESS;
     u8 *src = static_cast<u8 *>(GetSliceAddr(srcSlice));
     u8 *dst = static_cast<u8 *>(GetSliceAddr(dstSlice));
-    TraceDataSlice("AicpuReduce", "AICPU_REDUCE", 0, 1, srcSlice, dstSlice, src, dst,
-        srcSlice.size_, dataType, reduceOp);
+    TraceDataSlice("AicpuReduce", "AICPU_REDUCE", 0, 1, srcSlice, dstSlice, src, dst, srcSlice.size_, dataType, reduceOp);
     switch (dataType) {
+        case HcclDataType::HCCL_DATA_TYPE_INT8:
+            ret = AicpuReduceTemplate<int8_t>(reinterpret_cast<int8_t *>(dst), dstSlice.size_,
+                reinterpret_cast<int8_t *>(src), srcSlice.size_, reduceOp);
+            break;
+        case HcclDataType::HCCL_DATA_TYPE_INT32:
+            ret = AicpuReduceTemplate<int32_t>(reinterpret_cast<int32_t *>(dst), dstSlice.size_,
+                reinterpret_cast<int32_t *>(src), srcSlice.size_, reduceOp);
+            break;
+        case HcclDataType::HCCL_DATA_TYPE_FP16:
+            ret = AicpuReduceFp16(dst, src, srcSlice.size_, reduceOp);
+            break;
+        case HcclDataType::HCCL_DATA_TYPE_FP32:
+            ret = AicpuReduceTemplate<float>(reinterpret_cast<float *>(dst), dstSlice.size_,
+                reinterpret_cast<float *>(src), srcSlice.size_, reduceOp);
+            break;
         case HcclDataType::HCCL_DATA_TYPE_INT64:
-            AicpuReduceTemplate<int64_t>(reinterpret_cast<int64_t *>(dst),
-                dstSlice.size_,
-                reinterpret_cast<int64_t *>(src),
-                srcSlice.size_,
-                reduceOp);
+            ret = AicpuReduceTemplate<int64_t>(reinterpret_cast<int64_t *>(dst), dstSlice.size_,
+                reinterpret_cast<int64_t *>(src), srcSlice.size_, reduceOp);
             break;
         case HcclDataType::HCCL_DATA_TYPE_UINT64:
-            AicpuReduceTemplate<uint64_t>(reinterpret_cast<uint64_t *>(dst),
-                dstSlice.size_,
-                reinterpret_cast<uint64_t *>(src),
-                srcSlice.size_,
-                reduceOp);
+            ret = AicpuReduceTemplate<uint64_t>(reinterpret_cast<uint64_t *>(dst), dstSlice.size_,
+                reinterpret_cast<uint64_t *>(src), srcSlice.size_, reduceOp);
             break;
         case HcclDataType::HCCL_DATA_TYPE_FP64:
-            AicpuReduceTemplate<double>(reinterpret_cast<double *>(dst),
-                dstSlice.size_,
-                reinterpret_cast<double *>(src),
-                srcSlice.size_,
-                reduceOp);
+            ret = AicpuReduceTemplate<double>(reinterpret_cast<double *>(dst), dstSlice.size_,
+                reinterpret_cast<double *>(src), srcSlice.size_, reduceOp);
             break;
         default:
             HCCL_ERROR("DataType[%d] not support", int(dataType));
@@ -1038,6 +1206,50 @@ HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, co
             break;
     }
     return ret;
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedAdd(T a, T b)
+{
+    return a + b;
+}
+
+template <typename T>
+typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedAdd(T a, T b)
+{
+    using W = typename WiderType<T>::Type;
+    W result = static_cast<W>(a) + static_cast<W>(b);
+    if (result > static_cast<W>(std::numeric_limits<T>::max())) {
+        return std::numeric_limits<T>::max();
+    }
+    if (result < static_cast<W>(std::numeric_limits<T>::min())) {
+        return std::numeric_limits<T>::min();
+    }
+    return static_cast<T>(result);
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedMul(T a, T b)
+{
+    return a * b;
+}
+
+template <typename T>
+typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
+SaturatedMul(T a, T b)
+{
+    using W = typename WiderType<T>::Type;
+    W result = static_cast<W>(a) * static_cast<W>(b);
+    if (result > static_cast<W>(std::numeric_limits<T>::max())) {
+        return std::numeric_limits<T>::max();
+    }
+    if (result < static_cast<W>(std::numeric_limits<T>::min())) {
+        return std::numeric_limits<T>::min();
+    }
+    return static_cast<T>(result);
 }
 
 template <typename T>
@@ -1054,10 +1266,10 @@ HcclResult AicpuReduceTemplate(T *dst, u64 dstSize, T *src, u64 srcSize, const H
         T srcData = *(src + i);
         switch (reduceOp) {
             case HcclReduceOp::HCCL_REDUCE_SUM:
-                *(dst + i) = srcData + dstData;
+                *(dst + i) = SaturatedAdd(srcData, dstData);
                 break;
             case HcclReduceOp::HCCL_REDUCE_PROD:
-                *(dst + i) = srcData * dstData;
+                *(dst + i) = SaturatedMul(srcData, dstData);
                 break;
             case HcclReduceOp::HCCL_REDUCE_MAX:
                 *(dst + i) = std::max(srcData, dstData);
