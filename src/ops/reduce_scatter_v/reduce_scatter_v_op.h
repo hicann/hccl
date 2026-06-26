@@ -60,7 +60,7 @@ HcclResult ReduceScatterVOutPlaceCommon(void *sendBuf, const void *sendDispls, c
 std::string GetSupportDataTypeRSV(bool needReduce);
 
 HcclResult ReduceScatterVEntryLog(void *sendBuf, const void *sendCounts, const void *sendDispls, void *recvBuf,
-    uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, aclrtStream stream, const std::string &tag, const std::string &opName);
+    uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, aclrtStream stream, const std::string &tag, u32 totalRanks, const std::string &opName);
 
 }
 

@@ -40,7 +40,7 @@ namespace ops_hccl {
 HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
     const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag);
 HcclResult AllGatherVEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts, const void *recvDispls,
-    HcclDataType dataType, aclrtStream stream, const std::string &tag, const std::string &opName);
+    HcclDataType dataType, aclrtStream stream, const std::string &tag, u32 totalRanks, const std::string &opName);
 
 HcclResult AllGatherVOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
  	const void *recvDispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack);
