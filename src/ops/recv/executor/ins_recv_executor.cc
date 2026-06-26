@@ -66,6 +66,7 @@ namespace ops_hccl {
         HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
     {
+    #ifndef AICPU_COMPILE
         // 初始化一些基本成员变量
         InitRecvInfo(comm, param, topoInfo, algHierarchyInfo);
         HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Start.", myRank_, remoteRank_);
@@ -74,10 +75,17 @@ namespace ops_hccl {
         resourceRequest.slaveThreadNum = 0;
 
         std::vector<HcclChannelDesc> level0Channels;
-        CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
+        bool isGroupEnabled = false;
+        CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
+        if (isGroupEnabled) {
+            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels, 2));
+        } else {
+            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
+        }
         resourceRequest.channels.push_back(level0Channels);
 
         HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Success.", myRank_, remoteRank_);
+    #endif
         return HcclResult::HCCL_SUCCESS;
     }
 
@@ -125,7 +133,7 @@ namespace ops_hccl {
     }
 
     HcclResult InsRecvExecutor::OrchestrateP2p(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        ThreadHandle sendRecvStream) {
+        ThreadHandle sendRecvThread) {
         opMode_ = param.opMode;
         myRank_ = resCtx.topoInfo.userRank;
         remoteRank_ = param.sendRecvRemoteRank;
@@ -135,19 +143,15 @@ namespace ops_hccl {
         dataType_ = param.DataDes.dataType;
         dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
         dataSize_ = dataCount_ * dataTypeSize_;
- 
-        HCCL_DEBUG("[InsSendExecutor][OrchestrateP2p][%d]->[%d] Start.", myRank_, remoteRank_);
+        
+        HCCL_DEBUG("[InsRecvExecutor][OrchestrateP2p][%d]->[%d] Start.", myRank_, remoteRank_);
+        HCCL_INFO("[InsRecvExecutor][OrchestrateP2p] resCtx channels size [%zu].", resCtx.channels.at(0).size());
+
         // 给channels_赋值
-        auto channelIt = std::find_if(
-            resCtx.channels.at(0).begin(), resCtx.channels.at(0).end(),
-            [this](const ChannelInfo &channel_) {
-                return channel_.remoteRank == remoteRank_;
-            });
-        CHK_PRT_RET(
-            channelIt == resCtx.channels.at(0).end(),
-            HCCL_ERROR("[InsSendExecutor][OrchestrateP2p] Channel[%d]-[%d] not found.", myRank_, remoteRank_),
-            HcclResult::HCCL_E_NOT_FOUND);
-        const ChannelInfo &channel = *channelIt;
+        const ChannelInfo &channel
+            = (resCtx.channels.at(0).size() > 1)
+                  ? ((myRank_ <= remoteRank_) ? resCtx.channels.at(0).at(1) : resCtx.channels.at(0).at(0))
+                  : resCtx.channels.at(0).at(0);
         
         // 判断是否为PCIE链路，如果是则使用read
         if (channel.protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
@@ -155,11 +159,11 @@ namespace ops_hccl {
         }
  
         if (opMode_ == OpMode::OFFLOAD) {
-            CHK_RET(OrchestrateOffload(param, resCtx, sendRecvStream, channel));
+            CHK_RET(OrchestrateOffload(param, resCtx, sendRecvThread, channel));
         } else {
-            CHK_RET(OrchestrateOpbase(param, resCtx, sendRecvStream, channel));
+            CHK_RET(OrchestrateOpbase(param, resCtx, sendRecvThread, channel));
         }
-        HCCL_DEBUG("[InsSendExecutor][OrchestrateP2p][%d]->[%d] Success.", myRank_, remoteRank_);
+        HCCL_DEBUG("[InsRecvExecutor][OrchestrateP2p][%d]->[%d] Success.", myRank_, remoteRank_);
  
         return HcclResult::HCCL_SUCCESS;
     }

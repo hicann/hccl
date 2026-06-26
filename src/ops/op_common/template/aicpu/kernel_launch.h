@@ -15,13 +15,6 @@
 
 namespace ops_hccl {
 
-constexpr uint32_t HCCL_MAX_ARG_SIZE = 8192U;
-
-struct HcclP2pParam {
-    ThreadHandle sendRecvStream;
-    uint8_t opParams[HCCL_MAX_ARG_SIZE];
-};
-
 HcclResult RestoreVarDataBatchSendRecv(OpParam &param);
 
 HcclResult RestoreVarDataAlltoAllV(OpParam &param, const AlgResourceCtxSerializable &resCtx);

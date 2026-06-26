@@ -15,7 +15,15 @@
 
 DEFINE_WEAK_FUNC(HcclResult, HcclCommGetStatus, const char* commId, HcclCommStatus *status);
 
+DEFINE_WEAK_FUNC(HcclResult, HcclGroupStatusGet, bool *isGroupEnabled);
+
+DEFINE_WEAK_FUNC(HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpDesc *opInfo,
+    const HcclKernelFuncInfo *funcInfo, ThreadHandle aicpuThreadHandle, aclrtStream userStream,
+    const HcclKernelLaunchCfg *kernelLaunchCfg);
+
 // 初始化
 void HcclDeviceCommDlInit(void* libHcommHandle) {
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommGetStatus);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclGroupStatusGet);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclAicpuKernelLaunch);
 }

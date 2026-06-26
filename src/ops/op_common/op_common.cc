@@ -558,7 +558,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
     ThreadHandle cpuTsThread{0};
     ThreadHandle exportedAicpuTsThread{0};
     if ((param.engine == COMM_ENGINE_AICPU_TS) || (param.engine == COMM_ENGINE_CPU)) {
-        CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &cpuTsThread));
+        CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 3, &cpuTsThread));
         // Export cpuTsThread
         CHK_RET(HcclThreadExportToCommEngine(comm, 1, &cpuTsThread, COMM_ENGINE_AICPU_TS, &exportedAicpuTsThread));
     }
@@ -667,6 +667,26 @@ HcclResult GeReuseResource(HcclComm comm, OpParam &param, std::unique_ptr<InsCol
     return HCCL_SUCCESS;
 }
 
+static HcclResult GetUnfoldStream(HcclComm comm, OpParam &param, ThreadHandle unfoldThread, aclrtStream &resolvedStream)
+{
+    void *unfoldStream = nullptr;
+    auto &HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
+    HcclResult ret;
+    if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo || param.opMode == OpMode::OFFLOAD) { // 不走提前展开
+        resolvedStream = param.stream;
+    } else {
+        ret = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void *), &unfoldStream);
+        if (ret == HCCL_E_NOT_SUPPORT) {
+            resolvedStream = param.stream;
+        } else if (ret != HCCL_SUCCESS) {
+            return ret;
+        } else {
+            resolvedStream = unfoldStream;
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHandle cpuTsThread,
     ThreadHandle exportedCpuTsThread, u32 notifyNumOnMainThread, void *resCtxSequence, std::string &algName, ThreadHandle unfoldThread)
 {
@@ -678,6 +698,65 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
     if (param.engine == COMM_ENGINE_CPU) {
         // 注册dpu回调函数
         CHK_RET(static_cast<HcclResult>(HcclTaskRegister(comm, param.algTag, HcclLaunchDPUKernel)));
+    }
+
+    if (HcommIsSupportHcclAicpuKernelLaunch() && 
+        (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE)) {
+        HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P opType[%d], use HcclAicpuKernelLaunch",
+            static_cast<int>(param.opType));
+ 
+        // 构造 HcclOpDesc
+        HcclOpDesc opInfo;
+        
+        (void)memset_s(&opInfo, sizeof(HcclOpDesc), 0, sizeof(HcclOpDesc));
+        opInfo.opDescType = 1;  // 1: P2P
+
+        std::string opNameStr = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? "HcclSend" : "HcclRecv";
+        (void)strncpy_s(opInfo.opName, HCCL_OP_DESC_OP_NAME_MAX_LEN, opNameStr.c_str(), opNameStr.size());
+
+        opInfo.p2p.buffer = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? 
+                            param.inputPtr : param.outputPtr;
+        opInfo.p2p.cmdType = param.opType;
+        opInfo.p2p.dataType = param.DataDes.dataType;
+        opInfo.p2p.count = param.DataDes.count;
+        opInfo.p2p.remoteRank = param.sendRecvRemoteRank;
+        aclrtStream resolvedStream;
+        (void)GetUnfoldStream(comm, param, unfoldThread, resolvedStream);
+        HCCL_INFO("unfoldThread[%llu]", unfoldThread);
+
+        opInfo.p2p.unfoldStream = resolvedStream;
+        // 构造 HcclKernelFuncInfo
+        HcclKernelFuncInfo funcInfo;
+        (void)memset_s(&funcInfo, sizeof(HcclKernelFuncInfo), 0, sizeof(HcclKernelFuncInfo));
+        
+        (void)sprintf_s(funcInfo.kernelSoName, sizeof(funcInfo.kernelSoName), 
+                          "libscatter_aicpu_kernel.so");
+
+        (void)sprintf_s(funcInfo.kernelFuncName, sizeof(funcInfo.kernelFuncName), 
+                          "HcclLaunchP2pAicpuKernel");
+  
+        // 获取 aicpuThreadHandle
+        ThreadHandle aicpuThreadHandle;
+        u32 mainNotifyNum;
+        CHK_RET(GetMainThreadInfo(comm, param, aicpuThreadHandle, mainNotifyNum));
+        
+        // 调用 HcclAicpuKernelLaunch
+        void* args = &param;
+        uint32_t argSize = sizeof(OpParam) + param.varMemSize;
+ 
+        funcInfo.args = args;
+        funcInfo.argSize = argSize;
+        
+        HcclKernelLaunchCfg kernelLaunchCfg;
+        AicpuTimeout timeout = DeriveAicpuTimeout(param.opConfig.execTimeout);
+        u16 kernelLaunchTimeout = IsHcommDefaultTimeoutSupported() ? timeout.kernelLaunchTimeout :
+        ToKernelLaunchTimeout(AddAicpuTimeoutOffset(param.opConfig.execTimeout, KERNEL_TIMEOUT_OFFSET));
+        kernelLaunchCfg.timeOut = kernelLaunchTimeout;
+
+        CHK_RET(HcclAicpuKernelLaunch(comm, &opInfo, &funcInfo, aicpuThreadHandle, param.stream, &kernelLaunchCfg));
+
+        HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P launch success, algTag[%s]", param.algTag);
+        return HCCL_SUCCESS;
     }
 
     // Host stream通知Device主thread，使用主流上idx最大的notify

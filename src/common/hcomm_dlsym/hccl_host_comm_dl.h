@@ -47,6 +47,14 @@ DECL_WEAK_FUNC(HcclResult, HcclConfigGetInfo, HcclComm comm, HcclConfigType cfgT
     uint32_t infoLen, void *info);
 DECL_SUPPORT_FLAG(HcclConfigGetInfo);
 
+DECL_WEAK_FUNC(HcclResult, HcclGroupStatusGet, bool *isGroupEnabled);
+DECL_SUPPORT_FLAG(HcclGroupStatusGet);
+
+DECL_WEAK_FUNC(HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpDesc *opInfo,
+    const HcclKernelFuncInfo *funcInfo, ThreadHandle aicpuThreadHandle, aclrtStream userStream,
+    const HcclKernelLaunchCfg *kernelLaunchCfg);
+DECL_SUPPORT_FLAG(HcclAicpuKernelLaunch);
+
 void HcclCommDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus
