@@ -88,7 +88,7 @@ static CcuResult GroupCopy(AllGatherMesh1DMem2MemContext &ctx, ccu::LocalAddr ds
         ccu::Variable offsetCfg;
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
-        ccu::LoopGroup group(paraCfg, offsetCfg, 1, grpLoops);
+        ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     CCU_IF(goSize.parallelParam != 0)
@@ -124,8 +124,7 @@ static CcuResult GroupCopy(AllGatherMesh1DMem2MemContext &ctx, ccu::LocalAddr ds
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
-        uint32_t grpLoopNum = 2;
-        ccu::LoopGroup group(goSize.parallelParam, offsetCfg, grpLoopNum, grpLoops);
+        ccu::LoopGroup group(goSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     return CCU_SUCCESS;

@@ -138,9 +138,14 @@ HcclResult GetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceCtxSeria
     }
 
     CcuKernelHandle kernelHandle;
-    CcuResult regRet = HcommCcuKernelRegister(insHandle, kernelInfo.kernelFuncName,
+    const void *kernelArgs[] = {kernelInfo.kernelArg};
+
+    constexpr uint32_t dieId = 0; // 预留接口，暂无含义
+    constexpr uint32_t kernelArgNum = 1;
+    CcuResult regRet = HcommCcuKernelRegister(insHandle, dieId, kernelInfo.kernelFuncName,
                                                 reinterpret_cast<void*>(kernelInfo.kernelFunc),
-                                                kernelInfo.kernelArg, &kernelHandle); // 注册kernel
+                                                kernelArgs, kernelArgNum, &kernelHandle); // 注册kernel
+
     if (regRet != CCU_SUCCESS) {
         HCCL_ERROR("ccu kernel register failed: ccuRet -> %d", regRet);
         return ConvertCcuToHccl(regRet);

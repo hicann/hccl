@@ -51,6 +51,11 @@ private:
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
     HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
                                  uint64_t& die1Size) const;
+    HcclResult BuildCcuKernelInfos(const OpParam& param, uint32_t dieNum, uint32_t kernelNum,
+                                   const std::vector<NHRStepInfo>& stepInfoVector,
+                                   const std::map<u32, u32>& rank2ChannelIdx,
+                                   const std::vector<std::vector<HcclChannelDesc>>& channelsPerDie,
+                                   AlgResourceRequest& resourceRequest);
     HcclResult PrepareLaunchArgs(const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
                                  std::vector<uint64_t>& taskArgs, uint64_t& argSize);
 };
