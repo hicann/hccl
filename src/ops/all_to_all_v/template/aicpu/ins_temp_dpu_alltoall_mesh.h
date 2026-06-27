@@ -21,6 +21,7 @@
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 #include "dpu_alg_data_trans_wrapper.h"
+#include "dpu_alg_nhr_opt_wrapper.h"
 #include "hccl_res.h"
 namespace ops_hccl {
 const u32 MAX_RANK_NUM_PER_SERVER = 8;

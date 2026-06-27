@@ -34,6 +34,7 @@ private:
     HcclResult InitCommInfo(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
                             const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult SplitData(const u64 dataCount, const u64 rankSize, TemplateDataParams &tempAlgParams);
 
     uint32_t rankSizeLevel0_{0};
     uint32_t rankSizeLevel1_{0};

@@ -55,12 +55,6 @@ private:
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
     HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource); 
     HcclResult RunNHR(const std::map<u32, std::vector<ChannelInfo>> &channels, const TemplateDataParams &tempAlgParams);
-    HcclResult BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const TemplateDataParams &templateDataParams, u32 repeat) const;
-    HcclResult BatchRecv(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const TemplateDataParams &templateDataParams, u32 repeat) const;
-    HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const TemplateDataParams &templateDataParams, u32 repeat) const;
     
     u64 count_{0};
     u64 dataTypeSize_{0};

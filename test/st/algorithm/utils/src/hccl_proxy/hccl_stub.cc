@@ -801,6 +801,13 @@ int32_t HcommWriteWithNotifyNbiOnThread(ThreadHandle thread, ChannelHandle chann
     return 0;
 }
 
+int32_t HcommWriteNbiOnThread(ThreadHandle thread, ChannelHandle channel, void *dst, const void *src,
+    uint64_t len)
+{
+    return HcommWriteOnThread(thread, channel, dst, src, len);
+    return 0;
+}
+
 HcclResult HcclDevMemAcquire(HcclComm comm, const char *memTag, uint64_t *size, void **addr, bool *newCreated)
 {
     // 不真实分配host和dpu间通信的共享内存

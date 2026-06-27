@@ -9,6 +9,7 @@
  */
 
 #include "ins_temp_reduce_scatter_mesh_1D_dpu_inter.h"
+#include "dpu_alg_nhr_opt_wrapper.h"
 
 namespace ops_hccl {
 InsTempReduceScatterMesh1dDpuInter::InsTempReduceScatterMesh1dDpuInter()
@@ -139,80 +140,50 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataPa
     u64 recvCount = tempAlgParams.allRankProcessedDataCount.at(myAlgRank);
     u64 recvOffset = tempAlgParams.allRankDispls.at(myAlgRank);
 
+    std::vector<DpuTransferCtx> pairs;
+
     for (u32 rankIdx = 0; rankIdx < rankIds.size(); rankIdx++) {
         u32 remoteRank = rankIds[rankIdx];
         if (remoteRank == myRank) {
             continue;
         }
-        u64 sendSize = tempAlgParams.allRankSliceSize.at(rankIdx);//向对端发送的参数
+        u64 sendSize = tempAlgParams.allRankSliceSize.at(rankIdx);
         u64 sendCount = tempAlgParams.allRankProcessedDataCount.at(rankIdx);
         u64 sendOffset = tempAlgParams.allRankDispls.at(rankIdx);
-        // 只考虑发送数据为0，因为SendRecvWrite实际上只用到了本端发送对端，没有从对端接收数据到本端
-        if (sendSize == 0 && recvSize ==0) {
+        if (sendSize == 0 && recvSize == 0) {
             continue;
         }
-        HCCL_DEBUG("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] myRank[%d], toRank[%d], fromRank[%d]",
-                   myRank, remoteRank, remoteRank);
-        const ChannelInfo &linkSend = channels.at(remoteRank)[0];
-        const ChannelInfo &linkRecv = channels.at(remoteRank)[0];
+        const ChannelInfo &link = channels.at(remoteRank)[0];
 
-        // 在 HcclBuffer 上进行 ReduceScatter 操作
-        // 由于进程只能访问远端的HcclBuffer，所以只能通过write的方式将自己userIn上的数据写到远端HcclBuffer上
+        DpuTransferCtx ctx;
+        ctx.txCh = sendSize > 0 ? &link : nullptr;
+        ctx.rxCh = recvSize > 0 ? &link : nullptr;  // samePeer when both
+
         for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-            // 在reduce_scatter_op.cc的创建channels的环节中获取到了remote的HcclBuff的地址
-            void* remoteCclBuffAddr = linkSend.remoteCclMem.addr;
-            // 在接收的时候接收源应该是远端地址，但是由于rs的mesh算法用的是write，所以rx不用care
-            DataSlice rxSrcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,
-                                             tempAlgParams.buffInfo.inBuffBaseOff +
-                                             repeatIdx * tempAlgParams.inputRepeatStride +
-                                             recvOffset,
-                                             recvSize,
-                                             recvCount); // 接收源
-            DataSlice rxDstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                                             tempAlgParams.buffInfo.hcclBuffBaseOff +
-                                             repeatIdx * tempAlgParams.outputRepeatStride +
-                                             rankIdx * recvSize,
-                                             recvSize,
-                                             recvCount); // 接收目标
-            DataSlice txSrcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,
-                                             tempAlgParams.buffInfo.inBuffBaseOff +
-                                             repeatIdx * tempAlgParams.inputRepeatStride +
-                                             sendOffset,
-                                             sendSize,
-                                             sendCount); // 发送源
-            DataSlice txDstSlice = DataSlice(remoteCclBuffAddr,
-                                             tempAlgParams.buffInfo.hcclBuffBaseOff +
-                                             repeatIdx * tempAlgParams.outputRepeatStride +
-                                             myAlgRank * sendSize,
-                                             sendSize,
-                                             sendCount);  // 发送目标
-            std::vector<DataSlice> txSrcSlices{txSrcSlice};
-            std::vector<DataSlice> txDstSlices{txDstSlice};
-            std::vector<DataSlice> rxSrcSlices{rxSrcSlice};
-            std::vector<DataSlice> rxDstSlices{rxDstSlice};
-
-            if (sendSize > 0 && recvSize >0) {
-                TxRxChannels sendRecvChannels(linkSend, linkRecv);
-                TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
-                SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-                CHK_PRT_RET(SendRecvWrite(sendRecvInfo),
-                    HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] SendRecvWrite failed."),
-                    HcclResult::HCCL_E_INTERNAL);
-            } else if (sendSize > 0) {
-                SlicesList sendSliceList(txSrcSlices, txDstSlices);
-                DataInfo sendInfo(linkSend, sendSliceList);
-                CHK_PRT_RET(SendWrite(sendInfo),
-                    HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] Send failed."),
-                    HcclResult::HCCL_E_INTERNAL);
-            } else if (recvSize > 0) {
-                SlicesList recvSliceList(rxSrcSlices, rxDstSlices);
-                DataInfo recvInfo(linkRecv, recvSliceList);
-                CHK_PRT_RET(RecvWrite(recvInfo),
-                    HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] Recv failed."),
-                    HcclResult::HCCL_E_INTERNAL);
+            void* remoteCclBuffAddr = link.remoteCclMem.addr;
+            if (sendSize > 0) {
+                ctx.txSrcSlices.push_back(DataSlice(tempAlgParams.buffInfo.inputPtr,
+                    tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride + sendOffset,
+                    sendSize, sendCount));
+                ctx.txDstSlices.push_back(DataSlice(remoteCclBuffAddr,
+                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride +
+                    myAlgRank * sendSize,
+                    sendSize, sendCount));
+            }
+            if (recvSize > 0) {
+                ctx.rxSrcSlices.push_back(DataSlice(tempAlgParams.buffInfo.inputPtr,
+                    tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride + recvOffset,
+                    recvSize, recvCount));
+                ctx.rxDstSlices.push_back(DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
+                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride +
+                    rankIdx * recvSize,
+                    recvSize, recvCount));
             }
         }
+        pairs.push_back(ctx);
     }
+
+    CHK_RET(DpuBatchTransfer(pairs));
 #endif
     return HCCL_SUCCESS;
 }

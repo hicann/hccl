@@ -319,6 +319,7 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 
         // 框间的数据偏移和搬运计算
         GenInterTemplateParams(interTempDataParams, processedDataCount, currDataCount, loop);
+        CHK_RET(SplitData(currDataCount, rankSizeLevel1_, interTempDataParams));
         CHK_RET(interTempAlg.KernelRun(param, interTempDataParams, templateResourceInter));
 
         // 框内的数据偏移和搬运量计算
@@ -399,6 +400,27 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     return HCCL_SUCCESS;
 }
 #endif
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitData(
+    const u64 dataCount, const u64 rankSize, TemplateDataParams &tempAlgParams)
+{
+    u32 sliceNum = rankSize;
+    tempAlgParams.allRankSliceSize.clear();
+    tempAlgParams.allRankDispls.clear();
+    tempAlgParams.allRankProcessedDataCount.clear();
+    tempAlgParams.allRankSliceSize.reserve(sliceNum);
+    tempAlgParams.allRankDispls.reserve(sliceNum);
+    tempAlgParams.allRankProcessedDataCount.reserve(sliceNum);
+
+    u64 sliceSize = dataCount * dataTypeSize_;
+    for (u32 i = 0; i < sliceNum; i++) {
+        tempAlgParams.allRankDispls.emplace_back(i * sliceSize);
+        tempAlgParams.allRankSliceSize.emplace_back(sliceSize);
+        tempAlgParams.allRankProcessedDataCount.emplace_back(dataCount);
+    }
+    return HCCL_SUCCESS;
+}
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER,
