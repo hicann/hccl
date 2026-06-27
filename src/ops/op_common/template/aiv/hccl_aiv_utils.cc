@@ -735,17 +735,11 @@ void HashAppendValue(u64 &hash, const T &value)
 u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey)
 {
     u64 hash = FNV_OFFSET_BASIS;
-    // ctx本身是通信域粒度的，不需要commName
-    HashAppendString(hash, cacheKey.algName);
     HashAppendValue(hash, cacheKey.count);
     HashAppendValue(hash, cacheKey.dataType);
     HashAppendValue(hash, cacheKey.opType);
     HashAppendValue(hash, cacheKey.reduceOp);
     HashAppendValue(hash, cacheKey.root);
-    HashAppendValue(hash, cacheKey.sendType);
-    HashAppendValue(hash, cacheKey.recvType);
-    HashAppendValue(hash, cacheKey.sendCount);
-    HashAppendValue(hash, cacheKey.recvCount);
     HCCL_INFO("[%s] hashKey[%llu]", __func__, hash);
     return hash;
 }
@@ -805,7 +799,8 @@ HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx)
     return HCCL_SUCCESS;
 }
 
-HcclResult ReplayAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, OpParam &param, bool &cacheHit)
+HcclResult LookupAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, bool &cacheHit,
+                             std::string &algName, AivInstruction *&instructions, u32 &insCount)
 {
     cacheHit = false;
     void *ctx = nullptr;
@@ -820,37 +815,55 @@ HcclResult ReplayAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHa
     CHK_PRT_RET(header->keyHash != keyHash,
         HCCL_ERROR("[%s] invalid aiv cache ctx header, tag[%s], keyHash[%llu]",
             __func__, ctxTag.c_str(), header->keyHash), HCCL_E_INTERNAL);
-    uint64_t expectedSize = sizeof(AivCacheCtxHeader) + header->insCount * sizeof(AivInstruction);
+    uint64_t expectedSize = sizeof(AivCacheCtxHeader) + header->algNameLen +
+        header->insCount * sizeof(AivInstruction);
     CHK_PRT_RET(ctxSize != expectedSize,
         HCCL_ERROR("[%s] invalid aiv cache ctx size[%llu], expected[%llu], tag[%s]",
             __func__, ctxSize, expectedSize, ctxTag.c_str()), HCCL_E_INTERNAL);
 
-    HCCL_INFO("[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], ins size[%u]",
-        __func__, ctxTag.c_str(), header->keyHash, header->insCount);
-    AivInstruction *instructions = reinterpret_cast<AivInstruction *>(
+    const char *algNamePtr = reinterpret_cast<const char *>(
         static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader));
-    for (uint64_t i = 0; i < header->insCount; ++i) {
+    algName.assign(algNamePtr, header->algNameLen);
+    instructions = reinterpret_cast<AivInstruction *>(
+        static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader) + header->algNameLen);
+    insCount = header->insCount;
+
+    HCCL_INFO("[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], insCount[%u], algName[%s]",
+        __func__, ctxTag.c_str(), header->keyHash, insCount, algName.c_str());
+    cacheHit = true;
+    return HCCL_SUCCESS;
+}
+
+HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCount, OpParam &param)
+{
+    for (uint32_t i = 0; i < insCount; ++i) {
         AivOpArgs newArgs = instructions[i].opArgs;
         newArgs.stream = param.stream;
         newArgs.input = reinterpret_cast<u64>(param.inputPtr) + instructions[i].inputOffset;
         newArgs.output = reinterpret_cast<u64>(param.outputPtr) + instructions[i].outputOffset;
         CHK_RET(ExecuteKernelLaunch(newArgs));
     }
-    cacheHit = true;
     return HCCL_SUCCESS;
 }
 
-HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, AivCacheIndexCtx *indexCtx)
+HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
+                            AivCacheIndexCtx *indexCtx)
 {
     const InsQueue &queue = *g_recordingQueue;
-    uint64_t ctxSize = sizeof(AivCacheCtxHeader) + queue.size() * sizeof(AivInstruction);
+    u32 algNameLen = static_cast<u32>(algName.size());
+    uint64_t ctxSize = sizeof(AivCacheCtxHeader) + algNameLen + queue.size() * sizeof(AivInstruction);
     void *ctx = nullptr;
     CHK_RET(HcclEngineCtxCreate(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, ctxSize, &ctx));
-    AivCacheCtxHeader header { keyHash, static_cast<u32>(queue.size()) };
+    AivCacheCtxHeader header { keyHash, static_cast<u32>(queue.size()), algNameLen };
     CHK_SAFETY_FUNC_RET(memcpy_s(ctx, ctxSize, &header, sizeof(header)));
+    u8 *ptr = static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader);
+    if (algNameLen > 0) {
+        CHK_SAFETY_FUNC_RET(memcpy_s(ptr, algNameLen, algName.c_str(), algNameLen));
+        ptr += algNameLen;
+    }
     if (!queue.empty()) {
-        CHK_SAFETY_FUNC_RET(memcpy_s(static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader),
-            ctxSize - sizeof(AivCacheCtxHeader), queue.data(), queue.size() * sizeof(AivInstruction)));
+        CHK_SAFETY_FUNC_RET(memcpy_s(ptr, ctxSize - sizeof(AivCacheCtxHeader) - algNameLen,
+            queue.data(), queue.size() * sizeof(AivInstruction)));
     }
     // 增加index中的记录
     u32 pushIndex = indexCtx->tail;
@@ -914,9 +927,11 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 arg
     }
     CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner]errNo[0x%016llx] aclrtLaunchKernelWithHostArgs error[%d].",
         HCCL_ERROR_CODE(HCCL_E_RUNTIME), aclRet), HCCL_E_RUNTIME);
-    HcclResult dfxRet = SaveAivDfxTaskInfo(opArgs);
-    if (dfxRet != HCCL_SUCCESS) {
-        HCCL_WARNING("[ExecuteKernelLaunchInner] SaveAivDfxTaskInfo failed, ret[%d].", dfxRet);
+    if (GetExternalInputTaskExceptionEnable()) {
+        HcclResult dfxRet = SaveAivDfxTaskInfo(opArgs);
+        if (dfxRet != HCCL_SUCCESS) {
+            HCCL_WARNING("[ExecuteKernelLaunchInner] SaveAivDfxTaskInfo failed, ret[%d].", dfxRet);
+        }
     }
     return HCCL_SUCCESS;
 }

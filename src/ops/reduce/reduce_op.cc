@@ -242,6 +242,14 @@ HcclResult ReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count, Hc
         return HcclExecOpCcuFastLaunch(comm, param, ccuFastLaunchCtx);
     }
 
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        bool aivCacheHit = false;
+        CHK_RET(HcclAivCacheCheckAndReplay(comm, param, aivCacheHit));
+        if (aivCacheHit) {
+            return HCCL_SUCCESS;
+        }
+    }
+
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));

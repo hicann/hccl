@@ -53,6 +53,7 @@ struct AlgEnvConfig {
     bool multipleDimensionSplitRatioSet;
     double multipleDimensionSplitRatio;
     bool hcclRetryConfig[HCCL_RETRY_ENABLE_LEVEL_NUM];
+    bool taskExceptionEnable;
     std::map<HcclCMDType, std::vector<HcclAlgoType>> hcclAlgoConfig;
 
     AlgEnvConfig()
@@ -68,6 +69,7 @@ struct AlgEnvConfig {
         inconsistentCheckSwitch = 0; // 参数一致性校验开关 -1：不校验；0：仅校验首算子；1：每次算子下发均校验
         hcclDeterministic = static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_DISABLE);// 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
         enableFfts = true;
+        taskExceptionEnable = true;
         aicpuCacheEnable = 1; // 默认开启aicpu cache (只有当aicpuUnfold为true时才生效)
         aivOnlyMode = false;
         execTimeOutSet = false;
@@ -179,6 +181,8 @@ bool GetExternalInputExecTimeout(double &execTimeOut);
 bool RunIndependentOpExpansion(DevType deviceType);
 
 bool GetExternalInputMultipleDimensionSplitRatio(double &multipleDimensionSplitRatio);
+
+bool GetExternalInputTaskExceptionEnable();
 }
 
 #endif // HCCL_ALG_ENV_CONFIG_H

@@ -178,6 +178,13 @@ HcclResult ScatterExecOp(OpParam &param, void *sendBuf, void *recvBuf, uint64_t 
         if (ShouldGoCcuFastLaunch(comm, param, &ccuFastLaunchCtx)) {
             return HcclExecOpCcuFastLaunch(comm, param, ccuFastLaunchCtx);
         }
+        if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+            bool aivCacheHit = false;
+            CHK_RET(HcclAivCacheCheckAndReplay(comm, param, aivCacheHit));
+            if (aivCacheHit) {
+                return HCCL_SUCCESS;
+            }
+        }
         std::string algName;
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
         CHK_RET(Selector(comm, param, topoInfo, algName));

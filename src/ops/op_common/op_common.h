@@ -34,6 +34,10 @@ extern "C" {
 namespace ops_hccl {
 HcclResult HcclExecOp(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo, std::string &algName, const ResPackGraphMode &resPack = ResPackGraphMode());
 
+bool IsStreamInCaptureMode(aclrtStream stream);
+
+bool IsAivCacheSupported(const OpParam &param);
+
 HcclResult ExecuteAivCacheLogic(HcclComm comm, OpParam &param, const std::string &algName,
                                 std::unique_ptr<InsCollAlgBase> &executor,
                                 AlgResourceCtxSerializable &resCtxHost);
@@ -96,6 +100,8 @@ HcclResult SetOpParamFastLaunchTag(OpParam &param);
 bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam &param, CcuFastLaunchCtx **ccuFastLaunchCtx);
 
 HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastLaunchCtx *ccuFastLaunchCtx);
+
+HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam &param, bool &cacheHit);
 
 HcclResult GetAlgResAiv(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest, TopoInfoWithNetLayerDetails *topoInfo,
     AlgHierarchyInfoForAllLevel &algHierarchyInfo, void **resCtxSequence);
