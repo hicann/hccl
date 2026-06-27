@@ -782,6 +782,12 @@ HcclResult ProcessLinksForChannelMutiJetty(HcclComm comm, CommProtocol &expected
 {
 #ifndef AICPU_COMPILE
     CommTopo topoType;
+    constexpr u32 MIN_PHY_COUNT = 8;
+    if (linkList.size() < MIN_PHY_COUNT) {
+        // 兼容性适配
+        isIsolation = false;
+    }
+
     for (u32 idx = 0; idx < linkList.size(); idx++) {
         if (linkList[idx].linkAttr.linkProtocol != expectedProtocol) {
             continue;
