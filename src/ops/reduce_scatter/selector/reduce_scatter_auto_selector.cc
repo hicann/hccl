@@ -22,7 +22,6 @@ constexpr u64 RS_FLATTEN_MAX_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 RS_AICPU_1D_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_AICPU_1D_TWO_LEVER_DATA_SIZE_THRESHOLD = 1536 * 1024 * 1024;
 
-constexpr u64 RS_CCU_CLOS_1D_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_64P_MIN_DATA_SIZE = 128 * 1024 * 1024;
 constexpr u64 RS_CCU_64P_SEQ_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 RS_CCU_8P_MIN_DATA_SIZE = 64 * 1024 * 1024;
@@ -281,11 +280,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcuSchedule(const TopoIn
             HCCL_WARNING("[ReduceScatterAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
-        if (dataSize > RS_CCU_CLOS_1D_MIN_DATA_SIZE) {
-            selectAlgName = "CcuReduceScatterMesh1DMem2Mem";
-        } else {
-            selectAlgName = "CcuReduceScatterNHR1DMem2Mem";
-        }
+        selectAlgName = "CcuReduceScatterNHR1DMem2Mem";
     } else {
         HCCL_DEBUG("[ReduceScatterAutoSelector] MESH_1D_CLOS not match.");
         return SelectorStatus::NOT_MATCH;
