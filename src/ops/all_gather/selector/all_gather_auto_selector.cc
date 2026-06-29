@@ -304,7 +304,8 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
                     selectAlgName = "InsAllGatherMesh1D";
                 }
             } else if(isClosNumMultipleOfMeshNum && dataSize > SMALL_COUNT_512KB) {
-                selectAlgName = "InsAllGatherParallelMesh1DNHRMultiJetty";
+                selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "InsAllGatherParallelMesh1DNHRMultiJetty" :
+                                                                          "InsV2AllGatherOmniPipe";
             } else {
                 // 4P外非对称场景，大小数据量都用NHR算法
                 selectAlgName = "InsAllGatherNHR";

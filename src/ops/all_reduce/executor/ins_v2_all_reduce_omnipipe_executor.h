@@ -122,6 +122,7 @@ protected:
     std::vector<ThreadHandle> tempMainThreadsLevel2AG_;
     std::vector<u32> ntfIdxCtrlToTempLevel2AG_;
     std::vector<u32> ntfIdxTempToCtrlLevel2AG_;
+    OmniNeedSetStepNum omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
 
     enum OmnipipeARLevel{
         OMNIPIPE_RS_LEVEL0 = 0,

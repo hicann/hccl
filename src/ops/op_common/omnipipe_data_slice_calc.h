@@ -20,6 +20,7 @@
 namespace ops_hccl {
 constexpr u64 HCCL_MIN_SLICE_ALIGN_OMNIPIPE=512;
 constexpr u64 MAX_STEP_NUM = 5;
+constexpr u64 OMNIPIPE_UBX_16P_MAX_STEP_NUM = 5;
 
 constexpr double BW_OMNI_DEFAULT = 50;
 constexpr double BW_OMNI_PCIE_EIGHT_AG_CLOS = 20;
@@ -27,11 +28,19 @@ constexpr double BW_OMNI_PCIE_EIGHT_RS_CLOS = 29;
 constexpr double BW_OMNI_PCIE_SIXTEEN_RS_CLOS = 35;
 constexpr double BW_OMNI_PCIE_SIXTEEN_AG_CLOS = 35;
 
+constexpr double BW_OMNI_UBX_AG_CLOS = 191;
+constexpr double BW_OMNI_UBX_RS_CLOS = 225;
+
 enum OmniPipeLevel{
     OMNIPIPE_LEVEL0 = 0,
     OMNIPIPE_LEVEL1 = 1,
     OMNIPIPE_LEVEL2 = 2,
     OMNIPIPE_LEVEL_NUM = 3
+};
+
+enum OmniNeedSetStepNum{
+    OMNIPIPE_DEFAULT = 0,
+    OMNIPIPE_UBX_16P = 1
 };
 
 struct OmniPipeSliceInfo {
@@ -70,6 +79,7 @@ struct OmniPipeSliceParam {
     std::vector<u64> levelAlgType;  // 依次为三个维度的算法类型，MESH是1 or NHR是0
     OpMode opMode;
     CommEngine engine;
+    OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
     std::string toString()
     {
         std::ostringstream oss;
@@ -141,6 +151,7 @@ struct OmniPipeScratchParam {
     std::vector<u64> levelAlgType;  // 依次为三个维度的算法类型，MESH是1 or NHR是0
     OpMode opMode;
     CommEngine engine;
+    OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
     std::string toString()
     {
         std::ostringstream oss;
@@ -190,7 +201,7 @@ struct OmniPipeScratchParam {
         return oss.str();
     }
 };
-
+std::string ThreeDVecToStrOmni(std::vector<std::vector<std::vector<u32>>> infos);
 void BuffInfoAssign(BuffInfo& bi, u64 inBuffBaseOff, u64 outBuffBaseOff, u64 hcclBuffBaseOff = 0);
 std::vector<OmniPipeSplitSliceInfo> OmniPipeSplitSliceInfoListAssign(const std::vector<u64> dataWholeSize, u64 rankSize,
                                                                      u64 dataTypeSize);
@@ -228,5 +239,6 @@ HcclResult CalLocalCopySlice(const TemplateDataParams& tempAlgParams, const std:
                              std::vector<DataSlice>& dstDataSlice, u64 dataTypeSize);
 bool isSameLoop(const std::vector<u64>& splitData1, const std::vector<u64>& splitData2);
 std::vector<u64> CalcCountToDataSize(const std::vector<u64>& vecCount, u64 dataType);
+int SetMaxStepNumOmni(OmniNeedSetStepNum needSetStepNum);
 }  // namespace ops_hccl
 #endif

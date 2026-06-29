@@ -22,6 +22,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/aiv_alg_template_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/template_utils.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/aiv_alg_template_base.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/omnipipe_template_utils.cc
 )
 # ccu_alg_template_base.cc 依赖 9.0.0-only 的 hcomm ccu 头，8.5.0 下剥离
 if(NOT HCCL_CANN_COMPAT_850)

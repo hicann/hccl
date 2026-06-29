@@ -20,6 +20,37 @@ void BuffInfoAssign(BuffInfo &bi, u64 inBuffBaseOff, u64 outBuffBaseOff, u64 hcc
     bi.hcclBuffBaseOff = hcclBuffBaseOff;
 }
 
+std::string ThreeDVecToStrOmni(std::vector<std::vector<std::vector<u32>>> infos)
+{
+    std::stringstream ss;
+    // 第一层遍历：i = 第几个外层 idx
+    for (int i = 0; i < infos.size(); ++i) {
+        // 第二层遍历：j = 第几个中层 idx
+        for (int j = 0; j < infos[i].size(); ++j) {
+            // 输出前缀 infos[i][j] = { ... }
+            ss << "infos[" << i << "][" << j << "] = {";
+
+            // 最内层：拼接数字
+            const auto& inner = infos[i][j];
+            for (int k = 0; k < inner.size(); ++k) {
+                if (k > 0) ss << ",";
+                ss << inner[k];
+            }
+            ss << "}, ";
+        }
+    }
+    return ss.str();
+}
+
+int SetMaxStepNumOmni(OmniNeedSetStepNum needSetStepNum)
+{
+    int maxStepNum = MAX_STEP_NUM;
+    if (needSetStepNum == OmniNeedSetStepNum::OMNIPIPE_UBX_16P) {
+        maxStepNum = OMNIPIPE_UBX_16P_MAX_STEP_NUM;
+    }
+    return maxStepNum;
+}
+
 std::vector<OmniPipeSplitSliceInfo> OmniPipeSplitSliceInfoListAssign(const std::vector<u64> dataWholeSize, u64 rankSize,
                                                                      u64 dataTypeSize)
 {
@@ -439,7 +470,7 @@ std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam &omniPipeScratchPa
     u64 maxDataSizePerLoop = 0;
     u64 loopTimes = 1;
     std::vector<u64> scratchInfo = {0, 0};
-    int maxStepNum = MAX_STEP_NUM + 1;  // 这个函数只有rs使用，rs多拆了一步出来所以是+1
+    int maxStepNum = SetMaxStepNumOmni(omniPipeScratchParam.needSetStepNum) + 1;  // 这个函数只有rs使用，rs多拆了一步出来所以是+1
     HCCL_INFO("[CalcOmniPipeScratchInfo] "
               "justifyLen=[%llu],transportBoundDataSize=[%llu],maxStepNum=[%u],",
               justifyLen, transportBoundDataSize, maxStepNum);
@@ -586,11 +617,9 @@ std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam &omniPipeScratchPa
         if (zB > xyB) {
             scratchSize = CalScratchSize(reinterpret_cast<u64 *>(xRSDataSize), reinterpret_cast<u64 *>(yRSDataSize), zRSDataSize, levelRankSize,
                                          zConnerStep, outerStepNum, innerStepNum, maxStepNum, levelAlgType, engine, xB, yB);
-            HCCL_INFO("[CalcOmniPipeScratchInfo] zB>xyB,scratchSize=[%llu]", scratchSize);
         } else {
             scratchSize = CalScratchSize(reinterpret_cast<u64 *>(xRSDataSize), reinterpret_cast<u64 *>(yRSDataSize), zRSDataSize, levelRankSize,
                                          zConnerStep, outerStepNum, innerStepNum, maxStepNum, levelAlgType, engine, xB, yB);
-            HCCL_INFO("[CalcOmniPipeScratchInfo] zB<=xyB,scratchSize=[%llu]", scratchSize);
         }
         allCclBufferSize = 0;
         if (opMode == OpMode::OPBASE
@@ -874,7 +903,8 @@ OmniPipeSliceInfo CalcAGOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceParam
 {
     // 公共拓扑参数
     HCCL_INFO("[CalcAGOmniPipeSliceInfo] Run start");
-    int maxStepNum = MAX_STEP_NUM;
+    // int maxStepNum = MAX_STEP_NUM;
+    int maxStepNum = SetMaxStepNumOmni(omniPipeSliceParam.needSetStepNum);
     u64 processedDataEachRank = 0;  // 预留偏移参数，现在填0
     std::vector<u64> levelRankSize = omniPipeSliceParam.levelRankSize;
     std::vector<u64> dataSize = omniPipeSliceParam.dataWholeSize;
@@ -1409,7 +1439,7 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceParam
 {
     u64 processedDataEachRank = 0;  // 预留偏移参数，现在填0
     // 公共拓扑参数
-    int maxStepNum = MAX_STEP_NUM + 1;  // rs多拆了一步出来所以是+1
+    int maxStepNum = SetMaxStepNumOmni(omniPipeSliceParam.needSetStepNum) + 1;  // rs多拆了一步出来所以是+1
     std::vector<u64> levelRankSize = omniPipeSliceParam.levelRankSize;
     std::vector<u64> dataSize = omniPipeSliceParam.dataWholeSize;
     std::vector<u64> dataSizePerLoop = omniPipeSliceParam.dataSizePerLoop;
@@ -1560,8 +1590,8 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceParam
         && (omniPipeSliceParam.engine == CommEngine::COMM_ENGINE_AICPU_TS
             || omniPipeSliceParam.engine == CommEngine::COMM_ENGINE_CPU)) {
         xCclBufferBaseOff = dataSizePerLoop[maxDataPieceId] * xRankSize * yRankSize * zRankSize;
-        HCCL_INFO("xCclBufferBaseOff=%llu, dataSizePerLoop=%llu, xRankSize=%llu, yRankSize=%llu, zRankSize=%llu",
-            xCclBufferBaseOff, dataSizePerLoop, xRankSize, yRankSize, zRankSize);
+        HCCL_INFO("xCclBufferBaseOff=%llu, xRankSize=%llu, yRankSize=%llu, zRankSize=%llu",
+            xCclBufferBaseOff, xRankSize, yRankSize, zRankSize);
     }
     yCclBufferBaseOff = xCclBufferBaseOff + scratchSizexyz[0];
     zCclBufferBaseOff = yCclBufferBaseOff + scratchSizexyz[1];

@@ -52,6 +52,14 @@ protected:
     HcclResult CalcResLevel(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
         std::shared_ptr<InsAlgTemplateBase> tempAlg, AlgResourceRequest &resourceRequest) const;
 
+    HcclResult UbxLastStepLocalCopy(const OpParam& param, const OmniPipeSliceInfo& omniPipeSliceInfo, 
+        const OmniPipeSliceInfo& omniPipeSliceLocalcopyInfo,
+        std::map<u32, TemplateDataParams>& tempAlgParamMap, const u64 processedDataCount, int step) const;
+
+    HcclResult UbxLocalCopy(const OpParam& param, const OmniPipeSliceInfo& omniPipeSliceInfo, 
+        const OmniPipeSliceInfo& omniPipeSliceLocalcopyInfo, std::map<u32, TemplateDataParams>& tempAlgParamMap, 
+        const u64 processedDataCount, int step) const;
+
 private:
     enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
     TopoType topoType_ = TopoType::UBX_2LEVEL;
@@ -87,6 +95,9 @@ private:
     std::vector<std::vector<u32>> subCommRanks0_;
     std::vector<std::vector<u32>> subCommRanks1_;
     std::vector<std::vector<u32>> subCommRanks2_;
+
+    OmniNeedSetStepNum omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+    bool omniUbxLastStepRead_ = false;
 };
 }
 #endif

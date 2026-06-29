@@ -271,7 +271,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::RunReduceScatter(const std::map<u
         }
         SendRecvInfo sendRecvInfo{{linkRemote, linkRemote}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
 
-        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[queIdx]),
+        CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads[queIdx]),
                     HCCL_ERROR("[InsTempReduceScatterOmniPipeMesh1D] RunReduceScatter Send failed"),
                     HcclResult::HCCL_E_INTERNAL);
     }

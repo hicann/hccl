@@ -36,6 +36,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/registry/alg_template_register.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/wrapper/alg_data_trans_wrapper.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/dpu/kernel_launch.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/omnipipe_template_utils.cc
 
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo.cc
