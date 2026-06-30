@@ -17,11 +17,12 @@ namespace ops_hccl {
 
 class BarrierAutoSelector : public AutoSelectorBase {
 private:
-    // 仅「框间 host-DPU」场景启用新流程，其余场景在 BarrierOutPlace 已回退 HcclBarrierInner，
-    // 故只需重写 SelectDPUAlgo；SelectAicpuAlgo 沿用基类默认（NOT_MATCH）。
     SelectorStatus SelectDPUAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                  std::string &selectAlgName) const override;
+    SelectorStatus SelectAicpuAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
+                                   const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
+                                   std::string &selectAlgName) const override;
 };
 
 }  // namespace ops_hccl

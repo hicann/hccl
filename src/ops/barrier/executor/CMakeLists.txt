@@ -10,6 +10,7 @@
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_barrier_sequence_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_v2_barrier_sole_executor.cc
 )
 
 if(TARGET hccl)
