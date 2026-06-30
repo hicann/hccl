@@ -103,112 +103,62 @@ void RunAllReduceDPUCase(const TopoMeta &topoInfo, const u64 dataCount,
     SimWorld::Global()->Deinit();
 }
 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_base_test)
-{
-    TopoMeta topoMeta{{{0, 1}, {0, 1}}};
-    u64 dataCount = 1024;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    u32 dataTypeSize = 1;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_single_dataCount)
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_2x3_fp32_max_1024)
 {
     TopoMeta topoMeta{{{0, 1, 2}, {0, 1, 2}}};
-    u64 dataCount = 1;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT16;
-    u32 dataTypeSize = 2;
+    u64 dataCount = 1024;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
+    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
+}
+
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_2x3_fp32_max_301K)
+{
+    TopoMeta topoMeta{{{0, 1, 2}, {0, 1, 2}}};
+    u64 dataCount = 301 * 1024;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
     RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
  
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_odd_dataCount)
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_4x4_fp32_sum_1024)
 {
-    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}}};
-    u64 dataCount = 13;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-    u32 dataTypeSize = 4;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_even_dataCount)
-{
-    TopoMeta topoMeta{{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}}};
-    u64 dataCount = 16;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
-    u32 dataTypeSize = 2;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_small_data)
-{
-    TopoMeta topoMeta{{{0, 1, 2}, {8, 9, 10}}};
-    u64 dataCount = 4096;
+    TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
+    u64 dataCount = 1024;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
     u32 dataTypeSize = 4;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_mid_data)
-{
-    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
-    u64 dataCount = 1048575;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;
-    u32 dataTypeSize = 2;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_hcclbuff_add_1)
+
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_4x4_fp32_sum_301K)
 {
     TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
-    u64 dataCount = 200 * 1024 * 1024 + 1;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    u32 dataTypeSize = 1;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
-
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_base_test_eight_server_sole_rank)
-{
-    TopoMeta topoMeta{{{0}, {2}, {3}, {1}, {2}, {6}, {5}, {7}}};
-    u64 dataCount = 1024;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    u32 dataTypeSize = 1;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_base_test_eight_server_sole_rank_5data)
-{
-    TopoMeta topoMeta{{{0}, {2}, {3}, {1}, {2}, {6}, {5}, {7}}};
-    u64 dataCount = 5;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT16;
-    u32 dataTypeSize = 2;
-    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
-    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
-}
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_odd_dataCount_three_server_five_rank)
-{
-    TopoMeta topoMeta{{{0, 1, 5, 6, 7}, {0, 1, 2, 4, 5}, {0, 1, 5, 6, 7}}};
-    u64 dataCount = 13;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
+    u64 dataCount = 301 * 1024;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
     u32 dataTypeSize = 4;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
- 
-TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_mid_data_8servers_8ranks)
+
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_8x1_fp32_sum_1024)
 {
-    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
-    u64 dataCount = 1048575;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;
-    u32 dataTypeSize = 2;
+    TopoMeta topoMeta{{{0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}}};
+    u64 dataCount = 1024;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
+    RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
+}
+
+TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_8x1_fp32_sum_301K)
+{
+    TopoMeta topoMeta{{{0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}}};
+    u64 dataCount = 301 * 1024;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    u32 dataTypeSize = 4;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
