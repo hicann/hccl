@@ -141,16 +141,21 @@ HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string 
         return HCCL_SUCCESS;
     }
 
-    // 新流程在（框内 AICPU + 框间 DPU）场景启用，
-    // 其余场景回退到 hcomm 的旧 HcclBarrier。
-    if (!IsBarrierHostDpu(comm)) {
-        HCCL_INFO("[BarrierOutPlace] not host-dpu scene, fallback to legacy HcclBarrier");
+    // 仅支持 HostDPU 和 AICPU 引擎，其余回退旧 HcclBarrier
+    bool isHostDpu = IsBarrierHostDpu(comm);
+    bool isAicpu = (param.opExecuteConfig == OpExecuteConfig::AICPU_TS);
+    if (!isHostDpu && !isAicpu) {
+        HCCL_INFO("[BarrierOutPlace] engine not supported, fallback to legacy HcclBarrier");
         return BarrierFallbackToOldFlow(comm, stream);
     }
 
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(Selector(comm, param, topoInfo, algName));
+    HcclResult selRet = Selector(comm, param, topoInfo, algName);
+    if (selRet != HCCL_SUCCESS || algName.empty()) {
+        HCCL_INFO("[BarrierOutPlace] selector not matched, fallback to legacy HcclBarrier");
+        return BarrierFallbackToOldFlow(comm, stream);
+    }
     if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
         return BarrierFallbackToOldFlow(comm, stream);
     }
