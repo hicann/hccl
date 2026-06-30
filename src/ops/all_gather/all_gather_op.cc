@@ -45,13 +45,6 @@ HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclD
     std::string opTag;
     CHK_RET(AllGatherInitAndCheck(comm, sendBuf, recvBuf, sendCount, dataType, stream, opTag));
 
-    // 9.0.0 ccu模式走老流程
-    if ((GetHcommVersion() == CANN_VERSION(9, 0, 0)) &&
-        (GetExternalInputHcclCcuMSMode() ||
-        GetExternalInputHcclCcuSchedMode())) {
-        return HcclAllGatherInner(sendBuf, recvBuf, sendCount, dataType, comm, stream);
-    }
-
     CHK_RET(AllGatherEntryLog(sendBuf, recvBuf, sendCount, dataType, stream, opTag, "HcclAllGather"));
 
     // 执行AllGather
@@ -209,6 +202,12 @@ HcclResult AllGatherOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t sendCo
     param.deviceType = deviceType;
     
     CHK_RET(HcclGetOpExpansionMode(comm, param));
+
+    // 9.0.0 ccu模式走老流程
+    if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0) &&
+        param.engine == CommEngine::COMM_ENGINE_CCU) {
+        return HcclAllGatherInner(sendBuf, recvBuf, sendCount, dataType, comm, stream);
+    }
 
     CcuFastLaunchCtx *ccuFastLaunchCtx = nullptr;
     if (ShouldGoCcuFastLaunch(comm, param, &ccuFastLaunchCtx)) {

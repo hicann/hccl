@@ -42,13 +42,6 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
     OpParam param;
     CHK_RET(BroadcastInitAndCheck(comm, buf, count, dataType, root, stream, param));
 
-    // 9.0.0 ccu模式走老流程
-    if ((GetHcommVersion() == CANN_VERSION(9, 0, 0)) &&
-        (GetExternalInputHcclCcuMSMode() ||
-        GetExternalInputHcclCcuSchedMode())) {
-        return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
-    }
-
     CHK_RET(BroadcastEntryLog(buf, count, dataType, root, stream, param.tag, "HcclBroadcast"));
 
     // 执行Broadcast
@@ -185,6 +178,7 @@ HcclResult BroadcastOutPlaceCommon(void *buf, uint64_t count, HcclDataType dataT
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(HcclGetOpExpansionMode(comm, param));
+
     CHK_RET(Selector(comm, param, topoInfo, algName));
     if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
         return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
@@ -240,6 +234,11 @@ HcclResult BroadcastOutPlace(OpParam &param, void *buf, uint64_t count, HcclData
     
     CHK_RET(HcclGetOpExpansionMode(comm, param));
 
+    // 9.0.0 ccu模式走老流程
+    if (GetHcommVersion() == CANN_VERSION(9, 0, 0) && param.engine == CommEngine::COMM_ENGINE_CCU) {
+        return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
+    }
+
     CcuFastLaunchCtx *ccuFastLaunchCtx = nullptr;
     if (ShouldGoCcuFastLaunch(comm, param, &ccuFastLaunchCtx)) {
         return HcclExecOpCcuFastLaunch(comm, param, ccuFastLaunchCtx);
@@ -265,8 +264,6 @@ HcclResult BroadcastOutPlace(OpParam &param, void *buf, uint64_t count, HcclData
         return HcclResult::HCCL_SUCCESS;
     }
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
-
-    HCCL_INFO("Execute BroadcastOutPlace success.");
     return HCCL_SUCCESS;
 }
 

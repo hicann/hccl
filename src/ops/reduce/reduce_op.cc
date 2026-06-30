@@ -47,13 +47,6 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
     std::string opTag;
     CHK_RET(ReduceInitAndCheck(comm, sendBuf, recvBuf, count, dataType, root, op, stream, opTag));
 
-    // 9.0.0 ccu模式走老流程
-    if ((GetHcommVersion() == CANN_VERSION(9, 0, 0)) &&
-        (GetExternalInputHcclCcuMSMode() ||
-        GetExternalInputHcclCcuSchedMode())) {
-        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
-    }
-
     CHK_RET(ReduceEntryLog(sendBuf, recvBuf, count, dataType, op, root, stream, opTag, "HcclReduce"));
 
     // 执行Reduce
@@ -236,6 +229,12 @@ HcclResult ReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count, Hc
     CHK_RET(ReduceConstructOpParam(sendBuf, recvBuf, count, dataType, op, root, comm, stream, tag, param, opMode));
     
     CHK_RET(HcclGetOpExpansionMode(comm, param));
+
+    // 9.0.0 ccu模式走老流程
+    if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0) &&
+        param.engine == CommEngine::COMM_ENGINE_CCU) {
+        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
+    }
 
     CcuFastLaunchCtx *ccuFastLaunchCtx = nullptr;
     if ((opMode == OpMode::OPBASE) && ShouldGoCcuFastLaunch(comm, param, &ccuFastLaunchCtx)) {
