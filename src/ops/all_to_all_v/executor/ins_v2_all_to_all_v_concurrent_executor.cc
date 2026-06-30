@@ -220,7 +220,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     resReq0.ccuKernelInfos[0].channels = channelDescs0;
 
     std::vector<uint32_t> jettyNums;
-    CHK_RET(SetJettyNums(jettyNums, true));
+    CHK_RET(SetJettyNums(jettyNums, false));
 #if !defined(HCCL_CANN_COMPAT_850)
     auto kernelArg0 = std::make_shared<CcuKernelArgAllToAllVMesh1DMultiJetty>();
     kernelArg0->rankSize = subCommRanks0[0].size();

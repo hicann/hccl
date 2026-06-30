@@ -192,30 +192,30 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
     HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] start");
     uint64_t *args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
     uint64_t argSize = 9;
-    constexpr u32 inputIdx = 1;
-    constexpr u32 outputIdx = 2;
-    constexpr u32 inputOffsetIdx = 1;
-    constexpr u32 outputOffsetIdx = 2;
+    constexpr u32 inputIdx = 0;
+    constexpr u32 outputIdx = 1;
+    constexpr u32 inputOffsetIdx = 0;
+    constexpr u32 outputOffsetIdx = 1;
     args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
     args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
-    HCCL_INFO("[CcuTempAlltoAllVMesh1DMultiJetty::FastLaunch]: inputAddr[%llu], outputAddr[%llu], ",
-        "srcOffset[%llu], dstOffset[%llu]", args[1], args[2], args[4], args[5]);
+    HCCL_INFO("[CcuTempAlltoAllVMesh1DMultiJetty::FastLaunch]: inputAddr[%llu], outputAddr[%llu], "
+              "srcOffset[%llu], dstOffset[%llu]", args[0], args[1], args[3], args[4]);
     A2ASendRecvInfo localSendRecvInfo;
     HcclDataType dataType = param.all2AllVDataDes.sendType;
     uint64_t dataTypeSize = SIZE_TABLE[dataType];
-    uint64_t rankSize = args[10];
-    localSendRecvInfo.sendCounts.resize(rankSize, 0);
-    localSendRecvInfo.sendDispls.resize(rankSize, 0);
-    localSendRecvInfo.sendLength.resize(rankSize, 0);
-    localSendRecvInfo.sendOffset.resize(rankSize, 0);
-    localSendRecvInfo.recvCounts.resize(rankSize, 0);
-    localSendRecvInfo.recvDispls.resize(rankSize, 0);
-    localSendRecvInfo.recvLength.resize(rankSize, 0);
-    localSendRecvInfo.recvOffset.resize(rankSize, 0);
+    templateRankSize_ = static_cast<uint32_t>(args[9]);
+    localSendRecvInfo.sendCounts.resize(templateRankSize_, 0);
+    localSendRecvInfo.sendDispls.resize(templateRankSize_, 0);
+    localSendRecvInfo.sendLength.resize(templateRankSize_, 0);
+    localSendRecvInfo.sendOffset.resize(templateRankSize_, 0);
+    localSendRecvInfo.recvCounts.resize(templateRankSize_, 0);
+    localSendRecvInfo.recvDispls.resize(templateRankSize_, 0);
+    localSendRecvInfo.recvLength.resize(templateRankSize_, 0);
+    localSendRecvInfo.recvOffset.resize(templateRankSize_, 0);
     const u64* data = reinterpret_cast<const u64*>(param.varData);
-    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize; i++) {
-        u64 val = i / rankSize;
-        u64 curRank = i % rankSize;
+    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * templateRankSize_; i++) {
+        u64 val = i / templateRankSize_;
+        u64 curRank = i % templateRankSize_;
         switch(val) {
             case 0:
                 localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize;
@@ -241,7 +241,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
                                                tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle,
                                                taskArgs, argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempAllReduceMesh1D::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
         return ConvertCcuToHccl(launchRet);
     }
     HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] end");

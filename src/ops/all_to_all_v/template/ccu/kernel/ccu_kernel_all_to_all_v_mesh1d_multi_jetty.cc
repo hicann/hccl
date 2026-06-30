@@ -204,8 +204,8 @@ static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh1DMultiJettyContext &ctx)
     ctx.xnMaxTransportSize = UB_MAX_TRANS_SIZE;
     ctx.completedRankCount = 0;
     ctx.xnConst1 = 1;
-    uint32_t channelIdx = 0;
     CCU_WHILE(ctx.completedRankCount != arg->rankSize) {
+        uint32_t channelIdx = 0;
         for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
             if (rankIdx == arg->rankId) {
                 continue;
