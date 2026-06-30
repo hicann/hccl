@@ -18,13 +18,15 @@ thread_local std::set<std::string> g_inconsistentCheckedList;
 bool NeedInconsistentCheck(const OpParam& param)
 {
     if (HcommIsSupportHcclCommAddExchangeInfo()) {
-        // inconsistentCheckSwitch 为 off 以及 inconsistentCheckSwitch 为 first 或空但非首算子时不校验，其他场景均校验
+        // 以下场景不校验参数一致性，其余场景均校验：
+        // inconsistentCheckSwitch 为 off
+        // inconsistentCheckSwitch 为 first 或空，单算子模式下非首次下发且非增量建链模式
         std::string tagStr = param.algTag;
-        bool isChecked = (GetInconsistentCheckSwitch() == 0) &&
+        bool noCheck = (GetInconsistentCheckSwitch() == 0) && (param.opMode == OpMode::OPBASE) &&
             (g_inconsistentCheckedList.find(tagStr) != g_inconsistentCheckedList.end());
         bool increCreateChannelFlag = (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) &&
             (param.opMode == OpMode::OPBASE);
-        if (GetInconsistentCheckSwitch() == -1 || (isChecked && !increCreateChannelFlag)) {
+        if (GetInconsistentCheckSwitch() == -1 || (noCheck && !increCreateChannelFlag)) {
             return false;
         } else {
             return true;
