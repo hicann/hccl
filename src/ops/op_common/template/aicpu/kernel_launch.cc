@@ -395,11 +395,14 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param)
         // 主thread等待Host stream的通知
         ThreadHandle exportedAicpuTsThread = param->opThread;
         u32 maxNotifyNum = resCtxPtr->notifyNumOnMainThread;
-        for (u32 i = 0; i < resCtxPtr->notifyNumPerThread.size(); i++) {
-            if (resCtxPtr->notifyNumPerThread[i] > maxNotifyNum) {
-                maxNotifyNum = resCtxPtr->notifyNumPerThread[i];
+        if (!resCtxPtr->isHcclThreadAcquireWithConfigSupported) {
+            for (u32 i = 0; i < resCtxPtr->notifyNumPerThread.size(); i++) {
+                if (resCtxPtr->notifyNumPerThread[i] > maxNotifyNum) {
+                    maxNotifyNum = resCtxPtr->notifyNumPerThread[i];
+                }
             }
         }
+
         if (HcommIsSupportHcommThreadResAcquireTimeOut()) {
             CHK_RET(HcclThreadResAcquireTimeOut(resCtxPtr->fullTimeout));
         }

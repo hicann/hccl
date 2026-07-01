@@ -337,6 +337,25 @@ HcclResult HcclThreadAcquireWithStream(
     return simComm->independentOpThreadMgr_->HcclThreadAcquireWithStream(engine, stream, notifyNum, thread);
 }
 
+HcclResult HcclThreadAcquireWithConfig(HcclComm comm, CommEngine engine, uint32_t threadNum, ThreadType type,
+    const ThreadConfig *config, ThreadHandle *threads)
+{
+    auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
+    CHK_PTR_NULL(simComm);
+    for (auto i = 0; i < threadNum; i++) {
+        HcclResult ret = simComm->independentOpThreadMgr_->HcclThreadAcquire(engine, 1, config[i].notifyNumPerThread, &threads[i]);
+        if (ret != HCCL_SUCCESS) {
+            return ret;
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
+bool HcommIsSupportHcclThreadAcquireWithConfig()
+{
+    return true;
+}
+
 HcclResult HcclEngineCtxGet(HcclComm comm, const char *engineTag, CommEngine engine, void **ctx, uint64_t *size)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
