@@ -111,8 +111,13 @@ HcclResult InconsistentCheckParams(HcclComm comm, const OpExchangeInfo &exchange
                 rmtExchangeInfo.group));
         }
         if (strncmp(exchangeInfo.tag, rmtExchangeInfo.tag, TAG_LENGTH) != 0) {
-            CHK_RET(ReportOpExchangeInfoCheckFailed(exchangeInfo, "OpTag", exchangeInfo.tag,
-                rmtExchangeInfo.tag));
+            bool isGroupEnabled = false;
+            if (HcommIsSupportHcclGroupStatusGet()) {
+                CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
+            }
+            if (!isGroupEnabled) {
+                CHK_RET(ReportOpExchangeInfoCheckFailed(exchangeInfo, "OpTag", exchangeInfo.tag, rmtExchangeInfo.tag));
+            }
         }
         HCCL_INFO("[InconsistentCheckParams] success. remoteRank[%u]", channel.remoteRank);
     }
@@ -124,6 +129,13 @@ HcclResult InconsistentCheckOpType(const OpExchangeInfo &exchangeInfo, const Hcc
 {
     HcclCMDType locOpType = exchangeInfo.opType;
     if (locOpType == HcclCMDType::HCCL_CMD_SEND || locOpType == HcclCMDType::HCCL_CMD_RECEIVE) {
+        bool isGroupEnabled = false;
+        if (HcommIsSupportHcclGroupStatusGet()) {
+            CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
+        }
+        if (isGroupEnabled) {
+            return HCCL_SUCCESS;
+        }
         // HcclCMDType::HCCL_CMD_SEND和HcclCMDType::HCCL_CMD_RECEIVE的枚举值需确保大于等于0
         uint32_t expectValue = static_cast<uint32_t>(HcclCMDType::HCCL_CMD_SEND) +
             static_cast<uint32_t>(HcclCMDType::HCCL_CMD_RECEIVE) - static_cast<uint32_t>(locOpType);
