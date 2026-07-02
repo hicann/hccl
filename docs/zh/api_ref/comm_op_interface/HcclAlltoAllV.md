@@ -69,7 +69,7 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 ## 调用示例
 
 ```c
-// 申请集合通信操作的 Device 内存
+// 申请集合通信操作的Device内存
 void *sendBuf = nullptr;
 void *recvBuf = nullptr;
 uint64_t count = 8;
@@ -87,23 +87,23 @@ aclrtStream stream;
 aclrtCreateStream(&stream);
 
 // 设置收发数据量，收发数据量相同
-std::vector&lt;uint64_t> sendCounts(rankSize, 1);
-std::vector&lt;uint64_t> recvCounts(rankSize, 1);
-std::vector&lt;uint64_t> sdispls(rankSize);
-std::vector&lt;uint64_t> rdispls(rankSize);
-for (size_t i = 0; i &lt; rankSize; ++i) {
+std::vector<uint64_t> sendCounts(rankSize, 1);
+std::vector<uint64_t> recvCounts(rankSize, 1);
+std::vector<uint64_t> sdispls(rankSize);
+std::vector<uint64_t> rdispls(rankSize);
+for (size_t i = 0; i < rankSize; ++i) {
     sdispls[i] = i;
     rdispls[i] = i;
 }
-// 执行 AlltoAllV，向通信域内所有 rank 发送相同数据量的数据，并从所有 rank 接收相同数据量的数据，可定制数据量
+// 执行AlltoAllV，向通信域内所有rank发送相同数据量的数据，并从所有rank接收相同数据量的数据，可定制数据量
 HcclAlltoAllV(sendBuf, sendCounts.data(), sdispls.data(), HCCL_DATA_TYPE_FP32,
               recvBuf, recvCounts.data(), rdispls.data(), HCCL_DATA_TYPE_FP32, hcclComm, stream);
 // 阻塞等待任务流中的集合通信任务执行完成
 aclrtSynchronizeStream(stream);
 
 // 释放资源
-aclrtFree(sendBuf);          // 释放 Device 侧内存
-aclrtFree(recvBuf);          // 释放 Device 侧内存
+aclrtFree(sendBuf);          // 释放Device侧内存
+aclrtFree(recvBuf);          // 释放Device侧内存
 aclrtDestroyStream(stream);  // 销毁任务流
 HcclCommDestroy(hcclComm);   // 销毁通信域
 ```
