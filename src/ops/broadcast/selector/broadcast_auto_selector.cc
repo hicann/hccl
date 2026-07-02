@@ -209,6 +209,12 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDe
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[BroadcastAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
+    if (opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY &&
+        dataSize > AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize) {
+        HCCL_DEBUG("[BroadcastAutoSelector][%s] dataSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
+            __func__, dataSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);
+        return SelectorStatus::NOT_MATCH;
+    }
     if (dataSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__, dataSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
