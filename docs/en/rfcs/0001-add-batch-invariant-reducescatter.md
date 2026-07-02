@@ -16,34 +16,34 @@ Introduce BIRS (Batchsize Invariant ReduceScatter) — a novel batch-invariant R
 
 In distributed training and inference, **deterministic collective communication** requires that reduction operations (AllReduce, ReduceScatter, etc.) produce **bit-identical** results for the same input, regardless of batch size, process count, or memory sharding strategy. This requirement has become a hard constraint in multiple industry scenarios:
 
-#### 1. Training Reproducibility & CI/CD
+#### 1. Training Reproducibility and CI/CD
 
 Reproducible training is essential for trustworthy research and production pipelines. Non‑deterministic reductions introduce floating‑point noise that masks bugs and makes results impossible to compare across runs.
 
-- **Picard (2021)** (“Torch.manual_seed(3407) is all you need”) demonstrates that random seed variations alone can produce statistically significant outliers in final model performance – when reduction ordering is also non‑deterministic, the variance grows even larger. ([arXiv:2109.08203](https://arxiv.org/abs/2109.08203))
-- **CI/CD & Debugging**: In continuous integration testing and distributed debugging, any non‑determinism turns a reproducible bug into a ghost. Deterministic collectives guarantee that a failing test will fail identically on every rerun, drastically reducing root‑cause analysis time.
+- **Picard (2021)** ("Torch.manual_seed(3407) is all you need") demonstrates that random seed variations alone can produce statistically significant outliers in final model performance – when reduction ordering is also non‑deterministic, the variance grows even larger. ([arXiv:2109.08203](https://arxiv.org/abs/2109.08203))
+- **CI/CD and Debugging**: In continuous integration testing and distributed debugging, any non‑determinism turns a reproducible bug into a ghost. Deterministic collectives guarantee that a failing test will fail identically on every rerun, drastically reducing root‑cause analysis time.
 
-#### 2. Reinforcement Learning (RL / RLHF / PPO)
+#### 2. Reinforcement Learning (RL, RLHF, PPO)
 
-Reinforcement learning training is highly sensitive to consistency in policy evaluation. In PPO and RLHF pipelines, when the same policy is evaluated with different batch sizes, a change in ReduceScatter reduction ordering due to sharding can inject floating‑point noise into gradient/reward signals, destabilizing policy updates.
+Reinforcement learning training is highly sensitive to consistency in policy evaluation. In PPO and RLHF pipelines, when the same policy is evaluated with different batch sizes, a change in ReduceScatter reduction ordering due to sharding can inject floating‑point noise into gradient or reward signals, destabilizing policy updates.
 
-- **verl** ([github.com/verl-project/verl](https://github.com/verl-project/verl)): A mainstream open‑source RLHF/PPO framework that provides a `full_determinism` configuration option and explicitly sets `HCCL_DETERMINISTIC=1` to guarantee reproducible collective operations.
+- **verl** ([github.com/verl-project/verl](https://github.com/verl-project/verl)): A mainstream open‑source RLHF or PPO framework that provides a `full_determinism` configuration option and explicitly sets `HCCL_DETERMINISTIC=1` to guarantee reproducible collective operations.
 - **DeepSpeed‑Chat** and derivative frameworks: Require deterministic reductions in RLHF training to keep reward model training consistent across identical inputs.
 
-#### 3. Inference Consistency & Batch Invariance
+#### 3. Inference Consistency and Batch Invariance
 
 In large‑model serving, users expect the same prompt to always return the same output. However, dynamic batching means a prompt can be grouped with different neighbours on each request. Without deterministic collective communication, floating‑point reduction order can vary with batch composition, breaking this invariance.
 
-- **vLLM Batch Invariance**: The vLLM project explicitly calls out that non‑deterministic all‑reduce backends (e.g., NCCL) can cause different logits for the same prompt depending on batch mates. Their batch invariance guarantee relies on deterministic communication to ensure “the output for a given prompt is the same regardless of what other prompts are in the batch.” ([Motivation](https://docs.vllm.ai/en/latest/features/batch_invariance/#motivation), [Ascend Guide](https://docs.vllm.ai/projects/ascend/en/latest/user_guide/feature_guide/batch_invariance.html))
+- **vLLM Batch Invariance**: The vLLM project explicitly calls out that non‑deterministic all‑reduce backends (e.g., NCCL) can cause different logits for the same prompt depending on batch mates. Their batch invariance guarantee relies on deterministic communication to ensure "the output for a given prompt is the same regardless of what other prompts are in the batch." ([Motivation](https://docs.vllm.ai/en/latest/features/batch_invariance/#motivation), [Ascend Guide](https://docs.vllm.ai/projects/ascend/en/latest/user_guide/feature_guide/batch_invariance.html))
 - **SGLang**: Provides an `--enable-deterministic-inference` flag that forces deterministic computation and communication ordering, making inference outputs fully reproducible across different batch sizes and request arrival patterns. ([SGLang deterministic inference](https://sgl-project.github.io/advanced_features/deterministic_inference.html))
 - **OpenAI Community**: Practitioners have long struggled with non‑deterministic GPU operations in production LLM inference, where bit‑for‑bit reproducibility is expected by end‑users and essential for debugging. ([Defeating Nondeterminism in LLM Inference](https://community.openai.com/t/defeating-nondeterminism-in-llm-inference/1358623))
 
-#### 4. Ecosystem API & Framework Support
+#### 4. Ecosystem API and Framework Support
 
 The demand for determinism is reflected in the official APIs and configuration flags of major ML frameworks:
 
-- **PyTorch**: `torch.use_deterministic_algorithms(True)` requires all operations – including collectives – to produce the same output given the same input on the same hardware/software. ([PyTorch docs](https://docs.pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html))
-- **HuggingFace Transformers / Diffusers**: Provide a standardised `enable_full_determinism()` function that sets `NCCL_DETERMINISTIC=1`, `CUBLAS_WORKSPACE_CONFIG`, and other variables.
+- **PyTorch**: `torch.use_deterministic_algorithms(True)` requires all operations – including collectives – to produce the same output given the same input on the same hardware or software. ([PyTorch docs](https://docs.pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html))
+- **HuggingFace Transformers or Diffusers**: Provide a standardised `enable_full_determinism()` function that sets `NCCL_DETERMINISTIC=1`, `CUBLAS_WORKSPACE_CONFIG`, and other variables.
 - **LlamaFactory**: Large‑model fine‑tuning framework offering an `enable_full_determinism(seed)` interface for reproducible distributed training.
 - **ByteDance VeOmni**: Enforces `--train.enable_full_determinism true` in CI tests, making deterministic collectives a gate for code acceptance.
 
@@ -54,13 +54,14 @@ HCCL currently provides two batch-invariant algorithms:
 | Algorithm | Use Case | Limitation |
 |-----------|----------|------------|
 | **Mesh + Local Reduce** | Small messages (< several MB) | Low bandwidth utilization for large messages |
-| **RHD (Recursive Halving-Doubling)** | Large messages | Utilizes only ~50% of available bandwidth (only half the nodes communicate per round) |
+| **RHD (Recursive Halving-Doubling)** | Large messages | Utilizes only approximately 50% of available bandwidth (only half the nodes communicate per round) |
 
 On the A3 server topology (SIO + HCCS hybrid interconnect), RHD cannot simultaneously utilize SIO and HCCS links, resulting in insufficient bandwidth utilization for large message scenarios.
 
 ### Value of BIRS
 
 The BIRS algorithm is designed for the 2D topology characteristics of A3 servers, maintaining batch invariance while:
+
 - **First round**: Performing SendReduce over SIO links (cross X-axis reduction)
 - **Subsequent rounds**: Simultaneously utilizing SIO (reduction) and HCCS (intermediate result transfer) links
 - Achieving near-optimal bandwidth utilization, with only the first round not fully utilizing bandwidth
@@ -135,7 +136,7 @@ User calls HcclReduceScatter()
 
 Run the following command from the root directory of the hccl repository:
 
-```
+```bash
 # host + device + experimental
 bash build.sh --pkg --full --experimental
 ```
@@ -215,7 +216,7 @@ BIRS uses a 3-thread parallel model:
 | Thread | Role | Responsibility |
 |--------|------|----------------|
 | `mainThread` | Main thread | SIO SendReduce, final local reduction |
-| `subThreads[0]` | HCCS sub-thread | HCCS link Send/Notify operations |
+| `subThreads[0]` | HCCS sub-thread | HCCS link Send or Notify operations |
 | `subThreads[1]` | Copy sub-thread | Pre-copy of next round's input data |
 
 Inter-thread synchronization is performed via `PreSyncInterThreads` / `PostSyncInterThreads`.
@@ -330,7 +331,7 @@ When conditions are not met, the workflow exit and log error messages using hccl
 #### 6.3 Performance Testing
 
 - Compare against the RHD algorithm, measuring Task Duration across different message sizes
-- Expected: For message sizes ≥ 16MB, BIRS achieves up to 25% improvement over RHD. 
+- Expected: For message sizes >= 16MB, BIRS achieves up to 25% improvement over RHD.
 - Note: At the moment of this RFC creation kernel submission mechanism in HCCL is slower than the one of HCOMM, so 25% performance improvement applies only to operator execution time (without submission overhead).
 
 #### 6.4 Regression Testing
@@ -346,7 +347,6 @@ When conditions are not met, the workflow exit and log error messages using hccl
 | Additional scratch memory overhead | Increased memory usage for large messages | Requires `2 * rankSizeY × localStrideSize` scratch space; pre-allocated via `CalcResRequest` |
 | A3 topology assumption (SIO + HCCS) may not apply to other platforms | Cross-platform compatibility | Algorithm explicitly bound to A3 topology characteristics; other platforms require independent adaptation |
 
-
 ## Alternative Approaches
 
 N/A
@@ -360,6 +360,7 @@ N/A
 
 ## Review Records
 
-The review process takes place in the PR comment section. For detailed review comments, please refer to the corresponding PR:
+The review process takes place in the PR comment section. For detailed review comments, refer to the corresponding PR:
+
 - PR: [cann/hccl#657](https://gitcode.com/cann/hccl/pull/657)
 - Issues: [cann/hcomm#139](https://gitcode.com/cann/hcomm/issues/139), [cann/hccl#96](https://gitcode.com/cann/hccl/issues/96)

@@ -181,15 +181,15 @@ struct SrcBufDes {
 
 1. 初始状态，有Rank0与Rank1两个Rank，有Input，Output两种内存类型。
 
-![](./figures/allgather.png)
+   ![](./figures/allgather.png)
 
 2. 状态一动作：将rank0的Input，偏移地址20，大小为30的数据块搬运到rank0的Output，偏移地址为35结果：在rank0的Output上产生了一个语义块，记录了本次搬运的信息。
 
-![](./figures/allgather-0.png)
+   ![](./figures/allgather-0.png)
 
 3. 状态二动作：将rank1的Input，偏移地址70，大小为15的数据块搬运到rank0的Output，偏移地址为50结果：目的内存与现有的语义块有重叠，需要对现有的语义块进行拆分，产生两条语义块。
 
-![](./figures/allgather-1.png)
+   ![](./figures/allgather-1.png)
 
 #### 5.1.3 语义结果校验
 

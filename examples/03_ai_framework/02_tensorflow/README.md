@@ -4,7 +4,7 @@
 
 本样例展示如何使用 TensorFlow 接口执行 AllReduce 操作，包含以下功能点：
 
-- 基于 `ranktable.json` 配置文件初始化通信域
+- 基于 `ranktable.json` 配置文件初始化通信域。
 
 ## 环境准备
 

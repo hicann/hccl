@@ -75,7 +75,8 @@ source /usr/local/Ascend/cann/set_env.sh
 # 指定路径安装，${install_path}表示CANN-Toolkit包实际安装路径
 # source ${install_path}/cann/set_env.sh
 ```
-set_env.sh 是 环境初始化脚本，负责配置 PATH、LD_LIBRARY_PATH、PYTHONPATH 等环境变量，使编译器和运行时能正确找到昇腾 NPU 的工具链、库文件和算子库。
+
+set_env.sh是环境初始化脚本，负责配置PATH、LD_LIBRARY_PATH、PYTHONPATH等环境变量，使编译器和运行时能正确找到昇腾 NPU 的工具链、库文件和算子库。
 
 ## 二、编译自定义算子包
 
