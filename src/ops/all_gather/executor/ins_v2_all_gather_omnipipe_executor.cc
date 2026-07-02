@@ -59,7 +59,6 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
     const TopoInfoWithNetLayerDetails* topoInfo)
 {
-
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<u32> closRanks;
         if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
@@ -201,7 +200,6 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         levelThreads_[OMNIPIPE_LEVEL1].assign(threads_.begin() + 1 + levelThreads_[OMNIPIPE_LEVEL0].size(),
                                               threads_.begin() + 1 + levelThreads_[0].size() + levelThreadNum);
         tempMainThreadsXY_.push_back(levelThreads_[OMNIPIPE_LEVEL1].at(0));
-
     } else if (level == OMNIPIPE_LEVEL2) {
         levelThreads_[OMNIPIPE_LEVEL2].assign(
             threads_.begin() + 1 + levelThreads_[OMNIPIPE_LEVEL0].size() + levelThreads_[OMNIPIPE_LEVEL1].size(),
@@ -426,7 +424,6 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
                                                           omniPipeSliceInfo.dataSliceLevel0[i * level0StepCount + j]));
                     CHK_RET(tempMap[OMNIPIPE_LEVEL0]->KernelRun(param, tempAlgParamMap[OMNIPIPE_LEVEL0],
                                                                  tempResMap[OMNIPIPE_LEVEL0]));
-
                 }
                 if (rankSizeLevel_[OMNIPIPE_LEVEL1] > 1) {
                     CHK_RET(GenTemplateAlgParamsByDimData(tempAlgParamMap[OMNIPIPE_LEVEL1],
@@ -449,7 +446,6 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
             CHK_RET(LocalCopy(controlThread_, src, dst));
         }
         processedDataCount += currDataCount;
-
     }
     return HCCL_SUCCESS;
 }

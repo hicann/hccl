@@ -59,7 +59,7 @@ static CcuResult InitResource(ReduceScatterVMesh1DMem2MemContext &ctx)
             channelIdx++;
         }
     }
-    ctx.moConfig.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    ctx.moConfig.loopCount = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
     ctx.moConfig.msInterleave = CCU_MS_INTERLEAVE;
     ctx.moConfig.memSlice = CCU_MS_SIZE;
     ctx.resourceAllocated = false;
