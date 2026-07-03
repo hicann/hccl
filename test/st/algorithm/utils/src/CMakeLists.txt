@@ -36,6 +36,10 @@ target_link_libraries(hccl-model-proxy PUBLIC
     scatter_aicpu_kernel
 )
 
+target_link_libraries(hccl-model-proxy PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+)
+
 if (BUILD_OPEN_PROJECT)
     target_link_libraries(hccl-model-proxy PUBLIC
         ${ASCEND_HOME_PATH}/lib64/libc_sec.so

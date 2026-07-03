@@ -17,13 +17,40 @@ SHELL_DIR=$(cd $(dirname ${BASH_SOURCE:-$0})
     pwd
 )
 
+# 获取CPU核数用于并发编译和执行
+CPU_NUM=$(cat /proc/cpuinfo | grep "^processor" | wc -l)
+
+function log() {
+    local current_time=`date +"%Y-%m-%d %H:%M:%S"`
+    echo "[$current_time] "$1
+}
+
 # 创建build编译目录
 cd $SHELL_DIR
 mkdir -p ./build && cd ./build/ && rm -rf ../build/*
 
-# 编译用例工程，配置执行条件并执行
-cmake .. -DBUILD_OPEN_PROJECT=ON && make -j8
-LIBRARY_DIR="${SHELL_DIR}/build/utils/src/hccl_depends_stub:"
-export LD_LIBRARY_PATH=${LIBRARY_DIR}${LD_LIBRARY_PATH} && ${SHELL_DIR}/build/testcase/hccl_checker_ops_stest
+# 配置 ST 用例代码
+CMAKE_ARGS="-DBUILD_OPEN_PROJECT=ON"
+if [ "${ENABLE_GCOV}" == "on" ]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DENABLE_GCOV=ON"
+fi
+if [ -n "${ST_TASKS}" ]; then
+    CMAKE_ARGS="${CMAKE_ARGS} -DST_TASKS=${ST_TASKS}"
+fi
 
-exit 0
+log "Info: Building st with ${CPU_NUM} parallel jobs"
+log "Info: CMAKE_ARGS=${CMAKE_ARGS}"
+cmake .. ${CMAKE_ARGS}
+if [ $? -ne 0 ]; then
+    log "Error: cmake config failed"
+    exit 1
+fi
+
+# 编译 ST 用例代码
+cmake --build . -j ${CPU_NUM}
+if [ $? -ne 0 ]; then
+    log "Error: cmake build failed"
+    exit 1
+fi
+
+log "Info: ST build completed successfully!"

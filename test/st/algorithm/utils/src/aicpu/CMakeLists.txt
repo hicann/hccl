@@ -296,4 +296,5 @@ target_compile_definitions(scatter_aicpu_kernel PRIVATE
 
 target_link_libraries(scatter_aicpu_kernel PRIVATE
     -Wl,--no-as-needed
+    $<BUILD_INTERFACE:intf_pub>
 )

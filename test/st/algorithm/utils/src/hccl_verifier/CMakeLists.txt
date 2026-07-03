@@ -29,6 +29,10 @@ target_compile_options(hccl-verifier PRIVATE
     -D_GLIBCXX_USE_CXX11_ABI=0
 )
 
+target_link_libraries(hccl-verifier PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
+)
+
 message(STATUS "utils path= ${UTILS_DIR}")
 
 if (BUILD_OPEN_PROJECT)
