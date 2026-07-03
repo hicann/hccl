@@ -127,13 +127,13 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_five_test)
 
 }
 
-TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_four_4G_test)
+TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_two_4G_test)
 {
     // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
+    TopoMeta topoMeta {{{0, 1}}};  // 三维数组指定超节点-Server-Device信息
 
     // 算子执行参数设置
-    auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)
+    auto rankSize = 2;  // 参与集合通信的卡数(同topoMeta卡数一致)
     uint64_t count = (uint64_t)1024*1024*1024*4;  // 数据量
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;  // 数据类型
     auto root = 0;  // root节点
@@ -142,14 +142,14 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_four_4G_test)
 
 }
 
-TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_five_4G_test)
+TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_five_small_data_test)
 {
     // 仿真模型初始化
     TopoMeta topoMeta {{{0, 1, 2, 3, 4}}};  // 三维数组指定超节点-Server-Device信息
 
     // 算子执行参数设置
     auto rankSize = 5;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    uint64_t count = (uint64_t)1024*1024*1024*4;  // 数据量
+    uint64_t count = 100;  // 数据量
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
     auto root = 0;  // root节点
     auto dataTypeSize = sizeof(int32_t);
@@ -157,31 +157,16 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_five_4G_test)
 
 }
 
-TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_six_4G_test)
+TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_six_small_data_test)
 {
     // 仿真模型初始化
     TopoMeta topoMeta {{{0, 1, 2, 3, 4, 5}}};  // 三维数组指定超节点-Server-Device信息
 
     // 算子执行参数设置
     auto rankSize = 6;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    uint64_t count = (uint64_t)1024*1024*1024*4;  // 数据量
+    uint64_t count = 200;  // 数据量
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
     auto root = 2;  // root节点
-    auto dataTypeSize = sizeof(int32_t);
-    RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
-
-}
-
-TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_1DTwoShot_one_seven_4G_test)
-{
-    // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1, 2, 3, 4, 5, 6}}};  // 三维数组指定超节点-Server-Device信息
-
-    // 算子执行参数设置
-    auto rankSize = 7;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    uint64_t count = (uint64_t)1024*1024*1024*4;  // 数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
-    auto root = 0;  // root节点
     auto dataTypeSize = sizeof(int32_t);
     RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
 

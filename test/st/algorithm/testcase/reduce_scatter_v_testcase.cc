@@ -90,6 +90,28 @@ TEST_F(ST_REDUCESCATTERV_TEST, st_reduce_scatter_v_a5_multilevel_2pod_6rank_fp16
     vDataDes.counts = {200, 200, 200, 200, 200, 200};
     vDataDes.displs = {0, 200, 400, 600, 800, 1000};
     vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    
+    RunReduceScatterVMultilevel(topoMeta, vDataDes);
+}
+
+TEST_F(ST_REDUCESCATTERV_TEST, st_reduce_scatter_v_a5_3layer_2pod_2server_4rank_fp16_equal_test)
+{
+    TopoMeta topoMeta{{{0}, {1}}, {{0}, {1}}};
+    VDataDesTag vDataDes;
+    vDataDes.counts = {200, 200, 200, 200};
+    vDataDes.displs = {0, 200, 400, 600};
+    vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+
+    RunReduceScatterVMultilevel(topoMeta, vDataDes);
+}
+
+TEST_F(ST_REDUCESCATTERV_TEST, st_reduce_scatter_v_a5_3layer_2pod_1server_4rank_int32_equal_test)
+{
+    TopoMeta topoMeta{{{0, 1}}, {{0, 1}}};
+    VDataDesTag vDataDes;
+    vDataDes.counts = {100, 100, 100, 100};
+    vDataDes.displs = {0, 100, 200, 300};
+    vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
 
     RunReduceScatterVMultilevel(topoMeta, vDataDes);
 }

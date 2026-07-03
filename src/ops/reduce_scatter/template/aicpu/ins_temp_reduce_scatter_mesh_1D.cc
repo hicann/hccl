@@ -45,6 +45,8 @@ HcclResult InsTempReduceScatterMesh1D::CalcRes(HcclComm comm, const OpParam& par
             }
         } 
     } else {
+        HCCL_DEBUG("[InsTempReduceScatterMesh1D][CalcRes] CalcChannelRequestMesh1D myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u]",
+                myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
 

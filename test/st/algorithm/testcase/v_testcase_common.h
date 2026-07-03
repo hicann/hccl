@@ -19,7 +19,7 @@
 #include "gtest/gtest.h"
 #include <thread>
 #include <functional>
-
+#include "alg_env_config.h"
 using namespace HcclSim;
 using namespace ops_hccl;
 

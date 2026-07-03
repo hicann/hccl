@@ -7,12 +7,11 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
-
+#include "hccl/hccl_types.h"
+#include "acl/acl_rt.h"
 #include "gtest/gtest.h"
 #include "sim_world.h"
 #include "hccl.h"
-#include "hccl/hccl_types.h"
-#include "acl/acl_rt.h"
 #include "hccl_verifier.h"
 #include "check_utils.h"
 #include <thread>
@@ -33,8 +32,8 @@ protected:
     }
     void TearDown() override
     {
-        unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
+        unsetenv("HCCL_OP_EXPANSION_MODE");
     }
 
     static void SetUpTestCase() {}
@@ -62,21 +61,18 @@ void RunAllGatherAicpuA5(const TopoMeta &topoInfo, const u64 &sendCount, const H
 
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE_ALL_GATHER_ST[dataType];
     auto rankSize = AnalyseRankSize(topoInfo);
-    // 算子执行参数设置
-    // 多线程运行SCATTER算子
-    std::vector<std::thread> threads;
-    for (auto rankId = 0; rankId < rankSize; ++rankId) {
+    // 算子执行参数设置,多线程运行SCATTER算子
+    std::vector <std::thread> threads;
+    for (auto rankIdx = 0; rankIdx < rankSize; ++rankIdx) {
         threads.emplace_back([=]() {
             // 1.SetDevice
-            aclrtSetDevice(rankId);
-
+            aclrtSetDevice(rankIdx);
             // 2.创建流
             aclrtStream stream = nullptr;
             aclrtCreateStream(&stream);
-
             // 3.初始化通信域
             HcclComm comm = nullptr;
-            CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
+            CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankIdx, &comm));
 
             void *sendBuf = nullptr;
             void *recvBuf = nullptr;
@@ -278,5 +274,23 @@ TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_parallel_nhr_mesh1d_3x3r
     auto sendCount = 300 * 1024 * 1024;  // 单卡数据量
 
     auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT8;  // 数据类型
+    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
+}
+
+TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_meshnhr_2x2x4rank_int8_test)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 4);
+    auto sendCount = 1;
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
+}
+
+TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_meshnhr_2x1x8rank_int8_test)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 1, 8);
+    auto sendCount = 1;
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
     RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
 }
