@@ -21,7 +21,7 @@ constexpr int POST_SYNC_ID = 3;
 static CcuResult InitResource(AllToAllMesh2DieContext &ctx)
 {
     const auto *arg = ctx.arg;
-    if (arg->channelCount == 0) {
+    if (arg->channelCount == 0 && !(arg->withMyRank)) {
         HCCL_ERROR("[CcuKernelAllToAllMesh2Die] RankId[%u] channels is empty", arg->rankId);
         return CCU_E_INTERNAL;
     }
