@@ -159,6 +159,9 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     channelsPerDie.resize(enableDieNum);
 
     CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    if (enableDieNum > 1) { // 通过端口数划分channel，适配跨框die0连die1的场景，避免建链失败
+        CHK_RET(ReverseChannelPerDieIfNeed(comm, myRank_, channelsPerDie));
+    }
 
     // 3.构造kernelInfo
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
@@ -247,8 +250,8 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::SplitDataFor2Dies(const OpParam& param,
         die1Size = 0;
         return HCCL_SUCCESS;
     }
-    u8 die0BWcoeff = 1;
-    u8 die1BWcoeff = 1;
+    u8 die0BWcoeff = 6;
+    u8 die1BWcoeff = 2;
 
     // 查询带宽系数，按比例切分数据
 

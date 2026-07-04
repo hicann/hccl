@@ -39,20 +39,21 @@ struct ReduceNHR1DMem2MemContext: CcuKernelCtxBase {
     HcclDataType dataType;
     HcclReduceOp reduceOp;
     ccu::Variable input;
+    // 远端rank的output/token：用reserve+push_back(GetResByChannel)避免resize默认构造浪费寄存器
     std::vector<ccu::Variable> output;
     std::vector<ccu::Variable> token;
+    // 本rank的output/token：单独存储，用LoadArg加载
+    ccu::Variable myOutput;
+    ccu::Variable myToken;
     ccu::Variable isInputOutputEqual;
     ccu::Variable die0Size;
     ccu::Variable die1Size;
-    ccu::Variable sliceSize;
     ccu::Variable die0SliceSize;
     ccu::Variable die1SliceSize;
     ccu::Variable die0LastSliceSize;
     ccu::Variable die1LastSliceSize;
     ccu::Event event;
     std::vector<ccu::Variable> sliceOffset;
-    ccu::Variable repeatInputOffset;
-    ccu::Variable repeatOutputOffset;
 
     ccu::LocalAddr localSrc;
     ccu::LocalAddr localDst;
