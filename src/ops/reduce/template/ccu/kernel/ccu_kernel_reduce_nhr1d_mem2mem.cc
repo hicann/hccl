@@ -37,8 +37,8 @@ static CcuResult LoadArgs(ReduceNHR1DMem2MemContext &ctx)
     uint32_t argId = 0;
     const auto *arg = ctx.arg;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.output[ctx.myRankIdx], argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.token[ctx.myRankIdx], argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.myOutput, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.myToken, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.isInputOutputEqual, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die0Size, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die1Size, argId++));
@@ -60,11 +60,12 @@ static CcuResult InitResource(ReduceNHR1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] channels.size: [%u]", arg->channelCount);
 
     // 按照rank号从小到大遍历channels，遇到本rank就填充本地资源，否则依次取远端资源，要求算法返回的Link同样是按顺序排列的
-    ctx.output.resize(ctx.localSize + 1);
-    ctx.token.resize(ctx.localSize + 1);
+    // 用reserve+push_back避免resize默认构造Variable浪费寄存器：GetResByChannel返回的Variable用NoAllocTag构造不分配资源
+    ctx.output.reserve(ctx.localSize);
+    ctx.token.reserve(ctx.localSize);
     for (uint64_t channelIdx = 0; channelIdx < ctx.localSize; channelIdx++) {
-        ctx.output[channelIdx] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
-        ctx.token[channelIdx] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
+        ctx.output.push_back(ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID));
+        ctx.token.push_back(ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID));
     }
 
     ctx.resourceAllocated = false;
@@ -77,8 +78,8 @@ static void PreSync(ReduceNHR1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] PreSync begin");
     const auto *arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[ctx.localSize], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[ctx.localSize], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(arg->channels[i], ctx.myOutput, OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(arg->channels[i], ctx.myToken, TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
 
     uint16_t allBit = 1 << OUTPUT_XN_ID | 1 << TOKEN_XN_ID;
@@ -156,7 +157,7 @@ static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, co
     ChannelHandle sendChannel = arg->channels[toRankIdx];
     ChannelHandle recvChannel = arg->channels[fromRankIdx];
     const std::vector<u32> &sendSliceIdxList  = nhrStepInfo.txSliceIdxs;
-    ctx.localSrc.token = ctx.token[ctx.myRankIdx];
+    ctx.localSrc.token = ctx.myToken;
     ctx.remoteDst.token = ctx.token[toRankIdx];
 
     if (nhrStepInfo.step != 0) {
@@ -182,7 +183,7 @@ static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, co
             ctx.localSrc.addr = ctx.input;
             ctx.localSrc.addr += ctx.sliceOffset[sendSliceIdx];
         } else {
-            ctx.localSrc.addr = ctx.output[ctx.myRankIdx];
+            ctx.localSrc.addr = ctx.myOutput;
             ctx.localSrc.addr += ctx.sliceOffset[sendSliceIdx];
         }
 
@@ -192,7 +193,9 @@ static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, co
         CCU_CHK_RET(DoWriteReduceSlice(ctx, nhrStepInfo.toRank, sendSliceIdx, i % RANK_NUM_PER_CKE));
     }
     // 等待上面的DoWriteReduceSlice方法传完
-    ccu::EventWait(ctx.event, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+    // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+    u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+    ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
 
     // 通知toRank数据写入完毕
     ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << REDUCE_SCATTER_POST_SYNC_ID);
@@ -269,7 +272,7 @@ static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHR
     ChannelHandle sendChannel = arg->channels[toRankIdx];
     ChannelHandle recvChannel = arg->channels[fromRankIdx];
     const std::vector<u32> &sendSliceIdxList  = nhrStepInfo.txSliceIdxs;
-    ctx.localSrc.token = ctx.token[ctx.myRankIdx];
+    ctx.localSrc.token = ctx.myToken;
     ctx.remoteDst.token = ctx.token[toRankIdx];
 
     for (u32 i = 0; i < sendSliceIdxList.size(); i++) {
@@ -281,14 +284,16 @@ static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHR
             }
         }
 
-        ctx.localSrc.addr = ctx.output[ctx.myRankIdx];
+        ctx.localSrc.addr = ctx.myOutput;
         ctx.localSrc.addr += ctx.sliceOffset[sendSliceIdx];
 
         ctx.remoteDst.addr = ctx.output[toRankIdx];
         ctx.remoteDst.addr += ctx.sliceOffset[sendSliceIdx];
         CCU_CHK_RET(DoSendRecvSlice(ctx, nhrStepInfo.toRank, sendSliceIdx, i % RANK_NUM_PER_CKE));
     }
-    ccu::EventWait(ctx.event, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+    // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+    u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+    ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
 
     if (nhrStepInfo.step + 1 != arg->stepInfoVector.size()) {   // 最后一步不需要同步
         // 通知toRank，写入完毕
@@ -388,14 +393,16 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext &ctx)
 
             ctx.localSrc.addr  = ctx.input;
             ctx.localSrc.addr += ctx.sliceOffset[nonTxSliceIdx];
-            ctx.localSrc.token = ctx.token[ctx.myRankIdx];
+            ctx.localSrc.token = ctx.myToken;
 
-            ctx.localDst.addr  = ctx.output[ctx.myRankIdx];
+            ctx.localDst.addr  = ctx.myOutput;
             ctx.localDst.addr += ctx.sliceOffset[nonTxSliceIdx];
-            ctx.localDst.token = ctx.token[ctx.myRankIdx];
-            CCU_CHK_RET(DoLocalCopySlice(ctx, nonTxSliceIdx, i));
+            ctx.localDst.token = ctx.myToken;
+            CCU_CHK_RET(DoLocalCopySlice(ctx, nonTxSliceIdx, i % RANK_NUM_PER_CKE));
         }
-        ccu::EventWait(ctx.event, (1 << (nonTxSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+        // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+        u32 lastGroupSize = ((nonTxSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
     }
     return CCU_SUCCESS;
 }

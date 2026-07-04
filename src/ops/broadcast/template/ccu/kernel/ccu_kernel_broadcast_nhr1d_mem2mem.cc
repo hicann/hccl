@@ -189,7 +189,9 @@ static CcuResult DoScatterNHRSingleStep(BroadcastNhr1DMem2MemContext &ctx, const
             CCU_CHK_RET(DoSendRecvSlice(ctx, nhrStepInfo.toRank, ctx.localSrc, ctx.remoteDst, sendSliceIdx,
                                         i % RANK_NUM_PER_CKE));
         }
-        CCU_CHK_RET(ccu::EventWait(ctx.event, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1));
+        // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+        u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        CCU_CHK_RET(ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1));
         // 通知toRank数据写入完毕
         CCU_CHK_RET(ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP_PRE_SYNC_ID));
     }
@@ -246,7 +248,9 @@ static CcuResult DoAllGatherNHRSingleStep(BroadcastNhr1DMem2MemContext &ctx, con
                                     i % RANK_NUM_PER_CKE));
     }
 
-    CCU_CHK_RET(ccu::EventWait(ctx.event, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1));
+    // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+    u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+    CCU_CHK_RET(ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1));
 
     if (nhrStepInfo.step + 1 != arg->stepInfoVector.size()) {   // 最后一步不需要同步
         // 通知toRank，写入完毕
