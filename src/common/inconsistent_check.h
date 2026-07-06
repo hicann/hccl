@@ -17,7 +17,9 @@
 #include "alg_type.h"
 
 namespace ops_hccl {
-bool NeedInconsistentCheck(const OpParam& param);
+bool NeedInconsistentCheck(HcclComm comm, const OpParam& param);
+
+bool CheckCtxStatus(HcclComm comm, const OpParam& param);
 
 HcclResult CompareOpExchangeInfos(HcclComm comm, const OpParam& param, const AlgResourceRequest &resRequest,
     const OpExchangeInfo &exchangeInfo);

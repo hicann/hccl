@@ -14,16 +14,14 @@
 #include "hccl_res_expt_dl.h"
 
 namespace ops_hccl {
-thread_local std::set<std::string> g_inconsistentCheckedList;
-bool NeedInconsistentCheck(const OpParam& param)
+bool NeedInconsistentCheck(HcclComm comm, const OpParam& param)
 {
-    if (HcommIsSupportHcclCommAddExchangeInfo()) {
+    if (HcommIsSupportHcclCommAddExchangeInfo() && (comm != nullptr)) {
         // 以下场景不校验参数一致性，其余场景均校验：
-        // inconsistentCheckSwitch 为 off
-        // inconsistentCheckSwitch 为 first 或空，单算子模式下非首次下发且非增量建链模式
-        std::string tagStr = param.algTag;
+        // inconsistentCheckSwitch为off
+        // inconsistentCheckSwitch为first或空，单算子模式下非首次下发且非增量建链模式，当前以context是否存在作为首次下发判断依据
         bool noCheck = (GetInconsistentCheckSwitch() == 0) && (param.opMode == OpMode::OPBASE) &&
-            (g_inconsistentCheckedList.find(tagStr) != g_inconsistentCheckedList.end());
+            CheckCtxStatus(comm, param);
         bool increCreateChannelFlag = (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) &&
             (param.opMode == OpMode::OPBASE);
         if (GetInconsistentCheckSwitch() == -1 || (noCheck && !increCreateChannelFlag)) {
@@ -35,9 +33,27 @@ bool NeedInconsistentCheck(const OpParam& param)
     return false;
 }
 
+bool CheckCtxStatus(HcclComm comm, const OpParam& param)
+{
+    void *ctx = nullptr;
+    uint64_t size = 0;
+    switch (param.engine) {
+        case CommEngine::COMM_ENGINE_CPU:
+            return (HcclEngineCtxGet(comm, param.algTag,
+                    CommEngine::COMM_ENGINE_AICPU_TS, &ctx, &size) == HCCL_SUCCESS);
+        case CommEngine::COMM_ENGINE_AIV:
+            return (HcclEngineCtxGet(comm, param.algTag,
+                    CommEngine::COMM_ENGINE_CPU_TS, &ctx, &size) == HCCL_SUCCESS);
+        default:
+            return (HcclEngineCtxGet(comm, param.algTag,
+                    param.engine, &ctx, &size) == HCCL_SUCCESS);
+    }
+}
+
 HcclResult CompareOpExchangeInfos(HcclComm comm, const OpParam& param, const AlgResourceRequest &resRequest,
     const OpExchangeInfo &exchangeInfo)
 {
+    CHK_PTR_NULL(comm);
     if (HcommIsSupportHcclCommGetExchangeInfo()) {
         if (param.engine != COMM_ENGINE_CCU) {
             for (u32 level = 0; level < resRequest.channels.size(); level++) {
@@ -48,8 +64,7 @@ HcclResult CompareOpExchangeInfos(HcclComm comm, const OpParam& param, const Alg
                 CHK_RET(InconsistentCheckParams(comm, exchangeInfo, kernelInfo.channels));
             }
         }
-        std::string tagStr = param.algTag;
-        g_inconsistentCheckedList.insert(tagStr);
+        HCCL_RUN_INFO("[CompareOpExchangeInfos] all exchangeInfos checked successfully. algTag[%s]", param.algTag);
     }
     return HCCL_SUCCESS;
 }
@@ -121,7 +136,6 @@ HcclResult InconsistentCheckParams(HcclComm comm, const OpExchangeInfo &exchange
         }
         HCCL_INFO("[InconsistentCheckParams] success. remoteRank[%u]", channel.remoteRank);
     }
-    HCCL_INFO("[InconsistentCheckParams] all exchangeInfos checked successfully. tag[%s]", exchangeInfo.tag);
     return HCCL_SUCCESS;
 }
 
