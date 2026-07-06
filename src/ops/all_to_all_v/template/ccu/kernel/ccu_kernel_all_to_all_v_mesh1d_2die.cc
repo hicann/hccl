@@ -33,7 +33,7 @@ static CcuResult ParseKernelArg(AllToAllVMesh1D2DieContext &ctx, CcuKernelArgAll
 static CcuResult InitResource(AllToAllVMesh1D2DieContext &ctx)
 {
     const auto *arg = ctx.arg;
-    if (arg->channelCount == 0) {
+    if (arg->channelCount == 0 && !(arg->withMyRank)) {
         HCCL_ERROR("[CcuKernelAllToAllVMesh1D2Die] RankId[%u] channels is empty!", arg->rankId);
         return CcuResult::CCU_E_INTERNAL;
     }
