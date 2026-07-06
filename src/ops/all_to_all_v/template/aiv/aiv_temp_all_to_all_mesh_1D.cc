@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_to_all_mesh_1D.h"
 
@@ -50,6 +51,14 @@ HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32
     if (numBlocksLimit < 1) {
         numBlocks = numBlocksLimit;
         return HcclResult::HCCL_SUCCESS;
+    }
+
+    // rankSize在部分范围时，最多使用指定倍数个核
+    constexpr u32 RANK_SIZE_CORE_CAP_THRESHOLD = 8;
+    constexpr u32 MAX_CORE_MULTIPLE_OF_RANK_SIZE = 4;
+    if (tempRankSize_ == RANK_SIZE_CORE_CAP_THRESHOLD) {
+        u32 maxBlocks = MAX_CORE_MULTIPLE_OF_RANK_SIZE * tempRankSize_;
+        numBlocksLimit = std::min(numBlocksLimit, maxBlocks);
     }
 
     if (numBlocksLimit >= tempRankSize_) {
