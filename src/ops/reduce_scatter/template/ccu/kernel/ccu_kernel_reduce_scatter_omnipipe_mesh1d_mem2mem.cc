@@ -289,7 +289,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx,
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
         std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
-        ccu::LoopGroup group(ctx.goSize.parallelParam, offsetCfg, 2, grpLoops);
+        ccu::LoopGroup group(ctx.goSize.parallelParam, offsetCfg, NUM_TWO, grpLoops);
     }
 
     return CCU_SUCCESS;

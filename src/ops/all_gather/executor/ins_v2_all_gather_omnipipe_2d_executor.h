@@ -83,7 +83,6 @@ protected:
     std::vector<ThreadHandle> level0Threads_;
     std::vector<ThreadHandle> level1Threads_;
 
-
 };
 }
 

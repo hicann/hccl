@@ -68,7 +68,7 @@ protected:
         const u64 sliceSize, const u64 tailSize, TemplateDataParams &tempAlgParamsStepFour) const;
     template <typename InsAlgTemplate>
     HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempReousrce) const;
+        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource) const;
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};

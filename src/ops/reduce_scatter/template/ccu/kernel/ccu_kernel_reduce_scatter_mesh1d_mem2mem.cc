@@ -224,8 +224,8 @@ static CcuResult PairwiseLocalReduce(ReduceScatterMesh1DMem2MemContext &ctx, ccu
 
 static void InitReduceScatterAddr(ReduceScatterMesh1DMem2MemContext &ctx)
 {
-    const auto *arg = ctx.arg;
     ccu::Variable scratchOffset;
+    const auto *arg = ctx.arg;
     scratchOffset = 0;
 
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {

@@ -112,7 +112,6 @@ HcclResult InsTempReduceScatterOmniPipeNHR::GetNHRDataSize(const AicpuNHRStepInf
                     void* sendCclBuffAddr, void* recvCclBuffAddr, const u32 dataTypeSize, const u64 rptNum,
                     std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices, 
                     std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices){
-
     for (u32 i = 0; i < st.nSlices; ++i) {
         const u32 txIdx = st.txSliceIdxs[i]; // 算法序
         const u32 rxIdx = st.rxSliceIdxs[i];

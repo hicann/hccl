@@ -83,7 +83,6 @@ HcclResult BatchTransferNHR(
 #ifndef AICPU_COMPILE
     bool hasTx = stepInfo.txSliceIdxs.size() > 0;
     bool hasRx = stepInfo.rxSliceIdxs.size() > 0;
-
     // 空闲 rank，直接跳过
     if (!hasTx && !hasRx) {
         return HCCL_SUCCESS;

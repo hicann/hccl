@@ -18,6 +18,7 @@
 #endif
 
 namespace ops_hccl {
+constexpr u32 DUAL_TEMPLATE_NUM = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::
@@ -117,9 +118,9 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 
     // 三条流，分别是主流（控制thread）+两条从流（template0的流和template1的流）
     // 申请一条控制thread作为主thread，该thread仅用于两个template之间同步
-    resourceRequest.notifyNumOnMainThread = 2;
+    resourceRequest.notifyNumOnMainThread = DUAL_TEMPLATE_NUM;
     // 由于主thread被单独作为控制thread，因此总的slaveThread需要额外加上两个template的thread
-    resourceRequest.slaveThreadNum = resReqLevel0.slaveThreadNum + resReqLevel1.slaveThreadNum + 2;
+    resourceRequest.slaveThreadNum = resReqLevel0.slaveThreadNum + resReqLevel1.slaveThreadNum + DUAL_TEMPLATE_NUM;
 
     // template0的流需要的notify数量，+1是因为需要和控制thread做同步
     resourceRequest.notifyNumPerThread.emplace_back(resReqLevel0.notifyNumOnMainThread + 1);

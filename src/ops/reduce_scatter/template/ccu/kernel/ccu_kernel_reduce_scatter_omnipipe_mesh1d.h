@@ -50,7 +50,7 @@ struct ReduceScatterOmniPipeMesh1DContext: CcuKernelCtxBase {
     ccu::Event event;
 
     // Loop机制相关变量
-    std::array<std::vector<ccu::LocalAddr>, 2> loopScratch;
+    std::array<std::vector<ccu::LocalAddr>, NUM_TWO> loopScratch;
     ccu::LocalAddr loopDst[2];
     ccu::Variable  loopLen[2];
     ccu::Variable  loopLenExp[2];

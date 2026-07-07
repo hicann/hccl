@@ -287,7 +287,6 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     HCCL_DEBUG("myrank is %u, outBuffBaseOff is %llu, processedDataCount is %llu, end outBuffBaseOff is %llu", myRank_,
         stepSliceInfo.buffInfo.outBuffBaseOff, processedDataCount, tempAlgParams.buffInfo.outBuffBaseOff);
 
-    
     HCCL_DEBUG("[%s] inputSliceStrie.size[%u]", __func__, tempAlgParams.stepSliceInfo.stepInputSliceStride.size());
 
     tempAlgParams.inputSliceStride = 0;

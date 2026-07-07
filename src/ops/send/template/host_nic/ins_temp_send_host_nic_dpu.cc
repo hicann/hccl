@@ -119,7 +119,7 @@ HcclResult InsTempSendHostNicDpu::KernelRun(const OpParam &param, const Template
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlgParams,
+HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlgParam,
     const std::map<u32, std::vector<ChannelInfo>> &channels,
     const u32 myRank, const std::vector<std::vector<uint32_t>> &subCommRanks)
 {
@@ -132,11 +132,11 @@ HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlg
         if (rankIdx == myRank) {
             continue;
         }
-        uint8_t *cclInput = static_cast<uint8_t *>(tempAlgParams.buffInfo.hcclBuff.addr);
-        uint64_t cclInputSize = tempAlgParams.buffInfo.hcclBuff.size;
+        uint8_t *cclInput = static_cast<uint8_t *>(tempAlgParam.buffInfo.hcclBuff.addr);
+        uint64_t cclInputSize = tempAlgParam.buffInfo.hcclBuff.size;
 
-        uint8_t *input = static_cast<uint8_t *>(tempAlgParams.buffInfo.inputPtr);
-        uint64_t inputSize = tempAlgParams.buffInfo.inputSize;
+        uint8_t *input = static_cast<uint8_t *>(tempAlgParam.buffInfo.inputPtr);
+        uint64_t inputSize = tempAlgParam.buffInfo.inputSize;
 
         for (u64 sizeResidue = inputSize; sizeResidue > 0; sizeResidue -= sizePerRound) {
             // 前同步

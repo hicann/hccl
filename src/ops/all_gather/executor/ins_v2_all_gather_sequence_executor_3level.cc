@@ -19,6 +19,7 @@
 #include "topo_match_pcie_mix.h"
 
 namespace ops_hccl {
+constexpr u32 OMNIPIPE_LEVEL2_IDX = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
 InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::InsV2AllGatherSequenceExecutor3Level()
@@ -191,7 +192,7 @@ HcclResult InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, I
 
     TemplateResource Level2TempAlgRes, Level1TempAlgRes, Level0TempAlgRes;
     TemplateDataParams tempAlgParamsLevel2, tempAlgParamsLevel1, tempAlgParamsLevel0;
-    CHK_RET(GenTempResource(2, Level2TempAlgRes));
+    CHK_RET(GenTempResource(OMNIPIPE_LEVEL2_IDX, Level2TempAlgRes));
     CHK_RET(GenTempResource(1, Level1TempAlgRes));
     CHK_RET(GenTempResource(0, Level0TempAlgRes));
 

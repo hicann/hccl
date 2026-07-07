@@ -29,7 +29,6 @@ public:
     HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
                                     AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
 
-
 protected:
     HcclResult CalcLocalRankSize();
     HcclResult InitExectorInfo(const OpParam &param);

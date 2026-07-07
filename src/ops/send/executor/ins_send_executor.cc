@@ -12,6 +12,7 @@
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
+constexpr u32 P2P_CHANNEL_REPEAT_NUM = 2;
     std::string InsSendExecutor::Describe() const {
         return "Instruction based Send Executor.";
     }
@@ -77,7 +78,7 @@ namespace ops_hccl {
             CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
         }
         if (isGroupEnabled) {
-            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels, 2));
+            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels, P2P_CHANNEL_REPEAT_NUM));
         } else {
             CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
         }

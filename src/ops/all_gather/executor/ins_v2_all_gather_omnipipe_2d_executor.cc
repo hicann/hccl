@@ -133,7 +133,6 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 template <typename M, typename X, typename Y>
 HcclResult InsV2AllGatherOmniPipe2DExecutor<M, X, Y>::GenTemplateAlgParamsByDimData(
     const OpParam &param, TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo, u64 processedDataCount) {
-
     tempAlgParams.buffInfo.inBuffType = stepSliceInfo.buffInfo.inBuffType;
     tempAlgParams.buffInfo.outBuffType = stepSliceInfo.buffInfo.outBuffType;
 

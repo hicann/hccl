@@ -18,6 +18,7 @@
 namespace ops_hccl {
 
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 3;
+constexpr u32 OMNIPIPE_LEVEL2_IDX = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
@@ -515,9 +516,9 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<AlgTopoMatch, InsAlgTemplat
         CHK_RET(GenTempResource(resCtx, 1, algTemplateRSL1, templateResourceRSL1));
     }
     TemplateResource templateResourceRSL2;
-    CHK_RET(GenTempResource(resCtx, 2, algTemplateRSL2, templateResourceRSL2));
+    CHK_RET(GenTempResource(resCtx, OMNIPIPE_LEVEL2_IDX, algTemplateRSL2, templateResourceRSL2));
     TemplateResource templateResourceAGL2;
-    CHK_RET(GenTempResource(resCtx, 2, algTemplateAGL2, templateResourceAGL2));
+    CHK_RET(GenTempResource(resCtx, OMNIPIPE_LEVEL2_IDX, algTemplateAGL2, templateResourceAGL2));
     TemplateResource templateResourceAGL1;
     if (!skipLevel1_) {
         CHK_RET(GenTempResource(resCtx, 1, algTemplateAGL1, templateResourceAGL1));

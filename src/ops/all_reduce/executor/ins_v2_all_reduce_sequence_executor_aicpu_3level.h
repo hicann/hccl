@@ -31,7 +31,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2AllReduceSequenceExecutorAicpu3Level : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceSequenceExecutorAicpu3Level();
-    ~InsV2AllReduceSequenceExecutorAicpu3Level() = default;
+    ~InsV2AllReduceSequenceExecutorAicpu3Level() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
 
@@ -65,7 +65,7 @@ protected:
         const u64 sliceSize, const u64 tailSize, TemplateDataParams &tempAlgParamsAGL0) const;
     template <typename InsAlgTemplate>
     HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempReousrce) const;
+        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource) const;
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};

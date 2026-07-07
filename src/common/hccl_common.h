@@ -164,6 +164,8 @@ inline std::string GetDataStr(const void *data, u32 totalRanks)
 
 // Entry Log中u64数组按rank区间分片打印的单片段最大长度，避免触发LOG_TMPBUF_SIZE截断
 constexpr size_t ENTRY_ARRAY_LOG_CHUNK_SIZE = 384;
+constexpr u32 ENTRY_ARRAY_LOG_RESERVE_EXTRA = 32;   // 预留额外容量
+constexpr u32 ENTRY_ARRAY_LOG_SEPARATOR_LEN = 2;    // 分隔符长度(", ")
 
 // 按rank区间分片打印变长算子Entry Log中的u64数组参数，规避512字节栈缓冲截断
 inline void PrintEntryArrayLog(const std::string &opName, const std::string &tag,
@@ -183,13 +185,13 @@ inline void PrintEntryArrayLog(const std::string &opName, const std::string &tag
 
     const u64 *values = static_cast<const u64 *>(data);
     std::string chunk;
-    chunk.reserve(ENTRY_ARRAY_LOG_CHUNK_SIZE + 32); // 预留容量，避免增长时多次重分配
+    chunk.reserve(ENTRY_ARRAY_LOG_CHUNK_SIZE + ENTRY_ARRAY_LOG_RESERVE_EXTRA); // 预留容量，避免增长时多次重分配
     u32 startRank = 0;
 
     for (u32 i = 0; i < totalRanks; ++i) {
         std::string num = std::to_string(values[i]);
         // 加入分隔符和当前数值后若超出单片段长度，则先flush当前chunk
-        if (!chunk.empty() && chunk.size() + 2 + num.size() > ENTRY_ARRAY_LOG_CHUNK_SIZE) {
+        if (!chunk.empty() && chunk.size() + ENTRY_ARRAY_LOG_SEPARATOR_LEN + num.size() > ENTRY_ARRAY_LOG_CHUNK_SIZE) {
             HCCL_RUN_INFO("Entry-%s: tag[%s], %s[%u..%u]/%u=[%s]",
                 opName.c_str(), tag.c_str(), name, startRank, i - 1, totalRanks, chunk.c_str());
             chunk.clear();

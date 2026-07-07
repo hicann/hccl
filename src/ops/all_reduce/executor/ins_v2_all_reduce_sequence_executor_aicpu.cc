@@ -24,6 +24,7 @@
 namespace ops_hccl {
 
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
+constexpr u32 CCL_MEM_HALF_DIVISOR = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
@@ -401,7 +402,7 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     InsAlgTemplate3>::OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
     HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][OrchestrateLoop] Start");
-    scratchBlockSize_ = resCtx.cclMem.size / 2;
+    scratchBlockSize_ = resCtx.cclMem.size / CCL_MEM_HALF_DIVISOR;
 
     TemplateDataParams tempAlgParamsStepOne; // 框内ReduceScatter的模板参数
     TemplateDataParams tempAlgParamsStepTwo; // 框间ReduceScatter的模板参数

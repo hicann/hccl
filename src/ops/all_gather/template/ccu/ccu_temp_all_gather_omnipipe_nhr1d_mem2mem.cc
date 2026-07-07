@@ -114,7 +114,6 @@ HcclResult CcuTempAllGatherOmniPipeNHR1DMem2Mem::GetStepInfo(u32 step, u32 nStep
     stepInfo.rxSliceIdxs.clear();
     stepInfo.step   = step;
     stepInfo.myRank = rankIdx;
-    
 
     // 计算通信对象
     u32 deltaRank = 1 << (nSteps - 1 - step);

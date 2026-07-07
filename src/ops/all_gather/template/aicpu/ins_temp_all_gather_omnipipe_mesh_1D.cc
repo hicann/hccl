@@ -97,7 +97,6 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunAllGatherMesh(const std::vector<Th
         // read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
 
         for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-            
             u64 txBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff +
                             tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank][rpt];
             u64 rxBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff +
@@ -106,7 +105,6 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunAllGatherMesh(const std::vector<Th
             u64 rxOffset = tempAlgParams_.stepSliceInfo.stepOutputSliceStride[connectedAlgRank] + rxBaseOff;
 
             if (!omniLastStepRead_) {
-
                 txSrcPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
                 rxDstPtr = tempAlgParams_.buffInfo.hcclBuff.addr;
 

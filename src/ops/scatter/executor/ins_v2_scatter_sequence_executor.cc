@@ -153,7 +153,6 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     std::shared_ptr<InsAlgTemplate1> algTemplateScatterInter =
         std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
 
-
     // 构造框内template资源
     TemplateResource templateResourceIntra;
     templateResourceIntra.channels = remoteRankToChannelInfo_[0];

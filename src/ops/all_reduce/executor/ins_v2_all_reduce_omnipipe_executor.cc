@@ -365,6 +365,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
                                                std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
                                                u64 maxCountPerLoop) const
 {
+    (void) maxCountPerLoop;
     std::vector<u64> levelRankSizeVec = {rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_};
     std::vector<u64> levelRankIdVec = {rankIdxLevel0_, rankIdxLevel1_, rankIdxLevel2_};
     std::vector<u64> levelAlgType;
@@ -487,7 +488,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
             }
         }
         subCommRanks1 = {closRanks};
-        omniNeedSetStepNum_ = (subCommRanks1[0].size() == 4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P
+        omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P
                                                              : OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
         subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     } else {
@@ -503,7 +504,7 @@ template <typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTe
           typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
 HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::ClacOmniBandwidthInSever(const AlgResourceCtxSerializable &resCtx, std::vector<double>& bdvec)
+    InsAgAlgTemplateZ>::ClacOmniBandwidthInSever(const AlgResourceCtxSerializable &resCtx, std::vector<double>& bdvec) const
 {
     bdvec.clear();
     double bw_ag_l0 = BW_OMNI_DEFAULT;
@@ -561,7 +562,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
             }
         }
         subCommRanks1 = {closRanks};
-        omniNeedSetStepNum_ = (subCommRanks1[0].size() == 4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P
+        omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P
                                                         : OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
         if (!algHierarchyInfo_.infos[1].empty()) {
             subCommRanks2 = algHierarchyInfo_.infos[1];
@@ -657,7 +658,6 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     std::map<u32, TemplateDataParams> tempAlgParamMap;
     CHK_RET(InitTemplateParams(param, resCtx, tempMap, tempResMap, tempAlgParamMap));
 
-
     double bw_ag_l0 = BW_OMNI_DEFAULT;
     double bw_ag_l1 = BW_OMNI_DEFAULT;
     double bw_ag_l2 = BW_OMNI_DEFAULT;
@@ -666,10 +666,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     double bw_rs_l2 = BW_OMNI_DEFAULT;
 
     if (resCtx.topoInfo.level0PcieMix) {
-        if (rankSizeLevel1_ == 2) {
+        if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_2) {
             bw_ag_l1 = BW_OMNI_PCIE_EIGHT_AG_CLOS;
             bw_rs_l1=BW_OMNI_PCIE_EIGHT_RS_CLOS;
-        } else if (rankSizeLevel1_ == 4) {
+        } else if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_4) {
             bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_AG_CLOS;
             bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_RS_CLOS;
         }

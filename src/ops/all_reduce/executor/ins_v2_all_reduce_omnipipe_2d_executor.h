@@ -62,7 +62,6 @@ protected:
     HcclResult CalcSliceInfoAllReduce(u64 dataCount);
     u64 RoundUp(const u64 dividend, const u64 divisor) const;
 
-
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;  // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 
@@ -87,7 +86,6 @@ private:
     std::vector<std::vector<ThreadHandle>> levelThreads_;
     std::vector<u32> ntfIdxCtrlToTempLevel01RS_;
     std::vector<u32> ntfIdxTempToCtrlLevel01RS_;
-
 
     std::vector<std::vector<ThreadHandle>> levelThreadsAG_;
     std::vector<ThreadHandle> tempMainThreadsLevel01AG_;

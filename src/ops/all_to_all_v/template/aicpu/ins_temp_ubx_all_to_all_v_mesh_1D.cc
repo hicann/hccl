@@ -13,6 +13,7 @@
 #define NET_NUM 2
 
 namespace ops_hccl {
+constexpr u32 UBX_BOARD_PAIR_SIZE = 2;
 InsTempUBXAllToAllVMesh1D::InsTempUBXAllToAllVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>> &subCommRanks)
@@ -76,7 +77,7 @@ u64 InsTempUBXAllToAllVMesh1D::CalcScratchMultiple(BufferType inBuffType, Buffer
 HcclResult InsTempUBXAllToAllVMesh1D::GetBoardSendRecvMatrix(u32 n, std::vector<std::vector<u32>>& sendRecvMatrix)
 {
     // n必须是
-    if (n < 2 || n % 2 != 0) {
+    if (n < UBX_BOARD_PAIR_SIZE || n % UBX_BOARD_PAIR_SIZE != 0) {
         HCCL_ERROR("n is [%u]", n);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
@@ -91,7 +92,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetBoardSendRecvMatrix(u32 n, std::vector<
     // 生成n-1轮调度
     for (int round = 0; round < n-1; round++) {
         // 生成本轮配对：首尾对称配对
-        for (int i = 0; i < n/2; i++) {
+        for (int i = 0; i < n/UBX_BOARD_PAIR_SIZE; i++) {
             int a = ring[i];
             int b = ring[n-1-i];
 
@@ -417,7 +418,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(const OpParam& param,
     boardNum_ = templateRankSize_ / rankNumPerBoard_;
     // 考虑boardNum 不是偶数的场景,先配置成偶数board，实际收发再跳过
     algBoardNum_ = boardNum_;
-    if (boardNum_ % 2 == 1) {
+    if (boardNum_ % UBX_BOARD_PAIR_SIZE == 1) {
         algBoardNum_ = algBoardNum_ + 1;
     }
 

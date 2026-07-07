@@ -363,7 +363,7 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::FastLaunch(
-        const OpParam &param, const CcuFastLaunchCtx *ctx)
+        const OpParam &param, const CcuFastLaunchCtx *resCtx)
 {
     HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][FastLaunch] Start");
     InsAlgTemplate1 interTempAlg{};
@@ -372,27 +372,27 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     TemplateFastLaunchCtx tempFastLaunchCtxInter;
     TemplateFastLaunchCtx tempFastLaunchCtxIntra;
 
-    ThreadHandle *threads = ctx->GetThreadHandlePtr();
-    threads_.assign(threads, threads + ctx->threadNum);
+    ThreadHandle *threads = resCtx->GetThreadHandlePtr();
+    threads_.assign(threads, threads + resCtx->threadNum);
 
-    CcuKernelSubmitInfo *ccuKernelSubmitInfos = ctx->GetCcuKernelSubmitInfoPtr();
+    CcuKernelSubmitInfo *ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
 
     // 第一步: 框间NHR（ccu模式下用output作为中转）
-    HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][FastLaunch] inter ccuKernelNum[%llu]", ctx->ccuKernelNum[0]);
+    HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][FastLaunch] inter ccuKernelNum[%llu]", resCtx->ccuKernelNum[0]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtxInter, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtxInter.threads = threads_;
-    tempFastLaunchCtxInter.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[0]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[0];
-    if (ctx->ccuKernelNum[0] > 0) {
+    tempFastLaunchCtxInter.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[0]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[0];
+    if (resCtx->ccuKernelNum[0] > 0) {
         CHK_RET(interTempAlg.FastLaunch(param, tempFastLaunchCtxInter));
     }
 
     // 第二步: 框内Mesh（ccu模式下input=output，isInputOutputEqual=1）
-    HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][FastLaunch] intra ccuKernelNum[%llu]", ctx->ccuKernelNum[1]);
+    HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][FastLaunch] intra ccuKernelNum[%llu]", resCtx->ccuKernelNum[1]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtxIntra, param.outputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtxIntra.threads = threads_;
-    tempFastLaunchCtxIntra.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[1]);
-    if (ctx->ccuKernelNum[1] > 0) {
+    tempFastLaunchCtxIntra.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[1]);
+    if (resCtx->ccuKernelNum[1] > 0) {
         CHK_RET(intraTempAlg.FastLaunch(param, tempFastLaunchCtxIntra));
     }
 

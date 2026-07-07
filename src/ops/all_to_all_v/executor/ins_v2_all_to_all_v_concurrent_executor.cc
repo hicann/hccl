@@ -389,7 +389,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::FastLaunch(
-        const OpParam &param, const CcuFastLaunchCtx *ctx)
+        const OpParam &param, const CcuFastLaunchCtx *resCtx)
 {
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] Start");
     InsAlgTemplate0 tempAlg0{};
@@ -397,8 +397,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     TemplateFastLaunchCtx tempFastLaunchCtx0, tempFastLaunchCtx1;
 
-    ThreadHandle *threads = ctx->GetThreadHandlePtr();
-    threads_.assign(threads, threads + ctx->threadNum);
+    ThreadHandle *threads = resCtx->GetThreadHandlePtr();
+    threads_.assign(threads, threads + resCtx->threadNum);
     u64 temp0ThreadsNum = tempAlg0.GetThreadNum();
     if (temp0ThreadsNum > threads_.size()) {
         HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0ThreadsNum[%llu] exceeds available threads[%llu]",
@@ -424,8 +424,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     tempAlg0.SetA2ASendRecvInfo(sendRecvInfoTemp0);
     tempAlg1.SetA2ASendRecvInfo(sendRecvInfoTemp1);
 
-    CcuKernelSubmitInfo *ccuKernelSubmitInfos = ctx->GetCcuKernelSubmitInfoPtr();
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0 ccuKernelNum[%llu]", ctx->ccuKernelNum[0]);
+    CcuKernelSubmitInfo *ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
+    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0 ccuKernelNum[%llu]", resCtx->ccuKernelNum[0]);
 
     std::vector<ThreadHandle> subThreads;
     subThreads.emplace_back(temp1ThreadMain_);
@@ -434,18 +434,18 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtx0, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtx0.threads = temp0Threads_;
-    tempFastLaunchCtx0.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[0]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[0];
-    if (ctx->ccuKernelNum[0] > 0) {
+    tempFastLaunchCtx0.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[0]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[0];
+    if (resCtx->ccuKernelNum[0] > 0) {
         CHK_RET(tempAlg0.FastLaunch(param, tempFastLaunchCtx0));
     }
 
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp1 ccuKernelNum[%llu]", ctx->ccuKernelNum[1]);
+    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp1 ccuKernelNum[%llu]", resCtx->ccuKernelNum[1]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtx1, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtx1.threads = temp1Threads_;
-    tempFastLaunchCtx1.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[1]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[1];
-    if (ctx->ccuKernelNum[1] > 0) {
+    tempFastLaunchCtx1.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[1]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[1];
+    if (resCtx->ccuKernelNum[1] > 0) {
         CHK_RET(tempAlg1.FastLaunch(param, tempFastLaunchCtx1));
     }
 

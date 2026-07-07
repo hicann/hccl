@@ -23,6 +23,7 @@ namespace ops_hccl {
 
 // 序列执行器需要的层级数
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
+constexpr u32 CCL_MEM_HALF_DIVISOR = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2ReduceScatterSequenceExecutorAicpu()
@@ -170,7 +171,6 @@ void InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsA
     } else {
         tempAlgParamsIntra.buffInfo.hcclBuffBaseOff = 0;
     }
-    
 
     tempAlgParamsIntra.sliceSize = currDataCount * dataTypeSize_;
     tempAlgParamsIntra.tailSize = tempAlgParamsIntra.sliceSize;
@@ -248,7 +248,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx)
 {
     engine_ = param.engine;
-    scratchBlockSize_ = resCtx.cclMem.size / 2;
+    scratchBlockSize_ = resCtx.cclMem.size / CCL_MEM_HALF_DIVISOR;
     // 框内模板参数，input搬运到ccl，最终规约到ccl
     TemplateDataParams tempAlgParamsIntra;
     tempAlgParamsIntra.buffInfo.inBuffType = BufferType::INPUT;

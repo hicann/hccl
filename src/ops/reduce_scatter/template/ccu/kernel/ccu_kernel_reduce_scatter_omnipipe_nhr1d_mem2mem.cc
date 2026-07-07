@@ -63,8 +63,7 @@ static CcuResult InitResource(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
 
     ctx.inputOmniSliceStrideVec.resize(ctx.rankSize);
     ctx.inputOmniSliceSizeVec.resize(ctx.rankSize);
-    
-    
+
     HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] InitResource success!");
     return CCU_SUCCESS;
 }
