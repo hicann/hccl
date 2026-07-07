@@ -106,7 +106,7 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllReduceSequence2DieExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
+        HCCL_ERROR("[InsV2AllReduceSequence2DieExecutor][Orchestrate]errNo[0x%016llx] AllReduce executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     return HCCL_SUCCESS;
 }
