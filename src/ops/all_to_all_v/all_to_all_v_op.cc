@@ -543,7 +543,7 @@ HcclResult CalcInputOutputSize(const u64* sendCountsData, const u64* recvCountsD
     return HCCL_SUCCESS;
 }
 
-HcclResult ContructVarData(const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData,
+HcclResult ConstructVarData(const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData,
     const u64* rdisplsData, const u32 userRankSize, const u32 rankSize, OpParam &param)
 {
     CHK_PTR_NULL(param.varData);
@@ -608,7 +608,7 @@ HcclResult AlltoAllVConstructOpParam(const void *sendBuf, const void *sendCounts
     param.enableDetour = false;
     param.opType = opType;
 
-    CHK_RET(ContructVarData(sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, rankSize, param));
+    CHK_RET(ConstructVarData(sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, rankSize, param));
     u64* data = reinterpret_cast<u64*>(param.varData);
     param.all2AllVDataDes.sendCounts = data;
     param.all2AllVDataDes.recvCounts = data + RECV_COUNT_IDX * rankSize;

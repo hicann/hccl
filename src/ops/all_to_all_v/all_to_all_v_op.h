@@ -55,7 +55,7 @@ HcclResult GenResPack(const char* tag, void** streams, const size_t streamCount,
     void* scratchMemAddr, const uint64_t scratchMemSize, ResPackGraphMode &resPack);
 HcclResult CalcInputOutputSize(const u64* sendCountsData, const u64* recvCountsData,
     const u64* sdisplsData, const u64* rdisplsData, const u32 userRankSize, u64 &inputSize, u64 &outputSize);
-HcclResult ContructVarData(const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData,
+HcclResult ConstructVarData(const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData,
     const u64* rdisplsData, const u32 userRankSize, const u32 rankSize, OpParam &param);
 HcclResult CheckAlltoAllInputPara(const HcclComm comm, const void *sendBuf, const uint64_t sendCount,
     const HcclDataType sendType, const void *recvBuf, const uint64_t recvCount,
