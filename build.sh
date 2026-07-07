@@ -906,6 +906,11 @@ if [ "${COV}" == "true" ];then
     CUSTOM_OPTION="${CUSTOM_OPTION} -DENABLE_GCOV=ON"
 fi
 
+if [ -n "${CCACHE_PROGRAM}" ];then
+    CUSTOM_OPTION="${CUSTOM_OPTION} -DCMAKE_C_COMPILER_LAUNCHER=${CCACHE_PROGRAM}"
+    CUSTOM_OPTION="${CUSTOM_OPTION} -DCMAKE_CXX_COMPILER_LAUNCHER=${CCACHE_PROGRAM}"
+fi
+
 if [ -n "${ascend_package_path}" ];then
     ASCEND_CANN_PACKAGE_PATH=${ascend_package_path}
 elif [ -n "${ASCEND_HOME_PATH}" ];then
