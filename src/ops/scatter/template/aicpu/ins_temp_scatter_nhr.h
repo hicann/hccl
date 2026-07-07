@@ -55,7 +55,7 @@ private:
         const ThreadHandle &thread, const TemplateDataParams &tempAlgParams, u32 channelIdx) const;
     HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
         const ThreadHandle &thread, const TemplateDataParams &tempAlgParams, u32 channelIdx) const;
-    HcclResult PreprareDataSplitForMultiChannel(const TemplateResource &templateResource, const TemplateDataParams &tempAlgParams);
+    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource &templateResource, const TemplateDataParams &tempAlgParams);
     u64 processSize_{0};
     u64 count_{0};
     bool isDmaRead_{false};

@@ -75,7 +75,7 @@ u64 InsTempAllGatherNHR::CalcScratchMultiple(BufferType inBuffType, BufferType o
     return scratchMultiple;
 }
 
-HcclResult InsTempAllGatherNHR::PreprareDataSplitForMultiChannel(const TemplateResource &templateResource) {
+HcclResult InsTempAllGatherNHR::PrepareDataSplitForMultiChannel(const TemplateResource &templateResource) {
     u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     u64 totalDataCount = tempAlgParams_.sliceSize / dataTypeSize;
     std::vector<u64> elemCountOut;
@@ -109,7 +109,7 @@ HcclResult InsTempAllGatherNHR::KernelRun(const OpParam &param, const TemplateDa
     bool isPcieProtocal = IsPcieProtocol(templateResource.channels);  // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocal;  // 是否使用Read模式
     HCCL_DEBUG("[InsTempAllGatherNHR] Use Dma Read[%d]", isDmaRead_);
-    CHK_RET(PreprareDataSplitForMultiChannel(templateResource));
+    CHK_RET(PrepareDataSplitForMultiChannel(templateResource));
     readLastStepToOutput_ = CanReadLastStepToOutput();
     HCCL_DEBUG("[InsTempAllGatherNHR] Read last step to output[%d]", readLastStepToOutput_);
 

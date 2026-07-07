@@ -49,7 +49,7 @@ protected:
 private:
     bool CanReadLastStepToOutput() const;
     bool IsLastStepReadSlice(u32 algRank) const;
-    HcclResult PreprareDataSplitForMultiChannel(const TemplateResource &templateResource);
+    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource &templateResource);
     HcclResult LocalDataCopy(const std::vector<ThreadHandle> &threads, const u32 &channelIdx);
     HcclResult PostLocalCopy(const ThreadHandle &thread, const u32 &channelIdx);
     struct SliceCalcInfo {

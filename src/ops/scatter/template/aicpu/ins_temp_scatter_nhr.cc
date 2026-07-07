@@ -140,7 +140,7 @@ HcclResult InsTempScatterNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempScatterNHR::PreprareDataSplitForMultiChannel(const TemplateResource &templateResource, const TemplateDataParams &tempAlgParams) {
+HcclResult InsTempScatterNHR::PrepareDataSplitForMultiChannel(const TemplateResource &templateResource, const TemplateDataParams &tempAlgParams) {
     u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     u64 totalDataCount = tempAlgParams.sliceSize / dataTypeSize;
     std::vector<u64> elemCountOut;
@@ -167,7 +167,7 @@ HcclResult InsTempScatterNHR::KernelRun(const OpParam& param, const TemplateData
     bool isPcieProtocal = IsPcieProtocol(templateResource.channels);  // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocal;  // 是否使用Read模式
     HCCL_DEBUG("[InsTempScatterNHR] Use Dma Read[%d]", isDmaRead_);
-    CHK_RET(PreprareDataSplitForMultiChannel(templateResource, tempAlgParams));
+    CHK_RET(PrepareDataSplitForMultiChannel(templateResource, tempAlgParams));
     
     HCCL_INFO("[InsTempScatterNHR] queNum_ = [%d], threads size = [%d]", threadNum_, templateResource.threads.size());
     HCCL_INFO("[InsTempScatterNHR] Run Start");
