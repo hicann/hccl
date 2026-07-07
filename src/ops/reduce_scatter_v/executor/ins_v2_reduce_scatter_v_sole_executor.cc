@@ -63,7 +63,7 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
 HCCL_INFO("[InsV2ReduceScatterVSoleExecutor][Orchestrate] Orchestrate Start3");
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2ReduceScatterVSoleExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter excutor kernel run failed",
+        HCCL_ERROR("[InsV2ReduceScatterVSoleExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     return HcclResult::HCCL_SUCCESS;
 }

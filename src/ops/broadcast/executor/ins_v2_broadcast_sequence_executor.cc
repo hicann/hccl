@@ -120,7 +120,7 @@ HcclResult InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2BroadcastSequenceExecutor][Orchestrate]errNo[0x%016llx] Broadcast excutor kernel run failed",
+        HCCL_ERROR("[InsV2BroadcastSequenceExecutor][Orchestrate]errNo[0x%016llx] Broadcast executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

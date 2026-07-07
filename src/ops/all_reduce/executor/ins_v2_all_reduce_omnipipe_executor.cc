@@ -158,7 +158,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
-            "[InsV2AllReduceOmniPipeExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter excutor kernel run failed",
+            "[InsV2AllReduceOmniPipeExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     HCCL_INFO("[InsV2AllReduceOmniPipeExecutor][Orchestrate] Orchestrate END");

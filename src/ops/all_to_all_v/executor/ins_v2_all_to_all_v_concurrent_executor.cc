@@ -344,12 +344,12 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     ret = algTemplateClos->KernelRun(param, tempAlgParamsClos, templateAlgResClos);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent excutor kernel 0 run failed",
+        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 0 run failed",
             HCCL_ERROR_CODE(ret)), ret);
 
     ret = algTemplateMesh->KernelRun(param, tempAlgParamsMesh, templateAlgResMesh);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent excutor kernel 1 run failed",
+        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 1 run failed",
             HCCL_ERROR_CODE(ret)), ret);
 
     CHK_RET(PostSyncInterThreads(mainThread, subThreads, notifyIdxSubToMain));

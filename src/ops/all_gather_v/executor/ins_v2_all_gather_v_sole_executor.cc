@@ -64,7 +64,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllGatherVSoleExecutor][Orchestrate]errNo[0x%016llx] All Gather V excutor kernel run failed",
+        HCCL_ERROR("[InsV2AllGatherVSoleExecutor][Orchestrate]errNo[0x%016llx] All Gather V executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

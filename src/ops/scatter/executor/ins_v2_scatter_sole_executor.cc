@@ -67,7 +67,7 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2ScatterSoleExecutor][Orchestrate]errNo[0x%016llx] Scatter excutor kernel run failed",
+        HCCL_ERROR("[InsV2ScatterSoleExecutor][Orchestrate]errNo[0x%016llx] Scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

@@ -150,7 +150,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     CHK_RET(InitExectorInfo(param, resCtx));
     HcclResult ret = OrchestrateLoop(param, resCtx); // 算法展开
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsReduceScatterConcurrentExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter excutor kernel run failed",
+        HCCL_ERROR("[InsReduceScatterConcurrentExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     return HCCL_SUCCESS;
 }

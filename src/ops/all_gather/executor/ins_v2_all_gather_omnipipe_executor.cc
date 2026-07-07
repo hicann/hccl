@@ -283,7 +283,7 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     HcclResult ret = OrchestrateLoop(param, resCtx, tempMap);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllGatherOmniPipeExecutor][Orchestrate][rank:%u] errNo[0x%016llx] AllGather excutor kernel run failed",
+        HCCL_ERROR("[InsV2AllGatherOmniPipeExecutor][Orchestrate][rank:%u] errNo[0x%016llx] AllGather executor kernel run failed",
                    myRank_, HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

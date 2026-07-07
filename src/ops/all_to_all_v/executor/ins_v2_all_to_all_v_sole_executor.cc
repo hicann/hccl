@@ -172,7 +172,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][Orchestrate]errNo[0x%016llx] AlltoAll excutor kernel run failed",
+        HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][Orchestrate]errNo[0x%016llx] AlltoAll executor kernel run failed",
             HCCL_ERROR_CODE(ret)), ret);
     HCCL_INFO("[InsV2AlltoAllVSoleExecutor][Orchestrate] Orchestrate End.");
     return HCCL_SUCCESS;

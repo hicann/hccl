@@ -153,7 +153,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
-                HCCL_ERROR("[InsV2AllToAllConcurrentExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter excutor "
+                HCCL_ERROR("[InsV2AllToAllConcurrentExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor "
                 "kernel run failed", HCCL_ERROR_CODE(ret)),
                 ret);
     return HcclResult::HCCL_SUCCESS;
