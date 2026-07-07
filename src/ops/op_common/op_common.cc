@@ -1710,7 +1710,7 @@ HcclResult GetAlgResCcu(HcclComm comm, const OpParam& param, AlgResourceRequest&
 
     void *ctx = nullptr;
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, param.engine, size, &ctx));
-    memcpy_s(ctx, size, seq.data(), size);
+    CHK_SAFETY_FUNC_RET(memcpy_s(ctx, size, seq.data(), size));
     *resCtxSequence = ctx;
     ctxSize = size;
     HCCL_INFO("Execute GetAlgResCCU success.");
