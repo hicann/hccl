@@ -901,8 +901,14 @@ HcclResult CalcChannelRequestNhrMultiJetty(HcclComm comm, const OpParam& param, 
     u32 localRank = std::distance(subcommInfo[0].begin(), it);
     u32 localRankSize = subcommInfo[0].size();
     CHK_RET(CalcNHRChannelConnect(localRank, localRankSize, INVALID_VALUE_RANKID, connectRanks));
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? 
                        CommProtocol::COMM_PROTOCOL_UB_MEM : CommProtocol::COMM_PROTOCOL_UBC_CTP;
+#else
+    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 枚举值；
+    // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
+    CommProtocol expectedProtocol = CommProtocol::COMM_PROTOCOL_HCCS;
+#endif
     for (u32 rankIdx: connectRanks) {
         size_t channelCountBefore = channels.size();
         uint32_t *netLayers;
@@ -948,8 +954,14 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(HcclComm comm, const OpParam& pa
                  HCCL_ERROR("[CollAlgFactory] [channel] Rank [%d] is not in commInfo.", topoInfo->userRank),
                  HcclResult::HCCL_E_PARA);
     u32 myRank = topoInfo->userRank;
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? 
                        CommProtocol::COMM_PROTOCOL_UB_MEM : CommProtocol::COMM_PROTOCOL_UBC_CTP;
+#else
+    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 枚举值；
+    // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
+    CommProtocol expectedProtocol = CommProtocol::COMM_PROTOCOL_HCCS;
+#endif
     for (u32 rank: subcommInfo[COMM_LEVEL0]) {
         if (rank == topoInfo->userRank) {
             continue;

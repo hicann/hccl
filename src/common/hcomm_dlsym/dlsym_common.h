@@ -28,6 +28,12 @@
 #include "hccl/hccl_types.h"
 #include "hccl/hccl_comm.h"
 
+#include "hccl_res.h"
+
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+#include "hcomm_res_defs.h"
+#endif
+
 /* beta.1 起 hccl_types.h 已提供 HcclCommStatus，仅 < 9.1.0_beta.1 (8.5.0/9.0.0) 需要桩 */
 #if CANN_VERSION_NUM < CANN_VERSION(9, 1, 0, 1)
 typedef enum {
@@ -43,8 +49,7 @@ typedef enum {
 typedef uint64_t ThreadHandle;
 #endif
 
-#ifndef HCCL_GROUP_FEATURE_SUPPORT
-#include "hcomm_res_defs.h"
+#if CANN_VERSION_NUM < CANN_VERSION(9, 1, 0)
 
 const uint32_t P2P_MAX_ARG_SIZE = 8192U;
 typedef struct {

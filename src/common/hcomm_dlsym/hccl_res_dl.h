@@ -13,16 +13,17 @@
 
 #include "dlsym_common.h"
 #include "hccl_res.h"
-#include "hcomm_res_defs.h"
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "hccl_res_expt.h"
+#include "hcomm_res_defs.h"
 #endif
 
 /* 8.5.0 桩: hccl_res.h / hcomm_res_defs.h / hccl_res_expt.h 中 9.0.0 新增类型 */
 #if CANN_VERSION_NUM < CANN_VERSION(9, 0, 0, 2)
 typedef void *HcclMemHandle;
 typedef int32_t (Callback)(uint64_t, int32_t);
+typedef int32_t HcommResult;
 
 typedef enum {
     COMM_MEM_TYPE_INVALID = -1,
@@ -45,6 +46,7 @@ typedef struct {
 #endif /* CANN_VERSION_NUM < CANN_VERSION(9, 0, 0) */
 
 #if CANN_VERSION_NUM < CANN_VERSION(9, 1, 0)
+#define COMM_PROTOCOL_UBOE    ((CommProtocol)7)
 typedef enum {
     THREAD_TYPE_INVALID = -1,
     THREAD_TYPE_TS = 0
