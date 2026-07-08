@@ -13,7 +13,7 @@
 
     图模式（Ascend IR）或者图捕获（aclgraph）场景，当通信算法采用AI CPU模式时，单卡上的并发图数量不能超过6个，否则可能会因AI CPU核被占满而导致通信阻塞。
 
-  - **AICPU_TS**：代表通信算子在AI CPU展开，Device侧根据硬件型号自动选择相应的调度器。
+  - **AICPU_TS（默认值）**：代表通信算子在AI CPU展开，Device侧根据硬件型号自动选择相应的调度器。
 
     该配置项支持Broadcast、Reduce、AllReduce、Scatter、ReduceScatter、ReduceScatterV、AllGather、AllGatherV、AlltoAll、AlltoAllV、AlltoAllVC、Send、Recv、BatchSendRecv算子。
 
@@ -39,7 +39,7 @@
       - 针对Broadcast、AllGather、AllGatherV算子，数据类型支持int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、bfp16。
       - 针对Reduce、AllReduce、ReduceScatter、ReduceScatterV算子，数据类型支持int16、int32、float16、float32、bfp16。
 
-  - **CCU_SCHED（默认值）**：代表通信算子在CCU展开，使用调度模式。
+  - **CCU_SCHED**：代表通信算子在CCU展开，使用调度模式。
 
     调度模式指使用CCU作为调度器，向UB引擎调度UB WQE任务。调度模式下不使用CcuBuffer，直接在两个rank间进行片上内存到片上内存的数据传输。
 
