@@ -52,23 +52,14 @@ inline bool IsNeedStrictModeForOrderPreserved(const OpParam& opParam, u32 rankSi
     u8 deterministicLevel = GetExternalInputHcclDeterministic();
     HcclDataType dataType = opParam.DataDes.dataType;
     HcclReduceOp reduceType = opParam.reduceType;
-    if (deterministicLevel != static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT)) {
-        return false;
-    }
-    if (rankSize <= MIN_STRICT_RANK_NUM_ORDER_PRESERVED) {
-        return false;
-    }
-    switch (reduceType) {
-        case HcclReduceOp::HCCL_REDUCE_SUM:
-            return (dataType == HcclDataType::HCCL_DATA_TYPE_FP16 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_FP32 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_BFP16 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_FP64);
-        case HcclReduceOp::HCCL_REDUCE_PROD:
-            return (dataType == HcclDataType::HCCL_DATA_TYPE_FP64);
-        default:
-            return false;
-    }
+    return (deterministicLevel == static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT))	 
+         && (dataType == HcclDataType::HCCL_DATA_TYPE_FP16 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_FP32 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_BFP16 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_FP64)	 
+         && (reduceType == HcclReduceOp::HCCL_REDUCE_SUM ||	 
+             reduceType == HcclReduceOp::HCCL_REDUCE_PROD)	 
+         && rankSize > MIN_STRICT_RANK_NUM_ORDER_PRESERVED;
 }
 
 } // namespace ops_hccl
