@@ -82,7 +82,7 @@
 
 ## rank table文件配置
 
-以两个AI Server，每个AI Server中两个NPU为例，配置示例如下：
+以下以两个AI Server，每个AI Server中两个NPU为例，展示IPv4地址类型的rank table配置：
 
 ```json
 {
@@ -253,6 +253,112 @@
 }
 ```
 
+以下以两个NPU为例，展示EID地址类型的rank table配置。示例中net_layer 0使用EID配置Device侧NPU通信地址，net_layer 3使用IPv4配置Host侧通信地址：
+
+```json
+{
+    "status": "completed",
+    "version": "2.0",
+    "rank_count": 2,
+    "rank_list": [
+        {
+            "rank_id": 0,            // rank唯一标识
+            "device_id": 0,          // NPU物理ID
+            "local_id": 0,           // NPU在当前AI Server中的唯一标识
+            "level_list": [
+                {
+                    "net_layer": 0,  // Device侧连接
+                    "net_instance_id": "superpod_0_0",
+                    "net_type": "TOPO_FILE_DESC",
+                    "net_attr": "",
+                    "rank_addr_list": [
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0020",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/4"],                            // 连接端口为Die0的4号端口
+                            "plane_id": "plane0"
+                        },
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0028",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/5"],                            // 连接端口为Die0的5号端口
+                            "plane_id": "plane0"
+                        },
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0030",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/6"],                            // 连接端口为Die0的6号端口
+                            "plane_id": "plane0"
+                        }
+                    ]
+                },
+                {
+                    "net_layer": 3,  // Host侧连接
+                    "net_instance_id": "cluster",
+                    "net_type": "CLOS",
+                    "net_attr": "",
+                    "rank_addr_list": [
+                        {
+                            "addr_type": "IPV4",
+                            "addr": "192.168.100.101",  // 在Host通过ifconfig -a获取的IPv4地址
+                            "ports": ["d2h"],           // Host网卡端口
+                            "plane_id": "plane0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "rank_id": 1,            // rank唯一标识
+            "device_id": 1,          // NPU物理ID
+            "local_id": 1,           // NPU在当前AI Server中的唯一标识
+            "level_list": [
+                {
+                    "net_layer": 0,  // Device侧连接
+                    "net_instance_id": "superpod_0_0",
+                    "net_type": "TOPO_FILE_DESC",
+                    "net_attr": "",
+                    "rank_addr_list": [
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0021",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/4"],                            // 连接端口为Die0的4号端口
+                            "plane_id": "plane0"
+                        },
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0029",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/5"],                            // 连接端口为Die0的5号端口
+                            "plane_id": "plane0"
+                        },
+                        {
+                            "addr_type": "EID",
+                            "addr": "000000000000000000100000dfdf0031",  // 通过HCCN TOOL查询获取的EID
+                            "ports": ["0/6"],                            // 连接端口为Die0的6号端口
+                            "plane_id": "plane0"
+                        }
+                    ]
+                },
+                {
+                    "net_layer": 3,  // Host侧连接
+                    "net_instance_id": "cluster",
+                    "net_type": "CLOS",
+                    "net_attr": "",
+                    "rank_addr_list": [
+                        {
+                            "addr_type": "IPV4",
+                            "addr": "192.168.100.102",  // 在Host通过ifconfig -a获取的IPv4地址
+                            "ports": ["d2h"],           // Host网卡端口
+                            "plane_id": "plane0"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+```
+
 rank table文件配置说明如下所示：
 
 | 一级配置项 | 二级配置项 | 三级配置项 | 四级配置项 | 配置说明 |
@@ -272,7 +378,7 @@ rank table文件配置说明如下所示：
 |  |  | net_type |  | 必选。<br>该网络层次的网络类型。<br>当“net_layer”取值为“0”时，该参数仅支持配置为“TOPO_FILE_DESC”，代表通过拓扑文件描述。<br>当“net_layer”取值为非0时，该参数支持以下两种配置：<br>  - CLOS：代表所有节点均可互通，例如通过交换机连接的胖树结构。<br>  - TOPO_FILE_DESC：代表网络类型通过拓扑文件描述。
 |  |  | net_attr |  | 可选。<br>预留字段，表示该网络层次的其他额外信息。 |
 |  |  | rank_addr_list |  | 必选。<br>当前rank在该网络层次使用的网络地址信息。<br>此列表下数组长度不能超过24，每个Die需要单独配置。 |
-|  |  |  | addr_type | 必选。<br>当前rank的地址类型，支持以下取值：<br>  - EID<br>  - IPv4<br>  - IPv6 |
-|  |  |  | addr | 必选。<br>当前rank的IP地址，字符串类型，长度范围1~256，地址需要符合“addr_type”指定的地址格式。 |
+|  |  |  | addr_type | 必选。<br>当前rank的地址类型，支持以下取值：<br>  - EID：通过HCCN TOOL查询获取EID。<br>  - IPv4：只用于Host网卡场景，在Host通过ifconfig -a获取，需要配置和NPU只有一跳PCIE-SW连接的网卡。<br>  - IPv6：只用于Host网卡场景，在Host通过ifconfig -a获取，需要配置和NPU只有一跳PCIE-SW连接的网卡。 |
+|  |  |  | addr | 必选。<br>当前rank的网络地址，字符串类型，长度范围1~256，地址需要符合“addr_type”指定的地址格式。 |
 |  |  |  | ports | 必选。<br>“addr”绑定的端口列表，一个地址可以绑定到多个端口，每个端口的配置格式为：Die ID/端口ID，多个端口之间用“,”分隔。<br>注意：一个端口在同一个网络层次下，只能映射到一个地址。最多支持配置16个端口，支持的最大字符串长度为32。 |
 |  |  |  | plane_id | 可选。<br>网络平面ID，默认值为“0”。 |
