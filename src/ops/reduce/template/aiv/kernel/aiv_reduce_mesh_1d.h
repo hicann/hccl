@@ -105,6 +105,11 @@ private:
                     CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize, reduceOp_);
                     pipe_barrier(PIPE_ALL);
                 }
+            } else {
+                // 没有数据要处理，也需要接收同步信号保证时序，防止后续Gather数据异常
+                for (uint32_t i = 0; i < rankSize_; i++) {
+                    WaitFlag(rank_, i * coreNumPerRank + innerId, curTag);
+                }
             }
             Record(rank_, ipcReduceFlagOffset + innerId, curTag);
         }
@@ -112,15 +117,17 @@ private:
 
     __aicore__ inline void GatherToRoot()
     {
-        if (rank_ != root_ || blockIdx_ >= coreNumFirstStage || innerChunkSize == 0) {
+        if (rank_ != root_ || blockIdx_ >= coreNumFirstStage) {
             return;
         }
         WaitFlag(targetRank, ipcReduceFlagOffset + innerId, curTag);
-        uint64_t inputOffset =
-            reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerId * innerChunkStride) * sizeof(T);
-        uint64_t outputOffset = output_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
-        CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize);
-        pipe_barrier(PIPE_ALL);
+        if (innerChunkSize > 0) {
+            uint64_t inputOffset =
+                reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerId * innerChunkStride) * sizeof(T);
+            uint64_t outputOffset = output_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
+            CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize);
+            pipe_barrier(PIPE_ALL);
+        }
     }
 
     __aicore__ inline void ProcessMultiRank(int32_t sliceId)
