@@ -150,3 +150,27 @@ __aicore__ inline void AivReduceScatterV2Mesh1DBigData(KERNEL_ARGS_DEF)
     op.Process(sliceId, len, inputSliceStride);
     op.BarrierAll();
 }
+
+template<typename T>
+__aicore__ inline void AivReduceScatterV2Mesh1DBigDataSuperKernel(SUPERKERNEL_ARGS_DEF)
+{
+    AivReduceScatterMesh1DBigData<T> op;
+    op.Init(SUPERKERNEL_CLASS_INIT);
+
+    uint64_t maxCountPerLoop = op.cclBufferSize_ / (2 * op.rankSize_) / UB_ALIGN_SIZE * UB_ALIGN_SIZE / sizeof(T);
+    uint64_t countLeft = op.len_;
+    int32_t loopTag = op.tag_;
+
+    while (countLeft > 0) {
+        uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
+        uint64_t curSize = curCount * sizeof(T);
+
+        op.Process(loopTag, curCount, op.inputSliceStride_);
+        op.BarrierAll();
+
+        countLeft -= curCount;
+        op.input_ += curSize;
+        op.output_ += curSize;
+        loopTag += curSize / UB_DB_DATA_BATCH_SIZE + 1;
+    }
+}
