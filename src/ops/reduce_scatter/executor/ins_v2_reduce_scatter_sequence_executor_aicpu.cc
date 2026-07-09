@@ -111,7 +111,7 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
         resourceRequest.channels[0] = resReqIntra.channels[0];
         resourceRequest.channels[1] = resReqInter.channels[0];
         HCCL_INFO("[InsV2ReduceScatterSequenceExecutorAicpu] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "\
-            "level 1 chanel size [%u], level 2 channel size [%u]",
+            "level 1 channel size [%u], level 2 channel size [%u]",
             resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread,
             resourceRequest.channels[0].size(), resourceRequest.channels[1].size());
     }
