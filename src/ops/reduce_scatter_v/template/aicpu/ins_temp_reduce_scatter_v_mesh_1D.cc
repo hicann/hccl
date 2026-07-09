@@ -162,7 +162,7 @@ HcclResult InsTempReduceScatterVMesh1D::RunReduceScatterV(
         // 在 HcclBuffer 上进行 ReduceScatterV 操作
         // 由于进程只能访问远端的HcclBuffer，所以只能通过write的方式将自己userIn上的数据写到远端HcclBuffer上
         for (u32 repeatIdx = 0; repeatIdx < tempAlgParam.repeatNum; repeatIdx++) {
-            HCCL_INFO("[InsTempReduceScatterVMesh1D] start5");
+            HCCL_INFO("[InsTempReduceScatterVMesh1D] start");
             // 在reduce_scatter_v_op.cc的创建channels的环节中获取到了remote的HcclBuff的地址
             void* remoteCclBuffAddr = linkSend.remoteCclMem.addr;
             // 在接收的时候接收源应该是远端地址，但是由于rs的mesh算法用的是write，所以rx不用care

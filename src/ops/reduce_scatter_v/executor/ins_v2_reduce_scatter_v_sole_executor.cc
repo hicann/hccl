@@ -60,7 +60,7 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     }
     dataTypeSize_ =  DATATYPE_SIZE_TABLE[param.vDataDes.dataType];
 
-HCCL_INFO("[InsV2ReduceScatterVSoleExecutor][Orchestrate] Orchestrate Start3");
+HCCL_INFO("[InsV2ReduceScatterVSoleExecutor][Orchestrate] Orchestrate Start");
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[InsV2ReduceScatterVSoleExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
