@@ -90,7 +90,7 @@ HcclResult InsV2BatchSendRecvExecutor::ProcessSelfSendRecvTasks(ThreadHandle& th
             DataSlice srcSlice(inputDataPtr, 0, dataSize);
             DataSlice dstSlice(outputDataPtr, 0, dataSize);
             CHK_RET(LocalCopy(thread, srcSlice, dstSlice));
-            HCCL_DEBUG("[InsV2BatchSendRecvExecutor][ProcessSelfSendRecvTasks] inpuData[%p], outputData[%p], dataSize[%llu]",
+            HCCL_DEBUG("[InsV2BatchSendRecvExecutor][ProcessSelfSendRecvTasks] inputData[%p], outputData[%p], dataSize[%llu]",
                 inputDataPtr, outputDataPtr, dataSize);
             sendToSelfDeque_.pop_front();
             recvFromSelfDeque_.pop_front();

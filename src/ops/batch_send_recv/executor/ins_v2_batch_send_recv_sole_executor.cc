@@ -118,7 +118,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
             DataSlice srcSlice(inputDataPtr, 0, dataSize);
             DataSlice dstSlice(outputDataPtr, 0, dataSize);
             CHK_RET(LocalCopy(thread, srcSlice, dstSlice));
-            HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][ProcessSelfSendRecvTasks] inpuData[%p], outputData[%p], "
+            HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][ProcessSelfSendRecvTasks] inputData[%p], outputData[%p], "
                        "dataSize[%llu]",
                 inputDataPtr, outputDataPtr, dataSize);
             sendToSelfDeque_.pop_front();
