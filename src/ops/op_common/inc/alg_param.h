@@ -271,7 +271,6 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
 };
 
 struct CcuKernelArgBase {
-    // std::vector<ChannelHandle> channels;
     ChannelHandle channels[CCU_MAX_RANK_SIZE];
     uint32_t      channelCount;
 };

@@ -101,7 +101,6 @@ HcclResult GetAlgRankChannel(u32 virtRank, const std::vector<u32> &tempVTopo, u3
 }
 
 HcclResult CalcMesh2DChannelConnect(u32 myRank, const std::vector<std::vector<u32>> &tempVTopo, std::set<u32> &connectRanks)
-                            // const u32 linkNumBtwPeers, AlgTempResReq &tempResReq)
 {
     connectRanks.clear();
     u32 myAlgRank;

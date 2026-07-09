@@ -34,7 +34,7 @@ template <typename AlgTopoMatch, typename CcuAlgTemplate0, typename CcuAlgTempla
 class InsV2AllGatherOmniPipe2DExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllGatherOmniPipe2DExecutor();
-    ~InsV2AllGatherOmniPipe2DExecutor() = default;
+    ~InsV2AllGatherOmniPipe2DExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
 
@@ -66,7 +66,6 @@ protected:
     HcclResult CalcResLevel(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         CommonAlgTemplateBase& tempAlg, AlgResourceRequest& resourceRequest);
 
-    // std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;  // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 
     uint64_t rankSizeLevel0_{0};

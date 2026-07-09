@@ -24,7 +24,7 @@ template <typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTe
 class InsV2AllReduceOmniPipe2dExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceOmniPipe2dExecutor();
-    ~InsV2AllReduceOmniPipe2dExecutor() = default;
+    ~InsV2AllReduceOmniPipe2dExecutor() override = default;
  
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
  

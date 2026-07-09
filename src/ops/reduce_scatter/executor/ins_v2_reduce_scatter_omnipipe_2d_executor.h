@@ -33,7 +33,7 @@ template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempL
 class InsV2ReduceScatterOmniPipe2dExecutor : public InsCollAlgBase {
 public:
     explicit InsV2ReduceScatterOmniPipe2dExecutor();
-    ~InsV2ReduceScatterOmniPipe2dExecutor() = default;
+    ~InsV2ReduceScatterOmniPipe2dExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 

@@ -308,7 +308,6 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 
     // 2、计算loop
     u64 templateScratchMultiplier = algTemplateLevel0.CalcScratchMultiple(BufferType::DEFAULT, BufferType::DEFAULT);
-    // u64 templateScratchMultiplier = rankSizeLevel0_; // 只有X轴mesh才会用到cclbuffer
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scratchBoundDataSize = maxTmpMemSize_ / templateScratchMultiplier;
     u64 maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;

@@ -25,7 +25,7 @@ template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuSc
 class InsV2BroadcastOmniPipe2dExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BroadcastOmniPipe2dExecutor();
-    ~InsV2BroadcastOmniPipe2dExecutor() = default;
+    ~InsV2BroadcastOmniPipe2dExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 

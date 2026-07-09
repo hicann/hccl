@@ -28,7 +28,7 @@ template <typename InsAlgTemplate>
 class InsV2RecvSoleExecutor : public InsCollAlgBase {
 public:
     explicit InsV2RecvSoleExecutor();
-    ~InsV2RecvSoleExecutor() = default;
+    ~InsV2RecvSoleExecutor() override = default;
     std::string Describe() const override;
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
 

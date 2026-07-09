@@ -26,7 +26,7 @@ template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempL
 class InsV2ScatterOmniPipe2DExecutor : public InsCollAlgBase {
 public:
     explicit InsV2ScatterOmniPipe2DExecutor();
-    ~InsV2ScatterOmniPipe2DExecutor() = default;
+    ~InsV2ScatterOmniPipe2DExecutor() override = default;
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
     HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,

@@ -39,7 +39,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2BroadcastSequenceExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BroadcastSequenceExecutor();
-    ~InsV2BroadcastSequenceExecutor() = default;
+    ~InsV2BroadcastSequenceExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
 

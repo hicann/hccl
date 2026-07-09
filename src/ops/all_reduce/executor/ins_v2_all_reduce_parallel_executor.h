@@ -32,7 +32,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsAllReduceParallelExecutor : public InsCollAlgBase {
 public:
     explicit InsAllReduceParallelExecutor();
-    ~InsAllReduceParallelExecutor() = default;
+    ~InsAllReduceParallelExecutor() override = default;
 
     std::string Describe() const override
     {

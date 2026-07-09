@@ -79,7 +79,6 @@ protected:
     std::vector<ThreadHandle> requiredThreads_;
     std::vector<ThreadHandle> intraThreads_;
     std::vector<ThreadHandle> interThreads_;
-    // std::vector<ThreadHandle> syncThreads_;
     std::map<u32, std::vector<ChannelInfo>> intraChannelInfo_;
     std::map<u32, std::vector<ChannelInfo>> interChannelInfo_;
 
