@@ -24,6 +24,8 @@ constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_2 = 2;
 constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
+constexpr u32 MESH_BW = 12;
+constexpr u32 CLOS_BW = 10;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllVConcurrentExecutor()
@@ -108,12 +110,16 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitA2ASendRecvInfo(
-    A2ASendRecvInfo &sendRecvInfoFirst, A2ASendRecvInfo &sendRecvInfoLast)
+    const OpParam &param, A2ASendRecvInfo &sendRecvInfoFirst, A2ASendRecvInfo &sendRecvInfoLast)
 {
     HCCL_DEBUG("[SplitA2ASendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
 
     uint32_t factorMesh = rankSize_ - 1;
     uint32_t factorClos = CONST_4;
+    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+        factorMesh = MESH_BW;
+        factorClos = CLOS_BW;
+    }
     uint32_t factor = factorMesh + factorClos;
     // 初始化sendRecvInfoFirst
     sendRecvInfoFirst.sendCounts.resize(rankSize_, 0);
@@ -216,7 +222,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     // ubx机型algHierarchyInfo的level0存在两个topo，4p及以下使用clos topo与mesh topo分别建链
     std::vector<HcclChannelDesc> channelDescs0;
-    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks0, channelDescs0, CommTopo::COMM_TOPO_CLOS));
+    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks0, channelDescs0, CommTopo::COMM_TOPO_1DMESH));
     resReq0.ccuKernelInfos[0].channels = channelDescs0;
 
     std::vector<uint32_t> jettyNums;
@@ -301,7 +307,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     A2ASendRecvInfo sendRecvInfoTempClos;
     A2ASendRecvInfo sendRecvInfoTempMesh;
-    CHK_RET(SplitA2ASendRecvInfo(sendRecvInfoTempClos, sendRecvInfoTempMesh));
+    CHK_RET(SplitA2ASendRecvInfo(param, sendRecvInfoTempClos, sendRecvInfoTempMesh));
     algTemplateClos->SetA2ASendRecvInfo(sendRecvInfoTempClos);
     algTemplateMesh->SetA2ASendRecvInfo(sendRecvInfoTempMesh);
 
@@ -420,7 +426,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CHK_RET(SetAlltoAllLocalSendRecvInfo(param));
     A2ASendRecvInfo sendRecvInfoTemp0;
     A2ASendRecvInfo sendRecvInfoTemp1;
-    CHK_RET(SplitA2ASendRecvInfo(sendRecvInfoTemp0, sendRecvInfoTemp1));
+    CHK_RET(SplitA2ASendRecvInfo(param, sendRecvInfoTemp0, sendRecvInfoTemp1));
     tempAlg0.SetA2ASendRecvInfo(sendRecvInfoTemp0);
     tempAlg1.SetA2ASendRecvInfo(sendRecvInfoTemp1);
 

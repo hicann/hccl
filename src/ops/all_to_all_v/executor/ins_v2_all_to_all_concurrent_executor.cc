@@ -24,6 +24,8 @@ constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_2 = 2;
 constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
+constexpr u32 MESH_BW = 100;
+constexpr u32 CLOS_BW = 113;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllConcurrentExecutor()
@@ -227,7 +229,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitSendRecvData(
-    std::vector<SendRecvData>& splitData)
+    const OpParam &param, std::vector<SendRecvData>& splitData)
 {
     splitData.resize(CONCURRENT_NUM);
     for (u32 i = 0; i < CONCURRENT_NUM; i++) {
@@ -240,6 +242,10 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     // 按topo切分数据：0为topo 0，1为topo 1
     uint32_t factorMesh = rankSize_ - 1;
     uint32_t factorClos = CONST_4;                // 端口数获取
+    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+        factorMesh = MESH_BW;
+        factorClos = CLOS_BW;
+    }
     uint32_t factor = factorMesh + factorClos;
     for (u64 i = 0; i < rankSize_; i++) {
         uint64_t sendQuotient = sendCounts_[i] / factor;
@@ -306,7 +312,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     // 获取SendRecv数据并切分到各template上
     std::vector<SendRecvData> splitData;
     RestoreSendRecvData(param);
-    SplitSendRecvData(splitData);
+    SplitSendRecvData(param, splitData);
 
     u64 maxSendOrRecvDataCount0, maxSendOrRecvDataCount1;
     GetMaxSendRecvDataCount(maxSendOrRecvDataCount0, splitData[0]);

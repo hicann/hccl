@@ -19,6 +19,10 @@
 #include "ins_temp_all_reduce_mesh_1D_two_shot.h"
 
 constexpr u32 CLOS_PORT_NUM = 4;
+constexpr u32 MESH_BW_SCHED = 11;
+constexpr u32 CLOS_BW_SCHED = 10;
+constexpr u32 MESH_BW_MS = 22;
+constexpr u32 CLOS_BW_MS = 10;
 
 namespace ops_hccl {
 
@@ -197,8 +201,15 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     const u32 totalScratchMultiple = temp0ScratchMultiple + temp1ScratchMultiple;
 
     // 计算数据切分比例，获取端口数量
-    const u32 portNum0 = rankSize_ - 1; // mesh端口数为rank size - 1
-    const u32 portNum1 = CLOS_PORT_NUM;
+    u32 portNum0 = rankSize_ - 1; // mesh端口数为rank size - 1
+    u32 portNum1 = CLOS_PORT_NUM;
+    if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
+        portNum0 = MESH_BW_SCHED;
+        portNum1 = CLOS_BW_SCHED;
+    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+        portNum0 = MESH_BW_MS;
+        portNum1 = CLOS_BW_MS;
+    }
     const u64 totalCounts = param.DataDes.count;
     const u64 sliceAlignCount = HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     const u64 totalCount0 = (totalCounts * portNum0) / (portNum0 + portNum1) / sliceAlignCount * sliceAlignCount;

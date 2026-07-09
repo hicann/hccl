@@ -20,6 +20,12 @@
 #include "ccu_temp_reduce_scatter_mesh_1D.h"
 #endif //CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
+
+constexpr u32 MESH_BW_SCHED = 10;
+constexpr u32 CLOS_BW_SCHED = 12;
+constexpr u32 MESH_BW_MS = 11;
+constexpr u32 CLOS_BW_MS = 10;
+
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -214,8 +220,16 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     u32 templateScratchMultiplier0 = tempAlg0->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 templateScratchMultiplier1 = tempAlg1->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    const u64 portNum0 = rankSize_ - 1;
-    const u64 portNum = 4;
+    u64 portNum0 = rankSize_ - 1;
+    u64 portNum = 4;
+    if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
+        portNum0 = MESH_BW_SCHED;
+        portNum = CLOS_BW_SCHED;
+    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+        portNum0 = MESH_BW_MS;
+        portNum = CLOS_BW_MS;
+    }
+
     const u64 sliceAlignCount = HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 划分cclbuffer
     void *cclMemAddr = resCtx.cclMem.addr;
