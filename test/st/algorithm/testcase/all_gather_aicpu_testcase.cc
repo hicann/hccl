@@ -280,3 +280,28 @@ TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_parallel_nhr_mesh1d_3x3r
     auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT8;  // 数据类型
     RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
 }
+
+// asymmetric topology
+TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_nhr_2server_asymmetric_fp64_big_data_test)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta{{{0}, {0, 1}}};  // 三维数组指定超节点-Server-Device信息
+
+    // 算子执行参数设置
+    auto sendCount = 1024 * 1024 * 1024;                               // 单卡数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP64;  // 数据类型
+    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
+}
+
+TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_nhr_7server_asymmetric_fp8e8m0_small_data_test)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6}, {0, 1, 2, 3, 4, 5},
+                       {0, 1, 2, 3, 4}, {0, 1, 2, 3}, {0, 1, 2}, {1, 2}}};
+
+    // 算子执行参数设置
+    auto sendCount = 100;                // 单卡数据量
+
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0;  // 数据类型
+    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
+}

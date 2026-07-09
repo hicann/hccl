@@ -448,6 +448,34 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_Mesh1DNHR_bigdata_test)
     auto root = 11;  // root节点
     auto dataTypeSize = sizeof(int8_t);
     RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
-
 }
 
+// asymmetric topology
+TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_asymmetric_test)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta {{{0, 1}, {0, 1, 2}, {0, 1, 2, 3}, {0, 1, 2, 3, 4}, {0, 1, 2, 3, 4, 5},
+                        {0, 1, 2, 3, 4, 5, 6}, {0, 1, 2, 3, 4, 5, 6, 7}, {0}}};
+
+    // 算子执行参数设置
+    auto rankSize = 36;  // 参与集合通信的卡数(同topoMeta卡数一致)
+    uint64_t count = 100;  // 数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    auto root = 1;  // root节点
+    auto dataTypeSize = sizeof(int32_t);
+    RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
+}
+
+TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_asymmetric_test_bigdata)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta {{{0, 1}, {0, 1}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
+
+    // 算子执行参数设置
+    auto rankSize = 12;  // 参与集合通信的卡数(同topoMeta卡数一致)
+    uint64_t count = 500000;  // 数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    auto root = 0;  // root节点
+    auto dataTypeSize = sizeof(int32_t);
+    RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
+}

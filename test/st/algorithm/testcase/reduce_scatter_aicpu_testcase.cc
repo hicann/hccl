@@ -353,3 +353,24 @@ TEST_F(ST_REDUCE_SCATTER_AICPU_TEST, st_reduce_scatter_a5_aicpu_meshchunk_8rank_
     auto reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
     RunReduceScatterAicpuA5(topoMeta, recvCount, dataType, reduceOp);
 }
+
+// asymmetric topology
+TEST_F(ST_REDUCE_SCATTER_AICPU_TEST, st_reduce_scatter_a5_aicpu_nhr_asymmetric_2server_int16_max_test)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta {{{0}, {0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
+    auto recvCount = 200;  // 接收数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT16;  // 数据类型
+    auto reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
+    RunReduceScatterAicpuA5(topoMeta, recvCount, dataType, reduceOp);
+}
+
+TEST_F(ST_REDUCE_SCATTER_AICPU_TEST, st_reduce_scatter_a5_aicpu_nhr_asymmetric_6server_bf16_max_test)
+{
+    // 仿真模型初始化
+    TopoMeta topoMeta {{{0}, {1, 2, 3, 4, 5, 6, 7}, {0, 2, 6}, {3, 4, 5}, {0, 1}, {0}}};  // 三维数组指定超节点-Server-Device信息
+    auto recvCount = 200;  // 接收数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;  // 数据类型
+    auto reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
+    RunReduceScatterAicpuA5(topoMeta, recvCount, dataType, reduceOp);
+}

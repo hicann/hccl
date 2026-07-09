@@ -160,6 +160,8 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayer
             } else {
                 selectAlgName = "InsBroadcastParallelNHRNHRUboe";
             }
+        } else if (topoInfo->Level1Nhr) {
+            selectAlgName = "InsBroadcastNHR";
         } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
             selectAlgName = "InsBroadcastNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {

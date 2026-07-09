@@ -216,3 +216,16 @@ TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_nhr_success_1x2_root0_fp16_small_data
     TopoMeta topoMeta {{{0}, {0}}};
     RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP16);
 }
+
+// asymmetric topology
+TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh1dnhr_asymmetric_2server_root0_int32_small_data)
+{   
+    TopoMeta topoMeta {{{0, 1}, {8, 9, 10}}};
+    RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_INT32);
+}
+
+TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh1dnhr_asymmetric_4server_root1_fp16_small_data)
+{   
+    TopoMeta topoMeta {{{0, 1}, {8, 9, 10, 11}, {16, 17, 18, 19, 20, 21}, {24, 25, 26, 27, 28, 29, 30, 31}}};
+    RunScatterTest(1, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP16);
+}

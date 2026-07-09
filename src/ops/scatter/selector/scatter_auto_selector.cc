@@ -111,7 +111,9 @@ SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerDe
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
+        if (topoInfo->Level1Nhr) {
+            selectAlgName = "InsScatterNHR";
+        } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
             selectAlgName = "InsScatterNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             selectAlgName = "InsScatterParallelMesh1DNHR";
