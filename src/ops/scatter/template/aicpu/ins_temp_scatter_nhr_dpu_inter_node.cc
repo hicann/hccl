@@ -127,7 +127,7 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(const OpParam& param, const 
     dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
     SetRoot(tempAlgParams.root);
 
-    HCCL_INFO("[InsTempScatterNHRDPUInterNode] queNum_ =  [%d], threads size = [%d]", threadNum_, templateResource.threads.size());
+    HCCL_INFO("[InsTempScatterNHRDPUInterNode] queNum_ = [%d], threads size = [%d]", threadNum_, templateResource.threads.size());
     
     if (templateResource.threads.size() < 1) {
         HCCL_ERROR("[InsTempScatterNHRDPUInterNodeInte] Rank[%u], required thread error.", myRank_);
