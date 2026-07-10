@@ -172,6 +172,12 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam &param, AlgResourceCtxS
     resCtxHost.notifyNumOnMainThread = 0;
 
     CHK_RET(GetThreadForCcu(comm, param, resCtxHost)); // 申请流资源
+    
+    if (param.rankSize == 1) { // 单卡场景，无需channel和ccu kernel，直接本地拷贝即可
+        HCCL_INFO("[AllocAlgResource] RankSize == 1, skip channel and ccu kernel allocation.");
+        resCtxHost.ccuKernelNum = {0};
+        return HCCL_SUCCESS;
+    }
 
     std::vector<ChannelHandle> kernelChannels;
     CHK_RET(GetChannelForCcu(comm, param, kernelChannels)); // 申请channel资源

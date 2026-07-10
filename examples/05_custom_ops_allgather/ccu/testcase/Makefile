@@ -29,7 +29,7 @@ ASCEND_INC_DIR = ${ASCEND_HOME_PATH}/include
 ASCEND_LIB_DIR = ${ASCEND_HOME_PATH}/lib64
 CUSTOM_ALLGATHER_INC_DIR = ${ASCEND_HOME_PATH}/opp/vendors/cust/include
 CUSTOM_ALLGATHER_LIB_DIR = ${ASCEND_HOME_PATH}/opp/vendors/cust/lib64
-LIBS = -L$(ASCEND_LIB_DIR) -lacl_rt -L${CUSTOM_ALLGATHER_LIB_DIR} -lhccl_custom_allgather
+LIBS = -L$(ASCEND_LIB_DIR) -lacl_rt -L${CUSTOM_ALLGATHER_LIB_DIR} -Wl,-rpath,${CUSTOM_ALLGATHER_LIB_DIR} -lhccl_custom_allgather
 INCS = -I$(ASCEND_INC_DIR) -I${CUSTOM_ALLGATHER_INC_DIR}
 TARGET = custom_allgather_ccu
 
@@ -39,7 +39,7 @@ all:
 	@echo "${TARGET} compile completed"
 
 # Test target
-test: 
+test:
 	./$(TARGET)
 
 # Clean build artifacts
