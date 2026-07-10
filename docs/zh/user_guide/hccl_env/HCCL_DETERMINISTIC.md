@@ -34,8 +34,8 @@ HCCL_DETERMINISTIC支持的取值如下：
     - 通信规模要求rank size ≥ 3。
     - 若超节点内存在多个AI Server，仅支持AI Server间使用HCCS链路进行SDMA通信的场景，不支持使用RoCE进行RDMA通信的场景，即不支持设置环境变量[HCCL_INTER_HCCS_DISABLE](HCCL_INTER_HCCS_DISABLE.md)为“TRUE”。
   - 针对Ascend 950PR/Ascend 950DT，
-    - 支持通信算子AllReduce、ReduceScatter。归约操作为sum时，支持数据类型float16、float32、bfp16、float64。归约操作为prod时，仅支持float64。
-    - 通信规模要求rank size ≥ 3且rank size ≤ 32。
+    - 支持通信算子AllReduce、ReduceScatter。
+    - 通信规模要求rank size ≥ 3。
     - 仅支持通信算子展开模式为AI_CPU，其他展开模式（CCU_MS、CCU_SCHED、AIV）配置保序功能会回退到AI_CPU，使能保序。
 
 一般情况下无需开启归约算子的确定性计算，当模型多次执行结果不同或者精度调优时，可通过此环境变量开启确定性计算进行辅助调试调优，但开启后，算子执行时间会变慢，导致性能下降。

@@ -10,6 +10,7 @@
 
 #include "ins_v2_reduce_scatter_order_preserved_executor.h"
 #include "ins_temp_reduce_scatter_order_preserved_level1.h"
+#include "ins_temp_reduce_scatter_order_preserved_group.h"
 #include "alg_env_config.h"
 #include "order_preserved_common.h"
 #include <cmath>
@@ -218,8 +219,12 @@ u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Roun
     return ((value + (divisor - 1)) / divisor) * divisor;
 }
 
-// 注册保序ReduceScatter执行器
+// 注册保序ReduceScatter执行器（32卡及以内场景）
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreserved,
     InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedLevel1);
+
+// 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
+REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreservedGroup,
+    InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
 
 }

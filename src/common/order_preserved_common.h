@@ -13,11 +13,24 @@
 
 #include "alg_param.h"
 #include "alg_env_config.h"
+#include <algorithm>
 
 namespace ops_hccl {
 
 constexpr u32 MIN_STRICT_RANK_NUM_ORDER_PRESERVED = 2;
+// 保序算子分组all2all算法的rank数上限，超过该值则使用分组all2all + NHR算法
 constexpr u32 MAX_RANK_NUM_FOR_ORDER_PRESERVED = 32;
+// 保序算子总线程数上限（含主线程），解耦线程数与rank数的关系
+constexpr u32 ORDER_PRESERVED_MAX_THREADS = 32;
+
+// 总线程数 = min(rankSize, ORDER_PRESERVED_MAX_THREADS)
+inline u32 CalcEffectiveThreadNum(u32 rankSize)
+{
+    if (rankSize <= 1) {
+        return 1;
+    }
+    return std::min(rankSize, ORDER_PRESERVED_MAX_THREADS);
+}
 
 struct OrderPreservedBaseParams {
     u32 myRank;
@@ -52,23 +65,14 @@ inline bool IsNeedStrictModeForOrderPreserved(const OpParam& opParam, u32 rankSi
     u8 deterministicLevel = GetExternalInputHcclDeterministic();
     HcclDataType dataType = opParam.DataDes.dataType;
     HcclReduceOp reduceType = opParam.reduceType;
-    if (deterministicLevel != static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT)) {
-        return false;
-    }
-    if (rankSize <= MIN_STRICT_RANK_NUM_ORDER_PRESERVED) {
-        return false;
-    }
-    switch (reduceType) {
-        case HcclReduceOp::HCCL_REDUCE_SUM:
-            return (dataType == HcclDataType::HCCL_DATA_TYPE_FP16 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_FP32 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_BFP16 ||
-                dataType == HcclDataType::HCCL_DATA_TYPE_FP64);
-        case HcclReduceOp::HCCL_REDUCE_PROD:
-            return (dataType == HcclDataType::HCCL_DATA_TYPE_FP64);
-        default:
-            return false;
-    }
+    return (deterministicLevel == static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT))	 
+         && (dataType == HcclDataType::HCCL_DATA_TYPE_FP16 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_FP32 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_BFP16 ||	 
+             dataType == HcclDataType::HCCL_DATA_TYPE_FP64)	 
+         && (reduceType == HcclReduceOp::HCCL_REDUCE_SUM ||	 
+             reduceType == HcclReduceOp::HCCL_REDUCE_PROD)	 
+         && rankSize > MIN_STRICT_RANK_NUM_ORDER_PRESERVED;
 }
 
 } // namespace ops_hccl

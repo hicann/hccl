@@ -334,13 +334,15 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayer
     u64 dataSize = opParam.DataDes.count * perDataSize;
 
     if (IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize)) {
-        CHK_PRT_RET(topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED,
-            HCCL_ERROR("[AllReduceAutoSelector] OrderPreserved mode not supported for rankSize[%u] > %u, "
-                "too many ranks may cause resource exhaustion.", topoInfo->userRankSize, MAX_RANK_NUM_FOR_ORDER_PRESERVED),
-            SelectorStatus::NOT_MATCH);
-        
-        selectAlgName = "AllReduceOrderPreserved";
-        HCCL_INFO("[AllReduceAutoSelector] DETERMINISTIC_STRICT mode, select [%s]", selectAlgName.c_str());
+        if (topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED) {
+            // 内部reducescatter中采用分组all2all + NHR 算法
+            selectAlgName = "AllReduceOrderPreservedGroup";
+        } else {
+            // 内部reducescatter中采用非分组all2all + mesh1D 算法
+            selectAlgName = "AllReduceOrderPreserved";
+        }
+        HCCL_INFO("[AllReduceAutoSelector] DETERMINISTIC_STRICT mode, rankSize[%u], threshold[%u], "
+            "select [%s]", topoInfo->userRankSize, MAX_RANK_NUM_FOR_ORDER_PRESERVED, selectAlgName.c_str());
         return SelectorStatus::MATCH;
     }
 
