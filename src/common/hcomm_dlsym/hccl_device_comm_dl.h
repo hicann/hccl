@@ -29,6 +29,9 @@ DECL_WEAK_FUNC(HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpDes
     const HcclKernelLaunchCfg *kernelLaunchCfg);
 DECL_SUPPORT_FLAG(HcclAicpuKernelLaunch);
 
+DECL_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char *regName, HcclCommStateCallback cb, void *args);
+DECL_SUPPORT_FLAG(HcclCommRegCommStateCallback);
+
 void HcclDeviceCommDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus

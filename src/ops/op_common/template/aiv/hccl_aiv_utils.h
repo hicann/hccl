@@ -217,6 +217,9 @@ HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCoun
 
 HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
                             AivCacheIndexCtx *indexCtx);
+
+HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr);
+
 }
  
 #endif // HCCL_AIV_UTILS_H

@@ -21,9 +21,12 @@ DEFINE_WEAK_FUNC(HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpD
     const HcclKernelFuncInfo *funcInfo, ThreadHandle aicpuThreadHandle, aclrtStream userStream,
     const HcclKernelLaunchCfg *kernelLaunchCfg);
 
+DEFINE_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char *regName, HcclCommStateCallback cb, void *args);
+
 // 初始化
 void HcclDeviceCommDlInit(void* libHcommHandle) {
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommGetStatus);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclGroupStatusGet);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclAicpuKernelLaunch);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclCommRegCommStateCallback);
 }

@@ -24,6 +24,7 @@
 #include "aiv_kernel_def.h"
 #include "universal_concurrent_map.h"
 #include "alg_env_config.h"
+#include "dlsym_common.h"
 #ifdef HCCL_STATIC_MODE
 #include "acl_rt.h"
 #endif
@@ -875,6 +876,19 @@ HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHas
     indexCtx->size++;
     HCCL_INFO("[%s] ctxTag[%s] keyHash[%llu] cur head[%u] tail[%u] size[%u]",
         __func__, ctxTag.c_str(), keyHash, indexCtx->head, indexCtx->tail, indexCtx->size);
+    return HCCL_SUCCESS;
+}
+
+HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr)
+{
+    CHK_PTR_NULL(userPtr);
+    if (state != HcclCommStatePhase::HCCL_COMM_STATE_PHASE_RESUME_POST) {
+        HCCL_INFO("[%s] CommStateOp is not HCCL_COMM_STATE_PHASE_RESUME_POST, skip aiv tag clear.", __func__);
+        return HCCL_SUCCESS;
+    }
+    ACLCHECK(haclrtMemset(static_cast<u8 *>(userPtr) + AIV_FLAG_ADDR_OFFSET, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET,
+        0, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET));
+    HCCL_INFO("[%s] Aiv commInfoBuffer[%p] tag buffer clear success.", __func__, userPtr);
     return HCCL_SUCCESS;
 }
 

@@ -99,6 +99,16 @@ typedef struct {
     uint64_t timeOut;
     uint8_t reserved[104];
 } HcclKernelLaunchCfg;
+
+typedef enum {
+    HCCL_COMM_STATE_PHASE_INVALID = -1,
+    HCCL_COMM_STATE_PHASE_DESTROY_PRE = 0,   /* 调用通信域销毁HcclCommDestroy前 */
+    HCCL_COMM_STATE_PHASE_DESTROY_POST = 1,  /* 调用通信域销毁HcclCommDestroy后 */
+    HCCL_COMM_STATE_PHASE_RESUME_PRE = 2,    /* 调用step快恢恢复通信域资源HcclCommResume前 */
+    HCCL_COMM_STATE_PHASE_RESUME_POST = 3    /* 调用step快恢恢复通信域资源HcclCommResume后 */
+} HcclCommStatePhase;
+
+typedef HcclResult (*HcclCommStateCallback)(HcclComm comm, HcclCommStatePhase state, void *args);
 #endif
 
 #ifdef __cplusplus
