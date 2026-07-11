@@ -128,7 +128,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::DoLocalCopy(const TemplateDataPar
                                   tempAlgParams.sliceSize, tempAlgParams.count);
         auto dstSlice = DataSlice(dstAddr, tempAlgParams.buffInfo.outBuffBaseOff + i * tempAlgParams.outputSliceStride,
                                   tempAlgParams.sliceSize, tempAlgParams.count);
-        HCCL_INFO("myRank[%u], i[%u],  srcSlice:%s, dstSlice:%s", myRank_, i, srcSlice.Describe().c_str(),
+        HCCL_INFO("myRank[%u], i[%u], srcSlice:%s, dstSlice:%s", myRank_, i, srcSlice.Describe().c_str(),
                   dstSlice.Describe().c_str());
         CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
     }
