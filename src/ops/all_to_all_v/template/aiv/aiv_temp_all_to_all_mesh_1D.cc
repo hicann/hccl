@@ -55,7 +55,6 @@ HcclResult AivTempAlltoAllMesh1D::CalcRes(HcclComm comm, const OpParam& param, c
 
 HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    (void) dataSize;
     HCCL_INFO("[AivTempAlltoAllMesh1D] Limit core num[%u]", numBlocksLimit);
 
     // 小于1的场景
@@ -65,9 +64,10 @@ HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32
     }
 
     // rankSize在部分范围时，最多使用指定倍数个核
+    constexpr u64 DATA_SIZE_CORE_CAP_THRESHOLD = 2 * 1024 * 1024;
     constexpr u32 RANK_SIZE_CORE_CAP_THRESHOLD = 8;
     constexpr u32 MAX_CORE_MULTIPLE_OF_RANK_SIZE = 4;
-    if (tempRankSize_ == RANK_SIZE_CORE_CAP_THRESHOLD) {
+    if (tempRankSize_ == RANK_SIZE_CORE_CAP_THRESHOLD && dataSize >= DATA_SIZE_CORE_CAP_THRESHOLD) {
         u32 maxBlocks = MAX_CORE_MULTIPLE_OF_RANK_SIZE * tempRankSize_;
         numBlocksLimit = std::min(numBlocksLimit, maxBlocks);
     }
@@ -126,8 +126,7 @@ HcclResult AivTempAlltoAllMesh1D::KernelRun(const OpParam& param, const Template
         }
     }
 
-    u64 dataSize = tempAlgParams.inputSliceStride;
-    CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, dataSize, param.numBlocksLimit));
+    CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 
     aivAlltoAllArgs.inputSliceStride =
         reinterpret_cast<u64*>(param.all2AllVDataDes.sendCounts)[0] * DATATYPE_SIZE_TABLE[dataType_];

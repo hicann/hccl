@@ -22,7 +22,7 @@ static const struct FunLevelKType kernel_name##_kernel_type_section __attribute_
 = {{F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}}
 
 constexpr uint32_t MAX_RANK_SIZE = 512; // server内最大卡数
-constexpr uint32_t MAX_RANK_SIZE_V = 64;
+constexpr uint32_t MAX_RANK_SIZE_V = 56;
 constexpr uint64_t BUFFER_OUT_ADDR_OFFSET = 16 * 1024;
 constexpr uint64_t FLAG_ADDR_OFFSET = 40 * 1024;
 constexpr uint64_t TOPO_LEN_Y_OFFSET = 8;
