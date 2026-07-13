@@ -269,13 +269,23 @@ HcclResult ProcessLinkForProtocol(HcclComm comm, const std::vector<CommProtocol>
     std::vector<HcclChannelDesc>& channels, bool& protocolFound, const std::string& funcName)
 {
     protocolFound = false;
+    std::set<uint32_t> seenDie;
     for (auto expectedProtocol : expectedProtocols) {
         for (u32 idx = 0; idx < linkList.size(); idx++) {
-            if (linkList[idx].linkAttr.linkProtocol == expectedProtocol) {
+            if (linkList[idx].linkAttr.linkProtocol != expectedProtocol) {
+                continue;
+            }
+            EndpointAttrDieId dieId = 0;
+            HcclResult dieRet = HcclRankGraphGetEndpointInfo(comm, myRank, &linkList[idx].srcEndpointDesc,
+                ENDPOINT_ATTR_DIE_ID, sizeof(dieId), &dieId);
+            bool shouldAdd = true;
+            if (dieRet == HCCL_SUCCESS) {
+                shouldAdd = seenDie.insert(dieId).second;
+            }
+            if (shouldAdd) {
                 CHK_RET(CreateChannelFromLink(comm, myRank, remoteRank, netLayer, idx, linkList[idx],
                     funcName, channels));
                 protocolFound = true;
-                break;
             }
         }
         if (protocolFound) {
