@@ -1846,7 +1846,10 @@ HcclResult HcclGetCcuKernel(HcclComm comm, AlgResourceRequest &resRequest,
 
     while (currentResGroup <= maxResGroup) {
         CcuResult regStartRet = HcommCcuKernelRegisterStart(insHandle);
-        if (regStartRet != CCU_SUCCESS) {
+        if (regStartRet == CCU_E_UNAVAIL) {
+            HCCL_WARNING("[HcclGetCcuKernel] ccu kernel register start unavailable.");
+            return HCCL_E_UNAVAIL;
+        } else if (regStartRet != CCU_SUCCESS) {
             HCCL_ERROR("ccu kernel register start failed: ccuRet -> %d", regStartRet);
             return ConvertCcuToHccl(regStartRet);
         }
@@ -1868,7 +1871,10 @@ HcclResult HcclGetCcuKernel(HcclComm comm, AlgResourceRequest &resRequest,
             CcuResult regRet = HcommCcuKernelRegister(insHandle, dieId, kernelInfo.kernelFuncName,
                                                       reinterpret_cast<void*>(kernelInfo.kernelFunc),
                                                       kernelArgs, kernelArgNum, &kernelHandle);
-            if (regRet != CCU_SUCCESS) {
+            if (regRet == CCU_E_UNAVAIL) {
+                HCCL_WARNING("[HcclGetCcuKernel] ccu kernel register unavailable, try to fallback.");
+                return HCCL_E_UNAVAIL;
+            } else if (regRet != CCU_SUCCESS) {
                 HCCL_ERROR("ccu kernel register failed: ccuRet -> %d", regRet);
                 return ConvertCcuToHccl(regRet);
             }
