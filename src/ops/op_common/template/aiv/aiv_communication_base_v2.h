@@ -595,6 +595,7 @@ __aicore__ inline void AivCommBase::SendRecvBarrierAll(uint32_t myRank, uint32_t
             }
         }
     }
+    SyncAll<true>();  // 确保非0核在同步完成前不会走进其他算子流程
 }
 
 __aicore__ inline uint64_t AivCommBase::CeilDiv(uint64_t a, uint64_t b)

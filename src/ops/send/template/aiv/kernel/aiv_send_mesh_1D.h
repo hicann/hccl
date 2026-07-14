@@ -49,6 +49,9 @@ public:
 
         uint64_t flag_offset = blockIdx_;
         Record(rank_, flag_offset, curTag);
+
+        // 等待Recv数据搬运完成
+        WaitFlag(targetRank, flag_offset, curTag);
     }
 
     __aicore__ inline void Process(uint64_t len, uint32_t sliceId)

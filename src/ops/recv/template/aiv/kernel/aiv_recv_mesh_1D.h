@@ -49,6 +49,9 @@ public:
 
         CpGM2GM((__gm__ T *)recvOutputOffset, (__gm__ T *)recvInputOffset, recvCurCount);
         PipeBarrier<PIPE_ALL>(); // 核内自己的同步
+
+        // 通知Send数据已经搬运完成
+        Record(rank_, flag_offset, curTag);
     }
 
     __aicore__ inline void Process(uint64_t len, uint32_t sliceId)
