@@ -14,7 +14,6 @@
 
 namespace ops_hccl {
 
-constexpr u32 TOPO_LEVEL_NUM_3 = 3;
 constexpr u64 BROADCAST_MESH_CCU_MAX_DATA_SIZE = 16 * 1024;
 constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024;
@@ -224,6 +223,12 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDe
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE_V) {
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE_V);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
+            __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
