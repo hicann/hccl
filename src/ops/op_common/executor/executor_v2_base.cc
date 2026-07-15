@@ -61,6 +61,16 @@ HcclResult InsCollAlgBase::FastLaunch(const OpParam &param, const CcuFastLaunchC
     return HcclResult::HCCL_E_INTERNAL;
 }
 
+HcclResult InsCollAlgBase::OrchestrateWithThread(
+    const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread)
+{
+    (void)param;
+    (void)resCtx;
+    (void)sendRecvThread;
+    HCCL_ERROR("[InsCollAlgBase] Unsupported interface of InsCollAlgBase::OrchestrateWithThread!");
+    return HcclResult::HCCL_E_INTERNAL;
+}
+
 #ifndef AICPU_COMPILE
 HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(const OpParam &param, const u32 threadNum,
     const u32 ccuKernelNum, const std::vector<ThreadHandle> &threads, const std::vector<u32> &ccuKernelNumList,

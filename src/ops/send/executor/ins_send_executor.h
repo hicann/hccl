@@ -33,8 +33,8 @@ namespace ops_hccl {
 
         // 算法编排
         HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
-        HcclResult OrchestrateP2p(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-            ThreadHandle sendRecvThread);
+        HcclResult OrchestrateWithThread(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
+            ThreadHandle sendRecvThread) override;
     protected:
         HcclResult InitSendInfo(
             const HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo);

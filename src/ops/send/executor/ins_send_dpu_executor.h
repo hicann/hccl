@@ -25,6 +25,9 @@ namespace ops_hccl {
 
         // 算法编排
         HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+        
+        HcclResult OrchestrateWithThread(
+            const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread) override;
 
         HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
             AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;

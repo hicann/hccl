@@ -122,6 +122,14 @@ namespace ops_hccl {
         return HcclResult::HCCL_SUCCESS;
     }
 
+    template <typename InsAlgTemplate>
+    HcclResult InsRecvDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
+        const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread)
+    {
+        (void)sendRecvThread;
+        return Orchestrate(param, resCtx);
+    }
+
     // opv2流程使用opv2_insRecvHostDpu算法名
     REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_RECEIVE, opv2_insRecvHostDpu, InsRecvDpuExecutor,\
         InsTempRecvHostNicDpu);

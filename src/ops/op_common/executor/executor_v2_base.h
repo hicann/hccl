@@ -51,6 +51,9 @@ public:
     virtual HcclResult RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
         std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const;
 
+    virtual HcclResult OrchestrateWithThread(
+        const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread);
+
 #ifndef AICPU_COMPILE
     HcclResult FastLaunchSaveCtxTwoTemplate(const OpParam &param, const u32 threadNum, const u32 ccuKernelNum,
                                             const std::vector<ThreadHandle> &threads, const std::vector<u32> &ccuKernelNumList,

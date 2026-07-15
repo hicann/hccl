@@ -31,6 +31,8 @@ public:
     ~InsV2RecvSoleExecutor() = default;
     std::string Describe() const override;
     HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult OrchestrateWithThread(
+            const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
