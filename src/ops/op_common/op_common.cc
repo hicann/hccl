@@ -75,33 +75,6 @@ void UpdateAicpuTimeoutCtx(const OpParam &param, AlgResourceCtxSerializable &res
         timeout.kernelLaunchTimeout, static_cast<u32>(IsHcommDefaultTimeoutSupported()));
 }
 
-// 检查非对称拓扑支持情况
-// 仅 AllGather, AllReduce, ReduceScatter, AllToAll(V/VC), Scatter, Broadcast, Reduce 支持跨框非对称拓扑，其他算子拦截
-HcclResult CheckAsymmetricTopoSupport(HcclCMDType opType, const TopoInfoWithNetLayerDetails* topoInfo)
-{
-    // 仅在跨框非对称场景下检查
-    if (topoInfo->topoLevelNums > 1 && topoInfo->multiModuleDiffDeviceNumMode) {
-        // 已适配非对称的算子：AllGather, AllReduce, ReduceScatter, AllToAll(V/VC), Scatter, Broadcast, Reduce
-        bool isSupportedOp = (opType == HcclCMDType::HCCL_CMD_ALLGATHER ||
-                             opType == HcclCMDType::HCCL_CMD_ALLREDUCE ||
-                             opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
-                             opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
-                             opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
-                             opType == HcclCMDType::HCCL_CMD_ALLTOALLVC ||
-                             opType == HcclCMDType::HCCL_CMD_SCATTER ||
-                             opType == HcclCMDType::HCCL_CMD_BROADCAST ||
-                             opType == HcclCMDType::HCCL_CMD_REDUCE);
-        if (!isSupportedOp) {
-            HCCL_ERROR("[CheckAsymmetricTopoSupport] OpType[%d] does not support asymmetric topology "
-                "(multi-module diff device num mode) "
-                "only ALLGATHER/ALLREDUCE/REDUCE_SCATTER/ALLTOALL/ALLTOALLV/ALLTOALLVC/SCATTER/BROADCAST/REDUCE "
-                "are supported.", opType);
-            return HCCL_E_NOT_SUPPORT;
-        }
-    }
-    return HCCL_SUCCESS;
-}
-
 HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo,
     std::string &algName)
 {
@@ -118,9 +91,6 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     param.hcclComm = comm;
     // 获取基础拓扑
     CHK_RET(HcclCalcTopoInfo(comm, param, topoInfo));
-
-    // 检查非对称拓扑支持情况，非对称场景仅 AllGather/AllReduce/ReduceScatter/AllToAll(V/VC)/Scatter/Broadcast/Reduce 可用
-    CHK_RET(CheckAsymmetricTopoSupport(param.opType, topoInfo.get()));
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
     std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
