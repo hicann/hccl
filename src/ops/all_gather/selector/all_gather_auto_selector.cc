@@ -24,7 +24,6 @@ constexpr u64 AG_AICPU_1D_TWO_LEVER_DATA_SIZE_THRESHOLD = 1 * 1024 * 1024 * 1024
 constexpr u64 AG_CCU_CLOS_SMALL_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 AG_AICPU_SEQUENCE_DATA_SIZE = 4ULL * 1024 * 1024 * 1024;
 constexpr u32 OMNI_PCIE_AG_DATA_SIZE = 4 * 1024 * 1024;
-constexpr u32 TOPO_LEVEL_NUM_3 = 3;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 
 SelectorStatus AllGatherAutoSelector::SelectCcuMsAlgo(
@@ -344,6 +343,12 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
     if (topoInfo->userRankSize > MAX_RANK_SIZE) {
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[AllGatherAutoSelector][%s] rankSize[%u] larger than [%u]",
             __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[AllGatherAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
+            __func__);
         return SelectorStatus::NOT_MATCH;
     }
 

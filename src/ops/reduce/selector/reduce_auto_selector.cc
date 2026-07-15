@@ -297,6 +297,13 @@ SelectorStatus ReduceAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDetai
     CHK_PRT_RET(topoInfo == nullptr, HCCL_ERROR("[Algo][ReduceAutoSelector] topoInfo is nullptr"),
         SelectorStatus::NOT_MATCH);
     (void)configAlgMap;
+
+    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ReduceAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
+            __func__);
+        return SelectorStatus::NOT_MATCH;
+    }
+
     // aiv 模式不支持 PROD
     CHK_PRT_RET(opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD,
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceAutoSelector] ReduceOp[%d] is not supported yet for aiv mode.", opParam.reduceType),

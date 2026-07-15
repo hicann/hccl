@@ -27,6 +27,11 @@ namespace ops_hccl {
         const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap, std::string &selectAlgName) const
     {
         (void)topoInfo;
+        if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
+            HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[RecvAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
+                __func__);
+            return SelectorStatus::NOT_MATCH;
+        }
         HCCL_INFO("[RecvAutoSelector][SelectAivAlgo] opType:%d", opParam.opType);
         selectAlgName = "AivRecv";
         return SelectorStatus::MATCH;
