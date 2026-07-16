@@ -348,9 +348,9 @@ static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     ccu::Variable scratchOffset;
     std::vector<ccu::Variable> scratchOffsetVec;
     scratchOffset = 0;
-    ccu::Variable scratchOffTmp;
 
     for (uint32_t gRankIdx = 0; gRankIdx < ctx.gRankSize; gRankIdx++) {
+        ccu::Variable scratchOffTmp;
         scratchOffTmp = scratchOffset;
         scratchOffsetVec.push_back(scratchOffTmp);
         scratchOffset = scratchOffset + ctx.sliceSize;
