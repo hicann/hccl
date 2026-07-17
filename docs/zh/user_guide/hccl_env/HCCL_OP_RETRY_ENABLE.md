@@ -141,7 +141,8 @@
 
 ## 其他约束
 
-若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclRetryEnable”参数配置了是否开启HCCL算子的重执行特性，则以通信域粒度的配置优先。
+- 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclRetryEnable”参数配置了是否开启HCCL算子的重执行特性，则以通信域粒度的配置优先。
+- 开启重执行时，不支持在单卡上多个进程或者线程中调用HcclCreateSubCommConfig接口切分子通信域。
 
 ## 重执行对整网性能说明
 
