@@ -178,6 +178,8 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_INFO("[ReduceAutoSelector] Mesh1D dataSize[%llu] > 16MB, fallback to aicpu.", dataSize);
             return SelectorStatus::NOT_MATCH;
         } else {
+            CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8, HCCL_WARNING("[ReduceAutoSelector] dataType[%d] is not supported yet for ccu schedule mode.",
+            opParam.DataDes.dataType), SelectorStatus::NOT_MATCH);
             selectAlgName = "CcuReduceMesh1DTwoShotMem2Mem";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
