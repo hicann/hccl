@@ -27,3 +27,7 @@
 ## 自定义点对点通信算子
 
 - [自定义 Send/Recv 算子（基于 AICPU 通信引擎）](./04_custom_ops_p2p)
+
+## 自定义集合通信算子
+
+- [自定义 AllGather 算子](./05_custom_ops_allgather)

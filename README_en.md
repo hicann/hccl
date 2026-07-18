@@ -38,8 +38,10 @@ The key directories of this project are as follows:
 |        ├── all_gather_v       # AllGatherV operator implementation
 |        ├── all_reduce         # AllReduce operator implementation
 |        ├── all_to_all_v       # AlltoAll, AlltoAllV, and AlltoAllVC operator implementation
+|        ├── barrier            # Barrier operator implementation
 |        ├── batch_send_recv    # BatchSendRecv operator implementation
 |        ├── broadcast          # Broadcast operator implementation
+|        ├── interface_graph_mode # Graph mode interface implementation
 |        ├── op_common          # Common operator components
 |        │   ├── executor       # Executor
 |        │   ├── selector       # Algorithm selector
