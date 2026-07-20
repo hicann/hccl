@@ -497,7 +497,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
             CHK_RET(PostSyncInterThreads(mainThread, syncThreads, notifyIdxesSubToMain));
         }
         
-        processedDataCount += currDataCount;
+        processedDataCount += maxCountPerLoop;
     }
 
     HCCL_INFO("[%s][OrchestrateLoop] End.", __func__);
