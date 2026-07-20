@@ -655,6 +655,37 @@ static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetail
     return HCCL_SUCCESS;
 }
 
+static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    if (topoInfo->topoLevelNums < NET_LAYER_NUM_THREE) {
+        return HCCL_SUCCESS;
+    }
+    u32 myRank;
+    CHK_RET(HcclGetRankId(comm, &myRank));
+    for (u32 dstRank = 0; dstRank < topoInfo->userRankSize; dstRank++) {
+        if (dstRank == myRank) {
+            continue;
+        }
+        CommLink *links = nullptr;
+        uint32_t linkNum = 0;
+        HcclRankGraphGetLinks(comm, NET_LAYER_NUM_THREE - 1, myRank, dstRank, &links, &linkNum);
+        if (linkNum > 0 && links[0].header.version >= 1) {
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+            topoInfo->level2Ubg = (links[0].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBG);
+#else
+            // 参考Uboe判断版本
+            // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；
+            topoInfo->level2Ubg = false;
+#endif
+            HCCL_INFO("[TopoHost][CalcLevel2Ubg] level2 protocol[%u], level2Ubg[%d]",
+                static_cast<u32>(links[0].linkAttr.linkProtocol), topoInfo->level2Ubg);
+            return HCCL_SUCCESS;
+        }
+    }
+    HCCL_INFO("[TopoHost][CalcLevel2Ubg] no level2 links found, level2Ubg=false");
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     CHK_RET(ExtractNetLayerDetails(comm, topoInfo));
@@ -665,6 +696,7 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(IsLevel0PcieMix(comm, topoInfo));
     CHK_RET(CalcLevel0MeshType(comm, topoInfo));
     CHK_RET(CalcLevel2Uboe(comm, topoInfo));
+    CHK_RET(CalcLevel2Ubg(comm, topoInfo));
     return HCCL_SUCCESS;
 }
 
@@ -968,10 +1000,6 @@ HcclResult IsLevel0PcieMix(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
         CommLink *links = nullptr;
         uint32_t linkNum;
         CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, ranks[rankIdx], &links, &linkNum));
-        CHK_PTR_NULL(links);
-        CHK_PRT_RET(linkNum == 0,
-            HCCL_INFO("[Topo][IsLevel0PcieMix] Can not find path from Local[%u] to Rmt[%u], in netLayer %u. "
-                      "Topo is not mesh", myRank, ranks[rankIdx], netLayer), HCCL_E_INTERNAL);
 
         for (u32 i = 0 ; i < linkNum; i++) {
             CommProtocol srcProtocol = links[i].srcEndpointDesc.protocol;

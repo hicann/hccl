@@ -36,6 +36,12 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
     HCCL_INFO("hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType,
               algos[0], algos[1], algos[2], algos[3]);
  
+    if (topoInfo->level2Ubg) {
+        HCCL_INFO("[AllGatherVAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.",
+            __func__);
+        return SelectorStatus::NOT_MATCH;
+    }
+
     if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
         HCCL_INFO("[AllGatherVAutoSelector][%s] ccu schedule is not supported with level2Uboe, reset to default.",
             __func__);
