@@ -15,7 +15,7 @@
 namespace ops_hccl {
 constexpr u64 AG_2D_SMALL_DATA_SIZE = 1024 * 1024;
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
-constexpr u32 MAX_RANK_NUM_FOR_SEQ_ALGO = 8;
+constexpr u32 MAX_RANK_NUM_FOR_SEQ_ALGO = 16;
 constexpr u64 AG_CCU_SMALL_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 AG_FLATTEN_MAX_DATA_SIZE = 64 * 1024;
 constexpr u64 AG_CCU_SEQUENCE_MAX_DATA_SIZE = 8 * 1024 * 1024;
