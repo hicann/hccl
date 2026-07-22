@@ -14,6 +14,7 @@
 #include <atomic>
 #include <limits>
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 namespace ops_hccl {
@@ -1209,50 +1210,6 @@ HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, co
 }
 
 template <typename T>
-typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
-SaturatedAdd(T a, T b)
-{
-    return a + b;
-}
-
-template <typename T>
-typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
-SaturatedAdd(T a, T b)
-{
-    using W = typename WiderType<T>::Type;
-    W result = static_cast<W>(a) + static_cast<W>(b);
-    if (result > static_cast<W>(std::numeric_limits<T>::max())) {
-        return std::numeric_limits<T>::max();
-    }
-    if (result < static_cast<W>(std::numeric_limits<T>::min())) {
-        return std::numeric_limits<T>::min();
-    }
-    return static_cast<T>(result);
-}
-
-template <typename T>
-typename std::enable_if<std::is_same<typename WiderType<T>::Type, T>::value, T>::type
-SaturatedMul(T a, T b)
-{
-    return a * b;
-}
-
-template <typename T>
-typename std::enable_if<!std::is_same<typename WiderType<T>::Type, T>::value, T>::type
-SaturatedMul(T a, T b)
-{
-    using W = typename WiderType<T>::Type;
-    W result = static_cast<W>(a) * static_cast<W>(b);
-    if (result > static_cast<W>(std::numeric_limits<T>::max())) {
-        return std::numeric_limits<T>::max();
-    }
-    if (result < static_cast<W>(std::numeric_limits<T>::min())) {
-        return std::numeric_limits<T>::min();
-    }
-    return static_cast<T>(result);
-}
-
-template <typename T>
 HcclResult AicpuReduceTemplate(T *dst, u64 dstSize, T *src, u64 srcSize, const HcclReduceOp reduceOp)
 {
     if (dstSize != srcSize) {
@@ -1266,10 +1223,18 @@ HcclResult AicpuReduceTemplate(T *dst, u64 dstSize, T *src, u64 srcSize, const H
         T srcData = *(src + i);
         switch (reduceOp) {
             case HcclReduceOp::HCCL_REDUCE_SUM:
-                *(dst + i) = SaturatedAdd(srcData, dstData);
+                *(dst + i) = srcData + dstData;
                 break;
             case HcclReduceOp::HCCL_REDUCE_PROD:
-                *(dst + i) = SaturatedMul(srcData, dstData);
+                if (std::is_same<T, int8_t>::value) {
+                    uint8_t prod = static_cast<uint8_t>(srcData) * static_cast<uint8_t>(dstData);
+                    *(dst + i) = static_cast<T>(prod);
+                } else if (std::is_same<T, int32_t>::value) {
+                    uint32_t prod = static_cast<uint32_t>(srcData) * static_cast<uint32_t>(dstData);
+                    *(dst + i) = static_cast<T>(prod);
+                } else {
+                    *(dst + i) = srcData * dstData;
+                }
                 break;
             case HcclReduceOp::HCCL_REDUCE_MAX:
                 *(dst + i) = std::max(srcData, dstData);
