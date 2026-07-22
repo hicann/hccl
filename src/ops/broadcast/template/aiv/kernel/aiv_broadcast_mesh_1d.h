@@ -21,6 +21,9 @@ public:
 
     template<typename T>
     __aicore__ inline void ProcessBigData(uint64_t curCount, uint64_t sliceId);
+
+    template<typename T>
+    __aicore__ inline void ProcessCtrlCore(uint64_t len, uint32_t sliceId);
 private:
     __aicore__ inline void CalculateOffsetAndCount(uint64_t totalData, uint64_t index, 
                                                    uint64_t totalParts, uint64_t &offset, uint64_t &count);
@@ -171,6 +174,57 @@ __aicore__ inline void AivBroadcastMesh1D::ProcessBigData(uint64_t curCount, uin
 }
  
 template<typename T>
+__aicore__ inline void AivBroadcastMesh1D::ProcessCtrlCore(uint64_t len, uint32_t sliceId)
+{
+    curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
+    uint32_t rankNumPerCore = (rankSize_ + numBlocks_ - 1) / numBlocks_;   // 一核负责的 rank 数(ceil)
+    // 每个 rank 的数据 count（floor），最后一份取余；地址偏移需再 *sizeof(T)
+    uint64_t dataCountPerRank = len / rankSize_;
+
+    // ===== Scatter 阶段：root 把 len 切成 rankSize 份，第 dstRank 份写入 GM_IN[dstRank] =====
+    if (rank_ == root_) {
+        for (uint32_t idx = 0; idx < rankNumPerCore; idx++) {
+            uint32_t dstRank = blockIdx_ * rankNumPerCore + idx;
+            if (dstRank >= rankSize_) { break; }
+            uint64_t dataCountOffset = dstRank * dataCountPerRank;
+            uint64_t dstDataCount = (dstRank == rankSize_ - 1)
+                                ? (len - (rankSize_ - 1) * dataCountPerRank) : dataCountPerRank;
+            if (dstDataCount > 0) {
+                CpGM2GM((__gm__ T *)GM_IN[dstRank],
+                        (__gm__ T *)(input_ + dataCountOffset * sizeof(T)), dstDataCount);
+                PipeBarrier<PIPE_ALL>();
+            }
+            Record(dstRank, rank_, curTag_);                // 通知 dstRank：GM_IN[dstRank] 就绪
+        }
+    }
+    // 每个 rank 等 root 写入自己的 GM_IN[rank_]
+    WaitFlag(rank_, root_, curTag_);
+
+    // ===== Allgather 阶段：各 rank 从其他 rank 的 GM_IN 收集每份到 output =====
+    // 先通知负责的 peer：我的 GM_IN[rank_] 就绪（可读）。用 [rankSize,2*rankSize) 区与 scatter 隔离
+    for (uint32_t idx = 0; idx < rankNumPerCore; idx++) {
+        uint32_t peerRank = blockIdx_ * rankNumPerCore + idx;
+        if (peerRank >= rankSize_) { break; }
+        Record(peerRank, rank_ + rankSize_, curTag_);
+    }
+    // 等 peer 的 GM_IN[peerRank] 就绪，把 peer 的那份拷到 output[peerRank 的 portion 位置]
+    for (uint32_t idx = 0; idx < rankNumPerCore; idx++) {
+        uint32_t peerRank = blockIdx_ * rankNumPerCore + idx;
+        if (peerRank >= rankSize_) { break; }
+        WaitFlag(rank_, peerRank + rankSize_, curTag_);
+        uint64_t dataCountOffset = peerRank * dataCountPerRank;
+        uint64_t recvDataCount = (peerRank == rankSize_ - 1)
+                              ? (len - (rankSize_ - 1) * dataCountPerRank) : dataCountPerRank;
+        if (recvDataCount > 0) {
+            CpGM2GM((__gm__ T *)(output_ + dataCountOffset * sizeof(T)),
+                    (__gm__ T *)GM_IN[peerRank], recvDataCount);
+            PipeBarrier<PIPE_ALL>();
+        }
+    }
+    // 无 ack：op 末尾 BarrierAll 保证全卡同步，buffer 复用安全
+}
+
+template<typename T>
 __aicore__ inline void AivBroadcastV2Mesh1D(KERNEL_ARGS_DEF)
 {
     AivBroadcastMesh1D op;
@@ -178,7 +232,9 @@ __aicore__ inline void AivBroadcastV2Mesh1D(KERNEL_ARGS_DEF)
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    if (len * sizeof(T) >= DATA_LIMIT && rankSize > 8) {
+    if (numBlocks < rankSize) {
+        op.ProcessCtrlCore<T>(len, sliceId);                    // 控核分支
+    } else if (len * sizeof(T) >= DATA_LIMIT && rankSize > 8) {
         op.ProcessBigData<T>(len, sliceId);
     } else {
         op.Process<T>(len, sliceId, inputSliceStride);

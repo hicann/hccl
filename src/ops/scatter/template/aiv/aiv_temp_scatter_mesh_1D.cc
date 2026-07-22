@@ -55,8 +55,11 @@ HcclResult AivTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, co
 HcclResult AivTempScatterMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
     (void) dataSize;
-    (void) numBlocksLimit;
-    numBlocks = MAX_NUM_BLOCKS;
+    if (numBlocksLimit == 0) {
+        HCCL_ERROR("[AivTempScatterMesh1D] numBlocksLimit is 0");
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
+    numBlocks = numBlocksLimit;
     HCCL_INFO("[AivTempScatterMesh1D] Actually use core num[%u]", numBlocks);
     return HcclResult::HCCL_SUCCESS;
 }

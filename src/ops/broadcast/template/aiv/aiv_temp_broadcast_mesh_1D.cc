@@ -55,11 +55,11 @@ HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
 HcclResult AivTempBroadcastMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
     (void) dataSize;
-    numBlocks = numBlocksLimit;
-    if (numBlocks < tempRankSize_) {
-        HCCL_ERROR("numBlocks[%u] is less than tempRankSize[%u]", numBlocks, tempRankSize_);
-        return HCCL_E_INTERNAL;
+    if (numBlocksLimit == 0) {
+        HCCL_ERROR("[AivTempBroadcastMesh1D] numBlocksLimit is 0");
+        return HcclResult::HCCL_E_NOT_SUPPORT;
     }
+    numBlocks = numBlocksLimit;
     HCCL_INFO("[AivTempBroadcastMesh1D] Actually use core num[%u]", numBlocks);
     return HcclResult::HCCL_SUCCESS;
 }

@@ -31,7 +31,7 @@
       - 针对Broadcast、Scatter、AllGather、AlltoAll、AlltoAllV算子，数据类型支持int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
       - 针对Reduce、AllReduce、ReduceScatter算子，数据类型支持int8、int16、int32、float16、float32、bfp16。
 
-    - 该配置项下，AllReduce、ReduceScatter、AllGather、AlltoAll算子支持控核能力，建议业务根据实际使用场景中计算算子与通信算子的并发情况进行Vector Core核数的配置。
+    - 该配置项下，支持控核能力，建议业务根据实际使用场景中计算算子与通信算子的并发情况进行Vector Core核数的配置。
 
   - **CCU_MS**：代表通信算子在CCU展开，使用CcuBuffer进行内存读写。Ascend 950PR不支持此配置。
 
