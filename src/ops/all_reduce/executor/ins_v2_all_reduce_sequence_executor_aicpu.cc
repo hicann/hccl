@@ -403,6 +403,7 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 {
     HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][OrchestrateLoop] Start");
     scratchBlockSize_ = resCtx.cclMem.size / CCL_MEM_HALF_DIVISOR;
+    engine_ = param.engine;
 
     TemplateDataParams tempAlgParamsStepOne; // 框内ReduceScatter的模板参数
     TemplateDataParams tempAlgParamsStepTwo; // 框间ReduceScatter的模板参数
