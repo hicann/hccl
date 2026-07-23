@@ -139,6 +139,10 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
 
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
+        return HCCL_E_INTERNAL;
+    }
     u64 maxCountPerLoop = interTempDataParams.buffInfo.hcclBuff.size / templateScratchMultiplier /
         HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 计算loopTimes

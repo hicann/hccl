@@ -300,6 +300,10 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
     }
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
+        return HCCL_E_INTERNAL;
+    }
     u64 maxCountPerLoop = 0;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         maxCountPerLoop = scratchBlockSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN 

@@ -322,6 +322,10 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
     TemplateResource templateResource2;
     CHK_RET(GenTempResource(resCtx, OMNIPIPE_LEVEL2_IDX, algTemplateLevel2, templateResource2));
 
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
+        return HCCL_E_INTERNAL;
+    }
     u64 maxCountPerLoop = tempAlgParamsLevel2.buffInfo.hcclBuff.size / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN
         * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     if (maxCountPerLoop == 0) {

@@ -192,7 +192,10 @@ HcclResult AppendFastLaunchTag(OpParam &param, const char* dataTypeStr,
         if (!s) return true;
         size_t len = strlen(s);
         if (len >= remain) return false;
-        memcpy_s(dst, remain, s, len);
+        if (memcpy_s(dst, remain, s, len) != EOK) {
+            HCCL_ERROR("memcpy_s failed in append_str.");
+            return false;
+        }
         dst += len;
         remain -= len;
         return true;
@@ -273,7 +276,9 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam &param, CcuFastLaunchCtx **ccu
     if (param.engine != CommEngine::COMM_ENGINE_CCU) {
         return false;
     }
-    CHK_RET(SetOpParamFastLaunchTag(param));
+    if (SetOpParamFastLaunchTag(param) != HCCL_SUCCESS) {
+        return false;
+    }
 
     // 2. 查到engineCtx
     uint64_t size = 0;

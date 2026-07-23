@@ -377,7 +377,6 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(const OpParam &param, const Tem
         tempArgs.die0Size = templateDataParams.sliceSize;
     }
     FillKernelRunTempArgs(templateDataParams, tempArgs);
-    tempArgs.token;
     CHK_RET(GetToken(buffInfo_, tempArgs.token));
     HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] dimSize[%llu], inputAddr[%llu], outputAddr[%llu], scratchAddr[%llu],"
               "sliceSize[%llu], die0Size[%llu], die1Size[%llu], inputSliceStride[%llu], outputSliceStride[%llu],"

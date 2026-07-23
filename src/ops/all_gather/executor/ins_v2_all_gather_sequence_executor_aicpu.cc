@@ -307,6 +307,10 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         maxCountPerLoop = UB_MAX_DATA_SIZE / dataTypeSize_;
     } else {
+        if (templateScratchMultiplier == 0) {
+            HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
+            return HCCL_E_INTERNAL;
+        }
         maxCountPerLoop = interTempDataParams.buffInfo.hcclBuff.size / templateScratchMultiplier /
             HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     }

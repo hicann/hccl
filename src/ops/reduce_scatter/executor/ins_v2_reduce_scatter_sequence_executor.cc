@@ -187,6 +187,10 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
+        return HCCL_E_INTERNAL;
+    }
     u64 maxCountPerLoop = tempAlgParamsInter.buffInfo.hcclBuff.size / 2 / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN
         * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 计算loopTimes

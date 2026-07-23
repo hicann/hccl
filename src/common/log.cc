@@ -8,10 +8,11 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 #include "log.h"
+#include <atomic>
 
 thread_local bool g_hcclErrToWarn = false;
 constexpr int32_t HCCL_LOG_LEVEL_INVALID = -1;
-static int32_t g_logLevelCache = -1;
+static std::atomic<int32_t> g_logLevelCache{-1};
 int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent) __attribute((weak));
 
 bool HcclCheckLogLevel(int logType, int moduleId)
@@ -19,11 +20,11 @@ bool HcclCheckLogLevel(int logType, int moduleId)
     if ((moduleId & RUN_LOG_MASK) != 0) {
         return true;
     }
-    if (UNLIKELY(g_logLevelCache == HCCL_LOG_LEVEL_INVALID)) {
+    if (UNLIKELY(g_logLevelCache.load(std::memory_order_relaxed) == HCCL_LOG_LEVEL_INVALID)) {
         int32_t enableEvent = -1;
-        g_logLevelCache = dlog_getlevel(moduleId, &enableEvent);
+        g_logLevelCache.store(dlog_getlevel(moduleId, &enableEvent), std::memory_order_relaxed);
     }
-    return (logType >= g_logLevelCache);
+    return (logType >= g_logLevelCache.load(std::memory_order_relaxed));
 }
 
 void SetErrToWarnSwitch(bool flag)

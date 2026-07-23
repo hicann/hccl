@@ -747,7 +747,13 @@ HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase
         topoInfo->mainThread = resCtxHost->topoInfo.mainThread;
     }
  
-    CHK_RET(HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0));
+    ret = HcclEngineCtxCopy(comm, param.engine, param.algTag, resCtxHost, size, 0);
+    if (ret != HCCL_SUCCESS) {
+        if (param.engine == COMM_ENGINE_AICPU_TS) {
+            ACLCHECK(aclrtFreeHost(resCtxHost));
+        }
+        return ret;
+    }
     if (param.engine == COMM_ENGINE_AICPU_TS) {
         // 从Host内存拷贝到Device Context内存上
         ACLCHECK(aclrtFreeHost(resCtxHost));
