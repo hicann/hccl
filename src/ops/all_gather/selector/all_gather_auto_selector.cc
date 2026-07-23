@@ -15,7 +15,7 @@
 namespace ops_hccl {
 constexpr u64 AG_2D_SMALL_DATA_SIZE = 1024 * 1024;
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
-constexpr u32 MAX_RANK_NUM_FOR_SEQ_ALGO = 16;
+constexpr u32 MAX_RANK_NUM_FOR_SEQ_ALGO = 8;
 constexpr u64 AG_CCU_SMALL_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 AG_FLATTEN_MAX_DATA_SIZE = 128 * 1024;
 constexpr u64 AG_CCU_SEQUENCE_MAX_DATA_SIZE = 4 * 1024 * 1024;
@@ -197,8 +197,8 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            constexpr u64 AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 4ULL * 1024 * 1024;
-            if (dataSize >= AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE && topoInfo->userRankSize > MAX_RANK_NUM_FOR_SEQ_ALGO) {
+            constexpr u64 AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 256ULL * 1024 * 1024;
+            if (dataSize * topoInfo->userRankSize >= AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE && topoInfo->userRankSize > MAX_RANK_NUM_FOR_SEQ_ALGO) {
                 HCCL_INFO("[AllGatherAutoSelector] 2 level topo perRankDataSize[%llu] exceeds limit, fallback to aicpu.",
                     topoInfo->userRankSize == 0 ? dataSize : dataSize / topoInfo->userRankSize);
                 return SelectorStatus::NOT_MATCH;
