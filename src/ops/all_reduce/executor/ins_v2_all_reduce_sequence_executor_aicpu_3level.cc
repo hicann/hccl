@@ -528,7 +528,8 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<AlgTopoMatch, InsAlgTemplat
 
     u64 scratchMultiplier = algTemplateRSL0->CalcScratchMultiple(BufferType::INPUT, BufferType::HCCL_BUFFER);
     u32 cclBuffSliceNum = scratchMultiplier + 1;
-    cclBuffSliceSize_ = resCtx.cclMem.size / cclBuffSliceNum;
+    // 限制来自local reduce的地址需要按照数据类型宽度对齐
+    cclBuffSliceSize_ = resCtx.cclMem.size / cclBuffSliceNum / dataTypeSize_ * dataTypeSize_;
     rsResultBuffSize_ = cclBuffSliceSize_;
     meshCommBuffSize_ = scratchMultiplier * cclBuffSliceSize_;
     rsResultBuffOffset_ = 0;
