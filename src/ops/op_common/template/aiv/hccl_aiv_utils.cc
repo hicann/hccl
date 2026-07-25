@@ -23,6 +23,7 @@
 #include "hccl_aiv_utils.h"
 #include "aiv_kernel_def.h"
 #include "alg_env_config.h"
+#include "config_log.h"
 #include "dlsym_common.h"
 #ifdef HCCL_STATIC_MODE
 #include "acl_rt.h"
@@ -927,9 +928,11 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 arg
     CHK_PRT_RET(guardRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] aiv kernel is unregistering."),
         HCCL_E_RUNTIME);
 
-    HCCL_INFO("[ExecuteKernelLaunchInner] sendbuff [%p] recvbuff [%p] rank [%u] sendRecvRemoteRank [%u] rankSize [%u] count [%llu] "
+    HCCL_CONFIG_INFO(HCCL_TASK, "[ExecuteKernelLaunchInner] sendbuff [%p] recvbuff [%p] "
+        "rank [%u] sendRecvRemoteRank [%u] rankSize [%u] count [%llu] "
         "dataType [%d] reduceOp [%d] root [%u] tag [%u] isOpBase [%d] "
-        "extraArgsPtr [%p] argsSize [%u]", opArgs.input, opArgs.output, opArgs.rank, opArgs.sendRecvRemoteRank, opArgs.rankSize, opArgs.count,
+        "extraArgsPtr [%p] argsSize [%u]",
+        opArgs.input, opArgs.output, opArgs.rank, opArgs.sendRecvRemoteRank, opArgs.rankSize, opArgs.count,
         opArgs.dataType, opArgs.op, opArgs.root, opArgs.sliceId, opArgs.isOpBase, args, argsSize);
 
     aclrtLaunchKernelCfg cfg;
