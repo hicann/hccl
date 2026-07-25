@@ -654,9 +654,21 @@ static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetail
 
 static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
-    if (topoInfo->topoLevelNums < NET_LAYER_NUM_THREE) {
+    topoInfo->level2Ubg = false;
+    constexpr u32 LEVEL2_NET_LAYER = NET_LAYER_NUM_THREE - 1;
+    bool hasLevel2 = false;
+    for (u32 netLayer : topoInfo->netLayerDetails.netLayers) {
+        if (netLayer == LEVEL2_NET_LAYER) {
+            hasLevel2 = true;
+            break;
+        }
+    }
+    if (!hasLevel2) {
+        HCCL_INFO("[TopoHost][CalcLevel2Ubg] netLayer_2 does not exist, level2Ubg=false");
         return HCCL_SUCCESS;
     }
+
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     u32 myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
     for (u32 dstRank = 0; dstRank < topoInfo->userRankSize; dstRank++) {
@@ -665,21 +677,26 @@ static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails
         }
         CommLink *links = nullptr;
         uint32_t linkNum = 0;
-        HcclRankGraphGetLinks(comm, NET_LAYER_NUM_THREE - 1, myRank, dstRank, &links, &linkNum);
-        if (linkNum > 0 && links[0].header.version >= 1) {
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-            topoInfo->level2Ubg = (links[0].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBG);
-#else
-            // 参考Uboe判断版本
-            // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；
-            topoInfo->level2Ubg = false;
-#endif
-            HCCL_INFO("[TopoHost][CalcLevel2Ubg] level2 protocol[%u], level2Ubg[%d]",
-                static_cast<u32>(links[0].linkAttr.linkProtocol), topoInfo->level2Ubg);
-            return HCCL_SUCCESS;
+        CHK_RET(HcclRankGraphGetLinks(comm, LEVEL2_NET_LAYER, myRank, dstRank, &links, &linkNum));
+        if (linkNum == 0) {
+            continue;
+        }
+        CHK_PTR_NULL(links);
+        for (u32 linkIdx = 0; linkIdx < linkNum; linkIdx++) {
+            if (links[linkIdx].header.version >= 1 &&
+                links[linkIdx].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBG) {
+                topoInfo->level2Ubg = true;
+                HCCL_INFO("[TopoHost][CalcLevel2Ubg] UBG link found, dstRank[%u], linkIdx[%u]",
+                    dstRank, linkIdx);
+                return HCCL_SUCCESS;
+            }
         }
     }
-    HCCL_INFO("[TopoHost][CalcLevel2Ubg] no level2 links found, level2Ubg=false");
+#else
+    // 参考Uboe判断版本，低版本 CANN 无 UBG 枚举值
+    (void)comm;
+#endif
+    HCCL_INFO("[TopoHost][CalcLevel2Ubg] no UBG links found on netLayer_2, level2Ubg=false");
     return HCCL_SUCCESS;
 }
 
