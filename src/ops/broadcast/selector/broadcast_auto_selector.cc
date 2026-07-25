@@ -13,7 +13,9 @@
 #include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
-constexpr u64 BROADCAST_MESH_CCU_MAX_DATA_SIZE = 16 * 1024;  // 64p 总数据量 1M 以下用 mesh 算法
+
+constexpr u64 BROADCAST_MESH_CCU_MAX_DATA_SIZE = 16 * 1024;
+constexpr u64 BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
 
 SelectorStatus BroadcastAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
@@ -75,20 +77,24 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNe
             __func__);
         return SelectorStatus::NOT_MATCH;
     }
-
+    u32 ccuSize = 64;
     constexpr u64 CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 1ULL * 1024 * 1024;
+    constexpr u64 CCU_SCHEDULE_2LEVEL_LESS_64P_MAX_SIZE = 64ULL * 1024 * 1024;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
 
     if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->userRankSize == 0 ||
-            dataSize / topoInfo->userRankSize > CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE) {
-            HCCL_INFO("[BroadcastAutoSelector] 2 level topo perRankDataSize[%llu] exceeds limit, "
-                      "fallback to aicpu.",
-                topoInfo->userRankSize == 0 ? dataSize : dataSize / topoInfo->userRankSize);
-            return SelectorStatus::NOT_MATCH;
-        }
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+            if (topoInfo->userRankSize < ccuSize && dataSize > CCU_SCHEDULE_2LEVEL_LESS_64P_MAX_SIZE) {
+                HCCL_INFO("[BroadcastAutoSelector] 2 level topo less than 64P, which dataSize exceeds limit, fallback to aicpu.");
+                return SelectorStatus::NOT_MATCH;
+            }
+            if (topoInfo->userRankSize == 0 ||
+                (dataSize / topoInfo->userRankSize > CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE && topoInfo->userRankSize >= ccuSize)) {
+                HCCL_INFO("[BroadcastAutoSelector] 2 level topo perRankDataSize[%llu] exceeds limit, "
+                    "fallback to aicpu.", topoInfo->userRankSize == 0 ? dataSize : dataSize / topoInfo->userRankSize);
+                return SelectorStatus::NOT_MATCH;
+            }
             if(topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1){ // 每框出1卡
                 selectAlgName = "CcuBroadcastNHR1DMem2Mem";
             } else if (topoInfo->is2DieFullMesh) {
@@ -100,7 +106,7 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNe
                 u64 perRankSize = (topoInfo->userRankSize > 0) ? (dataSize / topoInfo->userRankSize) : dataSize;
                 if (perRankSize <= BROADCAST_MESH_CCU_MAX_DATA_SIZE && topoInfo->userRankSize <= 64) {
                     selectAlgName = "CcuBroadcastMesh1DMem2Mem";
-                } else if (perRankSize <= BROADCAST_NHR_CCU_MAX_DATA_SIZE) {
+                } else if ((perRankSize <= BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize) || (perRankSize <= BROADCAST_NHR_CCU_MAX_DATA_SIZE && topoInfo->userRankSize >= ccuSize)) {
                     selectAlgName = "CcuBroadcastNHR1DMem2Mem";
                 } else {
                     selectAlgName = "CcuBroadcastParallelMesh1DNHR";
