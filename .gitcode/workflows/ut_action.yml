@@ -1,0 +1,84 @@
+name: ut_action
+
+on:
+  workflow_call:
+    inputs:
+      ut_type:
+        required: true
+        type: string
+      ut_package:
+        type: string
+        default: 'ut_cov_*.tar.gz'
+      repo_name:
+        type: string
+        default: 'hccl'  
+      image_version:
+        required: true
+        type: string
+
+jobs:
+  JOB_ut:
+    name: UT
+    select: selected_by_default
+    needs: []
+    steps:
+      -
+        name: Checkout
+        identifier: process_checkout
+        uses: checkout
+        with:
+          ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
+          token: ${{secrets.GIT_TOKEN}}
+      -
+        name: download
+        uses: obs-download
+        with:
+          endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+          bucket: "ascend-ci"
+          key: |
+            ${{ env.obs_path }}/pr_filelist.txt
+            ${{ env.obs_path }}/pr_filelist_mod.txt
+            ${{ env.obs_path }}/ut.sh
+          path: ${{ steps.process_checkout.outputs.path }}
+      -
+        name: set_ccache
+        uses: cann/.gitcode/actions/redis-cache@master
+        with:
+          workspace: ${{ steps.process_checkout.outputs.path }}
+      -
+        name: ut
+        identifier: ut
+        run: |
+          export WORKSPACE=${{ steps.process_checkout.outputs.path }}
+          cd ${{ steps.process_checkout.outputs.path }}
+          export ut_type=${{ inputs.ut_type }}
+          export TARGET_BRANCH=${{env.TARGET_BRANCH }}
+          export obs_path=${{ env.obs_path }}
+          export PATH=/opt/buildtools/python-3.10.2/bin:$PATH
+          bash ut.sh ${ut_type}
+      -
+        name: ut_cov
+        identifier: ut_cov
+        uses: cann/.gitcode/actions/ut-cov-report@master
+        with:
+          ut_process: ${{ steps.ut.outputs.ut_process }}
+          workspace: ${{ steps.process_checkout.outputs.path }}
+          ut_type: ${{ inputs.ut_type }}
+          target_branch: ${{ env.TARGET_BRANCH }}
+          git_token: ${{secrets.GIT_TOKEN}}
+      -
+        name: upload
+        uses: obs-upload
+        with:
+          endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
+          bucket: "ascend-ci"
+          access-key: ${{secrets.AK}}
+          secret-key: ${{secrets.SK}}
+          artifact-path: |
+            ${{ steps.process_checkout.outputs.path }}/${{ inputs.ut_package }}
+            ${{ steps.process_checkout.outputs.path }}/test_*t.log
+          object-prefix: ${{ env.obs_path }}/
+    if: "${{ default() }}"
+    runs-on: [dedicate-hosted, x64, xlarge]
+    container:
+      image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ inputs.image_version }}
