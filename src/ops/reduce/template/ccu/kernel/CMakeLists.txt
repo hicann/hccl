@@ -9,6 +9,8 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(src_list
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_gather_omnipipe_mesh_1d_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_gather_omnipipe_nhr1d_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_mesh1d_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_mesh1d.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_kernel_reduce_nhr1d_mem2mem.cc

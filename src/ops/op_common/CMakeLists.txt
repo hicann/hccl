@@ -22,6 +22,7 @@ if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/omnipipe_data_slice_calc.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/omnipipe_scatter_data_slice_calc.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/omnipipe_gather_data_slice_calc.cc
     )
 endif()
 
