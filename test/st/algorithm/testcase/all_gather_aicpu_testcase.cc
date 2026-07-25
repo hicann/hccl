@@ -308,3 +308,11 @@ TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_nhr_7server_asymmetric_f
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0;  // 数据类型
     RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
 }
+
+TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_zdetour_mesh1d_2x4rank_uint16_big_data_test)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}}};
+    auto sendCount = 270 * 1024 * 1024 + 3;
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT16;
+    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
+}
