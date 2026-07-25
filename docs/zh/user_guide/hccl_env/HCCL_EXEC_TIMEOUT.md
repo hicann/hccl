@@ -5,16 +5,16 @@
 不同设备进程在分布式训练或推理过程中存在卡间执行任务不一致的场景（如仅特定进程会保存checkpoint数据），通过该环境变量可控制设备间执行时同步等待的时间，在该配置时间内各设备进程等待其他设备执行通信同步。
 
 - **针对Ascend 950PR/Ascend 950DT**： 
-  - “AI_CPU”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，取值范围为：\[0, 2147483647\]，默认值为1836，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。当配置为0时代表永不超时。
+  - “AI_CPU”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，建议配置为整数，取值范围为：\[0, 2147483647\]，默认值为1836。当配置为0时代表永不超时。
   - “AIV”模式下：单位为s，取值范围为\[0, 1091\]，默认值为1091，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。若设置为0或超出最大值1091，将按照1091处理。
 
-    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
+    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），单位为us，N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
 
 - **针对Atlas A3 训练系列产品/Atlas A3 推理系列产品：**
-  - “AI_CPU”与“AICPU_CacheDisable”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，取值范围为：\[0, 2147483647\]，默认值为1836，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。当配置为0时代表永不超时。
+  - “AI_CPU”与“AICPU_CacheDisable”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，建议配置为整数，取值范围为：\[0, 2147483647\]，默认值为1836。当配置为0时代表永不超时。
   - “AIV”模式下：单位为s，取值范围为\[0, 1091\]，默认值为1091，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。若设置为0或超出最大值1091，将按照1091处理。
 
-    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
+    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），单位为us，N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
 
 - **针对Atlas A2 训练系列产品/Atlas A2 推理系列产品：**
   - “HOST”与“HOST_TS”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，取值范围为：\[0, 2147483647\]，默认值为1836，支持整数秒配置。当配置为0时代表永不超时。
