@@ -232,12 +232,12 @@ __aicore__ inline void AivBroadcastV2Mesh1D(KERNEL_ARGS_DEF)
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    if (numBlocks < rankSize) {
-        op.ProcessCtrlCore<T>(len, sliceId);                    // 控核分支
-    } else if (len * sizeof(T) >= DATA_LIMIT && rankSize > 8) {
+    if (numBlocks >= rankSize && len * sizeof(T) >= DATA_LIMIT && rankSize > 8) {
         op.ProcessBigData<T>(len, sliceId);
-    } else {
+    } else if (numBlocks >= rankSize) {
         op.Process<T>(len, sliceId, inputSliceStride);
+    } else {
+        op.ProcessCtrlCore<T>(len, sliceId);
     }
     op.BarrierAll();
 }
