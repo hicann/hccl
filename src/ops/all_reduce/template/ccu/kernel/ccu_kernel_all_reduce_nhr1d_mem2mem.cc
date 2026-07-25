@@ -181,7 +181,12 @@ static CcuResult DoReduceScatterNHRSingleStep(AllReduceNHR1DContext &ctx, const 
 
         CCU_CHK_RET(DoWriteReduceSlice(ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.rmtDstMem, sendSliceIdx, i % RANK_NUM_PER_CKE));
     }
-    ccu::EventWait(ctx.localEvent, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+    // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+    // 空列表场景下未进入循环，不产生任何event bit，跳过EventWait避免死锁
+    if (!sendSliceIdxList.empty()) {
+        u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        ccu::EventWait(ctx.localEvent, (1 << lastGroupSize) - 1);
+    }
 
     // 通知toRank数据写入完毕
     ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP0_POST_SYNC_ID);
@@ -257,7 +262,12 @@ static CcuResult DoAllGatherNHRSingleStep(AllReduceNHR1DContext &ctx, const NHRS
         ctx.rmtDstMem.addr += ctx.sliceOffset[sendSliceIdx];
         CCU_CHK_RET(DoSendRecvSlice(ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.rmtDstMem, sendSliceIdx, i % RANK_NUM_PER_CKE));
     }
-    ccu::EventWait(ctx.localEvent, (1 << (sendSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+    // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+    // 空列表场景下未进入循环，不产生任何event bit，跳过EventWait避免死锁
+    if (!sendSliceIdxList.empty()) {
+        u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        ccu::EventWait(ctx.localEvent, (1 << lastGroupSize) - 1);
+    }
 
     if (nhrStepInfo.step + 1 != ctx.stepInfoVector.size()) {   // 最后一步不需要同步
         // 通知toRank，写入完毕
@@ -359,9 +369,14 @@ static CcuResult LocalCopySlices(AllReduceNHR1DContext &ctx)
             ctx.locDstMem.addr  = ctx.output[ctx.myRankIdx];
             ctx.locDstMem.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.locDstMem.token = ctx.token[ctx.myRankIdx];
-            CCU_CHK_RET(DoLocalCopySlice(ctx, ctx.srcMem, ctx.locDstMem, nonTxSliceIdx, i));
+            CCU_CHK_RET(DoLocalCopySlice(ctx, ctx.srcMem, ctx.locDstMem, nonTxSliceIdx, i % RANK_NUM_PER_CKE));
         }
-        ccu::EventWait(ctx.localEvent, (1 << (nonTxSliceIdxList.size() % RANK_NUM_PER_CKE)) - 1);
+        // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+        // 空列表场景下未进入循环，不产生任何event bit，跳过EventWait避免死锁
+        if (!nonTxSliceIdxList.empty()) {
+            u32 lastGroupSize = ((nonTxSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+            ccu::EventWait(ctx.localEvent, (1 << lastGroupSize) - 1);
+        }
     } 
     return CCU_SUCCESS;
 }
