@@ -11,9 +11,6 @@
 #ifndef CCU_REMOTE_ADDR_DL_HPP
 #define CCU_REMOTE_ADDR_DL_HPP
 
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_remote_addr.hpp"
-#else
 #include <type_traits>
 #include "ccu_types_dl.h"
 #include "ccu_variable_dl.hpp"
@@ -64,5 +61,4 @@ private:
 } // namespace ccu
 } // namespace AscendC
 
-#endif // CANN_VERSION_NUM >= 90100000
 #endif // CCU_REMOTE_ADDR_DL_HPP

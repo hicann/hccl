@@ -141,7 +141,7 @@ static CcuResult DoAllReduce(AllReduceMesh1DContext &ctx)
             localSrc.token = ctx.token[rankIdx];
         }
     }
-    GroupReduce(ctx, arg->channels, arg->channelCount, reduceScatterDst, reduceScatterSrc, localSrc, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+    GroupReduce(ctx, arg->channels, arg->channelCount, reduceScatterDst, reduceScatterSrc, localSrc, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion());
 
     // AllGather phase
     ccu::LocalAddr allGatherSrc;
@@ -167,7 +167,7 @@ static CcuResult DoAllReduce(AllReduceMesh1DContext &ctx)
             localDst.token = ctx.token[rankIdx];
         }
     }
-    GroupBroadcast(ctx, arg->channels, arg->channelCount, localDst, allGatherDst, allGatherSrc, ctx.goSize);
+    GroupBroadcast(ctx, arg->channels, arg->channelCount, localDst, allGatherDst, allGatherSrc, ctx.goSize, GetCcuVersion());
 
     return CCU_SUCCESS;
 }

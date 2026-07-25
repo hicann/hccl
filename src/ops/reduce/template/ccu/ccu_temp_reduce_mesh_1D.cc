@@ -134,7 +134,7 @@ HcclResult CcuTempReduceMesh1D::KernelRun(const OpParam& param,
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_DEFAULT_LOOP_COUNT;
     config.memSlice     = CCU_MS_SIZE;
-    auto goSize         = CalGoSize(normalSliceSize, config);
+    auto goSize         = CalGoSize(normalSliceSize, config, GetCcuVersion());
 
     std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride,
                                       normalSliceSize, lastSliceSize, repeatNumVar, goSize[0], goSize[1], goSize[2], goSize[3]};

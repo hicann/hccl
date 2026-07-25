@@ -53,6 +53,9 @@ struct AllReduceMeshMem2Mem1DContext: CcuKernelCtxBase {
 };
 
 CcuResult CcuAllReduceMeshMem2Mem1DKernel(CcuKernelArg arg);
+
+CcuResult ReduceLoopGroupV1(AllReduceMeshMem2Mem1DContext &ctx, ccu::LocalAddr srcOrg);
+CcuResult ReduceLoopGroupV2(AllReduceMeshMem2Mem1DContext &ctx, ccu::LocalAddr srcOrg);
 } // namespace ops_hccl
 
 #endif // HCCLV2_CCU_CONTEXT_ALL_REDUCE_MESH_1D_H_

@@ -12,11 +12,10 @@
 #define CCU_LAUNCH_DL_H
 
 #include "dlsym_common.h"
+#include "ccu_types_dl.h"
 #if CANN_VERSION_NUM >=90100000
-#include "ccu_types.h"
 #include "hccl_res.h"
 #else
-#include "ccu_types_dl.h"
 #include "hccl_res_dl.h"
 #endif // CANN_VERSION_NUM >= 90100000
 

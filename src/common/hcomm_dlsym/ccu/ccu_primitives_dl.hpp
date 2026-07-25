@@ -11,9 +11,6 @@
 #ifndef CCU_PRIMITIVES_DL_HPP
 #define CCU_PRIMITIVES_DL_HPP
 
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_primitives.hpp"
-#else
 #include "ccu_primitives_impl_dl.h"
 #include "ccu_control_flow_macro_dl.h"
 #include "ccu_variable_dl.hpp"
@@ -114,5 +111,4 @@ inline CcuResult WriteReduce(ChannelHandle ch, RemoteAddr remote, LocalAddr loca
 } // namespace ccu
 } // namespace AscendC
 
-#endif // CANN_VERSION_NUM >= 90100000
 #endif // CCU_PRIMITIVES_DL_HPP

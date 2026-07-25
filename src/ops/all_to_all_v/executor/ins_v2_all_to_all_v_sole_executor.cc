@@ -19,6 +19,8 @@
 #include "ccu_temp_all_to_all_mesh2die.h"
 #include "ccu_temp_all_to_all_mesh1d_multi_jetty.h"
 #include "ccu_temp_all_to_all_mesh1d_2Die.h"
+#include "ccu_temp_all_to_all_concurrent_mesh_nhr.h"
+#include "topo_match_concurrent.h"
 #endif
 
 #define CONST_ZERO 0
@@ -482,6 +484,10 @@ REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALLVC, InsAlltoAllVCClosMesh1DDPU, I
 #if !defined(HCCL_CANN_COMPAT_850)
     REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALL, CcuAlltoAllMesh1DMultiJetty, InsV2AlltoAllVSoleExecutor,
                     TopoMatchUBX1d, CcuTempAllToAllMesh1dMultiJetty);
+#endif // !HCCL_CANN_COMPAT_850
+#if !defined(HCCL_CANN_COMPAT_850)
+    REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLTOALL, CcuAllToAllSoleMeshScheConcur, InsV2AlltoAllVSoleExecutor,
+                    TopoMatchConcurrent, CcuTempAllToAllConcurrentMeshNHR);
 #endif // !HCCL_CANN_COMPAT_850
 #endif
 }  // namespace Hccl

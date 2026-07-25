@@ -136,7 +136,7 @@ static CcuResult DoGroupReduce(AllReduceMesh1DOneShotContext &ctx)
     }
 
     CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, reduceDst, remoteSrc, localSrc,
-        ctx.groupOpSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp));
+        ctx.groupOpSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion()));
     return CCU_SUCCESS;
 }
 

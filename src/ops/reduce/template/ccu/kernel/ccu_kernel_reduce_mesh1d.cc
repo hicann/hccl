@@ -147,7 +147,7 @@ static CcuResult DoRepeatReduce(ReduceMesh1DContext &ctx)
         }
     }
     GroupReduce(ctx, arg->channels, arg->channelCount, dst, remoteSrc, localSrc,
-                ctx.groupOpSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+                ctx.groupOpSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion());
 
     return CCU_SUCCESS;
 }

@@ -23,6 +23,7 @@
 #include "hccl_types.h"
 #include "hccl_res.h"
 
+
 #ifndef T_DESC
 #define T_DESC(_msg, _y) ((_y) ? true : false)
 #endif
@@ -255,4 +256,21 @@ struct HcclMem {
     void* addr = nullptr;
     uint64_t size = 0;
 };
+
+inline bool shouldGoOutPlace(DevType deviceType) {
+#ifdef MACRO_DEV_TYPE_NEW
+    return deviceType == DevType::DEV_TYPE_950 || deviceType == DevType::DEV_TYPE_960;
+#else
+    return deviceType == DevType::DEV_TYPE_910_95;
+#endif
+}
+
+inline HcclResult IsOutPlaceDevice(bool& isOutPlace)
+{
+    DevType deviceType = DevType::DEV_TYPE_COUNT;
+    CHK_RET(hrtGetDeviceType(deviceType));
+    isOutPlace = shouldGoOutPlace(deviceType);
+    return HcclResult::HCCL_SUCCESS;
+}
+ 
 #endif // HCCL_COMMON_H

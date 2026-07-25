@@ -29,13 +29,8 @@ HcclResult TopoMatchPcieMix::MatchTopo(const HcclComm comm, TopoInfoWithNetLayer
     uint32_t myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
 
-#ifdef MACRO_DEV_TYPE_NEW
-    CHK_PRT_RET(topoInfo->deviceType != DevType::DEV_TYPE_950,
+    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
         HCCL_ERROR("[TopoMatchPcieMix] Rank [%d], deviceType not supported yet.", myRank), HcclResult::HCCL_E_PARA);
-#else
-    CHK_PRT_RET(topoInfo->deviceType != DevType::DEV_TYPE_910_95,
-        HCCL_ERROR("[TopoMatchPcieMix] Rank [%d], deviceType not supported yet.", myRank), HcclResult::HCCL_E_PARA);
-#endif
 
     // 获取通信网络层数
     uint32_t *netLayers;

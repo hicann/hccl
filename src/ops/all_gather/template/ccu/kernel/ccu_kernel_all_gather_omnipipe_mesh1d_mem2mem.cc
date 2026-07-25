@@ -198,7 +198,7 @@ static CcuResult DoRepeatAllGather(AllGatherOmniPipeMesh1DMem2MemContext &ctx)
 
         uint16_t mask = 1 << arg->rankId;
         CCU_IF(ctx.sliceSize != 0) {
-            CCU_CHK_RET(GroupCopy(ctx, myOutput, myInput, ctx.groupOpSize));
+            CCU_CHK_RET(GroupCopy(ctx, myOutput, myInput, ctx.groupOpSize, GetCcuVersion()));
         }
         HCCL_INFO("[%s] rankId[%u] userRank[%u] localcopy end", __func__, arg->rankId, arg->userRank);
     }

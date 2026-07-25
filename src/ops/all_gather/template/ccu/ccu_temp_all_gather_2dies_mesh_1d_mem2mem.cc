@@ -148,7 +148,7 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::KernelRun(const OpParam& param, c
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
-    auto localGoSize = CalGoSize(sliceSize, config);
+    auto localGoSize = CalGoSize(sliceSize, config, GetCcuVersion());
 
     std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, sliceSize, offSet, token,
                                        localGoSize[0], localGoSize[1], localGoSize[2], localGoSize[3]};

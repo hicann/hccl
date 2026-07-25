@@ -964,15 +964,9 @@ HcclResult ParseDeterministic()
         CHK_RET(hrtGetDeviceType(deviceType));
         // 规约保序支持A2 A3 A5场景
         bool supportedDevice = false;
-        #ifdef MACRO_DEV_TYPE_NEW
         supportedDevice = (deviceType == DevType::DEV_TYPE_910B || 
                           deviceType == DevType::DEV_TYPE_910_93 || 
-                          deviceType == DevType::DEV_TYPE_950);
-        #else
-        supportedDevice = (deviceType == DevType::DEV_TYPE_910B || 
-                          deviceType == DevType::DEV_TYPE_910_93 || 
-                          deviceType == DevType::DEV_TYPE_910_95);
-        #endif
+                          shouldGoOutPlace(deviceType));
         if (!supportedDevice) {
             HCCL_ERROR("HCCL_DETERMINISTIC is set to [%s], Reduce order preservation is not supported for "
                        "deviceType[%d], please check",
@@ -1137,11 +1131,7 @@ bool RunIndependentOpExpansion(DevType deviceType)
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
     }
 
-    #ifdef MACRO_DEV_TYPE_NEW
-    if (deviceType == DevType::DEV_TYPE_950) {
-    #else
-    if (deviceType == DevType::DEV_TYPE_910_95) {
-    #endif
+    if (shouldGoOutPlace(deviceType)) {
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "AICPU_TS" ||
                opExpansionModeEnv == "HOST_TS" ||
                opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV" ||

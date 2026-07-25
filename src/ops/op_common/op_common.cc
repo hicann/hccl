@@ -2315,11 +2315,7 @@ HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode &finalMo
     // A5仅通过HcclConfigGetInfo获取展开模式，其他型号保留环境变量方式
     DevType deviceType = DevType::DEV_TYPE_COUNT;
     CHK_RET(hrtGetDeviceType(deviceType));
-    #ifdef MACRO_DEV_TYPE_NEW
-    if (deviceType != DevType::DEV_TYPE_950 || !useConfigOpExpansionMode) {
-    #else
-    if (deviceType != DevType::DEV_TYPE_910_95 || !useConfigOpExpansionMode) {
-    #endif
+    if (!shouldGoOutPlace(deviceType) || !useConfigOpExpansionMode) {
         if (GetExternalInputHcclAicpuUnfold() == true) {
             finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AI_CPU;
         } else if (GetExternalInputHcclAivOnlyMode() == true) {

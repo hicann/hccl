@@ -13,11 +13,7 @@
 
 #include "dlsym_common.h"
 #include "hccl_types.h"
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-#include "ccu_types.h"
-#else
 #include "ccu_types_dl.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

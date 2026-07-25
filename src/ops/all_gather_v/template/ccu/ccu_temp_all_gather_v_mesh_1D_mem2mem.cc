@@ -94,7 +94,7 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
-    auto goSize = CalGoSize(mySliceSize, config);
+    auto goSize = CalGoSize(mySliceSize, config, GetCcuVersion());
     // 代替GeneArgs
     std::vector<uint64_t> taskArgs = {
         inputAddr, outputAddr, token, mySliceSize, mySliceSizeOutputOffset, goSize[0], goSize[1], goSize[2], goSize[3]};

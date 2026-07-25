@@ -195,7 +195,7 @@ HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::PrepareLaunchArgs(const OpPar
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
-    auto   goSize       = CalGoSize(sliceSize, config);
+    auto   goSize       = CalGoSize(sliceSize, config, GetCcuVersion());
 
     taskArgs = {inputAddr, outputAddr, token, sliceSize, sliceSizePerJetty,
                 lastSliceSizePerJetty, repeatNumInv, inputSliceStride,

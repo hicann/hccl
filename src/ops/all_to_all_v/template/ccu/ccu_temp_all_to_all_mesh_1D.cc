@@ -183,7 +183,7 @@ HcclResult CcuTempAlltoAllMesh1D::KernelRun(const OpParam& param,
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_INTERLEAVE;
     config.memSlice     = CCU_MS_INTERLEAVE * CCU_MS_SIZE;
-    auto     goSize     = CalGoSize(sliceSize, config);
+    auto     goSize     = CalGoSize(sliceSize, config, GetCcuVersion());
     std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, sliceSize, srcStride, srcOffset, dstOffset, goSize[0], goSize[1], goSize[2], goSize[3]};
     uint64_t argSize = 11;
 

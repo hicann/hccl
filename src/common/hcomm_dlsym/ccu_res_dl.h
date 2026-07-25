@@ -12,11 +12,7 @@
 #define CCU_RES_DL_H
 
 #include "dlsym_common.h"
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_types.h"
-#else
 #include "ccu_types_dl.h"
-#endif // CANN_VERSION_NUM >= 90100000
 
 #ifdef __cplusplus
 extern "C" {

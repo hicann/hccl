@@ -50,11 +50,7 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
     CHK_RET(InitEnvConfig());
     
     // AclGraph引导到老的流程上面
-    #ifdef MACRO_DEV_TYPE_NEW
-    if (deviceType != DevType::DEV_TYPE_950 && IsStreamCapture(stream)) {
-    #else
-    if (deviceType != DevType::DEV_TYPE_910_95 && IsStreamCapture(stream)) {
-    #endif
+    if (!shouldGoOutPlace(deviceType) && IsStreamCapture(stream)) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
     // 重执行引导到老的流程上面
@@ -160,11 +156,11 @@ bool IsAiCpuMode(DevType deviceType, u32 rankSize)
 HcclResult ScatterExecOp(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
     HcclComm comm, aclrtStream stream, u32 userRankSize, uint64_t beginTime)
 {
-    #ifdef MACRO_DEV_TYPE_NEW
-    if (param.deviceType == DevType::DEV_TYPE_950 && (GetHcommVersion() >= CANN_VERSION(9, 0, 0))) {
-    #else
-    if (param.deviceType == DevType::DEV_TYPE_910_95) {
-    #endif
+    if (shouldGoOutPlace(param.deviceType)
+#ifdef MACRO_DEV_TYPE_NEW
+        && (GetHcommVersion() >= CANN_VERSION(9, 0, 0))
+#endif
+    ) {
         CHK_RET(HcclGetOpExpansionMode(comm, param));
 
         // 9.0.0 ccu模式走老流程

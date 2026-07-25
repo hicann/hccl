@@ -154,7 +154,7 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DContext &ctx)
     ccu::LocalAddr tmp;
     tmp.addr = dst.addr;
     tmp.token = dst.token;
-    CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, tmp, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp));
+    CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, tmp, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion()));
 
     HCCL_INFO("[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter success", ctx.userRank, ctx.rankId);
 

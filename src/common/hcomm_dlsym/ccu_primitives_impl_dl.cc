@@ -115,6 +115,23 @@ DEFINE_WEAK_FUNC(CcuResult, CcuLoopGroupCreateFromVar, CcuLoopGroup *group, uint
 DEFINE_WEAK_FUNC(CcuResult, CcuLoopGroupAddLoop, CcuLoopGroup group,CcuLoop loop, const CcuLoopConfig *config);
 DEFINE_WEAK_FUNC(CcuResult, CcuLoopGroupAddLoopFromVar, CcuLoopGroup group,CcuLoop loop, CcuVariableHandle loopParamVar);
 
+// V2 扩展接口弱符号定义
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableSubVarToVar, CcuVariableHandle resVar, CcuVariableHandle varA, CcuVariableHandle varB);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableMulVarToVar, CcuVariableHandle resVar, CcuVariableHandle varA, CcuVariableHandle varB);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableAddImmToVar, CcuVariableHandle resVar, CcuVariableHandle varA, uint16_t immediate);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableSubImmToVar, CcuVariableHandle resVar, CcuVariableHandle varA, uint16_t immediate);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableMulImmToVar, CcuVariableHandle resVar, CcuVariableHandle varA, uint16_t immediate);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableAndVarToVar, CcuVariableHandle resVar, CcuVariableHandle varA, CcuVariableHandle varB);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableOrVarToVar, CcuVariableHandle resVar, CcuVariableHandle varA, CcuVariableHandle varB);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableXorVarToVar, CcuVariableHandle resVar, CcuVariableHandle varA, CcuVariableHandle varB);
+DEFINE_WEAK_FUNC(CcuResult, CcuVariableNotVar, CcuVariableHandle resVar, CcuVariableHandle varA);
+DEFINE_WEAK_FUNC(CcuResult, CcuAddressAddImmToAddr, CcuAddressHandle resAddr, CcuAddressHandle addrA, uint16_t imm);
+DEFINE_WEAK_FUNC(CcuResult, CcuIfBeginVar, CcuVariableHandle lhs, CcuVariableHandle rhs, CcuConditionType condType, const char *label);
+DEFINE_WEAK_FUNC(CcuResult, CcuWhileBeginVar, CcuVariableHandle lhs, CcuVariableHandle rhs, CcuConditionType condType, const char *label);
+DEFINE_WEAK_FUNC(CcuResult, CcuDoWhileEndVar, CcuVariableHandle lhs, CcuVariableHandle rhs, CcuConditionType condType, const char *label);
+DEFINE_WEAK_FUNC(CcuResult, CcuLoopGroupCreateFromVarV2, CcuLoopGroup *group, uint32_t maxLoopNum, CcuVariableHandle parallelVarV2, CcuVariableHandle offsetVarV2, CcuVariableHandle varOffsetVar);
+DEFINE_WEAK_FUNC(CcuResult, CcuLoopGroupAddLoopFromVarV2, CcuLoopGroup group, CcuLoop loop, CcuVariableHandle iterNumVar, CcuVariableHandle addrOffsetVar, CcuVariableHandle ctxIdVar);
+
 void InitAllocationFlags(void* libHcommHandle) {
     INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableAlloc);
     INIT_SUPPORT_FLAG(libHcommHandle, CcuAddressAlloc);
@@ -204,6 +221,21 @@ void InitFunctionAndLoopOps(void* libHcommHandle) {
     INIT_SUPPORT_FLAG(libHcommHandle, CcuLoopGroupCreateFromVar);
     INIT_SUPPORT_FLAG(libHcommHandle, CcuLoopGroupAddLoop);
     INIT_SUPPORT_FLAG(libHcommHandle, CcuLoopGroupAddLoopFromVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableSubVarToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableMulVarToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableAddImmToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableSubImmToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableMulImmToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableAndVarToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableOrVarToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableXorVarToVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuVariableNotVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuAddressAddImmToAddr);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuIfBeginVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuWhileBeginVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuDoWhileEndVar);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuLoopGroupCreateFromVarV2);
+    INIT_SUPPORT_FLAG(libHcommHandle, CcuLoopGroupAddLoopFromVarV2);
 }
 
 void CcuPrimitivesImplDlInit(void* libHcommHandle) {
@@ -215,4 +247,22 @@ void CcuPrimitivesImplDlInit(void* libHcommHandle) {
     InitRemoteTransferOps(libHcommHandle);
     InitControlFlowOps(libHcommHandle);
     InitFunctionAndLoopOps(libHcommHandle);
+}
+
+bool HcommIsSupportCcuV2(void) {
+    return HcommIsSupportCcuLoopGroupCreateFromVarV2() &&
+           HcommIsSupportCcuLoopGroupAddLoopFromVarV2() &&
+           HcommIsSupportCcuIfBeginVar() &&
+           HcommIsSupportCcuWhileBeginVar() &&
+           HcommIsSupportCcuDoWhileEndVar() &&
+           HcommIsSupportCcuVariableSubVarToVar() &&
+           HcommIsSupportCcuVariableMulVarToVar() &&
+           HcommIsSupportCcuVariableAddImmToVar() &&
+           HcommIsSupportCcuVariableSubImmToVar() &&
+           HcommIsSupportCcuVariableMulImmToVar() &&
+           HcommIsSupportCcuVariableAndVarToVar() &&
+           HcommIsSupportCcuVariableOrVarToVar() &&
+           HcommIsSupportCcuVariableXorVarToVar() &&
+           HcommIsSupportCcuVariableNotVar() &&
+           HcommIsSupportCcuAddressAddImmToAddr();
 }

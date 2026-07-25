@@ -215,7 +215,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::KernelRun(const OpParam& param, const 
     config.loopCount = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = CCU_MS_SIZE;
     const std::vector<uint64_t> goSize = (myRank_ != templateRankSize_ - 1) ?
-        CalGoSize(normalSliceSize, config) : CalGoSize(lastSliceSize, config);
+        CalGoSize(normalSliceSize, config, GetCcuVersion()) : CalGoSize(lastSliceSize, config, GetCcuVersion());
 
     std::vector<uint64_t> taskArgs;
     BuildTaskArgs(inputAddr, outputAddr, token, scratchAddr, currentRankSliceInputOffset,

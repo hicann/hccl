@@ -253,7 +253,7 @@ static CcuResult DoRepeatAllGatherNHR(AllGatherNHR1DMultiJettyMem2MemContext &ct
         const uint16_t rankMask = 1 << arg->rankId;
         CCU_IF(ctx.isInputOutputEqual == 0)
         {
-            CCU_CHK_RET(GroupCopy(ctx, ctx.myDstMem, ctx.srcMem, ctx.groupOpSize));
+            CCU_CHK_RET(GroupCopy(ctx, ctx.myDstMem, ctx.srcMem, ctx.groupOpSize, GetCcuVersion()));
             CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
         } CCU_ELSE {
             CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));

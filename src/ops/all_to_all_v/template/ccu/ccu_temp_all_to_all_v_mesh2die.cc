@@ -155,7 +155,7 @@ void CcuTempAlltoAllVMesh2Die::FillRankGroupTaskArgs(uint32_t dieId, const LoopG
         const uint64_t floorLoopNum = sendSize / UB_MAX_TRANS_SIZE;
         uint64_t sendLoopNum = UINT64_MAX - 1 - floorLoopNum;
         uint64_t sendTailSize = sendSize - floorLoopNum * UB_MAX_TRANS_SIZE;
-        auto sendTailGoSize = CalGoSize(sendTailSize, config);
+        auto sendTailGoSize = CalGoSize(sendTailSize, config, GetCcuVersion());
         uint64_t sendOffset = localSendRecvInfo_.sendOffset[peerId];
         uint64_t recvOffset = localSendRecvInfo_.recvOffset[peerId];
         taskArgs.push_back(sendOffset);
@@ -205,7 +205,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(const OpParam &param, const Templ
         config.msInterleave = CCU_MS_INTERLEAVE;
         config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
         config.memSlice = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
-        auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config);
+        auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config, GetCcuVersion());
         for (auto val : xnMaxTransportGoSize) {
             taskArgs.push_back(val);
         }

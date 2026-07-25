@@ -128,7 +128,7 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
     u32 channelsIdx = 0;
     for (uint64_t r = 0; r < ctx.logicRankSize; r++) {
         if (arg->withMyRank && r == ctx.logicRankSize - 1) {
-            GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize);
+            GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize, GetCcuVersion());
             continue;
         }
         ccu::Write(arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);

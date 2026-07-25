@@ -75,5 +75,12 @@ struct ReduceScatterMesh1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuReduceScatterMesh1DMem2MemKernel(CcuKernelArg arg);
 
+CcuResult ReduceLoopGroup(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
+    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg, CcuVersion ccuVersion);
+CcuResult ReduceLoopGroupV1(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
+    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg);
+CcuResult ReduceLoopGroupV2(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
+    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg);
+
 }// namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_MESH_1D_MEM2MEM

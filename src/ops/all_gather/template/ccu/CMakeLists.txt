@@ -19,6 +19,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_gather_nhr_1D_multi_jetty_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_gather_omnipipe_mesh1d_mem2mem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_gather_omnipipe_nhr1d_mem2mem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ccu_temp_all_gather_concurrent_mesh_mem2mem_nhr.cc
 )
 
 if(TARGET hccl)

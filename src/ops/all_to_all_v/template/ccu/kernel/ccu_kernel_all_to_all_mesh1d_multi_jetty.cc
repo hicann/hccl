@@ -189,7 +189,7 @@ static CcuResult DoAllToAll(AllToAllMesh1DMultiJettyContext &ctx)
 
     CalcAddresses(ctx, remoteSrc, remoteDst, localSrc, localDst);
     CCU_CHK_RET(RemoteWrite(ctx, remoteSrc, remoteDst));
-    CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize));
+    CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize, GetCcuVersion()));
     CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], 1));
     CCU_CHK_RET(WaitEvents(ctx));
 

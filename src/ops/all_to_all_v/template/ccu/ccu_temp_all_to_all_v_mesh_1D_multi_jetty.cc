@@ -112,7 +112,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo &
         taskArgs.push_back(sendOffset);
         taskArgs.push_back(recvOffset);
 
-        auto tailGoSize = CalGoSize(lastBlockSize, config);
+        auto tailGoSize = CalGoSize(lastBlockSize, config, GetCcuVersion());
         for (auto val : tailGoSize) {
             taskArgs.push_back(val);
         }
@@ -151,7 +151,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, con
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice     = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
-    auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config);
+    auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config, GetCcuVersion());
     for (auto val : xnMaxTransportGoSize) {
         taskArgs.push_back(val);
     }

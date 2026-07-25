@@ -215,7 +215,7 @@ void CcuTempAlltoAllVMesh1D2Die::FillRankGroupTaskArgs(uint32_t kernelIdx, const
         const uint64_t floorLoopNum = sendSize / UB_MAX_TRANS_SIZE;
         uint64_t sendLoopNum = UINT64_MAX - 1 - floorLoopNum;
         uint64_t sendTailSize = sendSize - floorLoopNum * UB_MAX_TRANS_SIZE;
-        auto sendTailGoSize = CalGoSize(sendTailSize, config);
+        auto sendTailGoSize = CalGoSize(sendTailSize, config, GetCcuVersion());
         taskArgs.push_back(sendOffset);
         taskArgs.push_back(recvOffset);
         taskArgs.push_back(sendTailSize);
@@ -271,7 +271,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::KernelRun(const OpParam &param, const Tem
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
-    auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config);
+    auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config, GetCcuVersion());
 
     for (uint32_t i = 0; i < kernelCount; i++) {
         std::vector<uint64_t> taskArgs;
@@ -416,7 +416,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::FastLaunch(const OpParam &param, const Te
             const uint64_t floorLoopNum = sendSize / UB_MAX_TRANS_SIZE;
             uint64_t sendLoopNum = UINT64_MAX - 1 - floorLoopNum;
             uint64_t sendTailSize = sendSize - floorLoopNum * UB_MAX_TRANS_SIZE;
-            auto sendTailGoSize = CalGoSize(sendTailSize, config);
+            auto sendTailGoSize = CalGoSize(sendTailSize, config, GetCcuVersion());
             taskArgs.push_back(sendOffset);
             taskArgs.push_back(recvOffset);
             taskArgs.push_back(sendTailSize);

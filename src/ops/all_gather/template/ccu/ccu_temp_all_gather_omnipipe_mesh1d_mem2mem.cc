@@ -130,7 +130,7 @@ HcclResult CcuTempAllGatherOmniPipeMesh1DMem2Mem::KernelRun(const OpParam& param
             config.msInterleave = CCU_MS_INTERLEAVE;
             config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
             config.memSlice     = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
-            auto   goSize       = CalGoSize(sliceSize, config);
+            auto   goSize       = CalGoSize(sliceSize, config, GetCcuVersion());
             uint64_t inputOmniPipeSliceStride = stepSliceInfo.inputOmniPipeSliceStride[mySubCommRank_][rpt];
 
             std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, sliceSize, sliceStride, localCopyFlag,

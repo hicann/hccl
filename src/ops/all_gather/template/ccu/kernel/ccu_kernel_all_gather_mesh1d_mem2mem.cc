@@ -196,7 +196,7 @@ static CcuResult DoAllGatherGroupCopy(AllGatherMesh1DMem2MemContext &ctx)
                     ctx.localDst.addr += ctx.outputRepeatStride;
                     ctx.src_loccopy.addr += ctx.inputRepeatStride;
                 }
-                CCU_CHK_RET(GroupCopy(ctx, ctx.localDst, ctx.src_loccopy, ctx.goSize));
+                CCU_CHK_RET(GroupCopy(ctx, ctx.localDst, ctx.src_loccopy, ctx.goSize, GetCcuVersion()));
                 ctx.repeatTimeflag = 1;
             }
         }

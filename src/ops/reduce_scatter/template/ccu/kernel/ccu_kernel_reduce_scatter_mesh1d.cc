@@ -124,7 +124,7 @@ static CcuResult DoReduceScatter(ReduceScatterMesh1DContext &ctx)
         }
     }
 
-    GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, localSrc, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+    GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, localSrc, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion());
 
     return CCU_SUCCESS;
 }

@@ -14,9 +14,26 @@
 #include <vector>
 #include <queue>
 #include "alg_param.h"
+#include "ccu_primitives_impl_dl.h"
 
 
 namespace ops_hccl {
+
+enum class CcuVersion { CCU_V1, CCU_V2, CCU_INVALID, INVALID };
+
+inline CcuVersion GetCcuVersion()
+{
+    DevType deviceType;
+    hrtGetDeviceType(deviceType);
+    CcuVersion ccuVersion = (deviceType == DevType::DEV_TYPE_950) ? CcuVersion::CCU_V1 : CcuVersion::CCU_V2;
+    if (ccuVersion == CcuVersion::CCU_V2 && !HcommIsSupportCcuV2()) {
+        HCCL_WARNING("GetCcuVersion: HCOMM does not support CCU V2 interfaces, degrade to V1");
+        ccuVersion = CcuVersion::CCU_V1;
+    }
+    HCCL_INFO("GetCcuVersion: deviceType[%u], ccuVersion[%u]",
+              static_cast<uint32_t>(deviceType), static_cast<uint32_t>(ccuVersion));
+    return ccuVersion;
+}
 
 constexpr uint16_t LOC_CPY_LOOP_NUM = 8;
 constexpr uint64_t UB_MAX_TRANS_SIZE = 256 * 1024 * 1024;  // UB单次最大传输量256*1024*1024 Byte
@@ -29,7 +46,8 @@ uint64_t CalcLGMaxTransSize();
 
 uint64_t GetMaxLoopIterNum();
 uint64_t GetLoopParam(uint64_t loopCtxId, uint64_t gsaOffset, uint64_t loopIterNum);
-uint64_t GetParallelParam(uint64_t repeatNum, uint64_t repeatLoopIndex, uint64_t totalLoopNum);
+uint64_t GetLoopGsaOffset(uint64_t gsaOffset);
+uint64_t GetParallelParam(uint64_t repeatNum, uint64_t repeatLoopIndex, uint64_t totalLoopNum, CcuVersion ccuVersion = CcuVersion::CCU_V1);
 uint64_t GetOffsetParam(uint64_t gsaOffset, uint64_t msOffset, uint64_t ckeOffset);
 uint64_t GetExpansionParam(uint64_t expansionNum);
 uint32_t    GetReduceExpansionNum(HcclReduceOp reduceOp, HcclDataType dataType, HcclDataType outputDataType);

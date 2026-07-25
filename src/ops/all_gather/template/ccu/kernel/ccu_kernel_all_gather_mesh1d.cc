@@ -124,7 +124,7 @@ static CcuResult DoAllGather(AllGatherMesh1DContext &ctx)
     }
 
     CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount, 
-        localdst, dst, src, ctx.goSize));
+        localdst, dst, src, ctx.goSize, GetCcuVersion()));
 
     return CCU_SUCCESS;
 }

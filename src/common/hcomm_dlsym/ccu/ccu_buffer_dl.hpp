@@ -11,9 +11,6 @@
 #ifndef CCU_BUFFER_DL_HPP
 #define CCU_BUFFER_DL_HPP
 
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_buffer.hpp"
-#else
 #include <cstdint>
 #include <type_traits>
 #include "ccu_types_dl.h"
@@ -54,6 +51,5 @@ private:
 } // namespace ccu
 } // namespace AscendC
 
-#endif // CANN_VERSION_NUM >= 90100000
 
 #endif // CCU_BUFFER_DL_HPP

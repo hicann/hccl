@@ -128,7 +128,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::LaunchKernels(uint32_t kernelCount, uint64
         uint64_t sliceSize = templateDataParams.sliceSize;
         uint64_t sliceOffset = 0;
         CHK_RET(CalcFillArgsInfo(i, sliceSize, sliceOffset));
-        auto goSize = CalGoSize(sliceSize, config);
+        auto goSize = CalGoSize(sliceSize, config, GetCcuVersion());
         std::vector<uint64_t> taskArgs = {inputAddr + sliceOffset, outputAddr, token, sliceSize,
             sliceStride, sliceStride * myRank_ + sliceOffset};
         for (auto val : goSize) { taskArgs.push_back(val); }

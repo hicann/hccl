@@ -22,6 +22,7 @@ namespace ops_hccl {
 constexpr uint64_t SMALL_COUNT_512KB = 512*1024; // Byte, UB协议一次传输的最大size
 constexpr uint64_t LARGE_COUNT_1024KB = 1024*1024; // Byte, 可掩盖多mission尾块开销
 constexpr u64 AIV_MAX_PER_RANK_DATA_SIZE = 8 * 1024 * 1024; // Byte, AIV单卡数据量上限(除alltoallv外)
+constexpr uint64_t SMALL_COUNT_16M = 16 * 1024 * 1024; // 960 大小数据量边界
 
 constexpr u32 CCU_MS_MODE = 2;
 constexpr double DEFAULT_RANK_SIZE = 8.0;
@@ -103,6 +104,7 @@ public:
     HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isEqual) const;
     HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isMultiple) const;
     bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo) const;
+    bool IsDevType960() const;
     bool IsInputOutputOverlap(const OpParam &opParam) const;
     bool IsSmallDataCCU(const u64 dataSize, const u64 rankSize) const;
 

@@ -176,7 +176,7 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::KernelRun(const OpParam& param, cons
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
-    auto goSize = CalGoSize(sliceSize, config);
+    auto goSize = CalGoSize(sliceSize, config, GetCcuVersion());
 
     uint64_t argSize = 11 + 2 * templateRankSize_;
     std::vector<uint64_t> taskArgs = BuildTaskArgs(inputAddr, outputAddr, token, sliceSize,

@@ -115,7 +115,7 @@ static void DoAllGatherV(AllGatherVMesh1DMem2MemContext &ctx)
                 channelId++;
             }
         }
-        GroupCopy(ctx, ctx.localDst, ctx.src, ctx.localGoSize);
+        GroupCopy(ctx, ctx.localDst, ctx.src, ctx.localGoSize, GetCcuVersion());
         ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
     }
 }

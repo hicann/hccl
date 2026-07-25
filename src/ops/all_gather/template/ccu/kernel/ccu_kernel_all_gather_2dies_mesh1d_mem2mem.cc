@@ -129,7 +129,7 @@ static CcuResult DoAllGather(AllGather2DiesMeshMem2Mem1DContext &ctx)
         localDst.addr = ctx.output[arg->rankId];
         localDst.token = ctx.token[arg->rankId];
         localDst.addr += ctx.offSet;
-        CCU_CHK_RET(GroupCopy(ctx, localDst, src, ctx.localGoSize));
+        CCU_CHK_RET(GroupCopy(ctx, localDst, src, ctx.localGoSize, GetCcuVersion()));
     }
 
     uint16_t rankMask = 0x0000;

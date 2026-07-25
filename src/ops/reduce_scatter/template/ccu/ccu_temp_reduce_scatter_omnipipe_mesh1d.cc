@@ -144,7 +144,7 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1D::KernelRun(
             config.msInterleave = CCU_MS_INTERLEAVE;
             config.loopCount    = CCU_MS_DEFAULT_LOOP_COUNT;
             config.memSlice     = CCU_MS_SIZE;
-            auto goSize = CalGoSize(sliceSize, config);
+            auto goSize = CalGoSize(sliceSize, config, GetCcuVersion());
             HCCL_INFO("[%s] myRank[%u] mySubCommRank[%u] rpt[%u] inputAddrBase[%llu] outputAddrBase[%llu] "
                        "inBuffBaseOff[%llu] outBuffBaseOff[%llu] inputAddr[%llu] outputAddr[%llu] "
                        "sliceSize[%llu] inputSliceStride[%llu] localCopyFlag[%llu]",

@@ -11,9 +11,6 @@
 #ifndef CCU_FUNC_DL_HPP
 #define CCU_FUNC_DL_HPP
 
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_func.hpp"
-#else
 #include <cstdint>
 #include <cstddef>
 #include <functional>
@@ -143,5 +140,4 @@ inline CcuResult CallFunc(Args... args)
 } // namespace ccu
 } // namespace AscendC
 
-#endif // CANN_VERSION_NUM >= 90100000
 #endif // CCU_FUNC_DL_HPP

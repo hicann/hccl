@@ -227,11 +227,7 @@ bool IsOpsV2(const char* algName, DevType deviceType)
     }
 
     // 根据deviceType判断
-#ifdef MACRO_DEV_TYPE_NEW
-    if (deviceType == DevType::DEV_TYPE_950) {
-#else
-    if (deviceType == DevType::DEV_TYPE_910_95) {
-#endif
+    if (shouldGoOutPlace(deviceType)) {
         return true;
     }
 

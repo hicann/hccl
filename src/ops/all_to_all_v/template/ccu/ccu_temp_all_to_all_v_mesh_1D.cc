@@ -197,7 +197,7 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
         taskArgs.push_back(0);  // 空地址占位，保证参数个数与load个数一致
     } else {
         uint64_t xnMaxTransportSize   = UB_MAX_TRANS_SIZE;
-        auto     xnMaxTransportGoSize = CalGoSize(xnMaxTransportSize, config);
+        auto     xnMaxTransportGoSize = CalGoSize(xnMaxTransportSize, config, GetCcuVersion());
         for (auto val : xnMaxTransportGoSize) {
             taskArgs.push_back(val);
         }
@@ -215,7 +215,7 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
             std::vector<uint64_t> virTailSize;
             virTailSize.resize(ALL_TO_ALL_V_VECTOR_NUM, 0);
             if (i == myRank) {
-                auto tailGoSize = CalGoSize(tailSize, config);
+                auto tailGoSize = CalGoSize(tailSize, config, GetCcuVersion());
                 for (auto val : tailGoSize) {
                     taskArgs.push_back(val);
                 }
@@ -307,7 +307,7 @@ HcclResult CcuTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
         taskArgs.push_back(0);  // 空地址占位，保证参数个数与load个数一致
     } else {
         uint64_t xnMaxTransportSize   = UB_MAX_TRANS_SIZE;
-        auto     xnMaxTransportGoSize = CalGoSize(xnMaxTransportSize, config);
+        auto     xnMaxTransportGoSize = CalGoSize(xnMaxTransportSize, config, GetCcuVersion());
         for (auto val : xnMaxTransportGoSize) {
             taskArgs.push_back(val);
         }
@@ -325,7 +325,7 @@ HcclResult CcuTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
             std::vector<uint64_t> virTailSize;
             virTailSize.resize(ALL_TO_ALL_V_VECTOR_NUM, 0);
             if (i == myRank_) {
-                auto tailGoSize = CalGoSize(tailSize, config);
+                auto tailGoSize = CalGoSize(tailSize, config, GetCcuVersion());
                 for (auto val : tailGoSize) {
                     taskArgs.push_back(val);
                 }

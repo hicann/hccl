@@ -24,6 +24,7 @@ constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_2 = 2;
 constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
+
 constexpr u32 MESH_BW = 100;
 constexpr u32 CLOS_BW = 113;
 constexpr u32 MESH_BW_AICPU = 10;
@@ -76,7 +77,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
         HCCL_ERROR("[InsV2AllToAllConcurrentExecutor[%s] toposize = %u", __FUNCTION__, algHierarchyInfo.infos[0].size());
         return HCCL_E_PARA;
     }
-
+ 
     // 获取子通信域
     std::vector<std::vector<u32>> subCommRanks0 = {algHierarchyInfo.infos[0][0]};
     std::vector<std::vector<u32>> subCommRanks1 = {algHierarchyInfo.infos[0][1]};
@@ -267,7 +268,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
 
     // 按topo切分数据：0为topo 0，1为topo 1
     uint32_t factorMesh = rankSize_ - 1;
-    uint32_t factorClos = CONST_4;                // 端口数获取
+    uint32_t factorClos = CONST_4;       // 端口数获取
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         factorMesh = MESH_BW;
         factorClos = CLOS_BW;
@@ -466,7 +467,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     // cclBuffer内每个rank块之间的间隔，防止并发时不同rank的数据写到cclBuffer同一起点导致覆盖
     tempAlgParams.inputSliceStride = maxDataCountPerLoop * dataTypeSize_;
     tempAlgParams.outputSliceStride = maxDataCountPerLoop * dataTypeSize_; // 这里用来放每张卡可以用的cclBuffer的大小，数据从ureIn到cclBuffer的时候，以这个量来分隔
-
+ 
     for (u64 i = 0; i < rankSize_; i++) {
         if (splitData.sendCounts[i] > processedDataCount) {
             tempAlgParams.sendCounts[i] = std::min(currDataCount, splitData.sendCounts[i] - processedDataCount);
@@ -492,7 +493,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     HCCL_INFO("[InsV2AllToAllConcurrentExecutor] loop = %u, tempAlgParams.buffInfo.inBuffBaseOff = %u,"
         "tempAlgParams.buffInfo.outBuffBaseOff = %u, tempAlgParams.inputSliceStride = %u,"
         "tempAlgParams.outputSliceStride = %u, tempAlgParams.sliceSize = %u",
-        loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize,
+        loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize,	 
         tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
 
     // 不需要重复

@@ -159,7 +159,7 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::PrepareLaunchArgs(const OpParam& param
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
-    auto  goSize        = CalGoSize(normalSliceSize, config);
+    auto  goSize        = CalGoSize(normalSliceSize, config, GetCcuVersion());
 
     taskArgs = {inputAddr, outputAddr, token, currentRankSliceInputOffset,
                 currentRankSliceOutputOffset, tmpRepeatNum, inputRepeatStride,

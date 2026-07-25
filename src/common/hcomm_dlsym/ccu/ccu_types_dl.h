@@ -11,9 +11,6 @@
 #ifndef CCU_TYPES_DL_H
 #define CCU_TYPES_DL_H
 
-#if CANN_VERSION_NUM >=90100000
-#include "ccu_types.h"
-#else
 #include <cstdint>
 
 #ifdef __cplusplus
@@ -49,6 +46,10 @@ typedef enum {
 typedef enum {
     CCU_CONDITION_EQ = 0,
     CCU_CONDITION_NE = 1,
+    CCU_CONDITION_LT = 2,
+    CCU_CONDITION_LE = 3,
+    CCU_CONDITION_GT = 4,
+    CCU_CONDITION_GE = 5,
 } CcuConditionType;
 
 typedef uint64_t CcuLoop;
@@ -66,6 +67,7 @@ typedef struct {
     uint32_t addrOffset;
     uint32_t ccuBufferOffset;
     uint32_t eventOffset;
+    uint32_t xnOffset;
 } CcuLoopGroupConfig;
 
 
@@ -93,5 +95,4 @@ typedef CcuResult (*CcuKernelFunc)(CcuKernelArg arg);
 }
 #endif // __cplusplus
 
-#endif // CANN_VERSION_NUM >= 90100000
 #endif // CCU_TYPES_DL_H

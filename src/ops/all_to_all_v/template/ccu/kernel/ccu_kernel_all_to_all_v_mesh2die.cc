@@ -190,14 +190,14 @@ static CcuResult GroupCopyToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t pe
             }
             CCU_IF(ctx.curSendTailSize != 0)
             {
-                GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize);
+                GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize, GetCcuVersion());
                 CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId));
             }
             ctx.completedRankCount += ctx.xnConst1;
         }
         CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum != UINT64_MAX - 1)
         {
-            GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize);
+            GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize, GetCcuVersion());
             CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId));
             ctx.localDst.addr += ctx.xnMaxTransportSize;
             ctx.localSrc.addr += ctx.xnMaxTransportSize;

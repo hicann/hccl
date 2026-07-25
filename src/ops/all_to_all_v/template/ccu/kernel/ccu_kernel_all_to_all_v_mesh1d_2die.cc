@@ -156,7 +156,7 @@ static CcuResult LoopStep(AllToAllVMesh1D2DieContext &ctx)
                 CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
             } CCU_ELSE {
                 if (arg->withMyRank && peerId == ctx.localId) {
-                    GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize);
+                    GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize, GetCcuVersion());
                     CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
                 } else {
                     CCU_CHK_RET(ccu::Write(arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId],
@@ -166,7 +166,7 @@ static CcuResult LoopStep(AllToAllVMesh1D2DieContext &ctx)
             ctx.completedRankCount += ctx.xnConst1;
         } CCU_ELSE {
             if (arg->withMyRank && peerId == ctx.localId) {
-                GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize);
+                GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize, GetCcuVersion());
                 CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
                 ctx.localDst.addr += ctx.xnMaxTransportSize;
                 ctx.localSrc.addr += ctx.xnMaxTransportSize;

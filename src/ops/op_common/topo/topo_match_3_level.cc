@@ -130,11 +130,8 @@ HcclResult TopoMatch3Level::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerD
 
     uint32_t myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
-    #ifdef MACRO_DEV_TYPE_NEW
-    CHK_PRT_RET(topoInfo->deviceType != DevType::DEV_TYPE_950,
-    #else
-    CHK_PRT_RET(topoInfo->deviceType != DevType::DEV_TYPE_910_95,
-    #endif
+
+    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
         HCCL_ERROR("[CollAlgFactory] [TopoMatch3Level] Rank [%d], deviceType not supported yet.",
             myRank),
         HcclResult::HCCL_E_PARA);
