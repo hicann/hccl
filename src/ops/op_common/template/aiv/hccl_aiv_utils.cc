@@ -846,6 +846,34 @@ HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCoun
     return HCCL_SUCCESS;
 }
 
+HcclResult ReplayAivInstructionsV(const AivInstruction *instructions, u32 insCount, OpParam &param)
+{
+    if (insCount == 0) {
+        HCCL_WARNING("[ReplayAivInstructionsV] insCount is 0, skip replay.");
+        return HCCL_SUCCESS;
+    }
+    const u64 *sendCounts = static_cast<const u64 *>(param.all2AllVDataDes.sendCounts);
+    const u64 *sdispls = static_cast<const u64 *>(param.all2AllVDataDes.sdispls);
+    const u64 *recvCounts = static_cast<const u64 *>(param.all2AllVDataDes.recvCounts);
+    const u64 *rdispls = static_cast<const u64 *>(param.all2AllVDataDes.rdispls);
+    u32 rankSize = instructions[0].opArgs.rankSize;
+
+    for (uint32_t i = 0; i < insCount; ++i) {
+        AivOpArgs newArgs = instructions[i].opArgs;
+        newArgs.stream = param.stream;
+        newArgs.input = reinterpret_cast<u64>(param.inputPtr) + instructions[i].inputOffset;
+        newArgs.output = reinterpret_cast<u64>(param.outputPtr) + instructions[i].outputOffset;
+
+        u64 copySize = static_cast<u64>(rankSize) * sizeof(u64);
+        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendCounts, copySize, sendCounts, copySize));
+        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendDispls, copySize, sdispls, copySize));
+        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvCounts, copySize, recvCounts, copySize));
+        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvDispls, copySize, rdispls, copySize));
+        CHK_RET(ExecuteKernelLaunch(newArgs));
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
                             AivCacheIndexCtx *indexCtx)
 {
