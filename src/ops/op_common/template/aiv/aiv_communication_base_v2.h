@@ -410,11 +410,7 @@ __aicore__ inline void AivCommBase::Record(uint32_t targetRank, uint64_t flag_of
 
 __aicore__ inline void AivCommBase::ClearSyncBuf()
 {
-    // 用10个flag
-    Barrier(1);
-    ClearFlag();
-    Barrier(DOUBLE);
-    BlockSync();
+    BarrierForFirstOP();
 }
 
 __aicore__ inline void AivCommBase::Barrier(uint32_t step)

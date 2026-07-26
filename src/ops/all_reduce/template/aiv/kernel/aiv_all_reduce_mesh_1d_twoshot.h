@@ -363,10 +363,14 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_D
     while (countLeft > 0) {
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
         uint64_t curSize = curCount * sizeof(T);
-
         op.len_ = curCount;
-        op.SmallCoreReduceScatter(loopTag);
-        op.SmallCoreAllgather();
+        if (op.numBlocks_ >= op.rankSize_ * 2) {
+            op.Prepare(loopTag);
+            op.Process();
+        } else {
+            op.SmallCoreReduceScatter(loopTag);
+            op.SmallCoreAllgather();
+        }
         op.BarrierAll();
 
         countLeft -= curCount;

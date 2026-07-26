@@ -134,7 +134,11 @@ __aicore__ inline void AivAllReduceV2Mesh1DOneShotSuperKernel(SUPERKERNEL_ARGS_D
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;
         uint64_t curSize = curCount * sizeof(T);
 
-        op.ProcessCoreLargeCase(curCount, loopTag, 1);
+        if (op.rankSize_ + 1 <= op.numBlocks_) {
+            op.ProcessCoreLargeCase(curCount, loopTag, 1);
+        } else {
+            op.ProcessCoreSmallCase(curCount, loopTag, 1);
+        }
         op.BarrierAll();
 
         countLeft -= curCount;
