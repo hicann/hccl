@@ -257,7 +257,7 @@ HcclResult InsTempScatterMesh1D::RunMesh(const std::map<u32, std::vector<Channel
                 CHK_PRT_RET(count >= threads.size(), 
                             HCCL_ERROR("[InsTempScatterMesh1D][RunMesh] count[%d] >= threads.size()[%d]", count, threads.size()), 
                             HCCL_E_INTERNAL);
-                CHK_PRT_RET(static_cast<HcclResult>(SendWrite(sendData, threads.at(count))),
+                CHK_PRT_RET(static_cast<HcclResult>(SendBatchWrite(sendData, threads.at(count))),
                     HCCL_ERROR("[InsTempScatterMesh1D] RunMesh Send failed"),
                     HcclResult::HCCL_E_INTERNAL);
                 HCCL_DEBUG("[InsTempScatterMesh1D][RunMesh] end SendWrite");

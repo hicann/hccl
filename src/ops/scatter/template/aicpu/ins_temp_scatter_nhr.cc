@@ -301,7 +301,7 @@ HcclResult InsTempScatterNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std::m
             HCCL_ERROR("[InsTempScatterNHR] BatchSend failed"),
             HcclResult::HCCL_E_INTERNAL);
     } else {
-        CHK_PRT_RET(static_cast<HcclResult>(SendWrite(sendData, thread)),
+        CHK_PRT_RET(static_cast<HcclResult>(SendBatchWrite(sendData, thread)),
             HCCL_ERROR("[InsTempScatterNHR] BatchSend failed"),
             HcclResult::HCCL_E_INTERNAL);
     }
@@ -408,7 +408,7 @@ HcclResult InsTempScatterNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::map
             HCCL_ERROR("[InsTempScatterNHR] RunNHR BatchSendRecv failed"),
             HcclResult::HCCL_E_INTERNAL);
     } else {
-        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, thread),
+        CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, thread),
             HCCL_ERROR("[InsTempScatterNHR] RunNHR BatchSendRecv failed"),
             HcclResult::HCCL_E_INTERNAL);
     }

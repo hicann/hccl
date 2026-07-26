@@ -294,7 +294,7 @@ HcclResult InsTempAllReduceNHR::RunAllGather(const TemplateDataParams &tempAlgPa
                 HCCL_ERROR("[InsTempAllReduceNHR] RunAllGather SendRecv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads.at(0)),
+            CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads.at(0)),
                 HCCL_ERROR("[InsTempAllReduceNHR] RunAllGather SendRecv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         }
