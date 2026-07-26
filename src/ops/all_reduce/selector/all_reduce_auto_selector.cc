@@ -33,6 +33,7 @@ constexpr u64 OMNI_UBX_AR_MS_DATA_SIZE = 32 * 1024 * 1024;
 constexpr u64 AR_AIV_SMALL_DATA_SIZE_IN_BOARD = 128 * 1024;
 constexpr u64 AR_AIV_BOARD_SIZE = 8;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
+constexpr u32 AR_MORE_64P_SEQ_MAX_DATA_SIZE = 32 * 1024 * 1024;
 
 SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
@@ -203,6 +204,8 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNe
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_DEBUG("[AllReduceAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
+            } else if (dataSize <= AR_MORE_64P_SEQ_MAX_DATA_SIZE && topoInfo->userRankSize > ccuSize){
+                selectAlgName = "CcuAllReduceSequenceMesh1D";
             } else if (dataSize <= RS_MAX_DATA_SIZE && topoInfo->userRankSize >= ccuSize && !Is8BitDataType(opParam.DataDes.dataType)) {
                 selectAlgName = "CcuAllReduceSequenceMesh1D";
                 return SelectorStatus::MATCH;
