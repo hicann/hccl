@@ -6,18 +6,18 @@
 
   <!-- npu="950" id10 -->
 - **针对Ascend 950PR/Ascend 950DT**： 
-  - “AI_CPU”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，取值范围为：\[0, 2147483647\]，默认值为1836，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。当配置为0时代表永不超时。
+  - “AI_CPU”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，建议配置为整数，取值范围为：\[0, 2147483647\]，默认值为1836。当配置为0时代表永不超时。
   - “AIV”模式下：单位为s，取值范围为\[0, 1091\]，默认值为1091，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。若设置为0或超出最大值1091，将按照1091处理。
 
-    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
+    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），单位为us，N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
   <!-- end id10 -->
 
   <!-- npu="A3" id9 -->
 - **针对Atlas A3 训练系列产品/Atlas A3 推理系列产品：**
-  - “AI_CPU”与“AICPU_CacheDisable”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，取值范围为：\[0, 2147483647\]，默认值为1836，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。当配置为0时代表永不超时。
+  - “AI_CPU”与“AICPU_CacheDisable”模式下（参见[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)）：单位为s，建议配置为整数，取值范围为：\[0, 2147483647\]，默认值为1836。当配置为0时代表永不超时。
   - “AIV”模式下：单位为s，取值范围为\[0, 1091\]，默认值为1091，支持十毫秒级精度配置（例如，需要50毫秒超时，则配置为0.05）。若设置为0或超出最大值1091，将按照1091处理。
 
-    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
+    “AIV”模式下实际生效的超时时间为interval\*N\*10<sup>-3</sup>毫秒，其中interval为硬件支持的算子超时最短时间间隔（可通过aclrtGetOpTimeoutInterval接口获取），单位为us，N的取值为\[1, 254\]范围内整数，如果配置的超时时间不等于interval\*N\*10<sup>-3</sup>毫秒，则向上对齐至interval\*N\*10<sup>-3</sup>毫秒。
   <!-- end id9 -->
 
   <!-- npu="910b" id8 -->
