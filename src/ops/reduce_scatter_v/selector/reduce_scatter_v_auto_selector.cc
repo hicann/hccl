@@ -133,13 +133,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoW
 
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) > 1) {
-                selectAlgName = "CcuReduceScatterVParallelMesh1DNHR";
-                return SelectorStatus::NOT_MATCH;
-            } else {
-                selectAlgName = "CcuReduceScatterVNHR1DMem2Mem";
-                return SelectorStatus::NOT_MATCH;
-            }
+            HCCL_WARNING("[SelectCcuScheduleAlgo] multi-level MESH_1D is not supported yet for ccu schedule mode.");
+            return SelectorStatus::NOT_MATCH;
         } else {
             HCCL_WARNING("[SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
                 topoInfo->level0Topo);

@@ -364,6 +364,11 @@ HcclResult ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         CHK_RET(GenTempResource(resCtx, 2, algTemplateLevel2, templateResource2));
     }
 
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[ScatterSequenceAicpu3LevelExecutor] myRank[%u] templateScratchMultiplier is 0, "
+            "cannot compute maxCountPerLoop.", myRank_);
+        return HCCL_E_INTERNAL;
+    }
     u64 maxCountPerLoop = tempAlgParamsLevel0.buffInfo.hcclBuff.size / templateScratchMultiplier / AICPU_ALIGN_SIZE
         * AICPU_ALIGN_SIZE / dataTypeSize_;
     if (maxCountPerLoop == 0) {

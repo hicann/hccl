@@ -343,6 +343,9 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     u64 scratchBoundDataSize = maxTmpMemSize_ / rankSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 maxCountPerLoop = std::min(scratchBoundDataSize, transportBoundDataSize);
+    CHK_PRT_RET(maxCountPerLoop == 0,
+        HCCL_ERROR("[%s] maxCountPerLoop is 0, maxTmpMemSize_[%llu], rankSize_[%u], dataTypeSize_[%llu]",
+            __func__, maxTmpMemSize_, rankSize_, dataTypeSize_), HCCL_E_INTERNAL);
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
 
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;

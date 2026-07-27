@@ -26,7 +26,6 @@ namespace ops_hccl {
     SelectorStatus RecvAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
         const std::map<HcclCMDType, std::vector<HcclAlgoType> > &configAlgMap, std::string &selectAlgName) const
     {
-        (void)topoInfo;
         if (topoInfo->level2Ubg) {
             HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[RecvAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
                 __func__);

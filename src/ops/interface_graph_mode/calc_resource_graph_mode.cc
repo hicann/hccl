@@ -301,7 +301,7 @@ HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dat
     *ifAiv = (param.engine == CommEngine::COMM_ENGINE_AIV);
     
     // 拷贝字符串
-    strncpy_s(algName, ALG_NAME_MAX_LEN, localAlgName.c_str(), ALG_NAME_MAX_LEN - 1);
+    CHK_SAFETY_FUNC_RET(strncpy_s(algName, ALG_NAME_MAX_LEN, localAlgName.c_str(), ALG_NAME_MAX_LEN - 1));
     
     HCCL_INFO("[HcclSelectAlgGraphMode] Success. ifAiv=%d, algName=%s", *ifAiv, algName);
     return HCCL_SUCCESS;

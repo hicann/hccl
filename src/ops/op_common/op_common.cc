@@ -203,13 +203,13 @@ HcclResult AppendFastLaunchTag(OpParam &param, const char* dataTypeStr,
     if (!append_str(param.tag) || !append_str("_") || !append_str(dataTypeStr)) {
         goto fail;
     }
-    if (reduceOpStr && (!append_str("_")) || !append_str(reduceOpStr)) {
+    if (reduceOpStr && (!append_str("_") || !append_str(reduceOpStr))) {
         goto fail;
     }
-    if (countStr && (!append_str("_")) || !append_str(countStr)) {
+    if (countStr && (!append_str("_") || !append_str(countStr))) {
         goto fail;
     }
-    if (rootStr && (!append_str("_r")) || !append_str(rootStr)) {
+    if (rootStr && (!append_str("_r") || !append_str(rootStr))) {
         goto fail;
     }
     *dst = '\0';
@@ -673,6 +673,11 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
             ThreadHandle thread;
             CHK_RET(HcclThreadAcquireWithStream(comm, param.engine, param.stream,
                 resCtxHost->notifyNumOnMainThread, &thread));
+            if (resCtxHost->threads.empty()) {
+                HCCL_ERROR("[%s] reused threads is empty after DeSerialize, cannot overwrite main thread.",
+                    __func__);
+                return HCCL_E_UNAVAIL;
+            }
             resCtxHost->threads[0] = thread;
             // 图模式要全部覆盖
             if (param.opMode != OpMode::OPBASE) {
@@ -716,6 +721,16 @@ HcclResult GeReuseResource(HcclComm comm, OpParam &param, std::unique_ptr<InsCol
     }
 
     u32 threadNum = resRequest.slaveThreadNum;
+    u32 slaveStreams = resPack.streams.size();
+    if (threadNum > slaveStreams) {
+        HCCL_ERROR("[%s] threadNum[%u] exceeds slaveStreams[%u].", __func__, threadNum, slaveStreams);
+        return HCCL_E_UNAVAIL;
+    }
+    if (resCtxHost->threads.size() < static_cast<size_t>(threadNum) + 1) {
+        HCCL_ERROR("[%s] reused threads size[%zu] is less than threadNum+1[%u].", __func__,
+            resCtxHost->threads.size(), threadNum + 1);
+        return HCCL_E_UNAVAIL;
+    }
     for (u32 i = 0; i < threadNum; i++) {
         ThreadHandle slaveThread;
         CHK_RET(HcclThreadAcquireWithStream(comm, param.engine, resPack.streams[i], maxNotifyNum, &slaveThread));

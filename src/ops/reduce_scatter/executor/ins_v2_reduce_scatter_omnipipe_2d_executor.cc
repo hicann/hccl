@@ -309,8 +309,17 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     // 2、计算loop
     u64 templateScratchMultiplier = algTemplateLevel0.CalcScratchMultiple(BufferType::DEFAULT, BufferType::DEFAULT);
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, maxTmpMemSize_[%llu], dataTypeSize_[%llu].",
+            __func__, maxTmpMemSize_, dataTypeSize_);
+        return HCCL_E_INTERNAL;
+    }
     u64 scratchBoundDataSize = maxTmpMemSize_ / templateScratchMultiplier;
     u64 maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;
+    CHK_PRT_RET(maxCountPerLoop == 0,
+        HCCL_ERROR("[%s] maxCountPerLoop is 0, templateScratchMultiplier[%llu], maxTmpMemSize_[%llu], "
+            "dataTypeSize_[%llu]", __func__, templateScratchMultiplier, maxTmpMemSize_,
+            dataTypeSize_), HCCL_E_INTERNAL);
     u64 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;

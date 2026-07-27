@@ -350,10 +350,19 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     }
 
     // 2.2 计算loop次数
-    u64 templateScratchMultiplier = tempMap[OMNIPIPE_RS_LEVEL0]->CalcScratchMultiple(BufferType::DEFAULT, BufferType::DEFAULT);;
+    u64 templateScratchMultiplier = tempMap[OMNIPIPE_RS_LEVEL0]->CalcScratchMultiple(BufferType::DEFAULT, BufferType::DEFAULT);
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
+    if (templateScratchMultiplier == 0) {
+        HCCL_ERROR("[%s] templateScratchMultiplier is 0, maxTmpMemSize_[%llu], dataTypeSize_[%llu].",
+            __func__, maxTmpMemSize_, dataTypeSize_);
+        return HCCL_E_INTERNAL;
+    }
     u64 scratchBoundDataSize = maxTmpMemSize_ / templateScratchMultiplier; // / HCCL_MIN_SLICE_ALIGN* HCCL_MIN_SLICE_ALIGN
     u64 maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;
+    CHK_PRT_RET(maxCountPerLoop == 0,
+        HCCL_ERROR("[%s] maxCountPerLoop is 0, templateScratchMultiplier[%llu], maxTmpMemSize_[%llu], "
+            "dataTypeSize_[%llu]", __func__, templateScratchMultiplier, maxTmpMemSize_,
+            dataTypeSize_), HCCL_E_INTERNAL);
 
     u64 loopTimes = allRankSplitData[0] / maxCountPerLoop + ((allRankSplitData[0] % maxCountPerLoop == 0) ? 0 : 1);
 

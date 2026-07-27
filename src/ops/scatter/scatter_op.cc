@@ -387,7 +387,8 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         constexpr u32 numBlocks = 1;
         aclError aclRet = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
         CHK_PRT_RET(aclRet != ACL_SUCCESS,
-                    HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret), HCCL_E_OPEN_FILE_FAILURE);
+                    HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed",
+                        aclRet), HCCL_E_OPEN_FILE_FAILURE);
         if (HcommIsProfilingSupported()) {
             std::string profName = "scatter";
             profName += "AicpuKernel"; // 标准后缀，类似于alltoallAicpuKernel;
