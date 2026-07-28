@@ -24,7 +24,12 @@
     export HCCL_DEBUG_CONFIG="^task,alg"
     ```
 
-**注意**：环境变量配置时，不允许存在多余空格，否则配置无效，例如：export HCCL_DEBUG_CONFIG="alg, task "，task前后存在多余空格，此环境变量配置无效。
+**注意**：
+
+- 环境变量配置时，不允许存在多余空格，否则配置无效，例如：export HCCL_DEBUG_CONFIG="alg, task "，task前后存在多余空格，此环境变量配置无效。
+- TASK模块在环境变量HCCL_DEBUG_CONFIG与HCOMM_DEBUG_CONFIG中任一开启即生效。详见[HCOMM_DEBUG_CONFIG](./HCOMM_DEBUG_CONFIG.md)。
+
+**建议**：TASK模块日志在打印通信算子调用信息时，为区分不同算子区间的TASK日志，可以开启HCCL_ENTRY_LOG_ENABLE=1实时打印通信算子的调用行为日志。详见[HCCL_ENTRY_LOG_ENABLE](./HCCL_ENTRY_LOG_ENABLE.md)。
 
 ## 配置示例
 
@@ -39,7 +44,7 @@ export HCCL_DEBUG_CONFIG="ALG,TASK,RESOURCE"
 ## 产品支持情况
 
 <!-- npu="950" id3 -->
-- Ascend 950PR/Ascend 950DT：不支持
+- Ascend 950PR/Ascend 950DT：支持
 <!-- end id3 -->
 <!-- npu="A3" id1 -->
 - Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
