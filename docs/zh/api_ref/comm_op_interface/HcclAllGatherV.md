@@ -44,7 +44,7 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 | recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。<br>recvBuf与sendBuf配置的地址不能相同。 |
 | recvCounts | 输入 | 参与AllGatherV操作的每个rank在recvBuf中的数据size，为uint64类型的数组。<br>该数组的第i个元素表示需要从rank i接收的数据量，且该数据量需要与rank i的sendCount值相同。 |
 | recvDispls | 输入 | 参与AllGatherV操作的每个rank的数据在recvBuf中的偏移量（单位为dataType），为uint64类型的数组。<br>该数组的第i个元素表示从rank i接收的数据应该放置在recvBuf中的起始偏移量。 |
-| dataType | 输入 | AllGatherV操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
+| dataType | 输入 | AllGatherV操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.1/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
 | comm | 输入 | 集合通信操作所在的通信域。 |
 | stream | 输入 | 本rank所使用的stream。 |
 
@@ -65,7 +65,7 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.1/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
 
 ## 约束说明
 
