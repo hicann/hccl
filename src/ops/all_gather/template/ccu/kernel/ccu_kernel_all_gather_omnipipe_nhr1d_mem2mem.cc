@@ -89,17 +89,6 @@ static CcuResult LoadArgs(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static uint32_t GetSignalIndex(const int signalBit)
-{
-    // 一个CKE有16位，可以处理16个用途
-    return static_cast<uint32_t>(signalBit) / BIT_NUM_PER_CKE;
-}
-
-static uint16_t GetSignalMask(const int signalBit)
-{
-    return (1 << (static_cast<uint32_t>(signalBit) % BIT_NUM_PER_CKE));
-}
-
 static CcuResult PreSync(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
 {
     HCCL_INFO("[%s] start", __func__);

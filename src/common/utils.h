@@ -11,6 +11,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <cmath>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -20,6 +21,19 @@
 #include "log.h"
 
 namespace ops_hccl {
+
+constexpr double FLOAT_COMPARE_EPSILON = 1e-9;
+
+static inline bool IsFloatEqual(float a, float b)
+{
+    return std::abs(static_cast<double>(a) - static_cast<double>(b)) < FLOAT_COMPARE_EPSILON;
+}
+
+static inline bool IsDoubleEqual(double a, double b)
+{
+    return std::abs(a - b) < FLOAT_COMPARE_EPSILON;
+}
+
 HcclMem HcclMemRange(HcclMem inMem, u64 offset, u64 size);
 
 static inline u64 RoundUpWithDivisor(u64 value, u64 divisor)

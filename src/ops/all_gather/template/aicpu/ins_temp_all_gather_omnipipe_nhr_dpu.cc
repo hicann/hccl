@@ -161,7 +161,7 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::GetRes(AlgResourceRequest& resourceRe
 {
     // NHR算法只需要一条主流
     resourceRequest.slaveThreadNum = 0;
-    resourceRequest.notifyNumPerThread;  // 没有从流
+    resourceRequest.notifyNumPerThread = {};  // 没有从流
     resourceRequest.notifyNumOnMainThread = 0;  // 没有从流
     return HCCL_SUCCESS;
 }

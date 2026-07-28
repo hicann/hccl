@@ -17,6 +17,10 @@ project(hccl_device)
 
 # 初始化 CANN 项目配置
 init_cann_project(PREPEND_MODULE_PATH)
+add_cann_target_options()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${RULE_LAUNCH})
 set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${RULE_LAUNCH})

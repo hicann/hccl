@@ -29,7 +29,6 @@ target_link_libraries(hccl_checker_ops_utest PRIVATE
 )
 
 target_compile_options(hccl_checker_ops_utest PRIVATE
-    -std=c++14
     -Werror
     -fno-common
     -fno-strict-aliasing

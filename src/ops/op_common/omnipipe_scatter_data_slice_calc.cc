@@ -9,6 +9,7 @@
  */
 #include "omnipipe_scatter_data_slice_calc.h"
 #include "comm_engine_utils.h"
+#include "utils.h"
 
 namespace ops_hccl {
 // 2D scatter发送数据片偏移计算,y轴快
@@ -57,7 +58,7 @@ void CalcScatterStepAndScale(
 {
     step = maxStep;
     if (xRankSize - bandwidthRatio > 0) {
-        if (std::abs(omniPipeRatio - 1.0) < 1e-9) {
+        if (IsDoubleEqual(omniPipeRatio, 1.0)) {
             step = bandwidthRatio + 1;
         } else {
             step = ceil(std::log(xRankSize - bandwidthRatio) / std::log(omniPipeRatio)) + 1;

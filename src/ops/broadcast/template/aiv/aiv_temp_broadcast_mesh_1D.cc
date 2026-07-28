@@ -32,7 +32,6 @@ HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
         resourceRequest.notifyNumPerThread.push_back(1);
     }
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
-    OpParam param_ = param;
 
     std::vector<HcclChannelDesc> level0Channels;
     if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {

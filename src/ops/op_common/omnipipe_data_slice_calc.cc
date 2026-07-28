@@ -9,6 +9,7 @@
  */
 #include "omnipipe_data_slice_calc.h"
 #include "comm_engine_utils.h"
+#include "utils.h"
 
 namespace ops_hccl {
 constexpr double BANDWIDTH_RATIO_BOUND = 10;
@@ -850,27 +851,19 @@ std::vector<std::vector<u64>> CalRSDataSizeStep(u64 *xRSDataSize, u64 *yRSDataSi
 std::vector<u64> OmniPipeSplitData(u64 rankSize, u64 count, u64 dataTypeSize)
 {
     std::vector<u64> omniPipeSplitSliceInfoList;
-    u64 sliceNum = rankSize;
-
-    u64 sliceCount = RoundUp(count, sliceNum);
-    u64 sliceSize = sliceCount * dataTypeSize;
+    u64 sliceCount = RoundUp(count, rankSize);
 
     u64 offsetCount = 0;
-    u64 offsetSize = 0;
-    for (u64 sliceIdx = 0; sliceIdx < sliceNum; ++sliceIdx) {
+    for (u64 sliceIdx = 0; sliceIdx < rankSize; ++sliceIdx) {
         if (count - offsetCount > sliceCount) {
             omniPipeSplitSliceInfoList.push_back(sliceCount);
             offsetCount += sliceCount;
-            offsetSize = offsetCount * dataTypeSize;
         } else {
-            u64 curSliceCount = count - offsetCount;
-            u64 curSliceSize = curSliceCount * dataTypeSize;
+            const u64 curSliceCount = count - offsetCount;
             omniPipeSplitSliceInfoList.push_back(curSliceCount);
             offsetCount = count;
-            offsetSize = offsetCount * dataTypeSize;
         }
     }
-
     return omniPipeSplitSliceInfoList;
 }
 
@@ -953,8 +946,8 @@ OmniPipeSliceInfo CalcAGOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceParam
     u64 xyAGDataSize[rankSize][maxStepNum];
     u64 xAGDataSize[rankSize][maxStepNum][maxStepNum];
     u64 yAGDataSize[rankSize][maxStepNum][maxStepNum];
-    u64 outerStepNum;  // 机内机间步数
-    u64 innerStepNum;  // 机内两轴步数
+    u64 outerStepNum = 0;  // 机内机间步数
+    u64 innerStepNum = 0;  // 机内两轴步数
     u64 zAGOffset[rankSize][maxStepNum];  // z轴偏移
     u64 xAGOffset[rankSize][maxStepNum][maxStepNum];  // x轴偏移
     u64 yAGOffset[rankSize][maxStepNum][maxStepNum];  // y轴偏移
@@ -1488,8 +1481,8 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceParam
     u64 xyRSDataSize[rankSize][maxStepNum];
     u64 xRSDataSize[rankSize][maxStepNum][maxStepNum];
     u64 yRSDataSize[rankSize][maxStepNum][maxStepNum];
-    u64 outerStepNum;  // 机内机间步数
-    u64 innerStepNum;  // 机内两轴步数
+    u64 outerStepNum = 0;  // 机内机间步数
+    u64 innerStepNum = 0;  // 机内两轴步数
     u64 zRSOffset[rankSize][maxStepNum];  // z轴偏移
     u64 xRSOffset[rankSize][maxStepNum][maxStepNum];  // x轴偏移
     u64 yRSOffset[rankSize][maxStepNum][maxStepNum];  // y轴偏移

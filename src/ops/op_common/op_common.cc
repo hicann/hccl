@@ -55,6 +55,7 @@
 #include "ccu_launch_dl.h"
 #include "hccl_ccu_res_dl.h"
 #include "comm_engine_utils.h"
+#include "utils.h"
 
 namespace ops_hccl {
 thread_local bool needInconsistentCheck = false;
@@ -2573,7 +2574,7 @@ HcclResult QuerySplitRatioByConfigGetInfo(
         HCCL_ERROR("[QuerySplitRatioByConfigGetInfo] comm ratio[%f] is not finite or out of range[0, 1].", commRatio);
         return HCCL_E_PARA;
     }
-    if (commRatio == 0.0) {
+    if (IsDoubleEqual(commRatio, 0.0)) {
         HCCL_INFO("[QuerySplitRatioByConfigGetInfo] comm split ratio is not configured.");
         return HCCL_SUCCESS;
     }

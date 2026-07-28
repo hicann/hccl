@@ -39,7 +39,7 @@ HcclResult InsTempBroadcastNHR::GetRes(AlgResourceRequest &resourceRequest) cons
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = 0;
-    resourceRequest.notifyNumPerThread;         // 没有从流
+    resourceRequest.notifyNumPerThread = {};         // 没有从流
     resourceRequest.notifyNumOnMainThread = 0;  // 没有从流
     return HCCL_SUCCESS;
 }

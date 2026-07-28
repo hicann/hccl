@@ -324,6 +324,15 @@ HcclResult GetRankFullMeshLayers(HcclComm comm, const std::vector<std::vector<u3
             HCCL_ERROR("[GetRankFullMeshLayers] Failed to get cur netlayer myRank=%u .", myRank), HcclResult::HCCL_E_INTERNAL);
     }
     return HCCL_SUCCESS;
+#else
+    (void)comm;
+    (void)subcommInfo;
+    (void)netLayersVector;
+    (void)curNetLayer;
+
+    HCCL_ERROR("[GetRankFullMeshLayers] This function is not supported in AICPU mode, "
+               "myRank[%u].",myRank);
+    return HcclResult::HCCL_E_NOT_SUPPORT;
 #endif
 }
 
@@ -416,9 +425,9 @@ HcclResult CalcChannelRequestMesh1DFullMesh(HcclComm comm, const OpParam& param,
 #endif
 }
 
+#ifndef AICPU_COMPILE
 static HcclResult CheckNetLayerExists(HcclComm comm, u32 netLayer, const std::string &tag, bool linkRequired)
 {
-#ifndef AICPU_COMPILE
     uint32_t *netLayers = nullptr;
     uint32_t netLayerNum = 0;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
@@ -430,6 +439,7 @@ static HcclResult CheckNetLayerExists(HcclComm comm, u32 netLayer, const std::st
             break;
         }
     }
+
     if (!netLayerValid) {
         CHK_PRT_RET(linkRequired,
             HCCL_ERROR("[%s] netLayer[%u] does not exist in rankGraph.", tag.c_str(), netLayer),
@@ -437,14 +447,9 @@ static HcclResult CheckNetLayerExists(HcclComm comm, u32 netLayer, const std::st
         HCCL_WARNING("[%s] netLayer[%u] does not exist in rankGraph, skip.", tag.c_str(), netLayer);
         return HCCL_SUCCESS;
     }
-#else
-    (void)comm;
-    (void)netLayer;
-    (void)tag;
-    (void)linkRequired;
-#endif
     return HCCL_SUCCESS;
 }
+#endif
 
 static HcclResult CalcChannelRequestMesh1DByLevel(HcclComm comm, const OpParam& param,
     const TopoInfoWithNetLayerDetails* topoInfo,
@@ -645,7 +650,7 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam& param, const Topo
     return HCCL_SUCCESS;
 }
 
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+#if !defined(AICPU_COMPILE) && CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
 static bool IsEndPointEqual(EndpointDesc &endPoint0, EndpointDesc &endPoint1)
 {
     HCCL_INFO("endPoint0:phyId[%u], protocol[%u], addr.type[%u], addr.id[%u]",

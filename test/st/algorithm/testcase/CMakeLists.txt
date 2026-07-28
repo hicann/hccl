@@ -58,11 +58,10 @@ function(add_st_test OP_NAME OP_SRC)
             # 链接hccl库
             ${ASCEND_HOME_PATH}/lib64/libhccl.so
             -ldl
-            $<BUILD_INTERFACE:intf_pub>
+            $<BUILD_INTERFACE:intf_llt_pub>
         )
 
         target_compile_options(${target} PRIVATE
-            -std=c++14
             -Werror
             -fno-common
             -fno-strict-aliasing

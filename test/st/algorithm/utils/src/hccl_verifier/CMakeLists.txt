@@ -19,7 +19,6 @@ add_subdirectory(singletask_check)
 add_subdirectory(task_graph_generator)
 
 target_compile_options(hccl-verifier PRIVATE
-    -std=c++14
     -Werror
     -fno-common
     -fno-strict-aliasing
@@ -30,7 +29,7 @@ target_compile_options(hccl-verifier PRIVATE
 )
 
 target_link_libraries(hccl-verifier PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
 )
 
 message(STATUS "utils path= ${UTILS_DIR}")

@@ -9,39 +9,38 @@
 # ----------------------------------------------------------------------------
 
 
-add_library(intf_pub_base INTERFACE)
+add_library(intf_llt_pub_base INTERFACE)
 
-target_compile_definitions(intf_pub_base INTERFACE
+target_compile_definitions(intf_llt_pub_base INTERFACE
 	CFG_BUILD_DEBUG
 )
 
-target_compile_options(intf_pub_base INTERFACE
+target_compile_options(intf_llt_pub_base INTERFACE
     -D_GLIBCXX_USE_CXX11_ABI=0
     -g
     --coverage
     -w
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
     $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fsanitize=leak -fsanitize-recover=address,all -fno-stack-protector -fno-omit-frame-pointer -g>
     $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
     -fPIC
     -pipe
 )
 
-target_link_options(intf_pub_base INTERFACE
+target_link_options(intf_llt_pub_base INTERFACE
     -fprofile-arcs -ftest-coverage
     $<$<BOOL:${ENABLE_ASAN}>:-fsanitize=address -fsanitize=leak -fsanitize-recover=address>
     $<$<BOOL:${ENABLE_GCOV}>:-fprofile-arcs -ftest-coverage>
 )
 
-target_link_libraries(intf_pub_base INTERFACE
+target_link_libraries(intf_llt_pub_base INTERFACE
     $<$<BOOL:${ENABLE_GCOV}>:-lgcov>
 )
 
 
-add_library(intf_pub INTERFACE)
+add_library(intf_llt_pub INTERFACE)
 
-target_link_libraries(intf_pub INTERFACE
-    $<BUILD_INTERFACE:intf_pub_base>
+target_link_libraries(intf_llt_pub INTERFACE
+    $<BUILD_INTERFACE:intf_llt_pub_base>
     $<$<BOOL:${ENABLE_TEST}>:GTest::gtest>
     -Wl,-rpath,${CMAKE_INSTALL_PREFIX}/lib
 )

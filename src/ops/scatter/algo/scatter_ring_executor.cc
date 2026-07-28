@@ -190,8 +190,8 @@ HcclResult ScatterRingExecutor::KernelRunLevel0(const OpParam &param, ExecMem &e
     HCCL_INFO("[ScatterRingExecutor][KernelRunLevel0] using multiring algo inner-server.");
 
     HcomCollOpInfo *scatterOpInfoPtr = nullptr;
-    HcomCollOpInfo scatterOpInfo = {"", nullptr, execMem.outputPtr, param.DataDes.count, param.DataDes.dataType,
-        subRoot_};
+    HcomCollOpInfo scatterOpInfo = {
+        "", nullptr, execMem.outputPtr, param.DataDes.count, param.DataDes.dataType, subRoot_, HCCL_REDUCE_RESERVED, 0};
     if (DMAReduceFlag_) {
         scatterOpInfoPtr = &scatterOpInfo;
     }

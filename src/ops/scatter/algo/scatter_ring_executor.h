@@ -21,7 +21,7 @@ public:
 
     HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
         AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
-
+        
 private:
     /* *************** 算法编排 *************** */
     HcclResult KernelRunLevel2(const OpParam &param, ExecMem &execMem);

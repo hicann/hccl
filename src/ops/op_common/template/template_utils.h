@@ -409,7 +409,6 @@ inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc> &channels)
     u32 channelsPerRank = 1;
     u32 currentRank = INVALID_VALUE_RANKID;
     u32 currentCount = 0;
-    u32 changeNum = 0;
     // channels的排列遵循相同远端的channel放在相邻位置
     for (const auto &channel : channels) {
         if (channel.remoteRank == currentRank) {

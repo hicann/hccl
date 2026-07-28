@@ -10,7 +10,6 @@
 
 add_library(hcomm SHARED hccl_depends_stub.cc)
 target_compile_options(hcomm PRIVATE
-    -std=c++14
     -fno-common
     -fno-strict-aliasing
     -pipe
@@ -20,7 +19,6 @@ target_compile_options(hcomm PRIVATE
 
 add_library(unified_dlog SHARED hccl_depends_stub.cc)
 target_compile_options(unified_dlog PRIVATE
-    -std=c++14
     -fno-common
     -fno-strict-aliasing
     -pipe
@@ -30,7 +28,6 @@ target_compile_options(unified_dlog PRIVATE
 
 add_library(acl_rt SHARED hccl_depends_stub.cc)
 target_compile_options(acl_rt PRIVATE
-    -std=c++14
     -fno-common
     -fno-strict-aliasing
     -pipe

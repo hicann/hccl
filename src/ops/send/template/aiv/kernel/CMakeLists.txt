@@ -7,7 +7,7 @@ add_custom_target(hccl_aiv_send_op_910_95 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_send_op_910_95.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_send_op_910_95.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_send_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_send_op_910_95_tmp.o --cce-aicore-arch=dav-c310-vec
-        --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
+        --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         "-I$<JOIN:$<TARGET_PROPERTY:asc_kernel_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
         "-I$<JOIN:$<TARGET_PROPERTY:kernel_tiling_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
         -I${OPS_BASE_DIR}/src/ops/op_common/template/aiv/

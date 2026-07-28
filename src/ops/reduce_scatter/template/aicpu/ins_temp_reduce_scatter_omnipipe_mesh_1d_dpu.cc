@@ -83,11 +83,8 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::DoLocalCopy(
         HCCL_INFO("Rank [%d], get slicesize zero. skip localcopy", myRank_);
         return HcclResult::HCCL_SUCCESS;
     }
-    u32 rankIdx = 0;
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);
-    if (iter != subCommRanks_[0].end()) {
-        rankIdx = std::distance(subCommRanks_[0].begin(), iter);
-    } else {
+    if (iter == subCommRanks_[0].end()) {
         HCCL_ERROR("[%s]subCommRanks_ or myRank_ is error.", __func__);
         return HCCL_E_INTERNAL;
     }

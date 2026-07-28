@@ -27,7 +27,6 @@ target_sources(hccl-model-proxy PRIVATE
 )
 
 target_compile_options(hccl-model-proxy PRIVATE
-    -std=c++14
     -fno-common
     -fno-strict-aliasing
     -pipe

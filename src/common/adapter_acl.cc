@@ -131,8 +131,8 @@ HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType opt
         HCCL_E_INTERNAL);
     HCCL_INFO("[LoadBinaryFromFile]realPath: %s", realPath);
 
-    aclrtBinaryLoadOptions loadOptions = {0};
-    aclrtBinaryLoadOption option;
+    aclrtBinaryLoadOptions loadOptions{};
+    aclrtBinaryLoadOption option{};
     loadOptions.numOpt = 1;
     loadOptions.options = &option;
     option.type = optionType;

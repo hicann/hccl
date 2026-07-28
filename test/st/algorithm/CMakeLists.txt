@@ -12,6 +12,8 @@ cmake_minimum_required(VERSION 3.16.0)
 set(HCCL_DEV_BASE ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 include(${HCCL_DEV_BASE}/cmake/fetch_cann_cmake.cmake)
 project(hccl_checker_ops_stest)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../..)
 
 

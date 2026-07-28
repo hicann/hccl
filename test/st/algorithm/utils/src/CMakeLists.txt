@@ -18,7 +18,6 @@ add_subdirectory(hccl_depends_stub)
 add_subdirectory(aicpu)
 
 target_compile_options(hccl-model-proxy PRIVATE
-    -std=c++14
     -Werror
     -fno-common
     -fno-strict-aliasing
@@ -37,7 +36,7 @@ target_link_libraries(hccl-model-proxy PUBLIC
 )
 
 target_link_libraries(hccl-model-proxy PRIVATE
-    $<BUILD_INTERFACE:intf_pub>
+    $<BUILD_INTERFACE:intf_llt_pub>
 )
 
 if (BUILD_OPEN_PROJECT)

@@ -23,12 +23,15 @@ target_include_directories(hccl_kernel_compat PRIVATE
 )
 
 target_compile_options(hccl_kernel_compat PRIVATE
+    -Wno-unused-parameter
+    -Wno-missing-field-initializers
     $<$<CONFIG:Debug>:-g>
     $<$<CONFIG:Release>:-O3>
     -fstack-protector-all
 )
 
 target_link_libraries(hccl_kernel_compat PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
     $<BUILD_INTERFACE:runtime_headers>
     $<BUILD_INTERFACE:hcomm_headers>
     unified_dlog

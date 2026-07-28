@@ -27,7 +27,6 @@ HcclResult ScatterRing::RunScatterOnRootRank()
     u64 scatterOffset = slices_[interRank_].offset;
     u64 scatterResult = slices_[interRank_].size;
 
-    HcclResult ret = HCCL_SUCCESS;
     // 需要判断input不等于outputmem，scatter 输入只有一个input时不用拷贝
     if (inputMem_.addr != outputMem_.addr) {
         CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
@@ -81,7 +80,6 @@ HcclResult ScatterRing::RunScatterOnMidRank()
     u32 round = (root_ + interRankSize_ - interRank_) % interRankSize_;
     HCCL_DEBUG("rank:[%u] will receive %u rounds data", interRank_, round);
 
-    HcclResult ret = HCCL_SUCCESS;
     // 需要接收的和发送的轮数，包含接收自己的数据
     for (u32 i = 1; i <= round; i++) {
         u32 dataRank = (interRank_ + round - i) % interRankSize_; // 收到的数据应当是哪个rank的

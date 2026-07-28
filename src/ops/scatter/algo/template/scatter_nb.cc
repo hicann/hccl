@@ -23,7 +23,6 @@ ScatterNB::~ScatterNB()
 
 HcclResult ScatterNB::RunScatterNB(std::vector<ChannelInfo> &channels)
 {
-    HcclResult ret = HCCL_SUCCESS;
     // 需要判断input不等于outputmem，scatter 输入只有一个input时不用拷贝
     if (inputMem_.addr != outputMem_.addr) {
         CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));

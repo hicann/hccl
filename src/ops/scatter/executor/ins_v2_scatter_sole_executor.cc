@@ -195,7 +195,7 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
         ccuFastLaunchCtx->notifyNumOnMainThread = notifyNumOnMainThread;
         ThreadHandle *threads = ccuFastLaunchCtx->GetThreadHandlePtr();
 
-        for (int i = 0; i < threadNum; i++)
+        for (u32 i = 0; i < threadNum; i++)
         {
             threads[i] = templateAlgRes.threads[i];
         }
@@ -203,7 +203,7 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
         // 3 ccu kernel handle, taskArg入参
         ccuFastLaunchCtx->ccuKernelNum[0] = ccuKernelNum;
         CcuKernelSubmitInfo *kernelSubmitInfos = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
-        for (int i = 0; i < ccuKernelNum; i++) {
+        for (u32 i = 0; i < ccuKernelNum; i++) {
             kernelSubmitInfos[i] = templateAlgRes.submitInfos[i];
         }
         return HCCL_SUCCESS;

@@ -93,8 +93,6 @@ HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRigh
 
 HcclResult ScatterNHR::RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const
 {
-    HcclResult ret = HCCL_SUCCESS;
-
     if (channelLeft.isValid) {
         CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
     }

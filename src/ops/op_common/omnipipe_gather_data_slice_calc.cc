@@ -389,7 +389,7 @@ OmniPipeSliceInfo CalcGatherOmniPipeSliceInfo(OmniPipeSliceParam &omniPipeSliceP
     std::vector<StepSliceInfo> dataSliceLevely;
     BuildGatherYInnerSteps(ctx, dataSliceLevely);
     BuildGatherYOuterSteps(ctx, dataSliceLevely);
-    return {std::move(dataSliceLevelx), std::move(dataSliceLevely), std::move(dataSliceLevelz)};
+    return {std::move(dataSliceLevelx), std::move(dataSliceLevely), std::move(dataSliceLevelz),{}};
 }
 
 }  // namespace ops_hccl

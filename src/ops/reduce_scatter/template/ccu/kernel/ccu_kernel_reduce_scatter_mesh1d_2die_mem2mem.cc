@@ -132,11 +132,6 @@ static CcuResult PostSync(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static std::string GetLoopBlockTag(std::string loopType, int32_t index)
-{
-    return loopType + LOCAL_REDUCE_LOOP_BLOCK_TAG + std::to_string(index);
-}
-
 static CcuResult CreateReduceLoop(ReduceScatterMesh1D2DieMem2MemContext &ctx, uint32_t size)
 {
     AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated, REDUCE_SCATTER_LOOP_COUNT);
