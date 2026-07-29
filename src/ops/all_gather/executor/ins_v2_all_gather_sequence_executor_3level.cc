@@ -110,8 +110,16 @@ HcclResult InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, I
 
     rankIdxLevel0_ = myRank_ % levels_[0].rankSize;                                    // level0 组内偏移
     rankIdxLevel1_ = myRank_ % (levels_[0].rankSize * levels_[1].rankSize);            // level1 组编号
+    skipLevel1_ = (levels_[1].rankSize == 1);
+    if (skipLevel1_) {
+        HCCL_INFO("[InsV2AllGatherSequenceExecutor3Level][Orchestrate] level1 rankSize is 1, skip level1");
+    }
 
     CHK_RET(Level0TempAlg.SetchannelsPerRank(levels_[0].channels));
+    if (!skipLevel1_) {
+        CHK_RET(Level1TempAlg.SetchannelsPerRank(levels_[1].channels));
+    }
+    CHK_RET(Level2TempAlg.SetchannelsPerRank(levels_[2].channels));
     // 将计算资源分配个每个算法
     CHK_RET(PrepareResForTemplate(Level0TempAlg, Level1TempAlg, Level2TempAlg));
     // 算法展开
@@ -204,8 +212,10 @@ HcclResult InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, I
         CHK_RET(tempAlgLevel2.KernelRun(param, tempAlgParamsLevel2, Level2TempAlgRes));
 
         // 数据1的server间的nhr算法
-        GenTemplateAlgParamsLevel1(param, resCtx, currCount, dataOffset, tempAlgParamsLevel1);
-        CHK_RET(tempAlgLevel1.KernelRun(param, tempAlgParamsLevel1, Level1TempAlgRes));
+        if (!skipLevel1_) {
+            GenTemplateAlgParamsLevel1(param, resCtx, currCount, dataOffset, tempAlgParamsLevel1);
+            CHK_RET(tempAlgLevel1.KernelRun(param, tempAlgParamsLevel1, Level1TempAlgRes));
+        }
 
         GenTemplateAlgParamsLevel0(param, resCtx, currCount, dataOffset, tempAlgParamsLevel0);
         CHK_RET(tempAlgLevel0.KernelRun(param, tempAlgParamsLevel0, Level0TempAlgRes));
@@ -231,7 +241,8 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     tempAlgParamsLevel2.buffInfo.inBuffBaseOff = dataOffset;
     tempAlgParamsLevel2.buffInfo.outBuffBaseOff = 0;
-    tempAlgParamsLevel2.buffInfo.hcclBuffBaseOff = levels_[2].rankSize * levels_[1].rankSize * curCount * dataTypeSize_;
+    tempAlgParamsLevel2.buffInfo.hcclBuffBaseOff = skipLevel1_ ? 0 :
+        (levels_[2].rankSize * levels_[1].rankSize * curCount * dataTypeSize_);
     tempAlgParamsLevel2.sliceSize = curCount * dataTypeSize_;
     tempAlgParamsLevel2.count = curCount;
     tempAlgParamsLevel2.tailSize = tempAlgParamsLevel2.sliceSize;
