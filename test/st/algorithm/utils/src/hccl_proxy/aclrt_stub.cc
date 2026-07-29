@@ -68,6 +68,13 @@ aclError aclrtMalloc(void **devPtr, size_t size, aclrtMemMallocPolicy policy)
     return ACL_SUCCESS;
 }
 
+aclError aclrtFree(void *devPtr)
+{
+    (void)devPtr;
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 aclError aclrtStreamGetId(aclrtStream stream, int32_t *streamId_)
 {
     HCCL_WARNING("[%s] not support.", __func__);

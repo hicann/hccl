@@ -93,7 +93,7 @@ HcclResult TopoMatchSqueeze2D::TopoForLayer1(
         }
         CommLink *links;
         uint32_t linkNum = 0;
-        HcclRankGraphGetLinks(comm, 2, myRank, rankId, &links, &linkNum);
+        CHK_RET(HcclRankGraphGetLinks(comm, 2, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
             continue;
         }

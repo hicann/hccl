@@ -81,6 +81,9 @@ HcclResult AivTempAllGatherMesh1D::KernelRun(const OpParam& param,
     aivAllGatherArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivAllGatherArgs.stream = param.stream;
     aivAllGatherArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+        HcclResult::HCCL_E_INTERNAL);
     aivAllGatherArgs.xRankSize = subCommRanks_[0].size();
     aivAllGatherArgs.yRankSize = 0;
     aivAllGatherArgs.zRankSize = 0;

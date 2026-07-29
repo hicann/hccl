@@ -67,6 +67,10 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
 
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[InitCommInfo] rankSizeLevel0 is 0, should be greater than 0");
@@ -128,6 +132,10 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
     // 初始化通信域subCommRanks
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
@@ -172,6 +180,10 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     maxTmpMemSize_ = resCtx.cclMem.size;
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[Orchestrate] rankSizeLevel0 is 0");
@@ -303,6 +315,10 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     HCCL_INFO("[%s] Start", __func__);
 
     // 初始化通信域subCommRanks
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
     subCommRanks0.push_back(resCtx.algHierarchyInfo.infos[0][0]);

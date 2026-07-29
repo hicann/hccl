@@ -76,6 +76,10 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     // 初始化一些基本成员变量
     InitCommInfo(param, topoInfo, algHierarchyInfo);
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     // 拆分algHierarchyInfo
     std::vector<std::vector<u32>> temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
     std::vector<std::vector<u32>> temp1HierarchyInfo = {algHierarchyInfo.infos[0][1]};
@@ -194,6 +198,10 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     auto tmp0NotifyOnMainThread = temp0Request.notifyNumOnMainThread;
     auto tmp1NotifyOnMainThread = temp1Request.notifyNumOnMainThread;
 
+    CHK_PRT_RET(threads_.size() < tmp0ThreadsNum + tmp1ThreadsNum,
+        HCCL_ERROR("[%s] threads resource is not enough. threads.size=[%zu], tmp0ThreadsNum=[%u], tmp1ThreadsNum=[%u].",
+            __func__, threads_.size(), tmp0ThreadsNum, tmp1ThreadsNum),
+        HcclResult::HCCL_E_INTERNAL);
     tmp0Threads_.assign(threads_.begin(), threads_.begin() + tmp0ThreadsNum);
     tmp1Threads_.assign(threads_.begin() + tmp0ThreadsNum, threads_.end());
     // 用于两个算法同步
@@ -222,6 +230,10 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     dataSize_ = dataCount_ * dataTypeSize_;
      
     // 拆分algHierarchyInfo
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> temp0HierarchyInfo = {algHierarchyInfo_.infos[0][0]};
     std::vector<std::vector<u32>> temp1HierarchyInfo = {algHierarchyInfo_.infos[0][1]};
 
@@ -234,6 +246,11 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     // 分配channels或者ccuKernels
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+        CHK_PRT_RET(resCtx.ccuKernelNum.size() < 2 ||
+            resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
+            HCCL_ERROR("[%s] resCtx resource not enough. ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+                __func__, resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
+            HCCL_E_INTERNAL);
         tmp0CcuKernels_.assign(resCtx.ccuKernels.begin(), resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);
         tmp1CcuKernels_.assign(resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0], resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0] + resCtx.ccuKernelNum[1]);
     } else {

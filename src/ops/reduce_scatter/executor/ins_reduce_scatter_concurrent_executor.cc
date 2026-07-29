@@ -166,6 +166,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     HCCL_INFO("[InsReduceScatterConcurrentExecutor][OrchestrateLoop] Start");
     std::vector<std::vector<u32>> temp0HierarchyInfo {algHierarchyInfo_.infos[0][0]};
     std::vector<std::vector<u32>> temp1HierarchyInfo {algHierarchyInfo_.infos[0][1]};
@@ -270,6 +274,10 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     u64 dataCountforTemp0 = dataCount_ * portNum0 / (portNum0 + portNum) / sliceAlignCount * sliceAlignCount; // 128对齐
     u64 dataCountforTemp1 = dataCount_ - dataCountforTemp0;
+    CHK_PRT_RET(maxCountPerLoopforTemp0 == 0 || maxCountPerLoopforTemp1 == 0,
+        HCCL_ERROR("[%s] maxCountPerLoopforTemp is 0, maxCount0[%llu], maxCount1[%llu], dataTypeSize_[%llu].",
+            __func__, maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataTypeSize_),
+        HCCL_E_INTERNAL);
     u32 loopTimesforTemp0 = (dataCountforTemp0 + maxCountPerLoopforTemp0 - 1) / maxCountPerLoopforTemp0;
     u32 loopTimesforTemp1 = (dataCountforTemp1 + maxCountPerLoopforTemp1 - 1) / maxCountPerLoopforTemp1;
 

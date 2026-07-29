@@ -93,6 +93,10 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
     AlgResourceRequest& resourceRequest)
 {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
      // 初始化一些基本成员变量
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
@@ -187,6 +191,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     HCCL_INFO("[%s] Start", __func__);
 
     // SubCommRanks拆分

@@ -46,7 +46,16 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     // 构建template
     std::vector<std::vector<u32>> temp0HierarchyInfo;
     std::vector<std::vector<u32>> temp1HierarchyInfo;
+    if (algHierarchyInfo.infos.empty()) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        return HCCL_E_PARA;
+    }
     if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        if (algHierarchyInfo.infos[0].size() < 2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
+                algHierarchyInfo.infos[0].size());
+            return HCCL_E_PARA;
+        }
         temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
         std::vector<u32> closRanks;
         u32 meshSize = algHierarchyInfo.infos[0][0].size();
@@ -175,7 +184,16 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     HCCL_INFO(
         "[InsV2ScatterParallelExecutor][Orchestrate] dataCount_[%u] dataTypeSize_[%u]", dataCount_, dataTypeSize_);
+    if (resCtx.algHierarchyInfo.infos.empty()) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        return HCCL_E_PARA;
+    }
     if(resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
+                resCtx.algHierarchyInfo.infos[0].size());
+            return HCCL_E_PARA;
+        }
         temp0HierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][0]};
         std::vector<u32> closRanks;
         u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();

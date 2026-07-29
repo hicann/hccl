@@ -475,6 +475,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
                                          std::vector<std::vector<u32>>& subCommRanks2,
                                          const TopoInfoWithNetLayerDetails* topoInfo)
 {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     subCommRanks0.clear();
     subCommRanks1.clear();
     subCommRanks2.clear();
@@ -544,6 +548,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
     const TopoInfoWithNetLayerDetails* topoInfo)
 {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     subCommRanks0.clear();
     subCommRanks1.clear();
     subCommRanks2.clear();

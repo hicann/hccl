@@ -71,6 +71,10 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
     AlgResourceRequest& resourceRequest)
 {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     // 初始化基本成员变量
     u32 topoNum = 2;
     if (algHierarchyInfo.infos[0].size() != topoNum) {
@@ -196,6 +200,10 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
                                  resCtx.threads.begin() + (index + 1) * rankSize_};
         templateAlgRes.channels = remoteRankToChannelInfo_[index];
     } else {
+        CHK_PRT_RET(resCtx.threads.size() < 2 || resCtx.ccuKernels.size() < 2,
+            HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernels.size[%zu].",
+                __func__, resCtx.threads.size(), resCtx.ccuKernels.size()),
+            HCCL_E_INTERNAL);
         templateAlgRes.threads = {resCtx.threads[index]};
         templateAlgRes.ccuKernels = {resCtx.ccuKernels[index]};
         templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;
@@ -333,6 +341,10 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
                 HCCL_E_PARA);
 
     // 获取子通信域
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
     std::vector<std::vector<u32>> subCommRanks1 = {algHierarchyInfo_.infos[0][1]};
     TemplateResource templateAlgRes0, templateAlgRes1;

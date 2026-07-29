@@ -58,8 +58,15 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNet
 SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcums(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
     std::string &selectAlgName) const
 {
-    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-    u64 dataSize = opParam.DataDes.count * perDataSize;
+    const u64* varData = reinterpret_cast<const u64*>(opParam.varData);
+    std::vector<u64> sendCounts;
+    sendCounts.assign(varData, varData + topoInfo->userRankSize);
+    u64 inputCount = 0;
+    for (u64 i = 0; i < topoInfo->userRankSize; i++) {
+        inputCount += sendCounts[i];
+    }
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.vDataDes.dataType];
+    u64 dataSize = inputCount * perDataSize;
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (topoInfo->is2DieFullMesh) {

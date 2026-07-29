@@ -480,9 +480,14 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     // 拷贝到设备内存
     aclRet = aclrtMemcpy(deviceMem, sizeof(ops_hccl::AivSuperKernelArgs), &superKernelArgs,
                         sizeof(ops_hccl::AivSuperKernelArgs), ACL_MEMCPY_HOST_TO_DEVICE);
-    CHK_PRT_RET(aclRet != ACL_SUCCESS, 
-        HCCL_ERROR("[HcclGetAlgExecParamGraphMode] aclrtMemcpy failed, ret[%d]", aclRet),
-        HCCL_E_RUNTIME);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_ERROR("[HcclGetAlgExecParamGraphMode] aclrtMemcpy failed, ret[%d]", aclRet);
+        aclError freeRet = aclrtFree(deviceMem);
+        if (freeRet != ACL_SUCCESS) {
+            HCCL_ERROR("[HcclGetAlgExecParamGraphMode] aclrtFree failed, ret[%d]", freeRet);
+        }
+        return HCCL_E_RUNTIME;
+    }
 
     *commContext = deviceMem;
     *len = sizeof(ops_hccl::AivSuperKernelArgs);

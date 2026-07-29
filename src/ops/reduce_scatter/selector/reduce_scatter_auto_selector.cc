@@ -177,7 +177,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWi
 
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (dataSize * topoInfo->userRankSize >= CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE) {
+            if (dataSize >= CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE) {
                 HCCL_INFO("[ReduceScatterAutoSelector] 2 level topo perRankDataSize[%llu] exceeds limit, "
                         "fallback to aicpu.", dataSize);
                 return SelectorStatus::NOT_MATCH;

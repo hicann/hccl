@@ -50,12 +50,21 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
     AlgResourceRequest& resourceRequest)
 {
+    if (algHierarchyInfo.infos.empty()) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     myRank_ = topoInfo->userRank;
     HCCL_INFO("[InsAllReduceParallelExecutor] CalcRes start, rank[%d]", myRank_);
     
     std::vector<std::vector<u32>> temp0HierarchyInfo;
     std::vector<std::vector<u32>> temp1HierarchyInfo;
     if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        if (algHierarchyInfo.infos[0].size() < 2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
+                algHierarchyInfo.infos[0].size());
+            return HcclResult::HCCL_E_PARA;
+        }
         temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
         std::vector<u32> closRanks;
         u32 meshSize = algHierarchyInfo.infos[0][0].size();
@@ -349,6 +358,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::Orchestrate(
     const OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
+    if (resCtx.algHierarchyInfo.infos.empty()) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     HCCL_INFO("[InsAllReduceParallelExecutor][Orchestrate] Orchestrate Start");
 
     maxTmpMemSize_ = resCtx.cclMem.size;
@@ -371,6 +384,11 @@ HcclResult InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     // 计算localRankSize
     if(resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
+                resCtx.algHierarchyInfo.infos[0].size());
+            return HcclResult::HCCL_E_PARA;
+        }
         temp0HierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][0]};
         std::vector<u32> closRanks;
         u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();

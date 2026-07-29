@@ -59,6 +59,10 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, InsA
     dataTypeSize_ =  SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -113,12 +117,16 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     HCCL_DEBUG("[%s] ins0618 alleref start", __func__);
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
-    std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};
-    auto size = algHierarchyInfo.infos[0][1].size() / algHierarchyInfo.infos[0][0].size();
-    std::vector<std::vector<u32>> subCommRanks1(1, std::vector<u32>(size, 0));
-    u32 index = 0;
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
+    std::vector<std::vector<u32>> subCommRanks0;
+    std::vector<std::vector<u32>> subCommRanks1;
+    subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
+    subCommRanks1.resize(1);
     for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
-        subCommRanks1[0][index++] = algHierarchyInfo.infos[0][1][i];
+        subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
     }
     CcuAlgTempLevel0 algTempLevel0(param, myRank_, subCommRanks0);
     CcuAlgTempLevel1 algTempLevel1(param, myRank_, subCommRanks1);
@@ -163,6 +171,10 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -237,12 +249,16 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 {
     HCCL_DEBUG("[%s] Start", __func__);
     auto algHierarchyInfo = resCtx.algHierarchyInfo;
-    std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};
-    auto size = algHierarchyInfo.infos[0][1].size() / algHierarchyInfo.infos[0][0].size();
-    std::vector<std::vector<u32>> subCommRanks1(1, std::vector<u32>(size, 0));
-    u32 index = 0;
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
+    std::vector<std::vector<u32>> subCommRanks0;
+    std::vector<std::vector<u32>> subCommRanks1;
+    subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
+    subCommRanks1.resize(1);
     for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
-        subCommRanks1[0][index++] = algHierarchyInfo.infos[0][1][i];
+        subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
     }
     CcuAlgTempLevel0 algTemplateLevel0(param, myRank_, subCommRanks0);
     CcuAlgTempLevel1 algTemplateLevel1(param, myRank_, subCommRanks1);
@@ -259,6 +275,11 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 
     TemplateResource templateResourceCommon;
     TemplateResource templateResourceLevel0 = templateResourceCommon;
+    CHK_PRT_RET(resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2 ||
+        resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
+        HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+            __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
+        HcclResult::HCCL_E_INTERNAL);
     templateResourceLevel0.threads.push_back(resCtx.threads[1]);
     templateResourceLevel0.ccuKernels.insert(templateResourceLevel0.ccuKernels.end(), resCtx.ccuKernels.begin(),
             resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);

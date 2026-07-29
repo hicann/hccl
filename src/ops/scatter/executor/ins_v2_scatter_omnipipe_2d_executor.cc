@@ -57,6 +57,10 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -94,6 +98,10 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
 
     // 重复的template构造
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};
     auto size = algHierarchyInfo.infos[0][1].size() / algHierarchyInfo.infos[0][0].size();
     HCCL_DEBUG("[%s] algHierarchyInfo.infos[0][1]size=%u algHierarchyInfo.infos[0][0]size=%u", __func__,
@@ -161,6 +169,10 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     HCCL_DEBUG("[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -314,6 +326,10 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     bool isRoot = (myRank_ == param.root);
 
     // 构造subCommRanks
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
@@ -368,6 +384,11 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     TemplateResource templateResourceCommon;
     // 通道处理
     TemplateResource templateResourceX = templateResourceCommon;
+    CHK_PRT_RET(resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2 ||
+        resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
+        HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+            __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
+        HCCL_E_INTERNAL);
     templateResourceX.threads.push_back(resCtx.threads[1]);
     TemplateResource templateResourceY = templateResourceCommon;
     templateResourceY.threads.push_back(resCtx.threads[2]);

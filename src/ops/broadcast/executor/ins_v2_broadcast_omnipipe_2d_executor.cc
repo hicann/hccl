@@ -54,6 +54,10 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitCommInfo(const OpParam &param,
     const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
 {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
@@ -120,6 +124,10 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitSubCommRanks(std::vector<std::vector<u32>> &subCommRanks0,
     std::vector<std::vector<u32>> &subCommRanks1, const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
 {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     subCommRanks0.clear();
     subCommRanks1.clear();
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
@@ -184,6 +192,10 @@ template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuSc
 HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
     CcuAgAlgTemplateX, CcuAgAlgTemplateY>::Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx)
 {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] resCtx.algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     threads_ = resCtx.threads;
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;

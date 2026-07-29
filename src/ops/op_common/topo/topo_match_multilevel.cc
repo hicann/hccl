@@ -83,7 +83,7 @@ HcclResult TopoMatchMultilevel::TopoForLayer0(
             CHK_RET(HcclRankGraphGetRanksByTopoInst(comm, 0, topoInsts[idx], &ranks, &rankNum));
 
             std::sort(ranks, ranks + rankNum);
-            if (ranks[1] - ranks[0] == 1) {
+            if (rankNum >= 2 && ranks[1] - ranks[0] == 1) {
                 ranks_x.assign(ranks, ranks + rankNum);
             } else {
                 ranks_y.assign(ranks, ranks + rankNum);
@@ -143,7 +143,7 @@ HcclResult TopoMatchMultilevel::TopoForLayer1(
         }
         CommLink *links;
         uint32_t linkNum = 0;
-        HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum);
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
             continue;
         }
@@ -223,7 +223,7 @@ HcclResult TopoMatchMultilevel::TopoForLayer2(
         }
         CommLink *links;
         uint32_t linkNum = 0;
-        HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum);
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
             continue;
         }

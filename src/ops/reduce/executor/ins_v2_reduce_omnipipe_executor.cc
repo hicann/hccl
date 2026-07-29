@@ -60,6 +60,10 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     dataCount_ = param.DataDes.count;
     dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -122,6 +126,10 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     subCommRanks1.clear();
     subCommRanks0.clear();
     subCommRanks1.resize(1);
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
     for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
         subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
@@ -187,6 +195,10 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     maxTmpMemSize_ = resCtx.cclMem.size;
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
@@ -333,6 +345,10 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     // 初始化通信域subCommRanks
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        return HcclResult::HCCL_E_PARA;
+    }
     subCommRanks0.push_back(resCtx.algHierarchyInfo.infos[0][0]);
     subCommRanks1.resize(1);
     for (auto i = myRank_ % rankSizeLevel0_; i < resCtx.algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
@@ -357,6 +373,12 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     // 资源模板初始化
     TemplateResource templateResourceCommon;
     TemplateResource templateResourceRsX = templateResourceCommon;
+    CHK_PRT_RET(resCtx.threads.size() < 2 || resCtx.ccuKernelNum.size() < 4 ||
+        resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1] +
+            resCtx.ccuKernelNum[2] + resCtx.ccuKernelNum[3],
+        HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+            __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
+        HCCL_E_INTERNAL);
     templateResourceRsX.threads.push_back(resCtx.threads[0]);
     templateResourceRsX.ccuKernels.insert(templateResourceRsX.ccuKernels.end(),
         resCtx.ccuKernels.begin(),
