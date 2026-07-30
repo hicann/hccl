@@ -58,47 +58,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNet
 SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcums(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
     std::string &selectAlgName) const
 {
-    const u64* varData = reinterpret_cast<const u64*>(opParam.varData);
-    std::vector<u64> sendCounts;
-    sendCounts.assign(varData, varData + topoInfo->userRankSize);
-    u64 inputCount = 0;
-    for (u64 i = 0; i < topoInfo->userRankSize; i++) {
-        inputCount += sendCounts[i];
-    }
-    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.vDataDes.dataType];
-    u64 dataSize = inputCount * perDataSize;
-
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        if (topoInfo->is2DieFullMesh) {
-            HCCL_WARNING("[ReduceScatterVAutoSelector] 2DieFullMesh is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-            return SelectorStatus::NOT_MATCH;
-        } else {
-            if (IsSmallData(dataSize)) {
-                selectAlgName = "CcuReduceScatterVMesh1D";
-            } else {
-                selectAlgName = "CcuReduceScatterVMesh1DMultiMission";
-            }
-        }
-    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-        if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
-            selectAlgName = "CcuReduceScatterVMesh1D";
-        } else { // MS 不支持
-            HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-            return SelectorStatus::NOT_MATCH;
-        }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
-    } else {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
-    }
-    return SelectorStatus::MATCH;
+    HCCL_WARNING("[ReduceScatterVAutoSelector] not support ccu_ms mode.");
+    return SelectorStatus::NOT_MATCH;
 }
 
 SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
