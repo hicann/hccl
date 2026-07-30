@@ -39,6 +39,7 @@ ST_TASKS=""
 CMAKE_BUILD_TYPE="Debug"
 BUILD_CB_TEST="false"
 BUILD_ST_DIR=${CURRENT_DIR}/test/st/algorithm/build
+PACKAGE_TYPE="run"
 
 # 自定义算子工程
 ENABLE_CUSTOM="off"
@@ -692,6 +693,8 @@ function usage() {
   echo "    -build-type=<TYPE>"
   echo "                   Specify build type (TYPE options: Release/Debug), Default: Release"
   echo "    -j<N>          Set the number of threads used for building, default is 8"
+  echo "    --pkg-type=<TYPE>"
+  echo "                   Specify package type (TYPE option: run/rpm/deb/all), Default: run"
   echo "    --cann_3rd_lib_path=<PATH>"
   echo "                   Set ascend third_party package install path, default ./output/third_party"
   echo "    -p|--package-path <PATH>"
@@ -881,6 +884,17 @@ while [[ $# -gt 0 ]]; do
         shift 2
     fi
     ;;
+    --pkg-type=*)
+    PACKAGE_TYPE="${1#*=}"
+    case "${PACKAGE_TYPE}" in
+        run|rpm|deb|all) ;;
+        *)
+            log "Error: --pkg-type only supports run/rpm/deb/all"
+            exit 1
+            ;;
+    esac
+    shift
+    ;;
     --custom_ops_path=*)
         OPTARG=$1
         CUSTOM_OPS_PATH="$(realpath ${OPTARG#*=})"
@@ -953,6 +967,7 @@ else
     exit 1
 fi
 
+CUSTOM_OPTION="${CUSTOM_OPTION} -DPACKAGE_TYPE=${PACKAGE_TYPE}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DCUSTOM_CANN_PACKAGE_PATH=${ASCEND_CANN_PACKAGE_PATH}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DASCEND_CANN_PACKAGE_PATH=${ASCEND_CANN_PACKAGE_PATH}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DASCEND_INSTALL_PATH=${ASCEND_CANN_PACKAGE_PATH}"

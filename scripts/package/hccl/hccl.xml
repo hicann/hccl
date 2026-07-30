@@ -15,14 +15,14 @@
        <HCCL_VERSION>$(ASCEND_VER)</HCCL_VERSION>
        <HCCL_TIMESTAMP>$(TIMESTAMP_NO)</HCCL_TIMESTAMP>
     </generate_info>
-    <generate_info value="scene.info" dst_path="share/info/hccl" install_path="share/info/hccl" install_mod="440">
+    <generate_info value="scene.info" dst_path="share/info/hccl" install_path="share/info/hccl" install_mod="644">
         <os>$(OS_NAME)</os>
         <os_version>$(OS_VER)</os_version>
         <arch>$(ARCH)</arch>
     </generate_info>
     <file_info value="hccl_script" copy_type="source" src_path="" dst_path="share/info/hccl" install_path="share/info/hccl">
         <file value="script" entity="true"/>
-        <file value="version.info" dst_path="share/info/hccl" install_path="share/info/hccl"/>
+        <file value="version.info" dst_path="share/info/hccl" install_path="share/info/hccl" install_mod="440"/>
     </file_info>
     <block_info dependtree="false" dst_path="" block_conf_path="ascend">
         <block name="EngineeringCommon"/>

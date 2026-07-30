@@ -161,6 +161,6 @@ function(pack_built_in)
 
   # ============= CPack =============
   if (NOT ENABLE_COV AND NOT ENABLE_UT)
-    set_cann_cpack_config(hccl ENABLE_DEVICE ${ENABLE_DEVICE})
+    set_cann_cpack_config(hccl ENABLE_DEVICE ${ENABLE_DEVICE} PACKAGE_TYPE "${PACKAGE_TYPE}")
   endif()
 endfunction()
