@@ -32,6 +32,7 @@ message(STATUS "CANN_3RD_LIB_PATH=${CANN_3RD_LIB_PATH}")
 # cmake 配置
 include(${HCCL_DIR}/cmake/config.cmake)
 include(${HCCL_DIR}/cmake/func.cmake)
+include(${HCCL_DIR}/version.cmake)
 
 find_cann_package(msprof MODULE REQUIRED)
 find_cann_package(unified_dlog MODULE REQUIRED)
@@ -65,6 +66,7 @@ add_cann_sign_file(
     INPUT "aicpu_hccl.tar.gz"
     CONFIG "${HCCL_DIR}/scripts/sign.xml"
     RESULT_VAR "aicpu_hccl_sign_file"
+    VERSION "${CANN_VERSION_hccl_VERSION}"
     DEPENDS generate_device_aicpu_package
 )
 
