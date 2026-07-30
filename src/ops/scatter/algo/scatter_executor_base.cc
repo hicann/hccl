@@ -23,7 +23,7 @@ HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx
     algResource_ = resCtx;
     tag_ = std::string(param.tag);
     algType_ = resCtx->algType;
-    unitSize_ = SIZE_TABLE[param.DataDes.dataType];
+    unitSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     // 参数校验
     if (topoInfo_->userRank == param.root) {
@@ -207,7 +207,7 @@ HcclResult ScatterExecutorBase::KernelRunLevel1(HcclMem &inputMem, u64 count, Hc
         HCCL_CONFIG_INFO(HCCL_ALG, "[%s] Run TEMPLATE_SCATTER_NB in COMM_LEVEL1", __func__);
     } else if (algType_.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NHR) {
         level1TempAlg = AlgTemplateRegistry::Instance().GetAlgTemplate(TemplateType::TEMPLATE_SCATTER_NHR);
-        if (topoInfo_->deviceType != DevType::DEV_TYPE_910_93) {
+        if (topoInfo_->deviceType != HcclDevType::DEV_TYPE_910_93) {
             level1TempAlg->CloseBarrier();
         }
         HCCL_CONFIG_INFO(HCCL_ALG, "[%s] Run TEMPLATE_SCATTER_NHR in COMM_LEVEL1", __func__);

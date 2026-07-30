@@ -63,7 +63,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<AlgTopoMatch, CcuRsAlgTemplateX, Ccu
     reduceOp_ = param.reduceType;
     devType_ = topoInfo->deviceType;
     dataType_ = param.DataDes.dataType;
-    dataTypeSize_ =  SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ =  HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
 

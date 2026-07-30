@@ -14,7 +14,6 @@
 #include <vector>
 #include <memory>
 #include <list>
-#include "hccl/base.h"
 #include "alg_param.h"
 #include "utils.h"
 #include "alg_template_base.h"

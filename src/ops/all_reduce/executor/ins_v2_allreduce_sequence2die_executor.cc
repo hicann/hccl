@@ -95,7 +95,7 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     rankSize_ = resCtx.topoInfo.userRankSize;
  
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ =  SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ =  HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     dataSize_ = dataCount_ * dataTypeSize_;

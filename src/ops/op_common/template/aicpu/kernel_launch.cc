@@ -216,7 +216,7 @@ namespace {
 namespace ops_hccl {
 // 选择走新（CollAlgExecRegistryV2）/老（CollAlgExecRegistry）算子流程
 // A5芯片或者template名称前缀为"opv2_"（当前A2的HostNic Send/Recv使用）走新流程，其他芯片走老流程
-bool IsOpsV2(const char* algName, DevType deviceType)
+bool IsOpsV2(const char* algName, HcclDevType deviceType)
 {
     // 检查algName前缀是否为"opv2_"
     if (algName != nullptr) {
@@ -694,8 +694,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void *args)
             HCCL_ERROR("failed set eager mode, tag is %s.", param->algTag);
             return 1;
         }
-    }
-    else {
+    } else {
         HCCL_ERROR("%s P2P only support OpsV2, algName[%s], deviceType[%d]", 
                 __func__, param->algName, static_cast<int>(param->deviceType));
         HcommReleaseComm(param->commName);

@@ -49,9 +49,9 @@ bool IsStreamCapture(aclrtStream stream)
     return isCapture;
 }
 
-bool IsAiCpuMode(DevType deviceType, u32 rankSize)
+bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize)
 {
-    if (GetExternalInputHcclAicpuUnfold() == true && deviceType == DevType::DEV_TYPE_910_93 && (rankSize != 1)) {
+    if (GetExternalInputHcclAicpuUnfold() == true && deviceType == HcclDevType::DEV_TYPE_910_93 && (rankSize != 1)) {
         return true;
     }
     return false;
@@ -127,7 +127,7 @@ HcclResult SelectAlgReduceScatter(HcclComm comm, OpParam &param, TopoInfo* topoI
 
     if (topoInfo->userRankSize == 1) {
         return HCCL_E_INTERNAL;
-    } else if (topoInfo->deviceType == DevType::DEV_TYPE_910_93 && (topoInfo->userRankSize % 2 == 0)) {
+    } else if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93 && (topoInfo->userRankSize % 2 == 0)) {
         algName = "ReduceScatterBIRSExecutor";
     }
 

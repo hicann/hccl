@@ -67,7 +67,7 @@ HcclResult SetAlgoLevel2(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
 
 bool IsStreamCapture(aclrtStream stream);
 
-bool IsAiCpuMode(DevType deviceType, u32 rankSize);
+bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize);
 
 HcclResult CheckScatterInputPara(const HcclComm comm, const void *recvBuf);
 

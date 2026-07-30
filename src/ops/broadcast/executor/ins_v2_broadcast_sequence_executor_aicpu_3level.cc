@@ -32,7 +32,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO("[BroadcastSequenceMesh1dNHRNHRExecutor][InitCommInfo] myRank [%u], rankSize [%u], dataTypeSize [%u]",
@@ -222,7 +222,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
     rankIdxLevel2_ = myRank_ / (rankSizeLevel0_ * rankSizeLevel1_);
         
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 
     HCCL_INFO("[BroadcastSequenceMesh1dNHRNHRExecutor][InitExecutorInfo] myRank [%u], rankSize [%u], dataTypeSize [%u]",
@@ -508,7 +508,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
     CHK_RET(GenTempResource(resCtx, 0, algTemplateAllGatherL0, templateAllgatherResourceL0));
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
-    u64 dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    u64 dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     u64 dataCount_ = param.DataDes.count;
     u64 maxCountPerLoop = tempAlgParamsScatterL0.buffInfo.hcclBuff.size / AICPU_ALIGN_SIZE *
                           AICPU_ALIGN_SIZE / dataTypeSize_;

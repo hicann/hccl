@@ -51,7 +51,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ =  SIZE_TABLE[dataType_];
+    dataTypeSize_ =  HCCL_SIZE_TABLE[dataType_];
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
 
@@ -434,7 +434,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     rankSize_ = param.varMemSize / (ALL_TO_ALL_V_VECTOR_NUM * sizeof(u64));
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ = SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
     CHK_RET(SetAlltoAllLocalSendRecvInfo(param));
     A2ASendRecvInfo sendRecvInfoTemp0;
     A2ASendRecvInfo sendRecvInfoTemp1;

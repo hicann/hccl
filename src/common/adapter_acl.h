@@ -12,11 +12,10 @@
 #define ADAPTER_ACL_H
 
 #include "log.h"
-#include "dtype_common.h"
+#include "dev_type.h"
 #include "hccl_common.h"
 #include "acl_base.h"
 #include "acl_rt.h"
-#include "workflow.h"
 
 namespace ops_hccl {
 

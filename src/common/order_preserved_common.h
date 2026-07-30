@@ -35,7 +35,7 @@ inline u32 CalcEffectiveThreadNum(u32 rankSize)
 struct OrderPreservedBaseParams {
     u32 myRank;
     u32 rankSize;
-    DevType devType;
+    HcclDevType devType;
     u64 dataCount;
     u32 dataTypeSize;
     u64 dataSize;
@@ -52,7 +52,7 @@ inline OrderPreservedBaseParams InitOrderPreservedBaseParams(
     params.rankSize = resCtx.topoInfo.userRankSize;
     params.devType = resCtx.topoInfo.deviceType;
     params.dataCount = param.DataDes.count;
-    params.dataTypeSize = SIZE_TABLE[param.DataDes.dataType];
+    params.dataTypeSize = HCCL_SIZE_TABLE[param.DataDes.dataType];
     params.dataSize = params.dataCount * params.dataTypeSize;
     params.dataType = param.DataDes.dataType;
     params.reduceOp = param.reduceType;

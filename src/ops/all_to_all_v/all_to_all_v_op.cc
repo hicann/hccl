@@ -565,8 +565,8 @@ HcclResult AlltoAllVConstructOpParam(const void *sendBuf, const void *sendCounts
     CHK_RET(HcclGetCommName(comm, param.commName));
     param.stream = stream;
     param.opMode = opMode;
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     param.deviceType = deviceType;
 
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
@@ -606,7 +606,7 @@ HcclResult AlltoAllVConstructOpParam(const void *sendBuf, const void *sendCounts
     for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize; i++) {
         HCCL_INFO("[AlltoAllVConstructOpParam] varData[%u] is [%u]", i, data[i]);
     }
-    HCCL_INFO("[AlltoAllVConstructOpParam] SIZE_TABLE[dataType] is [%u]", SIZE_TABLE[dataType]);
+    HCCL_INFO("[AlltoAllVConstructOpParam] HCCL_SIZE_TABLE[dataType] is [%u]", HCCL_SIZE_TABLE[dataType]);
     return HCCL_SUCCESS;
 }
 

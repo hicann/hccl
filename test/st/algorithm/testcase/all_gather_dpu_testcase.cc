@@ -47,7 +47,7 @@ protected:
 void RunAllGatherDPUA5(const TopoMeta &topoMeta, u64 sendCount, HcclDataType dataType)
 {
     // 仿真模型初始化
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);

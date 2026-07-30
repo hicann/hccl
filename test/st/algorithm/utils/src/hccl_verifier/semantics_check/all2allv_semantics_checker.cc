@@ -65,7 +65,7 @@ HcclResult TaskCheckAll2AllVSemantics(std::map<RankId, RankMemorySemantics> &all
                 return HcclResult::HCCL_E_PARA;
             }
 
-            u64 sendOffset = *(static_cast<const u64 *>(sdispls) + rankId) * SIZE_TABLE[sendType];;
+            u64 sendOffset = *(static_cast<const u64 *>(sdispls) + rankId) * HCCL_SIZE_TABLE[sendType];;
             if (ele.srcBufs.begin()->srcAddr != sendOffset + curDataSize) {
                 HCCL_ERROR("[rankId:%u]Cur buffer semantic srcBufs srcAddr should be %llu, while it is %llu, cur buffer semantic is %s",
                     rankId, sendOffset + curDataSize, ele.srcBufs.begin()->srcAddr, ele.Describe().c_str());
@@ -74,7 +74,7 @@ HcclResult TaskCheckAll2AllVSemantics(std::map<RankId, RankMemorySemantics> &all
 
             curDataSize += ele.size;
             u64 recvCountFromCurRank = *(static_cast<const u64 *>(recvCounts) + rankId);
-            u64 recvDataSizeFromCurRank = recvCountFromCurRank * SIZE_TABLE[recvType];
+            u64 recvDataSizeFromCurRank = recvCountFromCurRank * HCCL_SIZE_TABLE[recvType];
             if (curDataSize == recvDataSizeFromCurRank) {
                 curDataSize = 0;
                 curRankId++;

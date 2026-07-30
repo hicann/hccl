@@ -70,7 +70,7 @@ HcclResult InsTempAllGatherNHRDPUInter::KernelRun(const OpParam& param, const Te
         return HCCL_E_INTERNAL;
     }
     
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     DPURunInfo dpuRunInfo;
     dpuRunInfo.templateName = "InsTempAllGatherNHRDPUInter";

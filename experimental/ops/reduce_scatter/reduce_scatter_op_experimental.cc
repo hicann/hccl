@@ -94,8 +94,8 @@ static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void 
     if (param.commName[0] == '\0') {
         CHK_RET(HcclGetCommName(comm, param.commName));
     }
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
 
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;

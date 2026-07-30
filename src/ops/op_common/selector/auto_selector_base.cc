@@ -246,9 +246,9 @@ bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *top
 
 bool AutoSelectorBase::IsDevType960() const
 {
-    DevType deviceType;
-    hrtGetDeviceType(deviceType);
-    return deviceType == DevType::DEV_TYPE_960;
+    HcclDevType deviceType;
+    HcclGetDeviceType(deviceType);
+    return deviceType == HcclDevType::DEV_TYPE_960;
 }
 
 bool AutoSelectorBase::IsInputOutputOverlap(const OpParam &opParam) const

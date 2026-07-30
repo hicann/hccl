@@ -46,7 +46,7 @@ protected:
 void RunReduce3LevelA5(const TopoMeta &topoMeta, const u64 &recvCount, const HcclDataType &dataType,
     const HcclReduceOp &reduceOp, const uint32_t root)
 {
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);

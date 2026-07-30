@@ -154,7 +154,7 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::KernelRun(const OpParam& param, cons
     sdispls_ = templateDataParams.sdispls;
     rdispls_ = templateDataParams.rdispls;
     dataType_ = param.all2AllVDataDes.sendType;
-    uint32_t dataTypeSize = SIZE_TABLE[dataType_];
+    uint32_t dataTypeSize = HCCL_SIZE_TABLE[dataType_];
 
     uint64_t inputAddr  = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;

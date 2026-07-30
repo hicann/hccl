@@ -36,7 +36,7 @@ namespace ops_hccl
         recvRank_ = param.sendRecvRemoteRank;
         dataType_ = param.DataDes.dataType;
         dataCount_ = param.DataDes.count;
-        dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+        dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
         HCCL_INFO("[InsV2SendSoleExecutor][CalcRes] myRank [%u], receiveRank [%u], devType [%u],dataType[%u] "
                   "dataTypeSize[%u] ",
                   myRank_,
@@ -91,7 +91,7 @@ namespace ops_hccl
         myRank_ = resCtx.topoInfo.userRank;
         recvRank_ = param.sendRecvRemoteRank;
         dataCount_ = param.DataDes.count;
-        dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+        dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
         dataSize_ = dataCount_ * dataTypeSize_;
         dataType_ = param.DataDes.dataType;
         if (resCtx.threads.empty())

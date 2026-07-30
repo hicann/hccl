@@ -149,8 +149,8 @@ HcclResult BroadcastOutPlaceCommon(void *buf, uint64_t count, HcclDataType dataT
     param.opMode = opMode;
     param.stream = stream;
 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
 
     // topoInfo的tag，所有相同的算子可以共享
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
@@ -200,7 +200,7 @@ HcclResult BroadcastOutPlaceGraphMode(void *buf, uint64_t count, HcclDataType da
 
 
 HcclResult BroadcastOutPlace(OpParam &param, void *buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm,
-                                      aclrtStream stream)
+                             aclrtStream stream)
 {
     HCCL_INFO("Start to execute BroadcastOutPlace");
     u32 userRankSize;
@@ -213,8 +213,8 @@ HcclResult BroadcastOutPlace(OpParam &param, void *buf, uint64_t count, HcclData
     param.stream = stream;
     param.opMode = OpMode::OPBASE;
 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
 
     // 参数准备
     param.inputPtr = buf;

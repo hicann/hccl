@@ -42,7 +42,7 @@ protected:
 
     void RunAlltoAllMeshTest(TopoMeta &topoMeta, uint32_t rankSize, HcclDataType dataType, uint64_t dataCount)
     {
-        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+        SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
         // 设置展开模式为HOST_TS
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_BUFFSIZE", "200", 1);
@@ -70,9 +70,9 @@ protected:
                 void *sendBuf = nullptr;
                 void *recvBuf = nullptr;
                 // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
-                aclrtMalloc(&sendBuf, sendDataCount * SIZE_TABLE[dataType] * rankSize,
+                aclrtMalloc(&sendBuf, sendDataCount * HCCL_SIZE_TABLE[dataType] * rankSize,
                             static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
-                aclrtMalloc(&recvBuf, recvDataCount * SIZE_TABLE[dataType] * rankSize,
+                aclrtMalloc(&recvBuf, recvDataCount * HCCL_SIZE_TABLE[dataType] * rankSize,
                             static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
 
                 // 4.算子下发
@@ -102,7 +102,7 @@ protected:
 
     void RunHostDpuAlltoAllMeshTest(TopoMeta &topoMeta, HcclDataType dataType, uint64_t dataCount)
     {
-        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+        SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
         // 设置环境变量
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
@@ -137,9 +137,9 @@ protected:
                 void *sendBuf = nullptr;
                 void *recvBuf = nullptr;
                 // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
-                aclrtMalloc(&sendBuf, sendDataCount * SIZE_TABLE[dataType] * rankSize,
+                aclrtMalloc(&sendBuf, sendDataCount * HCCL_SIZE_TABLE[dataType] * rankSize,
                             static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
-                aclrtMalloc(&recvBuf, recvDataCount * SIZE_TABLE[dataType] * rankSize,
+                aclrtMalloc(&recvBuf, recvDataCount * HCCL_SIZE_TABLE[dataType] * rankSize,
                             static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
 
                 // 4.算子下发

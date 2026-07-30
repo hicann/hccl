@@ -39,8 +39,8 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
         return HCCL_E_NOT_SUPPORT;
     }
 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
 
     if (!RunIndependentOpExpansion(deviceType)) {
        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
@@ -54,13 +54,8 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount,
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
     // 重执行引导到老的流程上面
-    if (deviceType == DevType::DEV_TYPE_910_93 && (GetExternalInputIntraServerRetryEnable()
+    if (deviceType == HcclDevType::DEV_TYPE_910_93 && (GetExternalInputIntraServerRetryEnable()
         || GetExternalInputInterServerRetryEnable() || GetExternalInputInterSuperPodRetryEnable())) {
-        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
-    }
-
-    // 图模式引导到老的流程上面
-    if (GetWorkflowMode() != HcclWorkflowMode::HCCL_WORKFLOW_MODE_OP_BASE) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
 
@@ -136,6 +131,14 @@ HcclResult CheckScatterInputPara(const HcclComm comm, const void *recvBuf)
     return HCCL_SUCCESS;
 }
 
+bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize)
+{
+    if (GetExternalInputHcclAicpuUnfold() == true && deviceType == HcclDevType::DEV_TYPE_910_93 && (rankSize != 1)) {
+        return true;
+    }
+    return false;
+}
+
 bool IsStreamCapture(aclrtStream stream)
 {
     bool isCapture;
@@ -145,22 +148,10 @@ bool IsStreamCapture(aclrtStream stream)
     return isCapture;
 }
 
-bool IsAiCpuMode(DevType deviceType, u32 rankSize)
-{
-    if (GetExternalInputHcclAicpuUnfold() == true && deviceType == DevType::DEV_TYPE_910_93 && (rankSize != 1)) {
-        return true;
-    }
-    return false;
-}
-
 HcclResult ScatterExecOp(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
     HcclComm comm, aclrtStream stream, u32 userRankSize, uint64_t beginTime)
 {
-    if (shouldGoOutPlace(param.deviceType)
-#ifdef MACRO_DEV_TYPE_NEW
-        && (GetHcommVersion() >= CANN_VERSION(9, 0, 0))
-#endif
-    ) {
+    if (shouldGoOutPlace(param.deviceType) && (GetHcommVersion() >= CANN_VERSION(9, 0, 0))) {
         CHK_RET(HcclGetOpExpansionMode(comm, param));
 
         // 9.0.0 ccu模式走老流程
@@ -229,15 +220,15 @@ HcclResult ScatterOutPlace(OpParam &param, void *sendBuf, void *recvBuf, uint64_
         beginTime = HcommGetProfilingSysCycleTime();
     }
 
-    u32 perDataSize = SIZE_TABLE[dataType];
+    u32 perDataSize = HCCL_SIZE_TABLE[dataType];
     u64 outputSize = recvCount * perDataSize;
     u64 inputSize = outputSize * userRankSize;
 
     param.stream = stream;
     param.opMode = OpMode::OPBASE;
 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     if (IsAiCpuMode(deviceType, userRankSize)) {
         HCCL_DEBUG("is aicpu mode");
         CHK_RET(LoadAICPUKernel());
@@ -356,7 +347,7 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         aclError ret = aclrtBinaryGetFunction(g_binKernelHandle, kernelName.c_str(), &funcHandle);
         CHK_PRT_RET(ret != ACL_SUCCESS,
                     HCCL_ERROR("[aclrtBinaryGetFunction]errNo[0x%016llx] get func handle failed, kernelName:%s",
-                                ret, kernelName.c_str()),
+                               ret, kernelName.c_str()),
                     HCCL_E_RUNTIME);
 
         ret = aclrtKernelArgsInit(funcHandle, &argsHandle);
@@ -368,13 +359,13 @@ HcclResult ExecOp(HcclComm comm, OpParam &param)
         ret = aclrtKernelArgsAppend(argsHandle, &param, sizeof(OpParam), &paraHandle);
         CHK_PRT_RET(ret != ACL_SUCCESS,
                     HCCL_ERROR("[aclrtKernelArgsAppend]errNo[0x%016llx] args append failed, append size %u, kernelName:%s", ret,
-                                sizeof(OpParam), kernelName.c_str()),
+                               sizeof(OpParam), kernelName.c_str()),
                     HCCL_E_RUNTIME);
 
         ret = aclrtKernelArgsFinalize(argsHandle);
         CHK_PRT_RET(ret != ACL_SUCCESS,
                     HCCL_ERROR("[aclrtKernelArgsFinalize]errNo[0x%016llx] args finalize failed, kernelName:%s", ret,
-                                kernelName.c_str()),
+                               kernelName.c_str()),
                     HCCL_E_RUNTIME);
 
         u16 NOTIFY_DEFAULT_WAIT_TIME = 27 * 68;   // notifywait默认1836等待时长
@@ -466,12 +457,12 @@ HcclResult GetDefaultAlgoLevel0Module(TopoInfo* topoInfo, AlgTypeLevel0 &algType
         algType = AlgTypeLevel0::ALG_LEVEL0_WHOLE_RING;
     }
 
-    if (!topoInfo->multiModuleDiffDeviceNumMode && topoInfo->deviceType == DevType::DEV_TYPE_910B) {
+    if (!topoInfo->multiModuleDiffDeviceNumMode && topoInfo->deviceType == HcclDevType::DEV_TYPE_910B) {
         algType = AlgTypeLevel0::ALG_LEVEL0_NP_MESH;
         HCCL_DEBUG("[GetDefaultAlgoLevel0Module] AlgTypeLevel0 is set to ALG_LEVEL0_NP_MESH (HCCS links is enabled).");
     }
 
-    if (topoInfo->deviceType == DevType::DEV_TYPE_910_93) {
+    if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93) {
         algType = topoInfo->isHCCSSWNumEqualToTwiceSIONum ? AlgTypeLevel0::ALG_LEVEL0_NP_DOUBLE_RING :
                                                             AlgTypeLevel0::ALG_LEVEL0_NP_SINGLE_RING;
         HCCL_DEBUG("[GetDefaultAlgoLevel0Module] AlgTypeLevel0 is set to [%u].", algType);
@@ -556,7 +547,7 @@ HcclResult GetDefaultAlgoLevel1V1(TopoInfo* topoInfo, AlgTypeLevel1 &algType)
             AlgTypeLevel1::ALG_LEVEL1_RING :
             AlgTypeLevel1::ALG_LEVEL1_HD;
     }
-    if (algType == AlgTypeLevel1::ALG_LEVEL1_HD && topoInfo->deviceType == DevType::DEV_TYPE_910_93) {
+    if (algType == AlgTypeLevel1::ALG_LEVEL1_HD && topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93) {
         algType = AlgTypeLevel1::ALG_LEVEL1_NHR;
     }
     HCCL_INFO("[AlgConfigurator][GetDefaultAlgoLevel1V1] algType[%u], moduleNum[%u]", algType, moduleNum);
@@ -646,9 +637,9 @@ HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType&
         algName = "ScatterSingleExecutor";
     } else if (topoInfo->multiModuleDiffDeviceNumMode || topoInfo->multiSuperPodDiffServerNumMode) {
         algName = "ScatterCommExecutor";
-    } else if (topoInfo->deviceType == DevType::DEV_TYPE_910B) {
+    } else if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910B) {
         algName = "ScatterMeshExecutor";
-    } else if (topoInfo->deviceType == DevType::DEV_TYPE_910_93) {
+    } else if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93) {
         algName = "ScatterRingFor91093Executor";
     }
 

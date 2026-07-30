@@ -108,9 +108,9 @@ aclError aclrtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count)
     return ACL_SUCCESS;
 }
 
-const std::map<DevType, std::string> DEV_VERSION_MAP = {
-    {DevType::DEV_TYPE_910B, "Ascend910B1"},
-    {DevType::DEV_TYPE_910_93, "Ascend910_9391"}
+const std::map<HcclDevType, std::string> DEV_VERSION_MAP = {
+    {HcclDevType::DEV_TYPE_910B, "Ascend910B1"},
+    {HcclDevType::DEV_TYPE_910_93, "Ascend910_9391"}
 };
 
 const char *aclrtGetSocName()
@@ -127,7 +127,7 @@ const char *aclrtGetSocName()
     return "";
 }
 
-HcclResult hrtGetDeviceType(DevType &devType)
+HcclResult HcclGetDeviceType(HcclDevType &devType)
 {
     auto npu = HcclSim::SimWorld::Global()->GetSimNpuByRankId(curr_dev_id);
     devType = npu.GetDevType();

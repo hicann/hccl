@@ -22,7 +22,7 @@ HcclResult TaskCheckAllGatherVSemantics(std::map<RankId, RankMemorySemantics> &a
     // AllGatherV 输入不等长
     for (u32 i = 0; i < rankSize; i++) {
         u64 curCounts = vDataDes.counts[i];
-        u64 curLength = curCounts * SIZE_TABLE[vDataDes.dataType];
+        u64 curLength = curCounts * HCCL_SIZE_TABLE[vDataDes.dataType];
         outputSize += curLength;
     }
 
@@ -37,10 +37,10 @@ HcclResult TaskCheckAllGatherVSemantics(std::map<RankId, RankMemorySemantics> &a
         RankId curRankId   = 0;
         u64    curDataSize = 0;
         for (auto &ele : allRankMemSemantics[rankId][BufferType::OUTPUT]) {
-            u64 inputSize = vDataDes.counts[curRankId] * SIZE_TABLE[vDataDes.dataType];
+            u64 inputSize = vDataDes.counts[curRankId] * HCCL_SIZE_TABLE[vDataDes.dataType];
             while (!inputSize) {
                 curRankId++;
-                inputSize = vDataDes.counts[curRankId] * SIZE_TABLE[vDataDes.dataType];
+                inputSize = vDataDes.counts[curRankId] * HCCL_SIZE_TABLE[vDataDes.dataType];
             }
 
             if (ele.startAddr != totalSize) {

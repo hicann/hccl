@@ -38,7 +38,7 @@ template<typename DispatchFn, typename VerifyFn>
 void RunVMultilevelTest(const TopoMeta &topoInfo, VDataDesTag vDataDes,
     std::function<void()> extraEnvSetup, DispatchFn dispatchFn, VerifyFn verifyFn)
 {
-    SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     if (extraEnvSetup) { extraEnvSetup(); }
 

@@ -93,8 +93,8 @@ HcclResult ReduceMesh1DTwoShot::KernelRun(
     GetNotifyIdxMainToSub(notifyIdxMainToSub_);
     GetNotifyIdxSubToMain(notifyIdxSubToMain_);
 
-    HCCL_INFO(
-        "[KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize, count_, SIZE_TABLE[dataType_]);
+    HCCL_INFO("[KernelRun] sliceSize: %u, count_: %u, typeSize: %u",
+              tempAlgParams.sliceSize, count_, HCCL_SIZE_TABLE[dataType_]);
     const std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
     CHK_RET(CalcSlice());
     CHK_RET(RunReduceScatter(tempAlgParams, param, channels, threads));
@@ -107,7 +107,7 @@ HcclResult ReduceMesh1DTwoShot::CalcSlice()
 {
     sliceInfoList_.clear();
     sliceInfoList_.reserve(templateRankSize_);
-    u32 dataTypeSize = SIZE_TABLE[dataType_];
+    u32 dataTypeSize = HCCL_SIZE_TABLE[dataType_];
     u64 totalElements = processSize_ / dataTypeSize;
     u64 baseElements = totalElements / templateRankSize_;
     u64 remainderElements = totalElements % templateRankSize_;

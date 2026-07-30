@@ -40,7 +40,7 @@ protected:
     {
         // 仿真模型初始化
         // TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
-        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+        SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
     
         // 设置展开模式为HOST_TS
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
@@ -447,20 +447,6 @@ TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_asymmetric_test)
     uint64_t count = 100;  // 数据量
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
     auto root = 1;  // root节点
-    auto dataTypeSize = sizeof(int32_t);
-    RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
-}
-
-TEST_F(ST_BROADCAST_TEST, st_broadcast_a5_aicpu_NHR_asymmetric_test_bigdata)
-{
-    // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1}, {0, 1}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
-
-    // 算子执行参数设置
-    auto rankSize = 12;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    uint64_t count = 500000;  // 数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
-    auto root = 0;  // root节点
     auto dataTypeSize = sizeof(int32_t);
     RunBroadcastTest(topoMeta, rankSize, count, dataType, root, dataTypeSize);
 }

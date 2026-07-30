@@ -41,7 +41,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO("[ReduceSequenceExecutorAicpu3Level][InitCommInfo] myRank [%u], rankSize [%u], redOp [%u], "
@@ -186,7 +186,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
 
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;

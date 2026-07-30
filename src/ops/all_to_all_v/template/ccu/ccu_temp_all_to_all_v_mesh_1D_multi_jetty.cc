@@ -202,7 +202,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
               "srcOffset[%llu], dstOffset[%llu]", args[0], args[1], args[3], args[4]);
     A2ASendRecvInfo localSendRecvInfo;
     HcclDataType dataType = param.all2AllVDataDes.sendType;
-    uint64_t dataTypeSize = SIZE_TABLE[dataType];
+    uint64_t dataTypeSize = HCCL_SIZE_TABLE[dataType];
     templateRankSize_ = static_cast<uint32_t>(args[9]);
     std::vector<uint64_t> taskArgsVec(args, args + argSize);
     CHK_RET(AddTaskArgA2AInfo(localSendRecvInfo_, taskArgsVec));

@@ -11,18 +11,17 @@
 #ifndef HCCL_REDUCE_SEQUENCE_EXECUTOR_AICPU_3LEVEL_H
 #define HCCL_REDUCE_SEQUENCE_EXECUTOR_AICPU_3LEVEL_H
 
+#include "config_log.h"
+#include "executor_v2_base.h"
+#include "coll_alg_v2_exec_registry.h"
+#include "topo_match_multilevel.h"
 #include "alg_param.h"
 #include "topo_host.h"
 #include "channel.h"
 #include "alg_v2_template_base.h"
 #include "utils.h"
 #include "log.h"
-#include "workflow.h"
 #include "sal.h"
-#include "config_log.h"
-#include "executor_v2_base.h"
-#include "coll_alg_v2_exec_registry.h"
-#include "topo_match_multilevel.h"
 
 namespace ops_hccl {
 

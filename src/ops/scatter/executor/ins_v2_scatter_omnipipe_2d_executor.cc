@@ -49,13 +49,14 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
     const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
 {
+    dataType_ = param.DataDes.dataType;
+    dataCount_ = param.DataDes.count;
+    rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataSize_ = dataCount_ * dataTypeSize_;
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
-    dataSize_ = dataCount_ * dataTypeSize_;
 
     if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
@@ -72,11 +73,12 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
-    rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
-    rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
 
     u64 rootx = param.root % rankSizeLevel0_;
     u64 rooty = param.root / rankSizeLevel0_;
+
+    rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
+    rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
 
     bool isRoot = (myRank_ == param.root);
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
@@ -160,7 +162,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     dataType_ = param.DataDes.dataType;
     maxTmpMemSize_ = resCtx.cclMem.size;

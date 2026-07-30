@@ -20,7 +20,7 @@
 
 #include <hccl/hccl_types.h>
 #include <hccl/hccl_comm.h>
-#include "hccl/base.h"
+#include "dev_type.h"
 #include "sal.h"
 #include "error_codes/rt_error_codes.h"
 #include "param_check.h"
@@ -34,7 +34,6 @@
 #include "hccl_inner.h"
 #include "hccl.h"
 #include "config_log.h"
-#include "workflow.h"
 #include "load_kernel.h"
 #include "alg_param.h"
 #include "alg_type.h"
@@ -126,7 +125,8 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     return HCCL_SUCCESS;
 }
 
-HcclResult GetHcclDfxOpInfoDataCount(const OpParam &param, const u32 &rankSize, uint64_t &sendCount) {
+HcclResult GetHcclDfxOpInfoDataCount(const OpParam &param, const u32 &rankSize, uint64_t &sendCount)
+{
     sendCount = 0;
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
         CHK_PTR_NULL(param.all2AllVDataDes.sendCounts);
@@ -161,7 +161,8 @@ HcclResult GetHcclDfxOpInfoDataCount(const OpParam &param, const u32 &rankSize, 
     return HCCL_SUCCESS;
 }
 
-HcclResult GetHcclDfxOpInfoDataType(const OpParam &param, uint32_t &dataType) {
+HcclResult GetHcclDfxOpInfoDataType(const OpParam &param, uint32_t &dataType)
+{
     dataType = 0;
     if (param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V
         || param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
@@ -1617,13 +1618,62 @@ HcclResult HcclGetChannel(HcclComm comm, const OpParam &param, AlgResourceReques
         CHK_RET(HcclGetChannelImpl(level, comm, param, deviceChannelRequest, COMM_ENGINE_AICPU_TS, resCtxHost, memRegInfo));
         // host建链
         CHK_RET(HcclGetChannelImpl(level, comm, param, hostChannelRequest, COMM_ENGINE_CPU, resCtxHost, memRegInfo));
-
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclGetChannelImpl(const u32 level, HcclComm comm, const OpParam &param, std::vector<HcclChannelDesc>& channelRequest,
-                              const CommEngine commEngine, AlgResourceCtxSerializable* resCtxHost, MemRegInfo &memRegInfo) {
+static HcclResult BuildChannelInfo(HcclComm comm, const OpParam &param, const HcclChannelDesc &channelDesc,
+    ChannelHandle channelHandle, u32 userRank, MemRegInfo &memRegInfo, ChannelInfo &channel)
+{
+    // 对于真实建链的链路进行填充
+    channel.isValid = true;
+    channel.remoteRank = channelDesc.remoteRank;
+    channel.protocol = channelDesc.channelProtocol;
+    channel.locationType = channelDesc.remoteEndpoint.loc.locType;
+    channel.notifyNum = channelDesc.notifyNum;
+    channel.handle = channelHandle;
+#ifndef AICPU_COMPILE
+    EndpointDesc localEndpoint = channelDesc.localEndpoint;
+    using portSizeType = uint32_t;
+    const uint32_t portSizeTypeSize = sizeof(portSizeType);
+    portSizeType portSize = 0;
+    CHK_RET(HcclRankGraphGetEndpointInfo(comm, userRank, &localEndpoint,
+        ENDPOINT_ATTR_BW_COEFF, portSizeTypeSize, static_cast<void*>(&portSize)));
+    channel.portGroupSize = portSize;
+    CHK_PRT_RET(portSize == 0,
+                HCCL_ERROR("[HcclGetChannelImpl] userRank [%d], portSize [%u] is 0.",
+                userRank, portSize), HcclResult::HCCL_E_INTERNAL);
+    EndpointAttrDieId dieId = INVALID_VALUE_RANKID;
+    const uint32_t dieIdSize = sizeof(EndpointAttrDieId);
+    HcclResult dieIdRet = HcclRankGraphGetEndpointInfo(comm, userRank, &localEndpoint,
+        ENDPOINT_ATTR_DIE_ID, dieIdSize, static_cast<void*>(&dieId));
+    if (dieIdRet == HCCL_SUCCESS) {
+        channel.dieId = dieId;
+    } else {
+        HCCL_WARNING("[HcclGetChannelImpl] failed to get dieId for userRank[%u], remoteRank[%u], "
+                     "ret[0x%016llx]. POD convergence adjustment will not be used for this channel.",
+                     userRank, channel.remoteRank, HCCL_ERROR_CODE(dieIdRet));
+    }
+#endif
+    void* remoteCclBufferAddr = nullptr;
+    uint64_t remoteCclBufferSize = 0;
+    CHK_RET(HcclChannelGetHcclBuffer(comm, channelHandle, &remoteCclBufferAddr, &remoteCclBufferSize));
+    channel.remoteCclMem = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteCclBufferAddr, remoteCclBufferSize};
+    HCCL_INFO("[%s]remoteRank[%u] protocol[%u] portGroupSize[%u] dieId[%u] "
+              "remoteCclBufferAddr[0x%llx] remoteCclBufferSize[%u]",
+        __func__, channelDesc.remoteRank, channelDesc.channelProtocol, channel.portGroupSize, channel.dieId,
+        remoteCclBufferAddr, remoteCclBufferSize);
+
+    if (param.opMode == OpMode::OFFLOAD) {
+        CHK_RET(GetGraphModeBuffers(comm, channelHandle, memRegInfo.inputBuffTag, memRegInfo.outputBuffTag, channel));
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclGetChannelImpl(const u32 level, HcclComm comm, const OpParam &param,
+    std::vector<HcclChannelDesc>& channelRequest, const CommEngine commEngine,
+    AlgResourceCtxSerializable* resCtxHost, MemRegInfo &memRegInfo)
+{
     // 获取子通信域的建链数量
     if (channelRequest.empty()) {
         HCCL_INFO("[HcclGetChannelImpl] channelRequest is empty");
@@ -1641,65 +1691,25 @@ HcclResult HcclGetChannelImpl(const u32 level, HcclComm comm, const OpParam &par
     if (channelNum > 0) {
         // 参数一致性校验信息注册到通信域，HcclChannelAcquire内部存在读清动作，每次调用前均需注册
         CHK_RET(AddExchangeInfo(comm, param));
-        CHK_RET(HcclChannelAcquire(comm, commEngine, channelRequest.data(),
-            channelNum, levelNChannels.data()));
+        CHK_RET(HcclChannelAcquire(comm, commEngine, channelRequest.data(), channelNum, levelNChannels.data()));
     }
 
     for (u32 idx = 0; idx < channelNum; idx++) {
         ChannelInfo channel;
-        // 对于真实建链的链路进行填充
-        const HcclChannelDesc &channelDescNew = channelRequest[idx];
-        channel.isValid = true;
-        channel.remoteRank = channelDescNew.remoteRank;
-        channel.protocol = channelDescNew.channelProtocol;
-        channel.locationType = channelDescNew.remoteEndpoint.loc.locType;
-        channel.notifyNum = channelDescNew.notifyNum;
-        channel.handle = levelNChannels[idx];
-#ifndef AICPU_COMPILE
-        EndpointDesc localEndpoint = channelDescNew.localEndpoint;
-        using portSizeType = uint32_t;
-        const uint32_t portSizeTypeSize = sizeof(portSizeType);
-        portSizeType portSize = 0;
-        CHK_RET(HcclRankGraphGetEndpointInfo(comm, resCtxHost->topoInfo.userRank, &localEndpoint,
-                ENDPOINT_ATTR_BW_COEFF, portSizeTypeSize, static_cast<void*>(&portSize)));
-        channel.portGroupSize = portSize;
-        CHK_PRT_RET(portSize == 0,
-                    HCCL_ERROR("[HcclGetChannelImpl] userRank [%d], portSize [%u] is 0.",
-                    resCtxHost->topoInfo.userRank, portSize), HcclResult::HCCL_E_INTERNAL);
-        EndpointAttrDieId dieId = INVALID_VALUE_RANKID;
-        const uint32_t dieIdSize = sizeof(EndpointAttrDieId);
-        HcclResult dieIdRet = HcclRankGraphGetEndpointInfo(comm, resCtxHost->topoInfo.userRank, &localEndpoint,
-                ENDPOINT_ATTR_DIE_ID, dieIdSize, static_cast<void*>(&dieId));
-        if (dieIdRet == HCCL_SUCCESS) {
-            channel.dieId = dieId;
-        } else {
-            HCCL_WARNING("[HcclGetChannelImpl] failed to get dieId for userRank[%u], remoteRank[%u], "
-                         "ret[0x%016llx]. POD convergence adjustment will not be used for this channel.",
-                         resCtxHost->topoInfo.userRank, channel.remoteRank, HCCL_ERROR_CODE(dieIdRet));
-        }
-#endif
-        void* remoteCclBufferAddr = nullptr;
-        uint64_t remoteCclBufferSize = 0;
-        CHK_RET(HcclChannelGetHcclBuffer(comm, levelNChannels[idx], &remoteCclBufferAddr, &remoteCclBufferSize));
-        channel.remoteCclMem = HcclMem{HCCL_MEM_TYPE_DEVICE, remoteCclBufferAddr, remoteCclBufferSize};
-        HCCL_INFO("[%s]remoteRank[%u] protocol[%u] portGroupSize[%u] dieId[%u] "
-                  "remoteCclBufferAddr[0x%llx] remoteCclBufferSize[%u]",
-            __func__, channelDescNew.remoteRank, channelDescNew.channelProtocol, channel.portGroupSize, channel.dieId,
-            remoteCclBufferAddr, remoteCclBufferSize);
-
-        if (param.opMode == OpMode::OFFLOAD) {
-            CHK_RET(GetGraphModeBuffers(comm, levelNChannels[idx], memRegInfo.inputBuffTag, memRegInfo.outputBuffTag, channel));
-        }
+        CHK_RET(BuildChannelInfo(comm, param, channelRequest[idx], levelNChannels[idx],
+                                 resCtxHost->topoInfo.userRank, memRegInfo, channel));
         resCtxHost->channels[level].push_back(channel);
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult RegGraphModeBuffers(HcclComm comm, const OpParam &param,char* inputBuffTag, char* outputBuffTag, std::vector<HcclMemHandle>& memHandles) {
+HcclResult RegGraphModeBuffers(HcclComm comm, const OpParam &param, char* inputBuffTag,
+                               char* outputBuffTag, std::vector<HcclMemHandle>& memHandles)
+{
     HCCL_INFO("[RegGraphModeBuffers] param.tag[%s]", param.tag);
     auto retIn = sprintf_s(inputBuffTag, MAX_MEM_TAG_LENGTH, "%s_%s", param.tag, "InputBuffer");
     auto retOut =  sprintf_s(outputBuffTag, MAX_MEM_TAG_LENGTH, "%s_%s", param.tag, "OutputBuffer");
-    if (retIn <= 0 || retOut <= 0){
+    if (retIn <= 0 || retOut <= 0) {
         HCCL_ERROR("[RegGraphModeBuffers]failed to fill BuffTag");
         return HcclResult::HCCL_E_INTERNAL;
     }
@@ -1721,7 +1731,9 @@ HcclResult RegGraphModeBuffers(HcclComm comm, const OpParam &param,char* inputBu
     return HCCL_SUCCESS;
 }
 
-HcclResult GetGraphModeBuffers(HcclComm comm, ChannelHandle channelHandle, const char* inputBuffTag, const char* outputBuffTag, ChannelInfo& channel) {
+HcclResult GetGraphModeBuffers(HcclComm comm, ChannelHandle channelHandle, const char* inputBuffTag,
+                               const char* outputBuffTag, ChannelInfo& channel)
+{
     void* remoteInputBufferAddr = nullptr;
     uint64_t remoteInputBufferSize = 0;
     CHK_RET(HcclGetRemoteBuff(comm, channelHandle, inputBuffTag, &remoteInputBufferAddr, &remoteInputBufferSize));
@@ -2069,8 +2081,9 @@ HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
             (dataType == HCCL_DATA_TYPE_HIF8)    || (dataType == HCCL_DATA_TYPE_FP8E4M3) ||
             (dataType == HCCL_DATA_TYPE_FP8E5M2) || (dataType == HCCL_DATA_TYPE_FP8E8M0) ||
             (dataType == HCCL_DATA_TYPE_RESERVED)) {
-            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({"CheckDataType", GetDataTypeEnumStr(dataType), "dataType",
-                GetSupportDataType(needReduce)}));
+            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({
+                "CheckDataType", GetDataTypeEnumStr(dataType), "dataType", GetSupportDataType(needReduce)
+            }));
             HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
                         HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(),
                         GetSupportDataType(needReduce).c_str());
@@ -2079,8 +2092,9 @@ HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
     } else {
         if ((dataType >= HCCL_DATA_TYPE_RESERVED) || (dataType < HCCL_DATA_TYPE_INT8) ||
             (dataType == HCCL_DATA_TYPE_INT128)) {
-            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({"CheckDataType", GetDataTypeEnumStr(dataType), "dataType",
-                GetSupportDataType(needReduce).c_str()}));
+            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({
+                "CheckDataType", GetDataTypeEnumStr(dataType), "dataType", GetSupportDataType(needReduce).c_str()
+            }));
             HCCL_ERROR("[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
                         HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(),
                         GetSupportDataType(needReduce).c_str());
@@ -2123,8 +2137,9 @@ HcclResult CheckReduceOp(const HcclDataType dataType, const HcclReduceOp op)
     const std::vector<std::string> infoTitle({"ccl_op", "value", "parameter", "expect"});
     if (op == HcclReduceOp::HCCL_REDUCE_PROD) {
         if (std::find(prodSupportList.begin(), prodSupportList.end(), dataType) == prodSupportList.end()) {
-            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({"CheckReduceDataType", GetDataTypeEnumStr(dataType), "dataType",
-                GetReduceProdSupportDataType()}));
+            RPT_INPUT_ERR(true, "EI0003", infoTitle, std::vector<std::string>({
+                "CheckReduceDataType", GetDataTypeEnumStr(dataType), "dataType", GetReduceProdSupportDataType()
+            }));
             HCCL_ERROR("[Check][ReduceOp][DataType]errNo[0x%016llx] reduceop is [%s] data type[%s] not supported, support range=[%s]",
                         HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetReduceOpEnumStr(op).c_str(), GetDataTypeEnumStr(dataType).c_str(),
                         GetReduceProdSupportDataType().c_str());
@@ -2229,8 +2244,8 @@ HcclResult HcclCheckTag(const char *tag)
 {
     CHK_PTR_NULL(tag);
 
-    u32 tagLen = strnlen(tag, TAG_MAX_LEN + 1);
-    if (UNLIKELY((tagLen == (TAG_MAX_LEN + 1) || tagLen == 0))) {
+    u32 tagLen = strnlen(tag, HCCL_TAG_MAX_LEN + 1);
+    if (UNLIKELY((tagLen == (HCCL_TAG_MAX_LEN + 1) || tagLen == 0))) {
         HCCL_ERROR("[Check][Tag]errNo[0x%016llx] tag is too long", HCOM_ERROR_CODE(HCCL_E_PARA));
         return HCCL_E_PARA;
     }
@@ -2286,7 +2301,7 @@ HcclResult SetOpParamAlgTag(OpParam &param, const std::string &algName)
 
     // ccu模式，考虑kernel是否能复用，需要添加dataType和reduceType
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
-        try{
+        try {
             std::string ccuExtraTag;
             CHK_RET(BuildCcuExtraTag(param, ccuExtraTag));
             size_t remainBytes = sizeof(param.algTag) - len;
@@ -2340,8 +2355,8 @@ HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode &finalMo
     }
 
     // A5仅通过HcclConfigGetInfo获取展开模式，其他型号保留环境变量方式
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     if (!shouldGoOutPlace(deviceType) || !useConfigOpExpansionMode) {
         if (GetExternalInputHcclAicpuUnfold() == true) {
             finalMode = HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_AI_CPU;
@@ -2437,7 +2452,7 @@ HcclResult HcclGetRemoteBuff(HcclComm comm, ChannelHandle channel, const char *m
     char **memTags;
     CHK_RET(HcclChannelGetRemoteMems(comm, channel, &memNum, &remoteMemList, &memTags));
     HCCL_INFO("[%s] HcclChannelGetRemoteMems memNum[%u]", __func__, memNum);
-    for (u32 i=0; i< memNum; i++) {
+    for (u32 i = 0; i< memNum; i++) {
         HCCL_INFO("[%s] memNum[%u/%u] memTags[%s]", __func__, i + 1, memNum, memTags[i]);
         if (strcmp(memTags[i], memTag) == 0) {
             *bufferPtr = remoteMemList[i].addr;
@@ -2614,7 +2629,8 @@ HcclResult GetCommMultipleDimensionSplitRatio(HcclComm comm, double &ratio, bool
         HasSplitRatioConfigType<HcclConfigType>{});
 }
 
-HcclResult SetMultipleDimensionSplitRatio(HcclComm comm, OpParam &param) {
+HcclResult SetMultipleDimensionSplitRatio(HcclComm comm, OpParam &param)
+{
     constexpr double defaultRatio = 0.5;
 
     double commRatio = 0.0;
@@ -2634,7 +2650,7 @@ HcclResult SetMultipleDimensionSplitRatio(HcclComm comm, OpParam &param) {
     if (GetExternalInputMultipleDimensionSplitRatio(envRatio)) {
         if (!std::isfinite(envRatio) || envRatio < 0.0 || envRatio > 1.0) {
             HCCL_WARNING("[SetMultipleDimensionSplitRatio] env ratio[%f] is out of range, use default ratio[%f]",
-                        envRatio, defaultRatio);
+                         envRatio, defaultRatio);
             envRatio = defaultRatio;
         }
         param.opConfig.multipleDimensionSplitRatio = envRatio;
@@ -2731,7 +2747,8 @@ HcclResult CheckHostDPUOnly(const HcclComm comm, const TopoInfoWithNetLayerDetai
 }
 
 // 设置执行超时时间
-HcclResult SetExecTimeout(OpParam &param) {
+HcclResult SetExecTimeout(OpParam &param)
+{
     double execTimeoutValue = 0;
     if (!GetExternalInputExecTimeout(execTimeoutValue)) {
         param.opConfig.execTimeout = CUSTOM_TIMEOUT;
@@ -2759,13 +2776,13 @@ bool IsHostDpu(HcclComm comm)
     HcclResult ret;
     bool hostDpuOnly = false;
 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    ret = hrtGetDeviceType(deviceType);
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    ret = HcclGetDeviceType(deviceType);
     if (ret != HCCL_SUCCESS) {
-        HCCL_ERROR("[IsHostDpu]hrtGetDeviceType fail, ret:%d", ret);
+        HCCL_ERROR("[IsHostDpu]HcclGetDeviceType fail, ret:%d", ret);
         return false;
     }
-    if (deviceType != DevType::DEV_TYPE_910B) {
+    if (deviceType != HcclDevType::DEV_TYPE_910B) {
         return false;
     }
 

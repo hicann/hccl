@@ -46,7 +46,7 @@ void RunAllReduceMultiLevelCase(const TopoMeta &topoInfo, const u64 dataCount,
     const HcclDataType dataType, const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
-    SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE_AR[dataType];
 
     // 设置展开模式为HOST_TS

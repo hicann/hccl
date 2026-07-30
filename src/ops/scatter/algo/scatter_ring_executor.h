@@ -31,7 +31,7 @@ private:
 
     // 多ring相关
     HcclResult MultiRingScatter(HcclMem inputMem, HcclMem outputMem, const u64 count,
-        const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcomCollOpInfo *opInfo,
+        const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcclCollOpInfo *opInfo,
         const u64 baseOffset);
     HcclResult MutliSegSlicePrepare(const std::vector<Slice> &dataSegsSlice, u32 ringNum,
         std::vector<std::vector<Slice>> &mutliSegsSlices) const;

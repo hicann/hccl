@@ -19,7 +19,6 @@
 #include "alg_template_register.h"
 #include "utils.h"
 #include "log.h"
-#include "workflow.h"
 #include "sal.h"
 
 namespace ops_hccl {

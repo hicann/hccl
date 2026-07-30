@@ -77,7 +77,7 @@ HcclResult InsTempDpuAlltoAllMesh::KernelRun(const OpParam &param, const Templat
     threads_ = templateResource.threads;
     threadNum_ = threads_.size();
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ = SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
     if (threadNum_ < 1) {
         HCCL_ERROR("[InsTempDpuAlltoAllMesh] Rank [%u], required thread error.", myRank_);
         return HCCL_E_INTERNAL;
@@ -440,8 +440,8 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(const TemplateDataParams &tempAl
         if (sendCount == 0 && recvCount == 0) {
             continue;
         }
-        u64 sendSliceSize = sendCount * SIZE_TABLE[tempAlgParams.dataType];
-        u64 recvSliceSize = recvCount * SIZE_TABLE[tempAlgParams.dataType];
+        u64 sendSliceSize = sendCount * HCCL_SIZE_TABLE[tempAlgParams.dataType];
+        u64 recvSliceSize = recvCount * HCCL_SIZE_TABLE[tempAlgParams.dataType];
 
         DpuTransferCtx ctx;
         ctx.txCh = &link;

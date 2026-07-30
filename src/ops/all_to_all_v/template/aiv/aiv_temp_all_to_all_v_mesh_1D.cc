@@ -82,7 +82,7 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
     aivAlltoAllVArgs.output = reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivAlltoAllVArgs.rank = u32(myRank_);
     aivAlltoAllVArgs.rankSize = tempRankSize_;
-    aivAlltoAllVArgs.count = tempAlgParams.sliceSize / SIZE_TABLE[dataType_];
+    aivAlltoAllVArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
     aivAlltoAllVArgs.dataType = dataType_;
     aivAlltoAllVArgs.op = param.reduceType;
     aivAlltoAllVArgs.root = root_;

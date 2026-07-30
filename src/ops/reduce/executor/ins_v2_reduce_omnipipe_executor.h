@@ -21,7 +21,6 @@
 #include "alg_data_trans_wrapper.h" // for localCopy in Executor
 #include "template_utils.h" // for stepSliceInfo
 #include "log.h"
-#include "workflow.h"
 #include "utils.h"
 
 namespace ops_hccl {

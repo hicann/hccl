@@ -30,7 +30,7 @@ constexpr uint32_t DATATYPE_SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t
 
 void RunScatterTest(int root, TopoMeta &topoMeta, const u64 dataCount, HcclDataType dataType)
 {
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
     // 算子执行参数设置
     auto rankSize = CalRankSize(topoMeta);  // 参与集合通信的卡数(同topoMeta卡数一致)

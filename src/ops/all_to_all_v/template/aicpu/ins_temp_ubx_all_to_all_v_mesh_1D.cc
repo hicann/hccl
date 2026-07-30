@@ -399,7 +399,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(const OpParam& param,
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D][InitParam] Run Start");
 
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ = SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
 
     // myAlgRank_应该是逻辑rank，myRank_ 是物理rank，如果全打平来看，应该是一样的
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);

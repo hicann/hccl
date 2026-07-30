@@ -20,7 +20,7 @@
 #include "hccl_common.h"
 #include "config_log.h"
 #include "topo.h"
-#include "dtype_common.h"
+#include "dev_type.h"
 #include "dlsym_common.h"
 #include "hccl_rank_graph_dl.h"
 
@@ -42,7 +42,7 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo)
     CHK_RET(GetPairLinkCounter(comm, topoInfo, pairLinkCounter));
     CHK_RET(SetServerModuleInfo(comm, topoInfo, pairLinkCounter));
     topoInfo->multiSuperPodDiffServerNumMode = false;
-    if (topoInfo->deviceType == DevType::DEV_TYPE_910_93) {
+    if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93) {
         // 提取超节点层级的信息，比如超节点个数、每个超节点的服务器个数、
         // 超节点层拓扑是否对称
         CHK_RET(SetSuperPodInfo(comm, topoInfo));
@@ -71,7 +71,7 @@ HcclResult CalcMyRankInfo(HcclComm comm, TopoInfo* topoInfo)
 {
     CHK_RET(HcclGetRankSize(comm, &(topoInfo->userRankSize)));
     CHK_RET(HcclGetRankId(comm, &(topoInfo->userRank)));
-    CHK_RET(hrtGetDeviceType(topoInfo->deviceType));
+    CHK_RET(HcclGetDeviceType(topoInfo->deviceType));
     uint32_t *netlayers = nullptr;
     uint32_t netLayersNum = 0;
     CHK_RET(HcclRankGraphGetLayers(comm, &netlayers, &netLayersNum));
@@ -192,7 +192,7 @@ HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo)
 bool IsDiffDeviceModule(const TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter)
 {
     bool isDiffMeshAggregation = false;
-    if (topoInfo->deviceType != DevType::DEV_TYPE_910B || topoInfo->userRankSize == 0) {
+    if (topoInfo->deviceType != HcclDevType::DEV_TYPE_910B || topoInfo->userRankSize == 0) {
         HCCL_INFO("[IsDiffDeviceModule] deviceType[%d], topoInfo->userRankSize[%u]", topoInfo->deviceType, topoInfo->userRankSize);
         return false;
     }
@@ -365,7 +365,7 @@ uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo)
 
 HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>> &moduleMap)
 {
-    if (topoInfo->deviceType == DevType::DEV_TYPE_910B && topoInfo->isDiffDeviceModule) {
+    if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910B && topoInfo->isDiffDeviceModule) {
         // 根据生成好的moduleMap计算当前rank所在module的设备数
         uint32_t srcRank = topoInfo->userRank;
         uint32_t moduleIdx = 0;
@@ -449,7 +449,7 @@ HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topo
         }
         accumulatedRanks += rankSizeList[i];
     }
-    if (topoInfo->deviceType == DevType::DEV_TYPE_910B && topoInfo->isDiffDeviceModule) {
+    if (topoInfo->deviceType == HcclDevType::DEV_TYPE_910B && topoInfo->isDiffDeviceModule) {
         // 计算给定rank所在server的起始rank
         // 这里需要根据给定的rank确定其对应的server索引
 

@@ -28,7 +28,7 @@ HcclResult ReduceScatterExecutorBase::Orchestrate(const OpParam &param, AlgResou
     algResource_ = resCtx;
     tag_ = std::string(param.tag);
     algType_ = resCtx->algType;
-    unitSize_ = SIZE_TABLE[param.DataDes.dataType];
+    unitSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     CHK_PTR_NULL(param.inputPtr);
     CHK_PTR_NULL(param.outputPtr);

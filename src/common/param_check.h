@@ -13,7 +13,7 @@
 
 #include <hccl/hccl_types.h>
 #include <hccl/hccl_res.h>
-#include "hccl/base.h"
+#include "dev_type.h"
 
 namespace ops_hccl {
 HcclResult HcomCheckGroupName(const char *group);

@@ -20,7 +20,7 @@ public:
     ~ScatterRingDirect() override;
 
     // should be called soon after template ScatterRingDirect instance created
-    HcclResult Prepare(HcomCollOpInfo *opInfo, const u32 userRank,
+    HcclResult Prepare(HcclCollOpInfo *opInfo, const u32 userRank,
         const std::vector<u32> &ringsOrders, const std::vector<Slice> &userMemInputSlices) override;
     HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
 
@@ -36,7 +36,7 @@ private:
     HcclResult RunScatterOnRootRank(const u32 step, const Slice &subSlice, const Slice &cclSlice, const u32 rank,
                                     const u32 rankSize);
 
-    HcomCollOpInfo                     *opInfo_{nullptr};
+    HcclCollOpInfo                     *opInfo_{nullptr};
     u32                                 userRank_;
     std::vector<u32>                    ringsOrder_;
     std::vector<Slice>                  userMemInputSlices_;

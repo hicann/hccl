@@ -11,7 +11,6 @@
 #ifndef OPS_HCCL_SRC_OPS_CHANNEL
 #define OPS_HCCL_SRC_OPS_CHANNEL
 
-#include "hccl/base.h"
 #include "alg_param.h"
 
 namespace ops_hccl {

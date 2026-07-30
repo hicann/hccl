@@ -11,8 +11,7 @@
 #include <limits.h>
 #include "adapter_acl.h"
 #include "acl_rt.h"
-#include "workflow.h"
-#include "dtype_common.h"
+#include "dev_type.h"
 
 namespace ops_hccl {
 HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId)
@@ -21,9 +20,9 @@ HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId)
     s32 phyDevId = static_cast<s32>(devicePhyId);
     s32 logicDevId;
 
-    DevType deviceType;
-    CHK_RET(hrtGetDeviceType(deviceType));
-    if (deviceType == DevType::DEV_TYPE_NOSOC) {
+    HcclDevType deviceType;
+    CHK_RET(HcclGetDeviceType(deviceType));
+    if (deviceType == HcclDevType::DEV_TYPE_NOSOC) {
         deviceLogicId = 0;
         return HCCL_SUCCESS;
     }

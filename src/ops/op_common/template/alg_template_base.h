@@ -14,7 +14,6 @@
 #include <vector>
 #include <memory>
 #include <list>
-#include "hccl/base.h"
 #include "alg_param.h"
 #include "utils.h"
 
@@ -104,7 +103,7 @@ struct PrepareData {
     const std::vector<std::vector<Slice>>* multRingsSlicesPtr = nullptr;
     const std::vector<u32>* nicRankListPtr = nullptr;
 
-    HcomCollOpInfo *opInfo = nullptr;
+    HcclCollOpInfo *opInfo = nullptr;
     bool disableDMAReduce = false;
     bool isSuPodAsym = false;
     HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID;
@@ -133,7 +132,7 @@ public:
     // ScatterMesh
     virtual HcclResult Prepare(u32 interRank, u32 interRankSize);
 
-    virtual HcclResult Prepare(HcomCollOpInfo *opInfo, const u32 userRank, const std::vector<u32> &ringsOrders,
+    virtual HcclResult Prepare(HcclCollOpInfo *opInfo, const u32 userRank, const std::vector<u32> &ringsOrders,
         const std::vector<Slice> &userMemInputSlices);
 
     HcclResult Sum(const std::vector<Slice> &inputSlices, u32 start, u32 num, u64 &sizeOut);
@@ -147,7 +146,7 @@ public:
             return 0;
         }
 
-        return SIZE_TABLE[dataType];
+        return HCCL_SIZE_TABLE[dataType];
     }
 
     static std::vector<bool> CalcLinksRelation(const u32 rank, const u32 rankSize, const u32 rootRank = 0,

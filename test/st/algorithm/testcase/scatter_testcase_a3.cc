@@ -43,7 +43,7 @@ TEST_F(ST_SCATTER_TEST_A2A3, st_scatter_opbase_test_origin)
 {
     // 仿真模型初始化
     TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
-    SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910B);    
+    SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_910B);
  
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "HOST_TS", 1);

@@ -12,7 +12,6 @@
 #define OPS_HCCL_SRC_OPS_LOAD_KERNEL
 
 #include "hccl.h"
-#include "hccl/base.h"
 
 namespace ops_hccl {
 

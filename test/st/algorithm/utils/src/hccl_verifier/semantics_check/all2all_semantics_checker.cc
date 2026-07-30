@@ -22,7 +22,7 @@ void GenSendOffsetForOneRank(All2AllDataDesTag &all2AllDataDes, u32 rankSize, Ra
         u64 offset = 0;
         for (RankId dstRank = 0; dstRank < targetRank; dstRank++) {
             u64 count = all2AllDataDes.sendCountMatrix[srcRank * rankSize + dstRank];
-            u64 size = count * SIZE_TABLE[all2AllDataDes.recvType];
+            u64 size = count * HCCL_SIZE_TABLE[all2AllDataDes.recvType];
             offset += size;
         }
         sendOffsets.push_back(offset);
@@ -93,7 +93,7 @@ HcclResult TaskCheckAll2AllSemantics(std::map<RankId, RankMemorySemantics> &allR
 
             curDataSize += ele.size;
             u64 recvCountFromCurRank = all2AllDataDes.sendCountMatrix[curRankId * rankSize + rankId];
-            u64 recvDataSizeFromCurRank = recvCountFromCurRank * SIZE_TABLE[all2AllDataDes.recvType];
+            u64 recvDataSizeFromCurRank = recvCountFromCurRank * HCCL_SIZE_TABLE[all2AllDataDes.recvType];
             if (curDataSize == recvDataSizeFromCurRank) {
                 curDataSize = 0;
                 curRankId++;

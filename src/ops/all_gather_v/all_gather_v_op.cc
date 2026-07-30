@@ -62,8 +62,9 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
     return HCCL_SUCCESS;
 }
  
-HcclResult HcclAllGatherVGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts, const void *recvDispls, 
- 	HcclDataType dataType, const char* group, aclrtStream stream, const char* tag, void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
+HcclResult HcclAllGatherVGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, const void *recvCounts,
+    const void *recvDispls, HcclDataType dataType, const char* group, aclrtStream stream, const char* tag,
+    void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
 {
  	HCCL_INFO("Start to run execute HcclAllGatherVGraphMode");
  	// 根据group获取通信域
@@ -201,8 +202,8 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     param.opMode = OpMode::OPBASE;
     param.stream = stream;
  
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
  
     // topoInfo的tag，所有相同的算子可以共享
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
@@ -299,8 +300,8 @@ HcclResult AllGatherVOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t se
     OpParam& param = *paramPtr;
     CHK_RET(HcclGetCommName(comm, param.commName));
  	  	 
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
- 	CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
  	  	 
  	// topoInfo的tag，所有相同的算子可以共享
  	int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());

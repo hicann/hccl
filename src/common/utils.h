@@ -16,7 +16,6 @@
 #include <vector>
 #include <sstream>
 #include "securec.h"
-#include "hccl/base.h"
 #include "hccl_common.h"
 #include "log.h"
 

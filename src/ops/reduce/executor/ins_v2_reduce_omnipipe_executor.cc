@@ -52,13 +52,10 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
@@ -69,6 +66,8 @@ HcclResult InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlg
         HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataSize_ = dataCount_ * dataTypeSize_;
     rankSizeLevel1_ = algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
     if (rankSizeLevel1_ == 0) {
         HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);

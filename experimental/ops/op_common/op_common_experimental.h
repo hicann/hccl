@@ -39,7 +39,7 @@ HcclResult ExecOpBirs(HcclComm comm, OpParam &param);
 
 bool IsStreamCapture(aclrtStream stream);
 
-bool IsAiCpuMode(DevType deviceType, u32 rankSize);
+bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize);
 
 std::string SetLaunchMode(CommEngine engine);
 

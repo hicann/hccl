@@ -62,7 +62,7 @@ HcclResult InsTempAllGatherMesh1DIntra::KernelRun(const OpParam &param, const Te
     tempAlgParams_ = tempAlgParams;
     sliceSize_ = tempAlgParams.sliceSize;
     tailSize_ = tempAlgParams.tailSize;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     HCCL_DEBUG("[InsTempAllGatherMesh1DIntra] Rank [%d], get threadNum_[%d].", myRank_, threadNum_);
 
     if (templateRankSize_ == 1) {

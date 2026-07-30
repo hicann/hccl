@@ -145,12 +145,25 @@ struct TopoInstDetails {
     std::map<CommTopo, std::vector<u32>> rankNumForTopoType;
 };
 
+#define HCCL_GROUP_NAME_MAX_LEN 127
+
+typedef struct {
+    char group[HCCL_GROUP_NAME_MAX_LEN];
+    void* inputAddr;
+    void* outputAddr;
+    uint64_t count;
+    HcclDataType dataType;
+    uint32_t root;
+    HcclReduceOp reduceOp;
+    uint64_t strideCount;
+} HcclCollOpInfo;
+
 struct TopoInfo {
     u32 userRank; // rankId
     u32 userRankSize; // 通信域rankSize
     u32 serverIdx = INVALID_UINT; // Server在ranktable中的自然顺序
     u32 superPodIdx = INVALID_UINT; // SuperPod在ranktable中的自然顺序
-    DevType deviceType = DevType::DEV_TYPE_COUNT; // 硬件类型
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT; // 硬件类型
     u32 deviceNumPerModule = 0; // A2 每个module的卡数
     u32 serverNumPerSuperPod = 0; // 每个超节点的服务器个数
     u32 serverNum = 0; // 服务器数量
@@ -551,7 +564,7 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     bool   enableDetour{false};
     bool   isMc2{false};
     bool   cacheValid{false};
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
     CommEngine engine = CommEngine::COMM_ENGINE_RESERVED;
     AlgType algType;
     char algTypeStr[ALG_MAX_LENGTH] = "";

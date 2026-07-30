@@ -84,7 +84,7 @@ HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
     aivReduceArgs.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivReduceArgs.rank = u32(myRank_);
     aivReduceArgs.rankSize = tempRankSize_;
-    aivReduceArgs.count = tempAlgParams.sliceSize / SIZE_TABLE[dataType_];
+    aivReduceArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
     aivReduceArgs.dataType = dataType_;
     aivReduceArgs.op = param.reduceType;
     aivReduceArgs.root = root_;

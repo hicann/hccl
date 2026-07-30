@@ -129,7 +129,7 @@ uint32_t GetReduceExpansionNum(HcclReduceOp reduceOp, HcclDataType dataType, Hcc
 
 uint64_t DataTypeSizeGet(HcclDataType type)
 {
-    return SIZE_TABLE[type];
+    return HCCL_SIZE_TABLE[type];
 }
 
 std::string GetReduceTypeStr(HcclDataType dataType, HcclReduceOp opType)

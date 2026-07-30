@@ -12,8 +12,19 @@
 
 thread_local bool g_hcclErrToWarn = false;
 constexpr int32_t HCCL_LOG_LEVEL_INVALID = -1;
+
 static std::atomic<int32_t> g_logLevelCache{-1};
-int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent) __attribute((weak));
+
+static int32_t ProbeLogLevel(int32_t moduleId)
+{
+    if (acllogCheckDebugLevel(moduleId, DLOG_INFO) == 1) {
+        return (acllogCheckDebugLevel(moduleId, DLOG_DEBUG) == 1) ? DLOG_DEBUG : DLOG_INFO;
+    }
+    if (acllogCheckDebugLevel(moduleId, DLOG_WARN) == 1) {
+        return DLOG_WARN;
+    }
+    return (acllogCheckDebugLevel(moduleId, DLOG_ERROR) == 1) ? DLOG_ERROR : DLOG_NULL;
+}
 
 bool HcclCheckLogLevel(int logType, int moduleId)
 {
@@ -21,8 +32,12 @@ bool HcclCheckLogLevel(int logType, int moduleId)
         return true;
     }
     if (UNLIKELY(g_logLevelCache.load(std::memory_order_relaxed) == HCCL_LOG_LEVEL_INVALID)) {
-        int32_t enableEvent = -1;
-        g_logLevelCache.store(dlog_getlevel(moduleId, &enableEvent), std::memory_order_relaxed);
+        if (acllogCheckDebugLevel != nullptr) {
+            g_logLevelCache.store(ProbeLogLevel(moduleId), std::memory_order_relaxed);
+        } else {
+            int32_t enableEvent = -1;
+            g_logLevelCache.store(dlog_getlevel(moduleId, &enableEvent), std::memory_order_relaxed);
+        }
     }
     return (logType >= g_logLevelCache.load(std::memory_order_relaxed));
 }

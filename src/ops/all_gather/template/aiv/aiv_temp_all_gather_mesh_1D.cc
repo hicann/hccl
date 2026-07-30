@@ -73,7 +73,7 @@ HcclResult AivTempAllGatherMesh1D::KernelRun(const OpParam& param,
     aivAllGatherArgs.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivAllGatherArgs.rank = u32(myRank_);
     aivAllGatherArgs.rankSize = tempRankSize_;
-    aivAllGatherArgs.count = tempAlgParams.sliceSize / SIZE_TABLE[dataType_];
+    aivAllGatherArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
     aivAllGatherArgs.dataType = dataType_;
     aivAllGatherArgs.op = param.reduceType;
     aivAllGatherArgs.root = root_;

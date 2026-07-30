@@ -42,7 +42,7 @@ protected:
     void RunReduceScatterBirsA3(const TopoMeta &topoMeta, const u64 &recvCount, const HcclDataType &dataType,
         const HcclReduceOp &reduceOp)   {
         
-        SimWorld::Global()->Init(topoMeta, DevType::DEV_TYPE_910_93);    
+        SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_910_93);
     
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);

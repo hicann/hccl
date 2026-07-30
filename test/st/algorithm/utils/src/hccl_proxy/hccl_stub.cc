@@ -9,10 +9,9 @@
  */
 
 #include "hccl/hccl_types.h"
-#include "hccl/base.h"
 #include "hccl_host_comm_dl.h"
 #include "hccl_res.h"
-#include "dtype_common.h"
+#include "dev_type.h"
 #include "hccl_common.h"
 #include "hccl_rank_graph.h"
 #include "acl/acl.h"

@@ -31,7 +31,7 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
     u32 unitSize = 0;
     if (!IsAllToAllSeries(opType) &&
         opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V && opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
-        unitSize = SIZE_TABLE[dataType];
+        unitSize = HCCL_SIZE_TABLE[dataType];
     }
 
     if (opType == HcclCMDType::HCCL_CMD_ALLREDUCE) {
@@ -64,10 +64,10 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
         u64 curRecvOffset = 0;
         for (u32 j = 0; j < rankSize; j++) {
             u64 curSendCounts = all2AllDataDes.sendCountMatrix[myRank * rankSize + j];
-            u64 curSendLength = curSendCounts * SIZE_TABLE[all2AllDataDes.sendType];
+            u64 curSendLength = curSendCounts * HCCL_SIZE_TABLE[all2AllDataDes.sendType];
             curSendOffset += curSendLength;
             u64 curRecvCounts = all2AllDataDes.sendCountMatrix[myRank + rankSize * j];
-            u64 curRecvLength = curRecvCounts * SIZE_TABLE[all2AllDataDes.recvType];
+            u64 curRecvLength = curRecvCounts * HCCL_SIZE_TABLE[all2AllDataDes.recvType];
             curRecvOffset += curRecvLength;
         }
         inputSize = curSendOffset;
@@ -77,11 +77,11 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
         u64 curRecvOffset = 0;
         for (u32 i = 0; i < rankSize; i++) {
             u64 curSendCounts = all2AllDataDes.sendCounts[i];
-            u64 curSendLength = curSendCounts * SIZE_TABLE[all2AllDataDes.sendType];
+            u64 curSendLength = curSendCounts * HCCL_SIZE_TABLE[all2AllDataDes.sendType];
             curSendOffset += curSendLength;
 
             u64 curRecvCounts = all2AllDataDes.recvCounts[i];
-            u64 curRecvLength = curRecvCounts * SIZE_TABLE[all2AllDataDes.recvType];
+            u64 curRecvLength = curRecvCounts * HCCL_SIZE_TABLE[all2AllDataDes.recvType];
             curRecvOffset += curRecvLength;
         }
         inputSize = curSendOffset;
@@ -93,18 +93,18 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
         inputSize = 0;
         for (u32 i = 0; i < rankSize; i++) {
             u64 curCounts = vDataDes.counts[i];
-            u64 curLength = curCounts * SIZE_TABLE[vDataDes.dataType];
+            u64 curLength = curCounts * HCCL_SIZE_TABLE[vDataDes.dataType];
             inputSize += curLength;
         }
-        outputSize = vDataDes.counts[myRank] * SIZE_TABLE[vDataDes.dataType];
+        outputSize = vDataDes.counts[myRank] * HCCL_SIZE_TABLE[vDataDes.dataType];
     } else if (opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
         outputSize = 0;
         for (u32 i = 0; i < rankSize; i++) {
             u64 curCounts = vDataDes.counts[i];
-            u64 curLength = curCounts * SIZE_TABLE[vDataDes.dataType];
+            u64 curLength = curCounts * HCCL_SIZE_TABLE[vDataDes.dataType];
             outputSize += curLength;
         }
-        inputSize = vDataDes.counts[myRank] * SIZE_TABLE[vDataDes.dataType];
+        inputSize = vDataDes.counts[myRank] * HCCL_SIZE_TABLE[vDataDes.dataType];
     } else {
         printf("CalcInputOutputSize not support HcclCMDType [%d]\n", opType);
     }
@@ -118,7 +118,7 @@ void CalcDataSize(HcclCMDType opType, uint64_t count, HcclDataType dataType, u64
     // 当前AllToAll系列以及不等长算子不使用dataSize，如果后续使用的话，需要适配这个地方
     if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V &&
         opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
-        u32 unitSize = SIZE_TABLE[dataType];
+        u32 unitSize = HCCL_SIZE_TABLE[dataType];
         dataSize = count * unitSize;
     }
 }

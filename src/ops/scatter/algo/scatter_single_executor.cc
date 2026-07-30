@@ -55,7 +55,7 @@ HcclResult ScatterSingleExecutor::Orchestrate(const OpParam &param, AlgResourceC
 HcclResult ScatterSingleExecutor::KernelRun(const OpParam &param, ExecMem &execMem)
 {
     HCCL_CONFIG_INFO(HCCL_ALG, "[ScatterSingleExecutor][KernelRun] starts.");
-    u64 totalSize = execMem.count * SIZE_TABLE[param.DataDes.dataType];
+    u64 totalSize = execMem.count * HCCL_SIZE_TABLE[param.DataDes.dataType];
     CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, execMem.outputPtr, execMem.inputPtr, totalSize)));
 
     return HCCL_SUCCESS;

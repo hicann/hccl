@@ -13,7 +13,7 @@
 
 #include <set>
 #include <vector>
-#include "hccl/base.h"
+#include "dev_type.h"
 
 namespace ops_hccl {
 

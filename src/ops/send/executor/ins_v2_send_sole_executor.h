@@ -21,7 +21,6 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "utils.h"
 #include "log.h"
-#include "workflow.h"
 
 namespace ops_hccl {
 template <typename InsAlgTemplate>

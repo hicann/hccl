@@ -163,8 +163,8 @@ namespace ops_hccl {
         param.opType = HcclCMDType::HCCL_CMD_SEND;
         param.enableDetour = false;
 
-        DevType deviceType = DevType::DEV_TYPE_COUNT;
-        CHK_RET(hrtGetDeviceType(deviceType));
+        HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+        CHK_RET(HcclGetDeviceType(deviceType));
         param.deviceType = deviceType;
 
         // topoInfo的tag，所有相同的算子可以共享

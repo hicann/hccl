@@ -12,7 +12,6 @@
 #include <vector>
 #include <set>
 #include <hccl/hccl_types.h>
-#include "hccl/base.h"
 #include "alg_type.h"
 #include "channel_request.h"
 #include "topo.h"
@@ -142,9 +141,9 @@ HcclResult CalcLevel1ChannelRequest(const OpParam& param, const TopoInfo* topoIn
     }
 
     // level1走rdma的几种条件：A2单机A+X开启switch；A2多机；A3开启disableHccs；A3跨超卡数不一致
-    bool isA2UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910B && (topoInfo->serverNum > 1 ||
+    bool isA2UsedRdma = topoInfo->deviceType == HcclDevType::DEV_TYPE_910B && (topoInfo->serverNum > 1 ||
         (topoInfo->serverNum == 1 && topoInfo->isDiffDeviceModule && GetExternalInputIntraRoceSwitch() > 0));
-    bool isA3UsedRdma = topoInfo->deviceType == DevType::DEV_TYPE_910_93 &&
+    bool isA3UsedRdma = topoInfo->deviceType == HcclDevType::DEV_TYPE_910_93 &&
         ((topoInfo->superPodNum > 1 && (topoInfo->multiSuperPodDiffServerNumMode || topoInfo->multiModuleDiffDeviceNumMode)) ||
         (topoInfo->superPodNum == 1 && topoInfo->serverNum > 1 && GetExternalInputInterHccsDisable()));
     bool isUsedRdma = isA2UsedRdma || isA3UsedRdma;

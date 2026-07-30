@@ -17,7 +17,6 @@
 #include "alg_data_trans_wrapper.h"
 #include "template_utils.h"
 #include "log.h"
-#include "workflow.h"
 #include "utils.h"
 
 namespace ops_hccl {

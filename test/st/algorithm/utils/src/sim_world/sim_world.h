@@ -25,14 +25,14 @@ class SimWorld {
 public:
     static SimWorld *Global();
     void Deinit();
-    void Init(const TopoMeta& topoMeta, DevType devType);
+    void Init(const TopoMeta& topoMeta, HcclDevType devType);
     SimNpu& GetSimNpuByRankId(RankId rankId);
     NpuPos GetNpuPosByRankId(RankId rankId);
     TopoMeta GetTopoMetaInfo();
 
 private:
-    void InitSimNpuRes(const TopoMeta& topoMeta, DevType devType);
-    SimNpu CreateSimNpu(const NpuPos& npuPos, DevType devType);
+    void InitSimNpuRes(const TopoMeta& topoMeta, HcclDevType devType);
+    SimNpu CreateSimNpu(const NpuPos& npuPos, HcclDevType devType);
 
 private:
     TopoMeta topoMeta_;

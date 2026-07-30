@@ -23,9 +23,9 @@ enum class CcuVersion { CCU_V1, CCU_V2, CCU_INVALID, INVALID };
 
 inline CcuVersion GetCcuVersion()
 {
-    DevType deviceType;
-    hrtGetDeviceType(deviceType);
-    CcuVersion ccuVersion = (deviceType == DevType::DEV_TYPE_950) ? CcuVersion::CCU_V1 : CcuVersion::CCU_V2;
+    HcclDevType deviceType;
+    HcclGetDeviceType(deviceType);
+    CcuVersion ccuVersion = (deviceType == HcclDevType::DEV_TYPE_950) ? CcuVersion::CCU_V1 : CcuVersion::CCU_V2;
     if (ccuVersion == CcuVersion::CCU_V2 && !HcommIsSupportCcuV2()) {
         HCCL_WARNING("GetCcuVersion: HCOMM does not support CCU V2 interfaces, degrade to V1");
         ccuVersion = CcuVersion::CCU_V1;

@@ -132,7 +132,7 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
     HCCL_INFO("[InsTempAlltoAllVMesh1D][KernelRun] Run Start");
     threadNum_ = templateResource.threads.size();
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ = SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
 
     bool isPcieProtocal = IsPcieProtocol(templateResource.channels);  // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocal;  // 是否使用Read模式

@@ -12,7 +12,6 @@
 #define TASK_EXCEPTION_FUN_H
 
 #include <string>
-#include "hccl/base.h"
 #include "alg_param.h"
 #include "dlsym_common.h"
 #include "hcomm_diag_dl.h"

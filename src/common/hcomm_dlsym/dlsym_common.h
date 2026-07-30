@@ -23,7 +23,7 @@
 
 #include <sys/syscall.h>
 #include <unistd.h>
-#include "dlog_pub.h"
+#include "dlog_def.h"
 
 #include "hccl/hccl_types.h"
 #include "hccl/hccl_comm.h"

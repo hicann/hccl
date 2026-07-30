@@ -23,7 +23,7 @@ SimWorld* SimWorld::Global()
     return globalSimWorld;
 }
 
-void SimWorld::Init(const TopoMeta& topoMeta, DevType devType)
+void SimWorld::Init(const TopoMeta& topoMeta, HcclDevType devType)
 {
     topoMeta_ = topoMeta;
     commDomain_.Init(topoMeta);
@@ -41,7 +41,7 @@ void SimWorld::Deinit()
     SimTaskQueue::Global()->Clear();
 }
 
-void SimWorld::InitSimNpuRes(const TopoMeta& topoMeta, DevType devType)
+void SimWorld::InitSimNpuRes(const TopoMeta& topoMeta, HcclDevType devType)
 {
     simNpus_.clear();
     PodId podId = 0;
@@ -58,7 +58,7 @@ void SimWorld::InitSimNpuRes(const TopoMeta& topoMeta, DevType devType)
     }
 }
 
-SimNpu SimWorld::CreateSimNpu(const NpuPos& npuPos, DevType devType)
+SimNpu SimWorld::CreateSimNpu(const NpuPos& npuPos, HcclDevType devType)
 {
     SimNpu simNpu;
     simNpu.SetDevType(devType);

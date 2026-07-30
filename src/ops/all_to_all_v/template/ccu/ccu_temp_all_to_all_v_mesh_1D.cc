@@ -151,7 +151,7 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
     uint64_t rankSize = args[5];
     uint32_t myRank = static_cast<uint32_t>(args[6]);
     HcclDataType dataType = param.all2AllVDataDes.sendType;
-    uint64_t dataTypeSize =  SIZE_TABLE[dataType];
+    uint64_t dataTypeSize =  HCCL_SIZE_TABLE[dataType];
     CHK_PRT_RET(param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64),
     HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] param.varMemSize [%llu] is invalid", param.varMemSize), HCCL_E_PARA);
     

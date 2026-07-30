@@ -21,6 +21,5 @@
 #include "sal.h"
 #include "topo_host.h"
 #include "utils.h"
-#include "workflow.h"
 
 #endif

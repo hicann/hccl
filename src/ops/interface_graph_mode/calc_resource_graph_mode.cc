@@ -241,8 +241,8 @@ HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dat
     ops_hccl::OpParam param;
     CHK_RET(HcclGetCommName(hcclComm, param.commName));
     
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     
     param.opType = opType;
     param.DataDes.count = count;
@@ -386,8 +386,8 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     }
 
     CHK_RET(InitEnvConfig());
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     param.deviceType = deviceType;
 
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag);

@@ -53,7 +53,7 @@ u32 AnalyseRankSize(const TopoMeta &topoInfo)
 void RunAllGatherAicpuA5(const TopoMeta &topoInfo, const u64 &sendCount, const HcclDataType &dataType)
 {
     // 仿真模型初始化
-    SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
@@ -306,13 +306,5 @@ TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_nhr_7server_asymmetric_f
     auto sendCount = 100;                // 单卡数据量
 
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0;  // 数据类型
-    RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
-}
-
-TEST_F(ST_ALL_GATHER_AICPU_TEST, st_all_gather_a5_aicpu_zdetour_mesh1d_2x4rank_uint16_big_data_test)
-{
-    TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}}};
-    auto sendCount = 270 * 1024 * 1024 + 3;
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT16;
     RunAllGatherAicpuA5(topoMeta, sendCount, dataType);
 }

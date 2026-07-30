@@ -158,6 +158,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/common/config_log.cc
     ${HCCL_DEV_BASE}/src/common/sal.cc
     ${HCCL_DEV_BASE}/src/common/log.cc
+    ${HCCL_DEV_BASE}/src/common/dev_type.cc
     ${HCCL_DEV_BASE}/src/common/adapter_error_manager_pub.cc
     ${HCCL_DEV_BASE}/src/common/alg_env_config.cc
     ${HCCL_DEV_BASE}/src/common/hcomm_dlsym/hcomm_primitives_dl.cc

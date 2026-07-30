@@ -11,8 +11,8 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <dlog_pub.h>
-#include <hccl/base.h>
+#include "dlog_def.h"
+#include "dev_type.h"
 #include <hccl/hccl_types.h>
 #include <securec.h>
 #include <iostream>

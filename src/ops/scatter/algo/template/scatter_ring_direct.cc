@@ -21,7 +21,7 @@ ScatterRingDirect::~ScatterRingDirect()
 {
 }
 
-HcclResult ScatterRingDirect::Prepare(HcomCollOpInfo *opInfo, const u32 userRank,
+HcclResult ScatterRingDirect::Prepare(HcclCollOpInfo *opInfo, const u32 userRank,
     const std::vector<u32> &ringsOrders, const std::vector<Slice> &userMemInputSlices)
 {
     opInfo_ = opInfo;
@@ -124,7 +124,7 @@ HcclResult ScatterRingDirect::SetSlices(const u32 rank, const u32 rankSize)
         slices_.resize(rankSize);
 
         // 生成std::vector<Slice> slices_
-        u64 sliceSize = count_ * SIZE_TABLE[dataType_];
+        u64 sliceSize = count_ * HCCL_SIZE_TABLE[dataType_];
 
         for (u32 i = 0; i < rankSize; i++) {
             slices_[i].size = sliceSize;

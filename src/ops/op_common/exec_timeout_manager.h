@@ -10,7 +10,7 @@
 #ifndef HCCL_EXEC_TIMEOUT_MANAGER_H
 #define HCCL_EXEC_TIMEOUT_MANAGER_H
 
-#include "hccl/base.h"
+#include "dev_type.h"
 #include <atomic>
 
 namespace ops_hccl {

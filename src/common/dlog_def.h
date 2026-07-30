@@ -6,28 +6,23 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- */
+*/
 
-#ifndef HCOMM_DLSYM_H
-#define HCOMM_DLSYM_H
+#ifndef DLOG_DEF_H
+#define DLOG_DEF_H
 
-#include "hccl_types.h"
-#include "acl/acl_rt.h"
+#include <stdint.h>
+#include <base/log_types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// 动态库管理接口（大驼峰命名）
-void HcommDlInit(void);
-int GetHcommVersion(void);
-
-// 功能支持情况查询
-bool HcommIsProfilingSupported();
-bool HcommIsExportThreadSupported();
-
+void DlogRecord(int32_t moduleId, int32_t level, const char *fmt, ...) __attribute__((weak));
+int32_t acllogCheckDebugLevel(int32_t moduleId, int32_t logLevel) __attribute__((weak));
+// 兼容方案，早期版本没有acllogCheckDebugLevel，需回退使用dlog_getlevel，后续可删除
+int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent) __attribute__((weak));
 #ifdef __cplusplus
 }
 #endif
 
-#endif // HCOMM_DLSYM_H
+#endif // DLOG_DEF_H

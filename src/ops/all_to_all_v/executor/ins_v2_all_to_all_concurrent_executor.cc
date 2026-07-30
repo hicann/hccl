@@ -44,7 +44,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ =  SIZE_TABLE[dataType_];
+    dataTypeSize_ =  HCCL_SIZE_TABLE[dataType_];
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO("[InsV2AllToAllConcurrentExecutor][InitCommInfo] myRank = %u, rankSize = %u, devType = %u, "
         "dataType = %u, dataTypeSize = %u", myRank_, rankSize_, devType_, dataType_, dataTypeSize_);
@@ -179,7 +179,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     }
 
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ = SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
     rankSize_ = resCtx.topoInfo.userRankSize;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     HcclResult ret = OrchestrateLoop(param, resCtx);

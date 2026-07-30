@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <hccl/hccl_types.h>
 #include "channel_request.h"
-#include "hccl/base.h"
 #include "log.h"
 
 namespace ops_hccl {

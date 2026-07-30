@@ -156,12 +156,12 @@ void SimNpu::ReleaseNotify(void *notify)
     simNotify->Release();
 }
 
-void SimNpu::SetDevType(DevType devType)
+void SimNpu::SetDevType(HcclDevType devType)
 {
     devType_ = devType;
 }
 
-DevType SimNpu::GetDevType()
+HcclDevType SimNpu::GetDevType()
 {
     return devType_;
 }
@@ -195,7 +195,7 @@ HcclResult SimNpu::GetSlice(uint64_t addr, uint64_t size, DataSlice &dataSlice)
 
 HcclResult SimNpu::GetSlice(uint64_t addr, uint64_t dataCount, const HcclDataType dataType, DataSlice& dataSlice)
 {
-    uint64_t size = dataCount * SIZE_TABLE[dataType];
+    uint64_t size = dataCount * HCCL_SIZE_TABLE[dataType];
     CHK_RET(GetSlice(addr, size, dataSlice));
     
     return HcclResult::HCCL_SUCCESS;

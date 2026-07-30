@@ -12,7 +12,7 @@
 #define SIM_COMMON_H
 #include <iostream>
 #include <vector>
-#include "dtype_common.h"
+#include "dev_type.h"
 #include "enum_factory.h"
 
 MAKE_ENUM(BufferType, INPUT, OUTPUT, CCL, RESERVED)

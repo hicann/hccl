@@ -14,7 +14,6 @@
 #include <vector>
 #include <map>
 #include <hccl/hccl_types.h>
-#include "hccl/base.h"
 #include "alg_type.h"
 #include "hccl_common.h"
 namespace ops_hccl {
@@ -178,7 +177,7 @@ const std::map<HcclCMDType, std::vector<HcclAlgoType>> GetExternalInputHcclAlgoC
 
 bool GetExternalInputExecTimeout(double &execTimeOut);
 
-bool RunIndependentOpExpansion(DevType deviceType);
+bool RunIndependentOpExpansion(HcclDevType deviceType);
 
 bool GetExternalInputMultipleDimensionSplitRatio(double &multipleDimensionSplitRatio);
 

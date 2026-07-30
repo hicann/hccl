@@ -37,8 +37,8 @@ public:
     void *AllocNotify();       // 申请Notify
     void ReleaseStream(void *stream);
     void ReleaseNotify(void *notify);
-    void SetDevType(DevType devType);
-    DevType GetDevType();
+    void SetDevType(HcclDevType devType);
+    HcclDevType GetDevType();
     HcclResult GetSlice(uint64_t addr, uint64_t size, DataSlice& dataSlice);
     HcclResult GetSlice(uint64_t addr, uint64_t dataCount, const HcclDataType dataType, DataSlice& dataSlice);
 
@@ -49,7 +49,7 @@ private:
 
 private:
     NpuPos npuPos_;
-    DevType devType_;
+    HcclDevType devType_;
     std::vector<MemBlock> memLayout_;
     std::vector<SimStream> streams_;
     std::vector<SimNotify> notifys_;

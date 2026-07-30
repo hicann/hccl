@@ -67,7 +67,7 @@ namespace ops_hccl
         processSize_ = tempAlgParams.sliceSize;
         count_ = tempAlgParams.count;
         dataCount_ = param.DataDes.count;
-        dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+        dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
         dataSize_ = dataCount_ * dataTypeSize_;
         dataType_ = param.DataDes.dataType;
         // 跨框流程要走dpu

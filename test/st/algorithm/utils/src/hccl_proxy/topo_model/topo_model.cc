@@ -212,7 +212,8 @@ void TopoModel::GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint3
     }
 }
 
-void TopoModel::GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink **linkList, uint32_t *listSize)
+void TopoModel::GetLinks(HcclDevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank,
+                         CommLink **linkList, uint32_t *listSize)
 {
     auto rankPair = std::make_pair(srcRank, dstRank);
     auto it = allLinkMap_.find(rankPair);
@@ -224,15 +225,11 @@ void TopoModel::GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, u
     }
 
     // 当前link还没添加至map，构造link并添加至map
-    if (devType == DevType::DEV_TYPE_910B) {
+    if (devType == HcclDevType::DEV_TYPE_910B) {
         Create910BLinks(srcRank, dstRank);
-    } else if (devType == DevType::DEV_TYPE_910_93) {
+    } else if (devType == HcclDevType::DEV_TYPE_910_93) {
         Create910CLinks(srcRank, dstRank);
-    #ifdef MACRO_DEV_TYPE_NEW
-    } else if (devType == DevType::DEV_TYPE_950) {
-    #else
-    } else if (devType == DevType::DEV_TYPE_910_95) {
-    #endif
+    } else if (devType == HcclDevType::DEV_TYPE_950) {
         Create910DLinks(srcRank, dstRank);
     }
 
@@ -254,18 +251,14 @@ void TopoModel::GetInstSizeListByNetLayer(uint32_t netLayer, uint32_t **instSize
     }
 }
 
-void TopoModel::GetInstTopoTypeByNetLayer(DevType devType, uint32_t netLayer, CommTopo *topoType)
+void TopoModel::GetInstTopoTypeByNetLayer(HcclDevType devType, uint32_t netLayer, CommTopo *topoType)
 {
     if (netLayer == NetLayerL0) {
-        if (devType == DevType::DEV_TYPE_910B) {
+        if (devType == HcclDevType::DEV_TYPE_910B) {
             *topoType = CommTopo::COMM_TOPO_1DMESH;
-        } else if (devType == DevType::DEV_TYPE_910_93) {
+        } else if (devType == HcclDevType::DEV_TYPE_910_93) {
             *topoType = CommTopo::COMM_TOPO_910_93;
-        #ifdef MACRO_DEV_TYPE_NEW
-        } else if (devType == DevType::DEV_TYPE_950) {
-        #else
-        } else if (devType == DevType::DEV_TYPE_910_95) {
-        #endif
+        } else if (devType == HcclDevType::DEV_TYPE_950) {
             *topoType = CommTopo::COMM_TOPO_CUSTOM;  // A5topo使用新API查询
         }
     } else if (netLayer == NetLayerL1) {

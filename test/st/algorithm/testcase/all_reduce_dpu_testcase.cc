@@ -44,7 +44,7 @@ void RunAllReduceDPUCase(const TopoMeta &topoInfo, const u64 dataCount,
     const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
-    SimWorld::Global()->Init(topoInfo, DevType::DEV_TYPE_950);
+    SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);

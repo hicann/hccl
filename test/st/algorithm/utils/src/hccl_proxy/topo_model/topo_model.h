@@ -24,9 +24,10 @@ public:
     uint32_t GetRankSize() const;
     void GetNetLayers(uint32_t **netLayers, uint32_t *netLayerNum);
     void GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t *rankNum);
-    void GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink **linkList, uint32_t *listSize);
+    void GetLinks(HcclDevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank,
+                  CommLink **linkList, uint32_t *listSize);
     void GetInstSizeListByNetLayer(uint32_t netLayer, uint32_t **instSizeList, uint32_t *listSize);
-    void GetInstTopoTypeByNetLayer(DevType devType, uint32_t netLayer, CommTopo *topoType);
+    void GetInstTopoTypeByNetLayer(HcclDevType devType, uint32_t netLayer, CommTopo *topoType);
     void GetInstRanksByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum);
     // A5 topo
     void GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum);

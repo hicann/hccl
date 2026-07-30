@@ -12,7 +12,6 @@
 #define OPS_HCCL_SRC_OPS_TOPO_HOST
 
 #include <hccl/hccl_types.h>
-#include "hccl/base.h"
 #include "log.h"
 #include "alg_param.h"
 #include "hccl_rank_graph.h"

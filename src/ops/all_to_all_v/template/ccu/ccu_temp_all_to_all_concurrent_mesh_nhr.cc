@@ -272,7 +272,7 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::KernelRun(
 {
     HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR][KernelRun] rank[%u] start.", myRank_);
 
-    u64 dataTypeSize = SIZE_TABLE[param.all2AllDataDes.sendType];
+    u64 dataTypeSize = HCCL_SIZE_TABLE[param.all2AllDataDes.sendType];
     u64 meshSliceSize = 0;
     u64 closSliceSize = 0;
     CalcDataSplit(templateDataParams.sliceSize, dataTypeSize, meshSliceSize, closSliceSize);

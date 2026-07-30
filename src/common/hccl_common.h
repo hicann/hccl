@@ -18,7 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <algorithm>
-#include "dtype_common.h"
+#include "dev_type.h"
 #include "log.h"
 #include "hccl_types.h"
 #include "hccl_res.h"
@@ -257,18 +257,15 @@ struct HcclMem {
     uint64_t size = 0;
 };
 
-inline bool shouldGoOutPlace(DevType deviceType) {
-#ifdef MACRO_DEV_TYPE_NEW
-    return deviceType == DevType::DEV_TYPE_950 || deviceType == DevType::DEV_TYPE_960;
-#else
-    return deviceType == DevType::DEV_TYPE_910_95;
-#endif
+inline bool shouldGoOutPlace(HcclDevType deviceType)
+{
+    return deviceType == HcclDevType::DEV_TYPE_950 || deviceType == HcclDevType::DEV_TYPE_960;
 }
 
 inline HcclResult IsOutPlaceDevice(bool& isOutPlace)
 {
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
     isOutPlace = shouldGoOutPlace(deviceType);
     return HcclResult::HCCL_SUCCESS;
 }

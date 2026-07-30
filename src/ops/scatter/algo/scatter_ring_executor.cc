@@ -189,9 +189,9 @@ HcclResult ScatterRingExecutor::KernelRunLevel0(const OpParam &param, ExecMem &e
 
     HCCL_INFO("[ScatterRingExecutor][KernelRunLevel0] using multiring algo inner-server.");
 
-    HcomCollOpInfo *scatterOpInfoPtr = nullptr;
-    HcomCollOpInfo scatterOpInfo = {
-        "", nullptr, execMem.outputPtr, param.DataDes.count, param.DataDes.dataType, subRoot_, HCCL_REDUCE_RESERVED, 0};
+    HcclCollOpInfo *scatterOpInfoPtr = nullptr;
+    HcclCollOpInfo scatterOpInfo = {"", nullptr, execMem.outputPtr, param.DataDes.count,
+        param.DataDes.dataType, subRoot_, HCCL_REDUCE_RESERVED, 0};
     if (DMAReduceFlag_) {
         scatterOpInfoPtr = &scatterOpInfo;
     }
@@ -202,7 +202,7 @@ HcclResult ScatterRingExecutor::KernelRunLevel0(const OpParam &param, ExecMem &e
 }
 
 HcclResult ScatterRingExecutor::MultiRingScatter(HcclMem inputMem, HcclMem outputMem, const u64 count,
-    const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcomCollOpInfo *opInfo,
+    const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcclCollOpInfo *opInfo,
     const u64 baseOffset)
 {
     HcclResult ret = HCCL_SUCCESS;
@@ -234,7 +234,7 @@ HcclResult ScatterRingExecutor::MultiRingScatter(HcclMem inputMem, HcclMem outpu
             HCCL_CONFIG_INFO(HCCL_ALG, "[%s][KernelRun] Run TEMPLATE_SCATTER_RING_DIRECT in COMM_LEVEL0", __func__);
             CHK_SMART_PTR_NULL(tempAlg);
             CHK_RET(tempAlg->Prepare(
-                const_cast<HcomCollOpInfo *>(opInfo), topoInfo_->userRank, rankOrder, singleRingSlice));
+                const_cast<HcclCollOpInfo *>(opInfo), topoInfo_->userRank, rankOrder, singleRingSlice));
         }
 
         if (ringIndex != (ringNum - 1)) {  // 0~ringNum-2的环

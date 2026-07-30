@@ -14,7 +14,6 @@
 #include <climits>
 #include <chrono>
 #include <hccl/hccl_types.h>
-#include <hccl/base.h>
 
 constexpr int HCCL_BASE_DECIMAL = 10; // 10进制字符串转换
 

@@ -12,7 +12,6 @@
 #define CHECKER_DEF_H
 
 #include "sim_common.h"
-#include "hccl/base.h"
 
 constexpr u32 BUFFER_INPUT_MARK = 10;
 constexpr u32 BUFFER_OUTPUT_MARK = 11;

@@ -19,7 +19,7 @@
 #include "adapter_error_manager_pub.h"
 #include "config_log.h"
 #include "sal.h"
-#include "dtype_common.h"
+#include "dev_type.h"
 
 namespace ops_hccl {
 
@@ -197,9 +197,11 @@ HcclResult InitEnvConfig()
     RPT_ENV_ERR(ret != HCCL_SUCCESS,
         "EI0001",
         std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({"PCIE enable: " + std::string(GetEnv("HCCL_INTRA_PCIE_ENABLE")) + " or ROCE enable: "
-        + std::string(GetEnv("HCCL_INTRA_ROCE_ENABLE")), "HCCL_INTRA_PCIE_ENABLE or HCCL_INTRA_ROCE_ENABLE",
-            "0 or 1 (but not both 1)"}));
+        std::vector<std::string>({
+            "PCIE enable: " + std::string(GetEnv("HCCL_INTRA_PCIE_ENABLE")) + " or ROCE enable: "
+            + std::string(GetEnv("HCCL_INTRA_ROCE_ENABLE")),
+            "HCCL_INTRA_PCIE_ENABLE or HCCL_INTRA_ROCE_ENABLE", "0 or 1 (but not both 1)"
+        }));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse intra "
                    "comm type failed. errorno[%d]",
@@ -249,8 +251,9 @@ HcclResult InitEnvConfig()
     // 解析执行超时
     ret = ParseExecTimeout();
     RPT_ENV_ERR(ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({GetEnv("HCCL_EXEC_TIMEOUT"), "HCCL_EXEC_TIMEOUT",
-        "a non-negative number with up to 2 decimals"}));
+        std::vector<std::string>({
+            GetEnv("HCCL_EXEC_TIMEOUT"), "HCCL_EXEC_TIMEOUT", "a non-negative number with up to 2 decimals"
+        }));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_EXEC_TIMEOUT failed. "
             "errorno[%d]", HCCL_ERROR_CODE(ret), ret), ret);
@@ -260,8 +263,9 @@ HcclResult InitEnvConfig()
     const char* multipleDimensionSplitRatioEnv = std::getenv("HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO");
     std::string multipleDimensionSplitRatioStr = (multipleDimensionSplitRatioEnv != nullptr) ? std::string(multipleDimensionSplitRatioEnv) : "EmptyString";
     RPT_ENV_ERR(ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({multipleDimensionSplitRatioStr, "HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO",
-        "a non-negative number"}));
+        std::vector<std::string>({
+            multipleDimensionSplitRatioStr, "HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO", "a non-negative number"
+        }));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO failed. "
             "errorno[%d]", HCCL_ERROR_CODE(ret), ret), ret);
@@ -271,8 +275,10 @@ HcclResult InitEnvConfig()
     RPT_ENV_ERR(ret != HCCL_SUCCESS,
         "EI0001",
         std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({GetEnv("HCCL_ALGO"), "HCCL_ALGO",
-            "level0:NA;level1:<algo> or <op0>=level0:NA;level1:<algo0>/<op1>=level0:NA;level1:<algo1>"}));
+        std::vector<std::string>({
+            GetEnv("HCCL_ALGO"), "HCCL_ALGO",
+            "level0:NA;level1:<algo> or <op0>=level0:NA;level1:<algo0>/<op1>=level0:NA;level1:<algo1>"
+        }));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
                    "hccl algorithm config failed. errorno[%d]",
@@ -301,8 +307,10 @@ HcclResult InitEnvConfig()
     RPT_ENV_ERR(ret != HCCL_SUCCESS,
         "EI0001",
         std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({dfsEnvValue, "HCCL_DFS_CONFIG",
-            "inconsistent_check:on or inconsistent_check:first or inconsistent_check:off"}));
+        std::vector<std::string>({
+            dfsEnvValue, "HCCL_DFS_CONFIG",
+            "inconsistent_check:on or inconsistent_check:first or inconsistent_check:off"
+        }));
     CHK_PRT_RET(ret != HCCL_SUCCESS,
         HCCL_ERROR("[InitEnvParam]errNo[0x%016llx] In init environment param, parse "
                    "HCCL_DFS_CONFIG failed. errorno[%d]",
@@ -778,10 +786,10 @@ HcclResult ParseOpExpansion()
         return HCCL_SUCCESS;
     } 
     
-    DevType deviceType;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType;
+    CHK_RET(HcclGetDeviceType(deviceType));
     // 910_93默认打开AICPU展开
-    if (deviceType == DevType::DEV_TYPE_910_93) {
+    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
         g_algEnvConfig.aicpuUnfold = true;
     }
 
@@ -793,7 +801,7 @@ HcclResult ParseOpExpansion()
     }
 
     if (opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "AICPU_TS") {
-        if (deviceType == DevType::DEV_TYPE_910) {
+        if (deviceType == HcclDevType::DEV_TYPE_910) {
             HCCL_WARNING("910 do not support AICPU unfold.");
         } else {
             g_algEnvConfig.aicpuUnfold = true;
@@ -807,13 +815,13 @@ HcclResult ParseOpExpansion()
         g_algEnvConfig.aivMode = false;
         g_algEnvConfig.aicpuUnfold = false;
     } else if (opExpansionModeEnv == "HOST_TS") {
-        if (deviceType == DevType::DEV_TYPE_910B) {
+        if (deviceType == HcclDevType::DEV_TYPE_910B) {
             g_algEnvConfig.enableFfts = false;
         } else {
             HCCL_WARNING("deviceType[%u] do not support HOST_TS", deviceType);
         }
     } else if (opExpansionModeEnv == "AICPU_CacheDisable") {
-        if (deviceType == DevType::DEV_TYPE_910) {
+        if (deviceType == HcclDevType::DEV_TYPE_910) {
             HCCL_WARNING("910 do not support AICPU unfold.");
         } else {
             g_algEnvConfig.aicpuUnfold = true;
@@ -960,13 +968,12 @@ HcclResult ParseDeterministic()
     }
     if (hcclDeterministicEnv == "STRICT") {
         // 规约保序场景（严格的确定性计算，在确定性的基础上强保证规约顺序一致）
-        DevType deviceType;
-        CHK_RET(hrtGetDeviceType(deviceType));
+        HcclDevType deviceType;
+        CHK_RET(HcclGetDeviceType(deviceType));
         // 规约保序支持A2 A3 A5场景
         bool supportedDevice = false;
-        supportedDevice = (deviceType == DevType::DEV_TYPE_910B || 
-                          deviceType == DevType::DEV_TYPE_910_93 || 
-                          shouldGoOutPlace(deviceType));
+        supportedDevice = (deviceType == HcclDevType::DEV_TYPE_910B ||
+                           deviceType == HcclDevType::DEV_TYPE_910_93 || shouldGoOutPlace(deviceType));
         if (!supportedDevice) {
             HCCL_ERROR("HCCL_DETERMINISTIC is set to [%s], Reduce order preservation is not supported for "
                        "deviceType[%d], please check",
@@ -1124,10 +1131,10 @@ const u8 &GetExternalInputHcclDeterministic()
     return g_algEnvConfig.hcclDeterministic;
 }
 
-bool RunIndependentOpExpansion(DevType deviceType)
+bool RunIndependentOpExpansion(HcclDevType deviceType)
 {
     std::string opExpansionModeEnv = GetEnv("HCCL_OP_EXPANSION_MODE");
-    if (deviceType == DevType::DEV_TYPE_910_93) {
+    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
     }
 
@@ -1140,7 +1147,7 @@ bool RunIndependentOpExpansion(DevType deviceType)
     }
 
     // HOST_TS为Host展开
-    if (deviceType == DevType::DEV_TYPE_910B) {
+    if (deviceType == HcclDevType::DEV_TYPE_910B) {
         return opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "HOST";
     }
     return false;

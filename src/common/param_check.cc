@@ -64,8 +64,8 @@ HcclResult HcomCheckTag(const char *tag)
 {
     CHK_PTR_NULL(tag);
 
-    u32 tagLen = strnlen(tag, TAG_MAX_LEN + 1);
-    if (tagLen == (TAG_MAX_LEN + 1) || tagLen == 0) {
+    u32 tagLen = strnlen(tag, HCCL_TAG_MAX_LEN + 1);
+    if (tagLen == (HCCL_TAG_MAX_LEN + 1) || tagLen == 0) {
         HCCL_ERROR("[Check][Tag]errNo[0x%016llx] tag is too long", HCOM_ERROR_CODE(HCCL_E_PARA));
         return HCCL_E_PARA;
     }

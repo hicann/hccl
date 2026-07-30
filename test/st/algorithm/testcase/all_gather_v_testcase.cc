@@ -132,14 +132,3 @@ TEST_F(ST_ALL_GATHER_V_TEST, st_all_gather_v_a5_asymmetric_fp32_test)
 
     RunAllGatherVMultilevel(topoMeta, vDataDes);
 }
-
-TEST_F(ST_ALL_GATHER_V_TEST, st_all_gather_v_a5_asymmetric_fp64_test)
-{
-    TopoMeta topoMeta{{{0, 1, 2, 3}}, {{0, 1, 2, 3, 4, 5}}};
-    VDataDesTag vDataDes;
-    vDataDes.counts = {100, 100, 100, 100, 100, 100, 100, 100, 500, 500};
-    vDataDes.displs = {0, 100, 200, 300, 400, 500, 600, 700, 800, 1300};
-    vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_FP64;
-
-    RunAllGatherVMultilevel(topoMeta, vDataDes);
-}

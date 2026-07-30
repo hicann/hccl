@@ -71,7 +71,7 @@ HcclResult AlgTemplateBase::Prepare(u32 interRank, u32 interRankSize)
     return HCCL_E_PARA;
 }
 
-HcclResult AlgTemplateBase::Prepare(HcomCollOpInfo *opInfo, const u32 userRank, const std::vector<u32> &ringsOrders,
+HcclResult AlgTemplateBase::Prepare(HcclCollOpInfo *opInfo, const u32 userRank, const std::vector<u32> &ringsOrders,
         const std::vector<Slice> &userMemInputSlices) {
     return HCCL_E_PARA;
 }

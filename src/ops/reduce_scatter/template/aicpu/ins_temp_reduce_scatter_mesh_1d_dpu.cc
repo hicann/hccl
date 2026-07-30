@@ -185,7 +185,7 @@ HcclResult InsTempReduceScatterMesh1dDpu::PostLocalReduce(const OpParam &param, 
         return HCCL_E_INTERNAL;
     }
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-        u64 dataTypeSize =  SIZE_TABLE[dataType_];
+        u64 dataTypeSize =  HCCL_SIZE_TABLE[dataType_];
         u64 count = processSize_ / dataTypeSize;
         // 将本端数据从inputPtr搬运到cclBuffer上面
         DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,

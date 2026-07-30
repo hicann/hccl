@@ -124,7 +124,7 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(const OpParam& param, const 
     
     threadNum_ =  subCommRanks_.size();
     count_ = tempAlgParams.count;
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     SetRoot(tempAlgParams.root);
 
     HCCL_INFO("[InsTempScatterNHRDPUInterNode] queNum_ = [%d], threads size = [%d]", threadNum_, templateResource.threads.size());

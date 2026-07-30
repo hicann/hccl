@@ -70,8 +70,8 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
 }
 
 HcclResult HcclReduceScatterGraphMode(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
- 	     HcclReduceOp op, const char* group, aclrtStream stream, const char* tag, void** streams,
- 	     size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
+    HcclReduceOp op, const char* group, aclrtStream stream, const char* tag, void** streams,
+    size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
 {
     HCCL_INFO("Start to run execute HcclReduceScatterGraphMode");
     CHK_PTR_NULL(group);
@@ -144,7 +144,7 @@ HcclResult CheckReduceScatterInputPara(const HcclComm comm, const void* sendBuf,
 
 static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount,
     HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, u32 userRankSize,
- 	OpMode opMode)
+    OpMode opMode)
 {
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 outputSize = recvCount * perDataSize;
@@ -157,8 +157,8 @@ static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void 
     if (param.commName[0] == '\0') {
         CHK_RET(HcclGetCommName(comm, param.commName));
     }
-    DevType deviceType = DevType::DEV_TYPE_COUNT;
-    CHK_RET(hrtGetDeviceType(deviceType));
+    HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
+    CHK_RET(HcclGetDeviceType(deviceType));
 
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;
@@ -237,7 +237,7 @@ HcclResult ReduceScatterEntryLog(void *sendBuf, void *recvBuf, uint64_t recvCoun
 }
 
 HcclResult ReduceScatterOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
- 	HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack)
+    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack)
 {
     HCCL_INFO("Start to execute ReduceScatterOutPlaceGraphMode");
     OpParam param;

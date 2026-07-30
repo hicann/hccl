@@ -11,7 +11,6 @@
 #include "batchsendrecv_semantics_checker.h"
 
 #include <map>
-#include "hccl/base.h"
 #include "check_utils.h"
 
 namespace HcclSim {

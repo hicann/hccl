@@ -56,7 +56,7 @@ HcclResult InsTempScatterMesh1DIntra::KernelRun(const OpParam& param, const Temp
     TemplateResource& templateResource)
 {
     threadNum_ = templateResource.threads.size();
-    dataTypeSize_ = SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     count_ = tempAlgParams.count;
     HCCL_INFO("[InsTempScatterMesh1DIntra] Run Start");
 

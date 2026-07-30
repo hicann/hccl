@@ -11,7 +11,6 @@
 #ifndef HCCL_VERIFIER_H
 #define HCCL_VERIFIER_H
 #include "hccl/hccl_types.h"
-#include "hccl/base.h"
 #include "sim_task_queue.h"
 #include "checker.h"
 

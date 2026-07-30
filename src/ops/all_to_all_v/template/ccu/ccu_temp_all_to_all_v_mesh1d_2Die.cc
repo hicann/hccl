@@ -333,7 +333,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::FastLaunch(const OpParam &param, const Te
     dieSplitRatio_ = cacheCtx.dieSplitRatio;
 
     HcclDataType dataType = param.all2AllVDataDes.sendType;
-    uint64_t dataTypeSize = SIZE_TABLE[dataType];
+    uint64_t dataTypeSize = HCCL_SIZE_TABLE[dataType];
     uint32_t rankSize = static_cast<uint32_t>(param.varMemSize / (ALL_TO_ALL_V_VECTOR_NUM * sizeof(u64)));
     CHK_PRT_RET(rankSize == 0,
         HCCL_ERROR("[CcuTempAlltoAllVMesh1D2Die][FastLaunch] rankSize is 0, varMemSize[%llu]",

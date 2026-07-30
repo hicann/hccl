@@ -18,7 +18,6 @@
 #include "alg_template_register.h"
 #include "utils.h"
 #include "log.h"
-#include "workflow.h"
 #include "sal.h"
 #include "executor_base.h"
 #include "template_utils.h"
@@ -75,7 +74,7 @@ protected:
     // CollAlg base params
     u32           myRank_   = INVALID_VALUE_RANKID;
     u32           rankSize_ = 0;
-    DevType       devType_  = DevType::DEV_TYPE_COUNT;
+    HcclDevType       devType_  = HcclDevType::DEV_TYPE_COUNT;
 
     // opInfo
     HcclReduceOp  reduceOp_;

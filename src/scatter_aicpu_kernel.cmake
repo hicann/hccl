@@ -17,6 +17,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/common/adapter_error_manager_pub.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/alg_env_config.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/device_compat.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/dev_type.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/omnipipe_data_slice_calc.cc
     
