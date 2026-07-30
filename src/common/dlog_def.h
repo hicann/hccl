@@ -12,7 +12,7 @@
 #define DLOG_DEF_H
 
 #include <stdint.h>
-#include <base/log_types.h>
+#include "base/log_types.h"
 
 #ifdef __cplusplus
 extern "C" {
