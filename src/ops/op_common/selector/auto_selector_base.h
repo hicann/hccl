@@ -99,6 +99,7 @@ public:
                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                    std::string &selectAlgName) const;
     bool IsStarsState(const OpExecuteConfig &opExecuteConfig) const;
+    bool IsRollBackAiv(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo) const;
     bool IsLayerAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType) const;
     HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isEqual) const;
     HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isMultiple) const;
