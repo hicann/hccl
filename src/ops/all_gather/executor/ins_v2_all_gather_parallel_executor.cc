@@ -388,9 +388,10 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
             interLinkMap_,
             ParallelDataSplitType::ALL_GATHER,
             multipleDimensionSplitRatio_);
+        ratio = 1.0 - ratio;
     }
-    splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
+    splitDataSize.push_back(ratio);
     HCCL_INFO("[InsV2AllGatherParallelExecutor] meshFirstRatio[%f], closFirstRatio[%f]",
               splitDataSize[0], splitDataSize[1]);
     return;
