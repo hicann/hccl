@@ -104,7 +104,9 @@ HcclResult InsTempScatterMesh1D::KernelRun(const OpParam& param, const TemplateD
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     CHK_PTR_NULL(tempAlgParams.buffInfo.hcclBuff.addr);
-    CHK_PTR_NULL(tempAlgParams.buffInfo.inputPtr);
+    if (u32(myRank_) == root_ && tempAlgParams.buffInfo.inBuffType != BufferType::HCCL_BUFFER) {
+        CHK_PTR_NULL(tempAlgParams.buffInfo.inputPtr);
+    }
     CHK_PTR_NULL(tempAlgParams.buffInfo.outputPtr);
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     // 尾块模式
