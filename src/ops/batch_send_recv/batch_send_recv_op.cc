@@ -143,14 +143,14 @@ HcclResult BatchSendRecvOutPlace(HcclSendRecvItem *sendRecvInfo, uint32_t itemNu
 HcclResult BatchSendRecvEntryLog(uint32_t itemNum, aclrtStream stream, const std::string &tag, const std::string &opName)
 {
     if (GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
         s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], itemNum[%u], streamId[%d], deviceLogicId[%d]",
-            tag.c_str(), itemNum, streamId, deviceLogicId);
+            "tag[%s], itemNum[%u], streamId[%d], deviceId[%d]",
+            tag.c_str(), itemNum, streamId, deviceId);
 
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag.c_str()));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);

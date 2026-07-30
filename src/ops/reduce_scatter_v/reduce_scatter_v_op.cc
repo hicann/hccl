@@ -303,13 +303,13 @@ HcclResult ReduceScatterVEntryLog(void *sendBuf, const void *sendCounts, const v
     uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, aclrtStream stream, const std::string &tag, const u32 totalRanks, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
-        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], recvCount[%llu], dataType[%s], reduceOp[%s], streamId[%d], deviceLogicId[%d]",
+        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], recvCount[%llu], dataType[%s], reduceOp[%s], streamId[%d], deviceId[%d]",
             opName.c_str(), tag.c_str(), sendBuf, recvBuf, recvCount,
-            GetDataTypeEnumStr(dataType).c_str(), GetReduceOpEnumStr(op).c_str(), streamId, deviceLogicId);
+            GetDataTypeEnumStr(dataType).c_str(), GetReduceOpEnumStr(op).c_str(), streamId, deviceId);
 
         PrintEntryArrayLog(opName, tag, "sendCounts", sendCounts, totalRanks);
         PrintEntryArrayLog(opName, tag, "sendDispls", sendDispls, totalRanks);

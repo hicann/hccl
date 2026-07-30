@@ -261,13 +261,13 @@ HcclResult AllGatherVEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, 
     HcclDataType dataType, aclrtStream stream, const std::string &tag, const u32 totalRanks, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
-        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], dataType[%s], streamId[%d], deviceLogicId[%d]",
+        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], dataType[%s], streamId[%d], deviceId[%d]",
             opName.c_str(), tag.c_str(), sendBuf, recvBuf, sendCount,
-            GetDataTypeEnumStr(dataType).c_str(), streamId, deviceLogicId);
+            GetDataTypeEnumStr(dataType).c_str(), streamId, deviceId);
 
         PrintEntryArrayLog(opName, tag, "recvCounts", recvCounts, totalRanks);
         PrintEntryArrayLog(opName, tag, "recvDispls", recvDispls, totalRanks);

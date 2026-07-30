@@ -704,15 +704,15 @@ HcclResult AlltoAllEntryLog(const void *sendBuf, const void *recvBuf, uint64_t s
     HcclDataType sendType, HcclDataType recvType, aclrtStream stream, const std::string &tag, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
         s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], recvCount[%llu], sendType[%s], recvType[%s], streamId[%d], deviceLogicId[%d]",
+            "tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], recvCount[%llu], sendType[%s], recvType[%s], streamId[%d], deviceId[%d]",
             tag.c_str(), sendBuf, recvBuf, sendCount, recvCount, GetDataTypeEnumStr(sendType).c_str(), GetDataTypeEnumStr(recvType).c_str(),
-            streamId, deviceLogicId);
+            streamId, deviceId);
 
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag.c_str()));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);
@@ -726,13 +726,13 @@ HcclResult AlltoAllVEntryLog(const void *sendBuf, const void *recvBuf, const voi
     const std::string &tag, const u32 totalRanks, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
-        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], sendType[%s], recvType[%s], streamId[%d], deviceLogicId[%d]",
+        HCCL_RUN_INFO("Entry-%s: tag[%s], sendBuf[%p], recvBuf[%p], sendType[%s], recvType[%s], streamId[%d], deviceId[%d]",
             opName.c_str(), tag.c_str(), sendBuf, recvBuf, GetDataTypeEnumStr(sendType).c_str(),
-            GetDataTypeEnumStr(recvType).c_str(), streamId, deviceLogicId);
+            GetDataTypeEnumStr(recvType).c_str(), streamId, deviceId);
 
         PrintEntryArrayLog(opName, tag, "sendCounts", sendCounts, totalRanks);
         PrintEntryArrayLog(opName, tag, "recvCounts", recvCounts, totalRanks);
@@ -746,15 +746,15 @@ HcclResult AlltoAllVCEntryLog(const void *sendBuf, const void *recvBuf, const vo
     HcclDataType sendType, HcclDataType recvType, aclrtStream stream, const std::string &tag, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
         s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], sendBuf[%p], recvBuf[%p], sendCountMatrix[%p], sendType[%s], recvType[%s], streamId[%d], deviceLogicId[%d]",
+            "tag[%s], sendBuf[%p], recvBuf[%p], sendCountMatrix[%p], sendType[%s], recvType[%s], streamId[%d], deviceId[%d]",
             tag.c_str(), sendBuf, recvBuf, sendCountMatrix, GetDataTypeEnumStr(sendType).c_str(), GetDataTypeEnumStr(recvType).c_str(),
-            streamId, deviceLogicId);
+            streamId, deviceId);
 
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag.c_str()));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);

@@ -267,14 +267,14 @@ HcclResult BroadcastEntryLog(const void *buf, uint64_t count, HcclDataType dataT
                              aclrtStream stream, const char *tag, const std::string &opName, bool forceLog)
 {
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
-        s32 deviceLogicId = 0;
-        ACLCHECK(aclrtGetDevice(&deviceLogicId));
+        s32 deviceId = 0;
+        ACLCHECK(aclrtGetDevice(&deviceId));
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
         s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], buf[%p], count[%llu], dataType[%s], root[%u], streamId[%d], deviceLogicId[%d]",
-            tag, buf, count, GetDataTypeEnumStr(dataType).c_str(), root, streamId, deviceLogicId);
+            "tag[%s], buf[%p], count[%llu], dataType[%s], root[%u], streamId[%d], deviceId[%d]",
+            tag, buf, count, GetDataTypeEnumStr(dataType).c_str(), root, streamId, deviceId);
 
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);
