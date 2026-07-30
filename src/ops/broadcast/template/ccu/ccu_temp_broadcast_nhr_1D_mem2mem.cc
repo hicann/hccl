@@ -167,7 +167,7 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& p
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
         // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuBroadcastNhr1DMem2MemKernel");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuBroadcastNhr1DMem2MemKernel"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuBroadcastNhr1DMem2MemKernel);
 
         auto kernelArg = std::make_shared<CcuKernelArgBroadcastNhr1DMem2Mem>();

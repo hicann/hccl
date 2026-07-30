@@ -299,6 +299,9 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 
     // 2. 计算loop  ccu不用cclbuff, 根据UB_MAX_DATA_SIZE来计算
     u64 maxCountPerLoop = static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_;
+    CHK_PRT_RET(maxCountPerLoop == 0,
+        HCCL_ERROR("[%s] maxCountPerLoop is 0, dataTypeSize_[%llu].", __func__, dataTypeSize_),
+        HcclResult::HCCL_E_INTERNAL);
     u64 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;

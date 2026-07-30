@@ -60,7 +60,7 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes(HcclComm comm, const OpPar
                resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
-    strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceMesh1DTwoShotMem2Mem");
+    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceMesh1DTwoShotMem2Mem"));
     kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceMesh1DTwoShotMem2MemKernel);
 
     std::vector<HcclChannelDesc> channelDescs;

@@ -85,6 +85,9 @@ HcclResult AivTempScatterMesh1D::KernelRun(const OpParam& param,
     aivScatterArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivScatterArgs.stream = param.stream;
     aivScatterArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+        HcclResult::HCCL_E_INTERNAL);
     aivScatterArgs.xRankSize = subCommRanks_[0].size();
     aivScatterArgs.yRankSize = 0;
     aivScatterArgs.zRankSize = 0;

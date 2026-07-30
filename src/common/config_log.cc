@@ -45,7 +45,7 @@ HcclResult InitDebugConfigByEnv()
         } else if (strcasecmp(subConfig, "RESOURCE") == 0) {
             mask = HCCL_RES;
         } else if (strcasecmp(subConfig, "AIV_OPS_EXC") == 0) {
-            mask = HCCL_AIV_OPS_EXC;
+            HCCL_WARNING("HCCL_DEBUG_CONFIG:%s subConfig:%s is deprecated and ignored", env, subConfig);
         } else {
             HCCL_ERROR("HCCL_DEBUG_CONFIG:%s is invalid, subConfig:%s is not supported", env, subConfig);
             free(configDup);

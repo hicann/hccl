@@ -40,7 +40,7 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::BuildCcuKernelInfos(const OpParam& para
 {
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
         CcuKernelInfo kernelInfo;
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllReduceNHR1D");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllReduceNHR1D"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllReduceNHR1DKernel);
         auto kernelArg = std::make_shared<CcuKernelArgAllReduceNHR1D>();
         kernelArg->rankSize = subCommRanks_[0].size();

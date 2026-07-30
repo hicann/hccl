@@ -153,7 +153,7 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::BuildCcuKernelInfos(const OpParam& para
     for (uint32_t kernelIdx = 0; kernelIdx < kernelNum; kernelIdx++) {
         // 创建每个kernel的KernelArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllGatherNHR1DMem2MemKernel");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllGatherNHR1DMem2MemKernel"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllGatherNHR1DMem2MemKernel);
 
         auto kernelArg = std::make_shared<CcuKernelArgAllGatherNHR1D>();

@@ -24,6 +24,11 @@ static CcuResult ParseKernelArg(AllGatherOmniPipeMesh1DMem2MemContext &ctx,
     CcuKernelArgAllGatherOmniPipeMesh1DMem2Mem *kernelArg)
 {
     ctx.arg = kernelArg;
+    if (kernelArg->subCommRanks.empty() || kernelArg->subCommRanks[0].empty() ||
+        kernelArg->rankId >= kernelArg->subCommRanks[0].size()) {
+        HCCL_ERROR("[%s] invalid subCommRanks or rankId[%u] out of range.", __func__, kernelArg->rankId);
+        return CcuResult::CCU_E_INTERNAL;
+    }
     kernelArg->userRank = kernelArg->subCommRanks[0][kernelArg->rankId];
 
     HCCL_INFO("[%s] myRank[%u] rankId[%u] rankSize[%u]", __func__, kernelArg->userRank, kernelArg->rankId,

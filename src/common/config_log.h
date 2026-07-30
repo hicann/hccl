@@ -17,7 +17,6 @@ namespace ops_hccl {
 constexpr u64 HCCL_ALG = 0x1ULL << 0;
 constexpr u64 HCCL_TASK = 0x1ULL << 1;
 constexpr u64 HCCL_RES = 0x1ULL << 2;
-constexpr u64 HCCL_AIV_OPS_EXC = 0x1ULL << 3;
 
 u64 GetDebugConfig();
 

@@ -89,6 +89,9 @@ HcclResult AivTempBroadcastMesh1D::KernelRun(const OpParam& param,
     aivBroadcastArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivBroadcastArgs.stream = param.stream;
     aivBroadcastArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+        HcclResult::HCCL_E_INTERNAL);
     aivBroadcastArgs.xRankSize = subCommRanks_[0].size();
     aivBroadcastArgs.yRankSize = 0;
     aivBroadcastArgs.zRankSize = 0;

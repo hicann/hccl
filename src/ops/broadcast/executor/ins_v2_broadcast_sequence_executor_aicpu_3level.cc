@@ -512,6 +512,9 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
     u64 dataCount_ = param.DataDes.count;
     u64 maxCountPerLoop = tempAlgParamsScatterL0.buffInfo.hcclBuff.size / AICPU_ALIGN_SIZE *
                           AICPU_ALIGN_SIZE / dataTypeSize_;
+    CHK_PRT_RET(maxCountPerLoop == 0,
+        HCCL_ERROR("[%s] maxCountPerLoop is 0, dataTypeSize_[%llu].", __func__, dataTypeSize_),
+        HCCL_E_INTERNAL);
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     // 已处理的元素数

@@ -76,7 +76,7 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(HcclComm comm, con
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
 
-    strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeMesh1DMem2MemKernel");
+    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeMesh1DMem2MemKernel"));
     kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceScatterOmniPipeMesh1DMem2MemKernel);
 
     std::vector<HcclChannelDesc> channelDescs;

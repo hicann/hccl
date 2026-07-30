@@ -57,7 +57,7 @@ HcclResult CcuTempReduceScatterMesh2Die::CalcRes(HcclComm comm, const OpParam &p
     for (uint32_t dieId = 0; dieId < DIE_NUM; dieId++) {    // 2Die算法，需要执行两次
         // 创建每个kernel的kernelArg，放入kernelInfo, 然后将kernelInfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceScatterMesh2Die");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceScatterMesh2Die"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceScatterMesh2DieKernel);
         const bool rmtReduceWithMyRank = channels_[dieId].size() > channels_[1 - dieId].size() ? false : true;
         auto kernelArg = std::make_shared<CcuKernelArgReduceScatterMesh2Die>();

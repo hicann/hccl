@@ -62,7 +62,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(HcclComm comm, const O
         bool isReduceToOutput = (dieId == meshDieId);
 
         CcuKernelInfo kernelInfo;
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterMesh1D2DieMem2MemKernel");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterMesh1D2DieMem2MemKernel"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceScatterMesh1D2DieMem2MemKernel);
 
         auto kernelArg = std::make_shared<CcuKernelArgReduceScatterMesh1D2DieMem2Mem>();

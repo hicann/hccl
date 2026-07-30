@@ -157,7 +157,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam& para
         // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
         CcuKernelInfo kernelInfo;
 
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceNHR1DMem2Mem");
+        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceNHR1DMem2Mem"));
         kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceNHR1DMem2MemKernel);
 
         auto kernelArg = std::make_shared<CcuKernelArgReduceNHR1DMem2Mem>();

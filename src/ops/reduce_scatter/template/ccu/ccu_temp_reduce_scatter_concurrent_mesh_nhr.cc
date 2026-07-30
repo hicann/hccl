@@ -144,7 +144,7 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::CalcMeshRes(HcclComm comm, con
     CHK_PRT_RET(channelDescs.empty(),
         HCCL_ERROR("[CcuTempReduceScatterConcurrentMeshNHR][CalcMeshRes] mesh channelDescs is empty"), HCCL_E_INTERNAL);
 
-    strcpy_s(meshKernelInfo.kernelFuncName, sizeof(meshKernelInfo.kernelFuncName), "CcuKernelReduceScatterMesh1D");
+    CHK_SAFETY_FUNC_RET(strcpy_s(meshKernelInfo.kernelFuncName, sizeof(meshKernelInfo.kernelFuncName), "CcuKernelReduceScatterMesh1D"));
     meshKernelInfo.kernelFunc = reinterpret_cast<void*>(CcuReduceScatterMesh1DKernel);
     auto kernelArg = std::make_shared<CcuKernelArgReduceScatterMesh1D>();
     kernelArg->rankSize = meshGroup_.size();
@@ -244,7 +244,7 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::CalcNhrRes(HcclComm comm, cons
         CHK_RET(ReverseChannelPerDieIfNeed(comm, myRank_, channelsPerDie));
     }
 
-    strcpy_s(nhrKernelInfo.kernelFuncName, sizeof(nhrKernelInfo.kernelFuncName), "CcuReduceScatterNHR1DMem2MemKernel");
+    CHK_SAFETY_FUNC_RET(strcpy_s(nhrKernelInfo.kernelFuncName, sizeof(nhrKernelInfo.kernelFuncName), "CcuReduceScatterNHR1DMem2MemKernel"));
     nhrKernelInfo.kernelFunc = reinterpret_cast<void*>(CcuReduceScatterNHR1DMem2MemKernel);
     auto kernelArg = std::make_shared<CcuKernelArgReduceScatterNHR1D>();
     kernelArg->dimSize = nhrGroup_.size();

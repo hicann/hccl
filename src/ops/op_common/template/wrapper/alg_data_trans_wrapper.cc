@@ -1044,7 +1044,7 @@ float Fp16ToFp32(uint16_t fp16Bits)
             // ±0: 符号位保留，指数和尾数全零
             uint32_t result = sign << 31;
             float f;
-            memcpy_s(&f, sizeof(f), &result, sizeof(f));
+            if (memcpy_s(&f, sizeof(f), &result, sizeof(f)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0.0f; }
             return f;
         }
         // FP16非规格化数: 无隐含1，实际指数为-14
@@ -1062,13 +1062,13 @@ float Fp16ToFp32(uint16_t fp16Bits)
         if (fp32Exp <= 0) {
             uint32_t result = sign << 31;
             float f;
-            memcpy_s(&f, sizeof(f), &result, sizeof(f));
+            if (memcpy_s(&f, sizeof(f), &result, sizeof(f)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0.0f; }
             return f;
         }
         // 组装FP32规格化数: 符号 + 偏移后指数 + 尾数左移13位对齐到23位
         uint32_t result = (sign << 31) | (static_cast<uint32_t>(fp32Exp) << 23) | (mantissa << 13);
         float f;
-        memcpy_s(&f, sizeof(f), &result, sizeof(f));
+        if (memcpy_s(&f, sizeof(f), &result, sizeof(f)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0.0f; }
         return f;
     }
     if (exponent == 0x1F) {
@@ -1077,7 +1077,7 @@ float Fp16ToFp32(uint16_t fp16Bits)
         // 指数=0xFF，尾数=mantissa<<13（mantissa为0时就是Inf，非0时就是NaN）
         uint32_t result = (sign << 31) | (0xFF << 23) | (mantissa << 13);
         float f;
-        memcpy_s(&f, sizeof(f), &result, sizeof(f));
+        if (memcpy_s(&f, sizeof(f), &result, sizeof(f)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0.0f; }
         return f;
     }
     // FP16规格化数（1<=exponent<=30）
@@ -1085,7 +1085,7 @@ float Fp16ToFp32(uint16_t fp16Bits)
     // FP32尾数 = FP16尾数左移13位（10位扩展到23位，低位补零）
     uint32_t result = (sign << 31) | ((exponent + 112) << 23) | (mantissa << 13);
     float f;
-    memcpy_s(&f, sizeof(f), &result, sizeof(f));
+    if (memcpy_s(&f, sizeof(f), &result, sizeof(f)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0.0f; }
     return f;
 }
 
@@ -1119,7 +1119,7 @@ uint16_t Fp32DenormToFp16(uint32_t sign, uint32_t mantissa, int32_t fp16Exp)
 uint16_t Fp32ToFp16(float value)
 {
     uint32_t fp32Bits;
-    memcpy_s(&fp32Bits, sizeof(fp32Bits), &value, sizeof(fp32Bits));
+    if (memcpy_s(&fp32Bits, sizeof(fp32Bits), &value, sizeof(fp32Bits)) != EOK) { HCCL_ERROR("[%s] memcpy_s failed.", __func__); return 0; }
     uint32_t sign = (fp32Bits >> 31) & 0x1;
     uint32_t exponent = (fp32Bits >> 23) & 0xFF;
     uint32_t mantissa = fp32Bits & 0x7FFFFF;

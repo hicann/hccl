@@ -34,6 +34,11 @@ static CcuResult ParseKernelArg(AllGatherOmniPipeNHR1DMem2MemContext &ctx,
     ctx.arg = kernelArg;
     kernelArg->localSize = kernelArg->rank2ChannelIdx.size(); // nhr算法通信rank数
     kernelArg->myRankIdx = kernelArg->rank2ChannelIdx.size(); // InitResources中将本端放在末尾 此处为对应的idx
+    if (kernelArg->subCommRanks.empty() || kernelArg->subCommRanks[0].empty() ||
+        kernelArg->rankId >= kernelArg->subCommRanks[0].size()) {
+        HCCL_ERROR("[%s] invalid subCommRanks or rankId[%u] out of range.", __func__, kernelArg->rankId);
+        return CcuResult::CCU_E_INTERNAL;
+    }
     kernelArg->userRank = kernelArg->subCommRanks[0][kernelArg->rankId];
     return CcuResult::CCU_SUCCESS;
 }

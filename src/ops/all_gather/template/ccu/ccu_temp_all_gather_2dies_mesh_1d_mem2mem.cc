@@ -71,9 +71,9 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes(HcclComm comm, const OpPa
 
     uint32_t rankId = mySubCommRank_;
     CcuKernelInfo kernelInfo0, kernelInfo1;
-    strcpy_s(kernelInfo0.kernelFuncName, sizeof(kernelInfo0.kernelFuncName), "CcuAllGather2DiesMeshMem2Mem1DKernel");
+    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo0.kernelFuncName, sizeof(kernelInfo0.kernelFuncName), "CcuAllGather2DiesMeshMem2Mem1DKernel"));
     kernelInfo0.kernelFunc = reinterpret_cast<void *>(CcuAllGather2DiesMeshMem2Mem1DKernel);
-    strcpy_s(kernelInfo1.kernelFuncName, sizeof(kernelInfo1.kernelFuncName), "CcuAllGather2DiesMeshMem2Mem1DKernel");
+    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo1.kernelFuncName, sizeof(kernelInfo1.kernelFuncName), "CcuAllGather2DiesMeshMem2Mem1DKernel"));
     kernelInfo1.kernelFunc = reinterpret_cast<void *>(CcuAllGather2DiesMeshMem2Mem1DKernel);
 
     if (rankIdGroup0.size() != 0) {

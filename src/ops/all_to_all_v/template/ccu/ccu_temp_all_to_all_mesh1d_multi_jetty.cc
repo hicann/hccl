@@ -48,7 +48,7 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::CalcRes(HcclComm comm, const OpParam
                resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
-    strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllToAllMesh1DMultiJettyKernel");
+    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllToAllMesh1DMultiJettyKernel"));
     kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllToAllMesh1DMultiJettyKernel);
 
     auto kernelArg = std::make_shared<CcuKernelArgAllToAllMesh1DMultiJetty>();

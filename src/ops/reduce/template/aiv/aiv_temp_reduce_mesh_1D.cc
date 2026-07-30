@@ -92,6 +92,9 @@ HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
     aivReduceArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivReduceArgs.stream = param.stream;
     aivReduceArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+        HcclResult::HCCL_E_INTERNAL);
     aivReduceArgs.xRankSize = subCommRanks_[0].size();
     aivReduceArgs.yRankSize = 0;
     aivReduceArgs.zRankSize = 0;
