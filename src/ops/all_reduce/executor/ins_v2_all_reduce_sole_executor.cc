@@ -124,6 +124,9 @@ HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate =
         std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && std::string(param.algName) == "AicpuAllReduceSoleNHRTwoShotMultiLink") {
+        CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
+    }
     u32 templateScratchMultiplier = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType,
                                                                      tempAlgParams.buffInfo.outBuffType);
 
@@ -260,6 +263,8 @@ REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DOneShot, Ins
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DTwoShot, InsV2AllReduceSoleExecutor,
     TopoMatch1D, InsTempAllReduceMesh1DTwoShot);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceNHR, InsV2AllReduceSoleExecutor,
+    TopoMatch1D, InsTempAllReduceNHR);
+REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHRTwoShotMultiLink, InsV2AllReduceSoleExecutor,
     TopoMatch1D, InsTempAllReduceNHR);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DTwoShotMeshChunk, InsV2AllReduceSoleExecutor, 
     TopoMatch1D, InsTempAllReduceMesh1DTwoShotMeshChunk);

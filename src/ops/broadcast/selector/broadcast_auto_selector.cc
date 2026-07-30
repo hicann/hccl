@@ -221,7 +221,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(const TopoInfoWithNetL
             selectAlgName = "InsBroadcastParallelMesh1DNHRUBX";
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        selectAlgName = "InsBroadcastNHR";
+        selectAlgName = "AicpuBroadcastSoleNHRTwoShotMultiLink";
     } else {
         HCCL_WARNING("[BroadcastAutoSelector] topo not match");
         return SelectorStatus::NOT_MATCH;

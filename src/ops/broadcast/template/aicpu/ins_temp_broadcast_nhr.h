@@ -46,27 +46,34 @@ public:
     void SetRoot(u32 root);
 
 private:
+    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource &templateResource);
     HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
     HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
-    HcclResult RunScatter(const RankSliceInfo &sliceInfoVec, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads);
-    HcclResult RunAllGather(const RankSliceInfo &sliceInfoVec, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads);
+    HcclResult RunScatter(const std::map<u32, std::vector<ChannelInfo>> &channels,
+        const std::vector<ThreadHandle> &threads, u32 channelIdx);
+    HcclResult RunAllGather(const std::map<u32, std::vector<ChannelInfo>> &channels,
+        const std::vector<ThreadHandle> &threads, u32 channelIdx);
     HcclResult GetScatterStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo) const;
     HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo);
     HcclResult BatchTxRx(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const RankSliceInfo &sliceInfoVec);
+        u32 channelIdx);
     HcclResult BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const RankSliceInfo &sliceInfoVec, u64 memOffset) const;
+        u64 memOffset, u32 channelIdx) const;
     HcclResult BatchRecv(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const RankSliceInfo &sliceInfoVec, u64 memOffset) const;
+        u64 memOffset, u32 channelIdx) const;
     HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const RankSliceInfo &sliceInfoVec, u64 memOffset) const;
+        u64 memOffset, u32 channelIdx) const;
     u32 GetRankFromMap(const u32 rankIdx) const;
-    HcclResult CalcDataSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec) const;
+    TemplateDataParams tempAlgParams_;
     u64 dataTypeSize_{0};
+    u64 sliceSize_{0};
+    u64 tailSize_{0};
     std::map<u32, u32> tempVirtRankMap_;
     bool isDmaRead_{false};
+    std::vector<u64> dataSplit_;
+    std::vector<u64> dataOffset_;
+    std::vector<u64> dataSplitTail_;
+    std::vector<u64> dataOffsetTail_;
 };
 
 } // namespace Hccl

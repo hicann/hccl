@@ -68,28 +68,36 @@ public:
         TemplateResource& templateResource) override;
 
 private:
-    HcclResult SplitData();
+    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource &templateResource);
 
     HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
     HcclResult RunReduceScatter(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
+        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
+        u32 channelIdx);
     HcclResult RunAllGather(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
+        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
+        u32 channelIdx);
     HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
 
     HcclResult GetReduceScatterStepInfoList(std::vector<NHRStepInfo> &stepInfoList) const;
     HcclResult GetAllGatherStepInfoList(std::vector<NHRStepInfo> &stepInfoList) const;
     u32 GetNHRStepNum() const;
 
+    TemplateDataParams tempAlgParams_;
     u32 dataTypeSize_{0};
     u64 count_{0};
     u64 processSize_{0};
+    u64 sliceSize_{0};
+    u64 tailSize_{0};
     
     u32 myRankIdx_{0};
-    std::vector<NHRSliceInfo> sliceInfoList_;
     std::vector<u32> rankList_;
 
     bool isDmaRead_{false};
+    std::vector<u64> dataSplit_;
+    std::vector<u64> dataOffset_;
+    std::vector<u64> dataSplitTail_;
+    std::vector<u64> dataOffsetTail_;
 };
 
 }  // namespace ops_hccl

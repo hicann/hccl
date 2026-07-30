@@ -108,6 +108,9 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && std::string(param.algName) == "AicpuBroadcastSoleNHRTwoShotMultiLink") {
+        CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
+    }
 
     // 根据CCL Buffer大小和UB_MAX_DATA_SIZE，计算出一轮中最多能输出多少数据
     u32 templateScratchMultiplier = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType,
@@ -237,6 +240,8 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastMesh1DTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D, 
                  InsTempBroadcastMesh1DTwoShot);
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
+                InsTempBroadcastNHR);
+REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRTwoShotMultiLink, InsV2BroadcastSoleExecutor, TopoMatch1D,
                 InsTempBroadcastNHR);
 
 #ifndef AICPU_COMPILE
