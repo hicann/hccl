@@ -249,12 +249,17 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
             myRank),
         HcclResult::HCCL_E_PARA);
     // 1.获取并校验通信层数
-    uint32_t *netLayers;
+    uint32_t *netLayersTemp = nullptr;
     uint32_t layerNum = 0;
-    CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &layerNum));
+    CHK_RET(HcclRankGraphGetLayers(comm, &netLayersTemp, &layerNum));
+    CHK_PRT_RET(netLayersTemp == nullptr || layerNum == 0,
+        HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Rank [%u], invalid net layers, layerNum[%u].",
+            myRank, layerNum),
+        HcclResult::HCCL_E_INTERNAL);
+    std::vector<uint32_t> netLayerList(netLayersTemp, netLayersTemp + layerNum);
 
     HCCL_DEBUG("[CollAlgFactory] [TopoMatchMultilevel] Rank [%d], netLayers[%u][%s]",
-                myRank, layerNum, PrintCArray<uint32_t>(netLayers, layerNum).c_str());
+                myRank, layerNum, PrintCArray<uint32_t>(netLayerList.data(), layerNum).c_str());
 
     // 2. 获取每个pod上rank数量以及pod数量
     uint32_t *instSizeList;
@@ -268,18 +273,29 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
     HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Rank [%d], isSymmetric[%d], topoLevelNums[%u], listSize[%u]",
         myRank, isSymmetric, topoInfo->topoLevelNums, listSize);
 
-    // 检查layer1（pod间）对称性：每个pod内的instance数是否相同
+    // 检查物理layer1（pod间）对称性：每个pod内的instance数是否相同
     bool layer1Symmetric = true;
-    uint32_t netLayer = 1;
+    uint32_t physicalLayer1NetLayer = 1;
+    uint32_t algLayer1NetLayer = 1;
+    if (topoInfo->topoLevelNums > 1) {
+        CHK_PRT_RET(layerNum < COMM_LAYER_SIZE_2,
+            HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Rank [%u], net layer num[%u] is invalid for "
+                "topoLevelNums[%u].", myRank, layerNum, topoInfo->topoLevelNums),
+            HcclResult::HCCL_E_INTERNAL);
+        physicalLayer1NetLayer = netLayerList[1];
+        algLayer1NetLayer = physicalLayer1NetLayer;
+    }
+
     bool hostDPUOnly = false;
     if ((CheckHostDPUOnly(comm, topoInfo, hostDPUOnly) == HcclResult::HCCL_SUCCESS) && hostDPUOnly) {
         // host dpu场景使用最高层的链路
-        netLayer = topoInfo->netLayerDetails.netLayers[topoInfo->netLayerDetails.netLayerNum - 1];
+        algLayer1NetLayer = netLayerList.back();
     }
     if (topoInfo->topoLevelNums > 1) {
         uint32_t *layer1InstSizeList = nullptr;
         uint32_t layer1ListSize = 0;
-        CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, netLayer, &layer1InstSizeList, &layer1ListSize));
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(
+            comm, physicalLayer1NetLayer, &layer1InstSizeList, &layer1ListSize));
         HCCL_INFO("[TopoMatchMultilevel][MatchTopo] layer1 listSize[%u]", layer1ListSize);
         for (uint32_t i = 0; i < layer1ListSize; i++) {
             HCCL_INFO("[TopoMatchMultilevel][MatchTopo] layer1 instSizeList[%u]=[%u]", i, layer1InstSizeList[i]);
@@ -315,8 +331,16 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
     }
 
     // 3. 计算layer0的topo
-    uint32_t commLayerSize = (topoInfo->topoLevelNums == COMM_LAYER_SIZE_3) ? COMM_LAYER_SIZE_3 : COMM_LAYER_SIZE_2;
+    bool needDowngrade = hostDPUOnly && topoInfo->topoLevelNums == COMM_LAYER_SIZE_3;
+    uint32_t commLayerSize = (topoInfo->topoLevelNums == COMM_LAYER_SIZE_3 && !needDowngrade)
+                                 ? COMM_LAYER_SIZE_3
+                                 : COMM_LAYER_SIZE_2;
     algHierarchyInfo.infos.resize(commLayerSize);
+    if (needDowngrade) {
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Rank [%u], downgrade HostDPU topology from physical "
+            "level nums[%u] to algorithm level nums[%u], algorithm layer1 uses net layer[%u].",
+            myRank, topoInfo->topoLevelNums, commLayerSize, algLayer1NetLayer);
+    }
     uint32_t layer0Size = 0;
     if (!isSymmetric) {
         uint32_t gcdInstSize = GcdOfInstSizeList(instSizeList, listSize);
@@ -327,11 +351,11 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
     }
 
     // 4. 计算layer1的topo
-    CHK_RET(TopoForLayer1(comm, netLayer, layer0Size, myRank, algHierarchyInfo));
+    CHK_RET(TopoForLayer1(comm, algLayer1NetLayer, layer0Size, myRank, algHierarchyInfo));
 
-    uint32_t layer1Size = algHierarchyInfo.infos[1][0].size();
     // 5. 计算layer2的topo (3层拓扑场景)
-    if (topoInfo->topoLevelNums >= COMM_LAYER_SIZE_3) {
+    if (topoInfo->topoLevelNums >= COMM_LAYER_SIZE_3 && !needDowngrade) {
+        uint32_t layer1Size = algHierarchyInfo.infos[1][0].size();
         uint32_t netLayer2 = topoInfo->netLayerDetails.netLayers[topoInfo->netLayerDetails.netLayerNum - 1];
         CHK_RET(TopoForLayer2(comm, netLayer2, layer0Size, layer1Size, myRank, algHierarchyInfo));
     }
