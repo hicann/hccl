@@ -506,11 +506,6 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
 
     threads_ = resCtx.threads;
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
-    if (remoteRankToChannelInfo_.empty() || remoteRankToChannelInfo_[0].empty()) {
-        HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][Orchestrate] no channel found!");
-        return HCCL_E_INTERNAL;
-    }
-
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
     CHK_PRT_RET((rankSize_ == 0),
