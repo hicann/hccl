@@ -51,7 +51,6 @@ private:
     std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE> kernelChannels_;
     std::array<std::vector<RankId>, MAX_KERNEL_NUM_2DIE> kernelRankGroup_;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
-    
 };
 
 } // namespace ops_hccl
