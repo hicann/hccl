@@ -107,7 +107,7 @@ HcclResult AivTempScatterMesh1D::KernelRun(const OpParam& param,
         }
     }
 
-    u64 dataSize = tempAlgParams.inputSliceStride;
+    u64 dataSize = tempAlgParams.sliceSize;
     CHK_RET(CalNumBlocks(aivScatterArgs.numBlocks, dataSize, param.numBlocksLimit));
 
     aivScatterArgs.inputSliceStride = tempAlgParams.inputSliceStride;

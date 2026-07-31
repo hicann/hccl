@@ -114,7 +114,7 @@ HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
         }
     }
 
-    u64 dataSize = tempAlgParams.inputSliceStride;
+    u64 dataSize = tempAlgParams.sliceSize;
     CHK_RET(CalNumBlocks(aivReduceArgs.numBlocks, dataSize, param.numBlocksLimit));
 
     aivReduceArgs.inputSliceStride = tempAlgParams.inputSliceStride;
