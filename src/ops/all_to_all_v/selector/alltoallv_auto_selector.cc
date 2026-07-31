@@ -39,18 +39,23 @@ SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNe
     (void)configAlgMap;
     uint32_t userRankSizeMax = 64;
     if (topoInfo->topoLevelNums > 1) {
-        if (opParam.all2AllDataDes.sendType == HcclDataType::HCCL_DATA_TYPE_INT8) {
-            HCCL_WARNING("[Algo][AlltoAllVAutoSelector] int8 is not supported yet for ccu_schedule mode.");
-            return SelectorStatus::NOT_MATCH;
-        }
-        if (topoInfo->userRankSize > userRankSizeMax) {
-            HCCL_WARNING("[Algo][AlltoAllVAutoSelector] rankSize > 64 is not supported yet for ccu_schedule mode.");
-            return SelectorStatus::NOT_MATCH;
-        }
-        if (topoInfo->userRankSize <= CONST_4) {
-            selectAlgName = "CcuAlltoAllVMesh1D";
+        if (topoInfo->level0Topo != Level0Shape::CLOS) {
+            if (opParam.all2AllDataDes.sendType == HcclDataType::HCCL_DATA_TYPE_INT8) {
+                HCCL_WARNING("[Algo][AlltoAllVAutoSelector] int8 is not supported yet for ccu_schedule mode.");
+                return SelectorStatus::NOT_MATCH;
+            }
+            if (topoInfo->userRankSize > userRankSizeMax) {
+                HCCL_WARNING("[Algo][AlltoAllVAutoSelector] rankSize > 64 is not supported yet for ccu_schedule mode.");
+                return SelectorStatus::NOT_MATCH;
+            }
+            if (topoInfo->userRankSize <= CONST_4) {
+                selectAlgName = "CcuAlltoAllVMesh1D";
+            } else {
+                selectAlgName = "CcuAlltoAllVMesh1D2Die";
+            }
         } else {
-            selectAlgName = "CcuAlltoAllVMesh1D2Die";
+            HCCL_WARNING("[Algo][AlltoAllVAutoSelector] clos not support for ccu_schedule mode.");
+            return SelectorStatus::NOT_MATCH;
         }
     } else {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {

@@ -62,6 +62,9 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D && topoInfo->userRankSize <= ccuSize) {
             selectAlgName = "CcuAllToAllMesh1D2Die";
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            HCCL_WARNING("[AlltoAllAutoSelector] levelNum > 1 is not supported yet for clos.");
+            return SelectorStatus::NOT_MATCH;
         } else {
             HCCL_WARNING("[AlltoAllAutoSelector] levelNum > 1 is not supported yet for 2d schedule mode.");
             return SelectorStatus::NOT_MATCH;
@@ -102,6 +105,9 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
                     selectAlgName = "CcuAlltoAllMesh1DMultiJetty";
                 }
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            HCCL_DEBUG("[Algo][AlltoAllAutoSelector] algo is not supported yet for ccu_schedule mode, reset to default.");
+            return SelectorStatus::NOT_MATCH;   
         } else {
             HCCL_DEBUG("[Algo][AlltoAllAutoSelector] algo is not supported yet for ccu_schedule mode, reset to default.");
             return SelectorStatus::NOT_MATCH;

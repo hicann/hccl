@@ -66,6 +66,12 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
             } else {
                 selectAlgName = "CcuScatterParallelMesh1DNHR";
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
+                HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
+                return SelectorStatus::NOT_MATCH;
+            }
+            selectAlgName = "CcuScatterNHRMem2Mem1D";
         } else {
             HCCL_WARNING("[Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
                 topoInfo->level0Topo);
@@ -113,9 +119,11 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(const TopoInfoWith
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING("[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
-            topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
+        if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
+            HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
+            return SelectorStatus::NOT_MATCH;
+        }
+        selectAlgName = "CcuScatterNHRMem2Mem1D";
     } else {
         HCCL_WARNING("[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
             topoInfo->level0Topo);
@@ -159,8 +167,7 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(const TopoInfoWith
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "InsScatterParallelMesh1DNHR";
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING("[ScatterAutoSelector] level0Shape[%d] is not supported yet for levelNum > 1.");
-        return SelectorStatus::NOT_MATCH;
+        selectAlgName = "InsScatterNHR";
     } else {
         HCCL_WARNING("[ScatterAutoSelector] topo not match for aicpu algo");
         return SelectorStatus::NOT_MATCH;
