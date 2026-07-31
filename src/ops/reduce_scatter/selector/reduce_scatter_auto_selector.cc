@@ -380,8 +380,10 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetL
             } else {
                 selectAlgName = "InsReduceScatterNHR";
             }
-        } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1 || topoInfo->level0Topo == Level0Shape::CLOS) {
+        } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
             selectAlgName = "InsReduceScatterNHR"; // InsReduceScatterParallelNHRNHR备用
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            selectAlgName = "AicpuReduceScatterSoleNHRMultiLink";
         } else {
             HCCL_ERROR("[ReduceScatterAutoSelector] topo not match, level0Topo [%d], deviceNumPerModule [%d]",
                 topoInfo->level0Topo, topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0));

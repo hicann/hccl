@@ -417,7 +417,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayer
                 selectAlgName = "InsAllReduceNHR";
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "InsAllReduceNHR";
+            selectAlgName = "AicpuAllReduceSoleNHRTwoShotMultiLink";
         } else {
             return SelectorStatus::NOT_MATCH;
         }

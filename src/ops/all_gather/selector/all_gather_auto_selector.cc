@@ -293,7 +293,7 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
                 selectAlgName = "InsAllGatherNHR";
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "InsAllGatherNHR";
+            selectAlgName = "AicpuAllGatherSoleNHRMultiLink";
         } else {
             HCCL_ERROR("[AllGatherAutoSelector] topo not match");
             return SelectorStatus::NOT_MATCH;
