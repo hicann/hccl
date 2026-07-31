@@ -175,6 +175,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWi
 
     constexpr u64 CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 32ULL * 1024 * 1024;
 
+    u32 frameNum = CalcFrameNum(topoInfo);
+
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             if (dataSize >= CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE) {
@@ -200,14 +202,23 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWi
                 } else if ((dataSize * topoInfo->userRankSize) < RS_FLATTEN_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize && (!IsInputOutputOverlap(opParam))) {
                     selectAlgName = "CcuReduceScatterMesh1DMem2Mem";
                     return SelectorStatus::MATCH;
-                } else if (dataSize * topoInfo->userRankSize < RS_CCU_64P_SEQ_DATA_SIZE && topoInfo->userRankSize < ccuSize) {
+                } else if (dataSize * topoInfo->userRankSize < RS_CCU_64P_SEQ_DATA_SIZE && topoInfo->userRankSize < ccuSize
+                           && frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                     selectAlgName = "CcuReduceScatterSequenceMeshMesh";
                     return SelectorStatus::MATCH;
-                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_SEQ_DATA_SIZE && topoInfo->userRankSize == ccuSize) {
+                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_SEQ_DATA_SIZE && topoInfo->userRankSize == ccuSize
+                           && frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                     selectAlgName = "CcuReduceScatterSequenceMeshMesh";
                     return SelectorStatus::MATCH;
-                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_MIN_DATA_SIZE && topoInfo->userRankSize == ccuSize) {
+                } else if (dataSize * topoInfo->userRankSize <= RS_CCU_64P_MIN_DATA_SIZE && topoInfo->userRankSize == ccuSize
+                           && frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                     selectAlgName = "CcuReduceScatterParallelMesh1DNHR";//64M以下跑ccu
+                    return SelectorStatus::MATCH;
+                } else if (frameNum > MAX_FRAME_NUM_FOR_CCU_ALGO) {
+                    // 框数超过 kernel repeatNum 上限，fallback 到 NHR1DMem2Mem
+                    HCCL_INFO("[ReduceScatterAutoSelector] frameNum[%u] > %u, fallback to NHR1DMem2Mem.",
+                        frameNum, MAX_FRAME_NUM_FOR_CCU_ALGO);
+                    selectAlgName = "CcuReduceScatterNHR1DMem2Mem";
                     return SelectorStatus::MATCH;
                 } else {
                     return SelectorStatus::NOT_MATCH;//64M以上切为aicpu
