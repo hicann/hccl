@@ -82,7 +82,8 @@ HcclResult HcclGetChannelImpl(const u32 level, HcclComm comm, const OpParam &par
                               const CommEngine commEngine, AlgResourceCtxSerializable* resCtxHost, MemRegInfo &memRegInfo);
 HcclResult RegGraphModeBuffers(HcclComm comm, const OpParam &param, char* inputBuffTag, char* outputBuffTag, std::vector<HcclMemHandle>& memHandles);
 HcclResult GetGraphModeBuffers(HcclComm comm, ChannelHandle channelHandle, const char* inputBuffTag, const char* outputBuffTag, ChannelInfo& channel);
-HcclResult HcclGetCcuKernel(HcclComm comm, AlgResourceRequest &resRequest,
+// opMode 用于区分 CCU_MS / CCU_SCHED 等模式，影响默认资源阈值（如 LOOP/CCU_BUF 默认值）
+HcclResult HcclGetCcuKernel(HcclComm comm, OpExecuteConfig opMode, AlgResourceRequest &resRequest,
                           std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost);
 
 HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam &param, AlgResourceRequest &resRequest);
