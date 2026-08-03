@@ -27,7 +27,8 @@ HcclResult HcclCalcOpResOfflineGraphMode(OpParamGraphMode *opParam, u64 *opMemSi
 HcclResult HcclSetAivCoreLimitGraphMode(const char *group, u32 aivCoreLimit);
 HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType,
                            u32 aivCoreLimit, bool *ifAiv, char *algName);
-HcclResult HcclCalcAivCoreNumGraphMode(u32 aivCoreLimit, u32 *numBlocks);
+HcclResult HcclCalcAivCoreNumGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op,
+                                       HcclCMDType opType, u32 aivCoreLimit, u32 *numBlocks);
 HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 count, void *inputPtr, void *outputPtr,
                                  HcclCMDType opType, bool clearEnable, HcclDataType dataType, HcclReduceOp op,
                                  void **commContext, u64 *len, u32 aivCoreLimit);

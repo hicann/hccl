@@ -20,6 +20,7 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "hccl_aiv_utils.h"
 #include "aiv_kernel_def.h"
+#include "hccl_res_dl.h"
 
 namespace {
 struct AclHostMemGuard {
@@ -307,33 +308,12 @@ HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dat
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclCalcAivCoreNumGraphMode(u32 aivCoreLimit, u32 *numBlocks)
+namespace {
+// 图模式下算法选择+录制模式的公共流程，返回录制的aivOpArgs与cclBufferSize
+HcclResult RecordAivOpArgsGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op,
+                                    HcclCMDType opType, u32 aivCoreLimit, void *inputPtr, void *outputPtr,
+                                    const char *tag, ops_hccl::AivOpArgs &aivOpArgs, u64 &cclBufferSize)
 {
-    if (numBlocks == nullptr) {
-        HCCL_ERROR("[HcclCalcAivCoreNumGraphMode] Invalid parameter: numBlocks is null.");
-        return HCCL_E_PARA;
-    }
-    *numBlocks = aivCoreLimit;
-    HCCL_INFO("[HcclCalcAivCoreNumGraphMode] Success. numBlocks=%u", *numBlocks);
-    return HCCL_SUCCESS;
-}
-
-HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 count, void *inputPtr, void *outputPtr,
-                                 HcclCMDType opType, bool clearEnable, HcclDataType dataType, HcclReduceOp op,
-                                 void **commContext, u64 *len, u32 aivCoreLimit)
-{
-    HCCL_INFO("[HcclGetAlgExecParamGraphMode] tag[%s], group[%s], count[%llu], opType[%d], dataType[%d], "
-                "reduceOp[%d], clearEnable[%d], aivCoreLimit[%u]", tag != nullptr ? tag : "nullptr",
-            group != nullptr ? group : "nullptr", count, static_cast<int>(opType), static_cast<int>(dataType),
-            static_cast<int>(op), clearEnable, aivCoreLimit);
-
-    CHK_PTR_NULL(tag);
-    CHK_PTR_NULL(group);
-    CHK_PTR_NULL(commContext);
-    CHK_PTR_NULL(len);
-    *commContext = nullptr;
-    *len = 0;
-    
     HcclComm comm = nullptr;
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));
     u32 rankSize = INVALID_VALUE_RANKSIZE;
@@ -354,10 +334,11 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     AclHostMemGuard recvCountsHost;
     AclHostMemGuard sdisplsHost;
     AclHostMemGuard rdisplsHost;
-    if (opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
+    if (opType == HcclCMDType::HCCL_CMD_ALLTOALL || opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
+        opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
         param.varMemSize = ops_hccl::ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64);
-        param.all2AllVDataDes.recvType = dataType;
         param.all2AllVDataDes.sendType = dataType;
+        param.all2AllVDataDes.recvType = dataType;
 
         u64 arrSize = rankSize * sizeof(u64);
         ACLCHECK(aclrtMallocHost(&sendCountsHost.ptr, arrSize));
@@ -391,11 +372,10 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     param.deviceType = deviceType;
 
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag);
-    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[HcclGetAlgExecParamGraphMode] failed to fill param.tag"), HCCL_E_INTERNAL);
-
+    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[RecordAivOpArgsGraphMode] failed to fill param.tag"), HCCL_E_INTERNAL);
     CHK_RET(HcclGetCommName(comm, param.commName));
     ret = sprintf_s(param.commModeTag, sizeof(param.commModeTag), "%s_offload", param.commName);
-    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[HcclGetAlgExecParamGraphMode] failed to fill param.commModeTag"), HCCL_E_INTERNAL);
+    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[RecordAivOpArgsGraphMode] failed to fill param.commModeTag"), HCCL_E_INTERNAL);
 
     CHK_RET(ops_hccl::HcclGetOpExpansionMode(comm, param));
 
@@ -406,13 +386,13 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
 
     std::unique_ptr<ops_hccl::InsCollAlgBase> executor = ops_hccl::CollAlgExecRegistryV2::Instance().GetAlgExec(param.opType, algName);
     CHK_PRT_RET(executor.get() == nullptr,
-                  HCCL_ERROR("[HcclGetAlgExecParamGraphMode] Failed to find executor for algName[%s]", algName.c_str()),
+                  HCCL_ERROR("[RecordAivOpArgsGraphMode] Failed to find executor for algName[%s]", algName.c_str()),
                 HCCL_E_PARA);
 
     // 启用Only录制模式
     ops_hccl::g_recordingQueue = std::make_shared<ops_hccl::InsQueue>();
     ops_hccl::g_baseInputAddr = reinterpret_cast<u64>(inputPtr);
- 	ops_hccl::g_baseOutputAddr = reinterpret_cast<u64>(outputPtr);
+    ops_hccl::g_baseOutputAddr = reinterpret_cast<u64>(outputPtr);
     ops_hccl::g_recordOnlyMode = true;
 
     // 计算AlgHierarchyInfo
@@ -429,16 +409,71 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     CHK_RET(executor->Orchestrate(param, *resCtxHost));
 
     // 从录制的指令队列中获取aivOpArgs
-    ops_hccl::AivOpArgs aivOpArgs;
     if (ops_hccl::g_recordingQueue && !ops_hccl::g_recordingQueue->empty()) {
         aivOpArgs = (*ops_hccl::g_recordingQueue)[0].opArgs;
     }
+    cclBufferSize = resCtxHost->cclMem.size;
 
     // 清除录制
     ops_hccl::g_recordingQueue = nullptr;
     ops_hccl::g_baseInputAddr = 0;
     ops_hccl::g_baseOutputAddr = 0;
     ops_hccl::g_recordOnlyMode = false;
+
+    // 销毁录制期间创建的algTag context，避免相同tag重复注册导致already exist错误
+    HcclEngineCtxDestroy(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS);
+
+    return HCCL_SUCCESS;
+}
+} // namespace
+
+HcclResult HcclCalcAivCoreNumGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op,
+                                       HcclCMDType opType, u32 aivCoreLimit, u32 *numBlocks)
+{
+    HCCL_INFO("[HcclCalcAivCoreNumGraphMode] group[%s] count[%llu] dataType[%u] reduceOp[%u] opType[%u] aivCoreLimit[%u]",
+        group != nullptr ? group : "nullptr", count, static_cast<int>(dataType), static_cast<int>(op),
+        static_cast<int>(opType), aivCoreLimit);
+
+    if (numBlocks == nullptr) {
+        HCCL_ERROR("[HcclCalcAivCoreNumGraphMode] Invalid parameter: numBlocks is null.");
+        return HCCL_E_PARA;
+    }
+    *numBlocks = 0;
+
+    char tag[TAG_LENGTH];
+    int ret = sprintf_s(tag, sizeof(tag), "CalcAivCoreNum_%d", static_cast<int>(opType));
+    CHK_PRT_RET(ret <= 0, HCCL_ERROR("[HcclCalcAivCoreNumGraphMode] failed to fill tag"), HCCL_E_INTERNAL);
+
+    ops_hccl::AivOpArgs aivOpArgs;
+    u64 cclBufferSize = 0;
+    CHK_RET(RecordAivOpArgsGraphMode(group, count, dataType, op, opType, aivCoreLimit, nullptr, nullptr, tag,
+                                     aivOpArgs, cclBufferSize));
+
+    *numBlocks = aivOpArgs.numBlocks;
+    HCCL_INFO("[HcclCalcAivCoreNumGraphMode] Success. numBlocks=%u", *numBlocks);
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 count, void *inputPtr, void *outputPtr,
+                                 HcclCMDType opType, bool clearEnable, HcclDataType dataType, HcclReduceOp op,
+                                 void **commContext, u64 *len, u32 aivCoreLimit)
+{
+    HCCL_INFO("[HcclGetAlgExecParamGraphMode] tag[%s], group[%s], count[%llu], opType[%d], dataType[%d], "
+                "reduceOp[%d], clearEnable[%d], aivCoreLimit[%u]", tag != nullptr ? tag : "nullptr",
+            group != nullptr ? group : "nullptr", count, static_cast<int>(opType), static_cast<int>(dataType),
+            static_cast<int>(op), clearEnable, aivCoreLimit);
+
+    CHK_PTR_NULL(tag);
+    CHK_PTR_NULL(group);
+    CHK_PTR_NULL(commContext);
+    CHK_PTR_NULL(len);
+    *commContext = nullptr;
+    *len = 0;
+    
+    ops_hccl::AivOpArgs aivOpArgs;
+    u64 cclBufferSize = 0;
+    CHK_RET(RecordAivOpArgsGraphMode(group, count, dataType, op, opType, aivCoreLimit, inputPtr, outputPtr, tag,
+                                     aivOpArgs, cclBufferSize));
 
     ops_hccl::AivSuperKernelArgs superKernelArgs;
     superKernelArgs.buffersIn = aivOpArgs.buffersIn;
@@ -448,7 +483,7 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     superKernelArgs.dataType = dataType;
     superKernelArgs.unitSize = ops_hccl::DATATYPE_SIZE_TABLE[dataType];
     superKernelArgs.reduceOp = op;
-    superKernelArgs.numBlocks = aivCoreLimit;
+    superKernelArgs.numBlocks = aivOpArgs.numBlocks;
     superKernelArgs.tag = 0;
     superKernelArgs.clearEnable = clearEnable;
     superKernelArgs.inputSliceStride = 0;
@@ -458,7 +493,7 @@ HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 
     superKernelArgs.outputRepeatStride = 0;
     superKernelArgs.input = aivOpArgs.input;
     superKernelArgs.output = aivOpArgs.output;
-    superKernelArgs.cclBufferSize = resCtxHost->cclMem.size;
+    superKernelArgs.cclBufferSize = cclBufferSize;
 
     HCCL_INFO("[HcclGetAlgExecParamGraphMode] superKernelArgs: buffersIn[%p], rank[%u], rankSize[%u], "
               "len[%llu], dataType[%u], unitSize[%u], reduceOp[%u], numBlocks[%u], tag[%d], "
