@@ -190,6 +190,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     u32 ccuSize = 32;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
+    u32 frameNum = CalcFrameNum(topoInfo);
     if (topoInfo->topoLevelNums > 1) {
         constexpr u64 AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 256ULL * 1024 * 1024;
         if (dataSize * topoInfo->userRankSize >= AG_CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE && topoInfo->userRankSize > MAX_RANK_NUM_FOR_SEQ_ALGO) {
@@ -219,18 +220,29 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
             } else if (topoInfo->userRankSize <= MAX_RANK_NUM_FOR_SEQ_ALGO) {
                 if (dataSize <= AG_CCU_CLOS_SMALL_DATA_SIZE) {
                     selectAlgName = "CcuAllGatherMesh1DMem2Mem";
-                } else {
+                } else if (frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                     selectAlgName = "CcuAllGatherParallelMesh1DNHR";
+                } else {
+                    // 框数超过 kernel repeatNum 上限，fallback 到 NHR1DMem2Mem
+                    HCCL_INFO("[AllGatherAutoSelector] frameNum[%u] > %u, fallback to NHR1DMem2Mem.",
+                        frameNum, MAX_FRAME_NUM_FOR_CCU_ALGO);
+                    selectAlgName = "CcuAllGatherNHR1DMem2Mem";
                 }
                 return SelectorStatus::MATCH;
             } else if (dataSize < AG_FLATTEN_MAX_DATA_SIZE && topoInfo->userRankSize <= ccuSize) {
                 selectAlgName = "CcuAllGatherMesh1DMem2Mem";
                 return SelectorStatus::MATCH;
-            } else if (dataSize < AG_CCU_SEQUENCE_MAX_DATA_SIZE) {
+            } else if (dataSize < AG_CCU_SEQUENCE_MAX_DATA_SIZE && frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                 selectAlgName = "CcuAllGatherSequenceMeshMesh";
                 return SelectorStatus::MATCH;
-            } else {
+            } else if (frameNum <= MAX_FRAME_NUM_FOR_CCU_ALGO) {
                 selectAlgName = "CcuAllGatherParallelMesh1DNHR";
+                return SelectorStatus::MATCH;
+            } else {
+                // 框数超过 kernel repeatNum 上限，fallback 到 NHR1DMem2Mem
+                HCCL_INFO("[AllGatherAutoSelector] frameNum[%u] > %u, fallback to NHR1DMem2Mem.",
+                    frameNum, MAX_FRAME_NUM_FOR_CCU_ALGO);
+                selectAlgName = "CcuAllGatherNHR1DMem2Mem";
                 return SelectorStatus::MATCH;
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS && (!IsInputOutputOverlap(opParam))) {

@@ -29,6 +29,8 @@ constexpr u64 RS_2D_SMALL_DATA_SIZE = 1024 * 1024;
 constexpr u64 RS_M2M_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 CCU_PARALLEL_MAX_DATA_SIZE = 64 * 1024 * 1024;
 
+constexpr u32 MAX_FRAME_NUM_FOR_CCU_ALGO = 16; //仅AR和RS
+
 enum class SelectorStatus { MATCH, NOT_MATCH };
 
 const std::map<HcclCMDType, std::string> OP_TYPE_TO_AICPU_SOLE_ALG_MAP = {
@@ -105,6 +107,10 @@ public:
     bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo) const;
     bool IsInputOutputOverlap(const OpParam &opParam) const;
     bool IsSmallDataCCU(const u64 dataSize, const u64 rankSize) const;
+    // 计算非对称拓扑展开后的 layer0 子组数（框数）。
+    // 使用全局 instSizeListOfLayer[0] 的 GCD，避免 localNetInsSizeOfLayer[0] 在非对称场景下各 rank 不同。
+    // frameNum = userRankSize / gcd(instSizeListOfLayer[0])，例如 6 卡 / GCD(4,2)=2 / 2 = 3 框。
+    u32 CalcFrameNum(const TopoInfoWithNetLayerDetails *topoInfo) const;
 
 private:
     bool ProcessAivConfig(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
