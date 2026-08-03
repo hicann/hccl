@@ -196,19 +196,19 @@ private:
 template<typename T>
 __aicore__ inline void AivAlltoAllV2Mesh1D(KERNEL_ARGS_DEF)
 {
-    bool usePingPongBuffer = 0;
-    if (len * sizeof(T) <= DATA_LIMIT) {
-        usePingPongBuffer = 1;
+    bool pingpong = false;
+    if (len * sizeof(T) <= DATA_LIMIT && rankSize * len * sizeof(T) <= PINGPONG_TOTAL_DATA_LIMIT) {
+        pingpong = true;
     }
 
     AivAlltoAllMesh1D<T> op;
-    op.Init(KERNEL_CLASS_INIT, true, usePingPongBuffer);
+    op.Init(KERNEL_CLASS_INIT, true, pingpong);
     op.InitCommon(sliceId);
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
     op.Process();
-    if (usePingPongBuffer == 0) {
+    if (!pingpong) {
         op.BarrierAll();
     }
 }

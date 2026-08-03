@@ -204,7 +204,7 @@ __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrl(KERNEL_ARGS_DEF)
 {
     AivReduceScatterLocalTreeCoreCtrl<T> op;
     bool pingpong = false;
-    if (len * sizeof(T) <= DATA_LIMIT) {
+    if (len * sizeof(T) <= DATA_LIMIT && rankSize * len * sizeof(T) <= PINGPONG_TOTAL_DATA_LIMIT) {
         pingpong = true;
     }
     op.Init(KERNEL_CLASS_INIT, true, pingpong);

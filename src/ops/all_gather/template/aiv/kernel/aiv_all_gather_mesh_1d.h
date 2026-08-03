@@ -223,7 +223,7 @@ __aicore__ inline void AivAllGatherV2Mesh1D(KERNEL_ARGS_DEF)
 {
     AivAllGatherMesh1D<T> op;
     bool pingpong = false;
-    if (len * sizeof(T) <= DATA_LIMIT) {
+    if (len * sizeof(T) <= DATA_LIMIT && rankSize * len * sizeof(T) <= PINGPONG_TOTAL_DATA_LIMIT) {
         pingpong = true;
     }
     op.Init(KERNEL_CLASS_INIT, true, pingpong);
