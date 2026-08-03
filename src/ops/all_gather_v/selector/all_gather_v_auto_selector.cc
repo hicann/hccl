@@ -20,7 +20,6 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuMsAlgo(
 {
     HCCL_WARNING("[Algo][AllGatherVAutoSelector] allgatherv is not supported yet for ccu_ms mode, reset to default.");
     return SelectorStatus::NOT_MATCH;
-    HCCL_DEBUG("[AllGatherVAutoSelector][%s] end", __func__);
 }
 
 SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(

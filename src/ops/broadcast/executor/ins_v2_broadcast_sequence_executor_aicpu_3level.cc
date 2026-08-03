@@ -81,6 +81,12 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
     InsAlgTemplate3, InsAlgTemplate4, InsAlgTemplate5>::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
     const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
 {
+    if (algHierarchyInfo.infos.size() < 2 || algHierarchyInfo.infos[0].empty() ||
+        algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty() ||
+        algHierarchyInfo.infos[1][0].empty()) {
+        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        return HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     skipLevel1_ = (rankSizeLevel1_ == 1);

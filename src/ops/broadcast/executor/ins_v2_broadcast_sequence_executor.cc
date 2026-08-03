@@ -134,6 +134,12 @@ HcclResult InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
 
+    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() ||
+        algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty() ||
+        algHierarchyInfo_.infos[1][0].empty()) {
+        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        return HCCL_E_PARA;
+    }
     rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
     rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
 
@@ -216,8 +222,8 @@ HcclResult InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     templateResourceInter.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
-    u64 dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
-    u64 dataCount_ = param.DataDes.count;
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataCount_ = param.DataDes.count;
     u64 maxCountPerLoop = tempAlgParamsScatterIntra.buffInfo.hcclBuff.size / HCCL_MIN_SLICE_ALIGN *
                           HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 计算loopTimes

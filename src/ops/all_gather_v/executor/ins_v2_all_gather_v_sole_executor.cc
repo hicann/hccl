@@ -58,7 +58,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
     dataCount_ = param.DataDes.count;
-    dataType_ = param.DataDes.dataType;
+    dataType_ = param.vDataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.vDataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 

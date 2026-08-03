@@ -57,6 +57,8 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
     uint32_t ccuSize = 64;
     uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllDataDes.sendType];
     uint64_t* sendCountPtr = (uint64_t*)opParam.all2AllVDataDes.sendCounts;
+    CHK_PRT_RET(sendCountPtr == nullptr,
+        HCCL_WARNING("[AlltoAllAutoSelector][%s] sendCounts is nullptr.", __func__), SelectorStatus::NOT_MATCH);
     uint64_t sendCount = *sendCountPtr;
     uint64_t dataSize = sendCount * dataTypeSize * topoInfo->userRankSize;
     if (topoInfo->topoLevelNums > 1) {
@@ -93,8 +95,12 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
                     return SelectorStatus::NOT_MATCH;
                 }
             } else {
-                uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllDataDes.sendType];
-                uint64_t dataSize = opParam.all2AllDataDes.sendCount * dataTypeSize;
+                uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
+                u64* sendCounts = reinterpret_cast<u64*>(opParam.all2AllVDataDes.sendCounts);
+                CHK_PRT_RET(sendCounts == nullptr,
+                    HCCL_WARNING("[AlltoAllAutoSelector][%s] sendCounts is nullptr.", __func__),
+                    SelectorStatus::NOT_MATCH);
+                uint64_t dataSize = sendCounts[0] * dataTypeSize;
                 bool isMeshNumEqualToClosNum = false;
                 CHK_PRT_RET(CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
                     HCCL_DEBUG("[AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
@@ -137,6 +143,8 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerD
     if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {
         uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
         u64* sendCounts = reinterpret_cast<u64*>(opParam.all2AllVDataDes.sendCounts);
+        CHK_PRT_RET(sendCounts == nullptr,
+            HCCL_WARNING("[AlltoAllAutoSelector][%s] sendCounts is nullptr.", __func__), SelectorStatus::NOT_MATCH);
         uint64_t dataSize = sendCounts[0] * static_cast<u64>(dataTypeSize);
         if (dataSize * topoInfo->userRankSize > ALLTOALL_ENABLE_MULTI_CHANNEL_DATA_SIZE_LIMIT) {
             selectAlgName = "InsAlltoAllMesh1D";
@@ -150,14 +158,17 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerD
             HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
-        uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllDataDes.sendType];
-        uint64_t dataSize = opParam.all2AllDataDes.sendCount * dataTypeSize;
+        uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
+        u64* sendCounts = reinterpret_cast<u64*>(opParam.all2AllVDataDes.sendCounts);
+        CHK_PRT_RET(sendCounts == nullptr,
+            HCCL_WARNING("[AlltoAllAutoSelector][%s] sendCounts is nullptr.", __func__), SelectorStatus::NOT_MATCH);
+        uint64_t dataSize = sendCounts[0] * dataTypeSize;
         bool isMeshNumEqualToClosNum = false;
         CHK_PRT_RET(CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
             HCCL_ERROR("[AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."),
             SelectorStatus::NOT_MATCH);
         if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT) &&
-            (opParam.all2AllDataDes.sendCount > BIG_DATA_SIZE_LIMIT)) {
+            (sendCounts[0] > BIG_DATA_SIZE_LIMIT)) {
             // 同一组4P且大数据量，走并发
             selectAlgName = "InsAllToAllMesh1DConcurrent";
         } else {
@@ -202,6 +213,8 @@ SelectorStatus AlltoAllAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDet
         HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[AlltoAllAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
     u32 dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
     u64* sendCounts = reinterpret_cast<u64*>(opParam.all2AllVDataDes.sendCounts);
+    CHK_PRT_RET(sendCounts == nullptr,
+        HCCL_WARNING("[AlltoAllAutoSelector][%s] sendCounts is nullptr.", __func__), SelectorStatus::NOT_MATCH);
     u64 totalSize = sendCounts[0] * dataTypeSize * topoInfo->userRankSize;
     if (opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY &&
         totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize) {

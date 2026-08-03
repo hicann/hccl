@@ -71,6 +71,12 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<AlgTopoMatch, InsAlgTemplat
             SEQUENCE_EXECUTOR_LEVEL_NUM);
         return HCCL_E_INTERNAL;
     }
+    if (algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty() ||
+        algHierarchyInfo.infos[2].empty() || algHierarchyInfo.infos[0][0].empty() ||
+        algHierarchyInfo.infos[1][0].empty() || algHierarchyInfo.infos[2][0].empty()) {
+        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        return HCCL_E_PARA;
+    }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     rankSizeLevel2_ = algHierarchyInfo.infos[2][0].size();

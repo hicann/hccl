@@ -329,6 +329,10 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     }
     rankSizeLevel0_ = GetRankSize(intraHierarchyInfo_);
     rankSizeLevel1_ = GetRankSize(interHierarchyInfo_);
+    if (rankSizeLevel0_ == 0) {
+        HCCL_ERROR("[%s] rankSizeLevel0_ is 0.", __func__);
+        return HCCL_E_PARA;
+    }
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     // 实例化算法模板类

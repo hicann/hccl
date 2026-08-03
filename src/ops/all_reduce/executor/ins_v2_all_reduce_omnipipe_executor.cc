@@ -611,6 +611,8 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
         }
         if (!algHierarchyInfo_.infos[1].empty()) {
             subCommRanks1 = algHierarchyInfo_.infos[1];
+        } else {
+            subCommRanks1.emplace_back(std::vector<u32>{myRank_});
         }
         subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     }
@@ -618,6 +620,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<AlgTopoMatch, InsRsAlgTemplateX, InsRs
     rankSizeLevel0_ = subCommRanks0[0].size();
     rankSizeLevel1_ = subCommRanks1[0].size();
     rankSizeLevel2_ = subCommRanks2[0].size();
+    if (rankSizeLevel0_ == 0 || rankSizeLevel1_ == 0) {
+        HCCL_ERROR("[%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__, rankSizeLevel0_, rankSizeLevel1_);
+        return HCCL_E_PARA;
+    }
 
     uint32_t intraSuperpodDeviceNum = rankSizeLevel0_ * rankSizeLevel1_;
     rankIdxLevel0_ = (myRank_ % intraSuperpodDeviceNum) % rankSizeLevel0_;

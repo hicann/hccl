@@ -68,7 +68,7 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
             subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
             u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-            if (!algHierarchyInfo_.infos[0][1].empty()) {
+            if (algHierarchyInfo_.infos[0].size() >= 2 && !algHierarchyInfo_.infos[0][1].empty()) {
                 for (auto rank : algHierarchyInfo_.infos[0][1]) {
                     if (rank % meshSize == topoInfo->userRank % meshSize) {
                         closRanks.push_back(rank);
@@ -109,9 +109,13 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         HCCL_INFO("[BuildSubCommAndTempMap] MutiLevel_Pcie");
         if (!algHierarchyInfo_.infos[0].empty()) {
             subCommRanks0 = algHierarchyInfo_.infos[0];
+        } else {
+            subCommRanks0.emplace_back(std::vector<u32>{myRank_});
         }
         if (!algHierarchyInfo_.infos[1].empty()) {
             subCommRanks1 = algHierarchyInfo_.infos[1];
+        } else {
+            subCommRanks1.emplace_back(std::vector<u32>{myRank_});
         }
         subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     }

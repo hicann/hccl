@@ -103,6 +103,12 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
 
+    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() ||
+        algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty() ||
+        algHierarchyInfo_.infos[1][0].empty()) {
+        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        return HCCL_E_PARA;
+    }
     rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
     rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
 

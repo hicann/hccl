@@ -87,6 +87,10 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         algHierarchyInfo.infos[0][1].size());
     rankSizeLevel0_ = GetRankSize(temp0HierarchyInfo);
     rankSizeLevel1_ = GetRankSize(temp1HierarchyInfo);
+    if (rankSizeLevel0_ == 0) {
+        HCCL_ERROR("[%s] rankSizeLevel0_ is 0.", __func__);
+        return HCCL_E_PARA;
+    }
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
 

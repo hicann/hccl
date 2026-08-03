@@ -103,6 +103,8 @@ HcclResult AivTempAlltoAllMesh1D::KernelRun(const OpParam& param, const Template
     aivAlltoAllArgs.rank = u32(myRank_);
     aivAlltoAllArgs.rankSize = tempRankSize_;
 
+    CHK_PRT_RET(tempAlgParams.sendCounts.empty(),
+        HCCL_ERROR("[%s] sendCounts is empty.", __func__), HCCL_E_PARA);
     aivAlltoAllArgs.count = tempAlgParams.sendCounts.front();
     HCCL_INFO("[AivTempAlltoAllMesh1D] KernelRun rank %d , input[%p] output[%p] count[%llu]",
               aivAlltoAllArgs.rank, aivAlltoAllArgs.input, aivAlltoAllArgs.output, aivAlltoAllArgs.count);
@@ -137,6 +139,8 @@ HcclResult AivTempAlltoAllMesh1D::KernelRun(const OpParam& param, const Template
 
     CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 
+    CHK_PRT_RET(param.all2AllVDataDes.sendCounts == nullptr,
+        HCCL_ERROR("[%s] sendCounts is nullptr.", __func__), HCCL_E_PARA);
     aivAlltoAllArgs.inputSliceStride =
         reinterpret_cast<u64*>(param.all2AllVDataDes.sendCounts)[0] * DATATYPE_SIZE_TABLE[dataType_];
     aivAlltoAllArgs.outputSliceStride =

@@ -354,6 +354,10 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     rankSizeLevel0_ = GetRankSize(temp0HierarchyInfo);
     rankSizeLevel1_ = GetRankSize(temp1HierarchyInfo);
     myRank_ = resCtx.topoInfo.userRank;
+    if (rankSizeLevel0_ == 0) {
+        HCCL_ERROR("[%s] rankSizeLevel0_ is 0.", __func__);
+        return HCCL_E_PARA;
+    }
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     // 实例化算法模板类
