@@ -234,13 +234,14 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     param.opType = HcclCMDType::HCCL_CMD_ALLGATHER_V;
     param.enableDetour = false;
     param.deviceType = deviceType;
+
+    CHK_RET(HcclGetOpExpansionMode(comm, param));
+
     if (userRankSize == 1) {
  	  	HCCL_WARNING("[%s] rankSize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
  	  	return HcclResult::HCCL_SUCCESS;
  	}
-
-    CHK_RET(HcclGetOpExpansionMode(comm, param));
 
     // 9.0.0 ccu模式走老流程
     if (GetHcommVersion() == CANN_VERSION(9, 0, 0) && param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -250,9 +251,7 @@ HcclResult AllGatherVOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount,c
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclAllGatherVInner(sendBuf, sendCount, recvBuf, recvCounts, recvDispls, dataType, comm, stream);
-    }
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute AllGatherVOutPlace success.");
     return HCCL_SUCCESS;
@@ -321,14 +320,14 @@ HcclResult AllGatherVOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t se
     std::copy(displsPtr, displsPtr + userRankSize, merged.begin() + userRankSize);
     CHK_SAFETY_FUNC_RET(memcpy_s(param.varData, varMemSize, merged.data(), varMemSize));
     param.opType = HcclCMDType::HCCL_CMD_ALLGATHER_V, param.enableDetour = false, param.deviceType = deviceType;
- 	if (userRankSize == 1) {
+ 	std::string algName;
+ 	std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(HcclGetOpExpansionMode(comm, param));
+    if (userRankSize == 1) {
  	  	HCCL_WARNING("[%s] rankSize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
  	  	return HcclResult::HCCL_SUCCESS;
  	}
- 	std::string algName;
- 	std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(HcclGetOpExpansionMode(comm, param));
  	CHK_RET(Selector(comm, param, topoInfo, algName));
  	CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
  	HCCL_INFO("Execute AllGatherVOutPlaceGraphMode success.");

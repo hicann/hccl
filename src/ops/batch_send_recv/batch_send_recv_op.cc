@@ -127,14 +127,19 @@ HcclResult BatchSendRecvOutPlace(HcclSendRecvItem *sendRecvInfo, uint32_t itemNu
     param.opType = HcclCMDType::HCCL_CMD_BATCH_SEND_RECV;
     param.deviceType = deviceType;
 
+    CHK_RET(HcclGetOpExpansionMode(comm, param));
+
+    // 单卡校验
+    if (userRankSize == 1) {
+        HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
+        CHK_RET(SingleRankProc(comm, param));
+        return HcclResult::HCCL_SUCCESS;
+    }
+
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    
-    CHK_RET(HcclGetOpExpansionMode(comm, param));
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclBatchSendRecvInner(sendRecvInfo, itemNum, comm, stream);
-    }
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute BatchSendRecvOutPlace success.");
     return HCCL_SUCCESS;

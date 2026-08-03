@@ -204,13 +204,6 @@ HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count,
         }
     }
 
-    std::string algName;
-    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        HCCL_INFO("werwer0004");
-        return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
-    }
     // 单卡校验
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
@@ -219,6 +212,11 @@ HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count,
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllReduceOutPlace success.");
     return HCCL_SUCCESS;

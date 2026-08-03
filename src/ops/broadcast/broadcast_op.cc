@@ -175,15 +175,14 @@ HcclResult BroadcastOutPlaceCommon(void *buf, uint64_t count, HcclDataType dataT
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(HcclGetOpExpansionMode(comm, param));
 
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
-    }
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+    
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute BroadcastOutPlaceCommon success.");
     return HCCL_SUCCESS;
@@ -248,17 +247,16 @@ HcclResult BroadcastOutPlace(OpParam &param, void *buf, uint64_t count, HcclData
         }
     }
 
-    std::string algName;
-    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclBroadcastInner(buf, count, dataType, root, comm, stream);
-    }
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     return HCCL_SUCCESS;
 }

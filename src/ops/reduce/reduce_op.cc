@@ -23,9 +23,6 @@ extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
 HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op,
     uint32_t root, HcclComm comm, aclrtStream stream)
 {
-    if (!HcclCheckCcuEnableOpen() && !HcclCheckAicpuEnableOpen() && !HcclCheckAivEnableOpen()) {
-        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
-    }
     HCCL_INFO("Start to run execute HcclReduce");
     if (GetHcommVersion() < CANN_VERSION(9, 0, 0)) { // compat handle
         return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
@@ -254,9 +251,7 @@ HcclResult ReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count, Hc
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclReduceInner(sendBuf, recvBuf, count, dataType, op, root, comm, stream);
-    }
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute ReduceOutPlaceCommon success.");
     return HCCL_SUCCESS;

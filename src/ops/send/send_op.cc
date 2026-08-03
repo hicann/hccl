@@ -201,6 +201,7 @@ namespace ops_hccl {
         if (isGroupEnabled) {
             tagTemp += "_Group";
         }
+
         // 参数构建
         OpParam param;
         CHK_RET(GenerateSendOpParam(param, sendBuf, count, dataType, destRank, comm, stream, tagTemp));
@@ -209,17 +210,15 @@ namespace ops_hccl {
         std::string algName;
         std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
         CHK_RET(HcclGetOpExpansionMode(comm, param));
-        CHK_RET(Selector(comm, param, topoInfo, algName));
 
-        if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-            return HcclSendInner(sendBuf, count, dataType, destRank, comm, stream);
-        }
         if (rankSize == 1) {
             HCCL_WARNING("[SendExec][%s][%s] ranksize == 1, enter SingleRankProc", tagTemp.c_str(),
                 opMode == OpMode::OPBASE ? "OPBASE" : "OFFLOAD");
             CHK_RET(SingleRankProc(comm, param));
             return HcclResult::HCCL_SUCCESS;
         }
+
+        CHK_RET(Selector(comm, param, topoInfo, algName));
 
         CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
 

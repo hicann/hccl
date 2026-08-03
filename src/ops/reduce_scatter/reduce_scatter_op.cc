@@ -200,17 +200,16 @@ HcclResult ReduceScatterOutPlace(OpParam &param, void *sendBuf, void *recvBuf, u
         }
     }
 
-    std::string algName;
-    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
-    }
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     HCCL_INFO("Execute ReduceScatterOutPlace success.");
     return HCCL_SUCCESS;
@@ -250,12 +249,14 @@ HcclResult ReduceScatterOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t
     int ret = sprintf_s(param.tag, sizeof(param.tag), "%s", tag.c_str());
     CHK_PRT_RET((ret <= 0), HCCL_ERROR("failed to fill param.tag"), HCCL_E_INTERNAL);
 
+    CHK_RET(HcclGetOpExpansionMode(comm, param));
+    
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] rankSize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
-    CHK_RET(HcclGetOpExpansionMode(comm, param));
+    
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));

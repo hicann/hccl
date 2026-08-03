@@ -282,17 +282,14 @@ HcclResult ReduceScatterVOutPlaceCommon(void *sendBuf, const void *sendDispls, c
         return HcclReduceScatterVInner(sendBuf, sendCounts, sendDispls, recvBuf, recvCount, dataType, op, comm, stream);
     }
 
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return HcclReduceScatterVInner(sendBuf, sendCounts, sendDispls, recvBuf, recvCount, dataType, op, comm, stream);
-    }
-    
     if (userRankSize == 1) {
         HCCL_WARNING("[%s] ranksize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+    
+    CHK_RET(Selector(comm, param, topoInfo, algName));
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     return HCCL_SUCCESS;
 }

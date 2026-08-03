@@ -655,19 +655,16 @@ HcclResult AlltoAllVOutPlaceCommon(const void *sendBuf, const void *sendCounts, 
         }
     }
 
-    std::string algName;
-    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
-    CHK_PTR_NULL(topoInfo);
-    CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        useInnerOp = true;
-        return HCCL_SUCCESS;
-    }
     if (rankSize == 1) {
         HCCL_WARNING("[%s] rankSize == 1, enter SingleRankProc", __func__);
         CHK_RET(SingleRankProc(comm, param));
         return HcclResult::HCCL_SUCCESS;
     }
+
+    std::string algName;
+    std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
+    CHK_PTR_NULL(topoInfo);
+    CHK_RET(Selector(comm, param, topoInfo, algName));
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     return HCCL_SUCCESS;

@@ -174,11 +174,6 @@ HcclResult SaveUnfoldThreadInfo(HcclComm comm, const OpParam &param, ThreadHandl
 
 HcclResult GetUnfoldThreadInfo(HcclComm comm, const OpParam &param, ThreadHandle& unfoldThread);
 
-bool HcclCheckAicpuEnableOpen();
-bool HcclCheckCcuEnableOpen();
-bool HcclCheckAivEnableOpen();
-bool ShouldUseInnerOp(OpExecuteConfig opExecuteConfig);
-
 HcclResult HcclRegstryBuff(HcclComm comm, const char *memTag, void *bufferPtr, uint64_t bufferSize, HcclMemHandle *memHandle);
 
 HcclResult HcclGetRemoteBuff(HcclComm comm, ChannelHandle channel, const char *memTag, void **bufferPtr, uint64_t *bufferSize);

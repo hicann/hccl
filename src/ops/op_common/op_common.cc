@@ -2958,16 +2958,6 @@ HcclResult ApplyOpExpansionMode(OpParam &param, HcclOpExpansionMode finalMode)
     return HcclResult::HCCL_SUCCESS;
 }
 
-bool HcclCheckAicpuEnableOpen()
-{
-    const char* envValue = std::getenv("HCCL_ENABLE_OPEN_AICPU");
-
-    if (envValue != nullptr && std::strcmp(envValue, "1") == 0) {
-        return false;
-    }
-
-    return true;
-}
 
 HcclResult HcclRegstryBuff(HcclComm comm, const char *memTag, void *bufferPtr, uint64_t bufferSize, HcclMemHandle *memHandle)
 {
@@ -3003,42 +2993,6 @@ HcclResult HcclGetRemoteBuff(HcclComm comm, ChannelHandle channel, const char *m
         HCCL_WARNING("[%s] Failed to find %s in remote mem list", __func__, memTag);
     }
     return HCCL_SUCCESS;
-}
-
-bool HcclCheckCcuEnableOpen()
-{
-    return true;
-}
-
-bool HcclCheckAivEnableOpen()
-{
-    const char* envValue = std::getenv("HCCL_ENABLE_OPEN_AIV");
-
-    if (envValue != nullptr && std::strcmp(envValue, "1") == 0) {
-        return false;
-    }
-
-    return true;
-}
-
-bool ShouldUseInnerOp(OpExecuteConfig opExecuteConfig)
-{
-    bool isAicpuOrHostMode = (opExecuteConfig == OpExecuteConfig::AICPU_TS ||
-                              opExecuteConfig == OpExecuteConfig::HOSTCPU);
-    bool isCcuMode = (opExecuteConfig == OpExecuteConfig::CCU_MS ||
-                      opExecuteConfig == OpExecuteConfig::CCU_SCHED);
-    bool isAivMode = (opExecuteConfig == OpExecuteConfig::AIV ||
-                      opExecuteConfig == OpExecuteConfig::AIV_ONLY);
-
-    if (isAicpuOrHostMode) {
-        return !HcclCheckAicpuEnableOpen();
-    } else if (isCcuMode) {
-        return !HcclCheckCcuEnableOpen();
-    } else if (isAivMode) {
-        return !HcclCheckAivEnableOpen();
-    }
-
-    return false;
 }
 
 HcclResult LogHcclExit(const std::string &opName, const char *tag, HcclUs startut, bool forceLog)

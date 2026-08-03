@@ -140,9 +140,7 @@ HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string 
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (ShouldUseInnerOp(param.opExecuteConfig) && param.opMode == OpMode::OPBASE) {
-        return BarrierFallbackToOldFlow(comm, stream);
-    }
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, ResPackGraphMode()));
     HCCL_INFO("Execute BarrierOutPlace success.");
     return HCCL_SUCCESS;
