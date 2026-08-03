@@ -215,6 +215,8 @@ HcclResult LookupAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHa
 
 HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCount, OpParam &param);
 
+HcclResult ReplayAivInstructionsV(const AivInstruction *instructions, u32 insCount, OpParam &param);
+
 HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
                             AivCacheIndexCtx *indexCtx);
 

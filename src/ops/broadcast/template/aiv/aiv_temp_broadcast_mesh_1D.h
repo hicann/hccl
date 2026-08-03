@@ -17,6 +17,8 @@
 
 namespace ops_hccl {
 
+constexpr uint32_t BR_CTRL_CORE_LIMIT_RANK_SIZE = 16;
+
 class AivTempBroadcastMesh1D : public AivAlgTemplateBase {
 public:
     AivTempBroadcastMesh1D() = default;

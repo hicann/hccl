@@ -232,8 +232,9 @@ __aicore__ inline void AivBroadcastV2Mesh1D(KERNEL_ARGS_DEF)
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    if (numBlocks < rankSize) {
-        op.ProcessCtrlCore<T>(len, sliceId);                    // 控核分支
+    // 基于实测结果，小于等于512K且小于等于16P，走控核算法性能更优，与host侧计算核数的逻辑保持一致
+    if (numBlocks < rankSize || (len * sizeof(T) <= DATA_LIMIT && rankSize <= BR_CTRL_CORE_LIMIT_RANK_SIZE)) {
+        op.ProcessCtrlCore<T>(len, sliceId);
     } else if (len * sizeof(T) >= DATA_LIMIT && rankSize > 8) {
         op.ProcessBigData<T>(len, sliceId);
     } else {

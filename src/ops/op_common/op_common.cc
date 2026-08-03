@@ -350,6 +350,7 @@ bool IsAivCacheSupported(const OpParam &param)
     return (param.opType == HCCL_CMD_ALLGATHER || param.opType == HCCL_CMD_ALLREDUCE ||
             param.opType == HCCL_CMD_REDUCE_SCATTER || param.opType == HCCL_CMD_BROADCAST ||
             param.opType == HCCL_CMD_REDUCE || param.opType == HCCL_CMD_ALLTOALL ||
+            param.opType == HCCL_CMD_ALLTOALLV ||
             param.opType == HCCL_CMD_SCATTER) &&
            param.opMode == OpMode::OPBASE && !IsStreamInCaptureMode(param.stream);
 }
@@ -369,6 +370,9 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam &param, bool &cache
     if (param.opType == HCCL_CMD_ALLTOALL) {
         cacheKey.dataType = param.all2AllVDataDes.sendType;
         cacheKey.count = static_cast<const u64 *>(param.all2AllVDataDes.sendCounts)[0];
+    } else if (param.opType == HCCL_CMD_ALLTOALLV) {
+        cacheKey.dataType = param.all2AllVDataDes.sendType;
+        cacheKey.count = 0; // counts 在 replay 时动态刷新,cache key 不区分
     } else {
         cacheKey.count = param.DataDes.count;
         cacheKey.dataType = param.DataDes.dataType;
@@ -404,7 +408,11 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam &param, bool &cache
     ACLCHECK(aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &numBlocksLimit));
     param.numBlocksLimit = numBlocksLimit;
 
-    CHK_RET(ReplayAivInstructions(instructions, insCount, param));
+    if (param.opType == HCCL_CMD_ALLTOALLV) {
+        CHK_RET(ReplayAivInstructionsV(instructions, insCount, param));
+    } else {
+        CHK_RET(ReplayAivInstructions(instructions, insCount, param));
+    }
 
     CHK_RET(HcclReportAivKernel(comm, beginTime));
     CHK_RET(HcclProfilingReportOp(comm, beginTime));
@@ -469,6 +477,9 @@ HcclResult ExecuteAivCacheLogic(HcclComm comm, OpParam &param, const std::string
         if (param.opType == HCCL_CMD_ALLTOALL) {
             cacheKey.dataType = param.all2AllVDataDes.sendType;
             cacheKey.count = static_cast<const u64 *>(param.all2AllVDataDes.sendCounts)[0];
+        } else if (param.opType == HCCL_CMD_ALLTOALLV) {
+            cacheKey.dataType = param.all2AllVDataDes.sendType;
+            cacheKey.count = 0; // counts 在 replay 时动态刷新,cache key 不区分
         } else {
             cacheKey.count = param.DataDes.count;
             cacheKey.dataType = param.DataDes.dataType;
