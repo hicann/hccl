@@ -13,6 +13,7 @@
 
 #include <hccl/hccl_res.h>
 #include <hccl/hccl_rank_graph.h>
+
 #include "common.h"
 #include "ccu_kernel.h"
 
@@ -22,10 +23,11 @@ HcclResult GetDeviceType(DeviceType *deviceType);
 
 HcclResult GetThreadForCcu(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost);
 
-HcclResult GetChannelForCcu(HcclComm comm, const OpParam &param, std::vector<ChannelHandle> &kernelChannels);
+HcclResult GetChannelForCcu(HcclComm comm, const OpParam &param, std::vector<ChannelHandle> &kernelChannels,
+                            uint32_t &dieId);
 
 HcclResult GetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost,
-    const std::vector<ChannelHandle> &kernelChannels, CcuKernelInfo &kernelInfo);
+    const std::vector<ChannelHandle> &kernelChannels, CcuKernelInfo &kernelInfo, uint32_t dieId);
 
 HcclResult AllocAlgResource(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost);
 

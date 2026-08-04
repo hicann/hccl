@@ -122,13 +122,23 @@ typedef enum {
     } while (0)
 
 #define HCCL_TO_CCU_RET(hcclRet) static_cast<CcuResult>(hcclRet)
-#define CCU_CHK_RET(call)                                 \
-    do {                                              \
-        CcuResult ccuRet = HCCL_TO_CCU_RET(call);                        \
-        if (UNLIKELY(ccuRet != CCU_SUCCESS)) {                                                         \
+
+#define CCU_CHK_RET(call)                                                 \
+    do {                                                                  \
+        CcuResult ccuRet = HCCL_TO_CCU_RET(call);                         \
+        if (UNLIKELY(ccuRet != CCU_SUCCESS)) {                            \
             HCCL_ERROR("[%s]call trace: ccuRet -> %d", __func__, ccuRet); \
-            return ccuRet;                               \
-        }                                             \
+            return ccuRet;                                                \
+        }                                                                 \
+    } while (0)
+
+#define CHK_SAFETY_FUNC_RET(call)                                                   \
+    do {                                                                            \
+        int32_t ret = call;                                                         \
+        if (UNLIKELY(ret != EOK)) {                                                 \
+            HCCL_ERROR("[%s]call trace: safety func err ret -> %d", __func__, ret); \
+            return HCCL_E_INTERNAL;                                                 \
+        }                                                                           \
     } while (0)
 
 #endif // OPS_HCCL_P2P_LOG_H

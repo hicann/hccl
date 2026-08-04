@@ -13,7 +13,7 @@
 
 #include <vector>
 #include <memory>
-#include <map>
+#include <unordered_map>
 
 #include <acl/acl_rt.h>
 #include <hccl/hccl_types.h>
@@ -21,6 +21,7 @@
 #include <hccl/hcomm_primitives.h>
 #include <hccl/hccl_rank_graph.h>
 #include <ccu/ccu_types.h>
+#include <ccu/ccu_res_defs.h>
 #include <ccu/ccu_variable.hpp>
 #include <ccu/ccu_event.hpp>
 #include <ccu/ccu_primitives.hpp>
@@ -40,6 +41,8 @@ constexpr uint32_t TAG_LENGTH = OP_NAME_LENGTH + COMM_INDENTIFIER_MAX_LENGTH;
 constexpr uint32_t ALG_TAG_LENGTH = TAG_LENGTH + 128;
 constexpr uint32_t OP_ALG_LENGTH = 128;
 constexpr uint64_t CCU_MAX_RANK_SIZE = 16;
+
+constexpr uint32_t CCU_DIE_NUM = 2; // CCU IO Die 数量
 
 // 算子执行模式
 enum class OpMode {
@@ -176,5 +179,13 @@ inline HcclResult ConvertCcuToHccl(CcuResult ccuResult) {
             return HCCL_E_INTERNAL;
     }
 }
+
+// 以总资源量的1/5预设默认资源数量
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_ADDRESS = 400;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP = 16;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF = 128;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_VARIABLE = 400;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT = 48;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_THREAD = 2;
 
 #endif // OPS_HCCL_P2P_COMMON_H
