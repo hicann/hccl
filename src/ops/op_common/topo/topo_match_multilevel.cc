@@ -193,7 +193,7 @@ uint32_t TopoMatchMultilevel::GcdOfInstSizeList(const uint32_t* instSizeList, ui
 HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > COMM_LAYER_SIZE_2,
+    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > COMM_LAYER_SIZE_3,
         HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.",
             topoInfo->topoLevelNums),
         HCCL_E_INTERNAL);
@@ -209,12 +209,17 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
             myRank),
         HcclResult::HCCL_E_PARA);
     // 1.获取并校验通信层数
-    uint32_t *netLayers;
+    uint32_t *netLayersTemp = nullptr;
     uint32_t layerNum = 0;
-    CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &layerNum));
+    CHK_RET(HcclRankGraphGetLayers(comm, &netLayersTemp, &layerNum));
+    CHK_PRT_RET(netLayersTemp == nullptr || layerNum == 0,
+        HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Rank [%u], invalid net layers, layerNum[%u].",
+            myRank, layerNum),
+        HcclResult::HCCL_E_INTERNAL);
+    std::vector<uint32_t> netLayerList(netLayersTemp, netLayersTemp + layerNum);
 
     HCCL_DEBUG("[CollAlgFactory] [TopoMatchMultilevel] Rank [%d], netLayers[%u][%s]",
-                myRank, layerNum, PrintCArray<uint32_t>(netLayers, layerNum).c_str());
+                myRank, layerNum, PrintCArray<uint32_t>(netLayerList.data(), layerNum).c_str());
 
     // 2. 获取每个pod上rank数量以及pod数量
     uint32_t *instSizeList;
@@ -225,12 +230,60 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
         listSize,
         PrintCArray<uint32_t>(instSizeList, listSize).c_str());
     bool isSymmetric = CheckVecElementAllSame(instSizeList, listSize);
+    HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Rank [%d], isSymmetric[%d], topoLevelNums[%u], listSize[%u]",
+        myRank, isSymmetric, topoInfo->topoLevelNums, listSize);
+
+    // 检查物理layer1（pod间）对称性：每个pod内的instance数是否相同
+    bool layer1Symmetric = true;
+    uint32_t physicalLayer1NetLayer = 1;
+    uint32_t algLayer1NetLayer = 1;
+    if (topoInfo->topoLevelNums > 1) {
+        CHK_PRT_RET(layerNum < COMM_LAYER_SIZE_2,
+            HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Rank [%u], net layer num[%u] is invalid for "
+                "topoLevelNums[%u].", myRank, layerNum, topoInfo->topoLevelNums),
+            HcclResult::HCCL_E_INTERNAL);
+        physicalLayer1NetLayer = netLayerList[1];
+        algLayer1NetLayer = physicalLayer1NetLayer;
+    }
+
+    bool hostDPUOnly = false;
+    if ((CheckHostDPUOnly(comm, topoInfo, hostDPUOnly) == HcclResult::HCCL_SUCCESS) && hostDPUOnly) {
+        // host dpu场景使用最高层的链路
+        algLayer1NetLayer = netLayerList.back();
+    }
+    if (topoInfo->topoLevelNums == COMM_LAYER_SIZE_3) {
+        uint32_t *layer1InstSizeList = nullptr;
+        uint32_t layer1ListSize = 0;
+        CHK_RET(HcclRankGraphGetInstSizeListByLayer(
+            comm, physicalLayer1NetLayer, &layer1InstSizeList, &layer1ListSize));
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] layer1 listSize[%u]", layer1ListSize);
+        for (uint32_t i = 0; i < layer1ListSize; i++) {
+            HCCL_INFO("[TopoMatchMultilevel][MatchTopo] layer1 instSizeList[%u]=[%u]", i, layer1InstSizeList[i]);
+        }
+        layer1Symmetric = CheckVecElementAllSame(layer1InstSizeList, layer1ListSize);
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] layer1Symmetric[%d]", layer1Symmetric);
+    }
+
+    // 三级拓扑暂不支持任何非对称场景（layer0 或 layer1）
+    if (topoInfo->topoLevelNums >= COMM_LAYER_SIZE_3 && (!isSymmetric || !layer1Symmetric)) {
+        HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Asymmetric mode not supported for 3-level topology, "
+            "topoLevelNums[%u], isSymmetric[%d], layer1Symmetric[%d]",
+            topoInfo->topoLevelNums, isSymmetric, layer1Symmetric);
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
 
     // 非对称仅支持 Mesh1D，提前校验 topoInstNum
     if (!isSymmetric) {
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Asymmetric mode detected, "
+            "topoLevelNums[%u], listSize[%u]", topoInfo->topoLevelNums, listSize);
+        for (uint32_t i = 0; i < listSize; i++) {
+            HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Asymmetric instSizeList[%u]=[%u]", i, instSizeList[i]);
+        }
+
         uint32_t *topoInsts;
         uint32_t topoInstNum = 0;
         CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, 0, &topoInsts, &topoInstNum));
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Asymmetric mode, topoInstNum[%u]", topoInstNum);
         CHK_PRT_RET(topoInstNum != NET_INST_NUM_1,
             HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Asymmetric mode only supports Mesh1D, "
                 "but topoInstNum [%u]", topoInstNum),
@@ -238,7 +291,18 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
     }
 
     // 3. 计算layer0的topo
+    bool needDowngrade = hostDPUOnly && topoInfo->topoLevelNums == COMM_LAYER_SIZE_3;
+    // hccl_900 暂无 TopoForLayer2，3 级非 HostDPU 场景不支持
+    CHK_PRT_RET(topoInfo->topoLevelNums == COMM_LAYER_SIZE_3 && !needDowngrade,
+        HCCL_ERROR("[TopoMatchMultilevel][MatchTopo] Rank [%u], 3-level non-HostDPU topology is not supported.",
+            myRank),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     algHierarchyInfo.infos.resize(COMM_LAYER_SIZE_2);
+    if (needDowngrade) {
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Rank [%u], downgrade HostDPU topology from physical "
+            "level nums[%u] to algorithm level nums[%u], algorithm layer1 uses net layer[%u].",
+            myRank, topoInfo->topoLevelNums, COMM_LAYER_SIZE_2, algLayer1NetLayer);
+    }
     uint32_t layer0Size = 0;
     if (!isSymmetric) {
         uint32_t gcdInstSize = GcdOfInstSizeList(instSizeList, listSize);
@@ -249,13 +313,7 @@ HcclResult TopoMatchMultilevel::MatchTopo(const HcclComm comm, TopoInfoWithNetLa
     }
 
     // 4. 计算layer1的topo
-    uint32_t netLayer = 1;
-    bool hostDPUOnly = false;
-    if ((CheckHostDPUOnly(comm, topoInfo, hostDPUOnly) == HcclResult::HCCL_SUCCESS) && hostDPUOnly) {
-        // host dpu场景使用最高层的链路
-        netLayer = topoInfo->netLayerDetails.netLayers[topoInfo->netLayerDetails.netLayerNum - 1];
-    }
-    CHK_RET(TopoForLayer1(comm, netLayer, layer0Size, myRank, algHierarchyInfo));
+    CHK_RET(TopoForLayer1(comm, algLayer1NetLayer, layer0Size, myRank, algHierarchyInfo));
 #endif
     return HcclResult::HCCL_SUCCESS;
 }

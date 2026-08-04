@@ -402,32 +402,33 @@ HcclResult CalcChannelRequestMesh1DFullMesh(HcclComm comm, const OpParam& param,
 #endif
 }
 
-static HcclResult CheckNetLayerExists(HcclComm comm, u32 netLayer, const std::string &tag, bool linkRequired)
+static HcclResult CheckNetLayerExists(HcclComm comm, u32 netLayer, const std::string &tag, bool linkRequired,
+    bool &netLayerExists)
 {
 #ifndef AICPU_COMPILE
+    netLayerExists = false;
     uint32_t *netLayers = nullptr;
     uint32_t netLayerNum = 0;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
     std::vector<uint32_t> netLayersVector(netLayers, netLayers + netLayerNum);
-    bool netLayerValid = false;
     for (auto layer : netLayersVector) {
         if (layer == netLayer) {
-            netLayerValid = true;
+            netLayerExists = true;
             break;
         }
     }
-    if (!netLayerValid) {
+    if (!netLayerExists) {
         CHK_PRT_RET(linkRequired,
             HCCL_ERROR("[%s] netLayer[%u] does not exist in rankGraph.", tag.c_str(), netLayer),
             HcclResult::HCCL_E_INTERNAL);
         HCCL_WARNING("[%s] netLayer[%u] does not exist in rankGraph, skip.", tag.c_str(), netLayer);
-        return HCCL_SUCCESS;
     }
 #else
     (void)comm;
     (void)netLayer;
     (void)tag;
     (void)linkRequired;
+    (void)netLayerExists;
 #endif
     return HCCL_SUCCESS;
 }
@@ -439,7 +440,11 @@ static HcclResult CalcChannelRequestMesh1DByLevel(HcclComm comm, const OpParam& 
 {
 #ifndef AICPU_COMPILE
     channels.clear();
-    CHK_RET(CheckNetLayerExists(comm, netLayer, tag, linkRequired));
+    bool netLayerExists = false;
+    CHK_RET(CheckNetLayerExists(comm, netLayer, tag, linkRequired, netLayerExists));
+    if (!netLayerExists) {
+        return HCCL_SUCCESS;
+    }
 
     auto it = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), topoInfo->userRank);
     CHK_PRT_RET((it == subcommInfo[COMM_LEVEL0].end()), HCCL_ERROR("[%s] Rank [%u] is not in commInfo.",
