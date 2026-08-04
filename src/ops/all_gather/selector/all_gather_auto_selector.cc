@@ -23,6 +23,7 @@ constexpr u64 AG_AICPU_SMALL_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 AG_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD = 1 * 1024 * 1024 * 1024;
 constexpr u64 AG_CCU_CLOS_SMALL_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 AG_AICPU_SEQUENCE_DATA_SIZE = 4ULL * 1024 * 1024 * 1024;
+constexpr u64 AG_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 OMNI_PCIE_AG_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 OMNI_UBX_AG_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
@@ -37,9 +38,18 @@ SelectorStatus AllGatherAutoSelector::SelectCcuMsAlgo(
     if (topoInfo->topoLevelNums > 1) {
         HCCL_WARNING("[AllGatherAutoSelector] levelNum > 1 is not supported yet for ccu_ms mode.");
         return SelectorStatus::NOT_MATCH;
-    } else {
-        return SelectMeshAlgo(topoInfo, opParam, selectAlgName);
     }
+
+    // 2P场景且数据量大于阈值时回退到AICPU
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+    if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= AG_2P_DETOUR_DATA_SIZE) {
+        HCCL_DEBUG("[AllGatherAutoSelector] 2P scenario with data size[%llu], "
+            "fallback to AICPU for better performance.", dataSize);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    return SelectMeshAlgo(topoInfo, opParam, selectAlgName);
 }
 
 SelectorStatus AllGatherAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
@@ -121,7 +131,8 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleUBXAlgo(
 }
 
 SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
-    const TopoInfoWithNetLayerDetails *topoInfo, std::string &selectAlgName, const u64 dataSize) const
+    const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
+    std::string &selectAlgName, const u64 dataSize) const
 {
     if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
         selectAlgName = "CcuAllGatherMesh2DieMem2Mem";
@@ -129,10 +140,14 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
         HCCL_DEBUG("[AllGatherAutoSelector][%s] TWO_DIE_NOT_REGULAR not match", __func__);
         return SelectorStatus::NOT_MATCH;
     } else {
-        if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo)) {
+        if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
             selectAlgName = "CcuAllGatherSoleMeshScheConcur";
-        } else
-        {
+        } else if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 &&
+                   dataSize >= AG_2P_DETOUR_DATA_SIZE) {
+            HCCL_DEBUG("[AllGatherAutoSelector] 2P scenario with data size[%llu], "
+                "fallback to AICPU for better performance.", dataSize);
+            return SelectorStatus::NOT_MATCH;
+        } else {
             selectAlgName = "CcuAllGatherMesh1DMem2Mem";
         }
     }
@@ -141,15 +156,16 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
 }
 
 SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0Algo(
-    const TopoInfoWithNetLayerDetails *topoInfo, std::string &selectAlgName, const u64 dataSize) const
+    const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
+    std::string &selectAlgName, const u64 dataSize) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, selectAlgName, dataSize);
+        return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, opParam, selectAlgName, dataSize);
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
         if (topoInfo->level0PcieMix) {
             if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-                return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, selectAlgName, dataSize);
+                return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, opParam, selectAlgName, dataSize);
             } else {
                 HCCL_WARNING("[AllGatherAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
@@ -253,7 +269,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
         CHK_PRT_RET(IsInputOutputOverlap(opParam) == true,
             HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_sched does not support inplace allgather."),
             SelectorStatus::NOT_MATCH);
-        return SelectCcuScheduleLevel0Algo(topoInfo, selectAlgName, dataSize);
+        return SelectCcuScheduleLevel0Algo(topoInfo, opParam, selectAlgName, dataSize);
     }
     HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -306,7 +322,9 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
         }
     } else {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (IsTwoLevelNetLayer(topoInfo) && dataSize * topoInfo->userRankSize > AG_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD) {
+            if (IsTwoLevelNetLayer(topoInfo, opParam) &&
+                (dataSize * topoInfo->userRankSize > AG_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD ||
+                 (topoInfo->userRankSize == 2 && dataSize >= AG_2P_DETOUR_DATA_SIZE))) {
                 selectAlgName = "InsAllGatherMesh1D1DZAxisDetour";
             } else {
                 selectAlgName = "InsAllGatherMesh1D";

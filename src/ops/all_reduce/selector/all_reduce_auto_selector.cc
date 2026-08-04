@@ -33,8 +33,8 @@ constexpr u64 OMNI_UBX_AR_MS_DATA_SIZE = 32 * 1024 * 1024;
 constexpr u64 AR_AIV_SMALL_DATA_SIZE_IN_BOARD = 128 * 1024;
 constexpr u64 AR_AIV_BOARD_SIZE = 8;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
+constexpr u64 AR_2P_DETOUR_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u32 AR_MORE_64P_SEQ_MAX_DATA_SIZE = 32 * 1024 * 1024;
-
 SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
                                                     const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
                                                     std::string &selectAlgName) const
@@ -51,6 +51,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayer
         HCCL_DEBUG("[AllReduceAutoSelector] levelNum > 1 is not supported yet for ccu_ms mode.");
         return SelectorStatus::NOT_MATCH;
     }
+
     // MS 模式不支持 int8
     CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
         HCCL_DEBUG("[AllReduceAutoSelector] dataType[%d] is not supported yet for ccu_ms mode.",
@@ -113,6 +114,12 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerD
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
+    // 2P场景且数据量大于阈值时回退到AICPU
+    if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= AR_2P_DETOUR_DATA_SIZE) {
+        HCCL_DEBUG("[AllReduceAutoSelector] 2P scenario with data size[%llu], "
+            "fallback to AICPU for better performance.", dataSize);
+        return SelectorStatus::NOT_MATCH;
+    }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (IsInputOutputOverlap(opParam) == true) {// 不支持 inplace 场景
             return SelectorStatus::NOT_MATCH;
@@ -129,7 +136,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(const TopoInfoWithNetLayerD
         } else if (IsSmallData(dataSize)) {
             selectAlgName = "CcuAllReduceMesh1DOneShot";
         } else {
-            if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo)) {
+            if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
                 selectAlgName = "CcuAllReduceSoleMeshMsConcur";
             }
             else 
@@ -483,13 +490,16 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(const TopoInfoWithNetL
     } else {
         ratio = DEFAULT_RANK_SIZE / topoInfo->userRankSize / topoInfo->userRankSize;
     }
-    bool isTwoLevelFlag = IsTwoLevelNetLayer(topoInfo);
+    bool isTwoLevelFlag = IsTwoLevelNetLayer(topoInfo, opParam);
     bool overSequenceDataThreshold = dataSize > AR_AICPU_SEQUENCE_DATA_SIZE;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (isDataTypeOrReduceTypeSpecial) {
             selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ?
                             "InsAllReduceMesh1DOneShot" :
                             "InsAllReduceMesh1DTwoShot";
+        } else if (isTwoLevelFlag && topoInfo->userRankSize == 2 && dataSize >= AR_2P_DETOUR_DATA_SIZE) {
+            // 两p条件下生效
+            selectAlgName = "InsAllReduceMesh1DTwoShotZAxisDetour";
         } else if (dataSize <= AR_AICPU_1D_SMALL_DATA_SIZE) {
             selectAlgName = "InsAllReduceMesh1DOneShot";
         } else if (dataSize * ratio > AR_AICPU_1D_MAX_DATA_SIZE) {

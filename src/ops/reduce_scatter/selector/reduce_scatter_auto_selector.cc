@@ -30,6 +30,7 @@ constexpr u64 RS_AICPU_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
 constexpr u32 RS_CCU_2DIE_RANK_SIZE = 16;
 constexpr u64 RS_CCU_2DIE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_2DIE_MAX_DATA_SIZE = 16 * 1024 * 1024;
+constexpr u64 RS_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_PCIE_RS_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_UBX_RS_SCHED_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_UBX_RS_MS_DATA_SIZE = 2 * 1024 * 1024;
@@ -51,6 +52,16 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetL
         HCCL_WARNING("[ReduceScatterAutoSelector] layerNum > 1 is not supported yet for ccu_ms mode.");
         return SelectorStatus::NOT_MATCH;
     }
+
+    // 2P场景且数据量大于阈值时回退到AICPU
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+    if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= RS_2P_DETOUR_DATA_SIZE) {
+        HCCL_DEBUG("[ReduceScatterAutoSelector] 2P scenario with data size[%llu], "
+            "fallback to AICPU for better performance.", dataSize);
+        return SelectorStatus::NOT_MATCH;
+    }
+
     // MS 模式不支持 int8
     CHK_PRT_RET(opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8,
         HCCL_WARNING("[ReduceScatterAutoSelector] dataType[%d] is not supported yet for ccu_ms mode.",
@@ -89,7 +100,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcums(const TopoInfoWith
             HCCL_INFO("[%s] TWO_DIE_NOT_REGULAR not match", __func__);
             return SelectorStatus::NOT_MATCH;
         } else {
-            if (IsDevType960() && (dataSize * topoInfo->userRankSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo))) {
+            if (IsDevType960() && (dataSize * topoInfo->userRankSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam))) {
                 selectAlgName = "CcuReduceScatterSoleMeshMSConcur";
             } else {
                 selectAlgName = "CcuReduceScatterMesh1D";
@@ -413,8 +424,10 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1D(const Top
     if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
         selectAlgName = "InsReduceScatterMesh1D";
     } else {
-        if (IsTwoLevelNetLayer(topoInfo)) {
-            if (dataSize * topoInfo->userRankSize > RS_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD) {
+        if (IsTwoLevelNetLayer(topoInfo, opParam)) {
+            if (topoInfo->userRankSize == 2 && dataSize >= RS_2P_DETOUR_DATA_SIZE) {
+                selectAlgName = "InsReduceScatterMesh1DZAxisDetour";
+            } else if (dataSize * topoInfo->userRankSize > RS_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD) {
                 selectAlgName = "InsReduceScatterMesh1DMeshChunk";
             } else if (dataSize * ratio > RS_AICPU_1D_MAX_DATA_SIZE) {
                 selectAlgName = "InsReduceScatterMesh1DMeshChunk";

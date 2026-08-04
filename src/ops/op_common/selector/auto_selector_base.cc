@@ -242,10 +242,16 @@ HcclResult AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNet
     return HCCL_SUCCESS;
 }
 
-bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo) const
+bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam) const
 {
     CHK_PRT_RET(topoInfo == nullptr,
         HCCL_WARNING("[AutoSelectorBase][IsTwoLevelNetLayer] topoInfo is nullptr."), false);
+    // hostDPU场景不走二级网络算法
+    bool hostDPUOnly = false;
+    if ((CheckHostDPUOnly(opParam.hcclComm, topoInfo, hostDPUOnly) == HCCL_SUCCESS) && hostDPUOnly) {
+        HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] host DPU only, not two level net layer.");
+        return false;
+    }
     if (topoInfo->netLayerDetails.netLayerNum <= 1) {
         HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] netLayerNum[%u] <= 1, not two level net layer.",
             topoInfo->netLayerDetails.netLayerNum);

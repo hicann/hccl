@@ -30,9 +30,9 @@ private:
                                  std::string &selectAlgName) const override;
     SelectorStatus SelectCcuScheduleUBXAlgo(const TopoInfoWithNetLayerDetails *topoInfo,
         std::string &selectAlgName, const u64 dataSize) const;
-    SelectorStatus SelectCcuScheduleLevel0Algo(const TopoInfoWithNetLayerDetails *topoInfo, 
+    SelectorStatus SelectCcuScheduleLevel0Algo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
         std::string &selectAlgName, const u64 dataSize) const;
-    SelectorStatus SelectCcuScheduleLevel0AlgoMesh1D(const TopoInfoWithNetLayerDetails *topoInfo,
+    SelectorStatus SelectCcuScheduleLevel0AlgoMesh1D(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
         std::string &selectAlgName, const u64 dataSize) const;
     SelectorStatus SelectAivAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,

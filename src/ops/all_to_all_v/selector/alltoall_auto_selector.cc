@@ -79,7 +79,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNet
                 HCCL_DEBUG("[AlltoAllAutoSelector][%s] TWO_DIE_NOT_REGULAR not match", __func__);
                 return SelectorStatus::NOT_MATCH;
             } else {
-                if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo)) {
+                if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
                     selectAlgName = "CcuAllToAllSoleMeshScheConcur";
                 } else {
                     selectAlgName = "CcuAlltoAllMesh1D";
