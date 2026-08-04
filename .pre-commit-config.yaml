@@ -10,7 +10,7 @@ repos:
           - "--style=file"
           - "--verbose"
           - "-i"
-        exclude: ^build.*/|^test/|^src/
+        exclude: ^build.*/|^test/|^src/|^examples/|^experimental/|^include/
   # OAT compliance check (Open Source Audit Tool)
   - repo: local
     hooks:
