@@ -3,7 +3,7 @@
 集合通信是一个通信域内的全局协同行为，只通过一个rank的Profiling数据往往难以分析集合通信的性能问题，因此需要采集到全量rank的Profiling数据才能精确地分析到集合通信的性能瓶颈所在。当前支持通过两种方式采集性能数据：
 
 - 方式一：参考《[性能调优工具用户指南](https://hiascend.com/document/redirect/CannCommunityToolProfiling)》采集Profiling性能数据。
-- 方式二：参考《[HCCL性能测试工具用户指南](https://hiascend.com/document/redirect/CannCommunityToolHcclTest)》，使用HCCL Test进行Profiling数据的采集和性能测试。
+- 方式二：参考《[HCCL性能测试工具用户指南](https://gitcode.com/cann/oam-tools/blob/9.2.0-beta.1/docs/zh/hccl_test/README.md)》，使用HCCL Test进行Profiling数据的采集和性能测试。
 
   参考以下步骤，执行HCCL Test采集性能数据：
 
