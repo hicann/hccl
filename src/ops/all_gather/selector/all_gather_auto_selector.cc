@@ -404,8 +404,10 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
         SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 totalSize = opParam.DataDes.count * perDataSize * topoInfo->userRankSize;
-    if (opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY &&
-        totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize) {
+    bool isAivBigdata = opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY &&
+        totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize;
+    bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    if ((isAivBigdata && !isUBX) || (isUBX && isAivBigdata && (topoInfo->userRankSize > 8 || topoInfo->userRankSize <= 4))) {
         HCCL_DEBUG("[AllGatherAutoSelector][%s] totalSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
             __func__, totalSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);
         return SelectorStatus::NOT_MATCH;
