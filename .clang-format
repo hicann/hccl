@@ -1,29 +1,40 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2025 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+
+BasedOnStyle: Google
 Language: Cpp
 AccessModifierOffset: -4
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
-AlignEscapedNewlines: DontAlign
+AlignEscapedNewlines: Left
 AlignOperands: true
 AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: true
 AllowShortLambdasOnASingleLine: Empty
-AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: MultiLine
+AlwaysBreakTemplateDeclarations: true
 BinPackArguments: true
 BinPackParameters: true
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: AlwaysBreak
 
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
-  AfterControlStatement: Never
+  AfterControlStatement: false
   AfterEnum: false
   AfterFunction: true
   AfterNamespace: false
@@ -33,13 +44,13 @@ BraceWrapping:
   BeforeCatch: false
   BeforeElse: false
   IndentBraces: false
-  SplitEmptyFunction: true
+  SplitEmptyFunction: false
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
 
 BreakBeforeBinaryOperators: All
 BreakBeforeBraces: Custom
-BreakBeforeTernaryOperators: true
+BreakBeforeTernaryOperators: false
 BreakConstructorInitializersBeforeComma: false
 BreakInheritanceList: AfterColon
 ColumnLimit: 120
@@ -77,7 +88,7 @@ PenaltyBreakString: 1000
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 
-PointerAlignment: Right
+PointerAlignment: Left
 ReflowComments: true
 SortIncludes: false
 SpaceAfterCStyleCast: false
@@ -94,3 +105,4 @@ Standard: Latest
 TabWidth: 4
 UseTab: Never
 UseCRLF: false
+InsertNewlineAtEOF: true
