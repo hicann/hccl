@@ -47,7 +47,8 @@ constexpr uint32_t CCU_DIE_NUM = 2; // CCU IO Die 数量
 // 算子执行模式
 enum class OpMode {
     OPBASE = 0,
-    OFFLOAD = 1
+    OFFLOAD = 1,
+    ACLGRAPH = 2
 };
 
 // 设备类型

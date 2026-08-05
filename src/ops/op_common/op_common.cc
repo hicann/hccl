@@ -304,10 +304,13 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam &param, CcuFastLaunchCtx **ccu
 HcclResult ConstructHcclDfxOpInfo(const OpParam &param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo,
     ThreadHandle cpuTsThread)
 {
-    hcclDfxOpInfo.opMode = static_cast<u32>(param.opMode);
-    hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
-    hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
-    CHK_RET(GetHcclDfxOpInfoDataType(param, hcclDfxOpInfo.dataType));
+    bool isAclGraph = IsStreamInCaptureMode(param.stream);
+    hcclDfxOpInfo.opMode = isAclGraph 
+        ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH) 
+        : static_cast<u32>(param.opMode);
+        hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
+        hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
+        CHK_RET(GetHcclDfxOpInfoDataType(param, hcclDfxOpInfo.dataType));
 
     // rankSize获取指定算子的dataCount
     u32 userRankSize{0};
