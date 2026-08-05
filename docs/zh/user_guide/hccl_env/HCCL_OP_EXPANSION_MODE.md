@@ -74,7 +74,7 @@
     - 该配置项仅支持对称组网、推理特性。
     - 该配置项不支持多通信域并行的场景（因为不支持多个通信域同时配置为“AIV”模式），否则可能会导致不可预期行为。您可以在初始化具有特定配置的通信域时，通过“HcclCommConfig”将某个通信域的算子展开模式设置为“AIV”。
     - 该配置项仅支持Broadcast、AllReduce、ReduceScatter、AllGather、AlltoAll、AlltoAllV、AlltoAllVC算子。
-      - 针对Broadcast算子，数据类型支持int8、uint8、int16、uint16、int32、uint32、float16、float32、bfp16、int64、uint64、float64, 仅支持超节点内的单机通信，仅支持单算子模式和Ascend IR图模式，不支持多机和跨超节点间通信。
+      - 针对Broadcast算子，数据类型支持int8、uint8、int16、uint16、int32、uint32、float16、float32、bfp16、int64、uint64、float64, 仅支持超节点内的单机/多机通信，仅支持单算子模式和Ascend IR图模式，不支持跨超节点间通信。
       - 针对AllReduce算子，数据类型支持int8、int16、int32、float16、float32、bfp16，reduce的操作类型仅支持sum、max、min，仅支持超节点内的单机/多机通信，不支持跨超节点间通信。
       - 针对ReduceScatter算子，数据类型支持int8、int16、int32、float16、float32、bfp16，reduce的操作类型仅支持sum、max、min，仅支持超节点内的单机/多机通信，不支持跨超节点间通信。
       - 针对AllGather、AlltoAll、AlltoAllV、AlltoAllVC算子，数据类型支持int8、uint8、int16、uint16、int32、uint32、float16、float32、bfp16、int64、uint64、float64, 仅支持超节点内的单机/多机通信，不支持跨超节点间通信。
