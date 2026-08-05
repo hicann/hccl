@@ -355,7 +355,14 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_D
     AivAllReduceMesh1DTwoShot<T> op;
     op.Init(SUPERKERNEL_CLASS_INIT);
 
-    uint64_t maxCountPerLoop = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / op.rankSize_ / sizeof(T);
+    uint64_t maxCountPerLoop;
+    if (op.numBlocks_ >= op.rankSize_ * 2) {
+        uint64_t consumerNum = (op.numBlocks_ - op.rankSize_) / op.rankSize_ * op.rankSize_;
+        uint64_t baseCount = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / 2 / sizeof(T);
+        maxCountPerLoop = (baseCount > consumerNum) ? (baseCount - consumerNum) : 0;
+    } else {
+        maxCountPerLoop = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / op.rankSize_ / sizeof(T);
+    }
     uint64_t countLeft = op.len_;
 
     int32_t loopTag = op.tag_;
