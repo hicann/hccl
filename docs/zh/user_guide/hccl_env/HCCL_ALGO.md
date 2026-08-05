@@ -63,10 +63,12 @@
 
         不设置level2时，当通信域内超节点个数小于8且不是2的整数次幂时，采用ring算法；其他场景采用H-D_R算法。
 
-    level2配置当前仅适用于如下场景：
+    level2配置当前仅适用于如下产品：
 
-    - 仅支持Atlas A3 训练系列产品/Atlas A3 推理系列产品。
-    - 仅支持通信算子展开模式为AI_CPU的场景，通信算子展开模式可通过环境变量[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)配置。
+    - Ascend 950PR/Ascend 950DT，仅支持配置NHR算法，仅支持通信算子展开模式为AI_CPU的场景。
+    - Atlas A3 训练系列产品/Atlas A3 推理系列产品，仅支持通信算子展开模式为AI_CPU的场景。
+    
+      通信算子展开模式可通过环境变量[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)配置。
 
 - **按算子类型配置通信算法，配置方式如下：**
 
