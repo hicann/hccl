@@ -1818,7 +1818,7 @@ HcclResult HcclAllocAlgResourceCcu(HcclComm comm, const OpParam& param, AlgResou
     }
 
     // opMode 透传：CCU_MS 与 CCU_SCHED 使用不同的默认资源阈值（MS 模式 LOOP/CCU_BUF 阈值更大）
-    ret = HcclGetCcuKernel(comm, param.opExecuteConfig, resRequest, resCtxHost);
+    ret = HcclGetCcuKernel(comm, param.commOpExpansionMode, resRequest, resCtxHost);
     if (ret == HCCL_E_UNAVAIL) {
         // 资源不足导致回退：打印算子信息方便定位
         HCCL_RUN_INFO("[HcclGetCcuKernel] ccu resource insufficient, fallback to AICPU. "
@@ -1929,10 +1929,10 @@ static const std::vector<HcommCcuResType> &GetCcuInsCreateResTypes()
     return types;
 }
 
-// opMode 为 CCU_MS 时 LOOP/CCU_BUF/EVENT 使用 MS 模式专用阈值，其他资源类型与其他模式保持一致
-static uint32_t GetDefaultResFraction(HcommCcuResType resType, OpExecuteConfig opMode)
+// opExpansionMode 为 CCU_MS 时 LOOP/CCU_BUF/EVENT 使用 MS 模式专用阈值，其他资源类型与其他模式保持一致
+static uint32_t GetDefaultResFraction(HcommCcuResType resType, HcclOpExpansionMode opExpansionMode)
 {
-    bool isCcuMs = (opMode == OpExecuteConfig::CCU_MS);
+    bool isCcuMs = (opExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_CCU_MS);
     switch (resType) {
         case HCOMM_CCU_RES_TYPE_ADDRESS:      return CCU_DEFAULT_RES_FRACTION_ADDRESS;
         case HCOMM_CCU_RES_TYPE_LOOP:         return isCcuMs ? CCU_DEFAULT_RES_FRACTION_LOOP_MS     : CCU_DEFAULT_RES_FRACTION_LOOP;
@@ -2064,11 +2064,12 @@ static HcclResult IsResCapSufficient(uint32_t dieId, HcommCcuResDescHandle resCa
     return HCCL_SUCCESS;
 }
 
-static HcclResult CalcMaxResReqWithDefault(uint32_t dieId, OpExecuteConfig opMode,
+static HcclResult CalcMaxResReqWithDefault(uint32_t dieId, HcclOpExpansionMode opExpansionMode,
                                             HcommCcuResDescHandle resReq,
                                             HcommCcuResDescHandle outMax)
 {
-    HCCL_INFO("[CalcMaxResReqWithDefault] start, dieId[%u], opMode[%u].", dieId, static_cast<uint32_t>(opMode));
+    HCCL_INFO("[CalcMaxResReqWithDefault] start, dieId[%u], opExpansionMode[%u].", dieId,
+              static_cast<uint32_t>(opExpansionMode));
     for (HcommCcuResType resType : GetCcuInsCreateResTypes()) {
         uint32_t reqNum = 0;
         CcuResult qRet = HcommCcuInsResDescQueryNum(resReq, resType, &reqNum);
@@ -2076,7 +2077,7 @@ static HcclResult CalcMaxResReqWithDefault(uint32_t dieId, OpExecuteConfig opMod
             HCCL_ERROR("[CalcMaxResReqWithDefault] dieId[%u] query req failed: ccuRet -> %d", dieId, qRet);
             return ConvertCcuToHccl(qRet);
         }
-        uint32_t defaultNum = GetDefaultResFraction(resType, opMode);
+        uint32_t defaultNum = GetDefaultResFraction(resType, opExpansionMode);
         uint32_t maxNum = std::max(reqNum, defaultNum);
         CcuResult setRet = HcommCcuInsResDescSetNum(outMax, resType, maxNum);
         if (setRet != CCU_SUCCESS) {
@@ -2286,7 +2287,7 @@ static HcclResult ReuseExistingCcuIns(CcuInsHandle insHandle, ResDescByDie &reqD
 }
 
 // 为每个 die 创建 finalReqDesc = max(reqDesc, 默认阈值)，避免按实际需求申请造成资源碎片。出参由调用方销毁。
-static HcclResult CreateFinalReqDescs(ResDescByDie &reqDescs, OpExecuteConfig opMode,
+static HcclResult CreateFinalReqDescs(ResDescByDie &reqDescs, HcclOpExpansionMode opExpansionMode,
                                       std::vector<HcommCcuResDescHandle> &finalReqDescs)
 {
     for (auto &dieEntry : reqDescs) {
@@ -2301,7 +2302,7 @@ static HcclResult CreateFinalReqDescs(ResDescByDie &reqDescs, OpExecuteConfig op
             finalReqDescs.clear();
             return ConvertCcuToHccl(fCreateRet);
         }
-        HcclResult maxRet = CalcMaxResReqWithDefault(dieId, opMode, reqDesc, finalReqDesc);
+        HcclResult maxRet = CalcMaxResReqWithDefault(dieId, opExpansionMode, reqDesc, finalReqDesc);
         if (maxRet != HCCL_SUCCESS) {
             HcommCcuInsResDescDestroy(finalReqDesc);
             for (auto d : finalReqDescs) { HcommCcuInsResDescDestroy(d); }
@@ -2355,12 +2356,13 @@ static void CollectInsufficientResFromRemain(const std::vector<HcommCcuResDescHa
 
 // 新建 CcuIns：取需求与默认阈值的最大值创建实例并绑定到 comm，使后续算子走复用路径。
 // 函数内部销毁 reqDescs。
-static HcclResult CreateAndAssignNewCcuIns(HcclComm comm, OpExecuteConfig opMode, ResDescByDie &reqDescs,
+static HcclResult CreateAndAssignNewCcuIns(HcclComm comm, HcclOpExpansionMode opExpansionMode,
+                                           ResDescByDie &reqDescs,
                                            AlgResourceRequest &resRequest,
                                            std::unique_ptr<AlgResourceCtxSerializable> &resCtxHost)
 {
-    HCCL_INFO("[CreateAndAssignNewCcuIns] no existing CcuIns, create new one, opMode[%u], dieNum[%zu].",
-              static_cast<uint32_t>(opMode), reqDescs.size());
+    HCCL_INFO("[CreateAndAssignNewCcuIns] no existing CcuIns, create new one, opExpansionMode[%u], dieNum[%zu].",
+              static_cast<uint32_t>(opExpansionMode), reqDescs.size());
     // 收集 dieId 顺序（CreateFinalReqDescs 按 reqDescs 即 map 升序遍历，与此处顺序一致），
     // 用于资源不足时查询每个 die 的剩余资源做对比
     std::vector<uint32_t> finalReqDieIds;
@@ -2369,7 +2371,7 @@ static HcclResult CreateAndAssignNewCcuIns(HcclComm comm, OpExecuteConfig opMode
     }
 
     std::vector<HcommCcuResDescHandle> finalReqDescs;
-    HcclResult createRet = CreateFinalReqDescs(reqDescs, opMode, finalReqDescs);
+    HcclResult createRet = CreateFinalReqDescs(reqDescs, opExpansionMode, finalReqDescs);
     DestroyAllDescs(reqDescs);
     if (createRet != HCCL_SUCCESS) {
         return createRet;
@@ -2405,12 +2407,12 @@ static HcclResult CreateAndAssignNewCcuIns(HcclComm comm, OpExecuteConfig opMode
 
 // CCU kernel 动态资源申请主流程：1.聚合资源需求 -> 2.查询可复用 CcuIns
 // -> 3a.容量充足则复用并注册 / 3b.新建实例并绑定 comm 后注册。接口返回 CCU_E_UNAVAIL 时触发回退。
-static HcclResult HcclGetCcuKernelDynamic(HcclComm comm, OpExecuteConfig opMode,
+static HcclResult HcclGetCcuKernelDynamic(HcclComm comm, HcclOpExpansionMode opExpansionMode,
                                           AlgResourceRequest &resRequest,
                                           std::unique_ptr<AlgResourceCtxSerializable> &resCtxHost)
 {
-    HCCL_INFO("[HcclGetCcuKernelDynamic] start, opMode[%u], kernelNum[%zu].",
-              static_cast<uint32_t>(opMode), resRequest.ccuKernelInfos.size());
+    HCCL_INFO("[HcclGetCcuKernelDynamic] start, opExpansionMode[%u], kernelNum[%zu].",
+              static_cast<uint32_t>(opExpansionMode), resRequest.ccuKernelInfos.size());
 
     // 步骤1：聚合资源需求，按 dieId 分组
     ResDescByDie reqDescs;
@@ -2440,10 +2442,10 @@ static HcclResult HcclGetCcuKernelDynamic(HcclComm comm, OpExecuteConfig opMode,
     }
 
     // 步骤3：有可复用实例走复用路径，否则新建；reqDescs 所有权转移给子函数
-    // opMode 透传下去：新建路径需要根据模式取不同的默认阈值（MS 模式 LOOP/CCU_BUF 阈值更大）
+    // opExpansionMode 透传下去：新建路径需要根据模式取不同的默认阈值（MS 模式 LOOP/CCU_BUF 阈值更大）
     HcclResult finalRet = hasReusableIns
         ? ReuseExistingCcuIns(insHandle, reqDescs, resRequest, resCtxHost)
-        : CreateAndAssignNewCcuIns(comm, opMode, reqDescs, resRequest, resCtxHost);
+        : CreateAndAssignNewCcuIns(comm, opExpansionMode, reqDescs, resRequest, resCtxHost);
 
     // 资源不足导致回退时记一条 run info，便于运维统计动态资源申请的回退频率
     if (finalRet == HCCL_E_UNAVAIL) {
@@ -2454,13 +2456,13 @@ static HcclResult HcclGetCcuKernelDynamic(HcclComm comm, OpExecuteConfig opMode,
     return finalRet;
 }
 
-HcclResult HcclGetCcuKernel(HcclComm comm, OpExecuteConfig opMode, AlgResourceRequest &resRequest,
+HcclResult HcclGetCcuKernel(HcclComm comm, HcclOpExpansionMode opExpansionMode, AlgResourceRequest &resRequest,
                           std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
 {
     if (IsCcuDynamicResApiSupported()) {
-        HCCL_INFO("[HcclGetCcuKernel] use dynamic resource apply flow, opMode[%u].",
-                  static_cast<uint32_t>(opMode));
-        return HcclGetCcuKernelDynamic(comm, opMode, resRequest, resCtxHost);
+        HCCL_INFO("[HcclGetCcuKernel] use dynamic resource apply flow, opExpansionMode[%u].",
+                  static_cast<uint32_t>(opExpansionMode));
+        return HcclGetCcuKernelDynamic(comm, opExpansionMode, resRequest, resCtxHost);
     }
 
     // 兼容旧 hcomm 包
