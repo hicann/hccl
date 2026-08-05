@@ -112,6 +112,8 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
     if ((param.engine == CommEngine::COMM_ENGINE_AICPU_TS) || (param.engine == CommEngine::COMM_ENGINE_CPU)) {
         HCCL_DEBUG("[Selector] is aicpu mode");
         CHK_RET(LoadAICPUKernel()); // 该函数内部有防止重复加载的逻辑
+        // 在三级组网下走clos链路时，aicpu引擎目前仅支持NHR算法
+        HCCL_WARNING("under 3-level topology with CLOS link, aicpu engine currently only supports NHR algorithm.");
     }
     // 如果一开始读取到的Engine不是aiv，经过算法选择后回退到aiv，则需要重新RegisterKernel
     if (param.engine == CommEngine::COMM_ENGINE_AIV) {
