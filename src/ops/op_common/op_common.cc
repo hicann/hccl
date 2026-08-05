@@ -450,14 +450,19 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastL
         ccuFastLaunchCtx->notifyNumOnMainThread, &mainThread));
     ThreadHandle *threads = ccuFastLaunchCtx->GetThreadHandlePtr();
     threads[0] = mainThread;
-
+    std::vector<ThreadHandle> threadTemps;
+    threadTemps.assign(threads, threads + ccuFastLaunchCtx->threadNum);
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
     // Op注册
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
     CHK_RET(ConstructHcclDfxOpInfo(param, param.fastLaunchTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0));
     param.dataCount = hcclDfxOpInfo.dataCount;
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
-
+    if(IsStreamInCaptureMode(param.stream) && threadTemps.size() > 1) {
+        HCCL_INFO("HcclExecOpCcuFastLaunch streamnum %d add slavestream", threadTemps.size());
+        CHK_RET(CaptureSlaveStreams(comm, param.stream, threadTemps));
+    }
+    
     HCCL_INFO("[HcclExecOpCcuFastLaunch] FastLaunch start");
     CHK_RET(executor->FastLaunch(param, ccuFastLaunchCtx));
     HcclProfilingReportOp(comm, beginTime);
