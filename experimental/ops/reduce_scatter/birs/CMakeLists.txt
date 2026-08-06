@@ -17,6 +17,7 @@ add_subdirectory(template)
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_executor_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_birs_executor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter_birs_selector.cc
 )
 
 if(TARGET hccl)
