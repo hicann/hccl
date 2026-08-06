@@ -1895,6 +1895,16 @@ static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_THREAD = 2;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_MS = 128;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_MS = 1024;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_MS = 160;
+// V2(960) 资源规格，与 V1 一致的也单独定义，方便后续独立调整
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_ADDRESS_V2 = 0;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_V2 = 16;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_V2 = 128;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_VARIABLE_V2 = 800;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_V2 = 48;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_THREAD_V2 = 2;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_MS_V2 = 128;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_MS_V2 = 1024;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_MS_V2 = 160;
 
 // 即使本算子未在所有 die 上下 kernel，
 // 也需为所有 die 创建 reqDesc，保证后续算子在该 die 上有 kernel 时容量充足。
@@ -1929,8 +1939,8 @@ static const std::vector<HcommCcuResType> &GetCcuInsCreateResTypes()
     return types;
 }
 
-// opExpansionMode 为 CCU_MS 时 LOOP/CCU_BUF/EVENT 使用 MS 模式专用阈值，其他资源类型与其他模式保持一致
-static uint32_t GetDefaultResFraction(HcommCcuResType resType, HcclOpExpansionMode opExpansionMode)
+// V1(950) 默认资源规格
+static uint32_t GetDefaultResFractionV1(HcommCcuResType resType, HcclOpExpansionMode opExpansionMode)
 {
     bool isCcuMs = (opExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_CCU_MS);
     switch (resType) {
@@ -1942,6 +1952,31 @@ static uint32_t GetDefaultResFraction(HcommCcuResType resType, HcclOpExpansionMo
         case HCOMM_CCU_RES_TYPE_CCU_THREAD:   return CCU_DEFAULT_RES_FRACTION_CCU_THREAD;
         default:                              return 0;
     }
+}
+
+// V2(960) 默认资源规格
+static uint32_t GetDefaultResFractionV2(HcommCcuResType resType, HcclOpExpansionMode opExpansionMode)
+{
+    bool isCcuMs = (opExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_MODE_CCU_MS);
+    switch (resType) {
+        case HCOMM_CCU_RES_TYPE_ADDRESS:      return CCU_DEFAULT_RES_FRACTION_ADDRESS_V2;
+        case HCOMM_CCU_RES_TYPE_LOOP:         return isCcuMs ? CCU_DEFAULT_RES_FRACTION_LOOP_MS_V2     : CCU_DEFAULT_RES_FRACTION_LOOP_V2;
+        case HCOMM_CCU_RES_TYPE_CCU_BUF:      return isCcuMs ? CCU_DEFAULT_RES_FRACTION_CCU_BUF_MS_V2  : CCU_DEFAULT_RES_FRACTION_CCU_BUF_V2;
+        case HCOMM_CCU_RES_TYPE_VARIABLE:     return CCU_DEFAULT_RES_FRACTION_VARIABLE_V2;
+        case HCOMM_CCU_RES_TYPE_EVENT:        return isCcuMs ? CCU_DEFAULT_RES_FRACTION_EVENT_MS_V2    : CCU_DEFAULT_RES_FRACTION_EVENT_V2;
+        case HCOMM_CCU_RES_TYPE_CCU_THREAD:   return CCU_DEFAULT_RES_FRACTION_CCU_THREAD_V2;
+        default:                              return 0;
+    }
+}
+
+// 根据设备类型分发：960 走 V2，其余走 V1
+// opExpansionMode 为 CCU_MS 时 LOOP/CCU_BUF/EVENT 使用 MS 模式专用阈值，其他资源类型与其他模式保持一致
+static uint32_t GetDefaultResFraction(HcommCcuResType resType, HcclOpExpansionMode opExpansionMode)
+{
+    HcclDevType deviceType;
+    bool isV2 = (HcclGetDeviceType(deviceType) == HCCL_SUCCESS) && (deviceType == HcclDevType::DEV_TYPE_960);
+    return isV2 ? GetDefaultResFractionV2(resType, opExpansionMode)
+                : GetDefaultResFractionV1(resType, opExpansionMode);
 }
 
 // 将 HcommCcuResType 转字符串
