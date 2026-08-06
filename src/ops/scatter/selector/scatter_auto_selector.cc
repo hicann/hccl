@@ -41,9 +41,9 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-        HCCL_INFO("[ScatterAutoSelector][%s] ccu schedule is not supported with level2Uboe, reset to default.",
-            __func__);
+    if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+        HCCL_INFO("[ScatterAutoSelector][%s] ccu schedule is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+            __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -219,9 +219,9 @@ SelectorStatus ScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDeta
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
-            __func__);
+    if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] aiv is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+            __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
 

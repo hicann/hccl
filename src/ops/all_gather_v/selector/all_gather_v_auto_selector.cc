@@ -41,9 +41,9 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-        HCCL_INFO("[AllGatherVAutoSelector][%s] ccu schedule is not supported with level2Uboe, reset to default.",
-            __func__);
+    if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+        HCCL_INFO("[AllGatherVAutoSelector][%s] ccu schedule is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+            __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
     // ccu schedule 模式不支持 inplace 场景

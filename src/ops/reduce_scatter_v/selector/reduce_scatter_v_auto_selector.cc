@@ -72,9 +72,9 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoW
             __func__);
         return SelectorStatus::NOT_MATCH;
     }
-    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-        HCCL_INFO("[ReduceScatterVAutoSelector][%s] ccu schedule is not supported with level2Uboe, reset to default.",
-            __func__);
+    if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+        HCCL_INFO("[ReduceScatterVAutoSelector][%s] ccu schedule is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+            __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
     (void)configAlgMap;

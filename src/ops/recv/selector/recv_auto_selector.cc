@@ -32,9 +32,9 @@ namespace ops_hccl {
             return SelectorStatus::NOT_MATCH;
         }
 
-        if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[RecvAutoSelector][%s] aiv is not supported with level2Uboe, reset to default.",
-                __func__);
+        if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+            HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[RecvAutoSelector][%s] aiv is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+                __func__, topoInfo->topoLevelNums);
             return SelectorStatus::NOT_MATCH;
         }
         HCCL_INFO("[RecvAutoSelector][SelectAivAlgo] opType:%d", opParam.opType);
