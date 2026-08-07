@@ -25,14 +25,12 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
 {
     HCCL_INFO("Start to run execute HcclAllReduce");
     if (GetHcommVersion() < CANN_VERSION(9, 0, 0)) { // compat handle
-        HCCL_INFO("werwer0001");
         return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
     }
 
     bool isOutPlace = false;
     CHK_RET(IsOutPlaceDevice(isOutPlace));
     if (!isOutPlace) {
-        HCCL_INFO("werwer0002");
         return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
     }
     CHK_PRT_RET(count == 0, HCCL_WARNING("input count is 0, return all reduce success"), HCCL_SUCCESS);
@@ -187,7 +185,6 @@ HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count,
     // 9.0.0 ccu模式走老流程
     if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0) &&
         param.engine == CommEngine::COMM_ENGINE_CCU) {
-        HCCL_INFO("werwer0003");
         return HcclAllReduceInner(sendBuf, recvBuf, count, dataType, op, comm, stream);
     }
 
