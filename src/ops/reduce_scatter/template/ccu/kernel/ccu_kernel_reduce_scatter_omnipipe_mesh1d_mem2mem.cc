@@ -125,7 +125,7 @@ static CcuResult PostSync(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
-    HCCL_DEBUG("[%s] end");
+    HCCL_DEBUG("[%s] end", __func__);
     return CcuResult::CCU_SUCCESS;
 }
 

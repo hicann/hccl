@@ -141,8 +141,6 @@ private:
     u32 interLocalRankSize_{0}; // server间算法rankSize
     uint64_t rankIdxLevel0_{0};
     uint64_t rankIdxLevel1_{0};
-    uint64_t interlocalroot{0};
-    uint64_t intralocalroot{0};
 
     u32 intraLocalRoot_{0}; // server内算法root
     u32 interLocalRoot_{0}; // server间算法root

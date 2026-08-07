@@ -195,8 +195,7 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::BuildNhrTaskArgs(
     u32 nhrKernelNum, std::vector<uint64_t>& nhrTaskArgs)
 {
     (void)param;
-    u64 dataTypeSize
-        = DataTypeSizeGet(templateDataParams.buffInfo.inputPtr ? param.DataDes.dataType : param.DataDes.dataType);
+    u64 dataTypeSize = DataTypeSizeGet(param.DataDes.dataType);
     const BuffInfo& nhrBuff = templateDataParams.buffInfo;
     uint64_t inputAddr = PointerToAddr(nhrBuff.inputPtr) + nhrBuff.inBuffBaseOff + meshSize;
     uint64_t outputAddr = PointerToAddr(nhrBuff.outputPtr) + nhrBuff.outBuffBaseOff + meshSize;

@@ -336,8 +336,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     bool isRoot = (myRank_ == param.root);
 
     // 构造subCommRanks
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2
+        || algHierarchyInfo.infos[0][0].empty()) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2 or infos[0][0] empty).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};

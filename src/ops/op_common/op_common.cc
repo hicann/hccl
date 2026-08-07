@@ -155,14 +155,14 @@ HcclResult GetHcclDfxOpInfoDataCount(const OpParam& param, const u32& rankSize, 
             sendCount += *(reinterpret_cast<const uint64_t*>(param.varData) + i);
         }
     } else if (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
+        CHK_PRT_RET(
+            param.batchSendRecvDataDes.sendRecvItemsPtr == nullptr,
+            HCCL_ERROR(
+                "[%s]fail, tag[%s] sendRecvItemsPtr is nullptr, itemNum[%u]", __func__, param.tag,
+                param.batchSendRecvDataDes.itemNum),
+            HCCL_E_PTR);
         for (u32 idx = 0; idx < param.batchSendRecvDataDes.itemNum; idx++) {
             HcclSendRecvItem* item = param.batchSendRecvDataDes.sendRecvItemsPtr + idx;
-            CHK_PRT_RET(
-                item == nullptr,
-                HCCL_ERROR(
-                    "[%s]fail, item is nullptr, idx[%u], itemNum[%u], tag[%s]", __func__, idx,
-                    param.batchSendRecvDataDes.itemNum, param.tag),
-                HCCL_E_PTR);
             sendCount += item->count;
         }
     } else {
@@ -482,7 +482,7 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam& param, const CcuFastL
 
     HCCL_INFO("[HcclExecOpCcuFastLaunch] FastLaunch start");
     CHK_RET(executor->FastLaunch(param, ccuFastLaunchCtx));
-    HcclProfilingReportOp(comm, beginTime);
+    CHK_RET(HcclProfilingReportOp(comm, beginTime));
     HCCL_INFO("[HcclExecOpCcuFastLaunch] HcclExecOpCcuFastLaunch end");
     return HCCL_SUCCESS;
 #else
@@ -826,11 +826,12 @@ HcclResult HcclAicpuKernelEntranceLaunch(
         // 构造 HcclOpDesc
         HcclOpDesc opInfo;
 
-        (void)memset_s(&opInfo, sizeof(HcclOpDesc), 0, sizeof(HcclOpDesc));
+        CHK_SAFETY_FUNC_RET(memset_s(&opInfo, sizeof(HcclOpDesc), 0, sizeof(HcclOpDesc)));
         opInfo.opDescType = 1; // 1: P2P
 
         std::string opNameStr = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? "HcclSend" : "HcclRecv";
-        (void)strncpy_s(opInfo.opName, HCCL_OP_DESC_OP_NAME_MAX_LEN, opNameStr.c_str(), opNameStr.size());
+        CHK_SAFETY_FUNC_RET(
+            strncpy_s(opInfo.opName, HCCL_OP_DESC_OP_NAME_MAX_LEN, opNameStr.c_str(), opNameStr.size()));
 
         opInfo.p2p.buffer = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? param.inputPtr : param.outputPtr;
         opInfo.p2p.cmdType = param.opType;
@@ -844,11 +845,13 @@ HcclResult HcclAicpuKernelEntranceLaunch(
         opInfo.p2p.unfoldStream = resolvedStream;
         // 构造 HcclKernelFuncInfo
         HcclKernelFuncInfo funcInfo;
-        (void)memset_s(&funcInfo, sizeof(HcclKernelFuncInfo), 0, sizeof(HcclKernelFuncInfo));
+        CHK_SAFETY_FUNC_RET(memset_s(&funcInfo, sizeof(HcclKernelFuncInfo), 0, sizeof(HcclKernelFuncInfo)));
 
-        (void)sprintf_s(funcInfo.kernelSoName, sizeof(funcInfo.kernelSoName), "libscatter_aicpu_kernel.so");
+        int soRet = sprintf_s(funcInfo.kernelSoName, sizeof(funcInfo.kernelSoName), "libscatter_aicpu_kernel.so");
+        CHK_PRT_RET(soRet <= 0, HCCL_ERROR("[%s] failed to fill kernelSoName", __func__), HCCL_E_INTERNAL);
 
-        (void)sprintf_s(funcInfo.kernelFuncName, sizeof(funcInfo.kernelFuncName), "HcclLaunchP2pAicpuKernel");
+        int funcRet = sprintf_s(funcInfo.kernelFuncName, sizeof(funcInfo.kernelFuncName), "HcclLaunchP2pAicpuKernel");
+        CHK_PRT_RET(funcRet <= 0, HCCL_ERROR("[%s] failed to fill kernelFuncName", __func__), HCCL_E_INTERNAL);
 
         // 获取 aicpuThreadHandle
         ThreadHandle aicpuThreadHandle;
@@ -3235,8 +3238,8 @@ HcclGetRemoteBuff(HcclComm comm, ChannelHandle channel, const char* memTag, void
             *bufferPtr = remoteMemList[i].addr;
             *bufferSize = remoteMemList[i].size;
             HCCL_INFO(
-                "[%s] Found %u memNum[%u/%u] is %u at index %u: addr=%p, size=%llu", __func__, *memTag, i + 1, memNum,
-                remoteMemList[i].addr, remoteMemList[i].size);
+                "[%s] Found memNum[%u/%u]: addr=%p, size=%llu", __func__, i + 1, memNum, remoteMemList[i].addr,
+                remoteMemList[i].size);
             break;
         }
     }
