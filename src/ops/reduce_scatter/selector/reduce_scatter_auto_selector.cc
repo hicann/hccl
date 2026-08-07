@@ -377,9 +377,10 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetL
         if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
             selectAlgName = "InsReduceScatterAicpuReduceNHR";
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            if (topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
+            bool Level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+            if (Level0AndLevel1Sym && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
                 selectAlgName = "InsV2ReduceScatterOmniPipeUboe";
-            } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
+            } else if (!Level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
                 selectAlgName = "InsReduceScatterNHR";
             } else {
                 selectAlgName = "InsReduceScatterParallelNHRNHRUboe";

@@ -191,6 +191,8 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     bool level0BigClosRange{false};
     bool level2Uboe{false};
     bool level2Ubg{false};
+    bool level0Symmetric{false};
+    bool level1Symmetric{false};
     u32 topoInstDetailsOfLayerSize = 0;
     Level0MeshType level0MeshType;
     NetLayerDetails netLayerDetails;
@@ -226,6 +228,8 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream << level0BigClosRange;
         binaryStream << level2Uboe;
         binaryStream << level2Ubg;
+        binaryStream << level0Symmetric;
+        binaryStream << level1Symmetric;
         binaryStream << topoInstDetailsOfLayerSize;
         binaryStream << level0MeshType;
         binaryStream << netLayerDetails.netLayerNum;
@@ -275,6 +279,8 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream >> level0BigClosRange;
         binaryStream >> level2Uboe;
         binaryStream >> level2Ubg;
+        binaryStream >> level0Symmetric;
+        binaryStream >> level1Symmetric;
         binaryStream >> topoInstDetailsOfLayerSize;
         binaryStream >> level0MeshType;
         binaryStream >> netLayerDetails.netLayerNum;
