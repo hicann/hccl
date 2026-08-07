@@ -108,7 +108,7 @@ HcclResult Selector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithN
             static_cast<int>(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
-    // 如果一开始读取到的Engine不是aicpu，经过算法选择后回退到aipcu，则需要重新LoadAICPUKernel
+    // 如果一开始读取到的Engine不是aicpu，经过算法选择后回退到aicpu，则需要重新LoadAICPUKernel
     if ((param.engine == CommEngine::COMM_ENGINE_AICPU_TS) || (param.engine == CommEngine::COMM_ENGINE_CPU)) {
         HCCL_DEBUG("[Selector] is aicpu mode");
         CHK_RET(LoadAICPUKernel()); // 该函数内部有防止重复加载的逻辑
@@ -559,7 +559,7 @@ HcclResult ReSelector(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWit
             static_cast<int>(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
-    // 如果一开始读取到的Engine不是aicpu，经过算法选择后回退到aipcu，则需要重新LoadAICPUKernel
+    // 如果一开始读取到的Engine不是aicpu，经过算法选择后回退到aicpu，则需要重新LoadAICPUKernel
     if ((param.engine == CommEngine::COMM_ENGINE_AICPU_TS) || (param.engine == CommEngine::COMM_ENGINE_CPU)) {
         HCCL_DEBUG("[ReSelector] is aicpu mode");
         CHK_RET(LoadAICPUKernel()); // 该函数内部有防止重复加载的逻辑
