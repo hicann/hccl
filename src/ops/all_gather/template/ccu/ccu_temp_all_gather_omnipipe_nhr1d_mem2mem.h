@@ -28,7 +28,7 @@ public:
 
     std::string Describe() const override
     {
-        return StringFormat("Template of All Gather CCU OminiPipe NHR 1D Mem2Mem with tempRankSize [%u].",
+        return StringFormat("Template of All Gather CCU OmniPipe NHR 1D Mem2Mem with tempRankSize [%u].",
                             subCommRanks_[0].size());
     }
 
