@@ -91,6 +91,7 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/registry
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/aicpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/aicpu/task_cache
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/wrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/aiv
     # ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/hostdpu

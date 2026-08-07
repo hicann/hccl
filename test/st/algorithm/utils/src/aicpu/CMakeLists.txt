@@ -27,6 +27,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/op_common/template
     ${HCCL_DEV_BASE}/src/ops/op_common/template/registry
     ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/task_cache
     ${HCCL_DEV_BASE}/src/ops/op_common/template/wrapper
     ${HCCL_DEV_BASE}/src/ops/op_common/template/aiv
     ${HCCL_DEV_BASE}/src/ops/op_common/template/ccu
@@ -176,6 +177,10 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/op_common/template/template_utils.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/kernel_launch.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/dfx/task_exception_fun.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/task_cache/aicpu_task_cache_comm_manager.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/task_cache/aicpu_task_cache_key.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/task_cache/aicpu_task_cache_policy.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/template/aicpu/task_cache/aicpu_task_cache_utils.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/template/registry/alg_template_register.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/template/registry/alg_v2_template_register.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/template/wrapper/alg_data_trans_wrapper.cc

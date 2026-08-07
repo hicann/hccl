@@ -30,7 +30,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam *param);
 
 #ifdef __cplusplus
 extern "C" {
-#endif  // __cplusplus
+#endif // __cplusplus
 aclError aclrtFreeHost(void *hostPtr)
 {
     if (hostPtr != nullptr) {
@@ -46,7 +46,7 @@ aclError aclrtMallocHost(void **hostPtr, size_t size)
         HCCL_ERROR("[aclrtMallocHost] invalid input hostPtr or size");
         return ACL_ERROR_INVALID_PARAM;
     }
- 	 
+
     *hostPtr = malloc(size);
     if (*hostPtr == nullptr) {
         HCCL_ERROR("[aclrtMallocHost] malloc host memory failed, size[%zu]", size);
@@ -100,8 +100,8 @@ aclError aclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, a
 aclError aclrtMemset(void *devPtr, size_t maxCount, int32_t value, size_t count)
 {
     if (devPtr == nullptr || count > maxCount) {
-       HCCL_ERROR("[aclrtMemset] invalid input param.");
-       return ACL_ERROR_INVALID_PARAM; 
+        HCCL_ERROR("[aclrtMemset] invalid input param.");
+        return ACL_ERROR_INVALID_PARAM;
     }
 
     memset(devPtr, value, count);
@@ -134,7 +134,7 @@ HcclResult HcclGetDeviceType(HcclDevType &devType)
     return HCCL_SUCCESS;
 }
 
-aclError aclrtGetDevice(int32_t* device )
+aclError aclrtGetDevice(int32_t *device)
 {
     *device = curr_dev_id;
     return ACL_SUCCESS;
@@ -148,14 +148,26 @@ aclError aclrtGetDevicesTopo(uint32_t devId, uint32_t otherDevId, uint64_t *valu
 
 aclError aclrtCreateStream(aclrtStream *stream)
 {
-    HcclSim::SimNpu& npu = HcclSim::SimWorld::Global()->GetSimNpuByRankId(curr_dev_id);
+    HcclSim::SimNpu &npu = HcclSim::SimWorld::Global()->GetSimNpuByRankId(curr_dev_id);
     *stream = npu.AllocMainStream();
+    return ACL_SUCCESS;
+}
+
+aclError aclrtCreateStreamWithConfig(aclrtStream *stream, uint32_t priority, uint32_t flag)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
+aclError aclrtDestroyStream(aclrtStream stream)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
     return ACL_SUCCESS;
 }
 
 int rtModelFake = 0;
 aclError aclmdlRICaptureGetInfo(aclrtStream stream, aclmdlRICaptureStatus *status, aclmdlRI *modelRI)
-{   
+{
     *modelRI = &rtModelFake;
     return ACL_SUCCESS;
 }
@@ -174,8 +186,7 @@ aclError aclrtBinaryUnLoad(aclrtBinHandle binHandle)
     return ACL_SUCCESS;
 }
 
-aclError aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName,
-    aclrtFuncHandle *funcHandle)
+aclError aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName, aclrtFuncHandle *funcHandle)
 {
     // AICPU模式直掉kernel函数, 不使用funcHandle, 桩函数直接返回成功
     HCCL_WARNING("[%s] not support.", __func__);
@@ -209,8 +220,7 @@ aclError aclrtKernelArgsInit(aclrtFuncHandle funcHandle, aclrtArgsHandle *argsHa
     return ACL_SUCCESS;
 }
 
-aclError aclrtKernelArgsAppend(aclrtArgsHandle argsHandle, void *param, size_t paramSize,
-    aclrtParamHandle *paramHandle)
+aclError aclrtKernelArgsAppend(aclrtArgsHandle argsHandle, void *param, size_t paramSize, aclrtParamHandle *paramHandle)
 {
     if (argsHandle == nullptr || param == nullptr || paramSize == 0) {
         HCCL_ERROR("[aclrtKernelArgsAppend] invalid input param");
@@ -243,8 +253,8 @@ aclError aclrtGetNotifyId(aclrtNotify notify, uint32_t *notifyId)
         HCCL_ERROR("[aclrtGetNotifyId] invalid input notify or notifyId");
         return ACL_ERROR_INVALID_PARAM;
     }
- 	 
-    HcclSim::SimNotify* simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
+
+    HcclSim::SimNotify *simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
     if (simNotify != nullptr) {
         *notifyId = simNotify->GetNotifyId();
     }
@@ -253,14 +263,14 @@ aclError aclrtGetNotifyId(aclrtNotify notify, uint32_t *notifyId)
 
 aclError aclrtCreateNotify(aclrtNotify *notify, uint64_t flag)
 {
-    HcclSim::SimNpu& npu = HcclSim::SimWorld::Global()->GetSimNpuByRankId(curr_dev_id);
+    HcclSim::SimNpu &npu = HcclSim::SimWorld::Global()->GetSimNpuByRankId(curr_dev_id);
     *notify = npu.AllocNotify();
     return ACL_SUCCESS;
 }
 
 aclError aclrtWaitAndResetNotify(aclrtNotify notify, aclrtStream stream, uint32_t timeout)
 {
-    HcclSim::SimNotify* simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
+    HcclSim::SimNotify *simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
     if (simNotify == nullptr) {
         HCCL_ERROR("[aclrtWaitAndResetNotify] invalid input notify");
         return ACL_ERROR_INVALID_PARAM;
@@ -272,17 +282,15 @@ aclError aclrtWaitAndResetNotify(aclrtNotify notify, aclrtStream stream, uint32_
     return ACL_SUCCESS;
 }
 
-aclError aclrtBinaryLoadFromFile(const char* binPath, aclrtBinaryLoadOptions *options,
-    aclrtBinHandle *binHandle)
+aclError aclrtBinaryLoadFromFile(const char *binPath, aclrtBinaryLoadOptions *options, aclrtBinHandle *binHandle)
 {
     // LLT模式下不从文件加载句柄, 桩函数直接返回成功
     HCCL_WARNING("[%s] not support.", __func__);
     return ACL_SUCCESS;
 }
 
-aclError aclrtLaunchKernelWithConfig(aclrtFuncHandle funcHandle, uint32_t numBlocks,
-    aclrtStream stream, aclrtLaunchKernelCfg *cfg,
-    aclrtArgsHandle argsHandle, void *reserve)
+aclError aclrtLaunchKernelWithConfig(aclrtFuncHandle funcHandle, uint32_t numBlocks, aclrtStream stream,
+    aclrtLaunchKernelCfg *cfg, aclrtArgsHandle argsHandle, void *reserve)
 {
     if (argsHandle == nullptr || stream == nullptr) {
         HCCL_ERROR("[aclrtLaunchKernelWithConfig] invalid input argsHandle or stream");
@@ -303,8 +311,9 @@ aclError aclrtLaunchKernelWithConfig(aclrtFuncHandle funcHandle, uint32_t numBlo
     return ACL_SUCCESS;
 }
 
-aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t blockDim, aclrtStream stream, aclrtLaunchKernelCfg *cfg,
-    void *hostArgs, size_t argsSize, aclrtPlaceHolderInfo *placeHolderArray, size_t placeHolderNum)
+aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t blockDim, aclrtStream stream,
+    aclrtLaunchKernelCfg *cfg, void *hostArgs, size_t argsSize, aclrtPlaceHolderInfo *placeHolderArray,
+    size_t placeHolderNum)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return ACL_SUCCESS;
@@ -312,7 +321,7 @@ aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle funcHandle, uint32_t bloc
 
 aclError aclrtRecordNotify(aclrtNotify notify, aclrtStream stream)
 {
-    HcclSim::SimNotify* simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
+    HcclSim::SimNotify *simNotify = reinterpret_cast<HcclSim::SimNotify *>(notify);
     if (simNotify == nullptr) {
         HCCL_ERROR("[aclrtWaitAndResetNotify] invalid input notify");
         return ACL_ERROR_INVALID_PARAM;
@@ -355,13 +364,19 @@ aclError aclrtSynchronizeStream(aclrtStream stream)
     return ACL_SUCCESS;
 }
 
+aclError aclrtSynchronizeStreamWithTimeout(aclrtStream stream, int32_t timeout)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 rtError_t rtStreamAddToModel(rtStream_t stm, rtModel_t captureMdl)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return RT_ERROR_NONE;
 }
 
-aclError aclsysGetVersionNum(char* pkgNname, int32_t* versionNum)
+aclError aclsysGetVersionNum(char *pkgNname, int32_t *versionNum)
 {
     *versionNum = 90000009;
     return ACL_SUCCESS;
@@ -416,4 +431,4 @@ rtError_t rtGetTaskIdAndStreamID(uint32_t *taskId, uint32_t *streamId)
 
 #ifdef __cplusplus
 }
-#endif  // __cplusplus
+#endif // __cplusplus

@@ -806,6 +806,11 @@ HcclResult ParseOpExpansion()
         } else {
             g_algEnvConfig.aicpuUnfold = true;
         }
+        
+        // A5默认开启aicpu task cache
+        if (deviceType == HcclDevType::DEV_TYPE_950) {
+            g_algEnvConfig.aicpuCacheEnable = 1;
+        }
     } else if (opExpansionModeEnv == "AIV") {
         if (g_algEnvConfig.hcclDeterministic == true) {
             HCCL_WARNING("Deterministic do not support aiv");
@@ -832,9 +837,11 @@ HcclResult ParseOpExpansion()
             "HCCL_OP_EXPANSION_MODE is set to [%s], which is incorrect. Please check", opExpansionModeEnv.c_str());
         return HCCL_E_PARA;
     }
-    HCCL_INFO("environmental variable HCCL_OP_EXPANSION_MODE is [%s], aicpuUnfold[%u], aivMode[%u], enableFfts[%u]",
+    HCCL_INFO("environmental variable HCCL_OP_EXPANSION_MODE is [%s], aicpuUnfold[%u], aicpuCacheEnable[%u], "
+        "aivMode[%u], enableFfts[%u]",
         opExpansionModeEnv.c_str(),
         g_algEnvConfig.aicpuUnfold,
+        g_algEnvConfig.aicpuCacheEnable,
         g_algEnvConfig.aivMode,
         g_algEnvConfig.enableFfts);
     return HCCL_SUCCESS;
@@ -1081,6 +1088,11 @@ const bool &GetExternalInputHcclAicpuUnfold()
     return g_algEnvConfig.aicpuUnfold;
 }
 
+bool GetExternalInputHcclAicpuCacheEnable()
+{
+    return g_algEnvConfig.aicpuCacheEnable > 0;
+}
+
 const bool &GetExternalInputHcclAivMode()
 {
     return g_algEnvConfig.aivMode;
@@ -1140,6 +1152,7 @@ bool RunIndependentOpExpansion(HcclDevType deviceType)
 
     if (shouldGoOutPlace(deviceType)) {
         return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "AICPU_TS" ||
+               opExpansionModeEnv == "AICPU_CacheDisable" ||
                opExpansionModeEnv == "HOST_TS" ||
                opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV" ||
                opExpansionModeEnv == "CCU_SCHED" ||

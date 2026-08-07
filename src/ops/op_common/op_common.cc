@@ -305,8 +305,8 @@ HcclResult ConstructHcclDfxOpInfo(const OpParam &param, const char* tag, u32 tag
     ThreadHandle cpuTsThread)
 {
     bool isAclGraph = IsStreamInCaptureMode(param.stream);
-    hcclDfxOpInfo.opMode = isAclGraph 
-        ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH) 
+    hcclDfxOpInfo.opMode = isAclGraph
+        ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH)
         : static_cast<u32>(param.opMode);
         hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
         hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
@@ -460,9 +460,9 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastL
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
     if(IsStreamInCaptureMode(param.stream) && threadTemps.size() > 1) {
         HCCL_INFO("HcclExecOpCcuFastLaunch streamnum %d add slavestream", threadTemps.size());
-        CHK_RET(CaptureSlaveStreams(comm, param.stream, threadTemps));
+        CHK_RET(CaptureSlaveStreams(comm, param.stream, threadTemps, param.isCapture));
     }
-    
+
     HCCL_INFO("[HcclExecOpCcuFastLaunch] FastLaunch start");
     CHK_RET(executor->FastLaunch(param, ccuFastLaunchCtx));
     HcclProfilingReportOp(comm, beginTime);
@@ -519,9 +519,9 @@ HcclResult ExecuteAivCacheLogic(HcclComm comm, OpParam &param, const std::string
     return HCCL_SUCCESS;
 }
 
-HcclResult FallbackOp(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo, 
+HcclResult FallbackOp(HcclComm comm, OpParam &param, std::unique_ptr<TopoInfoWithNetLayerDetails> &topoInfo,
     std::string &algName, const ResPackGraphMode &resPack)
-{   
+{
     void* fallbackCtx = nullptr;
     uint64_t fallbackCtxSize = ALG_MAX_LENGTH;
     CHK_RET(HcclEngineCtxCreate(comm, param.fallbackTag, CommEngine::COMM_ENGINE_CCU, fallbackCtxSize, &fallbackCtx));
@@ -667,7 +667,9 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
         ThreadHandle unfoldThread;
         CHK_RET(GetUnfoldThreadInfo(comm, param, unfoldThread));
         // 根据主流的捕获状态决定展开流的状态
-        CHK_RET(CaptureSlaveStreams(comm, param.stream, {mainThread, unfoldThread}));
+        CHK_RET(CaptureSlaveStreams(comm, param.stream, {mainThread, unfoldThread}, param.isCapture));
+        // aicpu task cache使能
+        param.aicpuCacheEnable = GetExternalInputHcclAicpuCacheEnable();
         CHK_RET(HcclAicpuKernelEntranceLaunch(comm, param, cpuTsThread, exportedCpuTsThread, notifyNumOnMainThread,
             resCtxSequence, algName, unfoldThread));
     } else if (param.engine == COMM_ENGINE_AIV) {
@@ -699,7 +701,7 @@ HcclResult HcclExecOp(HcclComm comm, OpParam &param,
             }
         }
         if (resCtxHost->slaveThreadNum > 0) {
-            CHK_RET(CaptureSlaveStreams(comm, param.stream, resCtxHost->threads));
+            CHK_RET(CaptureSlaveStreams(comm, param.stream, resCtxHost->threads, param.isCapture));
         }
         CHK_RET(executor->Orchestrate(param, *resCtxHost));
     } else {
@@ -788,21 +790,21 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
         CHK_RET(static_cast<HcclResult>(HcclTaskRegister(comm, param.algTag, HcclLaunchDPUKernel)));
     }
 
-    if (HcommIsSupportHcclAicpuKernelLaunch() && 
+    if (HcommIsSupportHcclAicpuKernelLaunch() &&
         (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE)) {
         HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P opType[%d], use HcclAicpuKernelLaunch",
             static_cast<int>(param.opType));
- 
+
         // 构造 HcclOpDesc
         HcclOpDesc opInfo;
-        
+
         (void)memset_s(&opInfo, sizeof(HcclOpDesc), 0, sizeof(HcclOpDesc));
         opInfo.opDescType = 1;  // 1: P2P
 
         std::string opNameStr = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? "HcclSend" : "HcclRecv";
         (void)strncpy_s(opInfo.opName, HCCL_OP_DESC_OP_NAME_MAX_LEN, opNameStr.c_str(), opNameStr.size());
 
-        opInfo.p2p.buffer = (param.opType == HcclCMDType::HCCL_CMD_SEND) ? 
+        opInfo.p2p.buffer = (param.opType == HcclCMDType::HCCL_CMD_SEND) ?
                             param.inputPtr : param.outputPtr;
         opInfo.p2p.cmdType = param.opType;
         opInfo.p2p.dataType = param.DataDes.dataType;
@@ -816,25 +818,25 @@ HcclResult HcclAicpuKernelEntranceLaunch(HcclComm comm, OpParam &param, ThreadHa
         // 构造 HcclKernelFuncInfo
         HcclKernelFuncInfo funcInfo;
         (void)memset_s(&funcInfo, sizeof(HcclKernelFuncInfo), 0, sizeof(HcclKernelFuncInfo));
-        
-        (void)sprintf_s(funcInfo.kernelSoName, sizeof(funcInfo.kernelSoName), 
+
+        (void)sprintf_s(funcInfo.kernelSoName, sizeof(funcInfo.kernelSoName),
                           "libscatter_aicpu_kernel.so");
 
-        (void)sprintf_s(funcInfo.kernelFuncName, sizeof(funcInfo.kernelFuncName), 
+        (void)sprintf_s(funcInfo.kernelFuncName, sizeof(funcInfo.kernelFuncName),
                           "HcclLaunchP2pAicpuKernel");
-  
+
         // 获取 aicpuThreadHandle
         ThreadHandle aicpuThreadHandle;
         u32 mainNotifyNum;
         CHK_RET(GetMainThreadInfo(comm, param, aicpuThreadHandle, mainNotifyNum));
-        
+
         // 调用 HcclAicpuKernelLaunch
         void* args = &param;
         uint32_t argSize = sizeof(OpParam) + param.varMemSize;
- 
+
         funcInfo.args = args;
         funcInfo.argSize = argSize;
-        
+
         HcclKernelLaunchCfg kernelLaunchCfg;
         AicpuTimeout timeout = DeriveAicpuTimeout(param.opConfig.execTimeout);
         u16 kernelLaunchTimeout = IsHcommDefaultTimeoutSupported() ? timeout.kernelLaunchTimeout :
@@ -951,8 +953,10 @@ HcclResult HcclAivKernelEntranceLaunch(HcclComm comm, OpParam &param, const std:
     return HCCL_SUCCESS;
 }
 
-HcclResult CaptureSlaveStreams(HcclComm comm, aclrtStream mainStream, const std::vector<ThreadHandle>& threads)
+HcclResult CaptureSlaveStreams(HcclComm comm, aclrtStream mainStream, const std::vector<ThreadHandle>& threads,
+    bool &isCapture)
 {
+    isCapture = false;
     aclmdlRI rtModel = nullptr;
     aclmdlRICaptureStatus captureStatus = aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
     aclError ret = aclmdlRICaptureGetInfo(mainStream, &captureStatus, &rtModel);
@@ -967,6 +971,7 @@ HcclResult CaptureSlaveStreams(HcclComm comm, aclrtStream mainStream, const std:
         HCCL_INFO("[%s]captureStatus is not active, captureStatus[%d]", __func__, captureStatus);
         return HCCL_SUCCESS;
     }
+    isCapture = true;
     //thread[0] is main thread
     auto& HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
     for (size_t i = 1; i < threads.size(); ++i) {
@@ -1128,7 +1133,7 @@ HcclResult FillOpExchangeInfo(HcclComm comm, const OpParam &param, OpExchangeInf
     if (ret == HCCL_SUCCESS && aivParam != nullptr) {
         numBlocksLimit = aivParam->aivCoreLimit;
         exchangeInfo.aivCoreLimit = numBlocksLimit;
-    } 
+    }
     if (numBlocksLimit == 0 && param.opMode == OpMode::OPBASE) {
         ACLCHECK(aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &numBlocksLimit));
         exchangeInfo.aivCoreLimit = numBlocksLimit;
@@ -2134,7 +2139,7 @@ static HcclResult RegisterCcuKernels(CcuInsHandle insHandle, AlgResourceRequest 
                 HCCL_ERROR("[RegisterCcuKernels]ccuKernel num not match!"), HCCL_E_INTERNAL);
     HCCL_INFO("[RegisterCcuKernels] start, totalKernelNum[%u], insHandle[%p].", totalKernelNum, insHandle);
 
-    // 遍历计算最大resGroup号 
+    // 遍历计算最大resGroup号
     auto maxIt = std::max_element(resRequest.ccuKernelInfos.begin(), resRequest.ccuKernelInfos.end(),
         [](const CcuKernelInfo &a, const CcuKernelInfo &b) { return a.resGroup < b.resGroup; });
     u32 maxResGroup = (maxIt != resRequest.ccuKernelInfos.end()) ? maxIt->resGroup : 0;
@@ -3294,7 +3299,7 @@ HcclResult SetExecTimeout(OpParam &param)
     } else {
         // 验证转换后的值是否合理
         if (execTimeoutValue < 0 || execTimeoutValue > UINT32_MAX) {
-            HCCL_WARNING("[OpCommon] Exec timeout value %.2f out of range, use default: %u seconds", 
+            HCCL_WARNING("[OpCommon] Exec timeout value %.2f out of range, use default: %u seconds",
                          execTimeoutValue, CUSTOM_TIMEOUT);
             param.opConfig.execTimeout = CUSTOM_TIMEOUT;
         } else {

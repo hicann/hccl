@@ -69,7 +69,7 @@ struct AlgEnvConfig {
         hcclDeterministic = static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_DISABLE);// 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
         enableFfts = true;
         taskExceptionEnable = true;
-        aicpuCacheEnable = 1; // 默认开启aicpu cache (只有当aicpuUnfold为true时才生效)
+        aicpuCacheEnable = 0; // 默认关闭aicpu cache
         aivOnlyMode = false;
         execTimeOutSet = false;
         execTimeout = 0;
@@ -152,6 +152,8 @@ const u32& GetExternalInputIntraRoceSwitch();
 const int32_t& GetInconsistentCheckSwitch();
 
 const bool& GetExternalInputHcclAicpuUnfold();
+
+bool GetExternalInputHcclAicpuCacheEnable();
 
 const bool& GetExternalInputHcclAivMode();
 
