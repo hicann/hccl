@@ -22,27 +22,29 @@ public:
     explicit InsV2AllToAllVConcurrentExecutor();
     ~InsV2AllToAllVConcurrentExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                       const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-                       AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgRes0,
-                                 const TemplateResource &templateAlgRes1, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgRes0, const TemplateResource& templateAlgRes1,
+        u32 notifyNumOnMainThread);
 #endif
 
 protected:
     HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
-    HcclResult SetAlltoAllLocalSendRecvInfo(const OpParam &param);
-    HcclResult SplitA2ASendRecvInfo(const OpParam &param, A2ASendRecvInfo &sendRecvInfoFirst, A2ASendRecvInfo &sendRecvInfoLast);
+    HcclResult SetAlltoAllLocalSendRecvInfo(const OpParam& param);
+    HcclResult
+    SplitA2ASendRecvInfo(const OpParam& param, A2ASendRecvInfo& sendRecvInfoFirst, A2ASendRecvInfo& sendRecvInfoLast);
     HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const;
     A2ASendRecvInfo localSendRecvInfo_;
     std::vector<ThreadHandle> threads_;
@@ -51,6 +53,6 @@ protected:
     std::vector<ThreadHandle> temp1Threads_;
     ThreadHandle temp1ThreadMain_ = 0;
 };
-}
+} // namespace ops_hccl
 
 #endif // HCCLV2_INS_V2_ALL_TO_ALL_V_CONCURRENT_EXECUTOR_H

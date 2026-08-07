@@ -23,10 +23,10 @@ using namespace ge;
 
 namespace ops {
 
-static ge::graphStatus HcomBroadcastInferShapeV2(gert::InferShapeContext *context)
+static ge::graphStatus HcomBroadcastInferShapeV2(gert::InferShapeContext* context)
 {
     OP_INFER_SHAPE_START;
- 
+
     // Get RuntimeAttrs
     auto attrs = context->GetAttrs();
     constexpr size_t bcastFusionIndex = 2;
@@ -34,12 +34,12 @@ static ge::graphStatus HcomBroadcastInferShapeV2(gert::InferShapeContext *contex
     if (CheckOPAttr(opName, attrs, bcastFusionIndex, bcastFusionIdIndex) == GRAPH_FAILED) {
         return GRAPH_FAILED;
     }
- 
+
     const auto inputShape = context->GetInputShape(0);
     OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
     auto outputShape = context->GetOutputShape(0);
     OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
- 
+
     uint32_t UINT_MAX_VALUE = 0xFFFFFFFF;
     uint32_t inputSize = context->GetComputeNodeInputNum();
     if (inputSize >= UINT_MAX_VALUE) {
@@ -54,12 +54,12 @@ static ge::graphStatus HcomBroadcastInferShapeV2(gert::InferShapeContext *contex
         OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
         *outputShape = *inputShape;
     }
-    
+
     OP_INFER_SHAPE_END;
     return GRAPH_SUCCESS;
 }
 
-static ge::graphStatus HcomBroadcastInferDataTypeV2(gert::InferDataTypeContext *context)
+static ge::graphStatus HcomBroadcastInferDataTypeV2(gert::InferDataTypeContext* context)
 {
     OP_INFER_DATATYPE_START;
 
@@ -74,10 +74,10 @@ static ge::graphStatus HcomBroadcastInferDataTypeV2(gert::InferDataTypeContext *
         ge::DataType inputType = context->GetInputDataType(i);
         context->SetOutputDataType(i, inputType);
     }
- 
+
     OP_INFER_DATATYPE_END;
     return GRAPH_SUCCESS;
 }
 
 IMPL_OP_INFERSHAPE(HcomBroadcast).InferShape(HcomBroadcastInferShapeV2).InferDataType(HcomBroadcastInferDataTypeV2);
-}  // namespace ops
+} // namespace ops

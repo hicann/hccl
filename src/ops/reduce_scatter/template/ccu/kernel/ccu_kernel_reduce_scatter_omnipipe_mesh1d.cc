@@ -11,40 +11,42 @@
 #include "ccu_kernel_reduce_scatter_omnipipe_mesh1d.h"
 #include "ccu_kernel_utils.h"
 
-
 namespace ops_hccl {
 
-constexpr int CKE_IDX_0   = 0;
+constexpr int CKE_IDX_0 = 0;
 constexpr int INPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int POST_SYNC_ID = 3;
 
 constexpr uint64_t LOCAL_COPY_MS = 8;
 
-static CcuResult ParseKernelArg(ReduceScatterOmniPipeMesh1DContext &ctx, CcuKernelArgReduceScatterOmniPipeMesh1D *kernelArg)
+static CcuResult
+ParseKernelArg(ReduceScatterOmniPipeMesh1DContext& ctx, CcuKernelArgReduceScatterOmniPipeMesh1D* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankId = kernelArg->rankId;
     ctx.rankSize = kernelArg->rankSize;
     ctx.userRank = kernelArg->subCommRanks[0][ctx.rankId];
 
-    ctx.dataType        = kernelArg->opParam.DataDes.dataType;
-    ctx.outputDataType  = kernelArg->opParam.DataDes.outputType;
+    ctx.dataType = kernelArg->opParam.DataDes.dataType;
+    ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuKernelReduceScatterOmniPipeMesh1D] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_DEBUG(
+            "[CcuKernelReduceScatterOmniPipeMesh1D] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
-    HCCL_INFO("[CcuKernelReduceScatterOmniPipeMesh1D] userRank[%u] rankId[%u], rankSize[%u], "
-                "dataType[%d], outputDataType[%d], reduceOp[%d]", ctx.userRank, ctx.rankId, ctx.rankSize,
-                ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+    HCCL_INFO(
+        "[CcuKernelReduceScatterOmniPipeMesh1D] userRank[%u] rankId[%u], rankSize[%u], "
+        "dataType[%d], outputDataType[%d], reduceOp[%d]",
+        ctx.userRank, ctx.rankId, ctx.rankSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceScatterOmniPipeMesh1DContext &ctx)
+static CcuResult InitResource(ReduceScatterOmniPipeMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelReduceScatterOmniPipeMesh1D] channels is empty!");
@@ -60,8 +62,9 @@ static CcuResult InitResource(ReduceScatterOmniPipeMesh1DContext &ctx)
             // 本地资源，默认构造
             continue;
         } else {
-            HCCL_DEBUG("[CcuKernelReduceScatterOmniPipeMesh1D] rankId[%u], peerId[%u], channelId[%u]",
-                       arg->rankId, peerId, channelIdx);
+            HCCL_DEBUG(
+                "[CcuKernelReduceScatterOmniPipeMesh1D] rankId[%u], peerId[%u], channelId[%u]", arg->rankId, peerId,
+                channelIdx);
             ctx.input[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], INPUT_XN_ID);
             ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
@@ -73,9 +76,9 @@ static CcuResult InitResource(ReduceScatterOmniPipeMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DContext &ctx)
+static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[arg->rankId], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output, cnt++));
@@ -94,14 +97,14 @@ static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ReduceScatterOmniPipeMesh1DContext &ctx)
+static CcuResult PreSync(ReduceScatterOmniPipeMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.input[arg->rankId],
-                        INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-                        TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[arg->rankId], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << INPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -111,9 +114,9 @@ static CcuResult PreSync(ReduceScatterOmniPipeMesh1DContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ReduceScatterOmniPipeMesh1DContext &ctx)
+static CcuResult PostSync(ReduceScatterOmniPipeMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
@@ -124,11 +127,11 @@ static CcuResult PostSync(ReduceScatterOmniPipeMesh1DContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DContext &ctx)
+static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_INFO("[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter", ctx.userRank, ctx.rankId);
-        
+
     ccu::LocalAddr dst;
     std::vector<ccu::RemoteAddr> src;
 
@@ -154,9 +157,12 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DContext &ctx)
     ccu::LocalAddr tmp;
     tmp.addr = dst.addr;
     tmp.token = dst.token;
-    CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, tmp, ctx.goSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion()));
+    CCU_CHK_RET(GroupReduce(
+        ctx, arg->channels, arg->channelCount, dst, src, tmp, ctx.goSize, ctx.dataType, ctx.outputDataType,
+        ctx.reduceOp, GetCcuVersion()));
 
-    HCCL_INFO("[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter success", ctx.userRank, ctx.rankId);
+    HCCL_INFO(
+        "[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter success", ctx.userRank, ctx.rankId);
 
     return CCU_SUCCESS;
 }
@@ -166,7 +172,7 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DContext &ctx)
 // ============================================================================
 CcuResult CcuReduceScatterOmniPipeMesh1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeMesh1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeMesh1D*>(arg);
 
     ReduceScatterOmniPipeMesh1DContext ctx;
     ctx.arg = kernelArg;

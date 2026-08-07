@@ -15,40 +15,42 @@
 #include "coll_alg_exec_registry.h"
 
 namespace ops_hccl_experimental {
-using ops_hccl::ExecutorBase;
-using ops_hccl::OpParam;
-using ops_hccl::AlgResourceCtx;
-using ops_hccl::AlgTemplateBase;
-using ops_hccl::TopoInfo;
 using ops_hccl::AlgHierarchyInfo;
+using ops_hccl::AlgResourceCtx;
 using ops_hccl::AlgResourceRequest;
+using ops_hccl::AlgTemplateBase;
+using ops_hccl::AlgTemplateRegistry;
 using ops_hccl::AlgType;
-using ops_hccl::Slice;
-using ops_hccl::ChannelInfo;
-using ops_hccl::ExecMem;
-using ops_hccl::SubCommInfo;
 using ops_hccl::AlgTypeLevel0;
 using ops_hccl::AlgTypeLevel1;
-using ops_hccl::AlgTemplateRegistry;
 using ops_hccl::AlgTypeLevel2;
-using ops_hccl::TemplateType;
+using ops_hccl::ChannelInfo;
 using ops_hccl::CollAlgExecRegistry;
-using ops_hccl::HCCL_ALG;
 using ops_hccl::COMM_LEVEL0;
-using ops_hccl::DefaultExecCreator; 
+using ops_hccl::DefaultExecCreator;
+using ops_hccl::ExecMem;
+using ops_hccl::ExecutorBase;
+using ops_hccl::HCCL_ALG;
+using ops_hccl::OpParam;
+using ops_hccl::Slice;
+using ops_hccl::SubCommInfo;
+using ops_hccl::TemplateType;
+using ops_hccl::TopoInfo;
 
 class ReduceScatterBIRSExecutor : public ReduceScatterExecutorBase {
 public:
     explicit ReduceScatterBIRSExecutor();
     ~ReduceScatterBIRSExecutor() override = default;
 
-    HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-        AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
+    HcclResult CalcResRequest(
+        HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+        AlgResourceRequest& resourceRequest, AlgType& algType) override;
 
 private:
-    HcclResult SelectAndPrepareBirsTemplate(bool isSingleServer, u32 localRank, u32 localRankSize, std::unique_ptr<AlgTemplateBase>& templatePtr);
-    HcclResult KernelRunLevel0(const OpParam &param, ExecMem &execMem);
-    HcclResult KernelRun(const OpParam &param, ExecMem &execMem) override;
+    HcclResult SelectAndPrepareBirsTemplate(
+        bool isSingleServer, u32 localRank, u32 localRankSize, std::unique_ptr<AlgTemplateBase>& templatePtr);
+    HcclResult KernelRunLevel0(const OpParam& param, ExecMem& execMem);
+    HcclResult KernelRun(const OpParam& param, ExecMem& execMem) override;
     /* *************** 算法参数 *************** */
     u32 subRoot_ = 0;
     u32 commIndex_ = 0;
@@ -56,8 +58,8 @@ private:
     u64 level0SliceOffset_ = 0;
     u32 subUserRankRootSupperPod_ = 0;
     SubCommInfo level0CommInfo_;
-    };
+};
 
-}
+} // namespace ops_hccl_experimental
 
 #endif

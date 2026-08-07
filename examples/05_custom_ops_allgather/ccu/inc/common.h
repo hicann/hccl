@@ -45,11 +45,7 @@ constexpr uint64_t CCU_MAX_RANK_SIZE = 16;
 constexpr uint32_t CCU_DIE_NUM = 2; // CCU IO Die 数量
 
 // 算子执行模式
-enum class OpMode {
-    OPBASE = 0,
-    OFFLOAD = 1,
-    ACLGRAPH = 2
-};
+enum class OpMode { OPBASE = 0, OFFLOAD = 1, ACLGRAPH = 2 };
 
 // 设备类型
 enum DeviceType {
@@ -59,14 +55,10 @@ enum DeviceType {
 };
 
 // 算法类型
-enum class AlgType {
-    ALG_TYPE_MESH_1D = 0,
-    ALG_TYPE_NHR = 1,
-    ALG_TYPE_RESERVED
-};
+enum class AlgType { ALG_TYPE_MESH_1D = 0, ALG_TYPE_NHR = 1, ALG_TYPE_RESERVED };
 
 typedef struct {
-    void *addr;
+    void* addr;
     uint64_t size;
 } CommBuffer;
 
@@ -79,7 +71,7 @@ struct ChannelInfo {
 
 struct CcuKernelArgBase {
     ChannelHandle channels[CCU_MAX_RANK_SIZE];
-    uint32_t      channelCount;
+    uint32_t channelCount;
 };
 
 // ccu kernel register所需信息
@@ -89,14 +81,15 @@ struct CcuKernelInfo {
     // kernel函数
     void* kernelFunc;
     // KernelArg实例指针
-    void *kernelArg;
+    void* kernelArg;
 
 private:
     std::shared_ptr<CcuKernelArgBase> kernelArgSmartPtr;
 
 public:
-    template<typename T>
-    void setKernelArg(std::shared_ptr<T> arg) {
+    template <typename T>
+    void setKernelArg(std::shared_ptr<T> arg)
+    {
         kernelArgSmartPtr = std::static_pointer_cast<CcuKernelArgBase>(arg);
         kernelArg = static_cast<void*>(arg.get());
     }
@@ -110,7 +103,7 @@ struct AlgResourceCtxSerializable {
     std::vector<uint32_t> ccuKernelNum;
     std::vector<CcuKernelHandle> ccuKernels;
 
-     std::vector<char> Serialize()
+    std::vector<char> Serialize()
     {
         BinaryStream binaryStream;
 
@@ -124,7 +117,7 @@ struct AlgResourceCtxSerializable {
         return result;
     }
 
-    void DeSerialize(std::vector<char> &data)
+    void DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
 
@@ -134,7 +127,6 @@ struct AlgResourceCtxSerializable {
         binaryStream >> ccuKernelNum;
         binaryStream >> ccuKernels;
     }
-
 };
 
 // 算子参数
@@ -162,20 +154,44 @@ struct OpParam {
     DeviceType devType = DEVICE_TYPE_A5;
 };
 
-constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 // CCU返回码转换为HCCL返回码
-inline HcclResult ConvertCcuToHccl(CcuResult ccuResult) {
+inline HcclResult ConvertCcuToHccl(CcuResult ccuResult)
+{
     switch (ccuResult) {
-        case CCU_SUCCESS: return HCCL_SUCCESS;
-        case CCU_E_PARA: return HCCL_E_PARA;
-        case CCU_E_PTR: return HCCL_E_PTR;
-        case CCU_E_INTERNAL: return HCCL_E_INTERNAL;
-        case CCU_E_NOT_SUPPORT: return HCCL_E_NOT_SUPPORT;
-        case CCU_E_NOT_FOUND: return HCCL_E_NOT_FOUND;
-        case CCU_E_UNAVAIL: return HCCL_E_UNAVAIL;
+        case CCU_SUCCESS:
+            return HCCL_SUCCESS;
+        case CCU_E_PARA:
+            return HCCL_E_PARA;
+        case CCU_E_PTR:
+            return HCCL_E_PTR;
+        case CCU_E_INTERNAL:
+            return HCCL_E_INTERNAL;
+        case CCU_E_NOT_SUPPORT:
+            return HCCL_E_NOT_SUPPORT;
+        case CCU_E_NOT_FOUND:
+            return HCCL_E_NOT_FOUND;
+        case CCU_E_UNAVAIL:
+            return HCCL_E_UNAVAIL;
         default:
             return HCCL_E_INTERNAL;
     }

@@ -16,7 +16,7 @@
 namespace ops_hccl {
 
 HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, bool &isCacheEnable)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, bool& isCacheEnable)
 {
     isCacheEnable = false;
     if (!param.aicpuCacheEnable) {
@@ -65,7 +65,7 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
     return HCCL_SUCCESS;
 }
 
-HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam &param, const uint32_t rankSize, bool &isInplace)
+HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam& param, const uint32_t rankSize, bool& isInplace)
 {
     // 准备input/output size
     uint64_t inputSize = 0;
@@ -79,7 +79,8 @@ HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam &param, const u
     // 注意: 这里继承A3, 不支持同时为0的场景
     if (inputSize == 0 && outputSize == 0) {
         isInplace = true;
-        HCCL_INFO("[AicpuTaskCachePolicy][IsInplace] inputSize[%llu] is overlapping with outputSize[%llu] -> isInplace[%d]",
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsInplace] inputSize[%llu] is overlapping with outputSize[%llu] -> isInplace[%d]",
             inputSize, outputSize, isInplace);
         return HCCL_SUCCESS;
     }
@@ -87,7 +88,9 @@ HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam &param, const u
     // 注意: 如果inputSize和outputSize只有一个为0, 则一定是outplace场景
     if (inputSize == 0 || outputSize == 0) {
         isInplace = false;
-        HCCL_INFO("[AicpuTaskCachePolicy][IsInplace] inputSize[%llu] is not overlapping with outputSize[%llu] -> isInplace[%d]",
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsInplace] inputSize[%llu] is not overlapping with outputSize[%llu] -> "
+            "isInplace[%d]",
             inputSize, outputSize, isInplace);
         return HCCL_SUCCESS;
     }
@@ -99,33 +102,38 @@ HcclResult AicpuTaskCachePolicy::IsInplaceForCache(const OpParam &param, const u
 
     // 对于broadcast算子, UserInput与UserOutput完全重叠, 需要按照outplace场景特殊处理, 正常使能cache
     if (param.opType == HcclCMDType::HCCL_CMD_BROADCAST) {
-        CHK_PRT_RET(!(inputStart == outputStart && inputSize == outputSize),
-            HCCL_ERROR("[AicpuTaskCachePolicy][IsInplace] broadcast should input==output[0x%016llx, 0x%016llx] "
-                      "inputSize==outputSize[%llu,%llu]",
+        CHK_PRT_RET(
+            !(inputStart == outputStart && inputSize == outputSize),
+            HCCL_ERROR(
+                "[AicpuTaskCachePolicy][IsInplace] broadcast should input==output[0x%016llx, 0x%016llx] "
+                "inputSize==outputSize[%llu,%llu]",
                 inputStart, outputStart, inputSize, outputSize),
             HCCL_E_PARA);
         isInplace = false;
-        HCCL_INFO("[AicpuTaskCachePolicy][IsInplace] input==output[0x%016llx, 0x%016llx] for opType[%d] -> isInplace[%d]",
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsInplace] input==output[0x%016llx, 0x%016llx] for opType[%d] -> isInplace[%d]",
             inputStart, inputEnd, param.opType, isInplace);
         return HCCL_SUCCESS;
     }
 
     if (inputStart <= outputEnd && outputStart <= inputEnd) {
         isInplace = true;
-        HCCL_INFO("[AicpuTaskCachePolicy][IsInplace] input[0x%016llx, 0x%016llx] is overlapping with output[0x%016llx, "
-                  "0x%016llx] -> isInplace[%d]",
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsInplace] input[0x%016llx, 0x%016llx] is overlapping with output[0x%016llx, "
+            "0x%016llx] -> isInplace[%d]",
             inputStart, inputEnd, outputStart, outputEnd, isInplace);
     } else {
         isInplace = false;
-        HCCL_INFO("[AicpuTaskCachePolicy][IsInplace] input[0x%016llx, 0x%016llx] is not overlapping with "
-                  "output[0x%016llx, 0x%016llx] -> isInplace[%d]",
+        HCCL_INFO(
+            "[AicpuTaskCachePolicy][IsInplace] input[0x%016llx, 0x%016llx] is not overlapping with "
+            "output[0x%016llx, 0x%016llx] -> isInplace[%d]",
             inputStart, inputEnd, outputStart, outputEnd, isInplace);
     }
 
     return HCCL_SUCCESS;
 }
 
-bool AicpuTaskCachePolicy::IsTopoSupported(const AlgResourceCtxSerializable &resCtx)
+bool AicpuTaskCachePolicy::IsTopoSupported(const AlgResourceCtxSerializable& resCtx)
 {
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     for (const auto& levelChannels : resCtx.channels) {
@@ -136,10 +144,11 @@ bool AicpuTaskCachePolicy::IsTopoSupported(const AlgResourceCtxSerializable &res
 
             // 只支持基于UB的跨卡通信 (当前aicpu仅支持UBC_CTP/UBC_TP/UBOE)
             // 不支持其他通信方式, 例如基于外置网卡的跨超RDMA, 基于PCIe的跨卡P2P等
-            if (channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_CTP &&
-                channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_TP &&
-                channel.protocol != CommProtocol::COMM_PROTOCOL_UBOE) {
-                HCCL_INFO("[AicpuTaskCachePolicy][IsTopoSupported] found channel protocol[%d] not supported",
+            if (channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_CTP
+                && channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_TP
+                && channel.protocol != CommProtocol::COMM_PROTOCOL_UBOE) {
+                HCCL_INFO(
+                    "[AicpuTaskCachePolicy][IsTopoSupported] found channel protocol[%d] not supported",
                     channel.protocol);
                 return false;
             }
@@ -153,7 +162,7 @@ bool AicpuTaskCachePolicy::IsTopoSupported(const AlgResourceCtxSerializable &res
 #endif
 }
 
-bool AicpuTaskCachePolicy::IsOpTypeSupported(const OpParam &param)
+bool AicpuTaskCachePolicy::IsOpTypeSupported(const OpParam& param)
 {
     // 目前V类算子、batch类型算子、以及send/recv不考虑动态缓存 (使用白名单而非黑名单管理, 避免非预期算子进入cache机制)
     // 注意: 当前hccl不支持HcclGather
@@ -172,12 +181,14 @@ bool AicpuTaskCachePolicy::IsOpTypeSupported(const OpParam &param)
         // 需要在aicpu上执行reduce操作，不支持aicpu task cache
         if (dataType == HcclDataType::HCCL_DATA_TYPE_INT64 || dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
             || dataType == HcclDataType::HCCL_DATA_TYPE_FP64 || param.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            HCCL_INFO("[AicpuTaskCachePolicy][IsOpTypeSupported] opType[%d] is not supported, dataType[%d] "
-                      "reduceOp[%d]",
+            HCCL_INFO(
+                "[AicpuTaskCachePolicy][IsOpTypeSupported] opType[%d] is not supported, dataType[%d] "
+                "reduceOp[%d]",
                 opType, dataType, param.reduceType);
             return false;
         } else {
-            HCCL_INFO("[AicpuTaskCachePolicy][IsOpTypeSupported] opType[%d] is supported for operator unfolding cache",
+            HCCL_INFO(
+                "[AicpuTaskCachePolicy][IsOpTypeSupported] opType[%d] is supported for operator unfolding cache",
                 opType);
             return true;
         }

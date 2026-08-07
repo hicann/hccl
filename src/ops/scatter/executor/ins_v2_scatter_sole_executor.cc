@@ -26,7 +26,8 @@ InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2ScatterSoleExecutor
 {}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     // 使用topo match计算AlgHierarchyInfoForAllLevel
     AlgTopoMatch topoMatch;
@@ -35,15 +36,17 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierar
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
+HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     CHK_PTR_NULL(topoInfo);
-    CHK_PRT_RET(algHierarchyInfo.infos.empty(), 
-                HCCL_ERROR("[InsV2ScatterSoleExecutor][CalcRes] algHierarchyInfo.infos is empty"),
-                HCCL_E_PARA);
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.empty(),
+        HCCL_ERROR("[InsV2ScatterSoleExecutor][CalcRes] algHierarchyInfo.infos is empty"), HCCL_E_PARA);
     // 构建template
-    std::shared_ptr<InsAlgTemplate> algTemplate = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate> algTemplate
+        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
     // 调用计算资源的函数
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
     return HCCL_SUCCESS;
@@ -51,7 +54,7 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(HcclC
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2ScatterSoleExecutor][Orchestrate] Orchestrate Start");
     maxTmpMemSize_ = resCtx.cclMem.size;
@@ -66,8 +69,10 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
     dataSize_ = dataCount_ * dataTypeSize_;
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2ScatterSoleExecutor][Orchestrate]errNo[0x%016llx] Scatter executor kernel run failed",
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2ScatterSoleExecutor][Orchestrate]errNo[0x%016llx] Scatter executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;
@@ -75,12 +80,12 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2ScatterSoleExecutor][OrchestrateLoop] Start");
-    CHK_PRT_RET(resCtx.algHierarchyInfo.infos.empty(), 
-                HCCL_ERROR("[InsV2ScatterSoleExecutor][OrchestrateLoop] algHierarchyInfo.infos is empty"),
-                HCCL_E_PARA);
+    CHK_PRT_RET(
+        resCtx.algHierarchyInfo.infos.empty(),
+        HCCL_ERROR("[InsV2ScatterSoleExecutor][OrchestrateLoop] algHierarchyInfo.infos is empty"), HCCL_E_PARA);
     // 准备资源
     TemplateResource templateAlgRes;
     if (param.engine == COMM_ENGINE_CCU) {
@@ -104,17 +109,19 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
     tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建template
-    std::shared_ptr<InsAlgTemplate> algTemplate = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate> algTemplate
+        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
     // 初始化操作
-    u32 templateScratchMultiplier = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType,
-                                                                     tempAlgParams.buffInfo.outBuffType);
+    u32 templateScratchMultiplier
+        = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 maxDataSizePerLoop = 0;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     HCCL_INFO("[InsV2ScatterSoleExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);
     if (templateScratchMultiplier != 0) {
-        u64 scratchBoundDataSize = maxTmpMemSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
+        u64 scratchBoundDataSize
+            = maxTmpMemSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBoundDataSize);
     } else {
         maxDataSizePerLoop = transportBoundDataSize;
@@ -132,20 +139,17 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
 
         tempAlgParams.sliceSize = currDataCount * dataTypeSize_;
         tempAlgParams.tailSize = tempAlgParams.sliceSize;
-        tempAlgParams.inputSliceStride = dataSize_;  // 如果是输入，偏移是算子的output datasize
+        tempAlgParams.inputSliceStride = dataSize_; // 如果是输入，偏移是算子的output datasize
         tempAlgParams.outputSliceStride = 0;
 
-        HCCL_INFO("[InsV2ScatterSoleExecutor] loop [%u] tempAlgParams.inputSliceStride [%u],"
-                  "tempAlgParams.outputSliceStride [%u] tempAlgParams.sliceSize [%u]",
-            loop,
-            tempAlgParams.inputSliceStride,
-            tempAlgParams.outputSliceStride,
-            tempAlgParams.sliceSize);
-        HCCL_INFO("[InsV2ScatterSoleExecutor] loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
-                  "tempAlgParams.buffInfo.outBuffBaseOff [%u]",
-            loop,
-            tempAlgParams.buffInfo.inBuffBaseOff,
-            tempAlgParams.buffInfo.outBuffBaseOff);
+        HCCL_INFO(
+            "[InsV2ScatterSoleExecutor] loop [%u] tempAlgParams.inputSliceStride [%u],"
+            "tempAlgParams.outputSliceStride [%u] tempAlgParams.sliceSize [%u]",
+            loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize);
+        HCCL_INFO(
+            "[InsV2ScatterSoleExecutor] loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
+            "tempAlgParams.buffInfo.outBuffBaseOff [%u]",
+            loop, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
         // 不需要重复
         tempAlgParams.repeatNum = 1;
         tempAlgParams.inputRepeatStride = 0;
@@ -160,96 +164,103 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
         CHK_RET(FastLaunchSaveCtx(param, templateAlgRes, resCtx.notifyNumOnMainThread));
     }
 #endif
-    
+
     HCCL_INFO("[InsV2ScatterSoleExecutor][OrchestrateLoop] End.");
     return HCCL_SUCCESS;
 }
 
 #ifndef AICPU_COMPILE
-    template <typename AlgTopoMatch, typename InsAlgTemplate>
-    HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSaveCtx(
-            const OpParam &param, const TemplateResource &templateAlgRes, u32 notifyNumOnMainThread) const
-    {
-        HCCL_INFO("[InsV2ScatterSoleExecutor] loopTimes==1, save fast launch ctx.");
-        u32 threadNum = templateAlgRes.submitInfos.size();;
-        u32 ccuKernelNum = templateAlgRes.submitInfos.size();
-        if (ccuKernelNum < 1) {
-            HCCL_INFO("[InsV2ScatterSoleExecutor] ccu kernel num is 0, no need to save.");
-            return HCCL_SUCCESS;
-        }
-        HCCL_INFO("[InsV2ScatterSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], ccuKernelNum[%llu]", threadNum, ccuKernelNum);
-
-        u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
-        // 申请ctx
-        void *ctxPtr = nullptr;
-        HCCL_INFO("[InsV2ScatterSoleExecutor][HcclEngineCtxCreate] Tag[%s], size[%llu]", param.fastLaunchTag, size);
-        CHK_RET(HcclEngineCtxCreate(param.hcclComm, param.fastLaunchTag, CommEngine::COMM_ENGINE_CCU, size, &ctxPtr));
-
-        CcuFastLaunchCtx *ccuFastLaunchCtx = reinterpret_cast<CcuFastLaunchCtx*>(ctxPtr);
-        // 1 算法名
-        CHK_SAFETY_FUNC_RET(strcpy_s(ccuFastLaunchCtx->algName, sizeof(ccuFastLaunchCtx->algName), param.algName));
-        HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunchSaveCtx] algName[%s]", ccuFastLaunchCtx->algName);
-
-        // 2 thread
-        ccuFastLaunchCtx->threadNum = threadNum;
-        ccuFastLaunchCtx->notifyNumOnMainThread = notifyNumOnMainThread;
-        ThreadHandle *threads = ccuFastLaunchCtx->GetThreadHandlePtr();
-
-        for (u32 i = 0; i < threadNum; i++)
-        {
-            threads[i] = templateAlgRes.threads[i];
-        }
-
-        // 3 ccu kernel handle, taskArg入参
-        ccuFastLaunchCtx->ccuKernelNum[0] = ccuKernelNum;
-        CcuKernelSubmitInfo *kernelSubmitInfos = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
-        for (u32 i = 0; i < ccuKernelNum; i++) {
-            kernelSubmitInfos[i] = templateAlgRes.submitInfos[i];
-        }
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSaveCtx(
+    const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const
+{
+    HCCL_INFO("[InsV2ScatterSoleExecutor] loopTimes==1, save fast launch ctx.");
+    u32 threadNum = templateAlgRes.submitInfos.size();
+    ;
+    u32 ccuKernelNum = templateAlgRes.submitInfos.size();
+    if (ccuKernelNum < 1) {
+        HCCL_INFO("[InsV2ScatterSoleExecutor] ccu kernel num is 0, no need to save.");
         return HCCL_SUCCESS;
     }
+    HCCL_INFO(
+        "[InsV2ScatterSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], ccuKernelNum[%llu]", threadNum, ccuKernelNum);
 
-    template <typename AlgTopoMatch, typename InsAlgTemplate>
-    HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
-            const OpParam &param, const CcuFastLaunchCtx *fastLaunchCtx)
-    {
-        HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] Start.");
-        TemplateFastLaunchCtx tempFastLaunchCtx;
-        // 1 取thread
-        ThreadHandle *threads = fastLaunchCtx->GetThreadHandlePtr();
-        tempFastLaunchCtx.threads.assign(threads, threads + fastLaunchCtx->threadNum);
-        HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] threadNum[%llu]", fastLaunchCtx->threadNum);
+    u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
+    // 申请ctx
+    void* ctxPtr = nullptr;
+    HCCL_INFO("[InsV2ScatterSoleExecutor][HcclEngineCtxCreate] Tag[%s], size[%llu]", param.fastLaunchTag, size);
+    CHK_RET(HcclEngineCtxCreate(param.hcclComm, param.fastLaunchTag, CommEngine::COMM_ENGINE_CCU, size, &ctxPtr));
 
-        // 2 取arg
-        CcuKernelSubmitInfo *ccuKernelSubmitInfos = fastLaunchCtx->GetCcuKernelSubmitInfoPtr();
-        tempFastLaunchCtx.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + fastLaunchCtx->ccuKernelNum[0]);
-        HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] ccuKernelNum[%llu]", fastLaunchCtx->ccuKernelNum[0]);
-        tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
-        tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
-        tempFastLaunchCtx.buffInfo.hcclBuff = param.hcclBuff;
+    CcuFastLaunchCtx* ccuFastLaunchCtx = reinterpret_cast<CcuFastLaunchCtx*>(ctxPtr);
+    // 1 算法名
+    CHK_SAFETY_FUNC_RET(strcpy_s(ccuFastLaunchCtx->algName, sizeof(ccuFastLaunchCtx->algName), param.algName));
+    HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunchSaveCtx] algName[%s]", ccuFastLaunchCtx->algName);
 
-        // 3 调template
-        std::unique_ptr<InsAlgTemplate> algTemplate = std::make_unique<InsAlgTemplate>();
-        CHK_RET(algTemplate->FastLaunch(param, tempFastLaunchCtx));
-        HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] End.");
-        return HCCL_SUCCESS;
+    // 2 thread
+    ccuFastLaunchCtx->threadNum = threadNum;
+    ccuFastLaunchCtx->notifyNumOnMainThread = notifyNumOnMainThread;
+    ThreadHandle* threads = ccuFastLaunchCtx->GetThreadHandlePtr();
+
+    for (u32 i = 0; i < threadNum; i++) {
+        threads[i] = templateAlgRes.threads[i];
     }
+
+    // 3 ccu kernel handle, taskArg入参
+    ccuFastLaunchCtx->ccuKernelNum[0] = ccuKernelNum;
+    CcuKernelSubmitInfo* kernelSubmitInfos = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
+    for (u32 i = 0; i < ccuKernelNum; i++) {
+        kernelSubmitInfos[i] = templateAlgRes.submitInfos[i];
+    }
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
+    const OpParam& param, const CcuFastLaunchCtx* fastLaunchCtx)
+{
+    HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] Start.");
+    TemplateFastLaunchCtx tempFastLaunchCtx;
+    // 1 取thread
+    ThreadHandle* threads = fastLaunchCtx->GetThreadHandlePtr();
+    tempFastLaunchCtx.threads.assign(threads, threads + fastLaunchCtx->threadNum);
+    HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] threadNum[%llu]", fastLaunchCtx->threadNum);
+
+    // 2 取arg
+    CcuKernelSubmitInfo* ccuKernelSubmitInfos = fastLaunchCtx->GetCcuKernelSubmitInfoPtr();
+    tempFastLaunchCtx.ccuKernelSubmitInfos.assign(
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + fastLaunchCtx->ccuKernelNum[0]);
+    HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] ccuKernelNum[%llu]", fastLaunchCtx->ccuKernelNum[0]);
+    tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
+    tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
+    tempFastLaunchCtx.buffInfo.hcclBuff = param.hcclBuff;
+
+    // 3 调template
+    std::unique_ptr<InsAlgTemplate> algTemplate = std::make_unique<InsAlgTemplate>();
+    CHK_RET(algTemplate->FastLaunch(param, tempFastLaunchCtx));
+    HCCL_INFO("[InsV2ScatterSoleExecutor][FastLaunch] End.");
+    return HCCL_SUCCESS;
+}
 #endif
 
 // 第二个参数是Scatter的template文件
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_SCATTER, InsScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_SCATTER, InsScatterNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_SCATTER, InsScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_SCATTER, InsScatterNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
 #ifndef AICPU_COMPILE
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_SCATTER, AivScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D,
-    AivTempScatterMesh1D);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_SCATTER, AivScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, AivTempScatterMesh1D);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // ccu template
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_SCATTER, CcuScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, CcuTempScatterMesh1D);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_SCATTER, CcuScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, CcuTempScatterMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_SCATTER, CcuScatterNHRMem2Mem1D, InsV2ScatterSoleExecutor, TopoMatch1D, CcuTempScatterNHR1DMem2Mem);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_SCATTER, CcuScatterNHRMem2Mem1D, InsV2ScatterSoleExecutor, TopoMatch1D,
+    CcuTempScatterNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #endif
-}  // namespace ops_hccl
+} // namespace ops_hccl

@@ -15,11 +15,12 @@
 #include "aiv_send_mesh_1D.h"
 using namespace AscendC;
 
-#define AIV_SEND_KERNEL_BATCH_DEF(type) \
-extern "C" __global__ __aicore__ void aiv_send_##type(KERNEL_ARGS_DEF) { \
-    AivSendV2Mesh1D<type>(KERNEL_ARGS_CALL); \
-}                                               \
-EXPORT_AIV_META_INFO(aiv_send_##type)
+#define AIV_SEND_KERNEL_BATCH_DEF(type)                                    \
+    extern "C" __global__ __aicore__ void aiv_send_##type(KERNEL_ARGS_DEF) \
+    {                                                                      \
+        AivSendV2Mesh1D<type>(KERNEL_ARGS_CALL);                           \
+    }                                                                      \
+    EXPORT_AIV_META_INFO(aiv_send_##type)
 
 // 定义各算子各数据类型Kernel入口
 AIV_COPY_DATA_TYPE_DEF(AIV_SEND_KERNEL_BATCH_DEF);

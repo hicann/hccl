@@ -29,34 +29,37 @@ struct BroadcastSliceInfo {
     u64 offset{0};
     u64 size{0};
     u64 count{0};
- 
-    BroadcastSliceInfo(const u64 offset, const u64 size, const u64 count) 
-    : offset(offset), size(size), count(count) {}
+
+    BroadcastSliceInfo(const u64 offset, const u64 size, const u64 count) : offset(offset), size(size), count(count) {}
 };
 
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
 class InsV2BroadcastSequenceExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BroadcastSequenceExecutor();
     ~InsV2BroadcastSequenceExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitCommInfo(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult InitExecutorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult SplitData(const u64 &dataCount, const uint64_t &rankSize, TemplateDataParams &tempAlgParams);
+    HcclResult SplitData(const u64& dataCount, const uint64_t& rankSize, TemplateDataParams& tempAlgParams);
     u64 RoundUp(const u64 dividend, const u64 divisor);
 
     std::vector<BroadcastSliceInfo> sliceInfoList_;
@@ -79,6 +82,6 @@ protected:
     u64 dataTypeSize_{0};
     u64 dataSize_{0};
 };
-}
+} // namespace ops_hccl
 
 #endif

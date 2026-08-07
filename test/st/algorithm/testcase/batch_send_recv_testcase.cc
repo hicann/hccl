@@ -24,20 +24,15 @@ using namespace ops_hccl;
 
 class ST_BATCH_SEND_RECV_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
 HcclResult MultiThreadExecOp(u32 rankSize, u64 sendBufSize, u64 sendCount, HcclDataType dataType)
@@ -57,8 +52,8 @@ HcclResult MultiThreadExecOp(u32 rankSize, u64 sendBufSize, u64 sendCount, HcclD
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
             u64 totalSendBufSize = sendBufSize * rankSize;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, totalSendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -96,7 +91,6 @@ void RunBatchSendRecvTest(TopoMeta topoMeta, u32 rankSize, u64 dataCount, HcclDa
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * unitSize;
@@ -132,16 +126,16 @@ HcclResult MultiThreadExecOpMultiTimes(u32 rankSize, u64 sendBufSize, u64 recvCo
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
             // 4.申请内存
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 sendBufSize = recvCount * sizeof(uint32_t);  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = recvCount * sizeof(uint32_t); // 数据量转化为字节数
             u64 recvBufSize = recvCount * sizeof(uint32_t);
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
             aclrtMalloc(&recvBuf, recvBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
 
-            void *sendBuf1 = nullptr;
-            void *recvBuf1 = nullptr;
+            void* sendBuf1 = nullptr;
+            void* recvBuf1 = nullptr;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf1, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
             aclrtMalloc(&recvBuf1, recvBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
@@ -151,19 +145,17 @@ HcclResult MultiThreadExecOpMultiTimes(u32 rankSize, u64 sendBufSize, u64 recvCo
             u32 nextRank = (rankId + rankSize + 1) % rankSize;
             u32 lastTwoRank = (rankId + rankSize - 2) % rankSize;
             u32 nextTwoRank = (rankId + rankSize + 2) % rankSize;
-            std::vector<HcclSendRecvItem> sendRecvInfo = {
-                {HcclSendRecvType::HCCL_SEND, sendBuf, recvCount, dataType, lastRank},
-                {HcclSendRecvType::HCCL_RECV, recvBuf, recvCount, dataType, nextRank},
-                {HcclSendRecvType::HCCL_SEND, sendBuf1, recvCount, dataType, lastTwoRank},
-                {HcclSendRecvType::HCCL_RECV, recvBuf1, recvCount, dataType, nextTwoRank}
-            };
+            std::vector<HcclSendRecvItem> sendRecvInfo
+                = {{HcclSendRecvType::HCCL_SEND, sendBuf, recvCount, dataType, lastRank},
+                   {HcclSendRecvType::HCCL_RECV, recvBuf, recvCount, dataType, nextRank},
+                   {HcclSendRecvType::HCCL_SEND, sendBuf1, recvCount, dataType, lastTwoRank},
+                   {HcclSendRecvType::HCCL_RECV, recvBuf1, recvCount, dataType, nextTwoRank}};
             CHK_RET(HcclBatchSendRecv(sendRecvInfo.data(), sendRecvInfo.size(), comm, stream));
 
             // 6.第二次算子下发
-            sendRecvInfo = {
-                {HcclSendRecvType::HCCL_SEND, sendBuf, recvCount, dataType, nextRank},
-                {HcclSendRecvType::HCCL_RECV, recvBuf, recvCount, dataType, lastRank}
-            };
+            sendRecvInfo
+                = {{HcclSendRecvType::HCCL_SEND, sendBuf, recvCount, dataType, nextRank},
+                   {HcclSendRecvType::HCCL_RECV, recvBuf, recvCount, dataType, lastRank}};
             CHK_RET(HcclBatchSendRecv(sendRecvInfo.data(), sendRecvInfo.size(), comm, stream));
 
             // 7.销毁通信域
@@ -200,7 +192,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_002)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_003)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 2);
     RunBatchSendRecvTest(topoMeta, 2, dataCount, HcclDataType::HCCL_DATA_TYPE_FP16, 2);
@@ -208,7 +200,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_003)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_004)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024*4;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024 * 4;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 4);
     RunBatchSendRecvTest(topoMeta, 4, dataCount, HcclDataType::HCCL_DATA_TYPE_INT8, 1);
@@ -230,7 +222,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_006)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_007)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 8);
     RunBatchSendRecvTest(topoMeta, 8, dataCount, HcclDataType::HCCL_DATA_TYPE_INT64, 8);
@@ -238,7 +230,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_007)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_008)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024*2;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024 * 2;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 6);
     RunBatchSendRecvTest(topoMeta, 6, dataCount, HcclDataType::HCCL_DATA_TYPE_BFP16, 2);
@@ -246,7 +238,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_008)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_009)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024*4;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024 * 4;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 5);
     RunBatchSendRecvTest(topoMeta, 5, dataCount, HcclDataType::HCCL_DATA_TYPE_UINT64, 8);
@@ -254,7 +246,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_009)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_010)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024*6;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024 * 6;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 8);
     RunBatchSendRecvTest(topoMeta, 8, dataCount, HcclDataType::HCCL_DATA_TYPE_FP8E4M3, 1);
@@ -262,7 +254,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_010)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_011)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024*8;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024 * 8;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 1, 7);
     RunBatchSendRecvTest(topoMeta, 7, dataCount, HcclDataType::HCCL_DATA_TYPE_FP32, 4);
@@ -270,14 +262,14 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_011)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_012)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024;
-    TopoMeta topoMeta {{{0, 1, 2, 4, 5}}};
+    u64 dataCount = static_cast<u64>(1024) * 1024;
+    TopoMeta topoMeta{{{0, 1, 2, 4, 5}}};
     RunBatchSendRecvTest(topoMeta, 5, dataCount, HcclDataType::HCCL_DATA_TYPE_FP64, 8);
 }
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_013)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*1024;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 1024;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 2, 8);
     RunBatchSendRecvTest(topoMeta, 16, dataCount, HcclDataType::HCCL_DATA_TYPE_BFP16, 2);
@@ -285,7 +277,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_013)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_014)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*500;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 500;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 4, 8);
     RunBatchSendRecvTest(topoMeta, 32, dataCount, HcclDataType::HCCL_DATA_TYPE_UINT64, 8);
@@ -293,7 +285,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_014)
 
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_015)
 {
-    u64 dataCount = static_cast<u64>(1024)*1024*300;
+    u64 dataCount = static_cast<u64>(1024) * 1024 * 300;
     TopoMeta topoMeta;
     GenTopoMeta(topoMeta, 1, 8, 8);
     RunBatchSendRecvTest(topoMeta, 64, dataCount, HcclDataType::HCCL_DATA_TYPE_FP8E5M2, 1);
@@ -310,7 +302,6 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_016)
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
     u64 dataBufSize = dataCount * 1;
@@ -340,9 +331,9 @@ HcclResult ZeroItemTest(u32 rankSize, u64 sendBufSize, u64 sendCount, HcclDataTy
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 totalSendBufSize = sendBufSize * rankSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 totalSendBufSize = sendBufSize * rankSize; // 数据量转化为字节数
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, totalSendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
             aclrtMalloc(&recvBuf, totalSendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
@@ -381,7 +372,6 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_017)
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
     u64 dataCount = 100;
@@ -389,7 +379,7 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_017)
 
     // 多线程运行BATCH_SEND_RECV算子
     HcclResult exeRes = MultiThreadExecOp(8, dataBufSize, dataCount, HcclDataType::HCCL_DATA_TYPE_FP8E8M0);
-    
+
     EXPECT_TRUE(exeRes == HCCL_SUCCESS);
 
     // 资源清理
@@ -399,18 +389,17 @@ TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_017)
 TEST_F(ST_BATCH_SEND_RECV_TEST, st_batch_send_recv_a5_aicpu_test_run_twice)
 {
     // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
+    TopoMeta topoMeta{{{0, 1, 2, 3}}}; // 三维数组指定超节点-Server-Device信息
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
-    auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    u64 recvCount = 100;  // 接收数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0;  // 数据类型
+    auto rankSize = 4;                                    // 参与集合通信的卡数(同topoMeta卡数一致)
+    u64 recvCount = 100;                                  // 接收数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0; // 数据类型
     u64 sendBufSize = recvCount * 1;
 
     HcclResult res = MultiThreadExecOpMultiTimes(rankSize, sendBufSize, recvCount, dataType);

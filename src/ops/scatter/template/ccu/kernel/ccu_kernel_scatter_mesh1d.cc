@@ -13,12 +13,12 @@
 
 namespace ops_hccl {
 
-constexpr uint16_t OUTPUT_XN_ID   = 0;
-constexpr uint16_t TOKEN_XN_ID    = 1;
-constexpr uint16_t POST_SYNC_ID   = 3;
-constexpr uint16_t CKE_IDX_0      = 0;
+constexpr uint16_t OUTPUT_XN_ID = 0;
+constexpr uint16_t TOKEN_XN_ID = 1;
+constexpr uint16_t POST_SYNC_ID = 3;
+constexpr uint16_t CKE_IDX_0 = 0;
 
-static CcuResult ParseKernelArg(ScatterMesh1DContext &ctx, CcuKernelArgScatterMesh1D *kernelArg)
+static CcuResult ParseKernelArg(ScatterMesh1DContext& ctx, CcuKernelArgScatterMesh1D* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankSize = kernelArg->rankSize;
@@ -32,7 +32,7 @@ static CcuResult ParseKernelArg(ScatterMesh1DContext &ctx, CcuKernelArgScatterMe
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ScatterMesh1DContext &ctx)
+static CcuResult InitResource(ScatterMesh1DContext& ctx)
 {
     uint16_t channelIdx = 0;
     if (ctx.arg->channelCount == 0) {
@@ -44,10 +44,10 @@ static CcuResult InitResource(ScatterMesh1DContext &ctx)
     ctx.token.resize(ctx.rankSize);
     for (uint64_t peerId = 0; peerId < ctx.rankSize; peerId++) {
         if (peerId != ctx.rankId) {
-			ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], OUTPUT_XN_ID);
+            ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], OUTPUT_XN_ID);
             ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
-		}
+        }
     }
 
     ctx.flag = 0;
@@ -56,9 +56,9 @@ static CcuResult InitResource(ScatterMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ScatterMesh1DContext &ctx)
+static CcuResult LoadArgs(ScatterMesh1DContext& ctx)
 {
-	uint32_t argId = 0;
+    uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[ctx.rankId], argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.token[ctx.rankId], argId++));
@@ -77,12 +77,14 @@ static CcuResult LoadArgs(ScatterMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ScatterMesh1DContext &ctx)
+static CcuResult PreSync(ScatterMesh1DContext& ctx)
 {
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.output[ctx.rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
-        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.token[ctx.rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            ctx.arg->channels[i], ctx.output[ctx.rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            ctx.arg->channels[i], ctx.token[ctx.rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
         ccu::NotifyWait(ctx.arg->channels[i], CKE_IDX_0, allBit);
@@ -90,7 +92,7 @@ static CcuResult PreSync(ScatterMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ScatterMesh1DContext &ctx)
+static CcuResult PostSync(ScatterMesh1DContext& ctx)
 {
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
         ccu::NotifyRecord(ctx.arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
@@ -101,7 +103,7 @@ static CcuResult PostSync(ScatterMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoScatterOnce(ScatterMesh1DContext &ctx)
+static CcuResult DoScatterOnce(ScatterMesh1DContext& ctx)
 {
     uint32_t channelId = 0;
 
@@ -115,14 +117,12 @@ static CcuResult DoScatterOnce(ScatterMesh1DContext &ctx)
         sliceSize = (rankIdx == ctx.rankSize - 1) ? ctx.lastSliceSize : ctx.normalSliceSize;
         CCU_IF(sliceSize != 0)
         {
-            ccu::Write(ctx.arg->channels[channelId], ctx.outputMem[rankIdx],
-                         ctx.inputMem[rankIdx], sliceSize, ctx.event, mask);
+            ccu::Write(
+                ctx.arg->channels[channelId], ctx.outputMem[rankIdx], ctx.inputMem[rankIdx], sliceSize, ctx.event,
+                mask);
             channelId++;
         }
-        CCU_IF(sliceSize == 0)
-        {
-            ccu::EventRecord(ctx.event, mask);
-        }
+        CCU_IF(sliceSize == 0) { ccu::EventRecord(ctx.event, mask); }
     }
 
     // 阻塞接口放在Write之后，Write与GroupCopy并行执行
@@ -132,10 +132,7 @@ static CcuResult DoScatterOnce(ScatterMesh1DContext &ctx)
     ccu::LocalAddr myInput;
     myInput.addr = ctx.inputMem[ctx.rankId].addr;
     myInput.token = ctx.inputMem[ctx.rankId].token;
-    CCU_IF(ctx.isInputOutputEqual == 0)
-    {
-        GroupCopy(ctx, myOutput, myInput, ctx.goSize);
-    }
+    CCU_IF(ctx.isInputOutputEqual == 0) { GroupCopy(ctx, myOutput, myInput, ctx.goSize); }
 
     // 仅等待远端Write完成
     uint16_t allBit = ((1 << ctx.rankSize) - 1) & (~(1 << ctx.rankId));
@@ -143,7 +140,7 @@ static CcuResult DoScatterOnce(ScatterMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatScatter(ScatterMesh1DContext &ctx)
+static CcuResult DoRepeatScatter(ScatterMesh1DContext& ctx)
 {
     ccu::Variable repeatNumAdd;
 
@@ -168,10 +165,10 @@ static CcuResult DoRepeatScatter(ScatterMesh1DContext &ctx)
     {
         CCU_IF(ctx.flag != 0)
         {
-            for (auto &i : ctx.inputMem) {
+            for (auto& i : ctx.inputMem) {
                 i.addr += ctx.inputRepeatStride;
             }
-            for (auto &r : ctx.outputMem) {
+            for (auto& r : ctx.outputMem) {
                 r.addr += ctx.outputRepeatStride;
             }
         }
@@ -184,7 +181,7 @@ static CcuResult DoRepeatScatter(ScatterMesh1DContext &ctx)
 
 CcuResult CcuScatterMesh1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgScatterMesh1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgScatterMesh1D*>(arg);
     ScatterMesh1DContext ctx;
     ctx.resourceAllocated = false;
     ctx.moConfig.msInterleave = 0;

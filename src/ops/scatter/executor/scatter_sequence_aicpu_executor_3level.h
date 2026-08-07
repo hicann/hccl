@@ -22,27 +22,33 @@ public:
     explicit ScatterSequenceAicpu3LevelExecutor();
     ~ScatterSequenceAicpu3LevelExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    void GenIntraTemplateParams(TemplateDataParams &tempAlgParamsIntra, const u64 processedDataCount,
-        const u64 currDataCount, const u64 loop) const;
-    void GenInterTemplateParams1(TemplateDataParams &tempAlgParamsInter, const u64 processedDataCount,
-        const u64 currDataCount, const u64 loop) const;
-    void GenInterTemplateParams2(TemplateDataParams &tempAlgParamsInter, const u64 processedDataCount,
-        const u64 currDataCount, const u64 loop) const;
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    void GenIntraTemplateParams(
+        TemplateDataParams& tempAlgParamsIntra, const u64 processedDataCount, const u64 currDataCount,
+        const u64 loop) const;
+    void GenInterTemplateParams1(
+        TemplateDataParams& tempAlgParamsInter, const u64 processedDataCount, const u64 currDataCount,
+        const u64 loop) const;
+    void GenInterTemplateParams2(
+        TemplateDataParams& tempAlgParamsInter, const u64 processedDataCount, const u64 currDataCount,
+        const u64 loop) const;
     template <typename InsAlgTemplate>
-    HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource) const;
+    HcclResult GenTempResource(
+        const AlgResourceCtxSerializable& resCtx, const u32 channelLevelIdx,
+        const std::shared_ptr<InsAlgTemplate>& algTemplate, TemplateResource& tempResource) const;
 
     uint32_t rankSizeLevel0_{0};
     uint32_t rankSizeLevel1_{0};
@@ -58,6 +64,6 @@ protected:
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
 };
-}
+} // namespace ops_hccl
 
 #endif

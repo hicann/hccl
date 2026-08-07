@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #ifndef HCCL_CCU_TEMP_ALL_REDUCE_MESH_1D_ONE_SHOT_H_
 #define HCCL_CCU_TEMP_ALL_REDUCE_MESH_1D_ONE_SHOT_H_
 
@@ -21,29 +20,33 @@ namespace ops_hccl {
 class CcuTempAllReduceMesh1DOneShot : public CcuAlgTemplateBase {
 public:
     CcuTempAllReduceMesh1DOneShot() = default;
-    explicit CcuTempAllReduceMesh1DOneShot(const OpParam& param, 
-                                           const u32 rankId, // 传通信域的rankId，userRank
-                                           const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllReduceMesh1DOneShot(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAllReduceMesh1DOneShot() override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                    AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                        const TemplateDataParams& templateDataParams,
-                        TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
-    
+
     std::string Describe() const override
     {
-        return StringFormat("Template of CcuTempAllReduceMesh1DOneShot subCommRanks_[0].size() [%u].", subCommRanks_[0].size());
+        return StringFormat(
+            "Template of CcuTempAllReduceMesh1DOneShot subCommRanks_[0].size() [%u].", subCommRanks_[0].size());
     }
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+
 private:
     uint32_t mySubCommRank_ = 0;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // HCCLV2_CCU_TEMP_ALL_REDUCE_MESH_1D_H_

@@ -22,12 +22,11 @@ namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::InsV2ScatterOmniPipe2DExecutor()
-{
-}
+{}
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcAlgHierarchyInfo(
-    HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     auto userrank = topoInfo->userRank;
     AlgTopoMatch topoMatch;
@@ -46,8 +45,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::InitCommInfo(
-    const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
@@ -84,17 +83,18 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
     isSameYAxisAsRoot = (rankIdxLevel0_ == rootx) && !isRoot;
 
-    HCCL_DEBUG("[%s] myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-               "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+    HCCL_DEBUG(
+        "[%s] myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
+        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
     return HcclResult::HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
-HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcRes(HcclComm comm,
-    const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
+HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
@@ -106,7 +106,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     }
     std::vector<std::vector<u32>> subCommRanks0{algHierarchyInfo.infos[0][0]};
     auto size = algHierarchyInfo.infos[0][1].size() / algHierarchyInfo.infos[0][0].size();
-    HCCL_DEBUG("[%s] algHierarchyInfo.infos[0][1]size=%u algHierarchyInfo.infos[0][0]size=%u", __func__,
+    HCCL_DEBUG(
+        "[%s] algHierarchyInfo.infos[0][1]size=%u algHierarchyInfo.infos[0][0]size=%u", __func__,
         algHierarchyInfo.infos[0][1].size(), algHierarchyInfo.infos[0][0].size());
     std::vector<std::vector<u32>> subCommRanks1(1, std::vector<u32>(size, 0));
     u32 index = 0;
@@ -122,15 +123,17 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     if (rankSizeLevel0_ > 1) {
         InsAlgTempLevel0 algTempLevel0(param, myRank_, subCommRanks0);
         CHK_RET(algTempLevel0.CalcRes(comm, param, topoInfo, resReqLevel0));
-        resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(), resReqLevel0.ccuKernelInfos.begin(),
+        resourceRequest.ccuKernelInfos.insert(
+            resourceRequest.ccuKernelInfos.end(), resReqLevel0.ccuKernelInfos.begin(),
             resReqLevel0.ccuKernelInfos.end());
         resourceRequest.ccuKernelNum.insert(
             resourceRequest.ccuKernelNum.end(), resReqLevel0.ccuKernelNum.begin(), resReqLevel0.ccuKernelNum.end());
         resourceRequest.slaveThreadNum += resReqLevel0.slaveThreadNum + 1;
         // 第一个template的zhuthread需要的notify数量，+1是因为需要和控制thread做同步
         resourceRequest.notifyNumPerThread.emplace_back(resReqLevel0.notifyNumOnMainThread + 1);
-        resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
-            resReqLevel0.notifyNumPerThread.begin(), resReqLevel0.notifyNumPerThread.end());
+        resourceRequest.notifyNumPerThread.insert(
+            resourceRequest.notifyNumPerThread.end(), resReqLevel0.notifyNumPerThread.begin(),
+            resReqLevel0.notifyNumPerThread.end());
     }
 
     AlgResourceRequest resReqLevel1; // Y
@@ -139,15 +142,17 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         // 与root同框的同列rank作为新server间模板的root
         algTempLevel1.SetRoot(param.root / rankSizeLevel0_ * rankSizeLevel0_ + rankIdxLevel0_);
         CHK_RET(algTempLevel1.CalcRes(comm, param, topoInfo, resReqLevel1));
-        resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(), resReqLevel1.ccuKernelInfos.begin(),
+        resourceRequest.ccuKernelInfos.insert(
+            resourceRequest.ccuKernelInfos.end(), resReqLevel1.ccuKernelInfos.begin(),
             resReqLevel1.ccuKernelInfos.end());
         resourceRequest.ccuKernelNum.insert(
             resourceRequest.ccuKernelNum.end(), resReqLevel1.ccuKernelNum.begin(), resReqLevel1.ccuKernelNum.end());
         resourceRequest.slaveThreadNum += resReqLevel1.slaveThreadNum + 1;
         // 这一条是interTemplate的主thread，需要+1是为了和控制thread进行同步
         resourceRequest.notifyNumPerThread.emplace_back(resReqLevel1.notifyNumOnMainThread + 1);
-        resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
-            resReqLevel1.notifyNumPerThread.begin(), resReqLevel1.notifyNumPerThread.end());
+        resourceRequest.notifyNumPerThread.insert(
+            resourceRequest.notifyNumPerThread.end(), resReqLevel1.notifyNumPerThread.begin(),
+            resReqLevel1.notifyNumPerThread.end());
     }
 
     HCCL_DEBUG("[%s] slaveThreadNum[%u]", __func__, resourceRequest.slaveThreadNum);
@@ -157,7 +162,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
@@ -168,7 +173,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     maxTmpMemSize_ = resCtx.cclMem.size;
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
     localThreads_ = resCtx.threads;
-    HCCL_DEBUG("[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
+    HCCL_DEBUG(
+        "[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
     if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
@@ -196,11 +202,13 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     isSameYAxisAsRoot = (rankIdxLevel0_ == rootx) && !isRoot;
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
 
-    HCCL_DEBUG("[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__,
-        myRank_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
+    HCCL_DEBUG(
+        "[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__, myRank_,
+        rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HcclResult::HCCL_SUCCESS,
+    CHK_PRT_RET(
+        ret != HcclResult::HCCL_SUCCESS,
         HCCL_ERROR("[%s]errNo[0x%016llx] executor kernel run failed", __func__, HCCL_ERROR_CODE(ret)), ret);
     HCCL_DEBUG("[%s] myRank[%u] end", __func__, myRank_);
     return HcclResult::HCCL_SUCCESS;
@@ -210,8 +218,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GenTempAlgParamsIn2HCCLBuff(
-    TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo, u64 processedDataCount,
-    const AlgResourceCtxSerializable &resCtx, const OpParam &param)
+    TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+    const AlgResourceCtxSerializable& resCtx, const OpParam& param)
 {
     tempAlgParams.count = processedDataCount;
     tempAlgParams.dataType = dataType_;
@@ -240,8 +248,8 @@ InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GenTempAlgParamsHCCLBuff2HCCLBuff(
-    TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo, u64 processedDataCount,
-    const AlgResourceCtxSerializable &resCtx, const OpParam &param)
+    TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+    const AlgResourceCtxSerializable& resCtx, const OpParam& param)
 {
     tempAlgParams.count = processedDataCount;
     tempAlgParams.dataType = dataType_;
@@ -269,8 +277,8 @@ InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>
 // 为模板准备资源
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::PrepareResForTemplate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTempLevel0 &algTempLevel0,
-    InsAlgTempLevel1 &algTempLevel1)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTempLevel0& algTempLevel0,
+    InsAlgTempLevel1& algTempLevel1)
 {
     HCCL_DEBUG("[%s] start localThreads_ size[%u]", __func__, localThreads_.size());
     // 获取每个template的线程数
@@ -320,7 +328,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 // 主执行函数
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;
     HCCL_DEBUG("[%s] myRank_[%u] Start", __func__, myRank_);
@@ -344,8 +352,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         HCCL_DEBUG("subCommRanks1 localRank[%u] push_back[%u]", myRank_, resCtx.algHierarchyInfo.infos[0][1][i]);
     }
 
-    HCCL_DEBUG("[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__,
-        myRank_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
+    HCCL_DEBUG(
+        "[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__, myRank_,
+        rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
 
     // 打印子通信组信息
     for (size_t i = 0; i < subCommRanks0.size(); ++i) {
@@ -386,9 +395,11 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     TemplateResource templateResourceCommon;
     // 通道处理
     TemplateResource templateResourceX = templateResourceCommon;
-    CHK_PRT_RET(resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2 ||
-        resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
-        HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+    CHK_PRT_RET(
+        resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2
+            || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
+        HCCL_ERROR(
+            "[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
             __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
         HCCL_E_INTERNAL);
     templateResourceX.threads.push_back(resCtx.threads[1]);
@@ -402,14 +413,16 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     double eqBwLevel1 = BW_OMNI_UBX_CCU_SCHED_SC_CLOS;
     eqBwLevel1 = rankSizeLevel1_ > 1 ? eqBwLevel1 / (rankSizeLevel1_ - 1) : eqBwLevel1;
     std::vector<double> endpointAttrBwAvg = {eqBwLevel0, eqBwLevel1, 1.0};
-    HCCL_DEBUG("[%s] myRank[%u] endpointAttrBwAvg[%.3f, %.3f, %.3f]", __func__, myRank_, endpointAttrBwAvg[0],
+    HCCL_DEBUG(
+        "[%s] myRank[%u] endpointAttrBwAvg[%.3f, %.3f, %.3f]", __func__, myRank_, endpointAttrBwAvg[0],
         endpointAttrBwAvg[1], endpointAttrBwAvg[2]);
 
     // 2.计算loop相关信息
     u64 maxTmpMemSize = resCtx.cclMem.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scatterDataSize = maxTmpMemSize / rankSize_;
-    HCCL_DEBUG("[%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__, myRank_, maxTmpMemSize,
+    HCCL_DEBUG(
+        "[%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__, myRank_, maxTmpMemSize,
         transportBoundDataSize);
     u64 maxCountPerLoop = std::min(scatterDataSize, transportBoundDataSize) / HCCL_MIN_SLICE_ALIGN
                           * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
@@ -485,13 +498,14 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
             if (rankSizeLevel0_ > 1) {
                 templateResourceX.ccuKernels.clear();
                 // 添加当前步骤需要的kernel
-                templateResourceX.ccuKernels.insert(templateResourceX.ccuKernels.end(), resCtx.ccuKernels.begin(),
+                templateResourceX.ccuKernels.insert(
+                    templateResourceX.ccuKernels.end(), resCtx.ccuKernels.begin(),
                     resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0]);
             }
             if (rankSizeLevel1_ > 1) {
                 templateResourceY.ccuKernels.clear();
-                templateResourceY.ccuKernels.insert(templateResourceY.ccuKernels.end(),
-                    resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0],
+                templateResourceY.ccuKernels.insert(
+                    templateResourceY.ccuKernels.end(), resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0],
                     resCtx.ccuKernels.begin() + resCtx.ccuKernelNum[0] + resCtx.ccuKernelNum[1]);
             }
 
@@ -593,8 +607,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
             tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff = myRank_ * dataSize_ + processedDataCount * dataTypeSize_;
         }
 
-        HCCL_DEBUG("[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] outputSize[%u] "
-                   "inputSize[%u]",
+        HCCL_DEBUG(
+            "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] outputSize[%u] "
+            "inputSize[%u]",
             __func__, myRank_, tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff,
             tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamsLocalCopy.sliceSize,
             tempAlgParamsLocalCopy.buffInfo.outputSize, tempAlgParamsLocalCopy.buffInfo.inputSize);
@@ -620,7 +635,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GetRes(
-    AlgResourceRequest &resourceRequest) const
+    AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 2;
     resourceRequest.notifyNumOnMainThread = 2;
@@ -629,8 +644,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_SCATTER, CcuV2ScatterOmniPipe2D, InsV2ScatterOmniPipe2DExecutor,
-    TopoMatchUBX, CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_SCATTER, CcuV2ScatterOmniPipe2D, InsV2ScatterOmniPipe2DExecutor, TopoMatchUBX,
+    CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 

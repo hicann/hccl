@@ -13,7 +13,7 @@
 
 namespace ops_hccl {
 
-static CcuResult ParseKernelArg(AllGather2DiesMesh1DContext &ctx, CcuKernelArgAllGather2DiesMesh1D *kernelArg)
+static CcuResult ParseKernelArg(AllGather2DiesMesh1DContext& ctx, CcuKernelArgAllGather2DiesMesh1D* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankIdGroup = kernelArg->rankIdGroup;
@@ -21,9 +21,9 @@ static CcuResult ParseKernelArg(AllGather2DiesMesh1DContext &ctx, CcuKernelArgAl
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllGather2DiesMesh1DContext &ctx)
+static CcuResult InitResource(AllGather2DiesMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllGather2DiesMesh1D] channels is empty!");
@@ -39,8 +39,9 @@ static CcuResult InitResource(AllGather2DiesMesh1DContext &ctx)
     for (uint64_t peerId = 0; peerId < arg->dimSize; peerId++) {
         if (peerId != arg->rankId) {
             if (peerId == ctx.rankIdGroup[channelIdx]) {
-                HCCL_DEBUG("[CcuKernelAllGather2DiesMesh1D] MyRank[%u], PeerId[%llu], ChannelId[%u]",
-                    arg->rankId, peerId, channelIdx);
+                HCCL_DEBUG(
+                    "[CcuKernelAllGather2DiesMesh1D] MyRank[%u], PeerId[%llu], ChannelId[%u]", arg->rankId, peerId,
+                    channelIdx);
                 ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
                 ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
                 if (channelIdx < ctx.rankIdGroup.size() - 1) {
@@ -60,9 +61,9 @@ static CcuResult InitResource(AllGather2DiesMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllGather2DiesMesh1DContext &ctx)
+static CcuResult LoadArgs(AllGather2DiesMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
 
     CCU_CHK_RET(ccu::LoadArg(ctx.input, cnt++));
@@ -78,15 +79,15 @@ static CcuResult LoadArgs(AllGather2DiesMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(AllGather2DiesMesh1DContext &ctx)
+static CcuResult PreSync(AllGather2DiesMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId],
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -96,9 +97,9 @@ static CcuResult PreSync(AllGather2DiesMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllGather2DiesMesh1DContext &ctx)
+static CcuResult PostSync(AllGather2DiesMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
@@ -109,9 +110,9 @@ static CcuResult PostSync(AllGather2DiesMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGather(AllGather2DiesMesh1DContext &ctx)
+static CcuResult DoAllGather(AllGather2DiesMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     ccu::LocalAddr src;
     ccu::LocalAddr localDst;
     std::vector<ccu::RemoteAddr> dst;
@@ -137,11 +138,9 @@ static CcuResult DoAllGather(AllGather2DiesMesh1DContext &ctx)
     }
 
     if (ctx.ifHandleSelfRank) {
-        CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount,
-            localDst, dst, src, ctx.goSize));
+        CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount, localDst, dst, src, ctx.goSize));
     } else {
-        CCU_CHK_RET(GroupBroadcastWithoutMyRank(ctx, arg->channels, arg->channelCount,
-            dst, src, ctx.goSize));
+        CCU_CHK_RET(GroupBroadcastWithoutMyRank(ctx, arg->channels, arg->channelCount, dst, src, ctx.goSize));
     }
 
     return CCU_SUCCESS;
@@ -149,7 +148,7 @@ static CcuResult DoAllGather(AllGather2DiesMesh1DContext &ctx)
 
 CcuResult CcuAllGather2DiesMesh1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllGather2DiesMesh1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllGather2DiesMesh1D*>(arg);
 
     if (kernelArg->rankIdGroup.size() == 0) {
         HCCL_INFO("[CcuKernelAllGather2DiesMesh1D] rankIdGroup empty, skip");

@@ -22,10 +22,10 @@ namespace ops_hccl {
 
 class AicpuTaskCacheCommManager {
 public:
-    static AicpuTaskCacheCommManager &Instance();
+    static AicpuTaskCacheCommManager& Instance();
 
     // 记录通信域与tag的关系
-    void AddCommTagMap(HcclComm comm, const std::string &tagName);
+    void AddCommTagMap(HcclComm comm, const std::string& tagName);
 
     // 清除特定通信域的缓存
     HcclResult EvictTaskCache(HcclComm comm);
@@ -35,10 +35,10 @@ private:
     ~AicpuTaskCacheCommManager() = default;
 
     // 禁用拷贝和移动操作
-    AicpuTaskCacheCommManager(const AicpuTaskCacheCommManager &) = delete;
-    AicpuTaskCacheCommManager &operator=(const AicpuTaskCacheCommManager &) = delete;
-    AicpuTaskCacheCommManager(AicpuTaskCacheCommManager &&) = delete;
-    AicpuTaskCacheCommManager &operator=(AicpuTaskCacheCommManager &&) = delete;
+    AicpuTaskCacheCommManager(const AicpuTaskCacheCommManager&) = delete;
+    AicpuTaskCacheCommManager& operator=(const AicpuTaskCacheCommManager&) = delete;
+    AicpuTaskCacheCommManager(AicpuTaskCacheCommManager&&) = delete;
+    AicpuTaskCacheCommManager& operator=(AicpuTaskCacheCommManager&&) = delete;
 
     std::unordered_map<HcclComm, std::vector<std::string>> commToTagMap_;
     mutable std::shared_timed_mutex mutex_;

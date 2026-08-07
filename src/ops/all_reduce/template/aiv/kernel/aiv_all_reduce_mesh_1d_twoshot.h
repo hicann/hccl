@@ -7,17 +7,15 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "aiv_communication_base_v2.h"
- 
+
 using namespace AscendC;
- 
-template<typename T>
+
+template <typename T>
 class AivAllReduceMesh1DTwoShot : public AivCommBase {
 public:
-    __aicore__ inline AivAllReduceMesh1DTwoShot()
-    {
-    }
+    __aicore__ inline AivAllReduceMesh1DTwoShot() {}
 
     __aicore__ inline void Prepare(uint32_t sliceId)
     {
@@ -28,7 +26,7 @@ public:
 
         // 将core分组
         producerNum = rankSize_;
-        groupSize = (coreNum - producerNum) / producerNum;  // 一个producer对应几个consumer，整数倍
+        groupSize = (coreNum - producerNum) / producerNum; // 一个producer对应几个consumer，整数倍
         consumerNum = groupSize * producerNum;
         // 返回多余的核
         if (coreIdx >= producerNum + consumerNum) {
@@ -47,7 +45,7 @@ public:
         sliceNum = consumerNum;
         smallSliceCount = count / sliceNum;
         smallSliceSize = smallSliceCount * sizeof(T);
-        bigSliceNum = count % sliceNum;  // 大片数据的数量
+        bigSliceNum = count % sliceNum; // 大片数据的数量
         bigSliceCount = smallSliceCount + 1;
         bigSliceSize = bigSliceCount * sizeof(T);
         // HcclBuffer上的数据按照chunkSize对齐存放，便于计算偏移
@@ -58,8 +56,8 @@ public:
         }
 
         // 基础数据偏移计算
-        storeBuffOffset = 0;  // HcclBuffer上存储数据的Buffer偏移
-        reduceBuffOffset = chunkSize * sliceNum;  // HcclBuffer上Reduce计算的Buffer偏移
+        storeBuffOffset = 0;                     // HcclBuffer上存储数据的Buffer偏移
+        reduceBuffOffset = chunkSize * sliceNum; // HcclBuffer上Reduce计算的Buffer偏移
 
         // 基础flag偏移计算
         preCopyFlagOffset = 0;
@@ -105,7 +103,7 @@ public:
             if (processCount > 0) {
                 uint64_t src = input_ + srcOffset;
                 uint64_t dst = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstOffset;
-                CpGM2GM((__gm__ T *)dst, (__gm__ T *)src, processCount);
+                CpGM2GM((__gm__ T*)dst, (__gm__ T*)src, processCount);
                 pipe_barrier(PIPE_ALL);
             }
 
@@ -137,7 +135,7 @@ public:
         if (processCount > 0) {
             uint64_t src = reinterpret_cast<uint64_t>(GM_IN[rmtRank]) + srcOffset;
             uint64_t dst = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstOffset;
-            CpGM2GM((__gm__ T *)dst, (__gm__ T *)src, processCount);
+            CpGM2GM((__gm__ T*)dst, (__gm__ T*)src, processCount);
             pipe_barrier(PIPE_ALL);
         }
 
@@ -174,7 +172,7 @@ public:
             if (processCount > 0) {
                 uint64_t srcOffset = reduceBuffOffset + srcSliceIdx * chunkSize;
                 uint64_t src = reinterpret_cast<uint64_t>(GM_IN[rank_]) + srcOffset;
-                CpGM2GM((__gm__ T *)dst, (__gm__ T *)src, processCount, reduceOp_);
+                CpGM2GM((__gm__ T*)dst, (__gm__ T*)src, processCount, reduceOp_);
                 pipe_barrier(PIPE_ALL);
             }
         }
@@ -213,7 +211,7 @@ public:
         if (processCount > 0) {
             uint64_t src = reinterpret_cast<uint64_t>(GM_IN[rmtRank]) + srcOffset;
             uint64_t dst = output_ + dstOffset;
-            CpGM2GM((__gm__ T *)dst, (__gm__ T *)src, processCount);
+            CpGM2GM((__gm__ T*)dst, (__gm__ T*)src, processCount);
             pipe_barrier(PIPE_ALL);
         }
     }
@@ -225,8 +223,8 @@ public:
 
     __aicore__ inline void SmallCoreReduceScatter(uint32_t sliceId)
     {
-        uint64_t dataCount     = len_;
-        rankChunkStride        = RoundUPAiv(dataCount, rankSize_);
+        uint64_t dataCount = len_;
+        rankChunkStride = RoundUPAiv(dataCount, rankSize_);
         ipc_reduce_flag_offset = rankSize_;
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
 
@@ -234,15 +232,15 @@ public:
         for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
             targetRank = blockIdx_ + i * numBlocks_;
             rankChunkSize
-                = ((targetRank + 1) * rankChunkStride <= dataCount)
-                    ? rankChunkStride
-                    : (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-    
+                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
+                      rankChunkStride :
+                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
+
             if (rankChunkSize > 0) {
                 uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
-                uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) +
-                    (rank_ * rankChunkSize) * sizeof(T);
-                CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, rankChunkSize);
+                uint64_t outputOffset
+                    = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (rank_ * rankChunkSize) * sizeof(T);
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
                 pipe_barrier(PIPE_ALL);
             }
             // set flag
@@ -251,9 +249,9 @@ public:
         // reduce
         if (blockIdx_ == numBlocks_ - 1) {
             uint64_t myRankChuckSize
-                = ((rank_ + 1) * rankChunkStride <= dataCount)
-                    ? rankChunkStride
-                    : (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
+                = ((rank_ + 1) * rankChunkStride <= dataCount) ?
+                      rankChunkStride :
+                      (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
             ;
             if (myRankChuckSize > 0) {
                 for (uint32_t i = 0; i < rankSize_; i++) {
@@ -262,38 +260,37 @@ public:
                         continue;
                     }
                     // reduce
-                    uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) +
-                        (i * myRankChuckSize) * sizeof(T);
+                    uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (i * myRankChuckSize) * sizeof(T);
                     uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]);
-                    CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, myRankChuckSize, reduceOp_);
+                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, myRankChuckSize, reduceOp_);
                     pipe_barrier(PIPE_ALL);
                 }
             }
             Record(rank_, ipc_reduce_flag_offset + 1, curTag_);
         }
     }
-    
+
     __aicore__ inline void SmallCoreAllgather()
     {
         uint64_t dataCount = len_;
         for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
             targetRank = blockIdx_ + i * numBlocks_;
             rankChunkSize
-                = ((targetRank + 1) * rankChunkStride <= dataCount)
-                    ? rankChunkStride
-                    : (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-    
+                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
+                      rankChunkStride :
+                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
+
             if (rankChunkSize <= 0) {
                 return;
             }
-    
+
             // waitflag
             WaitFlag(targetRank, ipc_reduce_flag_offset + 1, curTag_);
-    
+
             // gather
             uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]);
             uint64_t outputOffset = output_ + (targetRank * rankChunkStride) * sizeof(T);
-            CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, rankChunkSize);
+            CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
             pipe_barrier(PIPE_ALL);
         }
     }
@@ -330,7 +327,7 @@ public:
     uint64_t ipc_reduce_flag_offset{1024};
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivAllReduceV2Mesh1DTwoShot(KERNEL_ARGS_DEF)
 {
     AivAllReduceMesh1DTwoShot<T> op;
@@ -348,7 +345,7 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShot(KERNEL_ARGS_DEF)
     op.BarrierAll();
 }
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_DEF)
 {
     // 参数中的input和output是分别加了步长inBuffBaseOff和outBuffBaseOff步长
@@ -389,18 +386,18 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_D
 
 __aicore__ inline void sk_ar_mesh_1d_twoshot(SUPERKERNEL_ARGS_DEF)
 {
-    #ifdef HCCL_DTYPE_INT8
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<int8_t> (SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT16
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<int16_t> (SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT32
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<int32_t> (SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP16
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<half> (SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP32
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<float> (SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_BFP16
-        AivAllReduceV2Mesh1DTwoShotSuperKernel<bfloat16_t> (SUPERKERNEL_ARGS_CALL);
-    #else
-    #endif
+#ifdef HCCL_DTYPE_INT8
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<int8_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT16
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<int16_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT32
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<int32_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP16
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<half>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP32
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<float>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_BFP16
+    AivAllReduceV2Mesh1DTwoShotSuperKernel<bfloat16_t>(SUPERKERNEL_ARGS_CALL);
+#else
+#endif
 }

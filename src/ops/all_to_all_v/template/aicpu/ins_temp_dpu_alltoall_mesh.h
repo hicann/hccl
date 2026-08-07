@@ -30,8 +30,8 @@ const u64 CCLBUF_SPLIT_PARTS = 2;
 class InsTempDpuAlltoAllMesh : public InsAlgTemplateBase {
 public:
     explicit InsTempDpuAlltoAllMesh();
-    explicit InsTempDpuAlltoAllMesh(const OpParam &param, const u32 rankId,
-                                    const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempDpuAlltoAllMesh(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempDpuAlltoAllMesh() override;
 
@@ -42,32 +42,33 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                         TemplateResource &templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParams,
-                            const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
-                            const std::vector<std::vector<u32>> &subCommRanks) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<u32>>& subCommRanks) override;
 
 private:
-    HcclResult LocalCopyforMyRank(const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams,
-                                  std::vector<ThreadHandle> &threads);
+    HcclResult LocalCopyforMyRank(
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
-    HcclResult PreCopyDataToCclInBuf(const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams,
-                                     std::vector<ThreadHandle> &threads);
+    HcclResult PreCopyDataToCclInBuf(
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
-    HcclResult SendRecvData(const OpParam &param, const std::vector<u32> &commRanks,
-                            const TemplateDataParams &tempAlgParams, const TemplateResource &templateResource,
-                            std::vector<ThreadHandle> &threads);
+    HcclResult SendRecvData(
+        const OpParam& param, const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource, std::vector<ThreadHandle>& threads);
 
-    HcclResult PostCopyDataToRecvBuf(const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams,
-                                     std::vector<ThreadHandle> &threads);
+    HcclResult PostCopyDataToRecvBuf(
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
     u64 processSize_{0};
     u64 count_{0};
@@ -78,6 +79,6 @@ private:
     std::vector<ThreadHandle> threads_;
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_DPU_ALLTOALL_MESH_H
+#endif // INS_TEMP_DPU_ALLTOALL_MESH_H

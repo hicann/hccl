@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "channel.h"
 #include "ccu_kernel_all_reduce_mesh1d_mem2mem_2die_oneshot.h"
 #include "ccu_temp_all_reduce_mesh_1D_mem2mem_2die_oneshot.h"
@@ -17,9 +17,9 @@
 namespace ops_hccl {
 
 constexpr u32 DIE_NUM = 2;
- 
-CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CcuTempAllReduceMesh1DMem2Mem2DieOneShot(const OpParam& param, const u32 rankId,
-                                       const std::vector<std::vector<u32>> &subCommRanks)
+
+CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CcuTempAllReduceMesh1DMem2Mem2DieOneShot(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
@@ -29,25 +29,25 @@ CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CcuTempAllReduceMesh1DMem2Mem2DieOneSh
         mySubCommRank_ = std::distance(ranks.begin(), it);
     }
 }
- 
-CcuTempAllReduceMesh1DMem2Mem2DieOneShot::~CcuTempAllReduceMesh1DMem2Mem2DieOneShot()
-{
-}
- 
-HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                                      AlgResourceRequest& resourceRequest)
+
+CcuTempAllReduceMesh1DMem2Mem2DieOneShot::~CcuTempAllReduceMesh1DMem2Mem2DieOneShot() {}
+
+HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumOnMainThread = 1;
- 
+
     resourceRequest.ccuKernelNum.push_back(DIE_NUM);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
-    HCCL_DEBUG("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
- 
+    HCCL_DEBUG(
+        "[CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
- 
+
     std::vector<std::vector<HcclChannelDesc>> channelsForDie;
     std::vector<std::vector<uint32_t>> kernelRanks;
     channelsForDie.resize(DIE_NUM);
@@ -55,16 +55,19 @@ HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(HcclComm comm, cons
     for (auto channel : channelDescs) {
         uint32_t dieId = 0;
         CHK_RET(GetChannelDieId(comm, myRank_, channel, dieId));
-        CHK_PRT_RET(dieId >= DIE_NUM,
-            HCCL_ERROR("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot][CalcRes] dieId is invalid"), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            dieId >= DIE_NUM, HCCL_ERROR("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot][CalcRes] dieId is invalid"),
+            HCCL_E_INTERNAL);
         channelsForDie[dieId].push_back(channel);
         kernelRanks[dieId].push_back(channel.remoteRank);
     }
- 
+
     for (uint32_t die = 0; die < DIE_NUM; die++) {
         CcuKernelInfo kernelInfo;
-        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllReduceMesh1DMem2Mem2DieOneShot"));
-        kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllReduceMesh1DMem2Mem2DieOneShotKernel);
+        CHK_SAFETY_FUNC_RET(strcpy_s(
+            kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName),
+            "CcuKernelAllReduceMesh1DMem2Mem2DieOneShot"));
+        kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllReduceMesh1DMem2Mem2DieOneShotKernel);
 
         bool rmtReduceWithMyRank = channelsForDie[die].size() > channelsForDie[1 - die].size() ? false : true;
 
@@ -75,18 +78,17 @@ HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcRes(HcclComm comm, cons
         kernelArg->kernelRanks = kernelRanks[die];
         kernelArg->subCommRanks = subCommRanks_;
         kernelArg->rmtReduceWithMyRank = rmtReduceWithMyRank;
-        
+
         kernelInfo.setKernelArg(kernelArg);
         kernelInfo.channels = channelsForDie[die];
         resourceRequest.ccuKernelInfos.push_back(kernelInfo);
     }
- 
+
     return HcclResult::HCCL_SUCCESS;
 }
- 
-HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::KernelRun(const OpParam& param,
-                                                        const TemplateDataParams& templateDataParams,
-                                                        TemplateResource& templateResource)
+
+HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 
@@ -105,48 +107,42 @@ HcclResult CcuTempAllReduceMesh1DMem2Mem2DieOneShot::KernelRun(const OpParam& pa
     uint64_t localReduceSliceOffset1 = localRedcueSize0;
 
     std::vector<uint64_t> taskArgs = {
-        inputAddr,
-        outputAddr,
-        token,
-        scratchAddr,
-        normalSliceSize,
-        localReduceSliceOffset0,
-        localReduceSliceOffset1
-    };
+        inputAddr, outputAddr, token, scratchAddr, normalSliceSize, localReduceSliceOffset0, localReduceSliceOffset1};
 
     LoopGroupConfig config{};
     constexpr uint32_t LOOP_NUM = 16;
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = LOOP_NUM;
-    config.memSlice     = CCU_MS_SIZE;
+    config.loopCount = LOOP_NUM;
+    config.memSlice = CCU_MS_SIZE;
 
     auto localReduceGoSize = CalGoSize(normalSliceSize, config);
     auto localReduceGoSize0 = CalGoSize(localRedcueSize0, config);
     auto localReduceGoSize1 = CalGoSize(localRedcueSize1, config);
 
-    for (auto &element : localReduceGoSize) {
+    for (auto& element : localReduceGoSize) {
         taskArgs.push_back(element);
     }
-    for (auto &element : localReduceGoSize0) {
+    for (auto& element : localReduceGoSize0) {
         taskArgs.push_back(element);
     }
-    for (auto &element : localReduceGoSize1) {
+    for (auto& element : localReduceGoSize1) {
         taskArgs.push_back(element);
     }
     uint64_t argSize = taskArgs.size();
-    
+
     for (uint64_t i = 0; i < DIE_NUM; i++) {
-        CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[i], templateResource.ccuKernels[i],
-            taskArgs.data(), argSize);
+        CcuResult launchRet = HcommCcuKernelLaunch(
+            templateResource.threads[i], templateResource.ccuKernels[i], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempAllReduceMesh1DMem2Mem2DieOneShot::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }
-    
+
     return HcclResult::HCCL_SUCCESS;
 }
- 
+
 u64 CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     (void)inBuffType;

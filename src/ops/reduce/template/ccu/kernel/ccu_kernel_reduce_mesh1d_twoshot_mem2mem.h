@@ -20,16 +20,16 @@ namespace ops_hccl {
 
 constexpr uint32_t LOOP_GROUP_NUM = 2;
 
-struct CcuKernelArgReduceMesh1DTwoShotMem2Mem: CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    uint32_t                                rootId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceMesh1DTwoShotMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t rootId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ReduceMesh1DTwoShotMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceMesh1DTwoShotMem2Mem *arg;
+struct ReduceMesh1DTwoShotMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceMesh1DTwoShotMem2Mem* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;
@@ -63,8 +63,8 @@ struct ReduceMesh1DTwoShotMem2MemContext: CcuKernelCtxBase {
     std::array<std::vector<ccu::LocalAddr>, LOOP_GROUP_NUM> loopScratch;
     ccu::LocalAddr loopSrc[2];
     ccu::LocalAddr loopDst[2];
-    ccu::Variable  loopLen[2];
-    ccu::Variable  loopLenExp[2];
+    ccu::Variable loopLen[2];
+    ccu::Variable loopLenExp[2];
 };
 
 CcuResult CcuReduceMesh1DTwoShotMem2MemKernel(CcuKernelArg arg);

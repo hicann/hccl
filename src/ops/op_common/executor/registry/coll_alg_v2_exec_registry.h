@@ -17,100 +17,107 @@
 #include <mutex>
 #include "executor_v2_base.h"
 
-
 namespace ops_hccl {
 
-using CollExecCreatorV2 = std::function<InsCollAlgBase *()>;
+using CollExecCreatorV2 = std::function<InsCollAlgBase*()>;
 
 template <typename P>
-static InsCollAlgBase *DefaultExecCreatorV2()
+static InsCollAlgBase* DefaultExecCreatorV2()
 {
-    static_assert(std::is_base_of<InsCollAlgBase, P>::value,
-        "Executor type must derived from Hccl::DefaultExecCreatorV2");
+    static_assert(
+        std::is_base_of<InsCollAlgBase, P>::value, "Executor type must derived from Hccl::DefaultExecCreatorV2");
     return new (std::nothrow) P();
 }
 
 class CollAlgExecRegistryV2 {
 public:
-    static CollAlgExecRegistryV2 &Instance();
-    HcclResult Register(const HcclCMDType type, const std::string &tag, const CollExecCreatorV2 &collExecCreator);
-    std::unique_ptr<InsCollAlgBase> GetAlgExec(const HcclCMDType type, const std::string &tag);
+    static CollAlgExecRegistryV2& Instance();
+    HcclResult Register(const HcclCMDType type, const std::string& tag, const CollExecCreatorV2& collExecCreator);
+    std::unique_ptr<InsCollAlgBase> GetAlgExec(const HcclCMDType type, const std::string& tag);
 
 private:
     std::map<HcclCMDType, std::map<std::string, const CollExecCreatorV2>> execCreators_;
     mutable std::mutex mu_;
 };
 
-#define REGISTER_EXECUTOR_IMPL_HELPER(ctr, type, name, insCollAlgBase)                                                      \
-    static HcclResult g_func_##name##_##ctr                                                                            \
+#define REGISTER_EXECUTOR_IMPL_HELPER(ctr, type, name, insCollAlgBase) \
+    static HcclResult g_func_##name##_##ctr                            \
         = CollAlgExecRegistryV2::Instance().Register(type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase>)
 
-#define REGISTER_EXECUTOR_IMPL_HELPER_1(ctr, type, name, insCollAlgBase)                                                    \
+#define REGISTER_EXECUTOR_IMPL_HELPER_1(ctr, type, name, insCollAlgBase) \
     REGISTER_EXECUTOR_IMPL_HELPER(ctr, type, name, insCollAlgBase)
 
-#define REGISTER_EXECUTOR_IMPL(type, name, insCollAlgBase)                                                                  \
+#define REGISTER_EXECUTOR_IMPL(type, name, insCollAlgBase) \
     REGISTER_EXECUTOR_IMPL_HELPER_1(__COUNTER__, type, name, insCollAlgBase)
 
-#define REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH(ctr, type, name, insCollAlgBase, InsAlgTemplate)                                                      \
-    static HcclResult g_func_##name##_##ctr                                                                            \
-        = CollAlgExecRegistryV2::Instance().Register(type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<InsAlgTemplate>>)
+#define REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH(ctr, type, name, insCollAlgBase, InsAlgTemplate) \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(           \
+        type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<InsAlgTemplate>>)
 
-#define REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH_1(ctr, type, name, insCollAlgBase, InsAlgTemplate)                                                    \
+#define REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH_1(ctr, type, name, insCollAlgBase, InsAlgTemplate) \
     REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH(ctr, type, name, insCollAlgBase, InsAlgTemplate)
 
-#define REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(type, name, insCollAlgBase, InsAlgTemplate)                                                                  \
+#define REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(type, name, insCollAlgBase, InsAlgTemplate) \
     REGISTER_EXECUTOR_IMPL_HELPER_NO_TOPOMATCH_1(__COUNTER__, type, name, insCollAlgBase, InsAlgTemplate)
 
-#define REGISTER_EXECUTOR_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)                \
-    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(                      \
+#define REGISTER_EXECUTOR_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate) \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(       \
         type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, InsAlgTemplate>>)
 
-#define REGISTER_EXECUTOR_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)              \
+#define REGISTER_EXECUTOR_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate) \
     REGISTER_EXECUTOR_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)
 
-#define REGISTER_EXEC_V2(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)                             \
+#define REGISTER_EXEC_V2(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate) \
     REGISTER_EXECUTOR_HELPER_1(__COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)
 
-#define REGISTER_EXECUTOR_BY_TOPO_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch)                \
-    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(                                  \
+#define REGISTER_EXECUTOR_BY_TOPO_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch)   \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register( \
         type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch>>)
 
-#define REGISTER_EXECUTOR_BY_TOPO_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch)                              \
+#define REGISTER_EXECUTOR_BY_TOPO_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch) \
     REGISTER_EXECUTOR_BY_TOPO_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch)
 
-#define REGISTER_EXECUTOR_BY_TOPO(type, name, insCollAlgBase, AlgTopoMatch)                                            \
+#define REGISTER_EXECUTOR_BY_TOPO(type, name, insCollAlgBase, AlgTopoMatch) \
     REGISTER_EXECUTOR_BY_TOPO_HELPER_1(__COUNTER__, type, name, insCollAlgBase, AlgTopoMatch)
 
-#define REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)    \
-    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(                                     \
-        type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>>)
+#define REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER(                                            \
+    ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)      \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register( \
+        type, std::string(#name),                                                         \
+        DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>>)
 
-#define REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)  \
-    REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)
+#define REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER_1(                                     \
+    ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1) \
+    REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER(                                           \
+        ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)
 
-#define REGISTER_EXECUTOR_BY_TWO_TEMPS(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)              \
-    REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER_1(__COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0,             \
-        InsAlgTemplate1)
+#define REGISTER_EXECUTOR_BY_TWO_TEMPS(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1) \
+    REGISTER_EXECUTOR_BY_TWO_TEMPS_HELPER_1(                                                                       \
+        __COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1)
 
-#define REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3)    \
-    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(                                     \
-        type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>>)
+#define REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER(                                                                        \
+    ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3) \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register(                              \
+        type, std::string(#name),                                                                                      \
+        DefaultExecCreatorV2<                                                                                          \
+            insCollAlgBase<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>>)
 
-#define REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER_1(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3)  \
-    REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER(ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3)
+#define REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER_1(                                                                      \
+    ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3) \
+    REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER(                                                                            \
+        ctr, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2,              \
+        InsAlgTemplate3)
 
-#define REGISTER_EXECUTOR_BY_FOUR_TEMPS(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3)              \
-    REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER_1(__COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0,             \
-        InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3)
+#define REGISTER_EXECUTOR_BY_FOUR_TEMPS(                                                                          \
+    type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3) \
+    REGISTER_EXECUTOR_BY_FOUR_TEMPS_HELPER_1(                                                                     \
+        __COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, \
+        InsAlgTemplate3)
 
 // 通过 __VA_ARGS__ 展开
-#define REGISTER_EXECUTOR_IMPL_MULTI(ctr, type, name, insCollAlgBase, AlgTopoMatch, ...) \
-    static HcclResult g_func_##name##_##ctr = \
-        CollAlgExecRegistryV2::Instance().Register( \
-            type, \
-            std::string(#name), \
-            DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, __VA_ARGS__>> \
-        )
+#define REGISTER_EXECUTOR_IMPL_MULTI(ctr, type, name, insCollAlgBase, AlgTopoMatch, ...)  \
+    static HcclResult g_func_##name##_##ctr = CollAlgExecRegistryV2::Instance().Register( \
+        type, std::string(#name), DefaultExecCreatorV2<insCollAlgBase<AlgTopoMatch, __VA_ARGS__>>)
 
 #define REGISTER_EXECUTOR_HELPER_MULTI(ctr, type, name, insCollAlgBase, AlgTopoMatch, ...) \
     REGISTER_EXECUTOR_IMPL_MULTI(ctr, type, name, insCollAlgBase, AlgTopoMatch, __VA_ARGS__)
@@ -118,5 +125,5 @@ private:
 // 支持任意数量的后续参数
 #define REGISTER_EXEC_V2_MULTI(type, name, insCollAlgBase, AlgTopoMatch, ...) \
     REGISTER_EXECUTOR_HELPER_MULTI(__COUNTER__, type, name, insCollAlgBase, AlgTopoMatch, __VA_ARGS__)
-}
+} // namespace ops_hccl
 #endif

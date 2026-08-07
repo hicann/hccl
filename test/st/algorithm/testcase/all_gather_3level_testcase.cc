@@ -21,28 +21,39 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-constexpr uint32_t DATATYPE_SIZE_TABLE_ALL_GATHER_3LEVEL[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t DATATYPE_SIZE_TABLE_ALL_GATHER_3LEVEL[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 class ST_ALL_GATHER_3LEVEL_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunAllGather3LevelA5(const TopoMeta &topoMeta, const u64 &sendCount, const HcclDataType &dataType)
+void RunAllGather3LevelA5(const TopoMeta& topoMeta, const u64& sendCount, const HcclDataType& dataType)
 {
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
@@ -62,8 +73,8 @@ void RunAllGather3LevelA5(const TopoMeta &topoMeta, const u64 &sendCount, const 
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
             u64 sendBufSize = sendCount * dataTypeSize;
             u64 recvBufSize = sendCount * dataTypeSize * rankSize;
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -105,7 +116,6 @@ TEST_F(ST_ALL_GATHER_3LEVEL_TEST, st_allgather_3level_2x2x2_fp32_2_)
     RunAllGather3LevelA5(topoMeta, sendCount, dataType);
 }
 
-
 TEST_F(ST_ALL_GATHER_3LEVEL_TEST, st_allgather_3level_1x2x8_int32_backward_compat)
 {
     TopoMeta topoMeta;
@@ -123,7 +133,6 @@ TEST_F(ST_ALL_GATHER_3LEVEL_TEST, st_allgather_3level_2x1x4_int8_different_scale
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
     RunAllGather3LevelA5(topoMeta, sendCount, dataType);
 }
-
 
 TEST_F(ST_ALL_GATHER_3LEVEL_TEST, st_allgather_3level_4x1x1_fp32_multi_loop)
 {

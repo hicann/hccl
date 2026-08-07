@@ -14,10 +14,7 @@ namespace ops_hccl {
 
 static u64 g_debugConfig = 0ULL;
 
-u64 GetDebugConfig()
-{
-    return g_debugConfig;
-}
+u64 GetDebugConfig() { return g_debugConfig; }
 
 HcclResult InitDebugConfigByEnv()
 {
@@ -31,7 +28,7 @@ HcclResult InitDebugConfigByEnv()
     bool invert = (env[0] == '^');
     g_debugConfig = invert ? ~0ULL : 0ULL; // 第一个字符是'^', 使用取反模式, 用户配置的项关闭, 未配置的项打开
     char* configValue = (env[0] == '^') ? env + 1 : env; // 去掉'^'符号
-    char* configDup = strdup(configValue); // 需要使用strdup避免修改字符串常量
+    char* configDup = strdup(configValue);               // 需要使用strdup避免修改字符串常量
     CHK_PTR_NULL(configDup);
 
     char* left = nullptr;
@@ -59,4 +56,4 @@ HcclResult InitDebugConfigByEnv()
     return HCCL_SUCCESS;
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

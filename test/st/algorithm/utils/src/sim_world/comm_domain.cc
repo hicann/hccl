@@ -13,15 +13,13 @@
 #include "exception_util.h"
 
 namespace HcclSim {
-uint32_t CommDomain::GetCommRankCount()
-{
-    return rankId2Pos_.size();
-}
+uint32_t CommDomain::GetCommRankCount() { return rankId2Pos_.size(); }
 
 NpuPos CommDomain::GetNpuPosByRankId(RankId rankId)
 {
     if (rankId2Pos_.count(rankId) == 0) {
-        THROW<InvalidParamsException>("[CommDomain::GetNpuPosByRankId] rankId[%u] is not in current comm domain", rankId);
+        THROW<InvalidParamsException>(
+            "[CommDomain::GetNpuPosByRankId] rankId[%u] is not in current comm domain", rankId);
     }
     return rankId2Pos_[rankId];
 }
@@ -34,7 +32,7 @@ void CommDomain::Init(const TopoMeta& topoMeta)
     for (const auto& superPod : topoMeta) {
         SerId serId = 0;
         for (const auto& server : superPod) {
-            for (const auto &phyId : server) {
+            for (const auto& phyId : server) {
                 HCCL_INFO("[CommDomain::Init] rankId[%u] -> npuPos[%u, %u, %u]", rankId, podId, serId, phyId);
                 rankId2Pos_[rankId] = NpuPos{podId, serId, phyId};
                 rankId++;
@@ -45,8 +43,5 @@ void CommDomain::Init(const TopoMeta& topoMeta)
     }
 }
 
-void CommDomain::Clear()
-{
-    rankId2Pos_.clear();
-}
-}
+void CommDomain::Clear() { rankId2Pos_.clear(); }
+} // namespace HcclSim

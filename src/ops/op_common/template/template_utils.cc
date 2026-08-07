@@ -16,11 +16,11 @@ constexpr u32 DIE_NUM_1 = 1;
 constexpr u32 DIE_NUM_2 = 2;
 namespace ops_hccl {
 
-HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32> &rankIds, u32 &algRank)
+HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& algRank)
 {
     std::vector<u32>::const_iterator topoVecIter = std::find(rankIds.begin(), rankIds.end(), virtRank);
-    CHK_PRT_RET(topoVecIter == rankIds.end(), HCCL_ERROR("[GetAlgRank] Invalid virtual Rank!"),
-                HcclResult::HCCL_E_PARA);
+    CHK_PRT_RET(
+        topoVecIter == rankIds.end(), HCCL_ERROR("[GetAlgRank] Invalid virtual Rank!"), HcclResult::HCCL_E_PARA);
     algRank = distance(rankIds.begin(), topoVecIter);
 
     return HcclResult::HCCL_SUCCESS;
@@ -36,13 +36,9 @@ u32 GetNHRStepNum(u32 rankSize)
     return nSteps;
 }
 
-HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
-                                          const u64 dataTypeSize,
-                                          const std::vector<ChannelInfo> &channels,
-                                          std::vector<u64> &elemCountOut,
-                                          std::vector<u64> &sizeOut,
-                                          std::vector<u64> &elemOffset,
-                                          const u32 channelsPerRank)
+HcclResult CalcDataSplitByPortGroupCommon(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset, const u32 channelsPerRank)
 {
     elemCountOut.clear();
     sizeOut.clear();
@@ -50,13 +46,15 @@ HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
 
     std::vector<u32> portGroups;
     u32 totalPorts = 0;
-    u32 taskCount =  (static_cast<int>(channels.size()) > channelsPerRank) ? channelsPerRank : static_cast<int>(channels.size());
+    u32 taskCount
+        = (static_cast<int>(channels.size()) > channelsPerRank) ? channelsPerRank : static_cast<int>(channels.size());
     for (u32 i = 0; i < taskCount; i++) {
-        const auto &ch = channels[i];
+        const auto& ch = channels[i];
         portGroups.push_back(ch.portGroupSize);
         totalPorts += ch.portGroupSize;
-        HCCL_INFO("[CalcDataSplitByPortGroup] ch.portGroupSize[%u], totalPorts[%u], channelsPerRank[%u]",
-                    ch.portGroupSize, totalPorts, channelsPerRank);
+        HCCL_INFO(
+            "[CalcDataSplitByPortGroup] ch.portGroupSize[%u], totalPorts[%u], channelsPerRank[%u]", ch.portGroupSize,
+            totalPorts, channelsPerRank);
     }
 
     u32 channelsize = portGroups.size();
@@ -68,9 +66,9 @@ HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
         if (channelIdx == channelsize - 1) {
             elemCount = totalDataCount - accumCount;
         } else {
-            CHK_PRT_RET(totalPorts == 0,
-                        HCCL_ERROR("[CalcDataSplitByPortGroup] totalPorts [%u] is 0.", totalPorts),
-                        HcclResult::HCCL_E_INTERNAL);
+            CHK_PRT_RET(
+                totalPorts == 0, HCCL_ERROR("[CalcDataSplitByPortGroup] totalPorts [%u] is 0.", totalPorts),
+                HcclResult::HCCL_E_INTERNAL);
             elemCount = static_cast<u64>((totalDataCount * portGroups[channelIdx]) / totalPorts);
         }
         elemOffset.push_back(offset);
@@ -84,21 +82,17 @@ HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CalcDataSplitByPortGroupZAxisDetour(const u64 totalDataCount,
-                                                const u64 dataTypeSize,
-                                                const std::vector<ChannelInfo> &channels,
-                                                std::vector<u64> &elemCountOut,
-                                                std::vector<u64> &sizeOut,
-                                                std::vector<u64> &elemOffset,
-                                                const u32 level0ChannelNumPerRank,
-                                                const u32 level1ChannelNumPerRank,
-                                                const float level0DataRatio)
+HcclResult CalcDataSplitByPortGroupZAxisDetour(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset,
+    const u32 level0ChannelNumPerRank, const u32 level1ChannelNumPerRank, const float level0DataRatio)
 {
     elemCountOut.clear();
     sizeOut.clear();
     elemOffset.clear();
 
-    CHK_PRT_RET(level0DataRatio < 0.0f || level0DataRatio > 1.0f,
+    CHK_PRT_RET(
+        level0DataRatio < 0.0f || level0DataRatio > 1.0f,
         HCCL_ERROR("[CalcDataSplitByPortGroupZAxisDetour] level0DataRatio[%f] is invalid.", level0DataRatio),
         HcclResult::HCCL_E_PARA);
 
@@ -111,23 +105,21 @@ HcclResult CalcDataSplitByPortGroupZAxisDetour(const u64 totalDataCount,
     }
     u64 level1DataCount = totalDataCount - level0DataCount;
 
-    std::vector<ChannelInfo> level0Chs(channels.begin(),
-        channels.begin() + level0ChannelNumPerRank);
+    std::vector<ChannelInfo> level0Chs(channels.begin(), channels.begin() + level0ChannelNumPerRank);
     std::vector<u64> l0ElemCount, l0Size, l0Offset;
-    CHK_RET(CalcDataSplitByPortGroupCommon(level0DataCount, dataTypeSize,
-        level0Chs, l0ElemCount, l0Size, l0Offset, level0ChannelNumPerRank));
+    CHK_RET(CalcDataSplitByPortGroupCommon(
+        level0DataCount, dataTypeSize, level0Chs, l0ElemCount, l0Size, l0Offset, level0ChannelNumPerRank));
 
-    std::vector<ChannelInfo> level1Chs(channels.begin() + level0ChannelNumPerRank,
-        channels.end());
+    std::vector<ChannelInfo> level1Chs(channels.begin() + level0ChannelNumPerRank, channels.end());
     std::vector<u64> l1ElemCount, l1Size, l1Offset;
 
-    CHK_RET(CalcDataSplitByPortGroupCommon(level1DataCount, dataTypeSize,
-        level1Chs, l1ElemCount, l1Size, l1Offset, level1ChannelNumPerRank));
+    CHK_RET(CalcDataSplitByPortGroupCommon(
+        level1DataCount, dataTypeSize, level1Chs, l1ElemCount, l1Size, l1Offset, level1ChannelNumPerRank));
     u64 level0TotalSize = 0;
     for (auto sz : l0Size) {
         level0TotalSize += sz;
     }
-    for (auto &off : l1Offset) {
+    for (auto& off : l1Offset) {
         off += level0TotalSize;
     }
 
@@ -138,25 +130,31 @@ HcclResult CalcDataSplitByPortGroupZAxisDetour(const u64 totalDataCount,
     elemOffset = l0Offset;
     elemOffset.insert(elemOffset.end(), l1Offset.begin(), l1Offset.end());
 
-    HCCL_INFO("[CalcDataSplitByPortGroupZAxisDetour] totalDataCount[%llu], level0DataCount[%llu], "
-              "level1DataCount[%llu], level0ChannelNumPerRank[%u], level1ChannelNumPerRank[%u], "
-              "level0DataRatio[%f], elemCountOut.size[%zu]",
-              totalDataCount, level0DataCount, level1DataCount,
-              level0ChannelNumPerRank, level1ChannelNumPerRank,
-              level0DataRatio, elemCountOut.size());
+    HCCL_INFO(
+        "[CalcDataSplitByPortGroupZAxisDetour] totalDataCount[%llu], level0DataCount[%llu], "
+        "level1DataCount[%llu], level0ChannelNumPerRank[%u], level1ChannelNumPerRank[%u], "
+        "level0DataRatio[%f], elemCountOut.size[%zu]",
+        totalDataCount, level0DataCount, level1DataCount, level0ChannelNumPerRank, level1ChannelNumPerRank,
+        level0DataRatio, elemCountOut.size());
 
     return HcclResult::HCCL_SUCCESS;
 }
-bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType)
+bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType)
 {
-    CHK_PRT_RET(topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
-        HCCL_WARNING("[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%u] <= netLayer[%u]",
-        topoInfo->netLayerDetails.localNetInsSizeOfLayer.size(), netLayer), false);
+    CHK_PRT_RET(
+        topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
+        HCCL_WARNING(
+            "[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%u] <= netLayer[%u]",
+            topoInfo->netLayerDetails.localNetInsSizeOfLayer.size(), netLayer),
+        false);
     u32 localRankSize = topoInfo->netLayerDetails.localNetInsSizeOfLayer[netLayer];
 
-    CHK_PRT_RET(topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
-        HCCL_WARNING("[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%u] <= netLayer[%u]",
-        topoInfo->topoInstDetailsOfLayer.size(), netLayer), false);
+    CHK_PRT_RET(
+        topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
+        HCCL_WARNING(
+            "[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%u] <= netLayer[%u]",
+            topoInfo->topoInstDetailsOfLayer.size(), netLayer),
+        false);
 
     auto rankNumForTopoTypeItr = topoInfo->topoInstDetailsOfLayer[netLayer].rankNumForTopoType.find(topoType);
     if (rankNumForTopoTypeItr == topoInfo->topoInstDetailsOfLayer[netLayer].rankNumForTopoType.end()) {
@@ -171,15 +169,13 @@ bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u3
     return false;
 }
 
-bool GetPortGroupSize(
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    uint64_t &portGroupSize)
+bool GetPortGroupSize(const std::map<u32, std::vector<ChannelInfo>>& channels, uint64_t& portGroupSize)
 {
     portGroupSize = 0;
-    for (const auto &entry : channels) {
-        const auto &channelGroup = entry.second;
+    for (const auto& entry : channels) {
+        const auto& channelGroup = entry.second;
         if (!channelGroup.empty()) {
-            for (const auto &ch : channelGroup) {
+            for (const auto& ch : channelGroup) {
                 portGroupSize += ch.portGroupSize;
             }
             return true;
@@ -189,11 +185,11 @@ bool GetPortGroupSize(
 }
 
 // 首个非空inter Channel组恰好包含两条有效跨Die链路时，判定为POD机型。
-static bool IsPodInterChannelGroup(const std::map<u32, std::vector<ChannelInfo>> &channels)
+static bool IsPodInterChannelGroup(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     constexpr size_t podChannelNum = 2;
-    for (const auto &entry : channels) {
-        const auto &channelGroup = entry.second;
+    for (const auto& entry : channels) {
+        const auto& channelGroup = entry.second;
         if (channelGroup.empty()) {
             continue;
         }
@@ -202,8 +198,7 @@ static bool IsPodInterChannelGroup(const std::map<u32, std::vector<ChannelInfo>>
         }
         const u32 firstDieId = channelGroup[0].dieId;
         const u32 secondDieId = channelGroup[1].dieId;
-        return firstDieId != INVALID_VALUE_RANKID && secondDieId != INVALID_VALUE_RANKID &&
-            firstDieId != secondDieId;
+        return firstDieId != INVALID_VALUE_RANKID && secondDieId != INVALID_VALUE_RANKID && firstDieId != secondDieId;
     }
     return false;
 }
@@ -230,11 +225,9 @@ static double NormalizeParallelFallbackRatio(double fallbackRatio)
 }
 
 // 校验公式计算必须具备的Rank和Channel Map信息，返回nullptr表示校验成功。
-static const char *ValidateParallelSplitInput(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const std::map<u32, std::vector<ChannelInfo>> &intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>> &interChannels)
+static const char* ValidateParallelSplitInput(
+    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels)
 {
     if (intraRankSize == 0) {
         return "intraRankSize is 0";
@@ -254,12 +247,9 @@ static const char *ValidateParallelSplitInput(
 // 提取并校验端口规模，同时完成机内Rank扩展和POD 2:1收敛修正。
 // 返回false时failureReason指向静态错误描述，portInfo保留已计算出的诊断信息。
 static bool PrepareParallelPortInfo(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const std::map<u32, std::vector<ChannelInfo>> &intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>> &interChannels,
-    ParallelPortInfo &portInfo,
-    const char *&failureReason)
+    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelPortInfo& portInfo,
+    const char*& failureReason)
 {
     failureReason = ValidateParallelSplitInput(intraRankSize, interRankSize, intraChannels, interChannels);
     if (failureReason != nullptr) {
@@ -288,13 +278,14 @@ static bool PrepareParallelPortInfo(
 
     portInfo.intraPortGroupSize *= intraRankSize - 1;
     portInfo.isPod = IsPodInterChannelGroup(interChannels);
-    portInfo.effectiveInterPortGroupSize =
-        static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? 2.0 : 1.0);
+    portInfo.effectiveInterPortGroupSize
+        = static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? 2.0 : 1.0);
     if (portInfo.intraPortGroupSize == 0) {
         failureReason = "scaled intraPortGroupSize is 0";
         return false;
     }
-    if (IsDoubleEqual(portInfo.effectiveInterPortGroupSize, 0.0) || !std::isfinite(portInfo.effectiveInterPortGroupSize)) {
+    if (IsDoubleEqual(portInfo.effectiveInterPortGroupSize, 0.0)
+        || !std::isfinite(portInfo.effectiveInterPortGroupSize)) {
         failureReason = "effectiveInterPortGroupSize is 0 or not finite";
         return false;
     }
@@ -304,24 +295,21 @@ static bool PrepareParallelPortInfo(
 // 根据算子通信模型计算Mesh和Clos两侧的单位数据时间系数。
 // splitType不受支持时返回false，由调用方统一执行回退和日志记录。
 static bool CalcParallelTimeCoeff(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const ParallelPortInfo &portInfo,
-    ParallelDataSplitType splitType,
-    ParallelTimeCoeff &timeCoeff)
+    uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo, ParallelDataSplitType splitType,
+    ParallelTimeCoeff& timeCoeff)
 {
     switch (splitType) {
         case ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE:
-            timeCoeff.mesh = 21.0 * static_cast<double>(intraRankSize - 1) /
-                (20.0 * static_cast<double>(intraRankSize) * portInfo.intraPortGroupSize);
-            timeCoeff.clos = static_cast<double>(interRankSize - 1) /
-                (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
+            timeCoeff.mesh = 21.0 * static_cast<double>(intraRankSize - 1)
+                             / (20.0 * static_cast<double>(intraRankSize) * portInfo.intraPortGroupSize);
+            timeCoeff.clos = static_cast<double>(interRankSize - 1)
+                             / (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
             return true;
         case ParallelDataSplitType::SCATTER:
-            timeCoeff.mesh = static_cast<double>(intraRankSize - 1) /
-                (static_cast<double>(intraRankSize) * portInfo.intraPortGroupSize);
-            timeCoeff.clos = static_cast<double>(interRankSize - 1) /
-                (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
+            timeCoeff.mesh = static_cast<double>(intraRankSize - 1)
+                             / (static_cast<double>(intraRankSize) * portInfo.intraPortGroupSize);
+            timeCoeff.clos = static_cast<double>(interRankSize - 1)
+                             / (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
             return true;
         case ParallelDataSplitType::ALL_GATHER:
             timeCoeff.mesh = static_cast<double>(intraRankSize - 1) / portInfo.intraPortGroupSize;
@@ -333,10 +321,7 @@ static bool CalcParallelTimeCoeff(
 }
 
 // 根据两侧时间系数计算未量化比例，并校验分母及结果的有效性。
-static bool CalcRawParallelDataSplitRatio(
-    const ParallelTimeCoeff &timeCoeff,
-    double &ratio,
-    const char *&failureReason)
+static bool CalcRawParallelDataSplitRatio(const ParallelTimeCoeff& timeCoeff, double& ratio, const char*& failureReason)
 {
     const double denominator = timeCoeff.clos + timeCoeff.mesh;
     if (IsDoubleEqual(denominator, 0.0) || !std::isfinite(denominator)) {
@@ -388,55 +373,42 @@ const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType)
 
 // 统一记录公式回退原因及已提取的拓扑参数，返回规范化后的回退比例。
 static double ReturnParallelDataSplitFallback(
-    const char *failureReason,
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const ParallelPortInfo &portInfo,
-    ParallelDataSplitType splitType,
-    double fallbackRatio)
+    const char* failureReason, uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo,
+    ParallelDataSplitType splitType, double fallbackRatio)
 {
-    HCCL_WARNING("[CalcParallelDataSplitRatio] fallback due to: %s, "
-                 "intraRankSize[%llu], interRankSize[%llu], "
-                 "intraPortGroupSize[%llu], interPortGroupSize[%llu], "
-                 "splitType[%s], fallbackRatio[%f]",
-                 failureReason, intraRankSize, interRankSize,
-                 portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
-                 ParallelDataSplitTypeToStr(splitType), fallbackRatio);
+    HCCL_WARNING(
+        "[CalcParallelDataSplitRatio] fallback due to: %s, "
+        "intraRankSize[%llu], interRankSize[%llu], "
+        "intraPortGroupSize[%llu], interPortGroupSize[%llu], "
+        "splitType[%s], fallbackRatio[%f]",
+        failureReason, intraRankSize, interRankSize, portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
+        ParallelDataSplitTypeToStr(splitType), fallbackRatio);
     return fallbackRatio;
 }
 
 // 统一记录公式原始结果、POD修正信息及最终量化结果。
 static void LogParallelDataSplitRatio(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const ParallelPortInfo &portInfo,
-    ParallelDataSplitType splitType,
-    double rawRatio,
-    double limitedRatio,
-    double quantizedRatio)
+    uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo, ParallelDataSplitType splitType,
+    double rawRatio, double limitedRatio, double quantizedRatio)
 {
-    HCCL_INFO("[CalcParallelDataSplitRatio] intraRankSize[%llu], interRankSize[%llu], "
-              "intraPortGroupSize[%llu], interPortGroupSize[%llu], effectiveInterPortGroupSize[%f], isPod[%d], "
-              "splitType[%s], rawRatio[%f], limitedRatio[%f], quantizedRatio[%f]",
-              intraRankSize, interRankSize, portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
-              portInfo.effectiveInterPortGroupSize, portInfo.isPod,
-              ParallelDataSplitTypeToStr(splitType), rawRatio, limitedRatio, quantizedRatio);
+    HCCL_INFO(
+        "[CalcParallelDataSplitRatio] intraRankSize[%llu], interRankSize[%llu], "
+        "intraPortGroupSize[%llu], interPortGroupSize[%llu], effectiveInterPortGroupSize[%f], isPod[%d], "
+        "splitType[%s], rawRatio[%f], limitedRatio[%f], quantizedRatio[%f]",
+        intraRankSize, interRankSize, portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
+        portInfo.effectiveInterPortGroupSize, portInfo.isPod, ParallelDataSplitTypeToStr(splitType), rawRatio,
+        limitedRatio, quantizedRatio);
 }
 
 double CalcParallelDataSplitRatio(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const std::map<u32, std::vector<ChannelInfo>> &intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>> &interChannels,
-    ParallelDataSplitType splitType,
-    double fallbackRatio)
+    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType, double fallbackRatio)
 {
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
     ParallelPortInfo portInfo;
-    const char *failureReason = nullptr;
-    if (!PrepareParallelPortInfo(
-        intraRankSize, interRankSize, intraChannels, interChannels, portInfo, failureReason)) {
+    const char* failureReason = nullptr;
+    if (!PrepareParallelPortInfo(intraRankSize, interRankSize, intraChannels, interChannels, portInfo, failureReason)) {
         return ReturnParallelDataSplitFallback(
             failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
     }
@@ -458,4 +430,4 @@ double CalcParallelDataSplitRatio(
     LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, limitedRatio, quantizedRatio);
     return quantizedRatio;
 }
-}
+} // namespace ops_hccl

@@ -22,8 +22,9 @@ constexpr uint32_t BR_CTRL_CORE_LIMIT_RANK_SIZE = 16;
 class AivTempBroadcastMesh1D : public AivAlgTemplateBase {
 public:
     AivTempBroadcastMesh1D() = default;
-    explicit AivTempBroadcastMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit AivTempBroadcastMesh1D(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~AivTempBroadcastMesh1D() override;
 
     std::string Describe() const override
@@ -32,13 +33,14 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         const TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource) override;
     HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
 };
-}  // namespace Hccl
+} // namespace ops_hccl
 
-#endif  // AIV_TEMP_BROADCAST_MESH_1D
+#endif // AIV_TEMP_BROADCAST_MESH_1D

@@ -42,10 +42,7 @@ Checker::~Checker()
     }
 }
 
-void Checker::CloseRankMemCheck()
-{
-    closeRankMemCheck_ = true;
-}
+void Checker::CloseRankMemCheck() { closeRankMemCheck_ = true; }
 
 HcclResult Checker::GenAndCheckGraph(AllRankTaskQueues& allRankTaskQueues, TaskCheckOpSemantics& opSemanticsChcker)
 {
@@ -121,7 +118,7 @@ void Checker::CopyTaskGraph(TaskNodePtr originNode, TaskNodePtr copyNode)
         toDeleteCopyTaskNodeResource_.push_back(newNodePtr);
         originNode2copyNode[curNode] = newNodePtr;
 
-        for (auto &child : curNode->children) {
+        for (auto& child : curNode->children) {
             if (isVisited.find(child) == isVisited.end()) {
                 isVisited.insert(child);
                 candTaskNodePtr.push_back(child);
@@ -138,10 +135,10 @@ void Checker::CopyTaskGraph(TaskNodePtr originNode, TaskNodePtr copyNode)
     while (!candTaskNodePtr.empty()) {
         TaskNodePtr curNode = candTaskNodePtr[0];
         candTaskNodePtr.erase(candTaskNodePtr.begin());
-        for (auto &parent : curNode->parents) {
+        for (auto& parent : curNode->parents) {
             originNode2copyNode[curNode]->parents.push_back(originNode2copyNode[parent]);
         }
-        for (auto &child : curNode->children) {
+        for (auto& child : curNode->children) {
             originNode2copyNode[curNode]->children.push_back(originNode2copyNode[child]);
             if (isVisited.count(child) == 0) {
                 isVisited.insert(child);
@@ -151,7 +148,7 @@ void Checker::CopyTaskGraph(TaskNodePtr originNode, TaskNodePtr copyNode)
     }
 }
 
-void Checker::PrintTask(const AllRankTaskQueues &allRankTaskQueues)
+void Checker::PrintTask(const AllRankTaskQueues& allRankTaskQueues)
 {
     u32 rankIdx = 0;
     for (auto& podIter : allRankTaskQueues) {
@@ -177,4 +174,4 @@ void Checker::PrintTask(const AllRankTaskQueues &allRankTaskQueues)
         }
     }
 }
-}
+} // namespace HcclSim

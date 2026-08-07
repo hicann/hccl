@@ -11,12 +11,10 @@
 #include "scatter_executor_base.h"
 
 namespace ops_hccl {
-ScatterExecutorBase::ScatterExecutorBase() : ExecutorBase()
-{
-}
+ScatterExecutorBase::ScatterExecutorBase() : ExecutorBase() {}
 
 // 执行入口
-HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx* resCtx)
+HcclResult ScatterExecutorBase::Orchestrate(const OpParam& param, AlgResourceCtx* resCtx)
 {
     HcclUs startut = TIME_NOW();
     topoInfo_ = &(resCtx->topoInfo);
@@ -32,9 +30,10 @@ HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx
     CHK_PTR_NULL(param.outputPtr);
 
     // 做参数的还原
-    ThreadHandle* threadHandlePtr = reinterpret_cast<ThreadHandle *>(reinterpret_cast<u8 *>(algResource_) + sizeof(AlgResourceCtx));
+    ThreadHandle* threadHandlePtr
+        = reinterpret_cast<ThreadHandle*>(reinterpret_cast<u8*>(algResource_) + sizeof(AlgResourceCtx));
 
-    ChannelInfo* channelInfoPtr = reinterpret_cast<ChannelInfo *>(threadHandlePtr + algResource_->slaveThreadNum + 1);
+    ChannelInfo* channelInfoPtr = reinterpret_cast<ChannelInfo*>(threadHandlePtr + algResource_->slaveThreadNum + 1);
     HCCL_DEBUG("[ScatterExecutorBase][Orchestrate] slaveThreadNum[%u]", algResource_->slaveThreadNum);
     for (u32 i = 0; i < algResource_->slaveThreadNum + 1; i++) {
         HCCL_DEBUG("[ScatterExecutorBase][Orchestrate] threadHandle[%u]=[%llu]", i, threadHandlePtr[i]);
@@ -56,45 +55,51 @@ HcclResult ScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx
     }
 
     HcclResult ret = RunLoop(param);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ScatterExecutorBase][Orchestrate]errNo[0x%016llx]Scatter executor kernel run failed",
-            HCCL_ERROR_CODE(ret)), ret);
-    HCCL_INFO("[ScatterExecutorBase][Orchestrate]tag[%s] Scatter executor orchestrate success, take time [%lld]us.",
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[ScatterExecutorBase][Orchestrate]errNo[0x%016llx]Scatter executor kernel run failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
+    HCCL_INFO(
+        "[ScatterExecutorBase][Orchestrate]tag[%s] Scatter executor orchestrate success, take time [%lld]us.",
         param.tag, DURATION_US(TIME_NOW() - startut));
     return HCCL_SUCCESS;
 }
 
 bool ScatterExecutorBase::IsHugeData(u64 curSize) const
 {
-    bool hugeData = curSize * topoInfo_->userRankSize / HCCL_INTERNODE_MAX_DATA_RATE > RDMA_SEND_MAX_SIZE ||
-        curSize > SDMA_SEND_MAX_SIZE;
+    bool hugeData = curSize * topoInfo_->userRankSize / HCCL_INTERNODE_MAX_DATA_RATE > RDMA_SEND_MAX_SIZE
+                    || curSize > SDMA_SEND_MAX_SIZE;
     return hugeData;
 }
 
-HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
+HcclResult ScatterExecutorBase::RunLoop(const OpParam& param)
 {
     u32 root = param.root;
     u64 totalRecvCount = param.DataDes.count;
     u64 totalRecvSize = totalRecvCount * unitSize_;
 
-    u8 *curUserInputPtr = static_cast<u8 *>(param.inputPtr);
-    u8 *curUserOutputPtr = static_cast<u8 *>(param.outputPtr);
+    u8* curUserInputPtr = static_cast<u8*>(param.inputPtr);
+    u8* curUserOutputPtr = static_cast<u8*>(param.outputPtr);
     auto cclInputMem = algResource_->cclInputMem;
     auto cclOutputMem = algResource_->cclOutputMem;
-    CHK_PRT_RET((cclInputMem.size == 0), HCCL_ERROR("[ScatterExecutorBase][RunLoop]cclBuffer size is zero"), HCCL_E_PARA);
+    CHK_PRT_RET(
+        (cclInputMem.size == 0), HCCL_ERROR("[ScatterExecutorBase][RunLoop]cclBuffer size is zero"), HCCL_E_PARA);
 
-    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
-        param.engine == CommEngine::COMM_ENGINE_CPU) {
+    if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
         int32_t ret = HcommAcquireComm(param.commName);
-        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ",
-            __func__, param.commName), static_cast<HcclResult>(ret));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ", __func__, param.commName),
+            static_cast<HcclResult>(ret));
     }
-    
+
     // 中转内存单次最多能够接受的output count
-    u64 maxCountPerLoop = cclInputMem.size / topoInfo_->userRankSize / HCCL_MIN_SLICE_ALIGN
-        * HCCL_MIN_SLICE_ALIGN / unitSize_;
-    HCCL_DEBUG("[ScatterExecutorBase][RunLoop]tag[%s], userRankSize is [%u], root is [%u], "
-               "maxCountPerLoop is [%llu], totalRecvCount is [%llu]",
+    u64 maxCountPerLoop
+        = cclInputMem.size / topoInfo_->userRankSize / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / unitSize_;
+    HCCL_DEBUG(
+        "[ScatterExecutorBase][RunLoop]tag[%s], userRankSize is [%u], root is [%u], "
+        "maxCountPerLoop is [%llu], totalRecvCount is [%llu]",
         tag_.c_str(), topoInfo_->userRankSize, root, maxCountPerLoop, totalRecvCount);
 
     for (u64 countLeft = totalRecvCount, curRecvCount = 0; countLeft > 0; countLeft -= curRecvCount) {
@@ -118,9 +123,11 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
         execMem.inputPtr = curUserInputPtr;
         execMem.outputPtr = curUserOutputPtr;
 
-        HCCL_DEBUG("[ScatterExecutorBase][RunLoop] curUserInputPtr[%p], curUserOutputPtr[%p], "
-            "curRecvCount[%llu], curRecvSize[%llu], curSendSize[%llu], inputPtr[%p], outputPtr[%p]", curUserInputPtr,
-            curUserOutputPtr, curRecvCount, curRecvSize, curSendSize, curInputMem.addr, curOutputMem.addr);
+        HCCL_DEBUG(
+            "[ScatterExecutorBase][RunLoop] curUserInputPtr[%p], curUserOutputPtr[%p], "
+            "curRecvCount[%llu], curRecvSize[%llu], curSendSize[%llu], inputPtr[%p], outputPtr[%p]",
+            curUserInputPtr, curUserOutputPtr, curRecvCount, curRecvSize, curSendSize, curInputMem.addr,
+            curOutputMem.addr);
 
         // root节点需要将数据从userIn拷贝到cclIn上
         if (topoInfo_->userRank == root) {
@@ -153,23 +160,24 @@ HcclResult ScatterExecutorBase::RunLoop(const OpParam &param)
         }
 #endif
     }
-    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
-        param.engine == CommEngine::COMM_ENGINE_CPU) {
+    if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
         int32_t ret = HcommReleaseComm(param.commName);
-        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommReleaseComm failed ", 
-                    __func__, param.commName), static_cast<HcclResult>(ret));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommReleaseComm failed ", __func__, param.commName),
+            static_cast<HcclResult>(ret));
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterExecutorBase::CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-    AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType)
+HcclResult ScatterExecutorBase::CalcResRequest(
+    HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgResourceRequest& resourceRequest, AlgType& algType)
 {
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum,
-    std::vector<Slice> &dataSlice)
+HcclResult
+ScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum, std::vector<Slice>& dataSlice)
 {
     CHK_PRT_RET((sliceNum == 0), HCCL_ERROR("[ScatterExecutorBase][PrepareDataSlice]sliceNum is zero."), HCCL_E_PARA);
 
@@ -182,20 +190,25 @@ HcclResult ScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSize, u3
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterExecutorBase::KernelRunLevel1(HcclMem &inputMem, u64 count, HcclDataType dataType,
-    u32 &commIndex, u32 root, u32 &subRoot, CommPlane commLevel, ThreadHandle thread)
+HcclResult ScatterExecutorBase::KernelRunLevel1(
+    HcclMem& inputMem, u64 count, HcclDataType dataType, u32& commIndex, u32 root, u32& subRoot, CommPlane commLevel,
+    ThreadHandle thread)
 {
     SubCommInfo subCommInfo;
     CHK_RET(GetSubCommInfo(commLevel, subCommInfo));
 
     u32 subCommSize = subCommInfo.localRankSize;
     if (subCommSize <= 1 || subRoot != topoInfo_->userRank) {
-        HCCL_INFO("[Scatter][KernelRunLevel1]: no need to run intra-server, subCommSize[%u], subRoot[%u]," \
-            "userRank[%u]", subCommSize, subRoot, topoInfo_->userRank);
+        HCCL_INFO(
+            "[Scatter][KernelRunLevel1]: no need to run intra-server, subCommSize[%u], subRoot[%u],"
+            "userRank[%u]",
+            subCommSize, subRoot, topoInfo_->userRank);
         return HCCL_SUCCESS;
     }
-    HCCL_INFO("[Scatter][KernelRunLevel1]: start to run intra-server, subCommSize[%u], subRoot[%u]," \
-        "userRank[%u]", subCommSize, subRoot, topoInfo_->userRank);
+    HCCL_INFO(
+        "[Scatter][KernelRunLevel1]: start to run intra-server, subCommSize[%u], subRoot[%u],"
+        "userRank[%u]",
+        subCommSize, subRoot, topoInfo_->userRank);
 
     u32 rootRankLevel1 = 0;
     CHK_RET(GetSubCommRankByUserRank(root, commLevel, algResource_->algHierarchyInfo, rootRankLevel1));
@@ -217,14 +230,15 @@ HcclResult ScatterExecutorBase::KernelRunLevel1(HcclMem &inputMem, u64 count, Hc
     }
 
     CHK_SMART_PTR_NULL(level1TempAlg);
-    CHK_RET(level1TempAlg->Prepare(inputMem, inputMem, inputMem, count * topoInfo_->userRankSize,
-        dataType, thread_, HCCL_REDUCE_RESERVED, rootRankLevel1, std::vector<Slice>(0))); // count是output的数据个数
+    CHK_RET(level1TempAlg->Prepare(
+        inputMem, inputMem, inputMem, count * topoInfo_->userRankSize, dataType, thread_, HCCL_REDUCE_RESERVED,
+        rootRankLevel1, std::vector<Slice>(0))); // count是output的数据个数
     CHK_RET(level1TempAlg->RunAsync(subCommInfo.localRank, subCommInfo.localRankSize, channels_[commLevel]));
     return HCCL_SUCCESS;
 }
 
 // 计算userRank所在平面的subRoot rank编号
-void GetSubRootRank(u32 root, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &subRootRank)
+void GetSubRootRank(u32 root, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32& subRootRank)
 {
     u32 preLevelsRankSize = 1;
     subRootRank = 0;
@@ -241,4 +255,4 @@ void GetSubRootRank(u32 root, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, 
     return;
 }
 
-}
+} // namespace ops_hccl

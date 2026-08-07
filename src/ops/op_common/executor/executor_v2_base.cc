@@ -13,13 +13,9 @@
 
 namespace ops_hccl {
 
-InsCollAlgBase::InsCollAlgBase()
-{
-}
+InsCollAlgBase::InsCollAlgBase() {}
 
-InsCollAlgBase::~InsCollAlgBase()
-{
-}
+InsCollAlgBase::~InsCollAlgBase() {}
 
 std::string InsCollAlgBase::Describe() const
 {
@@ -27,14 +23,15 @@ std::string InsCollAlgBase::Describe() const
     return s;
 }
 
-HcclResult InsCollAlgBase::RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-    std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const
+HcclResult InsCollAlgBase::RestoreChannelMap(
+    const AlgResourceCtxSerializable& resCtx,
+    std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo) const
 {
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo = resCtx.algHierarchyInfo;
     rankIdToChannelInfo.resize(algHierarchyInfo.infos.size());
     HCCL_INFO("algHierarchyInfo.infos.size [%zu]", algHierarchyInfo.infos.size());
     for (u32 level = 0; level < algHierarchyInfo.infos.size(); level++) {
-        for (auto &channel: resCtx.channels[level]) {
+        for (auto& channel : resCtx.channels[level]) {
             u32 remoteRank = channel.remoteRank;
             HCCL_INFO("remoteRank [%u]", remoteRank);
             rankIdToChannelInfo[level][remoteRank].push_back(channel);
@@ -43,9 +40,9 @@ HcclResult InsCollAlgBase::RestoreChannelMap(const AlgResourceCtxSerializable &r
     }
     return HCCL_SUCCESS;
 }
-    
-HcclResult InsCollAlgBase::SetTempFastLaunchAddr(TemplateFastLaunchCtx &tempFastLaunchCtx, 
-    void* inputPtr, void* outputPtr, const HcclMem &hcclBuff) const
+
+HcclResult InsCollAlgBase::SetTempFastLaunchAddr(
+    TemplateFastLaunchCtx& tempFastLaunchCtx, void* inputPtr, void* outputPtr, const HcclMem& hcclBuff) const
 {
     tempFastLaunchCtx.buffInfo.inputPtr = inputPtr;
     tempFastLaunchCtx.buffInfo.outputPtr = outputPtr;
@@ -53,7 +50,7 @@ HcclResult InsCollAlgBase::SetTempFastLaunchAddr(TemplateFastLaunchCtx &tempFast
     return HCCL_SUCCESS;
 }
 
-HcclResult InsCollAlgBase::FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx)
+HcclResult InsCollAlgBase::FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx)
 {
     (void)param;
     (void)resCtx;
@@ -62,7 +59,7 @@ HcclResult InsCollAlgBase::FastLaunch(const OpParam &param, const CcuFastLaunchC
 }
 
 HcclResult InsCollAlgBase::OrchestrateWithThread(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread)
 {
     (void)param;
     (void)resCtx;
@@ -72,20 +69,21 @@ HcclResult InsCollAlgBase::OrchestrateWithThread(
 }
 
 #ifndef AICPU_COMPILE
-HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(const OpParam &param, const u32 threadNum,
-    const u32 ccuKernelNum, const std::vector<ThreadHandle> &threads, const std::vector<u32> &ccuKernelNumList,
-    const std::vector<std::vector<CcuKernelSubmitInfo>> &submitInfosList, u32 notifyNumOnMainThread) const
+HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(
+    const OpParam& param, const u32 threadNum, const u32 ccuKernelNum, const std::vector<ThreadHandle>& threads,
+    const std::vector<u32>& ccuKernelNumList, const std::vector<std::vector<CcuKernelSubmitInfo>>& submitInfosList,
+    u32 notifyNumOnMainThread) const
 {
     if (param.opMode == OpMode::OFFLOAD) {
         return HCCL_SUCCESS;
     }
     u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
     // 申请ctx
-    void *ctxPtr = nullptr;
+    void* ctxPtr = nullptr;
     HCCL_INFO("[InsCollAlgBase][FastLaunchSaveCtxTwoTemplate] Tag[%s], size[%llu]", param.fastLaunchTag, size);
     CHK_RET(HcclEngineCtxCreate(param.hcclComm, param.fastLaunchTag, CommEngine::COMM_ENGINE_CCU, size, &ctxPtr));
 
-    CcuFastLaunchCtx *ccuFastLaunchCtx = reinterpret_cast<CcuFastLaunchCtx*>(ctxPtr);
+    CcuFastLaunchCtx* ccuFastLaunchCtx = reinterpret_cast<CcuFastLaunchCtx*>(ctxPtr);
     // 1 算法名
     CHK_SAFETY_FUNC_RET(strcpy_s(ccuFastLaunchCtx->algName, sizeof(ccuFastLaunchCtx->algName), param.algName));
     HCCL_INFO("[InsCollAlgBase][FastLaunchSaveCtxTwoTemplate] algName[%s]", ccuFastLaunchCtx->algName);
@@ -93,7 +91,7 @@ HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(const OpParam &param, co
     // 2 thread
     ccuFastLaunchCtx->threadNum = threadNum;
     ccuFastLaunchCtx->notifyNumOnMainThread = notifyNumOnMainThread;
-    ThreadHandle *threadHandles = ccuFastLaunchCtx->GetThreadHandlePtr();
+    ThreadHandle* threadHandles = ccuFastLaunchCtx->GetThreadHandlePtr();
     for (u32 i = 0; i < threadNum; i++) {
         threadHandles[i] = threads[i];
     }
@@ -108,7 +106,7 @@ HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(const OpParam &param, co
     constexpr u32 INTRA = 0, INTER = 1;
     constexpr u32 kernelParallelNum = 4;
     u32 kernelIdx = 0;
-    CcuKernelSubmitInfo *kernelSubmitInfos = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
+    CcuKernelSubmitInfo* kernelSubmitInfos = ccuFastLaunchCtx->GetCcuKernelSubmitInfoPtr();
     // 2个template实例，submitInfosList只有2份
     for (u32 i = 0; i < ccuKernelNumList[INTRA_0]; i++) {
         kernelSubmitInfos[kernelIdx++] = submitInfosList[INTRA][i];
@@ -129,4 +127,4 @@ HcclResult InsCollAlgBase::FastLaunchSaveCtxTwoTemplate(const OpParam &param, co
 }
 #endif
 
-}
+} // namespace ops_hccl

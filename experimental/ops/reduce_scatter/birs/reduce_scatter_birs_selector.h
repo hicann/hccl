@@ -25,6 +25,6 @@ enum class BirsSelectResult {
 BirsSelectResult DecideReduceScatterBirsAlg(const ops_hccl::TopoInfo& topoInfo, std::string& algName);
 
 HcclResult BirsSelectResultToCode(BirsSelectResult result);
-}
+} // namespace ops_hccl_experimental
 
 #endif

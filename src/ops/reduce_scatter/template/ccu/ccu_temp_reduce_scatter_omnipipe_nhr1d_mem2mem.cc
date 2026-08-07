@@ -18,7 +18,7 @@
 namespace ops_hccl {
 
 CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CcuTempReduceScatterOmniPipeNHR1DMem2Mem(
-    const OpParam &param, const u32 myRank, const std::vector<std::vector<u32>> &subCommRanks)
+    const OpParam& param, const u32 myRank, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, myRank, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
@@ -33,37 +33,38 @@ CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CcuTempReduceScatterOmniPipeNHR1DMem2M
         "[%s] myRank[%u] mySubCommRank[%u] templateRankSize[%u]", __func__, myRank, mySubCommRank_, templateRankSize_);
 }
 
-CcuTempReduceScatterOmniPipeNHR1DMem2Mem::~CcuTempReduceScatterOmniPipeNHR1DMem2Mem()
-{
-}
+CcuTempReduceScatterOmniPipeNHR1DMem2Mem::~CcuTempReduceScatterOmniPipeNHR1DMem2Mem() {}
 
-HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
+HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     // 不需要从流
     GetRes(resourceRequest);
-    
+
     // 需要1个kernel
     resourceRequest.ccuKernelNum.push_back(1);
-    HCCL_DEBUG("[%s] notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__,
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+    HCCL_DEBUG(
+        "[%s] notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
+        resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
-    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeNHR1DMem2MemKernel"));
-    kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceScatterOmniPipeNHR1DMem2MemKernel);
+    CHK_SAFETY_FUNC_RET(strcpy_s(
+        kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeNHR1DMem2MemKernel"));
+    kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuReduceScatterOmniPipeNHR1DMem2MemKernel);
 
     std::vector<HcclChannelDesc> channelDescs;
-    CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, channelDescs)); 
+    CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, channelDescs));
     std::vector<HcclChannelDesc> myChannelDescs;
-    for(auto channel : channelDescs) {
-        if(channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+    for (auto channel : channelDescs) {
+        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
             myChannelDescs.push_back(channel);
         }
     }
     HCCL_DEBUG("[%s] Get Clos Channel Success!", __func__);
 
-    std::map<u32, u32> rank2ChannelIdx;   // rankId和channel匹配
+    std::map<u32, u32> rank2ChannelIdx; // rankId和channel匹配
     for (u32 i = 0; i < myChannelDescs.size(); ++i) {
         u32 remoteRank = myChannelDescs[i].remoteRank;
         u32 subRankIdx = RemoteRankId2RankId(remoteRank);
@@ -85,12 +86,13 @@ HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcRes(HcclComm comm, cons
     kernelInfo.channels = myChannelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
-    HCCL_DEBUG("[%s] myRank[%u] mySubCommRank[%u] channelSize[%u] dimsize[%u] ccuKernelInfos.size[%u]", __func__,
-        myRank_, mySubCommRank_, myChannelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());   
+    HCCL_DEBUG(
+        "[%s] myRank[%u] mySubCommRank[%u] channelSize[%u] dimsize[%u] ccuKernelInfos.size[%u]", __func__, myRank_,
+        mySubCommRank_, myChannelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcNHRInfo(std::vector<NHRStepInfoRS> &stepInfoVector) const
+HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcNHRInfo(std::vector<NHRStepInfoRS>& stepInfoVector) const
 {
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     for (u32 step = 0; step < nSteps; step++) {
@@ -110,7 +112,7 @@ u32 CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetNHRStepNum(u32 rankSize) const
     return nSteps;
 }
 
-HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetStepInfo(u32 step, NHRStepInfoRS &stepInfo) const
+HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetStepInfo(u32 step, NHRStepInfoRS& stepInfo) const
 {
     // 将本rank号转换成算法使用的索引号
     u32 rankIdx = mySubCommRank_;
@@ -138,8 +140,9 @@ HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetStepInfo(u32 step, NHRSt
     for (u32 i = 0; i < nSlices; i++) {
         stepInfo.txSliceIdxs.push_back(txSliceIdx); // 虚拟id
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
-        HCCL_DEBUG("[%s] step[%u] myRank[%u] mySubCommRank[%u] recvFrom[%u] sendTo[%u] slice-i[%u] txSliceIdx[%u] "
-                   "rxSliceIdx[%u]",
+        HCCL_DEBUG(
+            "[%s] step[%u] myRank[%u] mySubCommRank[%u] recvFrom[%u] sendTo[%u] slice-i[%u] txSliceIdx[%u] "
+            "rxSliceIdx[%u]",
             __func__, step, myRank_, mySubCommRank_, recvFrom, sendTo, i, txSliceIdx, rxSliceIdx);
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
@@ -158,9 +161,8 @@ uint32_t CcuTempReduceScatterOmniPipeNHR1DMem2Mem::RemoteRankId2RankId(const uin
     return subCommRankId;
 }
 
-HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun(const OpParam& param,
-                                                        const TemplateDataParams& templateDataParams,
-                                                        TemplateResource& templateResource)
+HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     uint64_t localCopyFlag = templateDataParams.localCopyFlag;
@@ -188,26 +190,33 @@ HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun(const OpParam& pa
             for (uint32_t ridx = 0; ridx < stepSliceInfo.inputOmniPipeSliceStride.size(); ridx++) {
                 inputOmniSliceStrideVec.push_back(stepSliceInfo.inputOmniPipeSliceStride[ridx][rpt]);
                 inputOmniSliceSizeVec.push_back(stepSliceInfo.stepSliceSize[ridx][rpt]);
-                HCCL_DEBUG("[%s] myRank[%u] stepSliceInfo.inputOmniPipeSliceStride[%d][%d]:%d",
-                            __func__, myRank_, ridx, rpt, stepSliceInfo.inputOmniPipeSliceStride[ridx][rpt]);
-                HCCL_DEBUG("[%s] myRank[%u] stepSliceInfo.stepSliceSize[%d][%d]:%d", __func__,
-                            myRank_, ridx, rpt, stepSliceInfo.stepSliceSize[ridx][rpt]);
+                HCCL_DEBUG(
+                    "[%s] myRank[%u] stepSliceInfo.inputOmniPipeSliceStride[%d][%d]:%d", __func__, myRank_, ridx, rpt,
+                    stepSliceInfo.inputOmniPipeSliceStride[ridx][rpt]);
+                HCCL_DEBUG(
+                    "[%s] myRank[%u] stepSliceInfo.stepSliceSize[%d][%d]:%d", __func__, myRank_, ridx, rpt,
+                    stepSliceInfo.stepSliceSize[ridx][rpt]);
             }
             uint64_t inputSliceStride = templateDataParams.inputSliceStride;
 
-            std::vector<uint64_t> taskArgs = { inputAddr, outputAddr, token, sliceSize, sliceStride, localCopyFlag, inputOmniPipeSliceStride };
+            std::vector<uint64_t> taskArgs
+                = {inputAddr, outputAddr, token, sliceSize, sliceStride, localCopyFlag, inputOmniPipeSliceStride};
             taskArgs.insert(taskArgs.end(), inputOmniSliceStrideVec.begin(), inputOmniSliceStrideVec.end());
             taskArgs.push_back(inputSliceStride);
             taskArgs.insert(taskArgs.end(), inputOmniSliceSizeVec.begin(), inputOmniSliceSizeVec.end());
-            HCCL_INFO("[%s] myRank[%u] mySubCommRank[%u] rpt[%u] inputAddrBase[%llu] outputAddrBase[%llu] "
-                       "inBuffBaseOff[%llu] outBuffBaseOff[%llu] inputAddr[%llu] "
-                       "outputAddr[%llu] sliceSize[%llu] sliceStride[%llu] inputOmniPipeSliceStride[%llu] inputSliceStride[%llu]",
+            HCCL_INFO(
+                "[%s] myRank[%u] mySubCommRank[%u] rpt[%u] inputAddrBase[%llu] outputAddrBase[%llu] "
+                "inBuffBaseOff[%llu] outBuffBaseOff[%llu] inputAddr[%llu] "
+                "outputAddr[%llu] sliceSize[%llu] sliceStride[%llu] inputOmniPipeSliceStride[%llu] "
+                "inputSliceStride[%llu]",
                 __func__, myRank_, mySubCommRank_, rpt, inputAddrBase, outputAddrBase, inBuffBaseOff, outBuffBaseOff,
                 inputAddr, outputAddr, sliceSize, sliceStride, inputOmniPipeSliceStride, inputSliceStride);
-            CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0],
-                taskArgs.data(), taskArgs.size());
+            CcuResult launchRet = HcommCcuKernelLaunch(
+                templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), taskArgs.size());
             if (launchRet != CCU_SUCCESS) {
-                HCCL_ERROR("[CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+                HCCL_ERROR(
+                    "[CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d",
+                    launchRet);
                 return ConvertCcuToHccl(launchRet);
             }
         }
@@ -224,12 +233,9 @@ u64 CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CalcScratchMultiple(BufferType inB
     return 0;
 }
 
-u64 CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetThreadNum() const
-{
-    return 1;
-}
+u64 CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetThreadNum() const { return 1; }
 
-HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.notifyNumOnMainThread = 0;
     resourceRequest.slaveThreadNum = 0;

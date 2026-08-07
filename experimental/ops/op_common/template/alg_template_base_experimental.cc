@@ -14,15 +14,13 @@
 
 namespace ops_hccl_experimental {
 
-HcclResult AlgTemplateBaseExperimental::Prepare(HcclMem &inputMem, HcclMem &outputMem, HcclMem &scratchMem,
-                        const u64 count,
-                        const HcclDataType dataType, ThreadHandle thread, const std::vector<ThreadHandle> &slaveThreads,
-                        const HcclReduceOp reductionOp,
-                        const u32 root, const std::vector<Slice> &slices, const u64 baseOffset,
-                        const bool disableDMAReduce)
+HcclResult AlgTemplateBaseExperimental::Prepare(
+    HcclMem& inputMem, HcclMem& outputMem, HcclMem& scratchMem, const u64 count, const HcclDataType dataType,
+    ThreadHandle thread, const std::vector<ThreadHandle>& slaveThreads, const HcclReduceOp reductionOp, const u32 root,
+    const std::vector<Slice>& slices, const u64 baseOffset, const bool disableDMAReduce)
 {
     HCCL_ERROR("Unexpected base class function fallback. Missing override in derived class");
     return HCCL_E_PARA;
 }
 
-}
+} // namespace ops_hccl_experimental

@@ -12,23 +12,23 @@
 
 namespace ops_hccl {
 
-constexpr int INPUT_XN_ID  = 0;
+constexpr int INPUT_XN_ID = 0;
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int CKE_IDX_0    = 0;
-constexpr int CKE_IDX_1    = 1;
-constexpr int CKE_IDX_2    = 2;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int CKE_IDX_0 = 0;
+constexpr int CKE_IDX_1 = 1;
+constexpr int CKE_IDX_2 = 2;
 
 constexpr uint64_t LOCAL_COPY_MS = 8;
 
-static CcuResult ParseKernelArg(AlltoAllMesh1DContext &ctx, CcuKernelArgAlltoAllMesh1D *kernelArg)
+static CcuResult ParseKernelArg(AlltoAllMesh1DContext& ctx, CcuKernelArgAlltoAllMesh1D* kernelArg)
 {
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AlltoAllMesh1DContext &ctx)
+static CcuResult InitResource(AlltoAllMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
@@ -54,9 +54,9 @@ static CcuResult InitResource(AlltoAllMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AlltoAllMesh1DContext &ctx)
+static CcuResult LoadArgs(AlltoAllMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[arg->rankId], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], cnt++));
@@ -75,16 +75,16 @@ static CcuResult LoadArgs(AlltoAllMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(AlltoAllMesh1DContext &ctx)
+static void PreSync(AlltoAllMesh1DContext& ctx)
 {
     HCCL_INFO("[CcuKernelAlltoAllMesh1D] AlltoAllMesh1D PreSync begin.");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId],
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
 
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -94,10 +94,10 @@ static void PreSync(AlltoAllMesh1DContext &ctx)
     HCCL_INFO("[CcuKernelAlltoAllMesh1D] AlltoAllMesh1D PreSync end.");
 }
 
-static void PostSync(AlltoAllMesh1DContext &ctx)
+static void PostSync(AlltoAllMesh1DContext& ctx)
 {
     HCCL_INFO("[CcuKernelAlltoAllMesh1D] AlltoAllMesh1D PostSync begin.");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     uint16_t postBit = 1 << 5;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -109,10 +109,10 @@ static void PostSync(AlltoAllMesh1DContext &ctx)
     HCCL_INFO("[CcuKernelAlltoAllMesh1D] AlltoAllMesh1D PostSync end.");
 }
 
-static CcuResult DoAlltoAll(AlltoAllMesh1DContext &ctx)
+static CcuResult DoAlltoAll(AlltoAllMesh1DContext& ctx)
 {
     HCCL_INFO("DoAlltoAll Start.");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     std::vector<ccu::LocalAddr> src(arg->rankSize);
     std::vector<ccu::RemoteAddr> dst(arg->rankSize);
     ccu::LocalAddr localDst;
@@ -139,11 +139,10 @@ static CcuResult DoAlltoAll(AlltoAllMesh1DContext &ctx)
     uint16_t allBit = ((1 << arg->rankSize) - 1) & (~(1 << arg->rankId)); // 仅rankid位为0，其他位为1，代表远端准备好了
 
     if (arg->loadFromMem) {
-        for(uint64_t r = 0; r < arg->rankSize; r++) {
+        for (uint64_t r = 0; r < arg->rankSize; r++) {
             if (r == arg->rankId) {
                 ccu::LocalCopy(localDst, src[r], ctx.sliceSize, ctx.event, 1 << r);
-            }
-            else {
+            } else {
                 ccu::Write(arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
                 channelId++;
             }
@@ -151,7 +150,7 @@ static CcuResult DoAlltoAll(AlltoAllMesh1DContext &ctx)
         // 等读完所有对端
         ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
     } else {
-        for(uint64_t r = 0; r < arg->rankSize; r++) {
+        for (uint64_t r = 0; r < arg->rankSize; r++) {
             if (r != arg->rankId) {
                 ccu::Write(arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
                 channelId++;
@@ -169,7 +168,7 @@ static CcuResult DoAlltoAll(AlltoAllMesh1DContext &ctx)
 // ============================================================================
 CcuResult CcuAlltoAllMesh1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAlltoAllMesh1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAlltoAllMesh1D*>(arg);
 
     AlltoAllMesh1DContext ctx;
     ctx.arg = kernelArg;
@@ -196,4 +195,4 @@ CcuResult CcuAlltoAllMesh1DKernel(CcuKernelArg arg)
     return CCU_SUCCESS;
 }
 
-}// namespace ops_hccl
+} // namespace ops_hccl

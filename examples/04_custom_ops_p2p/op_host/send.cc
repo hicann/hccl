@@ -20,7 +20,7 @@
 using namespace ops_hccl_p2p;
 
 HcclResult HcclSendCustom(
-    void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream)
+    void* sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream)
 {
     CHK_PTR_NULL(sendBuf);
     CHK_PTR_NULL(comm);
@@ -52,17 +52,17 @@ HcclResult HcclSendCustom(
     // ==============================================
     CommEngine engine = CommEngine::COMM_ENGINE_AICPU;
 
-    void * ctx = nullptr;
+    void* ctx = nullptr;
     uint64_t size = sizeof(AlgResourceCtx);
     if (HcclEngineCtxGet(comm, param.tag, engine, &ctx, &size) == HCCL_SUCCESS) {
         // device资源已经存在
         HCCL_INFO("[HcclSendCustom] Engine context already exists");
-        param.resCtx = static_cast<AlgResourceCtx *>(ctx);
+        param.resCtx = static_cast<AlgResourceCtx*>(ctx);
     } else {
         // 不存在，新创建Context
         HCCL_INFO("[HcclSendCustom] Creating engine context");
         CHK_RET(HcclEngineCtxCreate(comm, param.tag, engine, size, &ctx));
-        param.resCtx = static_cast<AlgResourceCtx *>(ctx);
+        param.resCtx = static_cast<AlgResourceCtx*>(ctx);
         AlgResourceCtx resCtxHost;
 
         // ==============================================
@@ -70,11 +70,13 @@ HcclResult HcclSendCustom(
         // ==============================================
         // 将传入的stream转换为thread，并申请1个notify；同时导出为AICPU上可用的thread
         CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, stream, 1, &param.cpuThread));
-        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &param.cpuThread, COMM_ENGINE_AICPU_TS, &resCtxHost.cpuThreadOnAicpu));
+        CHK_RET(HcclThreadExportToCommEngine(
+            comm, 1, &param.cpuThread, COMM_ENGINE_AICPU_TS, &resCtxHost.cpuThreadOnAicpu));
 
         // 创建一个AICPU_TS类型的thread，并申请1个notify；同时导出为CPU上可用的thread
         CHK_RET(HcclThreadAcquire(comm, COMM_ENGINE_AICPU_TS, 1, 1, &resCtxHost.aicpuThread));
-        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &resCtxHost.aicpuThread, COMM_ENGINE_CPU_TS, &param.aicpuThreadOnCpu));
+        CHK_RET(HcclThreadExportToCommEngine(
+            comm, 1, &resCtxHost.aicpuThread, COMM_ENGINE_CPU_TS, &param.aicpuThreadOnCpu));
 
         // ==============================================
         // STEP 2.2: 建立通信链路Channel，两个 rank 之间建立 1 个 channel
@@ -85,8 +87,8 @@ HcclResult HcclSendCustom(
         // STEP 2.3: 获取本端和远端的中转内存
         // ==============================================
         CHK_RET(HcclGetHcclBuffer(comm, &(resCtxHost.localBuffer.addr), &(resCtxHost.localBuffer.size)));
-        CHK_RET(HcclChannelGetHcclBuffer(comm, resCtxHost.channelHandle, &(resCtxHost.remoteBuffer.addr),
-                                         &(resCtxHost.remoteBuffer.size)));
+        CHK_RET(HcclChannelGetHcclBuffer(
+            comm, resCtxHost.channelHandle, &(resCtxHost.remoteBuffer.addr), &(resCtxHost.remoteBuffer.size)));
 
         ACLCHECK(aclrtMemcpy(param.resCtx, size, &resCtxHost, size, ACL_MEMCPY_HOST_TO_DEVICE));
     }

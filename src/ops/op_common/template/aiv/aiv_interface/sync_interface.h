@@ -24,7 +24,7 @@ __aicore__ inline void SetSignalValue(__gm__ int32_t* gmSignalAddr, LocalTensor<
     globalTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(gmSignalAddr));
 
     localTensor.SetValue(0, value);
-    //SyncFunc<HardEvent::S_MTE3>();
+    // SyncFunc<HardEvent::S_MTE3>();
     pipe_barrier(PIPE_ALL);
     DataCopy(globalTensor, localTensor, 32);
     pipe_barrier(PIPE_ALL);
@@ -47,13 +47,14 @@ __aicore__ inline void AddSignalValue(__gm__ int32_t* gmSignalAddr, LocalTensor<
 }
 
 // 等待同步信号变成某个预期的值
-__aicore__ inline void WaitSignalValue(__gm__ int32_t *gmSignalAddr, LocalTensor<int32_t>& localTensor, int32_t expectedValue)
+__aicore__ inline void
+WaitSignalValue(__gm__ int32_t* gmSignalAddr, LocalTensor<int32_t>& localTensor, int32_t expectedValue)
 {
     GlobalTensor<int32_t> globalTensor;
     globalTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(gmSignalAddr));
     while (true) {
         DataCopy(localTensor, globalTensor, 32);
-        //SyncFunc<HardEvent::MTE2_S>();
+        // SyncFunc<HardEvent::MTE2_S>();
         pipe_barrier(PIPE_ALL);
         if (localTensor.GetValue(0) == expectedValue) {
             break;
@@ -63,14 +64,14 @@ __aicore__ inline void WaitSignalValue(__gm__ int32_t *gmSignalAddr, LocalTensor
 }
 
 // 等待同步信号大于等于某个预期的值
-__aicore__ inline void WaitSignalGEValue(__gm__ int32_t *gmSignalAddr, LocalTensor<int32_t>& localTensor, int32_t value)
+__aicore__ inline void WaitSignalGEValue(__gm__ int32_t* gmSignalAddr, LocalTensor<int32_t>& localTensor, int32_t value)
 {
     GlobalTensor<int32_t> globalTensor;
     globalTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(gmSignalAddr));
 
     while (true) {
         DataCopy(localTensor, globalTensor, 32);
-        //SyncFunc<HardEvent::MTE2_S>();
+        // SyncFunc<HardEvent::MTE2_S>();
         pipe_barrier(PIPE_ALL);
         if (localTensor.GetValue(0) >= value) {
             break;
@@ -79,25 +80,26 @@ __aicore__ inline void WaitSignalGEValue(__gm__ int32_t *gmSignalAddr, LocalTens
     return;
 }
 
-__aicore__ inline uint64_t GetSignalValue(__gm__ int32_t *gmSignalAddr, LocalTensor<int32_t>& localTensor)
+__aicore__ inline uint64_t GetSignalValue(__gm__ int32_t* gmSignalAddr, LocalTensor<int32_t>& localTensor)
 {
     GlobalTensor<int32_t> globalTensor;
     globalTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(gmSignalAddr));
     DataCopy(localTensor, globalTensor, UB_FLAG_PAD_COUNT);
-    //SyncFunc<HardEvent::MTE2_S>();
+    // SyncFunc<HardEvent::MTE2_S>();
     pipe_barrier(PIPE_ALL);
     int32_t ret = localTensor.GetValue(0);
     return ret;
 }
 
-__aicore__ inline void WaitSignalNotEqValue(__gm__ int32_t *gmSignalAddr, LocalTensor<int32_t>& localTensor, uint64_t value)
+__aicore__ inline void
+WaitSignalNotEqValue(__gm__ int32_t* gmSignalAddr, LocalTensor<int32_t>& localTensor, uint64_t value)
 {
     GlobalTensor<int32_t> globalTensor;
     globalTensor.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(gmSignalAddr));
 
     while (true) {
         DataCopy(localTensor, globalTensor, UB_FLAG_PAD_COUNT);
-        //SyncFunc<HardEvent::MTE2_S>();
+        // SyncFunc<HardEvent::MTE2_S>();
         pipe_barrier(PIPE_ALL);
         if (localTensor.GetValue(0) != value) {
             break;
@@ -106,7 +108,8 @@ __aicore__ inline void WaitSignalNotEqValue(__gm__ int32_t *gmSignalAddr, LocalT
     return;
 }
 
-__aicore__ inline void SetFlagBatchValue(__gm__ int32_t *ctrlFlagGM, TQue<QuePosition::VECOUT, 1> &batchQue, uint64_t setValue, uint64_t count)
+__aicore__ inline void
+SetFlagBatchValue(__gm__ int32_t* ctrlFlagGM, TQue<QuePosition::VECOUT, 1>& batchQue, uint64_t setValue, uint64_t count)
 {
     GlobalTensor<int32_t> globalBatchSet;
     globalBatchSet.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(ctrlFlagGM));
@@ -116,7 +119,7 @@ __aicore__ inline void SetFlagBatchValue(__gm__ int32_t *ctrlFlagGM, TQue<QuePos
         localBatchSet.SetValue(i * UB_FLAG_PAD_COUNT, setValue);
     }
 
-    //SyncFunc<HardEvent::S_MTE3>();
+    // SyncFunc<HardEvent::S_MTE3>();
     pipe_barrier(PIPE_ALL);
 
     DataCopy(globalBatchSet, localBatchSet, UB_FLAG_PAD_COUNT * count);

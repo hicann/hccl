@@ -44,4 +44,4 @@ HcclResult BirsSelectResultToCode(BirsSelectResult result)
     }
     return HCCL_E_INTERNAL;
 }
-}
+} // namespace ops_hccl_experimental

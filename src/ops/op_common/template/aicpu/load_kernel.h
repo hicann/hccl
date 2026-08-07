@@ -18,6 +18,6 @@ namespace ops_hccl {
 HcclResult LoadAICPUKernel(void);
 extern aclrtBinHandle g_binKernelHandle;
 
-}
+} // namespace ops_hccl
 
 #endif

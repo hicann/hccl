@@ -19,31 +19,33 @@ namespace ops_hccl {
 using RankId = u32;
 using RankGroup = std::vector<RankId>;
 
-class CcuTempAllToAllMesh2Die : public CcuAlgTemplateBase{
+class CcuTempAllToAllMesh2Die : public CcuAlgTemplateBase {
 public:
-     CcuTempAllToAllMesh2Die() = default;
-     CcuTempAllToAllMesh2Die(const OpParam &param, RankId rankId, const std::vector<std::vector<u32>> &subCommRanks);
-     ~CcuTempAllToAllMesh2Die() override;
+    CcuTempAllToAllMesh2Die() = default;
+    CcuTempAllToAllMesh2Die(const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks);
+    ~CcuTempAllToAllMesh2Die() override;
 
     std::string Describe() const override
     {
         return StringFormat("Template of alltoall ccu mesh 2Die with rankSize[%u]", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
 
 private:
-    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs);
+    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs);
 
     const uint32_t DIE_NUM = 2; // 2Die
 
     std::map<uint32_t, std::vector<HcclChannelDesc>> channels_; // key is DieId
     std::map<uint32_t, RankGroup> rankGroup_;
 };
-}// namespace ops_hccl
+} // namespace ops_hccl
 
 #endif // HCCL_CCU_TEMP_ALLTOALL_MESH_2DIE_H

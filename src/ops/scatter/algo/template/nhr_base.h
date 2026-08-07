@@ -25,9 +25,7 @@ using InterServerAlgoStep = struct InterServerAlgoStepDef {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    InterServerAlgoStepDef() : nSlices(0)
-    {
-    }
+    InterServerAlgoStepDef() : nSlices(0) {}
 };
 
 class NHRBase : public AlgTemplateBase {
@@ -38,7 +36,7 @@ public:
     void GetRankMapping(const u32 rankSize, bool keepOrder = false);
 
 protected:
-    void ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32> &tree, std::vector<u32> &tmp) const;
+    void ReorderSequence(u32 start, u32 end, u32 len, std::vector<u32>& tree, std::vector<u32>& tmp) const;
 
     u32 GetStepNumInterServer(u32 rankSize) const;
 
@@ -48,6 +46,6 @@ protected:
 
 private:
 };
-}  // hccl
+} // namespace ops_hccl
 
 #endif // NHR_CUSTOM_BASE_H

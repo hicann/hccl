@@ -21,35 +21,31 @@
 namespace AscendC {
 namespace ccu {
 
-template <typename U> class Array;
+    template <typename U>
+    class Array;
 
-// Event 退化为纯 handle 持有者：mask 已与 Event 解耦，
-// 由调用方在每个 EventRecord/Wait/LocalCopy/Read/Write/... API 上独立传入。
-// 旧的 EventMask 代理类、Event::mask 字段、Event::setMask 接口已废弃删除。
-class Event final {
-public:
-    Event() {
-        CCU_THROW_IF_FAILED(CcuEventAlloc(&this->handle),
-        "CcuEventAlloc: failed");   
-    }
+    // Event 退化为纯 handle 持有者：mask 已与 Event 解耦，
+    // 由调用方在每个 EventRecord/Wait/LocalCopy/Read/Write/... API 上独立传入。
+    // 旧的 EventMask 代理类、Event::mask 字段、Event::setMask 接口已废弃删除。
+    class Event final {
+    public:
+        Event() { CCU_THROW_IF_FAILED(CcuEventAlloc(&this->handle), "CcuEventAlloc: failed"); }
 
-    Event(const Event& other) : handle(other.handle) {}
+        Event(const Event& other) : handle(other.handle) {}
 
-    Event(Event&& other) noexcept : handle(other.handle) {}
+        Event(Event&& other) noexcept : handle(other.handle) {}
 
-    void operator=(Event&& other) {
-        this->handle = other.handle;
-    }
+        void operator=(Event&& other) { this->handle = other.handle; }
 
-    CcuEventHandle handle{0};
+        CcuEventHandle handle{0};
 
-private:
-    explicit Event(detail::NoAllocTag) {}
-    template <typename U> friend class Array;
-};
+    private:
+        explicit Event(detail::NoAllocTag) {}
+        template <typename U>
+        friend class Array;
+    };
 
 } // namespace ccu
 } // namespace AscendC
-
 
 #endif // CCU_EVENT_DL_HPP

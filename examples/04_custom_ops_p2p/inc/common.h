@@ -34,7 +34,7 @@ enum DeviceType {
 };
 
 typedef struct {
-    void *addr;
+    void* addr;
     uint64_t size;
 } CommBuffer;
 
@@ -60,8 +60,24 @@ struct OpParam {
     AlgResourceCtx* resCtx = nullptr;
 };
 
-constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 #endif // OPS_HCCL_P2P_COMMON_H

@@ -19,42 +19,43 @@ namespace ops_hccl {
 class CommonAlgTemplateBase {
 public:
     explicit CommonAlgTemplateBase() = default;
-    explicit CommonAlgTemplateBase(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CommonAlgTemplateBase(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     virtual ~CommonAlgTemplateBase() = default;
 
     virtual std::string Describe() const = 0;
-    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    virtual HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest)
         = 0;
     virtual HcclResult GetRes(AlgResourceRequest& resourceRequest) const = 0;
     virtual u64 GetThreadNum() const = 0;
     virtual u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) = 0;
 
-    virtual HcclResult KernelRun(
-        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
+    virtual HcclResult
+    KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
         = 0;
     virtual HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) = 0;
-    virtual HcclResult CalcDataSplitByPortGroup(const u64 totalDataCount, const u64 dataTypeSize,
-                                                const std::vector<ChannelInfo> &channels,
-                                                std::vector<u64> &elemCountOut, std::vector<u64> &sizeOut,
-                                                std::vector<u64> &elemOffset)
+    virtual HcclResult CalcDataSplitByPortGroup(
+        const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+        std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset)
     {
-        CalcDataSplitByPortGroupCommon(totalDataCount, dataTypeSize, channels, elemCountOut, sizeOut,
-                                       elemOffset, channelsPerRank_);
+        CalcDataSplitByPortGroupCommon(
+            totalDataCount, dataTypeSize, channels, elemCountOut, sizeOut, elemOffset, channelsPerRank_);
         return HcclResult::HCCL_SUCCESS;
     }
 
-    virtual HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>> &channels)
+    virtual HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
     {
         CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
         channelsPerRank_ = CalcChannelsPerRank(channels);
         return HCCL_SUCCESS;
     }
-   
+
 protected:
-    u32             channelsPerRank_    = 1;
+    u32 channelsPerRank_ = 1;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // COMMON_ALG_TEMPLATE_BASE_H

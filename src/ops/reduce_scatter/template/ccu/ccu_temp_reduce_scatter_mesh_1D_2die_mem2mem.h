@@ -20,48 +20,47 @@ namespace ops_hccl {
 class CcuTempReduceScatterMeshMem2Mem1D2Die : public CcuAlgTemplateBase {
 public:
     CcuTempReduceScatterMeshMem2Mem1D2Die() = default;
-    explicit  CcuTempReduceScatterMeshMem2Mem1D2Die(const OpParam& param,
-                                                const u32 rankId,
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempReduceScatterMeshMem2Mem1D2Die(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempReduceScatterMeshMem2Mem1D2Die() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Reduce Scatter ccu mesh 1D 2Die Mem2Mem with tempRankSize [%u].",
-                    templateRankSize_);
+        return StringFormat(
+            "Template of Reduce Scatter ccu mesh 1D 2Die Mem2Mem with tempRankSize [%u].", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:
-    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs,
-                                 uint32_t &meshDieId,
-                                 std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc);
-    HcclResult ClassifyChannelsByDie(HcclComm comm,
-                                     const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc,
-                                     std::map<uint32_t, std::vector<HcclChannelDesc>> &singleChByDie,
-                                     std::map<uint32_t, std::vector<HcclChannelDesc>> &multiChByDie,
-                                     bool &hasMultiChannel) const;
-    HcclResult PartitionByMesh1dClos(const std::map<uint32_t, std::vector<HcclChannelDesc>> &singleChByDie,
-                                     const std::map<uint32_t, std::vector<HcclChannelDesc>> &multiChByDie,
-                                     uint32_t &meshDieId);
-    HcclResult PartitionByTwoDieRegular(const std::map<uint32_t, std::vector<HcclChannelDesc>> &singleChByDie,
-                                        uint32_t &meshDieId);
+    HcclResult PartitionChannels(
+        HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs, uint32_t& meshDieId,
+        std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc);
+    HcclResult ClassifyChannelsByDie(
+        HcclComm comm, const std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc,
+        std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
+        std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool& hasMultiChannel) const;
+    HcclResult PartitionByMesh1dClos(
+        const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
+        const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, uint32_t& meshDieId);
+    HcclResult PartitionByTwoDieRegular(
+        const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie, uint32_t& meshDieId);
 
     uint32_t mySubCommRank_ = 0;
-    std::map<uint32_t, std::vector<HcclChannelDesc>> channels_;   // key is DieId
-    std::map<uint32_t, std::vector<u32>> rankGroup_;              // key is DieId
+    std::map<uint32_t, std::vector<HcclChannelDesc>> channels_; // key is DieId
+    std::map<uint32_t, std::vector<u32>> rankGroup_;            // key is DieId
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_1D_2DIE_MEM2MEM_H
+#endif // HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_1D_2DIE_MEM2MEM_H

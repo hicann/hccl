@@ -20,8 +20,9 @@ namespace ops_hccl {
 
 class InsTempReduceScatterOmniPipeNHR : public InsTempReduceScatterNHR {
 public:
-    explicit InsTempReduceScatterOmniPipeNHR(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                     const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempReduceScatterOmniPipeNHR(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterOmniPipeNHR() override;
 
     std::string Describe() const override
@@ -32,19 +33,18 @@ public:
     }
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult DoLocalCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult DoLocalCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 
 private:
-    HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList);
-    HcclResult RunNHR(const std::vector<ThreadHandle> &threads, u32 channelIdx);
+    HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo>& stepInfoList);
+    HcclResult RunNHR(const std::vector<ThreadHandle>& threads, u32 channelIdx);
 
-    HcclResult GetNHRDataSize(const AicpuNHRStepInfo& st, const u32 channelIdx, 
-        void* sendCclBuffAddr, void* recvCclBuffAddr, const u32 dataTypeSize, const u64 rptNum,
-        std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices, 
-        std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices);
+    HcclResult GetNHRDataSize(
+        const AicpuNHRStepInfo& st, const u32 channelIdx, void* sendCclBuffAddr, void* recvCclBuffAddr,
+        const u32 dataTypeSize, const u64 rptNum, std::vector<DataSlice>& txSrcSlices,
+        std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices);
 
     TemplateDataParams tempAlgParams_;
     std::map<u32, std::vector<ChannelInfo>> channels_;
@@ -52,6 +52,6 @@ private:
     std::vector<std::vector<std::vector<u64>>> dataOffsetVec_;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif

@@ -23,18 +23,22 @@ constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 3;
 constexpr u32 SEQUENCE_EXECUTOR_MIN_LEVEL_NUM = 2;
 constexpr u32 LEVEL2_IDX = 2;
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3,
-    AlgTemplate4, AlgTemplate5>::ReduceSequenceExecutorAicpu3Level()
-{
-}
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4,
+    AlgTemplate5>::ReduceSequenceExecutorAicpu3Level()
+{}
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::InitCommInfo(const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
@@ -44,17 +48,20 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     algHierarchyInfo_ = algHierarchyInfo;
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level][InitCommInfo] myRank [%u], rankSize [%u], redOp [%u], "
-              "dataType [%u] dataTypeSize [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level][InitCommInfo] myRank [%u], rankSize [%u], redOp [%u], "
+        "dataType [%u] dataTypeSize [%llu]",
         myRank_, rankSize_, reduceOp_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::CalcAlgHierarchyInfo(HcclComm comm,
-    TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
@@ -63,22 +70,25 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-    AlgResourceRequest &resourceRequest)
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     InitCommInfo(param, topoInfo, algHierarchyInfo);
     if (algHierarchyInfo.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
         || algHierarchyInfo.infos.size() > SEQUENCE_EXECUTOR_LEVEL_NUM) {
-        HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
+        HCCL_ERROR(
+            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
             algHierarchyInfo.infos.size());
         return HCCL_E_INTERNAL;
     }
-    if (algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty() ||
-        algHierarchyInfo.infos[0][0].empty() || algHierarchyInfo.infos[1][0].empty()) {
+    if (algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
+        || algHierarchyInfo.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
@@ -137,13 +147,13 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
         activeReqs.push_back(resReqAGL2);
     }
     resourceRequest.slaveThreadNum = 0;
-    for (auto &req : activeReqs) {
+    for (auto& req : activeReqs) {
         resourceRequest.slaveThreadNum = std::max(resourceRequest.slaveThreadNum, req.slaveThreadNum);
     }
     resourceRequest.notifyNumPerThread.clear();
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     for (u32 i = 0; i < resourceRequest.slaveThreadNum; ++i) {
-        for (auto &req : activeReqs) {
+        for (auto& req : activeReqs) {
             if (i < req.notifyNumPerThread.size()) {
                 resourceRequest.notifyNumPerThread[i]
                     = std::max(resourceRequest.notifyNumPerThread[i], req.notifyNumPerThread[i]);
@@ -151,7 +161,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
         }
     }
     u32 mainNotifyNum = 0;
-    for (auto &req : activeReqs) {
+    for (auto& req : activeReqs) {
         mainNotifyNum = std::max(mainNotifyNum, req.notifyNumOnMainThread);
     }
     resourceRequest.notifyNumOnMainThread = mainNotifyNum;
@@ -179,11 +189,12 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::Orchestrate(const OpParam &param,
-    const AlgResourceCtxSerializable &resCtx)
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4,
+    AlgTemplate5>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[ReduceSequenceExecutorAicpu3Level][Orchestrate] Orchestrate Start");
     myRank_ = resCtx.topoInfo.userRank;
@@ -197,9 +208,11 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
 
-    CHK_PRT_RET(algHierarchyInfo_.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
-                    || algHierarchyInfo_.infos.size() > SEQUENCE_EXECUTOR_LEVEL_NUM,
-        HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
+    CHK_PRT_RET(
+        algHierarchyInfo_.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
+            || algHierarchyInfo_.infos.size() > SEQUENCE_EXECUTOR_LEVEL_NUM,
+        HCCL_ERROR(
+            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
             algHierarchyInfo_.infos.size()),
         HCCL_E_INTERNAL);
 
@@ -223,21 +236,26 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level][Orchestrate]errNo[0x%016llx] "
-                   "Reduce executor kernel run failed",
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[ReduceSequenceExecutorAicpu3Level][Orchestrate]errNo[0x%016llx] "
+            "Reduce executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenBaseTempAlgParams(const OpParam &param,
-    const AlgResourceCtxSerializable &resCtx, TemplateDataParams &tempAlgParamsRSL0,
-    TemplateDataParams &tempAlgParamsRSL1, TemplateDataParams &tempAlgParamsRSL2, TemplateDataParams &tempAlgParamsAGL2,
-    TemplateDataParams &tempAlgParamsAGL1, TemplateDataParams &tempAlgParamsAGL0) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenBaseTempAlgParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParamsRSL0,
+        TemplateDataParams& tempAlgParamsRSL1, TemplateDataParams& tempAlgParamsRSL2,
+        TemplateDataParams& tempAlgParamsAGL2, TemplateDataParams& tempAlgParamsAGL1,
+        TemplateDataParams& tempAlgParamsAGL0) const
 {
     tempAlgParamsRSL0.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsRSL0.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
@@ -283,11 +301,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsRSL0(const u64 loop, const u64 currDataCount,
-    const u64 processedDataCount, TemplateDataParams &tempAlgParamsRSL0) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsRSL0(
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount,
+        TemplateDataParams& tempAlgParamsRSL0) const
 {
     tempAlgParamsRSL0.count = currDataCount;
     tempAlgParamsRSL0.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
@@ -300,9 +321,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsRSL0.inputSliceStride = tempAlgParamsRSL0.sliceSize;
     tempAlgParamsRSL0.outputSliceStride = 0;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL0.inputSliceStride [%llu], "
-              "RSL0.outputSliceStride [%llu], RSL0.sliceSize [%llu], RSL0.tailSize [%llu], "
-              "RSL0.inBuffBaseOff [%llu], RSL0.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL0.inputSliceStride [%llu], "
+        "RSL0.outputSliceStride [%llu], RSL0.sliceSize [%llu], RSL0.tailSize [%llu], "
+        "RSL0.inBuffBaseOff [%llu], RSL0.outBuffBaseOff [%llu]",
         loop, tempAlgParamsRSL0.inputSliceStride, tempAlgParamsRSL0.outputSliceStride, tempAlgParamsRSL0.sliceSize,
         tempAlgParamsRSL0.tailSize, tempAlgParamsRSL0.buffInfo.inBuffBaseOff,
         tempAlgParamsRSL0.buffInfo.outBuffBaseOff);
@@ -313,11 +335,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsRSL1(const u64 loop, const u64 currDataCount,
-    const u64 sliceSizeRSL0, const u64 tailSizeRSL0, TemplateDataParams &tempAlgParamsRSL1) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsRSL1(
+        const u64 loop, const u64 currDataCount, const u64 sliceSizeRSL0, const u64 tailSizeRSL0,
+        TemplateDataParams& tempAlgParamsRSL1) const
 {
     tempAlgParamsRSL1.count = currDataCount;
     if (rankIdxLevel0_ == rankSizeLevel0_ - 1) {
@@ -336,9 +361,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsRSL1.inputSliceStride = tempAlgParamsRSL1.sliceSize;
     tempAlgParamsRSL1.outputSliceStride = tempAlgParamsRSL1.sliceSize;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL1.inputSliceStride [%llu], "
-              "RSL1.outputSliceStride [%llu], RSL1.sliceSize [%llu], RSL1.tailSize [%llu], "
-              "RSL1.inBuffBaseOff [%llu], RSL1.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL1.inputSliceStride [%llu], "
+        "RSL1.outputSliceStride [%llu], RSL1.sliceSize [%llu], RSL1.tailSize [%llu], "
+        "RSL1.inBuffBaseOff [%llu], RSL1.outBuffBaseOff [%llu]",
         loop, tempAlgParamsRSL1.inputSliceStride, tempAlgParamsRSL1.outputSliceStride, tempAlgParamsRSL1.sliceSize,
         tempAlgParamsRSL1.tailSize, tempAlgParamsRSL1.buffInfo.inBuffBaseOff,
         tempAlgParamsRSL1.buffInfo.outBuffBaseOff);
@@ -349,11 +375,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsRSL2(const u64 loop, const u64 currDataCount,
-    const u64 sliceSizeRSL1, const u64 tailSizeRSL1, TemplateDataParams &tempAlgParamsRSL2) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsRSL2(
+        const u64 loop, const u64 currDataCount, const u64 sliceSizeRSL1, const u64 tailSizeRSL1,
+        TemplateDataParams& tempAlgParamsRSL2) const
 {
     tempAlgParamsRSL2.count = currDataCount;
     if (rankIdxLevel1_ == rankSizeLevel1_ - 1) {
@@ -372,9 +401,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsRSL2.inputSliceStride = tempAlgParamsRSL2.sliceSize;
     tempAlgParamsRSL2.outputSliceStride = tempAlgParamsRSL2.sliceSize;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL2.inputSliceStride [%llu], "
-              "RSL2.outputSliceStride [%llu], RSL2.sliceSize [%llu], RSL2.tailSize [%llu], "
-              "RSL2.inBuffBaseOff [%llu], RSL2.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] RSL2.inputSliceStride [%llu], "
+        "RSL2.outputSliceStride [%llu], RSL2.sliceSize [%llu], RSL2.tailSize [%llu], "
+        "RSL2.inBuffBaseOff [%llu], RSL2.outBuffBaseOff [%llu]",
         loop, tempAlgParamsRSL2.inputSliceStride, tempAlgParamsRSL2.outputSliceStride, tempAlgParamsRSL2.sliceSize,
         tempAlgParamsRSL2.tailSize, tempAlgParamsRSL2.buffInfo.inBuffBaseOff,
         tempAlgParamsRSL2.buffInfo.outBuffBaseOff);
@@ -385,12 +415,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsAGL2(const u64 loop, const u64 currDataCount,
-    const u64 sliceSizeRSL2, const u64 tailSizeRSL2, const u64 sliceSizeRSL1,
-    TemplateDataParams &tempAlgParamsAGL2) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsAGL2(
+        const u64 loop, const u64 currDataCount, const u64 sliceSizeRSL2, const u64 tailSizeRSL2,
+        const u64 sliceSizeRSL1, TemplateDataParams& tempAlgParamsAGL2) const
 {
     tempAlgParamsAGL2.count = currDataCount;
     tempAlgParamsAGL2.buffInfo.inBuffBaseOff = rankIdxLevel1_ * sliceSizeRSL1;
@@ -403,9 +435,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsAGL2.inputSliceStride = tempAlgParamsAGL2.sliceSize;
     tempAlgParamsAGL2.outputSliceStride = sliceSizeRSL1;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL2.inputSliceStride [%llu], "
-              "AGL2.outputSliceStride [%llu], AGL2.sliceSize [%llu], AGL2.tailSize [%llu], "
-              "AGL2.inBuffBaseOff [%llu], AGL2.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL2.inputSliceStride [%llu], "
+        "AGL2.outputSliceStride [%llu], AGL2.sliceSize [%llu], AGL2.tailSize [%llu], "
+        "AGL2.inBuffBaseOff [%llu], AGL2.outBuffBaseOff [%llu]",
         loop, tempAlgParamsAGL2.inputSliceStride, tempAlgParamsAGL2.outputSliceStride, tempAlgParamsAGL2.sliceSize,
         tempAlgParamsAGL2.tailSize, tempAlgParamsAGL2.buffInfo.inBuffBaseOff,
         tempAlgParamsAGL2.buffInfo.outBuffBaseOff);
@@ -416,11 +449,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsAGL1(const u64 loop, const u64 currDataCount,
-    const u64 sliceSize, const u64 tailSize, TemplateDataParams &tempAlgParamsAGL1) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsAGL1(
+        const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
+        TemplateDataParams& tempAlgParamsAGL1) const
 {
     tempAlgParamsAGL1.count = currDataCount;
     tempAlgParamsAGL1.buffInfo.inBuffBaseOff = 0;
@@ -433,9 +469,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsAGL1.inputSliceStride = tempAlgParamsAGL1.sliceSize;
     tempAlgParamsAGL1.outputSliceStride = 0;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL1.inputSliceStride [%llu], "
-              "AGL1.outputSliceStride [%llu], AGL1.sliceSize [%llu], AGL1.tailSize [%llu], "
-              "AGL1.inBuffBaseOff [%llu], AGL1.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL1.inputSliceStride [%llu], "
+        "AGL1.outputSliceStride [%llu], AGL1.sliceSize [%llu], AGL1.tailSize [%llu], "
+        "AGL1.inBuffBaseOff [%llu], AGL1.outBuffBaseOff [%llu]",
         loop, tempAlgParamsAGL1.inputSliceStride, tempAlgParamsAGL1.outputSliceStride, tempAlgParamsAGL1.sliceSize,
         tempAlgParamsAGL1.tailSize, tempAlgParamsAGL1.buffInfo.inBuffBaseOff,
         tempAlgParamsAGL1.buffInfo.outBuffBaseOff);
@@ -446,11 +483,14 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempAlgParamsAGL0(const u64 loop, const u64 currDataCount,
-    const u64 sliceSize, const u64 tailSize, TemplateDataParams &tempAlgParamsAGL0) const
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+void ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempAlgParamsAGL0(
+        const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
+        TemplateDataParams& tempAlgParamsAGL0) const
 {
     tempAlgParamsAGL0.count = currDataCount;
     tempAlgParamsAGL0.buffInfo.inBuffBaseOff = 0;
@@ -463,9 +503,10 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     tempAlgParamsAGL0.inputSliceStride = 0;
     tempAlgParamsAGL0.outputSliceStride = tempAlgParamsAGL0.sliceSize;
 
-    HCCL_INFO("[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL0.inputSliceStride [%llu], "
-              "AGL0.outputSliceStride [%llu], AGL0.sliceSize [%llu], AGL0.tailSize [%llu], "
-              "AGL0.inBuffBaseOff [%llu], AGL0.outBuffBaseOff [%llu]",
+    HCCL_INFO(
+        "[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL0.inputSliceStride [%llu], "
+        "AGL0.outputSliceStride [%llu], AGL0.sliceSize [%llu], AGL0.tailSize [%llu], "
+        "AGL0.inBuffBaseOff [%llu], AGL0.outBuffBaseOff [%llu]",
         loop, tempAlgParamsAGL0.inputSliceStride, tempAlgParamsAGL0.outputSliceStride, tempAlgParamsAGL0.sliceSize,
         tempAlgParamsAGL0.tailSize, tempAlgParamsAGL0.buffInfo.inBuffBaseOff,
         tempAlgParamsAGL0.buffInfo.outBuffBaseOff);
@@ -476,18 +517,22 @@ void ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1,
     return;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
 template <typename AlgTemplate>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::GenTempResource(const AlgResourceCtxSerializable &resCtx,
-    const u32 channelLevelIdx, const std::shared_ptr<AlgTemplate> &algTemplate, TemplateResource &tempResource) const
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    GenTempResource(
+        const AlgResourceCtxSerializable& resCtx, const u32 channelLevelIdx,
+        const std::shared_ptr<AlgTemplate>& algTemplate, TemplateResource& tempResource) const
 {
     AlgResourceRequest req;
     algTemplate->GetRes(req);
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
-        HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level][GenTempResource] channelLevelIdx[%u] should be lower"
-                   "than remoteRankToChannelInfo_.size()[%u]",
+        HCCL_ERROR(
+            "[ReduceSequenceExecutorAicpu3Level][GenTempResource] channelLevelIdx[%u] should be lower"
+            "than remoteRankToChannelInfo_.size()[%u]",
             channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }
@@ -496,11 +541,12 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2,
-    typename AlgTemplate3, typename AlgTemplate4, typename AlgTemplate5>
-HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2,
-    AlgTemplate3, AlgTemplate4, AlgTemplate5>::OrchestrateLoop(const OpParam &param,
-    const AlgResourceCtxSerializable &resCtx)
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+HcclResult ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4,
+    AlgTemplate5>::OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[ReduceSequenceExecutorAicpu3Level][OrchestrateLoop] Start");
 
@@ -510,8 +556,9 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     TemplateDataParams tempAlgParamsAGL2;
     TemplateDataParams tempAlgParamsAGL1;
     TemplateDataParams tempAlgParamsAGL0;
-    GenBaseTempAlgParams(param, resCtx, tempAlgParamsRSL0, tempAlgParamsRSL1, tempAlgParamsRSL2, tempAlgParamsAGL2,
-        tempAlgParamsAGL1, tempAlgParamsAGL0);
+    GenBaseTempAlgParams(
+        param, resCtx, tempAlgParamsRSL0, tempAlgParamsRSL1, tempAlgParamsRSL2, tempAlgParamsAGL2, tempAlgParamsAGL1,
+        tempAlgParamsAGL0);
 
     std::shared_ptr<AlgTemplate0> algTemplateRSL0
         = std::make_shared<AlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
@@ -578,10 +625,10 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     if (!skipLevel2_) {
         totalRankAlign *= rankSizeLevel2_;
     }
-    u64 maxCountPerLoop = meshCommBuffSize_ / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_
-                          / totalRankAlign * totalRankAlign;
-    CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level] maxCountPerLoop is 0"),
-        HCCL_E_INTERNAL);
+    u64 maxCountPerLoop
+        = meshCommBuffSize_ / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_ / totalRankAlign * totalRankAlign;
+    CHK_PRT_RET(
+        maxCountPerLoop == 0, HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level] maxCountPerLoop is 0"), HCCL_E_INTERNAL);
     u64 processedDataCount = 0;
     u64 loop = 0;
     while (processedDataCount < dataCount_) {
@@ -595,8 +642,9 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
             if (tailSize > rsResultBuffSize_ && q > 0) {
                 u64 maxTailElements = rsResultBuffSize_ / dataTypeSize_;
                 if (maxTailElements == 0) {
-                    HCCL_ERROR("[ReduceSequenceExecutorAicpu3Level] rsResultBuffSize_[%llu] is smaller than "
-                               "dataTypeSize_[%llu], buffer too small",
+                    HCCL_ERROR(
+                        "[ReduceSequenceExecutorAicpu3Level] rsResultBuffSize_[%llu] is smaller than "
+                        "dataTypeSize_[%llu], buffer too small",
                         rsResultBuffSize_, dataTypeSize_);
                     return HCCL_E_INTERNAL;
                 }
@@ -639,8 +687,9 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
             CHK_RET(algTemplateRSL2->KernelRun(param, tempAlgParamsRSL2, templateResourceRSL2));
 
             // ----------- AGL2: level2 AllGather -----------
-            GenTempAlgParamsAGL2(loop, currDataCount, tempAlgParamsRSL2.sliceSize, tempAlgParamsRSL2.tailSize,
-                sliceSizeRSL1, tempAlgParamsAGL2);
+            GenTempAlgParamsAGL2(
+                loop, currDataCount, tempAlgParamsRSL2.sliceSize, tempAlgParamsRSL2.tailSize, sliceSizeRSL1,
+                tempAlgParamsAGL2);
             CHK_RET(algTemplateAGL2->KernelRun(param, tempAlgParamsAGL2, templateResourceAGL2));
         }
 
@@ -651,8 +700,8 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
         }
 
         // ----------- AGL0: level0 AllGather -----------
-        GenTempAlgParamsAGL0(loop, currDataCount, tempAlgParamsRSL0.sliceSize,
-            tempAlgParamsRSL0.tailSize, tempAlgParamsAGL0);
+        GenTempAlgParamsAGL0(
+            loop, currDataCount, tempAlgParamsRSL0.sliceSize, tempAlgParamsRSL0.tailSize, tempAlgParamsAGL0);
         CHK_RET(algTemplateAGL0->KernelRun(param, tempAlgParamsAGL0, templateResourceAGL0));
 
         if (myRank_ == param.root) {
@@ -669,13 +718,14 @@ HcclResult ReduceSequenceExecutorAicpu3Level<AlgTopoMatch, AlgTemplate0, AlgTemp
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMesh1DNHRNHR,
-    ReduceSequenceExecutorAicpu3Level, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
-    InsTempReduceScatterNHR, InsTempReduceScatterNHR, InsTempAllGatherNHR, InsTempAllGatherNHR,
-    InsTempAllGatherMesh1D1DZAxisDetour);
-
-REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMesh1DNHR, ReduceSequenceExecutorAicpu3Level,
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMesh1DNHRNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMesh1DNHR, ReduceSequenceExecutorAicpu3Level, TopoMatchMultilevel,
+    InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR, InsTempAllGatherNHR,
+    InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
 
 } // namespace ops_hccl

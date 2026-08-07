@@ -18,30 +18,31 @@
 extern "C" {
 #endif
 
-HcclResult HcclRecv(
-    void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream);
+HcclResult
+HcclRecv(void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream);
 HcclResult HcclRecvGraphMode(
-    void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, const char* group, aclrtStream stream,
-    const char* tag, void **streams, size_t streamCount, void *scratchMemAddr, uint64_t scratchMemSize);
+    void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, const char* group, aclrtStream stream,
+    const char* tag, void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize);
 
 #ifdef __cplusplus
 }
 #endif
 
 namespace ops_hccl {
-    HcclResult GetAndCheckRecvPara(
-        const HcclComm comm, const void *recvBuf, const uint64_t count, const HcclDataType dataType,
-        const uint32_t srcRank, u32 &rankSize, u32 &userRank, std::string &tag);
-    HcclResult GenerateRecvOpParam(
-        OpParam &param, void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank,
-        const HcclComm comm, const aclrtStream stream, const std::string &tag);
+HcclResult GetAndCheckRecvPara(
+    const HcclComm comm, const void* recvBuf, const uint64_t count, const HcclDataType dataType, const uint32_t srcRank,
+    u32& rankSize, u32& userRank, std::string& tag);
+HcclResult GenerateRecvOpParam(
+    OpParam& param, void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, const HcclComm comm,
+    const aclrtStream stream, const std::string& tag);
 
-    HcclResult RecvExec(
-        void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank,
-        const HcclComm comm, const aclrtStream stream, const u32 &rankSize,
-        const OpMode &opMode, const std::string &tag, const ResPackGraphMode &resPack = ResPackGraphMode());
-    HcclResult RecvEntryLog(void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank,
-        aclrtStream stream, const std::string &tag, const std::string &opName, bool forceLog = false);
+HcclResult RecvExec(
+    void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, const HcclComm comm,
+    const aclrtStream stream, const u32& rankSize, const OpMode& opMode, const std::string& tag,
+    const ResPackGraphMode& resPack = ResPackGraphMode());
+HcclResult RecvEntryLog(
+    void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, aclrtStream stream, const std::string& tag,
+    const std::string& opName, bool forceLog = false);
 
 } // namespace ops_hccl
 

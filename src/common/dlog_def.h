@@ -17,10 +17,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void DlogRecord(int32_t moduleId, int32_t level, const char *fmt, ...) __attribute__((weak));
+void DlogRecord(int32_t moduleId, int32_t level, const char* fmt, ...) __attribute__((weak));
 int32_t acllogCheckDebugLevel(int32_t moduleId, int32_t logLevel) __attribute__((weak));
 // 兼容方案，早期版本没有acllogCheckDebugLevel，需回退使用dlog_getlevel，后续可删除
-int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent) __attribute__((weak));
+int32_t dlog_getlevel(int32_t moduleId, int32_t* enableEvent) __attribute__((weak));
 #ifdef __cplusplus
 }
 #endif

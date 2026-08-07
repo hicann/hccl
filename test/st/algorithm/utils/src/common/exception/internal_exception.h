@@ -16,9 +16,9 @@
 namespace HcclSim {
 class InternalException : public HcclException {
 public:
-    explicit InternalException(const std::string &userDefinedMsg)
-        : HcclException(ExceptionType::INTERNAL_EXCEPTION, userDefinedMsg){};
+    explicit InternalException(const std::string& userDefinedMsg)
+        : HcclException(ExceptionType::INTERNAL_EXCEPTION, userDefinedMsg) {};
 };
-} // namespace Hccl
+} // namespace HcclSim
 
 #endif

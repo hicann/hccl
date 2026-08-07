@@ -235,14 +235,14 @@ static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>
 };
 
 // 根据设备类型选择AIV kernel信息map：960芯片使用A6版本，其余使用A5版本
-inline const std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>& GetAivKernelInfoMap(
-    HcclDevType deviceType)
+inline const std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>&
+GetAivKernelInfoMap(HcclDevType deviceType)
 {
     if (deviceType == HcclDevType::DEV_TYPE_960) {
         return g_aivKernelInfoMapA6;
     }
     return g_aivKernelInfoMap;
 }
-}
+} // namespace ops_hccl
 
 #endif // HCCL_AIV_UTILS_H

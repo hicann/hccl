@@ -14,32 +14,38 @@
 extern "C" {
 #endif
 using namespace ops_hccl;
-HcclResult HcclCreateOpParamGraphMode(OpParamGraphMode **opParam);
-HcclResult HcclDestroyOpParamGraphMode(OpParamGraphMode *opParam);
-HcclResult HcclSetOpParamGraphModeOpType(OpParamGraphMode *opParam, const char *opType);
-HcclResult HcclSetOpParamGraphModeDataCount(OpParamGraphMode *opParam, const u64 *dataCount);
-HcclResult HcclSetOpParamGraphModeDataType(OpParamGraphMode *opParam, const HcclDataType dataType);
-HcclResult HcclSetOpParamGraphModeRankSize(OpParamGraphMode *opParam, const u32 *rankSize);
-HcclResult HcclSetOpParamGraphModeHCCLBufferSize(OpParamGraphMode *opParam, const u64 *hcclBufferSize);
-HcclResult HcclSetAivSelectOpParamGraphMode(OpParamGraphMode *opParam, u32 aivCoreLimit);
-HcclResult HcclCalcOpResOnlineGraphMode(OpParamGraphMode *opParam, u64 *opMemSize, u32 *streamNum, u32 *taskNum, u32 *aivCoreNum);
-HcclResult HcclCalcOpResOfflineGraphMode(OpParamGraphMode *opParam, u64 *opMemSize, u32 *streamNum, u32 *taskNum, u32 *aivCoreNum);
-HcclResult HcclSetAivCoreLimitGraphMode(const char *group, u32 aivCoreLimit);
-HcclResult HcclSelectAlgGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType,
-                           u32 aivCoreLimit, bool *ifAiv, char *algName);
-HcclResult HcclCalcAivCoreNumGraphMode(const char *group, u64 count, HcclDataType dataType, HcclReduceOp op,
-                                       HcclCMDType opType, u32 aivCoreLimit, u32 *numBlocks);
-HcclResult HcclGetAlgExecParamGraphMode(const char *tag, const char *group, u64 count, void *inputPtr, void *outputPtr,
-                                 HcclCMDType opType, bool clearEnable, HcclDataType dataType, HcclReduceOp op,
-                                 void **commContext, u64 *len, u32 aivCoreLimit);
+HcclResult HcclCreateOpParamGraphMode(OpParamGraphMode** opParam);
+HcclResult HcclDestroyOpParamGraphMode(OpParamGraphMode* opParam);
+HcclResult HcclSetOpParamGraphModeOpType(OpParamGraphMode* opParam, const char* opType);
+HcclResult HcclSetOpParamGraphModeDataCount(OpParamGraphMode* opParam, const u64* dataCount);
+HcclResult HcclSetOpParamGraphModeDataType(OpParamGraphMode* opParam, const HcclDataType dataType);
+HcclResult HcclSetOpParamGraphModeRankSize(OpParamGraphMode* opParam, const u32* rankSize);
+HcclResult HcclSetOpParamGraphModeHCCLBufferSize(OpParamGraphMode* opParam, const u64* hcclBufferSize);
+HcclResult HcclSetAivSelectOpParamGraphMode(OpParamGraphMode* opParam, u32 aivCoreLimit);
+HcclResult
+HcclCalcOpResOnlineGraphMode(OpParamGraphMode* opParam, u64* opMemSize, u32* streamNum, u32* taskNum, u32* aivCoreNum);
+HcclResult
+HcclCalcOpResOfflineGraphMode(OpParamGraphMode* opParam, u64* opMemSize, u32* streamNum, u32* taskNum, u32* aivCoreNum);
+HcclResult HcclSetAivCoreLimitGraphMode(const char* group, u32 aivCoreLimit);
+HcclResult HcclSelectAlgGraphMode(
+    const char* group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType, u32 aivCoreLimit,
+    bool* ifAiv, char* algName);
+HcclResult HcclCalcAivCoreNumGraphMode(
+    const char* group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType, u32 aivCoreLimit,
+    u32* numBlocks);
+HcclResult HcclGetAlgExecParamGraphMode(
+    const char* tag, const char* group, u64 count, void* inputPtr, void* outputPtr, HcclCMDType opType,
+    bool clearEnable, HcclDataType dataType, HcclReduceOp op, void** commContext, u64* len, u32 aivCoreLimit);
 #ifdef __cplusplus
 }
 #endif
 namespace ops_hccl {
-HcclResult CheckCalcResInputGraphMode(const OpParamGraphMode *opParam, const u64 *opMemSize, const u32 *streamNum, const u32 *taskNum, const u32 *aivCoreNum);
-HcclResult HcclCalcAicpuResOffline(ResResponseGraphMode *resResponse);
-HcclResult HcclCalcCcuResOffline(OpParamGraphMode *opParam, ResResponseGraphMode *resResponse);
-HcclResult CalcTaskNum(OpParamGraphMode *opParam, u32 &ccuTaskNum);
-HcclResult HcclCalcAivResOffline(ResResponseGraphMode *resResponse, OpParamGraphMode *paramPtr);
+HcclResult CheckCalcResInputGraphMode(
+    const OpParamGraphMode* opParam, const u64* opMemSize, const u32* streamNum, const u32* taskNum,
+    const u32* aivCoreNum);
+HcclResult HcclCalcAicpuResOffline(ResResponseGraphMode* resResponse);
+HcclResult HcclCalcCcuResOffline(OpParamGraphMode* opParam, ResResponseGraphMode* resResponse);
+HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum);
+HcclResult HcclCalcAivResOffline(ResResponseGraphMode* resResponse, OpParamGraphMode* paramPtr);
 
 } // namespace ops_hccl

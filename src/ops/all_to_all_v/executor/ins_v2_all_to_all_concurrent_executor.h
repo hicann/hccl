@@ -24,30 +24,33 @@ public:
     explicit InsV2AllToAllConcurrentExecutor();
     ~InsV2AllToAllConcurrentExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *ctx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgRes0,
-                                 const TemplateResource &templateAlgRes1, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgRes0, const TemplateResource& templateAlgRes1,
+        u32 notifyNumOnMainThread);
 #endif
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult InitExectorInfo(const OpParam& param);
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-    std::vector<ThreadHandle> threads_;                 // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
+    std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 
 private:
     struct SendRecvData {
@@ -57,17 +60,19 @@ private:
         std::vector<u64> rdispls;
     };
 
-    HcclResult SetTemplateDataParams(TemplateDataParams &tempAlgParams, const SendRecvData &splitData, u32 loop,
-        u64 currDataCount, u64 processedDataCount, u64 maxDataCountPerLoop) const;
-    HcclResult FillTemplateResource(const OpParam &param, const AlgResourceCtxSerializable& resCtx,
-        TemplateResource& templateAlgRes, uint32_t index);
-    HcclResult InitTemplateDataParams(const OpParam &param, const AlgResourceCtxSerializable& resCtx,
-        TemplateDataParams& tempAlgParams) const;
-    HcclResult RestoreSendRecvData(const OpParam &param);
-    HcclResult SplitSendRecvData(const OpParam &param, std::vector<SendRecvData>& splitData);
+    HcclResult SetTemplateDataParams(
+        TemplateDataParams& tempAlgParams, const SendRecvData& splitData, u32 loop, u64 currDataCount,
+        u64 processedDataCount, u64 maxDataCountPerLoop) const;
+    HcclResult FillTemplateResource(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateResource& templateAlgRes,
+        uint32_t index);
+    HcclResult InitTemplateDataParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParams) const;
+    HcclResult RestoreSendRecvData(const OpParam& param);
+    HcclResult SplitSendRecvData(const OpParam& param, std::vector<SendRecvData>& splitData);
     HcclResult GetMaxSendRecvDataCount(u64& maxSendRecvDataCount, const SendRecvData& splitData) const;
-    HcclResult CalcMaxDataCountPerLoop(const OpParam &param, const std::vector<u64> scratchMulti,
-        std::vector<u64>& maxDataCountPerLoop) const;
+    HcclResult CalcMaxDataCountPerLoop(
+        const OpParam& param, const std::vector<u64> scratchMulti, std::vector<u64>& maxDataCountPerLoop) const;
 
     std::vector<u64> sendCounts_;
     std::vector<u64> recvCounts_;
@@ -79,6 +84,6 @@ private:
     ThreadHandle temp1ThreadMain_ = 0;
 };
 
-}
+} // namespace ops_hccl
 
 #endif

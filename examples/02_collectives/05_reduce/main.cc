@@ -37,17 +37,17 @@
     } while (0)
 
 struct ThreadContext {
-    HcclRootInfo *rootInfo;
+    HcclRootInfo* rootInfo;
     uint32_t rootRank;
     uint32_t device;
     uint32_t devCount;
 };
 
-int Sample(void *arg)
+int Sample(void* arg)
 {
-    ThreadContext *ctx = (ThreadContext *)arg;
-    void *sendBuf = nullptr;
-    void *recvBuf = nullptr;
+    ThreadContext* ctx = (ThreadContext*)arg;
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
     uint32_t rootRank = ctx->rootRank;
     uint32_t device = ctx->device;
     uint64_t count = ctx->devCount;
@@ -58,9 +58,9 @@ int Sample(void *arg)
 
     // 申请 Device 内存用于存放输入数据。并将内容初始化为 0,1,2,… 递增序列（即第 i 个元素值为 i）
     ACLCHECK(aclrtMalloc(&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY));
-    void *hostBuf = nullptr;
+    void* hostBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&hostBuf, mallocSize));
-    float *tmpHostBuf = static_cast<float *>(hostBuf);
+    float* tmpHostBuf = static_cast<float*>(hostBuf);
     for (uint64_t i = 0; i < count; ++i) {
         tmpHostBuf[i] = static_cast<float>(i);
     }
@@ -87,10 +87,10 @@ int Sample(void *arg)
 
     // 将 Device 侧集合通信任务结果拷贝到 Host，并打印结果
     std::this_thread::sleep_for(std::chrono::seconds(device));
-    void *resultHostBuf;
+    void* resultHostBuf;
     ACLCHECK(aclrtMallocHost(&resultHostBuf, mallocSize));
     ACLCHECK(aclrtMemcpy(resultHostBuf, mallocSize, recvBuf, mallocSize, ACL_MEMCPY_DEVICE_TO_HOST));
-    float *tmpResultBuf = static_cast<float *>(resultHostBuf);
+    float* tmpResultBuf = static_cast<float*>(resultHostBuf);
     std::cout << "rankId: " << device << ", output: [";
     for (uint64_t i = 0; i < count; ++i) {
         std::cout << " " << tmpResultBuf[i];
@@ -99,13 +99,13 @@ int Sample(void *arg)
     ACLCHECK(aclrtFreeHost(resultHostBuf));
 
     // 释放资源
-    HCCLCHECK(HcclCommDestroy(hcclComm));  // 销毁通信域
-    ACLCHECK(aclrtFree(sendBuf));          // 释放 Device 侧内存
+    HCCLCHECK(HcclCommDestroy(hcclComm)); // 销毁通信域
+    ACLCHECK(aclrtFree(sendBuf));         // 释放 Device 侧内存
     if (recvBuf != nullptr) {
-        ACLCHECK(aclrtFree(recvBuf));      // 释放 Device 侧内存
+        ACLCHECK(aclrtFree(recvBuf)); // 释放 Device 侧内存
     }
-    ACLCHECK(aclrtDestroyStream(stream));  // 销毁任务流
-    ACLCHECK(aclrtResetDevice(device));    // 重置设备
+    ACLCHECK(aclrtDestroyStream(stream)); // 销毁任务流
+    ACLCHECK(aclrtResetDevice(device));   // 重置设备
     return 0;
 }
 
@@ -121,9 +121,9 @@ int main()
     int32_t rootRank = 0;
     ACLCHECK(aclrtSetDevice(rootRank));
     // 生成 Root 节点信息，各线程使用同一份 RootInfo
-    void *rootInfoBuf = nullptr;
+    void* rootInfoBuf = nullptr;
     ACLCHECK(aclrtMallocHost(&rootInfoBuf, sizeof(HcclRootInfo)));
-    HcclRootInfo *rootInfo = (HcclRootInfo *)rootInfoBuf;
+    HcclRootInfo* rootInfo = (HcclRootInfo*)rootInfoBuf;
     HCCLCHECK(HcclGetRootInfo(rootInfo));
 
     // 启动线程执行集合通信操作
@@ -134,14 +134,14 @@ int main()
         args[i].rootRank = static_cast<uint32_t>(rootRank);
         args[i].device = i;
         args[i].devCount = devCount;
-        threads[i] = std::thread(Sample, (void *)&args[i]);
+        threads[i] = std::thread(Sample, (void*)&args[i]);
     }
     for (uint32_t i = 0; i < devCount; i++) {
         threads[i].join();
     }
 
     // 释放资源
-    ACLCHECK(aclrtFreeHost(rootInfoBuf));  // 释放 Host 内存
-    ACLCHECK(aclFinalize());               // 设备去初始化
+    ACLCHECK(aclrtFreeHost(rootInfoBuf)); // 释放 Host 内存
+    ACLCHECK(aclFinalize());              // 设备去初始化
     return 0;
 }

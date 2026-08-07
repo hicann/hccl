@@ -16,18 +16,20 @@
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(HcclComm comm,
-    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    (void) comm;
+    (void)comm;
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ =  HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     algHierarchyInfo_ = algHierarchyInfo;
 
-    HCCL_INFO("[InsV2AllGatherSequenceExecutor][InitCommInfo] myRank[%u], rankSize[%u], dataType[%u], dataTypeSize[%u]",
+    HCCL_INFO(
+        "[InsV2AllGatherSequenceExecutor][InitCommInfo] myRank[%u], rankSize[%u], dataType[%u], dataTypeSize[%u]",
         myRank_, rankSize_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
@@ -46,9 +48,9 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(HcclComm comm,
-    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-    AlgResourceRequest& resourceRequest)
+HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     // 初始化一些基本成员变量
     InitCommInfo(comm, param, topoInfo, algHierarchyInfo);
@@ -64,7 +66,8 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     // 分级算法，slaveThread和对应notify可以复用
     resourceRequest.slaveThreadNum = std::max(resReqIntra.slaveThreadNum, resReqInter.slaveThreadNum);
     resourceRequest.notifyNumPerThread = resReqIntra.notifyNumPerThread; // dpu目前没有notify
-    resourceRequest.notifyNumOnMainThread = std::max(resReqIntra.notifyNumOnMainThread, resReqInter.notifyNumOnMainThread);
+    resourceRequest.notifyNumOnMainThread
+        = std::max(resReqIntra.notifyNumOnMainThread, resReqInter.notifyNumOnMainThread);
 
     resourceRequest.channels = {resReqIntra.channels[0], resReqInter.channels[0]};
     return HCCL_SUCCESS;
@@ -72,22 +75,21 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllGatherSequenceExecutor][Orchestrate] Orchestrate Start");
     // 参数填充
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ =  HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
-    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() ||
-        algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty() ||
-        algHierarchyInfo_.infos[1][0].empty()) {
+    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() || algHierarchyInfo_.infos[1].empty()
+        || algHierarchyInfo_.infos[0][0].empty() || algHierarchyInfo_.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
@@ -97,16 +99,18 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllGatherSequenceExecutor][Orchestrate]errNo[0x%016llx] Orchestrate failed",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2AllGatherSequenceExecutor][Orchestrate]errNo[0x%016llx] Orchestrate failed", HCCL_ERROR_CODE(ret)),
+        ret);
     HCCL_INFO("[InsV2AllGatherSequenceExecutor][Orchestrate] Orchestrate End");
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllGatherSequenceExecutor][OrchestrateLoop] Start");
 
@@ -130,7 +134,8 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     u32 intraTemplateScratchMultiplier = intraTempAlg.CalcScratchMultiple(BufferType::OUTPUT, BufferType::OUTPUT);
     u32 interTemplateScratchMultiplier = interTempAlg.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    u32 templateScratchMultiplier = std::max(interTemplateScratchMultiplier, intraTemplateScratchMultiplier * rankSizeLevel1_);
+    u32 templateScratchMultiplier
+        = std::max(interTemplateScratchMultiplier, intraTemplateScratchMultiplier * rankSizeLevel1_);
 
     // 构造框间template资源
     TemplateResource templateResourceInter;
@@ -149,8 +154,8 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
         return HCCL_E_INTERNAL;
     }
-    u64 maxCountPerLoop = interTempDataParams.buffInfo.hcclBuff.size / templateScratchMultiplier /
-        HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
+    u64 maxCountPerLoop = interTempDataParams.buffInfo.hcclBuff.size / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN
+                          * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
@@ -174,14 +179,16 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         interTempDataParams.inputRepeatStride = 0;
         interTempDataParams.outputRepeatStride = 0;
 
-        HCCL_INFO("[InsV2AllGatherSequenceExecutor] loop[%llu] interTempDataParams.inputSliceStride[%llu] "
+        HCCL_INFO(
+            "[InsV2AllGatherSequenceExecutor] loop[%llu] interTempDataParams.inputSliceStride[%llu] "
             "interTempDataParams.outputSliceStride[%llu] interTempDataParams.sliceSize[%llu] "
             "interTempDataParams.buffInfo.inBuffBaseOff[%llu] interTempDataParams.buffInfo.outBuffBaseOff[%llu] "
             "interTempDataParams.repeatNum[%llu] interTempDataParams.inputRepeatStride[%llu] "
-            "interTempDataParams.outputRepeatStride[%llu]", loop, interTempDataParams.inputSliceStride,
-            interTempDataParams.outputSliceStride, interTempDataParams.sliceSize,
-            interTempDataParams.buffInfo.inBuffBaseOff, interTempDataParams.buffInfo.outBuffBaseOff,
-            interTempDataParams.repeatNum, interTempDataParams.inputRepeatStride, interTempDataParams.outputRepeatStride);
+            "interTempDataParams.outputRepeatStride[%llu]",
+            loop, interTempDataParams.inputSliceStride, interTempDataParams.outputSliceStride,
+            interTempDataParams.sliceSize, interTempDataParams.buffInfo.inBuffBaseOff,
+            interTempDataParams.buffInfo.outBuffBaseOff, interTempDataParams.repeatNum,
+            interTempDataParams.inputRepeatStride, interTempDataParams.outputRepeatStride);
 
         CHK_RET(SplitData(currDataCount, rankSizeLevel1_, interTempDataParams));
         CHK_RET(interTempAlg.KernelRun(param, interTempDataParams, templateResourceInter));
@@ -202,14 +209,16 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         intraTempDataParams.inputRepeatStride = dataSize_ * rankSizeLevel0_;
         intraTempDataParams.outputRepeatStride = dataSize_ * rankSizeLevel0_;
 
-        HCCL_INFO("[InsV2AllGatherSequenceExecutor] loop[%llu] intraTempDataParams.inputSliceStride[%llu] "
+        HCCL_INFO(
+            "[InsV2AllGatherSequenceExecutor] loop[%llu] intraTempDataParams.inputSliceStride[%llu] "
             "intraTempDataParams.outputSliceStride[%llu] intraTempDataParams.sliceSize[%llu] "
             "intraTempDataParams.buffInfo.inBuffBaseOff[%llu] intraTempDataParams.buffInfo.outBuffBaseOff[%llu] "
             "intraTempDataParams.repeatNum[%llu] intraTempDataParams.inputRepeatStride[%llu] "
-            "intraTempDataParams.outputRepeatStride[%llu]", loop, intraTempDataParams.inputSliceStride,
-            intraTempDataParams.outputSliceStride, intraTempDataParams.sliceSize,
-            intraTempDataParams.buffInfo.inBuffBaseOff, intraTempDataParams.buffInfo.outBuffBaseOff,
-            intraTempDataParams.repeatNum, intraTempDataParams.inputRepeatStride, intraTempDataParams.outputRepeatStride);
+            "intraTempDataParams.outputRepeatStride[%llu]",
+            loop, intraTempDataParams.inputSliceStride, intraTempDataParams.outputSliceStride,
+            intraTempDataParams.sliceSize, intraTempDataParams.buffInfo.inBuffBaseOff,
+            intraTempDataParams.buffInfo.outBuffBaseOff, intraTempDataParams.repeatNum,
+            intraTempDataParams.inputRepeatStride, intraTempDataParams.outputRepeatStride);
 
         CHK_RET(intraTempAlg.KernelRun(param, intraTempDataParams, templateResourceIntra));
 
@@ -221,7 +230,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitData(
-    const u64 dataCount, const u64 rankSize, TemplateDataParams &tempAlgParams)
+    const u64 dataCount, const u64 rankSize, TemplateDataParams& tempAlgParams)
 {
     u32 sliceNum = rankSize;
     tempAlgParams.allRankSliceSize.clear();
@@ -240,10 +249,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLGATHER,
-                               InsAllGatherMeshNhrDPU,
-                               InsV2AllGatherSequenceExecutor,
-                               TopoMatchMultilevel,
-                               InsTempAllGatherMesh1D,
-                               InsTempAllGatherNHRDPU);
-}
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherMeshNhrDPU, InsV2AllGatherSequenceExecutor, TopoMatchMultilevel,
+    InsTempAllGatherMesh1D, InsTempAllGatherNHRDPU);
+} // namespace ops_hccl

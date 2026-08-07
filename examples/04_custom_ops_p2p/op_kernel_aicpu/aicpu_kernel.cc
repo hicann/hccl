@@ -18,7 +18,7 @@
 
 using namespace ops_hccl_p2p;
 
-extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
+extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam* param)
 {
     HCCL_INFO("Entry-%s, commName[%s], tag[%s]", __func__, param->commName, param->tag);
     if (param->devType == DEVICE_TYPE_A2 || param->devType == DEVICE_TYPE_A3) {
@@ -46,7 +46,8 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam *param)
     }
 
     // 主thread通知Host stream
-    if (HcommThreadNotifyRecordOnThread(param->resCtx->aicpuThread, param->resCtx->cpuThreadOnAicpu, 0) != HCCL_SUCCESS) {
+    if (HcommThreadNotifyRecordOnThread(param->resCtx->aicpuThread, param->resCtx->cpuThreadOnAicpu, 0)
+        != HCCL_SUCCESS) {
         HCCL_ERROR("failed to record host main stream");
         return 1;
     }

@@ -20,16 +20,19 @@ class ScatterCommExecutor : public ScatterExecutorBase {
 public:
     explicit ScatterCommExecutor();
     ~ScatterCommExecutor() override = default;
+
 protected:
     /* *************** 资源计算 *************** */
-    HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-        AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
+    HcclResult CalcResRequest(
+        HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+        AlgResourceRequest& resourceRequest, AlgType& algType) override;
 
     /* *************** 算法编排 *************** */
-    HcclResult KernelRun(const OpParam &param, ExecMem &execMem) override;
+    HcclResult KernelRun(const OpParam& param, ExecMem& execMem) override;
+
 private:
 };
 
-}
+} // namespace ops_hccl
 
 #endif

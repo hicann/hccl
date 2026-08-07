@@ -31,7 +31,7 @@ constexpr uint64_t AIV_TAG_BUFF_LEN = 2 * 1024 * 1024; // 2MB
 struct OpParam {
     char tag[TAG_LENGTH];
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
-    
+
     uint64_t buffIn = 0; // cclMem address
     uint64_t input = 0;
     uint64_t output = 0;
@@ -45,24 +45,24 @@ struct OpParam {
     uint32_t reduceOp = 0;
     uint32_t root = 0;
     uint32_t tagId = 0; // Maps to 'tag' in kernel
-    
+
     uint64_t inputSliceStride = 0;
     uint64_t outputSliceStride = 0;
     uint64_t repeatNum = 0;
     uint64_t inputRepeatStride = 0;
     uint64_t outputRepeatStride = 0;
-    
+
     bool isOpBase = false;
-    
+
     uint64_t headCountMem = 0;
     uint64_t tailCountMem = 0;
     uint64_t addOneMem = 0;
     uint32_t counterMemSize = 0;
     bool isEnableCounter = false;
-    
+
     ExtraArgs extraArgs;
 };
 
-}
+} // namespace ops_hccl_allgather
 
 #endif // OPS_HCCL_CUSTOM_COMMON_H

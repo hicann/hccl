@@ -16,6 +16,6 @@
 #include "common.h"
 
 namespace ops_hccl_p2p {
-HcclResult ExecOp(OpParam &param, AlgResourceCtx* resCtx);
+HcclResult ExecOp(OpParam& param, AlgResourceCtx* resCtx);
 }
 #endif

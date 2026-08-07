@@ -16,6 +16,6 @@
 #include "common.h"
 
 namespace ops_hccl_allgather {
-HcclResult ExecOp(const OpParam &param, const AlgResourceCtx& resCtx);
+HcclResult ExecOp(const OpParam& param, const AlgResourceCtx& resCtx);
 }
 #endif

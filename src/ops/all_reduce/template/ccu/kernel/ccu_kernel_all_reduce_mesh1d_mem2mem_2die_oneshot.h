@@ -7,17 +7,17 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #ifndef HCCL_CCU_KERNEL_ALL_REDUCE_MESH_1D_MEM2MEM_2DIE_ONESHOT
 #define HCCL_CCU_KERNEL_ALL_REDUCE_MESH_1D_MEM2MEM_2DIE_ONESHOT
- 
+
 #include <vector>
 #include <ios>
 #include <string>
 #include "utils.h"
 #include "ccu_kernel_utils.h"
 #include "ccu_kernel_alg_base.h"
- 
+
 namespace ops_hccl {
 
 struct CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot : CcuKernelArgBase {
@@ -28,9 +28,9 @@ struct CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot : CcuKernelArgBase {
     std::vector<std::vector<uint32_t>> subCommRanks;
     bool rmtReduceWithMyRank{false};
 };
- 
+
 struct AllReduceMesh1DMem2Mem2DieOneShotContext : CcuKernelCtxBase {
-    const CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot *arg;
+    const CcuKernelArgAllReduceMesh1DMem2Mem2DieOneShot* arg;
 
     uint64_t rankSize{0};
     uint32_t rankId{0};

@@ -19,34 +19,35 @@ namespace ops_hccl {
 class CcuTempAllGather2DiesMeshMem2Mem1D : public CcuAlgTemplateBase {
 public:
     CcuTempAllGather2DiesMeshMem2Mem1D() = default;
-    explicit  CcuTempAllGather2DiesMeshMem2Mem1D(const OpParam& param, 
-                                                const u32 rankId,
-                                                const std::vector<std::vector<u32>> &subCommRanks);
- 
+    explicit CcuTempAllGather2DiesMeshMem2Mem1D(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
+
     ~CcuTempAllGather2DiesMeshMem2Mem1D() override;
- 
+
     std::string Describe() const override
     {
-        return StringFormat("Template of all gather ccu sche mesh 1D Mem2Mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of all gather ccu sche mesh 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
- 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    HcclResult ClassifyChannelByDieId(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                      std::vector<HcclChannelDesc>& channelDescs,
-                                      std::vector<uint32_t>& rankIdGroup0, std::vector<uint32_t>& rankIdGroup1,
-                                      bool& if0HandleSelfRank);
+    HcclResult ClassifyChannelByDieId(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        std::vector<HcclChannelDesc>& channelDescs, std::vector<uint32_t>& rankIdGroup0,
+        std::vector<uint32_t>& rankIdGroup1, bool& if0HandleSelfRank);
+
 private:
     uint32_t mySubCommRank_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
 #endif

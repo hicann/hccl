@@ -17,20 +17,21 @@
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2BatchSendRecvSoleExecutor()
-{
-}
+{}
 
-template <typename AlgTopoMatch, typename InsAlgTemplate> std::string InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Describe() const
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::string InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Describe() const
 {
     return "Instruction BatchSendRecvS Executor.";
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
-    HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     // AlgHierarchyInfoForAllLevel固定为一层
-    CHK_PRT_RET((topoInfo->userRankSize == 0),
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
         HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][CalcAlgHierarchyInfo] Rank [%u], rankSize is 0.", myRank_),
         HcclResult::HCCL_E_PARA);
 
@@ -45,9 +46,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlg
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-    AlgResourceRequest &resourceRequest)
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
 #ifndef AICPU_COMPILE
     // 变量检查
@@ -74,11 +75,11 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes
 
     // 遍历remoteRank集合，如果在algHierarchyInfo中，则建链，否则报错
     std::vector<HcclChannelDesc> channelLevel0;
-    for (const u32 &remoteRank : commTargetUserRankSet_) {
+    for (const u32& remoteRank : commTargetUserRankSet_) {
         if (remoteRank == static_cast<uint32_t>(myRank_)) {
             continue;
         }
-        CommLink *linkList = nullptr;
+        CommLink* linkList = nullptr;
         u32 listSize = 0;
         u32 channelNum = 2;
         auto it = std::find(algHierarchyInfo.infos[0][0].begin(), algHierarchyInfo.infos[0][0].end(), remoteRank);
@@ -105,7 +106,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::ProcessSelfSendRecvTasks(ThreadHandle &thread)
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::ProcessSelfSendRecvTasks(ThreadHandle& thread)
 {
     while (!sendToSelfDeque_.empty() && !recvFromSelfDeque_.empty()) {
         if (sendToSelfDeque_.front()->count == recvFromSelfDeque_.front()->count
@@ -113,13 +114,14 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
             dataTypeSize_ = DATATYPE_SIZE_TABLE[sendToSelfDeque_.front()->dataType];
             u64 dataSize = sendToSelfDeque_.front()->count * dataTypeSize_;
 
-            void *inputDataPtr = sendToSelfDeque_.front()->buf;
-            void *outputDataPtr = recvFromSelfDeque_.front()->buf;
+            void* inputDataPtr = sendToSelfDeque_.front()->buf;
+            void* outputDataPtr = recvFromSelfDeque_.front()->buf;
             DataSlice srcSlice(inputDataPtr, 0, dataSize);
             DataSlice dstSlice(outputDataPtr, 0, dataSize);
             CHK_RET(LocalCopy(thread, srcSlice, dstSlice));
-            HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][ProcessSelfSendRecvTasks] inputData[%p], outputData[%p], "
-                       "dataSize[%llu]",
+            HCCL_DEBUG(
+                "[InsV2BatchSendRecvSoleExecutor][ProcessSelfSendRecvTasks] inputData[%p], outputData[%p], "
+                "dataSize[%llu]",
                 inputDataPtr, outputDataPtr, dataSize);
             sendToSelfDeque_.pop_front();
             recvFromSelfDeque_.pop_front();
@@ -134,7 +136,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortSendItems(
-    const HcclSendRecvItem *a, const HcclSendRecvItem *b) const
+    const HcclSendRecvItem* a, const HcclSendRecvItem* b) const
 {
     u32 aFlag = (a->remoteRank <= static_cast<uint32_t>(myRank_)) ? (a->remoteRank + rankSize_) : a->remoteRank;
     u32 bFlag = (b->remoteRank <= static_cast<uint32_t>(myRank_)) ? (b->remoteRank + rankSize_) : b->remoteRank;
@@ -148,7 +150,7 @@ bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortSendItems
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortRecvItems(
-    const HcclSendRecvItem *a, const HcclSendRecvItem *b) const
+    const HcclSendRecvItem* a, const HcclSendRecvItem* b) const
 {
     u32 aFlag = (a->remoteRank < static_cast<uint32_t>(myRank_)) ? (a->remoteRank + rankSize_) : a->remoteRank;
     u32 bFlag = (b->remoteRank < static_cast<uint32_t>(myRank_)) ? (b->remoteRank + rankSize_) : b->remoteRank;
@@ -162,7 +164,7 @@ bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortRecvItems
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortSelfItems(
-    const HcclSendRecvItem *a, const HcclSendRecvItem *b) const
+    const HcclSendRecvItem* a, const HcclSendRecvItem* b) const
 {
     if (a->count != b->count) {
         return a->count > b->count;
@@ -172,14 +174,15 @@ bool InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::SortSelfItems
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetPairWiseList(
-    const HcclSendRecvItem *sendRecvInfo, u32 itemNum)
+    const HcclSendRecvItem* sendRecvInfo, u32 itemNum)
 {
     HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][GetPairWiseList] Start sort the batchSendRecv tasklist.");
     CHK_PTR_NULL(sendRecvInfo);
 
     for (u32 i = 0; i < itemNum; i++) {
-        HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][GetPairWiseList] index is %u, itemNum is %u,"
-                  "localRankID is %d, remoteRank is %u, dataCount is %llu, sendRecvType is %u, rankSize is %u.",
+        HCCL_INFO(
+            "[InsV2BatchSendRecvSoleExecutor][GetPairWiseList] index is %u, itemNum is %u,"
+            "localRankID is %d, remoteRank is %u, dataCount is %llu, sendRecvType is %u, rankSize is %u.",
             i, itemNum, myRank_, sendRecvInfo->remoteRank, sendRecvInfo->count,
             static_cast<u32>(sendRecvInfo->sendRecvType), rankSize_);
         if (sendRecvInfo->count > 0) {
@@ -189,8 +192,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetPair
             } else if (sendRecvInfo->sendRecvType == HcclSendRecvType::HCCL_RECV) {
                 recvDeque_.push_back(sendRecvInfo);
             } else {
-                HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][GetPairWiseList] sendRecvType wrong sendrecvType is %d, "
-                           "rankID is %d, remoteRank is %u.",
+                HCCL_ERROR(
+                    "[InsV2BatchSendRecvSoleExecutor][GetPairWiseList] sendRecvType wrong sendrecvType is %d, "
+                    "rankID is %d, remoteRank is %u.",
                     sendRecvInfo->sendRecvType, myRank_, sendRecvInfo->remoteRank);
                 return HcclResult::HCCL_E_PARA;
             }
@@ -204,11 +208,11 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetPair
         如果有rank间重复send/recv场景，按照收发数据count从大到小排序
         如果数据count也一致，则按照dataType枚举值从大到小排序
     */
-    auto sendCompare = [this](const HcclSendRecvItem *a, const HcclSendRecvItem *b) {
+    auto sendCompare = [this](const HcclSendRecvItem* a, const HcclSendRecvItem* b) {
         return this->SortSendItems(a, b);
     };
 
-    auto recvCompare = [this](const HcclSendRecvItem *a, const HcclSendRecvItem *b) {
+    auto recvCompare = [this](const HcclSendRecvItem* a, const HcclSendRecvItem* b) {
         return this->SortRecvItems(a, b);
     };
 
@@ -224,7 +228,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetPair
         recvDeque_.pop_front();
     }
     // 自收发任务按照收发长度大小排序
-    auto selfDequeCompare = [this](const HcclSendRecvItem *a, const HcclSendRecvItem *b) {
+    auto selfDequeCompare = [this](const HcclSendRecvItem* a, const HcclSendRecvItem* b) {
         return this->SortSelfItems(a, b);
     };
 
@@ -242,17 +246,19 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetPair
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcSendSlices()
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcSendSlices()
 {
     while (!sendDeque_.empty()) {
-        const HcclSendRecvItem *sendItem = sendDeque_.front();
-        HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][CalcSendSlices] remoteRank[%u], buf[%p], count[%llu],"
-                  "dataType[%u], sendRecvType[%d].",
+        const HcclSendRecvItem* sendItem = sendDeque_.front();
+        HCCL_INFO(
+            "[InsV2BatchSendRecvSoleExecutor][CalcSendSlices] remoteRank[%u], buf[%p], count[%llu],"
+            "dataType[%u], sendRecvType[%d].",
             sendItem->remoteRank, sendItem->buf, sendItem->count, sendItem->dataType, sendItem->sendRecvType);
         // 计算每轮搬运的最大数据量
         dataTypeSize_ = DATATYPE_SIZE_TABLE[sendItem->dataType];
         u64 maxCountPerLoop = maxTmpMemSize_ / dataTypeSize_;
-        u8 *curInputPtr = static_cast<u8 *>(sendItem->buf);
+        u8* curInputPtr = static_cast<u8*>(sendItem->buf);
         CHK_PTR_NULL(curInputPtr);
 
         u64 curOffset = 0;
@@ -261,10 +267,11 @@ template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchS
             // 判断本轮需搬运的数据量
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
-            curInputPtr = static_cast<u8 *>(sendItem->buf) + curOffset;
-            sendDataSilces_.emplace_back(static_cast<void *>(curInputPtr), transferSize, sendItem->remoteRank);
-            HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][CalcSendSlices] slice curOffset[%llu], slice size[%llu] "
-                       "curInputPtr [%p].",
+            curInputPtr = static_cast<u8*>(sendItem->buf) + curOffset;
+            sendDataSilces_.emplace_back(static_cast<void*>(curInputPtr), transferSize, sendItem->remoteRank);
+            HCCL_DEBUG(
+                "[InsV2BatchSendRecvSoleExecutor][CalcSendSlices] slice curOffset[%llu], slice size[%llu] "
+                "curInputPtr [%p].",
                 curOffset, transferSize, curInputPtr);
             curOffset += transferSize;
             resDataCount -= transferCount;
@@ -274,17 +281,19 @@ template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchS
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRecvSlices()
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRecvSlices()
 {
     while (!recvDeque_.empty()) {
-        const HcclSendRecvItem *recvItem = recvDeque_.front();
-        HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][CalcRecvSlices] remoteRank[%u], buf[%p], count[%llu],"
-                  "dataType[%u], sendRecvType[%d].",
+        const HcclSendRecvItem* recvItem = recvDeque_.front();
+        HCCL_INFO(
+            "[InsV2BatchSendRecvSoleExecutor][CalcRecvSlices] remoteRank[%u], buf[%p], count[%llu],"
+            "dataType[%u], sendRecvType[%d].",
             recvItem->remoteRank, recvItem->buf, recvItem->count, recvItem->dataType, recvItem->sendRecvType);
         // 计算每轮搬运的最大数据量
         dataTypeSize_ = DATATYPE_SIZE_TABLE[recvItem->dataType];
         u64 maxCountPerLoop = maxTmpMemSize_ / dataTypeSize_;
-        u8 *curOutputPtr = static_cast<u8 *>(recvItem->buf);
+        u8* curOutputPtr = static_cast<u8*>(recvItem->buf);
         CHK_PTR_NULL(curOutputPtr);
 
         u64 curOffset = 0;
@@ -293,10 +302,11 @@ template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchS
             // 判断本轮需搬运的数据量
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
-            curOutputPtr = static_cast<u8 *>(recvItem->buf) + curOffset;
-            recvDataSilces_.emplace_back(static_cast<void *>(curOutputPtr), transferSize, recvItem->remoteRank);
-            HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][CalcRecvSlices] slice curOffset[%llu], slice size[%llu] "
-                       "curOutputPtr [%p].",
+            curOutputPtr = static_cast<u8*>(recvItem->buf) + curOffset;
+            recvDataSilces_.emplace_back(static_cast<void*>(curOutputPtr), transferSize, recvItem->remoteRank);
+            HCCL_DEBUG(
+                "[InsV2BatchSendRecvSoleExecutor][CalcRecvSlices] slice curOffset[%llu], slice size[%llu] "
+                "curOutputPtr [%p].",
                 curOffset, transferSize, curOutputPtr);
             curOffset += transferSize;
             resDataCount -= transferCount;
@@ -308,7 +318,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate> HcclResult InsV2BatchS
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetSendChannel(
-    u32 remoteRank, ChannelInfo &sendChannel) const
+    u32 remoteRank, ChannelInfo& sendChannel) const
 {
     auto it = remoteRankToChannelInfo_[0].find(remoteRank);
     if (it == remoteRankToChannelInfo_[0].end()) {
@@ -338,7 +348,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetSend
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetRecvChannel(
-    u32 remoteRank, ChannelInfo &recvChannel) const
+    u32 remoteRank, ChannelInfo& recvChannel) const
 {
     auto it = remoteRankToChannelInfo_[0].find(remoteRank);
     if (it == remoteRankToChannelInfo_[0].end()) {
@@ -367,7 +377,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetRecv
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::ProcessSendDataSlice(
-    const OpParam &param, SendRecvSlice &sendSlice, BatchSendRecvOpType opType) const
+    const OpParam& param, SendRecvSlice& sendSlice, BatchSendRecvOpType opType) const
 {
     ChannelInfo sendChannel;
     CHK_RET(GetSendChannel(sendSlice.remoteRank_, sendChannel));
@@ -379,8 +389,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
         = std::make_shared<InsAlgTemplate>(sendRecvParam, myRank_, algHierarchyInfo_.infos[0]);
     TemplateDataParams tempAlgParams;
     tempAlgParams.buffInfo.inputPtr = sendSlice.addr_;
-    tempAlgParams.buffInfo.outputPtr = sendChannel.remoteCclMem.addr;; // 无论跨框还是框内 都要发送到对方的ccl上
-    tempAlgParams.buffInfo.hcclBuff = cclMem_;       // 本端的ccl
+    tempAlgParams.buffInfo.outputPtr = sendChannel.remoteCclMem.addr;
+    ;                                          // 无论跨框还是框内 都要发送到对方的ccl上
+    tempAlgParams.buffInfo.hcclBuff = cclMem_; // 本端的ccl
     tempAlgParams.sliceSize = sendSlice.size_;
     tempAlgParams.count = sendSlice.size_ / dataTypeSize_;
     tempAlgParams.opType = opType; // 传入实际操作
@@ -394,15 +405,16 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     templateResource.npu2DpuShmemPtr = npu2DpuShmemPtr_;
     templateResource.dpu2NpuShmemPtr = dpu2NpuShmemPtr_;
     CHK_RET(algTemplate->KernelRun(sendRecvParam, tempAlgParams, templateResource));
-    HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][ProcessSendDataSlice] Process a send task by dpu template, "
-               "CCLBuffer[%p], remoteRank[%u].",
+    HCCL_DEBUG(
+        "[InsV2BatchSendRecvSoleExecutor][ProcessSendDataSlice] Process a send task by dpu template, "
+        "CCLBuffer[%p], remoteRank[%u].",
         cclMem_.addr, sendSlice.remoteRank_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::ProcessRecvDataSlice(
-    const OpParam &param, SendRecvSlice &recvSlice, BatchSendRecvOpType opType) const
+    const OpParam& param, SendRecvSlice& recvSlice, BatchSendRecvOpType opType) const
 {
     ChannelInfo recvChannel;
     CHK_RET(GetRecvChannel(recvSlice.remoteRank_, recvChannel));
@@ -410,14 +422,12 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     OpParam sendRecvParam = param;
     sendRecvParam.sendRecvRemoteRank = recvSlice.remoteRank_;
     // 构造template
-    if (algHierarchyInfo_.infos.empty())
-    {
+    if (algHierarchyInfo_.infos.empty()) {
         HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][ProcessRecvDataSlice] algHierarchyInfo infos is empty!");
         return HCCL_E_PARA;
     }
 
-    if (algHierarchyInfo_.infos[0].empty())
-    {
+    if (algHierarchyInfo_.infos[0].empty()) {
         HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][ProcessRecvDataSlice] algHierarchyInfo infos[0] is empty!");
         return HCCL_E_PARA;
     }
@@ -441,14 +451,15 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     templateResource.npu2DpuShmemPtr = npu2DpuShmemPtr_;
     templateResource.dpu2NpuShmemPtr = dpu2NpuShmemPtr_;
     CHK_RET(algTemplate->KernelRun(sendRecvParam, tempAlgParams, templateResource));
-    HCCL_DEBUG("[InsV2BatchSendRecvSoleExecutor][ProcessRecvDataSlice] Process a recv task by read mode, "
-               "outputBuffer[%p], remoteRank[%u].",
+    HCCL_DEBUG(
+        "[InsV2BatchSendRecvSoleExecutor][ProcessRecvDataSlice] Process a recv task by read mode, "
+        "outputBuffer[%p], remoteRank[%u].",
         recvSlice.addr_, recvSlice.remoteRank_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoopSendRecv(const OpParam &param)
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoopSendRecv(const OpParam& param)
 {
     HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][RunLoopSendRecv] Process start.");
     // 前同步
@@ -456,12 +467,12 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
     std::vector<u32> notifyIdxMainToSub = {0};
     CHK_RET(PreSyncInterThreads(threads_[0], subThreads, notifyIdxMainToSub));
 
-    for (auto &slice : recvDataSilces_) {
+    for (auto& slice : recvDataSilces_) {
         // 发recv的record
         CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
     }
 
-    for (auto &slice : sendDataSilces_) {
+    for (auto& slice : sendDataSilces_) {
         // 发writeWithNotify
         CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::SEND));
     }
@@ -488,7 +499,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][Orchestrate] Orchestrate Start.");
     // 给channels_和threads_赋值
@@ -508,12 +519,14 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
-    CHK_PRT_RET((rankSize_ == 0),
-        HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][Orchestrate] rankSize equals to zero."), HCCL_E_PARA);
+    CHK_PRT_RET(
+        (rankSize_ == 0), HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][Orchestrate] rankSize equals to zero."),
+        HCCL_E_PARA);
     cclMem_ = resCtx.cclMem;
     cclMem_.size = cclMem_.size / rankSize_;
     maxTmpMemSize_ = std::min(cclMem_.size, UB_MAX_DATA_SIZE);
-    CHK_PRT_RET((maxTmpMemSize_ == 0),
+    CHK_PRT_RET(
+        (maxTmpMemSize_ == 0),
         HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][Orchestrate] maxTmpMemSize equals to zero."), HCCL_E_PARA);
 
     // 任务信息
@@ -535,6 +548,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, InsBatchSendRecvDPU, InsV2BatchSendRecvSoleExecutor, TopoMatch1D,
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, InsBatchSendRecvDPU, InsV2BatchSendRecvSoleExecutor, TopoMatch1D,
     InsTempBatchSendRecvDpu);
 } // namespace ops_hccl

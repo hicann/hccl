@@ -7,10 +7,10 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #ifndef HCCL_AIV_UTILS_H
 #define HCCL_AIV_UTILS_H
- 
+
 #include "string"
 #include <array>
 #include <memory>
@@ -19,8 +19,8 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr u32 MAX_RANK_SIZE = 512; // 注意要和device侧的一致
-constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE = 512;      // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE_V = 256;    // 注意要和device侧的一致
 constexpr s32 TOPO_LEN = MAX_RANK_SIZE; // 当前一级拓扑，暂时和MAX_RANK_SIZE保持一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
@@ -52,11 +52,12 @@ using AivKernelInfo = struct AivKernelInfoDef {
     HcclDataType dataType;
     KernelArgsType argsType;
 
-    AivKernelInfoDef(const char* kernelName, HcclDataType dataType,
-        KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER)
-        : kernelName(kernelName), dataType(dataType), argsType(argsType)
-    {
-    }
+    AivKernelInfoDef(
+        const char* kernelName, HcclDataType dataType, KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER)
+        : kernelName(kernelName),
+          dataType(dataType),
+          argsType(argsType)
+    {}
 };
 
 // 非均匀算子AlltoAllV/AlltoAllVC/AllGatherV/ReduceScatterV需要的额外参数信息，A3场景
@@ -75,7 +76,7 @@ struct OpCounterInfo {
     u32 memSize = 0;
     bool isEnableCounter = false;
 };
- 
+
 // 表示算子属性的参数，相对固定
 struct AivOpArgs {
     HcclCMDType cmdType = HcclCMDType::HCCL_CMD_MAX;
@@ -84,7 +85,7 @@ struct AivOpArgs {
     u32 numBlocks = MAX_NUM_BLOCKS;
     rtStream_t stream = nullptr;
     uint64_t beginTime = 0;
-    OpCounterInfo counter = {}; 
+    OpCounterInfo counter = {};
     void* buffersIn = nullptr;
     u64 input = 0;
     u64 output = 0;
@@ -95,7 +96,7 @@ struct AivOpArgs {
     u64 yRankSize = 0;
     u64 zRankSize = 0;
     u64 count = 0;
-    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32; 
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
     HcclReduceOp op = HcclReduceOp::HCCL_REDUCE_SUM;
     u32 root = 0;
     u32 sliceId = 0;
@@ -105,8 +106,8 @@ struct AivOpArgs {
     u64 inputRepeatStride = 0;
     u64 outputRepeatStride = 0;
     bool isOpBase = false;
-    ExtraArgs extraArgs = {}; 
-    uint64_t topo_[TOPO_LEN] = {0}; 
+    ExtraArgs extraArgs = {};
+    uint64_t topo_[TOPO_LEN] = {0};
     AivOpArgs() {};
     KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER;
 };
@@ -120,12 +121,18 @@ struct AivOpCacheArgs {
     HcclReduceOp reduceOp;
     u32 root;
 
-    bool operator<(const AivOpCacheArgs& other) const {
-        if (commName != other.commName) return commName < other.commName;
-        if (count != other.count) return count < other.count;
-        if (dataType != other.dataType) return dataType < other.dataType;
-        if (opType != other.opType) return opType < other.opType;
-        if (reduceOp != other.reduceOp) return reduceOp < other.reduceOp;
+    bool operator<(const AivOpCacheArgs& other) const
+    {
+        if (commName != other.commName)
+            return commName < other.commName;
+        if (count != other.count)
+            return count < other.count;
+        if (dataType != other.dataType)
+            return dataType < other.dataType;
+        if (opType != other.opType)
+            return opType < other.opType;
+        if (reduceOp != other.reduceOp)
+            return reduceOp < other.reduceOp;
         return root < other.root;
     }
 };
@@ -178,17 +185,29 @@ using AivSuperKernelArgs = struct AivSuperKernelArgsDef {
     u64 input{};
     u64 output{};
     u64 cclBufferSize{};
-    AivSuperKernelArgsDef(u64 input, u64 output, u32 rank,
-        u32 rankSize, u64 len, u32 dataType, u64 unitSize, u32 reduceOp,u32 numBlocks = 0, s32 tag = 0, bool clearEnable = true,
-        uint64_t inputSliceStride = 0, uint64_t outputSliceStride = 0, uint64_t repeatNum = 0,
-        uint64_t inputRepeatStride = 0, uint64_t outputRepeatStride = 0, u64 cclBufferSize = 0)
-        : rank(rank), rankSize(rankSize), len(len), dataType(dataType), unitSize(unitSize), 
-          reduceOp(reduceOp), numBlocks(numBlocks),tag(tag),
-          clearEnable(clearEnable), inputSliceStride(inputSliceStride), outputSliceStride(outputSliceStride),
-          repeatNum(repeatNum), inputRepeatStride(inputRepeatStride), outputRepeatStride(outputRepeatStride),
-          input(input), output(output), cclBufferSize(cclBufferSize)
-    {
-    }
+    AivSuperKernelArgsDef(
+        u64 input, u64 output, u32 rank, u32 rankSize, u64 len, u32 dataType, u64 unitSize, u32 reduceOp,
+        u32 numBlocks = 0, s32 tag = 0, bool clearEnable = true, uint64_t inputSliceStride = 0,
+        uint64_t outputSliceStride = 0, uint64_t repeatNum = 0, uint64_t inputRepeatStride = 0,
+        uint64_t outputRepeatStride = 0, u64 cclBufferSize = 0)
+        : rank(rank),
+          rankSize(rankSize),
+          len(len),
+          dataType(dataType),
+          unitSize(unitSize),
+          reduceOp(reduceOp),
+          numBlocks(numBlocks),
+          tag(tag),
+          clearEnable(clearEnable),
+          inputSliceStride(inputSliceStride),
+          outputSliceStride(outputSliceStride),
+          repeatNum(repeatNum),
+          inputRepeatStride(inputRepeatStride),
+          outputRepeatStride(outputRepeatStride),
+          input(input),
+          output(output),
+          cclBufferSize(cclBufferSize)
+    {}
     AivSuperKernelArgsDef() {}
 };
 
@@ -196,32 +215,33 @@ HcclResult RegisterKernel();
 
 HcclResult UnRegisterAivKernel();
 
-HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 argsSize);
- 
-HcclResult ExecuteKernelLaunch(const AivOpArgs &opArgs);
+HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize);
 
-void ProcessAivExceptionCallBack(aclrtExceptionInfo *exceptionInfo);
+HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs);
 
-u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey);
+void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo);
 
-HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string &ctxTag);
+u64 CalcAivCacheKeyHash(const AivOpCacheArgs& cacheKey);
 
-HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx **indexCtx);
+HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string& ctxTag);
 
-HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx);
+HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx** indexCtx);
 
-HcclResult LookupAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, bool &cacheHit,
-                             std::string &algName, AivInstruction *&instructions, u32 &insCount);
+HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx);
 
-HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCount, OpParam &param);
+HcclResult LookupAivCacheCtx(
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,
+    AivInstruction*& instructions, u32& insCount);
 
-HcclResult ReplayAivInstructionsV(const AivInstruction *instructions, u32 insCount, OpParam &param);
+HcclResult ReplayAivInstructions(const AivInstruction* instructions, u32 insCount, OpParam& param);
 
-HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
-                            AivCacheIndexCtx *indexCtx);
+HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCount, OpParam& param);
+
+HcclResult StoreAivCacheCtx(
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx);
 
 HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr);
 
-}
- 
+} // namespace ops_hccl
+
 #endif // HCCL_AIV_UTILS_H

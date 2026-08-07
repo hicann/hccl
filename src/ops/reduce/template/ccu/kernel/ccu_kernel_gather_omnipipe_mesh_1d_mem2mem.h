@@ -48,7 +48,7 @@ struct GatherOmniPipeMesh1DMem2MemContext {
     std::vector<ccu::Variable> sliceSizeOmniSliceStrideVec;
     std::vector<ccu::Variable> inputOmniSliceStrideVec;
     std::vector<ccu::Variable> outputOmniSliceStrideVec;
-    
+
     std::vector<ccu::RemoteAddr> inputMem;
     std::vector<ccu::LocalAddr> outputMem;
     ccu::Event event;

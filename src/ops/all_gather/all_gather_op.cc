@@ -15,14 +15,12 @@
 #include <map>
 #include <string>
 
-
 using namespace std;
 using namespace ops_hccl;
-extern "C" unsigned int LaunchAicpuKernel(OpParam *param);
+extern "C" unsigned int LaunchAicpuKernel(OpParam* param);
 
-
-HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm,
-                         aclrtStream stream)
+HcclResult HcclAllGather(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("Start to run execute HcclAllGather");
 
@@ -37,7 +35,7 @@ HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclD
     }
     CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all gather success"), HCCL_SUCCESS);
 
-    HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
+    HcclUs startut = TIME_NOW(); // 走老流程的判断时间不统计在内
     std::string opTag;
     CHK_RET(AllGatherInitAndCheck(comm, sendBuf, recvBuf, sendCount, dataType, stream, opTag));
 
@@ -51,7 +49,9 @@ HcclResult HcclAllGather(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclD
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, const char* group, aclrtStream stream, const char* tag, void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
+HcclResult HcclAllGatherGraphMode(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, const char* group, aclrtStream stream,
+    const char* tag, void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize)
 {
     HCCL_INFO("Start to run execute HcclAllGatherGraphMode");
     // 根据group获取通信域
@@ -61,13 +61,13 @@ HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));
     CHK_PRT_RET(sendCount == 0, HCCL_WARNING("input sendCount is 0, return all gather success"), HCCL_SUCCESS);
 
-    HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
+    HcclUs startut = TIME_NOW(); // 走老流程的判断时间不统计在内
     std::string opTag;
     CHK_RET(AllGatherInitAndCheck(comm, sendBuf, recvBuf, sendCount, dataType, stream, opTag));
-    
+
     // 检查tag有效性
     CHK_RET(HcclCheckTag(tag));
-    
+
     // 拼装ResPackGraphMode
     ResPackGraphMode resPack;
     // 设置tag
@@ -89,7 +89,9 @@ HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
     CHK_RET(AllGatherEntryLog(sendBuf, recvBuf, sendCount, dataType, stream, opTag, "HcclAllGatherGraphMode", true));
 
     // 执行AllGather
-    CHK_RET_AND_PRINT_IDE(AllGatherOutPlaceGraphMode(sendBuf, recvBuf, sendCount, dataType, comm, stream, tagStr, resPack), tagStr.c_str());
+    CHK_RET_AND_PRINT_IDE(
+        AllGatherOutPlaceGraphMode(sendBuf, recvBuf, sendCount, dataType, comm, stream, tagStr, resPack),
+        tagStr.c_str());
 
     CHK_RET(LogHcclExit("HcclAllGatherGraphMode", opTag.c_str(), startut, true));
 
@@ -97,7 +99,9 @@ HcclResult HcclAllGatherGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCou
 }
 namespace ops_hccl {
 
-HcclResult AllGatherInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream, std::string &opTag)
+HcclResult AllGatherInitAndCheck(
+    HcclComm comm, void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream,
+    std::string& opTag)
 {
     // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
     CHK_RET(InitEnvConfig());
@@ -122,54 +126,67 @@ HcclResult AllGatherInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, ui
     return HCCL_SUCCESS;
 }
 
-HcclResult CheckAllGatherInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream)
+HcclResult
+CheckAllGatherInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream)
 {
     // 入参合法性校验
-    RPT_INPUT_ERR(stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclAllGather", "nullptr", "stream", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclAllGather", "nullptr", "stream", "non-null pointer"}));
     CHK_PTR_NULL(stream);
-    RPT_INPUT_ERR(comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclAllGather", "nullptr", "comm", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclAllGather", "nullptr", "comm", "non-null pointer"}));
     CHK_PTR_NULL(comm);
-    RPT_INPUT_ERR(sendBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclAllGather", "nullptr", "sendBuf", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        sendBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclAllGather", "nullptr", "sendBuf", "non-null pointer"}));
     CHK_PTR_NULL(sendBuf);
-    RPT_INPUT_ERR(recvBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclAllGather", "nullptr", "recvBuf", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        recvBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclAllGather", "nullptr", "recvBuf", "non-null pointer"}));
     CHK_PTR_NULL(recvBuf);
 
     return HCCL_SUCCESS;
 }
 
-bool AllGatherSupportSymmetricMemory(OpParam &opParam)
+bool AllGatherSupportSymmetricMemory(OpParam& opParam)
 {
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 
-    HcclResult ret = HcclCommSymWinGet(opParam.hcclComm, opParam.inputPtr, opParam.inputSize, &opParam.inputSymWindow, &inputOffset);
-    CHK_PRT_RET(ret != HCCL_SUCCESS || opParam.inputSymWindow == nullptr,
-                HCCL_INFO("[%s] input[%p] size[%llu] is not support symmetric memory",
-                    __func__, opParam.inputPtr, opParam.inputSize), false);
-    ret = HcclCommSymWinGet(opParam.hcclComm, opParam.outputPtr, opParam.outputSize, &opParam.outputSymWindow, &outputOffset);
-    CHK_PRT_RET(ret != HCCL_SUCCESS || opParam.outputSymWindow == nullptr,
-                HCCL_INFO("[%s] output[%p] size[%llu] is not support symmetric memory",
-                    __func__, opParam.outputPtr, opParam.outputSize), false);
+    HcclResult ret = HcclCommSymWinGet(
+        opParam.hcclComm, opParam.inputPtr, opParam.inputSize, &opParam.inputSymWindow, &inputOffset);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || opParam.inputSymWindow == nullptr,
+        HCCL_INFO(
+            "[%s] input[%p] size[%llu] is not support symmetric memory", __func__, opParam.inputPtr, opParam.inputSize),
+        false);
+    ret = HcclCommSymWinGet(
+        opParam.hcclComm, opParam.outputPtr, opParam.outputSize, &opParam.outputSymWindow, &outputOffset);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || opParam.outputSymWindow == nullptr,
+        HCCL_INFO(
+            "[%s] output[%p] size[%llu] is not support symmetric memory", __func__, opParam.outputPtr,
+            opParam.outputSize),
+        false);
     opParam.supportSymmetricMemory = true;
     opParam.inputOffset = inputOffset;
     opParam.outputOffset = outputOffset;
     return true;
 }
 
-HcclResult AllGatherOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm,
-                                   aclrtStream stream, const std::string &tag, OpMode opMode, const ResPackGraphMode &resPack)
+HcclResult AllGatherOutPlaceCommon(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream,
+    const std::string& tag, OpMode opMode, const ResPackGraphMode& resPack)
 {
     HCCL_INFO("Start to execute AllGatherOutPlaceCommon");
     u32 userRankSize;
     CHK_RET(HcclGetRankSize(comm, &userRankSize));
 
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
-    u64 inputSize = sendCount * perDataSize;    // all gather 每个rank上一份数据
-    u64 outputSize = inputSize * userRankSize;  // 每个卡上结果为rankSize份数据
+    u64 inputSize = sendCount * perDataSize;   // all gather 每个rank上一份数据
+    u64 outputSize = inputSize * userRankSize; // 每个卡上结果为rankSize份数据
 
     OpParam param;
     CHK_RET(HcclGetCommName(comm, param.commName));
@@ -196,16 +213,16 @@ HcclResult AllGatherOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t sendCo
     param.opType = HcclCMDType::HCCL_CMD_ALLGATHER;
     param.enableDetour = false;
     param.deviceType = deviceType;
-    
+
     CHK_RET(HcclGetOpExpansionMode(comm, param));
 
     // 9.0.0 ccu模式走老流程
-    if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0) &&
-        param.engine == CommEngine::COMM_ENGINE_CCU) {
+    if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0)
+        && param.engine == CommEngine::COMM_ENGINE_CCU) {
         return HcclAllGatherInner(sendBuf, recvBuf, sendCount, dataType, comm, stream);
     }
 
-    CcuFastLaunchCtx *ccuFastLaunchCtx = nullptr;
+    CcuFastLaunchCtx* ccuFastLaunchCtx = nullptr;
     if (ShouldGoCcuFastLaunch(comm, param, &ccuFastLaunchCtx)) {
         return HcclExecOpCcuFastLaunch(comm, param, ccuFastLaunchCtx);
     }
@@ -237,26 +254,31 @@ HcclResult AllGatherOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t sendCo
     return HCCL_SUCCESS;
 }
 
-HcclResult AllGatherOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm,
-                                      aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack)
+HcclResult AllGatherOutPlaceGraphMode(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream,
+    const std::string& tag, const ResPackGraphMode& resPack)
 {
     HCCL_INFO("Start to execute AllGatherOutPlaceGraphMode");
-    CHK_RET(AllGatherOutPlaceCommon(sendBuf, recvBuf, sendCount, dataType, comm, stream, tag, OpMode::OFFLOAD, resPack));
+    CHK_RET(
+        AllGatherOutPlaceCommon(sendBuf, recvBuf, sendCount, dataType, comm, stream, tag, OpMode::OFFLOAD, resPack));
     HCCL_INFO("Execute AllGatherOutPlaceGraphMode success.");
     return HCCL_SUCCESS;
 }
 
-
-HcclResult AllGatherOutPlace(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm,
-                             aclrtStream stream, const std::string &tag)
+HcclResult AllGatherOutPlace(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream,
+    const std::string& tag)
 {
     HCCL_INFO("Start to execute AllGatherOutPlace");
-    CHK_RET(AllGatherOutPlaceCommon(sendBuf, recvBuf, sendCount, dataType, comm, stream, tag, OpMode::OPBASE, ResPackGraphMode()));
+    CHK_RET(AllGatherOutPlaceCommon(
+        sendBuf, recvBuf, sendCount, dataType, comm, stream, tag, OpMode::OPBASE, ResPackGraphMode()));
     HCCL_INFO("Execute AllGatherOutPlace success.");
     return HCCL_SUCCESS;
 }
 
-HcclResult AllGatherEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream, const std::string &tag, const std::string &opName, bool forceLog)
+HcclResult AllGatherEntryLog(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream, const std::string& tag,
+    const std::string& opName, bool forceLog)
 {
     /* 接口交互信息日志 */
     if (forceLog || GetExternalInputHcclEnableEntryLog()) {
@@ -265,9 +287,10 @@ HcclResult AllGatherEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, H
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
-        s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], dataType[%s], streamId[%d], deviceId[%d]",
-            tag.c_str(), sendBuf, recvBuf, sendCount, GetDataTypeEnumStr(dataType).c_str(), streamId, deviceId);
+        s32 ret = snprintf_s(
+            stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
+            "tag[%s], sendBuf[%p], recvBuf[%p], sendCount[%llu], dataType[%s], streamId[%d], deviceId[%d]", tag.c_str(),
+            sendBuf, recvBuf, sendCount, GetDataTypeEnumStr(dataType).c_str(), streamId, deviceId);
 
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag.c_str()));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);
@@ -275,4 +298,4 @@ HcclResult AllGatherEntryLog(void *sendBuf, void *recvBuf, uint64_t sendCount, H
     }
     return HCCL_SUCCESS;
 }
-}  // namespace ops_hccl
+} // namespace ops_hccl

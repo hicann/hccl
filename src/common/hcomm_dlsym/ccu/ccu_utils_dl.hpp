@@ -17,103 +17,104 @@
 
 namespace AscendC {
 namespace ccu {
-namespace detail {
+    namespace detail {
 
-struct NoAllocTag {};
+        struct NoAllocTag {};
 
-class CcuException : public std::exception {
-public:
-    CcuException(CcuResult code, const char *what)
-        : code_(code), what_(BuildMessage(code, what)) {}
+        class CcuException : public std::exception {
+        public:
+            CcuException(CcuResult code, const char* what) : code_(code), what_(BuildMessage(code, what)) {}
 
-    const char *what() const noexcept override { return what_.c_str(); }
-    CcuResult   code() const noexcept { return code_; }
+            const char* what() const noexcept override { return what_.c_str(); }
+            CcuResult code() const noexcept { return code_; }
 
-private:
-    static std::string BuildMessage(CcuResult code, const char *what)
-    {
-        std::string msg = "[ccu] ";
-        msg += (what != nullptr) ? what : "(unknown)";
-        msg += " (CcuResult=";
-        msg += std::to_string(static_cast<int>(code));
-        msg += ")";
-        return msg;
-    }
+        private:
+            static std::string BuildMessage(CcuResult code, const char* what)
+            {
+                std::string msg = "[ccu] ";
+                msg += (what != nullptr) ? what : "(unknown)";
+                msg += " (CcuResult=";
+                msg += std::to_string(static_cast<int>(code));
+                msg += ")";
+                return msg;
+            }
 
-    CcuResult   code_;
-    std::string what_;
-};
-enum class CcuArithmeticOperatorType { ADDITION, SUBTRACTION, MULTIPLICATION, INVALID };
-enum class CcuLogicOperatorType { AND, OR, XOR, NOT, INVALID };
+            CcuResult code_;
+            std::string what_;
+        };
+        enum class CcuArithmeticOperatorType { ADDITION, SUBTRACTION, MULTIPLICATION, INVALID };
+        enum class CcuLogicOperatorType { AND, OR, XOR, NOT, INVALID };
 
-template <typename lhsT, typename rhsT> class CcuOperator {
-public:
-    CcuOperator(lhsT lhs, rhsT rhs) : lhs(lhs), rhs(rhs){}
-    lhsT lhs;
-    rhsT rhs;
-};
+        template <typename lhsT, typename rhsT>
+        class CcuOperator {
+        public:
+            CcuOperator(lhsT lhs, rhsT rhs) : lhs(lhs), rhs(rhs) {}
+            lhsT lhs;
+            rhsT rhs;
+        };
 
-template <typename lhsT, typename rhsT> 
-class CcuArithmeticOperator : public CcuOperator<lhsT, rhsT> {
-public:
-    CcuArithmeticOperator(lhsT lhs, rhsT rhs, CcuArithmeticOperatorType type): CcuOperator<lhsT, rhsT>(lhs, rhs), type(type)
-    {
-        Check();
-    }
-    void Check() const
-    {
-        // 默认通用模板：未特化的 (lhsT, rhsT) 组合属于编译期允许、运行期非法。
-        // 抛 CcuException 而非字符串字面量，可被 `catch (const std::exception&)` 捕获。
-        throw ::AscendC::ccu::detail::CcuException(CcuResult::CCU_E_PARA,
-            "CcuArithmeticOperator: invalid operand types");
-    }
+        template <typename lhsT, typename rhsT>
+        class CcuArithmeticOperator : public CcuOperator<lhsT, rhsT> {
+        public:
+            CcuArithmeticOperator(lhsT lhs, rhsT rhs, CcuArithmeticOperatorType type)
+                : CcuOperator<lhsT, rhsT>(lhs, rhs),
+                  type(type)
+            {
+                Check();
+            }
+            void Check() const
+            {
+                // 默认通用模板：未特化的 (lhsT, rhsT) 组合属于编译期允许、运行期非法。
+                // 抛 CcuException 而非字符串字面量，可被 `catch (const std::exception&)` 捕获。
+                throw ::AscendC::ccu::detail::CcuException(
+                    CcuResult::CCU_E_PARA, "CcuArithmeticOperator: invalid operand types");
+            }
 
-    CcuArithmeticOperatorType type{CcuArithmeticOperatorType::INVALID};
-};
+            CcuArithmeticOperatorType type{CcuArithmeticOperatorType::INVALID};
+        };
 
-template <typename lhsT, typename rhsT>
-class CcuLogicOperator : public CcuOperator<lhsT, rhsT> {
-public:
-    CcuLogicOperator(lhsT lhs, rhsT rhs, CcuLogicOperatorType type): CcuOperator<lhsT, rhsT>(lhs, rhs), type(type)
-    {
-        Check();
-    }
-    void Check() const
-    {
-        throw ::AscendC::ccu::detail::CcuException(CcuResult::CCU_E_PARA,
-            "CcuLogicOperator: invalid operand types");
-    }
+        template <typename lhsT, typename rhsT>
+        class CcuLogicOperator : public CcuOperator<lhsT, rhsT> {
+        public:
+            CcuLogicOperator(lhsT lhs, rhsT rhs, CcuLogicOperatorType type)
+                : CcuOperator<lhsT, rhsT>(lhs, rhs),
+                  type(type)
+            {
+                Check();
+            }
+            void Check() const
+            {
+                throw ::AscendC::ccu::detail::CcuException(
+                    CcuResult::CCU_E_PARA, "CcuLogicOperator: invalid operand types");
+            }
 
-    CcuLogicOperatorType type{CcuLogicOperatorType::INVALID};
-};
+            CcuLogicOperatorType type{CcuLogicOperatorType::INVALID};
+        };
 
-template <typename lhsT>
-class CcuLogicUnaryOperator {
-public:
-    CcuLogicUnaryOperator(lhsT lhs, CcuLogicOperatorType type): lhs(lhs), type(type)
-    {
-        Check();
-    }
-    void Check() const
-    {
-        throw ::AscendC::ccu::detail::CcuException(CcuResult::CCU_E_PARA,
-            "CcuLogicUnaryOperator: invalid operand types");
-    }
+        template <typename lhsT>
+        class CcuLogicUnaryOperator {
+        public:
+            CcuLogicUnaryOperator(lhsT lhs, CcuLogicOperatorType type) : lhs(lhs), type(type) { Check(); }
+            void Check() const
+            {
+                throw ::AscendC::ccu::detail::CcuException(
+                    CcuResult::CCU_E_PARA, "CcuLogicUnaryOperator: invalid operand types");
+            }
 
-    lhsT lhs;
-    CcuLogicOperatorType type{CcuLogicOperatorType::INVALID};
-};
+            lhsT lhs;
+            CcuLogicOperatorType type{CcuLogicOperatorType::INVALID};
+        };
 
-}  // namespace detail
-}  // namespace ccu
-}  // namespace AscendC
+    } // namespace detail
+} // namespace ccu
+} // namespace AscendC
 
-#define CCU_THROW_IF_FAILED(ret, msg)                                            \
-    do {                                                                         \
-        auto _ccu_ret = (ret);                                                   \
-        if (_ccu_ret != CcuResult::CCU_SUCCESS) {                                \
-            throw ::AscendC::ccu::detail::CcuException(_ccu_ret, (msg));         \
-        }                                                                        \
+#define CCU_THROW_IF_FAILED(ret, msg)                                    \
+    do {                                                                 \
+        auto _ccu_ret = (ret);                                           \
+        if (_ccu_ret != CcuResult::CCU_SUCCESS) {                        \
+            throw ::AscendC::ccu::detail::CcuException(_ccu_ret, (msg)); \
+        }                                                                \
     } while (0)
 
 #endif // CCU_UTILS_DL_HPP

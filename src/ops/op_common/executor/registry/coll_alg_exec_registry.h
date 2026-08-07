@@ -19,33 +19,32 @@
 
 namespace ops_hccl {
 
-using CollExecCreator = std::function<ExecutorBase *()>;
+using CollExecCreator = std::function<ExecutorBase*()>;
 
 template <typename P>
-static ExecutorBase *DefaultExecCreator()
+static ExecutorBase* DefaultExecCreator()
 {
-    static_assert(std::is_base_of<ExecutorBase, P>::value,
-        "Executor type must derived from Hccl::ExecutorBase");
+    static_assert(std::is_base_of<ExecutorBase, P>::value, "Executor type must derived from Hccl::ExecutorBase");
     return new (std::nothrow) P();
 }
 
 class CollAlgExecRegistry {
 public:
-    static CollAlgExecRegistry &Instance();
-    HcclResult Register(const std::string &tag, const CollExecCreator &collAlgExecCreator);
-    std::unique_ptr<ExecutorBase> GetAlgExec(const std::string &tag);
+    static CollAlgExecRegistry& Instance();
+    HcclResult Register(const std::string& tag, const CollExecCreator& collAlgExecCreator);
+    std::unique_ptr<ExecutorBase> GetAlgExec(const std::string& tag);
 
 private:
     std::unordered_map<std::string, const CollExecCreator> execCreators_;
     mutable std::mutex mu_;
 };
 
-#define REGISTER_EXEC_HELPER(ctr, tag, name, collExecBase)       \
-    static HcclResult g_func_##name##_##ctr             \
+#define REGISTER_EXEC_HELPER(ctr, tag, name, collExecBase) \
+    static HcclResult g_func_##name##_##ctr                \
         = CollAlgExecRegistry::Instance().Register(tag, DefaultExecCreator<collExecBase>)
 
 #define REGISTER_EXEC_HELPER_1(ctr, tag, name, collExecBase) REGISTER_EXEC_HELPER(ctr, tag, name, collExecBase)
 
 #define REGISTER_EXEC(tag, name, collExecBase) REGISTER_EXEC_HELPER_1(__COUNTER__, tag, name, collExecBase)
-}
+} // namespace ops_hccl
 #endif

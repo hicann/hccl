@@ -23,8 +23,10 @@
 static void* gLibHandle = nullptr;
 
 // 初始化
-void HcommDeviceDlInit(void) {
-    if (gLibHandle != nullptr) return;
+void HcommDeviceDlInit(void)
+{
+    if (gLibHandle != nullptr)
+        return;
 
     gLibHandle = dlopen("libccl_kernel.so", RTLD_NOW);
     if (!gLibHandle) {

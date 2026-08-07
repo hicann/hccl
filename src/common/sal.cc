@@ -22,25 +22,19 @@
 
 using namespace std;
 
-u32 SalStrLen(const char *s, u32 maxLen)
-{
-    return strnlen(s, maxLen);
-}
+u32 SalStrLen(const char* s, u32 maxLen) { return strnlen(s, maxLen); }
 
-HcclResult SalStrToDouble(const std::string str, double &val)
+HcclResult SalStrToDouble(const std::string str, double& val)
 {
     try {
         val = std::stod(str);
-    }
-    catch (std::invalid_argument&) {
+    } catch (std::invalid_argument&) {
         HCCL_ERROR("[Transform][StrToDouble]stod invalid argument, str[%s] val[%f]", str.c_str(), val);
         return HCCL_E_PARA;
-    }
-    catch (std::out_of_range&) {
+    } catch (std::out_of_range&) {
         HCCL_ERROR("[Transform][StrToDouble]stod out of range, str[%s] val[%f]", str.c_str(), val);
         return HCCL_E_PARA;
-    }
-    catch (...) {
+    } catch (...) {
         HCCL_ERROR("[Transform][StrToDouble]stod catch error, str[%s] val[%f]", str.c_str(), val);
         return HCCL_E_PARA;
     }
@@ -48,7 +42,7 @@ HcclResult SalStrToDouble(const std::string str, double &val)
 }
 
 // 字串符转换成无符号整型
-HcclResult SalStrToULong(const std::string str, int base, u32 &val)
+HcclResult SalStrToULong(const std::string str, int base, u32& val)
 {
     try {
         u64 tmp = std::stoull(str, nullptr, base);
@@ -58,23 +52,20 @@ HcclResult SalStrToULong(const std::string str, int base, u32 &val)
         } else {
             val = static_cast<u32>(tmp);
         }
-    }
-    catch (std::invalid_argument&) {
+    } catch (std::invalid_argument&) {
         HCCL_ERROR("[Transform][StrToULong]stoull invalid argument, str[%s] base[%d] val[%u]", str.c_str(), base, val);
         return HCCL_E_PARA;
-    }
-    catch (std::out_of_range&) {
+    } catch (std::out_of_range&) {
         HCCL_ERROR("[Transform][StrToULong]stoull out of range, str[%s] base[%d] val[%u]", str.c_str(), base, val);
         return HCCL_E_PARA;
-    }
-    catch (...) {
+    } catch (...) {
         HCCL_ERROR("[Transform][StrToULong]stoull catch error, str[%s] base[%d] val[%u]", str.c_str(), base, val);
         return HCCL_E_PARA;
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult IsAllDigit(const char *strNum)
+HcclResult IsAllDigit(const char* strNum)
 {
     // 参数有效性检查
     CHK_PTR_NULL(strNum);
@@ -86,7 +77,8 @@ HcclResult IsAllDigit(const char *strNum)
     }
     for (; index < nLength; index++) {
         if (!isdigit(strNum[index])) {
-            HCCL_ERROR("[Check][Isdigit]errNo[0x%016llx] In judge all digit, check isdigit failed."
+            HCCL_ERROR(
+                "[Check][Isdigit]errNo[0x%016llx] In judge all digit, check isdigit failed."
                 "ensure that the number is an integer. strNum[%u] is [%d](Dec)",
                 HCCL_ERROR_CODE(HCCL_E_PARA), index, strNum[index]);
             return HCCL_E_PARA;

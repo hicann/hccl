@@ -16,7 +16,7 @@
 namespace HcclSim {
 class CommDomain {
 public:
-    void Init(const TopoMeta &topoMeta);
+    void Init(const TopoMeta& topoMeta);
     void Clear();
     uint32_t GetCommRankCount();
     NpuPos GetNpuPosByRankId(RankId rankId);
@@ -24,5 +24,5 @@ public:
 private:
     std::map<RankId, NpuPos> rankId2Pos_;
 };
-}
+} // namespace HcclSim
 #endif

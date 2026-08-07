@@ -18,11 +18,8 @@ namespace HcclSim {
 uint32_t notifyIdGen = 0;
 uint32_t streamIdGen = 0;
 uint64_t memAddrGen = SIM_MEM_BLOCK_SIZE;
-std::map<BufferType, uint32_t> g_BufferType2Index = {
-    {BufferType::INPUT, 0},
-    {BufferType::OUTPUT, 1},
-    {BufferType::CCL, 2}
-};
+std::map<BufferType, uint32_t> g_BufferType2Index
+    = {{BufferType::INPUT, 0}, {BufferType::OUTPUT, 1}, {BufferType::CCL, 2}};
 
 void SimNpu::InitSimNpuRes(const NpuPos& pos)
 {
@@ -74,10 +71,11 @@ void SimNpu::InitNotifyRes()
 uint64_t SimNpu::AllocMemory(BufferType bufferType, uint64_t len)
 {
     if (g_BufferType2Index.count(bufferType) == 0 || len > SIM_MEM_BLOCK_SIZE) {
-        THROW<InvalidParamsException>("[SimNpu::AllocMemory] failed, bufferType[%s], len[%llu]", bufferType.Describe().c_str(), len);
+        THROW<InvalidParamsException>(
+            "[SimNpu::AllocMemory] failed, bufferType[%s], len[%llu]", bufferType.Describe().c_str(), len);
     }
     auto index = g_BufferType2Index[bufferType];
-    MemBlock &memBlock = memLayout_[index];
+    MemBlock& memBlock = memLayout_[index];
     memBlock.size = len;
     return memBlock.startAddr;
 }
@@ -98,25 +96,25 @@ void* SimNpu::AllocMainStream()
         return nullptr;
     }
 
-    SimStream &stream = streams_[0];
+    SimStream& stream = streams_[0];
     if (stream.IsAllocated()) {
         HCCL_ERROR("[SimNpu::AllocSlaveStream] main stream is already allocated");
         return nullptr;
     }
 
     stream.Allocate();
-    return reinterpret_cast<void *>(&stream);
+    return reinterpret_cast<void*>(&stream);
 }
 
 void* SimNpu::AllocSlaveStream()
 {
     for (int i = 0; i < MAX_STREAM_COUNT; i++) {
-        SimStream &stream = streams_[i];
+        SimStream& stream = streams_[i];
         if (stream.IsAllocated()) {
             continue;
         }
         stream.Allocate();
-        return reinterpret_cast<void *>(&stream);
+        return reinterpret_cast<void*>(&stream);
     }
 
     HCCL_ERROR("[SimNpu::AllocSlaveStream] alloc slave stream failed");
@@ -126,47 +124,41 @@ void* SimNpu::AllocSlaveStream()
 void* SimNpu::AllocNotify()
 {
     for (int i = 0; i < MAX_NOTIFY_COUNT; i++) {
-        SimNotify &notify = notifys_[i];
+        SimNotify& notify = notifys_[i];
         if (notify.IsAllocated()) {
             continue;
         }
         notify.Allocate();
-        return reinterpret_cast<void *>(&notify);
+        return reinterpret_cast<void*>(&notify);
     }
 
     HCCL_ERROR("[SimNpu::AllocNotify] alloc notify failed");
     return nullptr;
 }
 
-void SimNpu::ReleaseStream(void *stream)
+void SimNpu::ReleaseStream(void* stream)
 {
     if (stream == nullptr) {
         THROW<InvalidParamsException>("[SimNpu::ReleaseStream] stream is nullptr");
     }
-    SimStream *simStream = reinterpret_cast<SimStream *>(stream);
+    SimStream* simStream = reinterpret_cast<SimStream*>(stream);
     simStream->Release();
 }
 
-void SimNpu::ReleaseNotify(void *notify)
+void SimNpu::ReleaseNotify(void* notify)
 {
     if (notify == nullptr) {
         THROW<InvalidParamsException>("[SimNpu::ReleaseNotify] notify is nullptr");
     }
-    SimNotify *simNotify = reinterpret_cast<SimNotify *>(notify);
+    SimNotify* simNotify = reinterpret_cast<SimNotify*>(notify);
     simNotify->Release();
 }
 
-void SimNpu::SetDevType(HcclDevType devType)
-{
-    devType_ = devType;
-}
+void SimNpu::SetDevType(HcclDevType devType) { devType_ = devType; }
 
-HcclDevType SimNpu::GetDevType()
-{
-    return devType_;
-}
+HcclDevType SimNpu::GetDevType() { return devType_; }
 
-HcclResult SimNpu::GetSlice(uint64_t addr, uint64_t size, DataSlice &dataSlice)
+HcclResult SimNpu::GetSlice(uint64_t addr, uint64_t size, DataSlice& dataSlice)
 {
     for (uint32_t index = 0; index < memLayout_.size(); index++) {
         if (addr < memLayout_[index].startAddr) {
@@ -197,7 +189,7 @@ HcclResult SimNpu::GetSlice(uint64_t addr, uint64_t dataCount, const HcclDataTyp
 {
     uint64_t size = dataCount * HCCL_SIZE_TABLE[dataType];
     CHK_RET(GetSlice(addr, size, dataSlice));
-    
+
     return HcclResult::HCCL_SUCCESS;
 }
-}
+} // namespace HcclSim

@@ -37,7 +37,7 @@ enum DeviceType {
 };
 
 typedef struct {
-    void *addr;
+    void* addr;
     uint64_t size;
 } CommBuffer;
 
@@ -56,7 +56,7 @@ struct AlgResourceCtx {
     std::vector<ThreadHandle> threads;
     std::vector<ChannelInfo> channels;
 
-     std::vector<char> Serialize()
+    std::vector<char> Serialize()
     {
         BinaryStream binaryStream;
 
@@ -71,7 +71,7 @@ struct AlgResourceCtx {
         return result;
     }
 
-    void DeSerialize(std::vector<char> &data)
+    void DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
 
@@ -104,8 +104,24 @@ struct OpParam {
     uint64_t ctxSize = 0;
 };
 
-constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 #endif // OPS_HCCL_ALLGATHER_COMMON_H

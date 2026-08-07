@@ -52,8 +52,8 @@ inline AicpuTimeout DeriveAicpuTimeout(uint32_t execTimeout)
     timeout.waitTimeout = execTimeout;
     timeout.fullTimeout = AddAicpuTimeoutOffset(execTimeout, AICPU_FULL_TIMEOUT_OFFSET);
     timeout.hostNotifyTimeout = AddAicpuTimeoutOffset(execTimeout, AICPU_HOST_NOTIFY_TIMEOUT_OFFSET);
-    timeout.kernelLaunchTimeout = ToKernelLaunchTimeout(
-        AddAicpuTimeoutOffset(execTimeout, AICPU_KERNEL_TIMEOUT_OFFSET));
+    timeout.kernelLaunchTimeout
+        = ToKernelLaunchTimeout(AddAicpuTimeoutOffset(execTimeout, AICPU_KERNEL_TIMEOUT_OFFSET));
     return timeout;
 }
 

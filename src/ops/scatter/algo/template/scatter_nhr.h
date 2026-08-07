@@ -21,26 +21,26 @@ public:
 
     ~ScatterNHR() override;
 
-    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
-    HcclResult RunScatterNHR(std::vector<ChannelInfo> &channels);
+    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels) override;
+    HcclResult RunScatterNHR(std::vector<ChannelInfo>& channels);
 
 protected:
 private:
     void PrepareSlicesData(const u32 unitSize, const u64 totalCount, const u32 rankSize) const;
-    HcclResult SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const;
-    HcclResult RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const;
+    HcclResult SdmaRx(ChannelInfo& channelLeft, ChannelInfo& channelRight, InterServerAlgoStep& stepInfo) const;
+    HcclResult RdmaTxRx(ChannelInfo& channelLeft, ChannelInfo& channelRight, InterServerAlgoStep& stepInfo) const;
     HcclResult RdmaTxRx();
-    HcclResult Tx(const ChannelInfo &channel, std::vector<Slice> &txSlices);
-    HcclResult Rx(const ChannelInfo &channel, std::vector<Slice> &rxSlices);
+    HcclResult Tx(const ChannelInfo& channel, std::vector<Slice>& txSlices);
+    HcclResult Rx(const ChannelInfo& channel, std::vector<Slice>& rxSlices);
 
-    HcclResult GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep &stepInfo);
-    HcclResult ExecuteBarrierNhr(ChannelInfo &channelLeft, ChannelInfo &channelRight) const;
+    HcclResult GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep& stepInfo);
+    HcclResult ExecuteBarrierNhr(ChannelInfo& channelLeft, ChannelInfo& channelRight) const;
 
-    u32 interRank_;       // comm内的rank排序
-    u32 interRankSize_;  // 本comm内ranksize总数
+    u32 interRank_;     // comm内的rank排序
+    u32 interRankSize_; // 本comm内ranksize总数
 
     // 开源开放新接口资源
     void* engineCtx_ = nullptr;
 };
-}
+} // namespace ops_hccl
 #endif // SCATTER_NHR_CUSTOM_H

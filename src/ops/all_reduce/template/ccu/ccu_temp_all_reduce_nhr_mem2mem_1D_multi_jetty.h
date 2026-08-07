@@ -20,51 +20,54 @@ namespace ops_hccl {
 class CcuTempAllReduceNhrMem2Mem1DMultiJetty : public CcuAlgTemplateBase {
 public:
     CcuTempAllReduceNhrMem2Mem1DMultiJetty() = default;
-    explicit  CcuTempAllReduceNhrMem2Mem1DMultiJetty(const OpParam& param,
-        const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllReduceNhrMem2Mem1DMultiJetty(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllReduceNhrMem2Mem1DMultiJetty() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of All reduce ccu nhr 1D Mem2Mem multi-jetty with tempRankSize [%u].",
-                            templateRankSize_);
+        return StringFormat(
+            "Template of All reduce ccu nhr 1D Mem2Mem multi-jetty with tempRankSize [%u].", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override; // 此template需要将buffer分几块用
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 GetThreadNum() const override;
-    
+
 private:
-    HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo &stepInfo) const;
-    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
+    HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo& stepInfo) const;
+    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
     uint32_t GetNHRStepNum(const uint32_t rankSize) const;
     uint32_t localRank2UserRank(const uint32_t localRank) const;
-    HcclResult ProcessNHRStepInfo(std::vector<NHRStepInfo> &algStepInfoList) const;
-    void CalcSliceParams(const uint64_t dataCount, uint64_t& dataSizePerRank, uint64_t& dataSizePerPort,
-                         uint64_t& lastRankSliceSize, uint64_t& lastPortSliceSize) const;
-    void BuildTaskArgsAndGoSize(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t outputToken,
-                                const uint64_t isInplace, const uint64_t dataSizePerRank, const uint64_t dataSizePerPort,
-                                const uint64_t lastRankSliceSize, const uint64_t lastPortSliceSize,
-                                std::vector<uint64_t>& taskArgs, std::vector<uint64_t>& localCopyGoSize,
-                                std::vector<uint64_t>& localCopyGoSizeLastSlice) const;
-    void FillSubmitInfo(const uint64_t outputToken, const uint64_t isInplace, const uint64_t dataSizePerRank,
-                        const uint64_t dataSizePerPort, const uint64_t lastRankSliceSize, const uint64_t lastPortSliceSize,
-                        const std::vector<uint64_t>& localCopyGoSize, const std::vector<uint64_t>& localCopyGoSizeLastSlice,
-                        TemplateResource& templateResource) const;
+    HcclResult ProcessNHRStepInfo(std::vector<NHRStepInfo>& algStepInfoList) const;
+    void CalcSliceParams(
+        const uint64_t dataCount, uint64_t& dataSizePerRank, uint64_t& dataSizePerPort, uint64_t& lastRankSliceSize,
+        uint64_t& lastPortSliceSize) const;
+    void BuildTaskArgsAndGoSize(
+        const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t outputToken, const uint64_t isInplace,
+        const uint64_t dataSizePerRank, const uint64_t dataSizePerPort, const uint64_t lastRankSliceSize,
+        const uint64_t lastPortSliceSize, std::vector<uint64_t>& taskArgs, std::vector<uint64_t>& localCopyGoSize,
+        std::vector<uint64_t>& localCopyGoSizeLastSlice) const;
+    void FillSubmitInfo(
+        const uint64_t outputToken, const uint64_t isInplace, const uint64_t dataSizePerRank,
+        const uint64_t dataSizePerPort, const uint64_t lastRankSliceSize, const uint64_t lastPortSliceSize,
+        const std::vector<uint64_t>& localCopyGoSize, const std::vector<uint64_t>& localCopyGoSizeLastSlice,
+        TemplateResource& templateResource) const;
     HcclDataType dataType_;
     uint32_t localRank_{INVALID_VALUE_RANKID}; // 所在子通信域的rank id
-    uint32_t portNum_{0}; // 端口数量
-    std::map<u32, u32> subCommRankMap_; // 全局rank号映射到自通信域rank号
+    uint32_t portNum_{0};                      // 端口数量
+    std::map<u32, u32> subCommRankMap_;        // 全局rank号映射到自通信域rank号
 };
 } // namespace ops_hccl
-#endif// HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTY_JETTY_H
+#endif // HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTY_JETTY_H

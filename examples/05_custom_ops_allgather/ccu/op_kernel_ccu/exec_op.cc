@@ -21,14 +21,12 @@
 using namespace ops_hccl_ag;
 
 namespace ops_hccl_ag {
-constexpr uint64_t HCCL_MIN_SLICE_ALIGN = 128; // 地址对齐
-constexpr uint64_t UB_MAX_DATA_SIZE = 256*1024*1024; // UB协议一次传输最大size，单位Byte
+constexpr uint64_t HCCL_MIN_SLICE_ALIGN = 128;           // 地址对齐
+constexpr uint64_t UB_MAX_DATA_SIZE = 256 * 1024 * 1024; // UB协议一次传输最大size，单位Byte
 
-static HcclResult LaunchCcuKernelSlice(const AlgResourceCtxSerializable &resCtx,
-                                        uint64_t inputAddr, uint64_t outputAddr,
-                                        uint64_t token, uint64_t dataSize,
-                                        uint32_t myRank, uint64_t sliceCount,
-                                        uint64_t dataTypeSize)
+static HcclResult LaunchCcuKernelSlice(
+    const AlgResourceCtxSerializable& resCtx, uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
+    uint64_t dataSize, uint32_t myRank, uint64_t sliceCount, uint64_t dataTypeSize)
 {
     uint64_t sliceSize = sliceCount * dataTypeSize;
 
@@ -37,9 +35,9 @@ static HcclResult LaunchCcuKernelSlice(const AlgResourceCtxSerializable &resCtx,
 
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
-    config.memSlice     = CCU_MS_SIZE * CCU_LOCAL_COPY_MS_PER_LOOP;
-    auto goSize         = CalGoSize(sliceSize, config);
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = CCU_MS_SIZE * CCU_LOCAL_COPY_MS_PER_LOOP;
+    auto goSize = CalGoSize(sliceSize, config);
 
     std::vector<uint64_t> taskArgs = {
         inputAddr,
@@ -54,8 +52,8 @@ static HcclResult LaunchCcuKernelSlice(const AlgResourceCtxSerializable &resCtx,
         goSize[3],
     };
 
-    CcuResult launchRet = HcommCcuKernelLaunch(resCtx.threads[0], resCtx.ccuKernels[0],
-                                                taskArgs.data(), taskArgs.size());
+    CcuResult launchRet
+        = HcommCcuKernelLaunch(resCtx.threads[0], resCtx.ccuKernels[0], taskArgs.data(), taskArgs.size());
     if (launchRet != CCU_SUCCESS) {
         HCCL_ERROR("[CcuTempAllGatherMesh1DMem2Mem::ExecOp] kernel launch failed, ccuRet -> %d", launchRet);
         return ConvertCcuToHccl(launchRet);
@@ -64,7 +62,7 @@ static HcclResult LaunchCcuKernelSlice(const AlgResourceCtxSerializable &resCtx,
     return HCCL_SUCCESS;
 }
 
-HcclResult ExecOp(const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+HcclResult ExecOp(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_DEBUG("[CcuTempAllGatherMesh1DMem2Mem::ExecOp] start");
 
@@ -78,14 +76,16 @@ HcclResult ExecOp(const OpParam &param, const AlgResourceCtxSerializable &resCtx
     }
 
     if (param.rankSize == 1) { // 单卡，直接本地拷贝
-        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(resCtx.threads[0], param.outputPtr, param.inputPtr, dataSize)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommLocalCopyOnThread(resCtx.threads[0], param.outputPtr, param.inputPtr, dataSize)));
         HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem] RankSize == 1, ExecOp Run Ends.");
         return HCCL_SUCCESS;
     }
 
     uint64_t maxDataSizePerLoop = UB_MAX_DATA_SIZE;
     uint64_t maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
-    uint64_t loopCount = count / maxDataCountPerLoop + static_cast<uint64_t>(count % maxDataCountPerLoop != 0); // 计算数据处理循环次数
+    uint64_t loopCount
+        = count / maxDataCountPerLoop + static_cast<uint64_t>(count % maxDataCountPerLoop != 0); // 计算数据处理循环次数
     uint64_t processedDataCount = 0;
 
     uint64_t token = 0;
@@ -102,8 +102,8 @@ HcclResult ExecOp(const OpParam &param, const AlgResourceCtxSerializable &resCtx
         uint64_t inputAddr = baseInputAddr + processedDataCount * dataTypeSize;
         uint64_t outputAddr = baseOutputAddr + processedDataCount * dataTypeSize;
 
-        CHK_RET(LaunchCcuKernelSlice(resCtx, inputAddr, outputAddr, token, dataSize,
-                                     param.myRank, sliceCount, dataTypeSize));
+        CHK_RET(LaunchCcuKernelSlice(
+            resCtx, inputAddr, outputAddr, token, dataSize, param.myRank, sliceCount, dataTypeSize));
 
         processedDataCount += sliceCount;
     }

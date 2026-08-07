@@ -24,16 +24,16 @@ constexpr int POST_SYNC_ID = 3;
 constexpr int CKE_IDX_0 = 0;
 
 struct CcuKernelArgAllGather2DiesMesh1D : CcuKernelArgBase {
-    uint64_t                                dimSize;
-    uint32_t                                rankId;
-    std::vector<uint32_t>                   rankIdGroup;
-    bool                                    ifHandleSelfRank;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
-    OpParam                                 opParam;
+    uint64_t dimSize;
+    uint32_t rankId;
+    std::vector<uint32_t> rankIdGroup;
+    bool ifHandleSelfRank;
+    std::vector<std::vector<uint32_t>> subCommRanks;
+    OpParam opParam;
 };
 
 struct AllGather2DiesMesh1DContext : CcuKernelCtxBase {
-    const CcuKernelArgAllGather2DiesMesh1D *arg;
+    const CcuKernelArgAllGather2DiesMesh1D* arg;
 
     ccu::Variable input;
     std::vector<ccu::Variable> output;

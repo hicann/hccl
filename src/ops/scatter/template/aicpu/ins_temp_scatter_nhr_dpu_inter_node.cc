@@ -7,32 +7,33 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "ins_temp_scatter_nhr_dpu_inter_node.h"
 #include "dpu_alg_nhr_opt_wrapper.h"
 
 namespace ops_hccl {
-InsTempScatterNHRDPUInterNode::InsTempScatterNHRDPUInterNode(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
+InsTempScatterNHRDPUInterNode::InsTempScatterNHRDPUInterNode(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
 {}
- 
-InsTempScatterNHRDPUInterNode::~InsTempScatterNHRDPUInterNode()
-{}
- 
+
+InsTempScatterNHRDPUInterNode::~InsTempScatterNHRDPUInterNode() {}
+
 u64 InsTempScatterNHRDPUInterNode::GetThreadNum() const
 {
     u64 threadNum = 1;
     return threadNum;
 }
- 
+
 void InsTempScatterNHRDPUInterNode::SetRoot(u32 root)
 {
     HCCL_INFO("[InsTempScatterNHRDPUInterNode][SetRoot] myRank_ [%u], set root_ [%u] ", myRank_, root);
     root_ = root;
 }
- 
-HcclResult InsTempScatterNHRDPUInterNode::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+
+HcclResult InsTempScatterNHRDPUInterNode::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
@@ -41,19 +42,19 @@ HcclResult InsTempScatterNHRDPUInterNode::CalcRes(HcclComm comm, const OpParam& 
         resourceRequest.notifyNumPerThread.push_back(1);
     }
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
- 
+
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
     return HCCL_SUCCESS;
 }
- 
+
 u64 InsTempScatterNHRDPUInterNode::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     return templateRankSize_;
 }
- 
-HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo)
+
+HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo)
 {
 #ifndef AICPU_COMPILE
     u32 rankSize = templateRankSize_;
@@ -61,9 +62,11 @@ HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, Aicp
     u32 rootAlgRank;
     HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo][GetAlgRank]* root_ before getAlgRank [%u] ", root_);
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
-    HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo][GetAlgRank]* myRank_[%u], myAlgRank[%u]", myRank_, myAlgRank);
+    HCCL_INFO(
+        "[InsTempScatterNHRDPUInterNode][GetStepInfo][GetAlgRank]* myRank_[%u], myAlgRank[%u]", myRank_, myAlgRank);
     CHK_RET(GetAlgRank(root_, subCommRanks_[0], rootAlgRank));
-    HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo][GetAlgRank]* root_[%u], rootAlgRank[%u]", root_, rootAlgRank);
+    HCCL_INFO(
+        "[InsTempScatterNHRDPUInterNode][GetStepInfo][GetAlgRank]* root_[%u], rootAlgRank[%u]", root_, rootAlgRank);
     stepInfo.txSliceIdxs.clear();
     stepInfo.rxSliceIdxs.clear();
     stepInfo.nSlices = 0;
@@ -71,25 +74,26 @@ HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, Aicp
     stepInfo.fromRank = rankSize;
     stepInfo.step = step;
     stepInfo.myRank = myRank_;
- 
+
     u32 deltaRoot = (rootAlgRank + rankSize - myAlgRank) % rankSize;
     u32 deltaRankPair = 1 << step;
- 
+
     // 数据份数和数据编号增量
     u32 nSlices = (rankSize - 1 + (1 << step)) / (1 << (step + 1));
     u32 deltaSliceIndex = 1 << (step + 1);
- 
+
     // 判断是否是2的幂
-    u32 nRanks = 0;  // 本步需要进行收/发的rank数
+    u32 nRanks = 0; // 本步需要进行收/发的rank数
     bool isPerfect = (rankSize & (rankSize - 1)) == 0;
     if (!isPerfect && step == nSteps - 1) {
         nRanks = rankSize - deltaRankPair;
     } else {
         nRanks = deltaRankPair;
     }
- 
-    if (deltaRoot < nRanks) {  // 需要发
-        HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo] Need to Send: deltaRoot[%u], nRanks[%d]", deltaRoot, nRanks);
+
+    if (deltaRoot < nRanks) { // 需要发
+        HCCL_INFO(
+            "[InsTempScatterNHRDPUInterNode][GetStepInfo] Need to Send: deltaRoot[%u], nRanks[%d]", deltaRoot, nRanks);
         u32 sendTo = (myAlgRank + rankSize - deltaRankPair) % rankSize;
         u32 txSliceIdx = sendTo;
         for (u32 i = 0; i < nSlices; i++) {
@@ -97,11 +101,15 @@ HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, Aicp
             stepInfo.txSliceIdxs.push_back(targetTxSliceIdx);
             txSliceIdx = (txSliceIdx + rankSize - deltaSliceIndex) % rankSize;
         }
-        HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo] rankSize[%u], myAlgRank[%d], sendTo Idx[%u]", subCommRanks_[0].size(), myAlgRank, sendTo);
+        HCCL_INFO(
+            "[InsTempScatterNHRDPUInterNode][GetStepInfo] rankSize[%u], myAlgRank[%d], sendTo Idx[%u]",
+            subCommRanks_[0].size(), myAlgRank, sendTo);
         stepInfo.toRank = subCommRanks_[0].at(sendTo);
         stepInfo.nSlices = nSlices;
-    } else if (deltaRoot >= deltaRankPair && deltaRoot < nRanks + deltaRankPair) {  // 需要收
-        HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo] Need to Recv: deltaRoot[%u], nRanks[%d], deltaRankPair[%d]", deltaRoot, nRanks, deltaRankPair);
+    } else if (deltaRoot >= deltaRankPair && deltaRoot < nRanks + deltaRankPair) { // 需要收
+        HCCL_INFO(
+            "[InsTempScatterNHRDPUInterNode][GetStepInfo] Need to Recv: deltaRoot[%u], nRanks[%d], deltaRankPair[%d]",
+            deltaRoot, nRanks, deltaRankPair);
         u32 recvFrom = (myAlgRank + deltaRankPair) % rankSize;
         u32 rxSliceIdx = myAlgRank;
         for (u32 i = 0; i < nSlices; i++) {
@@ -109,37 +117,41 @@ HcclResult InsTempScatterNHRDPUInterNode::GetStepInfo(u32 step, u32 nSteps, Aicp
             stepInfo.rxSliceIdxs.push_back(targetRxSliceIdx);
             rxSliceIdx = (rxSliceIdx + rankSize - deltaSliceIndex) % rankSize;
         }
-        HCCL_INFO("[InsTempScatterNHRDPUInterNode][GetStepInfo] rankSize[%u], myAlgRank[%d], recvFrom Idx[%u]", subCommRanks_[0].size(), myAlgRank, recvFrom);
+        HCCL_INFO(
+            "[InsTempScatterNHRDPUInterNode][GetStepInfo] rankSize[%u], myAlgRank[%d], recvFrom Idx[%u]",
+            subCommRanks_[0].size(), myAlgRank, recvFrom);
         stepInfo.fromRank = subCommRanks_[0].at(recvFrom);
         stepInfo.nSlices = nSlices;
     }
 #endif
     return HcclResult::HCCL_SUCCESS;
 }
- 
-HcclResult InsTempScatterNHRDPUInterNode::KernelRun(const OpParam& param, const TemplateDataParams &tempAlgParams,
-    TemplateResource& templateResource)
+
+HcclResult InsTempScatterNHRDPUInterNode::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempScatterNHRDPUInterNode] Run Start");
-    
-    threadNum_ =  subCommRanks_.size();
+
+    threadNum_ = subCommRanks_.size();
     count_ = tempAlgParams.count;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     SetRoot(tempAlgParams.root);
 
-    HCCL_INFO("[InsTempScatterNHRDPUInterNode] queNum_ = [%d], threads size = [%d]", threadNum_, templateResource.threads.size());
-    
+    HCCL_INFO(
+        "[InsTempScatterNHRDPUInterNode] queNum_ = [%d], threads size = [%d]", threadNum_,
+        templateResource.threads.size());
+
     if (templateResource.threads.size() < 1) {
         HCCL_ERROR("[InsTempScatterNHRDPUInterNodeInte] Rank[%u], required thread error.", myRank_);
         return HCCL_E_INTERNAL;
     }
-    
+
     // 转换成eager-mode，保障AICPU指令下发执行完成
     if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
         HCCL_ERROR("failed set eager mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
- 
+
     if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
         HCCL_ERROR("HcommThreadSynchronize failed");
         return HCCL_E_INTERNAL;
@@ -154,15 +166,17 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(const OpParam& param, const 
     auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
 
     u32 sendMsgId = 0;
-    if (HcommSendRequest(reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-        static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId) != 0) {
+    if (HcommSendRequest(
+            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+        != 0) {
         HCCL_ERROR("HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
     HCCL_INFO("HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
 
     // 等待DPU数据传输，然后回写结果回来
-    void *recvData = nullptr;
+    void* recvData = nullptr;
     u32 recvMsgId = 0;
     if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
         HCCL_ERROR("HcommWaitResponse failed");
@@ -183,13 +197,13 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(const OpParam& param, const 
 
     // 将最终的数据拷贝到output
     CHK_RET(PostLocalCopy(tempAlgParams, templateResource));
- 
+
     HCCL_INFO("[InsTempScatterNHRDPUInterNode] Run End");
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempScatterNHRDPUInterNode::DPUKernelRun(const TemplateDataParams& tempAlgParams,
-    const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+HcclResult InsTempScatterNHRDPUInterNode::DPUKernelRun(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
     const std::vector<std::vector<uint32_t>>& subCommRanks)
 {
 #ifndef AICPU_COMPILE
@@ -201,8 +215,8 @@ HcclResult InsTempScatterNHRDPUInterNode::DPUKernelRun(const TemplateDataParams&
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempScatterNHRDPUInterNode::PostLocalCopy(const TemplateDataParams& tempAlgParams,
-    const TemplateResource& templateResource)
+HcclResult InsTempScatterNHRDPUInterNode::PostLocalCopy(
+    const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     if (tempAlgParams.buffInfo.outputPtr == nullptr) {
         return HcclResult::HCCL_SUCCESS;
@@ -220,9 +234,9 @@ HcclResult InsTempScatterNHRDPUInterNode::PostLocalCopy(const TemplateDataParams
 
     return HcclResult::HCCL_SUCCESS;
 }
- 
-HcclResult InsTempScatterNHRDPUInterNode::RunNHR(const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const TemplateDataParams &tempAlgParam)
+
+HcclResult InsTempScatterNHRDPUInterNode::RunNHR(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam)
 {
 #ifndef AICPU_COMPILE
     // nhr主体部分
@@ -230,7 +244,7 @@ HcclResult InsTempScatterNHRDPUInterNode::RunNHR(const std::map<u32, std::vector
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     HCCL_INFO("[RunNHR] root_ at RunNHR [%u] ", root_);
     for (u32 r = 0; r < tempAlgParam.repeatNum; r++) {
-        for (u32 step = 0; step < nSteps; step++) {    
+        for (u32 step = 0; step < nSteps; step++) {
             AicpuNHRStepInfo stepInfo;
             GetStepInfo(step, nSteps, stepInfo);
             // 统一 BatchTransferNHR：内部自动处理 只发/只收/同对端/不同对端 四种场景
@@ -243,4 +257,4 @@ HcclResult InsTempScatterNHRDPUInterNode::RunNHR(const std::map<u32, std::vector
 
 REGISTER_TEMPLATE_V2("InsTempScatterNHRDPUInterNode", InsTempScatterNHRDPUInterNode);
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

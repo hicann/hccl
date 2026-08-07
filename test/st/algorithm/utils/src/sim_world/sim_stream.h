@@ -16,29 +16,17 @@ class SimStream {
 public:
     SimStream(uint32_t sqId) : streamId_(sqId), isUsed_{false} {}
 
-    inline uint32_t GetStreamId()
-    {
-        return streamId_;
-    }
+    inline uint32_t GetStreamId() { return streamId_; }
 
-    inline bool IsAllocated()
-    {
-        return isUsed_;
-    }
+    inline bool IsAllocated() { return isUsed_; }
 
-    inline void Allocate()
-    {
-        isUsed_ = true;
-    }
+    inline void Allocate() { isUsed_ = true; }
 
-    inline void Release()
-    {
-        isUsed_ = false;
-    }
+    inline void Release() { isUsed_ = false; }
 
 private:
     bool isUsed_;
     uint32_t streamId_;
 };
-}
+} // namespace HcclSim
 #endif

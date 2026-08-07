@@ -18,34 +18,32 @@
 #include <thread>
 #include "alg_env_config.h"
 
-constexpr uint32_t DATATYPE_SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t),
-    sizeof(int16_t),
-    sizeof(int32_t),
-    2,
-    sizeof(float),
-    sizeof(int64_t),
-    sizeof(uint64_t),
-    sizeof(uint8_t),
-    sizeof(uint16_t),
-    sizeof(uint32_t),
-    8,
-    2,
-    16,
-    2,
-    1,
-    1,
-    1,
-    1};
+constexpr uint32_t DATATYPE_SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 using namespace HcclSim;
 using namespace ops_hccl;
 
 class DPU_SEND_RECV_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
 
     void TearDown() override
     {
@@ -55,21 +53,19 @@ protected:
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
 
-    static void SetUpTestCase()
-    {}
+    static void SetUpTestCase() {}
 
-    static void TearDownTestCase()
-    {}
+    static void TearDownTestCase() {}
 };
 
 using RankId = uint32_t;
 
 void DPUSendRecvTest(
-    TopoMeta &topoMeta, const std::map<RankId, RankId> &sendRecvMap, u32 dataCount, HcclDataType dataType)
+    TopoMeta& topoMeta, const std::map<RankId, RankId>& sendRecvMap, u32 dataCount, HcclDataType dataType)
 {
     u32 rankSize = 0;
-    for (const auto &superPod : topoMeta)
-        for (const auto &server : superPod)
+    for (const auto& superPod : topoMeta)
+        for (const auto& server : superPod)
             rankSize += server.size();
     // 仿真模型初始化
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
@@ -78,11 +74,10 @@ void DPUSendRecvTest(
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 多线程运行send&recv算子
     std::vector<std::thread> threads;
-    for (const auto &kv : sendRecvMap) {
+    for (const auto& kv : sendRecvMap) {
         RankId srcRankId = kv.first;
         RankId dstRankId = kv.second;
         threads.emplace_back([=]() {
@@ -97,10 +92,10 @@ void DPUSendRecvTest(
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", srcRankId, &comm));
 
-            u64 bufSize = dataCount * DATATYPE_SIZE_TABLE[dataType];  // 数据量转化为字节数
+            u64 bufSize = dataCount * DATATYPE_SIZE_TABLE[dataType]; // 数据量转化为字节数
 
             // 4.算子下发
-            void *sendBuf = nullptr;
+            void* sendBuf = nullptr;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, bufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
             CHK_RET(HcclSend(sendBuf, dataCount, dataType, dstRankId, comm, stream));
@@ -121,10 +116,10 @@ void DPUSendRecvTest(
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", dstRankId, &comm));
 
-            u64 bufSize = dataCount * DATATYPE_SIZE_TABLE[dataType];  // 数据量转化为字节数
+            u64 bufSize = dataCount * DATATYPE_SIZE_TABLE[dataType]; // 数据量转化为字节数
 
             // 4.算子下发
-            void *recvBuf = nullptr;
+            void* recvBuf = nullptr;
             aclrtMalloc(&recvBuf, bufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
             CHK_RET(HcclRecv(recvBuf, dataCount, dataType, srcRankId, comm, stream));
 
@@ -135,13 +130,13 @@ void DPUSendRecvTest(
     }
 
     // 等待多线程执行完成
-    for (auto &thread : threads) {
+    for (auto& thread : threads) {
         thread.join();
     }
 
     // 结果成图校验
     auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
-    for (const auto &kv : sendRecvMap) {
+    for (const auto& kv : sendRecvMap) {
         RankId srcRankId = kv.first;
         RankId dstRankId = kv.second;
         HcclResult sendRes = CheckSend(taskQueues, rankSize, dataType, dataCount, srcRankId, dstRankId);
@@ -164,8 +159,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_int32)
     std::map<RankId, RankId> sendRecvMap = {{0, 1}, {2, 5}, {3, 4}, {6, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 600 * 1024 * 1024;                  // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    auto dataCount = 600 * 1024 * 1024;                 // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32; // 数据类型
     std::cout << "func:" << endl;
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -179,8 +174,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_int16)
     std::map<RankId, RankId> sendRecvMap = {{0, 2}, {1, 3}};
 
     // 算子执行参数设置
-    auto dataCount = 100;                                // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT16;  // 数据类型
+    auto dataCount = 100;                               // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT16; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -206,8 +201,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_uint16)
     std::map<RankId, RankId> sendRecvMap = {{0, 1}};
 
     // 算子执行参数设置
-    auto dataCount = 100;                                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT16;  // 数据类型
+    auto dataCount = 100;                                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT16; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -222,8 +217,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_uint8)
     std::map<RankId, RankId> sendRecvMap = {{0, 5}, {3, 1}, {2, 4}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                  // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT8;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_UINT8; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -238,8 +233,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp8e5m2)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {1, 6}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 600 * 1024 * 1024;                    // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E5M2;  // 数据类型
+    auto dataCount = 600 * 1024 * 1024;                   // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E5M2; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -253,8 +248,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp8e8m0)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                    // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                   // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E8M0; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -268,8 +263,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_bfp16)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                  // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_BFP16; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -283,8 +278,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp16)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP16;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP16; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -298,8 +293,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp32)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -314,8 +309,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_hif8)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_HIF8;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_HIF8; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -330,8 +325,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp8e4m3)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                    // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E4M3;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                   // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP8E4M3; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -346,8 +341,8 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_int8)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8; // 数据类型
 
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
@@ -362,7 +357,7 @@ TEST_F(DPU_SEND_RECV_TEST, dpu_send_recv_test_fp64)
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
 
     // 算子执行参数设置
-    auto dataCount = 256 * 1024 * 1024;                 // 传输数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP64;  // 数据类型
+    auto dataCount = 256 * 1024 * 1024;                // 传输数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_FP64; // 数据类型
     DPUSendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }

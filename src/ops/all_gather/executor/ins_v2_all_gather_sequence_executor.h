@@ -22,19 +22,21 @@ class InsV2AllGatherSequenceExecutor : public InsCollAlgBase {
 public:
     InsV2AllGatherSequenceExecutor() {}
     ~InsV2AllGatherSequenceExecutor() override {}
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
 private:
-    HcclResult InitCommInfo(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
-    HcclResult SplitData(const u64 dataCount, const u64 rankSize, TemplateDataParams &tempAlgParams);
+    HcclResult InitCommInfo(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult SplitData(const u64 dataCount, const u64 rankSize, TemplateDataParams& tempAlgParams);
 
     uint32_t rankSizeLevel0_{0};
     uint32_t rankSizeLevel1_{0};
@@ -43,6 +45,6 @@ private:
     std::vector<ThreadHandle> threads_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
 };
-}
+} // namespace ops_hccl
 
 #endif

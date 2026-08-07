@@ -23,7 +23,7 @@ using namespace ge;
 
 namespace ops {
 
-static ge::graphStatus HcomReduceInferShapeV2(gert::InferShapeContext *context)
+static ge::graphStatus HcomReduceInferShapeV2(gert::InferShapeContext* context)
 {
     OP_INFER_SHAPE_START;
 
@@ -42,7 +42,7 @@ static ge::graphStatus HcomReduceInferShapeV2(gert::InferShapeContext *context)
     return GRAPH_SUCCESS;
 }
 
-static ge::graphStatus HcomReduceInferDataTypeV2(gert::InferDataTypeContext *context)
+static ge::graphStatus HcomReduceInferDataTypeV2(gert::InferDataTypeContext* context)
 {
     OP_INFER_DATATYPE_START;
 
@@ -59,4 +59,4 @@ static ge::graphStatus HcomReduceInferDataTypeV2(gert::InferDataTypeContext *con
 }
 
 IMPL_OP_INFERSHAPE(HcomReduce).InferShape(HcomReduceInferShapeV2).InferDataType(HcomReduceInferDataTypeV2);
-}  // namespace ops
+} // namespace ops

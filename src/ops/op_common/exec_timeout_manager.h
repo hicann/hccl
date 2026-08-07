@@ -18,17 +18,17 @@ namespace ops_hccl {
 class ExecTimeoutManager {
 public:
     static ExecTimeoutManager& Instance();
-    
+
     void SetExecTimeout(u32 execTimeout);
     u32 GetExecTimeout();
-    
+
 private:
     ExecTimeoutManager();
     ~ExecTimeoutManager();
-    
+
     ExecTimeoutManager(const ExecTimeoutManager&) = delete;
     ExecTimeoutManager& operator=(const ExecTimeoutManager&) = delete;
-    
+
     std::atomic<u32> execTimeout_;
     std::atomic<bool> timeoutSet_;
 };

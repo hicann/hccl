@@ -31,7 +31,7 @@ struct CcuKernelArgAllToAllMesh2Die : CcuKernelArgBase {
 };
 
 struct AllToAllMesh2DieContext : CcuKernelCtxBase {
-    const CcuKernelArgAllToAllMesh2Die *arg;
+    const CcuKernelArgAllToAllMesh2Die* arg;
 
     uint16_t virRankSize{0};
     uint64_t logicRankSize{0};

@@ -27,11 +27,11 @@ struct AicpuMainThreadCache {
     uint32_t notifyNum;
 };
 
-HcclResult InitAicpuResource(HcclComm comm, OpParam &param)
+HcclResult InitAicpuResource(HcclComm comm, OpParam& param)
 {
     CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS;
 
-    void *ctx = nullptr;
+    void* ctx = nullptr;
     uint64_t size = 0;
     if (HcclEngineCtxGet(comm, param.tag, engine, &ctx, &size) == HCCL_SUCCESS) {
         // device资源已经存在，复用
@@ -39,12 +39,12 @@ HcclResult InitAicpuResource(HcclComm comm, OpParam &param)
         param.resCtxDevice = ctx;
         param.ctxSize = size;
         // aicpu主thread为comm级资源(非stream绑定)可复用；从通信域host内存context取回其句柄，重新导出到cpu引擎
-        void *hostCtx = nullptr;
+        void* hostCtx = nullptr;
         uint64_t hostCtxSize = sizeof(AicpuMainThreadCache);
         CHK_RET(HcclEngineCtxGet(comm, param.tag, COMM_ENGINE_CPU_TS, &hostCtx, &hostCtxSize));
-        auto *mainThreadCache = static_cast<AicpuMainThreadCache *>(hostCtx);
-        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThreadCache->thread, COMM_ENGINE_CPU_TS,
-            &param.aicpuThreadOnCpu));
+        auto* mainThreadCache = static_cast<AicpuMainThreadCache*>(hostCtx);
+        CHK_RET(HcclThreadExportToCommEngine(
+            comm, 1, &mainThreadCache->thread, COMM_ENGINE_CPU_TS, &param.aicpuThreadOnCpu));
         param.aicpuRecordCpuIdx = mainThreadCache->notifyNum;
     } else {
         // 不存在，新创建Context
@@ -56,26 +56,26 @@ HcclResult InitAicpuResource(HcclComm comm, OpParam &param)
 
         // 使用threads[0]作为主AICPU thread，同时负责算法执行和host/device同步
         // 将aicpu主thread导出到cpu引擎，供host侧通知device使用
-        CHK_RET(HcclThreadExportToCommEngine(comm, 1, &resCtxHost.threads[0], COMM_ENGINE_CPU_TS,
-            &param.aicpuThreadOnCpu));
+        CHK_RET(
+            HcclThreadExportToCommEngine(comm, 1, &resCtxHost.threads[0], COMM_ENGINE_CPU_TS, &param.aicpuThreadOnCpu));
         param.aicpuRecordCpuIdx = resCtxHost.notifyNumOnMainThread;
 
         // 序列化并拷贝到device context
         CHK_RET(HcclMemcpyCtxHostToDevice(comm, param, resCtxHost, &param.resCtxDevice, &param.ctxSize));
         // 将aicpu主线程句柄缓存到通信域host内存context(COMM_ENGINE_CPU_TS)，供后续复用
-        void *hostCtx = nullptr;
+        void* hostCtx = nullptr;
         uint64_t hostCtxSize = sizeof(AicpuMainThreadCache);
         CHK_RET(HcclEngineCtxCreate(comm, param.tag, COMM_ENGINE_CPU_TS, hostCtxSize, &hostCtx));
-        auto *mainThreadCache = static_cast<AicpuMainThreadCache *>(hostCtx);
+        auto* mainThreadCache = static_cast<AicpuMainThreadCache*>(hostCtx);
         mainThreadCache->thread = resCtxHost.threads[0];
         mainThreadCache->notifyNum = resCtxHost.notifyNumOnMainThread;
     }
     return HCCL_SUCCESS;
 }
-}
+} // namespace
 
 HcclResult HcclAllGatherCustom(
-    void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream)
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream)
 {
     CHK_PTR_NULL(sendBuf);
     CHK_PTR_NULL(recvBuf);

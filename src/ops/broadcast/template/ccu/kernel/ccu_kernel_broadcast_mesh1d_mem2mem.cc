@@ -12,22 +12,22 @@
 
 namespace ops_hccl {
 
-constexpr int INPUT_XN_ID  = 0;
+constexpr int INPUT_XN_ID = 0;
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int CKE_IDX_0    = 0;
-constexpr int CKE_IDX_3    = 3;
-constexpr int CKE_IDX_4    = 4;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int CKE_IDX_0 = 0;
+constexpr int CKE_IDX_3 = 3;
+constexpr int CKE_IDX_4 = 4;
 
-static CcuResult ParseKernelArg(BroadcastMesh1DMem2MemContext &ctx, CcuKernelArgBroadcastMesh1DMem2Mem *kernelArg)
+static CcuResult ParseKernelArg(BroadcastMesh1DMem2MemContext& ctx, CcuKernelArgBroadcastMesh1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(BroadcastMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(BroadcastMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelBroadcastMesh1DMem2Mem] channels is empty!");
@@ -54,7 +54,7 @@ static CcuResult InitResource(BroadcastMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(BroadcastMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(BroadcastMesh1DMem2MemContext& ctx)
 {
     uint32_t argId = 0;
 
@@ -73,17 +73,17 @@ static CcuResult LoadArgs(BroadcastMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(BroadcastMesh1DMem2MemContext &ctx)
+static CcuResult PreSync(BroadcastMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.myInput,
-            INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.myOutput,
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.myToken,
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(
+            ccu::WriteVariableWithNotify(arg->channels[i], ctx.myInput, INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
+        CCU_CHK_RET(
+            ccu::WriteVariableWithNotify(arg->channels[i], ctx.myOutput, OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(
+            ccu::WriteVariableWithNotify(arg->channels[i], ctx.myToken, TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << INPUT_XN_ID) | (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -93,9 +93,9 @@ static CcuResult PreSync(BroadcastMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(BroadcastMesh1DMem2MemContext &ctx, int ckeId)
+static CcuResult PostSync(BroadcastMesh1DMem2MemContext& ctx, int ckeId)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << ckeId));
@@ -106,30 +106,28 @@ static CcuResult PostSync(BroadcastMesh1DMem2MemContext &ctx, int ckeId)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoScatter(BroadcastMesh1DMem2MemContext &ctx, std::vector<ccu::RemoteAddr> &dst)
+static CcuResult DoScatter(BroadcastMesh1DMem2MemContext& ctx, std::vector<ccu::RemoteAddr>& dst)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelId = 0;
 
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
-        auto &sliceSize = (rankIdx + 1 == arg->rankSize) ? ctx.lastSliceSize : ctx.normalSliceSize;
+        auto& sliceSize = (rankIdx + 1 == arg->rankSize) ? ctx.lastSliceSize : ctx.normalSliceSize;
         const uint16_t rankMask = 1 << rankIdx;
         CCU_IF(sliceSize != 0)
         {
             if (rankIdx == arg->rankId) {
                 CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
             } else {
-                CCU_CHK_RET(ccu::Write(arg->channels[channelId], dst[rankIdx],
-                    ctx.scattersrcMem[rankIdx], sliceSize, ctx.event, rankMask));
-                HCCL_INFO("[CcuKernelBroadcastMesh1DMem2Mem][DoScatter] channelsId[%u] rankIdx[%u]",
-                          channelId, rankIdx);
+                CCU_CHK_RET(ccu::Write(
+                    arg->channels[channelId], dst[rankIdx], ctx.scattersrcMem[rankIdx], sliceSize, ctx.event,
+                    rankMask));
+                HCCL_INFO(
+                    "[CcuKernelBroadcastMesh1DMem2Mem][DoScatter] channelsId[%u] rankIdx[%u]", channelId, rankIdx);
                 channelId++;
             }
         }
-        CCU_IF(sliceSize == 0)
-        {
-            CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
-        }
+        CCU_IF(sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask)); }
     }
 
     const uint16_t allRankMask = (1 << arg->rankSize) - 1;
@@ -137,16 +135,17 @@ static CcuResult DoScatter(BroadcastMesh1DMem2MemContext &ctx, std::vector<ccu::
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeaScatterMem2Mem(BroadcastMesh1DMem2MemContext &ctx)
+static CcuResult DoRepeaScatterMem2Mem(BroadcastMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->rankId != arg->rootId) {
         return CCU_SUCCESS;
     }
-    HCCL_INFO("[CcuKernelBroadcastMesh1DMem2Mem][DoRepeaScatterMem2Mem] rankId[%u] rankSize[%llu]",
-              arg->rankId, arg->rankSize);
+    HCCL_INFO(
+        "[CcuKernelBroadcastMesh1DMem2Mem][DoRepeaScatterMem2Mem] rankId[%u] rankSize[%llu]", arg->rankId,
+        arg->rankSize);
 
-    std::vector<ccu::RemoteAddr> &dst = ctx.remoteDstMem;
+    std::vector<ccu::RemoteAddr>& dst = ctx.remoteDstMem;
     ccu::Variable sliceOffset;
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
         if (rankIdx == 0) {
@@ -187,12 +186,12 @@ static CcuResult DoRepeaScatterMem2Mem(BroadcastMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGather(BroadcastMesh1DMem2MemContext &ctx, const ccu::LocalAddr &src,
-                             const std::vector<ccu::RemoteAddr> &dst)
+static CcuResult
+DoAllGather(BroadcastMesh1DMem2MemContext& ctx, const ccu::LocalAddr& src, const std::vector<ccu::RemoteAddr>& dst)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelId = 0;
-    auto &sliceSize = (arg->rankId + 1 == arg->rankSize) ? ctx.lastSliceSize : ctx.normalSliceSize;
+    auto& sliceSize = (arg->rankId + 1 == arg->rankSize) ? ctx.lastSliceSize : ctx.normalSliceSize;
     CCU_IF(sliceSize != 0)
     {
         for (uint64_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
@@ -200,8 +199,7 @@ static CcuResult DoAllGather(BroadcastMesh1DMem2MemContext &ctx, const ccu::Loca
             if (rankIdx == arg->rankId) {
                 CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
             } else {
-                CCU_CHK_RET(ccu::Write(arg->channels[channelId], dst[rankIdx],
-                    src, sliceSize, ctx.event, rankMask));
+                CCU_CHK_RET(ccu::Write(arg->channels[channelId], dst[rankIdx], src, sliceSize, ctx.event, rankMask));
                 channelId++;
             }
         }
@@ -211,11 +209,11 @@ static CcuResult DoAllGather(BroadcastMesh1DMem2MemContext &ctx, const ccu::Loca
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatAllGatherMem2Mem(BroadcastMesh1DMem2MemContext &ctx)
+static CcuResult DoRepeatAllGatherMem2Mem(BroadcastMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
-    ccu::LocalAddr &src = ctx.allgatherSrc;
-    std::vector<ccu::RemoteAddr> &dst = ctx.remoteDstMem;
+    const auto* arg = ctx.arg;
+    ccu::LocalAddr& src = ctx.allgatherSrc;
+    std::vector<ccu::RemoteAddr>& dst = ctx.remoteDstMem;
     src.addr = ctx.myOutput;
     src.addr += ctx.currentRankSliceOutputOffset;
     src.addr += ctx.allgatherOffset;
@@ -247,7 +245,7 @@ static CcuResult DoRepeatAllGatherMem2Mem(BroadcastMesh1DMem2MemContext &ctx)
 
 CcuResult CcuBroadcastMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgBroadcastMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgBroadcastMesh1DMem2Mem*>(arg);
 
     BroadcastMesh1DMem2MemContext ctx;
     ctx.resourceAllocated = false;

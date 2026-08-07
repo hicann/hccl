@@ -21,8 +21,9 @@ namespace ops_hccl {
 class InsTempSendHostNicDpu : public InsAlgTemplateBase {
 public:
     explicit InsTempSendHostNicDpu();
-    explicit InsTempSendHostNicDpu(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempSendHostNicDpu(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempSendHostNicDpu() override;
 
     std::string Describe() const override
@@ -33,20 +34,21 @@ public:
     }
 
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-        TemplateResource &resource) override;
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParam,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
-        const std::vector<std::vector<uint32_t>> &subCommRanks) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override{};
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override{};
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult
+    KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& resource) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {};
 
 private:
     u64 processSize_{0};
     u64 count_{0};
 };
 
-}  // namespace Hccl
+} // namespace ops_hccl
 #endif // INS_TEMP_SEND_DPU

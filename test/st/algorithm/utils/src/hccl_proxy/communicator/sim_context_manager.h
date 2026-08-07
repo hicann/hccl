@@ -23,7 +23,8 @@ namespace HcclSim {
 struct HcclMemHash {
     static constexpr size_t MEM_ADDR_SHIFT = 1;
     static constexpr size_t MEM_SIZE_SHIFT = 2;
-    size_t operator()(const HcclMem& mem) const noexcept {
+    size_t operator()(const HcclMem& mem) const noexcept
+    {
         size_t hashMemType = std::hash<uint32_t>{}(static_cast<int>(mem.type));
         size_t hashMemaddr = std::hash<void*>{}(mem.addr);
         size_t hashMemSize = std::hash<uint64_t>{}(mem.size);
@@ -32,7 +33,8 @@ struct HcclMemHash {
 };
 
 struct HcclMemEqual {
-    bool operator()(const HcclMem& lhm, const HcclMem& rhm) const {
+    bool operator()(const HcclMem& lhm, const HcclMem& rhm) const
+    {
         return lhm.type == rhm.type && lhm.addr == rhm.addr && lhm.size == rhm.size;
     }
 };
@@ -51,9 +53,9 @@ public:
     SimContextMgr() = default;
     ~SimContextMgr();
 
-    HcclResult CreateCommEngineCtx(const std::string &tag, CommEngine engine, uint64_t size, void **ctx);
-    HcclResult GetCommEngineCtx(const std::string &tag, CommEngine engine, void **ctx, uint64_t *size);
-    HcclResult DestroyCommEngineCtx(const HcclMem *engineCtx);
+    HcclResult CreateCommEngineCtx(const std::string& tag, CommEngine engine, uint64_t size, void** ctx);
+    HcclResult GetCommEngineCtx(const std::string& tag, CommEngine engine, void** ctx, uint64_t* size);
+    HcclResult DestroyCommEngineCtx(const HcclMem* engineCtx);
 
 private:
     std::unordered_map<std::string, std::unordered_map<CommEngine, HcclMem>> contextMap_;
@@ -61,5 +63,5 @@ private:
     std::unordered_map<HcclMem, CommEngine, HcclMemHash, HcclMemEqual> engineMap_;
 };
 
-}   // namespace HcclSim
+} // namespace HcclSim
 #endif // SIM_CONTEXT_MANAGER_H

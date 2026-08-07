@@ -29,8 +29,10 @@ public:
         return "Topo Match for Mesh1D Algorithm, supports 1-3 level topologies (CURRENTLY only 910_95 is supported).";
     }
 
-    HcclResult MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
+    HcclResult MatchTopo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
+        AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
 };
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // !HCCLV2_TOPO_MATCH_MESH

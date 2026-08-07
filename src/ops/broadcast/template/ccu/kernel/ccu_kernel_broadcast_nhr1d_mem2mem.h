@@ -31,25 +31,23 @@ using NHRStepInfo = struct NHRStepInfoDef {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    NHRStepInfoDef() : nSlices(0)
-    {
-    }
+    NHRStepInfoDef() : nSlices(0) {}
 };
 #endif
 
 struct CcuKernelArgBroadcastNhr1DMem2Mem : CcuKernelArgBase {
-    uint32_t                                rankId;
-    uint32_t                                axisId;
-    uint32_t                                axisSize;
-    uint64_t                                dimSize;
-    std::vector<NHRStepInfo>                stepInfoVector;
-    std::map<u32, u32>                      rank2ChannelIdx;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint32_t rankId;
+    uint32_t axisId;
+    uint32_t axisSize;
+    uint64_t dimSize;
+    std::vector<NHRStepInfo> stepInfoVector;
+    std::map<u32, u32> rank2ChannelIdx;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct BroadcastNhr1DMem2MemContext : CcuKernelCtxBase {
-    const CcuKernelArgBroadcastNhr1DMem2Mem *arg;
+    const CcuKernelArgBroadcastNhr1DMem2Mem* arg;
 
     uint64_t localSize;
     uint64_t myRankIdx;

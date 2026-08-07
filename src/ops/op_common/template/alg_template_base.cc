@@ -14,29 +14,25 @@
 
 namespace ops_hccl {
 AlgTemplateBase::AlgTemplateBase()
-    : slices_(slicesDummy_), count_(0), dataBytes_(0), dataType_(HCCL_DATA_TYPE_RESERVED),
-      reductionOp_(HCCL_REDUCE_RESERVED), root_(INVALID_VALUE_RANKID),
-      baseOffset_(0), barrierSwitchOn_(true)
-{
-}
+    : slices_(slicesDummy_),
+      count_(0),
+      dataBytes_(0),
+      dataType_(HCCL_DATA_TYPE_RESERVED),
+      reductionOp_(HCCL_REDUCE_RESERVED),
+      root_(INVALID_VALUE_RANKID),
+      baseOffset_(0),
+      barrierSwitchOn_(true)
+{}
 
-AlgTemplateBase::~AlgTemplateBase()
-{
-    slices_.clear();
-}
+AlgTemplateBase::~AlgTemplateBase() { slices_.clear(); }
 
-HcclResult AlgTemplateBase::Prepare(PrepareData &param)
-{
-    return HCCL_E_PARA;
-}
+HcclResult AlgTemplateBase::Prepare(PrepareData& param) { return HCCL_E_PARA; }
 
 // prepare函数给需要进行集合通信操作进行参数赋值
-HcclResult AlgTemplateBase::Prepare(HcclMem &inputMem, HcclMem &outputMem, HcclMem &scratchMem,
-                                 const u64 count,
-                                 const HcclDataType dataType, ThreadHandle thread,
-                                 const HcclReduceOp reductionOp,
-                                 const u32 root, const std::vector<Slice> &slices, const u64 baseOffset,
-                                 const bool disableDMAReduce)
+HcclResult AlgTemplateBase::Prepare(
+    HcclMem& inputMem, HcclMem& outputMem, HcclMem& scratchMem, const u64 count, const HcclDataType dataType,
+    ThreadHandle thread, const HcclReduceOp reductionOp, const u32 root, const std::vector<Slice>& slices,
+    const u64 baseOffset, const bool disableDMAReduce)
 {
     HCCL_DEBUG("AlgTemplateBase prepare start");
 
@@ -66,17 +62,16 @@ HcclResult AlgTemplateBase::Prepare(HcclMem &inputMem, HcclMem &outputMem, HcclM
 }
 
 // ScatterMesh
-HcclResult AlgTemplateBase::Prepare(u32 interRank, u32 interRankSize)
+HcclResult AlgTemplateBase::Prepare(u32 interRank, u32 interRankSize) { return HCCL_E_PARA; }
+
+HcclResult AlgTemplateBase::Prepare(
+    HcclCollOpInfo* opInfo, const u32 userRank, const std::vector<u32>& ringsOrders,
+    const std::vector<Slice>& userMemInputSlices)
 {
     return HCCL_E_PARA;
 }
 
-HcclResult AlgTemplateBase::Prepare(HcclCollOpInfo *opInfo, const u32 userRank, const std::vector<u32> &ringsOrders,
-        const std::vector<Slice> &userMemInputSlices) {
-    return HCCL_E_PARA;
-}
-
-HcclResult AlgTemplateBase::RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels)
+HcclResult AlgTemplateBase::RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels)
 {
     (void)rank;
     (void)rankSize;
@@ -84,7 +79,7 @@ HcclResult AlgTemplateBase::RunAsync(const u32 rank, const u32 rankSize, std::ve
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle thread) const
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo& channel, ThreadHandle thread) const
 {
     // 获取执行超时时间
     u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
@@ -96,12 +91,12 @@ HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &channel, ThreadHandle th
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel) const
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel) const
 {
     return ExecuteBarrier(preChannel, aftChannel, thread_);
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, ThreadHandle thread) const
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel, ThreadHandle thread) const
 {
     // 获取执行超时时间
     u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
@@ -110,18 +105,20 @@ HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo 
     CHK_RET(HcclChannelNotifyWaitOnThreadDefault(thread, aftChannel.handle, NOTIFY_IDX_ACK, execTimeout));
 
     // 同步与aftChannel保证数据收发已结束
-    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, aftChannel.handle, NOTIFY_IDX_DATA_SIGNAL)));
+    CHK_RET(
+        static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, aftChannel.handle, NOTIFY_IDX_DATA_SIGNAL)));
     CHK_RET(HcclChannelNotifyWaitOnThreadDefault(thread, preChannel.handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout));
 
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx) const
+HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel, u32 notifyIdx) const
 {
     return ExecuteBarrier(preChannel, aftChannel, notifyIdx, thread_);
 }
 
-HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo &aftChannel, u32 notifyIdx, ThreadHandle thread) const
+HcclResult AlgTemplateBase::ExecuteBarrier(
+    ChannelInfo& preChannel, ChannelInfo& aftChannel, u32 notifyIdx, ThreadHandle thread) const
 {
     // 获取执行超时时间
     u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
@@ -131,14 +128,14 @@ HcclResult AlgTemplateBase::ExecuteBarrier(ChannelInfo &preChannel, ChannelInfo 
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::ExecEmptyTask(HcclMem &inputMem, HcclMem &outputMem, ThreadHandle thread)
+HcclResult AlgTemplateBase::ExecEmptyTask(HcclMem& inputMem, HcclMem& outputMem, ThreadHandle thread)
 {
     CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread, outputMem.addr, inputMem.addr, 0)));
     return HCCL_SUCCESS;
 }
 
-HcclResult AlgTemplateBase::CheckConcurrentDirectParameters(const u32 rank, const u32 rankSize,
-                                                         std::vector<ChannelInfo> &channels)
+HcclResult
+AlgTemplateBase::CheckConcurrentDirectParameters(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels)
 {
     // inputMem_ == outputMem_ 是允许的, 因为ring的时候收的slice和发的slice不是同一片
     // reduce scatter用inputMem_，allgather用outputMem_
@@ -146,15 +143,18 @@ HcclResult AlgTemplateBase::CheckConcurrentDirectParameters(const u32 rank, cons
         HCCL_ERROR("[AlgTemplateBase] rank[%u] run_async inputmem or outputmem is null", rank);
         return HCCL_E_PTR;
     }
-    HCCL_INFO("AlgTemplateBase run: rank[%u] ranksize[%u] inputMem[%p] outputMem[%p] count[%llu]", rank, rankSize,
-              inputMem_.addr, outputMem_.addr, count_);
+    HCCL_INFO(
+        "AlgTemplateBase run: rank[%u] ranksize[%u] inputMem[%p] outputMem[%p] count[%llu]", rank, rankSize,
+        inputMem_.addr, outputMem_.addr, count_);
 
     // 判断channels数量是否正确
-    CHK_PRT_RET(channels.size() < rankSize,
-                HCCL_ERROR("[AlgTemplateBase] rank[%u] link size[%u] is less than "
-                           "rank size[%u]",
-                           rank, channels.size(), rankSize),
-                HCCL_E_PARA);
+    CHK_PRT_RET(
+        channels.size() < rankSize,
+        HCCL_ERROR(
+            "[AlgTemplateBase] rank[%u] link size[%u] is less than "
+            "rank size[%u]",
+            rank, channels.size(), rankSize),
+        HCCL_E_PARA);
 
     // 校验DataUnitSize
     if (DataUnitSize(dataType_) == 0) {
@@ -166,4 +166,4 @@ HcclResult AlgTemplateBase::CheckConcurrentDirectParameters(const u32 rank, cons
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

@@ -14,12 +14,12 @@
 #include "topo.h"
 
 namespace ops_hccl_experimental {
-using ops_hccl::TopoInfo;
 using ops_hccl::AlgHierarchyInfo;
+using ops_hccl::TopoInfo;
 
-HcclResult CalcGeneralTopoInfoInterServer(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
+HcclResult
+CalcGeneralTopoInfoInterServer(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo);
 
-}
+} // namespace ops_hccl_experimental
 
 #endif
-

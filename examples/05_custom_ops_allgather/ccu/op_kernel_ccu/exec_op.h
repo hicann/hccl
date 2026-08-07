@@ -11,5 +11,5 @@
 #include "common.h"
 
 namespace ops_hccl_ag {
-HcclResult ExecOp(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
+HcclResult ExecOp(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 }

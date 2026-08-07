@@ -17,18 +17,18 @@
 
 namespace ops_hccl_experimental {
 using ops_hccl::AlgTemplateBase;
-using ops_hccl::Slice;
-using ops_hccl::ChannelInfo;
-using ops_hccl::NOTIFY_IDX_ACK;
-using ops_hccl::CUSTOM_TIMEOUT;
 using ops_hccl::AlgTemplateRegistry;
-using ops_hccl::HCCL_MIN_SLICE_ALIGN_910B;
-using ops_hccl::PostSyncInterThreads;
-using ops_hccl::NOTIFY_IDX_DATA_SIGNAL;
-using ops_hccl::RoundUpWithDivisor;
-using ops_hccl::PreSyncInterThreads;
-using ops_hccl::TemplateType;
+using ops_hccl::ChannelInfo;
+using ops_hccl::CUSTOM_TIMEOUT;
 using ops_hccl::DefaultTemplateCreator;
+using ops_hccl::HCCL_MIN_SLICE_ALIGN_910B;
+using ops_hccl::NOTIFY_IDX_ACK;
+using ops_hccl::NOTIFY_IDX_DATA_SIGNAL;
+using ops_hccl::PostSyncInterThreads;
+using ops_hccl::PreSyncInterThreads;
+using ops_hccl::RoundUpWithDivisor;
+using ops_hccl::Slice;
+using ops_hccl::TemplateType;
 
 class ReduceScatterBIRS : public AlgTemplateBaseExperimental {
 public:
@@ -39,33 +39,31 @@ public:
     // should be called soon after template ReduceScatterBIRS instance created
     HcclResult Prepare(u32 interRank, u32 interRankSize) override;
 
-    HcclResult Prepare(HcclMem &inputMem, HcclMem &outputMem, HcclMem &scratchMem,
-                        const u64 count,
-                        const HcclDataType dataType, ThreadHandle thread, const std::vector<ThreadHandle> &slaveThreads,
-                        const HcclReduceOp reductionOp,
-                        const u32 root, const std::vector<Slice> &slices, const u64 baseOffset,
-                        const bool disableDMAReduce) override;
+    HcclResult Prepare(
+        HcclMem& inputMem, HcclMem& outputMem, HcclMem& scratchMem, const u64 count, const HcclDataType dataType,
+        ThreadHandle thread, const std::vector<ThreadHandle>& slaveThreads, const HcclReduceOp reductionOp,
+        const u32 root, const std::vector<Slice>& slices, const u64 baseOffset, const bool disableDMAReduce) override;
 
-    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
+    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels) override;
 
 protected:
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub);
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain);
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub);
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain);
     HcclResult LocalReduceCCLToCCL(u64 srcOffset, u64 dstOffset, u64 size, ThreadHandle thread);
-    HcclResult TreeLocalReduce(const std::vector<u32> &offsets, u64 unitSize, ThreadHandle thread);
-    
-    virtual HcclResult Preprocess(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels);
+    HcclResult TreeLocalReduce(const std::vector<u32>& offsets, u64 unitSize, ThreadHandle thread);
+
+    virtual HcclResult Preprocess(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels);
     HcclResult PrepareSlicesData(const u32 unitSize, const u64 totalCount, const u32 rankSize) const;
-    HcclResult HCCSProcessMainLoop(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
-    HcclResult SIOProcessMainLoop(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
-    HcclResult LocalCopyMainLoop(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
+    HcclResult HCCSProcessMainLoop(
+        u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
+    HcclResult SIOProcessMainLoop(
+        u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
+    HcclResult LocalCopyMainLoop(
+        u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
     HcclResult FinalStep(const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
 
-    u32 interRank_;       // comm内的rank排序
-    u32 interRankSize_;   // 本comm内ranksize总数
+    u32 interRank_;     // comm内的rank排序
+    u32 interRankSize_; // 本comm内ranksize总数
     u32 sio_rank;
     std::vector<u32> hccs_ranks;
     std::vector<u32> hccs_ranks_reversed;
@@ -73,7 +71,7 @@ protected:
 
     std::vector<ChannelInfo> hccs_links;
     std::vector<ChannelInfo> hccs_links_reversed;
-    ChannelInfo sio_link; 
+    ChannelInfo sio_link;
 
     u64 localStrideSize;
 
@@ -86,6 +84,6 @@ protected:
 
 private:
 };
-}
+} // namespace ops_hccl_experimental
 
 #endif /* * REDUCE_SCATTER_BIRS_H */

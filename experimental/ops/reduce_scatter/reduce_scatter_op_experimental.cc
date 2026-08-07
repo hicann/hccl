@@ -23,31 +23,33 @@
 
 using namespace std;
 
-extern "C" HcclResult HcclReduceScatterInner(void *sendBuf, void *recvBuf, uint64_t recvCount,
-    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream);
+extern "C" HcclResult HcclReduceScatterInner(
+    void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream);
 
 namespace ops_hccl_experimental {
-using ops_hccl::CheckReduceScatterInputPara; 
-using ops_hccl::InitEnvConfig;
-using ops_hccl::HcomCheckUserRank;
 using ops_hccl::CheckCount;
 using ops_hccl::CheckDataType;
-using ops_hccl::HcclCheckTag;
 using ops_hccl::CheckReduceOp;
-using ops_hccl::ReduceScatterEntryLog;
+using ops_hccl::CheckReduceScatterInputPara;
+using ops_hccl::DATATYPE_SIZE_TABLE;
+using ops_hccl::HcclCheckTag;
+using ops_hccl::HcomCheckUserRank;
+using ops_hccl::InitEnvConfig;
+using ops_hccl::LoadAICPUKernel;
 using ops_hccl::LogHcclExit;
 using ops_hccl::OpMode;
-using ops_hccl::DATATYPE_SIZE_TABLE;
-using ops_hccl::LoadAICPUKernel;
+using ops_hccl::ReduceScatterEntryLog;
 
-HcclResult ReduceScatterExperimental(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream)
+HcclResult ReduceScatterExperimental(
+    void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream)
 {
     if (!MatchBIRS()) {
         return HcclReduceScatterInner(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
     }
 
-    HcclUs startut = TIME_NOW();// 走老流程的判断时间不统计在内
+    HcclUs startut = TIME_NOW(); // 走老流程的判断时间不统计在内
     // 入口的地方先解析环境变量
     CHK_RET(InitEnvConfig());
 
@@ -79,9 +81,9 @@ HcclResult ReduceScatterExperimental(void *sendBuf, void *recvBuf, uint64_t recv
     return HCCL_SUCCESS;
 }
 
-static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount,
-    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, u32 userRankSize,
- 	OpMode opMode)
+static HcclResult PrepareReduceScatterParam(
+    OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op,
+    HcclComm comm, aclrtStream stream, u32 userRankSize, OpMode opMode)
 {
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 outputSize = recvCount * perDataSize;
@@ -110,13 +112,14 @@ static HcclResult PrepareReduceScatterParam(OpParam &param, void *sendBuf, void 
     return HCCL_SUCCESS;
 }
 
-HcclResult ReduceScatterOutPlaceCustom(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, u32 userRankSize)
+HcclResult ReduceScatterOutPlaceCustom(
+    OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op,
+    HcclComm comm, aclrtStream stream, u32 userRankSize)
 {
     HCCL_INFO("Start to execute ReduceScatterOutPlaceCustom");
-    CHK_RET(PrepareReduceScatterParam(param, sendBuf, recvBuf, recvCount, dataType, op, comm, stream, userRankSize,
- 	    OpMode::OPBASE));
-    
+    CHK_RET(PrepareReduceScatterParam(
+        param, sendBuf, recvBuf, recvCount, dataType, op, comm, stream, userRankSize, OpMode::OPBASE));
+
     if (IsAiCpuMode(param.deviceType, userRankSize)) {
         HCCL_DEBUG("is aicpu mode");
         CHK_RET(LoadAICPUKernel());
@@ -130,21 +133,23 @@ HcclResult ReduceScatterOutPlaceCustom(OpParam &param, void *sendBuf, void *recv
     if (HcommIsProfilingSupported()) {
         beginTime = HcommGetProfilingSysCycleTime();
     }
-    
+
     CHK_RET(ProcessA3(comm, param, beginTime));
 
     HCCL_INFO("Execute ReduceScatterOutPlaceCustom success.");
     return HCCL_SUCCESS;
 }
 
-bool MatchBIRS() {
+bool MatchBIRS()
+{
     const char* val = std::getenv("HCCL_BIRS_ENABLE");
-    if (val == nullptr) return false;
+    if (val == nullptr)
+        return false;
     std::string str = val;
     if (str == "TRUE") {
-       return true;
-    } 
+        return true;
+    }
     return false;
 }
 
-}
+} // namespace ops_hccl_experimental

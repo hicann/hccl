@@ -21,8 +21,9 @@ namespace ops_hccl {
 class InsTempReduceScatterNHR : public InsAlgTemplateBase {
 public:
     InsTempReduceScatterNHR() = default;
-    explicit InsTempReduceScatterNHR(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                     const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempReduceScatterNHR(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterNHR() override;
 
     std::string Describe() const override
@@ -32,21 +33,22 @@ public:
         return info;
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest)  override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
+
 private:
-    HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList);
-    HcclResult LocalDataCopy(const std::vector<ThreadHandle> &threads, u32 channelIdx);
-    HcclResult RunNHR(const std::vector<ThreadHandle> &threads, u32 channelIdx);
-    HcclResult PostLocalCopy(const std::vector<ThreadHandle> &threads, u32 channelIdx);
+    HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo>& stepInfoList);
+    HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads, u32 channelIdx);
+    HcclResult RunNHR(const std::vector<ThreadHandle>& threads, u32 channelIdx);
+    HcclResult PostLocalCopy(const std::vector<ThreadHandle>& threads, u32 channelIdx);
     TemplateDataParams tempAlgParams_;
     std::map<u32, std::vector<ChannelInfo>> channels_;
     u64 dataTypeSize_{0};
@@ -60,6 +62,6 @@ private:
     std::set<u32> step0TxSliceIdxs_;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // !HCCLV2_INS_TEMP_REDUCE_SCATTER_NHR

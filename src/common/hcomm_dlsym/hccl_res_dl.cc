@@ -17,22 +17,25 @@
 DEFINE_WEAK_FUNC(HcclResult, HcclGetRemoteIpcHcclBuf, HcclComm comm, uint64_t remoteRank, void** addr, uint64_t* size);
 DEFINE_WEAK_FUNC(int32_t, HcclTaskRegister, HcclComm comm, const char* msgTag, Callback cb);
 DEFINE_WEAK_FUNC(int32_t, HcclTaskUnRegister, HcclComm comm, const char* msgTag);
-DEFINE_WEAK_FUNC(HcclResult, HcclDevMemAcquire, HcclComm comm, const char* memTag, uint64_t* size,
-                                        void** addr, bool* newCreated);
-DEFINE_WEAK_FUNC(HcclResult, HcclThreadExportToCommEngine, HcclComm comm, uint32_t threadNum,
-                                                   const ThreadHandle* threads, CommEngine dstCommEngine,
-                                                   ThreadHandle* exportedThreads);
-DEFINE_WEAK_FUNC(HcclResult, HcclChannelGetRemoteMems, HcclComm comm, ChannelHandle channel,
-                                               uint32_t* memNum, CommMem** remoteMems, char*** memTags);
-DEFINE_WEAK_FUNC(HcclResult, HcclCommMemReg, HcclComm comm, const char* memTag, const CommMem* mem,
-                                     HcclMemHandle* memHandle);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclDevMemAcquire, HcclComm comm, const char* memTag, uint64_t* size, void** addr, bool* newCreated);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclThreadExportToCommEngine, HcclComm comm, uint32_t threadNum, const ThreadHandle* threads,
+    CommEngine dstCommEngine, ThreadHandle* exportedThreads);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclChannelGetRemoteMems, HcclComm comm, ChannelHandle channel, uint32_t* memNum, CommMem** remoteMems,
+    char*** memTags);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclCommMemReg, HcclComm comm, const char* memTag, const CommMem* mem, HcclMemHandle* memHandle);
 DEFINE_WEAK_FUNC(HcclResult, HcclEngineCtxDestroy, HcclComm comm, const char* ctxTag, CommEngine engine);
 
-DEFINE_WEAK_FUNC(HcclResult, HcclThreadAcquireWithConfig, HcclComm comm, CommEngine engine, uint32_t threadNum,
-    ThreadType type, const ThreadConfig *config, ThreadHandle *threads);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclThreadAcquireWithConfig, HcclComm comm, CommEngine engine, uint32_t threadNum, ThreadType type,
+    const ThreadConfig* config, ThreadHandle* threads);
 
 // 初始化
-void HcclResDlInit(void* libHcommHandle) {
+void HcclResDlInit(void* libHcommHandle)
+{
     INIT_SUPPORT_FLAG(libHcommHandle, HcclGetRemoteIpcHcclBuf);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclTaskRegister);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclTaskUnRegister);

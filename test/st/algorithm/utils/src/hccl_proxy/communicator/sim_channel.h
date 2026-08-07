@@ -21,8 +21,9 @@ namespace HcclSim {
 
 class SimChannel {
 public:
-    SimChannel(const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol,
-        uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx);
+    SimChannel(
+        const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol, uint32_t locRankId,
+        uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx);
     ~SimChannel();
 
     HcclResult Init();
@@ -55,8 +56,8 @@ private:
 
     uint32_t locRankId_;
     uint32_t rmtRankId_;
-    MemBlock locMem_;   // local CCL Buffer
-    MemBlock rmtMem_;   // remote CCL Buffer
+    MemBlock locMem_; // local CCL Buffer
+    MemBlock rmtMem_; // remote CCL Buffer
     uint32_t notifyNum_{0};
     std::vector<SimNotify*> locNotifys_;
     std::vector<SimNotify*> rmtNotifys_;
@@ -65,5 +66,5 @@ private:
     uint32_t channelIdx_{0};
 };
 
-}   // namespace HcclSim
+} // namespace HcclSim
 #endif // SIM_MEM_LAYOUT_H

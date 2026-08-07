@@ -22,19 +22,22 @@ public:
     TopoModel(const TopoMeta& topoMeta);
     ~TopoModel() = default;
     uint32_t GetRankSize() const;
-    void GetNetLayers(uint32_t **netLayers, uint32_t *netLayerNum);
-    void GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t *rankNum);
-    void GetLinks(HcclDevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank,
-                  CommLink **linkList, uint32_t *listSize);
-    void GetInstSizeListByNetLayer(uint32_t netLayer, uint32_t **instSizeList, uint32_t *listSize);
-    void GetInstTopoTypeByNetLayer(HcclDevType devType, uint32_t netLayer, CommTopo *topoType);
-    void GetInstRanksByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t **ranks, uint32_t *rankNum);
+    void GetNetLayers(uint32_t** netLayers, uint32_t* netLayerNum);
+    void GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t* rankNum);
+    void GetLinks(
+        HcclDevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink** linkList,
+        uint32_t* listSize);
+    void GetInstSizeListByNetLayer(uint32_t netLayer, uint32_t** instSizeList, uint32_t* listSize);
+    void GetInstTopoTypeByNetLayer(HcclDevType devType, uint32_t netLayer, CommTopo* topoType);
+    void GetInstRanksByNetLayer(uint32_t curRank, uint32_t netLayer, uint32_t** ranks, uint32_t* rankNum);
     // A5 topo
-    void GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_t **topoInsts, uint32_t *topoInstNum);
-    void GetRanksByTopoInst(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum);
-    void GetTopoType(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, CommTopo *topoType);
-    void GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *num);
-    void GetEndpointDesc(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc);
+    void GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_t** topoInsts, uint32_t* topoInstNum);
+    void
+    GetRanksByTopoInst(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t** ranks, uint32_t* rankNum);
+    void GetTopoType(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, CommTopo* topoType);
+    void GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t* num);
+    void GetEndpointDesc(
+        uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t* descNum, EndpointDesc* endpointDesc);
 
 private:
     void InitNetLayerInfo(uint32_t serverNum, uint32_t podNum);
@@ -42,10 +45,10 @@ private:
     void Init910BLinkMap();
     void Init910CLinkMap();
     void Init910DLinkMap();
-    void InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::vector<uint32_t> &phyIds);
-    std::vector<uint32_t> GetAllRanks(const std::vector<uint32_t> &phyIds, uint32_t rankId);
-    std::vector<uint32_t> CheckRowPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t rowId);
-    std::vector<uint32_t> CheckColPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t colId);
+    void InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::vector<uint32_t>& phyIds);
+    std::vector<uint32_t> GetAllRanks(const std::vector<uint32_t>& phyIds, uint32_t rankId);
+    std::vector<uint32_t> CheckRowPeerDevice(const std::vector<uint32_t>& phyIds, uint32_t rankId, uint32_t rowId);
+    std::vector<uint32_t> CheckColPeerDevice(const std::vector<uint32_t>& phyIds, uint32_t rankId, uint32_t colId);
     bool IsSamePod(uint32_t srcRank, uint32_t dstRank);
     bool IsSameServer(uint32_t srcRank, uint32_t dstRank);
     void Create910BLinks(uint32_t srcRank, uint32_t dstRank);
@@ -71,11 +74,11 @@ private:
     std::vector<uint32_t> allRankNum_;
 
     // A5 topo
-    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> dev2TopoInsts_;  // serverId->每个dev对应的实例Id
-    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> instId2RankIds_;  // serverId->每个实例对应的rankId集合
+    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> dev2TopoInsts_; // serverId->每个dev对应的实例Id
+    std::map<uint32_t, std::map<uint32_t, std::vector<uint32_t>>> instId2RankIds_; // serverId->每个实例对应的rankId集合
     std::map<uint32_t, std::vector<uint32_t>> level1TopoInsts_;
     std::vector<uint32_t> level2TopoInsts_;
-    std::vector<EndpointDesc> dpuDesc_;  // 模拟dpu网卡
+    std::vector<EndpointDesc> dpuDesc_; // 模拟dpu网卡
 
     // links map
     std::map<std::pair<uint32_t, uint32_t>, CommProtocol> link910b_;
@@ -85,6 +88,6 @@ private:
     std::map<std::pair<uint32_t, uint32_t>, std::map<uint32_t, std::vector<CommLink>>> allLinkMap_;
 }; // TopoModel
 
-};
+}; // namespace HcclSim
 
-#endif  // SIM_TOPO_MODEL_H
+#endif // SIM_TOPO_MODEL_H

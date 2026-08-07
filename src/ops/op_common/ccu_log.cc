@@ -10,15 +10,24 @@
 
 #include "ccu_log.h"
 
-HcclResult ConvertCcuToHccl(CcuResult ccuResult) {
+HcclResult ConvertCcuToHccl(CcuResult ccuResult)
+{
     switch (ccuResult) {
-        case CCU_SUCCESS: return HCCL_SUCCESS;
-        case CCU_E_PARA: return HCCL_E_PARA;
-        case CCU_E_PTR: return HCCL_E_PTR;
-        case CCU_E_INTERNAL: return HCCL_E_INTERNAL;
-        case CCU_E_NOT_SUPPORT: return HCCL_E_NOT_SUPPORT;
-        case CCU_E_NOT_FOUND: return HCCL_E_NOT_FOUND;
-        case CCU_E_UNAVAIL: return HCCL_E_UNAVAIL;;
+        case CCU_SUCCESS:
+            return HCCL_SUCCESS;
+        case CCU_E_PARA:
+            return HCCL_E_PARA;
+        case CCU_E_PTR:
+            return HCCL_E_PTR;
+        case CCU_E_INTERNAL:
+            return HCCL_E_INTERNAL;
+        case CCU_E_NOT_SUPPORT:
+            return HCCL_E_NOT_SUPPORT;
+        case CCU_E_NOT_FOUND:
+            return HCCL_E_NOT_FOUND;
+        case CCU_E_UNAVAIL:
+            return HCCL_E_UNAVAIL;
+            ;
 
         default:
             return HCCL_E_INTERNAL;

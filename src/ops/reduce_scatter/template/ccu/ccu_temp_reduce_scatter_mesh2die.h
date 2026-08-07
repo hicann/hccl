@@ -17,11 +17,11 @@
 namespace ops_hccl {
 using RankId = u32;
 using RankGroup = std::vector<RankId>;
-class CcuTempReduceScatterMesh2Die : public CcuAlgTemplateBase{
+class CcuTempReduceScatterMesh2Die : public CcuAlgTemplateBase {
 public:
     CcuTempReduceScatterMesh2Die() = default;
-    explicit CcuTempReduceScatterMesh2Die(const OpParam &param, RankId rankId,
-    const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempReduceScatterMesh2Die(
+        const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempReduceScatterMesh2Die() override;
 
     std::string Describe() const override
@@ -29,14 +29,17 @@ public:
         return StringFormat("Template of ReduceScatter ccu mesh 2Die with rankSize[%u]", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+
 private:
-    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs);
+    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs);
 
     const uint32_t DIE_NUM = 2; // 2Die
     const uint64_t SCRATCH_MULTIPLE_COUNT_2 = 2;
@@ -44,6 +47,6 @@ private:
     std::map<uint32_t, std::vector<HcclChannelDesc>> channels_; // key is DieId
     uint32_t mySubCommRank_ = 0;
 };
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif //HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_2DIE_H
+#endif // HCCL_CCU_TEMP_REDUCE_SCATTER_MESH_2DIE_H

@@ -22,8 +22,7 @@ namespace ops_hccl {
 class InsTempBarrierNHRDPU : public InsAlgTemplateBase {
 public:
     InsTempBarrierNHRDPU() = default;
-    InsTempBarrierNHRDPU(const OpParam &param, const u32 rankId,
-                        const std::vector<std::vector<u32>> &subCommRanks);
+    InsTempBarrierNHRDPU(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempBarrierNHRDPU() override = default;
 
     std::string Describe() const override
@@ -33,23 +32,23 @@ public:
         return info;
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                         TemplateResource &templateResource) override;
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParams,
-                            const std::map<u32, std::vector<ChannelInfo>> &channels,
-                            const u32 myRank,
-                            const std::vector<std::vector<uint32_t>> &subCommRanks) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
 
 protected:
     u32 GetRankFromMap(const uint32_t rankIdx) const;
-    HcclResult RunNHRBarrier(const std::map<u32, std::vector<ChannelInfo>> &channels) const;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override {}
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override {}
+    HcclResult RunNHRBarrier(const std::map<u32, std::vector<ChannelInfo>>& channels) const;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {}
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {}
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_BARRIER_NHR_DPU_H
+#endif // INS_TEMP_BARRIER_NHR_DPU_H

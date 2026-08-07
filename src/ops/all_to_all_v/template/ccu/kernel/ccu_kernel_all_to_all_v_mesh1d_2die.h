@@ -38,7 +38,7 @@ struct A2AVSingleSendRecvInfoCtx1D2Die {
 };
 
 struct AllToAllVMesh1D2DieContext : CcuKernelCtxBase {
-    const CcuKernelArgAllToAllVMesh1D2Die *arg;
+    const CcuKernelArgAllToAllVMesh1D2Die* arg;
 
     const uint64_t MAX_TRANSPORT_SIZE = UB_MAX_TRANS_SIZE;
 

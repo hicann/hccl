@@ -19,15 +19,15 @@
 namespace ops_hccl {
 
 struct CcuKernelArgBroadcastMesh1DMem2Mem : CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    uint32_t                                rootId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t rootId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct BroadcastMesh1DMem2MemContext : CcuKernelCtxBase {
-    const CcuKernelArgBroadcastMesh1DMem2Mem *arg;
+    const CcuKernelArgBroadcastMesh1DMem2Mem* arg;
 
     // 本 rank 资源（用 LoadArg 加载）：单独存储避免放入 vector 末尾造成 resize+1 浪费
     ccu::Variable myInput;

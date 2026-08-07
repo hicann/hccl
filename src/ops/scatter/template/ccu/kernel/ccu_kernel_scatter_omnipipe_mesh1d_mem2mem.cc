@@ -18,8 +18,8 @@ constexpr uint16_t TOKEN_XN_ID = 2;
 constexpr uint16_t POST_SYNC_ID = 3;
 constexpr uint16_t CKE_IDX_0 = 0;
 
-static CcuResult ParseKernelArg(
-    ScatterOmniPipeMesh1DMem2MemContext &ctx, CcuKernelArgScatterOmniPipeMesh1DMem2Mem *kernelArg)
+static CcuResult
+ParseKernelArg(ScatterOmniPipeMesh1DMem2MemContext& ctx, CcuKernelArgScatterOmniPipeMesh1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankSize = kernelArg->rankSize;
@@ -31,7 +31,7 @@ static CcuResult ParseKernelArg(
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
     uint16_t channelIdx = 0;
     if (ctx.arg->channelCount == 0) {
@@ -61,7 +61,7 @@ static CcuResult InitResource(ScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
@@ -85,7 +85,7 @@ static CcuResult LoadArgs(ScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult PostSync(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(ctx.arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
@@ -96,9 +96,10 @@ static CcuResult PostSync(ScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult PreSync(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    HCCL_DEBUG("[CcuScatterOmniPipeMesh1DMem2MemKernel] PreSync realRank[%u] ctx.arg->channelCount[%u]", ctx.myrealrank,
+    HCCL_DEBUG(
+        "[CcuScatterOmniPipeMesh1DMem2MemKernel] PreSync realRank[%u] ctx.arg->channelCount[%u]", ctx.myrealrank,
         ctx.arg->channelCount);
 
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
@@ -114,7 +115,7 @@ static CcuResult PreSync(ScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoScatter(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult DoScatter(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
     uint32_t channelId = 0;
 
@@ -127,13 +128,11 @@ static CcuResult DoScatter(ScatterOmniPipeMesh1DMem2MemContext &ctx)
         } else {
             CCU_IF(ctx.sliceSize != 0)
             {
-                CCU_CHK_RET(ccu::Write(ctx.arg->channels[channelId], ctx.outputMem[rankIdx], ctx.inputMem[rankIdx],
-                    ctx.sliceSize, ctx.event, mask));
+                CCU_CHK_RET(ccu::Write(
+                    ctx.arg->channels[channelId], ctx.outputMem[rankIdx], ctx.inputMem[rankIdx], ctx.sliceSize,
+                    ctx.event, mask));
             }
-            CCU_IF(ctx.sliceSize == 0)
-            {
-                CCU_CHK_RET(ccu::EventRecord(ctx.event, mask));
-            }
+            CCU_IF(ctx.sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, mask)); }
             channelId++;
         }
     }
@@ -142,7 +141,7 @@ static CcuResult DoScatter(ScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatScatter(ScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult DoRepeatScatter(ScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
     for (uint64_t curId = 0; curId < ctx.rankSize; curId++) {
         if (curId == ctx.rankId) {
@@ -157,32 +156,23 @@ static CcuResult DoRepeatScatter(ScatterOmniPipeMesh1DMem2MemContext &ctx)
         ctx.outputMem[curId].addr += ctx.outputOmniSliceStrideVec[curId];
     }
 
-    CCU_IF(ctx.ifNewRoot == true)
-    {
-        CCU_CHK_RET(DoScatter(ctx));
-    }
+    CCU_IF(ctx.ifNewRoot == true) { CCU_CHK_RET(DoScatter(ctx)); }
     return CCU_SUCCESS;
 }
 
 CcuResult CcuScatterOmniPipeMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgScatterOmniPipeMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgScatterOmniPipeMesh1DMem2Mem*>(arg);
     ScatterOmniPipeMesh1DMem2MemContext ctx;
 
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));
 
-    CCU_IF(ctx.isFirstPiece == true)
-    {
-        CCU_CHK_RET(PreSync(ctx));
-    }
+    CCU_IF(ctx.isFirstPiece == true) { CCU_CHK_RET(PreSync(ctx)); }
 
     CCU_CHK_RET(DoRepeatScatter(ctx));
-    CCU_IF(ctx.isLastPiece == true)
-    {
-        CCU_CHK_RET(PostSync(ctx));
-    }
+    CCU_IF(ctx.isLastPiece == true) { CCU_CHK_RET(PostSync(ctx)); }
     return CCU_SUCCESS;
 }
 

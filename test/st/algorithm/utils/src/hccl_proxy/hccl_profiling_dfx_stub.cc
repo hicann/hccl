@@ -14,12 +14,9 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  // __cplusplus
+#endif // __cplusplus
 
-uint64_t HcommGetProfilingSysCycleTime()
-{
-    return 0;
-}
+uint64_t HcommGetProfilingSysCycleTime() { return 0; }
 
 HcclResult HcommProfilingRegThread(HcomProInfoTmp profInfo, ThreadHandle* threads)
 {
@@ -33,7 +30,7 @@ HcclResult HcommProfilingUnRegThread(HcomProInfoTmp profInfo, ThreadHandle* thre
     return HCCL_SUCCESS;
 }
 
-HcclResult HcommProfilingReportKernel(uint64_t beginTime, const char *profName)
+HcclResult HcommProfilingReportKernel(uint64_t beginTime, const char* profName)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return HCCL_SUCCESS;
@@ -69,7 +66,7 @@ HcclResult HcclReportAivKernel(HcclComm comm, uint64_t beginTime)
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, char *kernelName)
+HcclResult HcclReportAicpuKernel(HcclComm comm, uint64_t beginTime, char* kernelName)
 {
     HCCL_WARNING("[%s] not support.", __func__);
     return HCCL_SUCCESS;
@@ -116,15 +113,9 @@ HcclResult HcommProfilingEnd(ThreadHandle* threads, uint32_t threadNum)
     return HCCL_SUCCESS;
 }
 
-bool HcommIsSupportHcommRegOpInfo()
-{
-    return false;
-}
+bool HcommIsSupportHcommRegOpInfo() { return false; }
 
-bool HcommIsSupportHcommRegOpTaskException()
-{
-    return false;
-}
+bool HcommIsSupportHcommRegOpTaskException() { return false; }
 #ifdef __cplusplus
 }
-#endif  // __cplusplus
+#endif // __cplusplus

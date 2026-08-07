@@ -62,22 +62,26 @@ struct GatherSliceContext {
 
 // 初始化一个 StepSliceInfo：in/out 偏移为 0，hcclBuff 偏移为 cclBufOff
 StepSliceInfo MakeGatherStep(u64 cclBufOff);
-void PushGatherRankEntry(StepSliceInfo &s, u64 dataTypeSize, u64 inStride, u64 outStride,
-    std::vector<u64> sz, std::vector<u64> inOff, std::vector<u64> outOff);
-void InitGatherDataArrays(GatherSliceContext &ctx);
-void CalcGatherStepDataAndOffset(GatherSliceContext &ctx);
-void CalcGatherXY2DOffset(GatherSliceContext &ctx);
-std::vector<StepSliceInfo> BuildGatherZSteps(GatherSliceContext &ctx);
-void BuildGatherXInnerSteps(GatherSliceContext &ctx, std::vector<StepSliceInfo> &out);
-void BuildGatherXOuterSteps(GatherSliceContext &ctx, std::vector<StepSliceInfo> &out);
-void BuildGatherYInnerSteps(GatherSliceContext &ctx, std::vector<StepSliceInfo> &out);
-void BuildGatherYOuterSteps(GatherSliceContext &ctx, std::vector<StepSliceInfo> &out);
+void PushGatherRankEntry(
+    StepSliceInfo& s, u64 dataTypeSize, u64 inStride, u64 outStride, std::vector<u64> sz, std::vector<u64> inOff,
+    std::vector<u64> outOff);
+void InitGatherDataArrays(GatherSliceContext& ctx);
+void CalcGatherStepDataAndOffset(GatherSliceContext& ctx);
+void CalcGatherXY2DOffset(GatherSliceContext& ctx);
+std::vector<StepSliceInfo> BuildGatherZSteps(GatherSliceContext& ctx);
+void BuildGatherXInnerSteps(GatherSliceContext& ctx, std::vector<StepSliceInfo>& out);
+void BuildGatherXOuterSteps(GatherSliceContext& ctx, std::vector<StepSliceInfo>& out);
+void BuildGatherYInnerSteps(GatherSliceContext& ctx, std::vector<StepSliceInfo>& out);
+void BuildGatherYOuterSteps(GatherSliceContext& ctx, std::vector<StepSliceInfo>& out);
 OmniPipeSliceInfo CalcGatherOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam);
-void CollectGatherInnerCornerPieces(const GatherSliceContext &ctx, u64 osn, u64 isn, u64 oneDid,
-    bool isX, std::vector<u64> &sz, std::vector<u64> &inOff, std::vector<u64> &outOff);
-void CollectGatherOuterSameAxisPieces(const GatherSliceContext &ctx, u64 osn, u64 isn, u64 oneDid,
-    bool isX, std::vector<u64> &sz, std::vector<u64> &inOff, std::vector<u64> &outOff);
-void CollectGatherOuterCornerPieces(const GatherSliceContext &ctx, u64 osn, u64 isn, u64 oneDid,
-    bool isX, std::vector<u64> &sz, std::vector<u64> &inOff, std::vector<u64> &outOff);
-}  // namespace ops_hccl
+void CollectGatherInnerCornerPieces(
+    const GatherSliceContext& ctx, u64 osn, u64 isn, u64 oneDid, bool isX, std::vector<u64>& sz,
+    std::vector<u64>& inOff, std::vector<u64>& outOff);
+void CollectGatherOuterSameAxisPieces(
+    const GatherSliceContext& ctx, u64 osn, u64 isn, u64 oneDid, bool isX, std::vector<u64>& sz,
+    std::vector<u64>& inOff, std::vector<u64>& outOff);
+void CollectGatherOuterCornerPieces(
+    const GatherSliceContext& ctx, u64 osn, u64 isn, u64 oneDid, bool isX, std::vector<u64>& sz,
+    std::vector<u64>& inOff, std::vector<u64>& outOff);
+} // namespace ops_hccl
 #endif

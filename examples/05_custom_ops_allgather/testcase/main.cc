@@ -23,49 +23,50 @@
 #include "hccl/hccl_types.h"
 #include "hccl_custom_allgather.h"
 
-#define ACLCHECK(expr)                                                                         \
-    do {                                                                                       \
-        auto _ret = (expr); /* 执行一次并保存结果 */                                              \
-        if (_ret != ACL_SUCCESS) {                                                             \
+#define ACLCHECK(expr)                                                                                  \
+    do {                                                                                                \
+        auto _ret = (expr); /* 执行一次并保存结果 */                                           \
+        if (_ret != ACL_SUCCESS) {                                                                      \
             printf("[ERROR] acl interface return err %s:%d, retcode: %d \n", __FILE__, __LINE__, _ret); \
-            return _ret;                                                                       \
-        }                                                                                      \
+            return _ret;                                                                                \
+        }                                                                                               \
     } while (0)
 
-#define HCCLCHECK(expr)                                                                        \
-    do {                                                                                       \
-        auto _ret = (expr); /* 执行一次并保存结果 */                                              \
-        if (_ret != HCCL_SUCCESS) {                                                            \
+#define HCCLCHECK(expr)                                                                                  \
+    do {                                                                                                 \
+        auto _ret = (expr); /* 执行一次并保存结果 */                                            \
+        if (_ret != HCCL_SUCCESS) {                                                                      \
             printf("[ERROR] hccl interface return err %s:%d, retcode: %d \n", __FILE__, __LINE__, _ret); \
-            return _ret;                                                                       \
-        }                                                                                      \
+            return _ret;                                                                                 \
+        }                                                                                                \
     } while (0)
 
 inline void BuildLogString(std::ostringstream& oss) {}
 
-template<typename T, typename... Args>
-inline void BuildLogString(std::ostringstream& oss, const T& first, const Args&... args) {
+template <typename T, typename... Args>
+inline void BuildLogString(std::ostringstream& oss, const T& first, const Args&... args)
+{
     oss << first;
     BuildLogString(oss, args...);
 }
 
-template<typename... Args>
-void Log(int rank, const Args&... args) {
+template <typename... Args>
+void Log(int rank, const Args&... args)
+{
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    
+
     std::ostringstream oss;
-    
-    oss << "[" << tv.tv_sec << "." 
-        << std::setfill('0') << std::setw(6) << tv.tv_usec 
-        << "] [Rank " << rank << "] ";
-    
+
+    oss << "[" << tv.tv_sec << "." << std::setfill('0') << std::setw(6) << tv.tv_usec << "] [Rank " << rank << "] ";
+
     BuildLogString(oss, args...);
-    
+
     std::cout << oss.str() << std::endl;
 }
 
-int InitEnv(int argc, char* argv[], int& rank, int& size, HcclComm& hcclComm) {
+int InitEnv(int argc, char* argv[], int& rank, int& size, HcclComm& hcclComm)
+{
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -89,14 +90,15 @@ int InitEnv(int argc, char* argv[], int& rank, int& size, HcclComm& hcclComm) {
         Log(rank, "Root info generated");
     }
     MPI_Bcast(&rootInfo, sizeof(HcclRootInfo), MPI_BYTE, 0, MPI_COMM_WORLD);
-    
+
     HCCLCHECK(HcclCommInitRootInfo(size, &rootInfo, rank, &hcclComm));
     Log(rank, "HCCL Comm Initialized");
     return 0;
 }
 
-int PrepareData(int rank, uint64_t count, size_t sendBytes, size_t recvBytes, 
-                aclrtStream& stream, void*& sendBuf, void*& recvBuf) {
+int PrepareData(
+    int rank, uint64_t count, size_t sendBytes, size_t recvBytes, aclrtStream& stream, void*& sendBuf, void*& recvBuf)
+{
     ACLCHECK(aclrtCreateStream(&stream));
     ACLCHECK(aclrtMalloc(&sendBuf, sendBytes, ACL_MEM_MALLOC_HUGE_FIRST));
     ACLCHECK(aclrtMalloc(&recvBuf, recvBytes, ACL_MEM_MALLOC_HUGE_FIRST));
@@ -108,7 +110,8 @@ int PrepareData(int rank, uint64_t count, size_t sendBytes, size_t recvBytes,
     return 0;
 }
 
-int VerifyResult(int rank, int size, uint64_t count, size_t recvBytes, void* recvBuf) {
+int VerifyResult(int rank, int size, uint64_t count, size_t recvBytes, void* recvBuf)
+{
     std::vector<float> hostRecv(count * size);
     ACLCHECK(aclrtMemcpy(hostRecv.data(), recvBytes, recvBuf, recvBytes, ACL_MEMCPY_DEVICE_TO_HOST));
 
@@ -124,19 +127,25 @@ int VerifyResult(int rank, int size, uint64_t count, size_t recvBytes, void* rec
     return 0;
 }
 
-void Cleanup(HcclComm hcclComm, void* sendBuf, void* recvBuf, aclrtStream stream) {
-    if (hcclComm) HcclCommDestroy(hcclComm);
-    if (sendBuf) aclrtFree(sendBuf);
-    if (recvBuf) aclrtFree(recvBuf);
-    if (stream) aclrtDestroyStream(stream);
+void Cleanup(HcclComm hcclComm, void* sendBuf, void* recvBuf, aclrtStream stream)
+{
+    if (hcclComm)
+        HcclCommDestroy(hcclComm);
+    if (sendBuf)
+        aclrtFree(sendBuf);
+    if (recvBuf)
+        aclrtFree(recvBuf);
+    if (stream)
+        aclrtDestroyStream(stream);
     aclFinalize();
     MPI_Finalize();
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     int rank = 0, size = 0;
     HcclComm hcclComm = nullptr;
-    
+
     if (InitEnv(argc, argv, rank, size, hcclComm) != 0) {
         MPI_Finalize();
         return -1;
@@ -145,13 +154,13 @@ int main(int argc, char* argv[]) {
     uint64_t count = 1024;
     size_t sendBytes = count * sizeof(float);
     size_t recvBytes = count * size * sizeof(float);
-    
+
     aclrtStream stream = nullptr;
     void *sendBuf = nullptr, *recvBuf = nullptr;
 
     if (PrepareData(rank, count, sendBytes, recvBytes, stream, sendBuf, recvBuf) == 0) {
         Log(rank, "Starting HcclAllGatherCustom...");
-        
+
         // 使用 Lambda 包装执行逻辑，避免宏(HCCLCHECK)直接 return 导致绕过 Cleanup
         auto run_allgather = [&]() -> int {
             HCCLCHECK(HcclAllGatherCustom(sendBuf, recvBuf, sendBytes, HCCL_DATA_TYPE_FP32, hcclComm, stream));

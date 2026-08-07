@@ -28,10 +28,7 @@ static inline bool IsFloatEqual(float a, float b)
     return std::abs(static_cast<double>(a) - static_cast<double>(b)) < FLOAT_COMPARE_EPSILON;
 }
 
-static inline bool IsDoubleEqual(double a, double b)
-{
-    return std::abs(a - b) < FLOAT_COMPARE_EPSILON;
-}
+static inline bool IsDoubleEqual(double a, double b) { return std::abs(a - b) < FLOAT_COMPARE_EPSILON; }
 
 HcclMem HcclMemRange(HcclMem inMem, u64 offset, u64 size);
 
@@ -44,12 +41,13 @@ static inline u64 RoundUpWithDivisor(u64 value, u64 divisor)
     return ((value + (divisor - 1)) / divisor) * divisor;
 }
 
-template <typename... Args> inline std::string StringFormat(const char *format, Args... args)
+template <typename... Args>
+inline std::string StringFormat(const char* format, Args... args)
 {
     using namespace std;
     constexpr size_t bufSize = BUFSIZ;
-    char             buffer[bufSize];
-    size_t           actualSize = snprintf_s(&buffer[0], bufSize, bufSize, format, args...);
+    char buffer[bufSize];
+    size_t actualSize = snprintf_s(&buffer[0], bufSize, bufSize, format, args...);
     actualSize++;
 
     if (actualSize > bufSize) {
@@ -59,6 +57,6 @@ template <typename... Args> inline std::string StringFormat(const char *format, 
     }
     return buffer;
 }
-}
+} // namespace ops_hccl
 
 #endif

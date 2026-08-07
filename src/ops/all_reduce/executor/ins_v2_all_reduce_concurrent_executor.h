@@ -22,31 +22,34 @@ public:
     explicit InsV2AllReduceConcurrentExecutor();
     ~InsV2AllReduceConcurrentExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    /* *************** 资源计算 *************** */
-    // 这些函数为ExecutorBase纯虚函数，必须重写
-    #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *ctx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgRes0,
-                                 const TemplateResource &templateAlgRes1, u32 notifyNumOnMainThread);
- 	#endif
-    HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                       const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-                       AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+/* *************** 资源计算 *************** */
+// 这些函数为ExecutorBase纯虚函数，必须重写
+#ifndef AICPU_COMPILE
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgRes0, const TemplateResource& templateAlgRes1,
+        u32 notifyNumOnMainThread);
+#endif
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
-    HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                            const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 
-    HcclResult CalcChannelRequest(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                                  const std::vector<std::vector<u32>> &subCommRanks,
-                                  std::vector<HcclChannelDesc> &channelDescs, CommTopo topo) const;
+    HcclResult CalcChannelRequest(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const std::vector<std::vector<u32>>& subCommRanks, std::vector<HcclChannelDesc>& channelDescs,
+        CommTopo topo) const;
 
     std::vector<ThreadHandle> threads_;
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
@@ -55,6 +58,6 @@ protected:
     std::vector<ThreadHandle> temp1Threads_;
     ThreadHandle temp1ThreadMain_ = 0;
 };
-}
+} // namespace ops_hccl
 
 #endif

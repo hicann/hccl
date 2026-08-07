@@ -16,9 +16,9 @@
 namespace ops_hccl_p2p {
 
 // 使用 ASC 编译的二进制调用函数
-extern HcclResult LaunchKernelAsc(OpParam &param, aclrtStream stream);
+extern HcclResult LaunchKernelAsc(OpParam& param, aclrtStream stream);
 
-HcclResult LaunchKernel(OpParam &param, aclrtStream stream);
-}
+HcclResult LaunchKernel(OpParam& param, aclrtStream stream);
+} // namespace ops_hccl_p2p
 
 #endif

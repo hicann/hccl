@@ -22,8 +22,9 @@ constexpr u64 REDUCE_SCATTER_SMALL_COUNT_512KB = 512 * 1024;
 class AivTempReduceScatterMesh1D : public AivAlgTemplateBase {
 public:
     AivTempReduceScatterMesh1D() = default;
-    explicit AivTempReduceScatterMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit AivTempReduceScatterMesh1D(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~AivTempReduceScatterMesh1D() override;
 
     std::string Describe() const override
@@ -32,14 +33,15 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         const TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource) override;
     HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 };
-}  // namespace Hccl
+} // namespace ops_hccl
 
-#endif  // AIV_TEMP_REDUCE_SCATTER_MESH_1D
+#endif // AIV_TEMP_REDUCE_SCATTER_MESH_1D

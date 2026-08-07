@@ -19,25 +19,26 @@ namespace ops_hccl {
 
 class CcuTempReduceMesh1D : public CcuAlgTemplateBase {
 public:
-        CcuTempReduceMesh1D() = default;
-    explicit  CcuTempReduceMesh1D(const OpParam& param,
-                                         const u32 rankId, // 传通信域的rankId，userRank
-                                         const std::vector<std::vector<u32>> &subCommRanks);
+    CcuTempReduceMesh1D() = default;
+    explicit CcuTempReduceMesh1D(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempReduceMesh1D() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Reduce ccu mesh 1D with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat("Template of Reduce ccu mesh 1D with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
 
@@ -46,6 +47,6 @@ private:
     uint32_t mySubCommRoot_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_REDUCE_MESH_1D_H
+#endif // HCCL_CCU_TEMP_REDUCE_MESH_1D_H

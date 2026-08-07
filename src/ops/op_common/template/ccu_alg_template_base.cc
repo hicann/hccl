@@ -15,25 +15,26 @@
 #include <utility>
 
 namespace ops_hccl {
-CcuAlgTemplateBase::CcuAlgTemplateBase()
-{
-}
+CcuAlgTemplateBase::CcuAlgTemplateBase() {}
 
-CcuAlgTemplateBase::CcuAlgTemplateBase(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                       const std::vector<std::vector<u32>> &subCommRanks)
-    : opMode_(param.opMode), myRank_(rankId), root_(param.root), subCommRanks_(subCommRanks)
+CcuAlgTemplateBase::CcuAlgTemplateBase(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : opMode_(param.opMode),
+      myRank_(rankId),
+      root_(param.root),
+      subCommRanks_(subCommRanks)
 {
-    for (const auto &ranks : subCommRanks) {
+    for (const auto& ranks : subCommRanks) {
         templateRankSize_ += ranks.size();
     }
 }
 
-CcuAlgTemplateBase::~CcuAlgTemplateBase()
-{
-}
+CcuAlgTemplateBase::~CcuAlgTemplateBase() {}
 
-HcclResult CcuAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                       AlgResourceRequest& resourceRequest)
+HcclResult CcuAlgTemplateBase::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     (void)comm;
     (void)param;
@@ -43,8 +44,8 @@ HcclResult CcuAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, cons
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult CcuAlgTemplateBase::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                         TemplateResource& templateResource)
+HcclResult CcuAlgTemplateBase::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     (void)param;
     (void)templateDataParams;
@@ -61,10 +62,7 @@ HcclResult CcuAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFa
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-u64 CcuAlgTemplateBase::GetThreadNum() const
-{
-    return 0;
-}
+u64 CcuAlgTemplateBase::GetThreadNum() const { return 0; }
 
 HcclResult CcuAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest) const
 {
@@ -89,35 +87,35 @@ uint64_t CcuAlgTemplateBase::PointerToAddr(void* pointer) const
     }
 }
 
-HcclResult CcuAlgTemplateBase::RestoreChannelMap(const std::vector<HcclChannelDesc>& channelDescs,
-                                                 std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
+HcclResult CcuAlgTemplateBase::RestoreChannelMap(
+    const std::vector<HcclChannelDesc>& channelDescs, std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
 {
-    for (auto &channel: channelDescs) {
+    for (auto& channel : channelDescs) {
         u32 remoteRank = channel.remoteRank;
         rankIdToChannelDesc[remoteRank].push_back(channel);
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuAlgTemplateBase::GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc,
-                                               uint32_t& dieId)
+HcclResult
+CcuAlgTemplateBase::GetChannelDieId(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc, uint32_t& dieId)
 {
     EndpointAttrDieId tmpDieId{};
     uint32_t infoLen = sizeof(EndpointAttrDieId);
-    CHK_RET(HcclRankGraphGetEndpointInfo(comm, rankId, &(channelDesc.localEndpoint), ENDPOINT_ATTR_DIE_ID, infoLen,
-                                         &tmpDieId));
+    CHK_RET(HcclRankGraphGetEndpointInfo(
+        comm, rankId, &(channelDesc.localEndpoint), ENDPOINT_ATTR_DIE_ID, infoLen, &tmpDieId));
     dieId = tmpDieId;
     HCCL_INFO("[CcuAlgTemplateBase::GetChannelDieId] rank[%d]: get channel die id [%d]", rankId, dieId);
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuAlgTemplateBase::GetChannelBwCoeff(HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc,
-                                               uint32_t& bwCoeff)
+HcclResult CcuAlgTemplateBase::GetChannelBwCoeff(
+    HcclComm comm, uint32_t rankId, const HcclChannelDesc& channelDesc, uint32_t& bwCoeff)
 {
     EndpointAttrBwCoeff tmpBwCoeff{};
     uint32_t infoLen = sizeof(EndpointAttrBwCoeff);
-    CHK_RET(HcclRankGraphGetEndpointInfo(comm, rankId, &(channelDesc.localEndpoint), ENDPOINT_ATTR_BW_COEFF, infoLen,
-                                         &tmpBwCoeff));
+    CHK_RET(HcclRankGraphGetEndpointInfo(
+        comm, rankId, &(channelDesc.localEndpoint), ENDPOINT_ATTR_BW_COEFF, infoLen, &tmpBwCoeff));
     bwCoeff = tmpBwCoeff;
     HCCL_INFO("[CcuAlgTemplateBase::GetChannelBwCoeff] rank[%d]: get channel bwCoeff [%d]", rankId, bwCoeff);
     return HcclResult::HCCL_SUCCESS;
@@ -125,23 +123,23 @@ HcclResult CcuAlgTemplateBase::GetChannelBwCoeff(HcclComm comm, uint32_t rankId,
 
 /* nhr算法，需要遍历得到的channelDesc，判断使用几个die，如果是1个die，则还需要得到dieId。
    以便于算法挑选相应dieId的channelDesc */
-HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(HcclComm comm, 
-    const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, 
-    u32 myRankId, uint32_t &dieNum, uint32_t &dieId)
+HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(
+    HcclComm comm, const std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc, u32 myRankId,
+    uint32_t& dieNum, uint32_t& dieId)
 {
     constexpr u32 LINK_NUM_1 = 1;
     constexpr u32 LINK_NUM_2 = 2;
     // 遍历每个对端有几个channel
-    for (const auto& pair: rankIdToChannelDesc) {
+    for (const auto& pair : rankIdToChannelDesc) {
         u32 rmtRankId = pair.first;
-        const std::vector<HcclChannelDesc> &channels = pair.second;
+        const std::vector<HcclChannelDesc>& channels = pair.second;
         if (channels.size() == LINK_NUM_1) {
             dieNum = 1;
             GetChannelDieId(comm, myRankId, channels[0], dieId);
             HCCL_INFO("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] only 1 channel, dieNum = 1, dieId = %u.", dieId);
             return HcclResult::HCCL_SUCCESS;
-        } 
-        
+        }
+
         if (channels.size() == LINK_NUM_2) {
             // 检查2个channel是否在2个die上
             uint32_t dieId0 = 0;
@@ -151,12 +149,17 @@ HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(HcclComm comm,
             if (dieId0 == dieId1) {
                 dieNum = LINK_NUM_1;
                 dieId = dieId0;
-                HCCL_INFO("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] 2 channels on the same die, dieNum = 1, dieId = %u.", dieId);
+                HCCL_INFO(
+                    "[CcuAlgTemplateBase::GetDieNumFromChannelDescs] 2 channels on the same die, dieNum = 1, dieId = "
+                    "%u.",
+                    dieId);
                 return HcclResult::HCCL_SUCCESS;
             }
         } else {
-            HCCL_ERROR("[CcuAlgTemplateBase::GetDieNumFromChannelDescs] get channelDescs fail: there are [%u] link to rank [%u]",
-                    channels.size(), rmtRankId);
+            HCCL_ERROR(
+                "[CcuAlgTemplateBase::GetDieNumFromChannelDescs] get channelDescs fail: there are [%u] link to rank "
+                "[%u]",
+                channels.size(), rmtRankId);
             return HcclResult::HCCL_E_INTERNAL;
         }
     }
@@ -166,8 +169,9 @@ HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(HcclComm comm,
 }
 
 /* 从rankIdToChannelDesc的map中，挑选出指定die上的channel加入到vec中，并将Index放入rank2ChannelIdx*/
-HcclResult CcuAlgTemplateBase::SelectChannelToVec(const HcclComm comm, const u32 myRankId, const u32 rmtRankId,
-    const std::map<u32, std::vector<HcclChannelDesc>> &rankIdToChannelDesc, const u32 dieId, 
+HcclResult CcuAlgTemplateBase::SelectChannelToVec(
+    const HcclComm comm, const u32 myRankId, const u32 rmtRankId,
+    const std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc, const u32 dieId,
     std::map<u32, u32>& rank2ChannelIdx, std::vector<HcclChannelDesc>& channels)
 {
     auto it = rank2ChannelIdx.find(rmtRankId);
@@ -179,13 +183,15 @@ HcclResult CcuAlgTemplateBase::SelectChannelToVec(const HcclComm comm, const u32
     auto vecIt = rankIdToChannelDesc.find(rmtRankId);
     if (vecIt == rankIdToChannelDesc.end()) {
         // 不存在到对端rank的channel，报错
-        HCCL_ERROR("[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u]", myRankId, rmtRankId);
+        HCCL_ERROR(
+            "[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u]", myRankId,
+            rmtRankId);
         return HcclResult::HCCL_E_INTERNAL;
     }
 
     u32 curChannelIdx = channels.size();
     bool isFound = false;
-    for (const HcclChannelDesc &channel: rankIdToChannelDesc.at(rmtRankId)) {
+    for (const HcclChannelDesc& channel : rankIdToChannelDesc.at(rmtRankId)) {
         uint32_t tmpDieId = 0;
         CHK_RET(GetChannelDieId(comm, myRankId, channel, tmpDieId));
         if (tmpDieId == dieId) {
@@ -196,20 +202,24 @@ HcclResult CcuAlgTemplateBase::SelectChannelToVec(const HcclComm comm, const u32
         }
     }
     if (!isFound) {
-        HCCL_INFO("[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u] on die[%u]",
-             myRankId, rmtRankId, dieId);
+        HCCL_INFO(
+            "[CcuAlgTemplateBase::SelectChannelToVec] there's no channel from rank[%u] to rank[%u] on die[%u]",
+            myRankId, rmtRankId, dieId);
     }
-    HCCL_INFO("[CcuAlgTemplateBase::SelectChannelToVec] find channel rank[%u] to rank[%u] on die[%u] succeed."
-        "Index=[%u]", myRankId, rmtRankId, dieId, curChannelIdx);
+    HCCL_INFO(
+        "[CcuAlgTemplateBase::SelectChannelToVec] find channel rank[%u] to rank[%u] on die[%u] succeed."
+        "Index=[%u]",
+        myRankId, rmtRankId, dieId, curChannelIdx);
     return HcclResult::HCCL_SUCCESS;
 }
 
 /* 当2个die出框链路端口数不一致时，使用端口数（而非dieId）区分channel */
-HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(const HcclComm comm, const u32 myRankId, 
-    std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
+HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(
+    const HcclComm comm, const u32 myRankId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
     if (channelsPerDie.size() <= 1) {
-        HCCL_ERROR("[ReverseChannelPerDieIfNeed] channelsPerDie.size() = [%u], there's no channel on both dies", 
+        HCCL_ERROR(
+            "[ReverseChannelPerDieIfNeed] channelsPerDie.size() = [%u], there's no channel on both dies",
             channelsPerDie.size());
         return HCCL_E_PTR;
     }
@@ -226,34 +236,29 @@ HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(const HcclComm comm, c
         // 2个die出框端口数不同，将端口数多的channel放在前面
         std::swap(channelsPerDie[0], channelsPerDie[1]);
     }
-    HCCL_INFO("portNum0 = %lld,portNum1 = %lld",portNum0,portNum1);
+    HCCL_INFO("portNum0 = %lld,portNum1 = %lld", portNum0, portNum1);
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuAlgTemplateBase::GetToken(const BuffInfo &buffinfo, uint64_t &token) const
+HcclResult CcuAlgTemplateBase::GetToken(const BuffInfo& buffinfo, uint64_t& token) const
 {
     if (buffinfo.inputPtr != nullptr && buffinfo.inputSize != 0) {
-        HcommCcuGetMemToken(PointerToAddr(buffinfo.inputPtr),
-                            static_cast<uint64_t>(buffinfo.inputSize),
-                            &token);
+        HcommCcuGetMemToken(PointerToAddr(buffinfo.inputPtr), static_cast<uint64_t>(buffinfo.inputSize), &token);
         return HCCL_SUCCESS;
     } else if (buffinfo.outputPtr != nullptr && buffinfo.outputSize != 0) {
-        HcommCcuGetMemToken(PointerToAddr(buffinfo.outputPtr),
-                            static_cast<uint64_t>(buffinfo.outputSize),
-                            &token);
+        HcommCcuGetMemToken(PointerToAddr(buffinfo.outputPtr), static_cast<uint64_t>(buffinfo.outputSize), &token);
         return HCCL_SUCCESS;
     } else if (buffinfo.hcclBuff.addr != nullptr && buffinfo.hcclBuff.size != 0) {
-        HcommCcuGetMemToken(PointerToAddr(buffinfo.hcclBuff.addr),
-                            static_cast<uint64_t>(buffinfo.hcclBuff.size),
-                            &token);
+        HcommCcuGetMemToken(
+            PointerToAddr(buffinfo.hcclBuff.addr), static_cast<uint64_t>(buffinfo.hcclBuff.size), &token);
         return HCCL_SUCCESS;
     }
     HCCL_WARNING("[GetToken] inputMem, outputMem and hcclBuff are all null");
     return HCCL_E_PTR;
 }
 
-HcclResult CcuAlgTemplateBase::CalcDieSplitRatio(HcclComm comm, uint32_t myRank, bool is2Plus6,
-    const std::vector<HcclChannelDesc>& majorChs,
+HcclResult CcuAlgTemplateBase::CalcDieSplitRatio(
+    HcclComm comm, uint32_t myRank, bool is2Plus6, const std::vector<HcclChannelDesc>& majorChs,
     const std::vector<HcclChannelDesc>& minorChs, double& ratio)
 {
     ratio = 1.0;
@@ -268,11 +273,10 @@ HcclResult CcuAlgTemplateBase::CalcDieSplitRatio(HcclComm comm, uint32_t myRank,
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuAlgTemplateBase::SplitChannelsByDie(HcclComm comm, uint32_t myRank,
-    std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc,
+HcclResult CcuAlgTemplateBase::SplitChannelsByDie(
+    HcclComm comm, uint32_t myRank, std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc,
     std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
-    std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie,
-    bool& is2Plus6, std::set<u32>* closPeers)
+    std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool& is2Plus6, std::set<u32>* closPeers)
 {
     using DieIdType = uint32_t;
     const uint32_t dieIdTypeSize = sizeof(DieIdType);
@@ -289,8 +293,8 @@ HcclResult CcuAlgTemplateBase::SplitChannelsByDie(HcclComm comm, uint32_t myRank
         for (const auto& channel : channelList) {
             DieIdType dieId = 0;
             EndpointDesc localEndpoint = channel.localEndpoint;
-            CHK_RET(HcclRankGraphGetEndpointInfo(comm, myRank, &localEndpoint, ENDPOINT_ATTR_DIE_ID,
-                dieIdTypeSize, static_cast<void*>(&dieId)));
+            CHK_RET(HcclRankGraphGetEndpointInfo(
+                comm, myRank, &localEndpoint, ENDPOINT_ATTR_DIE_ID, dieIdTypeSize, static_cast<void*>(&dieId)));
             (isMulti ? multiChByDie : singleChByDie)[dieId].emplace_back(channel);
         }
     }
@@ -299,19 +303,18 @@ HcclResult CcuAlgTemplateBase::SplitChannelsByDie(HcclComm comm, uint32_t myRank
 
 HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
     const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
-    const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie,
-    bool is2Plus6, uint32_t myRank, uint32_t& kernelCount, uint32_t& fullmeshDieId,
+    const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool is2Plus6, uint32_t myRank,
+    uint32_t& kernelCount, uint32_t& fullmeshDieId,
     std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
-    std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup,
-    const std::string& tag)
+    std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup, const std::string& tag)
 {
-    auto fillKernel = [&kernelChannels, &kernelRankGroup](uint32_t kernelIdx,
-        const std::vector<HcclChannelDesc>& channels) {
-        for (const auto& ch : channels) {
-            kernelChannels[kernelIdx].emplace_back(ch);
-            kernelRankGroup[kernelIdx].push_back(ch.remoteRank);
-        }
-    };
+    auto fillKernel
+        = [&kernelChannels, &kernelRankGroup](uint32_t kernelIdx, const std::vector<HcclChannelDesc>& channels) {
+              for (const auto& ch : channels) {
+                  kernelChannels[kernelIdx].emplace_back(ch);
+                  kernelRankGroup[kernelIdx].push_back(ch.remoteRank);
+              }
+          };
 
     if (is2Plus6) {
         kernelCount = MAX_KERNEL_NUM_2DIE;
@@ -325,8 +328,10 @@ HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
         }
     } else {
         if (singleChByDie.size() < 2) {
-            HCCL_ERROR("[%s][PartitionChannels] singleChByDie size[%zu] is less than 2, "
-                "cannot partition channels for non-2Plus6 topology.", tag.c_str(), singleChByDie.size());
+            HCCL_ERROR(
+                "[%s][PartitionChannels] singleChByDie size[%zu] is less than 2, "
+                "cannot partition channels for non-2Plus6 topology.",
+                tag.c_str(), singleChByDie.size());
             return HcclResult::HCCL_E_INTERNAL;
         }
         kernelCount = MAX_KERNEL_NUM_2DIE - 1;
@@ -340,7 +345,8 @@ HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
         fillKernel(KERNEL_CLOS_MAJOR, it1->second);
     }
 
-    HCCL_INFO("[%s][PartitionChannels] Rank[%d], is2Plus6[%d], kernelCount[%u], "
+    HCCL_INFO(
+        "[%s][PartitionChannels] Rank[%d], is2Plus6[%d], kernelCount[%u], "
         "fullmeshRankGroup[%zu], closMajorRankGroup[%zu], closMinorRankGroup[%zu].",
         tag.c_str(), myRank, is2Plus6, kernelCount, kernelRankGroup[KERNEL_FULLMESH].size(),
         kernelRankGroup[KERNEL_CLOS_MAJOR].size(), kernelRankGroup[KERNEL_CLOS_MINOR].size());

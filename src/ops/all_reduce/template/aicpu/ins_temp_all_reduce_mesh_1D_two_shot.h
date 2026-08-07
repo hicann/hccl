@@ -22,15 +22,14 @@ struct SplitSliceInfo {
     u64 size{0};
     u64 count{0};
 
-    SplitSliceInfo(const u64 offset, const u64 size, const u64 count) 
-    : offset(offset), size(size), count(count) {}
+    SplitSliceInfo(const u64 offset, const u64 size, const u64 count) : offset(offset), size(size), count(count) {}
 };
 
 class InsTempAllReduceMesh1DTwoShot : public InsAlgTemplateBase {
 public:
     InsTempAllReduceMesh1DTwoShot() = default;
-    explicit InsTempAllReduceMesh1DTwoShot(const OpParam& param, const u32 rankId,
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempAllReduceMesh1DTwoShot(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempAllReduceMesh1DTwoShot() override;
 
     std::string Describe() const override
@@ -41,32 +40,37 @@ public:
     }
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-        TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
     HcclResult SplitData();
 
-    HcclResult RunReduceScatter(const OpParam& param, const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
-    HcclResult ScatterData(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
-    HcclResult ReduceData(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
-    
-    HcclResult RunAllGather(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
-    HcclResult GatherData(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads);
-    
-    HcclResult PreSync(const std::vector<ThreadHandle> &threads);
-    HcclResult PostSync(const std::vector<ThreadHandle> &threads);
+    HcclResult RunReduceScatter(
+        const OpParam& param, const TemplateDataParams& tempAlgParams,
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads);
+    HcclResult ScatterData(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads);
+    HcclResult ReduceData(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
+
+    HcclResult RunAllGather(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads);
+    HcclResult GatherData(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads);
+
+    HcclResult PreSync(const std::vector<ThreadHandle>& threads);
+    HcclResult PostSync(const std::vector<ThreadHandle>& threads);
 
     bool needAicpuReduce_{false};
     u32 dataTypeSize_{0};
@@ -78,6 +82,6 @@ private:
     std::vector<u32> rankList_;
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_ALL_REDUCE_1D_MESH_TWO_SHOT
+#endif // INS_TEMP_ALL_REDUCE_1D_MESH_TWO_SHOT

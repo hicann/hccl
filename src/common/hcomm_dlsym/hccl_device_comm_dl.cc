@@ -13,18 +13,19 @@
 #include <cstdio>
 #include <cstdlib>
 
-DEFINE_WEAK_FUNC(HcclResult, HcclCommGetStatus, const char* commId, HcclCommStatus *status);
+DEFINE_WEAK_FUNC(HcclResult, HcclCommGetStatus, const char* commId, HcclCommStatus* status);
 
-DEFINE_WEAK_FUNC(HcclResult, HcclGroupStatusGet, bool *isGroupEnabled);
+DEFINE_WEAK_FUNC(HcclResult, HcclGroupStatusGet, bool* isGroupEnabled);
 
-DEFINE_WEAK_FUNC(HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpDesc *opInfo,
-    const HcclKernelFuncInfo *funcInfo, ThreadHandle aicpuThreadHandle, aclrtStream userStream,
-    const HcclKernelLaunchCfg *kernelLaunchCfg);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclAicpuKernelLaunch, HcclComm comm, const HcclOpDesc* opInfo, const HcclKernelFuncInfo* funcInfo,
+    ThreadHandle aicpuThreadHandle, aclrtStream userStream, const HcclKernelLaunchCfg* kernelLaunchCfg);
 
-DEFINE_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char *regName, HcclCommStateCallback cb, void *args);
+DEFINE_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char* regName, HcclCommStateCallback cb, void* args);
 
 // 初始化
-void HcclDeviceCommDlInit(void* libHcommHandle) {
+void HcclDeviceCommDlInit(void* libHcommHandle)
+{
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommGetStatus);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclGroupStatusGet);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclAicpuKernelLaunch);

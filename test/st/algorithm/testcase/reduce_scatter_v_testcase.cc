@@ -12,51 +12,63 @@
 #include "alg_env_config.h"
 #include "v_testcase_common.h"
 
-constexpr u32 DATATYPE_SIZE_TABLE_RSV[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr u32 DATATYPE_SIZE_TABLE_RSV[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 class ST_REDUCESCATTERV_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-static HcclResult ReduceScatterVDispatch(u32 rankId, u64 totalCount, VDataDesTag vDataDes,
-    HcclComm comm, aclrtStream stream)
+static HcclResult
+ReduceScatterVDispatch(u32 rankId, u64 totalCount, VDataDesTag vDataDes, HcclComm comm, aclrtStream stream)
 {
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE_RSV[vDataDes.dataType];
-    void *sendBuf = nullptr;
-    void *recvBuf = nullptr;
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
     u64 recvDataCount = vDataDes.counts[rankId];
     u64 sendBufSize = totalCount * dataTypeSize;
     u64 recvBufSize = recvDataCount * dataTypeSize;
     aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
     aclrtMalloc(&recvBuf, recvBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
-    return HcclReduceScatterV(sendBuf, vDataDes.counts.data(), vDataDes.displs.data(),
-        recvBuf, recvDataCount, vDataDes.dataType, HcclReduceOp::HCCL_REDUCE_SUM, comm, stream);
+    return HcclReduceScatterV(
+        sendBuf, vDataDes.counts.data(), vDataDes.displs.data(), recvBuf, recvDataCount, vDataDes.dataType,
+        HcclReduceOp::HCCL_REDUCE_SUM, comm, stream);
 }
 
-static HcclResult ReduceScatterVVerify(AllRankTaskQueues &taskQueues, u32 rankSize, VDataDesTag vDataDes)
+static HcclResult ReduceScatterVVerify(AllRankTaskQueues& taskQueues, u32 rankSize, VDataDesTag vDataDes)
 {
     return CheckReduceScatterV(taskQueues, rankSize, HcclReduceOp::HCCL_REDUCE_SUM, vDataDes);
 }
 
 static void SetIndependentOpEnv() { setenv("HCCL_INDEPENDENT_OP", "1", 1); }
 
-static void RunReduceScatterVMultilevel(const TopoMeta &topoInfo, VDataDesTag vDataDes)
+static void RunReduceScatterVMultilevel(const TopoMeta& topoInfo, VDataDesTag vDataDes)
 {
     RunVMultilevelTest(topoInfo, vDataDes, SetIndependentOpEnv, ReduceScatterVDispatch, ReduceScatterVVerify);
 }
@@ -90,7 +102,7 @@ TEST_F(ST_REDUCESCATTERV_TEST, st_reduce_scatter_v_a5_multilevel_2pod_6rank_fp16
     vDataDes.counts = {200, 200, 200, 200, 200, 200};
     vDataDes.displs = {0, 200, 400, 600, 800, 1000};
     vDataDes.dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
-    
+
     RunReduceScatterVMultilevel(topoMeta, vDataDes);
 }
 

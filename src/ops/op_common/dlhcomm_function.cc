@@ -12,7 +12,7 @@
 #include "log.h"
 
 namespace ops_hccl {
-DlHcommFunction &DlHcommFunction::GetInstance()
+DlHcommFunction& DlHcommFunction::GetInstance()
 {
     static DlHcommFunction hcclDlHcommFunction;
     (void)hcclDlHcommFunction.DlHcommFunctionInit();
@@ -20,7 +20,7 @@ DlHcommFunction &DlHcommFunction::GetInstance()
 }
 
 DlHcommFunction::~DlHcommFunction()
-{   
+{
     void* h = nullptr;
     {
         std::lock_guard<std::mutex> lock(handleMutex_);
@@ -34,10 +34,9 @@ DlHcommFunction::~DlHcommFunction()
 
 HcclResult DlHcommFunction::DlHcommFunctionInterInit()
 {
-    dlHcclThreadResGetInfo = (HcclResult(*)(HcclComm, ThreadHandle, void*, uint32_t, void**))dlsym(handle_,
-        "HcclThreadResGetInfo");
-    dlHcclConfigGetInfo = (HcclResult(*)(HcclComm, HcclConfigType, uint32_t, void*))dlsym(handle_,
-        "HcclConfigGetInfo");
+    dlHcclThreadResGetInfo
+        = (HcclResult(*)(HcclComm, ThreadHandle, void*, uint32_t, void**))dlsym(handle_, "HcclThreadResGetInfo");
+    dlHcclConfigGetInfo = (HcclResult(*)(HcclComm, HcclConfigType, uint32_t, void*))dlsym(handle_, "HcclConfigGetInfo");
     return HCCL_SUCCESS;
 }
 
@@ -54,4 +53,4 @@ HcclResult DlHcommFunction::DlHcommFunctionInit()
     CHK_RET(DlHcommFunctionInterInit());
     return HCCL_SUCCESS;
 }
-}
+} // namespace ops_hccl

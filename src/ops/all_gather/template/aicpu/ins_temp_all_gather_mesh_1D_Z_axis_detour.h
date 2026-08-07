@@ -18,25 +18,26 @@ namespace ops_hccl {
 class InsTempAllGatherMesh1D1DZAxisDetour : public InsTempAllGatherMesh1D {
 public:
     InsTempAllGatherMesh1D1DZAxisDetour() = default;
-    explicit InsTempAllGatherMesh1D1DZAxisDetour(const OpParam &param, const u32 rankId,
-                                    const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempAllGatherMesh1D1DZAxisDetour(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempAllGatherMesh1D1DZAxisDetour() override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 GetThreadNum() const override;
 
-    HcclResult CalcDataSplitByPortGroup(const u64 totalDataCount, const u64 dataTypeSize,
-                                        const std::vector<ChannelInfo> &channels,
-                                        std::vector<u64> &elemCountOut, std::vector<u64> &sizeOut,
-                                        std::vector<u64> &elemOffset) override;
-    HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>> &channels) override;
+    HcclResult CalcDataSplitByPortGroup(
+        const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+        std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset) override;
+    HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
+
 protected:
     u32 level0ChannelNumPerRank_{1};
     u32 level1ChannelNumPerRank_{0};
     float level0DataRatio_{1.0f};
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_ALL_GATHER_MESH_1D_H
+#endif // INS_TEMP_ALL_GATHER_MESH_1D_H

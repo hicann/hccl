@@ -14,37 +14,38 @@
 namespace ops_hccl {
 
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int CKE_IDX_0    = 0;
-constexpr int CKE_IDX_1    = 1;
-constexpr int CKE_IDX_2    = 2;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int CKE_IDX_0 = 0;
+constexpr int CKE_IDX_1 = 1;
+constexpr int CKE_IDX_2 = 2;
 
-static CcuResult ParseKernelArg(AllToAllVMesh2DieContext &ctx, CcuKernelArgAllToAllVMesh2Die *kernelArg)
+static CcuResult ParseKernelArg(AllToAllVMesh2DieContext& ctx, CcuKernelArgAllToAllVMesh2Die* kernelArg)
 {
     ctx.localSize = kernelArg->channelCount + 1;
     ctx.localId = ctx.localSize - 1;
-    ctx.peerSize = kernelArg->channelCount + ( kernelArg->withMyRank ? 1 : 0);
-    ctx.logicId =  kernelArg->rankId % ctx.peerSize;
+    ctx.peerSize = kernelArg->channelCount + (kernelArg->withMyRank ? 1 : 0);
+    ctx.logicId = kernelArg->rankId % ctx.peerSize;
 
     ctx.selfBit = 1 << ctx.logicId;
     ctx.allBit = ((1 << ctx.peerSize) - 1) & (~(kernelArg->withMyRank ? ctx.selfBit : 0));
 
-    HCCL_INFO("[CcuKernelAllToAllVMesh2Die] RankId[%u], localSize[%u], peerSize[%u], withMyRank[%u]",
-        kernelArg->rankId, ctx.localSize, ctx.peerSize, kernelArg->withMyRank);
+    HCCL_INFO(
+        "[CcuKernelAllToAllVMesh2Die] RankId[%u], localSize[%u], peerSize[%u], withMyRank[%u]", kernelArg->rankId,
+        ctx.localSize, ctx.peerSize, kernelArg->withMyRank);
 
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllToAllVMesh2DieContext &ctx)
+static CcuResult InitResource(AllToAllVMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllToAllVMesh2Die] RankId[%u] channels is empty!", arg->rankId);
         return CcuResult::CCU_E_INTERNAL;
     }
 
-    CCU_CHK_RET(AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated,
-        CCU_MS_LOCAL_COPY_LOOP_COUNT, LOCAL_COPY_MS_PER_LOOP));
+    CCU_CHK_RET(AllocGoResource(
+        ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_MS_LOCAL_COPY_LOOP_COUNT, LOCAL_COPY_MS_PER_LOOP));
 
     ctx.output.resize(arg->channelCount + 1);
     ctx.token.resize(arg->channelCount + 1);
@@ -62,7 +63,7 @@ static CcuResult InitResource(AllToAllVMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllToAllVMesh2DieContext &ctx)
+static CcuResult LoadArgs(AllToAllVMesh2DieContext& ctx)
 {
     uint16_t index = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, index++));
@@ -88,15 +89,16 @@ static CcuResult LoadArgs(AllToAllVMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult ExchangeInfoSync(AllToAllVMesh2DieContext &ctx)
+static CcuResult ExchangeInfoSync(AllToAllVMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     ccu::Variable tempDst;
     for (u32 peerId = 0; peerId < arg->channelCount; peerId++) {
         tempDst = ctx.output[ctx.localId];
         tempDst += ctx.sendRecvInfo[peerId].recvOffset;
         CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[peerId], tempDst, OUTPUT_XN_ID, CKE_IDX_1, ctx.selfBit));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[peerId], ctx.token[ctx.localId], TOKEN_XN_ID, CKE_IDX_2, ctx.selfBit));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[peerId], ctx.token[ctx.localId], TOKEN_XN_ID, CKE_IDX_2, ctx.selfBit));
     }
     uint32_t channelIdx = 0;
     for (u32 peerId = 0; peerId < ctx.peerSize; peerId++) {
@@ -111,9 +113,9 @@ static CcuResult ExchangeInfoSync(AllToAllVMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllToAllVMesh2DieContext &ctx)
+static CcuResult PostSync(AllToAllVMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, ctx.selfBit));
     }
@@ -128,9 +130,9 @@ static CcuResult PostSync(AllToAllVMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult WriteToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t peerId)
+static CcuResult WriteToDstOutput(AllToAllVMesh2DieContext& ctx, uint32_t peerId)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_DEBUG("[CcuKernelAllToAllVMesh2Die] WriteToDstOutput Start. RankId[%u] peerId[%u]", arg->rankId, peerId);
 
     CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX)
@@ -143,21 +145,20 @@ static CcuResult WriteToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t peerId
         CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX - 1)
         {
             ctx.curSendTailSize = ctx.sendRecvInfo[peerId].sendTailSize;
-            CCU_IF(ctx.curSendTailSize == 0)
-            {
-                CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId));
-            }
+            CCU_IF(ctx.curSendTailSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId)); }
             CCU_IF(ctx.curSendTailSize != 0)
             {
-                CCU_CHK_RET(ccu::Write(arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId],
-                    ctx.curSendTailSize, ctx.event, 1 << peerId));
+                CCU_CHK_RET(ccu::Write(
+                    arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.curSendTailSize, ctx.event,
+                    1 << peerId));
             }
             ctx.completedRankCount += ctx.xnConst1;
         }
         CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum != UINT64_MAX - 1)
         {
-            CCU_CHK_RET(ccu::Write(arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId],
-                ctx.xnMaxTransportSize, ctx.event, 1 << peerId));
+            CCU_CHK_RET(ccu::Write(
+                arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.xnMaxTransportSize, ctx.event,
+                1 << peerId));
             ctx.dst[peerId].addr += ctx.xnMaxTransportSize;
             ctx.src[peerId].addr += ctx.xnMaxTransportSize;
         }
@@ -168,9 +169,9 @@ static CcuResult WriteToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t peerId
     return CCU_SUCCESS;
 }
 
-static CcuResult GroupCopyToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t peerId)
+static CcuResult GroupCopyToDstOutput(AllToAllVMesh2DieContext& ctx, uint32_t peerId)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_DEBUG("[CcuKernelAllToAllVMesh2Die] GroupCopyToDstOutput Start. RankId[%u] peerId[%u]", arg->rankId, peerId);
 
     CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX)
@@ -184,10 +185,7 @@ static CcuResult GroupCopyToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t pe
         {
             ctx.curSendTailSize = ctx.sendRecvInfo[peerId].sendTailSize;
             ctx.curSendTailGoSize = ctx.sendRecvInfo[peerId].sendTailGoSize;
-            CCU_IF(ctx.curSendTailSize == 0)
-            {
-                CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId));
-            }
+            CCU_IF(ctx.curSendTailSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << peerId)); }
             CCU_IF(ctx.curSendTailSize != 0)
             {
                 GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize, GetCcuVersion());
@@ -209,9 +207,9 @@ static CcuResult GroupCopyToDstOutput(AllToAllVMesh2DieContext &ctx, uint32_t pe
     return CCU_SUCCESS;
 }
 
-static void CalcGroupSrcDst(AllToAllVMesh2DieContext &ctx)
+static void CalcGroupSrcDst(AllToAllVMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t peerId = 0; peerId < arg->channelCount; peerId++) {
         ctx.src[peerId].addr = ctx.input;
         ctx.src[peerId].addr += ctx.sendRecvInfo[peerId].sendOffset;
@@ -230,9 +228,9 @@ static void CalcGroupSrcDst(AllToAllVMesh2DieContext &ctx)
     }
 }
 
-static CcuResult LoopStep(AllToAllVMesh2DieContext &ctx)
+static CcuResult LoopStep(AllToAllVMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t peerId = 0; peerId < arg->channelCount; peerId++) {
         CCU_CHK_RET(WriteToDstOutput(ctx, peerId));
     }
@@ -245,12 +243,13 @@ static CcuResult LoopStep(AllToAllVMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh2DieContext &ctx)
+static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh2DieContext& ctx)
 {
     ctx.xnMaxTransportSize = ctx.MAX_TRANSPORT_SIZE;
     ctx.completedRankCount = 0;
     ctx.xnConst1 = 1;
-    CCU_WHILE(ctx.completedRankCount != ctx.peerSize) {
+    CCU_WHILE(ctx.completedRankCount != ctx.peerSize)
+    {
         HCCL_DEBUG("[CcuKernelAllToAllVMesh2Die] Algorithm loops[%u].", ctx.peerSize);
         CCU_CHK_RET(LoopStep(ctx));
     }
@@ -260,7 +259,7 @@ static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh2DieContext &ctx)
 
 CcuResult CcuAllToAllVMesh2DieKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllToAllVMesh2Die *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllToAllVMesh2Die*>(arg);
     AllToAllVMesh2DieContext ctx;
     ctx.arg = kernelArg;
     ctx.resourceAllocated = false;
@@ -272,7 +271,8 @@ CcuResult CcuAllToAllVMesh2DieKernel(CcuKernelArg arg)
     ctx.enginePool = 0;
 
     HCCL_INFO("[CcuKernelAllToAllVMesh2Die] Algorithm Init Begins. RankId[%u]", ctx.arg->rankId);
-    CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));;
+    CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
+    ;
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));
 
@@ -288,4 +288,4 @@ CcuResult CcuAllToAllVMesh2DieKernel(CcuKernelArg arg)
     return CCU_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

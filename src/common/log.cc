@@ -49,7 +49,4 @@ void SetErrToWarnSwitch(bool flag)
     }
 }
 
-bool IsErrorToWarn()
-{
-    return g_hcclErrToWarn;
-}
+bool IsErrorToWarn() { return g_hcclErrToWarn; }

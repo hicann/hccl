@@ -23,52 +23,61 @@
 #include "config_log.h"
 #include "coll_alg_v2_exec_registry.h"
 
-
 namespace ops_hccl {
 
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2, typename InsAlgTemplate3>
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
 class InsV2AllReduceSequenceExecutorAicpu : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceSequenceExecutorAicpu();
     ~InsV2AllReduceSequenceExecutorAicpu() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgResStepOne,
-                                 const TemplateResource &templateAlgResStepTwo,
-                                 const TemplateResource &templateAlgResStepThree,
-                                 const TemplateResource &templateAlgResStepFour, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgResStepOne,
+        const TemplateResource& templateAlgResStepTwo, const TemplateResource& templateAlgResStepThree,
+        const TemplateResource& templateAlgResStepFour, u32 notifyNumOnMainThread);
 #endif
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    void GenBaseTempAlgParams(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        TemplateDataParams &tempAlgParamsStepOne, TemplateDataParams &tempAlgParamsStepTwo,
-        TemplateDataParams &tempAlgParamsStepThree, TemplateDataParams &tempAlgParamsStepFour) const;
-    void GenTempAlgParamsStepOne(const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-        TemplateDataParams &tempAlgParamsStepOne) const;
-    void GenTempAlgParamsStepTwo(const u64 loop, const u64 currDataCount, const u64 sliceSizeLastStep,
-        const u64 tailSizeLastStep, TemplateDataParams &tempAlgParamsStepTwo) const;
-    void GenTempAlgParamsStepThree(const u64 loop, const u64 currDataCount, const u64 sliceSize,
-        const u64 tailSize, TemplateDataParams &tempAlgParamsStepThree) const;
-    void GenTempAlgParamsStepFour(const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-        const u64 sliceSize, const u64 tailSize, TemplateDataParams &tempAlgParamsStepFour) const;
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    void GenBaseTempAlgParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParamsStepOne,
+        TemplateDataParams& tempAlgParamsStepTwo, TemplateDataParams& tempAlgParamsStepThree,
+        TemplateDataParams& tempAlgParamsStepFour) const;
+    void GenTempAlgParamsStepOne(
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount,
+        TemplateDataParams& tempAlgParamsStepOne) const;
+    void GenTempAlgParamsStepTwo(
+        const u64 loop, const u64 currDataCount, const u64 sliceSizeLastStep, const u64 tailSizeLastStep,
+        TemplateDataParams& tempAlgParamsStepTwo) const;
+    void GenTempAlgParamsStepThree(
+        const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
+        TemplateDataParams& tempAlgParamsStepThree) const;
+    void GenTempAlgParamsStepFour(
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount, const u64 sliceSize, const u64 tailSize,
+        TemplateDataParams& tempAlgParamsStepFour) const;
     template <typename InsAlgTemplate>
-    HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource) const;
+    HcclResult GenTempResource(
+        const AlgResourceCtxSerializable& resCtx, const u32 channelLevelIdx,
+        const std::shared_ptr<InsAlgTemplate>& algTemplate, TemplateResource& tempResource) const;
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};
@@ -96,8 +105,8 @@ protected:
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-    std::vector<ThreadHandle> threads_;                 // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
+    std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 };
-}
+} // namespace ops_hccl
 
 #endif

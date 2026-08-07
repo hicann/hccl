@@ -12,7 +12,7 @@
 #include "gtest/gtest.h"
 
 // rm -rf ../st/* && cmake ../cmake/superbuild/ -DHOST_PACKAGE=ut -DBUILD_MOD=hccl_checker_ops && make -j16
-GTEST_API_ int main(int argc, char **argv)
+GTEST_API_ int main(int argc, char** argv)
 {
     std::cout << "Start to run demo for hccl_checker_ops_utest." << std::endl;
     testing::InitGoogleTest(&argc, argv);

@@ -17,7 +17,7 @@ namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
-    HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
@@ -26,11 +26,12 @@ HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierar
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
-    HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     myRank_ = topoInfo->userRank;
-    CHK_PRT_RET(algHierarchyInfo.infos.empty(),
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.empty(),
         HCCL_ERROR("[InsV2BarrierSoleExecutor][CalcRes] myRank[%u] algHierarchyInfo.infos is empty", myRank_),
         HCCL_E_INTERNAL);
     InsAlgTemplate tempAlg(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
@@ -40,16 +41,18 @@ HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2BarrierSoleExecutor][Orchestrate] Start");
     myRank_ = resCtx.topoInfo.userRank;
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
-    CHK_PRT_RET(resCtx.algHierarchyInfo.infos.empty(),
+    CHK_PRT_RET(
+        resCtx.algHierarchyInfo.infos.empty(),
         HCCL_ERROR("[InsV2BarrierSoleExecutor][Orchestrate] myRank[%u] algHierarchyInfo.infos is empty", myRank_),
         HCCL_E_INTERNAL);
-    CHK_PRT_RET(remoteRankToChannelInfo_.empty(),
+    CHK_PRT_RET(
+        remoteRankToChannelInfo_.empty(),
         HCCL_ERROR("[InsV2BarrierSoleExecutor][Orchestrate] myRank[%u] remoteRankToChannelInfo_ is empty", myRank_),
         HCCL_E_INTERNAL);
 
@@ -69,10 +72,7 @@ HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_BARRIER,
-                 InsBarrierNhrAicpu,
-                 InsV2BarrierSoleExecutor,
-                 TopoMatch1D,
-                 InsTempBarrierNhrAicpu);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_BARRIER, InsBarrierNhrAicpu, InsV2BarrierSoleExecutor, TopoMatch1D, InsTempBarrierNhrAicpu);
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

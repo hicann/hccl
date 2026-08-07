@@ -39,7 +39,7 @@ struct A2AVSingleSendRecvInfoCtx {
 };
 
 struct AllToAllVMesh2DieContext : CcuKernelCtxBase {
-    const CcuKernelArgAllToAllVMesh2Die *arg;
+    const CcuKernelArgAllToAllVMesh2Die* arg;
 
     const uint32_t RANK_EVEN = 2;
 

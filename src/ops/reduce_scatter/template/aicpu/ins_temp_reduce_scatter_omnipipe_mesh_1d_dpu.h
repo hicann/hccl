@@ -24,8 +24,9 @@ namespace ops_hccl {
 class InsTempReduceScatterOmniPipeMesh1dDpu : public InsAlgTemplateBase {
 public:
     explicit InsTempReduceScatterOmniPipeMesh1dDpu();
-    explicit InsTempReduceScatterOmniPipeMesh1dDpu(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempReduceScatterOmniPipeMesh1dDpu(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterOmniPipeMesh1dDpu() override;
 
     std::string Describe() const override
@@ -35,23 +36,23 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
-    HcclResult DoLocalCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
-    HcclResult PostReduce(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
+    HcclResult DoLocalCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
+    HcclResult PostReduce(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParam,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
-        const std::vector<std::vector<uint32_t>> &subCommRanks) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
     u64 GetThreadNum() const override;
 
 private:
@@ -59,6 +60,6 @@ private:
     u64 count_{0};
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // INS_TEMP_REDUCE_SCATTER_OMNIPIPE_MESH_1D_DPU_H

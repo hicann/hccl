@@ -9,14 +9,13 @@
  */
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE  // 为 dlsym 的 RTLD_NEXT 提供声明
+#define _GNU_SOURCE // 为 dlsym 的 RTLD_NEXT 提供声明
 #endif
 #include <dlfcn.h>
 
 #include "barrier_op.h"
 #include "op_common_ops.h"
 #include <string>
-
 
 using namespace std;
 using namespace ops_hccl;
@@ -32,14 +31,14 @@ HcclResult BarrierFallbackToOldFlow(HcclComm comm, aclrtStream stream)
 {
     using BarrierFn = HcclResult (*)(HcclComm, aclrtStream);
     static BarrierFn oldBarrier = reinterpret_cast<BarrierFn>(dlsym(RTLD_NEXT, "HcclBarrier"));
-    if (oldBarrier != nullptr && oldBarrier != &HcclBarrier) {  // 防自递归
+    if (oldBarrier != nullptr && oldBarrier != &HcclBarrier) { // 防自递归
         return oldBarrier(comm, stream);
     }
     HCCL_ERROR("[Barrier] cannot locate legacy HcclBarrier via RTLD_NEXT; "
                "ensure libhcomm is loaded after libhccl");
     return HCCL_E_NOT_SUPPORT;
 }
-}  // namespace
+} // namespace
 
 HcclResult HcclBarrier(HcclComm comm, aclrtStream stream)
 {
@@ -70,7 +69,7 @@ HcclResult HcclBarrier(HcclComm comm, aclrtStream stream)
 
 namespace ops_hccl {
 
-HcclResult BarrierInitAndCheck(HcclComm comm, aclrtStream stream, std::string &opTag)
+HcclResult BarrierInitAndCheck(HcclComm comm, aclrtStream stream, std::string& opTag)
 {
     CHK_RET(InitEnvConfig());
     CHK_RET(CheckBarrierInputPara(comm, stream));
@@ -90,16 +89,18 @@ HcclResult BarrierInitAndCheck(HcclComm comm, aclrtStream stream, std::string &o
 
 HcclResult CheckBarrierInputPara(const HcclComm comm, const aclrtStream stream)
 {
-    RPT_INPUT_ERR(stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclBarrier", "nullptr", "stream", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclBarrier", "nullptr", "stream", "non-null pointer"}));
     CHK_PTR_NULL(stream);
-    RPT_INPUT_ERR(comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
-                  std::vector<std::string>({"HcclBarrier", "nullptr", "comm", "non-null pointer"}));
+    RPT_INPUT_ERR(
+        comm == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclBarrier", "nullptr", "comm", "non-null pointer"}));
     CHK_PTR_NULL(comm);
     return HCCL_SUCCESS;
 }
 
-HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string &tag)
+HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string& tag)
 {
     HCCL_INFO("Start to execute BarrierOutPlace");
     u32 userRankSize;
@@ -125,7 +126,7 @@ HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string 
     param.outputPtr = nullptr;
     param.outputSize = 0;
     param.DataDes.count = 0;
-    param.DataDes.dataType = HCCL_DATA_TYPE_FP32;  // 占位，模板不使用
+    param.DataDes.dataType = HCCL_DATA_TYPE_FP32; // 占位，模板不使用
     param.opType = HcclCMDType::HCCL_CMD_BARRIER;
     param.enableDetour = false;
     param.deviceType = deviceType;
@@ -146,7 +147,7 @@ HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string 
     return HCCL_SUCCESS;
 }
 
-HcclResult BarrierEntryLog(aclrtStream stream, const std::string &tag, const std::string &opName)
+HcclResult BarrierEntryLog(aclrtStream stream, const std::string& tag, const std::string& opName)
 {
     if (GetExternalInputHcclEnableEntryLog()) {
         s32 deviceId = 0;
@@ -154,9 +155,9 @@ HcclResult BarrierEntryLog(aclrtStream stream, const std::string &tag, const std
         s32 streamId = 0;
         ACLCHECK(aclrtStreamGetId(stream, &streamId));
         char stackLogBuffer[LOG_TMPBUF_SIZE];
-        s32 ret = snprintf_s(stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U,
-            "tag[%s], streamId[%d], deviceId[%d]",
-            tag.c_str(), streamId, deviceId);
+        s32 ret = snprintf_s(
+            stackLogBuffer, LOG_TMPBUF_SIZE, LOG_TMPBUF_SIZE - 1U, "tag[%s], streamId[%d], deviceId[%d]", tag.c_str(),
+            streamId, deviceId);
         CHK_PRT_CONT(ret == -1, HCCL_WARNING("Failed to build log info, tag[%s].", tag.c_str()));
         std::string logInfo = "Entry-" + opName + ":" + std::string(stackLogBuffer);
         HCCL_RUN_INFO("%s", logInfo.c_str());
@@ -164,4 +165,4 @@ HcclResult BarrierEntryLog(aclrtStream stream, const std::string &tag, const std
     return HCCL_SUCCESS;
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

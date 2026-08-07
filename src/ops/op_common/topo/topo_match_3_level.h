@@ -19,20 +19,21 @@ public:
     explicit TopoMatch3Level();
     ~TopoMatch3Level() override;
 
-    std::string Describe() const override
-    {
-        return "Topo Match for combined Algorithm: layer 0 Mesh, layer 1 NHR.";
-    }
-    HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    std::string Describe() const override { return "Topo Match for combined Algorithm: layer 0 Mesh, layer 1 NHR."; }
+    HcclResult MatchTopo(
+        const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
+        AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 private:
-    HcclResult TopoForLayer0(const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
+    HcclResult TopoForLayer0(
+        const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
-    HcclResult TopoForLayerGeneric(const HcclComm comm, uint32_t netLayer, uint32_t baseModSize, const uint32_t myRank,
+    HcclResult TopoForLayerGeneric(
+        const HcclComm comm, uint32_t netLayer, uint32_t baseModSize, const uint32_t myRank,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo, uint32_t targetLayerIdx) const;
     bool CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const;
 
-    template<typename T>
+    template <typename T>
     std::string PrintCArray(const T* values, const u32 valueNum) const
     {
         std::ostringstream oss;
@@ -42,6 +43,6 @@ private:
         return oss.str();
     }
 };
-}  // namespace Hccl
+} // namespace ops_hccl
 
 #endif

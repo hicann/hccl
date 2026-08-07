@@ -19,15 +19,17 @@ using namespace std;
 namespace HcclSim {
 
 SimHcclThread::SimHcclThread(rtStream_t rtStream, u32 notifyNum, const NotifyLoadType notifyLoadType)
-    : notifyNum_(notifyNum), notifyLoadType_(notifyLoadType)
+    : notifyNum_(notifyNum),
+      notifyLoadType_(notifyLoadType)
 {
     stream_ = reinterpret_cast<SimStream*>(rtStream);
 }
 
 SimHcclThread::SimHcclThread(StreamType streamType, u32 notifyNum, const NotifyLoadType notifyLoadType)
-    : streamType_(streamType), notifyNum_(notifyNum), notifyLoadType_(notifyLoadType)
-{
-}
+    : streamType_(streamType),
+      notifyNum_(notifyNum),
+      notifyLoadType_(notifyLoadType)
+{}
 
 SimHcclThread::~SimHcclThread()
 {
@@ -78,4 +80,4 @@ uint32_t SimHcclThread::GetNotifyIdByIndex(uint32_t notifyIndex) const
     return notifys_[notifyIndex]->GetNotifyId();
 }
 
-};
+}; // namespace HcclSim

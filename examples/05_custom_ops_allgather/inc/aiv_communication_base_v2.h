@@ -17,10 +17,10 @@
 
 using namespace AscendC;
 
-#define EXPORT_AIV_META_INFO(kernel_name) \
-static const struct FunLevelKType kernel_name##_kernel_type_section __attribute__ \
-((used, section (".ascend.meta." #kernel_name))) \
-= {{F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}}
+#define EXPORT_AIV_META_INFO(kernel_name)                               \
+    static const struct FunLevelKType kernel_name##_kernel_type_section \
+        __attribute__((used, section(".ascend.meta." #kernel_name)))    \
+        = {{F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}}
 
 constexpr uint64_t BUFFER_OUT_ADDR_OFFSET = 16 * 1024;
 constexpr uint64_t TOPO_ADDR_OFFSET = 32 * 1024;
@@ -38,34 +38,26 @@ constexpr uint64_t LOW_16_BITS = 0xFFFF;
 
 // ExtraArgs is defined in extra_args.h
 
-#define KERNEL_ARGS_DEF \
-GM_ADDR buffIn, \
-uint64_t input, uint64_t output, uint32_t rank, uint32_t rankSize, uint64_t xRankSize,  uint64_t yRankSize, uint64_t zRankSize, uint64_t len, \
-uint32_t dataType, uint32_t reduceOp, uint32_t root, uint32_t tag, \
-uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride, \
-bool isOpBase, \
-GM_ADDR headCountMem, \
-GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter
+#define KERNEL_ARGS_DEF                                                                                            \
+    GM_ADDR buffIn, uint64_t input, uint64_t output, uint32_t rank, uint32_t rankSize, uint64_t xRankSize,         \
+        uint64_t yRankSize, uint64_t zRankSize, uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, \
+        uint32_t tag, uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum,                   \
+        uint64_t inputRepeatStride, uint64_t outputRepeatStride, bool isOpBase, GM_ADDR headCountMem,              \
+        GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter
 
-#define EXTERN_KERNEL_ARGS_DEF_V2 \
-KERNEL_ARGS_DEF, ExtraArgs extraArgs
+#define EXTERN_KERNEL_ARGS_DEF_V2 KERNEL_ARGS_DEF, ExtraArgs extraArgs
 
-#define KERNEL_ARGS_CALL \
-buffIn, \
-input, output, rank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, tag, \
-inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
-isOpBase, \
-headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter
+#define KERNEL_ARGS_CALL                                                                                               \
+    buffIn, input, output, rank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, tag,        \
+        inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, isOpBase, headCountMem, \
+        tailCountMem, addOneMem, counterMemSize, isEnableCounter
 
-#define EXTERN_KERNEL_ARGS_CALL \
-KERNEL_ARGS_CALL, extraArgs
+#define EXTERN_KERNEL_ARGS_CALL KERNEL_ARGS_CALL, extraArgs
 
-#define KERNEL_CLASS_INIT \
-buffIn, input, output,\
-rank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, \
-inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
-headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter
-
+#define KERNEL_CLASS_INIT                                                                                    \
+    buffIn, input, output, rank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root,   \
+        inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, headCountMem, \
+        tailCountMem, addOneMem, counterMemSize, isEnableCounter
 
 constexpr uint64_t AIV_FLAG_BUFFER_SIZE = 3 * 1024 * 1024;
 constexpr uint64_t CLEAR_BUFFER_OFFSET = 1024 * 1024;
@@ -102,16 +94,14 @@ constexpr int32_t TAG_RESET_COUNT = 4096;
 
 class AivCommBase {
 public:
-    __aicore__ inline AivCommBase() {
-    }
+    __aicore__ inline AivCommBase() {}
 
-    __aicore__ inline void Init(GM_ADDR buffIn, uint64_t input, uint64_t output, uint32_t rank, uint32_t rankSize, uint64_t xRankSize,  uint64_t yRankSize, uint64_t zRankSize,
-                                uint64_t len,
-                                uint32_t dataType, uint32_t reduceOp, uint32_t root,
-                                uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride,
-                                GM_ADDR headCountMem,
-                                GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter,
-                                bool useDoubleBuffer)
+    __aicore__ inline void Init(
+        GM_ADDR buffIn, uint64_t input, uint64_t output, uint32_t rank, uint32_t rankSize, uint64_t xRankSize,
+        uint64_t yRankSize, uint64_t zRankSize, uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root,
+        uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride,
+        uint64_t outputRepeatStride, GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem,
+        uint32_t counterMemSize, bool isEnableCounter, bool useDoubleBuffer)
     {
         rank_ = rank;
         root_ = root;
@@ -136,7 +126,7 @@ public:
         InitBuffArray(buffIn);
 
         localOffset = (rankSize_ * NUM_BLOCKS_FOUR_PER_RANK_A3 * FLAG_BUF_NUM) * FLAG_SIZE;
-        multiOffset = MAX_NUM_BLOCKS * DOUBLE * FLAG_SIZE+ localOffset;
+        multiOffset = MAX_NUM_BLOCKS * DOUBLE * FLAG_SIZE + localOffset;
         pingpongOffset = multiOffset + DOUBLE * DOUBLE * NUM_BLOCKS_FOUR_PER_RANK_A3 * ATOMIC_FLAG_SIZE * DOUBLE;
         countOffset = DOUBLE * pingpongOffset;
         seperateOffset = countOffset + NUM_BLOCKS_FOUR_PER_RANK_A3 * rankSize_ * FLAG_SIZE;
@@ -155,11 +145,12 @@ public:
     {
         GlobalTensor<uint64_t> ipcBufferGlobal;
         ipcBufferGlobal.SetGlobalBuffer((__gm__ uint64_t*)(buffIn));
-        for(int i=0; i<rankSize_;i++){
+        for (int i = 0; i < rankSize_; i++) {
             GM_IN[i] = (GM_ADDR)ipcBufferGlobal.GetValue(i);
-            GM_OUT[i] = (GM_ADDR)ipcBufferGlobal.GetValue(BUFFER_OUT_ADDR_OFFSET / sizeof(uint64_t) + i) + FLAG_ADDR_OFFSET;
+            GM_OUT[i]
+                = (GM_ADDR)ipcBufferGlobal.GetValue(BUFFER_OUT_ADDR_OFFSET / sizeof(uint64_t) + i) + FLAG_ADDR_OFFSET;
         }
-        for(int i=0; i< TOPO_LEN ;i++){
+        for (int i = 0; i < TOPO_LEN; i++) {
             TOPO_[i] = (uint64_t)ipcBufferGlobal.GetValue(TOPO_ADDR_OFFSET / sizeof(uint64_t) + i);
         }
         pipe_barrier(PIPE_ALL);
@@ -167,22 +158,22 @@ public:
 
     __aicore__ inline uint64_t CeilDiv(uint64_t a, uint64_t b);
 
-    template<typename T>
+    template <typename T>
     __aicore__ inline void SetAtomicOp(uint32_t atomicOp);
 
-    template<typename T>
-    __aicore__ inline void DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal,
-                                         const uint32_t calCount);
+    template <typename T>
+    __aicore__ inline void
+    DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount);
 
-    template<typename T>
-    __aicore__ inline void DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal,
-                                         const uint32_t calCount);
+    template <typename T>
+    __aicore__ inline void
+    DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount);
 
-    template<typename T>
-    __aicore__ inline void CpGM2GM(__gm__ T *outputGM, __gm__ T *inputGM, uint64_t count, uint32_t atomicOp);
+    template <typename T>
+    __aicore__ inline void CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count, uint32_t atomicOp);
 
-    template<typename T>
-    __aicore__ inline void CpGM2GM(__gm__ T *outputGM, __gm__ T *inputGM, uint64_t count);
+    template <typename T>
+    __aicore__ inline void CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count);
 
     __aicore__ inline void BarrierAll();
 
@@ -239,20 +230,18 @@ public:
     uint32_t seperateOffset;
 };
 
-
 __aicore__ inline void AivCommBase::Record(uint32_t targetRank, uint64_t flag_offset, int32_t curTag)
 {
-    d2hGlobal.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(GM_OUT[targetRank] + flag_offset * UB_ALIGN_SIZE));
+    d2hGlobal.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(GM_OUT[targetRank] + flag_offset * UB_ALIGN_SIZE));
     localTagTensor.SetValue(0, curTag);
     pipe_barrier(PIPE_ALL);
     DataCopyUB2GM(d2hGlobal, localTagTensor, UB_ALIGN_SIZE / sizeof(int32_t));
     pipe_barrier(PIPE_ALL);
 }
 
-
 __aicore__ inline void AivCommBase::WaitFlag(uint32_t targetRank, uint64_t flag_offset, int32_t curTag)
 {
-    d2hGlobal.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t *>(GM_OUT[targetRank] + flag_offset * UB_ALIGN_SIZE));
+    d2hGlobal.SetGlobalBuffer(reinterpret_cast<__gm__ int32_t*>(GM_OUT[targetRank] + flag_offset * UB_ALIGN_SIZE));
     while (true) {
         DataCopyGM2UB(localTagTensor, d2hGlobal, UB_ALIGN_SIZE / sizeof(int32_t));
         pipe_barrier(PIPE_ALL);
@@ -267,7 +256,7 @@ __aicore__ inline void AivCommBase::BarrierForFirstOP()
     if (GetBlockIdx() == 0) {
         pipe_barrier(PIPE_ALL);
         for (int i = 0; i < rankSize_; i++) {
-			uint64_t flag_offset = BASE_FLAG_OFFSET + i * FLAG_SIZE;
+            uint64_t flag_offset = BASE_FLAG_OFFSET + i * FLAG_SIZE;
             Record(rank_, flag_offset / UB_ALIGN_SIZE, DOUBLE);
         }
         pipe_barrier(PIPE_ALL);
@@ -323,37 +312,45 @@ __aicore__ inline void AivCommBase::GetTag(GM_ADDR buffIn)
     inOutQue.FreeTensor(localIn);
 }
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivCommBase::SetAtomicOp(uint32_t atomicOp)
 {
     switch (atomicOp) {
         case AscendC::HcclReduceOp::HCCL_REDUCE_SUM:
-        SetAtomicAdd<T>(); break;
+            SetAtomicAdd<T>();
+            break;
         case AscendC::HcclReduceOp::HCCL_REDUCE_MAX:
-        SetAtomicMax<T>(); break;
+            SetAtomicMax<T>();
+            break;
         case AscendC::HcclReduceOp::HCCL_REDUCE_MIN:
-        SetAtomicMin<T>(); break;
+            SetAtomicMin<T>();
+            break;
         default:
-        SetAtomicNone(); break;
+            SetAtomicNone();
+            break;
     }
 }
 
-template<typename T>
-__aicore__ inline void AivCommBase::DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal,
-                                                  const uint32_t calCount)
+template <typename T>
+__aicore__ inline void
+AivCommBase::DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount)
 {
-    copy_gm_to_ubuf_align_v2((__ubuf__ uint8_t*)dstLocal.GetPhyAddr(), (__gm__ uint8_t*)srcGlobal.GetPhyAddr(), 0, 1, calCount * sizeof(T), 0,0,0, 0,0,0);
+    copy_gm_to_ubuf_align_v2(
+        (__ubuf__ uint8_t*)dstLocal.GetPhyAddr(), (__gm__ uint8_t*)srcGlobal.GetPhyAddr(), 0, 1, calCount * sizeof(T),
+        0, 0, 0, 0, 0, 0);
 }
 
-template<typename T>
-__aicore__ inline void AivCommBase::DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal,
-                                                  const uint32_t calCount)
+template <typename T>
+__aicore__ inline void
+AivCommBase::DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount)
 {
-    copy_ubuf_to_gm_align_v2(reinterpret_cast<const __gm__ uint8_t*>(dstGlobal.GetPhyAddr()), reinterpret_cast<__ubuf__ uint8_t*>(srcLocal.GetPhyAddr()), 0, 1, calCount * sizeof(T), 0,0,0);
+    copy_ubuf_to_gm_align_v2(
+        reinterpret_cast<const __gm__ uint8_t*>(dstGlobal.GetPhyAddr()),
+        reinterpret_cast<__ubuf__ uint8_t*>(srcLocal.GetPhyAddr()), 0, 1, calCount * sizeof(T), 0, 0, 0);
 }
 
-template<typename T>
-__aicore__ inline void AivCommBase::CpGM2GM(__gm__ T *outputGM, __gm__ T *inputGM, uint64_t count)
+template <typename T>
+__aicore__ inline void AivCommBase::CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count)
 {
     GlobalTensor<T> inputGT;
     inputGT.SetGlobalBuffer(inputGM, count);
@@ -380,8 +377,8 @@ __aicore__ inline void AivCommBase::CpGM2GM(__gm__ T *outputGM, __gm__ T *inputG
     return;
 }
 
-template<typename T>
-__aicore__ inline void AivCommBase::CpGM2GM(__gm__ T *outputGM, __gm__ T *inputGM, uint64_t count, uint32_t atomicOp)
+template <typename T>
+__aicore__ inline void AivCommBase::CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count, uint32_t atomicOp)
 {
     GlobalTensor<T> inputGT;
     inputGT.SetGlobalBuffer(inputGM, count);
@@ -414,4 +411,4 @@ __aicore__ inline void AivCommBase::CpGM2GM(__gm__ T *outputGM, __gm__ T *inputG
     return;
 }
 
-#endif  /* AIV_COMMUNICATION_BASE_V2_H */
+#endif /* AIV_COMMUNICATION_BASE_V2_H */

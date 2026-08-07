@@ -20,35 +20,35 @@ namespace ops_hccl {
 class CcuTempAllGatherOmniPipeNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempAllGatherOmniPipeNHR1DMem2Mem() = default;
-    explicit  CcuTempAllGatherOmniPipeNHR1DMem2Mem(const OpParam& param,
-                                                const u32 rankId,
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllGatherOmniPipeNHR1DMem2Mem(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllGatherOmniPipeNHR1DMem2Mem() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of All Gather CCU OmniPipe NHR 1D Mem2Mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of All Gather CCU OmniPipe NHR 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
     u64 GetThreadNum() const override;
 
 protected:
-    HcclResult CalcNHRInfo(std::vector<NHRStepInfo> &stepInfoVector) const;
+    HcclResult CalcNHRInfo(std::vector<NHRStepInfo>& stepInfoVector) const;
     u32 GetNHRStepNum(u32 rankSize) const;
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo) const;
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
     uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
 
 private:

@@ -12,15 +12,13 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivReduceScatterMesh1DBigData : public AivCommBase {
-    constexpr static uint64_t stageNum = 2;  // 生产者 消费者
+    constexpr static uint64_t stageNum = 2; // 生产者 消费者
     constexpr static uint64_t TAG_FLAG_SIZE = 8;
 
 public:
-
-    __aicore__ inline AivReduceScatterMesh1DBigData() {
-    }
+    __aicore__ inline AivReduceScatterMesh1DBigData() {}
 
     // 应该第一步要先用rankSize个核去切数据，一种方案是cutNum是多少就切多少份，另一个方案是切细一点，去多读几次，用足够多的流水去掩盖第一步和第三步的时间
     // 第二部是并行去读对端的数据
@@ -48,8 +46,9 @@ public:
 
             if (sendCurCount > 0) {
                 uint64_t usrInOffset = input_ + targetRank * inputStride + innerDispls * sizeof(T);
-                uint64_t cclInOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (targetRank * len + innerDispls) * sizeof(T);
-                CpGM2GM((__gm__ T *)cclInOffset, (__gm__ T *)usrInOffset, sendCurCount);
+                uint64_t cclInOffset
+                    = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (targetRank * len + innerDispls) * sizeof(T);
+                CpGM2GM((__gm__ T*)cclInOffset, (__gm__ T*)usrInOffset, sendCurCount);
                 PipeBarrier<PIPE_ALL>();
                 // 每个核写flag
                 Record(rank_, blockIdx_ * cutNum + coreIndex, curTag);
@@ -63,7 +62,7 @@ public:
         uint64_t blockInedx = blockIdx_ - coreNumStage1;
         uint32_t coreNumPerRank = coreNumStage2 / rankSize_;
         uint32_t targetRank = blockInedx / coreNumPerRank;
-        uint32_t coreIndex = (blockInedx - (targetRank * coreNumPerRank))  % coreNumPerRank;
+        uint32_t coreIndex = (blockInedx - (targetRank * coreNumPerRank)) % coreNumPerRank;
         // 每个核分数据
         uint64_t dataPerCore = len / coreNumPerRank;
         uint64_t remainder = len % coreNumPerRank;
@@ -82,10 +81,12 @@ public:
             // 先去wait flag，然后把数据拷贝过来
             WaitFlag(targetRank, rank_ * coreNumPerRank + coreIndex, curTag);
 
-            uint64_t srcCclInOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (rank_ * len + innerDispls ) * sizeof(T);
-            uint64_t dstCclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride + (targetRank * len + innerDispls) * sizeof(T);
+            uint64_t srcCclInOffset
+                = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (rank_ * len + innerDispls) * sizeof(T);
+            uint64_t dstCclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride
+                                       + (targetRank * len + innerDispls) * sizeof(T);
             if (targetRank != 0) { // targetRank == 0 的那张卡，一会直接到output就可以了
-                CpGM2GM((__gm__ T *)dstCclOutOffset, (__gm__ T *)srcCclInOffset, recvCurCount);
+                CpGM2GM((__gm__ T*)dstCclOutOffset, (__gm__ T*)srcCclInOffset, recvCurCount);
                 PipeBarrier<PIPE_ALL>();
             }
             // 要写一个flag，后面做reduce需要用到
@@ -98,11 +99,12 @@ public:
                 for (int index = 0; index < rankSize_; index++) {
                     // 按照顺序把数据reduce 到 output
                     WaitFlag(rank_, rankSize_ * coreNumPerRank + index * coreNumPerRank + coreIndex, curTag);
-                    uint64_t cclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride + (index * len + innerDispls) * sizeof(T);
+                    uint64_t cclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride
+                                            + (index * len + innerDispls) * sizeof(T);
                     if (index == 0) { // 通过直接覆盖output把数据清一下
-                        CpGM2GM((__gm__ T *)usrOutOffset, (__gm__ T *)srcCclInOffset, recvCurCount);
+                        CpGM2GM((__gm__ T*)usrOutOffset, (__gm__ T*)srcCclInOffset, recvCurCount);
                     } else { // 其他卡往output上做atomic add
-                        CpGM2GM((__gm__ T *)usrOutOffset, (__gm__ T *)cclOutOffset, recvCurCount, reduceOp_);
+                        CpGM2GM((__gm__ T*)usrOutOffset, (__gm__ T*)cclOutOffset, recvCurCount, reduceOp_);
                     }
                     PipeBarrier<PIPE_ALL>();
                 }
@@ -138,7 +140,7 @@ public:
     uint64_t cclBufferStride;
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2Mesh1DBigData(KERNEL_ARGS_DEF)
 {
     AivReduceScatterMesh1DBigData<T> op;
@@ -150,7 +152,7 @@ __aicore__ inline void AivReduceScatterV2Mesh1DBigData(KERNEL_ARGS_DEF)
     op.BarrierAll();
 }
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2Mesh1DBigDataSuperKernel(SUPERKERNEL_ARGS_DEF)
 {
     AivReduceScatterMesh1DBigData<T> op;

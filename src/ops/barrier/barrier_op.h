@@ -30,10 +30,10 @@ HcclResult HcclBarrierInner(HcclComm comm, aclrtStream stream);
 #endif
 
 namespace ops_hccl {
-HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string &tag);
+HcclResult BarrierOutPlace(HcclComm comm, aclrtStream stream, const std::string& tag);
 HcclResult CheckBarrierInputPara(const HcclComm comm, const aclrtStream stream);
-HcclResult BarrierInitAndCheck(HcclComm comm, aclrtStream stream, std::string &opTag);
-HcclResult BarrierEntryLog(aclrtStream stream, const std::string &tag, const std::string &opName);
-}  // namespace ops_hccl
+HcclResult BarrierInitAndCheck(HcclComm comm, aclrtStream stream, std::string& opTag);
+HcclResult BarrierEntryLog(aclrtStream stream, const std::string& tag, const std::string& opName);
+} // namespace ops_hccl
 
 #endif

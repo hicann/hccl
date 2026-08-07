@@ -23,23 +23,19 @@ using namespace ops_hccl;
 
 class ST_ALL_REDUCE_PARALLEL_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunAllReduceParallelCase(const TopoMeta &topoInfo, const u64 dataCount, 
-    const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp)
+void RunAllReduceParallelCase(
+    const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const u32 dataTypeSize,
+    const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -47,12 +43,11 @@ void RunAllReduceParallelCase(const TopoMeta &topoInfo, const u64 dataCount,
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
     u32 rankSize = 0;
-    for (const auto &superPod : topoInfo) {
-        for (const auto &podIdx : superPod) {
+    for (const auto& superPod : topoInfo) {
+        for (const auto& podIdx : superPod) {
             rankSize += podIdx.size();
         }
     }
@@ -72,9 +67,9 @@ void RunAllReduceParallelCase(const TopoMeta &topoInfo, const u64 dataCount,
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 sendBufSize = dataCount * dataTypeSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = dataCount * dataTypeSize; // 数据量转化为字节数
             u64 recvBufSize = dataCount * dataTypeSize;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -176,8 +171,15 @@ TEST_F(ST_ALL_REDUCE_PARALLEL_TEST, st_all_reduce_hcclbuff_add_1)
 // asymmetric topology
 TEST_F(ST_ALL_REDUCE_PARALLEL_TEST, st_all_reduce_asymmetric_mid_data)
 {
-    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6}, {0, 1, 2, 3, 4, 5},
-                       {0, 1, 2, 3, 4}, {0, 1, 2, 3}, {0, 1, 2}, {0, 1}, {0}}};
+    TopoMeta topoMeta{
+        {{0, 1, 2, 3, 4, 5, 6, 7},
+         {0, 1, 2, 3, 4, 5, 6},
+         {0, 1, 2, 3, 4, 5},
+         {0, 1, 2, 3, 4},
+         {0, 1, 2, 3},
+         {0, 1, 2},
+         {0, 1},
+         {0}}};
     u64 dataCount = 1048575;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;
     u32 dataTypeSize = 2;

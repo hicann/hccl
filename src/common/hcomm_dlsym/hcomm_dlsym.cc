@@ -29,7 +29,8 @@
 static void* gLibHandle = nullptr;
 static int gHcommVersion = 0;
 
-int GetHcommVersion(void) {
+int GetHcommVersion(void)
+{
     if (gHcommVersion == 0) {
         char hcommPkgName[] = "hcomm";
         if (aclsysGetVersionNum(hcommPkgName, &gHcommVersion) != ACL_SUCCESS) {
@@ -59,8 +60,10 @@ bool HcommIsExportThreadSupported()
 }
 
 // 初始化
-void HcommDlInit(void) {
-    if (gLibHandle != nullptr) return;
+void HcommDlInit(void)
+{
+    if (gLibHandle != nullptr)
+        return;
 
     gLibHandle = dlopen("libhcomm.so", RTLD_NOW);
     if (!gLibHandle) {

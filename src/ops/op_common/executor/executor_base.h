@@ -33,11 +33,11 @@ constexpr s32 LEVEL0_PLANE_NUM_IN_NPRING_DOUBLE = 2;
 
 struct ExecMem {
     u64 count = 0;
-    HcclMem inputMem;           /* 单算子模式时是InCCLMem, 图模式时是InUserMem */
-    HcclMem outputMem;          /* 单算子模式时是OutCCLMem, 图模式时是OutUserMem */
+    HcclMem inputMem;  /* 单算子模式时是InCCLMem, 图模式时是InUserMem */
+    HcclMem outputMem; /* 单算子模式时是OutCCLMem, 图模式时是OutUserMem */
     HcclMem scratchMem;
-    void *inputPtr = nullptr;   /* InUserMem的地址，图模式时与inputMem的地址相同 */
-    void *outputPtr = nullptr;  /* OutUserMem的地址，图模式时与outputMem的地址相同 */
+    void* inputPtr = nullptr;  /* InUserMem的地址，图模式时与inputMem的地址相同 */
+    void* outputPtr = nullptr; /* OutUserMem的地址，图模式时与outputMem的地址相同 */
 };
 
 class ExecutorBase {
@@ -45,16 +45,17 @@ public:
     ExecutorBase();
     virtual ~ExecutorBase() = default;
     // 资源计算接口
-    virtual HcclResult CalcResRequest(HcclComm comm, const OpParam& param,
-        TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    virtual HcclResult CalcResRequest(
+        HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
         AlgResourceRequest& resourceRequest, AlgType& algType);
     // 算法编排接口
-    virtual HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) = 0;
+    virtual HcclResult Orchestrate(const OpParam& param, AlgResourceCtx* resCtx) = 0;
 
-    virtual HcclResult KernelRun(const OpParam &param, ExecMem &execMem);
-    inline AlgDesc GetAlgDesc() {return desc_;}
+    virtual HcclResult KernelRun(const OpParam& param, ExecMem& execMem);
+    inline AlgDesc GetAlgDesc() { return desc_; }
+
 protected:
-    HcclResult GetSubCommInfo(const CommPlane levelIndex, SubCommInfo &info);
+    HcclResult GetSubCommInfo(const CommPlane levelIndex, SubCommInfo& info);
     HcclResult RefreshAlgType(AlgType& algType);
     std::string tag_;
     TopoInfo* topoInfo_ = nullptr;
@@ -63,5 +64,5 @@ protected:
     u32 level0RankSize = 0;
     AlgDesc desc_;
 };
-}
+} // namespace ops_hccl
 #endif

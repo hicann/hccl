@@ -17,10 +17,10 @@ namespace HcclSim {
 
 class NotSupportException : public HcclException {
 public:
-    explicit NotSupportException(const std::string &userDefinedMsg)
-        : HcclException(ExceptionType::NOT_SUPPORT_EXCEPTION, userDefinedMsg){};
+    explicit NotSupportException(const std::string& userDefinedMsg)
+        : HcclException(ExceptionType::NOT_SUPPORT_EXCEPTION, userDefinedMsg) {};
 };
 
-} // namespace Hccl
+} // namespace HcclSim
 
 #endif // HCCL_HCCL_NOT_SUPPORT_EXCEPTION_H

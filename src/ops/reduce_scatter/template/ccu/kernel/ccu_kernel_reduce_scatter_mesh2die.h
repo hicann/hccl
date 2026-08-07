@@ -30,7 +30,7 @@ struct CcuKernelArgReduceScatterMesh2Die : public CcuKernelArgBase {
 };
 
 struct ReduceScatterMesh2DieContext : public CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterMesh2Die *arg;
+    const CcuKernelArgReduceScatterMesh2Die* arg;
 
     bool rmtReduceWithMyRank{true};
     uint32_t myRankId{0};
@@ -57,6 +57,6 @@ struct ReduceScatterMesh2DieContext : public CcuKernelCtxBase {
 
 CcuResult CcuReduceScatterMesh2DieKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
 #endif // HCCLV2_CCU_KERNEL_REDUCE_SCATTER_MESH_2Die_H_

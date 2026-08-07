@@ -24,7 +24,8 @@
  * @param reduceType 归约操作类型
  * @return HcclResult操作结果
  */
-HcclResult CheckAllReduce(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount,
+HcclResult CheckAllReduce(
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount,
     HcclReduceOp reduceType);
 
 /**
@@ -36,7 +37,7 @@ HcclResult CheckAllReduce(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, 
  * @param dataCount 数据元素个数
  * @return HcclResult操作结果
  */
-HcclResult CheckAllGather(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount);
+HcclResult CheckAllGather(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount);
 
 /**
  * @brief 检查ReduceScatter操作的语义是否正确
@@ -48,8 +49,9 @@ HcclResult CheckAllGather(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, 
  * @param reduceType 归约操作类型
  * @return HcclResult操作结果
  */
-HcclResult CheckReduceScatter(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType,
-    u64 dataCount, HcclReduceOp reduceType);
+HcclResult CheckReduceScatter(
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount,
+    HcclReduceOp reduceType);
 
 /**
  * @brief 检查Send操作的语义是否正确
@@ -62,8 +64,9 @@ HcclResult CheckReduceScatter(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSi
  * @param dstRank 目的rank编号
  * @return HcclResult操作结果
  */
-HcclResult CheckSend(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount,
-    u32 srcRank, u32 dstRank);
+HcclResult CheckSend(
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 srcRank,
+    u32 dstRank);
 
 /**
  * @brief 检查Recv操作的语义是否正确
@@ -76,8 +79,9 @@ HcclResult CheckSend(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclD
  * @param dstRank 目的rank编号
  * @return HcclResult操作结果
  */
-HcclResult CheckRecv(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount,
-    u32 srcRank, u32 dstRank);
+HcclResult CheckRecv(
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 srcRank,
+    u32 dstRank);
 
 /**
  * @brief 检查Broadcast操作的语义是否正确
@@ -89,8 +93,8 @@ HcclResult CheckRecv(HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclD
  * @param root 根节点rank编号
  * @return HcclResult操作结果
  */
-HcclResult CheckBroadcast(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 root);
+HcclResult
+CheckBroadcast(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 root);
 
 /**
  * @brief 检查Broadcast操作的语义是否正确
@@ -104,7 +108,8 @@ HcclResult CheckBroadcast(
  * @return HcclResult操作结果
  */
 HcclResult CheckReduce(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, HcclReduceOp reduceType, u32 root);
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, HcclReduceOp reduceType,
+    u32 root);
 
 /**
  * @brief 检查Scatter操作的语义是否正确
@@ -116,8 +121,8 @@ HcclResult CheckReduce(
  * @param root 根节点rank编号
  * @return HcclResult操作结果
  */
-HcclResult CheckScatter(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 root);
+HcclResult
+CheckScatter(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount, u32 root);
 
 /**
  * @brief 检查BatchSendRecv操作的语义是否正确
@@ -128,22 +133,20 @@ HcclResult CheckScatter(
  * @param dataCount 数据元素个数
  * @return HcclResult操作结果
  */
-HcclResult CheckBatchSendRecv(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount);
+HcclResult
+CheckBatchSendRecv(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType dataType, u64 dataCount);
 
-HcclResult CheckAll2All(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, u64 sendCount);
+HcclResult CheckAll2All(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType sendType, u64 sendCount);
 
 HcclResult CheckAll2AllV(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
 
 HcclResult CheckAll2AllVC(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclDataType sendType, std::vector<u64> sendCountMatrix);
 
-HcclResult CheckAllGatherV(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, VDataDesTag vDataDes);
+HcclResult CheckAllGatherV(HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, VDataDesTag vDataDes);
 
 HcclResult CheckReduceScatterV(
-    HcclSim::AllRankTaskQueues &taskQueues, u32 rankSize, HcclReduceOp reduceType, VDataDesTag vDataDes);
+    HcclSim::AllRankTaskQueues& taskQueues, u32 rankSize, HcclReduceOp reduceType, VDataDesTag vDataDes);
 
 #endif

@@ -27,44 +27,42 @@ protected:
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_2x2_root0_fp16_small_data)
-{   
-    TopoMeta topoMeta {{{0}, {0}}};
+{
+    TopoMeta topoMeta{{{0}, {0}}};
     RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP16);
 }
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_2x4_root0_fp32_small_data)
-{   
-    TopoMeta topoMeta {{{0, 1, 2, 3}, {0, 1, 2, 3}}};
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}}};
     RunScatterTest(1, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP32);
 }
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_2x2_root0_int32_small_data)
-{   
-    TopoMeta topoMeta {{{0, 1}, {0, 1}}};
+{
+    TopoMeta topoMeta{{{0, 1}, {0, 1}}};
     RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_INT32);
 }
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_3x2_root0_uint64_small_data)
-{   
-    TopoMeta topoMeta {{{0, 1}, {0, 1}, {0, 1}}};
+{
+    TopoMeta topoMeta{{{0, 1}, {0, 1}, {0, 1}}};
     RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_UINT64);
 }
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_3x4_root0_fp32_big_data)
-{   
-    TopoMeta topoMeta {{{0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}}};
     RunScatterTest(3, topoMeta, 400 * 1024 * 1024, HcclDataType::HCCL_DATA_TYPE_FP32);
 }
 
 TEST_F(ST_SCATTER_DPU_TEST, test_aicpu_scatter_mesh1dnhr_success_2x8_root0_int8_big_data)
-{   
-    TopoMeta topoMeta {{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}}};
     RunScatterTest(6, topoMeta, 400 * 1024 * 1024, HcclDataType::HCCL_DATA_TYPE_INT8);
 }

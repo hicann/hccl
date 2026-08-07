@@ -16,30 +16,32 @@
 
 namespace ops_hccl {
 
-
 class CcuTempAllReduceMesh1D : public CcuAlgTemplateBase {
 public:
     CcuTempAllReduceMesh1D() = default;
-    explicit CcuTempAllReduceMesh1D(const OpParam& param, 
-                                    const u32 rankId, // 传通信域的rankId，userRank
-                                    const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllReduceMesh1D(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAllReduceMesh1D() override;
 
     std::string Describe() const override
-    {   
+    {
         return StringFormat("Template of All Reduce ccu mesh 1D with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 GetThreadNum() const override;
+
 private:
-    HcclResult CalcSliceInfo(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcSliceInfo(const u64 dataSize, RankSliceInfo& sliceInfoVec);
     HcclResult CheckCcuDataType() const;
     uint64_t RoundUp(uint64_t dividend, uint64_t divisor) const;
     HcclDataType outputDataType_;
@@ -47,6 +49,6 @@ private:
     uint32_t mySubCommRank_ = 0;
 };
 
-} 
+} // namespace ops_hccl
 
-#endif 
+#endif

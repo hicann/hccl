@@ -23,7 +23,7 @@ using namespace ge;
 
 namespace ops {
 
-static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext *context)
+static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext* context)
 {
     OP_INFER_SHAPE_START;
 
@@ -34,7 +34,7 @@ static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext *contex
     uint32_t inputSize = context->GetComputeNodeInputNum();
 
     OP_LOGD(opName, "[%s] the op  inputSize %u ", __func__, inputSize);
-    for (uint32_t index = 0; index < inputSize; index++){
+    for (uint32_t index = 0; index < inputSize; index++) {
         const auto inputShape = context->GetInputShape(index);
         OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
         auto outputShape = context->GetOutputShape(index);
@@ -46,14 +46,14 @@ static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext *contex
     return GRAPH_SUCCESS;
 }
 
-static ge::graphStatus HcomAllReduceInferDataTypeV2(gert::InferDataTypeContext *context)
+static ge::graphStatus HcomAllReduceInferDataTypeV2(gert::InferDataTypeContext* context)
 {
     OP_INFER_DATATYPE_START;
 
     uint32_t inputSize = context->GetComputeNodeInputNum();
 
     OP_LOGD(opName, "[%s] the op  inputSize %u ", __func__, inputSize);
-    for (uint32_t index = 0; index < inputSize; index++){
+    for (uint32_t index = 0; index < inputSize; index++) {
         ge::DataType inputType = context->GetInputDataType(index);
         context->SetOutputDataType(index, inputType);
     }
@@ -63,4 +63,4 @@ static ge::graphStatus HcomAllReduceInferDataTypeV2(gert::InferDataTypeContext *
 }
 
 IMPL_OP_INFERSHAPE(HcomAllReduce).InferShape(HcomAllReduceInferShapeV2).InferDataType(HcomAllReduceInferDataTypeV2);
-}  // namespace ops
+} // namespace ops

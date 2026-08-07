@@ -24,44 +24,58 @@
 extern "C" {
 #endif
 
-HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void *sendDispls, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-                             HcclReduceOp op, HcclComm comm, aclrtStream stream);
+HcclResult HcclReduceScatterV(
+    void* sendBuf, const void* sendCounts, const void* sendDispls, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream);
 
-HcclResult HcclReduceScatterVGraphMode(void *sendBuf,  const void *sendCounts, const void *sendDispls, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, const char* group, aclrtStream stream, const char* tag, void** streams, size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize);
+HcclResult HcclReduceScatterVGraphMode(
+    void* sendBuf, const void* sendCounts, const void* sendDispls, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, const char* group, aclrtStream stream, const char* tag, void** streams,
+    size_t streamCount, void* scratchMemAddr, uint64_t scratchMemSize);
 
 #ifdef __cplusplus
 }
 #endif
 
 namespace ops_hccl {
-HcclResult ReduceScatterVOutPlace(void *sendBuf, const void *sendDispls, const void *sendCounts, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag);
+HcclResult ReduceScatterVOutPlace(
+    void* sendBuf, const void* sendDispls, const void* sendCounts, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string& tag);
 
-HcclResult ReduceScatterVOutPlaceGraphMode(void *sendBuf, const void *sendDispls, const void *sendCounts, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, const ResPackGraphMode &resPack);
+HcclResult ReduceScatterVOutPlaceGraphMode(
+    void* sendBuf, const void* sendDispls, const void* sendCounts, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string& tag,
+    const ResPackGraphMode& resPack);
 
-HcclResult PrepareReduceScatterVParam(void *sendBuf, const void *sendDispls, const void *sendCounts, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, OpMode opMode, u32 userRankSize, u64 varMemSize, OpParam &param);
+HcclResult PrepareReduceScatterVParam(
+    void* sendBuf, const void* sendDispls, const void* sendCounts, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string& tag, OpMode opMode,
+    u32 userRankSize, u64 varMemSize, OpParam& param);
 
-HcclResult ReduceScatterVExecOp(HcclComm comm, OpParam &param);
+HcclResult ReduceScatterVExecOp(HcclComm comm, OpParam& param);
 
-HcclResult CheckReduceScatterVInputParam(const HcclComm comm, const void *sendBuf, const void *recvBuf, uint64_t recvCount,
-    const void *sendCounts, const void *sendDispls, const aclrtStream stream);
+HcclResult CheckReduceScatterVInputParam(
+    const HcclComm comm, const void* sendBuf, const void* recvBuf, uint64_t recvCount, const void* sendCounts,
+    const void* sendDispls, const aclrtStream stream);
 
-HcclResult GetAlgResReduceScatterV(HcclComm comm, OpParam &param, std::shared_ptr<InsCollAlgBase> &executor,
-    TopoInfoWithNetLayerDetails* topoInfo, AlgResourceCtx** resCtx, aclrtNotify* notifies);
+HcclResult GetAlgResReduceScatterV(
+    HcclComm comm, OpParam& param, std::shared_ptr<InsCollAlgBase>& executor, TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceCtx** resCtx, aclrtNotify* notifies);
 
 HcclResult CheckDataTypeRSV(const HcclDataType dataType, bool needReduce);
 
-HcclResult ReduceScatterVOutPlaceCommon(void *sendBuf, const void *sendDispls, const void *sendCounts, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string &tag, OpMode opMode, const ResPackGraphMode &resPack);
+HcclResult ReduceScatterVOutPlaceCommon(
+    void* sendBuf, const void* sendDispls, const void* sendCounts, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string& tag, OpMode opMode,
+    const ResPackGraphMode& resPack);
 
 std::string GetSupportDataTypeRSV(bool needReduce);
 
-HcclResult ReduceScatterVEntryLog(void *sendBuf, const void *sendCounts, const void *sendDispls, void *recvBuf,
-    uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, aclrtStream stream, const std::string &tag, const u32 totalRanks, const std::string &opName, bool forceLog = false);
+HcclResult ReduceScatterVEntryLog(
+    void* sendBuf, const void* sendCounts, const void* sendDispls, void* recvBuf, uint64_t recvCount,
+    HcclDataType dataType, HcclReduceOp op, aclrtStream stream, const std::string& tag, const u32 totalRanks,
+    const std::string& opName, bool forceLog = false);
 
-}
+} // namespace ops_hccl
 
 #endif

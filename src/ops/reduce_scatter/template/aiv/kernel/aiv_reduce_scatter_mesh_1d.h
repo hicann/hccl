@@ -12,23 +12,21 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivReduceScatterMesh1D : public AivCommBase {
-    constexpr static uint64_t stageNum = 2;  // 生产者 消费者
+    constexpr static uint64_t stageNum = 2; // 生产者 消费者
     constexpr static uint64_t TAG_FLAG_SIZE = 8;
 
 public:
-
-    __aicore__ inline AivReduceScatterMesh1D() {
-    }
+    __aicore__ inline AivReduceScatterMesh1D() {}
 
     __aicore__ inline void InitCoreInfo(uint64_t len, uint64_t inputStride)
     {
-        coreNumPerStage = rankSize_;  // 每个阶段提供的最大核数
+        coreNumPerStage = rankSize_; // 每个阶段提供的最大核数
         uint64_t processNum = len / rankSize_;
-        if(blockIdx_ < coreNumPerStage) { // input->ipc,一个block负责一个rank input
+        if (blockIdx_ < coreNumPerStage) { // input->ipc,一个block负责一个rank input
             targetRank = blockIdx_;
-            int64_t outerOffset = targetRank  * inputStride; // inputStride是整个算子的输入size
+            int64_t outerOffset = targetRank * inputStride; // inputStride是整个算子的输入size
             int64_t ipcRankOffset = targetRank * len * sizeof(T);
             inputOffset = input_ + outerOffset; // 这里的input是已经偏移过前面处理完数据量的地址了
             outputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + ipcRankOffset;
@@ -37,8 +35,8 @@ public:
             outputOffset = output_ + outerOffset;
             int64_t consumInOffset;
             for (int index = 0; index < rankSize_; index++) { // 轮询每个rank的数据，拉取过来，做顺序累加
-                consumInOffset = reinterpret_cast<uint64_t>(GM_IN[(index + blockIdx_) % rankSize_]) +
-                                 len * rank_ * sizeof(T) + outerOffset; // 本卡的数据都在ipc
+                consumInOffset = reinterpret_cast<uint64_t>(GM_IN[(index + blockIdx_) % rankSize_])
+                                 + len * rank_ * sizeof(T) + outerOffset; // 本卡的数据都在ipc
                 inputOffVec[index] = consumInOffset;
             }
             consumProcessNum = processNum;
@@ -50,7 +48,7 @@ public:
 
     __aicore__ inline void Producer()
     {
-        CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, len_); // 本卡数据拷贝到ipc上
+        CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, len_); // 本卡数据拷贝到ipc上
         pipe_barrier(PIPE_ALL);
         uint64_t flag_offset = rank_;
         Record(targetRank, flag_offset, curTag_);
@@ -64,9 +62,9 @@ public:
             flag_offset = rankIdx;
             WaitFlag(rank_, flag_offset, curTag_);
             if (index == 0) { // 通过直接覆盖output把数据清一下
-                CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffVec[index], consumProcessNum);
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffVec[index], consumProcessNum);
             } else { // 其他卡往output上做atomic add
-                CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffVec[index], consumProcessNum, reduceOp_);
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffVec[index], consumProcessNum, reduceOp_);
             }
             pipe_barrier(PIPE_ALL);
         }
@@ -75,15 +73,14 @@ public:
     __aicore__ inline void Process(uint32_t sliceId)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
-        if(blockIdx_ < coreNumPerStage){ // 0-1
+        if (blockIdx_ < coreNumPerStage) { // 0-1
             Producer();
-        } else if(blockIdx_ < (coreNumPerStage * stageNum)) { // 2-3
+        } else if (blockIdx_ < (coreNumPerStage * stageNum)) { // 2-3
             Consumer();
         }
     }
 
 private:
-
     uint32_t targetRank;
     uint64_t inputOffset;
     uint64_t outputOffset;
@@ -92,7 +89,7 @@ private:
     uint32_t coreNumPerStage;
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2Mesh1D(KERNEL_ARGS_DEF)
 {
     AivReduceScatterMesh1D<T> op;
@@ -105,7 +102,7 @@ __aicore__ inline void AivReduceScatterV2Mesh1D(KERNEL_ARGS_DEF)
     op.BarrierAll();
 }
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
 {
     AivReduceScatterMesh1D<T> op;
@@ -134,18 +131,18 @@ __aicore__ inline void AivReduceScatterV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
 
 __aicore__ inline void sk_rs_mesh_1d(SUPERKERNEL_ARGS_DEF)
 {
-    #ifdef HCCL_DTYPE_INT8
-        AivReduceScatterV2Mesh1DSuperKernel<int8_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT16
-        AivReduceScatterV2Mesh1DSuperKernel<int16_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT32
-        AivReduceScatterV2Mesh1DSuperKernel<int32_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP16
-        AivReduceScatterV2Mesh1DSuperKernel<half>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP32
-        AivReduceScatterV2Mesh1DSuperKernel<float>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_BFP16
-        AivReduceScatterV2Mesh1DSuperKernel<bfloat16_t>(SUPERKERNEL_ARGS_CALL);
-    #else
-    #endif
+#ifdef HCCL_DTYPE_INT8
+    AivReduceScatterV2Mesh1DSuperKernel<int8_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT16
+    AivReduceScatterV2Mesh1DSuperKernel<int16_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT32
+    AivReduceScatterV2Mesh1DSuperKernel<int32_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP16
+    AivReduceScatterV2Mesh1DSuperKernel<half>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP32
+    AivReduceScatterV2Mesh1DSuperKernel<float>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_BFP16
+    AivReduceScatterV2Mesh1DSuperKernel<bfloat16_t>(SUPERKERNEL_ARGS_CALL);
+#else
+#endif
 }

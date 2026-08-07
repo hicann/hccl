@@ -21,18 +21,21 @@
 
 namespace ops_hccl {
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
     CcuAgAlgTemplateY>::InsV2BroadcastOmniPipe2dExecutor()
-{
-}
+{}
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-    AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
@@ -40,7 +43,8 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     for (auto i = 0; i < algHierarchyInfo.infos.size(); ++i) {
         for (auto j = 0; j < algHierarchyInfo.infos[i].size(); ++j) {
             for (auto k = 0; k < algHierarchyInfo.infos[i][j].size(); ++k) {
-                HCCL_DEBUG("[%s] myRank[%u] (%d, %d, %d) %u", __func__, topoInfo->userRank, i, j, k,
+                HCCL_DEBUG(
+                    "[%s] myRank[%u] (%d, %d, %d) %u", __func__, topoInfo->userRank, i, j, k,
                     algHierarchyInfo.infos[i][j][k]);
             }
         }
@@ -48,11 +52,14 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitCommInfo(const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
@@ -84,30 +91,34 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     isSameYAxisAsRoot = (rankIdxLevel0_ == rootx) && !isRoot;
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
 
-    HCCL_DEBUG("[%s]myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-               "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+    HCCL_DEBUG(
+        "[%s]myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
+        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
     return HcclResult::HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::CalcResLevel(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resReqlevel, AlgResourceRequest &resourceReq,
-    const int &curLevel)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    CalcResLevel(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resReqlevel, AlgResourceRequest& resourceReq, const int& curLevel)
 {
     resourceReq.slaveThreadNum += resReqlevel.slaveThreadNum;
     resourceReq.notifyNumOnMainThread += resReqlevel.notifyNumOnMainThread;
-    resourceReq.notifyNumPerThread.insert(resourceReq.notifyNumPerThread.end(), resReqlevel.notifyNumPerThread.begin(),
+    resourceReq.notifyNumPerThread.insert(
+        resourceReq.notifyNumPerThread.end(), resReqlevel.notifyNumPerThread.begin(),
         resReqlevel.notifyNumPerThread.end());
     if (curLevel == OMNIPIPE_SC_LEVEL0 || curLevel == OMNIPIPE_SC_LEVEL1) {
-        std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo &info) {
+        std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo& info) {
             info.resGroup = 0;
         });
     } else {
-        std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo &info) {
+        std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo& info) {
             info.resGroup = 1;
         });
     }
@@ -118,11 +129,14 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitSubCommRanks(std::vector<std::vector<u32>> &subCommRanks0,
-    std::vector<std::vector<u32>> &subCommRanks1, const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    InitSubCommRanks(
+        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
@@ -139,12 +153,14 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-    AlgResourceRequest &resourceRequest)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     // 初始化一些基本成员变量
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
@@ -181,16 +197,19 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     resourceRequest.slaveThreadNum += 1; // 需要一个主流和一个从流来并行2d
     resourceRequest.notifyNumOnMainThread += 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
-    HCCL_DEBUG("[%s] slaveThreadNum:%d, notifyNumOnMainThread:%d", __func__, resourceRequest.slaveThreadNum,
+    HCCL_DEBUG(
+        "[%s] slaveThreadNum:%d, notifyNumOnMainThread:%d", __func__, resourceRequest.slaveThreadNum,
         resourceRequest.notifyNumOnMainThread);
 
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
+    CcuAgAlgTemplateY>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
         HCCL_ERROR("[%s] resCtx.algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
@@ -222,25 +241,30 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     u64 rooty = param.root / rankSizeLevel0_;
     isSameYAxisAsRoot = (rankIdxLevel0_ == rootx) && !isRoot;
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
-    HCCL_DEBUG("[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__,
-        myRank_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
+    HCCL_DEBUG(
+        "[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__, myRank_,
+        rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2BroadcastOmniPipe2dExecutor][Orchestrate]errNo[0x%016llx] executor kernel run failed",
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2BroadcastOmniPipe2dExecutor][Orchestrate]errNo[0x%016llx] executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
 
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::GenTempAlgParamsIn2HCCLBuff(TemplateDataParams &tempAlgParams,
-    StepSliceInfo &stepSliceInfo, u64 processedDataCount, const AlgResourceCtxSerializable &resCtx,
-    const OpParam &param)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    GenTempAlgParamsIn2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param)
 {
     tempAlgParams.count = processedDataCount;
     tempAlgParams.dataType = dataType_;
@@ -266,12 +290,14 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HcclResult::HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::GenTempAlgParamsHCCLBuff2HCCLBuff(TemplateDataParams &tempAlgParams,
-    StepSliceInfo &stepSliceInfo, u64 processedDataCount, const AlgResourceCtxSerializable &resCtx,
-    const OpParam &param)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    GenTempAlgParamsHCCLBuff2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param)
 {
     tempAlgParams.count = processedDataCount;
     tempAlgParams.dataType = dataType_;
@@ -296,11 +322,13 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HcclResult::HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::GenTemplateAlgParamsByDimData(TemplateDataParams &tempAlgParams,
-    StepSliceInfo &stepSliceInfo, u64 processedDataCount)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    GenTemplateAlgParamsByDimData(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount)
 {
     tempAlgParams.count = 0;
     tempAlgParams.stepSliceInfo = stepSliceInfo;
@@ -313,22 +341,26 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HcclResult::HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitTemplateResources(const AlgResourceCtxSerializable &resCtx,
-    TemplateResource &templateResourceScatterX, TemplateResource &templateResourceScatterY,
-    TemplateResource &templateResourceAgX, TemplateResource &templateResourceAgY)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    InitTemplateResources(
+        const AlgResourceCtxSerializable& resCtx, TemplateResource& templateResourceScatterX,
+        TemplateResource& templateResourceScatterY, TemplateResource& templateResourceAgX,
+        TemplateResource& templateResourceAgY)
 {
     TemplateResource templateResourceCommon;
 
     // 按段顺序切分ccuKernels: 用kernelOffset累加器避免长偏移表达式
     // X维度(Level0)走thread[0], Y维度(Level1)走thread[1]
     u32 kernelOffset = 0;
-    auto sliceKernels = [&](TemplateResource &res, u32 threadIdx, u32 segIdx) {
+    auto sliceKernels = [&](TemplateResource& res, u32 threadIdx, u32 segIdx) {
         res = templateResourceCommon;
         res.threads.push_back(resCtx.threads[threadIdx]);
-        res.ccuKernels.insert(res.ccuKernels.end(), resCtx.ccuKernels.begin() + kernelOffset,
+        res.ccuKernels.insert(
+            res.ccuKernels.end(), resCtx.ccuKernels.begin() + kernelOffset,
             resCtx.ccuKernels.begin() + kernelOffset + resCtx.ccuKernelNum[segIdx]);
         kernelOffset += resCtx.ccuKernelNum[segIdx];
     };
@@ -340,11 +372,12 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::CalcEndpointBandwidth(std::vector<double> &endpointAttrBwAvgSC,
-    std::vector<double> &endpointAttrBwAvgAG)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    CalcEndpointBandwidth(std::vector<double>& endpointAttrBwAvgSC, std::vector<double>& endpointAttrBwAvgAG)
 {
     // SC带宽: Level0走mesh, Level1走clos（按rankSizeLevel1_-1均摊）
     double eqBwLevel0SC = BW_OMNI_UBX_CCU_SCHED_SC_MESH;
@@ -358,20 +391,23 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     eqBwLevel1AG = rankSizeLevel1_ > 1 ? eqBwLevel1AG / (rankSizeLevel1_ - 1) : eqBwLevel1AG;
     endpointAttrBwAvgAG = {eqBwLevel0AG, eqBwLevel1AG, 1.0};
 
-    HCCL_INFO("[%s] eqBwLevel0SC:%f, eqBwLevel1SC:%f, eqBwLevel0AG:%f, eqBwLevel1AG:%f", __func__, eqBwLevel0SC,
-        eqBwLevel1SC, eqBwLevel0AG, eqBwLevel1AG);
+    HCCL_INFO(
+        "[%s] eqBwLevel0SC:%f, eqBwLevel1SC:%f, eqBwLevel0AG:%f, eqBwLevel1AG:%f", __func__, eqBwLevel0SC, eqBwLevel1SC,
+        eqBwLevel0AG, eqBwLevel1AG);
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::CalcLoopSplitData(
-    u64 maxTmpMemSize, u64 root, LoopSplitData &loopSplitData)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
+    CcuAgAlgTemplateY>::CalcLoopSplitData(u64 maxTmpMemSize, u64 root, LoopSplitData& loopSplitData)
 {
     // 1. 每个rank切分的总count
     loopSplitData.allRankSplitData = OmniPipeSplitScatterData(rankSize_, dataCount_, dataTypeSize_, root);
-    CHK_PRT_RET(loopSplitData.allRankSplitData.empty(), HCCL_ERROR("[%s] allRankSplitData is empty", __func__),
+    CHK_PRT_RET(
+        loopSplitData.allRankSplitData.empty(), HCCL_ERROR("[%s] allRankSplitData is empty", __func__),
         HCCL_E_INTERNAL);
     for (int i = 0; i < loopSplitData.allRankSplitData.size(); i++) {
         HCCL_DEBUG("[%s] rankId[%d], allRankSplitData[%d]:%d", __func__, myRank_, i, loopSplitData.allRankSplitData[i]);
@@ -380,16 +416,17 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     // 2. 计算loop次数: 受UB单次传输上限和scratch显存上限双约束
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scratchBoundDataSize = maxTmpMemSize / rankSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
-    HCCL_DEBUG("[%s] myRank[%u] transportBoundDataSize[%u] scratchBoundDataSize[%u]", __func__, myRank_,
+    HCCL_DEBUG(
+        "[%s] myRank[%u] transportBoundDataSize[%u] scratchBoundDataSize[%u]", __func__, myRank_,
         transportBoundDataSize, scratchBoundDataSize);
     loopSplitData.maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;
     CHK_PRT_RET(loopSplitData.maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
     HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, loopSplitData.maxCountPerLoop);
 
-    const u64 maxRankCount = *std::max_element(
-        loopSplitData.allRankSplitData.begin(), loopSplitData.allRankSplitData.end());
-    loopSplitData.loopTimes = maxRankCount / loopSplitData.maxCountPerLoop
-                              + ((maxRankCount % loopSplitData.maxCountPerLoop == 0) ? 0 : 1);
+    const u64 maxRankCount
+        = *std::max_element(loopSplitData.allRankSplitData.begin(), loopSplitData.allRankSplitData.end());
+    loopSplitData.loopTimes
+        = maxRankCount / loopSplitData.maxCountPerLoop + ((maxRankCount % loopSplitData.maxCountPerLoop == 0) ? 0 : 1);
     HCCL_DEBUG("[%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopSplitData.loopTimes);
 
     // 3. 每个rank每个loop切分的count
@@ -397,19 +434,22 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
         loopSplitData.allRankSplitData, loopSplitData.maxCountPerLoop, loopSplitData.loopTimes, dataTypeSize_);
     for (int i = 0; i < loopSplitData.multiLoopAllRankSplitData.size(); i++) {
         for (int j = 0; j < loopSplitData.multiLoopAllRankSplitData[i].size(); j++) {
-            HCCL_DEBUG("[%s] rankId[%d], multiLoopAllRankSplitData[%d][%d]:%d", __func__, myRank_, i, j,
+            HCCL_DEBUG(
+                "[%s] rankId[%d], multiLoopAllRankSplitData[%d][%d]:%d", __func__, myRank_, i, j,
                 loopSplitData.multiLoopAllRankSplitData[i][j]);
         }
     }
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::InitSliceParam(const OpParam &param,
-    const std::vector<u64> &allRankSplitData, const std::vector<std::vector<u64>> &multiLoopAllRankSplitData,
-    OmniPipeSliceParam &sliceParam)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    InitSliceParam(
+        const OpParam& param, const std::vector<u64>& allRankSplitData,
+        const std::vector<std::vector<u64>>& multiLoopAllRankSplitData, OmniPipeSliceParam& sliceParam)
 {
     sliceParam.dataSizePerLoop = CalcCountToDataSize(multiLoopAllRankSplitData[0], dataTypeSize_);
     sliceParam.dataWholeSize = CalcCountToDataSize(allRankSplitData, dataTypeSize_);
@@ -422,13 +462,16 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::PrepareSliceInfoForLoop(u64 loop, u64 root,
-    const std::vector<u64> &allRankSplitData, const std::vector<std::vector<u64>> &multiLoopAllRankSplitData,
-    const std::vector<double> &endpointAttrBwAvgSC, const std::vector<double> &endpointAttrBwAvgAG,
-    OmniPipeSliceParam &sliceParam, OmniPipeSliceInfo &omniPipeSliceInfoSC, OmniPipeSliceInfo &omniPipeSliceInfoAG)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    PrepareSliceInfoForLoop(
+        u64 loop, u64 root, const std::vector<u64>& allRankSplitData,
+        const std::vector<std::vector<u64>>& multiLoopAllRankSplitData, const std::vector<double>& endpointAttrBwAvgSC,
+        const std::vector<double>& endpointAttrBwAvgAG, OmniPipeSliceParam& sliceParam,
+        OmniPipeSliceInfo& omniPipeSliceInfoSC, OmniPipeSliceInfo& omniPipeSliceInfoAG)
 {
     // 首轮loop或与上轮切分不同时重新计算sliceInfo
     if (loop != 0 && isSameLoop(multiLoopAllRankSplitData[loop - 1], multiLoopAllRankSplitData[loop])) {
@@ -443,11 +486,12 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     return HCCL_SUCCESS;
 }
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
-HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY,
-    CcuAgAlgTemplateX, CcuAgAlgTemplateY>::OrchestrateLoop(const OpParam &param,
-    const AlgResourceCtxSerializable &resCtx)
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
+    CcuAgAlgTemplateY>::OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_DEBUG("[%s] Start", __func__);
 
@@ -488,8 +532,8 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     maxTmpMemSize_ = resCtx.cclMem.size;
     LoopSplitData loopSplitData;
     CHK_RET(CalcLoopSplitData(maxTmpMemSize_, param.root, loopSplitData));
-    const auto &allRankSplitData = loopSplitData.allRankSplitData;
-    const auto &multiLoopAllRankSplitData = loopSplitData.multiLoopAllRankSplitData;
+    const auto& allRankSplitData = loopSplitData.allRankSplitData;
+    const auto& multiLoopAllRankSplitData = loopSplitData.multiLoopAllRankSplitData;
     u64 maxCountPerLoop = loopSplitData.maxCountPerLoop;
     u32 loopTimes = loopSplitData.loopTimes;
 
@@ -506,14 +550,17 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
     OmniPipeSliceInfo omniPipeSliceInfoSC;
     OmniPipeSliceInfo omniPipeSliceInfoAG;
     for (u64 loop = 0; loop < loopTimes; loop++) {
-        CHK_PRT_RET(multiLoopAllRankSplitData.size() <= loop,
+        CHK_PRT_RET(
+            multiLoopAllRankSplitData.size() <= loop,
             HCCL_ERROR("[InsV2BroadcastOmniPipe2dExecutor][Orchestrate] multiLoopAllRankSplitData.size() <= loop"),
             HCCL_E_PARA);
         // 4.1首轮计算, 或者与上轮不同loop重新计算OmniPipeSliceInfoRS、OmniPipeSliceInfoAG
-        CHK_RET(PrepareSliceInfoForLoop(loop, param.root, allRankSplitData, multiLoopAllRankSplitData,
-            endpointAttrBwAvgSC, endpointAttrBwAvgAG, sliceParam, omniPipeSliceInfoSC, omniPipeSliceInfoAG));
+        CHK_RET(PrepareSliceInfoForLoop(
+            loop, param.root, allRankSplitData, multiLoopAllRankSplitData, endpointAttrBwAvgSC, endpointAttrBwAvgAG,
+            sliceParam, omniPipeSliceInfoSC, omniPipeSliceInfoAG));
         u64 currDataCount = multiLoopAllRankSplitData[loop][myRank_];
-        HCCL_DEBUG("[%s] dataCount_ %llu, processedDataCount %llu, maxCountPerLoop %llu, currDataCount %llu", __func__,
+        HCCL_DEBUG(
+            "[%s] dataCount_ %llu, processedDataCount %llu, maxCountPerLoop %llu, currDataCount %llu", __func__,
             dataCount_, processedDataCount, maxCountPerLoop, currDataCount);
 
         // 4.2 Scatter的通信步数
@@ -541,14 +588,16 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
                 HCCL_DEBUG("[%s] myRank[%u] StepNum[%u]", __func__, myRank_, i);
                 scatterAlgTempY.ifDoTask_ = true;
                 if (isSameXAxisAsRoot) {
-                    CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(tempScatterAlgParamsY,
-                        omniPipeSliceInfoSC.dataSliceLevel1[i], processedDataCount, resCtx, param));
+                    CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(
+                        tempScatterAlgParamsY, omniPipeSliceInfoSC.dataSliceLevel1[i], processedDataCount, resCtx,
+                        param));
                 }
                 if (isSameYAxisAsRoot && rankSizeLevel0_ > 1) {
                     HCCL_DEBUG("[%s] set myRank[%u] as root", __func__, myRank_);
                     scatterAlgTempX.SetRoot(myRank_);
-                    CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(tempScatterAlgParamsX,
-                        omniPipeSliceInfoSC.dataSliceLevel0[i], processedDataCount, resCtx, param));
+                    CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(
+                        tempScatterAlgParamsX, omniPipeSliceInfoSC.dataSliceLevel0[i], processedDataCount, resCtx,
+                        param));
                 }
             } else if (i != 0) {
                 // 中间步: 同y轴非root往x轴方向发送部分转发数据(mesh/templateX)
@@ -557,14 +606,16 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
                     if (isSameYAxisAsRoot && rankSizeLevel0_ > 1) {
                         HCCL_DEBUG("[%s] set myRank[%u] as root", __func__, myRank_);
                         scatterAlgTempX.SetRoot(myRank_);
-                        CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(tempScatterAlgParamsX,
-                            omniPipeSliceInfoSC.dataSliceLevel0[i], processedDataCount, resCtx, param));
+                        CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(
+                            tempScatterAlgParamsX, omniPipeSliceInfoSC.dataSliceLevel0[i], processedDataCount, resCtx,
+                            param));
                     }
                 } else {
                     scatterAlgTempY.ifDoTask_ = true;
                     if (isSameXAxisAsRoot && rankSizeLevel1_ > 1) {
-                        CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(tempScatterAlgParamsY,
-                            omniPipeSliceInfoSC.dataSliceLevel1[i], processedDataCount, resCtx, param));
+                        CHK_RET(GenTempAlgParamsHCCLBuff2HCCLBuff(
+                            tempScatterAlgParamsY, omniPipeSliceInfoSC.dataSliceLevel1[i], processedDataCount, resCtx,
+                            param));
                     }
                 }
             }
@@ -582,8 +633,9 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
         }
 
         // 4.4 AG本地拷贝
-        HCCL_DEBUG("[%s] AG local copy start, myRank[%d], currDataCount %llu, processedDataCount %llu", __func__,
-            myRank_, currDataCount, processedDataCount);
+        HCCL_DEBUG(
+            "[%s] AG local copy start, myRank[%d], currDataCount %llu, processedDataCount %llu", __func__, myRank_,
+            currDataCount, processedDataCount);
         if (myRank_ != param.root) {
             CHK_RET(PreSyncInterThreads(mainThread, syncThreads, notifyIdxesMainToSub));
             TemplateDataParams tempAlgParamLocalCopy = tempAlgParamsCommon;
@@ -612,8 +664,9 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
             tempAlgParamLocalCopy.sliceSize = currDataCount * dataTypeSize_;
             tempAlgParamLocalCopy.buffInfo.inBuffBaseOff = perInnnerLoopOffset[myRank_] * dataTypeSize_;
             tempAlgParamLocalCopy.outputSliceStride = 0;
-            HCCL_DEBUG("[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] "
-                       "inputSliceStride [%lu]",
+            HCCL_DEBUG(
+                "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] "
+                "inputSliceStride [%lu]",
                 __func__, myRank_, tempAlgParamLocalCopy.buffInfo.inBuffBaseOff,
                 tempAlgParamLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamLocalCopy.sliceSize,
                 tempAlgParamLocalCopy.inputSliceStride);
@@ -653,9 +706,10 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<AlgTopoMatch, CcuScatterAlgTemplateX
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXEC_V2_MULTI(HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastOmniPipe2D, InsV2BroadcastOmniPipe2dExecutor,
-    TopoMatchUBX, CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem,
-    CcuTempAllGatherOmniPipeMesh1DMem2Mem, CcuTempAllGatherOmniPipeNHR1DMem2Mem);
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastOmniPipe2D, InsV2BroadcastOmniPipe2dExecutor, TopoMatchUBX,
+    CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem, CcuTempAllGatherOmniPipeMesh1DMem2Mem,
+    CcuTempAllGatherOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

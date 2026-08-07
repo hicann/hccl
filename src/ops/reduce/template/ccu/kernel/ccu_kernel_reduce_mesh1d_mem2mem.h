@@ -20,22 +20,22 @@ namespace ops_hccl {
 constexpr uint64_t LOCAL_COPY_MS = 8;
 constexpr uint64_t LOOP_NUM = 8;
 
-struct CcuKernelArgReduceMesh1DMem2Mem: CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    uint32_t                                rootId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceMesh1DMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t rootId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct GroupReduceMesh1DMem2MemVar {
     ccu::LocalAddr src[2];
     ccu::LocalAddr dst[2];
-    ccu::Variable  len[2];
+    ccu::Variable len[2];
 };
 
-struct ReduceMesh1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceMesh1DMem2Mem *arg;
+struct ReduceMesh1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceMesh1DMem2Mem* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;
@@ -66,5 +66,5 @@ struct ReduceMesh1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuReduceMesh1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_MESH_1D_MEM2MEM

@@ -13,23 +13,25 @@
 
 #include "log.h"
 #include <string>
-#include <vector> 
+#include <vector>
 
-__attribute__((weak)) void RptInputErr(std::string error_code, std::vector<std::string> key,
-    std::vector<std::string> value);
-__attribute__((weak)) void RptEnvErr(std::string error_code, std::vector<std::string> key,
-    std::vector<std::string> value);
+__attribute__((weak)) void
+RptInputErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value);
+__attribute__((weak)) void
+RptEnvErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value);
 
-#define RPT_INPUT_ERR(result, error_code, key, value) do { \
-    if (UNLIKELY(result) && RptInputErr != nullptr) {     \
-        RptInputErr(error_code, key, value);          \
-    }                                                       \
-} while (0)
+#define RPT_INPUT_ERR(result, error_code, key, value)     \
+    do {                                                  \
+        if (UNLIKELY(result) && RptInputErr != nullptr) { \
+            RptInputErr(error_code, key, value);          \
+        }                                                 \
+    } while (0)
 
-#define RPT_ENV_ERR(result, error_code, key, value) do { \
-    if (UNLIKELY(result) && RptEnvErr != nullptr) {                               \
-        RptEnvErr(error_code, key, value);        \
-    }                                                    \
-} while (0)
+#define RPT_ENV_ERR(result, error_code, key, value)     \
+    do {                                                \
+        if (UNLIKELY(result) && RptEnvErr != nullptr) { \
+            RptEnvErr(error_code, key, value);          \
+        }                                               \
+    } while (0)
 
 #endif

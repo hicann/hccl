@@ -23,7 +23,7 @@ using RankGroup = std::vector<RankId>;
 class CcuTempAlltoAllVMesh2Die : public CcuAlgTemplateBase {
 public:
     CcuTempAlltoAllVMesh2Die() = default;
-    CcuTempAlltoAllVMesh2Die(const OpParam &param, RankId rankId, const std::vector<std::vector<u32>> &subCommRanks);
+    CcuTempAlltoAllVMesh2Die(const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAlltoAllVMesh2Die() override;
 
     std::string Describe() const override
@@ -31,17 +31,19 @@ public:
         return StringFormat("Template of alltoallv ccu mesh 2Die with rankSize[%u]", templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
 
-    void SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo);
+    void SetA2ASendRecvInfo(const A2ASendRecvInfo& sendRecvInfo);
 
 private:
-    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs);
-    void FillRankGroupTaskArgs(uint32_t dieId, const LoopGroupConfig &config, std::vector<uint64_t> &taskArgs);
+    HcclResult PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs);
+    void FillRankGroupTaskArgs(uint32_t dieId, const LoopGroupConfig& config, std::vector<uint64_t>& taskArgs);
     void FillRankGroupInfo();
 
     const uint32_t DIE_NUM = 2; // 2Die

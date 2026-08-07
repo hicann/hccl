@@ -31,20 +31,21 @@ namespace ops_hccl {
         }                                                                                                       \
     } while (0)
 
-HcclResult haclrtGetPairDeviceLinkType(s32 phyDevId, s32 otherPhyDevId, LinkTypeInServer &linkType);
+HcclResult haclrtGetPairDeviceLinkType(s32 phyDevId, s32 otherPhyDevId, LinkTypeInServer& linkType);
 
-HcclResult haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus &captureStatus, u64 &modelId, bool &isCapture);
+HcclResult
+haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus& captureStatus, u64& modelId, bool& isCapture);
 
-HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32 &deviceLogicId);
+HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32& deviceLogicId);
 
-HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64 &val);
+HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val);
 
-HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode,
-    aclrtBinHandle &binHandle);
+HcclResult LoadBinaryFromFile(
+    const char* binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode, aclrtBinHandle& binHandle);
 
-HcclResult haclrtMemcpy(void *dst, size_t destMax, const void *src, size_t count, aclrtMemcpyKind kind);
+HcclResult haclrtMemcpy(void* dst, size_t destMax, const void* src, size_t count, aclrtMemcpyKind kind);
 
-HcclResult haclrtMemset(void *dst, size_t destMax, int32_t value, size_t count);
-}
+HcclResult haclrtMemset(void* dst, size_t destMax, int32_t value, size_t count);
+} // namespace ops_hccl
 
 #endif // ADAPTER_ACL_H

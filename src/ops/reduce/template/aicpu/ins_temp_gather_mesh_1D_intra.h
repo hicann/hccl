@@ -19,8 +19,9 @@ namespace ops_hccl {
 
 class InsTempGatherMesh1dIntra : public InsAlgTemplateBase {
 public:
-    explicit InsTempGatherMesh1dIntra(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-                                    const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempGatherMesh1dIntra(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     // Host侧调用
     ~InsTempGatherMesh1dIntra() override;
 
@@ -30,27 +31,28 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
-    HcclResult GetRes(AlgResourceRequest &resourceReques) const override;
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                         TemplateResource &templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceReques) const override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
-    HcclResult RunGatherMesh(const std::vector<ThreadHandle> &threads,
-                                                        const std::map<u32, std::vector<ChannelInfo>> &channels);
-    HcclResult LocalDataCopy(const std::vector<ThreadHandle> &threads);
-    HcclResult PostLocalCopy(const std::vector<ThreadHandle> &threads);
+    HcclResult
+    RunGatherMesh(const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels);
+    HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads);
+    HcclResult PostLocalCopy(const std::vector<ThreadHandle>& threads);
     TemplateDataParams tempAlgParams_;
     u64 count_{0};
     u32 dataTypeSize_{0};
 };
 
-}  // namespace Hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_GATHER_MESH_1D_H
+#endif // INS_TEMP_GATHER_MESH_1D_H

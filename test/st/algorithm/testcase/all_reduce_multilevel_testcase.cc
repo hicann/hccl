@@ -21,29 +21,40 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-constexpr uint32_t DATATYPE_SIZE_TABLE_AR[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t DATATYPE_SIZE_TABLE_AR[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 class ST_ALL_REDUCE_MULTILEVEL_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunAllReduceMultiLevelCase(const TopoMeta &topoInfo, const u64 dataCount,
-    const HcclDataType dataType, const HcclReduceOp reduceOp)
+void RunAllReduceMultiLevelCase(
+    const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -53,8 +64,8 @@ void RunAllReduceMultiLevelCase(const TopoMeta &topoInfo, const u64 dataCount,
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     // 算子执行参数设置
     u32 rankSize = 0;
-    for (const auto &superPod : topoInfo) {
-        for (const auto &podIdx : superPod) {
+    for (const auto& superPod : topoInfo) {
+        for (const auto& podIdx : superPod) {
             rankSize += podIdx.size();
         }
     }
@@ -74,9 +85,9 @@ void RunAllReduceMultiLevelCase(const TopoMeta &topoInfo, const u64 dataCount,
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 sendBufSize = dataCount * dataTypeSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = dataCount * dataTypeSize; // 数据量转化为字节数
             u64 recvBufSize = dataCount * dataTypeSize;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -247,7 +258,6 @@ TEST_F(ST_ALL_REDUCE_MULTILEVEL_TEST, st_all_reduce_3level_4x3x2_int32_sum_asymm
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceMultiLevelCase(topoMeta, dataCount, dataType, reduceOp);
 }
-
 
 // --- Degenerate Level (dimension=1) edge cases ---
 //

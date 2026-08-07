@@ -37,22 +37,18 @@ constexpr u32 STEP_SYNC_TIMEOUT = 18000;
  * @param templateRankSize 模板 rank 总数
  */
 HcclResult BatchTransferNHR(
-    const AicpuNHRStepInfo &stepInfo,
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const TemplateDataParams &tempAlgParam,
-    u32 repeat,
-    u32 myRank,
-    u32 templateRankSize);
+    const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize);
 
 // ========== 三阶段批量传输 ==========
 
 struct DpuTransferCtx {
-    const ChannelInfo *txCh;   // 发送通道（nullptr 表示无发送，remoteRank 等均可从此获取）
-    const ChannelInfo *rxCh;   // 接收通道（nullptr 表示无接收，samePeer 时 == txCh）
-    std::vector<DataSlice> txSrcSlices;   // 发送源切片
-    std::vector<DataSlice> txDstSlices;   // 发送目标切片
-    std::vector<DataSlice> rxSrcSlices;   // 接收源切片
-    std::vector<DataSlice> rxDstSlices;   // 接收目标切片
+    const ChannelInfo* txCh;            // 发送通道（nullptr 表示无发送，remoteRank 等均可从此获取）
+    const ChannelInfo* rxCh;            // 接收通道（nullptr 表示无接收，samePeer 时 == txCh）
+    std::vector<DataSlice> txSrcSlices; // 发送源切片
+    std::vector<DataSlice> txDstSlices; // 发送目标切片
+    std::vector<DataSlice> rxSrcSlices; // 接收源切片
+    std::vector<DataSlice> rxDstSlices; // 接收目标切片
 
     bool hasSend() const { return txCh != nullptr; }
     bool hasRecv() const { return rxCh != nullptr; }
@@ -63,8 +59,8 @@ struct DpuTransferCtx {
  *        调用方负责填充 DpuTransferCtx 列表（含正确的 txDst/txSrc 偏移），
  *        本函数批量执行 Phase 1（step sync）/ Phase 2（HcommWriteNbi）/ Phase 3（data sync + Fence）。
  */
-HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx> &pairs);
+HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs);
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // DPU_ALG_NHR_OPT_WRAPPER
+#endif // DPU_ALG_NHR_OPT_WRAPPER

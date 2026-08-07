@@ -19,36 +19,25 @@
 #include <unistd.h>
 #include <securec.h>
 
-uint32_t logLevel = 0x03;  // ERROR级别
+uint32_t logLevel = 0x03; // ERROR级别
 constexpr int TIME_FROM_1900 = 1900;
 constexpr int LOG_STUB_BUFFER_SIZE = 1024;
-std::map<int, std::string> LOG_LEVEL_STR_MAP = {
-    {0x00, "[DEBUG]"},
-    {0x01, "[INFO]"},
-    {0x02, "[WARNING]"},
-    {0x03, "[ERROR]"},
-    {0x10, "[EVENT]"}
-};
+std::map<int, std::string> LOG_LEVEL_STR_MAP
+    = {{0x00, "[DEBUG]"}, {0x01, "[INFO]"}, {0x02, "[WARNING]"}, {0x03, "[ERROR]"}, {0x10, "[EVENT]"}};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int32_t dlog_getlevel(int32_t moduleId, int32_t *enableEvent)
-{
-    return logLevel;
-}
+int32_t dlog_getlevel(int32_t moduleId, int32_t* enableEvent) { return logLevel; }
 
-int32_t CheckLogLevel(int32_t moduleId, int32_t logLevel)
-{
-    return 1;
-}
+int32_t CheckLogLevel(int32_t moduleId, int32_t logLevel) { return 1; }
 
-void GetCurTimeStr(char *timeStr, int len)
+void GetCurTimeStr(char* timeStr, int len)
 {
     struct timeval tv;
     time_t tmpt;
-    struct tm *now;
+    struct tm* now;
 
     if (timeStr == nullptr) {
         return;
@@ -64,23 +53,15 @@ void GetCurTimeStr(char *timeStr, int len)
         return;
     }
 
-    int iLen = snprintf_s(timeStr,
-        len,
-        len,
-        "%04d-%02d-%02d %02d:%02d:%02d.%06u",
-        now->tm_year + TIME_FROM_1900,
-        now->tm_mon + 1,
-        now->tm_mday,
-        now->tm_hour,
-        now->tm_min,
-        now->tm_sec,
-        (uint32_t)tv.tv_usec);
+    int iLen = snprintf_s(
+        timeStr, len, len, "%04d-%02d-%02d %02d:%02d:%02d.%06u", now->tm_year + TIME_FROM_1900, now->tm_mon + 1,
+        now->tm_mday, now->tm_hour, now->tm_min, now->tm_sec, (uint32_t)tv.tv_usec);
     if (iLen == -1) {
         printf("Print time failed\n");
     }
 }
 
-void DlogPrintStub(int level, char *logBuffer)
+void DlogPrintStub(int level, char* logBuffer)
 {
     std::string logLevelStr = "[INFO]";
     if (LOG_LEVEL_STR_MAP.find(level) != LOG_LEVEL_STR_MAP.end()) {
@@ -92,7 +73,7 @@ void DlogPrintStub(int level, char *logBuffer)
     printf("[%-26s][pid:%u]%s%s\n", timeBuffer, getpid(), logLevelStr.c_str(), logBuffer);
 }
 
-void DlogInner(int moduleId, int level, const char *fmt, ...)
+void DlogInner(int moduleId, int level, const char* fmt, ...)
 {
     if (level < logLevel) {
         return;
@@ -108,7 +89,7 @@ void DlogInner(int moduleId, int level, const char *fmt, ...)
     DlogPrintStub(level, buffer);
 }
 
-void DlogRecord(int moduleId, int level, const char *fmt, ...)
+void DlogRecord(int moduleId, int level, const char* fmt, ...)
 {
     if (level < logLevel) {
         return;

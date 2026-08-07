@@ -14,15 +14,14 @@
 #include "alg_v2_template_register.h"
 
 namespace ops_hccl {
-InsTempBarrierMesh1D::InsTempBarrierMesh1D(const OpParam &param, const u32 rankId,
-                                           const std::vector<std::vector<u32>> &subCommRanks)
+InsTempBarrierMesh1D::InsTempBarrierMesh1D(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 
-HcclResult InsTempBarrierMesh1D::CalcRes(HcclComm comm, const OpParam &param,
-                                         const TopoInfoWithNetLayerDetails *topoInfo,
-                                         AlgResourceRequest &resourceRequest)
+HcclResult InsTempBarrierMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     HCCL_INFO("[InsTempBarrierMesh1D][CalcRes] start");
     u32 level0RankSize = templateRankSize_;
@@ -34,15 +33,13 @@ HcclResult InsTempBarrierMesh1D::CalcRes(HcclComm comm, const OpParam &param,
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
-    HCCL_INFO("[InsTempBarrierMesh1D][CalcRes] slaveThreadNum[%u] notifyNumOnMainThread[%u] level0Channels[%u].",
-              resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, level0Channels.size());
+    HCCL_INFO(
+        "[InsTempBarrierMesh1D][CalcRes] slaveThreadNum[%u] notifyNumOnMainThread[%u] level0Channels[%u].",
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, level0Channels.size());
     return HCCL_SUCCESS;
 }
 
-u64 InsTempBarrierMesh1D::GetThreadNum() const
-{
-    return templateRankSize_ > 1 ? templateRankSize_ - 1 : 1;
-}
+u64 InsTempBarrierMesh1D::GetThreadNum() const { return templateRankSize_ > 1 ? templateRankSize_ - 1 : 1; }
 
 u64 InsTempBarrierMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
@@ -51,8 +48,8 @@ u64 InsTempBarrierMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType 
     return 0;
 }
 
-HcclResult InsTempBarrierMesh1D::KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                                           TemplateResource &templateResource)
+HcclResult InsTempBarrierMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     (void)tempAlgParams;
     HCCL_INFO("[InsTempBarrierMesh1D] Run start, rank[%u] rankSize[%u]", myRank_, templateRankSize_);
@@ -79,8 +76,8 @@ HcclResult InsTempBarrierMesh1D::KernelRun(const OpParam &param, const TemplateD
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempBarrierMesh1D::RunBarrierMesh(const std::vector<ThreadHandle> &threads,
-                                                const std::map<u32, std::vector<ChannelInfo>> &channels)
+HcclResult InsTempBarrierMesh1D::RunBarrierMesh(
+    const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     HCCL_INFO("[InsTempBarrierMesh1D] RunBarrierMesh RankID[%u].", myRank_);
 
@@ -89,14 +86,15 @@ HcclResult InsTempBarrierMesh1D::RunBarrierMesh(const std::vector<ThreadHandle> 
     for (u32 threadIdx = 0; threadIdx < subCommRanks_[0].size() - 1; threadIdx++) {
         u32 connectedRank = subCommRanks_[0][(myAlgRank + 1 + threadIdx) % subCommRanks_[0].size()];
 
-        CHK_PRT_RET(threadIdx >= threads.size() || channels.count(connectedRank) == 0 ||
-                    channels.at(connectedRank).empty(),
-                    HCCL_ERROR("[InsTempBarrierMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
-                               "connectedRank=%d, channels.size=%u",
-                               myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
-                    HcclResult::HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            threadIdx >= threads.size() || channels.count(connectedRank) == 0 || channels.at(connectedRank).empty(),
+            HCCL_ERROR(
+                "[InsTempBarrierMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
+                "connectedRank=%d, channels.size=%u",
+                myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
+            HcclResult::HCCL_E_INTERNAL);
 
-        const ChannelInfo &linkRemote = channels.at(connectedRank)[0];
+        const ChannelInfo& linkRemote = channels.at(connectedRank)[0];
 
         // Barrier 语义：只做前后 ACK / DATA_SIGNAL 同步对，不搬运数据。
         // SendRecvWrite 内部的 for-loop 在空 slice vector 下被跳过。
@@ -104,14 +102,15 @@ HcclResult InsTempBarrierMesh1D::RunBarrierMesh(const std::vector<ThreadHandle> 
         TxRxSlicesList sendRecvSlicesList({emptySlices, emptySlices}, {emptySlices, emptySlices});
         TxRxChannels sendRecvChannels(linkRemote, linkRemote);
         SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[threadIdx]),
-                    HCCL_ERROR("[InsTempBarrierMesh1D] RunBarrierMesh SendRecvWrite failed, threadIdx=%u", threadIdx),
-                    HcclResult::HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            SendRecvWrite(sendRecvInfo, threads[threadIdx]),
+            HCCL_ERROR("[InsTempBarrierMesh1D] RunBarrierMesh SendRecvWrite failed, threadIdx=%u", threadIdx),
+            HcclResult::HCCL_E_INTERNAL);
     }
     return HCCL_SUCCESS;
 }
 
-void InsTempBarrierMesh1D::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub)
+void InsTempBarrierMesh1D::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)
 {
     notifyIdxMainToSub.clear();
     u32 threadNum = GetThreadNum();
@@ -121,7 +120,7 @@ void InsTempBarrierMesh1D::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMain
     }
 }
 
-void InsTempBarrierMesh1D::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempBarrierMesh1D::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 threadNum = GetThreadNum();
@@ -132,4 +131,4 @@ void InsTempBarrierMesh1D::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubT
 }
 
 REGISTER_TEMPLATE_V2("InsTempBarrierMesh1D", InsTempBarrierMesh1D);
-}  // namespace ops_hccl
+} // namespace ops_hccl

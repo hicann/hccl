@@ -13,10 +13,14 @@
 namespace ops_hccl {
 
 InsAlgTemplateBase::InsAlgTemplateBase(
-    const OpParam &param, const u32 rankId, // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
-    : opMode_(param.opMode), root_(param.root), myRank_(rankId),
-      subCommRanks_(subCommRanks), reduceOp_(param.reduceType), enableDetour_(param.enableDetour)
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : opMode_(param.opMode),
+      root_(param.root),
+      myRank_(rankId),
+      subCommRanks_(subCommRanks),
+      reduceOp_(param.reduceType),
+      enableDetour_(param.enableDetour)
 {
     if (subCommRanks.size() > 1) {
         templateRankSize_ = subCommRanks[0].size() * subCommRanks[1].size();
@@ -25,9 +29,7 @@ InsAlgTemplateBase::InsAlgTemplateBase(
     }
 }
 
-InsAlgTemplateBase::~InsAlgTemplateBase()
-{
-}
+InsAlgTemplateBase::~InsAlgTemplateBase() {}
 
 HcclResult InsAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
@@ -37,9 +39,8 @@ HcclResult InsAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFa
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult InsAlgTemplateBase::KernelRun(const OpParam& param,
-                                         const TemplateDataParams& tempAlgParams,
-                                         TemplateResource& templateResource)
+HcclResult InsAlgTemplateBase::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     (void)param;
     (void)tempAlgParams;
@@ -48,8 +49,8 @@ HcclResult InsAlgTemplateBase::KernelRun(const OpParam& param,
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult InsAlgTemplateBase::DPUKernelRun(const TemplateDataParams& tempAlgParam,
-    const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+HcclResult InsAlgTemplateBase::DPUKernelRun(
+    const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
     const std::vector<std::vector<uint32_t>>& subCommRanks)
 {
     (void)tempAlgParam;
@@ -60,8 +61,9 @@ HcclResult InsAlgTemplateBase::DPUKernelRun(const TemplateDataParams& tempAlgPar
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-HcclResult InsAlgTemplateBase::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                       AlgResourceRequest& resourceRequest)
+HcclResult InsAlgTemplateBase::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     (void)comm;
     (void)param;
@@ -78,17 +80,11 @@ HcclResult InsAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest) const
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-u64 InsAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
-{
-    return 0;
-}
+u64 InsAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 0; }
 
-u64 InsAlgTemplateBase::GetThreadNum() const
-{
-    return 0;
-}
+u64 InsAlgTemplateBase::GetThreadNum() const { return 0; }
 
-bool InsAlgTemplateBase::IsPcieProtocol(const std::map<u32, std::vector<ChannelInfo>> &channels)
+bool InsAlgTemplateBase::IsPcieProtocol(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     for (auto it = channels.begin(); it != channels.end(); it++) {
         if ((it->second).at(0).protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
@@ -100,4 +96,4 @@ bool InsAlgTemplateBase::IsPcieProtocol(const std::map<u32, std::vector<ChannelI
     return false;
 }
 
-}
+} // namespace ops_hccl

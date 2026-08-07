@@ -22,8 +22,9 @@ namespace ops_hccl {
 class InsTempRecvHostNicDpu : public InsAlgTemplateBase {
 public:
     explicit InsTempRecvHostNicDpu();
-    explicit InsTempRecvHostNicDpu(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempRecvHostNicDpu(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempRecvHostNicDpu() override;
 
     std::string Describe() const override
@@ -33,22 +34,22 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-        TemplateResource &res) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
+    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& res) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
-        const std::vector<std::vector<uint32_t>> &subCommRanks) override;
-    
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override{};
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override{};
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
+
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {};
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
 
 private:
     u64 count_{0};
     u64 processSize_{0};
 };
 
-}  // namespace Hccl
+} // namespace ops_hccl
 #endif // INS_TEMP_RECV_HOST_NIC_DPU

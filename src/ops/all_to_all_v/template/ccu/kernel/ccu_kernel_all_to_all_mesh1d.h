@@ -19,17 +19,17 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgAlltoAllMesh1D: CcuKernelArgBase{
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    bool                                    loadFromMem;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgAlltoAllMesh1D : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    bool loadFromMem;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct AlltoAllMesh1DContext: CcuKernelCtxBase {
-    const CcuKernelArgAlltoAllMesh1D *arg;
-    
+struct AlltoAllMesh1DContext : CcuKernelCtxBase {
+    const CcuKernelArgAlltoAllMesh1D* arg;
+
     HcclDataType dataType;
     HcclDataType outputDataType;
     ccu::Variable repeatNum;
@@ -42,11 +42,11 @@ struct AlltoAllMesh1DContext: CcuKernelCtxBase {
     ccu::Variable dstOffset;
     GroupOpSizeVars goSize;
 
-    ccu::LocalAddr                   myDst;
-    std::vector<ccu::RemoteAddr>     dstAddr;
-    std::vector<ccu::LocalAddr>      srcAddr;
-    std::vector<ccu::Variable>         dstToken;
-    std::vector<ccu::Variable>         srcToken;
+    ccu::LocalAddr myDst;
+    std::vector<ccu::RemoteAddr> dstAddr;
+    std::vector<ccu::LocalAddr> srcAddr;
+    std::vector<ccu::Variable> dstToken;
+    std::vector<ccu::Variable> srcToken;
     ccu::Event event;
     ccu::Variable flag; // 用以判断是否是第一次重复
     bool loadFromMem = false;
@@ -54,5 +54,5 @@ struct AlltoAllMesh1DContext: CcuKernelCtxBase {
 
 CcuResult CcuAlltoAllMesh1DKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_ALL_TO_ALL_MESH_1D_H

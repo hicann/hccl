@@ -27,7 +27,7 @@ TopoInfo MakeTopo(u32 userRankSize, u32 serverNum, HcclDevType deviceType)
 }
 
 const std::string BIRS_ALG_NAME = "ReduceScatterBIRSExecutor";
-}
+} // namespace
 
 TEST(ReduceScatterBirsSelector, ServerNumZeroIsRejectedInsteadOfDivByZero)
 {

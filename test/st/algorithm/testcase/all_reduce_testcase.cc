@@ -29,29 +29,25 @@ constexpr u64 AR_AICPU_1D_64DATATYPE_DATA_SIZE = 8 * 1024 * 1024;
 static_assert(AR_AICPU_1D_SMALL_DATA_SIZE > 0, "SMALL_DATA_SIZE must be positive");
 static_assert(AR_AICPU_1D_MAX_DATA_SIZE > 0, "MAX_DATA_SIZE must be positive");
 static_assert(AR_AICPU_1D_64DATATYPE_DATA_SIZE > 0, "64DATATYPE_DATA_SIZE must be positive");
-static_assert(AR_AICPU_1D_SMALL_DATA_SIZE <= AR_AICPU_1D_MAX_DATA_SIZE,
-             "SMALL_DATA_SIZE cannot be greater than MAX_DATA_SIZE");
+static_assert(
+    AR_AICPU_1D_SMALL_DATA_SIZE <= AR_AICPU_1D_MAX_DATA_SIZE, "SMALL_DATA_SIZE cannot be greater than MAX_DATA_SIZE");
 
 class ST_ALL_REDUCE_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunAllReduceCase(const TopoMeta &topoInfo, const u64 dataCount,
-    const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp)
+void RunAllReduceCase(
+    const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const u32 dataTypeSize,
+    const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -59,12 +55,11 @@ void RunAllReduceCase(const TopoMeta &topoInfo, const u64 dataCount,
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
     u32 rankSize = 0;
-    for (const auto &superPod : topoInfo) {
-        for (const auto &podIdx : superPod) {
+    for (const auto& superPod : topoInfo) {
+        for (const auto& podIdx : superPod) {
             rankSize += podIdx.size();
         }
     }
@@ -84,9 +79,9 @@ void RunAllReduceCase(const TopoMeta &topoInfo, const u64 dataCount,
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 sendBufSize = dataCount * dataTypeSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = dataCount * dataTypeSize; // 数据量转化为字节数
             u64 recvBufSize = dataCount * dataTypeSize;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -223,8 +218,7 @@ TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_2shot_big_data)
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
     u32 dataTypeSize = 2;
     u64 dataCount = std::min(
-        std::max(static_cast<u64>(10 * 1024 * 1024), AR_AICPU_1D_SMALL_DATA_SIZE
-        ), AR_AICPU_1D_MAX_DATA_SIZE);
+        std::max(static_cast<u64>(10 * 1024 * 1024), AR_AICPU_1D_SMALL_DATA_SIZE), AR_AICPU_1D_MAX_DATA_SIZE);
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
@@ -234,8 +228,8 @@ TEST_F(ST_ALL_REDUCE_TEST, st_all_reduce_2shot_segmented_data)
     TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}}};
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
     u32 dataTypeSize = 4;
-    u64 dataCount = AR_AICPU_1D_SMALL_DATA_SIZE / 2 / dataTypeSize +
-                   (AR_AICPU_1D_MAX_DATA_SIZE - AR_AICPU_1D_SMALL_DATA_SIZE) / 3;
+    u64 dataCount = AR_AICPU_1D_SMALL_DATA_SIZE / 2 / dataTypeSize
+                    + (AR_AICPU_1D_MAX_DATA_SIZE - AR_AICPU_1D_SMALL_DATA_SIZE) / 3;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunAllReduceCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }

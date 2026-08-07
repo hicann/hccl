@@ -16,24 +16,22 @@ namespace ops_hccl {
 constexpr u32 UBX_BOARD_PAIR_SIZE = 2;
 InsTempUBXAllToAllVMesh1D::InsTempUBXAllToAllVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
+    const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 
-InsTempUBXAllToAllVMesh1D::~InsTempUBXAllToAllVMesh1D()
-{
-}
+InsTempUBXAllToAllVMesh1D::~InsTempUBXAllToAllVMesh1D() {}
 
-HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param,
-    const TopoInfoWithNetLayerDetails* topoInfo, AlgResourceRequest& resourceRequest)
+HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> level0Channels;
     std::vector<HcclChannelDesc> myChannelDescs;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         bool isIsolation = !(IsAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH));
-        CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs,
-            isIsolation));
+        CHK_RET(
+            CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, isIsolation));
         for (auto channel : myChannelDescs) {
             if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
                 level0Channels.push_back(channel);
@@ -48,8 +46,9 @@ HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(HcclComm comm, const OpParam& para
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D][CalcRes] channelsPerRank_ is [%u]", channelsPerRank_);
     // 按照当前来看，channelsPerRank_ 就是maxPathNum_
     if (channelsPerRank_ > maxPathNum_) {
-        HCCL_ERROR("[InsTempUBXAllToAllVMesh1D][CalcRes] channelsPerRank_[%u] is more than [%u]",
-            channelsPerRank_, maxPathNum_);
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][CalcRes] channelsPerRank_[%u] is more than [%u]", channelsPerRank_,
+            maxPathNum_);
         return HCCL_E_NOT_SUPPORT;
     }
 
@@ -68,8 +67,8 @@ HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(HcclComm comm, const OpParam& para
 
 u64 InsTempUBXAllToAllVMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
-    (void) inBuffType;
-    (void) outBuffType;
+    (void)inBuffType;
+    (void)outBuffType;
     // 直接切成rankSize份
     return templateRankSize_;
 }
@@ -90,11 +89,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetBoardSendRecvMatrix(u32 n, std::vector<
     }
 
     // 生成n-1轮调度
-    for (int round = 0; round < n-1; round++) {
+    for (int round = 0; round < n - 1; round++) {
         // 生成本轮配对：首尾对称配对
-        for (int i = 0; i < n/UBX_BOARD_PAIR_SIZE; i++) {
+        for (int i = 0; i < n / UBX_BOARD_PAIR_SIZE; i++) {
             int a = ring[i];
-            int b = ring[n-1-i];
+            int b = ring[n - 1 - i];
 
             // 写入调度矩阵
             sendRecvMatrix[a][round] = b;
@@ -103,10 +102,10 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetBoardSendRecvMatrix(u32 n, std::vector<
 
         // 旋转环形排列：固定第一个元素0，其余旋转一位
         // 保存最后一个元素
-        int last = ring[n-1];
+        int last = ring[n - 1];
         // 从倒数第二个元素开始向前移动
-        for (int i = n-1; i > 1; i--) {
-            ring[i] = ring[i-1];
+        for (int i = n - 1; i > 1; i--) {
+            ring[i] = ring[i - 1];
         }
         // 将原最后一个元素放到第二个位置
         ring[1] = last;
@@ -130,8 +129,8 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetBoardSendRecvMatrix(u32 n, std::vector<
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempUBXAllToAllVMesh1D::GetRankSendRecvMatrix(u32 board1, u32 board2,
-    std::vector<std::vector<u32>>& rankSendRecvMatrix)
+HcclResult InsTempUBXAllToAllVMesh1D::GetRankSendRecvMatrix(
+    u32 board1, u32 board2, std::vector<std::vector<u32>>& rankSendRecvMatrix)
 {
     u32 boardSmall = std::min(board1, board2);
     u32 boardBig = std::max(board1, board2);
@@ -146,8 +145,9 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetRankSendRecvMatrix(u32 board1, u32 boar
     // 打印矩阵
     for (int i = 0; i < rankSendRecvMatrix.size(); i++) {
         for (int j = 0; j < rankNumPerBoard_; j++) {
-            HCCL_DEBUG("myRank is [%u], board1 is[%u], board2 is [%u], rankSendRecvMatrix[%d][%d] = [%d]",
-                myAlgRank_, board1, board2, i, j, rankSendRecvMatrix[i][j]);
+            HCCL_DEBUG(
+                "myRank is [%u], board1 is[%u], board2 is [%u], rankSendRecvMatrix[%d][%d] = [%d]", myAlgRank_, board1,
+                board2, i, j, rankSendRecvMatrix[i][j]);
         }
     }
 
@@ -159,7 +159,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetRankNumPerBoard(TemplateResource& templ
     // 根据channel，和远端rank只有一条链路的，说明是fullmesh内的
     // 遍历所有卡
     u32 fullMeshRankNum = 1;
-    std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
+    std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     for (u32 rank = 0; rank < templateRankSize_; rank++) {
         if (rank == myAlgRank_) {
             continue;
@@ -174,25 +174,32 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetRankNumPerBoard(TemplateResource& templ
     rankNumPerBoard_ = fullMeshRankNum;
     if (rankNumPerBoard_ > maxRankNumPerBoard_) {
         // fullmesh 内最多4P
-        HCCL_ERROR("[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_[%u] is more than [%u]",
-            rankNumPerBoard_, maxRankNumPerBoard_);
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_[%u] is more than [%u]", rankNumPerBoard_,
+            maxRankNumPerBoard_);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     // 纯clos不支持
     if (rankNumPerBoard_ == 1) {
-        HCCL_ERROR("[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
-            "templateRankSize_ is [%u], only clos is not support", rankNumPerBoard_, templateRankSize_);
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
+            "templateRankSize_ is [%u], only clos is not support",
+            rankNumPerBoard_, templateRankSize_);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     // 纯fullmesh暂时先支持
     if (rankNumPerBoard_ == templateRankSize_) {
-        HCCL_WARNING("[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
-            "templateRankSize_ is [%u], here is only fullmesh", rankNumPerBoard_, templateRankSize_);
+        HCCL_WARNING(
+            "[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
+            "templateRankSize_ is [%u], here is only fullmesh",
+            rankNumPerBoard_, templateRankSize_);
     }
     // rankSize要是rankNumPerBoard_的整数倍
     if (templateRankSize_ % rankNumPerBoard_ != 0) {
-        HCCL_ERROR("[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
-            "templateRankSize_ is [%u]", rankNumPerBoard_, templateRankSize_);
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
+            "templateRankSize_ is [%u]",
+            rankNumPerBoard_, templateRankSize_);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
 
@@ -202,7 +209,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetRankNumPerBoard(TemplateResource& templ
 HcclResult InsTempUBXAllToAllVMesh1D::CheckPathNum(TemplateResource& templateResource)
 {
     // 校验是不是最多4jetty
-    std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
+    std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     for (u32 rank = 0; rank < templateRankSize_; rank++) {
         if (rank == myAlgRank_) {
             continue;
@@ -210,19 +217,20 @@ HcclResult InsTempUBXAllToAllVMesh1D::CheckPathNum(TemplateResource& templateRes
         u32 linkNumSendRecv = channels.at(rank).size();
         HCCL_INFO("myRank is [%u], targetRank is [%u], linkNum is [%u] ", myAlgRank_, rank, linkNumSendRecv);
         if (linkNumSendRecv > maxPathNum_) {
-            HCCL_ERROR("myRank is [%u], targetRank is [%u], linkNum is [%u], linkNum should not bigger than [%u]",
-                myAlgRank_, rank, linkNumSendRecv, maxPathNum_);
+            HCCL_ERROR(
+                "myRank is [%u], targetRank is [%u], linkNum is [%u], linkNum should not bigger than [%u]", myAlgRank_,
+                rank, linkNumSendRecv, maxPathNum_);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams,
-    TemplateResource& templateResource)
+HcclResult
+InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
-    std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
-    std::vector<ThreadHandle> &threads = templateResource.threads;
+    std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
+    std::vector<ThreadHandle>& threads = templateResource.threads;
     // 用后面的 maxRankNumPerBoard_ 条流做fullmesh内的收发
     localCopyInfoFullMesh_.clear();
     for (u32 i = 0; i < rankNumPerBoard_; i++) {
@@ -230,36 +238,37 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& temp
         HCCL_INFO("[InsTempUBXAllToAllVMesh1D] targetRank is [%u]", targetRank);
         u32 fullMeshThreadId = maxPathNum_ + 1 + i;
         if (targetRank == myAlgRank_) { // 发给自己
-            DataSlice usrInSlices = DataSlice(tempAlgParams.buffInfo.inputPtr,
-                tempAlgParams.sdispls[myAlgRank_] * dataTypeSize_,
+            DataSlice usrInSlices = DataSlice(
+                tempAlgParams.buffInfo.inputPtr, tempAlgParams.sdispls[myAlgRank_] * dataTypeSize_,
                 tempAlgParams.sendCounts[myAlgRank_] * dataTypeSize_, tempAlgParams.sendCounts[myAlgRank_]);
-            DataSlice usrOutSlices = DataSlice(tempAlgParams.buffInfo.outputPtr,
-                tempAlgParams.rdispls[myAlgRank_] * dataTypeSize_,
+            DataSlice usrOutSlices = DataSlice(
+                tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[myAlgRank_] * dataTypeSize_,
                 tempAlgParams.recvCounts[myAlgRank_] * dataTypeSize_, tempAlgParams.recvCounts[myAlgRank_]);
             CHK_RET(LocalCopy(threads[fullMeshThreadId], usrInSlices, usrOutSlices));
-        } else { // 和板内其他卡去收发
-            const ChannelInfo &channelSendRecv = channels.at(targetRank)[0]; // 和对端收发
+        } else {                                                             // 和板内其他卡去收发
+            const ChannelInfo& channelSendRecv = channels.at(targetRank)[0]; // 和对端收发
             std::vector<DataSlice> txSrcSlices;
             std::vector<DataSlice> txDstSlices;
-            DataSlice txSrcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,
-                tempAlgParams.sdispls[targetRank] * dataTypeSize_,
+            DataSlice txSrcSlice = DataSlice(
+                tempAlgParams.buffInfo.inputPtr, tempAlgParams.sdispls[targetRank] * dataTypeSize_,
                 tempAlgParams.sendCounts[targetRank] * dataTypeSize_, tempAlgParams.sendCounts[targetRank]);
-            DataSlice txDstSlice = DataSlice(channelSendRecv.remoteCclMem.addr,
-                myAlgRank_ * scratchBufferSizePerRank_,
+            DataSlice txDstSlice = DataSlice(
+                channelSendRecv.remoteCclMem.addr, myAlgRank_ * scratchBufferSizePerRank_,
                 tempAlgParams.sendCounts[targetRank] * dataTypeSize_, tempAlgParams.sendCounts[targetRank]);
             txSrcSlices.push_back(txSrcSlice);
             txDstSlices.push_back(txDstSlice);
             std::vector<DataSlice> rxSrcSlices;
             std::vector<DataSlice> rxDstSlices;
-            DataSlice rxSrcSlice = DataSlice(channelSendRecv.remoteCclMem.addr, targetRank * scratchBufferSizePerRank_,
+            DataSlice rxSrcSlice = DataSlice(
+                channelSendRecv.remoteCclMem.addr, targetRank * scratchBufferSizePerRank_,
                 tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
-            DataSlice rxDstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                targetRank * scratchBufferSizePerRank_,
+            DataSlice rxDstSlice = DataSlice(
+                tempAlgParams.buffInfo.hcclBuff.addr, targetRank * scratchBufferSizePerRank_,
                 tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
             rxSrcSlices.push_back(rxSrcSlice);
             rxDstSlices.push_back(rxDstSlice);
-            SendRecvInfo sendRecvInfo{{channelSendRecv, channelSendRecv},
-                {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
+            SendRecvInfo sendRecvInfo{
+                {channelSendRecv, channelSendRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
             if (tempAlgParams.sendCounts[targetRank] > 0 && tempAlgParams.recvCounts[targetRank] > 0) {
                 CHK_RET(SendRecvWrite(sendRecvInfo, threads[fullMeshThreadId]));
             } else if (tempAlgParams.sendCounts[targetRank] > 0) {
@@ -270,8 +279,8 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& temp
                 CHK_RET(RecvWrite(recvInfo, threads[fullMeshThreadId]));
             }
             // 构造下一step localCopy的数据
-            DataSlice usrOutSlices = DataSlice(tempAlgParams.buffInfo.outputPtr,
-                tempAlgParams.rdispls[targetRank] * dataTypeSize_,
+            DataSlice usrOutSlices = DataSlice(
+                tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
                 tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
             if (tempAlgParams.recvCounts[targetRank] > 0) {
                 localCopyInfoFullMesh_.push_back(std::vector<DataSlice>{rxDstSlice, usrOutSlices});
@@ -282,15 +291,15 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& temp
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& tempAlgParams,
-    TemplateResource& templateResource, u32 targetBoard)
+HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
+    const TemplateDataParams& tempAlgParams, TemplateResource& templateResource, u32 targetBoard)
 {
-    std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
-    std::vector<ThreadHandle> &threads = templateResource.threads;
+    std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
+    std::vector<ThreadHandle>& threads = templateResource.threads;
 
     // curBoard 和 targetBoard 两两收发，要按照编排好的次序
-    std::vector<std::vector<u32>> rankSendRecvMatrix(algBoardNum_ * rankNumPerBoard_,
-        std::vector<u32>(rankNumPerBoard_, 0));
+    std::vector<std::vector<u32>> rankSendRecvMatrix(
+        algBoardNum_ * rankNumPerBoard_, std::vector<u32>(rankNumPerBoard_, 0));
     CHK_RET(GetRankSendRecvMatrix(currBoard_, targetBoard, rankSendRecvMatrix));
     // 按照一定的顺序，遍历board内的卡
     for (u32 step = 0; step < rankNumPerBoard_; step++) {
@@ -298,7 +307,8 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& temp
 
         // 跳过虚拟board 的收发
         if (targetRank >= templateRankSize_) {
-            HCCL_INFO("[InsTempUBXAllToAllVMesh1D] myRank is [%u], targetRank is [%u], "
+            HCCL_INFO(
+                "[InsTempUBXAllToAllVMesh1D] myRank is [%u], targetRank is [%u], "
                 "targetRank is out of rankSize, skip",
                 myAlgRank_, targetRank);
             continue;
@@ -325,10 +335,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& temp
 
         // 其他流开始和对端卡 4 jetty 收发
         u32 linkNumSendRecv = channels.at(targetRank).size();
-        HCCL_INFO("[InsTempUBXAllToAllVMesh1D] myRank is [%u], targetRank is [%u], currBoard is [%u], "
+        HCCL_INFO(
+            "[InsTempUBXAllToAllVMesh1D] myRank is [%u], targetRank is [%u], currBoard is [%u], "
             "targetBoard is [%u], linkNumSendRecv is[%u]",
             myAlgRank_, targetRank, currBoard_, targetBoard, linkNumSendRecv);
-        const std::vector<ChannelInfo> &channelSendRecv = channels.at(targetRank);
+        const std::vector<ChannelInfo>& channelSendRecv = channels.at(targetRank);
         std::vector<float> dataSplitRate(linkNumSendRecv, (float)1.0 / (float)linkNumSendRecv);
         u64 innerSendOffset = 0;
         u64 innerRecvOffset = 0;
@@ -347,29 +358,32 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& temp
             std::vector<DataSlice> txSrcSlices;
             std::vector<DataSlice> txDstSlices;
 
-            DataSlice txSrcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,
-                (tempAlgParams.sdispls[targetRank] + innerSendOffset) * dataTypeSize_,
+            DataSlice txSrcSlice = DataSlice(
+                tempAlgParams.buffInfo.inputPtr, (tempAlgParams.sdispls[targetRank] + innerSendOffset) * dataTypeSize_,
                 innerCurrSendDataSize, innerCurrSendDataCount);
-            DataSlice txDstSlice = DataSlice(channelSendRecv[j].remoteCclMem.addr,
-                myAlgRank_ * scratchBufferSizePerRank_ + innerSendOffset * dataTypeSize_,
-                innerCurrSendDataSize, innerCurrSendDataCount);
+            DataSlice txDstSlice = DataSlice(
+                channelSendRecv[j].remoteCclMem.addr,
+                myAlgRank_ * scratchBufferSizePerRank_ + innerSendOffset * dataTypeSize_, innerCurrSendDataSize,
+                innerCurrSendDataCount);
             txSrcSlices.push_back(txSrcSlice);
             txDstSlices.push_back(txDstSlice);
 
             std::vector<DataSlice> rxSrcSlices;
             std::vector<DataSlice> rxDstSlices;
-            DataSlice rxSrcSlice = DataSlice(channelSendRecv[j].remoteCclMem.addr,
-                targetRank * scratchBufferSizePerRank_ + innerRecvOffset * dataTypeSize_,
-                innerCurrRecvDataSize, innerCurrRecvDataCount);
-            DataSlice rxDstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                targetRank * scratchBufferSizePerRank_ + innerRecvOffset * dataTypeSize_,
-                innerCurrRecvDataSize, innerCurrRecvDataCount);
+            DataSlice rxSrcSlice = DataSlice(
+                channelSendRecv[j].remoteCclMem.addr,
+                targetRank * scratchBufferSizePerRank_ + innerRecvOffset * dataTypeSize_, innerCurrRecvDataSize,
+                innerCurrRecvDataCount);
+            DataSlice rxDstSlice = DataSlice(
+                tempAlgParams.buffInfo.hcclBuff.addr,
+                targetRank * scratchBufferSizePerRank_ + innerRecvOffset * dataTypeSize_, innerCurrRecvDataSize,
+                innerCurrRecvDataCount);
             rxSrcSlices.push_back(rxSrcSlice);
             rxDstSlices.push_back(rxDstSlice);
 
             if (innerCurrSendDataSize > 0 && innerCurrRecvDataSize > 0) {
-                SendRecvInfo sendRecvInfo{{channelSendRecv[j], channelSendRecv[j]},
-                    {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
+                SendRecvInfo sendRecvInfo{
+                    {channelSendRecv[j], channelSendRecv[j]}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
                 CHK_RET(SendRecvWrite(sendRecvInfo, threads[queId]));
             } else if (innerCurrSendDataSize > 0) {
                 DataInfo sendInfo{channelSendRecv[j], {txSrcSlices, txDstSlices}, dataType_};
@@ -383,10 +397,12 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& temp
         }
 
         // recv 完成之后，后同步信息保留下来
-        DataSlice scratchSlices = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-            targetRank * scratchBufferSizePerRank_, curRecvDataCount * dataTypeSize_, curRecvDataCount);
-        DataSlice usrOutSlices = DataSlice(tempAlgParams.buffInfo.outputPtr,
-            tempAlgParams.rdispls[targetRank] * dataTypeSize_, curRecvDataCount * dataTypeSize_, curRecvDataCount);
+        DataSlice scratchSlices = DataSlice(
+            tempAlgParams.buffInfo.hcclBuff.addr, targetRank * scratchBufferSizePerRank_,
+            curRecvDataCount * dataTypeSize_, curRecvDataCount);
+        DataSlice usrOutSlices = DataSlice(
+            tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
+            curRecvDataCount * dataTypeSize_, curRecvDataCount);
         localCopyInfo_.clear();
         if (curRecvDataCount > 0) {
             localCopyInfo_.push_back(std::vector<DataSlice>{scratchSlices, usrOutSlices});
@@ -401,8 +417,8 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(const TemplateDataParams& temp
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempUBXAllToAllVMesh1D::InitParam(const OpParam& param,
-    const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
+HcclResult InsTempUBXAllToAllVMesh1D::InitParam(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D][InitParam] Run Start");
 
@@ -437,12 +453,14 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(const OpParam& param,
     curDataSize_ = curDataCount_ * dataTypeSize_;
     threadNum_ = templateResource.threads.size();
     if (threadNum_ != maxPathNum_ + maxRankNumPerBoard_ + 1) {
-        HCCL_ERROR("[InsTempUBXAllToAllVMesh1D] tempInsQues.size() is [%u], but it should be [%u]",
-            threadNum_, maxPathNum_ + maxRankNumPerBoard_ + 1);
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D] tempInsQues.size() is [%u], but it should be [%u]", threadNum_,
+            maxPathNum_ + maxRankNumPerBoard_ + 1);
         return HcclResult::HCCL_E_PARA;
     }
 
-    HCCL_INFO("[InsTempUBXAllToAllVMesh1D] myRank_ is [%u], myAlgRank_ is [%u], rankNumPerBoard_ is [%u], "
+    HCCL_INFO(
+        "[InsTempUBXAllToAllVMesh1D] myRank_ is [%u], myAlgRank_ is [%u], rankNumPerBoard_ is [%u], "
         "templateRankSize_ is [%u], currBoard_ is [%u], currRankIndex_ is [%u], boardNum_ is [%u], "
         "algBoardNum_ is [%u], threadNum_ is [%u], scratchBufferSizePerRank_ is [%llu], dataStridePerRank_ is [%llu], "
         "curProcessedDataCount_ is [%llu], curDataCount_ is [%llu], curDataSize_ is [%llu]",
@@ -450,25 +468,26 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(const OpParam& param,
         threadNum_, scratchBufferSizePerRank_, dataStridePerRank_, curProcessedDataCount_, curDataCount_, curDataSize_);
 
     for (u32 i = 0; i < templateRankSize_; i++) {
-        HCCL_DEBUG("[InsTempUBXAllToAllVMesh1D] rank is [%u], sendCounts[%u] is [%llu], recvCounts[%u] is [%llu], "
+        HCCL_DEBUG(
+            "[InsTempUBXAllToAllVMesh1D] rank is [%u], sendCounts[%u] is [%llu], recvCounts[%u] is [%llu], "
             "sdispls[%u] is [%llu], rdispls[%u] is [%llu]",
-            myAlgRank_, i, tempAlgParams.sendCounts[i], i, tempAlgParams.recvCounts[i],
-            i, tempAlgParams.sdispls[i], i, tempAlgParams.rdispls[i]);
+            myAlgRank_, i, tempAlgParams.sendCounts[i], i, tempAlgParams.recvCounts[i], i, tempAlgParams.sdispls[i], i,
+            tempAlgParams.rdispls[i]);
     }
 
-    std::vector<ThreadHandle> &threads = templateResource.threads;
+    std::vector<ThreadHandle>& threads = templateResource.threads;
     if (threadNum_ > 1) {
         subThreadsBoard_.assign(threads.begin() + 1, threads.begin() + 1 + maxPathNum_); // clos用
-        subThreadsFullMesh_.assign(threads.begin() + 1 + maxPathNum_,
+        subThreadsFullMesh_.assign(
+            threads.begin() + 1 + maxPathNum_,
             threads.begin() + 1 + maxPathNum_ + maxRankNumPerBoard_); // fullmesh用
     }
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(const OpParam& param,
-    const TemplateDataParams& tempAlgParams,
-    TemplateResource& templateResource)
+HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D][KernelRun] Run Start");
 
@@ -477,7 +496,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(const OpParam& param,
     localCopyInfo_.clear();
     localCopyInfoFullMesh_.clear();
 
-    std::vector<ThreadHandle> &threads = templateResource.threads;
+    std::vector<ThreadHandle>& threads = templateResource.threads;
     std::vector<std::vector<u32>> sendRecvMatrix(algBoardNum_, std::vector<u32>(algBoardNum_ - 1, 0));
     CHK_RET(GetBoardSendRecvMatrix(algBoardNum_, sendRecvMatrix));
 
@@ -518,13 +537,13 @@ HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub)
 {
     (void)notifyIdxMianToSub;
     return;
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToClos(std::vector<u32> &notifyIdxMianToSub)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToClos(std::vector<u32>& notifyIdxMianToSub)
 {
     notifyIdxMianToSub.clear();
     if (threadNum_ <= 1) {
@@ -536,7 +555,7 @@ void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToClos(std::vector<u32> &notifyI
     }
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToFullMesh(std::vector<u32> &notifyIdxMianToSub)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToFullMesh(std::vector<u32>& notifyIdxMianToSub)
 {
     notifyIdxMianToSub.clear();
     if (threadNum_ <= 1) {
@@ -548,13 +567,13 @@ void InsTempUBXAllToAllVMesh1D::GetNotifyIdxMainToFullMesh(std::vector<u32> &not
     }
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     (void)notifyIdxSubToMain;
     return;
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxClosToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxClosToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 notifyNum = threadNum_ - 1 - maxRankNumPerBoard_;
@@ -563,7 +582,7 @@ void InsTempUBXAllToAllVMesh1D::GetNotifyIdxClosToMain(std::vector<u32> &notifyI
     }
 }
 
-void InsTempUBXAllToAllVMesh1D::GetNotifyIdxFullMeshToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempUBXAllToAllVMesh1D::GetNotifyIdxFullMeshToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 notifyNum = threadNum_ - 1;
@@ -572,4 +591,4 @@ void InsTempUBXAllToAllVMesh1D::GetNotifyIdxFullMeshToMain(std::vector<u32> &not
     }
 }
 
-} // namespace Hccl
+} // namespace ops_hccl

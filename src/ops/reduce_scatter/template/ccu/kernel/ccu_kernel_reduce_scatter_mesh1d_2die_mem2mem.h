@@ -22,24 +22,24 @@ constexpr uint64_t REDUCE_MS_CNT = 8;
 constexpr uint16_t REDUCE_SCATTER_2DIE_GROUP_REDUCE_MAX_PIECE_CNT = 8;
 constexpr uint32_t REDUCE_SCATTER_LOOP_COUNT = 16;
 constexpr uint32_t LOOP_NUM = 2;
-constexpr int INPUT_XN_ID        = 0;
-constexpr int SCRATCH_XN_ID      = 1;
-constexpr int TOKEN_XN_ID        = 2;
-constexpr int POST_SYNC_ID       = 3;
-constexpr int CKE_IDX_0          = 0;
+constexpr int INPUT_XN_ID = 0;
+constexpr int SCRATCH_XN_ID = 1;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int POST_SYNC_ID = 3;
+constexpr int CKE_IDX_0 = 0;
 
 struct CcuKernelArgReduceScatterMesh1D2DieMem2Mem : CcuKernelArgBase {
-    uint32_t                                gRankSize;
-    uint32_t                                rankSize;
-    uint32_t                                rankId;
-    bool                                    isReduceToOutput;
-    OpParam                                 opParam;
-    std::vector<uint32_t>                   subRankGroup;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint32_t gRankSize;
+    uint32_t rankSize;
+    uint32_t rankId;
+    bool isReduceToOutput;
+    OpParam opParam;
+    std::vector<uint32_t> subRankGroup;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct ReduceScatterMesh1D2DieMem2MemContext : CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterMesh1D2DieMem2Mem *arg;
+    const CcuKernelArgReduceScatterMesh1D2DieMem2Mem* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;
@@ -75,8 +75,8 @@ struct ReduceScatterMesh1D2DieMem2MemContext : CcuKernelCtxBase {
     std::array<std::vector<ccu::LocalAddr>, 2> loopScratch;
     ccu::LocalAddr loopSrc[2];
     ccu::LocalAddr loopDst[2];
-    ccu::Variable  loopLen[2];
-    ccu::Variable  loopLenExp[2];
+    ccu::Variable loopLen[2];
+    ccu::Variable loopLenExp[2];
 };
 
 CcuResult CcuReduceScatterMesh1D2DieMem2MemKernel(CcuKernelArg arg);

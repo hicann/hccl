@@ -12,32 +12,30 @@
 #include "ins_temp_send_host_nic_dpu.h"
 
 namespace ops_hccl {
-InsTempSendHostNicDpu::InsTempSendHostNicDpu()
-{
-}
+InsTempSendHostNicDpu::InsTempSendHostNicDpu() {}
 
-InsTempSendHostNicDpu::InsTempSendHostNicDpu(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
+InsTempSendHostNicDpu::InsTempSendHostNicDpu(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 
-InsTempSendHostNicDpu::~InsTempSendHostNicDpu()
-{
-}
+InsTempSendHostNicDpu::~InsTempSendHostNicDpu() {}
 
-HcclResult InsTempSendHostNicDpu::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
+HcclResult InsTempSendHostNicDpu::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     // host网卡资源，不新增从流和对应Notify，只申请DPU上面
     resourceRequest.slaveThreadNum = 0; // 主thread可以通过接口传入的stream来做转换
     resourceRequest.notifyNumPerThread = {};
     resourceRequest.notifyNumOnMainThread = 0;
-    
+
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
-    HCCL_INFO("[InsTempSendHostNicDpu][CalcRes]slaveThreadNum[%u], notifyNumPerThread [%u], notifyNumOnMainThread [%u],"
+    HCCL_INFO(
+        "[InsTempSendHostNicDpu][CalcRes]slaveThreadNum[%u], notifyNumPerThread [%u], notifyNumOnMainThread [%u],"
         " level1Channels [%u].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level1Channels.size());
@@ -46,16 +44,15 @@ HcclResult InsTempSendHostNicDpu::CalcRes(HcclComm comm, const OpParam &param,
 
 u64 InsTempSendHostNicDpu::CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType)
 {
-    (void) inBufferType;
-    (void) outBufferType;
+    (void)inBufferType;
+    (void)outBufferType;
     u64 scratchMultiple = subCommRanks_[0].size();
-    HCCL_INFO(
-        "[InsTempSendHostNicDpu][CalcScratchMultiple] templateScratchMultiplier [%llu]", scratchMultiple);
+    HCCL_INFO("[InsTempSendHostNicDpu][CalcScratchMultiple] templateScratchMultiplier [%llu]", scratchMultiple);
     return scratchMultiple;
 }
 
-HcclResult InsTempSendHostNicDpu::KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-    TemplateResource &resource)
+HcclResult InsTempSendHostNicDpu::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& resource)
 {
     threadNum_ = resource.threads.size();
     processSize_ = tempAlgParams.sliceSize;
@@ -86,8 +83,10 @@ HcclResult InsTempSendHostNicDpu::KernelRun(const OpParam &param, const Template
     dpuRunInfo.subCommRanks = subCommRanks_;
     u32 sendMsgId = 0;
     auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-    if (HcommSendRequest(reinterpret_cast<uint64_t>(resource.npu2DpuShmemPtr), param.algTag,
-        static_cast<void *>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId) != 0) {
+    if (HcommSendRequest(
+            reinterpret_cast<uint64_t>(resource.npu2DpuShmemPtr), param.algTag,
+            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+        != 0) {
         HCCL_ERROR("InsTempSendHostNicDpu HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
@@ -95,7 +94,7 @@ HcclResult InsTempSendHostNicDpu::KernelRun(const OpParam &param, const Template
     HCCL_INFO("InsTempSendHostNicDpu HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
 
     // 等待DPU数据传输，然后回写结果回来
-    void *recvData = nullptr;
+    void* recvData = nullptr;
     u32 recvMsgId = 0;
     if (HcommWaitResponse(reinterpret_cast<uint64_t>(resource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
         HCCL_ERROR("InsTempSendHostNicDpu HcommWaitResponse failed");
@@ -119,9 +118,9 @@ HcclResult InsTempSendHostNicDpu::KernelRun(const OpParam &param, const Template
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlgParam,
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const u32 myRank, const std::vector<std::vector<uint32_t>> &subCommRanks)
+HcclResult InsTempSendHostNicDpu::DPUKernelRun(
+    const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+    const std::vector<std::vector<uint32_t>>& subCommRanks)
 {
 #ifndef AICPU_COMPILE
     uint64_t sizePerRound = 0;
@@ -132,17 +131,17 @@ HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlg
         if (rankIdx == myRank) {
             continue;
         }
-        uint8_t *cclInput = static_cast<uint8_t *>(tempAlgParam.buffInfo.hcclBuff.addr);
+        uint8_t* cclInput = static_cast<uint8_t*>(tempAlgParam.buffInfo.hcclBuff.addr);
         uint64_t cclInputSize = tempAlgParam.buffInfo.hcclBuff.size;
 
-        uint8_t *input = static_cast<uint8_t *>(tempAlgParam.buffInfo.inputPtr);
+        uint8_t* input = static_cast<uint8_t*>(tempAlgParam.buffInfo.inputPtr);
         uint64_t inputSize = tempAlgParam.buffInfo.inputSize;
 
         for (u64 sizeResidue = inputSize; sizeResidue > 0; sizeResidue -= sizePerRound) {
             // 前同步
             CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, channels.at(rankIdx)[0].handle, 0)));
-            CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(0, channels.at(rankIdx)[0].handle,
-                0, timeOutSize)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommChannelNotifyWaitOnThread(0, channels.at(rankIdx)[0].handle, 0, timeOutSize)));
 
             // 写数据
             offset += sizePerRound;
@@ -150,14 +149,14 @@ HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlg
 
             aclrtMemcpy(cclInput, sizePerRound, input + offset, sizePerRound, ACL_MEMCPY_DEVICE_TO_DEVICE);
             void* src = cclInput;
-            void* dst = static_cast<void *>(static_cast<s8 *>(channels.at(rankIdx)[0].remoteCclMem.addr) + offset);
+            void* dst = static_cast<void*>(static_cast<s8*>(channels.at(rankIdx)[0].remoteCclMem.addr) + offset);
             HCCL_DEBUG("tx async inputmem's offset[%llu], size[%llu]", offset, sizePerRound);
-            CHK_RET(static_cast<HcclResult>(HcommWriteWithNotifyNbiOnThread(0, channels.at(rankIdx)[0].handle, dst, src,
-                sizePerRound, 1)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommWriteWithNotifyNbiOnThread(0, channels.at(rankIdx)[0].handle, dst, src, sizePerRound, 1)));
 
             // 后同步
-            CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(0, channels.at(rankIdx)[0].handle,
-                2, timeOutSize)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommChannelNotifyWaitOnThread(0, channels.at(rankIdx)[0].handle, 2, timeOutSize)));
             CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, channels.at(rankIdx)[0].handle)));
         }
     }
@@ -168,4 +167,4 @@ HcclResult InsTempSendHostNicDpu::DPUKernelRun(const TemplateDataParams &tempAlg
 #ifndef AICPU_COMPILE
 REGISTER_TEMPLATE_V2("InsTempSendHostNicDpu", InsTempSendHostNicDpu);
 #endif
-}  // namespace Hccl
+} // namespace ops_hccl

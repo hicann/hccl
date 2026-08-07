@@ -22,7 +22,7 @@ extern "C" {
 
 /* 自定义 AllGather 算子 */
 HcclResult HcclAllGatherCustom(
-    void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }

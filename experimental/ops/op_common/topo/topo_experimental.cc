@@ -15,21 +15,22 @@
 namespace ops_hccl_experimental {
 using ops_hccl::COMM_LEVEL0;
 
-HcclResult CalcGeneralTopoInfoInterServer(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
+HcclResult
+CalcGeneralTopoInfoInterServer(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
-    (void) comm;
+    (void)comm;
     algHierarchyInfo.levels = 1;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = topoInfo->userRank;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = topoInfo->userRankSize;
-    HCCL_INFO("[CalcGeneralTopoInfoInterServer] userRank[%u] serverIdx[%u] superPodIdx[%u] l0Rank[%u]"
+    HCCL_INFO(
+        "[CalcGeneralTopoInfoInterServer] userRank[%u] serverIdx[%u] superPodIdx[%u] l0Rank[%u]"
         "deviceNumPerModule[%u] serverNumPerSuperPod[%u] superPodNum[%u]"
         "l0RankSize[%u]",
-        topoInfo->userRank, topoInfo->serverIdx, topoInfo->superPodIdx,
-        algHierarchyInfo.infos[COMM_LEVEL0].localRank,
+        topoInfo->userRank, topoInfo->serverIdx, topoInfo->superPodIdx, algHierarchyInfo.infos[COMM_LEVEL0].localRank,
         topoInfo->deviceNumPerModule, topoInfo->serverNumPerSuperPod, topoInfo->superPodNum,
         algHierarchyInfo.infos[COMM_LEVEL0].localRankSize);
 
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl_experimental

@@ -52,20 +52,20 @@ public:
     explicit InsV2ReduceScatterOrderPreservedExecutor();
     ~InsV2ReduceScatterOrderPreservedExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                       const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-                       AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
-    HcclResult InitExecutorInfo(const OpParam &param);
-    HcclResult CalcSizePerBlock(const OpParam &param);
-    HcclResult CalcGroupSlices(const OpParam &param);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitExecutorInfo(const OpParam& param);
+    HcclResult CalcSizePerBlock(const OpParam& param);
+    HcclResult CalcGroupSlices(const OpParam& param);
     u64 RoundUpWithDivisor(u64 value, u64 divisor) const;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
@@ -74,6 +74,6 @@ protected:
     bool aicpuUnfoldMode_{false};
 };
 
-}
+} // namespace ops_hccl
 
 #endif

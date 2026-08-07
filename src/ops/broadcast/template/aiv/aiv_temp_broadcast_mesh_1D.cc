@@ -13,18 +13,17 @@
 
 namespace ops_hccl {
 
-AivTempBroadcastMesh1D::AivTempBroadcastMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                                       const std::vector<std::vector<u32>> &subCommRanks)
-                                                       : AivAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+AivTempBroadcastMesh1D::AivTempBroadcastMesh1D(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : AivAlgTemplateBase(param, rankId, subCommRanks)
+{}
 
-AivTempBroadcastMesh1D::~AivTempBroadcastMesh1D()
-{
-}
+AivTempBroadcastMesh1D::~AivTempBroadcastMesh1D() {}
 
-HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                               AlgResourceRequest& resourceRequest)
+HcclResult AivTempBroadcastMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -34,11 +33,11 @@ HcclResult AivTempBroadcastMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level0Channels;
-    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
-        for(auto channel : myChannelDescs) {
-            if(channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
                 level0Channels.push_back(channel);
             }
         }
@@ -67,18 +66,19 @@ HcclResult AivTempBroadcastMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult AivTempBroadcastMesh1D::KernelRun(const OpParam& param,
-                                                 const TemplateDataParams& tempAlgParams,
-                                                 const TemplateResource& templateResource)
+HcclResult AivTempBroadcastMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     HCCL_INFO("[AivTempBroadcastMesh1D] KernelRun start");
 
-    IncSliceId();  // 自动增长sliceId，传入sliceId
+    IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.DataDes.dataType;
     AivOpArgs aivBroadcastArgs;
     aivBroadcastArgs.cmdType = HcclCMDType::HCCL_CMD_BROADCAST;
-    aivBroadcastArgs.input = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
-    aivBroadcastArgs.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
+    aivBroadcastArgs.input
+        = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
+    aivBroadcastArgs.output
+        = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivBroadcastArgs.rank = u32(myRank_);
     aivBroadcastArgs.rankSize = tempRankSize_;
     aivBroadcastArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
@@ -89,24 +89,24 @@ HcclResult AivTempBroadcastMesh1D::KernelRun(const OpParam& param,
     aivBroadcastArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivBroadcastArgs.stream = param.stream;
     aivBroadcastArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
-        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
         HcclResult::HCCL_E_INTERNAL);
     aivBroadcastArgs.xRankSize = subCommRanks_[0].size();
     aivBroadcastArgs.yRankSize = 0;
     aivBroadcastArgs.zRankSize = 0;
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++){
+    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
         aivBroadcastArgs.topo_[i] = subCommRanks_[0][i];
     }
-    if (subCommRanks_.size() > 1){
+    if (subCommRanks_.size() > 1) {
         aivBroadcastArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
             aivBroadcastArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
         }
     }
-    if (subCommRanks_.size() == MAX_DIM_NUM){
+    if (subCommRanks_.size() == MAX_DIM_NUM) {
         aivBroadcastArgs.zRankSize = subCommRanks_[MAX_DIM_NUM - 1].size();
-        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++) {
             aivBroadcastArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[MAX_DIM_NUM - 1][i];
         }
     }
@@ -126,4 +126,4 @@ HcclResult AivTempBroadcastMesh1D::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-}  // namespace Hccl
+} // namespace ops_hccl

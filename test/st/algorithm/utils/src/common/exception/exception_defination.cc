@@ -12,7 +12,7 @@
 
 namespace HcclSim {
 
-HcclResult ExceptionInfo::GetErrorCode(const ExceptionType &type)
+HcclResult ExceptionInfo::GetErrorCode(const ExceptionType& type)
 {
     static const std::map<ExceptionType, HcclResult> errorCodeMap{
         {ExceptionType::NULL_PTR_EXCEPTION, HcclResult::HCCL_E_PTR},
@@ -34,7 +34,7 @@ HcclResult ExceptionInfo::GetErrorCode(const ExceptionType &type)
     return errorCodeMap.at(type);
 }
 
-std::string ExceptionInfo::GetErrorMsg(const ExceptionType &type)
+std::string ExceptionInfo::GetErrorMsg(const ExceptionType& type)
 {
     static const std::map<ExceptionType, std::string> errorMsgMap{
         {ExceptionType::NULL_PTR_EXCEPTION, "Null pointer exception: "},
@@ -55,4 +55,4 @@ std::string ExceptionInfo::GetErrorMsg(const ExceptionType &type)
         {ExceptionType::SUSPENDING_EXCEPTION, "Suspending exception: "}};
     return errorMsgMap.at(type);
 }
-}
+} // namespace HcclSim

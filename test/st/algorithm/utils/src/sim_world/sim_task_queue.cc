@@ -17,10 +17,7 @@ SimTaskQueue* SimTaskQueue::Global()
     return globalSimTaskQueue;
 }
 
-void SimTaskQueue::Clear()
-{
-    allRankTask_.clear();
-}
+void SimTaskQueue::Clear() { allRankTask_.clear(); }
 
 void SimTaskQueue::AppendTask(NpuPos npuPos, SimStream* stream, std::shared_ptr<TaskStub> task)
 {
@@ -34,9 +31,6 @@ void SimTaskQueue::AppendTask(NpuPos npuPos, SimStream* stream, std::shared_ptr<
     return;
 }
 
-AllRankTaskQueues& SimTaskQueue::GetAllRankTaskQueues()
-{
-    return allRankTask_;
-}
+AllRankTaskQueues& SimTaskQueue::GetAllRankTaskQueues() { return allRankTask_; }
 
-}
+} // namespace HcclSim

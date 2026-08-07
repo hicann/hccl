@@ -34,11 +34,11 @@ HcclResult InitRankInfo(HcclComm comm, TopoInfo* topoInfo);
 HcclResult InitRankInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult CalcMyRankInfo(HcclComm comm, TopoInfo* topoInfo);
-HcclResult SetServerModuleInfo(HcclComm comm, TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
+HcclResult SetServerModuleInfo(HcclComm comm, TopoInfo* topoInfo, const std::unordered_map<u32, u32>& pairLinkCounter);
 HcclResult SetSuperPodInfo(HcclComm comm, TopoInfo* topoInfo);
-bool IsDiffDeviceModule(const TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
+bool IsDiffDeviceModule(const TopoInfo* topoInfo, const std::unordered_map<u32, u32>& pairLinkCounter);
 
-HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32> &pairLinkCounter);
+HcclResult CalcLinkInfo(TopoInfo* topoInfo, const std::unordered_map<u32, u32>& pairLinkCounter);
 HcclResult CalcLevel0MeshType(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 /**
@@ -63,7 +63,7 @@ HcclResult CalcGroupIdx(HcclComm comm, TopoInfo* topoInfo, uint32_t netLayer);
  * @param pairLinkCounter Reference to an unordered map that will store the count of links by protocol type
  * @return HCCL_SUCCESS on success, other values indicate failure
  */
-HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_map<u32, u32> &pairLinkCounter);
+HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_map<u32, u32>& pairLinkCounter);
 /**
  * Calculates the module index based on sever index and device type.
  * For certain device types (like 910B) with different device modules, the module index
@@ -73,11 +73,11 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
  * @return HCCL_SUCCESS on success, other values indicate failure
  */
 HcclResult GetModuleIdx(HcclComm comm, TopoInfo* topoInfo);
-HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topoInfo, uint32_t &moduleIdx);
-HcclResult GetModuleMap(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>> &moduleMap);
+HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topoInfo, uint32_t& moduleIdx);
+HcclResult GetModuleMap(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>>& moduleMap);
 uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo);
 uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo);
-HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>> &moduleMap);
+HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>>& moduleMap);
 /**
  * Calculates the number of servers per superpod based on netlayer L0 and L1 rank information.
  *
@@ -86,9 +86,9 @@ HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32
  * @param serversPerSuperPod Vector containing the number of servers in each superpod
  * @return HCCL_SUCCESS on success, other values indicate failure
  */
-HcclResult CalculateServersPerSuperPod(const std::vector<uint32_t> &l0Sizes,
-                                       const std::vector<uint32_t> &l1Sizes,
-                                       std::vector<uint32_t> &serversPerSuperPod);
+HcclResult CalculateServersPerSuperPod(
+    const std::vector<uint32_t>& l0Sizes, const std::vector<uint32_t>& l1Sizes,
+    std::vector<uint32_t>& serversPerSuperPod);
 
 HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
@@ -99,13 +99,12 @@ HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
 HcclResult Is2DieFullMesh(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult CalAllLevelEndpointAttrBwCoeff(
-    HcclComm comm, uint32_t rankId, uint32_t levelSize, std::vector<std::vector<EndpointAttrBwCoeff>> &endpointAttrBw);
+    HcclComm comm, uint32_t rankId, uint32_t levelSize, std::vector<std::vector<EndpointAttrBwCoeff>>& endpointAttrBw);
 
 HcclResult IsLevel0PcieMix(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
-template<typename T>
+template <typename T>
 bool is_uniform(const std::vector<T>& vec);
-}
+} // namespace ops_hccl
 
 #endif
-

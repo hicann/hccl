@@ -17,11 +17,11 @@ namespace ops_hccl_allgather {
 
 thread_local aclrtBinHandle g_binKernelHandle = nullptr;
 
-HcclResult GetKernelFilePath(std::string &binaryPath)
+HcclResult GetKernelFilePath(std::string& binaryPath)
 {
     // 获取二进制文件路径
     std::string libPath;
-    char *getPath = std::getenv("ASCEND_HOME_PATH");
+    char* getPath = std::getenv("ASCEND_HOME_PATH");
     if (getPath != nullptr) {
         libPath = getPath;
     } else {
@@ -36,17 +36,15 @@ HcclResult GetKernelFilePath(std::string &binaryPath)
     return HCCL_SUCCESS;
 }
 
-HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode,
-    aclrtBinHandle &binHandle)
+HcclResult LoadBinaryFromFile(
+    const char* binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode, aclrtBinHandle& binHandle)
 {
-    CHK_PRT_RET(binPath == nullptr,
-        HCCL_ERROR("[Load][Binary]binary path is nullptr"),
-        HCCL_E_PTR);
+    CHK_PRT_RET(binPath == nullptr, HCCL_ERROR("[Load][Binary]binary path is nullptr"), HCCL_E_PTR);
 
     char realPath[PATH_MAX] = {0};
-    CHK_PRT_RET(realpath(binPath, realPath) == nullptr,
-        HCCL_ERROR("LoadBinaryFromFile: %s is not a valid real path, err[%d]", binPath, errno),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        realpath(binPath, realPath) == nullptr,
+        HCCL_ERROR("LoadBinaryFromFile: %s is not a valid real path, err[%d]", binPath, errno), HCCL_E_INTERNAL);
     HCCL_INFO("[LoadBinaryFromFile] realPath: %s", realPath);
 
     aclrtBinaryLoadOptions loadOptions = {0};
@@ -55,9 +53,10 @@ HcclResult LoadBinaryFromFile(const char *binPath, aclrtBinaryLoadOptionType opt
     loadOptions.options = &option;
     option.type = optionType;
     option.value.cpuKernelMode = cpuKernelMode;
-    aclError aclRet = aclrtBinaryLoadFromFile(realPath, &loadOptions, &binHandle); // ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE
-    CHK_PRT_RET(aclRet != ACL_SUCCESS,
-        HCCL_ERROR("[LoadBinaryFromFile] load binary from file error, ret[%d]", aclRet),
+    aclError aclRet
+        = aclrtBinaryLoadFromFile(realPath, &loadOptions, &binHandle); // ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS, HCCL_ERROR("[LoadBinaryFromFile] load binary from file error, ret[%d]", aclRet),
         HCCL_E_OPEN_FILE_FAILURE);
 
     return HCCL_SUCCESS;
@@ -73,11 +72,14 @@ HcclResult LoadAICPUKernel(void)
     std::string jsonPath;
     CHK_RET(GetKernelFilePath(jsonPath));
     jsonPath += "libcustom_allgather_aicpu_kernel.json";
-    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0,
-        g_binKernelHandle);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[LoadAICPUKernel] load aicpu file fail, ret[%d], path[%s], optionType[%u], "
-        "cpuKernelMode[%u].", ret, jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0), ret);
+    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0, g_binKernelHandle);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[LoadAICPUKernel] load aicpu file fail, ret[%d], path[%s], optionType[%u], "
+            "cpuKernelMode[%u].",
+            ret, jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0),
+        ret);
     return HCCL_SUCCESS;
 }
-}
+} // namespace ops_hccl_allgather

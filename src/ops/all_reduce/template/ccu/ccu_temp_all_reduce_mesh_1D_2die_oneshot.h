@@ -16,27 +16,28 @@
 
 namespace ops_hccl {
 
-class CcuTempAllreduceMesh1D2DieOneShot :  public CcuAlgTemplateBase {
+class CcuTempAllreduceMesh1D2DieOneShot : public CcuAlgTemplateBase {
 public:
     CcuTempAllreduceMesh1D2DieOneShot() = default;
-    explicit  CcuTempAllreduceMesh1D2DieOneShot(const OpParam& param, 
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllreduceMesh1D2DieOneShot(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllreduceMesh1D2DieOneShot() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of allreduce ccu mesh1D 2die with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat("Template of allreduce ccu mesh1D 2die with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
@@ -46,6 +47,6 @@ private:
     uint32_t mySubCommRank_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_ALLREDUCE_MESH_1D_2DIE_ONE_SHOT_H
+#endif // HCCL_CCU_TEMP_ALLREDUCE_MESH_1D_2DIE_ONE_SHOT_H

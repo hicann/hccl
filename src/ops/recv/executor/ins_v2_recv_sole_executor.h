@@ -29,25 +29,26 @@ public:
     explicit InsV2RecvSoleExecutor();
     ~InsV2RecvSoleExecutor() override = default;
     std::string Describe() const override;
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
     HcclResult OrchestrateWithThread(
-            const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread) override;
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
     HcclResult CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     u32 sendRank_ = 0;
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     ChannelInfo recvChannel_;
-    ThreadHandle thread_;  // 只涉及一个thread
+    ThreadHandle thread_; // 只涉及一个thread
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
 };
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
 #endif

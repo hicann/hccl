@@ -23,24 +23,27 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-static inline u32 AnalyseRankSize(const TopoMeta &topoInfo)
+static inline u32 AnalyseRankSize(const TopoMeta& topoInfo)
 {
     u32 rankSize = 0;
-    for (const auto &superPod : topoInfo) {
-        for (const auto &podIdx : superPod) {
+    for (const auto& superPod : topoInfo) {
+        for (const auto& podIdx : superPod) {
             rankSize += podIdx.size();
         }
     }
     return rankSize;
 }
 
-template<typename DispatchFn, typename VerifyFn>
-void RunVMultilevelTest(const TopoMeta &topoInfo, VDataDesTag vDataDes,
-    std::function<void()> extraEnvSetup, DispatchFn dispatchFn, VerifyFn verifyFn)
+template <typename DispatchFn, typename VerifyFn>
+void RunVMultilevelTest(
+    const TopoMeta& topoInfo, VDataDesTag vDataDes, std::function<void()> extraEnvSetup, DispatchFn dispatchFn,
+    VerifyFn verifyFn)
 {
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
-    if (extraEnvSetup) { extraEnvSetup(); }
+    if (extraEnvSetup) {
+        extraEnvSetup();
+    }
 
     auto rankSize = AnalyseRankSize(topoInfo);
 
@@ -57,18 +60,24 @@ void RunVMultilevelTest(const TopoMeta &topoInfo, VDataDesTag vDataDes,
             aclrtCreateStream(&stream);
             HcclComm comm = nullptr;
             HcclResult ret = HcclCommInitClusterInfo("./ranktable.json", rankId, &comm);
-            if (ret != HCCL_SUCCESS) { return ret; }
+            if (ret != HCCL_SUCCESS) {
+                return ret;
+            }
 
             ret = dispatchFn(rankId, totalCount, vDataDes, comm, stream);
-            if (ret != HCCL_SUCCESS) { return ret; }
+            if (ret != HCCL_SUCCESS) {
+                return ret;
+            }
 
             ret = HcclCommDestroy(comm);
-            if (ret != HCCL_SUCCESS) { return ret; }
+            if (ret != HCCL_SUCCESS) {
+                return ret;
+            }
             return HCCL_SUCCESS;
         });
     }
 
-    for (auto &thread : threads) {
+    for (auto& thread : threads) {
         thread.join();
     }
 

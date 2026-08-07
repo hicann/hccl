@@ -12,14 +12,12 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivAlltoAllVMesh1D : public AivCommBase {
 public:
+    __aicore__ inline AivAlltoAllVMesh1D() {}
 
-    __aicore__ inline AivAlltoAllVMesh1D() {
-    }
-
-    __aicore__ inline void InitCoreInfo(ExtraArgs &extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
+    __aicore__ inline void InitCoreInfo(ExtraArgs& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
     {
         // 发送数据的编排
         uint64_t sendCountThisLoop = 0;
@@ -40,9 +38,10 @@ public:
             sendCurCount_ = dataPerCore;
         }
         sendInputOffset_ = input_ + (sendDisplThisLoop + innerDispls) * sizeof(T);
-        sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (targetRank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
+        sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_])
+                            + (targetRank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
 
-        //接收数据的编排
+        // 接收数据的编排
         uint64_t recvCountThisLoop = 0;
         uint64_t recvDisplThisLoop = extraArgs.recvDispls[targetRank_] + extraArgs.recvCounts[targetRank_];
         if (extraArgs.recvCounts[targetRank_] > processedDataCount) {
@@ -58,7 +57,8 @@ public:
             innerDispls = coreIndex_ * dataPerCore + remainder;
             recvCurCount_ = dataPerCore;
         }
-        recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[targetRank_]) + (rank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
+        recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[targetRank_])
+                           + (rank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
         recvOutputOffset_ = output_ + (recvDisplThisLoop + innerDispls) * sizeof(T);
     }
 
@@ -74,7 +74,7 @@ public:
         }
         WaitFlag(rank_, flag_offset, tagTemp);
 
-        CpGM2GM((__gm__ T *)sendOutputOffset_, (__gm__ T *)sendInputOffset_, sendCurCount_);
+        CpGM2GM((__gm__ T*)sendOutputOffset_, (__gm__ T*)sendInputOffset_, sendCurCount_);
         PipeBarrier<PIPE_ALL>();
 
         flag_offset = rank_ * coreNumPerRank_ + coreIndex_ + coreCount_;
@@ -89,7 +89,7 @@ public:
         uint64_t flag_offset = blockIdx_ + coreCount_;
         WaitFlag(rank_, flag_offset, loop);
 
-        CpGM2GM((__gm__ T *)recvOutputOffset_, (__gm__ T *)recvInputOffset_, recvCurCount_);
+        CpGM2GM((__gm__ T*)recvOutputOffset_, (__gm__ T*)recvInputOffset_, recvCurCount_);
         PipeBarrier<PIPE_ALL>(); // 核内自己的同步
 
         flag_offset = rank_ * coreNumPerRank_ + coreIndex_;
@@ -104,33 +104,33 @@ public:
     // 若在 Wait(C) 之前，本 rank 的 C 区被写0，Wait(C,curTag_) 永远等不到 → 死锁。
     __aicore__ inline void InitCtrlCore()
     {
-        rankNumPerCore_ = (rankSize_ + numBlocks_ - 1) / numBlocks_;   // 一核负责的 rank 数(ceil)
+        rankNumPerCore_ = (rankSize_ + numBlocks_ - 1) / numBlocks_; // 一核负责的 rank 数(ceil)
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
             uint32_t dstRank = blockIdx_ * rankNumPerCore_ + idx;
             if (dstRank >= rankSize_) {
                 break;
             }
-            Record(dstRank, rank_ + rankSize_, curTag_);   // 1. 初始化对端 C 区 [dstRank][rank_+rankSize]
+            Record(dstRank, rank_ + rankSize_, curTag_); // 1. 初始化对端 C 区 [dstRank][rank_+rankSize]
         }
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
             uint32_t dstRank = blockIdx_ * rankNumPerCore_ + idx;
             if (dstRank >= rankSize_) {
                 break;
             }
-            WaitFlag(rank_, dstRank + rankSize_, curTag_);  // 2. 等对端初始化本 rank 的 C 区为 curTag_
+            WaitFlag(rank_, dstRank + rankSize_, curTag_); // 2. 等对端初始化本 rank 的 C 区为 curTag_
         }
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
             uint32_t dstRank = blockIdx_ * rankNumPerCore_ + idx;
             if (dstRank >= rankSize_) {
                 break;
             }
-            Record(dstRank, rank_, curTag_);               // 3. 初始化对端 P 区 [dstRank][rank_]，释放对端 PRODUCE
+            Record(dstRank, rank_, curTag_); // 3. 初始化对端 P 区 [dstRank][rank_]，释放对端 PRODUCE
         }
     }
 
     // 控核每轮：两阶段（先全部 put，再全部 get），flag 用 per-rank 两区
-    __aicore__ inline void ProduceConsumeCtrlCore(uint64_t loop, ExtraArgs &extraArgs,
-        uint64_t processedDataCount, uint64_t currDataCount)
+    __aicore__ inline void
+    ProduceConsumeCtrlCore(uint64_t loop, ExtraArgs& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
     {
         // PRODUCE：本核负责的每个 dstRank，input 本轮 chunk -> GM_IN[rank_][dstRank 区]
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
@@ -147,16 +147,15 @@ public:
             }
             uint32_t ackTag = loop;
             if (loop == 0) {
-                ackTag = curTag_;                                   // 等对端上一轮 ack
+                ackTag = curTag_; // 等对端上一轮 ack
             }
-            WaitFlag(rank_, dstRank, ackTag);                       // P 区 [rank_][dstRank]
+            WaitFlag(rank_, dstRank, ackTag); // P 区 [rank_][dstRank]
             uint64_t sendDisplThisLoop = extraArgs.sendDispls[dstRank] + processedDataCount;
             sendInputOffset_ = input_ + sendDisplThisLoop * sizeof(T);
-            sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_])
-                               + dstRank * cclBufferCountPerRank_ * sizeof(T);
-            CpGM2GM((__gm__ T *)sendOutputOffset_, (__gm__ T *)sendInputOffset_, sendCurCount_);
+            sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * cclBufferCountPerRank_ * sizeof(T);
+            CpGM2GM((__gm__ T*)sendOutputOffset_, (__gm__ T*)sendInputOffset_, sendCurCount_);
             PipeBarrier<PIPE_ALL>();
-            Record(dstRank, rank_ + rankSize_, loop);               // C 区 [dstRank][rank_+rankSize] = data-ready
+            Record(dstRank, rank_ + rankSize_, loop); // C 区 [dstRank][rank_+rankSize] = data-ready
         }
         // CONSUME：本核负责的每个 dstRank，GM_IN[dstRank][rank_ 区] -> output
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
@@ -171,18 +170,17 @@ public:
             if (recvCurCount_ == 0) { // 与多核 Consumer 一致
                 continue;
             }
-            WaitFlag(rank_, dstRank + rankSize_, loop);             // C 区 [rank_][dstRank+rankSize] = data-ready
+            WaitFlag(rank_, dstRank + rankSize_, loop); // C 区 [rank_][dstRank+rankSize] = data-ready
             uint64_t recvDisplThisLoop = extraArgs.recvDispls[dstRank] + processedDataCount;
-            recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank])
-                              + rank_ * cclBufferCountPerRank_ * sizeof(T);
+            recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * cclBufferCountPerRank_ * sizeof(T);
             recvOutputOffset_ = output_ + recvDisplThisLoop * sizeof(T);
-            CpGM2GM((__gm__ T *)recvOutputOffset_, (__gm__ T *)recvInputOffset_, recvCurCount_);
+            CpGM2GM((__gm__ T*)recvOutputOffset_, (__gm__ T*)recvInputOffset_, recvCurCount_);
             PipeBarrier<PIPE_ALL>();
-            Record(dstRank, rank_, loop + 1);                       // P 区 [dstRank][rank_] = ack
+            Record(dstRank, rank_, loop + 1); // P 区 [dstRank][rank_] = ack
         }
     }
 
-    __aicore__ inline void CalcLoopInfo(ExtraArgs &extraArgs, uint64_t &maxSendOrRecvDataCount, uint64_t &loopTimes)
+    __aicore__ inline void CalcLoopInfo(ExtraArgs& extraArgs, uint64_t& maxSendOrRecvDataCount, uint64_t& loopTimes)
     {
         maxSendOrRecvDataCount = 0;
         for (uint64_t i = 0; i < rankSize_; i++) {
@@ -190,11 +188,11 @@ public:
             maxSendOrRecvDataCount = max(maxSendOrRecvDataCount, extraArgs.recvCounts[i]);
         }
         // 每张卡的loopTimes可能是不一样的
-        loopTimes = maxSendOrRecvDataCount / cclBufferCountPerRank_ +
-            static_cast<uint64_t>(maxSendOrRecvDataCount % cclBufferCountPerRank_ != 0);
+        loopTimes = maxSendOrRecvDataCount / cclBufferCountPerRank_
+                    + static_cast<uint64_t>(maxSendOrRecvDataCount % cclBufferCountPerRank_ != 0);
     }
 
-    __aicore__ inline void ProcessCtrlCore(uint64_t len, uint32_t sliceId, ExtraArgs &extraArgs)
+    __aicore__ inline void ProcessCtrlCore(uint64_t len, uint32_t sliceId, ExtraArgs& extraArgs)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         cclBufferCountPerRank_ = len;
@@ -207,14 +205,15 @@ public:
 
         uint64_t processedDataCount = 0;
         for (uint64_t loop = 0; loop < loopTimes; loop++) {
-            uint64_t currDataCount = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : cclBufferCountPerRank_;
+            uint64_t currDataCount
+                = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : cclBufferCountPerRank_;
             ProduceConsumeCtrlCore(loop, extraArgs, processedDataCount, currDataCount);
             SyncAll<true>();
             processedDataCount += currDataCount;
         }
     }
 
-    __aicore__ inline void Process(uint64_t len, uint32_t sliceId, ExtraArgs &extraArgs)
+    __aicore__ inline void Process(uint64_t len, uint32_t sliceId, ExtraArgs& extraArgs)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         cclBufferCountPerRank_ = len;
@@ -226,7 +225,8 @@ public:
             return;
         }
         targetRank_ = blockIdx_ / coreNumPerRank_; // 每个核负责哪个rank的数据
-        coreIndex_ = (blockIdx_ - (targetRank_ * coreNumPerRank_)) % coreNumPerRank_;  // 每个核在当前coreNumPerRank_里面的排序
+        coreIndex_
+            = (blockIdx_ - (targetRank_ * coreNumPerRank_)) % coreNumPerRank_; // 每个核在当前coreNumPerRank_里面的排序
 
         uint64_t dataPerCore = cclBufferCountPerRank_ / coreNumPerRank_;
         uint64_t remainder = cclBufferCountPerRank_ % coreNumPerRank_;
@@ -254,7 +254,8 @@ public:
 
         uint64_t processedDataCount = 0;
         for (uint64_t loop = 0; loop < loopTimes; loop++) {
-            uint64_t currDataCount = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : cclBufferCountPerRank_;
+            uint64_t currDataCount
+                = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : cclBufferCountPerRank_;
             InitCoreInfo(extraArgs, processedDataCount, currDataCount);
             Producer(loop); // 写数据
             Consumer(loop); // 读数据
@@ -278,8 +279,8 @@ public:
     uint64_t innerDisplsForCcl_;
 };
 
-template<typename T>
-__aicore__ inline void AivAlltoAllVV2Mesh1D(KERNEL_ARGS_DEF, ExtraArgs &extraArgs)
+template <typename T>
+__aicore__ inline void AivAlltoAllVV2Mesh1D(KERNEL_ARGS_DEF, ExtraArgs& extraArgs)
 {
     AivAlltoAllVMesh1D<T> op;
     op.Init(KERNEL_CLASS_INIT, true);

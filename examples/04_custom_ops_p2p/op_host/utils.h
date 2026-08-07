@@ -16,8 +16,8 @@
 #include "common.h"
 
 namespace ops_hccl_p2p {
-HcclResult GetDeviceType(DeviceType *deviceType);
-HcclResult AcquireChannel(HcclComm comm, CommEngine engine, DeviceType devType,
-                          uint32_t srcRank, uint32_t dstRank, ChannelHandle *channel);
-}
+HcclResult GetDeviceType(DeviceType* deviceType);
+HcclResult AcquireChannel(
+    HcclComm comm, CommEngine engine, DeviceType devType, uint32_t srcRank, uint32_t dstRank, ChannelHandle* channel);
+} // namespace ops_hccl_p2p
 #endif

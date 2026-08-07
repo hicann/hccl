@@ -26,9 +26,9 @@ using AllRankTaskQueues = std::map<PodId, std::map<SerId, std::map<PhyId, Single
 
 class SimTaskQueue {
 public:
-    static SimTaskQueue *Global();
+    static SimTaskQueue* Global();
     void Clear();
-    void AppendTask(NpuPos npuPos, SimStream *stream, std::shared_ptr<TaskStub> task);
+    void AppendTask(NpuPos npuPos, SimStream* stream, std::shared_ptr<TaskStub> task);
 
     AllRankTaskQueues& GetAllRankTaskQueues();
 
@@ -36,5 +36,5 @@ private:
     std::mutex mutex_;
     AllRankTaskQueues allRankTask_;
 };
-}
+} // namespace HcclSim
 #endif

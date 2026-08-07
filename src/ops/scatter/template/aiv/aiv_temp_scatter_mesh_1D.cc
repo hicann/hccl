@@ -13,18 +13,17 @@
 
 namespace ops_hccl {
 
-AivTempScatterMesh1D::AivTempScatterMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                                       const std::vector<std::vector<u32>> &subCommRanks)
-                                                       : AivAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+AivTempScatterMesh1D::AivTempScatterMesh1D(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : AivAlgTemplateBase(param, rankId, subCommRanks)
+{}
 
-AivTempScatterMesh1D::~AivTempScatterMesh1D()
-{
-}
+AivTempScatterMesh1D::~AivTempScatterMesh1D() {}
 
-HcclResult AivTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                               AlgResourceRequest& resourceRequest)
+HcclResult AivTempScatterMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -34,11 +33,11 @@ HcclResult AivTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, co
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level0Channels;
-    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
-        for(auto channel : myChannelDescs) {
-            if(channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
                 level0Channels.push_back(channel);
             }
         }
@@ -53,7 +52,7 @@ HcclResult AivTempScatterMesh1D::CalcRes(HcclComm comm, const OpParam& param, co
 
 HcclResult AivTempScatterMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    (void) dataSize;
+    (void)dataSize;
     if (numBlocksLimit == 0) {
         HCCL_ERROR("[AivTempScatterMesh1D] numBlocksLimit is 0");
         return HcclResult::HCCL_E_NOT_SUPPORT;
@@ -63,18 +62,19 @@ HcclResult AivTempScatterMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult AivTempScatterMesh1D::KernelRun(const OpParam& param,
-                                                 const TemplateDataParams& tempAlgParams,
-                                                 const TemplateResource& templateResource)
+HcclResult AivTempScatterMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     HCCL_INFO("[AivTempScatterMesh1D] KernelRun start");
 
-    IncSliceId();  // 自动增长sliceId，传入sliceId
+    IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.DataDes.dataType;
     AivOpArgs aivScatterArgs;
     aivScatterArgs.cmdType = HcclCMDType::HCCL_CMD_SCATTER;
-    aivScatterArgs.input = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
-    aivScatterArgs.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
+    aivScatterArgs.input
+        = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
+    aivScatterArgs.output
+        = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivScatterArgs.rank = u32(myRank_);
     aivScatterArgs.rankSize = tempRankSize_;
     aivScatterArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
@@ -85,24 +85,24 @@ HcclResult AivTempScatterMesh1D::KernelRun(const OpParam& param,
     aivScatterArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivScatterArgs.stream = param.stream;
     aivScatterArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
-        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
         HcclResult::HCCL_E_INTERNAL);
     aivScatterArgs.xRankSize = subCommRanks_[0].size();
     aivScatterArgs.yRankSize = 0;
     aivScatterArgs.zRankSize = 0;
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++){
+    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
         aivScatterArgs.topo_[i] = subCommRanks_[0][i];
     }
-    if (subCommRanks_.size() > 1){
+    if (subCommRanks_.size() > 1) {
         aivScatterArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
             aivScatterArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
         }
     }
-    if (subCommRanks_.size() == MAX_DIM_NUM){
+    if (subCommRanks_.size() == MAX_DIM_NUM) {
         aivScatterArgs.zRankSize = subCommRanks_[MAX_DIM_NUM - 1].size();
-        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++) {
             aivScatterArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[MAX_DIM_NUM - 1][i];
         }
     }
@@ -122,4 +122,4 @@ HcclResult AivTempScatterMesh1D::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-}  // namespace Hccl
+} // namespace ops_hccl

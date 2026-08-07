@@ -16,29 +16,17 @@ class SimNotify {
 public:
     SimNotify(uint32_t id) : notifyId_(id), isUsed_{false} {}
 
-    inline uint32_t GetNotifyId()
-    {
-        return notifyId_;
-    }
+    inline uint32_t GetNotifyId() { return notifyId_; }
 
-    inline bool IsAllocated()
-    {
-        return isUsed_;
-    }
+    inline bool IsAllocated() { return isUsed_; }
 
-    inline void Allocate()
-    {
-        isUsed_ = true;
-    }
+    inline void Allocate() { isUsed_ = true; }
 
-    inline void Release()
-    {
-        isUsed_ = false;
-    }
+    inline void Release() { isUsed_ = false; }
 
 private:
     bool isUsed_;
     uint32_t notifyId_;
 };
-}
+} // namespace HcclSim
 #endif

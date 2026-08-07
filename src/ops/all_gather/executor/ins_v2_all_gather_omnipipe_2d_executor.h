@@ -35,37 +35,41 @@ public:
     explicit InsV2AllGatherOmniPipe2DExecutor();
     ~InsV2AllGatherOmniPipe2DExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-                                    AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
-    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 
-    HcclResult GenTemplateAlgParamsByDimData(const OpParam &param, TemplateDataParams &tempAlgParams,
-                                             StepSliceInfo &stepSliceInfo, u64 processedDataCount);
+    HcclResult GenTemplateAlgParamsByDimData(
+        const OpParam& param, TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount);
 
-    HcclResult PrepareResForTemplate(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        CcuAlgTemplate0 &agAlgLevel0, CcuAlgTemplate1 &agAlgLevel1);
+    HcclResult PrepareResForTemplate(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, CcuAlgTemplate0& agAlgLevel0,
+        CcuAlgTemplate1& agAlgLevel1);
 
-    HcclResult RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-        std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo);
+    HcclResult RestoreChannelMap(
+        const AlgResourceCtxSerializable& resCtx,
+        std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo);
 
-    HcclResult CalcResLevel(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcResLevel(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         CommonAlgTemplateBase& tempAlg, AlgResourceRequest& resourceRequest);
 
-    std::vector<ThreadHandle> threads_;  // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
+    std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 
     uint64_t rankSizeLevel0_{0};
     uint64_t rankSizeLevel1_{0};
@@ -73,15 +77,14 @@ protected:
     uint64_t rankIdxLevel0_{0};
     uint64_t rankIdxLevel1_{0};
 
-    ThreadHandle              controlThread_;
+    ThreadHandle controlThread_;
     std::vector<ThreadHandle> templateLocalCopyThreads_;
     std::vector<ThreadHandle> templateMainThreads_;
-    std::vector<u32>          notifyIdxControlToTemplates_;
-    std::vector<u32>          notifyIdxTemplatesToControl_;
+    std::vector<u32> notifyIdxControlToTemplates_;
+    std::vector<u32> notifyIdxTemplatesToControl_;
     std::vector<ThreadHandle> level0Threads_;
     std::vector<ThreadHandle> level1Threads_;
-
 };
-}
+} // namespace ops_hccl
 
 #endif // HCCLV2_INS_V2_ALL_GATHER_OMNIPIPE_2D_EXECUTOR_H

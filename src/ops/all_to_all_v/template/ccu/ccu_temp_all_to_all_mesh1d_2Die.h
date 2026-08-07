@@ -23,24 +23,28 @@ using RankGroup = std::vector<RankId>;
 class CcuTempAllToAllMesh1D2Die : public CcuAlgTemplateBase {
 public:
     CcuTempAllToAllMesh1D2Die() = default;
-    explicit CcuTempAllToAllMesh1D2Die(const OpParam &param, RankId rankId, const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllToAllMesh1D2Die(
+        const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAllToAllMesh1D2Die() override;
 
     std::string Describe() const override
     {
         return StringFormat("Template of alltoall ccu mesh 2Die with rankSize[%u]", templateRankSize_);
     }
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
-    HcclResult FastLaunch(const OpParam &param, const TemplateFastLaunchCtx &tempFastLaunchCtx) override;
+    HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
 
 private:
     HcclResult PartitionChannels(HcclComm comm, std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc);
-    HcclResult CalcFillArgsInfo(uint32_t kernelIdx, uint64_t &sliceSize, uint64_t &sliceOffset);
-    HcclResult LaunchKernels(uint32_t kernelCount, uint64_t inputAddr, uint64_t outputAddr, uint64_t token,
-        uint64_t sliceStride, const LoopGroupConfig &config, const TemplateDataParams &templateDataParams,
+    HcclResult CalcFillArgsInfo(uint32_t kernelIdx, uint64_t& sliceSize, uint64_t& sliceOffset);
+    HcclResult LaunchKernels(
+        uint32_t kernelCount, uint64_t inputAddr, uint64_t outputAddr, uint64_t token, uint64_t sliceStride,
+        const LoopGroupConfig& config, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource);
 
     bool is2Plus6_ = false;

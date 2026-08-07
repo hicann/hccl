@@ -27,14 +27,30 @@ typedef unsigned long long u64;
 const u32 HCCL_TAG_MAX_LEN = 191; // 最大的tag 长度
 
 /**
-* @brief stream handle.
-*/
-typedef void *rtStream_t;
+ * @brief stream handle.
+ */
+typedef void* rtStream_t;
 
 // 2 is sizeof(float16), 8 is sizeof(float64), 2 is sizeof(bfloat16)..
-constexpr u32 HCCL_SIZE_TABLE[HCCL_DATA_TYPE_RESERVED] = {sizeof(s8), sizeof(s16), sizeof(s32),
-    2, sizeof(float), sizeof(s64), sizeof(u64), sizeof(u8), sizeof(u16), sizeof(u32),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr u32 HCCL_SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(s8),
+       sizeof(s16),
+       sizeof(s32),
+       2,
+       sizeof(float),
+       sizeof(s64),
+       sizeof(u64),
+       sizeof(u8),
+       sizeof(u16),
+       sizeof(u32),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 // 对内芯片类型
 enum class HcclDevType {
@@ -55,7 +71,8 @@ const std::unordered_map<std::string, HcclDevType> HCCL_SOC_VER_CONVERT{
     {"Ascend310P3", HcclDevType::DEV_TYPE_310P3},
     {"Ascend310P5", HcclDevType::DEV_TYPE_310P3},
     {"Ascend310P7", HcclDevType::DEV_TYPE_310P3},
-    {"Ascend310B1", HcclDevType::DEV_TYPE_310P3},  // 临时映射，临时当前Ascend310B1 torch_npu未与hccl的so解耦；计划20250630完成解耦，解耦后删除
+    {"Ascend310B1", HcclDevType::DEV_TYPE_310P3}, // 临时映射，临时当前Ascend310B1
+                                                  // torch_npu未与hccl的so解耦；计划20250630完成解耦，解耦后删除
     {"Ascend910", HcclDevType::DEV_TYPE_910},
     {"Ascend910A", HcclDevType::DEV_TYPE_910},
     {"Ascend910B", HcclDevType::DEV_TYPE_910},
@@ -70,7 +87,9 @@ const std::unordered_map<std::string, HcclDevType> HCCL_SOC_VER_CONVERT{
     {"Ascend910B4-1", HcclDevType::DEV_TYPE_910B},
     {"Ascend910_9391", HcclDevType::DEV_TYPE_910_93},
     {"Ascend910_9381", HcclDevType::DEV_TYPE_910_93},
-    {"Ascend910_9392", HcclDevType::DEV_TYPE_910_93},   // Ascend910_9392、Ascend910_9382为预留类型，当前版本暂不支持，待跟随后续版本节奏交付
+    {"Ascend910_9392",
+     HcclDevType::
+         DEV_TYPE_910_93}, // Ascend910_9392、Ascend910_9382为预留类型，当前版本暂不支持，待跟随后续版本节奏交付
     {"Ascend910_9382", HcclDevType::DEV_TYPE_910_93},
     {"Ascend910_9372", HcclDevType::DEV_TYPE_910_93},
     {"Ascend910_9362", HcclDevType::DEV_TYPE_910_93},
@@ -83,9 +102,9 @@ const std::unordered_map<std::string, HcclDevType> HCCL_SOC_VER_CONVERT{
 #ifdef __cplusplus
 extern "C" {
 #endif
-HcclResult HcclGetDeviceType(HcclDevType &devType);
+HcclResult HcclGetDeviceType(HcclDevType& devType);
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
 #endif // DEV_TYPE_H

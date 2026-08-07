@@ -19,12 +19,12 @@ HcclMem HcclMemRange(HcclMem inMem, u64 offset, u64 size)
         HCCL_ERROR("HcclMem addr is null");
         return outMem;
     }
-    if (offset + size > inMem.size){
+    if (offset + size > inMem.size) {
         HCCL_ERROR("HcclMem request range[%llu] is out of size[%llu]", offset + size, inMem.size);
         return outMem;
     }
     outMem.type = inMem.type;
-    outMem.addr = static_cast<void *>(static_cast<u8 *>(inMem.addr) + offset);
+    outMem.addr = static_cast<void*>(static_cast<u8*>(inMem.addr) + offset);
     outMem.size = size;
     return outMem;
 }
@@ -32,7 +32,8 @@ HcclMem HcclMemRange(HcclMem inMem, u64 offset, u64 size)
 u32 CalcCeilLog2(const u32 num)
 {
     u32 ans = 0;
-    for (u32 tmp = num - 1; tmp != 0; tmp >>= 1, ++ans) {}
+    for (u32 tmp = num - 1; tmp != 0; tmp >>= 1, ++ans) {
+    }
     return ans;
 }
-}
+} // namespace ops_hccl

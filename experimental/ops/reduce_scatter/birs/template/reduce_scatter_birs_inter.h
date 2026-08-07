@@ -24,28 +24,30 @@ public:
 
     HcclResult Prepare(u32 serverNum, u32 interRankSize) override;
 
-    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
+    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels) override;
 
 protected:
-    HcclResult LocalCopyPreproc(ThreadHandle &stream, const u32 rank, u64 sliceSize, u64 localStrideSize);
+    HcclResult LocalCopyPreproc(ThreadHandle& stream, const u32 rank, u64 sliceSize, u64 localStrideSize);
 
-    HcclResult Preprocess(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
-    HcclResult HCCSIntraStep(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
-    HcclResult SIOIntraStep(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
-    HcclResult LocalCopyIntraStep(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_,
-                            u64 sliceSize, u64 localStrideSize);
-    HcclResult PreprocInterServer(const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize,
-                            u64 localStrideSize, std::vector<ChannelInfo> &channels);
-    HcclResult InterServer(const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize,
-                        u64 localStrideSize, std::vector<ChannelInfo> &channels);
+    HcclResult Preprocess(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels) override;
+    HcclResult
+    HCCSIntraStep(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
+    HcclResult
+    SIOIntraStep(u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
+    HcclResult LocalCopyIntraStep(
+        u32 round, const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize);
+    HcclResult PreprocInterServer(
+        const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize,
+        std::vector<ChannelInfo>& channels);
+    HcclResult InterServer(
+        const u32 rank, const u32 rankSize, u32 rankSizeX_, u64 sliceSize, u64 localStrideSize,
+        std::vector<ChannelInfo>& channels);
 
 private:
     u32 serverNum_;
     u32 intraRankSize_;
     std::vector<u32> vec_offsets;
 };
-}
+} // namespace ops_hccl_experimental
 
 #endif /* * REDUCE_SCATTER_BIRS_INTER_H */

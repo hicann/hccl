@@ -18,9 +18,9 @@ namespace ops_hccl {
 constexpr u32 ALL_REDUCE_DIE_NUM = 2;
 constexpr u32 DIE_WORK = 2;
 
-CcuTempAllreduceMesh1D2DieOneShot::CcuTempAllreduceMesh1D2DieOneShot(const OpParam& param, const u32 rankId,
-                                   const std::vector<std::vector<u32>> &subCommRanks)
-: CcuAlgTemplateBase(param, rankId, subCommRanks)
+CcuTempAllreduceMesh1D2DieOneShot::CcuTempAllreduceMesh1D2DieOneShot(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
+    : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
     templateRankSize_ = ranks.size();
@@ -30,25 +30,25 @@ CcuTempAllreduceMesh1D2DieOneShot::CcuTempAllreduceMesh1D2DieOneShot(const OpPar
     }
 }
 
-CcuTempAllreduceMesh1D2DieOneShot::~CcuTempAllreduceMesh1D2DieOneShot()
-{
-}
+CcuTempAllreduceMesh1D2DieOneShot::~CcuTempAllreduceMesh1D2DieOneShot() {}
 
-HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                                      AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     resourceRequest.notifyNumOnMainThread = 1;
     resourceRequest.slaveThreadNum = 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     resourceRequest.ccuKernelNum.push_back(ALL_REDUCE_DIE_NUM);
-    HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
-    
+    HCCL_DEBUG(
+        "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+
     std::vector<HcclChannelDesc> channelDescs;
     std::vector<HcclChannelDesc> myChannelDescs;
     std::vector<std::vector<HcclChannelDesc>> channelDescsDie(resourceRequest.ccuKernelNum[0]);
     std::vector<std::vector<u32>> groupRanksforDie(resourceRequest.ccuKernelNum[0]);
-    
+
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     uint32_t channelIdx = 0;
     for (auto channel : channelDescs) {
@@ -67,8 +67,9 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpPar
 
     for (uint32_t die = 0; die < ALL_REDUCE_DIE_NUM; die++) {
         CcuKernelInfo kernelInfo;
-        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllreduceMesh1D2DieOneShot"));
-        kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllreduceMesh1D2DieOneShotKernel);
+        CHK_SAFETY_FUNC_RET(strcpy_s(
+            kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllreduceMesh1D2DieOneShot"));
+        kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllreduceMesh1D2DieOneShotKernel);
 
         bool rmtReduceWithMyRank = channelDescsDie[die].size() > channelDescsDie[1 - die].size() ? false : true;
         if (rmtReduceWithMyRank) {
@@ -81,23 +82,24 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(HcclComm comm, const OpPar
         kernelArg->opParam = param;
         kernelArg->subCommRanks = groupRanksforDie;
         kernelArg->rmtReduceWithMyRank = rmtReduceWithMyRank;
-        
+
         kernelInfo.setKernelArg(kernelArg);
         kernelInfo.channels = channelDescsDie[die];
         resourceRequest.ccuKernelInfos.push_back(kernelInfo);
-        
-        HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] channelDescs.size()=%llu, rankSize=%llu, ",
+
+        HCCL_DEBUG(
+            "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] channelDescs.size()=%llu, rankSize=%llu, ",
             channelDescsDie[die].size(), groupRanksforDie[die].size());
     }
 
-    HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] ccuKernelInfos.size()=%llu",
-            resourceRequest.ccuKernelInfos.size());
+    HCCL_DEBUG(
+        "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] ccuKernelInfos.size()=%llu",
+        resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
-                                                        const TemplateDataParams& templateDataParams,
-                                                        TemplateResource& templateResource)
+HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 
@@ -122,36 +124,37 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
 
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = CCU_MS_DEFAULT_LOOP_COUNT;
-    config.memSlice     = CCU_MS_SIZE;
+    config.loopCount = CCU_MS_DEFAULT_LOOP_COUNT;
+    config.memSlice = CCU_MS_SIZE;
 
     auto rmtReduceGoSize = CalGoSize(sliceSize, config);
     auto localReduceGoSize0 = CalGoSize(localRedcueSize0, config);
     auto localReduceGoSize1 = CalGoSize(localRedcueSize1, config);
 
-    std::vector<uint64_t> taskArgs = {
-        inputAddr,
-        outputAddr,
-        token,
-        scratchAddr,
-        scratchBaseOffset0,
-        scratchBaseOffset1,
-        localReduceSliceOffset0,
-        localReduceSliceOffset1
-    };
+    std::vector<uint64_t> taskArgs
+        = {inputAddr,
+           outputAddr,
+           token,
+           scratchAddr,
+           scratchBaseOffset0,
+           scratchBaseOffset1,
+           localReduceSliceOffset0,
+           localReduceSliceOffset1};
 
-    for (auto &goSize : {rmtReduceGoSize, localReduceGoSize0, localReduceGoSize1}) {
-        for (auto &element : goSize) {
+    for (auto& goSize : {rmtReduceGoSize, localReduceGoSize0, localReduceGoSize1}) {
+        for (auto& element : goSize) {
             taskArgs.push_back(element);
         }
     }
     uint64_t argSize = taskArgs.size();
 
     for (auto dieId = 0; dieId < dieNum; dieId++) {
-        CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[dieId], templateResource.ccuKernels[dieId],
-            taskArgs.data(), argSize);
+        CcuResult launchRet = HcommCcuKernelLaunch(
+            templateResource.threads[dieId], templateResource.ccuKernels[dieId], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempAllreduceMesh1D2DieOneShot::KernelRun] die[%d] kernel launch failed, ccuRet -> %d", dieId, launchRet);
+            HCCL_ERROR(
+                "[CcuTempAllreduceMesh1D2DieOneShot::KernelRun] die[%d] kernel launch failed, ccuRet -> %d", dieId,
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
         HCCL_INFO("[CcuTempAllreduceMesh1D2DieOneShot::KernelRun] die[%d] end", dieId);
@@ -159,10 +162,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempAllreduceMesh1D2DieOneShot::GetThreadNum() const
-{
-    return ALL_REDUCE_DIE_NUM;
-}
+u64 CcuTempAllreduceMesh1D2DieOneShot::GetThreadNum() const { return ALL_REDUCE_DIE_NUM; }
 
 HcclResult CcuTempAllreduceMesh1D2DieOneShot::GetRes(AlgResourceRequest& resourceRequest) const
 {

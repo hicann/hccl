@@ -14,19 +14,18 @@ using namespace std;
 
 namespace HcclSim {
 
-SimThreadMgr::SimThreadMgr(std::string commId, u32 curRank) : commId_(commId), curRank_(curRank)
-{}
+SimThreadMgr::SimThreadMgr(std::string commId, u32 curRank) : commId_(commId), curRank_(curRank) {}
 
-HcclResult SimThreadMgr::CommEngineToNotifyLoadType(CommEngine engine, NotifyLoadType &type)
+HcclResult SimThreadMgr::CommEngineToNotifyLoadType(CommEngine engine, NotifyLoadType& type)
 {
     switch (engine) {
         case 0: // COMM_ENGINE_CPU
         case 1: // COMM_ENGINE_CPU_TS
-            type =  NotifyLoadType::HOST_NOTIFY;
+            type = NotifyLoadType::HOST_NOTIFY;
             break;
         case COMM_ENGINE_AICPU:
         case COMM_ENGINE_AICPU_TS:
-            type =  NotifyLoadType::DEVICE_NOTIFY;
+            type = NotifyLoadType::DEVICE_NOTIFY;
             break;
         default:
             HCCL_ERROR("[ThreadMgr] Unknown comm engine type: %d", engine);
@@ -36,7 +35,7 @@ HcclResult SimThreadMgr::CommEngineToNotifyLoadType(CommEngine engine, NotifyLoa
 }
 
 HcclResult SimThreadMgr::HcclThreadAcquireWithStream(
-    CommEngine engine, rtStream_t stream, uint32_t notifyNum, ThreadHandle *thread)
+    CommEngine engine, rtStream_t stream, uint32_t notifyNum, ThreadHandle* thread)
 {
     NotifyLoadType notifyLoadType;
     CHK_RET(CommEngineToNotifyLoadType(engine, notifyLoadType));
@@ -53,11 +52,12 @@ HcclResult SimThreadMgr::HcclThreadAcquireWithStream(
 }
 
 HcclResult SimThreadMgr::HcclThreadAcquire(
-    CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle *threads)
+    CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle* threads)
 {
     std::lock_guard<std::mutex> lock(threadMutex_);
     for (uint32_t i = 0; i < threadNum; ++i) {
-        auto simThread = std::make_shared<SimHcclThread>(StreamType::STREAM_TYPE_RESERVED, notifyNumPerThread, NotifyLoadType::HOST_NOTIFY);
+        auto simThread = std::make_shared<SimHcclThread>(
+            StreamType::STREAM_TYPE_RESERVED, notifyNumPerThread, NotifyLoadType::HOST_NOTIFY);
         simThread->SetCurRank(curRank_);
         simThread->SetCtxIndex(i + 1);
         CHK_RET(simThread->Init());
@@ -68,7 +68,7 @@ HcclResult SimThreadMgr::HcclThreadAcquire(
     return HCCL_SUCCESS;
 }
 
-HcclResult SimThreadMgr::CommGetNotifyNumInThread(ThreadHandle thread, uint32_t *notifyNum)
+HcclResult SimThreadMgr::CommGetNotifyNumInThread(ThreadHandle thread, uint32_t* notifyNum)
 {
     SimHcclThread* hcclThread = reinterpret_cast<SimHcclThread*>(thread);
     CHK_PTR_NULL(hcclThread);
@@ -76,4 +76,4 @@ HcclResult SimThreadMgr::CommGetNotifyNumInThread(ThreadHandle thread, uint32_t 
     return HCCL_SUCCESS;
 }
 
-};
+}; // namespace HcclSim

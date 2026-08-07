@@ -19,39 +19,39 @@
 #include "topo_match_1d.h"
 
 namespace ops_hccl {
-    class InsV2RecvExecutor : public InsCollAlgBase {
-    public:
-        std::string Describe() const override;
+class InsV2RecvExecutor : public InsCollAlgBase {
+public:
+    std::string Describe() const override;
 
-        HcclResult CalcAlgHierarchyInfo(
-            HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
-        // 资源计算
-        HcclResult CalcRes(
-            HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
+    // 资源计算
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-        // 算法编排
-        HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    // 算法编排
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    protected:
-        HcclResult InitRecvInfo(
-            const HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
-        HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) const;
-        // 图模式&单算子
-        HcclResult OrchestrateImpl(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+protected:
+    HcclResult InitRecvInfo(
+        const HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) const;
+    // 图模式&单算子
+    HcclResult OrchestrateImpl(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
-        u32 remoteRank_;
-        // 一次搬运最大数据量
-        u64 maxLoopTransSize_;
-        // 一次搬运最大数据个数
-        u64 maxLoopTransCount_;
-        u32 sliceId_{0};
-        // 单算子|图模式
-        OpMode opMode_;
-    };
+    u32 remoteRank_;
+    // 一次搬运最大数据量
+    u64 maxLoopTransSize_;
+    // 一次搬运最大数据个数
+    u64 maxLoopTransCount_;
+    u32 sliceId_{0};
+    // 单算子|图模式
+    OpMode opMode_;
+};
 
 } // namespace ops_hccl
 
-#endif  // HCCL_INS_V2_RECV_EXECUTOR_H
+#endif // HCCL_INS_V2_RECV_EXECUTOR_H

@@ -21,11 +21,12 @@ DEFINE_WEAK_FUNC(HcclResult, HcommProfilingReportOp, HcomProInfoTmp profInfo);
 DEFINE_WEAK_FUNC(uint64_t, HcommGetProfilingSysCycleTime);
 DEFINE_WEAK_FUNC(HcclResult, HcclDfxRegOpInfoByCommId, char* commId, void* hcclDfxOpInfo);
 DEFINE_WEAK_FUNC(HcclResult, HcclProfilingReportOp, HcclComm comm, uint64_t beginTime);
-DEFINE_WEAK_FUNC(HcclResult, HcclReportAicpuKernel, HcclComm comm, uint64_t beginTime, char *kernelName);
+DEFINE_WEAK_FUNC(HcclResult, HcclReportAicpuKernel, HcclComm comm, uint64_t beginTime, char* kernelName);
 DEFINE_WEAK_FUNC(HcclResult, HcclReportAivKernel, HcclComm comm, uint64_t beginTime);
 
 // 初始化
-void HcommProfilingDlInit(void* libHcommHandle) {
+void HcommProfilingDlInit(void* libHcommHandle)
+{
     INIT_SUPPORT_FLAG(libHcommHandle, HcommProfilingRegThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommProfilingUnRegThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommProfilingReportKernel);

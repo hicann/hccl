@@ -11,17 +11,15 @@
 #include "reduce_scatter_executor_base.h"
 
 namespace ops_hccl_experimental {
-using ops_hccl::HCCL_INTERNODE_MAX_DATA_RATE;
 using ops_hccl::ExecMem;
+using ops_hccl::HCCL_INTERNODE_MAX_DATA_RATE;
 using ops_hccl::RDMA_SEND_MAX_SIZE;
 using ops_hccl::SDMA_SEND_MAX_SIZE;
 
-ReduceScatterExecutorBase::ReduceScatterExecutorBase() : ExecutorBase()
-{
-}
+ReduceScatterExecutorBase::ReduceScatterExecutorBase() : ExecutorBase() {}
 
 // 执行入口
-HcclResult ReduceScatterExecutorBase::Orchestrate(const OpParam &param, AlgResourceCtx* resCtx)
+HcclResult ReduceScatterExecutorBase::Orchestrate(const OpParam& param, AlgResourceCtx* resCtx)
 {
     HcclUs startut = TIME_NOW();
     topoInfo_ = &(resCtx->topoInfo);
@@ -34,9 +32,11 @@ HcclResult ReduceScatterExecutorBase::Orchestrate(const OpParam &param, AlgResou
     CHK_PTR_NULL(param.outputPtr);
 
     // 做参数的还原
-    ThreadHandle* threadHandlePtr = reinterpret_cast<ThreadHandle *>(reinterpret_cast<char *>(algResource_) + sizeof(AlgResourceCtx));
-    ChannelInfo* channelInfoPtr = reinterpret_cast<ChannelInfo *>(reinterpret_cast<char *>(threadHandlePtr) + sizeof(ThreadHandle) * (algResource_->slaveThreadNum + 1));
-    
+    ThreadHandle* threadHandlePtr
+        = reinterpret_cast<ThreadHandle*>(reinterpret_cast<char*>(algResource_) + sizeof(AlgResourceCtx));
+    ChannelInfo* channelInfoPtr = reinterpret_cast<ChannelInfo*>(
+        reinterpret_cast<char*>(threadHandlePtr) + sizeof(ThreadHandle) * (algResource_->slaveThreadNum + 1));
+
     HCCL_DEBUG("[ReduceScatterExecutorBase][Orchestrate] slaveThreadNum[%u]", algResource_->slaveThreadNum);
     for (u32 i = 0; i < algResource_->slaveThreadNum + 1; i++) {
         HCCL_DEBUG("[ReduceScatterExecutorBase][Orchestrate] threadHandle[%u]=[%llu]", i, threadHandlePtr[i]);
@@ -58,37 +58,43 @@ HcclResult ReduceScatterExecutorBase::Orchestrate(const OpParam &param, AlgResou
     }
 
     HcclResult ret = RunLoop(param);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ReduceScatterExecutorBase][Orchestrate]errNo[0x%016llx] ReduceScatter executor kernel run failed",
-            HCCL_ERROR_CODE(ret)), ret);
-    HCCL_INFO("[ReduceScatterExecutorBase][Orchestrate]tag[%s] ReduceScatter executor orchestrate success, take time [%lld]us.",
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[ReduceScatterExecutorBase][Orchestrate]errNo[0x%016llx] ReduceScatter executor kernel run failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
+    HCCL_INFO(
+        "[ReduceScatterExecutorBase][Orchestrate]tag[%s] ReduceScatter executor orchestrate success, take time "
+        "[%lld]us.",
         param.tag, DURATION_US(TIME_NOW() - startut));
     return HCCL_SUCCESS;
 }
 
 bool ReduceScatterExecutorBase::IsHugeData(u64 curSize) const
 {
-    bool hugeData = curSize * topoInfo_->userRankSize / HCCL_INTERNODE_MAX_DATA_RATE > RDMA_SEND_MAX_SIZE ||
-        curSize > SDMA_SEND_MAX_SIZE;
+    bool hugeData = curSize * topoInfo_->userRankSize / HCCL_INTERNODE_MAX_DATA_RATE > RDMA_SEND_MAX_SIZE
+                    || curSize > SDMA_SEND_MAX_SIZE;
     return hugeData;
 }
 
-HcclResult ReduceScatterExecutorBase::RunLoop(const OpParam &param)
+HcclResult ReduceScatterExecutorBase::RunLoop(const OpParam& param)
 {
     u64 totalRecvCount = param.DataDes.count;
     u64 totalRecvSize = totalRecvCount * unitSize_;
 
-    u8 *curUserInputPtr = static_cast<u8 *>(param.inputPtr);
-    u8 *curUserOutputPtr = static_cast<u8 *>(param.outputPtr);
+    u8* curUserInputPtr = static_cast<u8*>(param.inputPtr);
+    u8* curUserOutputPtr = static_cast<u8*>(param.outputPtr);
     auto cclInputMem = algResource_->cclInputMem;
     auto cclOutputMem = algResource_->cclOutputMem;
-    CHK_PRT_RET((cclInputMem.size == 0), HCCL_ERROR("[ReduceScatterExecutorBase][RunLoop]cclBuffer size is zero"), HCCL_E_PARA);
+    CHK_PRT_RET(
+        (cclInputMem.size == 0), HCCL_ERROR("[ReduceScatterExecutorBase][RunLoop]cclBuffer size is zero"), HCCL_E_PARA);
 
-    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
-        param.engine == CommEngine::COMM_ENGINE_CPU) {
+    if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
         int32_t ret = HcommAcquireComm(param.commName);
-        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ",
-            __func__, param.commName), static_cast<HcclResult>(ret));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ", __func__, param.commName),
+            static_cast<HcclResult>(ret));
     }
 
     u64 curRecvCount = totalRecvCount;
@@ -110,9 +116,10 @@ HcclResult ReduceScatterExecutorBase::RunLoop(const OpParam &param)
     execMem.inputPtr = curUserInputPtr;
     execMem.outputPtr = curUserOutputPtr;
 
-    HCCL_DEBUG("[ReduceScatterExecutorBase][RunLoop] curUserInputPtr[%p], curUserOutputPtr[%p], "
-        "curRecvCount[%llu], curRecvSize[%llu], curSendSize[%llu], inputPtr[%p], outputPtr[%p]", curUserInputPtr,
-        curUserOutputPtr, curRecvCount, curRecvSize, curSendSize, curInputMem.addr, curOutputMem.addr);
+    HCCL_DEBUG(
+        "[ReduceScatterExecutorBase][RunLoop] curUserInputPtr[%p], curUserOutputPtr[%p], "
+        "curRecvCount[%llu], curRecvSize[%llu], curSendSize[%llu], inputPtr[%p], outputPtr[%p]",
+        curUserInputPtr, curUserOutputPtr, curRecvCount, curRecvSize, curSendSize, curInputMem.addr, curOutputMem.addr);
 
     CHK_RET(KernelRun(param, execMem));
 
@@ -121,25 +128,27 @@ HcclResult ReduceScatterExecutorBase::RunLoop(const OpParam &param)
         CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
     }
 #endif
-    if(param.engine == CommEngine::COMM_ENGINE_CPU_TS || 
-        param.engine == CommEngine::COMM_ENGINE_CPU) {
+    if (param.engine == CommEngine::COMM_ENGINE_CPU_TS || param.engine == CommEngine::COMM_ENGINE_CPU) {
         int32_t ret = HcommReleaseComm(param.commName);
-        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommReleaseComm failed ", 
-                    __func__, param.commName), static_cast<HcclResult>(ret));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommReleaseComm failed ", __func__, param.commName),
+            static_cast<HcclResult>(ret));
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult ReduceScatterExecutorBase::CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-    AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType)
+HcclResult ReduceScatterExecutorBase::CalcResRequest(
+    HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgResourceRequest& resourceRequest, AlgType& algType)
 {
     return HCCL_SUCCESS;
 }
 
-HcclResult ReduceScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum,
-    std::vector<Slice> &dataSlice)
+HcclResult
+ReduceScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum, std::vector<Slice>& dataSlice)
 {
-    CHK_PRT_RET((sliceNum == 0), HCCL_ERROR("[ReduceScatterExecutorBase][PrepareDataSlice]sliceNum is zero."), HCCL_E_PARA);
+    CHK_PRT_RET(
+        (sliceNum == 0), HCCL_ERROR("[ReduceScatterExecutorBase][PrepareDataSlice]sliceNum is zero."), HCCL_E_PARA);
 
     dataSlice.resize(sliceNum);
     u64 sliceSize = dataCount * unitSize;
@@ -150,4 +159,4 @@ HcclResult ReduceScatterExecutorBase::PrepareDataSlice(u64 dataCount, u32 unitSi
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl_experimental

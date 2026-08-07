@@ -20,13 +20,13 @@ constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
 // ! 已经编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2ReduceScatterSequenceExecutor()
-{
-}
+{}
 
 // ! 已编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(const OpParam& param,
-    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(
+    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
@@ -34,19 +34,20 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ =  HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     algHierarchyInfo_ = algHierarchyInfo;
-    HCCL_INFO("[InsV2ReduceScatterSequenceExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], redOp [%u], "
-        "dataType [%u] dataTypeSize [%u]", myRank_, rankSize_, devType_, reduceOp_, dataType_, dataTypeSize_);
+    HCCL_INFO(
+        "[InsV2ReduceScatterSequenceExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], redOp [%u], "
+        "dataType [%u] dataTypeSize [%u]",
+        myRank_, rankSize_, devType_, reduceOp_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
 
 // ! 已编码完成，实例化实际执行以来AutoMatchMeshNhr这个类的实现
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(HcclComm comm,
-    TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
@@ -59,8 +60,9 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
 // ! 已编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(HcclComm comm, const OpParam& param,
-    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
+HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     HCCL_DEBUG("[InsV2ReduceScatterSequenceExecutor]CalcRes start");
     // 初始化一些基本成员变量
@@ -69,8 +71,10 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HCCL_ERROR("algHierarchyInfo size should be %u", SEQUENCE_EXECUTOR_LEVEL_NUM);
         return HCCL_E_INTERNAL;
     }
-    std::shared_ptr<InsAlgTemplate0> interTempAlg = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
-    std::shared_ptr<InsAlgTemplate1> intraTempAlg = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[1]);
+    std::shared_ptr<InsAlgTemplate0> interTempAlg
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate1> intraTempAlg
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[1]);
 
     AlgResourceRequest resReqInter;
     AlgResourceRequest resReqIntra;
@@ -83,37 +87,43 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     resourceRequest.notifyNumPerThread.resize(resourceRequest.slaveThreadNum);
     for (u32 i = 0; i < resourceRequest.slaveThreadNum; ++i) {
         if (i < resReqInter.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i], resReqInter.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqInter.notifyNumPerThread[i]);
         }
         if (i < resReqIntra.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i], resReqIntra.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqIntra.notifyNumPerThread[i]);
         }
     }
-    resourceRequest.notifyNumOnMainThread = std::max(resReqInter.notifyNumOnMainThread, resReqIntra.notifyNumOnMainThread);
+    resourceRequest.notifyNumOnMainThread
+        = std::max(resReqInter.notifyNumOnMainThread, resReqIntra.notifyNumOnMainThread);
     HCCL_INFO("notifyNumOnMainThread is %u", resourceRequest.notifyNumOnMainThread);
     resourceRequest.channels.resize(SEQUENCE_EXECUTOR_LEVEL_NUM);
     resourceRequest.channels[0] = resReqInter.channels[0];
     resourceRequest.channels[1] = resReqIntra.channels[0];
-    HCCL_INFO("slaveThreadNum is [%u], notifyNumOnMainThread is [%u], level 1 channel size [%u], level 2 channel size [%u]",
-        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.channels[0].size(), resourceRequest.channels[1].size());
+    HCCL_INFO(
+        "slaveThreadNum is [%u], notifyNumOnMainThread is [%u], level 1 channel size [%u], level 2 channel size [%u]",
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.channels[0].size(),
+        resourceRequest.channels[1].size());
     return HCCL_SUCCESS;
 }
 
 // ! 已编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx)
+HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::Orchestrate(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     // 参数填充
-    myRank_   = resCtx.topoInfo.userRank;
+    myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
 
-    dataCount_        = param.DataDes.count;
-    dataTypeSize_     =  HCCL_SIZE_TABLE[param.DataDes.dataType];
-    dataSize_         = dataCount_ * dataTypeSize_;
-    dataType_         = param.DataDes.dataType;
-    reduceOp_         = param.reduceType;
+    dataCount_ = param.DataDes.count;
+    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    dataSize_ = dataCount_ * dataTypeSize_;
+    dataType_ = param.DataDes.dataType;
+    reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
-    threads_          = resCtx.threads;
+    threads_ = resCtx.threads;
 
     rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
     rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
@@ -130,21 +140,26 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2ReduceScatterSequenceExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run failed",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2ReduceScatterSequenceExecutor][Orchestrate]errNo[0x%016llx] Reduce scatter executor kernel run "
+            "failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
     return HCCL_SUCCESS;
 }
 
 // ! 已编码完成
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx)
+HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     // 将ccl-buffer分成ccl-in和ccl-out 2部分区分使用
-    void *cclInAddr = resCtx.cclMem.addr;
+    void* cclInAddr = resCtx.cclMem.addr;
     HcclMem cclInMem = {resCtx.cclMem.type, cclInAddr, resCtx.cclMem.size / 2};
-    void *cclOutAddr = static_cast<void*>(static_cast<s8 *>(resCtx.cclMem.addr) + resCtx.cclMem.size / 2);
-    HcclMem cclOutMem = {resCtx.cclMem.type , cclOutAddr, resCtx.cclMem.size / 2};
+    void* cclOutAddr = static_cast<void*>(static_cast<s8*>(resCtx.cclMem.addr) + resCtx.cclMem.size / 2);
+    HcclMem cclOutMem = {resCtx.cclMem.type, cclOutAddr, resCtx.cclMem.size / 2};
     // 声明框内templateargs，user in搬运到ccl in，最终规约到ccl in
     TemplateDataParams tempAlgParamsInter;
     tempAlgParamsInter.buffInfo.inBuffType = BufferType::INPUT;
@@ -155,23 +170,27 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     tempAlgParamsInter.buffInfo.hcclBuff = cclInMem; // ! 待验证这样使用是否能正常输出到CCL-IN，或者这里改用CCL-OUT
 
     // 构建框内template
-    std::shared_ptr<InsAlgTemplate0> algTemplateInter = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
+    std::shared_ptr<InsAlgTemplate0> algTemplateInter
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
 
     // 声明框间templateargs，ccl-in写到对端ccl-out，最终规约到outputPtr上
     TemplateDataParams tempAlgParamsIntra;
-    tempAlgParamsIntra.buffInfo.inputPtr = cclOutMem.addr; // ! 如果上面验证有问题，这里改成用CCL-OUT做输入，CCL-IN做Buffer
+    tempAlgParamsIntra.buffInfo.inputPtr
+        = cclOutMem.addr; // ! 如果上面验证有问题，这里改成用CCL-OUT做输入，CCL-IN做Buffer
     tempAlgParamsIntra.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsIntra.buffInfo.hcclBuff = cclInMem;
 
     // 构建框间template
-    std::shared_ptr<InsAlgTemplate1> algTemplateIntra = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
-    
+    std::shared_ptr<InsAlgTemplate1> algTemplateIntra
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
+
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;
     u32 templateScratchMultiplierInter = algTemplateInter->CalcScratchMultiple(inBuffType, outBuffType);
     u32 templateScratchMultiplierIntra = algTemplateIntra->CalcScratchMultiple(outBuffType, outBuffType);
 
-    u32 templateScratchMultiplier = std::max(templateScratchMultiplierInter * rankSizeLevel1_, templateScratchMultiplierIntra);
+    u32 templateScratchMultiplier
+        = std::max(templateScratchMultiplierInter * rankSizeLevel1_, templateScratchMultiplierIntra);
 
     // 构造框内template资源
     TemplateResource templateResourceInter;
@@ -191,8 +210,8 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
         return HCCL_E_INTERNAL;
     }
-    u64 maxCountPerLoop = tempAlgParamsInter.buffInfo.hcclBuff.size / 2 / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN
-        * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
+    u64 maxCountPerLoop = tempAlgParamsInter.buffInfo.hcclBuff.size / 2 / templateScratchMultiplier
+                          / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
@@ -211,11 +230,14 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         // 这里的stride当成传统意义上的sreide 间隔
         tempAlgParamsInter.inputSliceStride = dataSize_; // ccl-in按照rank偏移量，每次偏移是单次循环最大数据量
         tempAlgParamsInter.outputSliceStride = 0; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
-        
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.inputSliceStride [%u],"
+
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.inputSliceStride [%u],"
             "tempAlgParamsInter.outputSliceStride [%u] tempAlgParamsInter.sliceSize [%u]",
-            loop, tempAlgParamsInter.inputSliceStride, tempAlgParamsInter.outputSliceStride, tempAlgParamsInter.sliceSize);
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.buffInfo.inBuffBaseOff [%u],"
+            loop, tempAlgParamsInter.inputSliceStride, tempAlgParamsInter.outputSliceStride,
+            tempAlgParamsInter.sliceSize);
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.buffInfo.inBuffBaseOff [%u],"
             "tempAlgParamsInter.buffInfo.outBuffBaseOff [%u]",
             loop, tempAlgParamsInter.buffInfo.inBuffBaseOff, tempAlgParamsInter.buffInfo.outBuffBaseOff);
         // m*n组网框内需要做n次重复
@@ -223,9 +245,11 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HCCL_INFO("templateScratchMultiplierInter is %u", templateScratchMultiplierInter);
         tempAlgParamsInter.inputRepeatStride = templateScratchMultiplierInter * dataCount_ * dataTypeSize_;
         tempAlgParamsInter.outputRepeatStride = templateScratchMultiplierInter * currDataCount * dataTypeSize_;
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.repeatNum [%u],"
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsInter.repeatNum [%u],"
             "tempAlgParamsInter.inputRepeatStride [%u], tempAlgParamsInter.outputRepeatStride [%u]",
-            loop, tempAlgParamsInter.repeatNum, tempAlgParamsInter.inputRepeatStride, tempAlgParamsInter.outputRepeatStride);
+            loop, tempAlgParamsInter.repeatNum, tempAlgParamsInter.inputRepeatStride,
+            tempAlgParamsInter.outputRepeatStride);
         // 因为只考虑执行0级算法，所以传进template里面的channels就是channels_的第一个vector
         CHK_RET(algTemplateInter->KernelRun(param, tempAlgParamsInter, templateResourceInter));
 
@@ -240,13 +264,18 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         tempAlgParamsIntra.tailSize = tempAlgParamsIntra.sliceSize;
         // 这里的stride当成传统意义上的sreide 间隔
 
-        tempAlgParamsIntra.inputSliceStride = templateScratchMultiplierInter * currDataCount * dataTypeSize_; // 框间从ccl-in拿数据，
-        tempAlgParamsIntra.outputSliceStride = currDataCount * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
-        
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsIntra.inputSliceStride [%u],"
+        tempAlgParamsIntra.inputSliceStride
+            = templateScratchMultiplierInter * currDataCount * dataTypeSize_; // 框间从ccl-in拿数据，
+        tempAlgParamsIntra.outputSliceStride
+            = currDataCount * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
+
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsIntra.inputSliceStride [%u],"
             "tempAlgParamsIntra.outputSliceStride [%u] tempAlgParamsIntra.sliceSize [%u]",
-            loop, tempAlgParamsIntra.inputSliceStride, tempAlgParamsIntra.outputSliceStride, tempAlgParamsIntra.sliceSize);
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsIntra.buffInfo.inBuffBaseOff [%u],"
+            loop, tempAlgParamsIntra.inputSliceStride, tempAlgParamsIntra.outputSliceStride,
+            tempAlgParamsIntra.sliceSize);
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsIntra.buffInfo.inBuffBaseOff [%u],"
             "tempAlgParamsIntra.buffInfo.outBuffBaseOff [%u]",
             loop, tempAlgParamsIntra.buffInfo.inBuffBaseOff, tempAlgParamsIntra.buffInfo.outBuffBaseOff);
         // 不需要重复
@@ -260,10 +289,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_REDUCE_SCATTER,
-                                InsReduceScatterSequenceMeshMeshDPU,
-                                InsV2ReduceScatterSequenceExecutor,
-                                TopoMatchMultilevel,
-                                InsTempReduceScatterMesh1D,
-                                InsTempReduceScatterMesh1dDpu);
-}
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterSequenceMeshMeshDPU, InsV2ReduceScatterSequenceExecutor,
+    TopoMatchMultilevel, InsTempReduceScatterMesh1D, InsTempReduceScatterMesh1dDpu);
+} // namespace ops_hccl

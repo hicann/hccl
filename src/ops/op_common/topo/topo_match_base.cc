@@ -11,15 +11,12 @@
 #include "topo_match_base.h"
 
 namespace ops_hccl {
-TopoMatchBase::TopoMatchBase()
-{
-}
+TopoMatchBase::TopoMatchBase() {}
 
-TopoMatchBase::~TopoMatchBase()
-{
-}
+TopoMatchBase::~TopoMatchBase() {}
 
-HcclResult TopoMatchBase::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchBase::MatchTopo(
+    const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
     (void)topoInfo;

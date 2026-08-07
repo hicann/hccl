@@ -12,45 +12,39 @@
 
 namespace ops_hccl {
 constexpr u64 NATLAYER_THREE = 3;
-TopoMatchUBX1d::TopoMatchUBX1d()
-    : TopoMatchUBX()
-{
-}
+TopoMatchUBX1d::TopoMatchUBX1d() : TopoMatchUBX() {}
 
-TopoMatchUBX1d::~TopoMatchUBX1d()
-{
-}
+TopoMatchUBX1d::~TopoMatchUBX1d() {}
 
-HcclResult TopoMatchUBX1d::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                     AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchUBX1d::MatchTopo(
+    const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
     constexpr uint32_t EXPECTED_TOPO_LEVEL_NUM_2 = 2;
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > EXPECTED_TOPO_LEVEL_NUM_2,
-        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.",
-            topoInfo->topoLevelNums),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > EXPECTED_TOPO_LEVEL_NUM_2,
+        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums), HCCL_E_INTERNAL);
     uint32_t myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
-    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
-        HCCL_ERROR("[CollAlgFactory] [TopoMatchUBX] Rank [%d], deviceType not supported yet.",
-            myRank),
+    CHK_PRT_RET(
+        !shouldGoOutPlace(topoInfo->deviceType),
+        HCCL_ERROR("[CollAlgFactory] [TopoMatchUBX] Rank [%d], deviceType not supported yet.", myRank),
         HcclResult::HCCL_E_PARA);
     // 1.获取并校验通信层数
-    uint32_t *netLayers;
+    uint32_t* netLayers;
     uint32_t layerNum = 0;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &layerNum));
 
-    HCCL_DEBUG("[CollAlgFactory] [TopoMatchUBX] Rank [%d], netLayers[%u][%s]",
-               myRank, layerNum, PrintCArray<uint32_t>(netLayers, layerNum).c_str());
+    HCCL_DEBUG(
+        "[CollAlgFactory] [TopoMatchUBX] Rank [%d], netLayers[%u][%s]", myRank, layerNum,
+        PrintCArray<uint32_t>(netLayers, layerNum).c_str());
 
     // 2. 获取每个pod上rank数量以及pod数量
-    uint32_t *instSizeList;
+    uint32_t* instSizeList;
     uint32_t listSize = 0;
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, 0, &instSizeList, &listSize));
-    HCCL_INFO("[CollAlgFactory] [TopoMatchUBX] Rank [%d], [%u] pods ,ranksize on each pod :[%s]",
-        myRank,
-        listSize,
+    HCCL_INFO(
+        "[CollAlgFactory] [TopoMatchUBX] Rank [%d], [%u] pods ,ranksize on each pod :[%s]", myRank, listSize,
         PrintCArray<uint32_t>(instSizeList, listSize).c_str());
     // 3. 计算layer0的topo
     algHierarchyInfo.infos.resize(COMM_LAYER_SIZE_2);
@@ -64,13 +58,14 @@ HcclResult TopoMatchUBX1d::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDe
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchUBX1d::TopoForLayer3(const HcclComm comm, uint32_t layer0Size, const uint32_t myRank,
-                                         AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
+HcclResult TopoMatchUBX1d::TopoForLayer3(
+    const HcclComm comm, uint32_t layer0Size, const uint32_t myRank,
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
     HCCL_DEBUG("[TopoMatchUBX1d::MeshTopoForLayer3] layer0Size [%d]", layer0Size);
 #ifndef AICPU_COMPILE
     // 1. 查出layer 3的所有ranks
-    uint32_t *topoInsts;
+    uint32_t* topoInsts;
     uint32_t topoInstNum = 0;
     CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, NATLAYER_THREE, &topoInsts, &topoInstNum));
     CHK_PRT_RET(
@@ -90,7 +85,7 @@ HcclResult TopoMatchUBX1d::TopoForLayer3(const HcclComm comm, uint32_t layer0Siz
             continue;
         }
 
-        CommLink *links;
+        CommLink* links;
         uint32_t linkNum = 0;
         CHK_RET(HcclRankGraphGetLinks(comm, NATLAYER_THREE, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
@@ -103,4 +98,4 @@ HcclResult TopoMatchUBX1d::TopoForLayer3(const HcclComm comm, uint32_t layer0Siz
     return HcclResult::HCCL_SUCCESS;
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

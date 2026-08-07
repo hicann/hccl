@@ -21,25 +21,25 @@
 namespace ops_hccl {
 
 struct CcuKernelArgAllReduceNHR1D : CcuKernelArgBase {
-    uint64_t                         rankSize;
-    uint32_t                         rankId;
-    uint32_t                         axisId;
-    uint32_t                         axisSize;
-    std::vector<NHRStepInfo>         stepInfoVector;
-    std::map<u32, u32>               indexMap;
-    OpParam                          opParam;
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t axisId;
+    uint32_t axisSize;
+    std::vector<NHRStepInfo> stepInfoVector;
+    std::map<u32, u32> indexMap;
+    OpParam opParam;
     std::vector<std::vector<uint32_t>> tempVTopo;
 };
 
-struct AllReduceNHR1DContext: CcuKernelCtxBase {
-    const CcuKernelArgAllReduceNHR1D *arg;
+struct AllReduceNHR1DContext : CcuKernelCtxBase {
+    const CcuKernelArgAllReduceNHR1D* arg;
 
     // 构造函数中
     uint32_t rankId{0};
     uint64_t rankSize{0};
     uint32_t axisId{0};
     uint32_t axisSize{0};
-    uint32_t localSize{0};  // 本rank所在行或列的总rank数
+    uint32_t localSize{0}; // 本rank所在行或列的总rank数
     uint32_t myRankIdx{0};
     uint32_t repeatNum{0};
     HcclDataType dataType;
@@ -60,7 +60,7 @@ struct AllReduceNHR1DContext: CcuKernelCtxBase {
     ccu::Variable die0LastSliceSize;
     ccu::Variable die1LastSliceSize;
 
-    ccu::Event             localEvent;
+    ccu::Event localEvent;
     std::vector<ccu::Variable> sliceOffset;
 
     ccu::LocalAddr srcMem;

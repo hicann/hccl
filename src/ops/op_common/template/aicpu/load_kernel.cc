@@ -15,11 +15,11 @@ namespace ops_hccl {
 
 aclrtBinHandle g_binKernelHandle = nullptr;
 
-HcclResult GetKernelFilePath(std::string &binaryPath)
+HcclResult GetKernelFilePath(std::string& binaryPath)
 {
     // 获取二进制文件路径
     std::string libPath;
-    char *getPath = std::getenv("ASCEND_HOME_PATH");
+    char* getPath = std::getenv("ASCEND_HOME_PATH");
     if (getPath != nullptr) {
         libPath = getPath;
     } else {
@@ -44,12 +44,15 @@ HcclResult LoadAICPUKernel(void)
     std::string jsonPath;
     CHK_RET(GetKernelFilePath(jsonPath));
     jsonPath += "libscatter_aicpu_kernel.json";
-    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0,
-        g_binKernelHandle);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[LoadAICPUKernel]errNo[0x%016llx]load aicpu file fail, path[%s] optionType[%u]"
-        "cpuKernelMode[%u].", ret, jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0), ret);
+    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0, g_binKernelHandle);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[LoadAICPUKernel]errNo[0x%016llx]load aicpu file fail, path[%s] optionType[%u]"
+            "cpuKernelMode[%u].",
+            ret, jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0),
+        ret);
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

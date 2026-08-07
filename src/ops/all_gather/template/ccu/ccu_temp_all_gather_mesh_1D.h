@@ -20,24 +20,25 @@ namespace ops_hccl {
 class CcuTempAllGatherMesh1D : public CcuAlgTemplateBase {
 public:
     CcuTempAllGatherMesh1D() = default;
-    explicit  CcuTempAllGatherMesh1D(const OpParam& param, 
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllGatherMesh1D(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllGatherMesh1D() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of All Gather ccu mesh 1D with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat("Template of All Gather ccu mesh 1D with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
@@ -46,6 +47,6 @@ private:
     uint32_t mySubCommRank_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_ALL_GATHER_MESH_1D_H
+#endif // HCCL_CCU_TEMP_ALL_GATHER_MESH_1D_H

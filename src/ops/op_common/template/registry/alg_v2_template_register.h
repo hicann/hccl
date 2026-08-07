@@ -19,32 +19,32 @@
 
 namespace ops_hccl {
 
-using InsAlgTemplateCreator = std::function<InsAlgTemplateBase *()>;
+using InsAlgTemplateCreator = std::function<InsAlgTemplateBase*()>;
 
 template <typename P>
-static InsAlgTemplateBase *DefaultTemplateCreatorV2()
+static InsAlgTemplateBase* DefaultTemplateCreatorV2()
 {
-    static_assert(std::is_base_of<InsAlgTemplateBase, P>::value,
-        "Template type must derived from Hccl::InsAlgTemplateBase");
+    static_assert(
+        std::is_base_of<InsAlgTemplateBase, P>::value, "Template type must derived from Hccl::InsAlgTemplateBase");
     return new (std::nothrow) P();
 }
 
 class InsAlgTemplateRegistry {
 public:
-    static InsAlgTemplateRegistry &Instance();
+    static InsAlgTemplateRegistry& Instance();
     InsAlgTemplateRegistry() {};
-    HcclResult Register(const std::string &name, const InsAlgTemplateCreator &algTemplateCreator);
-    std::unique_ptr<InsAlgTemplateBase> GetAlgTemplate(const std::string &name);
+    HcclResult Register(const std::string& name, const InsAlgTemplateCreator& algTemplateCreator);
+    std::unique_ptr<InsAlgTemplateBase> GetAlgTemplate(const std::string& name);
 
 private:
     std::map<std::string, InsAlgTemplateCreator> tempCreators_;
     mutable std::mutex mu_;
 };
 
-#define REGISTER_TEMPLATE_V2_HELPER(ctr, name, insAlgTempBase)       \
-    static HcclResult g_func_##insAlgTempBase##_##ctr             \
+#define REGISTER_TEMPLATE_V2_HELPER(ctr, name, insAlgTempBase) \
+    static HcclResult g_func_##insAlgTempBase##_##ctr          \
         = InsAlgTemplateRegistry::Instance().Register(name, DefaultTemplateCreatorV2<insAlgTempBase>)
 
 #define REGISTER_TEMPLATE_V2(name, insAlgTempBase) REGISTER_TEMPLATE_V2_HELPER(__COUNTER__, name, insAlgTempBase)
 
-}
+} // namespace ops_hccl

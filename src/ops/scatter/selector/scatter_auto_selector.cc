@@ -16,9 +16,9 @@ namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_SC_DATA_SIZE = 16 * 1024 * 1024;
 constexpr uint32_t TOPO_LEVEL_3 = 3;
 
-SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                    std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)opParam;
@@ -28,21 +28,23 @@ SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNetLayerDe
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                    std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
-    (void)configAlgMap; 
+    (void)configAlgMap;
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->level2Ubg) {
-        HCCL_INFO("[ScatterAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.",
-            __func__);
+        HCCL_INFO(
+            "[ScatterAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
-        HCCL_INFO("[ScatterAutoSelector][%s] ccu schedule is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+        HCCL_INFO(
+            "[ScatterAutoSelector][%s] ccu schedule is not supported when topoLevelNums >= 3(levelNum[%u]), reset to "
+            "default.",
             __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
@@ -53,9 +55,12 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (dataSize > CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE || topoInfo->userRankSize > CCU_SCHEDULE_SCATTER_MAX_RANK_SIZE) {
-                HCCL_INFO("[ScatterAutoSelector] 2 level topo perRankDataSize[%llu] or rankSize[%u] exceeds limit, "
-                            "fallback to aicpu.", dataSize, topoInfo->userRankSize);
+            if (dataSize > CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE
+                || topoInfo->userRankSize > CCU_SCHEDULE_SCATTER_MAX_RANK_SIZE) {
+                HCCL_INFO(
+                    "[ScatterAutoSelector] 2 level topo perRankDataSize[%llu] or rankSize[%u] exceeds limit, "
+                    "fallback to aicpu.",
+                    dataSize, topoInfo->userRankSize);
                 return SelectorStatus::NOT_MATCH;
             }
             if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
@@ -73,7 +78,8 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
             }
             selectAlgName = "CcuScatterNHRMem2Mem1D";
         } else {
-            HCCL_WARNING("[Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
+            HCCL_WARNING(
+                "[Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
@@ -87,16 +93,16 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(const TopoInfoWithNetLayerDetails *topoInfo,
-                                                              const OpParam &opParam,
-                                                              std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 userRankSize = topoInfo->userRankSize;
     u64 dataSize = opParam.DataDes.count * perDataSize * userRankSize;
     HCCL_INFO("[SelectMeshAlgoCcuSchedule] dataSize[%llu]", dataSize);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        CHK_PRT_RET(IsInputOutputOverlap(opParam) == true,
+        CHK_PRT_RET(
+            IsInputOutputOverlap(opParam) == true,
             HCCL_WARNING("[Algo][ScatterAutoSelector] ccu schedule does not support inplace scatter."),
             SelectorStatus::NOT_MATCH);
         if (topoInfo->is2DieFullMesh) {
@@ -125,37 +131,36 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(const TopoInfoWith
         }
         selectAlgName = "CcuScatterNHRMem2Mem1D";
     } else {
-        HCCL_WARNING("[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
+        HCCL_WARNING(
+            "[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
             topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                    std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)opParam;
-    (void)configAlgMap; 
+    (void)configAlgMap;
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
-    SelectorStatus ret = (topoInfo->topoLevelNums > 1)
-        ? SelectMultiLevelAicpuAlgo(topoInfo, selectAlgName)
-        : SelectSingleLevelAicpuAlgo(topoInfo, selectAlgName);
+    SelectorStatus ret = (topoInfo->topoLevelNums > 1) ? SelectMultiLevelAicpuAlgo(topoInfo, selectAlgName) :
+                                                         SelectSingleLevelAicpuAlgo(topoInfo, selectAlgName);
     if (ret == SelectorStatus::MATCH) {
         HCCL_INFO("[ScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     }
     return ret;
 }
 
-SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                                              std::string& selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     if (topoInfo->topoLevelNums == TOPO_LEVEL_3) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D &&
-            topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) > 1 &&
-            !topoInfo->level2Uboe) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D && topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) > 1
+            && !topoInfo->level2Uboe) {
             selectAlgName = "AicpuScatterSequenceMesh1DNHRNHR";
         } else {
             selectAlgName = "InsScatterNHR";
@@ -175,8 +180,8 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(const TopoInfoWith
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                                               std::string& selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "InsScatterMesh1D";
@@ -201,44 +206,54 @@ SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(const TopoInfoWit
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-                                                  const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                  std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectAivAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)configAlgMap;
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->userRankSize > MAX_RANK_SIZE) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__, topoInfo->userRankSize, MAX_RANK_SIZE);
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] rankSize[%u] larger than [%u]", __func__,
+            topoInfo->userRankSize, MAX_RANK_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
 
     if (topoInfo->level2Ubg) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] aiv is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG,
+            "[ScatterAutoSelector][%s] aiv is not supported when topoLevelNums >= 3(levelNum[%u]), reset to default.",
             __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
 
-    void *cclBufferAddr;
+    void* cclBufferAddr;
     uint64_t cclBufferSize;
-    CHK_PRT_RET(HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ScatterAutoSelector] HcclGetHcclBuffer failed."), SelectorStatus::NOT_MATCH);
+    CHK_PRT_RET(
+        HcclGetHcclBuffer(opParam.hcclComm, &cclBufferAddr, &cclBufferSize) != HCCL_SUCCESS,
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ScatterAutoSelector] HcclGetHcclBuffer failed."),
+        SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 totalSize = opParam.DataDes.count * perDataSize * topoInfo->userRankSize;
-    if (opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY &&
-        totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize) {
-        HCCL_DEBUG("[ScatterAutoSelector][%s] totalSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
+    if (opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY
+        && totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize) {
+        HCCL_DEBUG(
+            "[ScatterAutoSelector][%s] totalSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
             __func__, totalSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);
         return SelectorStatus::NOT_MATCH;
     }
     if (totalSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]", __func__, totalSize, cclBufferSize);
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[ScatterAutoSelector][%s] totalSize[%llu] too large for cclBufferSize [%llu]",
+            __func__, totalSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -248,12 +263,12 @@ SelectorStatus ScatterAutoSelector::SelectAivAlgo(const TopoInfoWithNetLayerDeta
     return SelectorStatus::MATCH;
 }
 
-SelectorStatus ScatterAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDetails *topoInfo,
-                                                        const OpParam &opParam,
-                                                        const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                        std::string &selectAlgName) const
+SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
-    HCCL_INFO("topoInfo->topoLevelNums is %u, topoInfo->level0Topo is %u", topoInfo->topoLevelNums, topoInfo->level0Topo);
+    HCCL_INFO(
+        "topoInfo->topoLevelNums is %u, topoInfo->level0Topo is %u", topoInfo->topoLevelNums, topoInfo->level0Topo);
     (void)configAlgMap;
     (void)opParam;
     if (topoInfo->topoLevelNums > 1) {

@@ -27,9 +27,7 @@ using NHRStepInfoRS = struct NHRStepInfoDefRS {
     std::vector<uint32_t> txSliceIdxs;
     std::vector<uint32_t> rxSliceIdxs;
 
-    NHRStepInfoDefRS() : nSlices(0)
-    {
-    }
+    NHRStepInfoDefRS() : nSlices(0) {}
 };
 
 struct CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem : public CcuKernelArgBase {
@@ -42,7 +40,7 @@ struct CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem : public CcuKernelArgBase {
 };
 
 struct ReduceScatterOmniPipeNHR1DMem2MemContext : public CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem *arg;
+    const CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem* arg;
 
     uint64_t rankSize{0};
     uint32_t userRank{0};

@@ -14,22 +14,16 @@
 #include "null_ptr_exception.h"
 
 namespace HcclSim {
-const char *HcclException::what() const noexcept
-{
-    return errorMsg.c_str();
-}
+const char* HcclException::what() const noexcept { return errorMsg.c_str(); }
 
-HcclResult HcclException::GetErrorCode() const
-{
-    return ExceptionInfo::GetErrorCode(exceptionType);
-}
+HcclResult HcclException::GetErrorCode() const { return ExceptionInfo::GetErrorCode(exceptionType); }
 
 constexpr int BACKTRACE_DEPTH = 15;
-void          HcclException::StoreBackTrace()
+void HcclException::StoreBackTrace()
 {
-    void  *array[BACKTRACE_DEPTH];
-    char **callBackStrings;
-    int    size     = backtrace(array, BACKTRACE_DEPTH);
+    void* array[BACKTRACE_DEPTH];
+    char** callBackStrings;
+    int size = backtrace(array, BACKTRACE_DEPTH);
     callBackStrings = backtrace_symbols(array, size);
     if (callBackStrings == nullptr) {
         std::string msg = StringFormat("[%s] callBackStrings Get nullptr", __func__);
@@ -41,15 +35,13 @@ void          HcclException::StoreBackTrace()
     free(callBackStrings);
 }
 
-HcclException::HcclException(const ExceptionType &exceptionType, const std::string &userDefinedMsg)
-    : exceptionType(exceptionType), userDefinedMsg(userDefinedMsg),
+HcclException::HcclException(const ExceptionType& exceptionType, const std::string& userDefinedMsg)
+    : exceptionType(exceptionType),
+      userDefinedMsg(userDefinedMsg),
       errorMsg(ExceptionInfo::GetErrorMsg(exceptionType) + userDefinedMsg)
 {
     StoreBackTrace();
 }
 
-std::vector<std::string> HcclException::GetBackTraceStrings() const
-{
-    return backtraceStrings;
-}
-} // namespace Hccl
+std::vector<std::string> HcclException::GetBackTraceStrings() const { return backtraceStrings; }
+} // namespace HcclSim

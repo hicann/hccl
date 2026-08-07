@@ -21,30 +21,40 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-constexpr uint32_t DATATYPE_SIZE_TABLE_REDUCE_SCATTER[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t DATATYPE_SIZE_TABLE_REDUCE_SCATTER[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 class ST_REDUCE_SCATTER_3LEVEL_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
         unsetenv("HCCL_OP_EXPANSION_MODE");
-
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunReduceScatter3LevelA5(const TopoMeta &topoMeta, const u64 &recvCount, const HcclDataType &dataType,
-    const HcclReduceOp &reduceOp)
+void RunReduceScatter3LevelA5(
+    const TopoMeta& topoMeta, const u64& recvCount, const HcclDataType& dataType, const HcclReduceOp& reduceOp)
 {
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
@@ -64,8 +74,8 @@ void RunReduceScatter3LevelA5(const TopoMeta &topoMeta, const u64 &recvCount, co
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *recvBuf = nullptr;
-            void *sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            void* sendBuf = nullptr;
             u64 sendBufSize = recvCount * dataTypeSize * rankSize;
             u64 recvBufSize = recvCount * dataTypeSize;
 
@@ -177,7 +187,6 @@ TEST_F(ST_REDUCE_SCATTER_3LEVEL_TEST, st_reduce_scatter_3level_4x2x2_bfp16_max_d
     auto reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
     RunReduceScatter3LevelA5(topoMeta, recvCount, dataType, reduceOp);
 }
-
 
 // P2: #14 - Level2 has 3 clusters (repeatNum=3)
 TEST_F(ST_REDUCE_SCATTER_3LEVEL_TEST, st_reduce_scatter_3level_8x2x3_fp32_sum_level2_3cluster)

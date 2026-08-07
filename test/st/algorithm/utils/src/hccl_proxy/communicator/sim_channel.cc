@@ -19,9 +19,17 @@ using namespace std;
 
 namespace HcclSim {
 
-SimChannel::SimChannel(const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol,
-    uint32_t locRankId, uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx)
-    : commId_(commId), tag_(tag), engine_(engine), protocol_(protocol), locRankId_(locRankId), rmtRankId_(rmtRankId), notifyNum_(notifyNum), channelIdx_(channelIdx)
+SimChannel::SimChannel(
+    const std::string& commId, const std::string& tag, CommEngine engine, CommProtocol protocol, uint32_t locRankId,
+    uint32_t rmtRankId, uint32_t notifyNum, uint32_t channelIdx)
+    : commId_(commId),
+      tag_(tag),
+      engine_(engine),
+      protocol_(protocol),
+      locRankId_(locRankId),
+      rmtRankId_(rmtRankId),
+      notifyNum_(notifyNum),
+      channelIdx_(channelIdx)
 {}
 
 SimChannel::~SimChannel()
@@ -81,26 +89,26 @@ HcclResult SimChannel::ResExchange(std::shared_ptr<SimChannel> reverseChannel)
 {
     CHK_PTR_NULL(reverseChannel);
 
-    CHK_PRT_RET(this->GetCommId() != reverseChannel->GetCommId(),
-        HCCL_ERROR("[SimChannel::%s] commId not match", __func__),
+    CHK_PRT_RET(
+        this->GetCommId() != reverseChannel->GetCommId(), HCCL_ERROR("[SimChannel::%s] commId not match", __func__),
         HCCL_E_PARA);
-    CHK_PRT_RET(this->GetTag() != reverseChannel->GetTag(),
-        HCCL_ERROR("[SimChannel::%s] tag not match", __func__),
+    CHK_PRT_RET(
+        this->GetTag() != reverseChannel->GetTag(), HCCL_ERROR("[SimChannel::%s] tag not match", __func__),
         HCCL_E_PARA);
-    CHK_PRT_RET(this->GetEngine() != reverseChannel->GetEngine(),
-        HCCL_ERROR("[SimChannel::%s] engine not match", __func__),
+    CHK_PRT_RET(
+        this->GetEngine() != reverseChannel->GetEngine(), HCCL_ERROR("[SimChannel::%s] engine not match", __func__),
         HCCL_E_PARA);
-    CHK_PRT_RET(this->GetProtocol() != reverseChannel->GetProtocol(),
-        HCCL_ERROR("[SimChannel::%s] protocol not match", __func__),
-        HCCL_E_PARA);
+    CHK_PRT_RET(
+        this->GetProtocol() != reverseChannel->GetProtocol(),
+        HCCL_ERROR("[SimChannel::%s] protocol not match", __func__), HCCL_E_PARA);
 
-    CHK_PRT_RET(this->GetLocRankId() != reverseChannel->GetRmtRankId(),
-        HCCL_ERROR("[SimChannel::%s] rankId not match", __func__),
-        HCCL_E_PARA);
-    CHK_PRT_RET(this->GetRmtRankId() != reverseChannel->GetLocRankId(),
-        HCCL_ERROR("[SimChannel::%s] rankId not match", __func__),
-        HCCL_E_PARA);
-    
+    CHK_PRT_RET(
+        this->GetLocRankId() != reverseChannel->GetRmtRankId(),
+        HCCL_ERROR("[SimChannel::%s] rankId not match", __func__), HCCL_E_PARA);
+    CHK_PRT_RET(
+        this->GetRmtRankId() != reverseChannel->GetLocRankId(),
+        HCCL_ERROR("[SimChannel::%s] rankId not match", __func__), HCCL_E_PARA);
+
     rmtMem_ = reverseChannel->GetLocMem();
 
     for (SimNotify* it : reverseChannel->GetLocNotifys()) {
@@ -111,4 +119,4 @@ HcclResult SimChannel::ResExchange(std::shared_ptr<SimChannel> reverseChannel)
     return HCCL_SUCCESS;
 }
 
-}   // namespace HcclSim
+} // namespace HcclSim

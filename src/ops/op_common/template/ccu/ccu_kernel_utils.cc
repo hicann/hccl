@@ -22,7 +22,7 @@ constexpr int COMM_LEVEL_SIZE_2 = 2;
 
 uint64_t CalcLGMaxTransSize()
 {
-    return LOC_CPY_LOOP_NUM * 4096 * 8192;  // 单片MS搬4096B，每个loop循环最多8192次
+    return LOC_CPY_LOOP_NUM * 4096 * 8192; // 单片MS搬4096B，每个loop循环最多8192次
 }
 
 constexpr uint64_t SetBits(uint16_t start, uint16_t end)
@@ -30,10 +30,7 @@ constexpr uint64_t SetBits(uint16_t start, uint16_t end)
     return ((uint64_t(1) << (end - start + 1)) - uint64_t(1)) << start;
 }
 
-constexpr uint64_t SetBits(uint16_t end)
-{
-    return ((uint64_t(1) << (end + 1)) - uint64_t(1));
-}
+constexpr uint64_t SetBits(uint16_t end) { return ((uint64_t(1) << (end + 1)) - uint64_t(1)); }
 
 // 辅助函数
 uint64_t GetMaxLoopIterNum()
@@ -50,62 +47,61 @@ uint64_t GetLoopParam(uint64_t loopCtxId, uint64_t gsaOffset, uint64_t loopIterN
     constexpr uint16_t gsaShiftBit = 13;
     constexpr uint16_t loopNumBitNum = 13;
     constexpr uint16_t loopNumShiftBit = 0;
-    return ((loopCtxId & SetBits(ctxIdBitNum)) << ctxIdShiftBit) |
-           ((gsaOffset & SetBits(gsaBitNum)) << gsaShiftBit) |
-           ((loopIterNum & SetBits(loopNumBitNum)) << loopNumShiftBit);
+    return ((loopCtxId & SetBits(ctxIdBitNum)) << ctxIdShiftBit) | ((gsaOffset & SetBits(gsaBitNum)) << gsaShiftBit)
+           | ((loopIterNum & SetBits(loopNumBitNum)) << loopNumShiftBit);
 }
- 
+
 uint64_t GetLoopGsaOffset(uint64_t gsaOffset)
 {
     constexpr uint16_t gsaOffsetBitNum = 32;
     constexpr uint16_t gsaOffsetShiftBit = 0;
-    return (gsaOffset & SetBits(gsaOffsetBitNum) ) << gsaOffsetShiftBit;
+    return (gsaOffset & SetBits(gsaOffsetBitNum)) << gsaOffsetShiftBit;
 }
 
 uint64_t GetParallelParam(uint64_t repeatNum, uint64_t repeatLoopIndex, uint64_t totalLoopNum, CcuVersion ccuVersion)
 {
-    if(ccuVersion==CcuVersion::CCU_V1) {
-        constexpr uint16_t repeatBitNum       = 7;
-        constexpr uint16_t repeatNumShiftBit  = 55;
-        constexpr uint16_t repeatLoopBitNum   = 7;
+    if (ccuVersion == CcuVersion::CCU_V1) {
+        constexpr uint16_t repeatBitNum = 7;
+        constexpr uint16_t repeatNumShiftBit = 55;
+        constexpr uint16_t repeatLoopBitNum = 7;
         constexpr uint16_t repeatLoopShiftBit = 48;
-        constexpr uint16_t totalLoopBitNum    = 7;
-        constexpr uint16_t totalLoopShiftBit  = 41;
+        constexpr uint16_t totalLoopBitNum = 7;
+        constexpr uint16_t totalLoopShiftBit = 41;
         return ((repeatNum & SetBits(repeatBitNum)) << repeatNumShiftBit)
-                | ((repeatLoopIndex & SetBits(repeatLoopBitNum)) << repeatLoopShiftBit)
-                | ((totalLoopNum & SetBits(totalLoopBitNum)) << totalLoopShiftBit);
-    }
-    else {
+               | ((repeatLoopIndex & SetBits(repeatLoopBitNum)) << repeatLoopShiftBit)
+               | ((totalLoopNum & SetBits(totalLoopBitNum)) << totalLoopShiftBit);
+    } else {
         // CCU V121 Loop规格变化适配
-        constexpr uint16_t repeatBitNum       = 9;
-        constexpr uint16_t repeatNumShiftBit  = 19;
-        constexpr uint16_t repeatLoopBitNum   = 9;
+        constexpr uint16_t repeatBitNum = 9;
+        constexpr uint16_t repeatNumShiftBit = 19;
+        constexpr uint16_t repeatLoopBitNum = 9;
         constexpr uint16_t repeatLoopShiftBit = 10;
-        constexpr uint16_t totalLoopBitNum    = 10;
-        constexpr uint16_t totalLoopShiftBit  = 0;
+        constexpr uint16_t totalLoopBitNum = 10;
+        constexpr uint16_t totalLoopShiftBit = 0;
         return ((repeatNum & SetBits(repeatBitNum)) << repeatNumShiftBit)
-                | ((repeatLoopIndex & SetBits(repeatLoopBitNum)) << repeatLoopShiftBit)
-                | ((totalLoopNum & SetBits(totalLoopBitNum)) << totalLoopShiftBit);
+               | ((repeatLoopIndex & SetBits(repeatLoopBitNum)) << repeatLoopShiftBit)
+               | ((totalLoopNum & SetBits(totalLoopBitNum)) << totalLoopShiftBit);
     }
 }
 
 uint64_t GetOffsetParam(uint64_t gsaOffset, uint64_t msOffset, uint64_t ckeOffset)
 {
-    constexpr uint16_t gsaBitNum   = 32;
+    constexpr uint16_t gsaBitNum = 32;
     constexpr uint16_t gsaShiftBit = 21;
-    constexpr uint16_t msBitNum    = 11;
-    constexpr uint16_t msShiftBit  = 10;
-    constexpr uint16_t ckeBitNum   = 10;
+    constexpr uint16_t msBitNum = 11;
+    constexpr uint16_t msShiftBit = 10;
+    constexpr uint16_t ckeBitNum = 10;
     constexpr uint16_t ckeShiftBit = 0;
     return ((gsaOffset & SetBits(gsaBitNum)) << gsaShiftBit) | ((msOffset & SetBits(msBitNum)) << msShiftBit)
-            | ((ckeOffset & SetBits(ckeBitNum)) << ckeShiftBit);
+           | ((ckeOffset & SetBits(ckeBitNum)) << ckeShiftBit);
 }
 
 uint64_t GetExpansionParam(uint64_t expansionNum)
 {
-    constexpr uint64_t expansionNum2        = 2;
+    constexpr uint64_t expansionNum2 = 2;
     constexpr uint64_t expansionNumShiftBit = 53;
-    return (expansionNum == expansionNum2 ? uint64_t(1) : uint64_t(2)) << expansionNumShiftBit; // Bit[53-54], 00: 1, 01: 2, 10: 4
+    return (expansionNum == expansionNum2 ? uint64_t(1) : uint64_t(2))
+           << expansionNumShiftBit; // Bit[53-54], 00: 1, 01: 2, 10: 4
 }
 
 uint32_t GetReduceExpansionNum(HcclReduceOp reduceOp, HcclDataType dataType, HcclDataType outputDataType)
@@ -116,8 +112,8 @@ uint32_t GetReduceExpansionNum(HcclReduceOp reduceOp, HcclDataType dataType, Hcc
         outputDataType = dataType;
 
         // 低精度数据格式可指定输出数据类型：fp32\bf16\fp16，如果没有指定，默认fp32
-        if ((dataType == HcclDataType::HCCL_DATA_TYPE_HIF8) || (dataType == HcclDataType::HCCL_DATA_TYPE_FP8E4M3) ||
-            (dataType == HcclDataType::HCCL_DATA_TYPE_FP8E5M2) || (dataType == HcclDataType::HCCL_DATA_TYPE_INT8)) {
+        if ((dataType == HcclDataType::HCCL_DATA_TYPE_HIF8) || (dataType == HcclDataType::HCCL_DATA_TYPE_FP8E4M3)
+            || (dataType == HcclDataType::HCCL_DATA_TYPE_FP8E5M2) || (dataType == HcclDataType::HCCL_DATA_TYPE_INT8)) {
             outputDataType = HcclDataType::HCCL_DATA_TYPE_FP32;
         }
     }
@@ -127,10 +123,7 @@ uint32_t GetReduceExpansionNum(HcclReduceOp reduceOp, HcclDataType dataType, Hcc
     return expansionNum;
 }
 
-uint64_t DataTypeSizeGet(HcclDataType type)
-{
-    return HCCL_SIZE_TABLE[type];
-}
+uint64_t DataTypeSizeGet(HcclDataType type) { return HCCL_SIZE_TABLE[type]; }
 
 std::string GetReduceTypeStr(HcclDataType dataType, HcclReduceOp opType)
 {
@@ -151,4 +144,4 @@ std::string GetReduceTypeStr(HcclDataType dataType, HcclReduceOp opType)
     return ccuRepDataTypeStr[dataType] + "_" + ccuRepOpTypeStr[opType];
 }
 
-}
+} // namespace ops_hccl

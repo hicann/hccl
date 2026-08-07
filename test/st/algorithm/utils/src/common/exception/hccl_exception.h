@@ -20,9 +20,9 @@ namespace HcclSim {
 
 class HcclException : std::exception {
 public:
-    explicit HcclException(const ExceptionType &exceptionType, const std::string &userDefinedMsg);
+    explicit HcclException(const ExceptionType& exceptionType, const std::string& userDefinedMsg);
 
-    const char *what() const noexcept override;
+    const char* what() const noexcept override;
 
     HcclResult GetErrorCode() const;
 
@@ -32,10 +32,10 @@ private:
     void StoreBackTrace();
 
     std::vector<std::string> backtraceStrings;
-    ExceptionType            exceptionType;
-    std::string              userDefinedMsg{""};
-    std::string              errorMsg{""};
+    ExceptionType exceptionType;
+    std::string userDefinedMsg{""};
+    std::string errorMsg{""};
 };
 
-}
+} // namespace HcclSim
 #endif

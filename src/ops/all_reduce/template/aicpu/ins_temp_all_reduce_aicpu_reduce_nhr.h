@@ -21,8 +21,9 @@ namespace ops_hccl {
 class InsTempAllReduceAicpuReduceNHR : public InsAlgTemplateBase {
 public:
     InsTempAllReduceAicpuReduceNHR() = default;
-    explicit InsTempAllReduceAicpuReduceNHR(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempAllReduceAicpuReduceNHR(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempAllReduceAicpuReduceNHR() override;
 
@@ -34,41 +35,43 @@ public:
     }
 
     // 现在的Kernel就是之前的GenExtIns
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-        TemplateResource &templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     void SetRoot(u32 root);
     HcclResult CalcRes(
-        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest) override;
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub);
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain);
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub);
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain);
 
     u64 GetThreadNum();
 
 private:
     HcclResult CalcSlice(const u64 chunkSize);
-    HcclResult PreCopy(const TemplateDataParams &tempAlgParams);
-    HcclResult RunReduce(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const TemplateDataParams &tempAlgParams, const std::string &algTag);
-    HcclResult RunGather(const std::map<u32, std::vector<ChannelInfo>> &channels);
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams);
+    HcclResult PreCopy(const TemplateDataParams& tempAlgParams);
+    HcclResult RunReduce(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+        const std::string& algTag);
+    HcclResult RunGather(const std::map<u32, std::vector<ChannelInfo>>& channels);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams);
 
-    HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo);
+    HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
     u32 GetAlgRank(u32 rank) const;
 
     ThreadHandle thread_;
     u64 processSize_{0};
     u64 count_{0};
-    u32 myIdx_ = UINT32_MAX;  // 本rank在通信域内的索引
+    u32 myIdx_ = UINT32_MAX; // 本rank在通信域内的索引
 
     RankSliceInfo sliceInfoVec_;
 
     bool isDmaRead_{false};
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // AICPU_ALLREDUCE_AICPU_REDUCE_NHR_H
+#endif // AICPU_ALLREDUCE_AICPU_REDUCE_NHR_H

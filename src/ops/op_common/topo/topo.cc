@@ -11,7 +11,7 @@
 #include "topo.h"
 #include "hccl_rank_graph.h"
 #include "hcomm_primitives.h"
-#include "hccl_res.h" 
+#include "hccl_res.h"
 #include "hccl.h"
 #include "adapter_acl.h"
 #include "channel.h"
@@ -41,12 +41,12 @@ u32 CalGCD(u32 a, u32 b)
     return gcd;
 }
 
-u32 CalGCD(std::vector<u32> &nums)
+u32 CalGCD(std::vector<u32>& nums)
 {
     if (nums.size() == 0) {
         return 1;
     }
-    std::sort(nums.begin(), nums.end(), [](const u32 &num1, const u32 &num2) {
+    std::sort(nums.begin(), nums.end(), [](const u32& num1, const u32& num2) {
         return num1 > num2;
     });
 
@@ -61,14 +61,15 @@ u32 CalGCD(std::vector<u32> &nums)
 /* 针对A2对称拓扑通用的拓扑信息获取方式，支持A+X */
 HcclResult CalcGeneralTopoInfoForA2(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
-    (void) comm;
+    (void)comm;
     algHierarchyInfo.levels = 2;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = topoInfo->userRank % topoInfo->deviceNumPerModule;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = topoInfo->deviceNumPerModule;
     algHierarchyInfo.infos[COMM_LEVEL1].localRank = topoInfo->moduleIdx;
     algHierarchyInfo.infos[COMM_LEVEL1].localRankSize = topoInfo->moduleNum;
-    HCCL_INFO("[CalcGeneralTopoInfoForA2] userRank[%u] serverIdx[%u] l0Rank[%u] l1Rank[%u]",
-        topoInfo->userRank, topoInfo->serverIdx, algHierarchyInfo.infos[COMM_LEVEL0].localRank,
+    HCCL_INFO(
+        "[CalcGeneralTopoInfoForA2] userRank[%u] serverIdx[%u] l0Rank[%u] l1Rank[%u]", topoInfo->userRank,
+        topoInfo->serverIdx, algHierarchyInfo.infos[COMM_LEVEL0].localRank,
         algHierarchyInfo.infos[COMM_LEVEL1].localRank);
     return HCCL_SUCCESS;
 }
@@ -76,7 +77,7 @@ HcclResult CalcGeneralTopoInfoForA2(const HcclComm comm, const TopoInfo* topoInf
 /* 针对A3对称拓扑通用的拓扑信息获取方式 */
 HcclResult CalcGeneralTopoInfoForA3(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
-    (void) comm;
+    (void)comm;
     algHierarchyInfo.levels = 3;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = topoInfo->userRank % topoInfo->deviceNumPerModule;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = topoInfo->deviceNumPerModule;
@@ -84,12 +85,12 @@ HcclResult CalcGeneralTopoInfoForA3(const HcclComm comm, const TopoInfo* topoInf
     algHierarchyInfo.infos[COMM_LEVEL1].localRankSize = topoInfo->serverNumPerSuperPod;
     algHierarchyInfo.infos[COMM_LEVEL2].localRank = topoInfo->serverIdx / topoInfo->serverNumPerSuperPod;
     algHierarchyInfo.infos[COMM_LEVEL2].localRankSize = topoInfo->superPodNum;
-    HCCL_INFO("[CalcGeneralTopoInfoForA3] userRank[%u] serverIdx[%u] superPodIdx[%u] l0Rank[%u] l1Rank[%u] l2Rank[%u] "
+    HCCL_INFO(
+        "[CalcGeneralTopoInfoForA3] userRank[%u] serverIdx[%u] superPodIdx[%u] l0Rank[%u] l1Rank[%u] l2Rank[%u] "
         "deviceNumPerModule[%u] serverNumPerSuperPod[%u] superPodNum[%u]"
         "l0RankSize[%u] l1RankSize[%u] l2RankSize[%u]",
-        topoInfo->userRank, topoInfo->serverIdx, topoInfo->superPodIdx,
-        algHierarchyInfo.infos[COMM_LEVEL0].localRank, algHierarchyInfo.infos[COMM_LEVEL1].localRank,
-        algHierarchyInfo.infos[COMM_LEVEL2].localRank,
+        topoInfo->userRank, topoInfo->serverIdx, topoInfo->superPodIdx, algHierarchyInfo.infos[COMM_LEVEL0].localRank,
+        algHierarchyInfo.infos[COMM_LEVEL1].localRank, algHierarchyInfo.infos[COMM_LEVEL2].localRank,
         topoInfo->deviceNumPerModule, topoInfo->serverNumPerSuperPod, topoInfo->superPodNum,
         algHierarchyInfo.infos[COMM_LEVEL0].localRankSize, algHierarchyInfo.infos[COMM_LEVEL1].localRankSize,
         algHierarchyInfo.infos[COMM_LEVEL2].localRankSize);
@@ -100,19 +101,20 @@ HcclResult CalcGeneralTopoInfoForA3(const HcclComm comm, const TopoInfo* topoInf
 /* 针对非对称场景打平拓扑通用的拓扑信息获取方式 */
 HcclResult CalcGeneralTopoInfoForComm(const HcclComm comm, const TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo)
 {
-    (void) comm;
+    (void)comm;
     algHierarchyInfo.levels = 2;
     algHierarchyInfo.infos[COMM_LEVEL0].localRank = 0;
     algHierarchyInfo.infos[COMM_LEVEL0].localRankSize = 1;
     algHierarchyInfo.infos[COMM_LEVEL1].localRank = topoInfo->userRank;
     algHierarchyInfo.infos[COMM_LEVEL1].localRankSize = topoInfo->userRankSize;
-    HCCL_INFO("[CalcGeneralTopoInfoForComm] userRank[%u] serverIdx[%u] l1Rank[%u]",
-        topoInfo->userRank, topoInfo->serverIdx, algHierarchyInfo.infos[COMM_LEVEL1].localRank);
+    HCCL_INFO(
+        "[CalcGeneralTopoInfoForComm] userRank[%u] serverIdx[%u] l1Rank[%u]", topoInfo->userRank, topoInfo->serverIdx,
+        algHierarchyInfo.infos[COMM_LEVEL1].localRank);
     return HCCL_SUCCESS;
 }
 
 /* 计算每个level内其他rank的全局rank号 */
-HcclResult GetUserRankBySubCommRank(u32 subCommRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &userRank)
+HcclResult GetUserRankBySubCommRank(u32 subCommRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32& userRank)
 {
     userRank = 0;
     u32 preLevelsRankSize = 1;
@@ -129,13 +131,14 @@ HcclResult GetUserRankBySubCommRank(u32 subCommRank, u32 curLevel, AlgHierarchyI
 }
 
 /* 根据全局rank号计算对应在某个level内的rank号 */
-HcclResult GetSubCommRankByUserRank(u32 userRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32 &subCommRank)
+HcclResult GetSubCommRankByUserRank(u32 userRank, u32 curLevel, AlgHierarchyInfo& algHierarchyInfo, u32& subCommRank)
 {
     u32 preLevelsRankSize = 1;
     for (u32 level = 0; level < algHierarchyInfo.levels; level++) {
         if (level == curLevel) {
             subCommRank = userRank / preLevelsRankSize % algHierarchyInfo.infos[level].localRankSize;
-            HCCL_INFO("[GetSubCommRankByUserRank]userRank[%u] level[%u] -> subCommRank[%u]", userRank, curLevel, subCommRank);
+            HCCL_INFO(
+                "[GetSubCommRankByUserRank]userRank[%u] level[%u] -> subCommRank[%u]", userRank, curLevel, subCommRank);
             return HCCL_SUCCESS;
         }
         preLevelsRankSize *= algHierarchyInfo.infos[level].localRankSize;
@@ -143,4 +146,4 @@ HcclResult GetSubCommRankByUserRank(u32 userRank, u32 curLevel, AlgHierarchyInfo
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

@@ -20,45 +20,51 @@
 
 namespace ops_hccl {
 
-template <typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY,
-    typename CcuAgAlgTemplateX, typename CcuAgAlgTemplateY>
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
 class InsV2BroadcastOmniPipe2dExecutor : public InsCollAlgBase {
 public:
     explicit InsV2BroadcastOmniPipe2dExecutor();
     ~InsV2BroadcastOmniPipe2dExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
     // 这些函数为ExecutorBase纯虚函数，必须重写
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
     HcclResult CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 
-    HcclResult CalcResLevel(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resReqlevel, AlgResourceRequest &resourceReq, const int &curLevel);
+    HcclResult CalcResLevel(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resReqlevel, AlgResourceRequest& resourceReq, const int& curLevel);
 
-    HcclResult InitSubCommRanks(std::vector<std::vector<u32>> &subCommRanks0,
-        std::vector<std::vector<u32>> &subCommRanks1, const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+    HcclResult InitSubCommRanks(
+        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 
     HcclResult GenTemplateAlgParamsByDimData(
-        TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo, u64 processedDataCount);
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount);
 
     // 初始化4个维度的TemplateResource（ScatterX/Y、AgX/Y），按ccuKernelNum偏移切分ccuKernels
-    HcclResult InitTemplateResources(const AlgResourceCtxSerializable &resCtx,
-        TemplateResource &templateResourceScatterX, TemplateResource &templateResourceScatterY,
-        TemplateResource &templateResourceAgX, TemplateResource &templateResourceAgY);
+    HcclResult InitTemplateResources(
+        const AlgResourceCtxSerializable& resCtx, TemplateResource& templateResourceScatterX,
+        TemplateResource& templateResourceScatterY, TemplateResource& templateResourceAgX,
+        TemplateResource& templateResourceAgY);
 
     // 计算SC/AG在Level0(mesh)/Level1(clos)的等效带宽，Level1按(rankSizeLevel1_-1)均摊
-    HcclResult CalcEndpointBandwidth(
-        std::vector<double> &endpointAttrBwAvgSC, std::vector<double> &endpointAttrBwAvgAG);
+    HcclResult
+    CalcEndpointBandwidth(std::vector<double>& endpointAttrBwAvgSC, std::vector<double>& endpointAttrBwAvgAG);
 
     // 计算数据切分: 每rank总量、每rank每loop量、单loop最大count、loop次数
     struct LoopSplitData {
@@ -67,26 +73,30 @@ protected:
         u64 maxCountPerLoop{0};                                  // 每个loop最大count
         u32 loopTimes{0};                                        // loop次数
     };
-    HcclResult CalcLoopSplitData(u64 maxTmpMemSize, u64 root, LoopSplitData &loopSplitData);
+    HcclResult CalcLoopSplitData(u64 maxTmpMemSize, u64 root, LoopSplitData& loopSplitData);
 
     // 初始化OmniPipeSliceParam默认值（dataSizePerLoop/dataWholeSize/level配置等）
-    HcclResult InitSliceParam(const OpParam &param, const std::vector<u64> &allRankSplitData,
-        const std::vector<std::vector<u64>> &multiLoopAllRankSplitData, OmniPipeSliceParam &sliceParam);
+    HcclResult InitSliceParam(
+        const OpParam& param, const std::vector<u64>& allRankSplitData,
+        const std::vector<std::vector<u64>>& multiLoopAllRankSplitData, OmniPipeSliceParam& sliceParam);
 
     // 每轮loop按需重算Scatter/AG的OmniPipeSliceInfo（仅loop==0或与上轮切分不同时重算）
-    HcclResult PrepareSliceInfoForLoop(u64 loop, u64 root, const std::vector<u64> &allRankSplitData,
-        const std::vector<std::vector<u64>> &multiLoopAllRankSplitData, const std::vector<double> &endpointAttrBwAvgSC,
-        const std::vector<double> &endpointAttrBwAvgAG, OmniPipeSliceParam &sliceParam,
-        OmniPipeSliceInfo &omniPipeSliceInfoSC, OmniPipeSliceInfo &omniPipeSliceInfoAG);
+    HcclResult PrepareSliceInfoForLoop(
+        u64 loop, u64 root, const std::vector<u64>& allRankSplitData,
+        const std::vector<std::vector<u64>>& multiLoopAllRankSplitData, const std::vector<double>& endpointAttrBwAvgSC,
+        const std::vector<double>& endpointAttrBwAvgAG, OmniPipeSliceParam& sliceParam,
+        OmniPipeSliceInfo& omniPipeSliceInfoSC, OmniPipeSliceInfo& omniPipeSliceInfoAG);
 
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
     // 单步数据切片信息生成templateParam
-    HcclResult GenTempAlgParamsIn2HCCLBuff(TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo,
-        u64 processedDataCount, const AlgResourceCtxSerializable &resCtx, const OpParam &param);
+    HcclResult GenTempAlgParamsIn2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param);
 
-    HcclResult GenTempAlgParamsHCCLBuff2HCCLBuff(TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo,
-        u64 processedDataCount, const AlgResourceCtxSerializable &resCtx, const OpParam &param);
+    HcclResult GenTempAlgParamsHCCLBuff2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param);
 
     std::vector<ThreadHandle> threads_;
 

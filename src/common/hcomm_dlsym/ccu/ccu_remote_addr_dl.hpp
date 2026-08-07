@@ -19,44 +19,51 @@
 namespace AscendC {
 namespace ccu {
 
-template <typename U> class Array;
+    template <typename U>
+    class Array;
 
-class RemoteAddr final {
-public:
-    RemoteAddr() : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{}) {
-        CCU_THROW_IF_FAILED(
-            CcuRemoteAddrAlloc(&this->handle, &this->addr.handle, &this->token.handle),
-            "CcuRemoteAddrAlloc: failed");
-    }
+    class RemoteAddr final {
+    public:
+        RemoteAddr() : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{})
+        {
+            CCU_THROW_IF_FAILED(
+                CcuRemoteAddrAlloc(&this->handle, &this->addr.handle, &this->token.handle),
+                "CcuRemoteAddrAlloc: failed");
+        }
 
-    RemoteAddr(const RemoteAddr& other) : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{}) {
-        this->handle = other.handle;
-        this->addr.handle = other.addr.handle;
-        this->token.handle = other.token.handle;
-    }
-    RemoteAddr(RemoteAddr&& other) noexcept : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{}) {
-        this->handle = other.handle;
-        this->addr.handle = other.addr.handle;
-        this->token.handle = other.token.handle;
-    }
-    void operator=(const RemoteAddr& other) {
-        this->addr = other.addr;
-        this->token = other.token;
-    }
-    void operator=(RemoteAddr&& other) {
-        this->handle = other.handle;
-        this->addr.handle = other.addr.handle;
-        this->token.handle = other.token.handle;
-    }
+        RemoteAddr(const RemoteAddr& other) : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{})
+        {
+            this->handle = other.handle;
+            this->addr.handle = other.addr.handle;
+            this->token.handle = other.token.handle;
+        }
+        RemoteAddr(RemoteAddr&& other) noexcept : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{})
+        {
+            this->handle = other.handle;
+            this->addr.handle = other.addr.handle;
+            this->token.handle = other.token.handle;
+        }
+        void operator=(const RemoteAddr& other)
+        {
+            this->addr = other.addr;
+            this->token = other.token;
+        }
+        void operator=(RemoteAddr&& other)
+        {
+            this->handle = other.handle;
+            this->addr.handle = other.addr.handle;
+            this->token.handle = other.token.handle;
+        }
 
-    Address addr;
-    Variable token;
-    CcuRemoteAddrHandle handle{0};
+        Address addr;
+        Variable token;
+        CcuRemoteAddrHandle handle{0};
 
-private:
-    explicit RemoteAddr(detail::NoAllocTag) : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{}) {}
-    template <typename U> friend class Array;
-};
+    private:
+        explicit RemoteAddr(detail::NoAllocTag) : addr(detail::NoAllocTag{}), token(detail::NoAllocTag{}) {}
+        template <typename U>
+        friend class Array;
+    };
 
 } // namespace ccu
 } // namespace AscendC

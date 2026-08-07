@@ -21,16 +21,16 @@
 using namespace std;
 using namespace ops_hccl_ag;
 
-static HcclResult InitAlgResourceCtx(HcclComm comm, OpParam &param,
-                                      std::unique_ptr<AlgResourceCtxSerializable> &resCtxHost)
+static HcclResult
+InitAlgResourceCtx(HcclComm comm, OpParam& param, std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
 {
-    void *ctx = nullptr;
+    void* ctx = nullptr;
     uint64_t size = 0;
 
     if (HcclEngineCtxGet(comm, param.tag, param.engine, &ctx, &size) == HCCL_SUCCESS) {
         HCCL_INFO("[HcclAllGatherCustom] Engine context already exists, reuse it");
         param.ctxSize = size;
-        char *resCtxSequence = static_cast<char *>(ctx);
+        char* resCtxSequence = static_cast<char*>(ctx);
         std::vector<char> ctxData(resCtxSequence, resCtxSequence + param.ctxSize);
         resCtxHost->DeSerialize(ctxData);
     } else {
@@ -43,7 +43,7 @@ static HcclResult InitAlgResourceCtx(HcclComm comm, OpParam &param,
         std::vector<char> seq = resCtxHost->Serialize();
         uint64_t ctxSize = seq.size();
 
-        void *newCtx = nullptr;
+        void* newCtx = nullptr;
         CHK_RET(HcclEngineCtxCreate(comm, param.tag, param.engine, ctxSize, &newCtx));
         memcpy_s(newCtx, ctxSize, seq.data(), ctxSize);
         param.ctxSize = ctxSize;
@@ -53,8 +53,8 @@ static HcclResult InitAlgResourceCtx(HcclComm comm, OpParam &param,
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclAllGatherCustom(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, 
-                                HcclComm comm, aclrtStream stream)
+HcclResult HcclAllGatherCustom(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream)
 {
     HCCL_INFO("Start to execute HcclAllGatherCustom");
 
@@ -66,7 +66,7 @@ HcclResult HcclAllGatherCustom(void *sendBuf, void *recvBuf, uint64_t sendCount,
 
     // 2.获取算子参数信息
     OpParam param;
-    
+
     CHK_RET(HcclGetRankId(comm, &param.myRank));
     CHK_RET(HcclGetRankSize(comm, &param.rankSize));
 

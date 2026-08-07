@@ -16,13 +16,13 @@
 
 namespace ops_hccl {
 
-
 class CcuTempReduceScatterOmniPipeMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempReduceScatterOmniPipeMesh1DMem2Mem() = default;
-    explicit CcuTempReduceScatterOmniPipeMesh1DMem2Mem(const OpParam& param,
-                                        const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempReduceScatterOmniPipeMesh1DMem2Mem(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempReduceScatterOmniPipeMesh1DMem2Mem() override;
 
     std::string Describe() const override
@@ -32,13 +32,14 @@ public:
 
     u64 GetThreadNum() const override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 

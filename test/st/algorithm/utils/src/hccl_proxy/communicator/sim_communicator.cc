@@ -15,7 +15,7 @@ using namespace std;
 
 namespace HcclSim {
 
-HcclResult Sim_HcclCommInitClusterInfo(const TopoMeta &topoMeta, uint32_t rank, HcclComm *comm)
+HcclResult Sim_HcclCommInitClusterInfo(const TopoMeta& topoMeta, uint32_t rank, HcclComm* comm)
 {
     SimCommunicator* communicator = new SimCommunicator();
     CHK_RET(communicator->Init(topoMeta, rank));
@@ -23,13 +23,13 @@ HcclResult Sim_HcclCommInitClusterInfo(const TopoMeta &topoMeta, uint32_t rank, 
     return HCCL_SUCCESS;
 }
 
-HcclResult SimCommunicator::Init(const char *clusterInfo, uint32_t rank)
+HcclResult SimCommunicator::Init(const char* clusterInfo, uint32_t rank)
 {
     HCCL_ERROR("[SimCommunicator::%s] not support", __func__);
     return HCCL_E_NOT_SUPPORT;
 }
 
-HcclResult SimCommunicator::Init(const TopoMeta &topoMeta, uint32_t rank)
+HcclResult SimCommunicator::Init(const TopoMeta& topoMeta, uint32_t rank)
 {
     curRank_ = rank;
     // 构造topo模型
@@ -49,20 +49,21 @@ HcclResult SimCommunicator::Init(const TopoMeta &topoMeta, uint32_t rank)
     return HCCL_SUCCESS;
 }
 
-HcclResult SimCommunicator::SetIndependentOpConfig(const HcclCommConfig &commConfig)
+HcclResult SimCommunicator::SetIndependentOpConfig(const HcclCommConfig& commConfig)
 {
     commId_ = commConfig.hcclCommName;
-    HCCL_INFO("[%s] commEngine[%d], threadNum[%u], notifyNumPerThread[%u], commId[%s]",
-        __func__, commEngine_, threadNum_, notifyNumPerThread_, commId_.c_str());
+    HCCL_INFO(
+        "[%s] commEngine[%d], threadNum[%u], notifyNumPerThread[%u], commId[%s]", __func__, commEngine_, threadNum_,
+        notifyNumPerThread_, commId_.c_str());
     if (!independentOpThreadMgr_) {
         independentOpThreadMgr_ = std::make_unique<SimThreadMgr>(commId_, curRank_);
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult SimCommunicator::GetDefaultCommConfig(HcclCommConfig &commConfig, const std::string &commName) const
+HcclResult SimCommunicator::GetDefaultCommConfig(HcclCommConfig& commConfig, const std::string& commName) const
 {
-    commConfig.hcclBufferSize = 1024; // GetExternalInputCCLBuffSize();
+    commConfig.hcclBufferSize = 1024;    // GetExternalInputCCLBuffSize();
     commConfig.hcclDeterministic = 1024; // GetExternalInputHcclDeterministicV2();
     auto ret = strncpy_s(commConfig.hcclCommName, ROOTINFO_INDENTIFIER_MAX_LENGTH, commName.c_str(), commName.size());
     if (ret != EOK) {
@@ -72,15 +73,12 @@ HcclResult SimCommunicator::GetDefaultCommConfig(HcclCommConfig &commConfig, con
     commConfig.hcclOpExpansionMode = 0;
     commConfig.hcclRdmaTrafficClass = HCCL_COMM_TRAFFIC_CLASS_CONFIG_NOT_SET;
     commConfig.hcclRdmaServiceLevel = HCCL_COMM_SERVICE_LEVEL_CONFIG_NOT_SET;
-    commConfig.hcclWorldRankID  = 0;
-    commConfig.hcclJobID  = 0;
+    commConfig.hcclWorldRankID = 0;
+    commConfig.hcclJobID = 0;
     return HCCL_SUCCESS;
 }
 
-uint32_t SimCommunicator::GetRankId()
-{
-    return curRank_;
-}
+uint32_t SimCommunicator::GetRankId() { return curRank_; }
 
 uint32_t SimCommunicator::GetRankSize()
 {
@@ -90,12 +88,9 @@ uint32_t SimCommunicator::GetRankSize()
     return topoModel_->GetRankSize();
 }
 
-std::string SimCommunicator::GetIdentifier()
-{
-    return identifier_;
-}
+std::string SimCommunicator::GetIdentifier() { return identifier_; }
 
-HcclResult SimCommunicator::GetHcclBuffer(void **buffer, uint64_t *size)
+HcclResult SimCommunicator::GetHcclBuffer(void** buffer, uint64_t* size)
 {
     CHK_PTR_NULL(buffer);
     CHK_PTR_NULL(size);
@@ -106,13 +101,14 @@ HcclResult SimCommunicator::GetHcclBuffer(void **buffer, uint64_t *size)
     return HCCL_SUCCESS;
 }
 
-HcclResult SimCommunicator::ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-        const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList)
+HcclResult SimCommunicator::ChannelCommCreate(
+    const std::string& commId, const std::string& tag, CommEngine engine, const HcclChannelDesc* channelDescList,
+    uint32_t listNum, ChannelHandle* channelList)
 {
     return channelMgr_->ChannelCommCreate(commId, tag, engine, channelDescList, listNum, channelList);
 }
 
-HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, void **buffer, uint64_t *size)
+HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, void** buffer, uint64_t* size)
 {
     CHK_PTR_NULL(buffer);
     CHK_PTR_NULL(size);
@@ -124,4 +120,4 @@ HcclResult SimCommunicator::ChannelCommGetHcclBuffer(ChannelHandle channel, void
     return HCCL_SUCCESS;
 }
 
-};
+}; // namespace HcclSim

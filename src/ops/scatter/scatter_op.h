@@ -24,8 +24,9 @@
 extern "C" {
 #endif
 
-HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
-    HcclComm comm, aclrtStream stream);
+HcclResult HcclScatter(
+    void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root, HcclComm comm,
+    aclrtStream stream);
 
 #ifdef __cplusplus
 }
@@ -34,47 +35,49 @@ HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDat
 namespace ops_hccl {
 using NotifyArray = std::array<aclrtNotify, AICPU_CONTROL_NOTIFY_NUM>;
 
-HcclResult ScatterOutPlace(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
+HcclResult ScatterOutPlace(
+    OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
     HcclComm comm, aclrtStream stream, u32 userRankSize);
 
-HcclResult ScatterExecOp(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
+HcclResult ScatterExecOp(
+    OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
     HcclComm comm, aclrtStream stream, u32 userRankSize, uint64_t beginTime);
 
-HcclResult ExecOp(HcclComm comm, OpParam &param);
+HcclResult ExecOp(HcclComm comm, OpParam& param);
 
-HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam &param, TopoInfo** topoInfo);
+HcclResult CalcBaseTopoInfo(HcclComm comm, OpParam& param, TopoInfo** topoInfo);
 
-HcclResult SelectAlg(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName);
+HcclResult SelectAlg(HcclComm comm, OpParam& param, TopoInfo* topoInfo, AlgType& algType, std::string& algName);
 
-HcclResult GetAlgRes(HcclComm comm, OpParam &param, std::unique_ptr<ExecutorBase> &executor,
-    TopoInfo* topoInfo, AlgType& algType, AlgResourceCtx** resCtx);
+HcclResult GetAlgRes(
+    HcclComm comm, OpParam& param, std::unique_ptr<ExecutorBase>& executor, TopoInfo* topoInfo, AlgType& algType,
+    AlgResourceCtx** resCtx);
 
 HcclResult GetAlgType(TopoInfo* topoInfo, HcclCMDType opType, AlgType& algType);
 
-HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest &resRequest,
-    AlgResourceCtx* resCtxHost);
+HcclResult
+AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtx* resCtxHost);
 
-HcclResult SetAlgoLevel0(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel0 &algType);
+HcclResult SetAlgoLevel0(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel0& algType);
 
-HcclResult GetDefaultAlgoLevel0Module(TopoInfo* topoInfo, AlgTypeLevel0 &algType);
+HcclResult GetDefaultAlgoLevel0Module(TopoInfo* topoInfo, AlgTypeLevel0& algType);
 
-HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel1 &algType,
-    HcclCMDType opType);
+HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel1& algType, HcclCMDType opType);
 
-HcclResult GetDefaultAlgoLevel1V1(TopoInfo* topoInfo, AlgTypeLevel1 &algType);
+HcclResult GetDefaultAlgoLevel1V1(TopoInfo* topoInfo, AlgTypeLevel1& algType);
 
-HcclResult SetAlgoLevel2(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel2 &algType);
+HcclResult SetAlgoLevel2(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel2& algType);
 
 bool IsStreamCapture(aclrtStream stream);
 
 bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize);
 
-HcclResult CheckScatterInputPara(const HcclComm comm, const void *recvBuf);
+HcclResult CheckScatterInputPara(const HcclComm comm, const void* recvBuf);
 
 std::string SetLaunchMode(CommEngine engine);
 
-HcclResult ReportProfilingThread(HcclComm comm, const OpParam &param, AlgResourceCtx *resCtxHost, TopoInfo* topoInfo);
+HcclResult ReportProfilingThread(HcclComm comm, const OpParam& param, AlgResourceCtx* resCtxHost, TopoInfo* topoInfo);
 
-}
+} // namespace ops_hccl
 
 #endif

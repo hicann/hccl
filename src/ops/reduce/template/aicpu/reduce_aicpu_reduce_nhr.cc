@@ -11,22 +11,20 @@
 #include "reduce_aicpu_reduce_nhr.h"
 
 namespace ops_hccl {
-ReduceAicpuReduceNHR::ReduceAicpuReduceNHR(const OpParam &param,
-    const u32 rankId,  // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
+ReduceAicpuReduceNHR::ReduceAicpuReduceNHR(
+    const OpParam& param,
+    const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
 {}
 
-ReduceAicpuReduceNHR::~ReduceAicpuReduceNHR()
-{}
+ReduceAicpuReduceNHR::~ReduceAicpuReduceNHR() {}
 
-void ReduceAicpuReduceNHR::SetRoot(u32 root)
-{
-    return;
-}
+void ReduceAicpuReduceNHR::SetRoot(u32 root) { return; }
 
 HcclResult ReduceAicpuReduceNHR::CalcRes(
-    HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -36,12 +34,11 @@ HcclResult ReduceAicpuReduceNHR::CalcRes(
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
-    HCCL_INFO("[ReduceMeshNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-              " level1Channels[%u] .",
-        resourceRequest.slaveThreadNum,
-        resourceRequest.notifyNumPerThread.size(),
-        resourceRequest.notifyNumOnMainThread,
-        level1Channels.size());
+    HCCL_INFO(
+        "[ReduceMeshNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
+        " level1Channels[%u] .",
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
+        resourceRequest.notifyNumOnMainThread, level1Channels.size());
     return HCCL_SUCCESS;
 }
 
@@ -53,12 +50,12 @@ u64 ReduceAicpuReduceNHR::CalcScratchMultiple(BufferType inBuffType, BufferType 
 }
 
 HcclResult ReduceAicpuReduceNHR::KernelRun(
-    const OpParam &param, const TemplateDataParams &tempAlgParams, TemplateResource &templateResource)
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[ReduceAicpuReduceNHR] rank[%d] KernelRun start", myRank_);
     // 处理数据量为0的场景
-    CHK_PRT_RET(tempAlgParams.sliceSize == 0,
-        HCCL_INFO("[ReduceAicpuReduceNHR] sliceSize is 0, no need to process"),
+    CHK_PRT_RET(
+        tempAlgParams.sliceSize == 0, HCCL_INFO("[ReduceAicpuReduceNHR] sliceSize is 0, no need to process"),
         HCCL_SUCCESS);
 
     CHK_PRT_RET(
@@ -69,28 +66,27 @@ HcclResult ReduceAicpuReduceNHR::KernelRun(
     thread_ = templateResource.threads.at(0);
     buffInfo_ = tempAlgParams.buffInfo;
 
-    bool isPcieProtocal = IsPcieProtocol(templateResource.channels);  // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;  // 是否使用Read模式
+    bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
     HCCL_DEBUG("[ReduceAicpuReduceNHR] Use Dma Read[%d]", isDmaRead_);
 
     myIdx_ = GetAlgRank(myRank_);
-    CHK_PRT_RET(myIdx_ >= templateRankSize_,
-        HCCL_ERROR("[ReduceAicpuReduceNHR] rank idx[%u] in virtRankMap is invalid, it should be less than rankSize[%u]",
-            myIdx_,
-            templateRankSize_),
+    CHK_PRT_RET(
+        myIdx_ >= templateRankSize_,
+        HCCL_ERROR(
+            "[ReduceAicpuReduceNHR] rank idx[%u] in virtRankMap is invalid, it should be less than rankSize[%u]",
+            myIdx_, templateRankSize_),
         HcclResult::HCCL_E_INTERNAL);
     processSize_ = tempAlgParams.sliceSize;
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
-    HCCL_INFO("[KernelRun] sliceSize: %u, count_: %u, typeSize: %u",
-        tempAlgParams.sliceSize,
-        count_,
+    HCCL_INFO(
+        "[KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize, count_,
         DATATYPE_SIZE_TABLE[dataType_]);
 
-    const std::map<u32, std::vector<ChannelInfo>> &channels = templateResource.channels;
-    HCCL_DEBUG("[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]",
-        myRank_,
-        channels.size(),
+    const std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
+    HCCL_DEBUG(
+        "[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_, channels.size(),
         channels.begin()->first);
 
     // 1. 切片
@@ -98,7 +94,7 @@ HcclResult ReduceAicpuReduceNHR::KernelRun(
 
     // 2. PreCopy (OPBASE 模式下将 userIn -> ccl)
     CHK_RET(PreCopy(tempAlgParams));
-    
+
     // 3. AllGather 阶段
     CHK_RET(RunGather(channels));
 
@@ -128,9 +124,8 @@ HcclResult ReduceAicpuReduceNHR::CalcSlice(u64 chunkSize)
     for (u32 rankIdx = 0; rankIdx < templateRankSize_; rankIdx++) {
         u64 currChunkSize = std::min<u64>(dataSize - accumOff, chunkSize);
         sliceInfoVec_[rankIdx].emplace_back(SliceInfo{accumOff, currChunkSize});
-        HCCL_DEBUG("[ReduceAicpuReduceNHR] rankIdx [%d] CalcSlice accumOff[%u], currChunkSize[%u]",
-            rankIdx,
-            accumOff,
+        HCCL_DEBUG(
+            "[ReduceAicpuReduceNHR] rankIdx [%d] CalcSlice accumOff[%u], currChunkSize[%u]", rankIdx, accumOff,
             currChunkSize);
         accumOff += currChunkSize;
     }
@@ -144,10 +139,10 @@ HcclResult ReduceAicpuReduceNHR::CalcSlice(u64 chunkSize)
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult ReduceAicpuReduceNHR::PreCopy(const TemplateDataParams &tempAlgParams)
+HcclResult ReduceAicpuReduceNHR::PreCopy(const TemplateDataParams& tempAlgParams)
 {
     HCCL_INFO("[ReduceAicpuReduceNHR][PreCopy] start");
-    const BuffInfo &buffInfo = tempAlgParams.buffInfo;
+    const BuffInfo& buffInfo = tempAlgParams.buffInfo;
     const u64 sliceSize = tempAlgParams.sliceSize;
 
     const DataSlice srcSlice(buffInfo.inputPtr, buffInfo.inBuffBaseOff, sliceSize);
@@ -157,7 +152,7 @@ HcclResult ReduceAicpuReduceNHR::PreCopy(const TemplateDataParams &tempAlgParams
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult ReduceAicpuReduceNHR::RunGather(const std::map<u32, std::vector<ChannelInfo>> &channels)
+HcclResult ReduceAicpuReduceNHR::RunGather(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     HCCL_INFO("[ReduceAicpuReduceNHR][RunGather] start");
     u64 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
@@ -167,8 +162,8 @@ HcclResult ReduceAicpuReduceNHR::RunGather(const std::map<u32, std::vector<Chann
         AicpuNHRStepInfo stepInfo;
         CHK_RET(GetStepInfo(step, nSteps, stepInfo));
 
-        const ChannelInfo &channelRecv = channels.at(subCommRanks_.at(0).at(stepInfo.fromRank)).at(0);
-        const ChannelInfo &channelSend = channels.at(subCommRanks_.at(0).at(stepInfo.toRank)).at(0);
+        const ChannelInfo& channelRecv = channels.at(subCommRanks_.at(0).at(stepInfo.fromRank)).at(0);
+        const ChannelInfo& channelSend = channels.at(subCommRanks_.at(0).at(stepInfo.toRank)).at(0);
 
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
@@ -191,12 +186,12 @@ HcclResult ReduceAicpuReduceNHR::RunGather(const std::map<u32, std::vector<Chann
 
         SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvRead(sendRecvInfo, thread_),
-                HCCL_ERROR("[ReduceAicpuReduceNHR] RunGather send/recv failed"),
+            CHK_PRT_RET(
+                SendRecvRead(sendRecvInfo, thread_), HCCL_ERROR("[ReduceAicpuReduceNHR] RunGather send/recv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
-            CHK_PRT_RET(SendRecvWrite(sendRecvInfo, thread_),
-                HCCL_ERROR("[ReduceAicpuReduceNHR] RunGather send/recv failed"),
+            CHK_PRT_RET(
+                SendRecvWrite(sendRecvInfo, thread_), HCCL_ERROR("[ReduceAicpuReduceNHR] RunGather send/recv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         }
     }
@@ -205,15 +200,16 @@ HcclResult ReduceAicpuReduceNHR::RunGather(const std::map<u32, std::vector<Chann
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult ReduceAicpuReduceNHR::RunReduce(const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const TemplateDataParams &tempAlgParams, const std::string &algTag)
+HcclResult ReduceAicpuReduceNHR::RunReduce(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+    const std::string& algTag)
 {
     HCCL_INFO("[ReduceAicpuReduceNHR][RunReduce] start");
     if (myRank_ != root_) {
         return HCCL_SUCCESS;
     }
 
-    const BuffInfo &buffInfo = tempAlgParams.buffInfo;
+    const BuffInfo& buffInfo = tempAlgParams.buffInfo;
     const u64 sliceSize = tempAlgParams.sliceSize;
     const DataSlice srcSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff, sliceSize, count_);
     const DataSlice dstSlice(buffInfo.outputPtr, buffInfo.outBuffBaseOff, sliceSize, count_);
@@ -232,7 +228,7 @@ HcclResult ReduceAicpuReduceNHR::RunReduce(const std::map<u32, std::vector<Chann
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult ReduceAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo)
+HcclResult ReduceAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo)
 {
     u32 rankIdx = myIdx_;
     stepInfo.txSliceIdxs.clear();
@@ -259,7 +255,8 @@ HcclResult ReduceAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepI
         stepInfo.txSliceIdxs.push_back(txSliceIdx);
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
-        HCCL_DEBUG("[ReduceAicpuReduceNHR][GetStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
+        HCCL_DEBUG(
+            "[ReduceAicpuReduceNHR][GetStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
@@ -268,7 +265,7 @@ HcclResult ReduceAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepI
 }
 
 //  计算每轮收发的对端以及slice编号
-HcclResult ReduceAicpuReduceNHR::GetStepInfoList(std::vector<AicpuNHRStepInfo> &stepInfoList)
+HcclResult ReduceAicpuReduceNHR::GetStepInfoList(std::vector<AicpuNHRStepInfo>& stepInfoList)
 {
     // 将本 rank 号转换成算法使用的索引号
     u32 rankIdx = myIdx_;
@@ -288,7 +285,7 @@ HcclResult ReduceAicpuReduceNHR::GetStepInfoList(std::vector<AicpuNHRStepInfo> &
         u32 txSliceIdx = sendTo;
         u32 rxSliceIdx = rankIdx;
 
-        AicpuNHRStepInfo &currStepInfo = stepInfoList[step];
+        AicpuNHRStepInfo& currStepInfo = stepInfoList[step];
         currStepInfo.step = step;
         currStepInfo.myRank = rankIdx;
         currStepInfo.nSlices = nSlices;
@@ -301,9 +298,8 @@ HcclResult ReduceAicpuReduceNHR::GetStepInfoList(std::vector<AicpuNHRStepInfo> &
         for (u32 i = 0; i < nSlices; i++) {
             currStepInfo.txSliceIdxs.push_back(txSliceIdx);
             currStepInfo.rxSliceIdxs.push_back(rxSliceIdx);
-            HCCL_DEBUG("[ReduceAicpuReduceNHR][GetStepInfoList] i[%u] txSliceIdx[%u] rxSliceIdx[%u]",
-                i,
-                txSliceIdx,
+            HCCL_DEBUG(
+                "[ReduceAicpuReduceNHR][GetStepInfoList] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx,
                 rxSliceIdx);
             txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
             rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
@@ -321,15 +317,10 @@ u32 ReduceAicpuReduceNHR::GetAlgRank(u32 rank) const
     return static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
 }
 
-void ReduceAicpuReduceNHR::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub)
-{}
+void ReduceAicpuReduceNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) {}
 
-void ReduceAicpuReduceNHR::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
-{}
+void ReduceAicpuReduceNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) {}
 
-u64 ReduceAicpuReduceNHR::GetThreadNum()
-{
-    return 1;
-}
+u64 ReduceAicpuReduceNHR::GetThreadNum() { return 1; }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

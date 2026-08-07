@@ -22,11 +22,11 @@ extern "C" {
 
 /* 自定义 Send 算子 */
 HcclResult HcclSendCustom(
-    void *sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream);
+    void* sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank, HcclComm comm, aclrtStream stream);
 
 /* 自定义 Recv 算子 */
 HcclResult HcclRecvCustom(
-    void *recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream);
+    void* recvBuf, uint64_t count, HcclDataType dataType, uint32_t srcRank, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }

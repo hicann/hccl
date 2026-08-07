@@ -20,15 +20,15 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgReduceScatterVMesh1DMem2Mem: CcuKernelArgBase{
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceScatterVMesh1DMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ReduceScatterVMesh1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterVMesh1DMem2Mem *arg;
+struct ReduceScatterVMesh1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterVMesh1DMem2Mem* arg;
     HcclDataType dataType;
     HcclDataType outputDataType;
     HcclReduceOp reduceOp;
@@ -49,5 +49,5 @@ struct ReduceScatterVMesh1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuReduceScatterVMesh1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_V_MESH_1D_MEM2MEM

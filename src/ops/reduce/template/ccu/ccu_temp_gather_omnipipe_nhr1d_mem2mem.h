@@ -20,37 +20,39 @@ namespace ops_hccl {
 class CcuTempGatherOmniPipeNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempGatherOmniPipeNHR1DMem2Mem() = default;
-    explicit CcuTempGatherOmniPipeNHR1DMem2Mem(const OpParam& param,
-                                                 const u32 rankId,
-                                                 const std::vector<std::vector<u32>>& subCommRanks);
+    explicit CcuTempGatherOmniPipeNHR1DMem2Mem(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempGatherOmniPipeNHR1DMem2Mem() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Gather ccu omnipipe NHR 1D mem2mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of Gather ccu omnipipe NHR 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
-    HcclResult KernelRun(const OpParam& param,
-                          const TemplateDataParams& templateDataParams,
-                          TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     void SetRoot(u32 root);
     void UnsetRoot(u32 rank);
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    HcclResult RunGatherComm(const StepSliceInfo& stepSliceInfo, uint64_t inputAddr, uint64_t outputAddr,
-        uint64_t scratchAddr, uint64_t token, uint64_t localCopyFlag, TemplateResource& templateResource);
-    void BuildGatherStrideVec(const StepSliceInfo& stepSliceInfo, uint32_t rpt, uint64_t& sliceSize,
-        std::vector<uint64_t>& inputVec, std::vector<uint64_t>& outputVec, std::vector<uint64_t>& sliceSizeVec);
-    HcclResult LaunchGatherKernel(TemplateResource& templateResource, uint64_t inputAddr, uint64_t outputAddr,
-        uint64_t scratchAddr, uint64_t token, uint64_t localCopyFlag, uint64_t sliceSize,
-        const std::vector<uint64_t>& inputVec, const std::vector<uint64_t>& outputVec,
-        const std::vector<uint64_t>& sliceSizeVec);
+    HcclResult RunGatherComm(
+        const StepSliceInfo& stepSliceInfo, uint64_t inputAddr, uint64_t outputAddr, uint64_t scratchAddr,
+        uint64_t token, uint64_t localCopyFlag, TemplateResource& templateResource);
+    void BuildGatherStrideVec(
+        const StepSliceInfo& stepSliceInfo, uint32_t rpt, uint64_t& sliceSize, std::vector<uint64_t>& inputVec,
+        std::vector<uint64_t>& outputVec, std::vector<uint64_t>& sliceSizeVec);
+    HcclResult LaunchGatherKernel(
+        TemplateResource& templateResource, uint64_t inputAddr, uint64_t outputAddr, uint64_t scratchAddr,
+        uint64_t token, uint64_t localCopyFlag, uint64_t sliceSize, const std::vector<uint64_t>& inputVec,
+        const std::vector<uint64_t>& outputVec, const std::vector<uint64_t>& sliceSizeVec);
     HcclResult RunLocalCopy(const TemplateDataParams& templateDataParams, TemplateResource& templateResource);
 
     uint32_t mySubCommRank_ = 0;
@@ -65,7 +67,7 @@ public:
     bool ifDoTask_ = false;
 
 protected:
-    HcclResult CalcNHRInfo(std::vector<NHRStepInfo> &stepInfoVector) const;
+    HcclResult CalcNHRInfo(std::vector<NHRStepInfo>& stepInfoVector) const;
     u32 GetNHRStepNum(u32 rankSize) const;
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
     uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;

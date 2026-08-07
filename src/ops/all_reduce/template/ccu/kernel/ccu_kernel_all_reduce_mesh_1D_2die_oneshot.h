@@ -28,7 +28,7 @@ struct CcuKernelArgAllreduceMesh1D2DieOneShot : CcuKernelArgBase {
 };
 
 struct AllreduceMesh1D2DieOneShotContext : CcuKernelCtxBase {
-    const CcuKernelArgAllreduceMesh1D2DieOneShot *arg;
+    const CcuKernelArgAllreduceMesh1D2DieOneShot* arg;
 
     bool rmtReduceWithMyRank{false};
     uint32_t rankId{0};

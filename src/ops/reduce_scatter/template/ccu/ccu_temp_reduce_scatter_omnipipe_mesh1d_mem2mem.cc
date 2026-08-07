@@ -17,7 +17,7 @@
 namespace ops_hccl {
 
 CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CcuTempReduceScatterOmniPipeMesh1DMem2Mem(
-    const OpParam &param, const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks)
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
@@ -27,20 +27,17 @@ CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CcuTempReduceScatterOmniPipeMesh1DMem
         // 获取本卡在子通信域(如果有)中的rankid
         mySubCommRank_ = std::distance(ranks.begin(), it);
     }
-    HCCL_DEBUG("[CcuTempReduceScatterOmniPipeMesh1DMem2Mem] myRank[%u] mySubCommRank[%u] "
-                "templateRankSize[%u]", rankId, mySubCommRank_, templateRankSize_);
+    HCCL_DEBUG(
+        "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem] myRank[%u] mySubCommRank[%u] "
+        "templateRankSize[%u]",
+        rankId, mySubCommRank_, templateRankSize_);
 }
 
-CcuTempReduceScatterOmniPipeMesh1DMem2Mem::~CcuTempReduceScatterOmniPipeMesh1DMem2Mem()
-{
-}
+CcuTempReduceScatterOmniPipeMesh1DMem2Mem::~CcuTempReduceScatterOmniPipeMesh1DMem2Mem() {}
 
-u64 CcuTempReduceScatterOmniPipeMesh1DMem2Mem::GetThreadNum() const
-{
-    return 1;
-}
+u64 CcuTempReduceScatterOmniPipeMesh1DMem2Mem::GetThreadNum() const { return 1; }
 
-HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;
@@ -59,9 +56,9 @@ uint32_t CcuTempReduceScatterOmniPipeMesh1DMem2Mem::RemoteRankId2RankId(const ui
     return subCommRankId;
 }
 
-
-HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
+HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;
@@ -70,23 +67,28 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(HcclComm comm, con
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
-    HCCL_DEBUG("[%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
+    HCCL_DEBUG(
+        "[%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
         resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
 
-    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeMesh1DMem2MemKernel"));
-    kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuReduceScatterOmniPipeMesh1DMem2MemKernel);
+    CHK_SAFETY_FUNC_RET(strcpy_s(
+        kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuReduceScatterOmniPipeMesh1DMem2MemKernel"));
+    kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuReduceScatterOmniPipeMesh1DMem2MemKernel);
 
     std::vector<HcclChannelDesc> channelDescs;
-    if(topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
         CHK_RET(CalcChannelRequestMesh1DFullMesh(comm, param, topoInfo, subCommRanks_, channelDescs));
     } else {
-        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
-        for(auto channel : channelDescs){
-            if(channel.channelProtocol != COMM_PROTOCOL_UBC_CTP){
-                HCCL_ERROR("[CcuTempReduceScatterOmniPipeMesh1DMem2Mem][CalcRes] channelProtocol: %u", channel.channelProtocol);
+        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
+            comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
+        for (auto channel : channelDescs) {
+            if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
+                HCCL_ERROR(
+                    "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem][CalcRes] channelProtocol: %u",
+                    channel.channelProtocol);
                 return HCCL_E_INTERNAL;
             }
         }
@@ -104,14 +106,15 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(HcclComm comm, con
 
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
-    HCCL_DEBUG("[%s] myRank[%u] mySubCommRank[%u] channelSize[%u] dimsize[%u] ccuKernelInfos.size[%u]", __func__,
-        myRank_, mySubCommRank_, channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
+    HCCL_DEBUG(
+        "[%s] myRank[%u] mySubCommRank[%u] channelSize[%u] dimsize[%u] ccuKernelInfos.size[%u]", __func__, myRank_,
+        mySubCommRank_, channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun(
-    const OpParam &param, const TemplateDataParams &templateDataParams, TemplateResource &templateResource)
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     auto stepSliceInfo = templateDataParams.stepSliceInfo;
@@ -128,7 +131,7 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun(
 
     uint64_t inputAddr = inputAddrBase + inBuffBaseOff;
     uint64_t outputAddr = outputAddrBase + outBuffBaseOff;
-    
+
     uint64_t localCopyFlag = templateDataParams.localCopyFlag;
     if (localCopyFlag == 0) {
         uint64_t inputSliceStride = stepSliceInfo.stepInputSliceStride[mySubCommRank_];
@@ -139,30 +142,51 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun(
             uint64_t sliceSize = stepSliceInfo.stepSliceSize[mySubCommRank_][rpt];
             uint64_t inputOmniPipeSliceStride = stepSliceInfo.inputOmniPipeSliceStride[mySubCommRank_][rpt];
 
-            LoopGroupConfig  config{};
+            LoopGroupConfig config{};
             config.msInterleave = CCU_MS_INTERLEAVE;
-            config.loopCount    = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
-            config.memSlice     = CCU_MS_SIZE;
+            config.loopCount = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
+            config.memSlice = CCU_MS_SIZE;
             auto goSize = CalGoSize(sliceSize, config);
-            HCCL_INFO("[%s] myRank[%u] mySubCommRank[%u] rpt[%u] inputAddrBase[%llu] outputAddrBase[%llu] "
-                       "inBuffBaseOff[%llu] outBuffBaseOff[%llu] inputAddr[%llu] outputAddr[%llu] "
-                       "sliceSize[%llu] inputSliceStride[%llu] localCopyFlag[%llu]",
-                        __func__, myRank_, mySubCommRank_, rpt, inputAddrBase, outputAddrBase, inBuffBaseOff,
-                        outBuffBaseOff, inputAddr, outputAddr, sliceSize, inputSliceStride, localCopyFlag);
-            std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, scratchAddr, sliceSize, token, localCopyFlag,
-                    inputSliceStride, outputSliceStride, inputOmniPipeSliceStride, goSize[0], goSize[1], goSize[2], goSize[3]};
-    
-            CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], 
-                                                    taskArgs.data(), taskArgs.size());
-            CHK_PRT_RET(launchRet != CCU_SUCCESS, 
-                HCCL_ERROR("[CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet), ConvertCcuToHccl(launchRet));
+            HCCL_INFO(
+                "[%s] myRank[%u] mySubCommRank[%u] rpt[%u] inputAddrBase[%llu] outputAddrBase[%llu] "
+                "inBuffBaseOff[%llu] outBuffBaseOff[%llu] inputAddr[%llu] outputAddr[%llu] "
+                "sliceSize[%llu] inputSliceStride[%llu] localCopyFlag[%llu]",
+                __func__, myRank_, mySubCommRank_, rpt, inputAddrBase, outputAddrBase, inBuffBaseOff, outBuffBaseOff,
+                inputAddr, outputAddr, sliceSize, inputSliceStride, localCopyFlag);
+            std::vector<uint64_t> taskArgs
+                = {inputAddr,
+                   outputAddr,
+                   scratchAddr,
+                   sliceSize,
+                   token,
+                   localCopyFlag,
+                   inputSliceStride,
+                   outputSliceStride,
+                   inputOmniPipeSliceStride,
+                   goSize[0],
+                   goSize[1],
+                   goSize[2],
+                   goSize[3]};
+
+            CcuResult launchRet = HcommCcuKernelLaunch(
+                templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), taskArgs.size());
+            CHK_PRT_RET(
+                launchRet != CCU_SUCCESS,
+                HCCL_ERROR(
+                    "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d",
+                    launchRet),
+                ConvertCcuToHccl(launchRet));
         }
     } else if (localCopyFlag == 1) {
-        DataSlice srcSlice(buffInfo_.inputPtr, buffInfo_.inBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
-        DataSlice dstSlice(buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
-        HCCL_DEBUG("[%s] myRank[%u] TempLocalCopy inputAddrBase[%llu] inputAddrOffset[%llu] outputAddrBase[%llu]"
-                   "outputAddrOffset[%llu] sliceSize[%llu]",__func__, myRank_, inputAddrBase, buffInfo_.inBuffBaseOff,
-                   outputAddrBase, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize);
+        DataSlice srcSlice(
+            buffInfo_.inputPtr, buffInfo_.inBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
+        DataSlice dstSlice(
+            buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
+        HCCL_DEBUG(
+            "[%s] myRank[%u] TempLocalCopy inputAddrBase[%llu] inputAddrOffset[%llu] outputAddrBase[%llu]"
+            "outputAddrOffset[%llu] sliceSize[%llu]",
+            __func__, myRank_, inputAddrBase, buffInfo_.inBuffBaseOff, outputAddrBase, buffInfo_.outBuffBaseOff,
+            templateDataParams.sliceSize);
         CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
     }
 

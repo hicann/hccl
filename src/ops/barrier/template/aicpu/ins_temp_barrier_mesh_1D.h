@@ -21,8 +21,8 @@ namespace ops_hccl {
 class InsTempBarrierMesh1D : public InsAlgTemplateBase {
 public:
     InsTempBarrierMesh1D() = default;
-    explicit InsTempBarrierMesh1D(const OpParam &param, const u32 rankId,
-                                  const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempBarrierMesh1D(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempBarrierMesh1D() override = default;
 
     std::string Describe() const override
@@ -32,20 +32,21 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                         TemplateResource &templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 protected:
-    HcclResult RunBarrierMesh(const std::vector<ThreadHandle> &threads,
-                              const std::map<u32, std::vector<ChannelInfo>> &channels);
+    HcclResult
+    RunBarrierMesh(const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels);
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_BARRIER_MESH_1D_H
+#endif // INS_TEMP_BARRIER_MESH_1D_H

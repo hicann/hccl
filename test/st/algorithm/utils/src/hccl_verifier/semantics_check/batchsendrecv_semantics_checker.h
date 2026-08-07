@@ -16,7 +16,7 @@
 
 namespace HcclSim {
 
-HcclResult TaskCheckBatchSendRecvSemantics(std::map<RankId, RankMemorySemantics> &allRankMemSemantics, u64 dataSize);
+HcclResult TaskCheckBatchSendRecvSemantics(std::map<RankId, RankMemorySemantics>& allRankMemSemantics, u64 dataSize);
 
 }
 

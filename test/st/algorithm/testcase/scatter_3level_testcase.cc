@@ -23,10 +23,8 @@ protected:
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
         unsetenv("HCCL_OP_EXPANSION_MODE");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
 TEST_F(ST_SCATTER_3LEVEL_TEST, test_aicpu_scatter_mesh_1d_success_2x8x8_root0_fp32_small_data)
@@ -52,7 +50,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_2level_backward_compat_meshnhr)
     GenTopoMeta(topoMeta, 1, 2, 8);
     auto recvCount = 200;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -62,7 +60,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_2level_backward_compat_meshnhr_2)
     GenTopoMeta(topoMeta, 1, 4, 4);
     auto recvCount = 400;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -82,7 +80,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x2x2_fp32_sum_multi_loop)
     GenTopoMeta(topoMeta, 2, 2, 2);
     auto recvCount = 500 * 1024 * 1024;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -92,7 +90,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x2x8_fp32_sum_small_cluster_re
     GenTopoMeta(topoMeta, 2, 2, 8);
     auto recvCount = 200 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -102,7 +100,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_4x2x4_int32_sum_repeatnum4)
     GenTopoMeta(topoMeta, 4, 2, 4);
     auto recvCount = 200;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -112,7 +110,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x2x4_bfp16_max_dtype)
     GenTopoMeta(topoMeta, 2, 2, 4);
     auto recvCount = 300;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_BFP16;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -122,7 +120,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_3x2x8_fp32_sum_level2_3cluster)
     GenTopoMeta(topoMeta, 3, 2, 8);
     auto recvCount = 200;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -132,7 +130,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x3x4_int32_sum_asymmetric_all)
     GenTopoMeta(topoMeta, 2, 3, 4);
     auto recvCount = 200;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -144,7 +142,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_3x1x8_fp32_min_l1_degenerate)
     GenTopoMeta(topoMeta, 3, 1, 8);
     auto recvCount = 200;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -154,7 +152,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x1x4_int8_sum_l1_degenerate_re
     GenTopoMeta(topoMeta, 2, 1, 4);
     auto recvCount = 8 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -164,7 +162,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_4x1x1_fp32_sum_double_degenerat
     GenTopoMeta(topoMeta, 4, 1, 1);
     auto recvCount = 16 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -174,7 +172,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x3x4_fp32_min_recv4_plus_1)
     GenTopoMeta(topoMeta, 2, 3, 4);
     auto recvCount = 4 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -184,7 +182,7 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x4x4_int16_max_recv64k_plus_1)
     GenTopoMeta(topoMeta, 2, 4, 4);
     auto recvCount = 64 * 1024 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT16;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }
 
@@ -194,6 +192,6 @@ TEST_F(ST_SCATTER_3LEVEL_TEST, st_scatter_3level_2x4x1_fp32_sum_l0_degenerate_re
     GenTopoMeta(topoMeta, 2, 4, 1);
     auto recvCount = 128 * 1024 + 1;
     auto dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
-    
+
     RunScatterTest(0, topoMeta, recvCount, dataType);
 }

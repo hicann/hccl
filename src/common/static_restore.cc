@@ -29,11 +29,11 @@
 #include "hccl_common.h"
 
 /* 配置参数 */
-#define DEFAULT_BASE_PATH         "/usr/local/Ascend/ascend-toolkit/latest"
-#define AICPU_TAR_RELATIVE_PATH   "opp/built_in/op_impl/aicpu/kernel/aicpu_hccl.tar.gz"
-#define FILE_PERMISSIONS          0644
-#define PATH_BUFFER_SIZE          PATH_MAX
-#define MAX_BUFFER_SIZE           (50 * 1024 * 1024)  /* 50MB */
+#define DEFAULT_BASE_PATH "/usr/local/Ascend/ascend-toolkit/latest"
+#define AICPU_TAR_RELATIVE_PATH "opp/built_in/op_impl/aicpu/kernel/aicpu_hccl.tar.gz"
+#define FILE_PERMISSIONS 0644
+#define PATH_BUFFER_SIZE PATH_MAX
+#define MAX_BUFFER_SIZE (50 * 1024 * 1024) /* 50MB */
 
 /* 声明嵌入的二进制数据符号 */
 extern char _binary_aicpu_hccl_tar_gz_start[];
@@ -46,7 +46,8 @@ static int crc32_table_initialized = 0;
 /**
  * @brief 初始化 CRC32 查找表
  */
-static void init_crc32_table(void) {
+static void init_crc32_table(void)
+{
     if (crc32_table_initialized) {
         return;
     }
@@ -68,7 +69,8 @@ static void init_crc32_table(void) {
  * @param length 数据长度
  * @return uint32_t CRC32 校验值
  */
-static uint32_t calc_crc32(const void* data, size_t length) {
+static uint32_t calc_crc32(const void* data, size_t length)
+{
     init_crc32_table();
 
     const uint8_t* bytes = (const uint8_t*)data;
@@ -84,14 +86,14 @@ static uint32_t calc_crc32(const void* data, size_t length) {
 /**
  * @brief 检查路径是否包含无效字符
  */
-static int has_valid_chars(const char* path) {
+static int has_valid_chars(const char* path)
+{
     const char* whitelist = "abcdefghijklmnopqrstuvwxyz"
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                           "0123456789/_-.";
+                            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                            "0123456789/_-.";
     for (const char* p = path; *p != '\0'; p++) {
         if (strchr(whitelist, *p) == NULL) {
-            HCCL_ERROR("Path contains invalid character at position %ld: '%c'",
-                    (long)(p - path), *p);
+            HCCL_ERROR("Path contains invalid character at position %ld: '%c'", (long)(p - path), *p);
             return 0;
         }
     }
@@ -101,7 +103,8 @@ static int has_valid_chars(const char* path) {
 /**
  * @brief 检查路径是否包含穿越序列
  */
-static int has_no_traversal(const char* path, size_t len) {
+static int has_no_traversal(const char* path, size_t len)
+{
     if (strstr(path, "/../") != NULL) {
         HCCL_ERROR("Path contains traversal sequence '../': '%s'", path);
         return 0;
@@ -124,7 +127,8 @@ static int has_no_traversal(const char* path, size_t len) {
 /**
  * @brief 检查路径格式是否合法
  */
-static int has_valid_format(const char* path, size_t len) {
+static int has_valid_format(const char* path, size_t len)
+{
     if (strstr(path, "//") != NULL) {
         HCCL_ERROR("Path contains double slash: '%s'", path);
         return 0;
@@ -149,7 +153,8 @@ static int has_valid_format(const char* path, size_t len) {
  * @param path 待检查的路径
  * @return int 1 表示安全，0 表示不安全
  */
-static int is_safe_path(const char* path) {
+static int is_safe_path(const char* path)
+{
     size_t len;
     if (path == NULL || *path == '\0') {
         HCCL_ERROR("Path is empty");
@@ -180,7 +185,8 @@ static int is_safe_path(const char* path) {
  * @param src 源字符串
  * @return int 0 成功，-1 失败（源字符串过长被截断）
  */
-static int safe_strcpy(char* dest, size_t dest_size, const char* src) {
+static int safe_strcpy(char* dest, size_t dest_size, const char* src)
+{
     if (dest == NULL || src == NULL || dest_size == 0) {
         return -1;
     }
@@ -217,13 +223,13 @@ static int safe_strcpy(char* dest, size_t dest_size, const char* src) {
  * @param path 必须为已通过 is_safe_path 的绝对路径
  * @return int 成功返回最末级目录的 fd（调用者负责 close），失败返回 -1
  */
-static int safe_open_dir_chain(const char* path) {
+static int safe_open_dir_chain(const char* path)
+{
     char buf[PATH_BUFFER_SIZE];
     char* saveptr = NULL;
     int dirfd;
 
-    if (path == NULL || path[0] != '/' ||
-        safe_strcpy(buf, sizeof(buf), path) != 0) {
+    if (path == NULL || path[0] != '/' || safe_strcpy(buf, sizeof(buf), path) != 0) {
         return -1;
     }
     dirfd = open("/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
@@ -231,25 +237,25 @@ static int safe_open_dir_chain(const char* path) {
         HCCL_ERROR("open root failed: %s", strerror(errno));
         return -1;
     }
-    for (char* comp = strtok_r(buf, "/", &saveptr); comp != NULL;
-         comp = strtok_r(NULL, "/", &saveptr)) {
+    for (char* comp = strtok_r(buf, "/", &saveptr); comp != NULL; comp = strtok_r(NULL, "/", &saveptr)) {
         struct stat st;
         int next_fd;
 
         if (mkdirat(dirfd, comp, 0755) == -1 && errno != EEXIST) {
             HCCL_ERROR("mkdirat '%s' failed: %s", comp, strerror(errno));
-            close(dirfd); return -1;
+            close(dirfd);
+            return -1;
         }
-        if (fstatat(dirfd, comp, &st, AT_SYMLINK_NOFOLLOW) != 0 ||
-            S_ISLNK(st.st_mode) || !S_ISDIR(st.st_mode)) {
+        if (fstatat(dirfd, comp, &st, AT_SYMLINK_NOFOLLOW) != 0 || S_ISLNK(st.st_mode) || !S_ISDIR(st.st_mode)) {
             HCCL_ERROR("Component '%s' invalid (symlink or non-dir)", comp);
-            close(dirfd); return -1;
+            close(dirfd);
+            return -1;
         }
-        next_fd = openat(dirfd, comp,
-                         O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        next_fd = openat(dirfd, comp, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         if (next_fd < 0) {
             HCCL_ERROR("openat '%s' failed: %s", comp, strerror(errno));
-            close(dirfd); return -1;
+            close(dirfd);
+            return -1;
         }
         close(dirfd);
         dirfd = next_fd;
@@ -264,7 +270,8 @@ static int safe_open_dir_chain(const char* path) {
  *
  * @return const char* 安全的基础路径（静态缓冲区）
  */
-static const char* get_safe_base_path(void) {
+static const char* get_safe_base_path(void)
+{
     static char safe_path[PATH_BUFFER_SIZE];
     const char* env_path;
 
@@ -292,8 +299,8 @@ static const char* get_safe_base_path(void) {
  * @param output_size 输出缓冲区大小
  * @return int 0 成功，-1 失败
  */
-static int build_safe_path(const char* base_path, const char* relative_path,
-                          char* output, size_t output_size) {
+static int build_safe_path(const char* base_path, const char* relative_path, char* output, size_t output_size)
+{
     size_t base_len, rel_len;
 
     if (base_path == NULL || relative_path == NULL || output == NULL) {
@@ -326,7 +333,8 @@ static int build_safe_path(const char* base_path, const char* relative_path,
 /**
  * @brief 获取文件描述符并加锁
  */
-static FILE* lock_file(FILE* fp, const char* target_path) {
+static FILE* lock_file(FILE* fp, const char* target_path)
+{
     int fd = fileno(fp);
     if (fd < 0) {
         HCCL_ERROR("Cannot get file descriptor for '%s'", target_path);
@@ -341,19 +349,17 @@ static FILE* lock_file(FILE* fp, const char* target_path) {
 
     for (int i = 0; i < max_retries; i++) {
         if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
-            return fp;  /* 成功获取锁 */
+            return fp; /* 成功获取锁 */
         }
         if (errno != EWOULDBLOCK && errno != EAGAIN) {
-            HCCL_ERROR("flock failed on '%s': %s",
-                    target_path, strerror(errno));
+            HCCL_ERROR("flock failed on '%s': %s", target_path, strerror(errno));
             fclose(fp);
             return NULL;
         }
         usleep(retry_interval_ms * 1000);
     }
 
-    HCCL_ERROR("Timeout acquiring lock on '%s' after %dms",
-            target_path, timeout_ms);
+    HCCL_ERROR("Timeout acquiring lock on '%s' after %dms", target_path, timeout_ms);
     fclose(fp);
     return NULL;
 }
@@ -375,40 +381,47 @@ static FILE* lock_file(FILE* fp, const char* target_path) {
  * @param file_exists 输出：1 表示已存在并被打开，0 表示由本调用创建
  * @return FILE* 已加 flock 的文件指针；NULL 表示失败
  */
-static FILE* open_target_secure(const char* target_path, int* file_exists) {
+static FILE* open_target_secure(const char* target_path, int* file_exists)
+{
     char dir_buf[PATH_BUFFER_SIZE];
     int parent_fd, fd = -1;
     char* slash;
     const char* basename;
     FILE* fp;
 
-    if (file_exists) *file_exists = 0;
-    if (target_path == NULL ||
-        safe_strcpy(dir_buf, sizeof(dir_buf), target_path) != 0) {
+    if (file_exists)
+        *file_exists = 0;
+    if (target_path == NULL || safe_strcpy(dir_buf, sizeof(dir_buf), target_path) != 0) {
         return NULL;
     }
     slash = strrchr(dir_buf, '/');
-    if (slash == NULL) return NULL;
+    if (slash == NULL)
+        return NULL;
     /* 目标位于根目录下时父目录退化为 "/"，其它情况截断到最后一级目录 */
-    if (slash == dir_buf) slash[1] = '\0'; else *slash = '\0';
+    if (slash == dir_buf)
+        slash[1] = '\0';
+    else
+        *slash = '\0';
     basename = strrchr(target_path, '/') + 1;
     if (*basename == '\0') {
         HCCL_ERROR("Target '%s' missing basename", target_path);
         return NULL;
     }
     parent_fd = safe_open_dir_chain(dir_buf);
-    if (parent_fd < 0) return NULL;
+    if (parent_fd < 0)
+        return NULL;
 
     fd = openat(parent_fd, basename, O_RDWR | O_NOFOLLOW | O_CLOEXEC);
     if (fd >= 0) {
-        if (file_exists) *file_exists = 1;
+        if (file_exists)
+            *file_exists = 1;
     } else if (errno == ENOENT) {
         /* O_EXCL 让多进程并发创建只赢一个；EEXIST 时回退按已存在打开 */
-        fd = openat(parent_fd, basename,
-                    O_CREAT | O_EXCL | O_RDWR | O_NOFOLLOW | O_CLOEXEC, 0644);
+        fd = openat(parent_fd, basename, O_CREAT | O_EXCL | O_RDWR | O_NOFOLLOW | O_CLOEXEC, 0644);
         if (fd < 0 && errno == EEXIST) {
             fd = openat(parent_fd, basename, O_RDWR | O_NOFOLLOW | O_CLOEXEC);
-            if (fd >= 0 && file_exists) *file_exists = 1;
+            if (fd >= 0 && file_exists)
+                *file_exists = 1;
         }
     }
     close(parent_fd);
@@ -430,7 +443,8 @@ static FILE* open_target_secure(const char* target_path, int* file_exists) {
  *
  * @param fp 文件指针
  */
-static void unlock_and_close(FILE* fp) {
+static void unlock_and_close(FILE* fp)
+{
     if (fp != NULL) {
         int fd = fileno(fp);
         if (fd >= 0) {
@@ -449,13 +463,13 @@ static void unlock_and_close(FILE* fp) {
  * @param expected_crc 期望的 CRC 值（0 表示在函数内计算）
  * @return int 1 表示 CRC 匹配，0 表示不匹配
  */
-static int compare_crc(const uint8_t* buffer, const void* expected_data,
-                       size_t expected_size, uint32_t expected_crc) {
+static int compare_crc(const uint8_t* buffer, const void* expected_data, size_t expected_size, uint32_t expected_crc)
+{
     uint32_t existing_crc = calc_crc32(buffer, expected_size);
     uint32_t computed_crc = (expected_crc != 0) ? expected_crc : calc_crc32(expected_data, expected_size);
     if (existing_crc != computed_crc) {
-        HCCL_WARNING("Existing file CRC (0x%08X) differs from embedded (0x%08X), will overwrite",
-                existing_crc, computed_crc);
+        HCCL_WARNING(
+            "Existing file CRC (0x%08X) differs from embedded (0x%08X), will overwrite", existing_crc, computed_crc);
         return 0;
     }
     return 1;
@@ -470,7 +484,8 @@ static int compare_crc(const uint8_t* buffer, const void* expected_data,
  * @param original_pos 输入/输出参数，原始文件位置/恢复后的文件位置
  * @return int 1 表示成功，0 表示失败
  */
-static int read_file_content(FILE* fp, uint8_t* buffer, size_t expected_size, long* original_pos) {
+static int read_file_content(FILE* fp, uint8_t* buffer, size_t expected_size, long* original_pos)
+{
     /* 记录当前文件位置 */
     *original_pos = ftell(fp);
     if (*original_pos < 0) {
@@ -484,8 +499,7 @@ static int read_file_content(FILE* fp, uint8_t* buffer, size_t expected_size, lo
 
     size_t read_size = fread(buffer, 1, expected_size, fp);
     if (read_size != expected_size) {
-        HCCL_ERROR("Failed to read file for comparison: read %zu, expected %zu",
-                read_size, expected_size);
+        HCCL_ERROR("Failed to read file for comparison: read %zu, expected %zu", read_size, expected_size);
         return 0;
     }
 
@@ -507,8 +521,9 @@ static int read_file_content(FILE* fp, uint8_t* buffer, size_t expected_size, lo
  * @param expected_crc 期望的 CRC 值（0 表示不传入，函数内计算）
  * @return int 1 表示文件存在且 CRC 匹配，0 表示不匹配或文件不存在
  */
-static int check_file_integrity(FILE* fp, const char* file_path, const void* expected_data,
-                                size_t expected_size, uint32_t expected_crc) {
+static int check_file_integrity(
+    FILE* fp, const char* file_path, const void* expected_data, size_t expected_size, uint32_t expected_crc)
+{
     struct stat st;
     uint8_t* buffer = NULL;
     int fd;
@@ -523,8 +538,8 @@ static int check_file_integrity(FILE* fp, const char* file_path, const void* exp
 
     /* 检查文件大小 */
     if ((size_t)st.st_size != expected_size) {
-        HCCL_WARNING("Existing file size (%ld) differs from embedded (%zu), will overwrite",
-                (long)st.st_size, expected_size);
+        HCCL_WARNING(
+            "Existing file size (%ld) differs from embedded (%zu), will overwrite", (long)st.st_size, expected_size);
         return 0;
     }
 
@@ -555,10 +570,10 @@ static int check_file_integrity(FILE* fp, const char* file_path, const void* exp
 /**
  * @brief 删除写入失败的不完整文件
  */
-static void remove_incomplete_file(const char* path) {
+static void remove_incomplete_file(const char* path)
+{
     if (unlink(path) != 0) {
-        HCCL_WARNING("Failed to remove incomplete file '%s': %s",
-                path, strerror(errno));
+        HCCL_WARNING("Failed to remove incomplete file '%s': %s", path, strerror(errno));
     }
 }
 
@@ -572,7 +587,8 @@ static void remove_incomplete_file(const char* path) {
  * @param path_size 缓冲区大小
  * @return int 0 成功，-1 失败
  */
-static int resolve_target_path(char* target_path, size_t path_size) {
+static int resolve_target_path(char* target_path, size_t path_size)
+{
     const char* base_path = get_safe_base_path();
     if (base_path == NULL) {
         HCCL_WARNING("Failed to get safe base path, using default");
@@ -598,9 +614,9 @@ static int resolve_target_path(char* target_path, size_t path_size) {
  * @param file_exists 文件是否已存在（决定是否需要 truncate）
  * @return int 0 成功，-1 失败（失败时文件已被清理）
  */
-static int write_and_verify_tar(FILE* fp, const char* target_path,
-                                const char* data, size_t size,
-                                uint32_t expected_crc, int file_exists) {
+static int write_and_verify_tar(
+    FILE* fp, const char* target_path, const char* data, size_t size, uint32_t expected_crc, int file_exists)
+{
     if (fseek(fp, 0, SEEK_SET) != 0) {
         HCCL_ERROR("Cannot seek to beginning of '%s'", target_path);
         return -1;
@@ -613,8 +629,7 @@ static int write_and_verify_tar(FILE* fp, const char* target_path,
 
     size_t written = fwrite(data, 1, size, fp);
     if (written != size) {
-        HCCL_ERROR("Failed to write tar file: expected %zu bytes, wrote %zu",
-                size, written);
+        HCCL_ERROR("Failed to write tar file: expected %zu bytes, wrote %zu", size, written);
         fclose(fp);
         remove_incomplete_file(target_path);
         return -1;
@@ -629,8 +644,7 @@ static int write_and_verify_tar(FILE* fp, const char* target_path,
 
     uint32_t written_crc = calc_crc32(data, size);
     if (written_crc != expected_crc) {
-        HCCL_ERROR("Post-write CRC check failed: 0x%08X vs expected 0x%08X",
-                written_crc, expected_crc);
+        HCCL_ERROR("Post-write CRC check failed: 0x%08X vs expected 0x%08X", written_crc, expected_crc);
         fclose(fp);
         remove_incomplete_file(target_path);
         return -1;
@@ -645,8 +659,8 @@ static int write_and_verify_tar(FILE* fp, const char* target_path,
  * 在程序启动时自动执行，将嵌入的 AICPU tar 包恢复到文件系统。
  * 使用文件锁确保多进程场景下的安全性，并在恢复前进行完整性校验。
  */
-__attribute__((constructor))
-static void restore_aicpu_tar(void) {
+__attribute__((constructor)) static void restore_aicpu_tar(void)
+{
     char target_path[PATH_MAX];
     int file_exists = 0;
 
@@ -664,30 +678,26 @@ static void restore_aicpu_tar(void) {
 
     FILE* fp = open_target_secure(target_path, &file_exists);
     if (fp == NULL) {
-        HCCL_ERROR("Failed to acquire file lock on '%s'. Aborting restore.",
-                target_path);
+        HCCL_ERROR("Failed to acquire file lock on '%s'. Aborting restore.", target_path);
         return;
     }
 
-    if (file_exists && check_file_integrity(fp, target_path, _binary_aicpu_hccl_tar_gz_start,
-                                            tar_size, embedded_crc)) {
+    if (file_exists && check_file_integrity(fp, target_path, _binary_aicpu_hccl_tar_gz_start, tar_size, embedded_crc)) {
         unlock_and_close(fp);
         return;
     }
 
-    if (write_and_verify_tar(fp, target_path, _binary_aicpu_hccl_tar_gz_start,
-                             tar_size, embedded_crc, file_exists) != 0) {
+    if (write_and_verify_tar(fp, target_path, _binary_aicpu_hccl_tar_gz_start, tar_size, embedded_crc, file_exists)
+        != 0) {
         return;
     }
 
     /* 用 fchmod 直接对 fd 操作，绕过路径解析，race-free */
     if (fchmod(fileno(fp), FILE_PERMISSIONS) != 0) {
-        HCCL_WARNING("Failed to set permissions on %s: %s",
-                target_path, strerror(errno));
+        HCCL_WARNING("Failed to set permissions on %s: %s", target_path, strerror(errno));
     }
 
     unlock_and_close(fp);
 
-    HCCL_INFO("AICPU tar package restored to: %s (%zu bytes, CRC: 0x%08X)",
-            target_path, tar_size, embedded_crc);
+    HCCL_INFO("AICPU tar package restored to: %s (%zu bytes, CRC: 0x%08X)", target_path, tar_size, embedded_crc);
 }

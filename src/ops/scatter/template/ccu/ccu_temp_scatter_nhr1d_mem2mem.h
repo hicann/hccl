@@ -38,54 +38,58 @@ struct KernalRunTempArgs {
     uint64_t isSliceSizeZero;
 };
 
-
 class CcuTempScatterNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempScatterNHR1DMem2Mem() = default;
-    explicit CcuTempScatterNHR1DMem2Mem(const OpParam& param, 
-                                              const u32 rankId, // 传通信域的rankId，userRank
-                                              const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempScatterNHR1DMem2Mem(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempScatterNHR1DMem2Mem() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Scatter ccu nhr 1D mem2mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat("Template of Scatter ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult KernelRun(const OpParam& param,
-                        const TemplateDataParams& templateDataParams,
-                        TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
-    
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     void SetRoot(u32 root);
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
+
 private:
     uint32_t mySubCommRank_ = 0;
     uint32_t subCommRootId_ = 0;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
-    HcclResult CalcChannelDescs(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                                std::vector<HcclChannelDesc> &channelDescs);
-    HcclResult BuildKernelInfos(const OpParam &param, u32 enableDieNum,
-                                const std::vector<NHRStepInfo> &stepInfoVector,
-                                const std::map<u32, u32> &rank2ChannelIdx,
-                                const std::vector<std::vector<HcclChannelDesc>> &channelsPerDie,
-                                AlgResourceRequest &resourceRequest);
-    HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32 &dieNum);
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult ProcessNHRStepInfo(HcclComm comm,
-                                  std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
-                                  u32 enableDieNum, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
-    HcclResult SplitDataFor2Dies(const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
-                                 uint64_t& die1Size) const;
-    void FillKernelRunTempArgs(const TemplateDataParams &templateDataParams, KernalRunTempArgs &tempArgs) const;
-    HcclResult FillKernelRunArgs(const KernalRunTempArgs &tempArgs, const TemplateDataParams &templateDataParams, const TemplateResource& templateResource) const;
-    void SaveSubmitInfo(const KernalRunTempArgs &tempArgs, TemplateResource& templateResource) const;
+    HcclResult CalcChannelDescs(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        std::vector<HcclChannelDesc>& channelDescs);
+    HcclResult BuildKernelInfos(
+        const OpParam& param, u32 enableDieNum, const std::vector<NHRStepInfo>& stepInfoVector,
+        const std::map<u32, u32>& rank2ChannelIdx, const std::vector<std::vector<HcclChannelDesc>>& channelsPerDie,
+        AlgResourceRequest& resourceRequest);
+    HcclResult GetDieNumFromChannelDescs(HcclComm comm, u32& dieNum);
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo);
+    HcclResult ProcessNHRStepInfo(
+        HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
+        std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
+    HcclResult SplitDataFor2Dies(
+        const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
+        uint64_t& die1Size) const;
+    void FillKernelRunTempArgs(const TemplateDataParams& templateDataParams, KernalRunTempArgs& tempArgs) const;
+    HcclResult FillKernelRunArgs(
+        const KernalRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams,
+        const TemplateResource& templateResource) const;
+    void SaveSubmitInfo(const KernalRunTempArgs& tempArgs, TemplateResource& templateResource) const;
 };
 
 } // namespace ops_hccl

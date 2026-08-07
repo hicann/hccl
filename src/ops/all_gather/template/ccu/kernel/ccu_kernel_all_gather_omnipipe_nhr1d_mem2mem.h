@@ -29,9 +29,7 @@ using NHRStepInfo = struct NHRStepInfoDef {
     std::vector<uint32_t> txSliceIdxs;
     std::vector<uint32_t> rxSliceIdxs;
 
-    NHRStepInfoDef() : nSlices(0)
-    {
-    }
+    NHRStepInfoDef() : nSlices(0) {}
 };
 #endif
 
@@ -48,7 +46,7 @@ struct CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem : CcuKernelArgBase {
 };
 
 struct AllGatherOmniPipeNHR1DMem2MemContext : CcuKernelCtxBase {
-    const CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem *arg;
+    const CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem* arg;
 
     ccu::Variable input;
     std::vector<ccu::Variable> output;

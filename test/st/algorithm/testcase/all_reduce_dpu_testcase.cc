@@ -23,10 +23,7 @@ using namespace ops_hccl;
 
 class ST_ALL_REDUCE_DPU_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
@@ -34,14 +31,13 @@ protected:
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunAllReduceDPUCase(const TopoMeta &topoInfo, const u64 dataCount,
-    const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp)
+void RunAllReduceDPUCase(
+    const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const u32 dataTypeSize,
+    const HcclReduceOp reduceOp)
 {
     // 仿真模型初始化
     SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -72,9 +68,9 @@ void RunAllReduceDPUCase(const TopoMeta &topoInfo, const u64 dataCount,
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 sendBufSize = dataCount * dataTypeSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 sendBufSize = dataCount * dataTypeSize; // 数据量转化为字节数
             u64 recvBufSize = dataCount * dataTypeSize;
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -122,7 +118,7 @@ TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_2x3_fp32_max_301K)
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
     RunAllReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp);
 }
- 
+
 TEST_F(ST_ALL_REDUCE_DPU_TEST, st_all_reduce_dpu_4x4_fp32_sum_1024)
 {
     TopoMeta topoMeta{{{0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}, {0, 1, 2, 3}}};

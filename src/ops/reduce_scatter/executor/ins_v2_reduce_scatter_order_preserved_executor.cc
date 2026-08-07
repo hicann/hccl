@@ -44,11 +44,12 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     // 构建template
-    std::shared_ptr<InsAlgTemplate> algTemplate =
-        std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate> algTemplate
+        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
     // 调用模板的CalcRes函数计算所需资源
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
-    HCCL_INFO("[InsV2ReduceScatterOrderPreservedExecutor][CalcRes] slaveThreadNum[%u], notifyNumOnMainThread[%u]",
+    HCCL_INFO(
+        "[InsV2ReduceScatterOrderPreservedExecutor][CalcRes] slaveThreadNum[%u], notifyNumOnMainThread[%u]",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread);
     return HCCL_SUCCESS;
 }
@@ -56,13 +57,13 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
 // 编排执行：协调ReduceScatter操作的执行流程
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2ReduceScatterOrderPreservedExecutor][Orchestrate] Start");
 
     OrderPreservedBaseParams baseParams = InitOrderPreservedBaseParams(param, resCtx);
     SetOrderPreservedBaseParams(baseParams);
-    
+
     threads_ = resCtx.threads;
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
@@ -71,17 +72,21 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
     InitExecutorInfo(param);
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2ReduceScatterOrderPreservedExecutor][Orchestrate] kernel run failed, err[0x%016llx]",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2ReduceScatterOrderPreservedExecutor][Orchestrate] kernel run failed, err[0x%016llx]",
+            HCCL_ERROR_CODE(ret)),
+        ret);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    HCCL_INFO("[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] Start, deterministicStrict[%d]",
+    HCCL_INFO(
+        "[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] Start, deterministicStrict[%d]",
         deterministicStrict_);
 
     // 准备模板资源
@@ -104,12 +109,12 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
     tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建template
-    std::shared_ptr<InsAlgTemplate> algTemplate =
-        std::make_shared<InsAlgTemplate>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate> algTemplate
+        = std::make_shared<InsAlgTemplate>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
 
     // 计算临时缓冲区倍数，实际上就是ranksize
-    u32 templateScratchMultiplier = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType,
-                                                                     tempAlgParams.buffInfo.outBuffType);
+    u32 templateScratchMultiplier
+        = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
     u64 maxDataSizePerLoop = 0;
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
@@ -117,7 +122,7 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
     if (templateScratchMultiplier != 0) {
         // 计算基于缓冲区的数据量边界：缓冲区大小/倍数，按对齐向下取整
         u64 scratchBoundDataSize = maxTmpMemSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN_ORDER_PRESERVED
-            * HCCL_MIN_SLICE_ALIGN_ORDER_PRESERVED;
+                                   * HCCL_MIN_SLICE_ALIGN_ORDER_PRESERVED;
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBoundDataSize);
     } else {
         maxDataSizePerLoop = transportBoundDataSize;
@@ -125,11 +130,14 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
     // 单次循环最大数据元素个数
     u64 maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize_;
     HCCL_INFO(
-        "[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] maxDataCountPerLoop[%llu], maxDataSizePerLoop[%llu], "
+        "[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] maxDataCountPerLoop[%llu], "
+        "maxDataSizePerLoop[%llu], "
         "transportBoundDataSize[%llu], templateScratchMultiplier[%u]",
         maxDataCountPerLoop, maxDataSizePerLoop, transportBoundDataSize, templateScratchMultiplier);
-    CHK_PRT_RET(maxDataCountPerLoop == 0,
-        HCCL_ERROR("[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] maxDataCountPerLoop is 0"), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        maxDataCountPerLoop == 0,
+        HCCL_ERROR("[InsV2ReduceScatterOrderPreservedExecutor][OrchestrateLoop] maxDataCountPerLoop is 0"),
+        HCCL_E_INTERNAL);
 
     // 计算循环次数：总数据量 / 单次最大数据量，向上取整
     u64 loopTimes = dataCount_ / maxDataCountPerLoop + static_cast<u64>(dataCount_ % maxDataCountPerLoop != 0);
@@ -182,7 +190,8 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
         tempAlgParams.inputRepeatStride = 0;
         tempAlgParams.outputRepeatStride = 0;
 
-        HCCL_INFO("[InsV2ReduceScatterOrderPreservedExecutor] loop[%llu] sliceSize[%llu], "
+        HCCL_INFO(
+            "[InsV2ReduceScatterOrderPreservedExecutor] loop[%llu] sliceSize[%llu], "
             "inBuffBaseOff[%llu], outBuffBaseOff[%llu]",
             loop, tempAlgParams.sliceSize, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
 
@@ -199,12 +208,13 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
 
 // 初始化执行器信息：检查和设置严格确定性模式
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::InitExecutorInfo(const OpParam &param)
+HcclResult
+InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::InitExecutorInfo(const OpParam& param)
 {
     // 规约保序判断已在 selector 中完成，executor 直接启用保序模式
     deterministicStrict_ = true;
-    HCCL_INFO("[InsV2ReduceScatterOrderPreservedExecutor][InitExecutorInfo] deterministicStrict[%d]",
-        deterministicStrict_);
+    HCCL_INFO(
+        "[InsV2ReduceScatterOrderPreservedExecutor][InitExecutorInfo] deterministicStrict[%d]", deterministicStrict_);
     return HCCL_SUCCESS;
 }
 
@@ -220,11 +230,13 @@ u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Roun
 }
 
 // 注册保序ReduceScatter执行器（32卡及以内场景）
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreserved,
-    InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedLevel1);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreserved, InsV2ReduceScatterOrderPreservedExecutor,
+    TopoMatch1D, InsTempReduceScatterOrderPreservedLevel1);
 
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
-REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreservedGroup,
-    InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreservedGroup, InsV2ReduceScatterOrderPreservedExecutor,
+    TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
 
-}
+} // namespace ops_hccl

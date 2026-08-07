@@ -15,17 +15,14 @@
 #include "alg_v2_template_register.h"
 
 namespace ops_hccl {
-InsTempAllGatherOmniPipeNHRDPU::InsTempAllGatherOmniPipeNHRDPU(const OpParam& param, const uint32_t rankId,
-                                                               const std::vector<std::vector<uint32_t>>& subCommRanks)
+InsTempAllGatherOmniPipeNHRDPU::InsTempAllGatherOmniPipeNHRDPU(
+    const OpParam& param, const uint32_t rankId, const std::vector<std::vector<uint32_t>>& subCommRanks)
     : InsTempAllGatherNHRDPU(param, rankId, subCommRanks)
-{
-}
+{}
 
-InsTempAllGatherOmniPipeNHRDPU::~InsTempAllGatherOmniPipeNHRDPU()
-{
-}
-HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                                                     TemplateResource& templateResource)
+InsTempAllGatherOmniPipeNHRDPU::~InsTempAllGatherOmniPipeNHRDPU() {}
+HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] Run Start");
 
@@ -59,8 +56,10 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(const OpParam& param, const
     auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
 
     u32 sendMsgId = 0;
-    if (HcommSendRequest(reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-                         static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId) != 0) {
+    if (HcommSendRequest(
+            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+        != 0) {
         HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
@@ -91,7 +90,7 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(const OpParam& param, const
 }
 
 HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
-    const TemplateDataParams &tempAlgParams, const std::map<u32, std::vector<ChannelInfo>> &channels) const
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels) const
 {
 #ifndef AICPU_COMPILE
     u32 myAlgRank = 0;
@@ -102,9 +101,10 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
         AicpuNHRStepInfo stepInfo;
         CHK_RET(GetStepInfo(step, nSteps, stepInfo));
 
-        HCCL_DEBUG("[InsTempAllGatherOmniPipeNHRDPU] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] "
-                    "nSteps[%u] nSlices[%u]",
-                    myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
+        HCCL_DEBUG(
+            "[InsTempAllGatherOmniPipeNHRDPU] rank[%d] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] "
+            "nSteps[%u] nSlices[%u]",
+            myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
 
         auto rxChannel = channels.at(GetRankFromMap(stepInfo.fromRank));
         auto txChannel = channels.at(GetRankFromMap(stepInfo.toRank));
@@ -119,27 +119,30 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
         for (u32 i = 0; i < stepInfo.nSlices; ++i) {
             const u32 txIdx = stepInfo.txSliceIdxs[i];
             const u32 rxIdx = stepInfo.rxSliceIdxs[i];
-            for (uint32_t rpt = 0; rpt < tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-                uint64_t txScratchBase = tempAlgParams.buffInfo.inBuffBaseOff +
-                                         tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt];
-                uint64_t rxScratchBase = tempAlgParams.buffInfo.outBuffBaseOff +
-                                         tempAlgParams.stepSliceInfo.outputOmniPipeSliceStride[rxIdx][rpt];
+            for (uint32_t rpt = 0; rpt < tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size();
+                 ++rpt) {
+                uint64_t txScratchBase = tempAlgParams.buffInfo.inBuffBaseOff
+                                         + tempAlgParams.stepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt];
+                uint64_t rxScratchBase = tempAlgParams.buffInfo.outBuffBaseOff
+                                         + tempAlgParams.stepSliceInfo.outputOmniPipeSliceStride[rxIdx][rpt];
 
                 const u64 txScratchOff = txScratchBase + tempAlgParams.stepSliceInfo.stepInputSliceStride[txIdx];
                 const u64 rxScratchOff = rxScratchBase + tempAlgParams.stepSliceInfo.stepOutputSliceStride[rxIdx];
 
-                txSrcSlices.emplace_back(tempAlgParams.buffInfo.hcclBuff.addr, txScratchOff,
-                                         tempAlgParams.stepSliceInfo.stepSliceSize[txIdx][rpt],
-                                         tempAlgParams.stepSliceInfo.stepCount[txIdx][rpt]);
-                txDstSlices.emplace_back(sendCclBuffAddr, txScratchOff,
-                                         tempAlgParams.stepSliceInfo.stepSliceSize[txIdx][rpt],
-                                         tempAlgParams.stepSliceInfo.stepCount[txIdx][rpt]);
-                rxSrcSlices.emplace_back(recvCclBuffAddr, rxScratchOff,
-                                         tempAlgParams.stepSliceInfo.stepSliceSize[rxIdx][rpt],
-                                         tempAlgParams.stepSliceInfo.stepCount[rxIdx][rpt]);
-                rxDstSlices.emplace_back(tempAlgParams.buffInfo.hcclBuff.addr, rxScratchOff,
-                                         tempAlgParams.stepSliceInfo.stepSliceSize[rxIdx][rpt],
-                                         tempAlgParams.stepSliceInfo.stepCount[rxIdx][rpt]);
+                txSrcSlices.emplace_back(
+                    tempAlgParams.buffInfo.hcclBuff.addr, txScratchOff,
+                    tempAlgParams.stepSliceInfo.stepSliceSize[txIdx][rpt],
+                    tempAlgParams.stepSliceInfo.stepCount[txIdx][rpt]);
+                txDstSlices.emplace_back(
+                    sendCclBuffAddr, txScratchOff, tempAlgParams.stepSliceInfo.stepSliceSize[txIdx][rpt],
+                    tempAlgParams.stepSliceInfo.stepCount[txIdx][rpt]);
+                rxSrcSlices.emplace_back(
+                    recvCclBuffAddr, rxScratchOff, tempAlgParams.stepSliceInfo.stepSliceSize[rxIdx][rpt],
+                    tempAlgParams.stepSliceInfo.stepCount[rxIdx][rpt]);
+                rxDstSlices.emplace_back(
+                    tempAlgParams.buffInfo.hcclBuff.addr, rxScratchOff,
+                    tempAlgParams.stepSliceInfo.stepSliceSize[rxIdx][rpt],
+                    tempAlgParams.stepSliceInfo.stepCount[rxIdx][rpt]);
             }
         }
         // write模式使用tx,rx地址不生效，仅使用对端link做Post/Wait
@@ -161,15 +164,12 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::GetRes(AlgResourceRequest& resourceRe
 {
     // NHR算法只需要一条主流
     resourceRequest.slaveThreadNum = 0;
-    resourceRequest.notifyNumPerThread = {};  // 没有从流
-    resourceRequest.notifyNumOnMainThread = 0;  // 没有从流
+    resourceRequest.notifyNumPerThread = {};   // 没有从流
+    resourceRequest.notifyNumOnMainThread = 0; // 没有从流
     return HCCL_SUCCESS;
 }
 
-u64 InsTempAllGatherOmniPipeNHRDPU::GetThreadNum() const
-{
-    return 1;
-}
+u64 InsTempAllGatherOmniPipeNHRDPU::GetThreadNum() const { return 1; }
 
 REGISTER_TEMPLATE_V2("InsTempAllGatherOmniPipeNHRDPU", InsTempAllGatherOmniPipeNHRDPU);
-}  // namespace ops_hccl
+} // namespace ops_hccl

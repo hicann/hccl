@@ -15,15 +15,15 @@
 #include <cstdio>
 
 #ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_LEVEL_INFO  // Changed to INFO for debugging
+#define LOG_LEVEL LOG_LEVEL_INFO // Changed to INFO for debugging
 #endif
 
 typedef enum {
-    LOG_LEVEL_DEBUG = 0,    // DEBUG级别
-    LOG_LEVEL_INFO = 1,     // INFO级别
-    LOG_LEVEL_WARNING = 2,  // WARNING级别
-    LOG_LEVEL_ERROR = 3,    // ERROR级别
-    LOG_LEVEL_NONE = 4      // 关闭所有日志
+    LOG_LEVEL_DEBUG = 0,   // DEBUG级别
+    LOG_LEVEL_INFO = 1,    // INFO级别
+    LOG_LEVEL_WARNING = 2, // WARNING级别
+    LOG_LEVEL_ERROR = 3,   // ERROR级别
+    LOG_LEVEL_NONE = 4     // 关闭所有日志
 } LogLevel;
 
 #ifndef LIKELY
@@ -33,84 +33,85 @@ typedef enum {
 
 #ifdef HOST_COMPILE
 
-#define HCCL_DEBUG(format, ...)                                                \
-    do {                                                                       \
-        if (LOG_LEVEL <= LOG_LEVEL_DEBUG) {                                    \
-            printf("[DEBUG][%s][%s:%d]" format "\n",                           \
-                    __func__, __FILE__, __LINE__, ##__VA_ARGS__);              \
-            fflush(stdout);                                                    \
-        }                                                                      \
+#define HCCL_DEBUG(format, ...)                                                                    \
+    do {                                                                                           \
+        if (LOG_LEVEL <= LOG_LEVEL_DEBUG) {                                                        \
+            printf("[DEBUG][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+            fflush(stdout);                                                                        \
+        }                                                                                          \
     } while (0)
 
-#define HCCL_INFO(format, ...)                                                 \
-    do {                                                                       \
-        if (LOG_LEVEL <= LOG_LEVEL_INFO) {                                     \
-            printf("[INFO][%s][%s:%d]" format "\n",                            \
-                    __func__, __FILE__, __LINE__, ##__VA_ARGS__);              \
-            fflush(stdout);                                                    \
-        }                                                                      \
+#define HCCL_INFO(format, ...)                                                                    \
+    do {                                                                                          \
+        if (LOG_LEVEL <= LOG_LEVEL_INFO) {                                                        \
+            printf("[INFO][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+            fflush(stdout);                                                                       \
+        }                                                                                         \
     } while (0)
 
-#define HCCL_WARNING(format, ...)                                              \
-    do {                                                                       \
-        if (LOG_LEVEL <= LOG_LEVEL_WARNING) {                                  \
-            printf("[WARN][%s][%s:%d]" format "\n",                            \
-                    __func__, __FILE__, __LINE__, ##__VA_ARGS__);              \
-            fflush(stdout);                                                    \
-        }                                                                      \
+#define HCCL_WARNING(format, ...)                                                                 \
+    do {                                                                                          \
+        if (LOG_LEVEL <= LOG_LEVEL_WARNING) {                                                     \
+            printf("[WARN][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+            fflush(stdout);                                                                       \
+        }                                                                                         \
     } while (0)
 
-#define HCCL_ERROR(format, ...)                                                \
-    do {                                                                       \
-        if (LOG_LEVEL <= LOG_LEVEL_ERROR) {                                    \
-            printf("[ERROR][%s][%s:%d]" format "\n",                           \
-                    __func__, __FILE__, __LINE__, ##__VA_ARGS__);              \
-            fflush(stdout);                                                    \
-        }                                                                      \
+#define HCCL_ERROR(format, ...)                                                                    \
+    do {                                                                                           \
+        if (LOG_LEVEL <= LOG_LEVEL_ERROR) {                                                        \
+            printf("[ERROR][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
+            fflush(stdout);                                                                        \
+        }                                                                                          \
     } while (0)
 
 #else
 
-#define HCCL_DEBUG(format, ...)    do {} while (0)
-#define HCCL_INFO(format, ...)     do {} while (0)
-#define HCCL_WARNING(format, ...)  do {} while (0)
-#define HCCL_ERROR(format, ...)    do {} while (0)
+#define HCCL_DEBUG(format, ...) \
+    do {                        \
+    } while (0)
+#define HCCL_INFO(format, ...) \
+    do {                       \
+    } while (0)
+#define HCCL_WARNING(format, ...) \
+    do {                          \
+    } while (0)
+#define HCCL_ERROR(format, ...) \
+    do {                        \
+    } while (0)
 
-#endif  // HOST_COMPILE
+#endif // HOST_COMPILE
 
 /* 检查指针, 若指针为NULL, 则记录日志, 并返回错误 */
-#define CHK_PTR_NULL(ptr)                                                      \
-    do {                                                                       \
-        if (UNLIKELY((ptr) == nullptr)) {                                      \
-            HCCL_ERROR("[%s] ptr [%s] is nullptr, return HCCL_E_PTR",          \
-                       __func__, #ptr);                                        \
-            return HCCL_E_PTR;                                                 \
-        }                                                                      \
+#define CHK_PTR_NULL(ptr)                                                              \
+    do {                                                                               \
+        if (UNLIKELY((ptr) == nullptr)) {                                              \
+            HCCL_ERROR("[%s] ptr [%s] is nullptr, return HCCL_E_PTR", __func__, #ptr); \
+            return HCCL_E_PTR;                                                         \
+        }                                                                              \
     } while (0)
 
 /* 检查函数返回值, 记录指定日志, 并返回指定错误码 */
-#define CHK_PRT_RET(result, exeLog, retCode)                                   \
-    do {                                                                       \
-        if (UNLIKELY(result)) {                                                \
-            exeLog;                                                            \
-            return retCode;                                                    \
-        }                                                                      \
+#define CHK_PRT_RET(result, exeLog, retCode) \
+    do {                                     \
+        if (UNLIKELY(result)) {              \
+            exeLog;                          \
+            return retCode;                  \
+        }                                    \
     } while (0)
 
 /* 检查函数返回值, 并返回指定错误码 */
-#define CHK_RET(call)                                                          \
-    do {                                                                       \
-        int32_t hcclRet = call;                                                \
-        if (UNLIKELY(hcclRet != HCCL_SUCCESS)) {                               \
-            if (hcclRet == HCCL_E_AGAIN) {                                     \
-                HCCL_WARNING("[%s] call trace: hcclRet -> %d",                 \
-                             __func__, hcclRet);                               \
-            } else {                                                           \
-                HCCL_ERROR("[%s] call trace: hcclRet -> %d",                   \
-                           __func__, hcclRet);                                 \
-            }                                                                  \
-            return static_cast<HcclResult>(hcclRet);                           \
-        }                                                                      \
+#define CHK_RET(call)                                                              \
+    do {                                                                           \
+        int32_t hcclRet = call;                                                    \
+        if (UNLIKELY(hcclRet != HCCL_SUCCESS)) {                                   \
+            if (hcclRet == HCCL_E_AGAIN) {                                         \
+                HCCL_WARNING("[%s] call trace: hcclRet -> %d", __func__, hcclRet); \
+            } else {                                                               \
+                HCCL_ERROR("[%s] call trace: hcclRet -> %d", __func__, hcclRet);   \
+            }                                                                      \
+            return static_cast<HcclResult>(hcclRet);                               \
+        }                                                                          \
     } while (0)
 
 #define ACLCHECK(cmd)                                                                                           \

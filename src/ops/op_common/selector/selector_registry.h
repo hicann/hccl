@@ -20,36 +20,36 @@ namespace ops_hccl {
 
 class SelectorRegistry {
 public:
-    static SelectorRegistry      *Global();
-    HcclResult                    Register(u32 priority, AutoSelectorBase *selector);
-    HcclResult RegisterByOpType(const HcclCMDType opType, u32 priority, AutoSelectorBase *selector);
-    std::map<u32, AutoSelectorBase *> GetAllSelectors();
-    std::map<u32, AutoSelectorBase *> GetSelectorsByOpType(const HcclCMDType opType);
+    static SelectorRegistry* Global();
+    HcclResult Register(u32 priority, AutoSelectorBase* selector);
+    HcclResult RegisterByOpType(const HcclCMDType opType, u32 priority, AutoSelectorBase* selector);
+    std::map<u32, AutoSelectorBase*> GetAllSelectors();
+    std::map<u32, AutoSelectorBase*> GetSelectorsByOpType(const HcclCMDType opType);
 
 private:
-    std::map<u32, AutoSelectorBase *> impls_;
-    std::map<HcclCMDType, std::map<u32, AutoSelectorBase *>> opTypeImpls_;
-    mutable std::mutex            mu_;
+    std::map<u32, AutoSelectorBase*> impls_;
+    std::map<HcclCMDType, std::map<u32, AutoSelectorBase*>> opTypeImpls_;
+    mutable std::mutex mu_;
 };
 
-#define REGISTER_SELECTOR_HELPER(ctr, priority, name, selector)                                                        \
-    static HcclResult g_func_##priority##_##name##_##ctr                                                               \
+#define REGISTER_SELECTOR_HELPER(ctr, priority, name, selector) \
+    static HcclResult g_func_##priority##_##name##_##ctr        \
         = SelectorRegistry::Global()->Register(priority, new selector())
 
-#define REGISTER_SELECTOR_HELPER_1(ctr, priority, name, selector)                                                      \
+#define REGISTER_SELECTOR_HELPER_1(ctr, priority, name, selector) \
     REGISTER_SELECTOR_HELPER(ctr, priority, name, selector)
 
 #define REGISTER_SELECTOR(priority, selector) REGISTER_SELECTOR_HELPER_1(__COUNTER__, priority, selector, selector)
-}
+} // namespace ops_hccl
 
-#define REGISTER_SELECTOR_BY_OPTYPE_HELPER(ctr, optype, priority, name, selector)    \
-    static HcclResult g_func_##priority##_##name##_##ctr                                                               \
+#define REGISTER_SELECTOR_BY_OPTYPE_HELPER(ctr, optype, priority, name, selector) \
+    static HcclResult g_func_##priority##_##name##_##ctr                          \
         = SelectorRegistry::Global()->RegisterByOpType(optype, priority, new selector())
 
-#define REGISTER_SELECTOR_BY_OPTYPE_HELPER_1(ctr, optype, priority, name, selector)  \
+#define REGISTER_SELECTOR_BY_OPTYPE_HELPER_1(ctr, optype, priority, name, selector) \
     REGISTER_SELECTOR_BY_OPTYPE_HELPER(ctr, optype, priority, name, selector)
 
-#define REGISTER_SELECTOR_BY_OPTYPE(optype, priority, selector)              \
-    REGISTER_SELECTOR_BY_OPTYPE_HELPER_1(__COUNTER__, optype, priority, selector, selector)// namespace ops_hccl
+#define REGISTER_SELECTOR_BY_OPTYPE(optype, priority, selector) \
+    REGISTER_SELECTOR_BY_OPTYPE_HELPER_1(__COUNTER__, optype, priority, selector, selector) // namespace ops_hccl
 
 #endif

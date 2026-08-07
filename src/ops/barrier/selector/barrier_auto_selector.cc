@@ -18,9 +18,8 @@ namespace ops_hccl {
 // - AICPU 场景：Select() 内部 IsStarsState → SelectAicpuAlgo → InsBarrierNhrAicpu
 // 其余引擎（CCU/AIV）在 BarrierOutPlace 中已提前回退到旧 HcclBarrier，不会进入算法选择。
 SelectorStatus BarrierAutoSelector::SelectDPUAlgo(
-    const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-    std::string &selectAlgName) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)opParam;
     (void)configAlgMap;
@@ -31,14 +30,14 @@ SelectorStatus BarrierAutoSelector::SelectDPUAlgo(
 }
 
 SelectorStatus BarrierAutoSelector::SelectAicpuAlgo(
-    const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
-    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-    std::string &selectAlgName) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)opParam;
     (void)configAlgMap;
-    HCCL_INFO("[BarrierAutoSelector][SelectAicpuAlgo] topoLevelNums[%u], level0Topo[%u]",
-        topoInfo->topoLevelNums, topoInfo->level0Topo);
+    HCCL_INFO(
+        "[BarrierAutoSelector][SelectAicpuAlgo] topoLevelNums[%u], level0Topo[%u]", topoInfo->topoLevelNums,
+        topoInfo->level0Topo);
     selectAlgName = "InsBarrierNhrAicpu";
     HCCL_INFO("[BarrierAutoSelector][SelectAicpuAlgo] Algo match[%s]", selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -46,4 +45,4 @@ SelectorStatus BarrierAutoSelector::SelectAicpuAlgo(
 
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_BARRIER, 18, BarrierAutoSelector);
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

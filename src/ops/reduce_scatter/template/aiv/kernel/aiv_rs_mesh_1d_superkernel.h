@@ -14,7 +14,7 @@
 #include "aiv_reduce_scatter_local_tree.h"
 #include "aiv_reduce_scatter_local_tree_corectrl.h"
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2SuperKernelDispatch(SUPERKERNEL_ARGS_DEF)
 {
     AivCommBase op;
@@ -30,24 +30,24 @@ __aicore__ inline void AivReduceScatterV2SuperKernelDispatch(SUPERKERNEL_ARGS_DE
 
 __aicore__ inline void sk_rs_superkernel_dispatch(SUPERKERNEL_ARGS_DEF)
 {
-    #ifdef HCCL_DTYPE_INT8
-        AivReduceScatterV2SuperKernelDispatch<int8_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT16
-        AivReduceScatterV2SuperKernelDispatch<int16_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_INT32
-        AivReduceScatterV2SuperKernelDispatch<int32_t>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP16
-        AivReduceScatterV2SuperKernelDispatch<half>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_FP32
-        AivReduceScatterV2SuperKernelDispatch<float>(SUPERKERNEL_ARGS_CALL);
-    #elif defined HCCL_DTYPE_BFP16
-        AivReduceScatterV2SuperKernelDispatch<bfloat16_t>(SUPERKERNEL_ARGS_CALL);
-    #else
-    #endif
+#ifdef HCCL_DTYPE_INT8
+    AivReduceScatterV2SuperKernelDispatch<int8_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT16
+    AivReduceScatterV2SuperKernelDispatch<int16_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_INT32
+    AivReduceScatterV2SuperKernelDispatch<int32_t>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP16
+    AivReduceScatterV2SuperKernelDispatch<half>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_FP32
+    AivReduceScatterV2SuperKernelDispatch<float>(SUPERKERNEL_ARGS_CALL);
+#elif defined HCCL_DTYPE_BFP16
+    AivReduceScatterV2SuperKernelDispatch<bfloat16_t>(SUPERKERNEL_ARGS_CALL);
+#else
+#endif
 }
 
-extern "C"
-__aicore__ void sk_reducescatter_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF) {
+extern "C" __aicore__ void sk_reducescatter_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF)
+{
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_rs_superkernel_dispatch(SUPERKERNEL_ARGS_CALL);
 }

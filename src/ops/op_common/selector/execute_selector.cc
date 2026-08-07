@@ -14,15 +14,13 @@
 
 namespace ops_hccl {
 
-ExecuteSelector::ExecuteSelector()
-{
-}
+ExecuteSelector::ExecuteSelector() {}
 
-HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
-                                std::string &selectAlgName) const
+HcclResult
+ExecuteSelector::Run(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[Algo][Selector] Run.");
-    std::map<u32, AutoSelectorBase *> selectors = SelectorRegistry::Global()->GetAllSelectors();
+    std::map<u32, AutoSelectorBase*> selectors = SelectorRegistry::Global()->GetAllSelectors();
 
     if (opParam.isMc2) {
         auto iter = selectors.find(18);
@@ -30,8 +28,9 @@ HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfoWithNetLayerDetails* t
             HCCL_ERROR("[Algo][Selector] CCU selector is not registried.");
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
-        if(iter->second->Select(opParam, topoInfo, selectAlgName) == SelectorStatus::MATCH) {
-            HCCL_INFO("[Algo][Selector] The ccu selector[priority of %u] is matched, the selected algo type is %s",
+        if (iter->second->Select(opParam, topoInfo, selectAlgName) == SelectorStatus::MATCH) {
+            HCCL_INFO(
+                "[Algo][Selector] The ccu selector[priority of %u] is matched, the selected algo type is %s",
                 iter->first, selectAlgName.c_str());
             return HcclResult::HCCL_SUCCESS;
         }
@@ -44,8 +43,9 @@ HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfoWithNetLayerDetails* t
     for (auto iter : selectors) {
         HCCL_DEBUG("[Algo][Selector] The selector[priority of %llu] is running.", iter.first);
         if (iter.second->Select(opParam, topoInfo, selectAlgName) == SelectorStatus::MATCH) {
-            HCCL_INFO("[Algo][Selector] The selector[priority of %llu] is matched, the selected algo type is %s",
-                      iter.first, selectAlgName.c_str());
+            HCCL_INFO(
+                "[Algo][Selector] The selector[priority of %llu] is matched, the selected algo type is %s", iter.first,
+                selectAlgName.c_str());
             return HcclResult::HCCL_SUCCESS;
         }
     }
@@ -54,4 +54,4 @@ HcclResult ExecuteSelector::Run(OpParam &opParam, TopoInfoWithNetLayerDetails* t
     return HcclResult::HCCL_E_NOT_SUPPORT;
 }
 
-} // namespace Hccl
+} // namespace ops_hccl

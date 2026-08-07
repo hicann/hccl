@@ -20,19 +20,20 @@ public:
 
     ~ScatterRing() override;
 
-    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels) override;
+    HcclResult RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels) override;
+
 protected:
 private:
     void PrepareSlicesData(const u32 unitSize, const u64 totalCount, const u32 rankSize) const;
     HcclResult RunScatterOnRootRank();
     HcclResult RunScatterOnEndRank();
     HcclResult RunScatterOnMidRank();
-    u32 interRank_;       // comm内的rank排序
+    u32 interRank_;     // comm内的rank排序
     u32 interRankSize_; // 本comm内ranksize总数
 
     ChannelInfo channelLeft_;
     ChannelInfo channelRight_;
 };
-}
+} // namespace ops_hccl
 
 #endif // SCATTER_RING_CUSTOM_H

@@ -21,21 +21,24 @@ bool NeedInconsistentCheck(HcclComm comm, const OpParam& param);
 
 bool CheckCtxStatus(HcclComm comm, const OpParam& param);
 
-HcclResult CompareOpExchangeInfos(HcclComm comm, const OpParam& param, const AlgResourceRequest &resRequest,
-    const OpExchangeInfo &exchangeInfo);
+HcclResult CompareOpExchangeInfos(
+    HcclComm comm, const OpParam& param, const AlgResourceRequest& resRequest, const OpExchangeInfo& exchangeInfo);
 
-HcclResult InconsistentCheckParams(HcclComm comm, const OpExchangeInfo &exchangeInfo,
-    const std::vector<HcclChannelDesc> &channels);
+HcclResult InconsistentCheckParams(
+    HcclComm comm, const OpExchangeInfo& exchangeInfo, const std::vector<HcclChannelDesc>& channels);
 
-HcclResult InconsistentCheckOpType(uint32_t remoteRank, const OpExchangeInfo &exchangeInfo, const HcclCMDType &rmtOpType);
+HcclResult
+InconsistentCheckOpType(uint32_t remoteRank, const OpExchangeInfo& exchangeInfo, const HcclCMDType& rmtOpType);
 
-HcclResult ReportOpExchangeInfoCheckFailed(uint32_t remoteRank, const OpExchangeInfo &exchangeInfo,
-    const std::string &paraName, uint32_t expectVal, uint32_t remotePara);
+HcclResult ReportOpExchangeInfoCheckFailed(
+    uint32_t remoteRank, const OpExchangeInfo& exchangeInfo, const std::string& paraName, uint32_t expectVal,
+    uint32_t remotePara);
 
-HcclResult ReportOpExchangeInfoCheckFailed(uint32_t remoteRank, const OpExchangeInfo &exchangeInfo,
-    const std::string &paraName, const std::string &expectVal, const std::string &remotePara);
+HcclResult ReportOpExchangeInfoCheckFailed(
+    uint32_t remoteRank, const OpExchangeInfo& exchangeInfo, const std::string& paraName, const std::string& expectVal,
+    const std::string& remotePara);
 
-HcclResult GetOpTypeName(const OpExchangeInfo &exchangeInfo, std::string &opInfo);
+HcclResult GetOpTypeName(const OpExchangeInfo& exchangeInfo, std::string& opInfo);
 
-}
+} // namespace ops_hccl
 #endif // INCONSISTENT_CHECK_H

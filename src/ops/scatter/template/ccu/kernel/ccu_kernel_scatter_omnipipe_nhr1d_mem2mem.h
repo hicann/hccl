@@ -32,9 +32,7 @@ using NHRStepInfo = struct NHRStepInfo {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    NHRStepInfo() : nSlices(0)
-    {
-    }
+    NHRStepInfo() : nSlices(0) {}
 };
 #endif
 
@@ -51,7 +49,7 @@ struct CcuKernelArgScatterOmniPipeNHR1DMem2Mem : CcuKernelArgBase {
 };
 
 struct ScatterOmniPipeNHR1DMem2MemContext {
-    const CcuKernelArgScatterOmniPipeNHR1DMem2Mem *arg;
+    const CcuKernelArgScatterOmniPipeNHR1DMem2Mem* arg;
 
     uint64_t rankSize{0};
     uint32_t rankId{0};

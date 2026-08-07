@@ -16,15 +16,15 @@
 
 #define HCCL_TO_CCU_RET(hcclRet) static_cast<CcuResult>(hcclRet)
 /* 检查函数返回值, 并返回指定错误码 */
-#define CCU_CHK_RET(call)                                 \
-    do {                                              \
-        CcuResult ccuRet = HCCL_TO_CCU_RET(call);                        \
-        if (UNLIKELY(ccuRet != CCU_SUCCESS)) {                    \
+#define CCU_CHK_RET(call)                                                 \
+    do {                                                                  \
+        CcuResult ccuRet = HCCL_TO_CCU_RET(call);                         \
+        if (UNLIKELY(ccuRet != CCU_SUCCESS)) {                            \
             HCCL_ERROR("[%s]call trace: ccuRet -> %d", __func__, ccuRet); \
-            return ccuRet;                               \
-        }                                             \
+            return ccuRet;                                                \
+        }                                                                 \
     } while (0)
 
 HcclResult ConvertCcuToHccl(CcuResult ccuResult);
 
-#endif //CCU_LOG_H
+#endif // CCU_LOG_H

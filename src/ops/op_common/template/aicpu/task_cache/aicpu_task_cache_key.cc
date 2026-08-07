@@ -17,29 +17,29 @@
 namespace ops_hccl {
 
 namespace {
-// 将无符号整数转为十进制字符串, 写入ptr
-// 返回写入后的指针; uint64_t最大20位数字, 调用方保证缓冲区有足够空间
-// 兼容uint32_t和unsigned long long (uint32_t隐式提升为uint64_t)
-inline char *UIntToChars(char *ptr, uint64_t val)
-{
-    // uint64_t最大20位数字 (18446744073709551615)
-    char tmp[20];
-    char *tp = tmp;
+    // 将无符号整数转为十进制字符串, 写入ptr
+    // 返回写入后的指针; uint64_t最大20位数字, 调用方保证缓冲区有足够空间
+    // 兼容uint32_t和unsigned long long (uint32_t隐式提升为uint64_t)
+    inline char* UIntToChars(char* ptr, uint64_t val)
+    {
+        // uint64_t最大20位数字 (18446744073709551615)
+        char tmp[20];
+        char* tp = tmp;
 
-    do {
-        *tp++ = static_cast<char>('0' + val % 10U);
-        val /= 10U;
-    } while (val > 0);
+        do {
+            *tp++ = static_cast<char>('0' + val % 10U);
+            val /= 10U;
+        } while (val > 0);
 
-    // 反转写入目标缓冲区
-    while (tp > tmp) {
-        *ptr++ = *--tp;
+        // 反转写入目标缓冲区
+        while (tp > tmp) {
+            *ptr++ = *--tp;
+        }
+        return ptr;
     }
-    return ptr;
-}
 } // namespace
 
-HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam &param, uint64_t inputSize, std::string &cacheTag)
+HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_t inputSize, std::string& cacheTag)
 {
     // 暂时不考虑v类算子 (应该被cache使能约束拦截, 不应该进入本函数), dataType一定不是reserved
     const HcclCMDType opType = param.opType;
@@ -56,8 +56,8 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam &param, uint64_
     // 获取rootRank
     // 注意: broadcast/reduce/scatter的task编排受rootRank影响
     uint32_t rootRank = 0;
-    if (opType == HcclCMDType::HCCL_CMD_BROADCAST || opType == HcclCMDType::HCCL_CMD_SCATTER ||
-        opType == HcclCMDType::HCCL_CMD_REDUCE) {
+    if (opType == HcclCMDType::HCCL_CMD_BROADCAST || opType == HcclCMDType::HCCL_CMD_SCATTER
+        || opType == HcclCMDType::HCCL_CMD_REDUCE) {
         rootRank = param.root;
     }
 
@@ -70,10 +70,10 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam &param, uint64_
     // 注意: 把input size放在前面, 如果需要解析, 可以减少解析开销
     // 注意: commId放在最后, 如果需要解析, 无需考虑commId中含有delimiter的情况
     // 注意: enum class不能转为uint8_t, 否则会作为char输出; 需显式转为uint32_t后再用to_chars, 否则编译失败
-    const char* commId = param.commName; // 最大长度COMM_INDENTIFIER_MAX_LENGTH (128)
+    const char* commId = param.commName;  // 最大长度COMM_INDENTIFIER_MAX_LENGTH (128)
     constexpr size_t RESERVED_SIZE = 256; // commId+7个整数, 最多128+80+7个字符, 预留256足够
     char buf[RESERVED_SIZE];
-    char *ptr = buf;
+    char* ptr = buf;
     const char delimiter = '-';
 
     // inputSize (uint64最多20个字符)
@@ -113,11 +113,12 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam &param, uint64_
     // 重新更新cacheTag长度
     cacheTag.assign(buf, static_cast<size_t>(ptr - buf));
 
-    HCCL_INFO("[AicpuTaskCacheKey][GetAicpuTaskCacheTag] cacheTag[%s] from commId[%s] opType[%d] dataType[%d] "
+    HCCL_INFO(
+        "[AicpuTaskCacheKey][GetAicpuTaskCacheTag] cacheTag[%s] from commId[%s] opType[%d] dataType[%d] "
         "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] rootRank[%d]",
         cacheTag.c_str(), commId, opType, dataType, reduceType, isZeroCopy, inputSize, opMode, rootRank);
 
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

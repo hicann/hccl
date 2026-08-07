@@ -14,13 +14,13 @@
 namespace ops_hccl {
 
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int CKE_IDX_0    = 0;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int CKE_IDX_0 = 0;
 constexpr int POST_SYNC_ID = 3;
 
-static CcuResult InitResource(AllToAllMesh2DieContext &ctx)
+static CcuResult InitResource(AllToAllMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->channelCount == 0 && !(arg->withMyRank)) {
         HCCL_ERROR("[CcuKernelAllToAllMesh2Die] RankId[%u] channels is empty", arg->rankId);
         return CCU_E_INTERNAL;
@@ -39,9 +39,9 @@ static CcuResult InitResource(AllToAllMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllToAllMesh2DieContext &ctx)
+static CcuResult LoadArgs(AllToAllMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[ctx.virRankSize - 1], cnt++));
@@ -57,12 +57,14 @@ static CcuResult LoadArgs(AllToAllMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(AllToAllMesh2DieContext &ctx)
+static void PreSync(AllToAllMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[ctx.virRankSize - 1], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[ctx.virRankSize - 1], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[ctx.virRankSize - 1], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[ctx.virRankSize - 1], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
     uint32_t waitBits = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -70,9 +72,9 @@ static void PreSync(AllToAllMesh2DieContext &ctx)
     }
 }
 
-static void PostSync(AllToAllMesh2DieContext &ctx)
+static void PostSync(AllToAllMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
@@ -81,18 +83,18 @@ static void PostSync(AllToAllMesh2DieContext &ctx)
     }
 }
 
-static uint32_t CalcDstRank(AllToAllMesh2DieContext &ctx, uint32_t peerId)
+static uint32_t CalcDstRank(AllToAllMesh2DieContext& ctx, uint32_t peerId)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (peerId >= arg->rankGroup.size()) {
         HCCL_ERROR("[CcuKernelAllToAllMesh2Die][CalcDstRank] Unexpected peerId[%u]", peerId);
     }
     return arg->rankGroup[peerId];
 }
 
-static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
+static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     std::vector<ccu::LocalAddr> src(ctx.logicRankSize);
     std::vector<ccu::RemoteAddr> dst(ctx.logicRankSize);
 
@@ -105,13 +107,13 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
 
         dst[r].addr = ctx.output[r];
         dst[r].addr += ctx.outputoffset;
-        for(uint64_t i = 0; i < dstRank; i++){
+        for (uint64_t i = 0; i < dstRank; i++) {
             src[r].addr += ctx.inputSliceStride;
         }
     }
     ccu::LocalAddr localSrc;
     ccu::LocalAddr localDst;
-    if(arg->withMyRank){
+    if (arg->withMyRank) {
         const u32 with_dstRank = CalcDstRank(ctx, ctx.logicRankSize - 1);
 
         localSrc.token = ctx.token[ctx.logicRankSize - 1];
@@ -120,7 +122,7 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
         localDst.token = ctx.token[ctx.logicRankSize - 1];
         localDst.addr = ctx.output[ctx.logicRankSize - 1];
         localDst.addr += ctx.outputoffset;
-        for(uint64_t i = 0; i < with_dstRank; i++){
+        for (uint64_t i = 0; i < with_dstRank; i++) {
             localSrc.addr += ctx.inputSliceStride;
         }
     }
@@ -134,7 +136,8 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
         ccu::Write(arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
         channelsIdx++;
     }
-    uint16_t waitMask = arg->withMyRank ? ((1 << ctx.logicRankSize) - 1) & (~(1 << arg->channelCount)) : (1 << ctx.logicRankSize) - 1;
+    uint16_t waitMask
+        = arg->withMyRank ? ((1 << ctx.logicRankSize) - 1) & (~(1 << arg->channelCount)) : (1 << ctx.logicRankSize) - 1;
     ccu::EventWait(ctx.event, waitMask);
 
     return CCU_SUCCESS;
@@ -142,7 +145,7 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext &ctx)
 
 CcuResult CcuAllToAllMesh2DieKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllToAllMesh2Die *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllToAllMesh2Die*>(arg);
     AllToAllMesh2DieContext ctx;
     ctx.arg = kernelArg;
     ctx.resourceAllocated = false;
@@ -163,4 +166,4 @@ CcuResult CcuAllToAllMesh2DieKernel(CcuKernelArg arg)
     return CCU_SUCCESS;
 }
 
-}// namespace ops_hccl
+} // namespace ops_hccl

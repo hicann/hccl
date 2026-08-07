@@ -17,12 +17,12 @@
 
 namespace ops_hccl {
 
-
 class InsTempBroadcastNHR : public InsAlgTemplateBase {
 public:
     InsTempBroadcastNHR() = default;
-    explicit InsTempBroadcastNHR(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempBroadcastNHR(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempBroadcastNHR() override;
 
@@ -33,36 +33,42 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
     void SetRoot(u32 root);
 
 private:
-    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource &templateResource);
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
-    HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
-    HcclResult RunScatter(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads, u32 channelIdx);
-    HcclResult RunAllGather(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads, u32 channelIdx);
-    HcclResult GetScatterStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo) const;
-    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo);
-    HcclResult BatchTxRx(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
+    HcclResult PrepareDataSplitForMultiChannel(const TemplateResource& templateResource);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult RunScatter(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
         u32 channelIdx);
-    HcclResult BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        u64 memOffset, u32 channelIdx) const;
-    HcclResult BatchRecv(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        u64 memOffset, u32 channelIdx) const;
-    HcclResult BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        u64 memOffset, u32 channelIdx) const;
+    HcclResult RunAllGather(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        u32 channelIdx);
+    HcclResult GetScatterStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo) const;
+    HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
+    HcclResult BatchTxRx(
+        AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, u32 channelIdx);
+    HcclResult BatchSend(
+        AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const;
+    HcclResult BatchRecv(
+        AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const;
+    HcclResult BatchSR(
+        AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const;
     u32 GetRankFromMap(const u32 rankIdx) const;
     TemplateDataParams tempAlgParams_;
     u64 dataTypeSize_{0};
@@ -76,6 +82,6 @@ private:
     std::vector<u64> dataOffsetTail_;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // INS_TEMP_BROADCAST_NHR_H

@@ -12,16 +12,17 @@
 
 namespace ops_hccl {
 
-constexpr uint16_t INPUT_XN_ID   = 0;
-constexpr uint16_t TOKEN_XN_ID   = 1;
+constexpr uint16_t INPUT_XN_ID = 0;
+constexpr uint16_t TOKEN_XN_ID = 1;
 constexpr uint16_t CKE_IDX_INPUT = 0;
 constexpr uint16_t CKE_IDX_TOKEN = 1;
 constexpr uint16_t CKE_IDX_READY = 2;
-constexpr uint16_t CKE_IDX_DONE  = 3;
-constexpr uint16_t POST_XN_ID    = 4;
+constexpr uint16_t CKE_IDX_DONE = 3;
+constexpr uint16_t POST_XN_ID = 4;
 constexpr uint16_t BIT_NUM_PER_CKE = 16; // CKE的位数，一个CKE可以处理16种信号
 
-static CcuResult ParseKernelArg(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx, CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem *kernelArg)
+static CcuResult
+ParseKernelArg(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx, CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankId = kernelArg->rankId;
@@ -32,23 +33,25 @@ static CcuResult ParseKernelArg(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx, C
     ctx.localSize = ctx.rank2ChannelIdx.size(); // nhr 算法通信rank数
     ctx.myRankIdx = ctx.rank2ChannelIdx.size(); // InitResources中将本端放在末尾 此处为对应的idx
 
-    ctx.dataType        = kernelArg->opParam.DataDes.dataType;
-    ctx.outputDataType  = kernelArg->opParam.DataDes.outputType;
+    ctx.dataType = kernelArg->opParam.DataDes.dataType;
+    ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_DEBUG(
+            "[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
-    HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] userRank[%u] rankId[%u], rankSize[%u], "
-                "dataType[%d], outputDataType[%d], reduceOp[%d]", ctx.userRank, ctx.rankId, ctx.rankSize,
-                ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+    HCCL_INFO(
+        "[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] userRank[%u] rankId[%u], rankSize[%u], "
+        "dataType[%d], outputDataType[%d], reduceOp[%d]",
+        ctx.userRank, ctx.rankId, ctx.rankSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult InitResource(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] channels is empty!");
         return CcuResult::CCU_E_INTERNAL;
@@ -68,7 +71,7 @@ static CcuResult InitResource(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult LoadArgs(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
 {
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[ctx.myRankIdx], argId++));
@@ -101,23 +104,23 @@ static uint16_t GetSignalMask(const int signalBit)
     return (1 << (static_cast<uint32_t>(signalBit) % BIT_NUM_PER_CKE));
 }
 
-static CcuResult PreSync(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult PreSync(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] PreSync start");
 
     const uint16_t signalBitInput = GetSignalMask(CKE_IDX_INPUT);
     const uint16_t signalBitToken = GetSignalMask(CKE_IDX_TOKEN);
     const uint32_t signalIndexInput = GetSignalIndex(CKE_IDX_INPUT);
     const uint32_t signalIndexToken = GetSignalIndex(CKE_IDX_TOKEN);
-    
+
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.input[ctx.myRankIdx],
-                        CKE_IDX_INPUT, signalIndexInput, signalBitInput));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[ctx.myRankIdx],
-                        CKE_IDX_TOKEN, signalIndexToken, signalBitToken));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[ctx.myRankIdx], CKE_IDX_INPUT, signalIndexInput, signalBitInput));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[ctx.myRankIdx], CKE_IDX_TOKEN, signalIndexToken, signalBitToken));
     }
-    
+
     const uint16_t waitMask = signalBitInput | signalBitToken; // 组合一下mask
     std::set<uint32_t> signalIdxes{signalIndexInput, signalIndexToken};
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -129,10 +132,10 @@ static CcuResult PreSync(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult PostSync(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] PostSync start");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const uint16_t selfBitInput = GetSignalMask(POST_XN_ID);
     const uint32_t signalIndexInput = GetSignalIndex(POST_XN_ID);
 
@@ -149,18 +152,20 @@ static CcuResult PostSync(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx, const NHRStepInfoRS &nhrStepInfo)
+static CcuResult
+DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx, const NHRStepInfoRS& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t& toRankIdx = ctx.rank2ChannelIdx.at(nhrStepInfo.toRank);
     uint32_t& fromRankIdx = ctx.rank2ChannelIdx.at(nhrStepInfo.fromRank);
-    const auto &sendChannel = arg->channels[toRankIdx];
-    const auto &recvChannel = arg->channels[fromRankIdx];
-    const std::vector<uint32_t> &recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
+    const auto& sendChannel = arg->channels[toRankIdx];
+    const auto& recvChannel = arg->channels[fromRankIdx];
+    const std::vector<uint32_t>& recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
     HCCL_DEBUG(
-        "[DoRepeatReduceScatterNHRSingleStep] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) fromRank[%u](channelIdx[%u]) SliceSize[%u]",
-        ctx.userRank, ctx.rankId, nhrStepInfo.step, nhrStepInfo.toRank, toRankIdx, nhrStepInfo.fromRank,
-        fromRankIdx, recvSliceIdxList.size());
+        "[DoRepeatReduceScatterNHRSingleStep] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) "
+        "fromRank[%u](channelIdx[%u]) SliceSize[%u]",
+        ctx.userRank, ctx.rankId, nhrStepInfo.step, nhrStepInfo.toRank, toRankIdx, nhrStepInfo.fromRank, fromRankIdx,
+        recvSliceIdxList.size());
 
     ccu::LocalAddr dst;
     ccu::RemoteAddr src;
@@ -175,10 +180,10 @@ static CcuResult DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMe
     // 通知对端rank自己准备好了-前同步
     if (nhrStepInfo.step != 0) {
         CCU_CHK_RET(ccu::NotifyRecord(recvChannel, signalIdxReady, signalBitReady)); // 通知fromrank可以写入
-        CCU_CHK_RET(ccu::NotifyWait(sendChannel, signalIdxReady, signalBitReady)); // 等待torank准备好
+        CCU_CHK_RET(ccu::NotifyWait(sendChannel, signalIdxReady, signalBitReady));   // 等待torank准备好
     }
 
-    for (const uint32_t &recvSliceIdx : recvSliceIdxList) {
+    for (const uint32_t& recvSliceIdx : recvSliceIdxList) {
         HCCL_DEBUG("[DoRepeatReduceScatterNHRSingleStep] sliceIdx[%u]", recvSliceIdx);
         src.addr = ctx.input[fromRankIdx];
         dst.addr = ctx.input[ctx.myRankIdx];
@@ -195,15 +200,15 @@ static CcuResult DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMe
             ctx.sliceSize = ctx.inputOmniSliceSizeVec[recvSliceIdx];
         }
 
-        CCU_IF(ctx.sliceSize != 0) {
-            CCU_CHK_RET(ccu::ReadReduce(recvChannel, dst, src, ctx.sliceSize, ctx.dataType, ctx.reduceOp, ctx.event, 1));
+        CCU_IF(ctx.sliceSize != 0)
+        {
+            CCU_CHK_RET(
+                ccu::ReadReduce(recvChannel, dst, src, ctx.sliceSize, ctx.dataType, ctx.reduceOp, ctx.event, 1));
         }
-        CCU_IF(ctx.sliceSize == 0) {
-            CCU_CHK_RET(ccu::EventRecord(ctx.event, 1));
-        }
+        CCU_IF(ctx.sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, 1)); }
         CCU_CHK_RET(ccu::EventWait(ctx.event, 1));
     }
-    
+
     // 写之后告诉对端写完了-后同步
     // 告诉toRank数据写完了
     CCU_CHK_RET(ccu::NotifyRecord(sendChannel, signalIdxDone, signalBitDone));
@@ -212,9 +217,9 @@ static CcuResult DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMe
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatReduceScatterNHR(ReduceScatterOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult DoRepeatReduceScatterNHR(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
 {
-    for (auto &nhrStepInfo : ctx.stepInfoVector) {
+    for (auto& nhrStepInfo : ctx.stepInfoVector) {
         CCU_CHK_RET(DoRepeatReduceScatterNHRSingleStep(ctx, nhrStepInfo));
     }
     HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] DoRepeatReduceScatterNHR success");
@@ -226,7 +231,7 @@ static CcuResult DoRepeatReduceScatterNHR(ReduceScatterOmniPipeNHR1DMem2MemConte
 // ============================================================================
 CcuResult CcuReduceScatterOmniPipeNHR1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeNHR1DMem2Mem*>(arg);
     ReduceScatterOmniPipeNHR1DMem2MemContext ctx;
     ctx.resourceAllocated = false;
     ctx.moConfig.msInterleave = 0;
@@ -242,7 +247,7 @@ CcuResult CcuReduceScatterOmniPipeNHR1DMem2MemKernel(CcuKernelArg arg)
     CCU_CHK_RET(DoRepeatReduceScatterNHR(ctx));
     CCU_CHK_RET(PostSync(ctx));
     HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] ReduceScatterOmniPipeNHR1DMem2Mem end");
-    
+
     return CCU_SUCCESS;
 }
-} // namespace Hccl
+} // namespace ops_hccl

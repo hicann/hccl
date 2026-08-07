@@ -24,7 +24,7 @@
 HcclResult __attribute__((weak)) HcommThreadJoin(ThreadHandle thread, uint32_t timeout);
 namespace ops_hccl {
 
-# define UINT32_MAX     (4294967295U)
+#define UINT32_MAX (4294967295U)
 constexpr u32 INVALID_U32 = UINT32_MAX;
 constexpr u32 MAX_JETTY_NUM = 4;
 constexpr u32 SMALL_SIZE_512KB = 512 * 1024;
@@ -38,44 +38,25 @@ struct SliceInfo {
 
 using RankSliceInfo = std::vector<std::vector<SliceInfo>>;
 
-enum class BufferType {
-    INPUT = 0,
-    OUTPUT = 1,
-    HCCL_BUFFER = 2,
-    DEFAULT
-};
+enum class BufferType { INPUT = 0, OUTPUT = 1, HCCL_BUFFER = 2, DEFAULT };
 
-enum class BatchSendRecvOpType {
-    RECORD = 0,
-    SEND = 1,
-    RECV = 2,
-    FENCE = 3,
-    DEFAULT
-};
+enum class BatchSendRecvOpType { RECORD = 0, SEND = 1, RECV = 2, FENCE = 3, DEFAULT };
 
 struct DataSlice {
     void* addr_ = nullptr;
     u64 offset_{0}; // Slice相对于input/output的偏移字节数，gather类操作取output，scatter类操作取input
-    u64 size_{0};    // Slice的数据大小，单位：字节
-    u64 count_{0};   // 数据元素个数
+    u64 size_{0};   // Slice的数据大小，单位：字节
+    u64 count_{0};  // 数据元素个数
 
-    DataSlice(void* addr, u64 offset, u64 size, u64 count)
-    : addr_(addr), offset_(offset), size_(size), count_(count)
+    DataSlice(void* addr, u64 offset, u64 size, u64 count) : addr_(addr), offset_(offset), size_(size), count_(count) {}
+
+    DataSlice(void* addr, u64 offset, u64 size) : addr_(addr), offset_(offset), size_(size) { count_ = 0; }
+
+    std::string Describe() const
     {
-    }
-
-    DataSlice(void* addr, u64 offset, u64 size)
-    : addr_(addr), offset_(offset), size_(size)
-    {
-        count_ = 0;
-    }
-
-    std::string Describe() const {
         std::ostringstream oss;
         oss << "DataSlice: addr=" << addr_ // 指针地址会自动格式化为十六进制
-            << ", offset=" << offset_
-            << ", size=" << size_
-            << ", count=" << count_;
+            << ", offset=" << offset_ << ", size=" << size_ << ", count=" << count_;
         return oss.str();
     }
 };
@@ -84,10 +65,10 @@ struct SlicesList {
     std::vector<DataSlice> srcSlices_;
     std::vector<DataSlice> dstSlices_;
 
-    SlicesList(const std::vector<DataSlice> &srcSlices, const std::vector<DataSlice> &dstSlices)
-        : srcSlices_(srcSlices), dstSlices_(dstSlices)
-    {
-    }
+    SlicesList(const std::vector<DataSlice>& srcSlices, const std::vector<DataSlice>& dstSlices)
+        : srcSlices_(srcSlices),
+          dstSlices_(dstSlices)
+    {}
 };
 
 struct A2ASendRecvInfo {
@@ -107,14 +88,12 @@ struct DataInfo {
     ChannelInfo channel_;
     SlicesList slices_;
     HcclDataType dataType_;
-    DataInfo(const ChannelInfo &channel, const SlicesList &slices)
-    : channel_(channel), slices_(slices)
-    {
-    }
-    DataInfo(const ChannelInfo &channel, const SlicesList &slices, HcclDataType dataType)
-    : channel_(channel), slices_(slices), dataType_(dataType)
-    {
-    }
+    DataInfo(const ChannelInfo& channel, const SlicesList& slices) : channel_(channel), slices_(slices) {}
+    DataInfo(const ChannelInfo& channel, const SlicesList& slices, HcclDataType dataType)
+        : channel_(channel),
+          slices_(slices),
+          dataType_(dataType)
+    {}
 };
 
 struct DataReduceInfo {
@@ -122,83 +101,86 @@ struct DataReduceInfo {
     SlicesList slices_;
     HcclDataType dataType_;
     HcclReduceOp reduceType_;
-    DataReduceInfo(const ChannelInfo &channel, const SlicesList &slices,
-             HcclDataType dataType, HcclReduceOp reduceType)
-    : channel_(channel), slices_(slices), dataType_(dataType), reduceType_(reduceType)
-    {
-    }
+    DataReduceInfo(const ChannelInfo& channel, const SlicesList& slices, HcclDataType dataType, HcclReduceOp reduceType)
+        : channel_(channel),
+          slices_(slices),
+          dataType_(dataType),
+          reduceType_(reduceType)
+    {}
 };
 
 struct TxRxChannels {
     ChannelInfo txChannel_;
     ChannelInfo rxChannel_;
 
-    TxRxChannels(const ChannelInfo &txLink, const ChannelInfo &rxLink) : txChannel_(txLink), rxChannel_(rxLink)
-    {
-    }
+    TxRxChannels(const ChannelInfo& txLink, const ChannelInfo& rxLink) : txChannel_(txLink), rxChannel_(rxLink) {}
 };
 
 struct TxRxSlicesList {
     SlicesList txSlicesList_;
     SlicesList rxSlicesList_;
 
-    TxRxSlicesList(const SlicesList &txSlicesList, const SlicesList &rxSlicesList)
-        : txSlicesList_(txSlicesList), rxSlicesList_(rxSlicesList)
-    {
-    }
+    TxRxSlicesList(const SlicesList& txSlicesList, const SlicesList& rxSlicesList)
+        : txSlicesList_(txSlicesList),
+          rxSlicesList_(rxSlicesList)
+    {}
 };
 
 struct SendRecvInfo {
-    TxRxChannels      sendRecvChannels_;
-    TxRxSlicesList    sendRecvSlices_;
-    HcclDataType      dataType_;
+    TxRxChannels sendRecvChannels_;
+    TxRxSlicesList sendRecvSlices_;
+    HcclDataType dataType_;
 
-    SendRecvInfo(const TxRxChannels &sendRecvLinks, const TxRxSlicesList &sendRecvSlices)
-        : sendRecvChannels_(sendRecvLinks), sendRecvSlices_(sendRecvSlices)
-    {
-    }
+    SendRecvInfo(const TxRxChannels& sendRecvLinks, const TxRxSlicesList& sendRecvSlices)
+        : sendRecvChannels_(sendRecvLinks),
+          sendRecvSlices_(sendRecvSlices)
+    {}
 
-    SendRecvInfo(const TxRxChannels &sendRecvLinks, const TxRxSlicesList &sendRecvSlices, HcclDataType dataType)
-    : sendRecvChannels_(sendRecvLinks), sendRecvSlices_(sendRecvSlices), dataType_(dataType)
-    {
-    }
+    SendRecvInfo(const TxRxChannels& sendRecvLinks, const TxRxSlicesList& sendRecvSlices, HcclDataType dataType)
+        : sendRecvChannels_(sendRecvLinks),
+          sendRecvSlices_(sendRecvSlices),
+          dataType_(dataType)
+    {}
 };
 
 struct SendRecvReduceInfo {
-    TxRxChannels      sendRecvChannels_;
-    TxRxSlicesList    sendRecvSlices_;
+    TxRxChannels sendRecvChannels_;
+    TxRxSlicesList sendRecvSlices_;
     HcclDataType dataType_;
     HcclReduceOp reduceType_;
 
-    SendRecvReduceInfo(const TxRxChannels &sendRecvLinks, const TxRxSlicesList &sendRecvSlices,
-                       const HcclDataType dataType, const HcclReduceOp reduceOp)
-        : sendRecvChannels_(sendRecvLinks), sendRecvSlices_(sendRecvSlices), dataType_(dataType), reduceType_(reduceOp)
-    {
-    }
+    SendRecvReduceInfo(
+        const TxRxChannels& sendRecvLinks, const TxRxSlicesList& sendRecvSlices, const HcclDataType dataType,
+        const HcclReduceOp reduceOp)
+        : sendRecvChannels_(sendRecvLinks),
+          sendRecvSlices_(sendRecvSlices),
+          dataType_(dataType),
+          reduceType_(reduceOp)
+    {}
 };
 
 struct BuffInfo {
-    void* inputPtr = nullptr; // userIn
+    void* inputPtr = nullptr;  // userIn
     void* outputPtr = nullptr; // userOut
-    HcclMem hcclBuff; // 跨Rank缓存Buffer
+    HcclMem hcclBuff;          // 跨Rank缓存Buffer
     BufferType inBuffType;
     BufferType outBuffType;
     BufferType hcclBuffType;
-    u64        inputSize          = 0;
-    u64        outputSize         = 0;
-    u64        hcclBuffSize       = 0;
-    u64        inBuffBaseOff      = 0;
-    u64        outBuffBaseOff     = 0;
-    u64        hcclBuffBaseOff    = 0;
+    u64 inputSize = 0;
+    u64 outputSize = 0;
+    u64 hcclBuffSize = 0;
+    u64 inBuffBaseOff = 0;
+    u64 outBuffBaseOff = 0;
+    u64 hcclBuffBaseOff = 0;
 };
 
-struct StepSliceInfo
-{
+struct StepSliceInfo {
     BuffInfo buffInfo;
-    std::vector<std::vector<u64>> stepCount; //每step上所有的rank参与的数据量
-    std::vector<std::vector<u64>> stepSliceSize; //每step上所有的rank参与的数据量
-    std::vector<u64> stepInputSliceStride; //数据连着放 buffertype.addr + inputSliceStride[rankid] + inputOmniPipeSliceStride[j]
-    std::vector<u64> stepOutputSliceStride; //数据连着放
+    std::vector<std::vector<u64>> stepCount;     // 每step上所有的rank参与的数据量
+    std::vector<std::vector<u64>> stepSliceSize; // 每step上所有的rank参与的数据量
+    std::vector<u64>
+        stepInputSliceStride; // 数据连着放 buffertype.addr + inputSliceStride[rankid] + inputOmniPipeSliceStride[j]
+    std::vector<u64> stepOutputSliceStride; // 数据连着放
     std::vector<std::vector<u64>> inputOmniPipeSliceStride;
     std::vector<std::vector<u64>> outputOmniPipeSliceStride;
 
@@ -216,7 +198,7 @@ struct StepSliceInfo
         return result;
     }
 
-    void DeSerialize(std::vector<char> &data)
+    void DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
         binaryStream >> stepCount;
@@ -296,7 +278,7 @@ struct TemplateDataParams {
         return result;
     }
 
-    void DeSerialize(std::vector<char> &data)
+    void DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
         binaryStream >> buffInfo;
@@ -323,7 +305,7 @@ struct TemplateDataParams {
         binaryStream >> stepSliceInfoData;
         stepSliceInfo.DeSerialize(stepSliceInfoData);
         binaryStream >> opType;
-        
+
         std::vector<char> omniReadDstStepSliceInfoData;
         binaryStream >> omniReadDstStepSliceInfoData;
         omniReadDstStepSliceInfo.DeSerialize(omniReadDstStepSliceInfoData);
@@ -332,19 +314,18 @@ struct TemplateDataParams {
     }
 };
 
-
 struct TemplateResource {
     std::map<u32, std::vector<ChannelInfo>> channels;
     std::vector<ThreadHandle> threads;
     std::vector<CcuKernelHandle> ccuKernels;
     std::vector<CcuKernelSubmitInfo> submitInfos;
     double dieSplitRatio = 0.0;
-    void *npu2DpuShmemPtr;
-    void *dpu2NpuShmemPtr;
+    void* npu2DpuShmemPtr;
+    void* dpu2NpuShmemPtr;
     void* aivCommInfoPtr = nullptr;
 };
 
-struct DPURunInfo { // AICPU构造信息，写入共享内存
+struct DPURunInfo {           // AICPU构造信息，写入共享内存
     std::string templateName; // DPU算法展开的template名
     TemplateDataParams tempAlgParams;
     std::map<uint32_t, std::vector<ChannelInfo>> channels;
@@ -365,7 +346,7 @@ struct DPURunInfo { // AICPU构造信息，写入共享内存
         return result;
     }
 
-    void DeSerialize(std::vector<char> &data)
+    void DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
         binaryStream >> templateName;
@@ -395,29 +376,29 @@ struct AicpuNHRStepInfo {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    AicpuNHRStepInfo() : nSlices(0)
-    {
-    }
+    AicpuNHRStepInfo() : nSlices(0) {}
 };
 
-HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32> &rankIds, u32 &algRank);
+HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& algRank);
 
 u32 GetNHRStepNum(u32 rankSize);
 
-inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc> &channels)
+inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc>& channels)
 {
     u32 channelsPerRank = 1;
     u32 currentRank = INVALID_VALUE_RANKID;
     u32 currentCount = 0;
     // channels的排列遵循相同远端的channel放在相邻位置
-    for (const auto &channel : channels) {
+    for (const auto& channel : channels) {
         if (channel.remoteRank == currentRank) {
             // 如果remoteRank不变，则计数一直累加
             currentCount++;
         } else {
             // 如果remoteRank变化了，则更新channelsPerRank并重新开始给下一个remoteRank计数
-            if (currentCount != channelsPerRank && currentRank != channels[0].remoteRank && currentRank != INVALID_VALUE_RANKID) {
-                HCCL_WARNING("[CalcChannelsPerRank] channel num[%u] of remote rank[%u] is not equal to "\
+            if (currentCount != channelsPerRank && currentRank != channels[0].remoteRank
+                && currentRank != INVALID_VALUE_RANKID) {
+                HCCL_WARNING(
+                    "[CalcChannelsPerRank] channel num[%u] of remote rank[%u] is not equal to "
                     "channel num[%u] of previous ranks.",
                     currentCount, currentRank, channelsPerRank);
             }
@@ -435,10 +416,10 @@ inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc> &channels)
     return channelsPerRank;
 }
 
-inline u32 CalcChannelsPerRank(const std::map<u32, std::vector<ChannelInfo>> &channels)
+inline u32 CalcChannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     u32 channelsPerRank = 1;
-    for (const auto &channelsByRank : channels) {
+    for (const auto& channelsByRank : channels) {
         if (channelsByRank.second.size() > channelsPerRank) {
             channelsPerRank = static_cast<u32>(channelsByRank.second.size());
         }
@@ -458,14 +439,14 @@ inline u64 RoundUp(const u64 dividend, const u64 divisor)
 
 // ccu快速下发arg填充
 template <typename... Args>
-HcclResult FillCachedArgs(CcuKernelSubmitInfo &info, Args... args)
+HcclResult FillCachedArgs(CcuKernelSubmitInfo& info, Args... args)
 {
     size_t argNum = sizeof...(Args);
     if (UNLIKELY(argNum > CCU_MAX_TASK_ARG_NUM)) {
         HCCL_ERROR("[FillCachedArgs] argNum is bigger than CCU_MAX_TASK_ARG_NUM[%d]", CCU_MAX_TASK_ARG_NUM);
         return HcclResult::HCCL_E_INTERNAL;
     }
-    uint64_t temp[] = { static_cast<uint64_t>(args)... };
+    uint64_t temp[] = {static_cast<uint64_t>(args)...};
 
     for (size_t i = 0; i < argNum; i++) {
         info.cachedArgs[i] = temp[i];
@@ -473,45 +454,27 @@ HcclResult FillCachedArgs(CcuKernelSubmitInfo &info, Args... args)
 
     return HcclResult::HCCL_SUCCESS;
 }
-HcclResult CalcDataSplitByPortGroupCommon(const u64 totalDataCount,
-                                          const u64 dataTypeSize,
-                                          const std::vector<ChannelInfo> &channels,
-                                          std::vector<u64> &elemCountOut,
-                                          std::vector<u64> &sizeOut,
-                                          std::vector<u64> &elemOffset,
-                                          const u32 channelsPerRank);
+HcclResult CalcDataSplitByPortGroupCommon(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset, const u32 channelsPerRank);
 
-HcclResult CalcDataSplitByPortGroupZAxisDetour(const u64 totalDataCount,
-                                                const u64 dataTypeSize,
-                                                const std::vector<ChannelInfo> &channels,
-                                                std::vector<u64> &elemCountOut,
-                                                std::vector<u64> &sizeOut,
-                                                std::vector<u64> &elemOffset,
-                                                const u32 level0ChannelNumPerRank,
-                                                const u32 level1ChannelNumPerRank,
-                                                const float level0DataRatio = 0.5f);
+HcclResult CalcDataSplitByPortGroupZAxisDetour(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset,
+    const u32 level0ChannelNumPerRank, const u32 level1ChannelNumPerRank, const float level0DataRatio = 0.5f);
 
-bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType);
+bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType);
 
-enum class ParallelDataSplitType {
-    REDUCE_SCATTER_WITH_LOCAL_REDUCE = 0,
-    ALL_GATHER = 1,
-    SCATTER = 2
-};
+enum class ParallelDataSplitType { REDUCE_SCATTER_WITH_LOCAL_REDUCE = 0, ALL_GATHER = 1, SCATTER = 2 };
 
-bool GetPortGroupSize(
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    uint64_t &portGroupSize);
+bool GetPortGroupSize(const std::map<u32, std::vector<ChannelInfo>>& channels, uint64_t& portGroupSize);
 
 double CalcParallelDataSplitRatio(
-    uint64_t intraRankSize,
-    uint64_t interRankSize,
-    const std::map<u32, std::vector<ChannelInfo>> &intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>> &interChannels,
-    ParallelDataSplitType splitType,
+    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType,
     double fallbackRatio);
 
 const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType);
 
-}
+} // namespace ops_hccl
 #endif

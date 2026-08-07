@@ -10,14 +10,14 @@
 
 #ifndef HCCLV1_REDUCE_SCATTER_V_SEMANTICS_CHECKER_H
 #define HCCLV1_REDUCE_SCATTER_V_SEMANTICS_CHECKER_H
- 
+
 #include "hccl_types.h"
 #include "check_utils.h"
- 
+
 namespace HcclSim {
- 
-HcclResult TaskCheckReduceScatterVSemantics(std::map<RankId, RankMemorySemantics> &allRankMemSemantics,
-                                            HcclReduceOp reduceType, VDataDesTag &vDataDes);
+
+HcclResult TaskCheckReduceScatterVSemantics(
+    std::map<RankId, RankMemorySemantics>& allRankMemSemantics, HcclReduceOp reduceType, VDataDesTag& vDataDes);
 }
- 
+
 #endif

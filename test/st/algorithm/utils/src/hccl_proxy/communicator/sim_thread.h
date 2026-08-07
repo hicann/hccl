@@ -45,7 +45,7 @@ private:
     NotifyLoadType notifyLoadType_ = NotifyLoadType::HOST_NOTIFY;
     uint32_t notifyNum_ = 0;
     std::vector<SimNotify*> notifys_;
-};  // class SimHcclThread
+}; // class SimHcclThread
 
-};
-#endif  // SIM_COMMUNICATOR_H
+}; // namespace HcclSim
+#endif // SIM_COMMUNICATOR_H

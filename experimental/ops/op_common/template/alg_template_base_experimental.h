@@ -26,14 +26,12 @@ constexpr TemplateType TEMPLATE_REDUCE_SCATTER_BIRS = static_cast<TemplateType>(
 constexpr TemplateType TEMPLATE_REDUCE_SCATTER_BIRS_INTER = static_cast<TemplateType>(1002);
 
 class AlgTemplateBaseExperimental : public ops_hccl::AlgTemplateBase {
-    public:
-    virtual HcclResult Prepare(HcclMem &inputMem, HcclMem &outputMem, HcclMem &scratchMem,
-                        const u64 count,
-                        const HcclDataType dataType, ThreadHandle thread, const std::vector<ThreadHandle> &slaveThreads,
-                        const HcclReduceOp reductionOp,
-                        const u32 root, const std::vector<Slice> &slices, const u64 baseOffset,
-                        const bool disableDMAReduce);
+public:
+    virtual HcclResult Prepare(
+        HcclMem& inputMem, HcclMem& outputMem, HcclMem& scratchMem, const u64 count, const HcclDataType dataType,
+        ThreadHandle thread, const std::vector<ThreadHandle>& slaveThreads, const HcclReduceOp reductionOp,
+        const u32 root, const std::vector<Slice>& slices, const u64 baseOffset, const bool disableDMAReduce);
 };
-}
+} // namespace ops_hccl_experimental
 
 #endif /* ALG_TEMPLATE_BASE_EXPERIMENTAL_PUB_H */

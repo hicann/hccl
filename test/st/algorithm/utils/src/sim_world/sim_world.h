@@ -23,7 +23,7 @@
 namespace HcclSim {
 class SimWorld {
 public:
-    static SimWorld *Global();
+    static SimWorld* Global();
     void Deinit();
     void Init(const TopoMeta& topoMeta, HcclDevType devType);
     SimNpu& GetSimNpuByRankId(RankId rankId);
@@ -39,5 +39,5 @@ private:
     CommDomain commDomain_;
     std::map<PodId, std::map<SerId, std::map<PhyId, SimNpu>>> simNpus_;
 };
-}
+} // namespace HcclSim
 #endif

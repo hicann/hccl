@@ -12,7 +12,7 @@
 
 namespace HcclSim {
 
-HcclResult TaskGraphGenerator::GenGraph(const AllRankTaskQueues &allRankTaskQueues, TaskNodePtr dummyStart)
+HcclResult TaskGraphGenerator::GenGraph(const AllRankTaskQueues& allRankTaskQueues, TaskNodePtr dummyStart)
 {
     u32 rankId = 0;
     for (auto& podIter : allRankTaskQueues) {
@@ -20,15 +20,15 @@ HcclResult TaskGraphGenerator::GenGraph(const AllRankTaskQueues &allRankTaskQueu
         for (auto& serIter : serMap) {
             auto& phyMap = serIter.second;
             for (auto& phyIter : phyMap) {
-                const SingleTaskQueue *taskQueue = &phyIter.second;
+                const SingleTaskQueue* taskQueue = &phyIter.second;
                 CHK_RET(GenGraph4Rank(taskQueue, rankId, dummyStart));
                 HCCL_DEBUG("[TaskGraphGenerator] Rank [%d], local dependency graph generation done.", rankId);
                 rankId++;
             }
         }
     }
-    HCCL_DEBUG("[TaskGraphGenerator] rankSize [%u] and numChildren of dummyStart [%u].", rankId,
-               dummyStart->children.size());
+    HCCL_DEBUG(
+        "[TaskGraphGenerator] rankSize [%u] and numChildren of dummyStart [%u].", rankId, dummyStart->children.size());
 
     /*
     Mismatch may occur when: 1) fail to generate local dependency graph correctly --> ERROR
@@ -37,27 +37,27 @@ HcclResult TaskGraphGenerator::GenGraph(const AllRankTaskQueues &allRankTaskQueu
 
     CHK_RET(GenGraphInterRanks(dummyStart));
 
-    //Handling the synchronization relationship between AIV, if exist.
-    // 将CCU微码序列转换为Task子图
+    // Handling the synchronization relationship between AIV, if exist.
+    //  将CCU微码序列转换为Task子图
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::GenGraph4Rank(const SingleTaskQueue* rankTaskQueues, const RankId rankIdx,
-                                             TaskNodePtr dummyStart)
+HcclResult
+TaskGraphGenerator::GenGraph4Rank(const SingleTaskQueue* rankTaskQueues, const RankId rankIdx, TaskNodePtr dummyStart)
 {
-    std::vector<TaskNodePtr> rankNodeQue;      // executable task nodes
-    SeenLocalPost            seenLocalPosts;   // seen Local Posts
-    u64                      unmatchedCnt = 0; // for deadlock checking
+    std::vector<TaskNodePtr> rankNodeQue; // executable task nodes
+    SeenLocalPost seenLocalPosts;         // seen Local Posts
+    u64 unmatchedCnt = 0;                 // for deadlock checking
 
-    CHK_PRT_RET(InitRankNodeQue(rankTaskQueues, rankIdx, dummyStart, rankNodeQue) != HcclResult::HCCL_SUCCESS,
-                HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to  init rankNodeQue.", rankIdx),
-                HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        InitRankNodeQue(rankTaskQueues, rankIdx, dummyStart, rankNodeQue) != HcclResult::HCCL_SUCCESS,
+        HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to  init rankNodeQue.", rankIdx), HcclResult::HCCL_E_INTERNAL);
 
     while (!rankNodeQue.empty()) {
         if (unmatchedCnt >= rankNodeQue.size()) {
             // DeadLocking
-            for (auto &rankNodeUnmatch : rankNodeQue) {
+            for (auto& rankNodeUnmatch : rankNodeQue) {
                 rankNodeUnmatch->unmatch = true;
             }
             HCCL_ERROR("[TaskGraphGenerator] deadLocking occurs due to mismatch of LOCAL_POST_TO and LOCAL_WAIT_FROM.");
@@ -93,19 +93,19 @@ HcclResult TaskGraphGenerator::GenGraph4Rank(const SingleTaskQueue* rankTaskQueu
                 return HcclResult::HCCL_E_INTERNAL;
         }
     }
-    if (!seenLocalPosts.empty()){
-        for (auto &localPost : seenLocalPosts) {
+    if (!seenLocalPosts.empty()) {
+        for (auto& localPost : seenLocalPosts) {
             localPost->unmatch = true;
-            HCCL_ERROR("[TaskGraphGenerator] unmatched local_post: %s.",
-                       localPost->GenPosInfo().c_str());
+            HCCL_ERROR("[TaskGraphGenerator] unmatched local_post: %s.", localPost->GenPosInfo().c_str());
             return HcclResult::HCCL_E_INTERNAL;
-	    }
+        }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::InitRankNodeQue(const SingleTaskQueue *rankTaskQueues, const RankId rankIdx,
-                                               TaskNodePtr dummyStart, std::vector<TaskNodePtr> &rankNodeQue)
+HcclResult TaskGraphGenerator::InitRankNodeQue(
+    const SingleTaskQueue* rankTaskQueues, const RankId rankIdx, TaskNodePtr dummyStart,
+    std::vector<TaskNodePtr>& rankNodeQue)
 {
     // first task of master queue
     auto currNode = std::make_shared<TaskNode>(rankTaskQueues[0][0][0].get(), rankIdx, 0, 0);
@@ -115,9 +115,10 @@ HcclResult TaskGraphGenerator::InitRankNodeQue(const SingleTaskQueue *rankTaskQu
     dummyStart->children.push_back(currNode.get());
     currNode->parents.push_back(dummyStart);
     rankNodeQue.push_back(currNode.get());
-    HCCL_DEBUG("[TaskGraphGenerator] Rank [%d], connect dummyStart -> first taskNode of master queue, put taskNode in "
-               "rankNodeQue",
-               rankIdx);
+    HCCL_DEBUG(
+        "[TaskGraphGenerator] Rank [%d], connect dummyStart -> first taskNode of master queue, put taskNode in "
+        "rankNodeQue",
+        rankIdx);
 
     // first task of slave queues: first task should be local wait
     for (u32 qIdx = 1; qIdx < rankTaskQueues[0].size(); qIdx++) {
@@ -131,8 +132,9 @@ HcclResult TaskGraphGenerator::InitRankNodeQue(const SingleTaskQueue *rankTaskQu
         nodes_.push_back(currNode);
         CHK_PRT_RET(
             currNode->task->GetType() != TaskTypeStub::LOCAL_WAIT_FROM,
-            HCCL_ERROR("[TaskGraphGenerator] Rank[%d], Que [%u], first task of slave queue should be localWaitFrom.",
-                       currNode->rankIdx, currNode->queIdx),
+            HCCL_ERROR(
+                "[TaskGraphGenerator] Rank[%d], Que [%u], first task of slave queue should be localWaitFrom.",
+                currNode->rankIdx, currNode->queIdx),
             HcclResult::HCCL_E_INTERNAL);
         rankNodeQue.push_back(currNode.get());
         HCCL_DEBUG("[TaskGraphGenerator] Rank [%d], put first taskNode of slave queues in rankNodeQue", rankIdx);
@@ -141,7 +143,7 @@ HcclResult TaskGraphGenerator::InitRankNodeQue(const SingleTaskQueue *rankTaskQu
     return HcclResult::HCCL_SUCCESS;
 }
 
-void TaskGraphGenerator::LocateUnmatchedNode(const std::vector<TaskNodePtr> &rankNodeQue)
+void TaskGraphGenerator::LocateUnmatchedNode(const std::vector<TaskNodePtr>& rankNodeQue)
 {
     auto rankNodeIter = rankNodeQue.begin();
     for (; rankNodeIter != rankNodeQue.end(); rankNodeIter++) {
@@ -152,68 +154,76 @@ void TaskGraphGenerator::LocateUnmatchedNode(const std::vector<TaskNodePtr> &ran
     return;
 }
 
-HcclResult TaskGraphGenerator::ExecFlitPrim(const SingleTaskQueue *rankTaskQueues, TaskNodePtr currNode,
-                                            std::vector<TaskNodePtr> &rankNodeQue, u64 &unmatchedCnt)
+HcclResult TaskGraphGenerator::ExecFlitPrim(
+    const SingleTaskQueue* rankTaskQueues, TaskNodePtr currNode, std::vector<TaskNodePtr>& rankNodeQue,
+    u64& unmatchedCnt)
 {
     // curr -> its nxt, push nxt to nodeQue
-    CHK_PRT_RET(ConnectNextAndPushInQue(rankTaskQueues, currNode, rankNodeQue) != HcclResult::HCCL_SUCCESS,
-                HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].",
-                           currNode->rankIdx, currNode->task->GetType().Describe().c_str()),
-                HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        ConnectNextAndPushInQue(rankTaskQueues, currNode, rankNodeQue) != HcclResult::HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].", currNode->rankIdx,
+            currNode->task->GetType().Describe().c_str()),
+        HcclResult::HCCL_E_INTERNAL);
     unmatchedCnt = 0;
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ConnectNextAndPushInQue(const SingleTaskQueue *rankTaskQueues, TaskNodePtr currNode,
-                                                       std::vector<TaskNodePtr> &rankNodeQue)
+HcclResult TaskGraphGenerator::ConnectNextAndPushInQue(
+    const SingleTaskQueue* rankTaskQueues, TaskNodePtr currNode, std::vector<TaskNodePtr>& rankNodeQue)
 {
     if (currNode->pos < rankTaskQueues[0][currNode->queIdx].size() - 1) {
-        auto nxtNode = std::make_shared<TaskNode>(rankTaskQueues[0][currNode->queIdx][currNode->pos + 1].get(),
-                                                  currNode->rankIdx, currNode->queIdx, currNode->pos + 1);
+        auto nxtNode = std::make_shared<TaskNode>(
+            rankTaskQueues[0][currNode->queIdx][currNode->pos + 1].get(), currNode->rankIdx, currNode->queIdx,
+            currNode->pos + 1);
         CHK_PTR_NULL(nxtNode);
         nodes_.push_back(nxtNode);
         nxtNode->parents.push_back(currNode);
         currNode->children.push_back(nxtNode.get());
         rankNodeQue.push_back(nxtNode.get());
     } else {
-        HCCL_DEBUG("[TaskGraphGenerator] Rank [%d], end of current Que [%u]: TrimType [%s].", currNode->rankIdx,
-                   currNode->queIdx, currNode->task->GetType().Describe().c_str());
+        HCCL_DEBUG(
+            "[TaskGraphGenerator] Rank [%d], end of current Que [%u]: TrimType [%s].", currNode->rankIdx,
+            currNode->queIdx, currNode->task->GetType().Describe().c_str());
     }
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ExecLocalPostPrim(const SingleTaskQueue *rankTaskQueues, TaskNodePtr currNode,
-                                                 std::vector<TaskNodePtr> &rankNodeQue, SeenLocalPost &seenLocalPosts,
-                                                 u64 &unmatchedCnt)
+HcclResult TaskGraphGenerator::ExecLocalPostPrim(
+    const SingleTaskQueue* rankTaskQueues, TaskNodePtr currNode, std::vector<TaskNodePtr>& rankNodeQue,
+    SeenLocalPost& seenLocalPosts, u64& unmatchedCnt)
 {
     // curr -> its nxt, nxt in nodeQue
-    CHK_PRT_RET(ConnectNextAndPushInQue(rankTaskQueues, currNode, rankNodeQue) != HcclResult::HCCL_SUCCESS,
-                HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].",
-                           currNode->rankIdx, "LocalPostTo"),
-                HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        ConnectNextAndPushInQue(rankTaskQueues, currNode, rankNodeQue) != HcclResult::HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].", currNode->rankIdx,
+            "LocalPostTo"),
+        HcclResult::HCCL_E_INTERNAL);
 
     seenLocalPosts.push_back(currNode);
     unmatchedCnt = 0;
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ExecLocalWaitPrim(const SingleTaskQueue *rankTaskQueues, TaskNodePtr currNode,
-                                                 std::vector<TaskNodePtr> &rankNodeQue, SeenLocalPost &seenLocalPosts,
-                                                 u64 &unmatchedCnt)
+HcclResult TaskGraphGenerator::ExecLocalWaitPrim(
+    const SingleTaskQueue* rankTaskQueues, TaskNodePtr currNode, std::vector<TaskNodePtr>& rankNodeQue,
+    SeenLocalPost& seenLocalPosts, u64& unmatchedCnt)
 {
     std::vector<TaskNodePtr>::iterator postIter;
     for (postIter = seenLocalPosts.begin(); postIter != seenLocalPosts.end(); postIter++) {
         if (IsSemPeer((*postIter), currNode)) {
             (*postIter)->children.push_back(currNode);
-            currNode->parents.push_back((*postIter));    // local_post_to -> curr local_wait_from
-            (seenLocalPosts).erase(postIter); // remove local_post_to from seenLocalPosts
+            currNode->parents.push_back((*postIter)); // local_post_to -> curr local_wait_from
+            (seenLocalPosts).erase(postIter);         // remove local_post_to from seenLocalPosts
             // curr local_wait_from -> its nxt
             CHK_PRT_RET(
                 ConnectNextAndPushInQue(rankTaskQueues, currNode, rankNodeQue) != HcclResult::HCCL_SUCCESS,
-                HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].",
-                            currNode->rankIdx, "LocalWaitFrom"),
+                HCCL_ERROR(
+                    "[TaskGraphGenerator] Rank [%d], fail to generate dependency graph: TaskType [%s].",
+                    currNode->rankIdx, "LocalWaitFrom"),
                 HcclResult::HCCL_E_INTERNAL);
             unmatchedCnt = 0;
             return HcclResult::HCCL_SUCCESS;
@@ -228,31 +238,33 @@ HcclResult TaskGraphGenerator::ExecLocalWaitPrim(const SingleTaskQueue *rankTask
 
 bool TaskGraphGenerator::IsSemPeer(const TaskNodePtr postNode, const TaskNodePtr waitNode)
 {
-    if (postNode->task->GetType() != TaskTypeStub::LOCAL_POST_TO ||
-        waitNode->task->GetType() != TaskTypeStub::LOCAL_WAIT_FROM) {
+    if (postNode->task->GetType() != TaskTypeStub::LOCAL_POST_TO
+        || waitNode->task->GetType() != TaskTypeStub::LOCAL_WAIT_FROM) {
         return false;
     }
 
-    TaskStubLocalPostTo* localPostTo = static_cast<TaskStubLocalPostTo *>(postNode->task);
-    TaskStubLocalWaitFrom* localWaitForm = static_cast<TaskStubLocalWaitFrom *>(waitNode->task);
+    TaskStubLocalPostTo* localPostTo = static_cast<TaskStubLocalPostTo*>(postNode->task);
+    TaskStubLocalWaitFrom* localWaitForm = static_cast<TaskStubLocalWaitFrom*>(waitNode->task);
 
-    return (localPostTo->GetTopicId() == localWaitForm->GetTopicId() &&
-            localPostTo->GetPostQid() == localWaitForm->GetPostQid() &&
-            localPostTo->GetWaitQid() == localWaitForm->GetWaitQid());
+    return (
+        localPostTo->GetTopicId() == localWaitForm->GetTopicId()
+        && localPostTo->GetPostQid() == localWaitForm->GetPostQid()
+        && localPostTo->GetWaitQid() == localWaitForm->GetWaitQid());
 }
 
 HcclResult TaskGraphGenerator::GenGraphInterRanks(TaskNodePtr dummyStart)
 {
-    std::vector<TaskNodePtr> graphNodeQue;       // executable primnodes
-    SeenInterRankPosts       seenInterRankPosts; // seen inter-rank Posts
-    u64                      unmatchedCnt = 0;   // for deadlock checking
+    std::vector<TaskNodePtr> graphNodeQue; // executable primnodes
+    SeenInterRankPosts seenInterRankPosts; // seen inter-rank Posts
+    u64 unmatchedCnt = 0;                  // for deadlock checking
 
-    CHK_PRT_RET(ExecNode4Graph(dummyStart, graphNodeQue) != HcclResult::HCCL_SUCCESS,
-                HCCL_ERROR("[TaskGraphGenerator] Fail to init graphNodeQue."), HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        ExecNode4Graph(dummyStart, graphNodeQue) != HcclResult::HCCL_SUCCESS,
+        HCCL_ERROR("[TaskGraphGenerator] Fail to init graphNodeQue."), HcclResult::HCCL_E_INTERNAL);
 
     while (!graphNodeQue.empty()) {
         if (unmatchedCnt >= graphNodeQue.size()) {
-            for (auto &graphNodeUnmatch : graphNodeQue) {
+            for (auto& graphNodeUnmatch : graphNodeQue) {
                 graphNodeUnmatch->unmatch = true;
             }
             HCCL_ERROR("[TaskGraphGenerator] deadLocking occurs due to mismatch of inter-rank Post/Wait.");
@@ -263,20 +275,21 @@ HcclResult TaskGraphGenerator::GenGraphInterRanks(TaskNodePtr dummyStart)
         TaskNodePtr currNode = graphNodeQue[0];
         graphNodeQue.erase(graphNodeQue.begin());
 
-        CHK_PRT_RET(ProcNode4Graph(currNode, graphNodeQue, seenInterRankPosts, unmatchedCnt)
-                        != HcclResult::HCCL_SUCCESS,
-                    HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to proceed taskNode.", currNode->rankIdx),
-                    HcclResult::HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            ProcNode4Graph(currNode, graphNodeQue, seenInterRankPosts, unmatchedCnt) != HcclResult::HCCL_SUCCESS,
+            HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to proceed taskNode.", currNode->rankIdx),
+            HcclResult::HCCL_E_INTERNAL);
     }
 
     bool hasChanged = false;
     if (!seenInterRankPosts.empty()) {
-        for (auto &curRankPosts : seenInterRankPosts) {
-            for (auto &peerRankPosts : curRankPosts.second) {
-                for (auto &post : peerRankPosts.second) {
+        for (auto& curRankPosts : seenInterRankPosts) {
+            for (auto& peerRankPosts : curRankPosts.second) {
+                for (auto& post : peerRankPosts.second) {
                     post->unmatch = true;
-                    HCCL_ERROR("[TaskGraphGenerator] unmatched inter-rank post: %s, PeerRank [%d],  ",
-                               post->GenPosInfo().c_str(), peerRankPosts.first);
+                    HCCL_ERROR(
+                        "[TaskGraphGenerator] unmatched inter-rank post: %s, PeerRank [%d],  ",
+                        post->GenPosInfo().c_str(), peerRankPosts.first);
                     hasChanged = true;
                 }
             }
@@ -288,7 +301,7 @@ HcclResult TaskGraphGenerator::GenGraphInterRanks(TaskNodePtr dummyStart)
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ExecNode4Graph(TaskNodePtr node, std::vector<TaskNodePtr> &graphNodeQue)
+HcclResult TaskGraphGenerator::ExecNode4Graph(TaskNodePtr node, std::vector<TaskNodePtr>& graphNodeQue)
 {
     node->execFlag = true;
     std::vector<TaskNodePtr>::iterator childIter = node->children.begin();
@@ -301,8 +314,9 @@ HcclResult TaskGraphGenerator::ExecNode4Graph(TaskNodePtr node, std::vector<Task
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ProcNode4Graph(TaskNodePtr currNode, std::vector<TaskNodePtr> &graphNodeQue,
-                                              SeenInterRankPosts &seenInterRankPosts, u64 &unmatchedCnt)
+HcclResult TaskGraphGenerator::ProcNode4Graph(
+    TaskNodePtr currNode, std::vector<TaskNodePtr>& graphNodeQue, SeenInterRankPosts& seenInterRankPosts,
+    u64& unmatchedCnt)
 {
     // taskNode not executable
     if (!IsExecutable(currNode)) {
@@ -321,9 +335,10 @@ HcclResult TaskGraphGenerator::ProcNode4Graph(TaskNodePtr currNode, std::vector<
         case TaskTypeStub::READ_REDUCE:
         case TaskTypeStub::WRITE:
         case TaskTypeStub::WRITE_REDUCE:
-            CHK_PRT_RET(ExecNode4Graph(currNode, graphNodeQue) != HcclResult::HCCL_SUCCESS,
-                        HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to execute taskNode.", currNode->rankIdx),
-                        HcclResult::HCCL_E_INTERNAL);
+            CHK_PRT_RET(
+                ExecNode4Graph(currNode, graphNodeQue) != HcclResult::HCCL_SUCCESS,
+                HCCL_ERROR("[TaskGraphGenerator] Rank [%d], fail to execute taskNode.", currNode->rankIdx),
+                HcclResult::HCCL_E_INTERNAL);
             unmatchedCnt = 0;
             return HcclResult::HCCL_SUCCESS;
 
@@ -357,13 +372,13 @@ bool TaskGraphGenerator::IsExecutable(TaskNodePtr currNode)
     return true;
 }
 
-HcclResult TaskGraphGenerator::ProcInterRankPostNode4Graph(TaskNodePtr currNode, std::vector<TaskNodePtr> &graphNodeQue,
-                                                           SeenInterRankPosts &seenInterRankPosts,
-                                                           u64                &unmatchedCnt)
+HcclResult TaskGraphGenerator::ProcInterRankPostNode4Graph(
+    TaskNodePtr currNode, std::vector<TaskNodePtr>& graphNodeQue, SeenInterRankPosts& seenInterRankPosts,
+    u64& unmatchedCnt)
 {
-    RankId        currRank = currNode->rankIdx;
-    TaskStubPost *post     = dynamic_cast<TaskStubPost *>(currNode->task);
-    RankId        peerRank = post->GetRemoteRank();
+    RankId currRank = currNode->rankIdx;
+    TaskStubPost* post = dynamic_cast<TaskStubPost*>(currNode->task);
+    RankId peerRank = post->GetRemoteRank();
 
     if (seenInterRankPosts.find(currRank) == seenInterRankPosts.end()) {
         std::vector<TaskNodePtr> tmpPosts;
@@ -382,20 +397,21 @@ HcclResult TaskGraphGenerator::ProcInterRankPostNode4Graph(TaskNodePtr currNode,
     }
     CHK_PRT_RET(
         ExecNode4Graph(currNode, graphNodeQue) != HcclResult::HCCL_SUCCESS,
-        HCCL_ERROR("[TaskGraphGenerator] Fail to execute node %s: TaskType [%s].",
-                   currNode->GenPosInfo().c_str(), currNode->task->GetType().Describe().c_str()),
+        HCCL_ERROR(
+            "[TaskGraphGenerator] Fail to execute node %s: TaskType [%s].", currNode->GenPosInfo().c_str(),
+            currNode->task->GetType().Describe().c_str()),
         HcclResult::HCCL_E_INTERNAL);
     unmatchedCnt = 0;
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TaskGraphGenerator::ProcInterRankWaitNode4Graph(TaskNodePtr currNode, std::vector<TaskNodePtr> &graphNodeQue,
-                                                           SeenInterRankPosts &seenInterRankPosts,
-                                                           u64                &unmatchedCnt)
+HcclResult TaskGraphGenerator::ProcInterRankWaitNode4Graph(
+    TaskNodePtr currNode, std::vector<TaskNodePtr>& graphNodeQue, SeenInterRankPosts& seenInterRankPosts,
+    u64& unmatchedCnt)
 {
-    RankId        currRank = currNode->rankIdx;
-    TaskStubWait *wait     = dynamic_cast<TaskStubWait *>(currNode->task);
-    RankId        peerRank = wait->GetRemoteRank();
+    RankId currRank = currNode->rankIdx;
+    TaskStubWait* wait = dynamic_cast<TaskStubWait*>(currNode->task);
+    RankId peerRank = wait->GetRemoteRank();
     if ((seenInterRankPosts.find(peerRank) != seenInterRankPosts.end())
         && (seenInterRankPosts[peerRank].find(currRank) != seenInterRankPosts[peerRank].end())) {
         std::vector<TaskNodePtr>::iterator postIter = seenInterRankPosts[peerRank][currRank].begin();
@@ -405,11 +421,12 @@ HcclResult TaskGraphGenerator::ProcInterRankWaitNode4Graph(TaskNodePtr currNode,
                 (*postIter)->children.push_back(currNode);
                 currNode->parents.push_back((*postIter));
                 seenInterRankPosts[peerRank][currRank].erase(postIter); // remove post from seenInterRankPosts
-                CHK_PRT_RET(ExecNode4Graph(currNode, graphNodeQue) != HcclResult::HCCL_SUCCESS,
-                            HCCL_ERROR("[TaskGraphGenerator] Fail to execute node %s: TaskType [%s].",
-                                       currNode->GenPosInfo().c_str(),
-                                       currNode->task->GetType().Describe().c_str()),
-                            HcclResult::HCCL_E_INTERNAL);
+                CHK_PRT_RET(
+                    ExecNode4Graph(currNode, graphNodeQue) != HcclResult::HCCL_SUCCESS,
+                    HCCL_ERROR(
+                        "[TaskGraphGenerator] Fail to execute node %s: TaskType [%s].", currNode->GenPosInfo().c_str(),
+                        currNode->task->GetType().Describe().c_str()),
+                    HcclResult::HCCL_E_INTERNAL);
                 unmatchedCnt = 0;
                 return HcclResult::HCCL_SUCCESS;
             }
@@ -424,8 +441,8 @@ HcclResult TaskGraphGenerator::ProcInterRankWaitNode4Graph(TaskNodePtr currNode,
 
 bool TaskGraphGenerator::IsPostWaitPeer(const TaskNodePtr postNode, const TaskNodePtr waitNode)
 {
-    TaskStubPost *post = dynamic_cast<TaskStubPost *>(postNode->task);
-    TaskStubWait *wait = dynamic_cast<TaskStubWait *>(waitNode->task);
+    TaskStubPost* post = dynamic_cast<TaskStubPost*>(postNode->task);
+    TaskStubWait* wait = dynamic_cast<TaskStubWait*>(waitNode->task);
 
     // check rankId
     if ((postNode->rankIdx != wait->GetRemoteRank()) || (waitNode->rankIdx != post->GetRemoteRank())) {
@@ -445,4 +462,4 @@ bool TaskGraphGenerator::IsPostWaitPeer(const TaskNodePtr postNode, const TaskNo
     return post->GetNotifyType() == wait->GetNotifyType();
 }
 
-} // namespace hccl
+} // namespace HcclSim

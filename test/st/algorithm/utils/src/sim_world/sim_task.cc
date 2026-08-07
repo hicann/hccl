@@ -15,268 +15,142 @@ namespace HcclSim {
 
 std::string TaskStubLocalCopy::Describe() const
 {
-    std::string buf = StringFormat("[LocalCopy]:[srcSlice=%s, dstSlice=%s]", srcSlice.Describe().c_str(),
-                        dstSlice.Describe().c_str());
+    std::string buf = StringFormat(
+        "[LocalCopy]:[srcSlice=%s, dstSlice=%s]", srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
     return buf;
 }
 
-const DataSlice &TaskStubLocalCopy::GetSrcSlice() const
-{
-    return srcSlice;
-}
+const DataSlice& TaskStubLocalCopy::GetSrcSlice() const { return srcSlice; }
 
-const DataSlice &TaskStubLocalCopy::GetDstSlice() const
-{
-    return dstSlice;
-}
+const DataSlice& TaskStubLocalCopy::GetDstSlice() const { return dstSlice; }
 
-bool TaskStubLocalCopy::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubLocalCopy::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubLocalReduce::Describe() const
 {
-    return StringFormat("[LocalReduce]:[dataType=%d, reduceOp=%d, srcSlice=%s, dstSlice=%s]",
-                        dataType, reduceOp, srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
+    return StringFormat(
+        "[LocalReduce]:[dataType=%d, reduceOp=%d, srcSlice=%s, dstSlice=%s]", dataType, reduceOp,
+        srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
 }
 
-const DataSlice &TaskStubLocalReduce::GetSrcSlice() const
-{
-    return srcSlice;
-}
+const DataSlice& TaskStubLocalReduce::GetSrcSlice() const { return srcSlice; }
 
-const DataSlice &TaskStubLocalReduce::GetDstSlice() const
-{
-    return dstSlice;
-}
+const DataSlice& TaskStubLocalReduce::GetDstSlice() const { return dstSlice; }
 
-const HcclDataType TaskStubLocalReduce::GetDataType() const
-{
-    return dataType;
-}
+const HcclDataType TaskStubLocalReduce::GetDataType() const { return dataType; }
 
-const HcclReduceOp TaskStubLocalReduce::GetReduceOp() const
-{
-    return reduceOp;
-}
+const HcclReduceOp TaskStubLocalReduce::GetReduceOp() const { return reduceOp; }
 
-bool TaskStubLocalReduce::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubLocalReduce::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubRead::Describe() const
 {
-    return StringFormat("[Read]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
-                        link.Describe().c_str(), localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
+    return StringFormat(
+        "[Read]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank, link.Describe().c_str(),
+        localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
-RankId TaskStubRead::GetRemoteRank() const
-{
-    return remoteRank;
-}
-const LinkProtoStub TaskStubRead::GetLinkType() const
-{
-    return link.linkProto;
-}
+RankId TaskStubRead::GetRemoteRank() const { return remoteRank; }
+const LinkProtoStub TaskStubRead::GetLinkType() const { return link.linkProto; }
 
-const DataSlice &TaskStubRead::GetLocalSlice() const
-{
-    return localSlice;
-}
+const DataSlice& TaskStubRead::GetLocalSlice() const { return localSlice; }
 
-const DataSlice &TaskStubRead::GetRemoteSlice() const
-{
-    return remoteSlice;
-}
+const DataSlice& TaskStubRead::GetRemoteSlice() const { return remoteSlice; }
 
-const LinkInfo TaskStubRead::GetLinkInfo() const
-{
-    return link;
-}
+const LinkInfo TaskStubRead::GetLinkInfo() const { return link; }
 
-bool TaskStubRead::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubRead::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubReadReduce::Describe() const
 {
     return StringFormat(
-        "[ReadReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
-        remoteRank, link.Describe().c_str(), dataType, reduceOp,
-        localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
+        "[ReadReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]", remoteRank,
+        link.Describe().c_str(), dataType, reduceOp, localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
-const LinkInfo TaskStubReadReduce::GetLinkInfo() const
-{
-    return link;
-}
+const LinkInfo TaskStubReadReduce::GetLinkInfo() const { return link; }
 
-RankId TaskStubReadReduce::GetRemoteRank() const
-{
-    return remoteRank;
-}
+RankId TaskStubReadReduce::GetRemoteRank() const { return remoteRank; }
 
-const LinkProtoStub TaskStubReadReduce::GetLinkType() const
-{
-    return link.linkProto;
-}
+const LinkProtoStub TaskStubReadReduce::GetLinkType() const { return link.linkProto; }
 
-const DataSlice &TaskStubReadReduce::GetLocalSlice() const
-{
-    return localSlice;
-}
+const DataSlice& TaskStubReadReduce::GetLocalSlice() const { return localSlice; }
 
-const DataSlice &TaskStubReadReduce::GetRemoteSlice() const
-{
-    return remoteSlice;
-}
+const DataSlice& TaskStubReadReduce::GetRemoteSlice() const { return remoteSlice; }
 
-const HcclDataType TaskStubReadReduce::GetDataType() const
-{
-    return dataType;
-}
+const HcclDataType TaskStubReadReduce::GetDataType() const { return dataType; }
 
-const HcclReduceOp TaskStubReadReduce::GetReduceOp() const
-{
-    return reduceOp;
-}
+const HcclReduceOp TaskStubReadReduce::GetReduceOp() const { return reduceOp; }
 
-bool TaskStubReadReduce::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubReadReduce::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubWrite::Describe() const
 {
-    return StringFormat("[Write]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank,
-                        link.Describe().c_str(), localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
+    return StringFormat(
+        "[Write]:[remoteRank=%d, link=%s, localSlice=%s, remoteSlice=%s]", remoteRank, link.Describe().c_str(),
+        localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
-RankId TaskStubWrite::GetRemoteRank() const
-{
-    return remoteRank;
-}
+RankId TaskStubWrite::GetRemoteRank() const { return remoteRank; }
 
-const LinkProtoStub TaskStubWrite::GetLinkType() const
-{
-    return link.linkProto;
-}
+const LinkProtoStub TaskStubWrite::GetLinkType() const { return link.linkProto; }
 
-const DataSlice &TaskStubWrite::GetLocalSlice() const
-{
-    return localSlice;
-}
+const DataSlice& TaskStubWrite::GetLocalSlice() const { return localSlice; }
 
-const DataSlice &TaskStubWrite::GetRemoteSlice() const
-{
-    return remoteSlice;
-}
+const DataSlice& TaskStubWrite::GetRemoteSlice() const { return remoteSlice; }
 
-const LinkInfo TaskStubWrite::GetLinkInfo() const
-{
-    return link;
-}
+const LinkInfo TaskStubWrite::GetLinkInfo() const { return link; }
 
-bool TaskStubWrite::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubWrite::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubWriteReduce::Describe() const
 {
     return StringFormat(
-        "[WriteReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]",
-        remoteRank, link.Describe().c_str(), dataType, reduceOp,
-        localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
+        "[WriteReduce]:[remoteRank=%d, link=%s, dataType=%d, reduceOp=%d, localSlice=%s, remoteSlice=%s]", remoteRank,
+        link.Describe().c_str(), dataType, reduceOp, localSlice.Describe().c_str(), remoteSlice.Describe().c_str());
 }
 
-RankId TaskStubWriteReduce::GetRemoteRank() const
-{
-    return remoteRank;
-}
+RankId TaskStubWriteReduce::GetRemoteRank() const { return remoteRank; }
 
-const LinkInfo TaskStubWriteReduce::GetLinkInfo() const
-{
-    return link;
-}
+const LinkInfo TaskStubWriteReduce::GetLinkInfo() const { return link; }
 
-const LinkProtoStub TaskStubWriteReduce::GetLinkType() const
-{
-    return link.linkProto;
-}
+const LinkProtoStub TaskStubWriteReduce::GetLinkType() const { return link.linkProto; }
 
-const DataSlice &TaskStubWriteReduce::GetLocalSlice() const
-{
-    return localSlice;
-}
+const DataSlice& TaskStubWriteReduce::GetLocalSlice() const { return localSlice; }
 
-const DataSlice &TaskStubWriteReduce::GetRemoteSlice() const
-{
-    return remoteSlice;
-}
+const DataSlice& TaskStubWriteReduce::GetRemoteSlice() const { return remoteSlice; }
 
-const HcclDataType TaskStubWriteReduce::GetDataType() const
-{
-    return dataType;
-}
+const HcclDataType TaskStubWriteReduce::GetDataType() const { return dataType; }
 
-const HcclReduceOp TaskStubWriteReduce::GetReduceOp() const
-{
-    return reduceOp;
-}
+const HcclReduceOp TaskStubWriteReduce::GetReduceOp() const { return reduceOp; }
 
-bool TaskStubWriteReduce::IsGenFromSync()
-{
-	return isGenFromSync;
-}
+bool TaskStubWriteReduce::IsGenFromSync() { return isGenFromSync; }
 
 std::string TaskStubPost::Describe() const
 {
-    return StringFormat("[Post]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
-        remoteRank, topicId, link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
+    return StringFormat(
+        "[Post]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]", remoteRank, topicId,
+        link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
 }
 
-RankId TaskStubPost::GetRemoteRank() const
-{
-    return remoteRank;
-}
-const LinkProtoStub TaskStubPost::GetLinkType() const
-{
-    return link.linkProto;
-}
-const uint32_t TaskStubPost::GetTopicId() const
-{
-    return topicId;
-}
+RankId TaskStubPost::GetRemoteRank() const { return remoteRank; }
+const LinkProtoStub TaskStubPost::GetLinkType() const { return link.linkProto; }
+const uint32_t TaskStubPost::GetTopicId() const { return topicId; }
 
-void TaskStubPost::SetTopicId(uint32_t id)
-{
-    topicId = id;
-}
+void TaskStubPost::SetTopicId(uint32_t id) { topicId = id; }
 
-const NotifyTypeStub TaskStubPost::GetNotifyType() const
-{
-    return notifyType;
-}
+const NotifyTypeStub TaskStubPost::GetNotifyType() const { return notifyType; }
 
-const std::string TaskStubPost::GetTag() const
-{
-    return tag;
-}
+const std::string TaskStubPost::GetTag() const { return tag; }
 
 std::string TaskStubWait::Describe() const
 {
-    return StringFormat("[Wait]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]",
-        remoteRank, topicId, link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
+    return StringFormat(
+        "[Wait]:[remoteRank=%u, notifyId=%u, link=%s, notifyType=%s, originated tag=%s]", remoteRank, topicId,
+        link.Describe().c_str(), notifyType.Describe().c_str(), tag.c_str());
 }
 
-RankId TaskStubWait::GetRemoteRank() const
-{
-    return remoteRank;
-}
+RankId TaskStubWait::GetRemoteRank() const { return remoteRank; }
 
 void TaskStubWait::SetRemoteRank(uint32_t rankId)
 {
@@ -284,89 +158,38 @@ void TaskStubWait::SetRemoteRank(uint32_t rankId)
     return;
 }
 
-const LinkProtoStub TaskStubWait::GetLinkType() const
-{
-    return link.linkProto;
-}
+const LinkProtoStub TaskStubWait::GetLinkType() const { return link.linkProto; }
 
-const uint32_t TaskStubWait::GetTopicId() const
-{
-    return topicId;
-}
+const uint32_t TaskStubWait::GetTopicId() const { return topicId; }
 
-const NotifyTypeStub TaskStubWait::GetNotifyType() const
-{
-    return notifyType;
-}
+const NotifyTypeStub TaskStubWait::GetNotifyType() const { return notifyType; }
 
-const std::string TaskStubWait::GetTag() const
-{
-    return tag;
-}
+const std::string TaskStubWait::GetTag() const { return tag; }
 
-std::string TaskStubLocalPostTo::Describe() const
-{
-    return StringFormat("[LocalPostTo]:[topicId=%d]", topicIdBack);
-}
+std::string TaskStubLocalPostTo::Describe() const { return StringFormat("[LocalPostTo]:[topicId=%d]", topicIdBack); }
 
-void TaskStubLocalPostTo::SetPostQid(uint32_t qid)
-{
-    postQid = qid;
-}
+void TaskStubLocalPostTo::SetPostQid(uint32_t qid) { postQid = qid; }
 
-void TaskStubLocalPostTo::SetWaitQid(uint32_t qid)
-{
-    waitQid = qid;
-}
+void TaskStubLocalPostTo::SetWaitQid(uint32_t qid) { waitQid = qid; }
 
-uint32_t TaskStubLocalPostTo::GetPostQid() const
-{
-    return postQid;
-}
+uint32_t TaskStubLocalPostTo::GetPostQid() const { return postQid; }
 
-uint32_t TaskStubLocalPostTo::GetWaitQid() const
-{
-    return waitQid;
-}
+uint32_t TaskStubLocalPostTo::GetWaitQid() const { return waitQid; }
 
-uint32_t TaskStubLocalPostTo::GetTopicId() const
-{
-    return topicId;
-}
+uint32_t TaskStubLocalPostTo::GetTopicId() const { return topicId; }
 
-void TaskStubLocalPostTo::SetTopicId(uint32_t id)
-{
-    topicId = id;
-}
+void TaskStubLocalPostTo::SetTopicId(uint32_t id) { topicId = id; }
 
-std::string TaskStubLocalWaitFrom::Describe() const
-{
-    return StringFormat("[LocalWaitFrom]:[topicId=%d]", topicId);
-}
+std::string TaskStubLocalWaitFrom::Describe() const { return StringFormat("[LocalWaitFrom]:[topicId=%d]", topicId); }
 
-void TaskStubLocalWaitFrom::SetPostQid(uint32_t qid)
-{
-    postQid = qid;
-}
+void TaskStubLocalWaitFrom::SetPostQid(uint32_t qid) { postQid = qid; }
 
-void TaskStubLocalWaitFrom::SetWaitQid(uint32_t qid)
-{
-    waitQid = qid;
-}
+void TaskStubLocalWaitFrom::SetWaitQid(uint32_t qid) { waitQid = qid; }
 
-uint32_t TaskStubLocalWaitFrom::GetPostQid() const
-{
-    return postQid;
-}
+uint32_t TaskStubLocalWaitFrom::GetPostQid() const { return postQid; }
 
-uint32_t TaskStubLocalWaitFrom::GetWaitQid() const
-{
-    return waitQid;
-}
+uint32_t TaskStubLocalWaitFrom::GetWaitQid() const { return waitQid; }
 
-uint32_t TaskStubLocalWaitFrom::GetTopicId() const
-{
-    return topicId;
-}
+uint32_t TaskStubLocalWaitFrom::GetTopicId() const { return topicId; }
 
-} //namespace HcclSim
+} // namespace HcclSim

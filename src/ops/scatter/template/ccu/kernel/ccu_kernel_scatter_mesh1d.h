@@ -28,7 +28,7 @@ struct CcuKernelArgScatterMesh1D : CcuKernelArgBase {
 };
 
 struct ScatterMesh1DContext : CcuKernelCtxBase {
-    const CcuKernelArgScatterMesh1D *arg;
+    const CcuKernelArgScatterMesh1D* arg;
 
     uint64_t rankSize{0};
     uint32_t rankId{0};

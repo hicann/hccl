@@ -19,43 +19,30 @@
 #include "hccl_sim_pub.h"
 
 namespace HcclSim {
-MAKE_ENUM(TaskTypeStub, LOCAL_COPY, LOCAL_REDUCE, LOCAL_BATCH_REDUCE, LOCAL_POST_TO, LOCAL_WAIT_FROM, POST, WAIT, READ,
-          READ_REDUCE, WRITE, WRITE_REDUCE)
-          
+MAKE_ENUM(
+    TaskTypeStub, LOCAL_COPY, LOCAL_REDUCE, LOCAL_BATCH_REDUCE, LOCAL_POST_TO, LOCAL_WAIT_FROM, POST, WAIT, READ,
+    READ_REDUCE, WRITE, WRITE_REDUCE)
+
 MAKE_ENUM(NotifyTypeStub, READY, FIN, FIN_ACK, CCU, INVALID_A)
 MAKE_ENUM(LinkProtoStub, SDMA, RDMA, CCU, INVALID_A)
 
 struct LinkInfo {
     LinkProtoStub linkProto;
 
-    LinkInfo(LinkProtoStub proto)
-    {
-        linkProto = proto;
-    }
+    LinkInfo(LinkProtoStub proto) { linkProto = proto; }
 
-    std::string Describe() const
-    {
-        return StringFormat("link prototyp=%s", linkProto.Describe().c_str());
-    }
+    std::string Describe() const { return StringFormat("link prototyp=%s", linkProto.Describe().c_str()); }
 };
 
 class TaskStub {
 public:
-    explicit TaskStub(TaskTypeStub type) : type(type)
-    {
-    }
-    virtual ~TaskStub()                  = default;
+    explicit TaskStub(TaskTypeStub type) : type(type) {}
+    virtual ~TaskStub() = default;
     virtual std::string Describe() const = 0;
 
-    const TaskTypeStub GetType() const
-    {
-        return type;
-    }
+    const TaskTypeStub GetType() const { return type; }
 
-    virtual const LinkProtoStub GetLinkType() const
-    {
-        return LinkProtoStub::INVALID_A;
-    }
+    virtual const LinkProtoStub GetLinkType() const { return LinkProtoStub::INVALID_A; }
 
 protected:
     TaskTypeStub type;
@@ -63,14 +50,16 @@ protected:
 
 class TaskStubLocalCopy : public TaskStub {
 public:
-    TaskStubLocalCopy(const DataSlice &srcSlice, const DataSlice &dstSlice, bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::LOCAL_COPY), srcSlice(srcSlice), dstSlice(dstSlice), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubLocalCopy(const DataSlice& srcSlice, const DataSlice& dstSlice, bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::LOCAL_COPY),
+          srcSlice(srcSlice),
+          dstSlice(dstSlice),
+          isGenFromSync(isGenFromSync)
+    {}
     std::string Describe() const override;
 
-    const DataSlice &GetSrcSlice() const;
-    const DataSlice &GetDstSlice() const;
+    const DataSlice& GetSrcSlice() const;
+    const DataSlice& GetDstSlice() const;
     bool IsGenFromSync();
 
 private:
@@ -81,50 +70,57 @@ private:
 
 class TaskStubLocalReduce : public TaskStub {
 public:
-    TaskStubLocalReduce(const DataSlice &srcSlice, const DataSlice &dstSlice, HcclDataType dataType,
-                        HcclReduceOp reduceOp, bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::LOCAL_REDUCE), srcSlice(srcSlice), dstSlice(dstSlice), dataType(dataType),
-          reduceOp(reduceOp), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubLocalReduce(
+        const DataSlice& srcSlice, const DataSlice& dstSlice, HcclDataType dataType, HcclReduceOp reduceOp,
+        bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::LOCAL_REDUCE),
+          srcSlice(srcSlice),
+          dstSlice(dstSlice),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          isGenFromSync(isGenFromSync)
+    {}
     std::string Describe() const override;
 
-    const DataSlice &GetSrcSlice() const;
-    const DataSlice &GetDstSlice() const;
-    const HcclDataType   GetDataType() const;
-    const HcclReduceOp   GetReduceOp() const;
+    const DataSlice& GetSrcSlice() const;
+    const DataSlice& GetDstSlice() const;
+    const HcclDataType GetDataType() const;
+    const HcclReduceOp GetReduceOp() const;
     bool IsGenFromSync();
 
 private:
     DataSlice srcSlice;
     DataSlice dstSlice;
-    HcclDataType  dataType;
-    HcclReduceOp  reduceOp;
+    HcclDataType dataType;
+    HcclReduceOp reduceOp;
     bool isGenFromSync;
 };
 
-
 class TaskStubRead : public TaskStub {
 public:
-    TaskStubRead(const RankId remoteRank, const LinkInfo &link, const DataSlice &localSlice,
-                 const DataSlice &remoteSlice, bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::READ), remoteRank(remoteRank), link(link), localSlice(localSlice),
-          remoteSlice(remoteSlice), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubRead(
+        const RankId remoteRank, const LinkInfo& link, const DataSlice& localSlice, const DataSlice& remoteSlice,
+        bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::READ),
+          remoteRank(remoteRank),
+          link(link),
+          localSlice(localSlice),
+          remoteSlice(remoteSlice),
+          isGenFromSync(isGenFromSync)
+    {}
     // std::string Describe() const override;
     std::string Describe() const override;
 
-    RankId              GetRemoteRank() const;
+    RankId GetRemoteRank() const;
     const LinkProtoStub GetLinkType() const override;
-    const DataSlice    &GetLocalSlice() const;
-    const DataSlice    &GetRemoteSlice() const;
-    const LinkInfo     GetLinkInfo() const;
+    const DataSlice& GetLocalSlice() const;
+    const DataSlice& GetRemoteSlice() const;
+    const LinkInfo GetLinkInfo() const;
     bool IsGenFromSync();
 
 private:
-    RankId  remoteRank;
-    LinkInfo  link;
+    RankId remoteRank;
+    LinkInfo link;
     DataSlice localSlice;
     DataSlice remoteSlice;
     bool isGenFromSync;
@@ -132,54 +128,63 @@ private:
 
 class TaskStubReadReduce : public TaskStub {
 public:
-    TaskStubReadReduce(const RankId remoteRank, const LinkInfo &link, const DataSlice &localSlice,
-                       const DataSlice &remoteSlice, HcclDataType dataType, HcclReduceOp reduceOp,
-                       bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::READ_REDUCE), remoteRank(remoteRank), link(link), localSlice(localSlice),
-          remoteSlice(remoteSlice), dataType(dataType), reduceOp(reduceOp), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubReadReduce(
+        const RankId remoteRank, const LinkInfo& link, const DataSlice& localSlice, const DataSlice& remoteSlice,
+        HcclDataType dataType, HcclReduceOp reduceOp, bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::READ_REDUCE),
+          remoteRank(remoteRank),
+          link(link),
+          localSlice(localSlice),
+          remoteSlice(remoteSlice),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          isGenFromSync(isGenFromSync)
+    {}
     std::string Describe() const override;
 
-    RankId              GetRemoteRank() const;
+    RankId GetRemoteRank() const;
     const LinkProtoStub GetLinkType() const override;
-    const DataSlice    &GetLocalSlice() const;
-    const DataSlice    &GetRemoteSlice() const;
-    const HcclDataType      GetDataType() const;
-    const HcclReduceOp      GetReduceOp() const;
-    const LinkInfo     GetLinkInfo() const;
+    const DataSlice& GetLocalSlice() const;
+    const DataSlice& GetRemoteSlice() const;
+    const HcclDataType GetDataType() const;
+    const HcclReduceOp GetReduceOp() const;
+    const LinkInfo GetLinkInfo() const;
     bool IsGenFromSync();
 
 private:
-    RankId    remoteRank;
-    LinkInfo  link;
+    RankId remoteRank;
+    LinkInfo link;
     DataSlice localSlice;
     DataSlice remoteSlice;
-    HcclDataType  dataType;
-    HcclReduceOp  reduceOp;
+    HcclDataType dataType;
+    HcclReduceOp reduceOp;
     bool isGenFromSync;
 };
 
 class TaskStubWrite : public TaskStub {
 public:
-    TaskStubWrite(const RankId remoteRank, const LinkInfo &link, const DataSlice &localSlice,
-                  const DataSlice &remoteSlice, bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::WRITE), remoteRank(remoteRank), link(link), localSlice(localSlice),
-          remoteSlice(remoteSlice), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubWrite(
+        const RankId remoteRank, const LinkInfo& link, const DataSlice& localSlice, const DataSlice& remoteSlice,
+        bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::WRITE),
+          remoteRank(remoteRank),
+          link(link),
+          localSlice(localSlice),
+          remoteSlice(remoteSlice),
+          isGenFromSync(isGenFromSync)
+    {}
     std::string Describe() const override;
 
-    RankId              GetRemoteRank() const;
+    RankId GetRemoteRank() const;
     const LinkProtoStub GetLinkType() const override;
-    const DataSlice    &GetLocalSlice() const;
-    const DataSlice    &GetRemoteSlice() const;
-    const LinkInfo     GetLinkInfo() const;
+    const DataSlice& GetLocalSlice() const;
+    const DataSlice& GetRemoteSlice() const;
+    const LinkInfo GetLinkInfo() const;
     bool IsGenFromSync();
 
 private:
-    RankId    remoteRank;
-    LinkInfo  link;
+    RankId remoteRank;
+    LinkInfo link;
     DataSlice localSlice;
     DataSlice remoteSlice;
     bool isGenFromSync;
@@ -187,95 +192,111 @@ private:
 
 class TaskStubWriteReduce : public TaskStub {
 public:
-    TaskStubWriteReduce(const RankId remoteRank, const LinkInfo &link, const DataSlice &localSlice,
-                        const DataSlice &remoteSlice, HcclDataType dataType, HcclReduceOp reduceOp,
-                        bool isGenFromSync = false)
-        : TaskStub(TaskTypeStub::WRITE_REDUCE), remoteRank(remoteRank), link(link), localSlice(localSlice),
-          remoteSlice(remoteSlice), dataType(dataType), reduceOp(reduceOp), isGenFromSync(isGenFromSync)
-    {
-    }
+    TaskStubWriteReduce(
+        const RankId remoteRank, const LinkInfo& link, const DataSlice& localSlice, const DataSlice& remoteSlice,
+        HcclDataType dataType, HcclReduceOp reduceOp, bool isGenFromSync = false)
+        : TaskStub(TaskTypeStub::WRITE_REDUCE),
+          remoteRank(remoteRank),
+          link(link),
+          localSlice(localSlice),
+          remoteSlice(remoteSlice),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          isGenFromSync(isGenFromSync)
+    {}
     std::string Describe() const override;
 
-    RankId              GetRemoteRank() const;
+    RankId GetRemoteRank() const;
     const LinkProtoStub GetLinkType() const override;
-    const DataSlice    &GetLocalSlice() const;
-    const DataSlice    &GetRemoteSlice() const;
-    const HcclDataType      GetDataType() const;
-    const HcclReduceOp      GetReduceOp() const;
-    const LinkInfo     GetLinkInfo() const;
+    const DataSlice& GetLocalSlice() const;
+    const DataSlice& GetRemoteSlice() const;
+    const HcclDataType GetDataType() const;
+    const HcclReduceOp GetReduceOp() const;
+    const LinkInfo GetLinkInfo() const;
     bool IsGenFromSync();
 
 private:
-    RankId    remoteRank;
-    LinkInfo  link;
+    RankId remoteRank;
+    LinkInfo link;
     DataSlice localSlice;
     DataSlice remoteSlice;
-    HcclDataType  dataType;
-    HcclReduceOp  reduceOp;
+    HcclDataType dataType;
+    HcclReduceOp reduceOp;
     bool isGenFromSync;
 };
 
-
 class TaskStubPost : public TaskStub {
 public:
-    TaskStubPost(const RankId remoteRank, const LinkInfo &link, uint32_t topicId,
-                 NotifyTypeStub notifyType = NotifyTypeStub::INVALID_A, std::string tag = "INVALID")
-        : TaskStub(TaskTypeStub::POST), remoteRank(remoteRank), link(link), topicId(topicId), topicIdBack(topicId),
-          notifyType(notifyType), tag(tag)
-    {
-    }
+    TaskStubPost(
+        const RankId remoteRank, const LinkInfo& link, uint32_t topicId,
+        NotifyTypeStub notifyType = NotifyTypeStub::INVALID_A, std::string tag = "INVALID")
+        : TaskStub(TaskTypeStub::POST),
+          remoteRank(remoteRank),
+          link(link),
+          topicId(topicId),
+          topicIdBack(topicId),
+          notifyType(notifyType),
+          tag(tag)
+    {}
     std::string Describe() const override;
 
     std::string Describe(bool isdeadlock);
-    RankId               GetRemoteRank() const;
-    const LinkProtoStub  GetLinkType() const override;
-    const uint32_t       GetTopicId() const;
-    void                 SetTopicId(uint32_t id);
+    RankId GetRemoteRank() const;
+    const LinkProtoStub GetLinkType() const override;
+    const uint32_t GetTopicId() const;
+    void SetTopicId(uint32_t id);
     const NotifyTypeStub GetNotifyType() const;
-    const std::string    GetTag() const;
+    const std::string GetTag() const;
 
 private:
-    RankId         remoteRank;
-    LinkInfo       link;
-    uint32_t       topicId;
-    uint32_t       topicIdBack;
+    RankId remoteRank;
+    LinkInfo link;
+    uint32_t topicId;
+    uint32_t topicIdBack;
     NotifyTypeStub notifyType;
-    std::string    tag;
+    std::string tag;
 };
 
 class TaskStubWait : public TaskStub {
 public:
-    TaskStubWait(const RankId remoteRank, const LinkInfo &link, uint32_t topicId,
-                 NotifyTypeStub notifyType = NotifyTypeStub::INVALID_A, std::string tag = "INVALID")
-        : TaskStub(TaskTypeStub::WAIT), remoteRank(remoteRank), link(link), topicId(topicId),
-          notifyType(notifyType), tag(tag)
-    {
-    }
+    TaskStubWait(
+        const RankId remoteRank, const LinkInfo& link, uint32_t topicId,
+        NotifyTypeStub notifyType = NotifyTypeStub::INVALID_A, std::string tag = "INVALID")
+        : TaskStub(TaskTypeStub::WAIT),
+          remoteRank(remoteRank),
+          link(link),
+          topicId(topicId),
+          notifyType(notifyType),
+          tag(tag)
+    {}
     std::string Describe() const override;
 
     std::string Describe(bool isdeadlock);
-    RankId               GetRemoteRank() const;
-    void                 SetRemoteRank(uint32_t rankId);
-    const LinkProtoStub  GetLinkType() const override;
-    const uint32_t       GetTopicId() const;
+    RankId GetRemoteRank() const;
+    void SetRemoteRank(uint32_t rankId);
+    const LinkProtoStub GetLinkType() const override;
+    const uint32_t GetTopicId() const;
     const NotifyTypeStub GetNotifyType() const;
-    const std::string    GetTag() const;
+    const std::string GetTag() const;
 
 private:
-    RankId         remoteRank;
-    LinkInfo       link;
-    uint32_t       topicId;
+    RankId remoteRank;
+    LinkInfo link;
+    uint32_t topicId;
     NotifyTypeStub notifyType;
-    std::string    tag;
+    std::string tag;
 };
 
 constexpr uint32_t INVALID_QID = 0xffffffff; // 无效的指令队列
 class TaskStubLocalPostTo : public TaskStub {
 public:
     TaskStubLocalPostTo(uint32_t topicId, uint32_t postQid = INVALID_QID, uint32_t waitQid = INVALID_QID)
-        : TaskStub(TaskTypeStub::LOCAL_POST_TO), topicId(topicId), topicIdBack(topicId), postQid(postQid), waitQid(waitQid)
-    {
-    }
+        : TaskStub(TaskTypeStub::LOCAL_POST_TO),
+          topicId(topicId),
+          topicIdBack(topicId),
+          postQid(postQid),
+          waitQid(waitQid)
+    {}
     std::string Describe() const override;
 
     void SetPostQid(uint32_t qid);
@@ -296,9 +317,11 @@ private:
 class TaskStubLocalWaitFrom : public TaskStub {
 public:
     TaskStubLocalWaitFrom(uint32_t topicId, uint32_t postQid = INVALID_QID, uint32_t waitQid = INVALID_QID)
-        : TaskStub(TaskTypeStub::LOCAL_WAIT_FROM), topicId(topicId), postQid(postQid), waitQid(waitQid)
-    {
-    }
+        : TaskStub(TaskTypeStub::LOCAL_WAIT_FROM),
+          topicId(topicId),
+          postQid(postQid),
+          waitQid(waitQid)
+    {}
     std::string Describe() const override;
 
     void SetWaitQid(uint32_t qid);
@@ -314,5 +337,5 @@ private:
     uint32_t waitQid{INVALID_QID};
 };
 
-}
+} // namespace HcclSim
 #endif

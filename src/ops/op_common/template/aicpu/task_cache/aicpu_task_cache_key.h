@@ -19,13 +19,12 @@
 
 namespace ops_hccl {
 
-class AicpuTaskCacheKey
-{
+class AicpuTaskCacheKey {
 public:
     AicpuTaskCacheKey() = delete;
 
     // 拼接cacheTag
-    static HcclResult GetAicpuTaskCacheTag(const OpParam &param, uint64_t inputSize, std::string &cacheTag);
+    static HcclResult GetAicpuTaskCacheTag(const OpParam& param, uint64_t inputSize, std::string& cacheTag);
 };
 
 } // namespace ops_hccl

@@ -14,7 +14,7 @@
 #include "common.h"
 
 namespace ops_hccl_allgather {
-HcclResult LaunchKernel(OpParam &param, aclrtStream stream);
+HcclResult LaunchKernel(OpParam& param, aclrtStream stream);
 }
 
 #endif

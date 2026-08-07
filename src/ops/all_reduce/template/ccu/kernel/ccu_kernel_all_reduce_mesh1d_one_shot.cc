@@ -18,30 +18,31 @@ constexpr int POST_SYNC_CKE_IDX = 0;
 constexpr int PRE_SYNC_CKE_IDX = 1;
 constexpr uint16_t POST_CKE_BIT0 = 0;
 
-static CcuResult ParseKernelArg(AllReduceMesh1DOneShotContext &ctx,
-    CcuKernelArgAllReduceMesh1DOneShot *kernelArg)
+static CcuResult ParseKernelArg(AllReduceMesh1DOneShotContext& ctx, CcuKernelArgAllReduceMesh1DOneShot* kernelArg)
 {
     ctx.dataType = kernelArg->opParam.DataDes.dataType;
     ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_INFO("[CcuKernelAllReduceMesh1DOneShot] outputDataType is [INVALID], set outputDataType to[%u]",
+        HCCL_INFO(
+            "[CcuKernelAllReduceMesh1DOneShot] outputDataType is [INVALID], set outputDataType to[%u]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllReduceMesh1DOneShotContext &ctx)
+static CcuResult InitResource(AllReduceMesh1DOneShotContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllReduceMesh1DOneShot] channels is empty!");
         return CcuResult::CCU_E_INTERNAL;
     }
     if (arg->rankSize != static_cast<uint64_t>(arg->channelCount) + 1) {
-        HCCL_ERROR("[CcuKernelAllReduceMesh1DOneShot] rankSize[%llu] and channelCount[%u] mismatch.",
-            arg->rankSize, arg->channelCount);
+        HCCL_ERROR(
+            "[CcuKernelAllReduceMesh1DOneShot] rankSize[%llu] and channelCount[%u] mismatch.", arg->rankSize,
+            arg->channelCount);
         return CcuResult::CCU_E_INTERNAL;
     }
 
@@ -52,8 +53,9 @@ static CcuResult InitResource(AllReduceMesh1DOneShotContext &ctx)
     for (uint64_t peerId = 0; peerId < arg->rankSize; peerId++) {
         if (peerId != arg->rankId) {
             if (channelIdx >= arg->channelCount) {
-                HCCL_ERROR("[CcuKernelAllReduceMesh1DOneShot] channelIdx[%u] >= channelCount[%u].",
-                    channelIdx, arg->channelCount);
+                HCCL_ERROR(
+                    "[CcuKernelAllReduceMesh1DOneShot] channelIdx[%u] >= channelCount[%u].", channelIdx,
+                    arg->channelCount);
                 return CcuResult::CCU_E_INTERNAL;
             }
             ctx.input[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], INPUT_XN_ID);
@@ -66,9 +68,9 @@ static CcuResult InitResource(AllReduceMesh1DOneShotContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllReduceMesh1DOneShotContext &ctx)
+static CcuResult LoadArgs(AllReduceMesh1DOneShotContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[arg->rankId], argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output, argId++));
@@ -80,14 +82,14 @@ static CcuResult LoadArgs(AllReduceMesh1DOneShotContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(AllReduceMesh1DOneShotContext &ctx)
+static void PreSync(AllReduceMesh1DOneShotContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.input[arg->rankId],
-            INPUT_XN_ID, PRE_SYNC_CKE_IDX, 1 << INPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-            TOKEN_XN_ID, PRE_SYNC_CKE_IDX, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[arg->rankId], INPUT_XN_ID, PRE_SYNC_CKE_IDX, 1 << INPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, PRE_SYNC_CKE_IDX, 1 << TOKEN_XN_ID);
     }
 
     uint32_t allBit = (1 << INPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -96,9 +98,9 @@ static void PreSync(AllReduceMesh1DOneShotContext &ctx)
     }
 }
 
-static void PostSync(AllReduceMesh1DOneShotContext &ctx)
+static void PostSync(AllReduceMesh1DOneShotContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint16_t postCkeBit = 1 << POST_CKE_BIT0;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], POST_SYNC_CKE_IDX, postCkeBit);
@@ -108,9 +110,9 @@ static void PostSync(AllReduceMesh1DOneShotContext &ctx)
     }
 }
 
-static CcuResult DoGroupReduce(AllReduceMesh1DOneShotContext &ctx)
+static CcuResult DoGroupReduce(AllReduceMesh1DOneShotContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     std::vector<ccu::RemoteAddr> remoteSrc(arg->channelCount);
     ccu::LocalAddr localSrc;
     ccu::LocalAddr reduceDst;
@@ -126,8 +128,9 @@ static CcuResult DoGroupReduce(AllReduceMesh1DOneShotContext &ctx)
             continue;
         }
         if (srcIdx >= remoteSrc.size()) {
-            HCCL_ERROR("[CcuKernelAllReduceMesh1DOneShot] srcIdx[%u] >= remoteSrc.size[%llu].",
-                srcIdx, static_cast<unsigned long long>(remoteSrc.size()));
+            HCCL_ERROR(
+                "[CcuKernelAllReduceMesh1DOneShot] srcIdx[%u] >= remoteSrc.size[%llu].", srcIdx,
+                static_cast<unsigned long long>(remoteSrc.size()));
             return CcuResult::CCU_E_INTERNAL;
         }
         remoteSrc[srcIdx].addr = ctx.input[rankIdx];
@@ -135,14 +138,15 @@ static CcuResult DoGroupReduce(AllReduceMesh1DOneShotContext &ctx)
         srcIdx++;
     }
 
-    CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, reduceDst, remoteSrc, localSrc,
-        ctx.groupOpSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, GetCcuVersion()));
+    CCU_CHK_RET(GroupReduce(
+        ctx, arg->channels, arg->channelCount, reduceDst, remoteSrc, localSrc, ctx.groupOpSize, ctx.dataType,
+        ctx.outputDataType, ctx.reduceOp, GetCcuVersion()));
     return CCU_SUCCESS;
 }
 
 CcuResult CcuAllReduceMesh1DOneShotKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllReduceMesh1DOneShot *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllReduceMesh1DOneShot*>(arg);
     if (kernelArg == nullptr) {
         HCCL_ERROR("[CcuKernelAllReduceMesh1DOneShot] kernelArg is null.");
         return CcuResult::CCU_E_PTR;

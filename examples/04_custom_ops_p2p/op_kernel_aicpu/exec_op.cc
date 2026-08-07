@@ -12,7 +12,7 @@
 #include "log.h"
 
 namespace ops_hccl_p2p {
-HcclResult ExecOp(OpParam &param, AlgResourceCtx* resCtx)
+HcclResult ExecOp(OpParam& param, AlgResourceCtx* resCtx)
 {
     uint64_t size = param.count * SIZE_TABLE[param.dataType];
     if (param.opType == HcclCMDType::HCCL_CMD_SEND) {
@@ -23,13 +23,16 @@ HcclResult ExecOp(OpParam &param, AlgResourceCtx* resCtx)
         CHK_RET(HcommChannelNotifyRecordOnThread(resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_ACK));
 
         // 等待recv端，告知已经读完本卡数据
-        CHK_RET(HcommChannelNotifyWaitOnThread(resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
+        CHK_RET(HcommChannelNotifyWaitOnThread(
+            resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT));
     } else if (param.opType == HcclCMDType::HCCL_CMD_RECEIVE) {
         // 等待send端，告知本端可以开始读数据
-        CHK_RET(HcommChannelNotifyWaitOnThread(resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
+        CHK_RET(
+            HcommChannelNotifyWaitOnThread(resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT));
 
         // 单边读
-        CHK_RET(HcommReadOnThread(resCtx->aicpuThread, resCtx->channelHandle, param.outputPtr, resCtx->remoteBuffer.addr, size));
+        CHK_RET(HcommReadOnThread(
+            resCtx->aicpuThread, resCtx->channelHandle, param.outputPtr, resCtx->remoteBuffer.addr, size));
 
         // 通知send端，本端已经读完数据
         CHK_RET(HcommChannelNotifyRecordOnThread(resCtx->aicpuThread, resCtx->channelHandle, NOTIFY_IDX_DATA_SIGNAL));
@@ -37,4 +40,4 @@ HcclResult ExecOp(OpParam &param, AlgResourceCtx* resCtx)
 
     return HCCL_SUCCESS;
 }
-}
+} // namespace ops_hccl_p2p

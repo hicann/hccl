@@ -12,17 +12,17 @@
 
 namespace ops_hccl {
 
-constexpr int CKE_IDX_0   = 0;
+constexpr int CKE_IDX_0 = 0;
 constexpr int INPUT_XN_ID = 0;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int POST_SYNC_ID = 3;
-constexpr int LOOP_NUM    = 128;
+constexpr int LOOP_NUM = 128;
 
 constexpr int MISSION_NUM = 2;
 
-static CcuResult InitResources(ReduceScatterMesh2DieContext &ctx)
+static CcuResult InitResources(ReduceScatterMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     ctx.peerInput.resize(arg->channelCount);
     ctx.peerToken.resize(arg->channelCount);
@@ -33,13 +33,13 @@ static CcuResult InitResources(ReduceScatterMesh2DieContext &ctx)
 
     ctx.rmtReduceRankNum = arg->channelCount + (ctx.rmtReduceWithMyRank == true ? 1 : 0);
     ctx.rmtSyncMyBit = 1 << (ctx.myRankId % ctx.rmtReduceRankNum);
-    ctx.rmtSyncWaitBit = ctx.rmtReduceWithMyRank ? ((1 << ctx.rmtReduceRankNum) - 1) & (~ctx.rmtSyncMyBit) 
-                                                  : (1 << ctx.rmtReduceRankNum) - 1;
+    ctx.rmtSyncWaitBit = ctx.rmtReduceWithMyRank ? ((1 << ctx.rmtReduceRankNum) - 1) & (~ctx.rmtSyncMyBit) :
+                                                   (1 << ctx.rmtReduceRankNum) - 1;
 
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceScatterMesh2DieContext &ctx)
+static CcuResult LoadArgs(ReduceScatterMesh2DieContext& ctx)
 {
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.myInput, argId++));
@@ -55,9 +55,9 @@ static CcuResult LoadArgs(ReduceScatterMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ReduceScatterMesh2DieContext &ctx)
+static CcuResult PreSync(ReduceScatterMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::WriteVariableWithNotify(arg->channels[i], ctx.myInput, INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID);
         ccu::WriteVariableWithNotify(arg->channels[i], ctx.myToken, TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
@@ -69,9 +69,9 @@ static CcuResult PreSync(ReduceScatterMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ReduceScatterMesh2DieContext &ctx)
+static CcuResult PostSync(ReduceScatterMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
@@ -81,9 +81,9 @@ static CcuResult PostSync(ReduceScatterMesh2DieContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult RmtReduce(ReduceScatterMesh2DieContext &ctx)
+static CcuResult RmtReduce(ReduceScatterMesh2DieContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     std::vector<ccu::RemoteAddr> src;
     src.resize(arg->channelCount);
     for (uint32_t peerIdx = 0; peerIdx < arg->channelCount; peerIdx++) {
@@ -105,17 +105,21 @@ static CcuResult RmtReduce(ReduceScatterMesh2DieContext &ctx)
     dst.addr = ctx.rmtReduceWithMyRank ? ctx.myOutput : ctx.myScratch;
 
     if (ctx.rmtReduceWithMyRank) {
-        CCU_CHK_RET(GroupReduce(ctx, arg->channels, arg->channelCount, dst, src, localSrc, ctx.rmtReduceGoSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp));
+        CCU_CHK_RET(GroupReduce(
+            ctx, arg->channels, arg->channelCount, dst, src, localSrc, ctx.rmtReduceGoSize, ctx.dataType,
+            ctx.outputDataType, ctx.reduceOp));
     } else {
-        CCU_CHK_RET(GroupReduceWithoutMyRank(ctx, arg->channels, arg->channelCount, dst, src, ctx.rmtReduceGoSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp));
+        CCU_CHK_RET(GroupReduceWithoutMyRank(
+            ctx, arg->channels, arg->channelCount, dst, src, ctx.rmtReduceGoSize, ctx.dataType, ctx.outputDataType,
+            ctx.reduceOp));
     }
     return CCU_SUCCESS;
 }
 
 CcuResult CcuReduceScatterMesh2DieKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceScatterMesh2Die *>(arg);
-    
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterMesh2Die*>(arg);
+
     ReduceScatterMesh2DieContext ctx;
     ctx.arg = kernelArg;
     ctx.resourceAllocated = false;
@@ -134,7 +138,8 @@ CcuResult CcuReduceScatterMesh2DieKernel(CcuKernelArg arg)
     ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuKernelReduceScatterMesh2Die] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_DEBUG(
+            "[CcuKernelReduceScatterMesh2Die] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
@@ -149,4 +154,4 @@ CcuResult CcuReduceScatterMesh2DieKernel(CcuKernelArg arg)
     return CCU_SUCCESS;
 }
 
-}// namespace ops_hccl
+} // namespace ops_hccl

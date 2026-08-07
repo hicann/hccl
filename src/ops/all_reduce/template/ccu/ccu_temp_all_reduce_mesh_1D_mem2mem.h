@@ -17,41 +17,43 @@ namespace ops_hccl {
 class CcuTempAllReduceMeshMem2Mem1D : public CcuAlgTemplateBase {
 public:
     CcuTempAllReduceMeshMem2Mem1D() = default;
-    explicit CcuTempAllReduceMeshMem2Mem1D(const OpParam& param, 
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllReduceMeshMem2Mem1D(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAllReduceMeshMem2Mem1D() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of All Reduce ccu mesh 1D mem2mem, tempRankSize [%u].",
-                           subCommRanks_[0].size());
+        return StringFormat("Template of All Reduce ccu mesh 1D mem2mem, tempRankSize [%u].", subCommRanks_[0].size());
     }
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
+
 private:
-    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo &sliceInfoVec);
+    HcclResult CalcSlice(const u64 dataSize, RankSliceInfo& sliceInfoVec);
     uint64_t RoundUp(uint64_t dividend, uint64_t divisor) const;
-    void BuildTaskArgs(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
-                       const uint64_t scratchAddr, const uint64_t currentRankSliceInputOffset,
-                       const uint64_t currentRankSliceOutputOffset, const uint64_t normalSliceSize,
-                       const uint64_t lastSliceSize, const uint64_t mySliceSize, const uint64_t sliceOffset,
-                       const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
-                       std::vector<uint64_t>& taskArgs) const;
-    void SaveSubmitInfo(const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token,
-                        const uint64_t scratchAddr, const uint64_t currentRankSliceInputOffset,
-                        const uint64_t currentRankSliceOutputOffset, const uint64_t normalSliceSize,
-                        const uint64_t lastSliceSize, const uint64_t mySliceSize, const uint64_t sliceOffset,
-                        const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
-                        TemplateResource& templateResource) const;
+    void BuildTaskArgs(
+        const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token, const uint64_t scratchAddr,
+        const uint64_t currentRankSliceInputOffset, const uint64_t currentRankSliceOutputOffset,
+        const uint64_t normalSliceSize, const uint64_t lastSliceSize, const uint64_t mySliceSize,
+        const uint64_t sliceOffset, const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
+        std::vector<uint64_t>& taskArgs) const;
+    void SaveSubmitInfo(
+        const uint64_t inputAddr, const uint64_t outputAddr, const uint64_t token, const uint64_t scratchAddr,
+        const uint64_t currentRankSliceInputOffset, const uint64_t currentRankSliceOutputOffset,
+        const uint64_t normalSliceSize, const uint64_t lastSliceSize, const uint64_t mySliceSize,
+        const uint64_t sliceOffset, const uint64_t isInputOutputEqual, const std::vector<uint64_t>& goSize,
+        TemplateResource& templateResource) const;
     uint32_t mySubCommRank_ = 0;
 };
 

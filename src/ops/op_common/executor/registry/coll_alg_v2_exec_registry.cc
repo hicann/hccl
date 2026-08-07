@@ -12,14 +12,14 @@
 
 namespace ops_hccl {
 
-CollAlgExecRegistryV2 &CollAlgExecRegistryV2::Instance()
+CollAlgExecRegistryV2& CollAlgExecRegistryV2::Instance()
 {
     static CollAlgExecRegistryV2 globalExecRegistry;
     return globalExecRegistry;
 }
 
-HcclResult CollAlgExecRegistryV2::Register(const HcclCMDType type, const std::string &tag,
-    const CollExecCreatorV2 &collExecCreator)
+HcclResult CollAlgExecRegistryV2::Register(
+    const HcclCMDType type, const std::string& tag, const CollExecCreatorV2& collExecCreator)
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if (execCreators_[type].count(tag) != 0) {
@@ -30,8 +30,7 @@ HcclResult CollAlgExecRegistryV2::Register(const HcclCMDType type, const std::st
     return HcclResult::HCCL_SUCCESS;
 }
 
-std::unique_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDType type,
-    const std::string &tag)
+std::unique_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDType type, const std::string& tag)
 {
     if (execCreators_.count(type) == 0 || execCreators_[type].count(tag) == 0) {
         HCCL_DEBUG("[CollAlgExecRegistryV2]Creator for executor tag[%s] has not registered.", tag.c_str());
@@ -41,4 +40,4 @@ std::unique_ptr<InsCollAlgBase> CollAlgExecRegistryV2::GetAlgExec(const HcclCMDT
     return std::unique_ptr<InsCollAlgBase>(execCreators_[type][tag]());
 }
 
-}
+} // namespace ops_hccl

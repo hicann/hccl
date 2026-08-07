@@ -31,9 +31,9 @@ using RankId = uint32_t;
 using PodId = uint32_t;
 using SerId = uint32_t;
 using PhyId = uint32_t;
-constexpr uint64_t SIM_MEM_BLOCK_SIZE = 0x10000000000;  // 内存分配起始地址
+constexpr uint64_t SIM_MEM_BLOCK_SIZE = 0x10000000000; // 内存分配起始地址
 constexpr uint64_t SIM_MEM_MASKER = 0xFFFFFF0000000000;
-constexpr uint64_t SIZE_200MB = 200ULL * 1024 * 1024;  // CCL 200MB
+constexpr uint64_t SIZE_200MB = 200ULL * 1024 * 1024; // CCL 200MB
 constexpr uint32_t MAX_STREAM_COUNT = 1984;
 constexpr uint32_t MAX_NOTIFY_COUNT = 8192;
 
@@ -45,11 +45,10 @@ using SuperPodMeta = std::vector<ServerMeta>;
 using TopoMeta = std::vector<SuperPodMeta>;
 
 struct NpuPos {
-    PodId superpodId;  // 超节点Id
-    SerId serverId;    // ServerId
-    PhyId phyId;       // Server内物理Id
+    PodId superpodId; // 超节点Id
+    SerId serverId;   // ServerId
+    PhyId phyId;      // Server内物理Id
 };
-
 
 struct MemBlock {
     BufferType bufferType;
@@ -59,22 +58,23 @@ struct MemBlock {
 
 // ReduceScatterV AllGatherV使用
 struct VDataDesTag {
-    std::vector<u64> displs;    // 每个rank的数据在sendBuf中的偏移量（单位为dataType）
-    std::vector<u64> counts;    // 每个rank在sendBuf中的数据size，第i个元素表示需要向rank i发送/接受的数据量
-    HcclDataType dataType;   // 数据类型
+    std::vector<u64> displs; // 每个rank的数据在sendBuf中的偏移量（单位为dataType）
+    std::vector<u64> counts; // 每个rank在sendBuf中的数据size，第i个元素表示需要向rank i发送/接受的数据量
+    HcclDataType dataType; // 数据类型
 };
 
 // All2All系列使用
 struct All2AllDataDesTag {
-    HcclDataType sendType;   // 发送数据的数据类型
-    HcclDataType recvType;   // 接收数据的数据类型
-    u64 sendCount;              // 发送数据量 (All2All)
-    u64 recvCount;              // 接收数据量 (All2All)
-    std::vector<u64> sendCounts;    // 发送数据量数组 (All2AllV)
-    std::vector<u64> recvCounts;    // 接收数据量数组 (All2AllV)
-    std::vector<u64> sdispls;   // 发送偏移量数组 (All2AllV)，sdispls[i]=n表示本rank发给rank i的数据在sendBuf的起始位置相对sendBuf的偏移量，以sendType为基本单位
-    std::vector<u64> rdispls;   // 接收偏移量数组 (All2AllV)
-    std::vector<u64> sendCountMatrix;   // (All2AllVC) sendCountMatrix[i * ranksize + j] 代表rank i发送到rank j的count参数
+    HcclDataType sendType;       // 发送数据的数据类型
+    HcclDataType recvType;       // 接收数据的数据类型
+    u64 sendCount;               // 发送数据量 (All2All)
+    u64 recvCount;               // 接收数据量 (All2All)
+    std::vector<u64> sendCounts; // 发送数据量数组 (All2AllV)
+    std::vector<u64> recvCounts; // 接收数据量数组 (All2AllV)
+    std::vector<u64> sdispls;    // 发送偏移量数组 (All2AllV)，sdispls[i]=n表示本rank发给rank
+                              // i的数据在sendBuf的起始位置相对sendBuf的偏移量，以sendType为基本单位
+    std::vector<u64> rdispls;         // 接收偏移量数组 (All2AllV)
+    std::vector<u64> sendCountMatrix; // (All2AllVC) sendCountMatrix[i * ranksize + j] 代表rank i发送到rank j的count参数
 };
 
 #endif

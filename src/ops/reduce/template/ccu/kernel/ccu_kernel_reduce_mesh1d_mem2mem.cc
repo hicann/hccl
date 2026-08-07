@@ -13,56 +13,56 @@
 
 namespace ops_hccl {
 
-constexpr int INPUT_XN_ID    = 0;
-constexpr int OUTPUT_XN_ID   = 1;
-constexpr int TOKEN_XN_ID    = 2;
-constexpr int POST_SYNC_ID   = 3;
-constexpr int CKE_IDX_0      = 0;
-constexpr int GROUP_NUM      = 2;
-const std::string LOOP_NAME  = "reduceMesh1DMem2MemLoop";
+constexpr int INPUT_XN_ID = 0;
+constexpr int OUTPUT_XN_ID = 1;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int POST_SYNC_ID = 3;
+constexpr int CKE_IDX_0 = 0;
+constexpr int GROUP_NUM = 2;
+const std::string LOOP_NAME = "reduceMesh1DMem2MemLoop";
 
-static CcuResult ParseKernelArg(ReduceMesh1DMem2MemContext &ctx, CcuKernelArgReduceMesh1DMem2Mem *kernelArg)
+static CcuResult ParseKernelArg(ReduceMesh1DMem2MemContext& ctx, CcuKernelArgReduceMesh1DMem2Mem* kernelArg)
 
 {
-    ctx.dataType        = kernelArg->opParam.DataDes.dataType;
-    ctx.outputDataType  = kernelArg->opParam.DataDes.outputType;
+    ctx.dataType = kernelArg->opParam.DataDes.dataType;
+    ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
 
-        HCCL_DEBUG("[CcuKernelReduceMesh1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
-            ctx.dataType);
+        HCCL_DEBUG(
+            "[CcuKernelReduceMesh1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]", ctx.dataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
     return CCU_SUCCESS;
 }
 
-static CcuResult CreateLocalCopyLoop(ReduceMesh1DMem2MemContext &ctx, GroupReduceMesh1DMem2MemVar &var)
+static CcuResult CreateLocalCopyLoop(ReduceMesh1DMem2MemContext& ctx, GroupReduceMesh1DMem2MemVar& var)
 {
     if (ctx.IsLoopEntityRegistered(LOOP_NAME)) {
         return CCU_SUCCESS;
     }
     ctx.CreateLoopEntity(LOOP_NAME);
-    auto &loops = ctx.loopMap[LOOP_NAME];
+    auto& loops = ctx.loopMap[LOOP_NAME];
 
     for (uint32_t index = 0; index < 2; index++) { // 需要2个Loop
         ccu::Event event = ctx.moRes.completedEvent[index];
 
-		loops.body[index].reset(new ccu::Func([&ctx, index, event, &var]() {
+        loops.body[index].reset(new ccu::Func([&ctx, index, event, &var]() {
             ccu::LocalCopy(ctx.moRes.ccuBuf[0], var.src[index], var.len[index], event);
             ccu::EventWait(event);
             ccu::LocalCopy(var.dst[index], ctx.moRes.ccuBuf[0], var.len[index], event);
             ccu::EventWait(event);
         }));
-		loops.loops[index].reset(new ccu::Loop(loops.loopParam[index], *loops.body[index]));
+        loops.loops[index].reset(new ccu::Loop(loops.loopParam[index], *loops.body[index]));
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::LocalAddr dst, ccu::LocalAddr src)
+static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext& ctx, ccu::LocalAddr dst, ccu::LocalAddr src)
 {
     GroupReduceMesh1DMem2MemVar var;
     CreateLocalCopyLoop(ctx, var);
-	auto &loops = ctx.loopMap[LOOP_NAME];
+    auto& loops = ctx.loopMap[LOOP_NAME];
 
     CCU_IF(ctx.localGoSize.addrOffset != 0)
     {
@@ -84,9 +84,9 @@ static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::Loca
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
-		loops.loopParam[0] = loopParam;
- 	    std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
- 	    ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
+        loops.loopParam[0] = loopParam;
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0]};
+        ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     CCU_IF(ctx.localGoSize.parallelParam != 0)
@@ -106,7 +106,7 @@ static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::Loca
 
         src.addr += ctx.localGoSize.residual;
         dst.addr += ctx.localGoSize.residual;
-        sliceSize                  = ctx.moConfig.memSlice;
+        sliceSize = ctx.moConfig.memSlice;
 
         var.src[1].addr = src.addr;
         var.src[1].token = src.token;
@@ -118,17 +118,17 @@ static CcuResult LocalCopyByLoopGroup(ReduceMesh1DMem2MemContext &ctx, ccu::Loca
         loopCfg1 = GetLoopParam(0, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
-		loops.loopParam[0] = loopCfg0;
- 	    loops.loopParam[1] = loopCfg1;
- 	    std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
- 	    ccu::LoopGroup group(ctx.localGoSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
+        loops.loopParam[0] = loopCfg0;
+        loops.loopParam[1] = loopCfg1;
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0], *loops.loops[1]};
+        ccu::LoopGroup group(ctx.localGoSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(ReduceMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
@@ -143,7 +143,7 @@ static CcuResult InitResource(ReduceMesh1DMem2MemContext &ctx)
     ctx.token.resize(arg->rankSize);
     for (uint64_t peerId = 0; peerId < arg->rankSize; peerId++) {
         if (peerId != arg->rankId) {
-			ctx.input[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], INPUT_XN_ID);
+            ctx.input[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], INPUT_XN_ID);
             ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
             ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
@@ -157,19 +157,19 @@ static CcuResult InitResource(ReduceMesh1DMem2MemContext &ctx)
     ctx.moConfig.memSlice = LOCAL_COPY_MS * CCU_MS_SIZE;
 
     ctx.moRes.eventCount = ctx.moConfig.loopCount;
-	ctx.moRes.completedEvent = ccu::Array<ccu::Event>(ctx.moRes.eventCount);
+    ctx.moRes.completedEvent = ccu::Array<ccu::Event>(ctx.moRes.eventCount);
 
     ctx.moRes.bufCount = ctx.moConfig.loopCount * ctx.moConfig.msInterleave;
-	ctx.moRes.ccuBuf = ccu::Array<ccu::CcuBuffer>(ctx.moRes.bufCount);
+    ctx.moRes.ccuBuf = ccu::Array<ccu::CcuBuffer>(ctx.moRes.bufCount);
 
     ctx.resourceAllocated = true;
 
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(ReduceMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[arg->rankId], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], cnt++));
@@ -190,14 +190,17 @@ static CcuResult LoadArgs(ReduceMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(ReduceMesh1DMem2MemContext &ctx)
+static void PreSync(ReduceMesh1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelReduceMesh1DMem2Mem] ReduceMeshMem2Mem1D PreSync begin");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.input[arg->rankId], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[arg->rankId], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
 
     uint32_t allBit = (1 << INPUT_XN_ID) | (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -207,10 +210,10 @@ static void PreSync(ReduceMesh1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceMesh1DMem2Mem] ReduceMeshMem2Mem1D PreSync end");
 }
 
-static void PostSync(ReduceMesh1DMem2MemContext &ctx)
+static void PostSync(ReduceMesh1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelReduceMesh1DMem2Mem] ReduceMeshMem2Mem1D post sync start");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
@@ -220,25 +223,25 @@ static void PostSync(ReduceMesh1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceMesh1DMem2Mem] ReduceMeshMem2Mem1D post sync end");
 }
 
-static CcuResult DoRepeatReduce(ReduceMesh1DMem2MemContext &ctx, const std::vector<ccu::Variable> &srcAddr, const ccu::Variable &dstAddr)
+static CcuResult
+DoRepeatReduce(ReduceMesh1DMem2MemContext& ctx, const std::vector<ccu::Variable>& srcAddr, const ccu::Variable& dstAddr)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
-    ctx.dstAddr.addr  = dstAddr;
-    ctx.dstAddr.token  = ctx.token[arg->rankId];
+    ctx.dstAddr.addr = dstAddr;
+    ctx.dstAddr.token = ctx.token[arg->rankId];
 
-    ctx.myInputAddr.addr  = srcAddr[arg->rankId];
+    ctx.myInputAddr.addr = srcAddr[arg->rankId];
     ctx.myInputAddr.token = ctx.token[arg->rankId];
 
-    CCU_IF (ctx.flag != 0) {
+    CCU_IF(ctx.flag != 0)
+    {
         // 非第一轮执行时，src 和 dst 已经初始化，需要添加偏移量
         ctx.dstAddr.addr += ctx.outputRepeatStride;
         ctx.myInputAddr.addr += ctx.inputRepeatStride;
     }
     // 若root节点的输入输出地址不一致，则本地拷贝
-    CCU_IF (ctx.isInputOutputEqual == 0) {
-        CCU_CHK_RET(LocalCopyByLoopGroup(ctx, ctx.dstAddr, ctx.myInputAddr));
-    }
+    CCU_IF(ctx.isInputOutputEqual == 0) { CCU_CHK_RET(LocalCopyByLoopGroup(ctx, ctx.dstAddr, ctx.myInputAddr)); }
 
     for (uint16_t i = 0; i < arg->rankSize - 1; i++) { // 外层循环控制step
         // 读不同rank的不同chunk
@@ -246,12 +249,13 @@ static CcuResult DoRepeatReduce(ReduceMesh1DMem2MemContext &ctx, const std::vect
             if (rmtId == arg->rootId) {
                 continue;
             }
-            ctx.chunkOffset  = 0;
-            ctx.dstAddr.addr  = dstAddr;
-            ctx.remoteInputAddr.addr  = srcAddr[rmtId];
+            ctx.chunkOffset = 0;
+            ctx.dstAddr.addr = dstAddr;
+            ctx.remoteInputAddr.addr = srcAddr[rmtId];
             ctx.remoteInputAddr.token = ctx.token[rmtId];
 
-            CCU_IF (ctx.flag != 0) {
+            CCU_IF(ctx.flag != 0)
+            {
                 // 非第一轮执行时，src 和 dst 已经初始化，需要添加偏移量
                 ctx.dstAddr.addr += ctx.outputRepeatStride;
                 ctx.remoteInputAddr.addr += ctx.inputRepeatStride;
@@ -278,14 +282,16 @@ static CcuResult DoRepeatReduce(ReduceMesh1DMem2MemContext &ctx, const std::vect
 
             CCU_IF(ctx.chunkSize[chkId] == 0)
             {
-				const uint32_t rankMask = 1 << rmtId;
+                const uint32_t rankMask = 1 << rmtId;
                 ccu::EventRecord(ctx.event, rankMask);
             }
 
             CCU_IF(ctx.chunkSize[chkId] != 0)
             {
                 // 读远端内存并Reduce, 将远端内存中的数据，和本端内存中的数据进行Reduce操作，结果保存在本端内存中
-                ccu::ReadReduce(arg->channels[channelId], ctx.dstAddr, ctx.remoteInputAddr, ctx.chunkSize[chkId], ctx.dataType, ctx.reduceOp, ctx.event, 1 << rmtId);
+                ccu::ReadReduce(
+                    arg->channels[channelId], ctx.dstAddr, ctx.remoteInputAddr, ctx.chunkSize[chkId], ctx.dataType,
+                    ctx.reduceOp, ctx.event, 1 << rmtId);
             }
         }
         uint16_t allBit = ((1 << arg->rankSize) - 1) & (~(1 << arg->rankId));
@@ -300,7 +306,7 @@ static CcuResult DoRepeatReduce(ReduceMesh1DMem2MemContext &ctx, const std::vect
 // ============================================================================
 CcuResult CcuReduceMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceMesh1DMem2Mem*>(arg);
 
     ReduceMesh1DMem2MemContext ctx;
     ctx.arg = kernelArg;
@@ -324,8 +330,9 @@ CcuResult CcuReduceMesh1DMem2MemKernel(CcuKernelArg arg)
         if (kernelArg->rankId == kernelArg->rootId) {
             ccu::Variable repeatNumAdd;
             ctx.flag = 0;
-            repeatNumAdd  = 1;
-            CCU_WHILE(ctx.repeatNumVar != UINT64_MAX) { // 循环repeatNum_次
+            repeatNumAdd = 1;
+            CCU_WHILE(ctx.repeatNumVar != UINT64_MAX)
+            { // 循环repeatNum_次
                 // root要去读每个rank每个chunk的数据
                 DoRepeatReduce(ctx, ctx.input, ctx.output[kernelArg->rankId]);
                 ctx.repeatNumVar += repeatNumAdd;

@@ -20,8 +20,9 @@ namespace ops_hccl {
 class ReduceMesh1D : public InsAlgTemplateBase {
 public:
     ReduceMesh1D() = default;
-    explicit ReduceMesh1D(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit ReduceMesh1D(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~ReduceMesh1D() override;
 
@@ -33,38 +34,42 @@ public:
     }
 
     // 现在的Kernel就是之前的GenExtIns
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-        TemplateResource &templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     void SetRoot(u32 root) const;
     HcclResult CalcRes(
-        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest) override;
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 
     u64 GetThreadNum() const override;
 
 private:
-    HcclResult RunReduce(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads, const TemplateDataParams &tempAlgParam, const OpParam &param);
-    HcclResult GatherData(const TemplateDataParams &dataParams, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads);
-    HcclResult ReduceData(const TemplateDataParams &dataParams, const std::vector<ThreadHandle> &threads);
-    HcclResult SendData(const TemplateDataParams &dataParams, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads);
+    HcclResult RunReduce(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        const TemplateDataParams& tempAlgParam, const OpParam& param);
+    HcclResult GatherData(
+        const TemplateDataParams& dataParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads);
+    HcclResult ReduceData(const TemplateDataParams& dataParams, const std::vector<ThreadHandle>& threads);
+    HcclResult SendData(
+        const TemplateDataParams& dataParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads);
     u32 GetAlgRank(u32 rank) const;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
     u64 processSize_{0};
     u64 count_{0};
-    u32 myIdx_ = UINT32_MAX;  // 本rank在通信域内的索引
+    u32 myIdx_ = UINT32_MAX; // 本rank在通信域内的索引
     u32 threadNum_{0};
     std::vector<u32> notifyIdxMainToSub_;
     std::vector<u32> notifyIdxSubToMain_;
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // OPEN_HCCL_INS_TEMP_REDUCE_MESH_H
+#endif // OPEN_HCCL_INS_TEMP_REDUCE_MESH_H

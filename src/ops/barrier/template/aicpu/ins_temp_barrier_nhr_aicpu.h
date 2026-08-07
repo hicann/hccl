@@ -23,8 +23,7 @@ namespace ops_hccl {
 class InsTempBarrierNhrAicpu : public InsAlgTemplateBase {
 public:
     InsTempBarrierNhrAicpu() = default;
-    InsTempBarrierNhrAicpu(const OpParam &param, const u32 rankId,
-                           const std::vector<std::vector<u32>> &subCommRanks);
+    InsTempBarrierNhrAicpu(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempBarrierNhrAicpu() override = default;
 
     std::string Describe() const override
@@ -32,22 +31,21 @@ public:
         return "Template of Barrier NHR AICPU with tempRankSize " + std::to_string(templateRankSize_);
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param,
-                       const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-                         TemplateResource &templateResource) override;
-    u64 GetThreadNum() const override { return 1; }  // 仅需主线程，NHR 串行执行
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    u64 GetThreadNum() const override { return 1; } // 仅需主线程，NHR 串行执行
 
 protected:
     u32 GetRankFromMap(const uint32_t rankIdx) const;
-    HcclResult RunNHRBarrier(const std::map<u32, std::vector<ChannelInfo>> &channels,
-                             const ThreadHandle &thread);
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override {}  // 单线程，无需线程间同步
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override {}  // 单线程，无需线程间同步
+    HcclResult RunNHRBarrier(const std::map<u32, std::vector<ChannelInfo>>& channels, const ThreadHandle& thread);
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {} // 单线程，无需线程间同步
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {} // 单线程，无需线程间同步
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_BARRIER_NHR_AICPU_H
+#endif // INS_TEMP_BARRIER_NHR_AICPU_H

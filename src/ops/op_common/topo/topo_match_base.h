@@ -19,9 +19,9 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr int RANK_SIZE_TWO   = 2;
+constexpr int RANK_SIZE_TWO = 2;
 constexpr int RANK_SIZE_THREE = 3;
-constexpr int RANK_SIZE_FOUR  = 4;
+constexpr int RANK_SIZE_FOUR = 4;
 constexpr int RANK_SIZE_EIGHT = 8;
 
 constexpr int COMM_LAYER_SIZE_0 = 0;
@@ -59,8 +59,8 @@ public:
 
     virtual std::string Describe() const = 0;
 
-    virtual HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                 AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    virtual HcclResult MatchTopo(
+        const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 };
 
 } // namespace ops_hccl

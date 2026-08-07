@@ -21,40 +21,43 @@ class InsV2AllGatherConcurrentExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllGatherConcurrentExecutor();
     ~InsV2AllGatherConcurrentExecutor() override = default;
-    
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-                                    AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
-                                    
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *ctx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgRes0,
-                                 const TemplateResource &templateAlgRes1, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgRes0, const TemplateResource& templateAlgRes1,
+        u32 notifyNumOnMainThread);
 #endif
 
 private:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-                               InsAlgTemplate0 &algTemplate0, InsAlgTemplate1 &algTemplate1);
+    HcclResult OrchestrateLoop(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& algTemplate0,
+        InsAlgTemplate1& algTemplate1);
 
-    HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                            const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
 
-    void GetParallelDataSplit(const OpParam &param, std::vector<float> &splitDataSize) const;
+    void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
 
-    void GenTemplateAlgParams(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset,
-                                  const u64 dataCountPerLoop, const u64 scratchOffset,
-                                  TemplateDataParams &tempAlgParams) const;
+    void GenTemplateAlgParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoop, const u64 scratchOffset, TemplateDataParams& tempAlgParams) const;
 
-    HcclResult PrepareResForTemplate(InsAlgTemplate0 &algTemplate0, InsAlgTemplate1 &algTemplate1);
+    HcclResult PrepareResForTemplate(InsAlgTemplate0& algTemplate0, InsAlgTemplate1& algTemplate1);
 
-    std::vector<ThreadHandle> threads_;  // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
+    std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
     std::vector<ThreadHandle> tmp0Threads_;
     std::vector<ThreadHandle> tmp1Threads_;
     ThreadHandle mainThread_{0};
@@ -69,6 +72,6 @@ private:
     std::vector<CcuKernelHandle> tmp0CcuKernels_;
     std::vector<CcuKernelHandle> tmp1CcuKernels_;
 };
-}
+} // namespace ops_hccl
 
-#endif  // HCCLV2_INS_ALL_GATHER_CONCURR_EXECUTOR_H
+#endif // HCCLV2_INS_ALL_GATHER_CONCURR_EXECUTOR_H

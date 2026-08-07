@@ -21,13 +21,13 @@ using HcclUs = std::chrono::steady_clock::time_point;
 #define TIME_NOW() ({ std::chrono::steady_clock::now(); })
 #define DURATION_US(x) (std::chrono::duration_cast<std::chrono::microseconds>(x))
 
-HcclResult  SalStrToULong(const std::string str, int base, u32 &val);
-HcclResult SalStrToDouble(const std::string str, double &val);
+HcclResult SalStrToULong(const std::string str, int base, u32& val);
+HcclResult SalStrToDouble(const std::string str, double& val);
 
-HcclResult IsAllDigit(const char *strNum);
-u32 SalStrLen(const char *s, u32 maxLen = INT_MAX);
+HcclResult IsAllDigit(const char* strNum);
+u32 SalStrLen(const char* s, u32 maxLen = INT_MAX);
 
 #define weak_alias(name, aliasname) _weak_alias(name, aliasname)
 #define _weak_alias(name, aliasname) extern __typeof(name) aliasname __attribute__((weak, alias(#name)))
 
-#endif  // HCCL_INC_SAL_H
+#endif // HCCL_INC_SAL_H

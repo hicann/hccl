@@ -23,27 +23,33 @@ public:
     explicit InsV2AllReduceTwoShotSoleExecutor();
     ~InsV2AllReduceTwoShotSoleExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
 protected:
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                            const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    void GenBaseTempAlgParams(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        TemplateDataParams &tempAlgParamsReduceScatter, TemplateDataParams &tempAlgParamsAllGather) const;
-    void GenTempAlgParamsReduceScatter(const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-        TemplateDataParams &tempAlgParamsReduceScatter) const;
-    void GenTempAlgParamsAllGather(const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-        TemplateDataParams &tempAlgParamsAllGather) const;
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    void GenBaseTempAlgParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParamsReduceScatter,
+        TemplateDataParams& tempAlgParamsAllGather) const;
+    void GenTempAlgParamsReduceScatter(
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount,
+        TemplateDataParams& tempAlgParamsReduceScatter) const;
+    void GenTempAlgParamsAllGather(
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount,
+        TemplateDataParams& tempAlgParamsAllGather) const;
     template <typename InsAlgTemplate>
-    HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource) const;
+    HcclResult GenTempResource(
+        const AlgResourceCtxSerializable& resCtx, const std::shared_ptr<InsAlgTemplate>& algTemplate,
+        TemplateResource& tempResource) const;
 
     u64 outCclBuffSize_{0};
     u64 inCclBuffSize_{0};
@@ -54,6 +60,6 @@ protected:
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
 };
-}
+} // namespace ops_hccl
 
 #endif

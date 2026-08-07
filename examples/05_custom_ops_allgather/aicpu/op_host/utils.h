@@ -16,12 +16,13 @@
 #include "common.h"
 
 namespace ops_hccl_allgather {
-HcclResult GetDeviceType(DeviceType *deviceType);
-HcclResult FillChannelDesc(HcclComm comm, uint32_t srcRank, uint32_t dstRank, HcclChannelDesc &desc);
+HcclResult GetDeviceType(DeviceType* deviceType);
+HcclResult FillChannelDesc(HcclComm comm, uint32_t srcRank, uint32_t dstRank, HcclChannelDesc& desc);
 
-HcclResult HcclGetThreadAICPU(HcclComm comm, const OpParam &param, AlgResourceCtx &resCtxHost);
-HcclResult HcclGetChannelAICPU(HcclComm comm, const OpParam &param, AlgResourceCtx &resCtxHost);
-HcclResult HcclAllocAlgResourceAICPU(HcclComm comm, const OpParam &param, AlgResourceCtx &resCtxHost);
-HcclResult HcclMemcpyCtxHostToDevice(HcclComm comm, const OpParam &param, AlgResourceCtx& resCtxHost, void **resCtxSequence, uint64_t *ctxSize);
-}
+HcclResult HcclGetThreadAICPU(HcclComm comm, const OpParam& param, AlgResourceCtx& resCtxHost);
+HcclResult HcclGetChannelAICPU(HcclComm comm, const OpParam& param, AlgResourceCtx& resCtxHost);
+HcclResult HcclAllocAlgResourceAICPU(HcclComm comm, const OpParam& param, AlgResourceCtx& resCtxHost);
+HcclResult HcclMemcpyCtxHostToDevice(
+    HcclComm comm, const OpParam& param, AlgResourceCtx& resCtxHost, void** resCtxSequence, uint64_t* ctxSize);
+} // namespace ops_hccl_allgather
 #endif

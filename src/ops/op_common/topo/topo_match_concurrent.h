@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #ifndef TOPO_MATCH_CONCURRENT
 #define TOPO_MATCH_CONCURRENT
 #include <string>
@@ -15,21 +15,23 @@
 #include <hccl/hccl_types.h>
 #include "alg_param.h"
 #include "topo_match_base.h"
- 
+
 namespace ops_hccl {
- 
+
 class TopoMatchConcurrent : public TopoMatchBase {
 public:
     explicit TopoMatchConcurrent();
     ~TopoMatchConcurrent() override;
- 
+
     std::string Describe() const override
     {
         return "Topo Match for Concurrent Algorithm (supports 950/960 out-place devices).";
     }
- 
-    HcclResult MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
- 
+
+    HcclResult MatchTopo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
+        AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
+
 private:
     u32 myRank_{0};
     std::vector<u32> rankIds_;

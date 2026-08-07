@@ -14,24 +14,23 @@
 namespace ops_hccl {
 InsTempBroadcastNHR::InsTempBroadcastNHR(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-    const std::vector<std::vector<u32>> &subCommRanks)
+    const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 
-InsTempBroadcastNHR::~InsTempBroadcastNHR()
-{
-}
+InsTempBroadcastNHR::~InsTempBroadcastNHR() {}
 
-HcclResult InsTempBroadcastNHR::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                        AlgResourceRequest& resourceRequest)
+HcclResult InsTempBroadcastNHR::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
     channelsPerRank_ = CalcChannelsPerRank(level0Channels);
     if (channelsPerRank_ > MAX_JETTY_NUM) {
-        HCCL_ERROR(" %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
+        HCCL_ERROR(
+            " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {
         HCCL_DEBUG(" %s channelsPerRank_ is %u ", __func__, channelsPerRank_);
     }
@@ -39,7 +38,7 @@ HcclResult InsTempBroadcastNHR::CalcRes(HcclComm comm, const OpParam& param, con
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult InsTempBroadcastNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
     u32 threadNum = channelsPerRank_;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -55,27 +54,26 @@ u64 InsTempBroadcastNHR::CalcScratchMultiple(BufferType inBuffType, BufferType o
     (void)inBuffType;
     (void)outBuffType;
     u64 scratchMultiple = 0;
-    if (!enableRemoteMemAccess_){
+    if (!enableRemoteMemAccess_) {
         scratchMultiple = 1;
     }
     return scratchMultiple;
 }
 
-u64 InsTempBroadcastNHR::GetThreadNum() const
-{
-    return channelsPerRank_;
-}
+u64 InsTempBroadcastNHR::GetThreadNum() const { return channelsPerRank_; }
 
-HcclResult InsTempBroadcastNHR::PostCopy(const TemplateDataParams &tempAlgParams,
-                                            const std::vector<ThreadHandle> &threads) const
+HcclResult
+InsTempBroadcastNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
     if ((!enableRemoteMemAccess_) && (u32(myRank_) != root_)) {
         HCCL_INFO("[InsTempBroadcastNHR][PostCopy] Opbase && isBottom, copy from outBuff to userOut");
         u64 inOffset = tempAlgParams.buffInfo.hcclBuffBaseOff;
 
-        DataSlice usrInSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, inOffset, tempAlgParams.sliceSize, tempAlgParams.count);
-        DataSlice usrOutSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.outBuffBaseOff,
-                    tempAlgParams.sliceSize, tempAlgParams.count);
+        DataSlice usrInSlice
+            = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, inOffset, tempAlgParams.sliceSize, tempAlgParams.count);
+        DataSlice usrOutSlice = DataSlice(
+            tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.outBuffBaseOff, tempAlgParams.sliceSize,
+            tempAlgParams.count);
         CHK_RET(LocalCopy(threads[0], usrInSlice, usrOutSlice));
     } else {
         HCCL_INFO("[InsTempBroadcastNHR][PostCopy] Offload Model, skip postcopy");
@@ -84,16 +82,19 @@ HcclResult InsTempBroadcastNHR::PostCopy(const TemplateDataParams &tempAlgParams
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::PreCopy(const TemplateDataParams &tempAlgParams,
-                                            const std::vector<ThreadHandle> &threads) const
+HcclResult
+InsTempBroadcastNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
-    if ((!enableRemoteMemAccess_) && (u32(myRank_) == root_)){
-            DataSlice usrInSlice = DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff,
-                    tempAlgParams.sliceSize, tempAlgParams.count);
-            DataSlice usrOutSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff,
-                    tempAlgParams.sliceSize, tempAlgParams.count);
-            CHK_PRT_RET(LocalCopy(threads[0], usrInSlice, usrOutSlice),
-                HCCL_ERROR("[InsTempBroadcastNHR] RunScatter userIn to cclIn copy failed"),
+    if ((!enableRemoteMemAccess_) && (u32(myRank_) == root_)) {
+        DataSlice usrInSlice = DataSlice(
+            tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.sliceSize,
+            tempAlgParams.count);
+        DataSlice usrOutSlice = DataSlice(
+            tempAlgParams.buffInfo.hcclBuff.addr, tempAlgParams.buffInfo.hcclBuffBaseOff, tempAlgParams.sliceSize,
+            tempAlgParams.count);
+        CHK_PRT_RET(
+            LocalCopy(threads[0], usrInSlice, usrOutSlice),
+            HCCL_ERROR("[InsTempBroadcastNHR] RunScatter userIn to cclIn copy failed"),
 
             HcclResult::HCCL_E_INTERNAL);
     } else {
@@ -103,7 +104,7 @@ HcclResult InsTempBroadcastNHR::PreCopy(const TemplateDataParams &tempAlgParams,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::GetAllGatherStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo)
+HcclResult InsTempBroadcastNHR::GetAllGatherStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo)
 {
     u32 rankIdx = tempVirtRankMap_[myRank_];
     stepInfo.txSliceIdxs.clear();
@@ -126,14 +127,17 @@ HcclResult InsTempBroadcastNHR::GetAllGatherStepInfo(u32 step, u32 nSteps, Aicpu
     stepInfo.toRank = sendTo;
     stepInfo.fromRank = recvFrom;
 
-    HCCL_DEBUG("[InsTempBroadcastNHR][GetAllGatherStepInfo] myRank_[%u] toRank[%u] fromRank[%u] nSteps[%u], step[%u], rankIdx[%u]",
-            myRank_, sendTo, recvFrom, nSteps, step, rankIdx);
+    HCCL_DEBUG(
+        "[InsTempBroadcastNHR][GetAllGatherStepInfo] myRank_[%u] toRank[%u] fromRank[%u] nSteps[%u], step[%u], "
+        "rankIdx[%u]",
+        myRank_, sendTo, recvFrom, nSteps, step, rankIdx);
     for (u32 i = 0; i < nSlices; i++) {
         stepInfo.txSliceIdxs.push_back(txSliceIdx);
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
-        HCCL_DEBUG("[InsTempBroadcastNHR][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]",
-            i, txSliceIdx, rxSliceIdx);
+        HCCL_DEBUG(
+            "[InsTempBroadcastNHR][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx,
+            rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
@@ -142,7 +146,7 @@ HcclResult InsTempBroadcastNHR::GetAllGatherStepInfo(u32 step, u32 nSteps, Aicpu
 }
 
 // NHR每步的算法描述原理函数
-HcclResult InsTempBroadcastNHR::GetScatterStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo &stepInfo) const
+HcclResult InsTempBroadcastNHR::GetScatterStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo) const
 {
     u32 rankIdx = tempVirtRankMap_.at(myRank_);
     u32 rootIdx = tempVirtRankMap_.at(root_);
@@ -198,8 +202,8 @@ HcclResult InsTempBroadcastNHR::GetScatterStepInfo(u32 step, u32 nSteps, AicpuNH
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::RunScatter(const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const std::vector<ThreadHandle> &threads, u32 channelIdx)
+HcclResult InsTempBroadcastNHR::RunScatter(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 channelIdx)
 {
     // nhr主体部分,从ScratchIn计算，结果放至ScratchOut上, 该部分均从inType搬运到outType
     u32 nSteps = GetNHRStepNum(templateRankSize_);
@@ -207,9 +211,9 @@ HcclResult InsTempBroadcastNHR::RunScatter(const std::map<u32, std::vector<Chann
         AicpuNHRStepInfo stepInfo;
         CHK_RET(GetScatterStepInfo(step, nSteps, stepInfo));
         HCCL_INFO("[InsTempBroadcastNHR]RunScatter GetScatterStepInfo after:[%d], root:[%u]", myRank_, root_);
-        CHK_PRT_RET(BatchTxRx(stepInfo, channels, threads, channelIdx),
-                HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx failed"),
-                HcclResult::HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            BatchTxRx(stepInfo, channels, threads, channelIdx), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx failed"),
+            HcclResult::HCCL_E_INTERNAL);
     }
 
     return HCCL_SUCCESS;
@@ -218,7 +222,7 @@ HcclResult InsTempBroadcastNHR::RunScatter(const std::map<u32, std::vector<Chann
 u32 InsTempBroadcastNHR::GetRankFromMap(const u32 rankIdx) const
 {
     u32 rank = -1;
-    for (auto &pair : tempVirtRankMap_) {
+    for (auto& pair : tempVirtRankMap_) {
         if (pair.second == rankIdx) {
             rank = pair.first;
             break;
@@ -227,8 +231,8 @@ u32 InsTempBroadcastNHR::GetRankFromMap(const u32 rankIdx) const
     return rank;
 }
 
-HcclResult InsTempBroadcastNHR::RunAllGather(const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const std::vector<ThreadHandle> &threads, u32 channelIdx)
+HcclResult InsTempBroadcastNHR::RunAllGather(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 channelIdx)
 {
     u32 nSteps = GetNHRStepNum(templateRankSize_);
 
@@ -242,11 +246,14 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const std::map<u32, std::vector<Cha
         u32 toRankKey = GetRankFromMap(stepInfo.toRank);
         auto itRecv = channels.find(fromRankKey);
         auto itSend = channels.find(toRankKey);
-        CHK_PRT_RET(itRecv == channels.end() || itSend == channels.end(), 
-            HCCL_ERROR("[%s] rank[%u] channel not found, fromRankKey[%u] found[%d] toRankKey[%u] found[%d]",
-            __func__, myRank_, fromRankKey, itRecv != channels.end(), toRankKey, itSend != channels.end()), HCCL_E_INTERNAL);
-        const ChannelInfo &linkRecv = itRecv->second[channelIdx];
-        const ChannelInfo &linkSend = itSend->second[channelIdx];
+        CHK_PRT_RET(
+            itRecv == channels.end() || itSend == channels.end(),
+            HCCL_ERROR(
+                "[%s] rank[%u] channel not found, fromRankKey[%u] found[%d] toRankKey[%u] found[%d]", __func__, myRank_,
+                fromRankKey, itRecv != channels.end(), toRankKey, itSend != channels.end()),
+            HCCL_E_INTERNAL);
+        const ChannelInfo& linkRecv = itRecv->second[channelIdx];
+        const ChannelInfo& linkSend = itSend->second[channelIdx];
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
         std::vector<DataSlice> rxSrcSlices;
@@ -272,10 +279,12 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const std::map<u32, std::vector<Cha
 
         SendRecvInfo sendRecvInfo(sendRecvLinks, sendRecvSlicesList, dataType_);
         if (isDmaRead_) {
-            CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[channelIdx]),
+            CHK_PRT_RET(
+                SendRecvRead(sendRecvInfo, threads[channelIdx]),
                 HCCL_ERROR("[InsTempBroadcastNHR] RunAllGather send failed"), HcclResult::HCCL_E_INTERNAL);
         } else {
-            CHK_PRT_RET(SendRecvBatchWrite(sendRecvInfo, threads[channelIdx]),
+            CHK_PRT_RET(
+                SendRecvBatchWrite(sendRecvInfo, threads[channelIdx]),
                 HCCL_ERROR("[InsTempBroadcastNHR] RunAllGather send failed"), HcclResult::HCCL_E_INTERNAL);
         }
     }
@@ -283,8 +292,9 @@ HcclResult InsTempBroadcastNHR::RunAllGather(const std::map<u32, std::vector<Cha
 }
 
 // Send multiple DataSlices
-HcclResult InsTempBroadcastNHR::BatchTxRx(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-    u32 channelIdx)
+HcclResult InsTempBroadcastNHR::BatchTxRx(
+    AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const std::vector<ThreadHandle>& threads, u32 channelIdx)
 {
     HCCL_INFO("[InsTempBroadcastNHR]BatchTxRx entry:[%d], root:[%u]", myRank_, root_);
     u64 memOffset = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuffBaseOff : buffInfo_.inBuffBaseOff;
@@ -303,14 +313,16 @@ HcclResult InsTempBroadcastNHR::BatchTxRx(AicpuNHRStepInfo &stepInfo, const std:
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-    u64 memOffset, u32 channelIdx) const
+HcclResult InsTempBroadcastNHR::BatchSend(
+    AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const
 {
     u32 toRankKey = GetRankFromMap(stepInfo.toRank);
     auto itSend = channels.find(toRankKey);
-    CHK_PRT_RET(itSend == channels.end(),
+    CHK_PRT_RET(
+        itSend == channels.end(),
         HCCL_ERROR("[%s] rank[%u] toRankKey[%u] not found in channels", __func__, myRank_, toRankKey), HCCL_E_INTERNAL);
-    const ChannelInfo &linkSend = itSend->second[channelIdx];
+    const ChannelInfo& linkSend = itSend->second[channelIdx];
     std::vector<DataSlice> txSrcSlices;
     std::vector<DataSlice> txDstSlices;
     for (u32 i = 0; i < stepInfo.txSliceIdxs.size(); i++) {
@@ -318,7 +330,8 @@ HcclResult InsTempBroadcastNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std:
         u64 partialOffset = (txId == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
         u64 partialSize = (txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
         void* srcBuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
-        void* remoteBuffAddr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+        void* remoteBuffAddr
+            = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
         DataSlice txSrcSlice = DataSlice(srcBuffAddr, memOffset + txId * sliceSize_ + partialOffset, partialSize);
         DataSlice txDstSlice = DataSlice(remoteBuffAddr, memOffset + txId * sliceSize_ + partialOffset, partialSize);
         txSrcSlices.push_back(txSrcSlice);
@@ -327,31 +340,37 @@ HcclResult InsTempBroadcastNHR::BatchSend(AicpuNHRStepInfo &stepInfo, const std:
     SlicesList txSlicesList(txSrcSlices, txDstSlices);
     DataInfo sendData(linkSend, txSlicesList, dataType_);
     if (isDmaRead_) {
-        CHK_PRT_RET(SendRead(sendData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchSend failed"),
+        CHK_PRT_RET(
+            SendRead(sendData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchSend failed"),
             HcclResult::HCCL_E_INTERNAL);
     } else {
-        CHK_PRT_RET(SendBatchWrite(sendData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchSend failed"),
+        CHK_PRT_RET(
+            SendBatchWrite(sendData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchSend failed"),
             HcclResult::HCCL_E_INTERNAL);
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-    u64 memOffset, u32 channelIdx) const
+HcclResult InsTempBroadcastNHR::BatchRecv(
+    AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const
 {
     HCCL_INFO("[InsTempBroadcastNHR]BatchRecv entry:[%d], root:[%u]", myRank_, root_);
     u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
     auto itRecv = channels.find(fromRankKey);
-    CHK_PRT_RET(itRecv == channels.end(),
-        HCCL_ERROR("[%s] rank[%u] fromRankKey[%u] not found in channels", __func__, myRank_, fromRankKey), HCCL_E_INTERNAL);
-    const ChannelInfo &linkRecv = itRecv->second[channelIdx];
+    CHK_PRT_RET(
+        itRecv == channels.end(),
+        HCCL_ERROR("[%s] rank[%u] fromRankKey[%u] not found in channels", __func__, myRank_, fromRankKey),
+        HCCL_E_INTERNAL);
+    const ChannelInfo& linkRecv = itRecv->second[channelIdx];
     std::vector<DataSlice> rxSrcSlices;
     std::vector<DataSlice> rxDstSlices;
     for (u32 i = 0; i < stepInfo.rxSliceIdxs.size(); i++) {
         u32 rxId = stepInfo.rxSliceIdxs[i];
         u64 partialOffset = (rxId == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
         u64 partialSize = (rxId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
-        void* remoteBuffAddr = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
+        void* remoteBuffAddr
+            = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
         void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
         DataSlice rxSrcSlice = DataSlice(remoteBuffAddr, memOffset + rxId * sliceSize_ + partialOffset, partialSize);
         DataSlice rxDstSlice = DataSlice(BuffAddr, memOffset + rxId * sliceSize_ + partialOffset, partialSize);
@@ -361,27 +380,33 @@ HcclResult InsTempBroadcastNHR::BatchRecv(AicpuNHRStepInfo &stepInfo, const std:
     SlicesList rxSlicesList(rxSrcSlices, rxDstSlices);
     DataInfo recvData(linkRecv, rxSlicesList, dataType_);
     if (isDmaRead_) {
-        CHK_PRT_RET(RecvRead(recvData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
+        CHK_PRT_RET(
+            RecvRead(recvData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
             HcclResult::HCCL_E_INTERNAL);
     } else {
-        CHK_PRT_RET(RecvWrite(recvData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
+        CHK_PRT_RET(
+            RecvWrite(recvData, threads[channelIdx]), HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx Recv failed"),
             HcclResult::HCCL_E_INTERNAL);
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-    u64 memOffset, u32 channelIdx) const
+HcclResult InsTempBroadcastNHR::BatchSR(
+    AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const std::vector<ThreadHandle>& threads, u64 memOffset, u32 channelIdx) const
 {
     u32 toRankKey = GetRankFromMap(stepInfo.toRank);
     u32 fromRankKey = GetRankFromMap(stepInfo.fromRank);
     auto itSend = channels.find(toRankKey);
     auto itRecv = channels.find(fromRankKey);
-    CHK_PRT_RET(itSend == channels.end() || itRecv == channels.end(),
-        HCCL_ERROR("[%s] rank[%u] channel not found, toRankKey[%u] found[%d] fromRankKey[%u] found[%d]",
-            __func__, myRank_, toRankKey, itSend != channels.end(), fromRankKey, itRecv != channels.end()), HCCL_E_INTERNAL);
-    const ChannelInfo &linkSend = itSend->second[channelIdx];
-    const ChannelInfo &linkRecv = itRecv->second[channelIdx];
+    CHK_PRT_RET(
+        itSend == channels.end() || itRecv == channels.end(),
+        HCCL_ERROR(
+            "[%s] rank[%u] channel not found, toRankKey[%u] found[%d] fromRankKey[%u] found[%d]", __func__, myRank_,
+            toRankKey, itSend != channels.end(), fromRankKey, itRecv != channels.end()),
+        HCCL_E_INTERNAL);
+    const ChannelInfo& linkSend = itSend->second[channelIdx];
+    const ChannelInfo& linkRecv = itRecv->second[channelIdx];
     TxRxChannels linkSendRecv = {linkSend, linkRecv};
 
     std::vector<DataSlice> txSrcSlices;
@@ -390,10 +415,12 @@ HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::m
         u32 txId = stepInfo.txSliceIdxs[i];
         u64 partialOffset = (txId == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
         u64 partialSize = (txId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
-        void* remoteSendBuffAddr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+        void* remoteSendBuffAddr
+            = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
         void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
         DataSlice txSrcSlice = DataSlice(BuffAddr, memOffset + txId * sliceSize_ + partialOffset, partialSize);
-        DataSlice txDstSlice = DataSlice(remoteSendBuffAddr, memOffset + txId * sliceSize_ + partialOffset, partialSize);
+        DataSlice txDstSlice
+            = DataSlice(remoteSendBuffAddr, memOffset + txId * sliceSize_ + partialOffset, partialSize);
         txSrcSlices.push_back(txSrcSlice);
         txDstSlices.push_back(txDstSlice);
     }
@@ -404,21 +431,25 @@ HcclResult InsTempBroadcastNHR::BatchSR(AicpuNHRStepInfo &stepInfo, const std::m
         u32 rxId = stepInfo.rxSliceIdxs[i];
         u64 partialOffset = (rxId == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
         u64 partialSize = (rxId == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
-        void* remoteRecvBuffAddr = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
+        void* remoteRecvBuffAddr
+            = (!enableRemoteMemAccess_) ? linkRecv.remoteCclMem.addr : linkRecv.remoteOutputGraphMode.addr;
         void* BuffAddr = (!enableRemoteMemAccess_) ? buffInfo_.hcclBuff.addr : buffInfo_.inputPtr;
-        DataSlice rxSrcSlice = DataSlice(remoteRecvBuffAddr, memOffset + rxId * sliceSize_ + partialOffset, partialSize);
+        DataSlice rxSrcSlice
+            = DataSlice(remoteRecvBuffAddr, memOffset + rxId * sliceSize_ + partialOffset, partialSize);
         DataSlice rxDstSlice = DataSlice(BuffAddr, memOffset + rxId * sliceSize_ + partialOffset, partialSize);
-        rxSrcSlices.push_back(rxSrcSlice);              
+        rxSrcSlices.push_back(rxSrcSlice);
         rxDstSlices.push_back(rxDstSlice);
     }
     SlicesList rxSlicesList(rxSrcSlices, rxDstSlices);
     TxRxSlicesList txRxSlicesList(txSlicesList, rxSlicesList);
     SendRecvInfo sendRecvInfo(linkSendRecv, txRxSlicesList);
     if (isDmaRead_) {
-        CHK_PRT_RET(SendRecvRead(sendRecvInfo, threads[channelIdx]),
+        CHK_PRT_RET(
+            SendRecvRead(sendRecvInfo, threads[channelIdx]),
             HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx SendRecv failed"), HcclResult::HCCL_E_INTERNAL);
     } else {
-        CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[channelIdx]),
+        CHK_PRT_RET(
+            SendRecvWrite(sendRecvInfo, threads[channelIdx]),
             HCCL_ERROR("[InsTempBroadcastNHR] BatchTxRx SendRecv failed"), HcclResult::HCCL_E_INTERNAL);
     }
     return HcclResult::HCCL_SUCCESS;
@@ -430,20 +461,22 @@ void InsTempBroadcastNHR::SetRoot(u32 root)
     HCCL_INFO("[InsTempBroadcastNHR][SetRoot] myRank_ [%u], set root_ [%u] ", myRank_, root_);
 }
 
-HcclResult InsTempBroadcastNHR::PrepareDataSplitForMultiChannel(const TemplateResource &templateResource)
+HcclResult InsTempBroadcastNHR::PrepareDataSplitForMultiChannel(const TemplateResource& templateResource)
 {
-    CHK_PRT_RET(templateResource.channels.empty() || templateResource.channels.begin()->second.empty(),
-        HCCL_ERROR("[InsTempBroadcastNHR][PrepareDataSplitForMultiChannel] channels is empty."),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        templateResource.channels.empty() || templateResource.channels.begin()->second.empty(),
+        HCCL_ERROR("[InsTempBroadcastNHR][PrepareDataSplitForMultiChannel] channels is empty."), HCCL_E_INTERNAL);
     std::vector<u64> elemCountOut;
     u64 totalDataCount = sliceSize_ / dataTypeSize_;
-    CHK_RET(CalcDataSplitByPortGroup(totalDataCount, dataTypeSize_, templateResource.channels.begin()->second,
-                                     elemCountOut, dataSplit_, dataOffset_));
+    CHK_RET(CalcDataSplitByPortGroup(
+        totalDataCount, dataTypeSize_, templateResource.channels.begin()->second, elemCountOut, dataSplit_,
+        dataOffset_));
     if (tailSize_ > 0 && tailSize_ != sliceSize_) {
         std::vector<u64> elemCountOutTail;
         u64 totalDataCountTail = tailSize_ / dataTypeSize_;
-        CHK_RET(CalcDataSplitByPortGroup(totalDataCountTail, dataTypeSize_, templateResource.channels.begin()->second,
-                                         elemCountOutTail, dataSplitTail_, dataOffsetTail_));
+        CHK_RET(CalcDataSplitByPortGroup(
+            totalDataCountTail, dataTypeSize_, templateResource.channels.begin()->second, elemCountOutTail,
+            dataSplitTail_, dataOffsetTail_));
     } else {
         dataOffsetTail_ = dataOffset_;
         dataSplitTail_ = dataSplit_;
@@ -451,21 +484,23 @@ HcclResult InsTempBroadcastNHR::PrepareDataSplitForMultiChannel(const TemplateRe
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                                          TemplateResource& templateResource)
+HcclResult InsTempBroadcastNHR::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR entry.");
-    buffInfo_     = tempAlgParams.buffInfo;
+    buffInfo_ = tempAlgParams.buffInfo;
     dataType_ = param.DataDes.dataType;
-    dataTypeSize_  = DATATYPE_SIZE_TABLE[dataType_];
-    bool isPcieProtocal = IsPcieProtocol(templateResource.channels);  // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;  // 是否使用Read模式
+    dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
+    bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempBroadcastNHR] Use Dma Read[%d]", isDmaRead_);
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR entry.");
 
     for (int i = 0; i < subCommRanks_[0].size(); i++) {
         tempVirtRankMap_.insert(std::make_pair(subCommRanks_[0][i], i));
-        HCCL_DEBUG("[InsTempBroadcastNHR] KernelRun.subCommRanks_[0][i][%d],i[%d],myRank[%d],root_[%d]",subCommRanks_[0][i], i, myRank_, root_);
+        HCCL_DEBUG(
+            "[InsTempBroadcastNHR] KernelRun.subCommRanks_[0][i][%d],i[%d],myRank[%d],root_[%d]", subCommRanks_[0][i],
+            i, myRank_, root_);
     }
     tempAlgParams_ = tempAlgParams;
     u64 dataSize = tempAlgParams.sliceSize;
@@ -473,15 +508,19 @@ HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDa
     tailSize_ = dataSize - sliceSize_ * (templateRankSize_ - 1);
     CHK_RET(PrepareDataSplitForMultiChannel(templateResource));
     threadNum_ = GetThreadNum();
-    CHK_PRT_RET(threadNum_ > templateResource.threads.size(),
-                HCCL_ERROR("[InsTempBroadcastNHR] Rank [%d], requiredQue [%u] more than templateQueNum [%zu].", myRank_,
-                threadNum_, templateResource.threads.size()), HcclResult::HCCL_E_INTERNAL);
-    HCCL_INFO("[InsTempBroadcastNHR Run]RankID:[%d], root:[%u], channelsPerRank_:[%u]", myRank_, root_, channelsPerRank_);
+    CHK_PRT_RET(
+        threadNum_ > templateResource.threads.size(),
+        HCCL_ERROR(
+            "[InsTempBroadcastNHR] Rank [%d], requiredQue [%u] more than templateQueNum [%zu].", myRank_, threadNum_,
+            templateResource.threads.size()),
+        HcclResult::HCCL_E_INTERNAL);
+    HCCL_INFO(
+        "[InsTempBroadcastNHR Run]RankID:[%d], root:[%u], channelsPerRank_:[%u]", myRank_, root_, channelsPerRank_);
 
     CHK_RET(PreCopy(tempAlgParams, templateResource.threads));
     if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1,
-                                             templateResource.threads.begin() + threadNum_);
+        std::vector<ThreadHandle> subThreads(
+            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
         GetNotifyIdxMainToSub(notifyIdxMainToSub_);
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub_));
     }
@@ -490,8 +529,8 @@ HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDa
         CHK_RET(RunAllGather(templateResource.channels, templateResource.threads, channelIdx));
     }
     if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1,
-                                             templateResource.threads.begin() + threadNum_);
+        std::vector<ThreadHandle> subThreads(
+            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
         GetNotifyIdxSubToMain(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
     }
@@ -502,7 +541,7 @@ HcclResult InsTempBroadcastNHR::KernelRun(const OpParam& param, const TemplateDa
     return HcclResult::HCCL_SUCCESS;
 }
 
-void InsTempBroadcastNHR::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub)
+void InsTempBroadcastNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)
 {
     notifyIdxMainToSub.clear();
     u32 slaveThreadNum = GetThreadNum() - 1;
@@ -511,7 +550,7 @@ void InsTempBroadcastNHR::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainT
     }
 }
 
-void InsTempBroadcastNHR::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempBroadcastNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 notifyNum = GetThreadNum() - 1;
@@ -520,4 +559,4 @@ void InsTempBroadcastNHR::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubTo
     }
 }
 
-} // namespace Hccl
+} // namespace ops_hccl

@@ -20,10 +20,10 @@
 
 using namespace ops_hccl_allgather;
 
-extern "C" unsigned int HcclLaunchCustomAllGatherAicpuKernel(OpParam *param)
+extern "C" unsigned int HcclLaunchCustomAllGatherAicpuKernel(OpParam* param)
 {
     AlgResourceCtx resCtxDevice;
-    char *ctx = static_cast<char *>(param->resCtxDevice);
+    char* ctx = static_cast<char*>(param->resCtxDevice);
     std::vector<char> seq(ctx, ctx + param->ctxSize);
     resCtxDevice.DeSerialize(seq);
 
@@ -33,7 +33,8 @@ extern "C" unsigned int HcclLaunchCustomAllGatherAicpuKernel(OpParam *param)
     }
 
     // 主thread等待Host stream的通知
-    if (HcommThreadNotifyWaitOnThread(resCtxDevice.threads[0], param->aicpuRecordCpuIdx, CUSTOM_TIMEOUT) != HCCL_SUCCESS) {
+    if (HcommThreadNotifyWaitOnThread(resCtxDevice.threads[0], param->aicpuRecordCpuIdx, CUSTOM_TIMEOUT)
+        != HCCL_SUCCESS) {
         HCCL_ERROR("failed to wait notify from host main stream");
         return 1;
     }

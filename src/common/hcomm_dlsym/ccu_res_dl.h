@@ -19,23 +19,24 @@
 extern "C" {
 #endif
 
-DECL_WEAK_FUNC(CcuResult, HcommCcuGetMemToken, uint64_t srcVa, uint64_t size, uint64_t *tokenInfo);
+DECL_WEAK_FUNC(CcuResult, HcommCcuGetMemToken, uint64_t srcVa, uint64_t size, uint64_t* tokenInfo);
 
 /* 动态资源申请相关接口（9.1.0+新接口），旧hcomm包不存在时返回CCU_E_NOT_SUPPORT */
-DECL_WEAK_FUNC(CcuResult, HcommCcuInsResDescCreate, uint32_t dieId, HcommCcuResDescHandle *resDesc);
+DECL_WEAK_FUNC(CcuResult, HcommCcuInsResDescCreate, uint32_t dieId, HcommCcuResDescHandle* resDesc);
 DECL_WEAK_FUNC(CcuResult, HcommCcuInsResDescDestroy, HcommCcuResDescHandle resDesc);
-DECL_WEAK_FUNC(CcuResult, HcommCcuInsResDescSetNum,
-    HcommCcuResDescHandle resDesc, HcommCcuResType resType, uint32_t resNum);
-DECL_WEAK_FUNC(CcuResult, HcommCcuInsResDescQueryNum,
-    HcommCcuResDescHandle resDesc, HcommCcuResType resType, uint32_t *resNum);
-DECL_WEAK_FUNC(CcuResult, HcommCcuInsCreate,
-    const HcommCcuResDescHandle *resDescs, uint32_t resDescNum, CcuInsHandle *ccuInsHandle);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuInsResDescSetNum, HcommCcuResDescHandle resDesc, HcommCcuResType resType, uint32_t resNum);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuInsResDescQueryNum, HcommCcuResDescHandle resDesc, HcommCcuResType resType, uint32_t* resNum);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuInsCreate, const HcommCcuResDescHandle* resDescs, uint32_t resDescNum,
+    CcuInsHandle* ccuInsHandle);
 DECL_WEAK_FUNC(CcuResult, HcommCcuInsDestroy, CcuInsHandle ccuInsHandle);
-DECL_WEAK_FUNC(CcuResult, HcommCcuInsQueryResDesc,
-    CcuInsHandle ccuInsHandle, HcommCcuResDescHandle resDesc);
+DECL_WEAK_FUNC(CcuResult, HcommCcuInsQueryResDesc, CcuInsHandle ccuInsHandle, HcommCcuResDescHandle resDesc);
 DECL_WEAK_FUNC(CcuResult, HcommCcuQueryRemainResDesc, HcommCcuResDescHandle resDesc);
-DECL_WEAK_FUNC(CcuResult, HcommCcuKernelQueryResReq,
-    const void *kernelFunc, const void **kernelArgs, uint32_t argNum, HcommCcuResDescHandle resDesc);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuKernelQueryResReq, const void* kernelFunc, const void** kernelArgs, uint32_t argNum,
+    HcommCcuResDescHandle resDesc);
 
 DECL_SUPPORT_FLAG(HcommCcuInsResDescCreate);
 DECL_SUPPORT_FLAG(HcommCcuInsResDescDestroy);

@@ -29,10 +29,10 @@ struct ScatterOpInfo {
     HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID;
 };
 
-HcclResult CreateScatter(OpParam *param, ScatterOpInfo *opInfo);
+HcclResult CreateScatter(OpParam* param, ScatterOpInfo* opInfo);
 
-void GetScatterOpInfo(const void *opInfo, char *outPut, size_t size);
+void GetScatterOpInfo(const void* opInfo, char* outPut, size_t size);
 
-HcclResult ConvertToHcclDfxOpInfo(OpParam *param, HcclDfxOpInfoCompat *hcclDfxOpInfo);
-}
+HcclResult ConvertToHcclDfxOpInfo(OpParam* param, HcclDfxOpInfoCompat* hcclDfxOpInfo);
+} // namespace ops_hccl
 #endif

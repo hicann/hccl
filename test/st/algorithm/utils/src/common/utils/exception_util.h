@@ -22,29 +22,31 @@
 #include "null_ptr_exception.h"
 #include "timeout_exception.h"
 
-#define CHK_RET_THROW(EXCEPTION, MSG, expr)                                                                            \
-    do {                                                                                                               \
-        auto ret = (expr);                                                                                             \
-        if (ret != HcclResult::HCCL_SUCCESS) {                                                                         \
-            THROW<EXCEPTION>(MSG);                                                                                     \
-        }                                                                                                              \
+#define CHK_RET_THROW(EXCEPTION, MSG, expr)    \
+    do {                                       \
+        auto ret = (expr);                     \
+        if (ret != HcclResult::HCCL_SUCCESS) { \
+            THROW<EXCEPTION>(MSG);             \
+        }                                      \
     } while (0)
 
-#define CHK_PRT_THROW(expr, exeLog, EXCEPTION, MSG)                                                                    \
-    do {                                                                                                               \
-        if (UNLIKELY(expr)) {                                                                                          \
-            exeLog;                                                                                                    \
-            throw EXCEPTION(MSG);                                                                                      \
-        }                                                                                                              \
+#define CHK_PRT_THROW(expr, exeLog, EXCEPTION, MSG) \
+    do {                                            \
+        if (UNLIKELY(expr)) {                       \
+            exeLog;                                 \
+            throw EXCEPTION(MSG);                   \
+        }                                           \
     } while (0)
 
-template <typename EXCEPTION> inline void THROW(const std::string &msg)
+template <typename EXCEPTION>
+inline void THROW(const std::string& msg)
 {
     HCCL_ERROR("%s", msg.c_str());
     throw EXCEPTION(msg);
 }
 
-template <typename EXCEPTION, typename... Args> inline void THROW(const char *format, Args... args)
+template <typename EXCEPTION, typename... Args>
+inline void THROW(const char* format, Args... args)
 {
     auto msg = StringFormat(format, args...);
     HCCL_ERROR("%s", msg.c_str());

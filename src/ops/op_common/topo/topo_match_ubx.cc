@@ -12,20 +12,16 @@
 
 namespace ops_hccl {
 constexpr u64 NATLAYER_ROCE = 3;
-TopoMatchUBX::TopoMatchUBX()
-    : TopoMatchBase()
-{
-}
+TopoMatchUBX::TopoMatchUBX() : TopoMatchBase() {}
 
-TopoMatchUBX::~TopoMatchUBX()
-{
-}
+TopoMatchUBX::~TopoMatchUBX() {}
 
-HcclResult TopoMatchUBX::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size, const uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
+HcclResult TopoMatchUBX::TopoForLayer0(
+    const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
 #ifndef AICPU_COMPILE
-    uint32_t *topoInsts;
+    uint32_t* topoInsts;
     uint32_t topoInstNum = 0;
     CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, 0, &topoInsts, &topoInstNum));
     HCCL_INFO("[CollAlgFactory] [TopoMatchUBX] layer0 topoInstNum [%d].", topoInstNum);
@@ -34,8 +30,9 @@ HcclResult TopoMatchUBX::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size
         uint32_t* ranks;
         uint32_t rankNum;
         CHK_RET(HcclRankGraphGetRanksByTopoInst(comm, 0, topoInsts[0], &ranks, &rankNum));
-        HCCL_DEBUG("[CollAlgFactory] [TopoMatchUBX] Rank [%d], all [%u] ranks in this pod: [%s]",
-            myRank, rankNum, PrintCArray<uint32_t>(ranks, rankNum).c_str());
+        HCCL_DEBUG(
+            "[CollAlgFactory] [TopoMatchUBX] Rank [%d], all [%u] ranks in this pod: [%s]", myRank, rankNum,
+            PrintCArray<uint32_t>(ranks, rankNum).c_str());
         std::vector<uint32_t> rankVecLayer0(ranks, ranks + rankNum);
         algHierarchyInfo.infos[0].push_back({rankVecLayer0});
         layer0Size = rankVecLayer0.size();
@@ -67,20 +64,22 @@ HcclResult TopoMatchUBX::TopoForLayer0(const HcclComm comm, uint32_t &layer0Size
                 layer0Size = closRanks.size();
             }
         }
-        HCCL_INFO("[TopoMatchUBX] layer0Size %u topoInstNum [%d], infos[0].size %u, mesh1DRanks[%u], closRanks[%u]", 
-                layer0Size, topoInstNum, algHierarchyInfo.infos[0].size(), mesh1DRanks.size(), closRanks.size());
+        HCCL_INFO(
+            "[TopoMatchUBX] layer0Size %u topoInstNum [%d], infos[0].size %u, mesh1DRanks[%u], closRanks[%u]",
+            layer0Size, topoInstNum, algHierarchyInfo.infos[0].size(), mesh1DRanks.size(), closRanks.size());
     }
 #endif
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchUBX::TopoForLayer3(const HcclComm comm, uint32_t layer0Size, const uint32_t myRank,
-                                                  AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
+HcclResult TopoMatchUBX::TopoForLayer3(
+    const HcclComm comm, uint32_t layer0Size, const uint32_t myRank,
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo) const
 {
     HCCL_DEBUG("[TopoMatchUBX::MeshNHRTopoForLayer3] layer0Size [%d]", layer0Size);
 #ifndef AICPU_COMPILE
     // 1. 查出layer 3的所有ranks
-    uint32_t *topoInsts;
+    uint32_t* topoInsts;
     uint32_t topoInstNum = 0;
     CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, NATLAYER_ROCE, &topoInsts, &topoInstNum));
     CHK_PRT_RET(
@@ -102,7 +101,7 @@ HcclResult TopoMatchUBX::TopoForLayer3(const HcclComm comm, uint32_t layer0Size,
         if (rankId % layer0Size != myRank % layer0Size) {
             continue;
         }
-        CommLink *links;
+        CommLink* links;
         uint32_t linkNum = 0;
         CHK_RET(HcclRankGraphGetLinks(comm, NATLAYER_ROCE, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
@@ -115,14 +114,15 @@ HcclResult TopoMatchUBX::TopoForLayer3(const HcclComm comm, uint32_t layer0Size,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchUBX::CheckVecElementAllSame(const uint32_t *instSizeList, uint32_t listSize) const
+HcclResult TopoMatchUBX::CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const
 {
 #ifndef AICPU_COMPILE
     uint32_t firstSize = instSizeList[0];
     for (uint32_t i = 1; i < listSize; i++) {
         if (firstSize != instSizeList[i]) {
-            HCCL_ERROR("[TopoMatchUBX::CheckVecElementAllSame] instSizeList [%u] [%u] not equal, Invalid topo.",
-                      firstSize, instSizeList[i]);
+            HCCL_ERROR(
+                "[TopoMatchUBX::CheckVecElementAllSame] instSizeList [%u] [%u] not equal, Invalid topo.", firstSize,
+                instSizeList[i]);
             return HcclResult::HCCL_E_PARA;
         }
     }
@@ -130,34 +130,35 @@ HcclResult TopoMatchUBX::CheckVecElementAllSame(const uint32_t *instSizeList, ui
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult TopoMatchUBX::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult TopoMatchUBX::MatchTopo(
+    const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
 #ifndef AICPU_COMPILE
     constexpr uint32_t EXPECTED_TOPO_LEVEL_NUM_2 = 2;
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > EXPECTED_TOPO_LEVEL_NUM_2,
-        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > EXPECTED_TOPO_LEVEL_NUM_2,
+        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums), HCCL_E_INTERNAL);
     uint32_t myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
-    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
-        HCCL_ERROR("[CollAlgFactory] [TopoMatchUBX] Rank [%d], deviceType not supported yet.",
-            myRank),
+    CHK_PRT_RET(
+        !shouldGoOutPlace(topoInfo->deviceType),
+        HCCL_ERROR("[CollAlgFactory] [TopoMatchUBX] Rank [%d], deviceType not supported yet.", myRank),
         HcclResult::HCCL_E_PARA);
     // 1.获取并校验通信层数
     uint32_t layerNum = 0;
-    uint32_t *netLayers;
+    uint32_t* netLayers;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &layerNum));
 
-    HCCL_DEBUG("[CollAlgFactory] [TopoMatchUBX] Rank [%d], netLayers[%u][%s]",
-                myRank, layerNum, PrintCArray<uint32_t>(netLayers, layerNum).c_str());
+    HCCL_DEBUG(
+        "[CollAlgFactory] [TopoMatchUBX] Rank [%d], netLayers[%u][%s]", myRank, layerNum,
+        PrintCArray<uint32_t>(netLayers, layerNum).c_str());
 
     // 2. 获取每个pod上rank数量以及pod数量
     uint32_t listSize = 0;
-    uint32_t *instSizeList;
+    uint32_t* instSizeList;
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(comm, 0, &instSizeList, &listSize));
-    HCCL_INFO("[CollAlgFactory] [TopoMatchUBX] Rank [%d], [%u] pods ,ranksize on each pod :[%s]",
-        myRank,
-        listSize,
+    HCCL_INFO(
+        "[CollAlgFactory] [TopoMatchUBX] Rank [%d], [%u] pods ,ranksize on each pod :[%s]", myRank, listSize,
         PrintCArray<uint32_t>(instSizeList, listSize).c_str());
     CHK_RET(CheckVecElementAllSame(instSizeList, listSize));
     // 3. 计算layer0的topo
@@ -172,4 +173,4 @@ HcclResult TopoMatchUBX::MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDeta
 #endif
     return HcclResult::HCCL_SUCCESS;
 }
-}  // namespace ops_hccl
+} // namespace ops_hccl

@@ -13,29 +13,29 @@
 
 namespace ops_hccl {
 
-constexpr uint16_t OUTPUT_XN_ID       = 0;
-constexpr uint16_t TOKEN_XN_ID        = 1;
-constexpr uint16_t POST_SYNC_ID       = 2;
-constexpr uint16_t STEP_PRE_SYNC_ID   = 4;
-constexpr uint16_t STEP_POST_SYNC_ID  = 5;
+constexpr uint16_t OUTPUT_XN_ID = 0;
+constexpr uint16_t TOKEN_XN_ID = 1;
+constexpr uint16_t POST_SYNC_ID = 2;
+constexpr uint16_t STEP_PRE_SYNC_ID = 4;
+constexpr uint16_t STEP_POST_SYNC_ID = 5;
 
 constexpr uint16_t CKE_IDX_0 = 0;
 
 constexpr uint16_t CKE_IDX_OUTPUT = 0;
-constexpr uint16_t CKE_IDX_TOKEN  = 1;
-constexpr uint16_t CKE_IDX_READY  = 2;
-constexpr uint16_t CKE_IDX_DONE   = 3;
-constexpr uint16_t POST_XN_ID     = 4;
-constexpr uint16_t BIT_NUM_PER_CKE    = 16;
+constexpr uint16_t CKE_IDX_TOKEN = 1;
+constexpr uint16_t CKE_IDX_READY = 2;
+constexpr uint16_t CKE_IDX_DONE = 3;
+constexpr uint16_t POST_XN_ID = 4;
+constexpr uint16_t BIT_NUM_PER_CKE = 16;
 
-static CcuResult ParseKernelArg(AllGatherOmniPipeNHR1DMem2MemContext &ctx,
-    CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem *kernelArg)
+static CcuResult
+ParseKernelArg(AllGatherOmniPipeNHR1DMem2MemContext& ctx, CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     kernelArg->localSize = kernelArg->rank2ChannelIdx.size(); // nhr算法通信rank数
     kernelArg->myRankIdx = kernelArg->rank2ChannelIdx.size(); // InitResources中将本端放在末尾 此处为对应的idx
-    if (kernelArg->subCommRanks.empty() || kernelArg->subCommRanks[0].empty() ||
-        kernelArg->rankId >= kernelArg->subCommRanks[0].size()) {
+    if (kernelArg->subCommRanks.empty() || kernelArg->subCommRanks[0].empty()
+        || kernelArg->rankId >= kernelArg->subCommRanks[0].size()) {
         HCCL_ERROR("[%s] invalid subCommRanks or rankId[%u] out of range.", __func__, kernelArg->rankId);
         return CcuResult::CCU_E_INTERNAL;
     }
@@ -43,10 +43,10 @@ static CcuResult ParseKernelArg(AllGatherOmniPipeNHR1DMem2MemContext &ctx,
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult InitResource(AllGatherOmniPipeNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[%s] start", __func__);
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[%s] channels is empty!", __func__);
@@ -70,10 +70,10 @@ static CcuResult InitResource(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult LoadArgs(AllGatherOmniPipeNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[%s] start", __func__);
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->myRankIdx], argId++));
@@ -94,16 +94,16 @@ static CcuResult LoadArgs(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult PreSync(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult PreSync(AllGatherOmniPipeNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[%s] start", __func__);
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->myRankIdx],
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->myRankIdx],
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->myRankIdx], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->myRankIdx], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -114,9 +114,9 @@ static CcuResult PreSync(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult PostSync(AllGatherOmniPipeNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
@@ -128,16 +128,16 @@ static CcuResult PostSync(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherOmniPipeNHR1DMem2MemContext &ctx,
-    const NHRStepInfo &nhrStepInfo)
+static CcuResult
+DoRepeatAllGatherNHRSingleStep(AllGatherOmniPipeNHR1DMem2MemContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
-    const u32              &toRankIdx        = arg->rank2ChannelIdx.at(nhrStepInfo.toRank);
-    const u32              &fromRankIdx      = arg->rank2ChannelIdx.at(nhrStepInfo.fromRank);
-    const ChannelHandle    &sendChannel      = arg->channels[toRankIdx];
-    const ChannelHandle    &recvChannel      = arg->channels[fromRankIdx];
-    const std::vector<u32> &sendSliceIdxList = nhrStepInfo.txSliceIdxs;
-    const std::vector<u32> &recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
+    const auto* arg = ctx.arg;
+    const u32& toRankIdx = arg->rank2ChannelIdx.at(nhrStepInfo.toRank);
+    const u32& fromRankIdx = arg->rank2ChannelIdx.at(nhrStepInfo.fromRank);
+    const ChannelHandle& sendChannel = arg->channels[toRankIdx];
+    const ChannelHandle& recvChannel = arg->channels[fromRankIdx];
+    const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
+    const std::vector<u32>& recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
     HCCL_DEBUG(
         "[%s] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) fromRank[%u](channelIdx[%u]) SliceSize[%u]",
         __func__, arg->userRank, arg->rankId, nhrStepInfo.step, nhrStepInfo.toRank, toRankIdx, nhrStepInfo.fromRank,
@@ -170,12 +170,8 @@ static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherOmniPipeNHR1DMem2MemCon
         }
 
         uint16_t mask = 1 << idx;
-        CCU_IF(ctx.sliceSize != 0) {
-            CCU_CHK_RET(ccu::Write(sendChannel, dst, src, ctx.sliceSize, ctx.event, mask));
-        }
-        CCU_IF(ctx.sliceSize == 0) {
-            CCU_CHK_RET(ccu::EventRecord(ctx.event, mask));
-        }
+        CCU_IF(ctx.sliceSize != 0) { CCU_CHK_RET(ccu::Write(sendChannel, dst, src, ctx.sliceSize, ctx.event, mask)); }
+        CCU_IF(ctx.sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, mask)); }
     }
     uint16_t sendBit = (1 << sendSliceIdxList.size()) - 1;
     CCU_CHK_RET(ccu::EventWait(ctx.event, sendBit));
@@ -188,20 +184,19 @@ static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherOmniPipeNHR1DMem2MemCon
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatAllGatherNHR(AllGatherOmniPipeNHR1DMem2MemContext &ctx)
+static CcuResult DoRepeatAllGatherNHR(AllGatherOmniPipeNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
-    for (auto &nhrStepInfo : arg->stepInfoVector) {
+    const auto* arg = ctx.arg;
+    for (auto& nhrStepInfo : arg->stepInfoVector) {
         CCU_CHK_RET(DoRepeatAllGatherNHRSingleStep(ctx, nhrStepInfo));
     }
     return CcuResult::CCU_SUCCESS;
 }
 
-
 CcuResult CcuAllGatherOmniPipeNHR1DMem2MemKernel(CcuKernelArg arg)
 {
     HCCL_INFO("[%s] start", __func__);
-    auto *kernelArg = static_cast<CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllGatherOmniPipeNHR1DMem2Mem*>(arg);
 
     AllGatherOmniPipeNHR1DMem2MemContext ctx;
     ctx.resourceAllocated = false;
@@ -222,4 +217,4 @@ CcuResult CcuAllGatherOmniPipeNHR1DMem2MemKernel(CcuKernelArg arg)
     return CcuResult::CCU_SUCCESS;
 }
 
-} // namespace Hccl
+} // namespace ops_hccl

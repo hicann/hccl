@@ -19,37 +19,39 @@ constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_4 = 4;
 constexpr u64 HCCL_MIN_SLICE_ALIGN = 128;
 
-CcuTempAllToAllVMesh1DMultiJetty::CcuTempAllToAllVMesh1DMultiJetty(const OpParam& param, const u32 rankId,
-                                       const std::vector<std::vector<u32>> &subCommRanks)
-: CcuAlgTemplateBase(param, rankId, subCommRanks)
+CcuTempAllToAllVMesh1DMultiJetty::CcuTempAllToAllVMesh1DMultiJetty(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
+    : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     myRank_ = rankId;
     templateRankSize_ = subCommRanks[0].size();
 }
 
-CcuTempAllToAllVMesh1DMultiJetty::~CcuTempAllToAllVMesh1DMultiJetty()
-{
-}
+CcuTempAllToAllVMesh1DMultiJetty::~CcuTempAllToAllVMesh1DMultiJetty() {}
 
-HcclResult CcuTempAllToAllVMesh1DMultiJetty::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                                      AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllToAllVMesh1DMultiJetty::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     // 不需要从流
     resourceRequest.notifyNumOnMainThread = 0;
     resourceRequest.slaveThreadNum = 0;
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
-    HCCL_DEBUG("[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+    HCCL_DEBUG(
+        "[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
-    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllToAllVMesh1DMultiJetty"));
+    CHK_SAFETY_FUNC_RET(
+        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllToAllVMesh1DMultiJetty"));
     kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllToAllVMesh1DMultiJettyKernel);
 
     std::vector<HcclChannelDesc> channelDescs;
     // 计算建链诉求以COMM_TOPO_1DMESH为优先级，优先建mesh链，没有mesh链建clos链
-    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
+    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
+        comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
 
     std::vector<uint32_t> jettyNums;
     CHK_RET(SetJettyNums(jettyNums, false));
@@ -64,19 +66,21 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::CalcRes(HcclComm comm, const OpPara
     kernelInfo.channels = channelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
-    HCCL_DEBUG("[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-               "ccuKernelInfos.size()=%llu",
-               channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
+    HCCL_DEBUG(
+        "[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "ccuKernelInfos.size()=%llu",
+        channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo &localSendRecvInfo, std::vector<uint64_t> &taskArgs)
-{   
+HcclResult
+CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo& localSendRecvInfo, std::vector<uint64_t>& taskArgs)
+{
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
-    config.memSlice     = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
     std::vector<uint32_t> jettyNums;
     CHK_RET(SetJettyNums(jettyNums, false));
     jettyNums_ = jettyNums;
@@ -88,7 +92,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo &
         uint64_t tailSliceSize = 0;
         if (localSendRecvInfo.sendLength[i] >= blockSize) {
             sliceSize = blockSize / jettyNums_[i] / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
-            tailSliceSize = blockSize - sliceSize * (jettyNums_[i] - 1);        
+            tailSliceSize = blockSize - sliceSize * (jettyNums_[i] - 1);
             if (jettyNums_[i] == 1) {
                 sliceSize = 0;
                 tailSliceSize = blockSize;
@@ -102,8 +106,8 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo &
             lastTailSliceSize = lastBlockSize;
         }
 
-        uint64_t sendOffset = localSendRecvInfo.sendOffset[i];        
-        uint64_t recvOffset = localSendRecvInfo.recvOffset[i];        
+        uint64_t sendOffset = localSendRecvInfo.sendOffset[i];
+        uint64_t recvOffset = localSendRecvInfo.recvOffset[i];
         taskArgs.push_back(sliceSize);
         taskArgs.push_back(tailSliceSize);
         taskArgs.push_back(lastSliceSize);
@@ -116,41 +120,41 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo &
         for (auto val : tailGoSize) {
             taskArgs.push_back(val);
         }
-        HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty] rankIdx[%llu] " \
-            "localSendRecvInfo.sendLength[%llu]," \
-            "localSendRecvInfo.sendOffset[%llu]," \
-            "localSendRecvInfo.recvLength[%llu]," \
-            "localSendRecvInfo.recvOffset[%llu]", i,
-            localSendRecvInfo.sendLength[i],
-            localSendRecvInfo.sendOffset[i],
-            localSendRecvInfo.recvLength[i],
+        HCCL_INFO(
+            "[CcuTempAllToAllVMesh1DMultiJetty] rankIdx[%llu] "
+            "localSendRecvInfo.sendLength[%llu],"
+            "localSendRecvInfo.sendOffset[%llu],"
+            "localSendRecvInfo.recvLength[%llu],"
+            "localSendRecvInfo.recvOffset[%llu]",
+            i, localSendRecvInfo.sendLength[i], localSendRecvInfo.sendOffset[i], localSendRecvInfo.recvLength[i],
             localSendRecvInfo.recvOffset[i]);
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, const TemplateDataParams& templateDataParams,
-                                                        TemplateResource& templateResource)
+HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
 
-    uint64_t inputAddr          = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
-    uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
+    uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
+    uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
     uint64_t srcOffset = 0; // alltoallv假设src起始地址为发送rank的对应块起始地址
     uint64_t dstOffset = 0; // alltoallv假设dst起始地址为接收rank的对应块起始地址
 
-    HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty] inputAddr[%llu], outputAddr[%llu],"
-              "srcOffset[%llu], dstOffset[%llu]",
-              inputAddr, outputAddr, srcOffset, dstOffset);
+    HCCL_INFO(
+        "[CcuTempAllToAllVMesh1DMultiJetty] inputAddr[%llu], outputAddr[%llu],"
+        "srcOffset[%llu], dstOffset[%llu]",
+        inputAddr, outputAddr, srcOffset, dstOffset);
 
     std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token, srcOffset, dstOffset};
 
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
-    config.memSlice     = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = LOCAL_COPY_MS_PER_LOOP * CCU_MS_SIZE;
     auto xnMaxTransportGoSize = CalGoSize(UB_MAX_TRANS_SIZE, config, GetCcuVersion());
     for (auto val : xnMaxTransportGoSize) {
         taskArgs.push_back(val);
@@ -158,17 +162,18 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, con
     CHK_RET(AddTaskArgA2AInfo(localSendRecvInfo_, taskArgs));
     uint64_t argSize = taskArgs.size();
 
-    CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0],
-        taskArgs.data(), argSize);
+    CcuResult launchRet
+        = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), argSize);
     if (launchRet != CCU_SUCCESS) {
         HCCL_ERROR("[CcuTempAllToAllVMesh1DMultiJetty::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
         return ConvertCcuToHccl(launchRet);
     }
     CcuKernelSubmitInfo submitInfo;
     submitInfo.kernelHandle = templateResource.ccuKernels[0];
-    CHK_RET(FillCachedArgs(submitInfo, buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, 
-                            token, srcOffset, dstOffset, xnMaxTransportGoSize[0], xnMaxTransportGoSize[1], 
-                            xnMaxTransportGoSize[2], xnMaxTransportGoSize[3], templateRankSize_));
+    CHK_RET(FillCachedArgs(
+        submitInfo, buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, token, srcOffset, dstOffset,
+        xnMaxTransportGoSize[0], xnMaxTransportGoSize[1], xnMaxTransportGoSize[2], xnMaxTransportGoSize[3],
+        templateRankSize_));
     templateResource.submitInfos.push_back(submitInfo);
 
     HCCL_DEBUG("[CcuTempAllToAllVMesh1DMultiJetty::KernelRun] end");
@@ -177,20 +182,20 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(const OpParam& param, con
 }
 
 // executor在orchestra中调用
-void CcuTempAllToAllVMesh1DMultiJetty::SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo)
+void CcuTempAllToAllVMesh1DMultiJetty::SetA2ASendRecvInfo(const A2ASendRecvInfo& sendRecvInfo)
 {
     localSendRecvInfo_ = sendRecvInfo;
 }
 
-HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
-    const TemplateFastLaunchCtx& tempFastLaunchCtx)
+HcclResult
+CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
     }
     HCCL_INFO("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] start");
-    uint64_t *args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
+    uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
     uint64_t argSize = 9;
     constexpr u32 inputIdx = 0;
     constexpr u32 outputIdx = 1;
@@ -198,8 +203,10 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
     constexpr u32 outputOffsetIdx = 1;
     args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
     args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
-    HCCL_INFO("[CcuTempAlltoAllVMesh1DMultiJetty::FastLaunch]: inputAddr[%llu], outputAddr[%llu], "
-              "srcOffset[%llu], dstOffset[%llu]", args[0], args[1], args[3], args[4]);
+    HCCL_INFO(
+        "[CcuTempAlltoAllVMesh1DMultiJetty::FastLaunch]: inputAddr[%llu], outputAddr[%llu], "
+        "srcOffset[%llu], dstOffset[%llu]",
+        args[0], args[1], args[3], args[4]);
     A2ASendRecvInfo localSendRecvInfo;
     HcclDataType dataType = param.all2AllVDataDes.sendType;
     uint64_t dataTypeSize = HCCL_SIZE_TABLE[dataType];
@@ -207,10 +214,9 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
     std::vector<uint64_t> taskArgsVec(args, args + argSize);
     CHK_RET(AddTaskArgA2AInfo(localSendRecvInfo_, taskArgsVec));
     argSize = taskArgsVec.size();
-    void *taskArgs = reinterpret_cast<void*>(taskArgsVec.data());
-    CcuResult launchRet = HcommCcuKernelLaunch(tempFastLaunchCtx.threads[0],
-                                               tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle,
-                                               taskArgs, argSize);
+    void* taskArgs = reinterpret_cast<void*>(taskArgsVec.data());
+    CcuResult launchRet = HcommCcuKernelLaunch(
+        tempFastLaunchCtx.threads[0], tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle, taskArgs, argSize);
     if (launchRet != CCU_SUCCESS) {
         HCCL_ERROR("[CcuTempAllToAllVMesh1DMultiJetty::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
         return ConvertCcuToHccl(launchRet);
@@ -219,10 +225,7 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::FastLaunch(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempAllToAllVMesh1DMultiJetty::GetThreadNum() const
-{
-    return 1;
-}
+u64 CcuTempAllToAllVMesh1DMultiJetty::GetThreadNum() const { return 1; }
 
 HcclResult CcuTempAllToAllVMesh1DMultiJetty::SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const
 {

@@ -19,6 +19,6 @@ namespace ops_hccl_allgather {
 extern thread_local aclrtBinHandle g_binKernelHandle;
 HcclResult LoadAICPUKernel(void);
 
-}
+} // namespace ops_hccl_allgather
 
 #endif

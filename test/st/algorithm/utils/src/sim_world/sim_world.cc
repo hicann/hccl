@@ -72,13 +72,7 @@ SimNpu& SimWorld::GetSimNpuByRankId(RankId rankId)
     return simNpus_[npuPos.superpodId][npuPos.serverId][npuPos.phyId];
 }
 
-NpuPos SimWorld::GetNpuPosByRankId(RankId rankId)
-{
-    return commDomain_.GetNpuPosByRankId(rankId);
-}
+NpuPos SimWorld::GetNpuPosByRankId(RankId rankId) { return commDomain_.GetNpuPosByRankId(rankId); }
 
-TopoMeta SimWorld::GetTopoMetaInfo()
-{
-    return topoMeta_;
-}
-}
+TopoMeta SimWorld::GetTopoMetaInfo() { return topoMeta_; }
+} // namespace HcclSim

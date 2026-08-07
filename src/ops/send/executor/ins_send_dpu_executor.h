@@ -18,34 +18,36 @@
 #include "coll_alg_v2_exec_registry.h"
 
 namespace ops_hccl {
-    template <typename InsAlgTemplate>
-    class InsSendDpuExecutor : public InsCollAlgBase {
-    public:
-        std::string Describe() const override;
+template <typename InsAlgTemplate>
+class InsSendDpuExecutor : public InsCollAlgBase {
+public:
+    std::string Describe() const override;
 
-        // 算法编排
-        HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
-        
-        HcclResult OrchestrateWithThread(
-            const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread) override;
+    // 算法编排
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-        HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-            AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
-        HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
+    HcclResult OrchestrateWithThread(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread) override;
 
-    protected:
-        HcclResult InitCommInfo(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
-        // 单算子还是图模式
-        OpMode opMode_;
-        u32 remoteRank_;
-        u32 myRank_;
-        std::vector<ThreadHandle> threads_;
-        
-        std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-        AlgHierarchyInfoForAllLevel algHierarchyInfo_;
-    };
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+protected:
+    HcclResult InitCommInfo(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    // 单算子还是图模式
+    OpMode opMode_;
+    u32 remoteRank_;
+    u32 myRank_;
+    std::vector<ThreadHandle> threads_;
+
+    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo_;
+};
 } // namespace ops_hccl
 
 #endif // HCCL_INS_SEND_EXECUTOR_H

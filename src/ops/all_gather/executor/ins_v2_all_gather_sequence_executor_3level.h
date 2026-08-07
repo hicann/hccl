@@ -19,30 +19,35 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 class InsV2AllGatherSequenceExecutor3Level : public InsCollAlgBase {
 public:
     explicit InsV2AllGatherSequenceExecutor3Level();
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       const AlgHierarchyInfoForAllLevel &algHierarchyInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-                                    AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
     HcclResult CalcLocalRankSize();
-    HcclResult InitExectorInfo(const OpParam &param);
-    HcclResult GenTempResource(int idx, TemplateResource &res) const;
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgLevel0,
-                                    InsAlgTemplate1 &tempAlgLevel1, InsAlgTemplate2 &tempAlgLevel2);
-    void GenTemplateAlgParamsLevel2(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 curCount, 
-                                    const u64 dataOffset, TemplateDataParams &tempAlgParamsLevel2) const;
-    void GenTemplateAlgParamsLevel1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 curCount, 
-                                    const u64 dataOffset, TemplateDataParams &tempAlgParamsLevel1) const;
-    void GenTemplateAlgParamsLevel0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 curCount, 
-                                    const u64 dataOffset, TemplateDataParams &tempAlgParamsLevel0) const;
-    HcclResult PrepareResForTemplate(InsAlgTemplate0 &tempAlgLevel0, InsAlgTemplate1 &tempAlgLevel1, InsAlgTemplate2 &tempAlgLevel2);
-    static uint64_t GetRankSize(const std::vector<std::vector<u32>> &vTopo);
+    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult GenTempResource(int idx, TemplateResource& res) const;
+    HcclResult OrchestrateLoop(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgLevel0,
+        InsAlgTemplate1& tempAlgLevel1, InsAlgTemplate2& tempAlgLevel2);
+    void GenTemplateAlgParamsLevel2(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 curCount, const u64 dataOffset,
+        TemplateDataParams& tempAlgParamsLevel2) const;
+    void GenTemplateAlgParamsLevel1(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 curCount, const u64 dataOffset,
+        TemplateDataParams& tempAlgParamsLevel1) const;
+    void GenTemplateAlgParamsLevel0(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 curCount, const u64 dataOffset,
+        TemplateDataParams& tempAlgParamsLevel0) const;
+    HcclResult PrepareResForTemplate(
+        InsAlgTemplate0& tempAlgLevel0, InsAlgTemplate1& tempAlgLevel1, InsAlgTemplate2& tempAlgLevel2);
+    static uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo);
 
     uint64_t rankIdxLevel0_{0};
     uint64_t rankIdxLevel1_{0};
@@ -56,16 +61,16 @@ protected:
         std::vector<std::vector<u32>> hierarchyInfo;
         uint64_t rankSize;
         std::vector<ThreadHandle> threads;
-        LevelInfo(decltype(remoteRankToChannelInfo_[0]) channels_,
-                  std::vector<std::vector<u32>> hierarchyInfo_)
-            : channels(channels_)
-            , hierarchyInfo(hierarchyInfo_)
-            , rankSize(GetRankSize(hierarchyInfo))
-            , threads() {}
+        LevelInfo(decltype(remoteRankToChannelInfo_[0]) channels_, std::vector<std::vector<u32>> hierarchyInfo_)
+            : channels(channels_),
+              hierarchyInfo(hierarchyInfo_),
+              rankSize(GetRankSize(hierarchyInfo)),
+              threads()
+        {}
     };
 
     std::vector<LevelInfo> levels_;
 };
-}
+} // namespace ops_hccl
 
 #endif

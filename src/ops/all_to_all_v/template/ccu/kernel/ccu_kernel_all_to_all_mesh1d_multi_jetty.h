@@ -19,14 +19,14 @@
 namespace ops_hccl {
 
 struct CcuKernelArgAllToAllMesh1DMultiJetty : CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<uint32_t>                   jettyNums;
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<uint32_t> jettyNums;
 };
 
 struct AllToAllMesh1DMultiJettyContext : CcuKernelCtxBase {
-    const CcuKernelArgAllToAllMesh1DMultiJetty *arg;
+    const CcuKernelArgAllToAllMesh1DMultiJetty* arg;
 
     ccu::Variable input;
     ccu::Variable output;
@@ -41,7 +41,7 @@ struct AllToAllMesh1DMultiJettyContext : CcuKernelCtxBase {
     GroupOpSizeVars goSize;
     std::vector<ccu::Variable> jettySlice;
     std::vector<ccu::Variable> jettySliceTail;
-    std::vector<ccu::Event>    eventList;
+    std::vector<ccu::Event> eventList;
 };
 
 CcuResult CcuAllToAllMesh1DMultiJettyKernel(CcuKernelArg arg);

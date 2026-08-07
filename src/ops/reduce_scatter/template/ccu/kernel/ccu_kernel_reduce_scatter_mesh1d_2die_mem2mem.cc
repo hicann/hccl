@@ -15,7 +15,8 @@ namespace ops_hccl {
 
 const std::string LOCAL_REDUCE_LOOP_BLOCK_TAG{"_local_reduce_loop_"};
 
-static CcuResult ParseKernelArg(ReduceScatterMesh1D2DieMem2MemContext &ctx, CcuKernelArgReduceScatterMesh1D2DieMem2Mem *kernelArg)
+static CcuResult
+ParseKernelArg(ReduceScatterMesh1D2DieMem2MemContext& ctx, CcuKernelArgReduceScatterMesh1D2DieMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankId = kernelArg->rankId;
@@ -28,16 +29,17 @@ static CcuResult ParseKernelArg(ReduceScatterMesh1D2DieMem2MemContext &ctx, CcuK
     ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_INFO("[CcuKernelReduceScatterMesh1D2DieMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_INFO(
+            "[CcuKernelReduceScatterMesh1D2DieMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult InitResource(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint16_t channelIdx = 0;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelReduceScatterMesh1D2DieMem2Mem] channels is empty!");
@@ -86,7 +88,7 @@ static CcuResult InitResource(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult LoadArgs(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[ctx.myRankIdx], cnt++));
@@ -105,13 +107,16 @@ static CcuResult LoadArgs(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult PreSync(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.input[ctx.myRankIdx], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.scratch[ctx.myRankIdx], SCRATCH_XN_ID, CKE_IDX_0, 1 << SCRATCH_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[ctx.myRankIdx], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[ctx.myRankIdx], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.scratch[ctx.myRankIdx], SCRATCH_XN_ID, CKE_IDX_0, 1 << SCRATCH_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[ctx.myRankIdx], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
     uint32_t allBit = 1 << INPUT_XN_ID | 1 << SCRATCH_XN_ID | 1 << TOKEN_XN_ID;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -120,9 +125,9 @@ static CcuResult PreSync(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult PostSync(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
@@ -132,7 +137,7 @@ static CcuResult PostSync(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult CreateReduceLoop(ReduceScatterMesh1D2DieMem2MemContext &ctx, uint32_t size)
+static CcuResult CreateReduceLoop(ReduceScatterMesh1D2DieMem2MemContext& ctx, uint32_t size)
 {
     AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated, REDUCE_SCATTER_LOOP_COUNT);
 
@@ -141,10 +146,10 @@ static CcuResult CreateReduceLoop(ReduceScatterMesh1D2DieMem2MemContext &ctx, ui
         return CCU_SUCCESS;
     }
     ctx.CreateLoopEntity(loopType);
-    auto &loops = ctx.loopMap[loopType];
+    auto& loops = ctx.loopMap[loopType];
 
     uint32_t expansionNum = GetReduceExpansionNum(ctx.reduceOp, ctx.dataType, ctx.outputDataType);
-    uint32_t usedBufNum   = size > expansionNum ? size : expansionNum;
+    uint32_t usedBufNum = size > expansionNum ? size : expansionNum;
 
     for (int32_t index = 0; index < LOOP_NUM; index++) {
         ctx.loopScratch[index].resize(size);
@@ -152,36 +157,37 @@ static CcuResult CreateReduceLoop(ReduceScatterMesh1D2DieMem2MemContext &ctx, ui
         uint32_t bufBase = index * ctx.moConfig.msInterleave;
         ccu::Event loopEvt = ctx.moRes.completedEvent[index];
 
-        loops.body[index].reset(new ccu::Func(
-            [&ctx, index, bufBase, loopEvt, size, expansionNum, usedBufNum]() {
-                for (uint32_t i = 0; i < size; i++) {
-                    ccu::LocalCopy(ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt, 1 << i);
-                }
-                ccu::EventWait(loopEvt, (1 << size) - 1);
+        loops.body[index].reset(new ccu::Func([&ctx, index, bufBase, loopEvt, size, expansionNum, usedBufNum]() {
+            for (uint32_t i = 0; i < size; i++) {
+                ccu::LocalCopy(
+                    ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt, 1 << i);
+            }
+            ccu::EventWait(loopEvt, (1 << size) - 1);
 
-                if (size > 1) {
-                    ccu::LocalReduce(&ctx.moRes.ccuBuf[bufBase], size, ctx.dataType, ctx.outputDataType, ctx.reduceOp, ctx.loopLen[index], loopEvt, 1);
-                    ccu::EventWait(loopEvt, 1);
-                }
-
-                ccu::LocalCopy(ctx.loopDst[index], ctx.moRes.ccuBuf[bufBase], ctx.loopLenExp[index], loopEvt, 1);
+            if (size > 1) {
+                ccu::LocalReduce(
+                    &ctx.moRes.ccuBuf[bufBase], size, ctx.dataType, ctx.outputDataType, ctx.reduceOp,
+                    ctx.loopLen[index], loopEvt, 1);
                 ccu::EventWait(loopEvt, 1);
+            }
+
+            ccu::LocalCopy(ctx.loopDst[index], ctx.moRes.ccuBuf[bufBase], ctx.loopLenExp[index], loopEvt, 1);
+            ccu::EventWait(loopEvt, 1);
         }));
 
-        loops.loops[index].reset(
-            new ccu::Loop(loops.loopParam[index], *loops.body[index]));
+        loops.loops[index].reset(new ccu::Loop(loops.loopParam[index], *loops.body[index]));
     }
 
     return CCU_SUCCESS;
 }
 
-static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
-        std::vector<ccu::LocalAddr> &scratchOrg)
+static CcuResult ReduceLoopGroup(
+    ReduceScatterMesh1D2DieMem2MemContext& ctx, ccu::LocalAddr outDstOrg, std::vector<ccu::LocalAddr>& scratchOrg)
 {
     const uint32_t size = scratchOrg.size();
 
     ccu::LocalAddr dst;
-    dst.addr  = outDstOrg.addr;
+    dst.addr = outDstOrg.addr;
     dst.token = outDstOrg.token;
 
     std::vector<ccu::LocalAddr> scratch;
@@ -193,7 +199,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
     }
 
     CCU_CHK_RET(CreateReduceLoop(ctx, size));
-    auto &loops = ctx.loopMap[ops_hccl::GetReduceTypeStr(ctx.dataType, ctx.reduceOp)];
+    auto& loops = ctx.loopMap[ops_hccl::GetReduceTypeStr(ctx.dataType, ctx.reduceOp)];
 
     uint32_t expansionNum = GetReduceExpansionNum(ctx.reduceOp, ctx.dataType, ctx.outputDataType);
     ccu::Variable sliceSizeExpansion;
@@ -210,7 +216,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
         ccu::Variable sliceSize;
         loopParam = GetLoopParam(0, ctx.moConfig.memSlice * ctx.moConfig.loopCount, 0);
         loopParam = loopParam + ctx.sliceGoSize.loopParam;
-        sliceSize          = ctx.moConfig.memSlice;
+        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
         // 绑定loop0的外部LocalAddr和Variable
@@ -218,12 +224,12 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
             ctx.loopScratch[0][i].addr = scratch[i].addr;
             ctx.loopScratch[0][i].token = scratch[i].token;
         }
-        ctx.loopSrc[0].addr  = dst.addr;
+        ctx.loopSrc[0].addr = dst.addr;
         ctx.loopSrc[0].token = dst.token;
-        ctx.loopDst[0].addr  = dst.addr;
+        ctx.loopDst[0].addr = dst.addr;
         ctx.loopDst[0].token = dst.token;
-        ctx.loopLen[0]       = sliceSize;
-        ctx.loopLenExp[0]    = sliceSizeExpansion;
+        ctx.loopLen[0] = sliceSize;
+        ctx.loopLenExp[0] = sliceSizeExpansion;
 
         ccu::Variable paraCfg;
         ccu::Variable offsetCfg;
@@ -231,7 +237,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
         loops.loopParam[0] = loopParam;
-        std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0]};
         ccu::LoopGroup group(paraCfg, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
@@ -255,11 +261,11 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
             ctx.loopScratch[0][i].addr = scratch[i].addr;
             ctx.loopScratch[0][i].token = scratch[i].token;
         }
-        ctx.loopSrc[0].addr  = dst.addr;
+        ctx.loopSrc[0].addr = dst.addr;
         ctx.loopSrc[0].token = dst.token;
-        ctx.loopDst[0].addr  = dst.addr;
+        ctx.loopDst[0].addr = dst.addr;
         ctx.loopDst[0].token = dst.token;
-        ctx.loopLen[0]    = ctx.sliceGoSize.residual;
+        ctx.loopLen[0] = ctx.sliceGoSize.residual;
         ctx.loopLenExp[0] = sliceSizeExpansion;
 
         ccu::Variable sliceSize;
@@ -270,7 +276,7 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
         for (uint32_t i = 0; i < expansionNum; i++) {
             dst.addr += ctx.sliceGoSize.residual;
         }
-        sliceSize          = ctx.moConfig.memSlice;
+        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
         // 绑定loop1参数 (n部分)
@@ -278,11 +284,11 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
             ctx.loopScratch[1][i].addr = scratch[i].addr;
             ctx.loopScratch[1][i].token = scratch[i].token;
         }
-        ctx.loopSrc[1].addr  = dst.addr;
+        ctx.loopSrc[1].addr = dst.addr;
         ctx.loopSrc[1].token = dst.token;
-        ctx.loopDst[1].addr  = dst.addr;
+        ctx.loopDst[1].addr = dst.addr;
         ctx.loopDst[1].token = dst.token;
-        ctx.loopLen[1]    = sliceSize;
+        ctx.loopLen[1] = sliceSize;
         ctx.loopLenExp[1] = sliceSizeExpansion;
 
         ccu::Variable loopCfg0;
@@ -294,18 +300,18 @@ static CcuResult ReduceLoopGroup(ReduceScatterMesh1D2DieMem2MemContext &ctx, ccu
 
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
-        std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0], *loops.loops[1]};
         ccu::LoopGroup group(ctx.sliceGoSize.parallelParam, offsetCfg, ctx.moConfig.loopCount, grpLoops);
     }
 
     return CCU_SUCCESS;
 }
 
-static CcuResult DoReduceScatter(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult DoReduceScatter(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
     ccu::LocalAddr myOutput;
-    myOutput.addr   = ctx.output;
-    myOutput.token  = ctx.token[ctx.myRankIdx];
+    myOutput.addr = ctx.output;
+    myOutput.token = ctx.token[ctx.myRankIdx];
 
     if (ctx.rankId < ctx.rankSize) {
         if (!ctx.isReduceToOutput) {
@@ -325,7 +331,9 @@ static CcuResult DoReduceScatter(ReduceScatterMesh1D2DieMem2MemContext &ctx)
             ctx.scratchMem[rankIdx].addr += ctx.currentRankSliceInputOffset;
             ctx.scratchMem[rankIdx].token = ctx.token[ctx.myRankIdx];
         } else {
-            CCU_CHK_RET(ccu::Read(ctx.arg->channels[channelId], ctx.scratchMem[rankIdx], ctx.remoteInput[rankIdx], ctx.sliceSize, ctx.event, 1 << rankIdx));
+            CCU_CHK_RET(ccu::Read(
+                ctx.arg->channels[channelId], ctx.scratchMem[rankIdx], ctx.remoteInput[rankIdx], ctx.sliceSize,
+                ctx.event, 1 << rankIdx));
             channelId++;
         }
     }
@@ -338,7 +346,7 @@ static CcuResult DoReduceScatter(ReduceScatterMesh1D2DieMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext &ctx)
+static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext& ctx)
 {
     ccu::Variable scratchOffset;
     std::vector<ccu::Variable> scratchOffsetVec;
@@ -376,10 +384,12 @@ static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext &ctx)
 
     ccu::Variable repeatNumAdd;
     ctx.flag = 0;
-    repeatNumAdd  = 1;
-    CCU_WHILE(ctx.repeatNum != UINT64_MAX) {
+    repeatNumAdd = 1;
+    CCU_WHILE(ctx.repeatNum != UINT64_MAX)
+    {
         ctx.repeatNum += repeatNumAdd;
-        CCU_IF(ctx.flag == 1) {
+        CCU_IF(ctx.flag == 1)
+        {
             for (uint64_t rankIdx = 0; rankIdx < ctx.rankSize; rankIdx++) {
                 if (ctx.subRankGroup[rankIdx] == ctx.rankId) {
                     ctx.myInput.addr += ctx.inputRepeatStride;
@@ -389,10 +399,7 @@ static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext &ctx)
             }
             ctx.output += ctx.outputRepeatStride;
         }
-        CCU_IF(ctx.sliceSize != 0)
-        {
-            CCU_CHK_RET(DoReduceScatter(ctx));
-        }
+        CCU_IF(ctx.sliceSize != 0) { CCU_CHK_RET(DoReduceScatter(ctx)); }
         ctx.flag = 1;
     }
     return CCU_SUCCESS;
@@ -400,7 +407,7 @@ static CcuResult RmtReduce(ReduceScatterMesh1D2DieMem2MemContext &ctx)
 
 CcuResult CcuReduceScatterMesh1D2DieMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceScatterMesh1D2DieMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterMesh1D2DieMem2Mem*>(arg);
 
     ReduceScatterMesh1D2DieMem2MemContext ctx;
     ctx.resourceAllocated = false;

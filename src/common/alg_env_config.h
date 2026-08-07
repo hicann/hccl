@@ -20,15 +20,15 @@ namespace ops_hccl {
 
 constexpr u32 MAX_LEN_OF_DIGIT_ENV = 10; // 数字环境变量最大长度
 
-constexpr u32 HCCL_RETRY_ENABLE_LEVEL_0 = 0;        // HCCL 重执行层级0
-constexpr u32 HCCL_RETRY_ENABLE_LEVEL_1 = 1;        // HCCL 重执行层级1
-constexpr u32 HCCL_RETRY_ENABLE_LEVEL_2 = 2;        // HCCL 重执行层级2
-constexpr u32 HCCL_RETRY_ENABLE_LEVEL_NUM = 3;     // HCCL 重执行层级最多3级
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_0 = 0;   // HCCL 重执行层级0
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_1 = 1;   // HCCL 重执行层级1
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_2 = 2;   // HCCL 重执行层级2
+constexpr u32 HCCL_RETRY_ENABLE_LEVEL_NUM = 3; // HCCL 重执行层级最多3级
 
 enum class DeterministicEnableLevel {
-    DETERMINISTIC_DISABLE = 0,          // 不支持确定性
-    DETERMINISTIC_ENABLE,               // 支持确定性，不支持规约保序
-    DETERMINISTIC_STRICT                // 支持确定性以及规约保序
+    DETERMINISTIC_DISABLE = 0, // 不支持确定性
+    DETERMINISTIC_ENABLE,      // 支持确定性，不支持规约保序
+    DETERMINISTIC_STRICT       // 支持确定性以及规约保序
 };
 
 struct AlgEnvConfig {
@@ -37,10 +37,10 @@ struct AlgEnvConfig {
 
     bool interHccsDisable;
     bool enableEntryLog;
-    u32 intraRoceSwitch;    // server内的通信方式 与intraPcieSwitch组合使用，默认为0
+    u32 intraRoceSwitch;             // server内的通信方式 与intraPcieSwitch组合使用，默认为0
     int32_t inconsistentCheckSwitch; // 参数一致性校验开关，默认为0
     u8 hcclDeterministic;
-    bool aicpuUnfold; 
+    bool aicpuUnfold;
     uint8_t aicpuCacheEnable;
     bool aivMode;
     bool aivOnlyMode;
@@ -55,18 +55,17 @@ struct AlgEnvConfig {
     bool taskExceptionEnable;
     std::map<HcclCMDType, std::vector<HcclAlgoType>> hcclAlgoConfig;
 
-    AlgEnvConfig()
-    {
-        SetDefaultParams();
-    }
+    AlgEnvConfig() { SetDefaultParams(); }
     void SetDefaultParams()
     {
         initialized = false;
         interHccsDisable = false;
         enableEntryLog = false;
-        intraRoceSwitch = 0;     // server内的通信方式 与intraPcieSwitch组合使用，默认为0
+        intraRoceSwitch = 0; // server内的通信方式 与intraPcieSwitch组合使用，默认为0
         inconsistentCheckSwitch = 0; // 参数一致性校验开关 -1：不校验；0：仅校验首算子；1：每次算子下发均校验
-        hcclDeterministic = static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_DISABLE);// 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
+        hcclDeterministic = static_cast<u8>(
+            DeterministicEnableLevel::
+                DETERMINISTIC_DISABLE); // 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
         enableFfts = true;
         taskExceptionEnable = true;
         aicpuCacheEnable = 0; // 默认关闭aicpu cache
@@ -75,8 +74,8 @@ struct AlgEnvConfig {
         execTimeout = 0;
         // 环境变量参数
         for (u32 opType = 0; opType < static_cast<u32>(HcclCMDType::HCCL_CMD_MAX); opType++) {
-            hcclAlgoConfig[static_cast<HcclCMDType>(opType)] =
-                std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
+            hcclAlgoConfig[static_cast<HcclCMDType>(opType)]
+                = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
         }
     }
 };
@@ -101,25 +100,25 @@ HcclResult InitEnvConfig();
 
 HcclResult ParseHcclAlgo();
 
-HcclResult SetHcclAlgoConfig(const std::string &hcclAlgo);
+HcclResult SetHcclAlgoConfig(const std::string& hcclAlgo);
 
 HcclResult ResetAlgEnvConfigInitState();
 
 const std::vector<HcclAlgoType> GetExternalInputHcclAlgoConfig(HcclCMDType opType = HcclCMDType::HCCL_CMD_ALL);
 
-HcclResult SetCommonAlgType(std::vector<std::string> &algos);
+HcclResult SetCommonAlgType(std::vector<std::string>& algos);
 
-HcclResult SetSpecificAlgType(std::vector<std::string> &algos);
+HcclResult SetSpecificAlgType(std::vector<std::string>& algos);
 
-HcclResult ParserHcclAlgoLevel(const std::string &algoLevel, u32 &level, HcclAlgoType &algoType);
+HcclResult ParserHcclAlgoLevel(const std::string& algoLevel, u32& level, HcclAlgoType& algoType);
 
-HcclResult ParseAlgoString(std::string opName, std::string &algoString, std::vector<HcclAlgoType> &algType);
+HcclResult ParseAlgoString(std::string opName, std::string& algoString, std::vector<HcclAlgoType>& algType);
 
-HcclResult SplitHcclOpType(const std::string &algoConfig, std::vector<std::string> &algos);
+HcclResult SplitHcclOpType(const std::string& algoConfig, std::vector<std::string>& algos);
 
-HcclResult CheckAlgoConfigValid(std::vector<std::string> &algos, bool& anyCommonConfig, bool& anySpecificConfig);
+HcclResult CheckAlgoConfigValid(std::vector<std::string>& algos, bool& anyCommonConfig, bool& anySpecificConfig);
 
-HcclResult SplitHcclAlgoLevel(const std::string &algoConfig, std::vector<std::string> &algos);
+HcclResult SplitHcclAlgoLevel(const std::string& algoConfig, std::vector<std::string>& algos);
 
 HcclResult ParseIntraLinkType();
 
@@ -135,17 +134,17 @@ HcclResult ParseExecTimeout();
 
 HcclResult ParseMultipleDimensionSplitRatio();
 
-HcclResult SplitHcclRetryEnable(const std::string &retryConfig, std::vector<std::string> &retryEnables);
+HcclResult SplitHcclRetryEnable(const std::string& retryConfig, std::vector<std::string>& retryEnables);
 
-HcclResult CollectRetryEnableFromConfig(const std::vector<std::string> &retryEnables);
+HcclResult CollectRetryEnableFromConfig(const std::vector<std::string>& retryEnables);
 
 HcclResult ParseRetryEnable();
 
 HcclResult ParseDfsConfig();
 
-std::vector<std::string> SplitDfsConfig(const std::string &str, char delimiter);
+std::vector<std::string> SplitDfsConfig(const std::string& str, char delimiter);
 
-HcclResult ParseInconsistentCheckSwitch(const std::string &inconsistentCheckSwitch);
+HcclResult ParseInconsistentCheckSwitch(const std::string& inconsistentCheckSwitch);
 
 const u32& GetExternalInputIntraRoceSwitch();
 
@@ -177,13 +176,13 @@ const u8& GetExternalInputHcclDeterministic();
 
 const std::map<HcclCMDType, std::vector<HcclAlgoType>> GetExternalInputHcclAlgoConfigAllType();
 
-bool GetExternalInputExecTimeout(double &execTimeOut);
+bool GetExternalInputExecTimeout(double& execTimeOut);
 
 bool RunIndependentOpExpansion(HcclDevType deviceType);
 
-bool GetExternalInputMultipleDimensionSplitRatio(double &multipleDimensionSplitRatio);
+bool GetExternalInputMultipleDimensionSplitRatio(double& multipleDimensionSplitRatio);
 
 bool GetExternalInputTaskExceptionEnable();
-}
+} // namespace ops_hccl
 
 #endif // HCCL_ALG_ENV_CONFIG_H

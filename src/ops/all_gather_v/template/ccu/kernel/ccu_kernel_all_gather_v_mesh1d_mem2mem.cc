@@ -14,16 +14,16 @@
 namespace ops_hccl {
 
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int CKE_IDX_0    = 0;
-constexpr int CKE_IDX_1    = 1;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int CKE_IDX_0 = 0;
+constexpr int CKE_IDX_1 = 1;
 
 constexpr uint64_t LOCAL_COPY_MS = 8;
-constexpr int POST_SYNC_ID       = 3;
+constexpr int POST_SYNC_ID = 3;
 
-static CcuResult InitResource(AllGatherVMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(AllGatherVMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllGatherVMesh1DMem2Mem] channels is empty!");
@@ -45,9 +45,9 @@ static CcuResult InitResource(AllGatherVMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllGatherVMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(AllGatherVMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], cnt++));
@@ -61,10 +61,10 @@ static CcuResult LoadArgs(AllGatherVMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(AllGatherVMesh1DMem2MemContext &ctx)
+static void PreSync(AllGatherVMesh1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D PreSync begin");
- 	const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::WriteVariableWithNotify(
             arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
@@ -73,15 +73,15 @@ static void PreSync(AllGatherVMesh1DMem2MemContext &ctx)
     }
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
     for (uint32_t i = 0; i < arg->channelCount; i++) {
- 	    ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit);
- 	}
+        ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit);
+    }
     HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D PreSync end");
 }
 
-static void PostSync(AllGatherVMesh1DMem2MemContext &ctx)
+static void PostSync(AllGatherVMesh1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D post sync start");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
@@ -91,11 +91,12 @@ static void PostSync(AllGatherVMesh1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelAllGatherVMesh1DMem2Mem] AllgatherVMesh1D post sync end");
 }
 
-static void DoAllGatherV(AllGatherVMesh1DMem2MemContext &ctx)
+static void DoAllGatherV(AllGatherVMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelId = 0;
-    CCU_IF(ctx.mySliceSize != 0) {
+    CCU_IF(ctx.mySliceSize != 0)
+    {
         for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
             ctx.src.addr = ctx.input;
             ctx.src.token = ctx.token[arg->rankId];
@@ -110,7 +111,8 @@ static void DoAllGatherV(AllGatherVMesh1DMem2MemContext &ctx)
                 ctx.dst[rankIdx].token = ctx.token[rankIdx];
                 CCU_IF(ctx.mySliceSize != 0)
                 {
-                    ccu::Write(arg->channels[channelId], ctx.dst[rankIdx], ctx.src, ctx.mySliceSize, ctx.event, 1 << rankIdx);
+                    ccu::Write(
+                        arg->channels[channelId], ctx.dst[rankIdx], ctx.src, ctx.mySliceSize, ctx.event, 1 << rankIdx);
                 }
                 channelId++;
             }
@@ -122,7 +124,7 @@ static void DoAllGatherV(AllGatherVMesh1DMem2MemContext &ctx)
 
 CcuResult CcuAllGatherVMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllGatherVMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllGatherVMesh1DMem2Mem*>(arg);
     AllGatherVMesh1DMem2MemContext ctx;
     ctx.resourceAllocated = false;
     ctx.arg = kernelArg;

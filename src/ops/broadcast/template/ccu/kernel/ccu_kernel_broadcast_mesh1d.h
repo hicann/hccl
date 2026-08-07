@@ -19,15 +19,15 @@
 namespace ops_hccl {
 
 struct CcuKernelArgBroadcastMesh1D : CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    uint32_t                                rootId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t rootId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct BroadcastMesh1DContext : CcuKernelCtxBase {
-    const CcuKernelArgBroadcastMesh1D *arg;
+    const CcuKernelArgBroadcastMesh1D* arg;
 
     ccu::Variable input;
     std::vector<ccu::Variable> output;

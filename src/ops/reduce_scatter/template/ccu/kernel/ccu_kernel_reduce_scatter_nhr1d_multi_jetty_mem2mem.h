@@ -27,9 +27,7 @@ using NHRStepInfo = struct NHRStepInfoDef {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    NHRStepInfoDef() : nSlices(0)
-    {
-    }
+    NHRStepInfoDef() : nSlices(0) {}
 };
 #endif
 
@@ -46,7 +44,7 @@ struct CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D : public CcuKernelArgBase
 };
 
 struct ReduceScatterNhrMem2Mem1DMultiJettyContext : public CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D *arg;
+    const CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D* arg;
 
     uint64_t dimSize{0};
     uint32_t rankId{0};
@@ -82,5 +80,5 @@ struct ReduceScatterNhrMem2Mem1DMultiJettyContext : public CcuKernelCtxBase {
 
 CcuResult CcuReduceScatterNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCLV2_CCU_KERNEL_REDUCE_SCATTER_NHR_1D_MUTIL_JETTY_MEM2MEM_H

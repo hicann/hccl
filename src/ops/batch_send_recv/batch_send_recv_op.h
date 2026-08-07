@@ -24,20 +24,21 @@
 extern "C" {
 #endif
 
-HcclResult HcclBatchSendRecv(HcclSendRecvItem *sendRecvInfo, uint32_t itemNum,
-                             HcclComm comm, aclrtStream stream);
+HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }
 #endif
 
 namespace ops_hccl {
-HcclResult BatchSendRecvOutPlace(HcclSendRecvItem *sendRecvInfo, uint32_t itemNum,
-    HcclComm comm, aclrtStream stream, const std::string &tag);
+HcclResult BatchSendRecvOutPlace(
+    HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream, const std::string& tag);
 
-HcclResult CheckBatchSendRecvInputPara(const HcclComm &comm, const HcclSendRecvItem *sendRecvInfo, const aclrtStream stream);
-HcclResult BatchSendRecvEntryLog(uint32_t itemNum, aclrtStream stream, const std::string &tag, const std::string &opName);
+HcclResult
+CheckBatchSendRecvInputPara(const HcclComm& comm, const HcclSendRecvItem* sendRecvInfo, const aclrtStream stream);
+HcclResult
+BatchSendRecvEntryLog(uint32_t itemNum, aclrtStream stream, const std::string& tag, const std::string& opName);
 
-}
+} // namespace ops_hccl
 
 #endif

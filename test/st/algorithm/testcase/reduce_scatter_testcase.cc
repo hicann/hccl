@@ -7,7 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "gtest/gtest.h"
 #include "sim_world.h"
 #include "hccl.h"
@@ -17,16 +17,13 @@
 #include "check_utils.h"
 #include <thread>
 #include "alg_env_config.h"
- 
+
 using namespace HcclSim;
 using namespace ops_hccl;
- 
+
 class ST_REDUCE_SCATTER_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
@@ -34,15 +31,12 @@ protected:
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-static void RunReduceScatterTest(const TopoMeta &topoMeta, u64 recvCount,
-                                  HcclDataType dataType,
-                                  HcclReduceOp reduceOp = HCCL_REDUCE_SUM)
+static void RunReduceScatterTest(
+    const TopoMeta& topoMeta, u64 recvCount, HcclDataType dataType, HcclReduceOp reduceOp = HCCL_REDUCE_SUM)
 {
     auto rankSize = 0;
     for (auto elem : topoMeta[0]) {
@@ -50,16 +44,36 @@ static void RunReduceScatterTest(const TopoMeta &topoMeta, u64 recvCount,
     }
     size_t dataUnitSize = 0;
     switch (dataType) {
-        case HCCL_DATA_TYPE_INT8:   dataUnitSize = sizeof(int8_t);  break;
-        case HCCL_DATA_TYPE_INT16:  dataUnitSize = sizeof(int16_t); break;
-        case HCCL_DATA_TYPE_INT32:  dataUnitSize = sizeof(int32_t); break;
-        case HCCL_DATA_TYPE_INT64:  dataUnitSize = sizeof(int64_t); break;
-        case HCCL_DATA_TYPE_FP16:   dataUnitSize = 2;               break;
-        case HCCL_DATA_TYPE_FP32:   dataUnitSize = sizeof(float);   break;
-        case HCCL_DATA_TYPE_FP64:   dataUnitSize = sizeof(double);  break;
-        case HCCL_DATA_TYPE_BFP16:  dataUnitSize = 2;               break;
-        case HCCL_DATA_TYPE_UINT8:  dataUnitSize = sizeof(uint8_t); break;
-        default:                    dataUnitSize = 0;               break;
+        case HCCL_DATA_TYPE_INT8:
+            dataUnitSize = sizeof(int8_t);
+            break;
+        case HCCL_DATA_TYPE_INT16:
+            dataUnitSize = sizeof(int16_t);
+            break;
+        case HCCL_DATA_TYPE_INT32:
+            dataUnitSize = sizeof(int32_t);
+            break;
+        case HCCL_DATA_TYPE_INT64:
+            dataUnitSize = sizeof(int64_t);
+            break;
+        case HCCL_DATA_TYPE_FP16:
+            dataUnitSize = 2;
+            break;
+        case HCCL_DATA_TYPE_FP32:
+            dataUnitSize = sizeof(float);
+            break;
+        case HCCL_DATA_TYPE_FP64:
+            dataUnitSize = sizeof(double);
+            break;
+        case HCCL_DATA_TYPE_BFP16:
+            dataUnitSize = 2;
+            break;
+        case HCCL_DATA_TYPE_UINT8:
+            dataUnitSize = sizeof(uint8_t);
+            break;
+        default:
+            dataUnitSize = 0;
+            break;
     }
 
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
@@ -75,8 +89,8 @@ static void RunReduceScatterTest(const TopoMeta &topoMeta, u64 recvCount,
             aclrtCreateStream(&stream);
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
             u64 sendBufSize = recvCount * dataUnitSize * rankSize;
             u64 recvBufSize = recvCount * dataUnitSize;
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -86,7 +100,7 @@ static void RunReduceScatterTest(const TopoMeta &topoMeta, u64 recvCount,
             return HCCL_SUCCESS;
         });
     }
-    for (auto &thread : threads) {
+    for (auto& thread : threads) {
         thread.join();
     }
 
@@ -95,7 +109,7 @@ static void RunReduceScatterTest(const TopoMeta &topoMeta, u64 recvCount,
     EXPECT_TRUE(res == HCCL_SUCCESS);
     SimWorld::Global()->Deinit();
 }
- 
+
 TEST_F(ST_REDUCE_SCATTER_TEST, test_host_dpu_reducescatter_001)
 {
     RunReduceScatterTest(TopoMeta{{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}}}, 1, HCCL_DATA_TYPE_FP32);

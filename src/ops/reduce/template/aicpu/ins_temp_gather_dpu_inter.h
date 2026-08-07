@@ -20,8 +20,7 @@ namespace ops_hccl {
 class InsTempGatherDpuInter : public InsAlgTemplateBase {
 public:
     InsTempGatherDpuInter() {}
-    InsTempGatherDpuInter(const OpParam& param, const u32 rankId,
-                               const std::vector<std::vector<u32>> &subCommRanks);
+    InsTempGatherDpuInter(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempGatherDpuInter() override {}
 
@@ -32,28 +31,27 @@ public:
         return info;
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult DPUKernelRun(const TemplateDataParams& tempAlgParams,
-                            const std::map<u32, std::vector<ChannelInfo>>& channels,
-                            const u32 myRank,
-                            const std::vector<std::vector<uint32_t>>& subCommRanks) override;
-
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
 
 private:
-    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo);
+    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo& stepInfo);
     u32 GetRankFromMap(const uint32_t rankIdx);
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
     HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels);
     HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override {}
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override {}
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {}
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {}
     u64 count_{0};
     u32 dataTypeSize_{0};
 };
-}
+} // namespace ops_hccl
 
 #endif

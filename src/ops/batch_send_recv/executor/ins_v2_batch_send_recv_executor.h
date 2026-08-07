@@ -25,28 +25,26 @@ public:
     explicit InsV2BatchSendRecvExecutor();
     ~InsV2BatchSendRecvExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param,
-        const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-        AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-        AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
-
     struct SendRecvSlice {
         void* addr_;
         u64 size_;
         u32 remoteRank_;
-        SendRecvSlice(void* addr, u64 size, u32 remoteRank) :
-            addr_(addr), size_(size), remoteRank_(remoteRank) {}
+        SendRecvSlice(void* addr, u64 size, u32 remoteRank) : addr_(addr), size_(size), remoteRank_(remoteRank) {}
     }; // 切片任务信息
 
     std::deque<SendRecvSlice> sendDataSilces_;
     std::deque<SendRecvSlice> recvDataSilces_;
-    std::vector<std::map<u32 ,std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
+    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
 
 private:
@@ -54,11 +52,11 @@ private:
     bool SortSendItems(const HcclSendRecvItem* a, const HcclSendRecvItem* b) const;
     bool SortRecvItems(const HcclSendRecvItem* a, const HcclSendRecvItem* b) const;
     bool SortSelfItems(const HcclSendRecvItem* a, const HcclSendRecvItem* b) const;
-    HcclResult GetPairWiseList(const HcclSendRecvItem *sendRecvInfo, u32 itemNum);
-    
+    HcclResult GetPairWiseList(const HcclSendRecvItem* sendRecvInfo, u32 itemNum);
+
     // 实现自发自收
     HcclResult ProcessSelfSendRecvTasks(ThreadHandle& thread);
-    
+
     // 收发任务切片
     HcclResult CalcSendSlices();
     HcclResult CalcRecvSlices();
@@ -77,7 +75,7 @@ private:
     const HcclSendRecvItem* itemPtr_ = nullptr;
     HcclMem cclMem_{HCCL_MEM_TYPE_DEVICE, nullptr, 0};
     u32 itemNum_ = 0;
-    u64 maxRoundTransferSize_ = 0; // 单轮最多能够传输的size
+    u64 maxRoundTransferSize_ = 0;        // 单轮最多能够传输的size
     std::set<u32> commTargetUserRankSet_; // 所有需要通信的remoteRank ID集合
     std::deque<const HcclSendRecvItem*> sendToSelfDeque_;
     std::deque<const HcclSendRecvItem*> recvFromSelfDeque_;

@@ -23,10 +23,7 @@ using namespace ops_hccl;
 
 class ST_REDUCE_SCATTER_TEST_A2A3 : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
@@ -34,16 +31,14 @@ protected:
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
         unsetenv("HCCL_BIRS_ENABLE");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 
-    void RunReduceScatterBirsA3(const TopoMeta &topoMeta, const u64 &recvCount, const HcclDataType &dataType,
-        const HcclReduceOp &reduceOp)   {
-        
+    void RunReduceScatterBirsA3(
+        const TopoMeta& topoMeta, const u64& recvCount, const HcclDataType& dataType, const HcclReduceOp& reduceOp)
+    {
         SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_910_93);
-    
+
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
         setenv("HCCL_BIRS_ENABLE", "TRUE", 1);
@@ -51,7 +46,7 @@ protected:
         // 算子执行参数设置
         auto rankSize = 0;
         for (u32 i = 0; i < topoMeta[0].size(); i++)
-            rankSize += topoMeta[0][i].size();  // 参与集合通信的卡数(同topoMeta卡数一致)
+            rankSize += topoMeta[0][i].size(); // 参与集合通信的卡数(同topoMeta卡数一致)
         auto dataUnitSize = sizeof(dataType);
         // 多线程运行ReduceScatter算子
         std::vector<std::thread> threads;
@@ -68,9 +63,9 @@ protected:
                 HcclComm comm = nullptr;
                 CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-                void *sendBuf = nullptr;
-                void *recvBuf = nullptr;
-                u64 sendBufSize = recvCount * dataUnitSize * rankSize;  // 数据量转化为字节数
+                void* sendBuf = nullptr;
+                void* recvBuf = nullptr;
+                u64 sendBufSize = recvCount * dataUnitSize * rankSize; // 数据量转化为字节数
                 u64 recvBufSize = recvCount * dataUnitSize;
                 // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
                 aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -99,13 +94,13 @@ protected:
         SimWorld::Global()->Deinit();
     }
 };
- 
+
 TEST_F(ST_REDUCE_SCATTER_TEST_A2A3, st_reduce_scatter_opbase_test_origin)
 {
     // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
-    auto recvCount = 100;                                // 单卡数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    TopoMeta topoMeta{{{0, 1, 2, 3}}};                  // 三维数组指定超节点-Server-Device信息
+    auto recvCount = 100;                               // 单卡数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32; // 数据类型
     auto reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunReduceScatterBirsA3(topoMeta, recvCount, dataType, reduceOp);
 }
@@ -114,7 +109,7 @@ TEST_F(ST_REDUCE_SCATTER_TEST_A2A3, st_reduce_scatter_cross_server_4x16)
 {
     // 仿真模型初始化
     TopoMeta topoMeta;
-    std::vector<u32> args {1, 4, 16};
+    std::vector<u32> args{1, 4, 16};
     for (int i = 0; i < args[0]; i++) {
         SuperPodMeta superPodMeta;
         for (int j = 0; j < args[1]; j++) {
@@ -126,8 +121,8 @@ TEST_F(ST_REDUCE_SCATTER_TEST_A2A3, st_reduce_scatter_cross_server_4x16)
         }
         topoMeta.push_back(superPodMeta);
     }
-    auto recvCount = 100;                                // 单卡数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    auto recvCount = 100;                               // 单卡数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32; // 数据类型
     auto reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     RunReduceScatterBirsA3(topoMeta, recvCount, dataType, reduceOp);
 }

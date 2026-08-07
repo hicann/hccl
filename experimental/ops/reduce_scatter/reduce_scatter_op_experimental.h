@@ -31,14 +31,15 @@ extern "C" {
 namespace ops_hccl_experimental {
 using ops_hccl::OpParam;
 
-HcclResult ReduceScatterExperimental(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-                             HcclReduceOp op, HcclComm comm, aclrtStream stream);
-HcclResult ReduceScatterOutPlaceCustom(OpParam &param, void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
-    HcclReduceOp op, HcclComm comm, aclrtStream stream, u32 userRankSize);
-
+HcclResult ReduceScatterExperimental(
+    void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream);
+HcclResult ReduceScatterOutPlaceCustom(
+    OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op,
+    HcclComm comm, aclrtStream stream, u32 userRankSize);
 
 bool MatchBIRS();
 
-}
+} // namespace ops_hccl_experimental
 
 #endif

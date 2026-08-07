@@ -20,15 +20,15 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgAllGatherVMesh1DMem2Mem: CcuKernelArgBase{
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgAllGatherVMesh1DMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct AllGatherVMesh1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgAllGatherVMesh1DMem2Mem *arg;
+struct AllGatherVMesh1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgAllGatherVMesh1DMem2Mem* arg;
     ccu::Variable input;
     std::vector<ccu::Variable> output;
     std::vector<ccu::Variable> token;
@@ -44,5 +44,5 @@ struct AllGatherVMesh1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuAllGatherVMesh1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCLV2_CCU_KERNEL_ALL_GATHER_V_MESH_1D_MEM2MEM_H

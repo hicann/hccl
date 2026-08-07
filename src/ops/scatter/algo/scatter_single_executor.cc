@@ -13,19 +13,13 @@
 namespace ops_hccl {
 ScatterSingleExecutor::ScatterSingleExecutor() : ScatterExecutorBase()
 {
-    desc_.level1SupportedAlgos = {
-        AlgTypeLevel1::ALG_LEVEL1_NHR,
-        AlgTypeLevel1::ALG_LEVEL1_NB,
-        AlgTypeLevel1::ALG_LEVEL1_RING
-    };
-    desc_.level2SupportedAlgos = {
-        AlgTypeLevel2::ALG_LEVEL2_NHR,
-        AlgTypeLevel2::ALG_LEVEL2_NB,
-        AlgTypeLevel2::ALG_LEVEL2_RING
-    };
+    desc_.level1SupportedAlgos
+        = {AlgTypeLevel1::ALG_LEVEL1_NHR, AlgTypeLevel1::ALG_LEVEL1_NB, AlgTypeLevel1::ALG_LEVEL1_RING};
+    desc_.level2SupportedAlgos
+        = {AlgTypeLevel2::ALG_LEVEL2_NHR, AlgTypeLevel2::ALG_LEVEL2_NB, AlgTypeLevel2::ALG_LEVEL2_RING};
 }
 
-HcclResult ScatterSingleExecutor::Orchestrate(const OpParam &param, AlgResourceCtx* resCtx)
+HcclResult ScatterSingleExecutor::Orchestrate(const OpParam& param, AlgResourceCtx* resCtx)
 {
     HcclUs startut = TIME_NOW();
 
@@ -35,7 +29,8 @@ HcclResult ScatterSingleExecutor::Orchestrate(const OpParam &param, AlgResourceC
     algType_ = resCtx->algType;
 
     // 做参数的还原
-    ThreadHandle* threadHandlePtr = reinterpret_cast<ThreadHandle *>(reinterpret_cast<u8 *>(algResource_) + sizeof(AlgResourceCtx));
+    ThreadHandle* threadHandlePtr
+        = reinterpret_cast<ThreadHandle*>(reinterpret_cast<u8*>(algResource_) + sizeof(AlgResourceCtx));
     thread_ = threadHandlePtr[0];
 
     ExecMem execMem;
@@ -44,15 +39,19 @@ HcclResult ScatterSingleExecutor::Orchestrate(const OpParam &param, AlgResourceC
     execMem.outputPtr = param.outputPtr;
 
     HcclResult ret = KernelRun(param, execMem);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[ScatterSingleExecutor][Orchestrate]errNo[0x%016llx]Scatter executor kernel run failed",
-            HCCL_ERROR_CODE(ret)), ret);
-    HCCL_INFO("tag[%s] Scatter executor orchestrate success, take time [%lld]us.",
-        param.tag, DURATION_US(TIME_NOW() - startut));
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[ScatterSingleExecutor][Orchestrate]errNo[0x%016llx]Scatter executor kernel run failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
+    HCCL_INFO(
+        "tag[%s] Scatter executor orchestrate success, take time [%lld]us.", param.tag,
+        DURATION_US(TIME_NOW() - startut));
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterSingleExecutor::KernelRun(const OpParam &param, ExecMem &execMem)
+HcclResult ScatterSingleExecutor::KernelRun(const OpParam& param, ExecMem& execMem)
 {
     HCCL_CONFIG_INFO(HCCL_ALG, "[ScatterSingleExecutor][KernelRun] starts.");
     u64 totalSize = execMem.count * HCCL_SIZE_TABLE[param.DataDes.dataType];
@@ -61,4 +60,4 @@ HcclResult ScatterSingleExecutor::KernelRun(const OpParam &param, ExecMem &execM
     return HCCL_SUCCESS;
 }
 REGISTER_EXEC("ScatterSingleExecutor", ScatterSingleRank, ScatterSingleExecutor);
-}
+} // namespace ops_hccl

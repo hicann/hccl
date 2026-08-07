@@ -14,17 +14,17 @@ namespace ops_hccl {
 bool AicpuTaskCacheUtils::IsNonVariableOpType(HcclCMDType opType)
 {
     // 注意: 当前hccl不支持HcclGather
-    if (opType == HcclCMDType::HCCL_CMD_BROADCAST || opType == HcclCMDType::HCCL_CMD_ALLREDUCE ||
-        opType == HcclCMDType::HCCL_CMD_REDUCE || opType == HcclCMDType::HCCL_CMD_ALLGATHER ||
-        opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER || opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
-        opType == HcclCMDType::HCCL_CMD_SCATTER) {
+    if (opType == HcclCMDType::HCCL_CMD_BROADCAST || opType == HcclCMDType::HCCL_CMD_ALLREDUCE
+        || opType == HcclCMDType::HCCL_CMD_REDUCE || opType == HcclCMDType::HCCL_CMD_ALLGATHER
+        || opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER || opType == HcclCMDType::HCCL_CMD_ALLTOALL
+        || opType == HcclCMDType::HCCL_CMD_SCATTER) {
         return true;
     }
     return false;
 }
 
 HcclResult AicpuTaskCacheUtils::GetInputOutputInfoForCache(
-    const OpParam &param, const uint32_t rankSize, uint64_t &inputSize, uint64_t &outputSize)
+    const OpParam& param, const uint32_t rankSize, uint64_t& inputSize, uint64_t& outputSize)
 {
     const HcclCMDType opType = param.opType;
 
@@ -47,15 +47,17 @@ HcclResult AicpuTaskCacheUtils::GetInputOutputInfoForCache(
         // 因为alltoall使用sendCount来表示send/recvCount, 而recvCount本身为0
         outputSize = inputSize;
 
-        HCCL_DEBUG("[AicpuTaskCacheUtils][%s] opType[%u] rankSize[%u] sendType[%u] "
-                   "inputSize[%llu] outputSize[%llu] sendCount[%llu] dataTypeSize[%u]",
+        HCCL_DEBUG(
+            "[AicpuTaskCacheUtils][%s] opType[%u] rankSize[%u] sendType[%u] "
+            "inputSize[%llu] outputSize[%llu] sendCount[%llu] dataTypeSize[%u]",
             __func__, opType, rankSize, sendType, inputSize, outputSize, sendCount, DATATYPE_SIZE_TABLE[sendType]);
     } else {
         inputSize = param.inputSize;
         outputSize = param.outputSize;
 
-        HCCL_DEBUG("[AicpuTaskCacheUtils][%s] opType[%u] rankSize[%u] inputSize[%llu] outputSize[%llu]", __func__,
-            opType, rankSize, inputSize, outputSize);
+        HCCL_DEBUG(
+            "[AicpuTaskCacheUtils][%s] opType[%u] rankSize[%u] inputSize[%llu] outputSize[%llu]", __func__, opType,
+            rankSize, inputSize, outputSize);
     }
 
     return HCCL_SUCCESS;

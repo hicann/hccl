@@ -32,8 +32,8 @@
 using namespace std;
 using namespace ops_hccl;
 
-extern "C" rtError_t rtRegTaskFailCallbackByModule(const char_t *moduleName,
-    rtTaskFailCallback callback) __attribute__((weak));
+extern "C" rtError_t rtRegTaskFailCallbackByModule(const char_t* moduleName, rtTaskFailCallback callback)
+    __attribute__((weak));
 
 #ifdef HCCL_STATIC_MODE
 // 静态库模式下，AIV kernel `.o` 已通过 `ld -r -b binary` 内嵌进 libhccl_static.a。
@@ -41,8 +41,8 @@ extern "C" rtError_t rtRegTaskFailCallbackByModule(const char_t *moduleName,
 // 并在 RegisterKernel 时用 aclrtBinaryLoadFromData 从内存加载，
 // 无需依赖 ${ASCEND_HOME_PATH}/lib64 下的 .o 文件。
 extern "C" {
-#define DECL_AIV_EMBED(stem)                                               \
-    extern const char _binary_##stem##_bin_start[];                         \
+#define DECL_AIV_EMBED(stem)                        \
+    extern const char _binary_##stem##_bin_start[]; \
     extern const char _binary_##stem##_bin_end[]
 DECL_AIV_EMBED(hccl_aiv_all_gather_op_910_95);
 DECL_AIV_EMBED(hccl_aiv_all_reduce_op_910_95);
@@ -71,43 +71,31 @@ DECL_AIV_EMBED(hccl_aiv_recv_op_910_96);
 
 namespace {
 struct AivEmbedSymbol {
-    const char *binaryName;
-    const char *start;
-    const char *end;
+    const char* binaryName;
+    const char* start;
+    const char* end;
 };
 
-#define EMBED_ENTRY(stem)                                                  \
-    { #stem ".o", _binary_##stem##_bin_start, _binary_##stem##_bin_end }
+#define EMBED_ENTRY(stem) {#stem ".o", _binary_##stem##_bin_start, _binary_##stem##_bin_end}
 static const AivEmbedSymbol kAivEmbedTable[] = {
-    EMBED_ENTRY(hccl_aiv_all_gather_op_910_95),
-    EMBED_ENTRY(hccl_aiv_all_reduce_op_910_95),
-    EMBED_ENTRY(hccl_aiv_all_to_all_op_910_95),
-    EMBED_ENTRY(hccl_aiv_all_to_all_v_op_910_95),
-    EMBED_ENTRY(hccl_aiv_broadcast_op_910_95),
-    EMBED_ENTRY(hccl_aiv_reduce_op_910_95),
-    EMBED_ENTRY(hccl_aiv_reduce_scatter_op_910_95),
-    EMBED_ENTRY(hccl_aiv_scatter_op_910_95),
-    EMBED_ENTRY(hccl_aiv_send_op_910_95),
-    EMBED_ENTRY(hccl_aiv_recv_op_910_95),
+    EMBED_ENTRY(hccl_aiv_all_gather_op_910_95),     EMBED_ENTRY(hccl_aiv_all_reduce_op_910_95),
+    EMBED_ENTRY(hccl_aiv_all_to_all_op_910_95),     EMBED_ENTRY(hccl_aiv_all_to_all_v_op_910_95),
+    EMBED_ENTRY(hccl_aiv_broadcast_op_910_95),      EMBED_ENTRY(hccl_aiv_reduce_op_910_95),
+    EMBED_ENTRY(hccl_aiv_reduce_scatter_op_910_95), EMBED_ENTRY(hccl_aiv_scatter_op_910_95),
+    EMBED_ENTRY(hccl_aiv_send_op_910_95),           EMBED_ENTRY(hccl_aiv_recv_op_910_95),
 #ifdef HCCL_ENABLE_910_96
-    EMBED_ENTRY(hccl_aiv_all_gather_op_910_96),
-    EMBED_ENTRY(hccl_aiv_all_reduce_op_910_96),
-    EMBED_ENTRY(hccl_aiv_all_to_all_op_910_96),
-    EMBED_ENTRY(hccl_aiv_all_to_all_v_op_910_96),
-    EMBED_ENTRY(hccl_aiv_broadcast_op_910_96),
-    EMBED_ENTRY(hccl_aiv_reduce_op_910_96),
-    EMBED_ENTRY(hccl_aiv_reduce_scatter_op_910_96),
-    EMBED_ENTRY(hccl_aiv_scatter_op_910_96),
-    EMBED_ENTRY(hccl_aiv_send_op_910_96),
-    EMBED_ENTRY(hccl_aiv_recv_op_910_96),
+    EMBED_ENTRY(hccl_aiv_all_gather_op_910_96),     EMBED_ENTRY(hccl_aiv_all_reduce_op_910_96),
+    EMBED_ENTRY(hccl_aiv_all_to_all_op_910_96),     EMBED_ENTRY(hccl_aiv_all_to_all_v_op_910_96),
+    EMBED_ENTRY(hccl_aiv_broadcast_op_910_96),      EMBED_ENTRY(hccl_aiv_reduce_op_910_96),
+    EMBED_ENTRY(hccl_aiv_reduce_scatter_op_910_96), EMBED_ENTRY(hccl_aiv_scatter_op_910_96),
+    EMBED_ENTRY(hccl_aiv_send_op_910_96),           EMBED_ENTRY(hccl_aiv_recv_op_910_96),
 #endif // HCCL_ENABLE_910_96
 };
 #undef EMBED_ENTRY
 
-static HcclResult LoadAivKernelFromEmbed(const std::string &aivBinaryName,
-    aclrtBinHandle &binHandle)
+static HcclResult LoadAivKernelFromEmbed(const std::string& aivBinaryName, aclrtBinHandle& binHandle)
 {
-    for (const auto &entry : kAivEmbedTable) {
+    for (const auto& entry : kAivEmbedTable) {
         if (aivBinaryName != entry.binaryName) {
             continue;
         }
@@ -118,24 +106,25 @@ static HcclResult LoadAivKernelFromEmbed(const std::string &aivBinaryName,
         loadOptions.options = &option;
         option.type = ACL_RT_BINARY_LOAD_OPT_LAZY_LOAD;
         option.value.cpuKernelMode = 1;
-        aclError aclRet = aclrtBinaryLoadFromData(
-            entry.start, length, &loadOptions, &binHandle);
+        aclError aclRet = aclrtBinaryLoadFromData(entry.start, length, &loadOptions, &binHandle);
         if (aclRet != ACL_SUCCESS) {
-            HCCL_ERROR("[LoadAivKernelFromEmbed]errNo[0x%016llx] load aiv binary[%s] "
+            HCCL_ERROR(
+                "[LoadAivKernelFromEmbed]errNo[0x%016llx] load aiv binary[%s] "
                 "from embedded data failed, length[%zu], ret[%d].",
                 HCCL_ERROR_CODE(HCCL_E_RUNTIME), aivBinaryName.c_str(), length, aclRet);
             return HCCL_E_RUNTIME;
         }
-        HCCL_INFO("[LoadAivKernelFromEmbed]aiv binary[%s] loaded from embedded data, "
-            "length[%zu].", aivBinaryName.c_str(), length);
+        HCCL_INFO(
+            "[LoadAivKernelFromEmbed]aiv binary[%s] loaded from embedded data, "
+            "length[%zu].",
+            aivBinaryName.c_str(), length);
         return HCCL_SUCCESS;
     }
-    HCCL_ERROR("[LoadAivKernelFromEmbed]aiv binary[%s] not found in embed table.",
-        aivBinaryName.c_str());
+    HCCL_ERROR("[LoadAivKernelFromEmbed]aiv binary[%s] not found in embed table.", aivBinaryName.c_str());
     return HCCL_E_NOT_FOUND;
 }
-}  // namespace
-#endif  // HCCL_STATIC_MODE
+} // namespace
+#endif // HCCL_STATIC_MODE
 
 namespace ops_hccl {
 constexpr u32 SIG_MOVE_LEFT_BITS = 20;
@@ -161,10 +150,11 @@ struct AivKernelEntry {
     std::string kernelName;
 
     AivKernelEntry() = default;
-    AivKernelEntry(aclrtBinHandle binHandle, aclrtFuncHandle funcHandle, const std::string &kernelName)
-        : binHandle(binHandle), funcHandle(funcHandle), kernelName(kernelName)
-    {
-    }
+    AivKernelEntry(aclrtBinHandle binHandle, aclrtFuncHandle funcHandle, const std::string& kernelName)
+        : binHandle(binHandle),
+          funcHandle(funcHandle),
+          kernelName(kernelName)
+    {}
 };
 
 struct AivKernelLookupResult {
@@ -188,7 +178,7 @@ struct TaskParamAiv {
     u32 blockDim = 0;
     u32 rankSize = 0;
     s32 aivRdmaStep = 0;
-    void *flagMem = nullptr;
+    void* flagMem = nullptr;
     u32 rank = 0;
     bool isOpbase = false;
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_RESERVED;
@@ -216,13 +206,14 @@ static void RegisterAivExceptionCallback()
     }
 }
 
-static HcclResult SaveAivDfxTaskInfo(const AivOpArgs &opArgs)
+static HcclResult SaveAivDfxTaskInfo(const AivOpArgs& opArgs)
 {
     u32 taskId = 0;
     u32 streamId = 0;
     rtError_t rtRet = rtGetTaskIdAndStreamID(&taskId, &streamId);
-    CHK_PRT_RET(rtRet != RT_ERROR_NONE,
-        HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] rtGetTaskIdAndStreamID failed, ret[%d].", rtRet), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        rtRet != RT_ERROR_NONE, HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] rtGetTaskIdAndStreamID failed, ret[%d].", rtRet),
+        HCCL_E_RUNTIME);
 
     TaskParamAiv taskInfo;
     taskInfo.taskId = taskId;
@@ -233,8 +224,8 @@ static HcclResult SaveAivDfxTaskInfo(const AivOpArgs &opArgs)
     taskInfo.blockDim = opArgs.numBlocks;
     taskInfo.rankSize = opArgs.rankSize;
     taskInfo.aivRdmaStep = 0;
-    taskInfo.flagMem = static_cast<void *>(opArgs.buffersIn == nullptr ? nullptr :
-        static_cast<u8 *>(opArgs.buffersIn) + AIV_FLAG_ADDR_OFFSET);
+    taskInfo.flagMem = static_cast<void*>(
+        opArgs.buffersIn == nullptr ? nullptr : static_cast<u8*>(opArgs.buffersIn) + AIV_FLAG_ADDR_OFFSET);
     taskInfo.rank = opArgs.rank;
     taskInfo.isOpbase = opArgs.isOpBase;
     taskInfo.reduceOp = opArgs.op;
@@ -243,7 +234,7 @@ static HcclResult SaveAivDfxTaskInfo(const AivOpArgs &opArgs)
 
     HCCL_INFO("Begin to SaveAivDfxTaskInfo taskType[%d]", static_cast<int32_t>(opArgs.cmdType));
     std::lock_guard<mutex> lock(g_aivTaskMutex);
-    auto &taskQueue = g_aivTaskByStream[streamId];
+    auto& taskQueue = g_aivTaskByStream[streamId];
     taskQueue.push_back(taskInfo);
     if (taskQueue.size() > AIV_TASK_QUEUE_LIMIT) {
         taskQueue.pop_front();
@@ -251,15 +242,16 @@ static HcclResult SaveAivDfxTaskInfo(const AivOpArgs &opArgs)
     return HCCL_SUCCESS;
 }
 
-static bool FindAivTask(u32 streamId, u32 taskId, TaskParamAiv &taskInfo, std::deque<TaskParamAiv> &taskQueue)
+static bool FindAivTask(u32 streamId, u32 taskId, TaskParamAiv& taskInfo, std::deque<TaskParamAiv>& taskQueue)
 {
     std::lock_guard<mutex> lock(g_aivTaskMutex);
     auto streamIt = g_aivTaskByStream.find(streamId);
     if (streamIt == g_aivTaskByStream.end()) {
         return false;
     }
-    auto taskIt = std::find_if(streamIt->second.begin(), streamIt->second.end(),
-        [taskId](const TaskParamAiv &task) { return task.taskId == taskId; });
+    auto taskIt = std::find_if(streamIt->second.begin(), streamIt->second.end(), [taskId](const TaskParamAiv& task) {
+        return task.taskId == taskId;
+    });
     if (taskIt == streamIt->second.end()) {
         return false;
     }
@@ -268,14 +260,14 @@ static bool FindAivTask(u32 streamId, u32 taskId, TaskParamAiv &taskInfo, std::d
     return true;
 }
 
-static std::string SerializeAivFlag(const TaskParamAiv &taskInfo)
+static std::string SerializeAivFlag(const TaskParamAiv& taskInfo)
 {
     if (taskInfo.flagMem == nullptr) {
         return "flagMem is nullptr";
     }
     std::vector<s32> flagMem(AIV_FLAG_PRINT_SIZE / sizeof(s32));
-    HcclResult ret = haclrtMemcpy(flagMem.data(), AIV_FLAG_PRINT_SIZE, taskInfo.flagMem, AIV_FLAG_PRINT_SIZE,
-        ACL_MEMCPY_DEVICE_TO_HOST);
+    HcclResult ret = haclrtMemcpy(
+        flagMem.data(), AIV_FLAG_PRINT_SIZE, taskInfo.flagMem, AIV_FLAG_PRINT_SIZE, ACL_MEMCPY_DEVICE_TO_HOST);
     if (ret != HCCL_SUCCESS) {
         return "copy flagMem failed";
     }
@@ -288,7 +280,7 @@ static std::string SerializeAivFlag(const TaskParamAiv &taskInfo)
     return ss.str();
 }
 
-void ProcessAivExceptionCallBack(aclrtExceptionInfo *exceptionInfo)
+void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
 {
     if (exceptionInfo == nullptr) {
         HCCL_ERROR("[TaskExceptionHandler][AIV] exceptionInfo is nullptr.");
@@ -302,34 +294,38 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo *exceptionInfo)
     TaskParamAiv taskInfo;
     std::deque<TaskParamAiv> taskQueue;
     if (!FindAivTask(streamId, taskId, taskInfo, taskQueue)) {
-        HCCL_RUN_INFO("[TaskExceptionHandler][AIV] task not found, streamId[%u], taskId[%u].",
-            streamId, taskId);
+        HCCL_RUN_INFO("[TaskExceptionHandler][AIV] task not found, streamId[%u], taskId[%u].", streamId, taskId);
         return;
     }
 
-    HCCL_ERROR("[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+    HCCL_ERROR(
+        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
         "TaskId[%u], cmdType[%u], tag[%u], rank[%u], rankSize[%u], dataCount[%llu], blockDim[%u], "
         "dataType:[%u], beginTime:[%llu], flagMem[%p]",
-        deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag,
-        taskInfo.rank, taskInfo.rankSize, taskInfo.size, taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime,
-        taskInfo.flagMem);
+        deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag, taskInfo.rank, taskInfo.rankSize, taskInfo.size,
+        taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime, taskInfo.flagMem);
 
-    HCCL_ERROR("[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
-        "TaskId[%u]. flag: %s", deviceId, streamId, taskId,
-        SerializeAivFlag(taskInfo).c_str());
+    HCCL_ERROR(
+        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+        "TaskId[%u]. flag: %s",
+        deviceId, streamId, taskId, SerializeAivFlag(taskInfo).c_str());
 
-    HCCL_ERROR("[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
-        "TaskId[%u]. task info before failed task is:", deviceId, streamId, taskId);
+    HCCL_ERROR(
+        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+        "TaskId[%u]. task info before failed task is:",
+        deviceId, streamId, taskId);
 
     u32 printed = 0;
     for (auto it = taskQueue.rbegin(); it != taskQueue.rend() && printed < AIV_TASK_CONTEXT_SIZE; ++it) {
         if (it->taskId == taskInfo.taskId) {
             continue;
         }
-        HCCL_ERROR("[TaskExceptionHandler][AIV] previous TaskId[%llu], streamId[%llu], cmdType[%u], "
+        HCCL_ERROR(
+            "[TaskExceptionHandler][AIV] previous TaskId[%llu], streamId[%llu], cmdType[%u], "
             "tag[%u], rank[%u], rankSize[%u], dataCount[%llu], blockDim[%u], dataType:[%u], beginTime:[%llu], "
-            "flagMem[%p]", it->taskId, it->streamId, it->cmdType, it->tag, it->rank, it->rankSize, it->size,
-            it->blockDim, it->dataType, it->beginTime, it->flagMem);
+            "flagMem[%p]",
+            it->taskId, it->streamId, it->cmdType, it->tag, it->rank, it->rankSize, it->size, it->blockDim,
+            it->dataType, it->beginTime, it->flagMem);
         ++printed;
     }
 }
@@ -368,12 +364,13 @@ thread_local std::shared_ptr<InsQueue> g_recordingQueue = nullptr;
 thread_local bool g_recordOnlyMode = false;
 thread_local u64 g_baseInputAddr = 0;
 thread_local u64 g_baseOutputAddr = 0;
-static HcclResult GetMinAndMaxNpuSchedTimeOut(u64 &minNpuSchedTimeout, u64 &maxNpuSchedTimeout)
+static HcclResult GetMinAndMaxNpuSchedTimeOut(u64& minNpuSchedTimeout, u64& maxNpuSchedTimeout)
 {
     uint64_t interval = 0;
     aclError aclRet = aclrtGetOpTimeOutInterval(&interval);
-    CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_WARNING("[GetMinAndMaxNpuSchedTimeOut] get timeout interval failed, ret[%d].",
-        aclRet), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS,
+        HCCL_WARNING("[GetMinAndMaxNpuSchedTimeOut] get timeout interval failed, ret[%d].", aclRet), HCCL_E_RUNTIME);
 
     constexpr u64 MAX_INTERVAL = 254;
     minNpuSchedTimeout = interval;
@@ -404,10 +401,11 @@ static u32 GetAivTimeout()
         HCCL_WARNING("[GetAivTimeout] get npu sched timeout range failed, use default[%u]us.", AIV_TIMEOUT_DEFAULT_US);
         return AIV_TIMEOUT_DEFAULT_US;
     }
-    u32 finalTimeout = (timeoutUs < minNpuSchedTimeout) ? minNpuSchedTimeout
-            : (timeoutUs > maxNpuSchedTimeout) ? maxNpuSchedTimeout
-            : timeoutUs;
-    HCCL_INFO("[GetAivTimeout]timeout[%u]us, execTimeOut[%.2f]s, minNpuSchedTimeout[%u]us, maxNpuSchedTimeout[%u]us.",
+    u32 finalTimeout = (timeoutUs < minNpuSchedTimeout) ? minNpuSchedTimeout :
+                       (timeoutUs > maxNpuSchedTimeout) ? maxNpuSchedTimeout :
+                                                          timeoutUs;
+    HCCL_INFO(
+        "[GetAivTimeout]timeout[%u]us, execTimeOut[%.2f]s, minNpuSchedTimeout[%u]us, maxNpuSchedTimeout[%u]us.",
         finalTimeout, execTimeOut, minNpuSchedTimeout, maxNpuSchedTimeout);
 
     return finalTimeout;
@@ -441,22 +439,39 @@ using AivKernelArgs = struct AivKernelArgsDef {
     u32 counterMemSize;
     bool isEnableCounter;
 
-    AivKernelArgsDef(const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank,
-        u32 rankSize, u64 xRankSize, u64 yRankSize, u64 zRankSize,
-        u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag,
-        u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
-        bool isOpBase = true,
-        const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, bool isEnableCounter = false)
-        : buffersIn(buffIn),input(input), output(output), rank(rank), sendRecvRemoteRank(sendRecvRemoteRank), rankSize(rankSize), xRankSize(xRankSize), yRankSize(yRankSize), zRankSize(zRankSize),
-        len(len) ,dataType(dataType),
-        reduceOp(reduceOp), root(root), tag(tag),
-        inputSliceStride(inputSliceStride), outputSliceStride(outputSliceStride), repeatNum(repeatNum), inputRepeatStride(inputRepeatStride), outputRepeatStride(outputRepeatStride),
-        numBlocks(numBlocks), isOpBase(isOpBase),
-        headCountMem(headCountMem), tailCountMem(tailCountMem), addOneMem(addOneMem),
-        counterMemSize(counterMemSize), isEnableCounter(isEnableCounter)
-    {
-    }
+    AivKernelArgsDef(
+        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 xRankSize,
+        u64 yRankSize, u64 zRankSize, u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride,
+        u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
+        bool isOpBase = true, const void* headCountMem = nullptr, const void* tailCountMem = nullptr,
+        const void* addOneMem = nullptr, u32 counterMemSize = 0, bool isEnableCounter = false)
+        : buffersIn(buffIn),
+          input(input),
+          output(output),
+          rank(rank),
+          sendRecvRemoteRank(sendRecvRemoteRank),
+          rankSize(rankSize),
+          xRankSize(xRankSize),
+          yRankSize(yRankSize),
+          zRankSize(zRankSize),
+          len(len),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          root(root),
+          tag(tag),
+          inputSliceStride(inputSliceStride),
+          outputSliceStride(outputSliceStride),
+          repeatNum(repeatNum),
+          inputRepeatStride(inputRepeatStride),
+          outputRepeatStride(outputRepeatStride),
+          numBlocks(numBlocks),
+          isOpBase(isOpBase),
+          headCountMem(headCountMem),
+          tailCountMem(tailCountMem),
+          addOneMem(addOneMem),
+          counterMemSize(counterMemSize),
+          isEnableCounter(isEnableCounter)
+    {}
 };
 
 using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
@@ -488,20 +503,37 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     bool isEnableCounter;
     ExtraArgs extraArgs;
 
-    AivExtraKernelArgsDef(const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank,
-        u32 rankSize, u64 xRankSize, u64 yRankSize, u64 zRankSize,
-        u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag,
-        u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
-        bool isOpBase = true,
-        const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr)
-        : buffersIn(buffIn),input(input), output(output), rank(rank), sendRecvRemoteRank(sendRecvRemoteRank), rankSize(rankSize), xRankSize(xRankSize), yRankSize(yRankSize), zRankSize(zRankSize),
-        len(len) ,dataType(dataType),
-        reduceOp(reduceOp), root(root), tag(tag),
-        inputSliceStride(inputSliceStride), outputSliceStride(outputSliceStride), repeatNum(repeatNum), inputRepeatStride(inputRepeatStride), outputRepeatStride(outputRepeatStride),
-        numBlocks(numBlocks), isOpBase(isOpBase),
-        headCountMem(headCountMem), tailCountMem(tailCountMem), addOneMem(addOneMem),
-        counterMemSize(counterMemSize)
+    AivExtraKernelArgsDef(
+        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 xRankSize,
+        u64 yRankSize, u64 zRankSize, u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride,
+        u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
+        bool isOpBase = true, const void* headCountMem = nullptr, const void* tailCountMem = nullptr,
+        const void* addOneMem = nullptr, u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr)
+        : buffersIn(buffIn),
+          input(input),
+          output(output),
+          rank(rank),
+          sendRecvRemoteRank(sendRecvRemoteRank),
+          rankSize(rankSize),
+          xRankSize(xRankSize),
+          yRankSize(yRankSize),
+          zRankSize(zRankSize),
+          len(len),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          root(root),
+          tag(tag),
+          inputSliceStride(inputSliceStride),
+          outputSliceStride(outputSliceStride),
+          repeatNum(repeatNum),
+          inputRepeatStride(inputRepeatStride),
+          outputRepeatStride(outputRepeatStride),
+          numBlocks(numBlocks),
+          isOpBase(isOpBase),
+          headCountMem(headCountMem),
+          tailCountMem(tailCountMem),
+          addOneMem(addOneMem),
+          counterMemSize(counterMemSize)
     {
         if (extraArgsPtr != nullptr) {
             extraArgs = *extraArgsPtr;
@@ -509,11 +541,11 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     }
 };
 
-HcclResult GetAivOpBinaryPath(const std::string &aivBinaryName, std::string &binaryPath)
+HcclResult GetAivOpBinaryPath(const std::string& aivBinaryName, std::string& binaryPath)
 {
     // 获取二进制文件路径
     std::string libPath;
-    char *getPath = getenv("ASCEND_HOME_PATH");
+    char* getPath = getenv("ASCEND_HOME_PATH");
     if (getPath != nullptr) {
         libPath = getPath;
     } else {
@@ -531,18 +563,18 @@ HcclResult GetAivOpBinaryPath(const std::string &aivBinaryName, std::string &bin
 s8* GetFuncKey(HcclCMDType cmdType, HcclDataType dataType, KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER)
 {
     return reinterpret_cast<s8*>(
-        (((static_cast<u64>(cmdType) << SIG_MOVE_LEFT_BITS) + static_cast<u64>(dataType)) << SIG_MOVE_LEFT_BITS) +
-        static_cast<u64>(argsType));
+        (((static_cast<u64>(cmdType) << SIG_MOVE_LEFT_BITS) + static_cast<u64>(dataType)) << SIG_MOVE_LEFT_BITS)
+        + static_cast<u64>(argsType));
 }
 
-static HcclResult GetCurrentDeviceId(s32 &deviceId)
+static HcclResult GetCurrentDeviceId(s32& deviceId)
 {
     ACLCHECK(aclrtGetDevice(&deviceId));
     return HCCL_SUCCESS;
 }
 
-static HcclResult RegisterBinaryKernel(AivDeviceRegistry &registry, const char* funcName,
-    const aclrtBinHandle binHandle, const s8* funcKey)
+static HcclResult RegisterBinaryKernel(
+    AivDeviceRegistry& registry, const char* funcName, const aclrtBinHandle binHandle, const s8* funcKey)
 {
     if (funcKey == nullptr) {
         return HCCL_E_PARA;
@@ -550,15 +582,16 @@ static HcclResult RegisterBinaryKernel(AivDeviceRegistry &registry, const char* 
 
     aclrtFuncHandle funcHandle;
     aclError aclRet = aclrtBinaryGetFunction(binHandle, funcName, &funcHandle);
-    CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_ERROR("[RegisterBinaryKernel]errNo[0x%016llx] get function from binary error.", aclRet),
-        HCCL_E_NOT_FOUND);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS,
+        HCCL_ERROR("[RegisterBinaryKernel]errNo[0x%016llx] get function from binary error.", aclRet), HCCL_E_NOT_FOUND);
 
     registry.kernels[const_cast<s8*>(funcKey)] = AivKernelEntry(binHandle, funcHandle, std::string(funcName));
 
     return HCCL_SUCCESS;
 }
 
-static HcclResult GetKernelEntry(AivKernelLookupResult &lookupResult, const s8* funcKey)
+static HcclResult GetKernelEntry(AivKernelLookupResult& lookupResult, const s8* funcKey)
 {
     if (funcKey == nullptr) {
         return HCCL_E_PARA;
@@ -601,7 +634,7 @@ static HcclResult UpdateKernelFunc(s32 deviceId, const s8* funcKey, const aclrtF
     return HCCL_SUCCESS;
 }
 
-static HcclResult ClearDeviceRegistry(AivDeviceRegistry &registry)
+static HcclResult ClearDeviceRegistry(AivDeviceRegistry& registry)
 {
     HcclResult result = HCCL_SUCCESS;
     for (auto binIt = registry.binHandles.begin(); binIt != registry.binHandles.end();) {
@@ -632,7 +665,7 @@ HcclResult RegisterKernel()
         HCCL_ERROR("[AIV][RegisterKernel] aiv kernel is unregistering.");
         return HCCL_E_RUNTIME;
     }
-    AivDeviceRegistry &registry = g_aivRegistryByDevice[deviceId];
+    AivDeviceRegistry& registry = g_aivRegistryByDevice[deviceId];
     if (registry.initialized) {
         return HCCL_SUCCESS;
     }
@@ -676,13 +709,16 @@ HcclResult RegisterKernel()
             registry.binHandles[aivBinaryName] = binHandle;
         }
 
-        for (auto &aivKernelInfo: aivKernelInfoList) {
-            ret = RegisterBinaryKernel(registry, aivKernelInfo.kernelName, binHandle,
+        for (auto& aivKernelInfo : aivKernelInfoList) {
+            ret = RegisterBinaryKernel(
+                registry, aivKernelInfo.kernelName, binHandle,
                 GetFuncKey(cmdType, aivKernelInfo.dataType, aivKernelInfo.argsType));
             if (ret != HCCL_SUCCESS) {
-                HCCL_ERROR("[AIV][RegisterKernel] register binary kernel for kernelName[%s] cmdType[%d] "
-                    "dataType[%s] argsType[%d] failed", aivKernelInfo.kernelName, cmdType,
-                    GetDataTypeEnumStr(aivKernelInfo.dataType).c_str(), aivKernelInfo.argsType);
+                HCCL_ERROR(
+                    "[AIV][RegisterKernel] register binary kernel for kernelName[%s] cmdType[%d] "
+                    "dataType[%s] argsType[%d] failed",
+                    aivKernelInfo.kernelName, cmdType, GetDataTypeEnumStr(aivKernelInfo.dataType).c_str(),
+                    aivKernelInfo.argsType);
                 ClearDeviceRegistry(registry);
                 return HCCL_E_RUNTIME;
             }
@@ -700,7 +736,9 @@ HcclResult UnRegisterAivKernel()
 {
     unique_lock<mutex> lock(g_mut);
     g_unregistering = true;
-    g_launchCv.wait(lock, []() { return g_activeLaunchCount == 0; });
+    g_launchCv.wait(lock, []() {
+        return g_activeLaunchCount == 0;
+    });
     HcclResult result = HCCL_SUCCESS;
     s32 currentDeviceId = 0;
     bool needRestoreDevice = (aclrtGetDevice(&currentDeviceId) == ACL_SUCCESS);
@@ -738,16 +776,16 @@ HcclResult UnRegisterAivKernel()
 }
 
 // cache工具接口
-void HashAppend(u64 &hash, const void *data, size_t size)
+void HashAppend(u64& hash, const void* data, size_t size)
 {
-    const u8 *bytes = static_cast<const u8 *>(data);
+    const u8* bytes = static_cast<const u8*>(data);
     for (size_t i = 0; i < size; ++i) {
         hash ^= bytes[i];
         hash *= FNV_PRIME;
     }
 }
 
-void HashAppendString(u64 &hash, const std::string &value)
+void HashAppendString(u64& hash, const std::string& value)
 {
     HashAppend(hash, value.data(), value.size());
     const char separator = '\0';
@@ -755,12 +793,12 @@ void HashAppendString(u64 &hash, const std::string &value)
 }
 
 template <typename T>
-void HashAppendValue(u64 &hash, const T &value)
+void HashAppendValue(u64& hash, const T& value)
 {
     HashAppend(hash, &value, sizeof(T));
 }
 
-u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey)
+u64 CalcAivCacheKeyHash(const AivOpCacheArgs& cacheKey)
 {
     u64 hash = FNV_OFFSET_BASIS;
     HashAppendValue(hash, cacheKey.count);
@@ -772,7 +810,7 @@ u64 CalcAivCacheKeyHash(const AivOpCacheArgs &cacheKey)
     return hash;
 }
 
-HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string &ctxTag)
+HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string& ctxTag)
 {
     char tag[AIV_CACHE_CTX_TAG_MAX_LENGTH] = {};
     int ret = snprintf_s(tag, sizeof(tag), sizeof(tag) - 1, "AivCache_%016llx", keyHash);
@@ -781,17 +819,17 @@ HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string &ctxTag)
     return HCCL_SUCCESS;
 }
 
-HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx **indexCtx)
+HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx** indexCtx)
 {
     CHK_PTR_NULL(indexCtx);
-    void *ctx = nullptr;
+    void* ctx = nullptr;
     uint64_t ctxSize = 0;
     HcclResult ret = HcclEngineCtxGet(comm, AIV_CACHE_INDEX_CTX_TAG, CommEngine::COMM_ENGINE_CPU_TS, &ctx, &ctxSize);
     if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
         HCCL_INFO("[%s] aiv cache indexCtx not created", __func__);
-        CHK_RET(HcclEngineCtxCreate(comm, AIV_CACHE_INDEX_CTX_TAG, CommEngine::COMM_ENGINE_CPU_TS,
-            sizeof(AivCacheIndexCtx), &ctx));
-        *indexCtx = static_cast<AivCacheIndexCtx *>(ctx);
+        CHK_RET(HcclEngineCtxCreate(
+            comm, AIV_CACHE_INDEX_CTX_TAG, CommEngine::COMM_ENGINE_CPU_TS, sizeof(AivCacheIndexCtx), &ctx));
+        *indexCtx = static_cast<AivCacheIndexCtx*>(ctx);
         // 初始化
         (*indexCtx)->head = 0;
         (*indexCtx)->tail = 0;
@@ -799,14 +837,14 @@ HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx **indexCt
         return HCCL_SUCCESS;
     } else if (ret == HCCL_SUCCESS) {
         HCCL_DEBUG("[%s] aiv cache indexCtx already created", __func__);
-        *indexCtx = static_cast<AivCacheIndexCtx *>(ctx);
+        *indexCtx = static_cast<AivCacheIndexCtx*>(ctx);
         return HCCL_SUCCESS;
     } else {
         return ret;
     }
 }
 
-HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx)
+HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx)
 {
     if (indexCtx->size < AIV_CACHE_INDEX_MAX_ENTRY) {
         return HCCL_SUCCESS;
@@ -816,10 +854,10 @@ HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx)
     u32 clearCount = static_cast<u32>(AIV_CACHE_INDEX_MAX_ENTRY * AIV_CACHE_INDEX_CLEAR_PERCENT / 100);
     for (u32 i = 0; i < clearCount; ++i) {
         u32 evictIndex = indexCtx->head;
-        const char *ctxTag = indexCtx->ctxTags[evictIndex];
+        const char* ctxTag = indexCtx->ctxTags[evictIndex];
         HcclResult ret = HcclEngineCtxDestroy(comm, ctxTag, CommEngine::COMM_ENGINE_CPU_TS);
-        CHK_PRT_RET(ret != HCCL_SUCCESS,
-            HCCL_ERROR("[%s] failed to destroy aiv cache ctx, tag[%s]", __func__, ctxTag), ret);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[%s] failed to destroy aiv cache ctx, tag[%s]", __func__, ctxTag), ret);
         indexCtx->size--;
         indexCtx->head = (evictIndex + 1) % AIV_CACHE_INDEX_MAX_ENTRY;
         HCCL_DEBUG("[%s] cur head[%u] tail[%u] size[%u]", __func__, indexCtx->head, indexCtx->tail, indexCtx->size);
@@ -827,11 +865,12 @@ HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx *indexCtx)
     return HCCL_SUCCESS;
 }
 
-HcclResult LookupAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, bool &cacheHit,
-                             std::string &algName, AivInstruction *&instructions, u32 &insCount)
+HcclResult LookupAivCacheCtx(
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,
+    AivInstruction*& instructions, u32& insCount)
 {
     cacheHit = false;
-    void *ctx = nullptr;
+    void* ctx = nullptr;
     uint64_t ctxSize = 0;
     HcclResult ret = HcclEngineCtxGet(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &ctx, &ctxSize);
     if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
@@ -839,30 +878,34 @@ HcclResult LookupAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHa
     }
     CHK_RET(ret);
 
-    AivCacheCtxHeader *header = static_cast<AivCacheCtxHeader *>(ctx);
-    CHK_PRT_RET(header->keyHash != keyHash,
-        HCCL_ERROR("[%s] invalid aiv cache ctx header, tag[%s], keyHash[%llu]",
-            __func__, ctxTag.c_str(), header->keyHash), HCCL_E_INTERNAL);
-    uint64_t expectedSize = sizeof(AivCacheCtxHeader) + header->algNameLen +
-        header->insCount * sizeof(AivInstruction);
-    CHK_PRT_RET(ctxSize != expectedSize,
-        HCCL_ERROR("[%s] invalid aiv cache ctx size[%llu], expected[%llu], tag[%s]",
-            __func__, ctxSize, expectedSize, ctxTag.c_str()), HCCL_E_INTERNAL);
+    AivCacheCtxHeader* header = static_cast<AivCacheCtxHeader*>(ctx);
+    CHK_PRT_RET(
+        header->keyHash != keyHash,
+        HCCL_ERROR(
+            "[%s] invalid aiv cache ctx header, tag[%s], keyHash[%llu]", __func__, ctxTag.c_str(), header->keyHash),
+        HCCL_E_INTERNAL);
+    uint64_t expectedSize = sizeof(AivCacheCtxHeader) + header->algNameLen + header->insCount * sizeof(AivInstruction);
+    CHK_PRT_RET(
+        ctxSize != expectedSize,
+        HCCL_ERROR(
+            "[%s] invalid aiv cache ctx size[%llu], expected[%llu], tag[%s]", __func__, ctxSize, expectedSize,
+            ctxTag.c_str()),
+        HCCL_E_INTERNAL);
 
-    const char *algNamePtr = reinterpret_cast<const char *>(
-        static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader));
+    const char* algNamePtr = reinterpret_cast<const char*>(static_cast<u8*>(ctx) + sizeof(AivCacheCtxHeader));
     algName.assign(algNamePtr, header->algNameLen);
-    instructions = reinterpret_cast<AivInstruction *>(
-        static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader) + header->algNameLen);
+    instructions
+        = reinterpret_cast<AivInstruction*>(static_cast<u8*>(ctx) + sizeof(AivCacheCtxHeader) + header->algNameLen);
     insCount = header->insCount;
 
-    HCCL_INFO("[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], insCount[%u], algName[%s]",
-        __func__, ctxTag.c_str(), header->keyHash, insCount, algName.c_str());
+    HCCL_INFO(
+        "[%s] aiv cache hits, ctxTag[%s], keyHash[%llu], insCount[%u], algName[%s]", __func__, ctxTag.c_str(),
+        header->keyHash, insCount, algName.c_str());
     cacheHit = true;
     return HCCL_SUCCESS;
 }
 
-HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCount, OpParam &param)
+HcclResult ReplayAivInstructions(const AivInstruction* instructions, u32 insCount, OpParam& param)
 {
     for (uint32_t i = 0; i < insCount; ++i) {
         AivOpArgs newArgs = instructions[i].opArgs;
@@ -874,16 +917,16 @@ HcclResult ReplayAivInstructions(const AivInstruction *instructions, u32 insCoun
     return HCCL_SUCCESS;
 }
 
-HcclResult ReplayAivInstructionsV(const AivInstruction *instructions, u32 insCount, OpParam &param)
+HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCount, OpParam& param)
 {
     if (insCount == 0) {
         HCCL_WARNING("[ReplayAivInstructionsV] insCount is 0, skip replay.");
         return HCCL_SUCCESS;
     }
-    const u64 *sendCounts = static_cast<const u64 *>(param.all2AllVDataDes.sendCounts);
-    const u64 *sdispls = static_cast<const u64 *>(param.all2AllVDataDes.sdispls);
-    const u64 *recvCounts = static_cast<const u64 *>(param.all2AllVDataDes.recvCounts);
-    const u64 *rdispls = static_cast<const u64 *>(param.all2AllVDataDes.rdispls);
+    const u64* sendCounts = static_cast<const u64*>(param.all2AllVDataDes.sendCounts);
+    const u64* sdispls = static_cast<const u64*>(param.all2AllVDataDes.sdispls);
+    const u64* recvCounts = static_cast<const u64*>(param.all2AllVDataDes.recvCounts);
+    const u64* rdispls = static_cast<const u64*>(param.all2AllVDataDes.rdispls);
     u32 rankSize = instructions[0].opArgs.rankSize;
 
     for (uint32_t i = 0; i < insCount; ++i) {
@@ -902,35 +945,36 @@ HcclResult ReplayAivInstructionsV(const AivInstruction *instructions, u32 insCou
     return HCCL_SUCCESS;
 }
 
-HcclResult StoreAivCacheCtx(HcclComm comm, const std::string &ctxTag, u64 keyHash, const std::string &algName,
-                            AivCacheIndexCtx *indexCtx)
+HcclResult StoreAivCacheCtx(
+    HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx)
 {
-    const InsQueue &queue = *g_recordingQueue;
+    const InsQueue& queue = *g_recordingQueue;
     u32 algNameLen = static_cast<u32>(algName.size());
     uint64_t ctxSize = sizeof(AivCacheCtxHeader) + algNameLen + queue.size() * sizeof(AivInstruction);
-    void *ctx = nullptr;
+    void* ctx = nullptr;
     CHK_RET(HcclEngineCtxCreate(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, ctxSize, &ctx));
-    AivCacheCtxHeader header { keyHash, static_cast<u32>(queue.size()), algNameLen };
+    AivCacheCtxHeader header{keyHash, static_cast<u32>(queue.size()), algNameLen};
     CHK_SAFETY_FUNC_RET(memcpy_s(ctx, ctxSize, &header, sizeof(header)));
-    u8 *ptr = static_cast<u8 *>(ctx) + sizeof(AivCacheCtxHeader);
+    u8* ptr = static_cast<u8*>(ctx) + sizeof(AivCacheCtxHeader);
     if (algNameLen > 0) {
         CHK_SAFETY_FUNC_RET(memcpy_s(ptr, algNameLen, algName.c_str(), algNameLen));
         ptr += algNameLen;
     }
     if (!queue.empty()) {
-        CHK_SAFETY_FUNC_RET(memcpy_s(ptr, ctxSize - sizeof(AivCacheCtxHeader) - algNameLen,
-            queue.data(), queue.size() * sizeof(AivInstruction)));
+        CHK_SAFETY_FUNC_RET(memcpy_s(
+            ptr, ctxSize - sizeof(AivCacheCtxHeader) - algNameLen, queue.data(),
+            queue.size() * sizeof(AivInstruction)));
     }
     // 增加index中的记录
     u32 pushIndex = indexCtx->tail;
-    char *ctxTagPtr = indexCtx->ctxTags[pushIndex];
+    char* ctxTagPtr = indexCtx->ctxTags[pushIndex];
     s32 ret = strncpy_s(ctxTagPtr, AIV_CACHE_CTX_TAG_MAX_LENGTH, ctxTag.c_str(), AIV_CACHE_CTX_TAG_MAX_LENGTH - 1);
-    CHK_PRT_RET(ret != EOK, HCCL_ERROR("[%s] failed to copy aiv cache ctx tag, ret[%d]", __func__, ret),
-        HCCL_E_MEMORY);
+    CHK_PRT_RET(ret != EOK, HCCL_ERROR("[%s] failed to copy aiv cache ctx tag, ret[%d]", __func__, ret), HCCL_E_MEMORY);
     indexCtx->tail = (pushIndex + 1) % AIV_CACHE_INDEX_MAX_ENTRY;
     indexCtx->size++;
-    HCCL_INFO("[%s] ctxTag[%s] keyHash[%llu] cur head[%u] tail[%u] size[%u]",
-        __func__, ctxTag.c_str(), keyHash, indexCtx->head, indexCtx->tail, indexCtx->size);
+    HCCL_INFO(
+        "[%s] ctxTag[%s] keyHash[%llu] cur head[%u] tail[%u] size[%u]", __func__, ctxTag.c_str(), keyHash,
+        indexCtx->head, indexCtx->tail, indexCtx->size);
     return HCCL_SUCCESS;
 }
 
@@ -941,21 +985,25 @@ HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr)
         HCCL_INFO("[%s] CommStateOp is not HCCL_COMM_STATE_PHASE_RESUME_POST, skip aiv tag clear.", __func__);
         return HCCL_SUCCESS;
     }
-    ACLCHECK(haclrtMemset(static_cast<u8 *>(userPtr) + AIV_FLAG_ADDR_OFFSET, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET,
-        0, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET));
+    ACLCHECK(haclrtMemset(
+        static_cast<u8*>(userPtr) + AIV_FLAG_ADDR_OFFSET, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET, 0,
+        AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET));
     HCCL_INFO("[%s] Aiv commInfoBuffer[%p] tag buffer clear success.", __func__, userPtr);
     return HCCL_SUCCESS;
 }
 
 // KernelLaunch内部接口
-HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 argsSize)
+HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize)
 {
     AivLaunchGuard launchGuard;
     HcclResult guardRet = launchGuard.Acquire();
-    CHK_PRT_RET(guardRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] aiv kernel is unregistering."),
+    CHK_PRT_RET(
+        guardRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] aiv kernel is unregistering."),
         HCCL_E_RUNTIME);
 
-    HCCL_CONFIG_INFO(HCCL_TASK, "[ExecuteKernelLaunchInner] sendbuff [%p] recvbuff [%p] "
+    HCCL_CONFIG_INFO(
+        HCCL_TASK,
+        "[ExecuteKernelLaunchInner] sendbuff [%p] recvbuff [%p] "
         "rank [%u] sendRecvRemoteRank [%u] rankSize [%u] count [%llu] "
         "dataType [%d] reduceOp [%d] root [%u] tag [%u] isOpBase [%d] "
         "extraArgsPtr [%p] argsSize [%u]",
@@ -974,7 +1022,8 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 arg
     cfg.numAttrs = AIV_ATTRNUM_THREE;
     cfg.attrs = attr;
 
-    HCCL_INFO("[ExecuteKernelLaunchInner] KernelAttr attr[0]: id=%u, schemMode=%u; attr[1]: id=%u, timeoutLow=%u, "
+    HCCL_INFO(
+        "[ExecuteKernelLaunchInner] KernelAttr attr[0]: id=%u, schemMode=%u; attr[1]: id=%u, timeoutLow=%u, "
         "timeoutHigh=%u; attr[2]: id=%u, engineType=%u; cfg: numAttrs=%u",
         attr[0].id, attr[0].value.schemMode, attr[1].id, attr[1].value.timeoutUs.timeoutLow,
         attr[1].value.timeoutUs.timeoutHigh, attr[2].id, attr[2].value.engineType, cfg.numAttrs);
@@ -982,22 +1031,37 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 arg
     s8* funcKey = GetFuncKey(opArgs.cmdType, opArgs.dataType, opArgs.argsType);
     AivKernelLookupResult kernelLookupResult;
     HcclResult ret = GetKernelEntry(kernelLookupResult, funcKey);
-    CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] funcKey[%p] errNo[0x%016llx] GetKernelEntry failed, "
-        "return[%d]", funcKey, HCCL_ERROR_CODE(HCCL_E_RUNTIME), ret), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[ExecuteKernelLaunchInner] funcKey[%p] errNo[0x%016llx] GetKernelEntry failed, "
+            "return[%d]",
+            funcKey, HCCL_ERROR_CODE(HCCL_E_RUNTIME), ret),
+        HCCL_E_RUNTIME);
 
     aclrtFuncHandle funcHandle = kernelLookupResult.entry.funcHandle;
-    aclError aclRet = aclrtLaunchKernelWithHostArgs(funcHandle, opArgs.numBlocks, opArgs.stream,
-        &cfg, args, argsSize, nullptr, 0);
+    aclError aclRet
+        = aclrtLaunchKernelWithHostArgs(funcHandle, opArgs.numBlocks, opArgs.stream, &cfg, args, argsSize, nullptr, 0);
     if (aclRet == ACL_ERROR_RT_INVALID_HANDLE) {
         HCCL_WARNING("[ExecuteKernelLaunchInner] handle invalid, retry to get function");
-        aclRet = aclrtBinaryGetFunction(kernelLookupResult.entry.binHandle, kernelLookupResult.entry.kernelName.c_str(), &funcHandle);
-        CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] retry get function failed, error[%d]", aclRet), HCCL_E_RUNTIME);
+        aclRet = aclrtBinaryGetFunction(
+            kernelLookupResult.entry.binHandle, kernelLookupResult.entry.kernelName.c_str(), &funcHandle);
+        CHK_PRT_RET(
+            aclRet != ACL_SUCCESS,
+            HCCL_ERROR("[ExecuteKernelLaunchInner] retry get function failed, error[%d]", aclRet), HCCL_E_RUNTIME);
         ret = UpdateKernelFunc(kernelLookupResult.deviceId, funcKey, funcHandle);
-        CHK_PRT_RET(ret != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] update function handle failed, ret[%d]", ret), HCCL_E_RUNTIME);
-        aclRet = aclrtLaunchKernelWithHostArgs(funcHandle, opArgs.numBlocks, opArgs.stream, &cfg, args, argsSize, nullptr, 0);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner] update function handle failed, ret[%d]", ret),
+            HCCL_E_RUNTIME);
+        aclRet = aclrtLaunchKernelWithHostArgs(
+            funcHandle, opArgs.numBlocks, opArgs.stream, &cfg, args, argsSize, nullptr, 0);
     }
-    CHK_PRT_RET(aclRet != ACL_SUCCESS, HCCL_ERROR("[ExecuteKernelLaunchInner]errNo[0x%016llx] aclrtLaunchKernelWithHostArgs error[%d].",
-        HCCL_ERROR_CODE(HCCL_E_RUNTIME), aclRet), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS,
+        HCCL_ERROR(
+            "[ExecuteKernelLaunchInner]errNo[0x%016llx] aclrtLaunchKernelWithHostArgs error[%d].",
+            HCCL_ERROR_CODE(HCCL_E_RUNTIME), aclRet),
+        HCCL_E_RUNTIME);
     if (GetExternalInputTaskExceptionEnable()) {
         HcclResult dfxRet = SaveAivDfxTaskInfo(opArgs);
         if (dfxRet != HCCL_SUCCESS) {
@@ -1008,7 +1072,7 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs &opArgs, void* args, u32 arg
 }
 
 // Kernel单次调用Launch外部接口
-HcclResult ExecuteKernelLaunch(const AivOpArgs &opArgs)
+HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
 {
     // Recording Logic
     if (g_recordingQueue) {
@@ -1017,15 +1081,15 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs &opArgs)
         // Calculate offsets
         // Note: opArgs.input is absolute address.
         if (opArgs.input >= g_baseInputAddr) {
-             ins.inputOffset = opArgs.input - g_baseInputAddr;
+            ins.inputOffset = opArgs.input - g_baseInputAddr;
         } else {
-             ins.inputOffset = 0;
+            ins.inputOffset = 0;
         }
-        
+
         if (opArgs.output >= g_baseOutputAddr) {
-             ins.outputOffset = opArgs.output - g_baseOutputAddr;
+            ins.outputOffset = opArgs.output - g_baseOutputAddr;
         } else {
-             ins.outputOffset = 0;
+            ins.outputOffset = 0;
         }
         g_recordingQueue->push_back(ins);
 
@@ -1035,29 +1099,64 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs &opArgs)
     }
 
     if (opArgs.cmdType == HcclCMDType::HCCL_CMD_ALLTOALLV) {
-        AivExtraKernelArgs aivExtraKernelArgs {
-            opArgs.buffersIn, opArgs.input, opArgs.output,
-            opArgs.rank, opArgs.sendRecvRemoteRank, opArgs.rankSize, opArgs.xRankSize, opArgs.yRankSize, opArgs.zRankSize, opArgs.count, opArgs.dataType, opArgs.op, opArgs.root, opArgs.sliceId,
-            opArgs.inputSliceStride, opArgs.outputSliceStride, opArgs.repeatNum, opArgs.inputRepeatStride, opArgs.outputRepeatStride,
-            opArgs.numBlocks, opArgs.isOpBase,
+        AivExtraKernelArgs aivExtraKernelArgs{
+            opArgs.buffersIn,
+            opArgs.input,
+            opArgs.output,
+            opArgs.rank,
+            opArgs.sendRecvRemoteRank,
+            opArgs.rankSize,
+            opArgs.xRankSize,
+            opArgs.yRankSize,
+            opArgs.zRankSize,
+            opArgs.count,
+            opArgs.dataType,
+            opArgs.op,
+            opArgs.root,
+            opArgs.sliceId,
+            opArgs.inputSliceStride,
+            opArgs.outputSliceStride,
+            opArgs.repeatNum,
+            opArgs.inputRepeatStride,
+            opArgs.outputRepeatStride,
+            opArgs.numBlocks,
+            opArgs.isOpBase,
             reinterpret_cast<void*>(opArgs.counter.headCountMem),
-            reinterpret_cast<void*>(opArgs.counter.tailCountMem), reinterpret_cast<void*>(opArgs.counter.addOneMem),
-            opArgs.counter.memSize, &opArgs.extraArgs
-        };
+            reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+            reinterpret_cast<void*>(opArgs.counter.addOneMem),
+            opArgs.counter.memSize,
+            &opArgs.extraArgs};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs)));
     } else {
-        AivKernelArgs aivKernelArgs {
-            opArgs.buffersIn, opArgs.input, opArgs.output,
-            opArgs.rank, opArgs.sendRecvRemoteRank, opArgs.rankSize, opArgs.xRankSize, opArgs.yRankSize, opArgs.zRankSize, opArgs.count, opArgs.dataType, opArgs.op, opArgs.root, opArgs.sliceId,
-            opArgs.inputSliceStride, opArgs.outputSliceStride, opArgs.repeatNum, opArgs.inputRepeatStride, opArgs.outputRepeatStride,
-            opArgs.numBlocks, opArgs.isOpBase,
+        AivKernelArgs aivKernelArgs{
+            opArgs.buffersIn,
+            opArgs.input,
+            opArgs.output,
+            opArgs.rank,
+            opArgs.sendRecvRemoteRank,
+            opArgs.rankSize,
+            opArgs.xRankSize,
+            opArgs.yRankSize,
+            opArgs.zRankSize,
+            opArgs.count,
+            opArgs.dataType,
+            opArgs.op,
+            opArgs.root,
+            opArgs.sliceId,
+            opArgs.inputSliceStride,
+            opArgs.outputSliceStride,
+            opArgs.repeatNum,
+            opArgs.inputRepeatStride,
+            opArgs.outputRepeatStride,
+            opArgs.numBlocks,
+            opArgs.isOpBase,
             reinterpret_cast<void*>(opArgs.counter.headCountMem),
-            reinterpret_cast<void*>(opArgs.counter.tailCountMem), reinterpret_cast<void*>(opArgs.counter.addOneMem),
-            opArgs.counter.memSize
-        };
+            reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+            reinterpret_cast<void*>(opArgs.counter.addOneMem),
+            opArgs.counter.memSize};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs)));
     }
     return HCCL_SUCCESS;
 }
 
-}   // ~~ namespace hccl
+} // namespace ops_hccl

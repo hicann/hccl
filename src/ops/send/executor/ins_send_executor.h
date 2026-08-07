@@ -19,40 +19,44 @@
 #include "coll_alg_v2_exec_registry.h"
 
 namespace ops_hccl {
-    class InsSendExecutor : public InsCollAlgBase {
-    public:
-        std::string Describe() const override;
+class InsSendExecutor : public InsCollAlgBase {
+public:
+    std::string Describe() const override;
 
-        HcclResult CalcAlgHierarchyInfo(
-            HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
-        // 资源计算
-        HcclResult CalcRes(
-            HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
+    // 资源计算
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-        // 算法编排
-        HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
-        HcclResult OrchestrateWithThread(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-            ThreadHandle sendRecvThread) override;
-    protected:
-        HcclResult InitSendInfo(
-            const HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo);
-        // 图模式
-        HcclResult OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel);
-        // 单算子
-        HcclResult OrchestrateOpbase(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel);
+    // 算法编排
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult OrchestrateWithThread(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread) override;
 
-        // 单算子|图模式
-        OpMode opMode_;
-        u32 remoteRank_;
-        // 一次搬运最大数据量
-        u64 maxLoopTransSize_;
-        // 一次搬运最大数据个数
-        u64 maxLoopTransCount_;
-        // 是否使用dma read
-        bool isDmaRead_{false};
-    };
+protected:
+    HcclResult InitSendInfo(const HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
+    // 图模式
+    HcclResult OrchestrateOffload(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const ThreadHandle& thread,
+        const ChannelInfo& channel);
+    // 单算子
+    HcclResult OrchestrateOpbase(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const ThreadHandle& thread,
+        const ChannelInfo& channel);
+
+    // 单算子|图模式
+    OpMode opMode_;
+    u32 remoteRank_;
+    // 一次搬运最大数据量
+    u64 maxLoopTransSize_;
+    // 一次搬运最大数据个数
+    u64 maxLoopTransCount_;
+    // 是否使用dma read
+    bool isDmaRead_{false};
+};
 } // namespace ops_hccl
 
-#endif  // #ifndef HCCL_INS_SEND_EXECUTOR_H
+#endif // #ifndef HCCL_INS_SEND_EXECUTOR_H

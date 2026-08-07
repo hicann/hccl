@@ -25,8 +25,9 @@ public:
     SimChannelMgr(std::string commId, uint32_t curRank) : commId_(commId), curRank_(curRank) {};
     ~SimChannelMgr() = default;
 
-    HcclResult ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-        const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList);
+    HcclResult ChannelCommCreate(
+        const std::string& commId, const std::string& tag, CommEngine engine, const HcclChannelDesc* channelDescList,
+        uint32_t listNum, ChannelHandle* channelList);
 
 private:
     std::string commId_;
@@ -35,5 +36,5 @@ private:
     std::unordered_map<std::string, uint32_t> channelIdxMap_;
 };
 
-};
-#endif  // SIM_CHANNEL_MANAGER_H
+}; // namespace HcclSim
+#endif // SIM_CHANNEL_MANAGER_H

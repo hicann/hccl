@@ -18,15 +18,15 @@
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
-struct CcuKernelArgReduceScatterOmniPipeMesh1D: CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    HcclReduceOp                            reduceOp;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceScatterOmniPipeMesh1D : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    HcclReduceOp reduceOp;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
-struct ReduceScatterOmniPipeMesh1DContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterOmniPipeMesh1D *arg;
+struct ReduceScatterOmniPipeMesh1DContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterOmniPipeMesh1D* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;
@@ -52,8 +52,8 @@ struct ReduceScatterOmniPipeMesh1DContext: CcuKernelCtxBase {
     // Loop机制相关变量
     std::array<std::vector<ccu::LocalAddr>, NUM_TWO> loopScratch;
     ccu::LocalAddr loopDst[2];
-    ccu::Variable  loopLen[2];
-    ccu::Variable  loopLenExp[2];
+    ccu::Variable loopLen[2];
+    ccu::Variable loopLenExp[2];
 };
 
 CcuResult CcuReduceScatterOmniPipeMesh1DKernel(CcuKernelArg arg);

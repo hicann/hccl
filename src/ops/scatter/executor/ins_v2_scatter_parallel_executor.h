@@ -31,38 +31,46 @@ public:
     explicit InsV2ScatterParallelExecutor();
     ~InsV2ScatterParallelExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
     HcclResult PreSyncInterTemplates();
     HcclResult PostSyncInterTemplates();
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *ctx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgResIntra,
-                                 const TemplateResource &templateAlgResInter, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgResIntra, const TemplateResource& templateAlgResInter,
+        u32 notifyNumOnMainThread);
 #endif
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
-    HcclResult PrepareResForTemplate(InsAlgTemplate0 &tempAlgIntra);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult PrepareResForTemplate(InsAlgTemplate0& tempAlgIntra);
     HcclResult GenInsQuesHost(
-        const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra, InsAlgTemplate1 &tempAlgInter);
-    void GenTemplateAlgParamsIntra0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis0, const u64 scratchOffset,
-        TemplateDataParams &tempAlgParamsIntra0) const;
-    void GenTemplateAlgParamsIntra1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis1, const u64 scratchOffset,
-        TemplateDataParams &tempAlgParamsIntra1) const;
-    void GenTemplateAlgParamsInter0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis0, const u64 scratchOffset,
-        TemplateDataParams &tempAlgParamsInter0) const;
-    void GenTemplateAlgParamsInter1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis1, const u64 scratchOffset,
-        TemplateDataParams &tempAlgParamsInter1) const;
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra,
+        InsAlgTemplate1& tempAlgInter);
+    void GenTemplateAlgParamsIntra0(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis0, const u64 scratchOffset, TemplateDataParams& tempAlgParamsIntra0) const;
+    void GenTemplateAlgParamsIntra1(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis1, const u64 scratchOffset, TemplateDataParams& tempAlgParamsIntra1) const;
+    void GenTemplateAlgParamsInter0(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis0, const u64 scratchOffset, TemplateDataParams& tempAlgParamsInter0) const;
+    void GenTemplateAlgParamsInter1(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis1, const u64 scratchOffset, TemplateDataParams& tempAlgParamsInter1) const;
 
-    void GetParallelDataSplit(std::vector<double> &splitDataSize) const;
-    uint64_t GetRankSize(const std::vector<std::vector<u32>> &vTopo) const;
+    void GetParallelDataSplit(std::vector<double>& splitDataSize) const;
+    uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo) const;
 
     u32 ccuKernelLaunchNumIntra0_{0};
     u32 ccuKernelLaunchNumInter0_{0};
@@ -86,6 +94,6 @@ protected:
     std::vector<std::vector<u32>> temp0HierarchyInfo_;
     std::vector<std::vector<u32>> temp1HierarchyInfo_;
 };
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
 #endif

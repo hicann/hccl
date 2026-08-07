@@ -22,29 +22,31 @@
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InsV2AllReduceOrderPreservedExecutor()
+InsV2AllReduceOrderPreservedExecutor<
+    AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InsV2AllReduceOrderPreservedExecutor()
 {
     deterministicStrict_ = true;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcAlgHierarchyInfo(
-    HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
-    HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][CalcAlgHierarchyInfo] myRank[%u], rankSize[%u] (flat level1 only)",
+    HCCL_INFO(
+        "[InsV2AllReduceOrderPreservedExecutor][CalcAlgHierarchyInfo] myRank[%u], rankSize[%u] (flat level1 only)",
         myRank_, rankSize_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcRes(
-    HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
@@ -62,12 +64,12 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     CalcGroupSlices(param);
 
     // 创建ReduceScatter算法模板实例
-    std::shared_ptr<InsAlgTemplateRS> rsTempAlg =
-        std::make_shared<InsAlgTemplateRS>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplateRS> rsTempAlg
+        = std::make_shared<InsAlgTemplateRS>(param, myRank_, algHierarchyInfo.infos[0]);
 
     // 创建AllGather算法模板实例
-    std::shared_ptr<InsAlgTemplateAG> agTempAlg =
-        std::make_shared<InsAlgTemplateAG>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplateAG> agTempAlg
+        = std::make_shared<InsAlgTemplateAG>(param, myRank_, algHierarchyInfo.infos[0]);
 
     AlgResourceRequest resReqRS;
     AlgResourceRequest resReqAG;
@@ -85,18 +87,17 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     // 遍历每个从线程，设置通知数为两个模板的最大值
     for (u32 i = 0; i < resourceRequest.slaveThreadNum; ++i) {
         if (i < resReqRS.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i],
-                resReqRS.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqRS.notifyNumPerThread[i]);
         }
         if (i < resReqAG.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i],
-                resReqAG.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqAG.notifyNumPerThread[i]);
         }
     }
 
     // 设置主线程通知数为两个模板的最大值
-    resourceRequest.notifyNumOnMainThread = std::max(resReqRS.notifyNumOnMainThread,
-        resReqAG.notifyNumOnMainThread);
+    resourceRequest.notifyNumOnMainThread = std::max(resReqRS.notifyNumOnMainThread, resReqAG.notifyNumOnMainThread);
 
     resourceRequest.channels.clear();
     if (resReqRS.channels.size() > 0) {
@@ -106,20 +107,21 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
         resourceRequest.channels.push_back(resReqAG.channels[0]);
     }
 
-    HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][CalcRes] slaveThreadNum[%u], notifyNumOnMainThread[%u]",
+    HCCL_INFO(
+        "[InsV2AllReduceOrderPreservedExecutor][CalcRes] slaveThreadNum[%u], notifyNumOnMainThread[%u]",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable& resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][Orchestrate] Start");
 
     OrderPreservedBaseParams baseParams = InitOrderPreservedBaseParams(param, resCtx);
     SetOrderPreservedBaseParams(baseParams);
-    
+
     threads_ = resCtx.threads;
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
@@ -131,38 +133,42 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     CalcGroupSlices(param);
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllReduceOrderPreservedExecutor][Orchestrate] kernel run failed, err[0x%016llx]",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2AllReduceOrderPreservedExecutor][Orchestrate] kernel run failed, err[0x%016llx]",
+            HCCL_ERROR_CODE(ret)),
+        ret);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 template <typename InsAlgTemplate>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::GenTempResource(
-    const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-    const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource)
+    const AlgResourceCtxSerializable& resCtx, const u32 channelLevelIdx,
+    const std::shared_ptr<InsAlgTemplate>& algTemplate, TemplateResource& tempResource)
 {
     AlgResourceRequest req;
     algTemplate->GetRes(req);
-    
+
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
-        HCCL_ERROR("[GenTempResource] channelLevelIdx[%u] should be lower than remoteRankToChannelInfo_.size()[%u]",
+        HCCL_ERROR(
+            "[GenTempResource] channelLevelIdx[%u] should be lower than remoteRankToChannelInfo_.size()[%u]",
             channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }
-    
+
     // 设置通道信息，只要level0
     tempResource.channels = remoteRankToChannelInfo_[channelLevelIdx];
     tempResource.threads.assign(resCtx.threads.begin(), resCtx.threads.begin() + 1 + req.slaveThreadNum);
     tempResource.aivCommInfoPtr = resCtx.aivCommInfoPtr;
-    
+
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 void InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InitTemplateDataParams(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx, TemplateDataParams &tempAlgParams)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParams)
 {
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;
     tempAlgParams.buffInfo.outputPtr = param.outputPtr;
@@ -175,23 +181,23 @@ void InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlg
     tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
 }
 
-
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][OrchestrateLoop] Start, deterministicStrict[%d] (flat level1)",
+    HCCL_INFO(
+        "[InsV2AllReduceOrderPreservedExecutor][OrchestrateLoop] Start, deterministicStrict[%d] (flat level1)",
         deterministicStrict_);
 
     // 创建ReduceScatter算法模板实例
-    std::shared_ptr<InsAlgTemplateRS> rsTempAlg =
-        std::make_shared<InsAlgTemplateRS>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplateRS> rsTempAlg
+        = std::make_shared<InsAlgTemplateRS>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
     // 设置ReduceScatter模板的通道映射
     rsTempAlg->SetchannelsPerRank(remoteRankToChannelInfo_[0]);
 
     // 创建AllGather算法模板实例
-    std::shared_ptr<InsAlgTemplateAG> agTempAlg =
-        std::make_shared<InsAlgTemplateAG>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplateAG> agTempAlg
+        = std::make_shared<InsAlgTemplateAG>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
     // 设置AllGather模板的通道映射
     agTempAlg->SetchannelsPerRank(remoteRankToChannelInfo_[0]);
 
@@ -209,7 +215,8 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     inCclBuffSize_ = tempAlgParams.buffInfo.hcclBuff.size - outCclBuffSize_;
     outCclBuffOffset_ = 0;
     inCclBuffOffset_ = outCclBuffSize_;
-    HCCL_INFO("[OrchestrateLoop] outCclBuffSize_[%llu], inCclBuffSize_[%llu], "
+    HCCL_INFO(
+        "[OrchestrateLoop] outCclBuffSize_[%llu], inCclBuffSize_[%llu], "
         "outCclBuffOffset_[%llu], inCclBuffOffset_[%llu]",
         outCclBuffSize_, inCclBuffSize_, outCclBuffOffset_, inCclBuffOffset_);
 
@@ -217,13 +224,12 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     // outCclBuff存储ReduceScatter输出（每个rank的归约结果大小 = currDataCount/rankSize）
     // 所以最大总数据量 = outCclBuffSize_ * rankSize_ / dataTypeSize_
     // 向下对齐到rankSize的倍数，方便数据切分
-    u64 maxCountPerLoop = outCclBuffSize_ / HCCL_MIN_SLICE_ALIGN *
-                        HCCL_MIN_SLICE_ALIGN / dataTypeSize_ / rankSize_ * rankSize_;
+    u64 maxCountPerLoop
+        = outCclBuffSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_ / rankSize_ * rankSize_;
     HCCL_INFO(
         "[OrchestrateLoop] maxCountPerLoop[%llu], outCclBuffSize_[%llu], dataTypeSize_[%llu], rankSize[%u]",
         maxCountPerLoop, outCclBuffSize_, dataTypeSize_, rankSize_);
-    CHK_PRT_RET(maxCountPerLoop == 0,
-        HCCL_ERROR("[OrchestrateLoop] maxCountPerLoop is 0"), HCCL_E_INTERNAL);
+    CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[OrchestrateLoop] maxCountPerLoop is 0"), HCCL_E_INTERNAL);
 
     // 计算循环次数：总数据量 / 单次最大数据量，向上取整
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
@@ -233,10 +239,8 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxCountPerLoop;
 
-        CHK_RET(RunReduceScatter(param, resCtx, currDataCount, 
-            processedDataCount, rsTempAlg, rsTemplateAlgRes));
-        CHK_RET(RunAllGather(param, resCtx, currDataCount,
-            processedDataCount, agTempAlg, agTemplateAlgRes));
+        CHK_RET(RunReduceScatter(param, resCtx, currDataCount, processedDataCount, rsTempAlg, rsTemplateAlgRes));
+        CHK_RET(RunAllGather(param, resCtx, currDataCount, processedDataCount, agTempAlg, agTemplateAlgRes));
 
         processedDataCount += currDataCount;
     }
@@ -246,30 +250,33 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InitExecutorInfo(const OpParam &param)
+HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InitExecutorInfo(
+    const OpParam& param)
 {
     // 规约保序判断已在 selector 中完成，executor 直接启用保序模式
     deterministicStrict_ = true;
-    HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][InitExecutorInfo] deterministicStrict[%d]",
-        deterministicStrict_);
+    HCCL_INFO("[InsV2AllReduceOrderPreservedExecutor][InitExecutorInfo] deterministicStrict[%d]", deterministicStrict_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcSizePerBlock(const OpParam &param)
+HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcSizePerBlock(
+    const OpParam& param)
 {
     // 计算单卡数据量：总数据量 / rank数，向上取整
     u64 sizePerBlock = (dataCount_ + rankSize_ - 1) / rankSize_ * dataTypeSize_;
     memInfo_.sizePerBlock = RoundUpWithDivisor(sizePerBlock, HCCL_MIN_SLICE_ALIGN_ORDER_PRESERVED);
     memInfo_.scratchMemFlag = false;
     memInfo_.totalSize = 0;
-    HCCL_INFO("[CalcSizePerBlock] sizePerBlock[%llu], dataCount[%llu], rankSize[%u]",
-        memInfo_.sizePerBlock, dataCount_, rankSize_);
+    HCCL_INFO(
+        "[CalcSizePerBlock] sizePerBlock[%llu], dataCount[%llu], rankSize[%u]", memInfo_.sizePerBlock, dataCount_,
+        rankSize_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcGroupSlices(const OpParam &param)
+HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcGroupSlices(
+    const OpParam& param)
 {
     memInfo_.groupSize.clear();
     // 初始化剩余数据大小为总数据大小
@@ -280,16 +287,14 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
         sizeRemain -= size;
     }
     memInfo_.totalSize = std::max(memInfo_.sizePerBlock * rankSize_, dataSize_);
-    HCCL_INFO("[CalcGroupSlices] groupSize.size[%u], totalSize[%llu]",
-        memInfo_.groupSize.size(), memInfo_.totalSize);
+    HCCL_INFO("[CalcGroupSlices] groupSize.size[%u], totalSize[%llu]", memInfo_.groupSize.size(), memInfo_.totalSize);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::RunReduceScatter(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-    u64 currDataCount, u64 processedDataCount,
-    std::shared_ptr<InsAlgTemplateRS> rsTempAlg, TemplateResource &rsTemplateAlgRes)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
+    std::shared_ptr<InsAlgTemplateRS> rsTempAlg, TemplateResource& rsTemplateAlgRes)
 {
     // 准备ReduceScatter模板数据参数结构体
     // ReduceScatter: INPUT -> HCCL_BUFFER (outCclBuff部分)
@@ -317,30 +322,30 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     memBlockInfo.userInputOffsets.clear();
     memBlockInfo.inputOffsets.clear();
     memBlockInfo.outputOffsets.clear();
-    
+
     u64 unitSize = dataTypeSize_;
     // 计算sliceSize和tailSize（尾块处理）
     u64 rsSliceSize = currDataCount / rankSize_ * unitSize;
     u64 rsTailSize = (currDataCount / rankSize_ + currDataCount % rankSize_) * unitSize;
-    
+
     memBlockInfo.outputOffsets.resize(rankSize_, 0);
-    
+
     for (u32 outputIndex = 0; outputIndex < rankSize_; outputIndex++) {
         memBlockInfo.outputOffsets[outputIndex] = inCclBuffOffset_ + outputIndex * rsTailSize;
     }
-    
+
     // 设置输入偏移和大小：每个rank对应一个数据切片，最后一个rank处理剩余的尾块
     for (u32 dataId = 0; dataId < rankSize_; dataId++) {
         // 实际数据大小：最后一个rank包含余数
         u64 actualSize = (dataId == rankSize_ - 1) ? rsTailSize : rsSliceSize;
         // 用户输入偏移：已处理数据偏移 + 当前数据块在输入数据中的偏移
         u64 userMemInOffset = processedDataCount * unitSize + dataId * rsSliceSize;
-        
+
         memBlockInfo.size.push_back(actualSize);
         memBlockInfo.userInputOffsets.push_back(userMemInOffset);
         memBlockInfo.inputOffsets.push_back(inCclBuffOffset_ + dataId * rsTailSize);
     }
-    
+
     // 设置所有rank的数据切片大小向量（考虑尾块）
     std::vector<u64> rsSliceSizes;
     for (u32 rankId = 0; rankId < rankSize_; rankId++) {
@@ -356,18 +361,17 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     rsTempAlgParams.inputRepeatStride = 0;
     rsTempAlgParams.outputRepeatStride = 0;
     rsTempAlgParams.count = currDataCount / rankSize_;
-    
+
     rsTempAlg->SetMemBlockInfo(memBlockInfo);
     CHK_RET(rsTempAlg->KernelRun(param, rsTempAlgParams, rsTemplateAlgRes));
-    
+
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::RunAllGather(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-    u64 currDataCount, u64 processedDataCount,
-    std::shared_ptr<InsAlgTemplateAG> agTempAlg, TemplateResource &agTemplateAlgRes)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
+    std::shared_ptr<InsAlgTemplateAG> agTempAlg, TemplateResource& agTemplateAlgRes)
 {
     TemplateDataParams agTempAlgParams;
     agTempAlgParams.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
@@ -389,7 +393,7 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 
     u64 agSliceSize = currDataCount / rankSize_ * dataTypeSize_;
     u64 agTailSize = (currDataCount / rankSize_ + currDataCount % rankSize_) * dataTypeSize_;
-    
+
     std::vector<u64> agSliceSizes;
     for (u32 rankId = 0; rankId < rankSize_; rankId++) {
         u64 size = (rankId == rankSize_ - 1) ? agTailSize : agSliceSize;
@@ -404,18 +408,18 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     agTempAlgParams.inputRepeatStride = 0;
     agTempAlgParams.outputRepeatStride = 0;
     agTempAlgParams.count = currDataCount / rankSize_;
-    
+
     CHK_RET(agTempAlg->KernelRun(param, agTempAlgParams, agTemplateAlgRes));
-    
+
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreserved,
-    InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreserved, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
     InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
 
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreservedGroup,
-    InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreservedGroup, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
     InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
 
-}
+} // namespace ops_hccl

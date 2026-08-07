@@ -11,8 +11,8 @@
 #include "aiv_communication_base_v2.h"
 #include "aiv_all_to_all_mesh_1D.h"
 
-extern "C"
-__aicore__ void sk_alltoall_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF) {
+extern "C" __aicore__ void sk_alltoall_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF)
+{
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_a2a_mesh_1d(SUPERKERNEL_ARGS_CALL);
 }

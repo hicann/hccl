@@ -13,10 +13,10 @@
 #include <cstdio>
 #include <cstdlib>
 
-DEFINE_WEAK_FUNC(HcclResult, HcclCreateOpResCtxInner, HcclComm comm, uint8_t opType, HcclDataType srcDataType, HcclDataType dstDataType,
-                                              HcclReduceOp reduceType, uint64_t count, char* algConfig, uint32_t commEngine, void** opResCtx);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclCreateOpResCtxInner, HcclComm comm, uint8_t opType, HcclDataType srcDataType,
+    HcclDataType dstDataType, HcclReduceOp reduceType, uint64_t count, char* algConfig, uint32_t commEngine,
+    void** opResCtx);
 
 // 初始化
-void HcclInnerDlInit(void* libHcommHandle) {
-    INIT_SUPPORT_FLAG(libHcommHandle, HcclCreateOpResCtxInner);
-}
+void HcclInnerDlInit(void* libHcommHandle) { INIT_SUPPORT_FLAG(libHcommHandle, HcclCreateOpResCtxInner); }

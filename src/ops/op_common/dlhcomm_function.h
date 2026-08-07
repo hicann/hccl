@@ -23,7 +23,7 @@ namespace ops_hccl {
 class DlHcommFunction {
 public:
     ~DlHcommFunction();
-    static DlHcommFunction &GetInstance();
+    static DlHcommFunction& GetInstance();
     HcclResult DlHcommFunctionInit();
     std::function<HcclResult(HcclComm, ThreadHandle, void*, uint32_t, void**)> dlHcclThreadResGetInfo{};
     std::function<HcclResult(HcclComm, HcclConfigType, uint32_t, void*)> dlHcclConfigGetInfo{};
@@ -33,8 +33,8 @@ private:
     std::mutex handleMutex_;
     DlHcommFunction(const DlHcommFunction&) = delete;
     DlHcommFunction() = default;
-    DlHcommFunction &operator=(const DlHcommFunction&) = delete;
+    DlHcommFunction& operator=(const DlHcommFunction&) = delete;
     HcclResult DlHcommFunctionInterInit();
 };
-}  // namespace ops_hccl
+} // namespace ops_hccl
 #endif

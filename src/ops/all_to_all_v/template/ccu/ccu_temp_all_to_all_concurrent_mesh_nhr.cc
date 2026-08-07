@@ -20,15 +20,15 @@
 namespace ops_hccl {
 
 // notify indices for 2-thread concurrent sync
-constexpr u32 NOTIFY_IDX_PRE_SYNC = 0;   // PreSync: threads[0] -> threads[1]
-constexpr u32 NOTIFY_IDX_POST_SYNC = 0;  // PostSync: threads[1] -> threads[0]
+constexpr u32 NOTIFY_IDX_PRE_SYNC = 0;  // PreSync: threads[0] -> threads[1]
+constexpr u32 NOTIFY_IDX_POST_SYNC = 0; // PostSync: threads[1] -> threads[0]
 constexpr u32 CLOS_BW_CONSTANT = 8;
 
 CcuTempAllToAllConcurrentMeshNHR::CcuTempAllToAllConcurrentMeshNHR(
-    const OpParam &param, const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks)
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    if (!subCommRanks.empty() && !subCommRanks[0].empty()) {       
+    if (!subCommRanks.empty() && !subCommRanks[0].empty()) {
         auto it = std::find(subCommRanks[0].begin(), subCommRanks[0].end(), rankId);
         templateRankSize_ = subCommRanks[0].size();
         if (it != subCommRanks[0].end()) {
@@ -37,8 +37,9 @@ CcuTempAllToAllConcurrentMeshNHR::CcuTempAllToAllConcurrentMeshNHR(
     }
 }
 
-HcclResult CcuTempAllToAllConcurrentMeshNHR::CalcRes(HcclComm comm, const OpParam &param,
-    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
+HcclResult CcuTempAllToAllConcurrentMeshNHR::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     std::vector<std::vector<u32>> meshSubCommRanks = {subCommRanks_[0]};
     std::vector<std::vector<u32>> closSubCommRanks = {subCommRanks_[1]};
@@ -61,37 +62,36 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::CalcRes(HcclComm comm, const OpPara
     // No outer inter-thread sync needed: each kernel has its own internal
     // channel-based PreSync/PostSync, and mesh/clos use independent channels.
     resourceRequest.slaveThreadNum = 1;
-    resourceRequest.notifyNumOnMainThread = 1;  // PostSync: main WAIT + slave->main RECORD
-    resourceRequest.notifyNumPerThread.emplace_back(1);  // PreSync: slave waits
+    resourceRequest.notifyNumOnMainThread = 1;          // PostSync: main WAIT + slave->main RECORD
+    resourceRequest.notifyNumPerThread.emplace_back(1); // PreSync: slave waits
 
     // CCU kernel: mesh 1 + clos 1
     resourceRequest.ccuKernelNum.emplace_back(meshReq.ccuKernelNum[0]);
     resourceRequest.ccuKernelNum.emplace_back(closReq.ccuKernelNum[0]);
-    resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(),
-                                          meshReq.ccuKernelInfos.begin(),
-                                          meshReq.ccuKernelInfos.end());
-    resourceRequest.ccuKernelInfos.insert(resourceRequest.ccuKernelInfos.end(),
-                                          closReq.ccuKernelInfos.begin(),
-                                          closReq.ccuKernelInfos.end());
+    resourceRequest.ccuKernelInfos.insert(
+        resourceRequest.ccuKernelInfos.end(), meshReq.ccuKernelInfos.begin(), meshReq.ccuKernelInfos.end());
+    resourceRequest.ccuKernelInfos.insert(
+        resourceRequest.ccuKernelInfos.end(), closReq.ccuKernelInfos.begin(), closReq.ccuKernelInfos.end());
 
-    HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR][CalcRes] rank[%u] slaveThreadNum[%u], "
-              "notifyNumOnMainThread[%u], ccuKernelNum[%zu]",
-              myRank_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread,
-              resourceRequest.ccuKernelNum.size());
+    HCCL_INFO(
+        "[CcuTempAllToAllConcurrentMeshNHR][CalcRes] rank[%u] slaveThreadNum[%u], "
+        "notifyNumOnMainThread[%u], ccuKernelNum[%zu]",
+        myRank_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread,
+        resourceRequest.ccuKernelNum.size());
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllConcurrentMeshNHR::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult CcuTempAllToAllConcurrentMeshNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
-    resourceRequest.slaveThreadNum = 1;  // clos main thread
-    resourceRequest.notifyNumOnMainThread = 1;  // PostSync: main WAIT + slave->main RECORD
-    resourceRequest.notifyNumPerThread.emplace_back(1);  // PreSync: slave waits
+    resourceRequest.slaveThreadNum = 1;                 // clos main thread
+    resourceRequest.notifyNumOnMainThread = 1;          // PostSync: main WAIT + slave->main RECORD
+    resourceRequest.notifyNumPerThread.emplace_back(1); // PreSync: slave waits
     return HCCL_SUCCESS;
 }
 
 u64 CcuTempAllToAllConcurrentMeshNHR::GetThreadNum() const
 {
-    return 2;  // mesh main + clos main
+    return 2; // mesh main + clos main
 }
 
 u64 CcuTempAllToAllConcurrentMeshNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
@@ -102,7 +102,7 @@ u64 CcuTempAllToAllConcurrentMeshNHR::CalcScratchMultiple(BufferType inBuffType,
 }
 
 void CcuTempAllToAllConcurrentMeshNHR::CalcDataSplit(
-    u64 totalSize, u64 dataTypeSize, u64 &meshSize, u64 &closSize) const
+    u64 totalSize, u64 dataTypeSize, u64& meshSize, u64& closSize) const
 {
     u32 meshBw = (templateRankSize_ > 1) ? (templateRankSize_ - 1) : 1;
     u32 closBw = CLOS_BW_CONSTANT;
@@ -123,15 +123,17 @@ void CcuTempAllToAllConcurrentMeshNHR::CalcDataSplit(
         meshSize = meshSize / sliceAlign * sliceAlign;
     }
     closSize = totalSize - meshSize;
-    HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR][CalcDataSplit] totalSize[%llu], meshSize[%llu], "
-              "closSize[%llu], meshBw[%u], closBw[%u]", totalSize, meshSize, closSize, meshBw, closBw);
+    HCCL_INFO(
+        "[CcuTempAllToAllConcurrentMeshNHR][CalcDataSplit] totalSize[%llu], meshSize[%llu], "
+        "closSize[%llu], meshBw[%u], closBw[%u]",
+        totalSize, meshSize, closSize, meshBw, closBw);
 }
 
 HcclResult CcuTempAllToAllConcurrentMeshNHR::BuildMeshTaskArgs(
-    const TemplateDataParams &templateDataParams, u64 meshSliceSize,
-    uint64_t token, std::vector<uint64_t> &meshTaskArgs)
+    const TemplateDataParams& templateDataParams, u64 meshSliceSize, uint64_t token,
+    std::vector<uint64_t>& meshTaskArgs)
 {
-    const BuffInfo &buff = templateDataParams.buffInfo;
+    const BuffInfo& buff = templateDataParams.buffInfo;
     uint64_t inputAddr = PointerToAddr(buff.inputPtr) + buff.inBuffBaseOff;
     uint64_t outputAddr = PointerToAddr(buff.outputPtr) + buff.outBuffBaseOff;
     uint64_t srcStride = templateDataParams.outputSliceStride;
@@ -142,17 +144,16 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::BuildMeshTaskArgs(
     config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
     auto goSize = CalGoSize(meshSliceSize, config, GetCcuVersion());
-    meshTaskArgs = {inputAddr, outputAddr, token, meshSliceSize,
-                    srcStride, srcOffset, dstOffset,
-                    goSize[0], goSize[1], goSize[2], goSize[3]};
+    meshTaskArgs = {inputAddr, outputAddr, token,     meshSliceSize, srcStride, srcOffset,
+                    dstOffset, goSize[0],  goSize[1], goSize[2],     goSize[3]};
     return HCCL_SUCCESS;
 }
 
 HcclResult CcuTempAllToAllConcurrentMeshNHR::BuildClosTaskArgs(
-    const TemplateDataParams &templateDataParams, u64 meshSliceSize,
-    u64 closSliceSize, uint64_t token, std::vector<uint64_t> &closTaskArgs)
+    const TemplateDataParams& templateDataParams, u64 meshSliceSize, u64 closSliceSize, uint64_t token,
+    std::vector<uint64_t>& closTaskArgs)
 {
-    const BuffInfo &buff = templateDataParams.buffInfo;
+    const BuffInfo& buff = templateDataParams.buffInfo;
     uint64_t inputAddr = PointerToAddr(buff.inputPtr) + buff.inBuffBaseOff + meshSliceSize;
     uint64_t outputAddr = PointerToAddr(buff.outputPtr) + buff.outBuffBaseOff;
     uint64_t srcStride = templateDataParams.outputSliceStride;
@@ -163,112 +164,98 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::BuildClosTaskArgs(
     config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
     auto goSize = CalGoSize(closSliceSize, config, GetCcuVersion());
-    closTaskArgs = {inputAddr, outputAddr, token, closSliceSize,
-                    srcStride, srcOffset, closDstOffset,
-                    goSize[0], goSize[1], goSize[2], goSize[3]};
+    closTaskArgs = {inputAddr,     outputAddr, token,     closSliceSize, srcStride, srcOffset,
+                    closDstOffset, goSize[0],  goSize[1], goSize[2],     goSize[3]};
     return HCCL_SUCCESS;
 }
 
 HcclResult CcuTempAllToAllConcurrentMeshNHR::LaunchConcurrentKernels(
-    TemplateResource &templateResource, bool hasMesh, bool hasClos,
-    const std::vector<uint64_t> &meshTaskArgs, const std::vector<uint64_t> &closTaskArgs)
+    TemplateResource& templateResource, bool hasMesh, bool hasClos, const std::vector<uint64_t>& meshTaskArgs,
+    const std::vector<uint64_t>& closTaskArgs)
 {
     if (hasClos && templateResource.threads.size() >= 2) {
-        CHK_RET(PreSyncInterThreads(templateResource.threads[0],
-            {templateResource.threads[1]}, {NOTIFY_IDX_PRE_SYNC}));
+        CHK_RET(PreSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_PRE_SYNC}));
     }
     if (hasMesh) {
-        CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[0],
-            templateResource.ccuKernels[0], const_cast<uint64_t*>(meshTaskArgs.data()),
+        CcuResult launchRet = HcommCcuKernelLaunch(
+            templateResource.threads[0], templateResource.ccuKernels[0], const_cast<uint64_t*>(meshTaskArgs.data()),
             CcuAlltoAllMesh1DArgLayout::ARG_SIZE);
-        CHK_PRT_RET(launchRet != CCU_SUCCESS,
+        CHK_PRT_RET(
+            launchRet != CCU_SUCCESS,
             HCCL_ERROR("[CcuTempAllToAllConcurrentMeshNHR] mesh kernel launch failed, ccuRet -> %d", launchRet),
             ConvertCcuToHccl(launchRet));
     }
     if (hasClos) {
-        CcuResult launchRet = HcommCcuKernelLaunch(templateResource.threads[1],
-            templateResource.ccuKernels[1], const_cast<uint64_t*>(closTaskArgs.data()),
+        CcuResult launchRet = HcommCcuKernelLaunch(
+            templateResource.threads[1], templateResource.ccuKernels[1], const_cast<uint64_t*>(closTaskArgs.data()),
             CcuAlltoAllMesh1DArgLayout::ARG_SIZE);
-        CHK_PRT_RET(launchRet != CCU_SUCCESS,
+        CHK_PRT_RET(
+            launchRet != CCU_SUCCESS,
             HCCL_ERROR("[CcuTempAllToAllConcurrentMeshNHR] clos kernel launch failed, ccuRet -> %d", launchRet),
             ConvertCcuToHccl(launchRet));
     }
     if (hasClos && templateResource.threads.size() >= 2) {
-        CHK_RET(PostSyncInterThreads(templateResource.threads[0],
-            {templateResource.threads[1]}, {NOTIFY_IDX_POST_SYNC}));
+        CHK_RET(
+            PostSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_POST_SYNC}));
     }
     return HCCL_SUCCESS;
 }
 
 HcclResult CcuTempAllToAllConcurrentMeshNHR::SaveSubmitInfos(
-    TemplateResource &templateResource, const std::vector<uint64_t> &meshTaskArgs,
-    const std::vector<uint64_t> &closTaskArgs, u64 meshSliceSize,
-    bool hasMesh, bool hasClos, const BuffInfo &buff)
+    TemplateResource& templateResource, const std::vector<uint64_t>& meshTaskArgs,
+    const std::vector<uint64_t>& closTaskArgs, u64 meshSliceSize, bool hasMesh, bool hasClos, const BuffInfo& buff)
 {
     if (hasMesh) {
         CcuKernelSubmitInfo meshSubmit;
         meshSubmit.kernelHandle = templateResource.ccuKernels[0];
-        CHK_RET(FillCachedArgs(meshSubmit,
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::INPUT],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::OUTPUT],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::TOKEN],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SLICE_SIZE],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_STRIDE],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_OFFSET],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::DST_OFFSET],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_0],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_1],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_2],
-            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_3],
-            buff.inBuffBaseOff,
-            buff.outBuffBaseOff));
+        CHK_RET(FillCachedArgs(
+            meshSubmit, meshTaskArgs[CcuAlltoAllMesh1DArgLayout::INPUT],
+            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::OUTPUT], meshTaskArgs[CcuAlltoAllMesh1DArgLayout::TOKEN],
+            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SLICE_SIZE], meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_STRIDE],
+            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_OFFSET], meshTaskArgs[CcuAlltoAllMesh1DArgLayout::DST_OFFSET],
+            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_0], meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_1],
+            meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_2], meshTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_3],
+            buff.inBuffBaseOff, buff.outBuffBaseOff));
         templateResource.submitInfos.push_back(meshSubmit);
     }
     if (hasClos) {
         CcuKernelSubmitInfo closSubmit;
         closSubmit.kernelHandle = templateResource.ccuKernels[1];
-        CHK_RET(FillCachedArgs(closSubmit,
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::INPUT],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::OUTPUT],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::TOKEN],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::SLICE_SIZE],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_STRIDE],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_OFFSET],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::DST_OFFSET],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_0],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_1],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_2],
-            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_3],
-            buff.inBuffBaseOff + meshSliceSize,
-            buff.outBuffBaseOff));
+        CHK_RET(FillCachedArgs(
+            closSubmit, closTaskArgs[CcuAlltoAllMesh1DArgLayout::INPUT],
+            closTaskArgs[CcuAlltoAllMesh1DArgLayout::OUTPUT], closTaskArgs[CcuAlltoAllMesh1DArgLayout::TOKEN],
+            closTaskArgs[CcuAlltoAllMesh1DArgLayout::SLICE_SIZE], closTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_STRIDE],
+            closTaskArgs[CcuAlltoAllMesh1DArgLayout::SRC_OFFSET], closTaskArgs[CcuAlltoAllMesh1DArgLayout::DST_OFFSET],
+            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_0], closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_1],
+            closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_2], closTaskArgs[CcuAlltoAllMesh1DArgLayout::GO_SIZE_3],
+            buff.inBuffBaseOff + meshSliceSize, buff.outBuffBaseOff));
         templateResource.submitInfos.push_back(closSubmit);
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllConcurrentMeshNHR::PatchMeshArgs(const TemplateFastLaunchCtx &ctx)
+HcclResult CcuTempAllToAllConcurrentMeshNHR::PatchMeshArgs(const TemplateFastLaunchCtx& ctx)
 {
-    uint64_t *args = const_cast<uint64_t*>(ctx.ccuKernelSubmitInfos[0].cachedArgs);
-    args[CcuAlltoAllMesh1DArgLayout::INPUT] =
-        PointerToAddr(ctx.buffInfo.inputPtr) + args[CcuAlltoAllMesh1DArgLayout::IN_BUFF_BASE_OFF];
-    args[CcuAlltoAllMesh1DArgLayout::OUTPUT] =
-        PointerToAddr(ctx.buffInfo.outputPtr) + args[CcuAlltoAllMesh1DArgLayout::OUT_BUFF_BASE_OFF];
+    uint64_t* args = const_cast<uint64_t*>(ctx.ccuKernelSubmitInfos[0].cachedArgs);
+    args[CcuAlltoAllMesh1DArgLayout::INPUT]
+        = PointerToAddr(ctx.buffInfo.inputPtr) + args[CcuAlltoAllMesh1DArgLayout::IN_BUFF_BASE_OFF];
+    args[CcuAlltoAllMesh1DArgLayout::OUTPUT]
+        = PointerToAddr(ctx.buffInfo.outputPtr) + args[CcuAlltoAllMesh1DArgLayout::OUT_BUFF_BASE_OFF];
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllConcurrentMeshNHR::PatchClosArgs(const TemplateFastLaunchCtx &ctx, u32 meshKernelNum)
+HcclResult CcuTempAllToAllConcurrentMeshNHR::PatchClosArgs(const TemplateFastLaunchCtx& ctx, u32 meshKernelNum)
 {
-    uint64_t *args = const_cast<uint64_t*>(ctx.ccuKernelSubmitInfos[meshKernelNum].cachedArgs);
-    args[CcuAlltoAllMesh1DArgLayout::INPUT] =
-        PointerToAddr(ctx.buffInfo.inputPtr) + args[CcuAlltoAllMesh1DArgLayout::IN_BUFF_BASE_OFF];
-    args[CcuAlltoAllMesh1DArgLayout::OUTPUT] =
-        PointerToAddr(ctx.buffInfo.outputPtr) + args[CcuAlltoAllMesh1DArgLayout::OUT_BUFF_BASE_OFF];
+    uint64_t* args = const_cast<uint64_t*>(ctx.ccuKernelSubmitInfos[meshKernelNum].cachedArgs);
+    args[CcuAlltoAllMesh1DArgLayout::INPUT]
+        = PointerToAddr(ctx.buffInfo.inputPtr) + args[CcuAlltoAllMesh1DArgLayout::IN_BUFF_BASE_OFF];
+    args[CcuAlltoAllMesh1DArgLayout::OUTPUT]
+        = PointerToAddr(ctx.buffInfo.outputPtr) + args[CcuAlltoAllMesh1DArgLayout::OUT_BUFF_BASE_OFF];
     return HCCL_SUCCESS;
 }
 
 HcclResult CcuTempAllToAllConcurrentMeshNHR::KernelRun(
-    const OpParam &param, const TemplateDataParams &templateDataParams,
-    TemplateResource &templateResource)
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR][KernelRun] rank[%u] start.", myRank_);
 
@@ -298,15 +285,15 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::KernelRun(
     }
 
     CHK_RET(LaunchConcurrentKernels(templateResource, hasMesh, hasClos, meshTaskArgs, closTaskArgs));
-    CHK_RET(SaveSubmitInfos(templateResource, meshTaskArgs, closTaskArgs, meshSliceSize,
-                            hasMesh, hasClos, templateDataParams.buffInfo));
+    CHK_RET(SaveSubmitInfos(
+        templateResource, meshTaskArgs, closTaskArgs, meshSliceSize, hasMesh, hasClos, templateDataParams.buffInfo));
 
     HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR][KernelRun] rank[%u] end.", myRank_);
     return HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllToAllConcurrentMeshNHR::FastLaunch(
-    const OpParam &param, const TemplateFastLaunchCtx &tempFastLaunchCtx)
+HcclResult
+CcuTempAllToAllConcurrentMeshNHR::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
     (void)param;
     u32 totalKernelNum = static_cast<u32>(tempFastLaunchCtx.ccuKernelSubmitInfos.size());
@@ -334,18 +321,18 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::FastLaunch(
     std::vector<uint64_t> meshArgs;
     std::vector<uint64_t> closArgs;
     if (hasMesh) {
-        const auto &si = tempFastLaunchCtx.ccuKernelSubmitInfos[0];
+        const auto& si = tempFastLaunchCtx.ccuKernelSubmitInfos[0];
         meshArgs.assign(si.cachedArgs, si.cachedArgs + CcuAlltoAllMesh1DArgLayout::ARG_SIZE);
     }
     if (hasClos) {
-        const auto &si = tempFastLaunchCtx.ccuKernelSubmitInfos[meshKernelNum];
+        const auto& si = tempFastLaunchCtx.ccuKernelSubmitInfos[meshKernelNum];
         closArgs.assign(si.cachedArgs, si.cachedArgs + CcuAlltoAllMesh1DArgLayout::ARG_SIZE);
     }
 
     TemplateResource tmpRes;
     tmpRes.threads = tempFastLaunchCtx.threads;
     tmpRes.ccuKernels.clear();
-    for (const auto &si : tempFastLaunchCtx.ccuKernelSubmitInfos) {
+    for (const auto& si : tempFastLaunchCtx.ccuKernelSubmitInfos) {
         tmpRes.ccuKernels.push_back(si.kernelHandle);
     }
 

@@ -17,7 +17,8 @@ DEFINE_WEAK_FUNC(HcclResult, HcommRegOpInfo, const char* commId, void* opInfo, s
 DEFINE_WEAK_FUNC(HcclResult, HcommRegOpTaskException, const char* commId, HcommGetOpInfoCallback callback);
 
 // 初始化
-void HcommDiagDlInit(void* libHcommHandle) {
+void HcommDiagDlInit(void* libHcommHandle)
+{
     INIT_SUPPORT_FLAG(libHcommHandle, HcommRegOpInfo);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommRegOpTaskException);
 }

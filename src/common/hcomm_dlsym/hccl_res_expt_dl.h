@@ -22,13 +22,14 @@
 extern "C" {
 #endif
 
-DECL_WEAK_FUNC(HcclResult, HcclCommAddExchangeInfo, HcclComm comm, const void *data, uint32_t length);
-DECL_WEAK_FUNC(HcclResult, HcclCommGetExchangeInfo, HcclComm comm, uint32_t remoteRank, uint32_t length, void *data,
-    uint32_t *actualLength);
+DECL_WEAK_FUNC(HcclResult, HcclCommAddExchangeInfo, HcclComm comm, const void* data, uint32_t length);
+DECL_WEAK_FUNC(
+    HcclResult, HcclCommGetExchangeInfo, HcclComm comm, uint32_t remoteRank, uint32_t length, void* data,
+    uint32_t* actualLength);
 DECL_SUPPORT_FLAG(HcclCommAddExchangeInfo);
 DECL_SUPPORT_FLAG(HcclCommGetExchangeInfo);
 
-void HcclResExptDlInit(void *libHcommHandle);
+void HcclResExptDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus
 }

@@ -12,7 +12,7 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivScatterMesh1D : public AivCommBase {
 public:
     __aicore__ inline AivScatterMesh1D() {}
@@ -26,10 +26,7 @@ public:
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
     }
 
-    __aicore__ inline void Process()
-    {
-        ProcessCoreCtrl();
-    }
+    __aicore__ inline void Process() { ProcessCoreCtrl(); }
 
 private:
     __aicore__ inline void ProcessCoreCtrl()
@@ -37,7 +34,7 @@ private:
         uint32_t remainRankSize = rankSize_ % coreNum_;
         uint32_t copyNumThisCore = coreIdx_ < remainRankSize ? rankSize_ / coreNum_ + 1 : rankSize_ / coreNum_;
 
-        if(copyNumThisCore == 0){
+        if (copyNumThisCore == 0) {
             return;
         }
         // PreCopy阶段
@@ -47,7 +44,7 @@ private:
                 dstRank = i * coreNum_ + coreIdx_;
                 srcOffset_ = input_ + dstRank * inputSliceStride_;
                 dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]);
-                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, len_);
+                CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
                 pipe_barrier(PIPE_ALL);
             }
         }
@@ -63,7 +60,7 @@ private:
             if (dstRank == root_) {
                 srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]);
                 dstOffset_ = output_;
-                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, len_);
+                CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
                 pipe_barrier(PIPE_ALL);
             }
         }
@@ -72,13 +69,13 @@ private:
     uint32_t coreNum_;
     uint32_t coreIdx_;
 
-    uint64_t dataSize_;  // 要给每个rank搬运的数据大小
+    uint64_t dataSize_; // 要给每个rank搬运的数据大小
 
     uint64_t srcOffset_;
     uint64_t dstOffset_;
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivScatterV2Mesh1D(KERNEL_ARGS_DEF)
 {
     AivScatterMesh1D<T> op;

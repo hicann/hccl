@@ -14,15 +14,15 @@
 
 namespace ops_hccl {
 
-InsTempReduceScatterOrderPreservedLevel1::InsTempReduceScatterOrderPreservedLevel1(const OpParam &param,
-    const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks)
+InsTempReduceScatterOrderPreservedLevel1::InsTempReduceScatterOrderPreservedLevel1(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
 {
-    deterministicStrict_ = (GetExternalInputHcclDeterministic() == static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT));
+    deterministicStrict_
+        = (GetExternalInputHcclDeterministic() == static_cast<u8>(DeterministicEnableLevel::DETERMINISTIC_STRICT));
 }
 
-InsTempReduceScatterOrderPreservedLevel1::~InsTempReduceScatterOrderPreservedLevel1()
-{}
+InsTempReduceScatterOrderPreservedLevel1::~InsTempReduceScatterOrderPreservedLevel1() {}
 
 // 计算资源请求：确定执行所需的线程数、通知数和通道资源
 // comm: HCCL通信句柄
@@ -30,8 +30,8 @@ InsTempReduceScatterOrderPreservedLevel1::~InsTempReduceScatterOrderPreservedLev
 // topoInfo: 拓扑信息，包含网络层详细信息
 // resourceRequest: 输出参数，填充资源请求信息
 HcclResult InsTempReduceScatterOrderPreservedLevel1::CalcRes(
-    HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    AlgResourceRequest &resourceRequest)
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -46,7 +46,8 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::CalcRes(
     // 将通道请求添加到资源请求中
     resourceRequest.channels.push_back(level0Channels);
 
-    HCCL_INFO("[InsTempReduceScatterOrderPreservedLevel1][CalcRes] myRank[%u], threadNum[%u], "
+    HCCL_INFO(
+        "[InsTempReduceScatterOrderPreservedLevel1][CalcRes] myRank[%u], threadNum[%u], "
         "notifyNumOnMainThread[%u], slaveThreadNum[%u]",
         myRank_, threadNum, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
     return HCCL_SUCCESS;
@@ -63,7 +64,8 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     if (tempAlgParams.sliceSize == 0 && tempAlgParams.tailSize == 0) {
-        HCCL_DEBUG("[InsTempReduceScatterOrderPreservedLevel1] myRank[%u] sliceSize and tailSize are 0, skip.", myRank_);
+        HCCL_DEBUG(
+            "[InsTempReduceScatterOrderPreservedLevel1] myRank[%u] sliceSize and tailSize are 0, skip.", myRank_);
         return HCCL_SUCCESS;
     }
 
@@ -74,8 +76,10 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
     processSize_ = tempAlgParams.sliceSize;
     count_ = tempAlgParams.sliceSize / DATATYPE_SIZE_TABLE[dataType_];
 
-    HCCL_INFO("[InsTempReduceScatterOrderPreservedLevel1][KernelRun] Start, threadNum[%u], count[%llu], "
-        "dataType[%u], deterministicStrict[%d]", threadNum_, count_, dataType_, deterministicStrict_);
+    HCCL_INFO(
+        "[InsTempReduceScatterOrderPreservedLevel1][KernelRun] Start, threadNum[%u], count[%llu], "
+        "dataType[%u], deterministicStrict[%d]",
+        threadNum_, count_, dataType_, deterministicStrict_);
 
     // 步骤1: 执行预处理本地拷贝（将本rank对应的数据从用户输入拷贝到临时缓冲区）
     CHK_RET(PreLocalCopy(tempAlgParams, templateResource.threads));
@@ -99,7 +103,7 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
         // 必须确保所有通信任务完成，因为接下来的 AICPU Reduce 运行在 CPU 上，不感知任务队列同步
         CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
         CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(param.algTag)));
-        for (const auto &thread : templateResource.threads) {
+        for (const auto& thread : templateResource.threads) {
             CHK_RET(static_cast<HcclResult>(HcommThreadJoin(thread, CUSTOM_TIMEOUT)));
         }
     }
@@ -114,7 +118,7 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempReduceScatterOrderPreservedLevel1::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult InsTempReduceScatterOrderPreservedLevel1::GetRes(AlgResourceRequest& resourceRequest) const
 {
     u32 threadNum = GetThreadNum();
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -130,7 +134,7 @@ u64 InsTempReduceScatterOrderPreservedLevel1::GetThreadNum() const
     return templateRankSize_ > 1 ? templateRankSize_ : 1;
 }
 
-void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub)
+void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)
 {
     notifyIdxMainToSub.clear();
     u32 threadNum = GetThreadNum();
@@ -140,7 +144,7 @@ void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxMainToSub(std::vector
     }
 }
 
-void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 threadNum = GetThreadNum();
@@ -162,18 +166,15 @@ bool InsTempReduceScatterOrderPreservedLevel1::IsLastBlockData(const u32 outputI
     return outputIndex == templateRankSize_ - 1;
 }
 
-bool InsTempReduceScatterOrderPreservedLevel1::IsLastRank(const u32 rankId)
-{
-    return rankId == templateRankSize_ - 1;
-}
+bool InsTempReduceScatterOrderPreservedLevel1::IsLastRank(const u32 rankId) { return rankId == templateRankSize_ - 1; }
 
 // 本地拷贝：将本rank需要的数据从用户输入缓冲区拷贝到临时缓冲区
 // tempAlgParams: 模板数据参数
 // threads: 线程句柄列表
 HcclResult InsTempReduceScatterOrderPreservedLevel1::PreLocalCopy(
-    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+    const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads)
 {
-    const MemBlockInfo &memBlockInfo = memBlockInfo_;
+    const MemBlockInfo& memBlockInfo = memBlockInfo_;
     // 获取本rank在算法中的编号
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
@@ -192,8 +193,9 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::PreLocalCopy(
     // 计算目标地址偏移量（临时缓冲区中的偏移）
     u64 dstOffset = memBlockInfo.outputOffsets[outputIndex];
 
-    HCCL_INFO("[PreLocalCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu], outputIndex[%u]",
-        myAlgRank, sliceSize, srcOffset, dstOffset, outputIndex);
+    HCCL_INFO(
+        "[PreLocalCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu], outputIndex[%u]", myAlgRank,
+        sliceSize, srcOffset, dstOffset, outputIndex);
 
     DataSlice srcSlice(tempAlgParams.buffInfo.inputPtr, srcOffset, sliceSize);
     DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, dstOffset, sliceSize);
@@ -203,12 +205,12 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::PreLocalCopy(
 }
 
 HcclResult InsTempReduceScatterOrderPreservedLevel1::RunAllToAll(
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const std::vector<ThreadHandle> &threads, const TemplateDataParams &tempAlgParams)
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+    const TemplateDataParams& tempAlgParams)
 {
     HCCL_INFO("[OrderPreserved RunAllToAll] Start");
 
-    const MemBlockInfo &memBlockInfo = memBlockInfo_;
+    const MemBlockInfo& memBlockInfo = memBlockInfo_;
     // 获取本rank在算法中的编号
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
@@ -224,20 +226,25 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunAllToAll(
 
         // 在通道映射表中查找远端rank对应的通道
         auto channelIter = channels.find(remoteRank);
-        CHK_PRT_RET(channelIter == channels.end(),
-            HCCL_ERROR("[RunAllToAll] channel not found for nextRank[%u], remoteRank[%u]", nextRank, remoteRank), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            channelIter == channels.end(),
+            HCCL_ERROR("[RunAllToAll] channel not found for nextRank[%u], remoteRank[%u]", nextRank, remoteRank),
+            HCCL_E_INTERNAL);
 
-        const std::vector<ChannelInfo> &curChannels = channelIter->second;
-        CHK_PRT_RET(curChannels.empty(),
-            HCCL_ERROR("[RunAllToAll] curChannels empty for nextRank[%u], channels size[%zu]", nextRank, curChannels.size()), HCCL_E_INTERNAL);
+        const std::vector<ChannelInfo>& curChannels = channelIter->second;
+        CHK_PRT_RET(
+            curChannels.empty(),
+            HCCL_ERROR(
+                "[RunAllToAll] curChannels empty for nextRank[%u], channels size[%zu]", nextRank, curChannels.size()),
+            HCCL_E_INTERNAL);
 
         // 获取要发送的数据块大小
         u64 sliceSize = memBlockInfo.size[nextRank];
         HCCL_INFO("[RunAllToAll] nextRank[%u], sliceSize[%llu]", nextRank, sliceSize);
 
         u32 channelIdx = 0;
-        const ChannelInfo &linkSend = curChannels[channelIdx];
-        const ChannelInfo &linkRecv = curChannels[channelIdx];
+        const ChannelInfo& linkSend = curChannels[channelIdx];
+        const ChannelInfo& linkRecv = curChannels[channelIdx];
         ThreadHandle thread = threads[queIdx];
 
         // 获取远端rank的临时缓冲区地址
@@ -261,8 +268,7 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunAllToAll(
         std::vector<DataSlice> rxDstSlices = {};
         SendRecvInfo sendRecvInfo{
             TxRxChannels{linkSend, linkRecv},
-            TxRxSlicesList{SlicesList{txSrcSlices, txDstSlices}, SlicesList{rxSrcSlices, rxDstSlices}}
-        };
+            TxRxSlicesList{SlicesList{txSrcSlices, txDstSlices}, SlicesList{rxSrcSlices, rxDstSlices}}};
         CHK_RET(SendRecvWrite(sendRecvInfo, thread));
         queIdx++;
         if (queIdx >= threadNum_) {
@@ -274,7 +280,6 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunAllToAll(
     HCCL_INFO("[RunAllToAll] End");
     return HCCL_SUCCESS;
 }
-
 
 // 计算小于给定值的最大2次幂，用于树形Reduce算法中确定每一步的数据分割点
 static u32 GetLargestPowerOf2LessThan(u32 value)
@@ -296,17 +301,18 @@ static u32 GetLargestPowerOf2LessThan(u32 value)
 //   Step3: M=1, (BFD)->(AEC)
 //   最终结果在虚拟索引0位置（即myAlgRank位置
 HcclResult InsTempReduceScatterOrderPreservedLevel1::RunLocalReduce(
-    const std::vector<ThreadHandle> &threads, const TemplateDataParams &tempAlgParams)
+    const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams)
 {
-    HCCL_INFO("[RunLocalReduce] Start, deterministicStrict[%d], templateRankSize[%u]",
-        deterministicStrict_, templateRankSize_);
+    HCCL_INFO(
+        "[RunLocalReduce] Start, deterministicStrict[%d], templateRankSize[%u]", deterministicStrict_,
+        templateRankSize_);
 
     if (templateRankSize_ <= 1) {
         HCCL_INFO("[RunLocalReduce] Skip for single rank");
         return HCCL_SUCCESS;
     }
 
-    const MemBlockInfo &memBlockInfo = memBlockInfo_;
+    const MemBlockInfo& memBlockInfo = memBlockInfo_;
 
     // 获取本rank在算法中的编号（区分通信域rank和算法内部rank）
     u32 myAlgRank = 0;
@@ -356,9 +362,10 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunLocalReduce(
             DataSlice srcSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcOffset, sliceSize, count);
             DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, dstOffset, sliceSize, count);
 
-            HCCL_INFO("[RunLocalReduce] Step[%u]: virtualIdx[%u]->[%u], peerRank[%u]->[%u], "
-                "offset[%llu]->[%llu]", step, srcVirtualIdx, dstVirtualIdx, srcPeerRank, dstPeerRank,
-                srcOffset, dstOffset);
+            HCCL_INFO(
+                "[RunLocalReduce] Step[%u]: virtualIdx[%u]->[%u], peerRank[%u]->[%u], "
+                "offset[%llu]->[%llu]",
+                step, srcVirtualIdx, dstVirtualIdx, srcPeerRank, dstPeerRank, srcOffset, dstOffset);
 
             // 执行本地reduce操作（使用主线程threads[0]串行执行）
             CHK_RET(LocalReduce(threads[0], srcSlice, dstSlice, dataType_, reduceOp_));
@@ -369,16 +376,15 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunLocalReduce(
         step++;
     }
 
-    HCCL_INFO("[RunLocalReduce] End, total steps[%u], final data at virtualIdx[0] (myAlgRank[%u])",
-        step, myAlgRank);
+    HCCL_INFO("[RunLocalReduce] End, total steps[%u], final data at virtualIdx[0] (myAlgRank[%u])", step, myAlgRank);
     return HCCL_SUCCESS;
 }
 
 // 后处理拷贝：将归约结果从临时缓冲区拷贝到用户输出缓冲区
 HcclResult InsTempReduceScatterOrderPreservedLevel1::PostCopy(
-    const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+    const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads)
 {
-    const MemBlockInfo &memBlockInfo = memBlockInfo_;
+    const MemBlockInfo& memBlockInfo = memBlockInfo_;
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
@@ -394,8 +400,9 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::PostCopy(
     // 目标偏移量为0（用户输出缓冲区起始位置）
     u64 dstOffset = tempAlgParams.buffInfo.outBuffBaseOff;
 
-    HCCL_INFO("[PostCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu]",
-        myAlgRank, sliceSize, srcOffset, dstOffset);
+    HCCL_INFO(
+        "[PostCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu]", myAlgRank, sliceSize, srcOffset,
+        dstOffset);
 
     DataSlice srcSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcOffset, sliceSize);
     DataSlice dstSlice(tempAlgParams.buffInfo.outputPtr, dstOffset, sliceSize);
@@ -404,4 +411,4 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::PostCopy(
 
     return HCCL_SUCCESS;
 }
-}
+} // namespace ops_hccl

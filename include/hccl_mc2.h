@@ -16,61 +16,61 @@
 
 #ifdef __cplusplus
 extern "C" {
-#endif  // __cplusplus
+#endif // __cplusplus
 
 /**
  * @brief  Alloc HcclOpArgs memory
  * @param opArgs A pointer to the allocated HcclOpArgs memory.
-*/
-extern HcclResult HcclKfcAllocOpArgs(void **opArgs);
+ */
+extern HcclResult HcclKfcAllocOpArgs(void** opArgs);
 
 /**
  * @brief  Free HcclOpArgs memory
  * @param opArgs A pointer to the HcclOpArgs memory.
-*/
-extern HcclResult HcclKfcFreeOpArgs(void *opArgs);
+ */
+extern HcclResult HcclKfcFreeOpArgs(void* opArgs);
 
 /**
  * @brief  Set the source data type param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param srcDataType The source data type to set.
-*/
-extern HcclResult HcclKfcOpArgsSetSrcDataType(void *opArgs, uint8_t srcDataType);
+ */
+extern HcclResult HcclKfcOpArgsSetSrcDataType(void* opArgs, uint8_t srcDataType);
 
 /**
  * @brief  Set the destination data type param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param dstDataType The destination data type to set.
-*/
-extern HcclResult HcclKfcOpArgsSetDstDataType(void *opArgs, uint8_t dstDataType);
+ */
+extern HcclResult HcclKfcOpArgsSetDstDataType(void* opArgs, uint8_t dstDataType);
 
 /**
  * @brief  Set the reduce type param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param reduceType The reduce type to set.
-*/
-extern HcclResult HcclKfcOpArgsSetReduceType(void *opArgs, uint32_t reduceType);
+ */
+extern HcclResult HcclKfcOpArgsSetReduceType(void* opArgs, uint32_t reduceType);
 
 /**
  * @brief  Set the data count param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param count The data count to set.
-*/
-extern HcclResult HcclKfcOpArgsSetCount(void *opArgs, uint64_t count);
+ */
+extern HcclResult HcclKfcOpArgsSetCount(void* opArgs, uint64_t count);
 
 /**
  * @brief  Set the algConfig param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param algConfig The algConfig to set.
-*/
-extern HcclResult HcclKfcOpArgsSetAlgConfig(void *opArgs, char *algConfig);
+ */
+extern HcclResult HcclKfcOpArgsSetAlgConfig(void* opArgs, char* algConfig);
 
 /**
  * @brief  Set the comm engine param of HcclOpArgs
  * @param opArgs A pointer to the HcclOpArgs.
  * @param commEngine The comm engine type to set.
-*/
-extern HcclResult HcclKfcOpArgsSetCommEngine(void *opArgs, uint8_t commEngine);
+ */
+extern HcclResult HcclKfcOpArgsSetCommEngine(void* opArgs, uint8_t commEngine);
 
 /**
  * @brief  Create the OpResCtx for communication
@@ -78,11 +78,11 @@ extern HcclResult HcclKfcOpArgsSetCommEngine(void *opArgs, uint8_t commEngine);
  * @param opType The opType param.
  * @param opArgs A pointer to the HcclOpArgs.
  * @param opResCtx A pointer to the created OpResCtx.
-*/
-extern HcclResult HcclCreateOpResCtx(HcclComm comm, uint8_t opType, void *opArgs, void **opResCtx);
+ */
+extern HcclResult HcclCreateOpResCtx(HcclComm comm, uint8_t opType, void* opArgs, void** opResCtx);
 
 #ifdef __cplusplus
 }
-#endif  // __cplusplus
+#endif // __cplusplus
 
 #endif // HCCL_MC2_H

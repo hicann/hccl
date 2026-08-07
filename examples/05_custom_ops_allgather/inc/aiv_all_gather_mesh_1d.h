@@ -12,7 +12,7 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivAllGatherMesh1D : public AivCommBase {
 public:
     __aicore__ inline AivAllGatherMesh1D() {}
@@ -31,8 +31,7 @@ public:
             innerOffset = coreId * (dataPerCore + 1) * sizeof(T);
             curCount = dataPerCore + 1;
         } else {
-            innerOffset = remainder * (dataPerCore + 1) * sizeof(T) +
-                        (coreId - remainder) * dataPerCore * sizeof(T);
+            innerOffset = remainder * (dataPerCore + 1) * sizeof(T) + (coreId - remainder) * dataPerCore * sizeof(T);
             curCount = dataPerCore;
         }
         coreOffset = innerOffset;
@@ -43,8 +42,8 @@ public:
         if (curCount == 0) {
             return;
         }
-        auto gmIn = reinterpret_cast<__gm__ T *>(reinterpret_cast<uint64_t>(GM_IN[rank_]) + coreOffset);
-        auto input = reinterpret_cast<__gm__ T *>(input_ + coreOffset);
+        auto gmIn = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank_]) + coreOffset);
+        auto input = reinterpret_cast<__gm__ T*>(input_ + coreOffset);
 
         CpGM2GM(gmIn, input, curCount);
         PipeBarrier<PIPE_ALL>();
@@ -54,8 +53,8 @@ public:
         PipeBarrier<PIPE_ALL>();
 
         for (uint32_t rank = 0; rank < rankSize_; ++rank) {
-            auto gmOthers = reinterpret_cast<__gm__ T *>(reinterpret_cast<uint64_t>(GM_IN[rank]) + coreOffset);
-            auto output = reinterpret_cast<__gm__ T *>(output_ + rank * stride + coreOffset);
+            auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank]) + coreOffset);
+            auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride + coreOffset);
             PipeBarrier<PIPE_ALL>();
 
             WaitFlag(rank, GetBlockIdx() * FLAG_SIZE + flagOffset, curTag);
@@ -79,11 +78,12 @@ public:
         if (block_idx >= numBlocks_) {
             return;
         }
-        auto input = reinterpret_cast<__gm__ T *>(input_);
+        auto input = reinterpret_cast<__gm__ T*>(input_);
         uint64_t dataTypeSize = sizeof(T);
         uint64_t countPerCore = count / numBlocks_;
         uint64_t curCountCore = block_idx == numBlocks_ - 1 ? count - countPerCore * (numBlocks_ - 1) : countPerCore;
-        auto gmIn = reinterpret_cast<__gm__ T *>(reinterpret_cast<uint64_t>(GM_IN[rank_]) + block_idx * countPerCore * dataTypeSize);
+        auto gmIn = reinterpret_cast<__gm__ T*>(
+            reinterpret_cast<uint64_t>(GM_IN[rank_]) + block_idx * countPerCore * dataTypeSize);
         CpGM2GM(gmIn, input + block_idx * countPerCore * dataTypeSize, curCountCore);
         PipeBarrier<PIPE_ALL>();
         Record(rank_, block_idx, tag);
@@ -95,11 +95,12 @@ public:
             Record(rank_, rank_, tag);
         }
         uint32_t perCoreRankNum = rankSize_ / numBlocks_;
-        uint32_t curCoreRankNum = block_idx == numBlocks_ - 1 ? rankSize_ - perCoreRankNum * (numBlocks_ - 1) : perCoreRankNum;
+        uint32_t curCoreRankNum
+            = block_idx == numBlocks_ - 1 ? rankSize_ - perCoreRankNum * (numBlocks_ - 1) : perCoreRankNum;
         uint32_t startRank = block_idx * perCoreRankNum;
         for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            auto gmOthers = reinterpret_cast<__gm__ T *>(reinterpret_cast<uint64_t>(GM_IN[rank]));
-            auto output = reinterpret_cast<__gm__ T *>(output_ + rank * stride);
+            auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank]));
+            auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
             WaitFlag(rank, rank, tag);
             CpGM2GM(output, gmOthers, count);
             PipeBarrier<PIPE_ALL>();
@@ -110,7 +111,7 @@ public:
     uint64_t curCount;
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivAllGatherV2Mesh1D(EXTERN_KERNEL_ARGS_DEF_V2)
 {
     AivAllGatherMesh1D<T> op;

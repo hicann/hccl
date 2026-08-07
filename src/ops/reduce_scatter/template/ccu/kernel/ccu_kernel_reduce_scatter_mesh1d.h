@@ -18,16 +18,16 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgReduceScatterMesh1D: CcuKernelArgBase{
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceScatterMesh1D : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ReduceScatterMesh1DContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterMesh1D *arg;
-    
+struct ReduceScatterMesh1DContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterMesh1D* arg;
+
     HcclDataType dataType;
     HcclDataType outputDataType;
     HcclReduceOp reduceOp;

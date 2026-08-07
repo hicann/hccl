@@ -20,7 +20,7 @@ class CcuTempScatterOmniPipeMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempScatterOmniPipeMesh1DMem2Mem() = default;
     CcuTempScatterOmniPipeMesh1DMem2Mem(
-        const OpParam &param, const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks);
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempScatterOmniPipeMesh1DMem2Mem() override;
 
     std::string Describe() const override
@@ -30,25 +30,30 @@ public:
     }
 
     u64 GetThreadNum() const override;
-    HcclResult GetRes(AlgResourceRequest &resourceRequest) const override;
-    HcclResult RunScatterMeshDispatch(const TemplateDataParams &templateDataParams, TemplateResource &templateResource,
-        uint64_t inputAddr, uint64_t outputAddrBase, uint64_t outBuffBaseOff, uint64_t token);
-    HcclResult RunLocalCopy(const TemplateDataParams &templateDataParams, TemplateResource &templateResource,
-        uint64_t inputAddrBase, uint64_t outputAddrBase);
-    HcclResult LaunchOneRepeat(const StepSliceInfo &stepSliceInfo, TemplateResource &templateResource, uint32_t rpt,
-        uint64_t repeatNum, bool ifNewRoot, uint64_t inputAddr, uint64_t outputAddr, uint64_t token);
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-        TemplateResource &templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        AlgResourceRequest &resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
+    HcclResult RunScatterMeshDispatch(
+        const TemplateDataParams& templateDataParams, TemplateResource& templateResource, uint64_t inputAddr,
+        uint64_t outputAddrBase, uint64_t outBuffBaseOff, uint64_t token);
+    HcclResult RunLocalCopy(
+        const TemplateDataParams& templateDataParams, TemplateResource& templateResource, uint64_t inputAddrBase,
+        uint64_t outputAddrBase);
+    HcclResult LaunchOneRepeat(
+        const StepSliceInfo& stepSliceInfo, TemplateResource& templateResource, uint32_t rpt, uint64_t repeatNum,
+        bool ifNewRoot, uint64_t inputAddr, uint64_t outputAddr, uint64_t token);
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     void SetRoot(u32 root);
     void UnsetRoot(u32 rank);
-    void BuildSliceStrideVec(const StepSliceInfo &stepSliceInfo, uint32_t rpt, uint64_t repeatNum, bool ifNewRoot,
-        uint64_t &sliceSize, std::vector<uint64_t> &inputOmniSliceSizeVec,
-        std::vector<uint64_t> &inputOmniSliceStrideVec,
-        std::vector<uint64_t> &outputOmniSliceStrideVec);
+    void BuildSliceStrideVec(
+        const StepSliceInfo& stepSliceInfo, uint32_t rpt, uint64_t repeatNum, bool ifNewRoot, uint64_t& sliceSize,
+        std::vector<uint64_t>& inputOmniSliceSizeVec, std::vector<uint64_t>& inputOmniSliceStrideVec,
+        std::vector<uint64_t>& outputOmniSliceStrideVec);
 
     uint32_t mySubCommRank_ = 0;
     uint32_t subCommRootId_ = UINT32_MAX;

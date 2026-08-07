@@ -17,8 +17,8 @@ constexpr int BIT_NUM_PER_CKE = 16;
 constexpr uint16_t OUTPUT_XN_ID = 0;
 constexpr uint16_t TOKEN_XN_ID = 1;
 
-static CcuResult ParseKernelArg(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, 
-    CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty *kernelArg)
+static CcuResult
+ParseKernelArg(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.resourceAllocated = false;
@@ -38,20 +38,22 @@ static CcuResult ParseKernelArg(AllReduceNhrMem2Mem1DMultiJettyContext &ctx,
 
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[AllReduceNhrMem2Mem1DMultiJetty] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_DEBUG(
+            "[AllReduceNhrMem2Mem1DMultiJetty] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
-    HCCL_INFO("[AllReduceNhrMem2Mem1DMultiJetty] Init, KernelArgs are rankId[%u], rankSize[%u], portSize[%u],"
+    HCCL_INFO(
+        "[AllReduceNhrMem2Mem1DMultiJetty] Init, KernelArgs are rankId[%u], rankSize[%u], portSize[%u],"
         " dataType[%d], outputDataType[%d], reduceOp[%d]",
         ctx.rankId, ctx.rankSize, ctx.portNum, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult InitResource(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
-    CHK_PRT_RET(arg->channelCount == 0, HCCL_ERROR("[AllReduceNhrMem2Mem1DMultiJetty] channels is empty!"),
-        CCU_E_INTERNAL);
+    const auto* arg = ctx.arg;
+    CHK_PRT_RET(
+        arg->channelCount == 0, HCCL_ERROR("[AllReduceNhrMem2Mem1DMultiJetty] channels is empty!"), CCU_E_INTERNAL);
 
     ctx.outputAddrs.resize(ctx.rankSize);
     ctx.outputTokens.resize(ctx.rankSize);
@@ -62,8 +64,9 @@ static CcuResult InitResource(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
             // 本rank
         } else if (ctx.channelIdxMap.find(peerRankId) != ctx.channelIdxMap.end()) {
             const u32 channelIdx = ctx.channelIdxMap.at(peerRankId);
-            HCCL_DEBUG("[AllReduceNhrMem2Mem1DMultiJetty] MyRank[%u], peerRankId[%u], ChannelId[%u]", ctx.rankId,
-                peerRankId, channelIdx);
+            HCCL_DEBUG(
+                "[AllReduceNhrMem2Mem1DMultiJetty] MyRank[%u], peerRankId[%u], ChannelId[%u]", ctx.rankId, peerRankId,
+                channelIdx);
             ctx.outputAddrs[peerRankId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
             ctx.outputTokens[peerRankId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
         }
@@ -73,7 +76,7 @@ static CcuResult InitResource(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult LoadArgs(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
     uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.inputAddr, argId++));
@@ -95,27 +98,21 @@ static CcuResult LoadArgs(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static uint32_t GetSignalIndex(const uint32_t signalBit)
-{
-    return signalBit / BIT_NUM_PER_CKE;
-}
+static uint32_t GetSignalIndex(const uint32_t signalBit) { return signalBit / BIT_NUM_PER_CKE; }
 
-static uint16_t GetSignalMask(const uint32_t signalBit)
-{
-    return (1 << (signalBit % BIT_NUM_PER_CKE));
-}
+static uint16_t GetSignalMask(const uint32_t signalBit) { return (1 << (signalBit % BIT_NUM_PER_CKE)); }
 
-static CcuResult LocalWaitAllEvent(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const uint16_t mask)
+static CcuResult LocalWaitAllEvent(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const uint16_t mask)
 {
-    for (auto &event : ctx.events) {
+    for (auto& event : ctx.events) {
         ccu::EventWait(event, mask);
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult PreSync(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_DEBUG("[AllReduceNhrMem2Mem1DMultiJetty] PreSync start");
 
     const uint32_t signalBitOutput = 0;
@@ -127,10 +124,10 @@ static CcuResult PreSync(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
     const uint16_t bitToken = GetSignalMask(signalBitToken);
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.outputAddrs[ctx.rankId],
-            OUTPUT_XN_ID, signalIndexOutput, bitOutput);
-        ccu::WriteVariableWithNotify(arg->channels[i], ctx.outputTokens[ctx.rankId],
-            TOKEN_XN_ID, signalIndexToken, bitToken);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.outputAddrs[ctx.rankId], OUTPUT_XN_ID, signalIndexOutput, bitOutput);
+        ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.outputTokens[ctx.rankId], TOKEN_XN_ID, signalIndexToken, bitToken);
     }
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -142,7 +139,7 @@ static CcuResult PreSync(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static std::vector<u32> GetNonTxSliceIdxs(const std::vector<u32> &txSliceIdxs, uint32_t rankSize)
+static std::vector<u32> GetNonTxSliceIdxs(const std::vector<u32>& txSliceIdxs, uint32_t rankSize)
 {
     std::vector<bool> isTx(rankSize, false);
     for (u32 idx : txSliceIdxs) {
@@ -160,21 +157,19 @@ static std::vector<u32> GetNonTxSliceIdxs(const std::vector<u32> &txSliceIdxs, u
     return nonTxSliceIdxs;
 }
 
-static CcuResult DoLocalCopySlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, ccu::LocalAddr &src,
-    ccu::LocalAddr &dst, u32 &copySliceIdx, ccu::Event &event, uint16_t mask)
+static CcuResult DoLocalCopySlice(
+    AllReduceNhrMem2Mem1DMultiJettyContext& ctx, ccu::LocalAddr& src, ccu::LocalAddr& dst, u32& copySliceIdx,
+    ccu::Event& event, uint16_t mask)
 {
     bool islastSlice = (copySliceIdx + 1 == ctx.rankSize);
-    auto &sliceSize = islastSlice ? ctx.lastRankSliceSize : ctx.dataSizePerRank;
+    auto& sliceSize = islastSlice ? ctx.lastRankSliceSize : ctx.dataSizePerRank;
 
-    CCU_IF (sliceSize != 0) {
-        ccu::LocalCopy(dst, src, sliceSize, event, mask);
-    } CCU_ELSE {
-        ccu::EventRecord(event, mask);
-    }
+    CCU_IF(sliceSize != 0) { ccu::LocalCopy(dst, src, sliceSize, event, mask); }
+    CCU_ELSE { ccu::EventRecord(event, mask); }
     return CCU_SUCCESS;
 }
 
-static CcuResult LocalCopySlices(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult LocalCopySlices(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
     ccu::Variable tmpSliceOffset;
     u32 nonTxSliceIdx = 0;
@@ -185,13 +180,13 @@ static CcuResult LocalCopySlices(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
         tmpSliceOffset += ctx.dataSizePerRank;
     }
 
-    ccu::Event &event = ctx.events[0];
+    ccu::Event& event = ctx.events[0];
 
     CCU_IF(ctx.isInplace == 0)
     {
-        const NHRStepInfo &nhrStepInfo = ctx.algStepInfoList[0];
-        const std::vector<u32> &nonTxSliceIdxList = GetNonTxSliceIdxs(nhrStepInfo.txSliceIdxs, ctx.rankSize);
-        
+        const NHRStepInfo& nhrStepInfo = ctx.algStepInfoList[0];
+        const std::vector<u32>& nonTxSliceIdxList = GetNonTxSliceIdxs(nhrStepInfo.txSliceIdxs, ctx.rankSize);
+
         for (u32 i = 0; i < nonTxSliceIdxList.size(); i++) {
             nonTxSliceIdx = nonTxSliceIdxList[i];
 
@@ -208,7 +203,7 @@ static CcuResult LocalCopySlices(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
             ctx.localOutput.addr = ctx.outputAddrs[ctx.rankId];
             ctx.localOutput.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.localOutput.token = ctx.outputTokens[ctx.rankId];
-            
+
             CCU_CHK_RET(DoLocalCopySlice(ctx, ctx.localInput, ctx.localOutput, nonTxSliceIdx, event, 1 << i));
         }
         ccu::EventWait(event, (1 << (nonTxSliceIdxList.size() % BIT_NUM_PER_CKE)) - 1);
@@ -216,35 +211,38 @@ static CcuResult LocalCopySlices(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoReduceScatterNHR(AllReduceNhrMem2Mem1DMultiJettyContext &ctx);
-static CcuResult DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const NHRStepInfo &nhrStepInfo);
-static CcuResult DoWriteReduceSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const u32 toRank, 
-    ccu::LocalAddr &src, ccu::RemoteAddr &dst, const u32 sendSliceIdx, const u32 signalIndex);
+static CcuResult DoReduceScatterNHR(AllReduceNhrMem2Mem1DMultiJettyContext& ctx);
+static CcuResult
+DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const NHRStepInfo& nhrStepInfo);
+static CcuResult DoWriteReduceSlice(
+    AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const u32 toRank, ccu::LocalAddr& src, ccu::RemoteAddr& dst,
+    const u32 sendSliceIdx, const u32 signalIndex);
 
-static CcuResult DoReduceScatterNHR(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult DoReduceScatterNHR(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
     constexpr uint32_t nhrNum = 2;
     for (u64 i = 0; i < ctx.algStepInfoList.size() / nhrNum; i++) {
-        const NHRStepInfo &nhrStepInfo = ctx.algStepInfoList[i];
+        const NHRStepInfo& nhrStepInfo = ctx.algStepInfoList[i];
         CCU_CHK_RET(DoReduceScatterNHRSingleStep(ctx, nhrStepInfo));
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const NHRStepInfo &nhrStepInfo)
+static CcuResult
+DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const u32 toRankIdx = ctx.channelIdxMap.at(nhrStepInfo.toRank);
     const u32 fromRankIdx = ctx.channelIdxMap.at(nhrStepInfo.fromRank);
     u32 sendSliceIdx = 0;
-    const std::vector<u32> &sendSliceIdxList = nhrStepInfo.txSliceIdxs;
+    const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
 
     ctx.localInput.token = ctx.outputTokens[ctx.rankId];
     ctx.remoteOutput.token = ctx.outputTokens[nhrStepInfo.toRank];
 
-    HCCL_DEBUG("[%s] nhrStepInfo{step[%u], myRank[%u], toRank[%u], fromRank[%u]}, toRankIdx[%u], fromRankIdx[%u]",
-        __func__, nhrStepInfo.step, nhrStepInfo.myRank, nhrStepInfo.toRank, nhrStepInfo.fromRank, toRankIdx,
-        fromRankIdx);
+    HCCL_DEBUG(
+        "[%s] nhrStepInfo{step[%u], myRank[%u], toRank[%u], fromRank[%u]}, toRankIdx[%u], fromRankIdx[%u]", __func__,
+        nhrStepInfo.step, nhrStepInfo.myRank, nhrStepInfo.toRank, nhrStepInfo.fromRank, toRankIdx, fromRankIdx);
 
     const uint32_t signalBitReady = 2;
     const uint32_t signalBitDone = 4;
@@ -278,23 +276,25 @@ static CcuResult DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyCon
         ctx.remoteOutput.addr = ctx.outputAddrs[nhrStepInfo.toRank];
         ctx.remoteOutput.addr += ctx.sliceOffset[sendSliceIdx];
 
-        CCU_CHK_RET(DoWriteReduceSlice(ctx, nhrStepInfo.toRank, ctx.localInput, ctx.remoteOutput, 
-            sendSliceIdx, i % BIT_NUM_PER_CKE));
+        CCU_CHK_RET(DoWriteReduceSlice(
+            ctx, nhrStepInfo.toRank, ctx.localInput, ctx.remoteOutput, sendSliceIdx, i % BIT_NUM_PER_CKE));
     }
     CCU_CHK_RET(LocalWaitAllEvent(ctx, (1 << (sendSliceIdxList.size() % BIT_NUM_PER_CKE)) - 1));
 
     ccu::NotifyRecord(arg->channels[toRankIdx], signalIdDone, signalBitDoneMask);
     ccu::NotifyWait(arg->channels[fromRankIdx], signalIdDone, signalBitDoneMask);
-    
-    HCCL_DEBUG("[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu",
-        ctx.rankId, nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
+
+    HCCL_DEBUG(
+        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId,
+        nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
 
-static CcuResult DoWriteReduceSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const u32 toRank,
-    ccu::LocalAddr &src, ccu::RemoteAddr &dst, const u32 sendSliceIdx, const u32 signalIndex)
+static CcuResult DoWriteReduceSlice(
+    AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const u32 toRank, ccu::LocalAddr& src, ccu::RemoteAddr& dst,
+    const u32 sendSliceIdx, const u32 signalIndex)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const u32 toRankIdx = ctx.channelIdxMap.at(toRank);
 
     ccu::Variable lastSliceSize;
@@ -306,8 +306,9 @@ static CcuResult DoWriteReduceSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx,
     CCU_IF(ctx.dataSizePerPort != 0)
     {
         for (uint32_t i = 0; i < ctx.portNum - 1; ++i) {
-            ccu::WriteReduce(arg->channels[toRankIdx], dst, src, ctx.dataSizePerPort, 
-                ctx.dataType, ctx.reduceOp, ctx.events[i], mask);
+            ccu::WriteReduce(
+                arg->channels[toRankIdx], dst, src, ctx.dataSizePerPort, ctx.dataType, ctx.reduceOp, ctx.events[i],
+                mask);
             src.addr += ctx.dataSizePerPort;
             dst.addr += ctx.dataSizePerPort;
         }
@@ -320,38 +321,37 @@ static CcuResult DoWriteReduceSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx,
     }
     CCU_IF(lastSliceSize != 0)
     {
-        ccu::WriteReduce(arg->channels[toRankIdx], dst, src, lastSliceSize, 
-            ctx.dataType, ctx.reduceOp, ctx.events[ctx.portNum - 1], mask);
+        ccu::WriteReduce(
+            arg->channels[toRankIdx], dst, src, lastSliceSize, ctx.dataType, ctx.reduceOp, ctx.events[ctx.portNum - 1],
+            mask);
     }
-    CCU_IF(lastSliceSize == 0)
-    {
-        ccu::EventRecord(ctx.events[ctx.portNum - 1], mask);
-    }
+    CCU_IF(lastSliceSize == 0) { ccu::EventRecord(ctx.events[ctx.portNum - 1], mask); }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherNHR(AllReduceNhrMem2Mem1DMultiJettyContext &ctx);
-static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const NHRStepInfo &nhrStepInfo);
-static CcuResult DoSendRecvSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const u32 toRank,
-    ccu::LocalAddr &src, ccu::RemoteAddr &dst, const u32 &sendSliceIdx, u32 signalIndex);
+static CcuResult DoAllGatherNHR(AllReduceNhrMem2Mem1DMultiJettyContext& ctx);
+static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const NHRStepInfo& nhrStepInfo);
+static CcuResult DoSendRecvSlice(
+    AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const u32 toRank, ccu::LocalAddr& src, ccu::RemoteAddr& dst,
+    const u32& sendSliceIdx, u32 signalIndex);
 
-static CcuResult DoAllGatherNHR(AllReduceNhrMem2Mem1DMultiJettyContext &ctx)
+static CcuResult DoAllGatherNHR(AllReduceNhrMem2Mem1DMultiJettyContext& ctx)
 {
     constexpr uint32_t nhrNum = 2;
     for (u64 i = ctx.algStepInfoList.size() / nhrNum; i < ctx.algStepInfoList.size(); i++) {
-        const NHRStepInfo &nhrStepInfo = ctx.algStepInfoList[i];
+        const NHRStepInfo& nhrStepInfo = ctx.algStepInfoList[i];
         CCU_CHK_RET(DoAllGatherNHRSingleStep(ctx, nhrStepInfo));
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const NHRStepInfo &nhrStepInfo)
+static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const u32 toRankIdx = ctx.channelIdxMap.at(nhrStepInfo.toRank);
     const u32 fromRankIdx = ctx.channelIdxMap.at(nhrStepInfo.fromRank);
     u32 sendSliceIdx = 0;
-    const std::vector<u32> &sendSliceIdxList = nhrStepInfo.txSliceIdxs;
+    const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
 
     ctx.localInput.token = ctx.outputTokens[ctx.rankId];
     ctx.remoteOutput.token = ctx.outputTokens[nhrStepInfo.toRank];
@@ -377,24 +377,26 @@ static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext
 
         ctx.remoteOutput.addr = ctx.outputAddrs[nhrStepInfo.toRank];
         ctx.remoteOutput.addr += ctx.sliceOffset[sendSliceIdx];
-        
-        CCU_CHK_RET(DoSendRecvSlice(ctx, nhrStepInfo.toRank, ctx.localInput, ctx.remoteOutput, 
-            sendSliceIdx, i % BIT_NUM_PER_CKE));
+
+        CCU_CHK_RET(DoSendRecvSlice(
+            ctx, nhrStepInfo.toRank, ctx.localInput, ctx.remoteOutput, sendSliceIdx, i % BIT_NUM_PER_CKE));
     }
     CCU_CHK_RET(LocalWaitAllEvent(ctx, (1 << (sendSliceIdxList.size() % BIT_NUM_PER_CKE)) - 1));
 
     ccu::NotifyRecord(arg->channels[toRankIdx], signalIdDone, signalBitDoneMask);
     ccu::NotifyWait(arg->channels[fromRankIdx], signalIdDone, signalBitDoneMask);
 
-    HCCL_DEBUG("[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu",
-        ctx.rankId, nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
+    HCCL_DEBUG(
+        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId, nhrStepInfo.step,
+        nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
 
-static CcuResult DoSendRecvSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, const u32 toRank,
-    ccu::LocalAddr &src, ccu::RemoteAddr &dst, const u32 &sendSliceIdx, u32 signalIndex)
+static CcuResult DoSendRecvSlice(
+    AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const u32 toRank, ccu::LocalAddr& src, ccu::RemoteAddr& dst,
+    const u32& sendSliceIdx, u32 signalIndex)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const u32 toRankIdx = ctx.channelIdxMap.at(toRank);
 
     ccu::Variable lastSliceSize;
@@ -421,10 +423,7 @@ static CcuResult DoSendRecvSlice(AllReduceNhrMem2Mem1DMultiJettyContext &ctx, co
     {
         ccu::Write(arg->channels[toRankIdx], dst, src, lastSliceSize, ctx.events[ctx.portNum - 1], mask);
     }
-    CCU_IF(lastSliceSize == 0)
-    {
-        ccu::EventRecord(ctx.events[ctx.portNum - 1], mask);
-    }
+    CCU_IF(lastSliceSize == 0) { ccu::EventRecord(ctx.events[ctx.portNum - 1], mask); }
     return CCU_SUCCESS;
 }
 
@@ -433,9 +432,9 @@ CcuResult CcuAllReduceNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg)
     HCCL_INFO("[AllReduceNhrMem2Mem1DMultiJetty] Algorithm run");
 
     AllReduceNhrMem2Mem1DMultiJettyContext ctx;
-    auto *kernelArg = static_cast<CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty *>(arg);
-    CHK_PRT_RET(kernelArg == nullptr, HCCL_ERROR("[AllReduceNhrMem2Mem1DMultiJetty] kernelArg is null!"),
-        CCU_E_INTERNAL);
+    auto* kernelArg = static_cast<CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty*>(arg);
+    CHK_PRT_RET(
+        kernelArg == nullptr, HCCL_ERROR("[AllReduceNhrMem2Mem1DMultiJetty] kernelArg is null!"), CCU_E_INTERNAL);
 
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
     CCU_CHK_RET(InitResource(ctx));

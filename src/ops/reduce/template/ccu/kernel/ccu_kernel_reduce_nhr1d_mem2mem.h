@@ -19,20 +19,20 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgReduceNHR1DMem2Mem: CcuKernelArgBase{
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    uint32_t                                rootId;
-    uint32_t                                axisId;
-    std::vector<NHRStepInfo>                stepInfoVector;
-    std::map<u32, u32>                      rank2ChannelIdx;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
-    uint32_t                                axisSize;
+struct CcuKernelArgReduceNHR1DMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    uint32_t rootId;
+    uint32_t axisId;
+    std::vector<NHRStepInfo> stepInfoVector;
+    std::map<u32, u32> rank2ChannelIdx;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
+    uint32_t axisSize;
 };
 
-struct ReduceNHR1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceNHR1DMem2Mem *arg;
+struct ReduceNHR1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceNHR1DMem2Mem* arg;
 
     uint32_t localSize{0};
     uint32_t myRankIdx{0};
@@ -62,5 +62,5 @@ struct ReduceNHR1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuReduceNHR1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCLV2_CCU_KERNEL_REDUCE_NHR_1D_MEM2MEM_H

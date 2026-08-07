@@ -20,36 +20,28 @@
 namespace AscendC {
 namespace ccu {
 
-template <typename U> class Array;
+    template <typename U>
+    class Array;
 
-class CcuBuffer final {
-public:
-    CcuBuffer() {
-        CCU_THROW_IF_FAILED(CcuBufferAlloc(&this->handle),
-            "CcuBufferAlloc: failed");
-    }
+    class CcuBuffer final {
+    public:
+        CcuBuffer() { CCU_THROW_IF_FAILED(CcuBufferAlloc(&this->handle), "CcuBufferAlloc: failed"); }
 
-    CcuBuffer(const CcuBuffer& other) {
-        this->handle = other.handle;
-    }
+        CcuBuffer(const CcuBuffer& other) { this->handle = other.handle; }
 
-    CcuBuffer(CcuBuffer&& other) noexcept {
-        this->handle = other.handle;
-    }
+        CcuBuffer(CcuBuffer&& other) noexcept { this->handle = other.handle; }
 
-    void operator=(CcuBuffer&& other) {
-        this->handle = other.handle;
-    }
+        void operator=(CcuBuffer&& other) { this->handle = other.handle; }
 
-    CcuBufferHandle handle{0};
+        CcuBufferHandle handle{0};
 
-private:
-    explicit CcuBuffer(detail::NoAllocTag) {}
-    template <typename U> friend class Array;
-};
+    private:
+        explicit CcuBuffer(detail::NoAllocTag) {}
+        template <typename U>
+        friend class Array;
+    };
 
 } // namespace ccu
 } // namespace AscendC
-
 
 #endif // CCU_BUFFER_DL_HPP

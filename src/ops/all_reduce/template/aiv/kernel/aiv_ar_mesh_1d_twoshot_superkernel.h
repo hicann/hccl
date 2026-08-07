@@ -11,8 +11,8 @@
 #include "aiv_communication_base_v2.h"
 #include "aiv_all_reduce_mesh_1d_twoshot.h"
 
-extern "C"
-__aicore__ void sk_allreduce_mesh_1d_twoshot(SUPERKERNEL_LITE_ARGS_DEF) {
+extern "C" __aicore__ void sk_allreduce_mesh_1d_twoshot(SUPERKERNEL_LITE_ARGS_DEF)
+{
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_ar_mesh_1d_twoshot(SUPERKERNEL_ARGS_CALL);
 }

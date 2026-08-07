@@ -14,235 +14,241 @@
 namespace ops_hccl {
 constexpr u32 P2P_CHANNEL_REPEAT_NUM = 2;
 
-    std::string InsRecvExecutor::Describe() const {
-        return "Instruction based Recv Executor.";
+std::string InsRecvExecutor::Describe() const { return "Instruction based Recv Executor."; }
+
+HcclResult InsRecvExecutor::InitRecvInfo(
+    const HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+{
+    (void)comm;
+    (void)algHierarchyInfo;
+    myRank_ = topoInfo->userRank;
+    rankSize_ = topoInfo->userRankSize;
+    devType_ = topoInfo->deviceType;
+    remoteRank_ = param.sendRecvRemoteRank;
+    dataCount_ = param.DataDes.count;
+    dataType_ = param.DataDes.dataType;
+    dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
+
+    HCCL_INFO(
+        "[InsRecvExecutor][InitRecvInfo] myRank [%u], remoteRank [%u], rankSize [%u], devType [%u], "
+        "dataType [%u] dataTypeSize [%u]",
+        myRank_, remoteRank_, rankSize_, devType_, dataType_, dataTypeSize_);
+
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsRecvExecutor::CalcAlgHierarchyInfo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+{
+    // 初始化一些基本成员变量
+    myRank_ = topoInfo->userRank;
+    HCCL_DEBUG("[InsRecvExecutor][CalcAlgHierarchyInfo][%d] Start.", myRank_);
+    CHK_PRT_RET(
+        topoInfo->userRankSize == 0,
+        HCCL_ERROR("[InsRecvExecutor][CalcAlgHierarchyInfo] Rank [%d], rankSize is 0.", myRank_),
+        HcclResult::HCCL_E_PARA);
+
+    // AlgHierarchyInfoForAllLevel固定为一层
+    algHierarchyInfo.infos.resize(1);
+    algHierarchyInfo.infos[0].resize(1);
+    algHierarchyInfo.infos[0][0].clear();
+    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
+        algHierarchyInfo.infos[0][0].push_back(rankId);
     }
 
-    HcclResult InsRecvExecutor::InitRecvInfo(
-        const HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo)
-    {
-        (void) comm;
-        (void) algHierarchyInfo;
-        myRank_ = topoInfo->userRank;
-        rankSize_ = topoInfo->userRankSize;
-        devType_ = topoInfo->deviceType;
-        remoteRank_ = param.sendRecvRemoteRank;
-        dataCount_ = param.DataDes.count;
-        dataType_ = param.DataDes.dataType;
-        dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
+    HCCL_DEBUG("[InsRecvExecutor][CalcAlgHierarchyInfo][%d] Success.", myRank_);
+    return HcclResult::HCCL_SUCCESS;
+}
 
-        HCCL_INFO(
-            "[InsRecvExecutor][InitRecvInfo] myRank [%u], remoteRank [%u], rankSize [%u], devType [%u], "
-            "dataType [%u] dataTypeSize [%u]",
-            myRank_, remoteRank_, rankSize_, devType_, dataType_, dataTypeSize_);
+HcclResult InsRecvExecutor::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
+{
+#ifndef AICPU_COMPILE
+    // 初始化一些基本成员变量
+    InitRecvInfo(comm, param, topoInfo, algHierarchyInfo);
+    HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Start.", myRank_, remoteRank_);
 
-        return HcclResult::HCCL_SUCCESS;
+    resourceRequest.notifyNumOnMainThread = 0;
+    resourceRequest.slaveThreadNum = 0;
+
+    std::vector<HcclChannelDesc> level0Channels;
+    bool isGroupEnabled = false;
+    if (HcommIsSupportHcclGroupStatusGet()) {
+        CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
+    }
+    if (isGroupEnabled) {
+        CHK_RET(
+            CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels, P2P_CHANNEL_REPEAT_NUM));
+    } else {
+        CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
+    }
+    resourceRequest.channels.push_back(level0Channels);
+
+    HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Success.", myRank_, remoteRank_);
+#endif
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsRecvExecutor::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
+{
+    opMode_ = param.opMode;
+    myRank_ = resCtx.topoInfo.userRank;
+    remoteRank_ = param.sendRecvRemoteRank;
+    // maxTmpMemSize_设定为ccl buffer的大小
+    maxTmpMemSize_ = resCtx.cclMem.size;
+    dataCount_ = param.DataDes.count;
+    dataType_ = param.DataDes.dataType;
+    dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
+    dataSize_ = dataCount_ * dataTypeSize_;
+
+    HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Start.", myRank_, remoteRank_);
+    // 给channels_和threads_赋值
+    const ThreadHandle& thread = resCtx.threads.at(0);
+    auto channelIt
+        = std::find_if(resCtx.channels.at(0).begin(), resCtx.channels.at(0).end(), [this](const ChannelInfo& channel_) {
+              return channel_.remoteRank == remoteRank_;
+          });
+    CHK_PRT_RET(
+        channelIt == resCtx.channels.at(0).end(),
+        HCCL_ERROR("[InsRecvExecutor][Orchestrate] Channel[%d]-[%d] not found.", myRank_, remoteRank_),
+        HcclResult::HCCL_E_NOT_FOUND);
+    const ChannelInfo& channel = *channelIt;
+
+    // 判断是否为PCIE链路，如果是则使用read
+    if (channel.protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
+        isDmaRead_ = true;
     }
 
-    HcclResult InsRecvExecutor::CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo)
-    {
-        // 初始化一些基本成员变量
-        myRank_ = topoInfo->userRank;
-        HCCL_DEBUG("[InsRecvExecutor][CalcAlgHierarchyInfo][%d] Start.", myRank_);
-        CHK_PRT_RET(
-            topoInfo->userRankSize == 0,
-            HCCL_ERROR("[InsRecvExecutor][CalcAlgHierarchyInfo] Rank [%d], rankSize is 0.", myRank_),
-            HcclResult::HCCL_E_PARA);
+    // 使用的是PUT DMAMode，所以无论图模式还是单算子，数据都是从对端的input buffer来
+    // channel.remoteInput不是对端input buffer
+    // 但因为使用的是PUT模式srcBufferPtr无用，且无法获取对端input buffer地址，仅示意作用
+    if (opMode_ == OpMode::OFFLOAD) {
+        CHK_RET(OrchestrateOffload(param, resCtx, thread, channel));
+    } else {
+        CHK_RET(OrchestrateOpbase(param, resCtx, thread, channel));
+    }
+    HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Success.", myRank_, remoteRank_);
 
-        // AlgHierarchyInfoForAllLevel固定为一层
-        algHierarchyInfo.infos.resize(1);
-        algHierarchyInfo.infos[0].resize(1);
-        algHierarchyInfo.infos[0][0].clear();
-        for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
-            algHierarchyInfo.infos[0][0].push_back(rankId);
-        }
+    return HcclResult::HCCL_SUCCESS;
+}
 
-        HCCL_DEBUG("[InsRecvExecutor][CalcAlgHierarchyInfo][%d] Success.", myRank_);
-        return HcclResult::HCCL_SUCCESS;
+HcclResult InsRecvExecutor::OrchestrateWithThread(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread)
+{
+    opMode_ = param.opMode;
+    myRank_ = resCtx.topoInfo.userRank;
+    remoteRank_ = param.sendRecvRemoteRank;
+    // maxTmpMemSize_设定为ccl buffer的大小
+    maxTmpMemSize_ = resCtx.cclMem.size;
+    dataCount_ = param.DataDes.count;
+    dataType_ = param.DataDes.dataType;
+    dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
+    dataSize_ = dataCount_ * dataTypeSize_;
+
+    HCCL_DEBUG("[InsRecvExecutor][OrchestrateWithThread][%d]<-[%d] Start.", myRank_, remoteRank_);
+    HCCL_INFO("[InsRecvExecutor][OrchestrateWithThread] resCtx channels size [%zu].", resCtx.channels.at(0).size());
+
+    // 给channels_赋值
+    const ChannelInfo& channel
+        = (resCtx.channels.at(0).size() > 1) ?
+              ((myRank_ <= remoteRank_) ? resCtx.channels.at(0).at(1) : resCtx.channels.at(0).at(0)) :
+              resCtx.channels.at(0).at(0);
+
+    // 判断是否为PCIE链路，如果是则使用read
+    if (channel.protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
+        isDmaRead_ = true;
     }
 
-    HcclResult InsRecvExecutor::CalcRes(
-        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest)
-    {
-    #ifndef AICPU_COMPILE
-        // 初始化一些基本成员变量
-        InitRecvInfo(comm, param, topoInfo, algHierarchyInfo);
-        HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Start.", myRank_, remoteRank_);
+    if (opMode_ == OpMode::OFFLOAD) {
+        CHK_RET(OrchestrateOffload(param, resCtx, sendRecvThread, channel));
+    } else {
+        CHK_RET(OrchestrateOpbase(param, resCtx, sendRecvThread, channel));
+    }
+    HCCL_DEBUG("[InsRecvExecutor][OrchestrateWithThread][%d]<-[%d] Success.", myRank_, remoteRank_);
 
-        resourceRequest.notifyNumOnMainThread = 0;
-        resourceRequest.slaveThreadNum = 0;
+    return HcclResult::HCCL_SUCCESS;
+}
 
-        std::vector<HcclChannelDesc> level0Channels;
-        bool isGroupEnabled = false;
-        if (HcommIsSupportHcclGroupStatusGet()) {
-            CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
-        }
-        if (isGroupEnabled) {
-            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels, P2P_CHANNEL_REPEAT_NUM));
-        } else {
-            CHK_RET(CreateChannelRequestByRankId(comm, param, myRank_, remoteRank_, level0Channels));
-        }
-        resourceRequest.channels.push_back(level0Channels);
+HcclResult InsRecvExecutor::OrchestrateOffload(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, const ThreadHandle& thread,
+    const ChannelInfo& channel)
+{
+    (void)resCtx;
+    void* srcBufferPtr = static_cast<void*>(channel.remoteInputGraphMode.addr);
+    // 图模式直接到本端output buffer
+    void* dstBufferPtr = static_cast<void*>(param.outputPtr);
+    // UB传输最大数据量
+    maxLoopTransSize_ = UB_MAX_DATA_SIZE;
+    // 一次搬运最大数据个数
+    maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
 
-        HCCL_DEBUG("[InsRecvExecutor][CalcRes][%d]<-[%d] Success.", myRank_, remoteRank_);
-    #endif
-        return HcclResult::HCCL_SUCCESS;
+    u64 dataCountToRecv = dataCount_;
+    u64 currentOffset = 0;
+    std::vector<DataSlice> srcSlices;
+    std::vector<DataSlice> dstSlices;
+    HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
+    // 根据UB大小限制，对数据进行切分
+    // 因使用的是PUT模式，此处循环和srcSlices、dstSlices其实无实际使用，仅示意
+    while (dataCountToRecv > 0) {
+        u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
+        u64 transferSize = transferCount * dataTypeSize_;
+        srcSlices.emplace_back(srcBufferPtr, currentOffset, transferSize, transferCount);
+        dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
+        currentOffset = currentOffset + transferSize;
+        dataCountToRecv = dataCountToRecv - transferCount;
+    }
+    SlicesList recvSlicesList{srcSlices, dstSlices};
+    DataInfo recvInfo{channel, recvSlicesList};
+    // 给对端发送ready信号，最后等待对端发送fin信号
+    if (isDmaRead_) {
+        CHK_RET(RecvRead(recvInfo, thread));
+    } else {
+        CHK_RET(RecvWrite(recvInfo, thread));
     }
 
-    HcclResult InsRecvExecutor::Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) {
-        opMode_ = param.opMode;
-        myRank_ = resCtx.topoInfo.userRank;
-        remoteRank_ = param.sendRecvRemoteRank;
-        // maxTmpMemSize_设定为ccl buffer的大小
-        maxTmpMemSize_ = resCtx.cclMem.size;
-        dataCount_ = param.DataDes.count;
-        dataType_ = param.DataDes.dataType;
-        dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
-        dataSize_ = dataCount_ * dataTypeSize_;
+    return HcclResult::HCCL_SUCCESS;
+}
 
-        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Start.", myRank_, remoteRank_);
-        // 给channels_和threads_赋值
-        const ThreadHandle &thread = resCtx.threads.at(0);
-        auto channelIt = std::find_if(
-            resCtx.channels.at(0).begin(), resCtx.channels.at(0).end(),
-            [this](const ChannelInfo &channel_) {
-                return channel_.remoteRank == remoteRank_;
-            });
-        CHK_PRT_RET(
-            channelIt == resCtx.channels.at(0).end(),
-            HCCL_ERROR("[InsRecvExecutor][Orchestrate] Channel[%d]-[%d] not found.", myRank_, remoteRank_),
-            HcclResult::HCCL_E_NOT_FOUND);
-        const ChannelInfo &channel = *channelIt;
+HcclResult InsRecvExecutor::OrchestrateOpbase(
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, const ThreadHandle& thread,
+    const ChannelInfo& channel)
+{
+    // UB和ccl Buffer取小为一次传输最大数据量
+    maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, maxTmpMemSize_);
+    // 一次搬运最大数据个数
+    maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
 
-        // 判断是否为PCIE链路，如果是则使用read
-        if (channel.protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
-            isDmaRead_ = true;
-        }
-
-        // 使用的是PUT DMAMode，所以无论图模式还是单算子，数据都是从对端的input buffer来
-        // channel.remoteInput不是对端input buffer
-        // 但因为使用的是PUT模式srcBufferPtr无用，且无法获取对端input buffer地址，仅示意作用
-        if (opMode_ == OpMode::OFFLOAD) {
-            CHK_RET(OrchestrateOffload(param, resCtx, thread, channel));
-        } else {
-            CHK_RET(OrchestrateOpbase(param, resCtx, thread, channel));
-        }
-        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Success.", myRank_, remoteRank_);
-
-        return HcclResult::HCCL_SUCCESS;
-    }
-
-    HcclResult InsRecvExecutor::OrchestrateWithThread(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        ThreadHandle sendRecvThread) {
-        opMode_ = param.opMode;
-        myRank_ = resCtx.topoInfo.userRank;
-        remoteRank_ = param.sendRecvRemoteRank;
-        // maxTmpMemSize_设定为ccl buffer的大小
-        maxTmpMemSize_ = resCtx.cclMem.size;
-        dataCount_ = param.DataDes.count;
-        dataType_ = param.DataDes.dataType;
-        dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
-        dataSize_ = dataCount_ * dataTypeSize_;
-        
-        HCCL_DEBUG("[InsRecvExecutor][OrchestrateWithThread][%d]<-[%d] Start.", myRank_, remoteRank_);
-        HCCL_INFO("[InsRecvExecutor][OrchestrateWithThread] resCtx channels size [%zu].", resCtx.channels.at(0).size());
-
-        // 给channels_赋值
-        const ChannelInfo &channel
-            = (resCtx.channels.at(0).size() > 1)
-                  ? ((myRank_ <= remoteRank_) ? resCtx.channels.at(0).at(1) : resCtx.channels.at(0).at(0))
-                  : resCtx.channels.at(0).at(0);
-        
-        // 判断是否为PCIE链路，如果是则使用read
-        if (channel.protocol == CommProtocol::COMM_PROTOCOL_PCIE) {
-            isDmaRead_ = true;
-        }
- 
-        if (opMode_ == OpMode::OFFLOAD) {
-            CHK_RET(OrchestrateOffload(param, resCtx, sendRecvThread, channel));
-        } else {
-            CHK_RET(OrchestrateOpbase(param, resCtx, sendRecvThread, channel));
-        }
-        HCCL_DEBUG("[InsRecvExecutor][OrchestrateWithThread][%d]<-[%d] Success.", myRank_, remoteRank_);
- 
-        return HcclResult::HCCL_SUCCESS;
-    }
-
-    HcclResult InsRecvExecutor::OrchestrateOffload(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
-        (void) resCtx;
-        void *srcBufferPtr = static_cast<void *>(channel.remoteInputGraphMode.addr);
-        // 图模式直接到本端output buffer
-        void *dstBufferPtr = static_cast<void *>(param.outputPtr);
-        // UB传输最大数据量
-        maxLoopTransSize_ = UB_MAX_DATA_SIZE;
-        // 一次搬运最大数据个数
-        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
-
-        u64 dataCountToRecv = dataCount_;
-        u64 currentOffset = 0;
-        std::vector<DataSlice> srcSlices;
-        std::vector<DataSlice> dstSlices;
-        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OFFLOAD Generating tasks.", myRank_, remoteRank_);
-        // 根据UB大小限制，对数据进行切分
-        // 因使用的是PUT模式，此处循环和srcSlices、dstSlices其实无实际使用，仅示意
-        while (dataCountToRecv > 0) {
-            u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
-            u64 transferSize = transferCount * dataTypeSize_;
-            srcSlices.emplace_back(srcBufferPtr, currentOffset, transferSize, transferCount);
-            dstSlices.emplace_back(dstBufferPtr, currentOffset, transferSize, transferCount);
-            currentOffset = currentOffset + transferSize;
-            dataCountToRecv = dataCountToRecv - transferCount;
-        }
-        SlicesList recvSlicesList{srcSlices, dstSlices};
-        DataInfo recvInfo{channel, recvSlicesList};
-        // 给对端发送ready信号，最后等待对端发送fin信号
+    u64 dataCountToRecv = dataCount_;
+    u64 currentOffset = 0;
+    HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
+    // 根据UB和ccl buffer大小限制，对数据进行切分
+    while (dataCountToRecv > 0) {
+        u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
+        u64 transferSize = transferCount * dataTypeSize_;
+        // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
+        DataSlice remoteCclSlice{channel.remoteCclMem.addr, 0, transferSize, transferCount};
+        DataSlice outputSlice{param.outputPtr, currentOffset, transferSize, transferCount};
         if (isDmaRead_) {
+            // Read模式下，等待对端通知后，从对端cclBuffer中读取数据
+            SlicesList recvSlicesList{{remoteCclSlice}, {outputSlice}};
+            DataInfo recvInfo{channel, recvSlicesList};
             CHK_RET(RecvRead(recvInfo, thread));
         } else {
+            // Write模式下，先等待对端数据写入本端cclBuffer，然后将数据拷贝到output上
+            DataSlice cclSlice{resCtx.cclMem.addr, 0, transferSize, transferCount};
+            SlicesList recvSlicesList{{remoteCclSlice}, {cclSlice}};
+            DataInfo recvInfo{channel, recvSlicesList};
             CHK_RET(RecvWrite(recvInfo, thread));
+            CHK_RET(LocalCopy(thread, cclSlice, outputSlice));
         }
-
-        return HcclResult::HCCL_SUCCESS;
+        currentOffset = currentOffset + transferSize;
+        dataCountToRecv = dataCountToRecv - transferCount;
     }
 
-    HcclResult InsRecvExecutor::OrchestrateOpbase(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const ThreadHandle &thread, const ChannelInfo &channel) {
-        // UB和ccl Buffer取小为一次传输最大数据量
-        maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, maxTmpMemSize_);
-        // 一次搬运最大数据个数
-        maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+    return HcclResult::HCCL_SUCCESS;
+}
 
-        u64 dataCountToRecv = dataCount_;
-        u64 currentOffset = 0;
-        HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] OPBASE Generating tasks.", myRank_, remoteRank_);
-        // 根据UB和ccl buffer大小限制，对数据进行切分
-        while (dataCountToRecv > 0) {
-            u64 transferCount = dataCountToRecv > maxLoopTransCount_ ? maxLoopTransCount_ : dataCountToRecv;
-            u64 transferSize = transferCount * dataTypeSize_;
-            // 因ccl buffer大小限制，每次往ccl buffer写一片数据，所以offset固定为0
-            DataSlice remoteCclSlice{channel.remoteCclMem.addr, 0, transferSize, transferCount};
-            DataSlice outputSlice{param.outputPtr, currentOffset, transferSize, transferCount};
-            if (isDmaRead_) {
-                // Read模式下，等待对端通知后，从对端cclBuffer中读取数据
-                SlicesList recvSlicesList{{remoteCclSlice}, {outputSlice}};
-                DataInfo recvInfo{channel, recvSlicesList};
-                CHK_RET(RecvRead(recvInfo, thread));
-            } else {
-                // Write模式下，先等待对端数据写入本端cclBuffer，然后将数据拷贝到output上
-                DataSlice cclSlice{resCtx.cclMem.addr, 0, transferSize, transferCount};
-                SlicesList recvSlicesList{{remoteCclSlice}, {cclSlice}};
-                DataInfo recvInfo{channel, recvSlicesList};
-                CHK_RET(RecvWrite(recvInfo, thread));
-                CHK_RET(LocalCopy(thread, cclSlice, outputSlice));
-            }
-            currentOffset = currentOffset + transferSize;
-            dataCountToRecv = dataCountToRecv - transferCount;
-        }
-
-        return HcclResult::HCCL_SUCCESS;
-    }
-
-    REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, InsRecv, InsRecvExecutor);
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, InsRecv, InsRecvExecutor);
 } // namespace ops_hccl

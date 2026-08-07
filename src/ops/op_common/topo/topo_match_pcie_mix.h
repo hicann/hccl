@@ -18,17 +18,16 @@ class TopoMatchPcieMix : public TopoMatchBase {
 public:
     explicit TopoMatchPcieMix();
     ~TopoMatchPcieMix() override;
-    std::string Describe() const override
-    {
-        return "Topo Match for pcie mix topo: layer 0 (Mesh + Clos).";
-    }
-    HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
+    std::string Describe() const override { return "Topo Match for pcie mix topo: layer 0 (Mesh + Clos)."; }
+    HcclResult MatchTopo(
+        const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
 private:
-    HcclResult TopoForLayer0(const HcclComm comm, const uint32_t myRank,
-        AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
-    HcclResult CheckVecElementAllSame(const uint32_t *instSizeList, uint32_t listSize) const;
-    template<typename T>
+    HcclResult
+    TopoForLayer0(const HcclComm comm, const uint32_t myRank, AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
+    HcclResult CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const;
+    template <typename T>
     std::string PrintCArray(const T* values, const u32 valueNum) const
     {
         std::ostringstream oss;
@@ -37,10 +36,10 @@ private:
         }
         return oss.str();
     }
-    HcclResult LoadTopoInstRanks(const HcclComm comm, uint32_t netLayer, uint32_t topoInstId,
-        std::vector<uint32_t> &rankList) const;
-    HcclResult DeduplicateLevelRanks(const uint32_t myRank, std::vector<uint32_t> &level0Ranks,
-        std::vector<uint32_t> &level1Ranks) const;
+    HcclResult LoadTopoInstRanks(
+        const HcclComm comm, uint32_t netLayer, uint32_t topoInstId, std::vector<uint32_t>& rankList) const;
+    HcclResult DeduplicateLevelRanks(
+        const uint32_t myRank, std::vector<uint32_t>& level0Ranks, std::vector<uint32_t>& level1Ranks) const;
 };
-}  // namespace Hccl
-#endif  // !TOPO_MATCH_PCIE_MIX
+} // namespace ops_hccl
+#endif // !TOPO_MATCH_PCIE_MIX

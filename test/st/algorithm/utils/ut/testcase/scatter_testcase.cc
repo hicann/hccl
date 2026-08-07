@@ -13,14 +13,10 @@
 
 class UT_SCATTER_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {}
-    void TearDown() override
-    {}
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    void SetUp() override {}
+    void TearDown() override {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
 TEST_F(UT_SCATTER_TEST, ut_test_demo_1)

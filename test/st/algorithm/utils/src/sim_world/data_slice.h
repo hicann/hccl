@@ -26,40 +26,22 @@ public:
         return StringFormat("DataSlice[%s, offset=0x%llX, size=0x%llX]", type_.Describe().c_str(), offset_, size_);
     }
 
-    inline BufferType GetType() const
-    {
-        return type_;
-    }
+    inline BufferType GetType() const { return type_; }
 
-    inline uint64_t GetOffset() const
-    {
-        return offset_;
-    }
+    inline uint64_t GetOffset() const { return offset_; }
 
-    inline uint64_t GetSize() const
-    {
-        return size_;
-    }
+    inline uint64_t GetSize() const { return size_; }
 
-    void SetBufferType(const BufferType type)
-    {
-        type_ = type;
-    }
+    void SetBufferType(const BufferType type) { type_ = type; }
 
-    void SetOffset(uint64_t offset)
-    {
-        offset_ = offset;
-    }
+    void SetOffset(uint64_t offset) { offset_ = offset; }
 
-    void SetSize(uint64_t size)
-    {
-        size_ = size;
-    }
+    void SetSize(uint64_t size) { size_ = size; }
 
 private:
     BufferType type_;
-    uint64_t   offset_;
-    uint64_t   size_;
+    uint64_t offset_;
+    uint64_t size_;
 };
-}
+} // namespace HcclSim
 #endif

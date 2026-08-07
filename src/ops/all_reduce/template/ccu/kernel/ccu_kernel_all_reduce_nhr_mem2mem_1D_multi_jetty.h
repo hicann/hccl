@@ -32,7 +32,7 @@ struct CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty : CcuKernelArgBase {
 };
 
 struct AllReduceNhrMem2Mem1DMultiJettyContext : CcuKernelCtxBase {
-    const CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty *arg;
+    const CcuKernelArgAllReduceNhrMem2Mem1DMultiJetty* arg;
 
     uint32_t rankSize{0};
     uint32_t rankId{0};

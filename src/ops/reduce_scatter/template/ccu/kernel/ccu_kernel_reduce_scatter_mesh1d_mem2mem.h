@@ -23,16 +23,16 @@ constexpr uint16_t REDUCE_SCATTER_GROUP_REDUCE_MAX_PIECE_CNT = 8;
 constexpr uint16_t REDUCE_SCATTER_LOOP_COUNT = 16;
 constexpr uint32_t RS_UNROLL_NUM = 16; // 最多支持8 * 16 = 128个rank
 
-struct CcuKernelArgReduceScatterMesh1DMem2Mem: CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    HcclReduceOp                            reduceOp;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceScatterMesh1DMem2Mem : CcuKernelArgBase {
+    uint64_t rankSize;
+    uint32_t rankId;
+    HcclReduceOp reduceOp;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ReduceScatterMesh1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterMesh1DMem2Mem *arg;
+struct ReduceScatterMesh1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterMesh1DMem2Mem* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;
@@ -67,20 +67,23 @@ struct ReduceScatterMesh1DMem2MemContext: CcuKernelCtxBase {
 
     // Loop机制相关变量
     std::array<std::vector<ccu::LocalAddr>, 2> loopScratch;
-    ccu::LocalAddr loopSrc[2];  // 本rank的输入地址
+    ccu::LocalAddr loopSrc[2]; // 本rank的输入地址
     ccu::LocalAddr loopDst[2];
-    ccu::Variable  loopLen[2];
-    ccu::Variable  loopLenExp[2];
+    ccu::Variable loopLen[2];
+    ccu::Variable loopLenExp[2];
 };
 
 CcuResult CcuReduceScatterMesh1DMem2MemKernel(CcuKernelArg arg);
 
-CcuResult ReduceLoopGroup(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
-    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg, CcuVersion ccuVersion);
-CcuResult ReduceLoopGroupV1(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
-    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg);
-CcuResult ReduceLoopGroupV2(ReduceScatterMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg,
-    ccu::LocalAddr srcOrg, std::vector<ccu::LocalAddr> &scratchOrg);
+CcuResult ReduceLoopGroup(
+    ReduceScatterMesh1DMem2MemContext& ctx, ccu::LocalAddr outDstOrg, ccu::LocalAddr srcOrg,
+    std::vector<ccu::LocalAddr>& scratchOrg, CcuVersion ccuVersion);
+CcuResult ReduceLoopGroupV1(
+    ReduceScatterMesh1DMem2MemContext& ctx, ccu::LocalAddr outDstOrg, ccu::LocalAddr srcOrg,
+    std::vector<ccu::LocalAddr>& scratchOrg);
+CcuResult ReduceLoopGroupV2(
+    ReduceScatterMesh1DMem2MemContext& ctx, ccu::LocalAddr outDstOrg, ccu::LocalAddr srcOrg,
+    std::vector<ccu::LocalAddr>& scratchOrg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_MESH_1D_MEM2MEM

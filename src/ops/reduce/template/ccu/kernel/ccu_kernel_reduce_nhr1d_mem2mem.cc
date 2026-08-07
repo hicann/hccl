@@ -12,16 +12,16 @@
 
 namespace ops_hccl {
 
-constexpr uint16_t OUTPUT_XN_ID                   = 1;
-constexpr uint16_t TOKEN_XN_ID                    = 2;
-constexpr uint16_t POST_SYNC_ID                   = 3;
-constexpr uint16_t REDUCE_SCATTER_PRE_SYNC_ID     = 4;
-constexpr uint16_t REDUCE_SCATTER_POST_SYNC_ID    = 5;
-constexpr uint16_t GATHER_SYNC_ID                 = 6;
-constexpr uint16_t CKE_IDX_0                      = 0; // 前后同步
-constexpr uint16_t RANK_NUM_PER_CKE               = 16; // 本rank给远端置位时应当写的CKE，16个对端一个CKE
+constexpr uint16_t OUTPUT_XN_ID = 1;
+constexpr uint16_t TOKEN_XN_ID = 2;
+constexpr uint16_t POST_SYNC_ID = 3;
+constexpr uint16_t REDUCE_SCATTER_PRE_SYNC_ID = 4;
+constexpr uint16_t REDUCE_SCATTER_POST_SYNC_ID = 5;
+constexpr uint16_t GATHER_SYNC_ID = 6;
+constexpr uint16_t CKE_IDX_0 = 0;         // 前后同步
+constexpr uint16_t RANK_NUM_PER_CKE = 16; // 本rank给远端置位时应当写的CKE，16个对端一个CKE
 
-static CcuResult ParseKernelArg(ReduceNHR1DMem2MemContext &ctx, CcuKernelArgReduceNHR1DMem2Mem *kernelArg)
+static CcuResult ParseKernelArg(ReduceNHR1DMem2MemContext& ctx, CcuKernelArgReduceNHR1DMem2Mem* kernelArg)
 
 {
     ctx.localSize = kernelArg->rank2ChannelIdx.size();
@@ -31,11 +31,11 @@ static CcuResult ParseKernelArg(ReduceNHR1DMem2MemContext &ctx, CcuKernelArgRedu
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceNHR1DMem2MemContext &ctx)
+static CcuResult LoadArgs(ReduceNHR1DMem2MemContext& ctx)
 {
     HCCL_DEBUG("[CcuKernelReduceNHR1DMem2Mem] LoadArgs run start");
     uint32_t argId = 0;
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.myOutput, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.myToken, argId++));
@@ -50,9 +50,9 @@ static CcuResult LoadArgs(ReduceNHR1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceNHR1DMem2MemContext &ctx)
+static CcuResult InitResource(ReduceNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelReduceNHR1DMem2Mem] channels is empty!");
         return CcuResult::CCU_E_INTERNAL;
@@ -73,10 +73,10 @@ static CcuResult InitResource(ReduceNHR1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void PreSync(ReduceNHR1DMem2MemContext &ctx)
+static void PreSync(ReduceNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] PreSync begin");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::WriteVariableWithNotify(arg->channels[i], ctx.myOutput, OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID);
         ccu::WriteVariableWithNotify(arg->channels[i], ctx.myToken, TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
@@ -89,10 +89,10 @@ static void PreSync(ReduceNHR1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] PreSync end");
 }
 
-static void PostSync(ReduceNHR1DMem2MemContext &ctx)
+static void PostSync(ReduceNHR1DMem2MemContext& ctx)
 {
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] post sync start");
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
@@ -102,9 +102,10 @@ static void PostSync(ReduceNHR1DMem2MemContext &ctx)
     HCCL_INFO("[CcuKernelReduceNHR1DMem2Mem] post sync end");
 }
 
-static CcuResult DoWriteReduceSlice(ReduceNHR1DMem2MemContext &ctx, const u32 &toRank, const u32 &sendSliceIdx, u32 signalIndex)
+static CcuResult
+DoWriteReduceSlice(ReduceNHR1DMem2MemContext& ctx, const u32& toRank, const u32& sendSliceIdx, u32 signalIndex)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     auto toRankIt = arg->rank2ChannelIdx.find(toRank);
     if (toRankIt == arg->rank2ChannelIdx.end()) {
         HCCL_ERROR("[CcuKernelReduceNHR1DMem2Mem] rank2ChannelIdx not find toRank key [%u]", toRank);
@@ -113,7 +114,7 @@ static CcuResult DoWriteReduceSlice(ReduceNHR1DMem2MemContext &ctx, const u32 &t
     const u32& toRankIdx = toRankIt->second;
     ChannelHandle sendChannel = arg->channels[toRankIdx];
 
-    bool          islastSlice;
+    bool islastSlice;
 
     // 添加 die1 偏移
     if (arg->axisId == 1) {
@@ -123,22 +124,26 @@ static CcuResult DoWriteReduceSlice(ReduceNHR1DMem2MemContext &ctx, const u32 &t
 
     // allreduce切片的最后一块slice，大小可能不一致
     islastSlice = (sendSliceIdx + 1 == arg->rankSize);
-    ccu::Variable &sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize)
-                                                  : (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
+    ccu::Variable& sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize) :
+                                                  (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
 
-    CCU_IF(sliceSize != 0) {
-        ccu::WriteReduce(sendChannel, ctx.remoteDst, ctx.localSrc, sliceSize, ctx.dataType, ctx.reduceOp, ctx.event, 1 << signalIndex);
+    CCU_IF(sliceSize != 0)
+    {
+        ccu::WriteReduce(
+            sendChannel, ctx.remoteDst, ctx.localSrc, sliceSize, ctx.dataType, ctx.reduceOp, ctx.event,
+            1 << signalIndex);
     }
-    CCU_IF(sliceSize == 0) {
-		const uint32_t rankMask = 1 << signalIndex;
+    CCU_IF(sliceSize == 0)
+    {
+        const uint32_t rankMask = 1 << signalIndex;
         ccu::EventRecord(ctx.event, rankMask);
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHRStepInfo &nhrStepInfo)
+static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     auto toRankIt = arg->rank2ChannelIdx.find(nhrStepInfo.toRank);
     if (toRankIt == arg->rank2ChannelIdx.end()) {
         HCCL_ERROR("[CcuKernelReduceNHR1DMem2Mem] rank2ChannelIdx not find toRank key [%u]", nhrStepInfo.toRank);
@@ -153,10 +158,10 @@ static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, co
     }
     const u32& fromRankIdx = fromRankIt->second;
 
-    u32  sendSliceIdx = 0;
+    u32 sendSliceIdx = 0;
     ChannelHandle sendChannel = arg->channels[toRankIdx];
     ChannelHandle recvChannel = arg->channels[fromRankIdx];
-    const std::vector<u32> &sendSliceIdxList  = nhrStepInfo.txSliceIdxs;
+    const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
     ctx.localSrc.token = ctx.myToken;
     ctx.remoteDst.token = ctx.token[toRankIdx];
 
@@ -202,25 +207,27 @@ static CcuResult DoReduceScatterNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, co
     // 等待fromRank通知数据写入完毕
     ccu::NotifyWait(recvChannel, CKE_IDX_0, 1 << REDUCE_SCATTER_POST_SYNC_ID);
 
-    HCCL_DEBUG("[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu",
-                arg->rankId, nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
+    HCCL_DEBUG(
+        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", arg->rankId,
+        nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
 
-static CcuResult DoReduceScatterNHR(ReduceNHR1DMem2MemContext &ctx)
+static CcuResult DoReduceScatterNHR(ReduceNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const uint32_t NHR_NUM = 2;
     for (u64 i = 0; i < arg->stepInfoVector.size() / NHR_NUM; i++) {
-        const NHRStepInfo &nhrStepInfo = arg->stepInfoVector[i];
+        const NHRStepInfo& nhrStepInfo = arg->stepInfoVector[i];
         CCU_CHK_RET(DoReduceScatterNHRSingleStep(ctx, nhrStepInfo));
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoSendRecvSlice(ReduceNHR1DMem2MemContext &ctx, const u32 &toRank, const u32 &sendSliceIdx, u32 signalIndex)
+static CcuResult
+DoSendRecvSlice(ReduceNHR1DMem2MemContext& ctx, const u32& toRank, const u32& sendSliceIdx, u32 signalIndex)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     auto toRankIt = arg->rank2ChannelIdx.find(toRank);
     if (toRankIt == arg->rank2ChannelIdx.end()) {
         HCCL_ERROR("[CcuKernelReduceNHR1DMem2Mem] rank2ChannelIdx not find toRank key [%u]", toRank);
@@ -238,22 +245,24 @@ static CcuResult DoSendRecvSlice(ReduceNHR1DMem2MemContext &ctx, const u32 &toRa
     }
 
     islastSlice = (sendSliceIdx + 1 == arg->rankSize);
-    ccu::Variable &sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize)
-                                                  : (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
+    ccu::Variable& sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize) :
+                                                  (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
 
-    CCU_IF(sliceSize != 0) {
+    CCU_IF(sliceSize != 0)
+    {
         ccu::Write(sendChannel, ctx.remoteDst, ctx.localSrc, sliceSize, ctx.event, 1 << signalIndex);
     }
-    CCU_IF(sliceSize == 0) {
-		const uint32_t rankMask = 1 << signalIndex;
+    CCU_IF(sliceSize == 0)
+    {
+        const uint32_t rankMask = 1 << signalIndex;
         ccu::EventRecord(ctx.event, rankMask);
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHRStepInfo &nhrStepInfo)
+static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     auto toRankIt = arg->rank2ChannelIdx.find(nhrStepInfo.toRank);
     if (toRankIt == arg->rank2ChannelIdx.end()) {
         HCCL_ERROR("[CcuKernelReduceNHR1DMem2Mem] rank2ChannelIdx not find toRank key [%u]", nhrStepInfo.toRank);
@@ -268,10 +277,10 @@ static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHR
     }
     const u32& fromRankIdx = fromRankIt->second;
 
-    u32  sendSliceIdx = 0;
+    u32 sendSliceIdx = 0;
     ChannelHandle sendChannel = arg->channels[toRankIdx];
     ChannelHandle recvChannel = arg->channels[fromRankIdx];
-    const std::vector<u32> &sendSliceIdxList  = nhrStepInfo.txSliceIdxs;
+    const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
     ctx.localSrc.token = ctx.myToken;
     ctx.remoteDst.token = ctx.token[toRankIdx];
 
@@ -295,32 +304,33 @@ static CcuResult DoGatherNHRSingleStep(ReduceNHR1DMem2MemContext &ctx, const NHR
     u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
     ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
 
-    if (nhrStepInfo.step + 1 != arg->stepInfoVector.size()) {   // 最后一步不需要同步
+    if (nhrStepInfo.step + 1 != arg->stepInfoVector.size()) { // 最后一步不需要同步
         // 通知toRank，写入完毕
         ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << GATHER_SYNC_ID);
         // 等待fromRank通知写入完毕
         ccu::NotifyWait(recvChannel, CKE_IDX_0, 1 << GATHER_SYNC_ID);
     }
 
-    HCCL_DEBUG("[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu",
-                arg->rankId, nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
+    HCCL_DEBUG(
+        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", arg->rankId, nhrStepInfo.step,
+        nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
 
-static CcuResult DoGatherNHR(ReduceNHR1DMem2MemContext &ctx)
+static CcuResult DoGatherNHR(ReduceNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const uint32_t NHR_NUM = 2;
     for (u64 i = arg->stepInfoVector.size() / NHR_NUM; i < arg->stepInfoVector.size(); i++) {
-        const NHRStepInfo &nhrStepInfo = arg->stepInfoVector[i];
+        const NHRStepInfo& nhrStepInfo = arg->stepInfoVector[i];
         CCU_CHK_RET(DoGatherNHRSingleStep(ctx, nhrStepInfo));
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoLocalCopySlice(ReduceNHR1DMem2MemContext &ctx, const u32 &copySliceIdx, u32 signalIndex)
+static CcuResult DoLocalCopySlice(ReduceNHR1DMem2MemContext& ctx, const u32& copySliceIdx, u32 signalIndex)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     bool islastSlice;
     // 添加 die1 偏移
     if (arg->axisId == 1) {
@@ -329,22 +339,21 @@ static CcuResult DoLocalCopySlice(ReduceNHR1DMem2MemContext &ctx, const u32 &cop
     }
 
     islastSlice = (copySliceIdx + 1 == arg->rankSize);
-    ccu::Variable &sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize)
-                                                  : (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
+    ccu::Variable& sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize) :
+                                                  (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
 
-    CCU_IF(sliceSize != 0) {
-        ccu::LocalCopy(ctx.localDst, ctx.localSrc, sliceSize, ctx.event, 1 << signalIndex);
-    }
-    CCU_IF(sliceSize == 0) {
-		const uint32_t rankMask = 1 << signalIndex;
+    CCU_IF(sliceSize != 0) { ccu::LocalCopy(ctx.localDst, ctx.localSrc, sliceSize, ctx.event, 1 << signalIndex); }
+    CCU_IF(sliceSize == 0)
+    {
+        const uint32_t rankMask = 1 << signalIndex;
         ccu::EventRecord(ctx.event, rankMask);
     }
     return CCU_SUCCESS;
 }
 
-static std::vector<u32> GetNonTxSliceIdxs(ReduceNHR1DMem2MemContext &ctx, const std::vector<u32> &txSliceIdxs)
+static std::vector<u32> GetNonTxSliceIdxs(ReduceNHR1DMem2MemContext& ctx, const std::vector<u32>& txSliceIdxs)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     std::vector<bool> isTx(arg->rankSize, false);
     for (u32 idx : txSliceIdxs) {
         if (idx < arg->rankSize) {
@@ -362,9 +371,9 @@ static std::vector<u32> GetNonTxSliceIdxs(ReduceNHR1DMem2MemContext &ctx, const 
     return nonTxSliceIdxs;
 }
 
-static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext &ctx)
+static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     ccu::Variable tmpSliceOffset;
     u32 nonTxSliceIdx = 0;
@@ -380,8 +389,8 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext &ctx)
     CCU_IF(ctx.isInputOutputEqual == 0)
     {
         // 将step0中不需要写的slice，拷贝到本rank的output中
-        const NHRStepInfo &nhrStepInfo = arg->stepInfoVector[0];
-        const std::vector<u32> &nonTxSliceIdxList = GetNonTxSliceIdxs(ctx, nhrStepInfo.txSliceIdxs);
+        const NHRStepInfo& nhrStepInfo = arg->stepInfoVector[0];
+        const std::vector<u32>& nonTxSliceIdxList = GetNonTxSliceIdxs(ctx, nhrStepInfo.txSliceIdxs);
         for (u32 i = 0; i < nonTxSliceIdxList.size(); i++) {
             nonTxSliceIdx = nonTxSliceIdxList[i];
 
@@ -391,11 +400,11 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext &ctx)
                 }
             }
 
-            ctx.localSrc.addr  = ctx.input;
+            ctx.localSrc.addr = ctx.input;
             ctx.localSrc.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.localSrc.token = ctx.myToken;
 
-            ctx.localDst.addr  = ctx.myOutput;
+            ctx.localDst.addr = ctx.myOutput;
             ctx.localDst.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.localDst.token = ctx.myToken;
             CCU_CHK_RET(DoLocalCopySlice(ctx, nonTxSliceIdx, i % RANK_NUM_PER_CKE));
@@ -412,7 +421,7 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext &ctx)
 // ============================================================================
 CcuResult CcuReduceNHR1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceNHR1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceNHR1DMem2Mem*>(arg);
 
     ReduceNHR1DMem2MemContext ctx;
     ctx.arg = kernelArg;

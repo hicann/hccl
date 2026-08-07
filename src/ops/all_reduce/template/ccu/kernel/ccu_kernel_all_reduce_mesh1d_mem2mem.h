@@ -19,34 +19,34 @@
 namespace ops_hccl {
 
 struct CcuKernelArgAllReduceMeshMem2Mem1D : CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct AllReduceMeshMem2Mem1DContext: CcuKernelCtxBase {
-    const CcuKernelArgAllReduceMeshMem2Mem1D *arg;
-    HcclDataType                      dataType;
-    HcclDataType                      outputDataType;
-    HcclReduceOp                      reduceOp;
+struct AllReduceMeshMem2Mem1DContext : CcuKernelCtxBase {
+    const CcuKernelArgAllReduceMeshMem2Mem1D* arg;
+    HcclDataType dataType;
+    HcclDataType outputDataType;
+    HcclReduceOp reduceOp;
     std::vector<ccu::Variable> input;
     std::vector<ccu::Variable> output;
     std::vector<ccu::Variable> token;
-    ccu::Variable              myScratch;
-    ccu::Variable              currentRankSliceInputOffset;
-    ccu::Variable              currentRankSliceOutputOffset;
-    ccu::Variable              normalSliceSize;
-    ccu::Variable              lastSliceSize;
-    ccu::Variable              mySliceSize;
-    ccu::Variable              sliceOffset;
-    ccu::Variable              isInputOutputEqual;
-    ccu::Variable              sliceSize;
-    std::vector<ccu::Event>    events;
+    ccu::Variable myScratch;
+    ccu::Variable currentRankSliceInputOffset;
+    ccu::Variable currentRankSliceOutputOffset;
+    ccu::Variable normalSliceSize;
+    ccu::Variable lastSliceSize;
+    ccu::Variable mySliceSize;
+    ccu::Variable sliceOffset;
+    ccu::Variable isInputOutputEqual;
+    ccu::Variable sliceSize;
+    std::vector<ccu::Event> events;
 
-    ccu::LocalAddr              srcMem;
-    ccu::LocalAddr              localDstMem;
-    ccu::RemoteAddr             remoteDstMem;
+    ccu::LocalAddr srcMem;
+    ccu::LocalAddr localDstMem;
+    ccu::RemoteAddr remoteDstMem;
     std::vector<ccu::RemoteAddr> reduceScatterSrc;
     std::vector<ccu::LocalAddr> reduceScatterDst;
     GroupOpSizeVars goSize;
@@ -54,8 +54,8 @@ struct AllReduceMeshMem2Mem1DContext: CcuKernelCtxBase {
 
 CcuResult CcuAllReduceMeshMem2Mem1DKernel(CcuKernelArg arg);
 
-CcuResult ReduceLoopGroupV1(AllReduceMeshMem2Mem1DContext &ctx, ccu::LocalAddr srcOrg);
-CcuResult ReduceLoopGroupV2(AllReduceMeshMem2Mem1DContext &ctx, ccu::LocalAddr srcOrg);
+CcuResult ReduceLoopGroupV1(AllReduceMeshMem2Mem1DContext& ctx, ccu::LocalAddr srcOrg);
+CcuResult ReduceLoopGroupV2(AllReduceMeshMem2Mem1DContext& ctx, ccu::LocalAddr srcOrg);
 } // namespace ops_hccl
 
 #endif // HCCLV2_CCU_CONTEXT_ALL_REDUCE_MESH_1D_H_

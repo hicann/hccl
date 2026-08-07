@@ -15,9 +15,9 @@
 
 namespace ops_hccl {
 
-CcuTempAllGatherVMesh1DMem2Mem::CcuTempAllGatherVMesh1DMem2Mem(const OpParam& param, const u32 rankId,
-                                       const std::vector<std::vector<u32>> &subCommRanks)
-: CcuAlgTemplateBase(param, rankId, subCommRanks)
+CcuTempAllGatherVMesh1DMem2Mem::CcuTempAllGatherVMesh1DMem2Mem(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
+    : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
     templateRankSize_ = ranks.size();
@@ -28,32 +28,34 @@ CcuTempAllGatherVMesh1DMem2Mem::CcuTempAllGatherVMesh1DMem2Mem(const OpParam& pa
     }
 }
 
-CcuTempAllGatherVMesh1DMem2Mem::~CcuTempAllGatherVMesh1DMem2Mem()
-{
-}
+CcuTempAllGatherVMesh1DMem2Mem::~CcuTempAllGatherVMesh1DMem2Mem() {}
 
-HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                                      AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     // 不需要从流
     GetRes(resourceRequest);
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
-    HCCL_DEBUG("[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
+    HCCL_DEBUG(
+        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
-    CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllGatherVMesh1DMem2Mem"));
-    kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllGatherVMesh1DMem2MemKernel);
+    CHK_SAFETY_FUNC_RET(
+        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelAllGatherVMesh1DMem2Mem"));
+    kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllGatherVMesh1DMem2MemKernel);
 
     std::vector<HcclChannelDesc> channelDescs;
-    if(topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS) {
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     } else {
-        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
-        for(auto channel : channelDescs){
-            if(channel.channelProtocol != COMM_PROTOCOL_UBC_CTP){
+        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
+            comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
+        for (auto channel : channelDescs) {
+            if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
                 HCCL_ERROR("[CcuTempAllGatherVMesh1DMem2Mem][CalcRes] channelProtocol: %u", channel.channelProtocol);
                 return HCCL_E_INTERNAL;
             }
@@ -69,16 +71,16 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(HcclComm comm, const OpParam&
     kernelInfo.channels = channelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
-    HCCL_DEBUG("[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-               "ccuKernelInfos.size()=%llu",
-               channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
+    HCCL_DEBUG(
+        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "ccuKernelInfos.size()=%llu",
+        channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
-                                                        const TemplateDataParams& templateDataParams,
-                                                        TemplateResource& templateResource)
+HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
     buffInfo_ = templateDataParams.buffInfo;
     uint32_t rankId = mySubCommRank_;
@@ -86,23 +88,24 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::KernelRun(const OpParam& param,
     uint64_t mySliceSize = templateDataParams.allRankSliceSize[rankId];
     uint64_t mySliceSizeOutputOffset = templateDataParams.allRankDispls[rankId] * dataTypeSize;
 
-    uint64_t inputAddr          = PointerToAddr(buffInfo_.inputPtr) + templateDataParams.tailSize * dataTypeSize;
-    uint64_t outputAddr         = PointerToAddr(buffInfo_.outputPtr) + templateDataParams.tailSize * dataTypeSize;
+    uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + templateDataParams.tailSize * dataTypeSize;
+    uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + templateDataParams.tailSize * dataTypeSize;
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
-    config.loopCount    = CCU_MS_LOCAL_COPY_LOOP_COUNT;
-    config.memSlice     = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
     auto goSize = CalGoSize(mySliceSize, config, GetCcuVersion());
     // 代替GeneArgs
-    std::vector<uint64_t> taskArgs = {
-        inputAddr, outputAddr, token, mySliceSize, mySliceSizeOutputOffset, goSize[0], goSize[1], goSize[2], goSize[3]};
+    std::vector<uint64_t> taskArgs = {inputAddr, outputAddr, token,     mySliceSize, mySliceSizeOutputOffset,
+                                      goSize[0], goSize[1],  goSize[2], goSize[3]};
     uint64_t argSize = 9;
 
-    HCCL_INFO("[CcuTempAllGatherVMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
-               "mySliceSize[%llu], mySliceSizeOutputOffset[%llu]",
-               inputAddr, outputAddr, mySliceSize, mySliceSizeOutputOffset);
+    HCCL_INFO(
+        "[CcuTempAllGatherVMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
+        "mySliceSize[%llu], mySliceSizeOutputOffset[%llu]",
+        inputAddr, outputAddr, mySliceSize, mySliceSizeOutputOffset);
 
     CcuResult launchRet
         = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), argSize);
@@ -120,11 +123,8 @@ u64 CcuTempAllGatherVMesh1DMem2Mem::CalcScratchMultiple(BufferType inBuffType, B
     return 0;
 }
 
-u64 CcuTempAllGatherVMesh1DMem2Mem::GetThreadNum()
-{
-    return 1;
-}
- 
+u64 CcuTempAllGatherVMesh1DMem2Mem::GetThreadNum() { return 1; }
+
 HcclResult CcuTempAllGatherVMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
 {
     resourceRequest.slaveThreadNum = 0;

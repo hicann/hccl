@@ -13,28 +13,29 @@
 
 namespace ops_hccl {
 
-ExecTimeoutManager::ExecTimeoutManager() 
-    : execTimeout_(CUSTOM_TIMEOUT),
-      timeoutSet_(false) {
+ExecTimeoutManager::ExecTimeoutManager() : execTimeout_(CUSTOM_TIMEOUT), timeoutSet_(false)
+{
     HCCL_INFO("[ExecTimeoutManager] Initialized with default timeout: %u seconds", CUSTOM_TIMEOUT);
 }
 
-ExecTimeoutManager::~ExecTimeoutManager() {
-}
+ExecTimeoutManager::~ExecTimeoutManager() {}
 
-ExecTimeoutManager& ExecTimeoutManager::Instance() {
+ExecTimeoutManager& ExecTimeoutManager::Instance()
+{
     static ExecTimeoutManager instance;
     return instance;
 }
 
-void ExecTimeoutManager::SetExecTimeout(u32 execTimeout) {
+void ExecTimeoutManager::SetExecTimeout(u32 execTimeout)
+{
     u32 timeoutValue = execTimeout;
     execTimeout_.store(timeoutValue, std::memory_order_relaxed);
     timeoutSet_.store(true, std::memory_order_relaxed);
     HCCL_INFO("[ExecTimeoutManager] Setting exec timeout to: %u seconds", timeoutValue);
 }
 
-u32 ExecTimeoutManager::GetExecTimeout() {
+u32 ExecTimeoutManager::GetExecTimeout()
+{
     bool isSet = timeoutSet_.load(std::memory_order_relaxed);
     u32 timeout = isSet ? execTimeout_.load(std::memory_order_relaxed) : CUSTOM_TIMEOUT;
     HCCL_DEBUG("[ExecTimeoutManager] Getting exec timeout: %u seconds.", timeout);

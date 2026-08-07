@@ -20,9 +20,10 @@ namespace ops_hccl {
 class CcuTempScatterMesh1D : public CcuAlgTemplateBase {
 public:
     CcuTempScatterMesh1D() = default;
-    explicit CcuTempScatterMesh1D(const OpParam &param,
-                                         const u32 rankId,  // 传通信域的rankId，userRank
-                                         const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempScatterMesh1D(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempScatterMesh1D() override;
 
@@ -31,11 +32,13 @@ public:
         return StringFormat("Template of Scatter ccu mesh 1D with templateRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-                       AlgResourceRequest &resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
@@ -48,6 +51,6 @@ private:
     uint32_t subCommRootId_ = 0;
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // HCCL_CCU_TEMP_SCATTER_MESH_1D__H
+#endif // HCCL_CCU_TEMP_SCATTER_MESH_1D__H

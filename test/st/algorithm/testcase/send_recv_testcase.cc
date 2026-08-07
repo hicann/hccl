@@ -24,36 +24,35 @@ using namespace ops_hccl;
 
 class ST_SEND_RECV_TEST : public ::testing::Test {
 protected:
-    void SetUp() override {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
 
-    static void SetUpTestCase() {
-    }
+    static void SetUpTestCase() {}
 
-    static void TearDownTestCase() {
-    }
+    static void TearDownTestCase() {}
 };
 
 using RankId = uint32_t;
 
-u32 GetRankSize(const TopoMeta &topoMeta) {
+u32 GetRankSize(const TopoMeta& topoMeta)
+{
     u32 rankSize = 0;
-    for (const auto &superPod: topoMeta)
-        for (const auto &server: superPod)
+    for (const auto& superPod : topoMeta)
+        for (const auto& server : superPod)
             rankSize += server.size();
     return rankSize;
 }
 
-std::unordered_set<RankId> GetRankIds(const std::map<RankId, RankId> &sendRecvMap) {
+std::unordered_set<RankId> GetRankIds(const std::map<RankId, RankId>& sendRecvMap)
+{
     std::unordered_set<RankId> usedRankIds;
-    for (const auto &kv: sendRecvMap) {
+    for (const auto& kv : sendRecvMap) {
         usedRankIds.insert(kv.first);
         usedRankIds.insert(kv.second);
     }
@@ -65,7 +64,9 @@ enum class SendRecvOpType {
     RECV = 1,
 };
 
-HcclResult RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType opType, u32 dataCount, HcclDataType dataType) {
+HcclResult
+RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType opType, u32 dataCount, HcclDataType dataType)
+{
     // 1.SetDevice
     aclrtSetDevice(rankId);
 
@@ -81,12 +82,12 @@ HcclResult RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType op
 
     // 4.算子下发
     if (opType == SendRecvOpType::SEND) {
-        void *sendBuf = nullptr;
+        void* sendBuf = nullptr;
         // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
         aclrtMalloc(&sendBuf, bufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
         CHK_RET(HcclSend(sendBuf, dataCount, dataType, remoteRankId, comm, stream));
     } else if (opType == SendRecvOpType::RECV) {
-        void *recvBuf = nullptr;
+        void* recvBuf = nullptr;
         // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
         aclrtMalloc(&recvBuf, bufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));
         CHK_RET(HcclRecv(recvBuf, dataCount, dataType, remoteRankId, comm, stream));
@@ -97,15 +98,14 @@ HcclResult RunSendRecvTask(RankId rankId, RankId remoteRankId, SendRecvOpType op
     return HCCL_SUCCESS;
 }
 
-void SendRecvTest(
-    TopoMeta &topoMeta, const std::map<RankId, RankId> &sendRecvMap, u32 dataCount, HcclDataType dataType) {
+void SendRecvTest(TopoMeta& topoMeta, const std::map<RankId, RankId>& sendRecvMap, u32 dataCount, HcclDataType dataType)
+{
     // 仿真模型初始化
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
     // 设置展开模式为AI_CPU
     setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     auto rankSize = GetRankSize(topoMeta);
     auto usedRankIds = GetRankIds(sendRecvMap);
@@ -117,7 +117,7 @@ void SendRecvTest(
             continue;
         }
         threads.emplace_back([=]() {
-            for (const auto &kv: sendRecvMap) {
+            for (const auto& kv : sendRecvMap) {
                 RankId srcRankId = kv.first;
                 RankId dstRankId = kv.second;
                 if (srcRankId == rankId) {
@@ -131,13 +131,13 @@ void SendRecvTest(
     }
 
     // 等待多线程执行完成
-    for (auto &thread: threads) {
+    for (auto& thread : threads) {
         thread.join();
     }
 
     // 结果成图校验
     auto taskQueues = SimTaskQueue::Global()->GetAllRankTaskQueues();
-    for (const auto &kv: sendRecvMap) {
+    for (const auto& kv : sendRecvMap) {
         RankId srcRankId = kv.first;
         RankId dstRankId = kv.second;
         HcclResult sendRes = CheckSend(taskQueues, rankSize, dataType, dataCount, srcRankId, dstRankId);
@@ -151,7 +151,8 @@ void SendRecvTest(
 }
 
 // 2卡1机100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_test)
+{
     // 三维数组指定超节点-Server-Device信息，数字是deviceId
     TopoMeta topoMeta{{{0, 1}}};
     // 键是srcRankId，值是dstRankId，注意rankId和deviceId不一定相等
@@ -159,14 +160,15 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_test) {
     std::map<RankId, RankId> sendRecvMap = {{0, 1}};
 
     // 算子执行参数设置
-    auto dataCount = 100; // 传输数据量
+    auto dataCount = 100;                               // 传输数据量
     auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32; // 数据类型
 
     SendRecvTest(topoMeta, sendRecvMap, dataCount, dataType);
 }
 
 // 2卡1机100个int32，同一通信域多次调用算子用例
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_repeat_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_repeat_test)
+{
     TopoMeta topoMeta{{{0, 1}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 1}, {0, 1}};
     auto dataCount = 100;
@@ -176,7 +178,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_2r_int32_c100_repeat_test) {
 }
 
 // 3卡1机100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_3r_int32_c100_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_3r_int32_c100_test)
+{
     TopoMeta topoMeta{{{0, 1, 2}}};
     std::map<RankId, RankId> sendRecvMap = {{2, 0}, {1, 2}};
     auto dataCount = 100;
@@ -186,7 +189,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_3r_int32_c100_test) {
 }
 
 // 1卡3机100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_3d_1r_int32_c100_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_3d_1r_int32_c100_test)
+{
     TopoMeta topoMeta{{{0}, {1}, {2}}};
     std::map<RankId, RankId> sendRecvMap = {{2, 0}, {1, 2}};
     auto dataCount = 100;
@@ -196,7 +200,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_3d_1r_int32_c100_test) {
 }
 
 // 1卡1机2超节点100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2s_1d_1r_int32_c100_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2s_1d_1r_int32_c100_test)
+{
     TopoMeta topoMeta{{{0}}, {{1}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 1}};
     auto dataCount = 100;
@@ -206,7 +211,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2s_1d_1r_int32_c100_test) {
 }
 
 // 1卡1机3超节点100个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_3s_1d_1r_int32_c100_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_3s_1d_1r_int32_c100_test)
+{
     TopoMeta topoMeta{{{0}}, {{1}}, {{2}}};
     std::map<RankId, RankId> sendRecvMap = {{2, 0}, {0, 1}};
     auto dataCount = 100;
@@ -216,7 +222,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_3s_1d_1r_int32_c100_test) {
 }
 
 // 八卡单机256M个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_8r_int32_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_8r_int32_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 6}, {5, 1}, {7, 2}, {3, 4}};
     auto dataCount = 256 * 1024 * 1024;
@@ -226,7 +233,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_1d_8r_int32_c256m_test) {
 }
 
 // 四卡两机256M个int32
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_int32_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_int32_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -236,7 +244,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_int32_c256m_test) {
 }
 
 // 四卡两机256M个UINT8
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint8_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint8_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -246,7 +255,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint8_c256m_test) {
 }
 
 // 四卡两机256M个UINT64
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint64_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint64_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -256,7 +266,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_uint64_c256m_test) {
 }
 
 // 四卡两机256M个FP16
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp16_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp16_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -266,7 +277,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp16_c256m_test) {
 }
 
 // 四卡两机256M个FP64
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp64_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp64_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -276,7 +288,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp64_c256m_test) {
 }
 
 // 四卡两机256M个HIF8
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_hif8_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_hif8_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -286,7 +299,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_hif8_c256m_test) {
 }
 
 // 四卡两机256M个FP8E4M3
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e4m3_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e4m3_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -296,7 +310,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e4m3_c256m_test) {
 }
 
 // 四卡两机256M个FP8E5M2
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e5m2_c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e5m2_c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;
@@ -306,7 +321,8 @@ TEST_F(ST_SEND_RECV_TEST, st_send_recv_2d_4r_fp8e5m2_c256m_test) {
 }
 
 // 四卡两机256M个FP8E8M0
-TEST_F(ST_SEND_RECV_TEST, st_send_recv_s2r4fp8e8m0c256m_test) {
+TEST_F(ST_SEND_RECV_TEST, st_send_recv_s2r4fp8e8m0c256m_test)
+{
     TopoMeta topoMeta{{{0, 1, 2, 3}, {4, 5, 6, 7}}};
     std::map<RankId, RankId> sendRecvMap = {{0, 4}, {6, 1}, {2, 3}, {5, 7}};
     auto dataCount = 256 * 1024 * 1024;

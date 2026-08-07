@@ -14,20 +14,15 @@
 namespace ops_hccl {
 ScatterCommExecutor::ScatterCommExecutor() : ScatterExecutorBase()
 {
-    desc_.level1SupportedAlgos = {
-        AlgTypeLevel1::ALG_LEVEL1_NHR,
-        AlgTypeLevel1::ALG_LEVEL1_NB,
-        AlgTypeLevel1::ALG_LEVEL1_RING
-    };
-    desc_.level2SupportedAlgos = {
-        AlgTypeLevel2::ALG_LEVEL2_NHR,
-        AlgTypeLevel2::ALG_LEVEL2_NB,
-        AlgTypeLevel2::ALG_LEVEL2_RING
-    };
+    desc_.level1SupportedAlgos
+        = {AlgTypeLevel1::ALG_LEVEL1_NHR, AlgTypeLevel1::ALG_LEVEL1_NB, AlgTypeLevel1::ALG_LEVEL1_RING};
+    desc_.level2SupportedAlgos
+        = {AlgTypeLevel2::ALG_LEVEL2_NHR, AlgTypeLevel2::ALG_LEVEL2_NB, AlgTypeLevel2::ALG_LEVEL2_RING};
 }
 
-HcclResult ScatterCommExecutor::CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-    AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType)
+HcclResult ScatterCommExecutor::CalcResRequest(
+    HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+    AlgResourceRequest& resourceRequest, AlgType& algType)
 {
     CHK_RET(CalcGeneralTopoInfoForComm(comm, topoInfo, algHierarchyInfo));
     CHK_RET(RefreshAlgType(algType));
@@ -50,18 +45,19 @@ HcclResult ScatterCommExecutor::CalcResRequest(HcclComm comm, const OpParam& par
     CHK_RET(CalcLevel1ChannelRequest(param, topoInfo, algHierarchyInfo, algType, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
 
-    HCCL_INFO("[ScatterCommExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
+    HCCL_INFO(
+        "[ScatterCommExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
         " level0Channels[%u] level1Channels[%u].",
-        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(), resourceRequest.notifyNumOnMainThread,
-        level0Channels.size(), level1Channels.size());
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
+        resourceRequest.notifyNumOnMainThread, level0Channels.size(), level1Channels.size());
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterCommExecutor::KernelRun(const OpParam &param, ExecMem &execMem)
+HcclResult ScatterCommExecutor::KernelRun(const OpParam& param, ExecMem& execMem)
 {
     HCCL_CONFIG_INFO(HCCL_ALG, "[ScatterCommExecutor] scatter starts.");
-    HcclMem &inputMem = execMem.inputMem;
-    HcclMem &outputMem = execMem.outputMem;
+    HcclMem& inputMem = execMem.inputMem;
+    HcclMem& outputMem = execMem.outputMem;
     u64 count = execMem.count;
     auto root = param.root;
     auto dataType = param.DataDes.dataType;
@@ -74,11 +70,11 @@ HcclResult ScatterCommExecutor::KernelRun(const OpParam &param, ExecMem &execMem
     CHK_RET(KernelRunLevel1(inputMem, count, dataType, commIndex, root, userRank, COMM_LEVEL1, thread_));
 
     // 从CCL_IN拷贝到CCL_OUT
-    u8* src = static_cast<u8 *>(inputMem.addr) + outputMem.size * combinedCommInfo.localRank;
+    u8* src = static_cast<u8*>(inputMem.addr) + outputMem.size * combinedCommInfo.localRank;
     CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem.addr, src, outputMem.size)));
     return HCCL_SUCCESS;
 }
 
 REGISTER_EXEC("ScatterCommExecutor", ScatterComm, ScatterCommExecutor);
 
-}
+} // namespace ops_hccl

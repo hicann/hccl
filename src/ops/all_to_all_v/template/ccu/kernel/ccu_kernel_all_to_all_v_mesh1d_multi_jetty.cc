@@ -13,13 +13,13 @@
 namespace ops_hccl {
 
 constexpr int OUTPUT_XN_ID = 1;
-constexpr int TOKEN_XN_ID  = 2;
-constexpr int POST_SYNC_ID  = 3;
-constexpr int CKE_IDX_0    = 0;
+constexpr int TOKEN_XN_ID = 2;
+constexpr int POST_SYNC_ID = 3;
+constexpr int CKE_IDX_0 = 0;
 
-static CcuResult PreSync(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult PreSync(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
     for (uint32_t id = 0; id < arg->rankSize; id++) {
         ccu::Variable tempDst;
@@ -28,8 +28,10 @@ static CcuResult PreSync(AllToAllVMesh1DMultiJettyContext &ctx)
         }
         tempDst = ctx.output[arg->rankId];
         tempDst += ctx.sendRecvInfo[id].recvOffset;
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[channelIdx], tempDst, OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[channelIdx], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[channelIdx], tempDst, OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[channelIdx], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
         channelIdx++;
     }
 
@@ -40,9 +42,9 @@ static CcuResult PreSync(AllToAllVMesh1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult PostSync(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
@@ -53,9 +55,9 @@ static CcuResult PostSync(AllToAllVMesh1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult InitResource(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
@@ -82,9 +84,9 @@ static CcuResult InitResource(AllToAllVMesh1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult LoadArgs(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t argId = 0;
 
     CCU_CHK_RET(ccu::LoadArg(ctx.input[0], argId++));
@@ -114,9 +116,9 @@ static CcuResult LoadArgs(AllToAllVMesh1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult CalcGroupSrcDst(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult CalcGroupSrcDst(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
         ctx.src[rankIdx].token = ctx.token[rankIdx];
         ctx.src[rankIdx].addr = ctx.input[0];
@@ -137,27 +139,35 @@ static CcuResult CalcGroupSrcDst(AllToAllVMesh1DMultiJettyContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAll2AllVLastBlock(AllToAllVMesh1DMultiJettyContext &ctx, uint32_t rankIdx, uint32_t channelIdx)
+static CcuResult DoAll2AllVLastBlock(AllToAllVMesh1DMultiJettyContext& ctx, uint32_t rankIdx, uint32_t channelIdx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->jettyNums[rankIdx]; i++) {
-        CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX - 1) {
-            CCU_IF(ctx.sendRecvInfo[rankIdx].lastSliceSize == 0) {
+        CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX - 1)
+        {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].lastSliceSize == 0)
+            {
                 CCU_CHK_RET(ccu::EventRecord(ctx.eventList[rankIdx], 1 << i));
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].lastSliceSize != 0) {
-                ccu::Write(arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx], 
+            CCU_IF(ctx.sendRecvInfo[rankIdx].lastSliceSize != 0)
+            {
+                ccu::Write(
+                    arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx],
                     ctx.sendRecvInfo[rankIdx].lastSliceSize, ctx.eventList[rankIdx], 1 << i);
                 ctx.src[rankIdx].addr += ctx.sendRecvInfo[rankIdx].lastSliceSize;
                 ctx.remoteDst[rankIdx].addr += ctx.sendRecvInfo[rankIdx].lastSliceSize;
             }
         }
-        CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX - 1) {
-            CCU_IF(ctx.sendRecvInfo[rankIdx].lastTailSliceSize == 0) {
+        CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX - 1)
+        {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].lastTailSliceSize == 0)
+            {
                 CCU_CHK_RET(ccu::EventRecord(ctx.eventList[rankIdx], 1 << i));
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].lastTailSliceSize != 0) {
-                ccu::Write(arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx], 
+            CCU_IF(ctx.sendRecvInfo[rankIdx].lastTailSliceSize != 0)
+            {
+                ccu::Write(
+                    arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx],
                     ctx.sendRecvInfo[rankIdx].lastTailSliceSize, ctx.eventList[rankIdx], 1 << i);
             }
             ctx.completedRankCount += ctx.xnConst1;
@@ -167,26 +177,32 @@ static CcuResult DoAll2AllVLastBlock(AllToAllVMesh1DMultiJettyContext &ctx, uint
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAll2AllVBlock(AllToAllVMesh1DMultiJettyContext &ctx, uint32_t rankIdx, uint32_t channelIdx)
+static CcuResult DoAll2AllVBlock(AllToAllVMesh1DMultiJettyContext& ctx, uint32_t rankIdx, uint32_t channelIdx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->jettyNums[rankIdx]; i++) {
         if (i != arg->jettyNums[rankIdx] - 1) {
-            CCU_IF(ctx.sendRecvInfo[rankIdx].sliceSize == 0) {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].sliceSize == 0)
+            {
                 CCU_CHK_RET(ccu::EventRecord(ctx.eventList[rankIdx], 1 << i));
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].sliceSize != 0) {
-                ccu::Write(arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx], 
+            CCU_IF(ctx.sendRecvInfo[rankIdx].sliceSize != 0)
+            {
+                ccu::Write(
+                    arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx],
                     ctx.sendRecvInfo[rankIdx].sliceSize, ctx.eventList[rankIdx], 1 << i);
                 ctx.src[rankIdx].addr += ctx.sendRecvInfo[rankIdx].sliceSize;
                 ctx.remoteDst[rankIdx].addr += ctx.sendRecvInfo[rankIdx].sliceSize;
             }
         } else {
-            CCU_IF(ctx.sendRecvInfo[rankIdx].tailSliceSize == 0) {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].tailSliceSize == 0)
+            {
                 CCU_CHK_RET(ccu::EventRecord(ctx.eventList[rankIdx], 1 << i));
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].tailSliceSize != 0) {
-                ccu::Write(arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx], 
+            CCU_IF(ctx.sendRecvInfo[rankIdx].tailSliceSize != 0)
+            {
+                ccu::Write(
+                    arg->channels[channelIdx], ctx.remoteDst[rankIdx], ctx.src[rankIdx],
                     ctx.sendRecvInfo[rankIdx].tailSliceSize, ctx.eventList[rankIdx], 1 << i);
                 ctx.src[rankIdx].addr += ctx.sendRecvInfo[rankIdx].tailSliceSize;
                 ctx.remoteDst[rankIdx].addr += ctx.sendRecvInfo[rankIdx].tailSliceSize;
@@ -197,53 +213,69 @@ static CcuResult DoAll2AllVBlock(AllToAllVMesh1DMultiJettyContext &ctx, uint32_t
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh1DMultiJettyContext &ctx)
+static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh1DMultiJettyContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     HCCL_DEBUG("[CcuKernelAllToAllVMesh1DMultiJetty] alltoallv mesh 1d use GroupCopy start");
     ctx.xnMaxTransportSize = UB_MAX_TRANS_SIZE;
     ctx.completedRankCount = 0;
     ctx.xnConst1 = 1;
-    CCU_WHILE(ctx.completedRankCount != arg->rankSize) {
+    CCU_WHILE(ctx.completedRankCount != arg->rankSize)
+    {
         uint32_t channelIdx = 0;
         for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
             if (rankIdx == arg->rankId) {
                 continue;
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX) {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX)
+            {
                 CCU_CHK_RET(ccu::EventRecord(ctx.eventList[rankIdx], (1 << arg->jettyNums[rankIdx]) - 1));
             }
-            CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX) {
-                CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX - arg->jettyNums[rankIdx]) {
+            CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX)
+            {
+                CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum != UINT64_MAX - arg->jettyNums[rankIdx])
+                {
                     CCU_CHK_RET(DoAll2AllVBlock(ctx, rankIdx, channelIdx));
                 }
-                CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX - arg->jettyNums[rankIdx]) {
+                CCU_IF(ctx.sendRecvInfo[rankIdx].loopNum == UINT64_MAX - arg->jettyNums[rankIdx])
+                {
                     CCU_CHK_RET(DoAll2AllVLastBlock(ctx, rankIdx, channelIdx));
                 }
             }
             channelIdx++;
         }
-        CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum == UINT64_MAX) {
+        CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum == UINT64_MAX)
+        {
             CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], (1 << arg->jettyNums[arg->rankId]) - 1));
         }
 
-        CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum != UINT64_MAX) {
-            CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum == UINT64_MAX - arg->jettyNums[arg->rankId]) {
-                CCU_IF(ctx.sendRecvInfo[arg->rankId].lastTailSliceSize == 0) {
+        CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum != UINT64_MAX)
+        {
+            CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum == UINT64_MAX - arg->jettyNums[arg->rankId])
+            {
+                CCU_IF(ctx.sendRecvInfo[arg->rankId].lastTailSliceSize == 0)
+                {
                     CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], (1 << arg->jettyNums[arg->rankId]) - 1));
                 }
-                CCU_IF(ctx.sendRecvInfo[arg->rankId].lastTailSliceSize != 0) {
-                    CCU_CHK_RET(GroupCopy(ctx, ctx.myDst, ctx.src[arg->rankId], ctx.sendRecvInfo[arg->rankId].tailGoSize, GetCcuVersion()));
+                CCU_IF(ctx.sendRecvInfo[arg->rankId].lastTailSliceSize != 0)
+                {
+                    CCU_CHK_RET(GroupCopy(
+                        ctx, ctx.myDst, ctx.src[arg->rankId], ctx.sendRecvInfo[arg->rankId].tailGoSize,
+                        GetCcuVersion()));
                     CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], (1 << arg->jettyNums[arg->rankId]) - 1));
                 }
                 ctx.completedRankCount += ctx.xnConst1;
             }
-            CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum != UINT64_MAX - arg->jettyNums[arg->rankId]) {
-                CCU_IF(ctx.sendRecvInfo[arg->rankId].tailSliceSize == 0) {
+            CCU_IF(ctx.sendRecvInfo[arg->rankId].loopNum != UINT64_MAX - arg->jettyNums[arg->rankId])
+            {
+                CCU_IF(ctx.sendRecvInfo[arg->rankId].tailSliceSize == 0)
+                {
                     CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], (1 << arg->jettyNums[arg->rankId]) - 1));
                 }
-                CCU_IF(ctx.sendRecvInfo[arg->rankId].tailSliceSize != 0) {
-                    CCU_CHK_RET(GroupCopy(ctx, ctx.myDst, ctx.src[arg->rankId], ctx.xnMaxTransportGoSize, GetCcuVersion()));
+                CCU_IF(ctx.sendRecvInfo[arg->rankId].tailSliceSize != 0)
+                {
+                    CCU_CHK_RET(
+                        GroupCopy(ctx, ctx.myDst, ctx.src[arg->rankId], ctx.xnMaxTransportGoSize, GetCcuVersion()));
                     CCU_CHK_RET(ccu::EventRecord(ctx.eventList[arg->rankId], (1 << arg->jettyNums[arg->rankId]) - 1));
                     ctx.src[arg->rankId].addr += ctx.xnMaxTransportSize;
                     ctx.myDst.addr += ctx.xnMaxTransportSize;
@@ -261,7 +293,7 @@ static CcuResult DoAll2AllVMultiLoop(AllToAllVMesh1DMultiJettyContext &ctx)
 CcuResult CcuAllToAllVMesh1DMultiJettyKernel(CcuKernelArg arg)
 {
     HCCL_INFO("[AllToAllVAlgo] AllToAllVMesh1DMultiJetty run");
-    auto *kernelArg = static_cast<CcuKernelArgAllToAllVMesh1DMultiJetty *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllToAllVMesh1DMultiJetty*>(arg);
 
     AllToAllVMesh1DMultiJettyContext ctx;
     ctx.arg = kernelArg;
@@ -272,8 +304,9 @@ CcuResult CcuAllToAllVMesh1DMultiJettyKernel(CcuKernelArg arg)
     ctx.moRes.eventCount = 0;
     ctx.moRes.bufCount = 0;
 
-    HCCL_INFO("[CcuKernelAllToAllVMesh1DMultiJetty] Init, KernelArgs are rankId[%u], rankSize[%u]",
-        kernelArg->rankId, kernelArg->rankSize);
+    HCCL_INFO(
+        "[CcuKernelAllToAllVMesh1DMultiJetty] Init, KernelArgs are rankId[%u], rankSize[%u]", kernelArg->rankId,
+        kernelArg->rankSize);
 
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));

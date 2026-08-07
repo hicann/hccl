@@ -20,8 +20,8 @@ namespace ops_hccl {
 class InsTempUBXAllToAllVMesh1D : public InsAlgTemplateBase {
 public:
     InsTempUBXAllToAllVMesh1D() = default;
-    explicit InsTempUBXAllToAllVMesh1D(const OpParam& param, const u32 rankId,
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempUBXAllToAllVMesh1D(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempUBXAllToAllVMesh1D() override;
 
@@ -33,30 +33,30 @@ public:
     }
 
     // 现在的RunAsync就是之前的GenExtIns
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
-    void GetNotifyIdxMainToClos(std::vector<u32> &notifyIdxMianToSub);
-    void GetNotifyIdxClosToMain(std::vector<u32> &notifyIdxSubToMain);
-    void GetNotifyIdxMainToFullMesh(std::vector<u32> &notifyIdxMianToSub);
-    void GetNotifyIdxFullMeshToMain(std::vector<u32> &notifyIdxSubToMain);
-    HcclResult InitParam(const OpParam& param, const TemplateDataParams& tempAlgParams,
-        TemplateResource& templateResource);
+    void GetNotifyIdxMainToClos(std::vector<u32>& notifyIdxMianToSub);
+    void GetNotifyIdxClosToMain(std::vector<u32>& notifyIdxSubToMain);
+    void GetNotifyIdxMainToFullMesh(std::vector<u32>& notifyIdxMianToSub);
+    void GetNotifyIdxFullMeshToMain(std::vector<u32>& notifyIdxSubToMain);
+    HcclResult
+    InitParam(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource);
     HcclResult GetBoardSendRecvMatrix(u32 n, std::vector<std::vector<u32>>& sendRecvMatrix);
     HcclResult GetRankSendRecvMatrix(u32 board1, u32 board2, std::vector<std::vector<u32>>& rankSendRecvMatrix);
     HcclResult GetRankNumPerBoard(TemplateResource& templateResource);
     HcclResult CheckPathNum(TemplateResource& templateResource);
     HcclResult RunFullMesh(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource);
-    HcclResult RunPairwise(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource,
-        u32 targetBoard);
+    HcclResult
+    RunPairwise(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource, u32 targetBoard);
 
     u64 dataTypeSize_{0};
     bool isDmaRead_{false};
@@ -71,7 +71,7 @@ private:
     bool needDealWithFullMeshInfo_{false};
     u32 myAlgRank_{0};
     u32 rankNumPerBoard_{0};
-    u32 maxPathNum_{4}; // 跨框最多4jetty
+    u32 maxPathNum_{4};         // 跨框最多4jetty
     u32 maxRankNumPerBoard_{4}; // ubx机型fullmesh内最多4P
     u32 currBoard_{0};
     u32 currRankIndex_{0};
@@ -90,6 +90,6 @@ private:
     std::vector<ThreadHandle> subThreadsFullMesh_;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // INS_TEMP_UBX_ALL_TO_ALL_V_MESH_1D_H

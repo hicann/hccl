@@ -15,7 +15,7 @@
 
 namespace ops_hccl_p2p {
 
-HcclResult LaunchKernelWithAsc(OpParam &param, aclrtStream stream)
+HcclResult LaunchKernelWithAsc(OpParam& param, aclrtStream stream)
 {
     // Host stream通知Device主thread
     CHK_RET(HcommThreadNotifyRecordOnThread(param.cpuThread, param.aicpuThreadOnCpu, 0));
@@ -32,7 +32,7 @@ HcclResult LaunchKernelWithAsc(OpParam &param, aclrtStream stream)
     return HCCL_SUCCESS;
 }
 
-HcclResult LaunchKernelWithAclrt(OpParam &param, aclrtStream stream)
+HcclResult LaunchKernelWithAclrt(OpParam& param, aclrtStream stream)
 {
     // 加载 AICPU Kernel，获取 AICPU 侧链接库的句柄
     CHK_RET(LoadAICPUKernel());
@@ -68,10 +68,10 @@ HcclResult LaunchKernelWithAclrt(OpParam &param, aclrtStream stream)
     return HCCL_SUCCESS;
 }
 
-HcclResult LaunchKernel(OpParam &param, aclrtStream stream)
+HcclResult LaunchKernel(OpParam& param, aclrtStream stream)
 {
     // 通过环境变量判断 Kernel 下发方式，默认使用 aclrt 接口方式
-    char *kernelLaunchAscPtr = getenv("HCCL_CUSTOM_KERNEL_LAUNCH_ASC");
+    char* kernelLaunchAscPtr = getenv("HCCL_CUSTOM_KERNEL_LAUNCH_ASC");
     if (kernelLaunchAscPtr != nullptr && strcmp(kernelLaunchAscPtr, "1") == 0) {
         // <<<>>> 尖括号调用方式
         HCCL_INFO("[LaunchKernel] Launching kernel with ascendc");
@@ -82,4 +82,4 @@ HcclResult LaunchKernel(OpParam &param, aclrtStream stream)
         return LaunchKernelWithAclrt(param, stream);
     }
 }
-}
+} // namespace ops_hccl_p2p

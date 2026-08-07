@@ -20,8 +20,9 @@ namespace ops_hccl {
 class InsTempReduceScatterMesh1DMeshChunk : public InsAlgTemplateBase {
 public:
     InsTempReduceScatterMesh1DMeshChunk() = default;
-    explicit InsTempReduceScatterMesh1DMeshChunk(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempReduceScatterMesh1DMeshChunk(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterMesh1DMeshChunk() override;
 
     std::string Describe() const override
@@ -31,37 +32,37 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
-    
-    HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads) const;
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
-    HcclResult CalcSliceInfoVec(const u64 &dataSize, RankSliceInfo &sliceInfoVec);
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
+    HcclResult CalcSliceInfoVec(const u64& dataSize, RankSliceInfo& sliceInfoVec);
+
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
-    HcclResult RunReduceScatter(const std::map<u32, std::vector<ChannelInfo>> &channels,
-                                const std::vector<ThreadHandle> &threads,
-                                const TemplateDataParams &tempAlgParams, RankSliceInfo &sliceInfoVec);
+    HcclResult RunReduceScatter(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        const TemplateDataParams& tempAlgParams, RankSliceInfo& sliceInfoVec);
     HcclResult DoMeshChunk(
-        const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads,
-        const TemplateDataParams &tempAlgParams, const std::vector<uint64_t> &sliceSize, const u32 &repeatNum,
-        const u32 &myAlgRank, uint64_t &sliceSendOffset_, uint64_t &sliceRecvOffset_, const uint64_t &sliceRecvBaseOffset);
-    void NotifyIdxMainToSubInMeshChunk(std::vector<u32> &notifyIdxMainToSub);
-    void NotifyIdxSubToMainInMeshChunk(std::vector<u32> &notifyIdxSubToMain);
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        const TemplateDataParams& tempAlgParams, const std::vector<uint64_t>& sliceSize, const u32& repeatNum,
+        const u32& myAlgRank, uint64_t& sliceSendOffset_, uint64_t& sliceRecvOffset_,
+        const uint64_t& sliceRecvBaseOffset);
+    void NotifyIdxMainToSubInMeshChunk(std::vector<u32>& notifyIdxMainToSub);
+    void NotifyIdxSubToMainInMeshChunk(std::vector<u32>& notifyIdxSubToMain);
     u64 processSize_{0};
     u32 rankIdx_{0};
     u64 count_{0};
     u64 dataTypeSize_{0};
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
-#endif //OPEN_HCCL_INS_TEMP_REDUCE_SCATTER_MESH_1D_MESH_CHUNK_H
+#endif // OPEN_HCCL_INS_TEMP_REDUCE_SCATTER_MESH_1D_MESH_CHUNK_H

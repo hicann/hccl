@@ -29,25 +29,23 @@ using NHRStepInfo = struct NHRStepInfoDef {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    NHRStepInfoDef() : nSlices(0)
-    {
-    }
+    NHRStepInfoDef() : nSlices(0) {}
 };
 #endif
 
 struct CcuKernelArgAllGatherNHR1D : CcuKernelArgBase {
-    uint64_t                                dimSize;
-    uint64_t                                mySubCommRankId;
-    uint64_t                                axisId;
-    std::vector<NHRStepInfo>                stepInfoVector;
-    std::map<u32, u32>                      rank2ChannelIdx;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
-    uint32_t                                axisSize;
+    uint64_t dimSize;
+    uint64_t mySubCommRankId;
+    uint64_t axisId;
+    std::vector<NHRStepInfo> stepInfoVector;
+    std::map<u32, u32> rank2ChannelIdx;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
+    uint32_t axisSize;
 };
 
 struct AllGatherNHR1DMem2MemContext : CcuKernelCtxBase {
-    const CcuKernelArgAllGatherNHR1D *arg;
+    const CcuKernelArgAllGatherNHR1D* arg;
 
     uint64_t localSize;
     uint64_t myRankIdx;

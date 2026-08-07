@@ -14,8 +14,8 @@
 
 namespace ops_hccl {
 
-SelectorStatus AutoSelectorBase::Select(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
-                                        std::string &selectAlgName) const
+SelectorStatus
+AutoSelectorBase::Select(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[AutoSelectorBase][%s] start, OpExecuteConfig is %d.", __func__, opParam.opExecuteConfig);
     std::map<HcclCMDType, std::vector<HcclAlgoType>> configAlgMap = GetExternalInputHcclAlgoConfigAllType();
@@ -51,8 +51,9 @@ SelectorStatus AutoSelectorBase::Select(OpParam &opParam, TopoInfoWithNetLayerDe
             HCCL_INFO("[Algo][AutoSelectorBase] Need to roll back AIV algo");
             opParam.opExecuteConfig = OpExecuteConfig::AIV_ONLY;
             (void)ProcessAivConfig(opParam, topoInfo, configAlgMap, selectAlgName, ret);
-            HCCL_INFO("[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.",
-                selectAlgName.c_str(), opParam.opExecuteConfig);
+            HCCL_INFO(
+                "[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.", selectAlgName.c_str(),
+                opParam.opExecuteConfig);
             return ret;
         }
         ret = SelectAicpuAlgo(topoInfo, opParam, configAlgMap, selectAlgName);
@@ -60,54 +61,49 @@ SelectorStatus AutoSelectorBase::Select(OpParam &opParam, TopoInfoWithNetLayerDe
             opParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
         }
     }
-    HCCL_INFO("[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.",
-        selectAlgName.c_str(), opParam.opExecuteConfig);
+    HCCL_INFO(
+        "[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.", selectAlgName.c_str(),
+        opParam.opExecuteConfig);
     return ret;
 }
 
-bool AutoSelectorBase::IsRollBackAiv(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo) const
+bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    bool isAllToAllOps = opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
-                         opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
-                         opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC;
-    bool isInt64ReduceOps = opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64 &&
-                           (opParam.opType == HcclCMDType::HCCL_CMD_ALLREDUCE ||
-                            opParam.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
-                            opParam.opType == HcclCMDType::HCCL_CMD_REDUCE);
+    bool isAllToAllOps = opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL
+                         || opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
+                         || opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC;
+    bool isInt64ReduceOps = opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64
+                            && (opParam.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
+                                || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
+                                || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE);
     return topoInfo->level0PcieMix && topoInfo->level0BigClosRange && (isAllToAllOps || isInt64ReduceOps);
 }
 
-bool AutoSelectorBase::IsStarsState(const OpExecuteConfig &opExecuteConfig) const
+bool AutoSelectorBase::IsStarsState(const OpExecuteConfig& opExecuteConfig) const
 {
-    return (opExecuteConfig == OpExecuteConfig::AICPU_TS ||
-            opExecuteConfig == OpExecuteConfig::HOSTCPU_TS ||
-            opExecuteConfig == OpExecuteConfig::CCU_FAIL);
+    return (
+        opExecuteConfig == OpExecuteConfig::AICPU_TS || opExecuteConfig == OpExecuteConfig::HOSTCPU_TS
+        || opExecuteConfig == OpExecuteConfig::CCU_FAIL);
 }
 
 bool AutoSelectorBase::IsDefaultAlg(const HcclAlgoType algoType) const
 {
-    return (algoType ==  HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT) || (algoType ==  HcclAlgoType::HCCL_ALGO_TYPE_NA);
+    return (algoType == HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT) || (algoType == HcclAlgoType::HCCL_ALGO_TYPE_NA);
 }
 
-bool AutoSelectorBase::IsSmallData(const u64 dataSize) const
-{
-    return dataSize < SMALL_COUNT_512KB;
-}
+bool AutoSelectorBase::IsSmallData(const u64 dataSize) const { return dataSize < SMALL_COUNT_512KB; }
 
-bool AutoSelectorBase::IsLargeData(const u64 dataSize) const
-{
-    return dataSize >= LARGE_COUNT_1024KB;
-}
+bool AutoSelectorBase::IsLargeData(const u64 dataSize) const { return dataSize >= LARGE_COUNT_1024KB; }
 
 bool AutoSelectorBase::IsSmallDataCCU(const u64 dataSize, const u64 rankSize) const
 {
     if (rankSize == 0) {
         HCCL_WARNING("the selector is not set RankSize");
-    } 
+    }
     return (dataSize <= CCU_PARALLEL_MAX_DATA_SIZE) ? true : false;
 }
 
-u32 AutoSelectorBase::CalcFrameNum(const TopoInfoWithNetLayerDetails *topoInfo) const
+u32 AutoSelectorBase::CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo) const
 {
     u32 frameNum = 0;
     if (topoInfo->topoLevelNums <= 1 || topoInfo->netLayerDetails.instSizeListOfLayer[0].empty()) {
@@ -117,17 +113,23 @@ u32 AutoSelectorBase::CalcFrameNum(const TopoInfoWithNetLayerDetails *topoInfo) 
     for (size_t i = 1; i < topoInfo->netLayerDetails.instSizeListOfLayer[0].size(); ++i) {
         u32 a = gcd;
         u32 b = topoInfo->netLayerDetails.instSizeListOfLayer[0][i];
-        while (b != 0) { u32 r = a % b; a = b; b = r; }
+        while (b != 0) {
+            u32 r = a % b;
+            a = b;
+            b = r;
+        }
         gcd = a;
-        if (gcd == 1) { break; }
+        if (gcd == 1) {
+            break;
+        }
     }
     frameNum = (gcd > 0) ? topoInfo->userRankSize / gcd : 0;
     return frameNum;
 }
 
-SelectorStatus AutoSelectorBase::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
-                                                 const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                 std::string &selectAlgName) const
+SelectorStatus AutoSelectorBase::SelectCcuMsAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)configAlgMap;
@@ -135,9 +137,9 @@ SelectorStatus AutoSelectorBase::SelectCcuMsAlgo(const TopoInfoWithNetLayerDetai
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus AutoSelectorBase::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
-                                                    const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                    std::string &selectAlgName) const
+SelectorStatus AutoSelectorBase::SelectCcuScheduleAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)configAlgMap;
@@ -145,9 +147,9 @@ SelectorStatus AutoSelectorBase::SelectCcuScheduleAlgo(const TopoInfoWithNetLaye
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus AutoSelectorBase::SelectAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
-                                                 const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                                 std::string &selectAlgName) const
+SelectorStatus AutoSelectorBase::SelectAicpuAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)configAlgMap;
@@ -155,9 +157,9 @@ SelectorStatus AutoSelectorBase::SelectAicpuAlgo(const TopoInfoWithNetLayerDetai
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus AutoSelectorBase::SelectAivAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
-                                               const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                               std::string &selectAlgName) const
+SelectorStatus AutoSelectorBase::SelectAivAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)configAlgMap;
@@ -165,9 +167,9 @@ SelectorStatus AutoSelectorBase::SelectAivAlgo(const TopoInfoWithNetLayerDetails
     return SelectorStatus::NOT_MATCH;
 }
 
-SelectorStatus AutoSelectorBase::SelectDPUAlgo(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
-                                               const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                               std::string &selectAlgName) const
+SelectorStatus AutoSelectorBase::SelectDPUAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)topoInfo;
     (void)configAlgMap;
@@ -175,16 +177,23 @@ SelectorStatus AutoSelectorBase::SelectDPUAlgo(const TopoInfoWithNetLayerDetails
     return SelectorStatus::NOT_MATCH;
 }
 
-bool AutoSelectorBase::IsLayerAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType) const
+bool AutoSelectorBase::IsLayerAllConnetedWithTopo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType) const
 {
-    CHK_PRT_RET(topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
-        HCCL_WARNING("[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%u] <= netLayer[%u]",
-        topoInfo->netLayerDetails.localNetInsSizeOfLayer.size(), netLayer), false);
+    CHK_PRT_RET(
+        topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
+        HCCL_WARNING(
+            "[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%u] <= netLayer[%u]",
+            topoInfo->netLayerDetails.localNetInsSizeOfLayer.size(), netLayer),
+        false);
     u32 localRankSize = topoInfo->netLayerDetails.localNetInsSizeOfLayer[netLayer];
 
-    CHK_PRT_RET(topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
-        HCCL_WARNING("[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%u] <= netLayer[%u]",
-        topoInfo->topoInstDetailsOfLayer.size(), netLayer), false);
+    CHK_PRT_RET(
+        topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
+        HCCL_WARNING(
+            "[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%u] <= netLayer[%u]",
+            topoInfo->topoInstDetailsOfLayer.size(), netLayer),
+        false);
 
     auto rankNumForTopoTypeItr = topoInfo->topoInstDetailsOfLayer[netLayer].rankNumForTopoType.find(topoType);
     if (rankNumForTopoTypeItr == topoInfo->topoInstDetailsOfLayer[netLayer].rankNumForTopoType.end()) {
@@ -199,39 +208,49 @@ bool AutoSelectorBase::IsLayerAllConnetedWithTopo(const TopoInfoWithNetLayerDeta
     return false;
 }
 
-HcclResult AutoSelectorBase::CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isEqual) const
+HcclResult
+AutoSelectorBase::CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual) const
 {
     const auto& topoInstDetails = topoInfo->topoInstDetailsOfLayer;
 
     // 检查topoInstDetails是否为空
-    CHK_PRT_RET(topoInstDetails.empty(),
-        HCCL_ERROR("[BaseSelector][CheckMeshNumEqualToClosNum] topoInstDetailsOfLayer0 size is zero."), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInstDetails.empty(),
+        HCCL_ERROR("[BaseSelector][CheckMeshNumEqualToClosNum] topoInstDetailsOfLayer0 size is zero."),
+        HCCL_E_INTERNAL);
 
     const auto& rankNumMap = topoInstDetails[0].rankNumForTopoType;
     auto closItr = rankNumMap.find(COMM_TOPO_CLOS);
     auto meshItr = rankNumMap.find(COMM_TOPO_1DMESH);
-    CHK_PRT_RET(closItr == rankNumMap.end() || closItr->second.empty() ||
-                meshItr == rankNumMap.end() || meshItr->second.empty(),
-        HCCL_ERROR("[BaseSelector][CheckMeshNumEqualToClosNum] topoInstDetailsOfLayer0 size is zero."), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        closItr == rankNumMap.end() || closItr->second.empty() || meshItr == rankNumMap.end()
+            || meshItr->second.empty(),
+        HCCL_ERROR("[BaseSelector][CheckMeshNumEqualToClosNum] topoInstDetailsOfLayer0 size is zero."),
+        HCCL_E_INTERNAL);
 
     // 获取CLOS和1DMESH拓扑的rank数量并比较是否相等
     isEqual = (closItr->second[0] == meshItr->second[0]);
     return HCCL_SUCCESS;
 }
 
-HcclResult AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isMultiple) const
+HcclResult
+AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple) const
 {
     const auto& topoInstDetails = topoInfo->topoInstDetailsOfLayer;
     // 检查topoInstDetails是否为空
-    CHK_PRT_RET(topoInstDetails.empty(),
-        HCCL_ERROR("[BaseSelector][CheckClosNumMultipleOfMeshNum] topoInstDetailsOfLayer0 size is zero."), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInstDetails.empty(),
+        HCCL_ERROR("[BaseSelector][CheckClosNumMultipleOfMeshNum] topoInstDetailsOfLayer0 size is zero."),
+        HCCL_E_INTERNAL);
 
     const auto& rankNumMap = topoInstDetails[0].rankNumForTopoType;
     auto closItr = rankNumMap.find(COMM_TOPO_CLOS);
     auto meshItr = rankNumMap.find(COMM_TOPO_1DMESH);
-    CHK_PRT_RET(closItr == rankNumMap.end() || closItr->second.empty() ||
-                meshItr == rankNumMap.end() || meshItr->second.empty(),
-        HCCL_ERROR("[BaseSelector][CheckClosNumMultipleOfMeshNum] topoInstDetailsOfLayer0 size is zero."), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        closItr == rankNumMap.end() || closItr->second.empty() || meshItr == rankNumMap.end()
+            || meshItr->second.empty(),
+        HCCL_ERROR("[BaseSelector][CheckClosNumMultipleOfMeshNum] topoInstDetailsOfLayer0 size is zero."),
+        HCCL_E_INTERNAL);
 
     // 获取CLOS和1DMESH拓扑的rank数量
     const auto closRankNums = closItr->second[0];
@@ -242,10 +261,10 @@ HcclResult AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNet
     return HCCL_SUCCESS;
 }
 
-bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam) const
+bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam) const
 {
-    CHK_PRT_RET(topoInfo == nullptr,
-        HCCL_WARNING("[AutoSelectorBase][IsTwoLevelNetLayer] topoInfo is nullptr."), false);
+    CHK_PRT_RET(
+        topoInfo == nullptr, HCCL_WARNING("[AutoSelectorBase][IsTwoLevelNetLayer] topoInfo is nullptr."), false);
     // hostDPU场景不走二级网络算法
     bool hostDPUOnly = false;
     if ((CheckHostDPUOnly(opParam.hcclComm, topoInfo, hostDPUOnly) == HCCL_SUCCESS) && hostDPUOnly) {
@@ -253,28 +272,32 @@ bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *top
         return false;
     }
     if (topoInfo->netLayerDetails.netLayerNum <= 1) {
-        HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] netLayerNum[%u] <= 1, not two level net layer.",
+        HCCL_INFO(
+            "[AutoSelectorBase][IsTwoLevelNetLayer] netLayerNum[%u] <= 1, not two level net layer.",
             topoInfo->netLayerDetails.netLayerNum);
         return false;
     }
     u32 level1Idx = topoInfo->netLayerDetails.netLayers[1];
-    bool hasLevel1Clos = topoInfo->topoInstDetailsOfLayer.size() > level1Idx &&
-        topoInfo->topoInstDetailsOfLayer[level1Idx].rankNumForTopoType.find(COMM_TOPO_CLOS) !=
-            topoInfo->topoInstDetailsOfLayer[level1Idx].rankNumForTopoType.end();
+    bool hasLevel1Clos = topoInfo->topoInstDetailsOfLayer.size() > level1Idx
+                         && topoInfo->topoInstDetailsOfLayer[level1Idx].rankNumForTopoType.find(COMM_TOPO_CLOS)
+                                != topoInfo->topoInstDetailsOfLayer[level1Idx].rankNumForTopoType.end();
     if (!hasLevel1Clos) {
-        HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] level1[%u] has no CLOS topo, not two level net layer.", level1Idx);
+        HCCL_INFO(
+            "[AutoSelectorBase][IsTwoLevelNetLayer] level1[%u] has no CLOS topo, not two level net layer.", level1Idx);
         return false;
     }
-    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() < 1 ||
-        topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] <= 1) {
-        HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] level0 localNetInsSizeOfLayer[%zu] <= 1, not two level net layer.",
+    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() < 1
+        || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] <= 1) {
+        HCCL_INFO(
+            "[AutoSelectorBase][IsTwoLevelNetLayer] level0 localNetInsSizeOfLayer[%zu] <= 1, not two level net layer.",
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.size());
         return false;
     }
-    HCCL_INFO("[AutoSelectorBase][IsTwoLevelNetLayer] topoLevelNums[%u], netLayerNum[%u], level0Topo[MESH_1D], "
+    HCCL_INFO(
+        "[AutoSelectorBase][IsTwoLevelNetLayer] topoLevelNums[%u], netLayerNum[%u], level0Topo[MESH_1D], "
         "level1Idx[%u] has CLOS, level0LocalNetInsSize[%u], is two level net layer.",
-        topoInfo->topoLevelNums, topoInfo->netLayerDetails.netLayerNum,
-        level1Idx, topoInfo->netLayerDetails.localNetInsSizeOfLayer[0]);
+        topoInfo->topoLevelNums, topoInfo->netLayerDetails.netLayerNum, level1Idx,
+        topoInfo->netLayerDetails.localNetInsSizeOfLayer[0]);
     return true;
 }
 
@@ -285,16 +308,18 @@ bool AutoSelectorBase::IsDevType960() const
     return deviceType == HcclDevType::DEV_TYPE_960;
 }
 
-bool AutoSelectorBase::IsInputOutputOverlap(const OpParam &opParam) const
+bool AutoSelectorBase::IsInputOutputOverlap(const OpParam& opParam) const
 {
-    CHK_PRT_RET(opParam.inputPtr == nullptr || opParam.outputPtr == nullptr,
+    CHK_PRT_RET(
+        opParam.inputPtr == nullptr || opParam.outputPtr == nullptr,
         HCCL_INFO("[Algo][AutoSelectorBase][IsInputOutputOverlap] The input or output buffer is null. Not overlap."),
         false);
 
     u64 inputDataSize = opParam.inputSize;
     u64 outputDataSize = opParam.outputSize;
 
-    CHK_PRT_RET(inputDataSize == 0 || outputDataSize == 0,
+    CHK_PRT_RET(
+        inputDataSize == 0 || outputDataSize == 0,
         // 不存在overlap情况
         HCCL_INFO("[Algo][AutoSelectorBase][IsInputOutputOverlap] The input or output buffer size is 0. Not overlap."),
         false);
@@ -304,26 +329,27 @@ bool AutoSelectorBase::IsInputOutputOverlap(const OpParam &opParam) const
     uintptr_t inputEnd = inputStart + inputDataSize - 1;
     uintptr_t outputEnd = outputStart + outputDataSize - 1;
 
-    HCCL_DEBUG("[Algo][AutoSelectorBase][IsInputOutputOverlap] inputStart[%llu], inputEnd[%llu], outputStart[%llu], "
-               "outputEnd[%llu].",
+    HCCL_DEBUG(
+        "[Algo][AutoSelectorBase][IsInputOutputOverlap] inputStart[%llu], inputEnd[%llu], outputStart[%llu], "
+        "outputEnd[%llu].",
         inputStart, inputEnd, outputStart, outputEnd);
 
-    CHK_PRT_RET(inputStart <= outputEnd && outputStart <= inputEnd,
-        HCCL_INFO("[Algo][AutoSelectorBase][IsInputOutputOverlap] inputStart[%llu], inputEnd[%llu], outputStart[%llu], "
-                  "outputEnd[%llu]. Overlap detected.",
-            inputStart,
-            inputEnd,
-            outputStart,
-            outputEnd),
+    CHK_PRT_RET(
+        inputStart <= outputEnd && outputStart <= inputEnd,
+        HCCL_INFO(
+            "[Algo][AutoSelectorBase][IsInputOutputOverlap] inputStart[%llu], inputEnd[%llu], outputStart[%llu], "
+            "outputEnd[%llu]. Overlap detected.",
+            inputStart, inputEnd, outputStart, outputEnd),
         true);
 
     HCCL_DEBUG("[Algo][AutoSelectorBase][IsInputOutputOverlap]No overlap between input and output memory.");
     return false;
 }
 
-bool AutoSelectorBase::ProcessAivConfig(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
-                                        const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                        std::string &selectAlgName, SelectorStatus &ret) const
+bool AutoSelectorBase::ProcessAivConfig(
+    OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName,
+    SelectorStatus& ret) const
 {
     if (opParam.opExecuteConfig != OpExecuteConfig::AIV && opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY) {
         return false;
@@ -341,4 +367,4 @@ bool AutoSelectorBase::ProcessAivConfig(OpParam &opParam, TopoInfoWithNetLayerDe
     return true;
 }
 
-}
+} // namespace ops_hccl

@@ -24,23 +24,23 @@
 #include <cstddef>
 
 namespace ops_hccl_experimental {
-using ops_hccl::haclrtGetCaptureInfo;
-using ops_hccl::GetExternalInputHcclAicpuUnfold;
-using ops_hccl::OpParam;
-using ops_hccl::NotifyArray;
-using ops_hccl::TopoInfo;
-using ops_hccl::AlgType;
-using ops_hccl::GetDebugConfig;
-using ops_hccl::HCCL_ALG;
-using ops_hccl::AlgTypeLevel1;
-using ops_hccl::AlgResourceCtx;
-using ops_hccl::ExecutorBase;
-using ops_hccl::CollAlgExecRegistry;
 using ops_hccl::AICPU_CONTROL_NOTIFY_NUM;
-using ops_hccl::haclrtMemcpy;
-using ops_hccl::g_binKernelHandle;
+using ops_hccl::AlgResourceCtx;
+using ops_hccl::AlgType;
+using ops_hccl::AlgTypeLevel1;
+using ops_hccl::CollAlgExecRegistry;
 using ops_hccl::CUSTOM_TIMEOUT;
+using ops_hccl::ExecutorBase;
+using ops_hccl::g_binKernelHandle;
 using ops_hccl::g_notifiesMap;
+using ops_hccl::GetDebugConfig;
+using ops_hccl::GetExternalInputHcclAicpuUnfold;
+using ops_hccl::haclrtGetCaptureInfo;
+using ops_hccl::haclrtMemcpy;
+using ops_hccl::HCCL_ALG;
+using ops_hccl::NotifyArray;
+using ops_hccl::OpParam;
+using ops_hccl::TopoInfo;
 bool IsStreamCapture(aclrtStream stream)
 {
     bool isCapture;
@@ -65,8 +65,7 @@ std::string SetLaunchMode(CommEngine engine)
         launchMode = "HOST";
     } else if (engine == CommEngine::COMM_ENGINE_CPU_TS) {
         launchMode = "HOST_TS";
-    } else if ((engine == CommEngine::COMM_ENGINE_AICPU) ||
-               (engine == CommEngine::COMM_ENGINE_AICPU_TS)) {
+    } else if ((engine == CommEngine::COMM_ENGINE_AICPU) || (engine == CommEngine::COMM_ENGINE_AICPU_TS)) {
         launchMode = "AI_CPU";
     } else if (engine == CommEngine::COMM_ENGINE_AIV) {
         launchMode = "AIV";
@@ -74,8 +73,8 @@ std::string SetLaunchMode(CommEngine engine)
     return launchMode;
 }
 
-HcclResult FillAlgTagAndDebugInfo(OpParam &param, TopoInfo* topoInfo, AlgType& algType,
-    const std::string &algName, const std::string &opNameForLog)
+HcclResult FillAlgTagAndDebugInfo(
+    OpParam& param, TopoInfo* topoInfo, AlgType& algType, const std::string& algName, const std::string& opNameForLog)
 {
     bool isOpBase = true;
     if (isOpBase) {
@@ -89,8 +88,10 @@ HcclResult FillAlgTagAndDebugInfo(OpParam &param, TopoInfo* topoInfo, AlgType& a
     if (UNLIKELY(GetDebugConfig() & HCCL_ALG)) {
         std::string opExpansionStr = SetLaunchMode(param.engine);
 
-        const char* launchMode = (((param.engine == CommEngine::COMM_ENGINE_AICPU) ||
-                                   (param.engine == CommEngine::COMM_ENGINE_AICPU_TS)) ? "_device" : "_host");
+        const char* launchMode
+            = (((param.engine == CommEngine::COMM_ENGINE_AICPU) || (param.engine == CommEngine::COMM_ENGINE_AICPU_TS)) ?
+                   "_device" :
+                   "_host");
         int ret = strcat_s(param.algTag, sizeof(param.algTag), launchMode);
         if (ret != 0) {
             HCCL_ERROR("failed to fill param.algTag");
@@ -98,43 +99,46 @@ HcclResult FillAlgTagAndDebugInfo(OpParam &param, TopoInfo* topoInfo, AlgType& a
         }
 
         HCCL_INFO("[SelectAlg] %s algTag is [%s] algName is [%s]", opNameForLog.c_str(), param.algTag, algName.c_str());
-        HCCL_CONFIG_INFO(HCCL_ALG,
-                         "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "\
-                         "userRankSize[%u] level0Size[%u] moduleNum[%u] "\
-                         "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
-                         __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
-                         topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum,
-                         topoInfo->superPodNum, opExpansionStr.c_str(), param.isZeroCopy, isOpBase);
+        HCCL_CONFIG_INFO(
+            HCCL_ALG,
+            "[%s] algTag[%s] algName[%s] userRank[%u] algType[%s] "
+            "userRankSize[%u] level0Size[%u] moduleNum[%u] "
+            "level2Size[%u] opExpansionMode[%s] isZeroCopy[%u] isOpBase[%u].",
+            __func__, param.algTag, algName.c_str(), topoInfo->userRank, AlgTypeToStr(algType).c_str(),
+            topoInfo->userRankSize, topoInfo->deviceNumPerModule, topoInfo->moduleNum, topoInfo->superPodNum,
+            opExpansionStr.c_str(), param.isZeroCopy, isOpBase);
     }
     return HCCL_SUCCESS;
 }
 
-static void ValidateAndResetAlgLevel1(AlgType& algType, const std::string &opName)
+static void ValidateAndResetAlgLevel1(AlgType& algType, const std::string& opName)
 {
-    if (algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NHR ||
-        algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NB ||
-        algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_RING) {
+    if (algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NHR || algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_NB
+        || algType.algoLevel1 == AlgTypeLevel1::ALG_LEVEL1_RING) {
         return;
     }
-    HCCL_INFO("[%s] algType[%s] is not supported, reset algType=ring",
-        opName.c_str(), AlgTypeToStr(algType).c_str());
+    HCCL_INFO("[%s] algType[%s] is not supported, reset algType=ring", opName.c_str(), AlgTypeToStr(algType).c_str());
     algType.algoLevel1 = AlgTypeLevel1::ALG_LEVEL1_RING;
 }
 
-HcclResult SelectAlgReduceScatter(HcclComm comm, OpParam &param, TopoInfo* topoInfo, AlgType& algType, std::string &algName)
+HcclResult
+SelectAlgReduceScatter(HcclComm comm, OpParam& param, TopoInfo* topoInfo, AlgType& algType, std::string& algName)
 {
-    (void) comm;
+    (void)comm;
     ValidateAndResetAlgLevel1(algType, "Reduce_Scatter");
 
     const BirsSelectResult birsResult = DecideReduceScatterBirsAlg(*topoInfo, algName);
     const HcclResult birsRet = BirsSelectResultToCode(birsResult);
     if (birsRet != HCCL_SUCCESS) {
         if (birsResult == BirsSelectResult::kRejectServerNumZero) {
-            HCCL_ERROR("[%s] ReduceScatterBIRS not supported: serverNum is 0, cannot compute ranks per server (userRankSize[%u])",
+            HCCL_ERROR(
+                "[%s] ReduceScatterBIRS not supported: serverNum is 0, cannot compute ranks per server "
+                "(userRankSize[%u])",
                 __func__, topoInfo->userRankSize);
         } else if (birsResult == BirsSelectResult::kRejectRanksPerServerLT4) {
-            HCCL_ERROR("[%s] ReduceScatterBIRS not supported: userRankSize[%u] / serverNum[%u] < 4",
-                __func__, topoInfo->userRankSize, topoInfo->serverNum);
+            HCCL_ERROR(
+                "[%s] ReduceScatterBIRS not supported: userRankSize[%u] / serverNum[%u] < 4", __func__,
+                topoInfo->userRankSize, topoInfo->serverNum);
         }
         return birsRet;
     }
@@ -150,9 +154,9 @@ struct ThreadResources {
     AlgResourceCtx* resCtx = nullptr;
 };
 
-HcclResult PrepareThreadResources(HcclComm comm, OpParam &param, 
-    std::unique_ptr<ExecutorBase> &executor, TopoInfo* topoInfo, AlgType& algType,
-    ThreadResources &threadRes)
+HcclResult PrepareThreadResources(
+    HcclComm comm, OpParam& param, std::unique_ptr<ExecutorBase>& executor, TopoInfo* topoInfo, AlgType& algType,
+    ThreadResources& threadRes)
 {
     if (g_notifiesMap.find(comm) == g_notifiesMap.end()) {
         g_notifiesMap[comm].fill(0);
@@ -161,32 +165,34 @@ HcclResult PrepareThreadResources(HcclComm comm, OpParam &param,
     if (HcommIsExportThreadSupported()) {
         if (param.engine == COMM_ENGINE_AICPU_TS) {
             CHK_RET(HcclThreadAcquireWithStream(comm, COMM_ENGINE_CPU_TS, param.stream, 1, &threadRes.cpuTsThread));
-            CHK_RET(HcclThreadExportToCommEngine(comm, 1, &threadRes.cpuTsThread, COMM_ENGINE_AICPU_TS,
-                &threadRes.exportedAicpuTsThread));
+            CHK_RET(HcclThreadExportToCommEngine(
+                comm, 1, &threadRes.cpuTsThread, COMM_ENGINE_AICPU_TS, &threadRes.exportedAicpuTsThread));
         }
-        
+
         CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &threadRes.resCtx));
 
         if (param.engine == COMM_ENGINE_AICPU_TS) {
             ThreadHandle mainThread = topoInfo->mainThread;
-            CHK_RET(HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS,
-                &threadRes.exportedCpuTsThread));
-            char* curPtr = reinterpret_cast<char *>(threadRes.resCtx) + offsetof(AlgResourceCtx, opThread);
-            
-            ACLCHECK(aclrtMemcpy(curPtr, sizeof(ThreadHandle), &threadRes.exportedAicpuTsThread,
-                sizeof(ThreadHandle), ACL_MEMCPY_HOST_TO_DEVICE));
+            CHK_RET(
+                HcclThreadExportToCommEngine(comm, 1, &mainThread, COMM_ENGINE_CPU_TS, &threadRes.exportedCpuTsThread));
+            char* curPtr = reinterpret_cast<char*>(threadRes.resCtx) + offsetof(AlgResourceCtx, opThread);
+
+            ACLCHECK(aclrtMemcpy(
+                curPtr, sizeof(ThreadHandle), &threadRes.exportedAicpuTsThread, sizeof(ThreadHandle),
+                ACL_MEMCPY_HOST_TO_DEVICE));
         }
     } else {
         CHK_RET(GetAlgRes(comm, param, executor, topoInfo, algType, &threadRes.resCtx));
-        char* curPtr = reinterpret_cast<char *>(threadRes.resCtx) + offsetof(AlgResourceCtx, opThread);
-            
-        CHK_RET(haclrtMemcpy(curPtr, sizeof(ThreadHandle), &threadRes.exportedAicpuTsThread,
-            sizeof(ThreadHandle), ACL_MEMCPY_HOST_TO_DEVICE));
+        char* curPtr = reinterpret_cast<char*>(threadRes.resCtx) + offsetof(AlgResourceCtx, opThread);
+
+        CHK_RET(haclrtMemcpy(
+            curPtr, sizeof(ThreadHandle), &threadRes.exportedAicpuTsThread, sizeof(ThreadHandle),
+            ACL_MEMCPY_HOST_TO_DEVICE));
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult PrepareAicpuKernelParams(OpParam &param, AlgResourceCtx* resCtx, const std::string &algName)
+HcclResult PrepareAicpuKernelParams(OpParam& param, AlgResourceCtx* resCtx, const std::string& algName)
 {
     param.resCtx = reinterpret_cast<void*>(resCtx);
     int result = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
@@ -197,17 +203,17 @@ HcclResult PrepareAicpuKernelParams(OpParam &param, AlgResourceCtx* resCtx, cons
     std::string algTypeStr = TransferAlgTypeStr(param.algType);
     CHK_SAFETY_FUNC_RET(strcpy_s(param.algTypeStr, sizeof(param.algTypeStr), algTypeStr.c_str()));
     int32_t retComm = HcommAcquireComm(param.commName);
-    CHK_PRT_RET(retComm != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ",
-        __func__, param.commName), static_cast<HcclResult>(retComm));
+    CHK_PRT_RET(
+        retComm != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ", __func__, param.commName),
+        static_cast<HcclResult>(retComm));
     return HCCL_SUCCESS;
 }
 
-HcclResult RecordNotifyBeforeLaunch(HcclComm comm, OpParam &param, TopoInfo* topoInfo,
-    ThreadResources &threadRes)
+HcclResult RecordNotifyBeforeLaunch(HcclComm comm, OpParam& param, TopoInfo* topoInfo, ThreadResources& threadRes)
 {
     if (HcommIsExportThreadSupported()) {
-        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(threadRes.cpuTsThread,
-            threadRes.exportedCpuTsThread, topoInfo->notifyNumOnMainThread)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            threadRes.cpuTsThread, threadRes.exportedCpuTsThread, topoInfo->notifyNumOnMainThread)));
     } else {
         if (aclrtRecordNotify(g_notifiesMap[comm][0], param.stream) != ACL_SUCCESS) {
             HCCL_ERROR("failed to record aicpu stream");
@@ -217,7 +223,7 @@ HcclResult RecordNotifyBeforeLaunch(HcclComm comm, OpParam &param, TopoInfo* top
     return HCCL_SUCCESS;
 }
 
-HcclResult DoAicpuKernelLaunch(OpParam &param, uint64_t &beginTime)
+HcclResult DoAicpuKernelLaunch(OpParam& param, uint64_t& beginTime)
 {
     if (HcommIsProfilingSupported()) {
         beginTime = HcommGetProfilingSysCycleTime();
@@ -227,25 +233,33 @@ HcclResult DoAicpuKernelLaunch(OpParam &param, uint64_t &beginTime)
     aclrtArgsHandle argsHandle;
 
     aclError ret = aclrtBinaryGetFunction(g_binKernelHandle, kernelName.c_str(), &funcHandle);
-    CHK_PRT_RET(ret != ACL_SUCCESS,
-                HCCL_ERROR("[aclrtBinaryGetFunction]errNo[0x%016llx] get func handle failed, kernelName:%s",
-                            ret, kernelName.c_str()), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        ret != ACL_SUCCESS,
+        HCCL_ERROR(
+            "[aclrtBinaryGetFunction]errNo[0x%016llx] get func handle failed, kernelName:%s", ret, kernelName.c_str()),
+        HCCL_E_RUNTIME);
 
     ret = aclrtKernelArgsInit(funcHandle, &argsHandle);
-    CHK_PRT_RET(ret != ACL_SUCCESS,
-                HCCL_ERROR("[aclrtKernelArgsInit]errNo[0x%016llx] args init failed, kernelName:%s",
-                            ret, kernelName.c_str()), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        ret != ACL_SUCCESS,
+        HCCL_ERROR("[aclrtKernelArgsInit]errNo[0x%016llx] args init failed, kernelName:%s", ret, kernelName.c_str()),
+        HCCL_E_RUNTIME);
 
     aclrtParamHandle paraHandle;
     ret = aclrtKernelArgsAppend(argsHandle, &param, sizeof(OpParam), &paraHandle);
-    CHK_PRT_RET(ret != ACL_SUCCESS,
-                HCCL_ERROR("[aclrtKernelArgsAppend]errNo[0x%016llx] args append failed, append size %u, kernelName:%s",
-                            ret, sizeof(OpParam), kernelName.c_str()), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        ret != ACL_SUCCESS,
+        HCCL_ERROR(
+            "[aclrtKernelArgsAppend]errNo[0x%016llx] args append failed, append size %u, kernelName:%s", ret,
+            sizeof(OpParam), kernelName.c_str()),
+        HCCL_E_RUNTIME);
 
     ret = aclrtKernelArgsFinalize(argsHandle);
-    CHK_PRT_RET(ret != ACL_SUCCESS,
-                HCCL_ERROR("[aclrtKernelArgsFinalize]errNo[0x%016llx] args finalize failed, kernelName:%s",
-                            ret, kernelName.c_str()), HCCL_E_RUNTIME);
+    CHK_PRT_RET(
+        ret != ACL_SUCCESS,
+        HCCL_ERROR(
+            "[aclrtKernelArgsFinalize]errNo[0x%016llx] args finalize failed, kernelName:%s", ret, kernelName.c_str()),
+        HCCL_E_RUNTIME);
 
     constexpr u16 NOTIFY_DEFAULT_WAIT_TIME = 27 * 68;
     aclrtLaunchKernelCfg cfg;
@@ -256,9 +270,10 @@ HcclResult DoAicpuKernelLaunch(OpParam &param, uint64_t &beginTime)
     cfg.attrs = &attr;
     constexpr u32 numBlocks = 1;
     aclError aclRet = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
-    CHK_PRT_RET(aclRet != ACL_SUCCESS,
-                HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed",
-                            ret), HCCL_E_OPEN_FILE_FAILURE);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS,
+        HCCL_ERROR("[LoadCustomKernel][aclrtLaunchKernelWithConfig]errNo[0x%016llx] launch kernel failed", ret),
+        HCCL_E_OPEN_FILE_FAILURE);
 
     if (HcommIsProfilingSupported()) {
         std::string profName = "ReduceScatterAicpuKernel";
@@ -268,8 +283,7 @@ HcclResult DoAicpuKernelLaunch(OpParam &param, uint64_t &beginTime)
     return HCCL_SUCCESS;
 }
 
-HcclResult WaitNotifyAfterLaunch(HcclComm comm, OpParam &param, ThreadResources &threadRes,
-    u16 waitTime)
+HcclResult WaitNotifyAfterLaunch(HcclComm comm, OpParam& param, ThreadResources& threadRes, u16 waitTime)
 {
     if (HcommIsExportThreadSupported()) {
         CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(threadRes.cpuTsThread, 0, waitTime)));
@@ -282,8 +296,8 @@ HcclResult WaitNotifyAfterLaunch(HcclComm comm, OpParam &param, ThreadResources 
     return HCCL_SUCCESS;
 }
 
-HcclResult LaunchAicpuKernel(HcclComm comm, OpParam &param, TopoInfo* topoInfo,
-    const std::string &algName, ThreadResources &threadRes)
+HcclResult LaunchAicpuKernel(
+    HcclComm comm, OpParam& param, TopoInfo* topoInfo, const std::string& algName, ThreadResources& threadRes)
 {
     CHK_RET(PrepareAicpuKernelParams(param, threadRes.resCtx, algName));
     CHK_RET(RecordNotifyBeforeLaunch(comm, param, topoInfo, threadRes));
@@ -296,7 +310,7 @@ HcclResult LaunchAicpuKernel(HcclComm comm, OpParam &param, TopoInfo* topoInfo,
     return HCCL_SUCCESS;
 }
 
-HcclResult ExecOpBirs(HcclComm comm, OpParam &param)
+HcclResult ExecOpBirs(HcclComm comm, OpParam& param)
 {
     TopoInfo* topoInfo = nullptr;
     CHK_RET(CalcBaseTopoInfo(comm, param, &topoInfo));
@@ -310,8 +324,9 @@ HcclResult ExecOpBirs(HcclComm comm, OpParam &param)
     }
 
     std::unique_ptr<ExecutorBase> executor = CollAlgExecRegistry::Instance().GetAlgExec(algName);
-    CHK_PRT_RET(executor.get() == nullptr, HCCL_ERROR("[ExecOpBirs]Fail to find executor for algName[%s]",
-        algName.c_str()), HCCL_E_PARA);
+    CHK_PRT_RET(
+        executor.get() == nullptr, HCCL_ERROR("[ExecOpBirs]Fail to find executor for algName[%s]", algName.c_str()),
+        HCCL_E_PARA);
 
     ThreadResources threadRes;
     CHK_RET(PrepareThreadResources(comm, param, executor, topoInfo, algType, threadRes));
@@ -328,7 +343,7 @@ HcclResult ExecOpBirs(HcclComm comm, OpParam &param)
 
 HcclResult ProcessA3(HcclComm comm, OpParam& param, uint64_t beginTime)
 {
-    CHK_RET(ExecOpBirs(comm, param)); //A3-specific execution method  
+    CHK_RET(ExecOpBirs(comm, param)); // A3-specific execution method
     if (HcommIsProfilingSupported()) {
         HcomProInfoTmp profInfo;
         std::string algTypeStr = TransferAlgTypeStr(param.algType);
@@ -346,11 +361,11 @@ HcclResult ProcessA3(HcclComm comm, OpParam& param, uint64_t beginTime)
             profInfo.slaveThreadNum = tmpCtx->slaveThreadNum;
             char* curThreadPtr = reinterpret_cast<char*>(param.resCtx);
             curThreadPtr += sizeof(AlgResourceCtx);
-            ThreadHandle* curThreads = reinterpret_cast<ThreadHandle *>(curThreadPtr);
-            CHK_PRT(HcommProfilingUnRegThread(profInfo,curThreads));
+            ThreadHandle* curThreads = reinterpret_cast<ThreadHandle*>(curThreadPtr);
+            CHK_PRT(HcommProfilingUnRegThread(profInfo, curThreads));
         }
     }
     return HCCL_SUCCESS;
 }
 
-}
+} // namespace ops_hccl_experimental

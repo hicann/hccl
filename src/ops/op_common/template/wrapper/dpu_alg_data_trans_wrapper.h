@@ -18,9 +18,9 @@
 
 namespace ops_hccl {
 
-HcclResult SendWrite(const DataInfo &sendInfo);
-HcclResult RecvWrite(const DataInfo &recvInfo);
-HcclResult SendRecvWrite(const SendRecvInfo &sendRecvInfo);
+HcclResult SendWrite(const DataInfo& sendInfo);
+HcclResult RecvWrite(const DataInfo& recvInfo);
+HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo);
 
-}
+} // namespace ops_hccl
 #endif // DPU_ALG_DATA_TRANS_WRAPPER

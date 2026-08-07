@@ -23,38 +23,32 @@ using namespace ops_hccl;
 
 class ST_SCATTER_TEST_A2A3 : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_INDEPENDENT_OP");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
- 
+
 TEST_F(ST_SCATTER_TEST_A2A3, st_scatter_opbase_test_origin)
 {
     // 仿真模型初始化
-    TopoMeta topoMeta {{{0, 1, 2, 3}}};  // 三维数组指定超节点-Server-Device信息
+    TopoMeta topoMeta{{{0, 1, 2, 3}}}; // 三维数组指定超节点-Server-Device信息
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_910B);
- 
+
     // 设置展开模式为HOST_TS
     setenv("HCCL_OP_EXPANSION_MODE", "HOST_TS", 1);
     setenv("HCCL_INDEPENDENT_OP", "1", 1);
-    
 
     // 算子执行参数设置
-    auto root = 0;  // root节点
-    auto rankSize = 4;  // 参与集合通信的卡数(同topoMeta卡数一致)
-    auto recvCount = 100;  // 接收数据量
-    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32;  // 数据类型
+    auto root = 0;                                      // root节点
+    auto rankSize = 4;                                  // 参与集合通信的卡数(同topoMeta卡数一致)
+    auto recvCount = 100;                               // 接收数据量
+    auto dataType = HcclDataType::HCCL_DATA_TYPE_INT32; // 数据类型
 
     // 多线程运行SCATTER算子
     std::vector<std::thread> threads;
@@ -71,9 +65,9 @@ TEST_F(ST_SCATTER_TEST_A2A3, st_scatter_opbase_test_origin)
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
-            u64 dataSize = recvCount * sizeof(uint32_t) * rankSize;  // 数据量转化为字节数
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
+            u64 dataSize = recvCount * sizeof(uint32_t) * rankSize; // 数据量转化为字节数
             // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
             aclrtMalloc(&sendBuf, dataSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
             aclrtMalloc(&recvBuf, dataSize, static_cast<aclrtMemMallocPolicy>(BUFFER_OUTPUT_MARK));

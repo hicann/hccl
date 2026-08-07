@@ -22,13 +22,10 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-class ST_REDUCE_TEST
-    : public ::testing::TestWithParam<std::tuple<TopoMeta, u64, HcclDataType, HcclReduceOp, uint32_t>> {
+class ST_REDUCE_TEST :
+    public ::testing::TestWithParam<std::tuple<TopoMeta, u64, HcclDataType, HcclReduceOp, uint32_t>> {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
 
     void TearDown() override
     {
@@ -38,11 +35,9 @@ protected:
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
     }
 
-    static void SetUpTestCase()
-    {}
+    static void SetUpTestCase() {}
 
-    static void TearDownTestCase()
-    {}
+    static void TearDownTestCase() {}
 
     size_t GetDataTypeSize(HcclDataType type)
     {
@@ -71,19 +66,19 @@ protected:
         }
     }
 
-    u32 GetRankSize(const TopoMeta &topoMeta)
+    u32 GetRankSize(const TopoMeta& topoMeta)
     {
         u32 rankSize = 0;
-        for (const SuperPodMeta &superPod : topoMeta) {
-            for (const ServerMeta &server : superPod) {
+        for (const SuperPodMeta& superPod : topoMeta) {
+            for (const ServerMeta& server : superPod) {
                 rankSize += static_cast<u32>(server.size());
             }
         }
         return rankSize;
     }
 
-    void RunReduceTest(
-        const TopoMeta &topoMeta, u64 recvCount, HcclDataType dataType, HcclReduceOp reduceOp, uint32_t root)
+    void
+    RunReduceTest(const TopoMeta& topoMeta, u64 recvCount, HcclDataType dataType, HcclReduceOp reduceOp, uint32_t root)
     {
         // 初始化仿真环境
         SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
@@ -101,8 +96,8 @@ protected:
                 HcclComm comm = nullptr;
                 CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-                void *sendBuf = nullptr;
-                void *recvBuf = nullptr;
+                void* sendBuf = nullptr;
+                void* recvBuf = nullptr;
                 u64 sendBufSize = recvCount * GetDataTypeSize(dataType) * rankSize;
                 u64 recvBufSize = recvCount * GetDataTypeSize(dataType);
                 aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -115,7 +110,7 @@ protected:
             });
         }
 
-        for (auto &thread : threads) {
+        for (auto& thread : threads) {
             thread.join();
         }
 
@@ -125,8 +120,9 @@ protected:
 
         SimWorld::Global()->Deinit();
     }
-    void RunReduceDPUCase(const TopoMeta &topoInfo, const u64 dataCount,
-    const HcclDataType dataType, const u32 dataTypeSize, const HcclReduceOp reduceOp, const u32 root)
+    void RunReduceDPUCase(
+        const TopoMeta& topoInfo, const u64 dataCount, const HcclDataType dataType, const u32 dataTypeSize,
+        const HcclReduceOp reduceOp, const u32 root)
     {
         // 仿真模型初始化
         SimWorld::Global()->Init(topoInfo, HcclDevType::DEV_TYPE_950);
@@ -135,7 +131,6 @@ protected:
         setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
         setenv("ENABLE_HOSTDPU_FOR_LLT", "1", 1);
         setenv("HCCL_INDEPENDENT_OP", "1", 1);
-        
 
         // 算子执行参数设置
         u32 rankSize = 0;
@@ -158,9 +153,9 @@ protected:
                 HcclComm comm = nullptr;
                 CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-                void *sendBuf = nullptr;
-                void *recvBuf = nullptr;
-                u64 sendBufSize = dataCount * dataTypeSize;  // 数据量转化为字节数
+                void* sendBuf = nullptr;
+                void* recvBuf = nullptr;
+                u64 sendBufSize = dataCount * dataTypeSize; // 数据量转化为字节数
                 u64 recvBufSize = dataCount * dataTypeSize;
                 // 打桩实现，仿真运行需标记内存是INPUT和OUTPUT
                 aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));
@@ -193,7 +188,7 @@ protected:
 TEST_P(ST_REDUCE_TEST, st_reduce_aicpu_test)
 {
     auto params = GetParam();
-    const auto &topoMeta = std::get<0>(params);
+    const auto& topoMeta = std::get<0>(params);
     u64 recvCount = std::get<1>(params);
     HcclDataType dataType = std::get<2>(params);
     HcclReduceOp reduceOp = std::get<3>(params);
@@ -271,8 +266,15 @@ TEST_F(ST_REDUCE_TEST, host_dpu_opbase_reduce_301M_fp32_sum_1x8)
 // asymmetric topology
 TEST_F(ST_REDUCE_TEST, host_dpu_opbase_reduce_asymmetric_100_int16_max)
 {
-    TopoMeta topoMeta{{{0, 1}, {0, 1, 2}, {0, 1, 2, 3}, {0, 1, 2, 3, 4}, {0, 1, 2, 3, 4, 5},
-                       {0, 1, 2, 3, 4, 5, 6}, {0, 1, 2, 3, 4, 5, 6, 7}, {0}}};
+    TopoMeta topoMeta{
+        {{0, 1},
+         {0, 1, 2},
+         {0, 1, 2, 3},
+         {0, 1, 2, 3, 4},
+         {0, 1, 2, 3, 4, 5},
+         {0, 1, 2, 3, 4, 5, 6},
+         {0, 1, 2, 3, 4, 5, 6, 7},
+         {0}}};
     u64 dataCount = 100;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT16;
     u32 dataTypeSize = 2;
@@ -280,7 +282,6 @@ TEST_F(ST_REDUCE_TEST, host_dpu_opbase_reduce_asymmetric_100_int16_max)
     HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_MAX;
     RunReduceDPUCase(topoMeta, dataCount, dataType, dataTypeSize, reduceOp, root);
 }
-
 
 TopoMeta GenerateMeshTopoMeta(u32 xSize, u32 ySize = 1, u32 serverSize = 1)
 {
@@ -304,7 +305,8 @@ TopoMeta GenerateMeshTopoMeta(u32 xSize, u32 ySize = 1, u32 serverSize = 1)
 }
 
 // 参数化实例化
-INSTANTIATE_TEST_SUITE_P(ReduceVariants, ST_REDUCE_TEST,
+INSTANTIATE_TEST_SUITE_P(
+    ReduceVariants, ST_REDUCE_TEST,
     ::testing::Values(
         // 每个 tuple 表示一组测试参数
         // 1D Mesh

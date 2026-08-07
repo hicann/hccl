@@ -18,24 +18,26 @@
 
 namespace ops_hccl {
 
-CcuTempAlltoAllVMesh2Die::CcuTempAlltoAllVMesh2Die(const OpParam &param, RankId rankId,
-    const std::vector<std::vector<u32>> &subCommRanks)
+CcuTempAlltoAllVMesh2Die::CcuTempAlltoAllVMesh2Die(
+    const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 
-CcuTempAlltoAllVMesh2Die::~CcuTempAlltoAllVMesh2Die()
-{
-}
+CcuTempAlltoAllVMesh2Die::~CcuTempAlltoAllVMesh2Die() {}
 
-HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    AlgResourceRequest &resourceRequest)
+HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
-    CHK_PRT_RET(subCommRanks_.size() != 1 || subCommRanks_[0].empty(),
-        HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][CalcRes] Invalid subCommRanks[%u] or subCommRanks empty.",
-            subCommRanks_.size()), HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        subCommRanks_.size() != 1 || subCommRanks_[0].empty(),
+        HCCL_ERROR(
+            "[CcuTempAlltoAllVMesh2Die][CalcRes] Invalid subCommRanks[%u] or subCommRanks empty.",
+            subCommRanks_.size()),
+        HcclResult::HCCL_E_INTERNAL);
 
-    HCCL_DEBUG("[CcuTempAlltoAllVMesh2Die][CalcRes] rankSize[%u] subCommRanks0[%u].", templateRankSize_,
+    HCCL_DEBUG(
+        "[CcuTempAlltoAllVMesh2Die][CalcRes] rankSize[%u] subCommRanks0[%u].", templateRankSize_,
         subCommRanks_[0].size());
 
     // 需要从流
@@ -49,11 +51,12 @@ HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(HcclComm comm, const OpParam &param
     CHK_RET(PartitionChannels(comm, channelDescs));
     resourceRequest.channels.emplace_back(channelDescs);
 
-    resourceRequest.ccuKernelNum.push_back(DIE_NUM);        // kernel数量
-    for (uint32_t dieId = 0; dieId < DIE_NUM; dieId++) {    // 2Die算法，需要执行两次
+    resourceRequest.ccuKernelNum.push_back(DIE_NUM);     // kernel数量
+    for (uint32_t dieId = 0; dieId < DIE_NUM; dieId++) { // 2Die算法，需要执行两次
         CcuKernelInfo kernelInfo;
-        CHK_SAFETY_FUNC_RET(strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllToAllVMesh2DieKernel"));
-        kernelInfo.kernelFunc = reinterpret_cast<void *>(CcuAllToAllVMesh2DieKernel);
+        CHK_SAFETY_FUNC_RET(
+            strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllToAllVMesh2DieKernel"));
+        kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllToAllVMesh2DieKernel);
 
         const bool withMyRank = channels_[dieId].size() < channels_[1 - dieId].size();
         auto kernelArg = std::make_shared<CcuKernelArgAllToAllVMesh2Die>();
@@ -65,40 +68,53 @@ HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(HcclComm comm, const OpParam &param
         kernelInfo.setKernelArg(kernelArg);
         kernelInfo.channels = channels_[dieId];
         resourceRequest.ccuKernelInfos.emplace_back(kernelInfo);
-        HCCL_DEBUG("[CcuTempAlltoAllVMesh2Die][CalcRes] dieId=%u, channels=%llu, withMyRank=%u, ccuKernelInfos=%llu",
-            dieId, channels_[dieId].size(), withMyRank, resourceRequest.ccuKernelInfos.size());
+        HCCL_DEBUG(
+            "[CcuTempAlltoAllVMesh2Die][CalcRes] dieId=%u, channels=%llu, withMyRank=%u, ccuKernelInfos=%llu", dieId,
+            channels_[dieId].size(), withMyRank, resourceRequest.ccuKernelInfos.size());
     }
 
     return HcclResult::HCCL_SUCCESS;
 }
 
 // 分别记录两个Die上的channel，构造rankGroup
-HcclResult CcuTempAlltoAllVMesh2Die::PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc> &channelDescs)
+HcclResult CcuTempAlltoAllVMesh2Die::PartitionChannels(HcclComm comm, const std::vector<HcclChannelDesc>& channelDescs)
 {
-    for (const auto &channel : channelDescs) {
+    for (const auto& channel : channelDescs) {
         const RankId remoteRank = channel.remoteRank;
         uint32_t dieId = 0;
         HcclResult ret = GetChannelDieId(comm, myRank_, channel, dieId);
-        CHK_PRT_RET(ret != HCCL_SUCCESS,
-            HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], Failed to "
-                "get dieId. errNo[0x%016llx]", myRank_, remoteRank, HCCL_ERROR_CODE(ret)),
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], Failed to "
+                "get dieId. errNo[0x%016llx]",
+                myRank_, remoteRank, HCCL_ERROR_CODE(ret)),
             ret);
-        CHK_PRT_RET(dieId >= DIE_NUM,
-            HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], dieId[%u] is "
-                "invalid.", myRank_, remoteRank, dieId),
+        CHK_PRT_RET(
+            dieId >= DIE_NUM,
+            HCCL_ERROR(
+                "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], dieId[%u] is "
+                "invalid.",
+                myRank_, remoteRank, dieId),
             HCCL_E_INTERNAL);
-        HCCL_INFO("[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], insert to "
-            "channels at dieId[%u].", myRank_, remoteRank, dieId);
+        HCCL_INFO(
+            "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d] channel to remoteRank[%d], insert to "
+            "channels at dieId[%u].",
+            myRank_, remoteRank, dieId);
         channels_[dieId].emplace_back(channel);
         rankGroup_[dieId].push_back(remoteRank);
     }
     uint32_t minChannels = std::min(channels_[0].size(), channels_[1].size());
     uint32_t maxChannels = std::max(channels_[0].size(), channels_[1].size());
-    CHK_PRT_RET(minChannels + 1 != maxChannels,
-        HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], Unexpected channels size, "
-            "die0 channels[%u], die1 channels[%u].", myRank_, channels_[0].size(), channels_[1].size()),
+    CHK_PRT_RET(
+        minChannels + 1 != maxChannels,
+        HCCL_ERROR(
+            "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], Unexpected channels size, "
+            "die0 channels[%u], die1 channels[%u].",
+            myRank_, channels_[0].size(), channels_[1].size()),
         HcclResult::HCCL_E_PARA);
-    HCCL_DEBUG("[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], die0 channels[%u], die1 channels[%u].", myRank_,
+    HCCL_DEBUG(
+        "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], die0 channels[%u], die1 channels[%u].", myRank_,
         channels_[0].size(), channels_[1].size());
     // keep myRank_ at last, sync with kernel
     if (channels_[0].size() < channels_[1].size()) {
@@ -110,7 +126,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::PartitionChannels(HcclComm comm, const std:
 }
 
 // executor在orchestra中调用
-void CcuTempAlltoAllVMesh2Die::SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo)
+void CcuTempAlltoAllVMesh2Die::SetA2ASendRecvInfo(const A2ASendRecvInfo& sendRecvInfo)
 {
     localSendRecvInfo_ = sendRecvInfo;
 }
@@ -121,7 +137,7 @@ void CcuTempAlltoAllVMesh2Die::FillRankGroupInfo()
     rankGroup_.insert({0, RankGroup()});
     rankGroup_.insert({1, RankGroup()});
     for (uint32_t i = 0; i < rankSize / 2; i++) {
-        if(i == myRank_) {
+        if (i == myRank_) {
             continue;
         }
         if (myRank_ < rankSize / 2) {
@@ -131,7 +147,7 @@ void CcuTempAlltoAllVMesh2Die::FillRankGroupInfo()
         }
     }
     for (uint32_t i = rankSize / 2; i < rankSize; i++) {
-         if(i == myRank_) {
+        if (i == myRank_) {
             continue;
         }
         if (myRank_ < rankSize / 2) {
@@ -148,7 +164,8 @@ void CcuTempAlltoAllVMesh2Die::FillRankGroupInfo()
     return;
 }
 
-void CcuTempAlltoAllVMesh2Die::FillRankGroupTaskArgs(uint32_t dieId, const LoopGroupConfig &config, std::vector<uint64_t> &taskArgs)
+void CcuTempAlltoAllVMesh2Die::FillRankGroupTaskArgs(
+    uint32_t dieId, const LoopGroupConfig& config, std::vector<uint64_t>& taskArgs)
 {
     for (auto peerId : rankGroup_[dieId]) {
         const uint64_t sendSize = localSendRecvInfo_.sendLength[peerId];
@@ -169,23 +186,28 @@ void CcuTempAlltoAllVMesh2Die::FillRankGroupTaskArgs(uint32_t dieId, const LoopG
     return;
 }
 
-HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(const OpParam &param, const TemplateDataParams &templateDataParams,
-    TemplateResource& templateResource)
+HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(
+    const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
-    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(),
         HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][KernelRun] subCommRanks empty."), HcclResult::HCCL_E_INTERNAL);
 
     buffInfo_ = templateDataParams.buffInfo;
-    CHK_PRT_RET(buffInfo_.inputPtr == nullptr || buffInfo_.outputPtr == nullptr,
-        HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][KernelRun] Rank[%d] input[%#llx] or output[%#llx] is null",
-            myRank_, buffInfo_.inputPtr, buffInfo_.outputPtr),
+    CHK_PRT_RET(
+        buffInfo_.inputPtr == nullptr || buffInfo_.outputPtr == nullptr,
+        HCCL_ERROR(
+            "[CcuTempAlltoAllVMesh2Die][KernelRun] Rank[%d] input[%#llx] or output[%#llx] is null", myRank_,
+            buffInfo_.inputPtr, buffInfo_.outputPtr),
         HcclResult::HCCL_E_PTR);
 
     uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr);
     uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr);
-    HCCL_INFO("[CcuTempAlltoAllVMesh2Die][KernelRun] begin. Rank[%d], input[%#llx/%#llx], output[%#llx/%#llx], "
-        "sendType[%d], recvType[%d]", myRank_, inputAddr, param.inputPtr, outputAddr, param.outputPtr,
-        param.all2AllVDataDes.sendType, param.all2AllVDataDes.recvType);
+    HCCL_INFO(
+        "[CcuTempAlltoAllVMesh2Die][KernelRun] begin. Rank[%d], input[%#llx/%#llx], output[%#llx/%#llx], "
+        "sendType[%d], recvType[%d]",
+        myRank_, inputAddr, param.inputPtr, outputAddr, param.outputPtr, param.all2AllVDataDes.sendType,
+        param.all2AllVDataDes.recvType);
 
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
@@ -195,7 +217,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(const OpParam &param, const Templ
     std::vector<u32> notifyIdxMainToSub(1, 0);
     CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     FillRankGroupInfo();
-    for (uint32_t dieId = 0; dieId < DIE_NUM; dieId++) {    // 2Die算法，需要执行两次
+    for (uint32_t dieId = 0; dieId < DIE_NUM; dieId++) { // 2Die算法，需要执行两次
         std::vector<uint64_t> taskArgs;
         taskArgs.push_back(inputAddr);
         taskArgs.push_back(outputAddr);
@@ -214,8 +236,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(const OpParam &param, const Templ
 
         uint64_t argSize = taskArgs.size();
         CcuResult launchRet = HcommCcuKernelLaunch(
-            templateResource.threads[dieId], templateResource.ccuKernels[dieId],
-            taskArgs.data(), argSize);
+            templateResource.threads[dieId], templateResource.ccuKernels[dieId], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
             HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
             return ConvertCcuToHccl(launchRet);

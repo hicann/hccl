@@ -23,32 +23,43 @@
 extern "C" {
 #endif
 
-HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType,
-                             HcclReduceOp op, HcclComm comm, aclrtStream stream);
+HcclResult HcclAllReduce(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream);
 
-HcclResult HcclAllReduceGraphMode(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclReduceOp op, const char* group, 
-                                  aclrtStream stream, const char *tag, void **streams, size_t streamCount, void *scratchMemAddr, uint64_t scratchMemSize);
+HcclResult HcclAllReduceGraphMode(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclReduceOp op, const char* group,
+    aclrtStream stream, const char* tag, void** streams, size_t streamCount, void* scratchMemAddr,
+    uint64_t scratchMemSize);
 #ifdef __cplusplus
 }
 #endif
 
 namespace ops_hccl {
-HcclResult AllReduceOutPlace(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType,
-                             HcclReduceOp op, HcclComm comm, aclrtStream stream, OpParam &param);
+HcclResult AllReduceOutPlace(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream, OpParam& param);
 
-HcclResult AllReduceOutPlaceGraphMode(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
-                                      aclrtStream stream, const ResPackGraphMode &resPack, OpParam &param);
-HcclResult FillAllReduceOpParam(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType,
-                                HcclReduceOp op, const HcclComm comm, aclrtStream stream, OpMode opMode, OpParam &param);
-HcclResult AllReduceOutPlaceCommon(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
-                                   aclrtStream stream, OpMode opMode, const ResPackGraphMode &resPack, OpParam &param);
+HcclResult AllReduceOutPlaceGraphMode(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream, const ResPackGraphMode& resPack, OpParam& param);
+HcclResult FillAllReduceOpParam(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, const HcclComm comm,
+    aclrtStream stream, OpMode opMode, OpParam& param);
+HcclResult AllReduceOutPlaceCommon(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
+    aclrtStream stream, OpMode opMode, const ResPackGraphMode& resPack, OpParam& param);
 
-HcclResult CheckAllReduceInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream);
+HcclResult
+CheckAllReduceInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream);
 
-HcclResult AllReduceInitAndCheck(HcclComm comm, void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, const aclrtStream stream, OpParam &param);
+HcclResult AllReduceInitAndCheck(
+    HcclComm comm, void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op,
+    const aclrtStream stream, OpParam& param);
 
-HcclResult AllReduceEntryLog(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op,
-    aclrtStream stream, const char *tag, const std::string &opName, bool forceLog = false);
-}
+HcclResult AllReduceEntryLog(
+    void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, aclrtStream stream,
+    const char* tag, const std::string& opName, bool forceLog = false);
+} // namespace ops_hccl
 
 #endif

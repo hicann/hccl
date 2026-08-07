@@ -23,10 +23,10 @@ using namespace ge;
 
 namespace ops {
 
-static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext *context)
+static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext* context)
 {
     OP_INFER_SHAPE_START;
- 
+
     // Get RuntimeAttrs
     auto attrs = context->GetAttrs();
     constexpr size_t reduceScatterFusionIndex = 1;
@@ -34,17 +34,17 @@ static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext *co
     if (CheckOPAttr(opName, attrs, reduceScatterFusionIndex, reduceScatterFusionIdIndex) == GRAPH_FAILED) {
         return GRAPH_FAILED;
     }
-    
+
     const auto inputShape = context->GetInputShape(0);
     OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
     auto outputShape = context->GetOutputShape(0);
     OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
- 
-     constexpr size_t rankSizeIndex = 4;
+
+    constexpr size_t rankSizeIndex = 4;
     auto rankSizePtr = attrs->GetAttrPointer<int64_t>(rankSizeIndex);
     OP_CHECK(rankSizePtr == nullptr, CUBE_INNER_ERR_REPORT(opName, "attr rank_size is null"), return GRAPH_FAILED);
     int64_t rankSize = *rankSizePtr;
-    if (rankSize <= 0){
+    if (rankSize <= 0) {
         OP_LOGE(opName, "attr rank_size is illegal, expected: > 0, actual: %ld.", rankSize);
         return GRAPH_FAILED;
     }
@@ -55,9 +55,12 @@ static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext *co
         return GRAPH_SUCCESS;
     }
 
-    if(inputShape->GetDim(0) % rankSize){
-        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: rankSize[%ld] * N "
-            "(N is positive integer), actual: %ld.", rankSize, inputShape->GetDim(0));
+    if (inputShape->GetDim(0) % rankSize) {
+        CUBE_INNER_ERR_REPORT(
+            opName,
+            "input tensor's first dim is illegal, expected: rankSize[%ld] * N "
+            "(N is positive integer), actual: %ld.",
+            rankSize, inputShape->GetDim(0));
         return GRAPH_FAILED;
     }
 
@@ -68,16 +71,18 @@ static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext *co
     return GRAPH_SUCCESS;
 }
 
-static ge::graphStatus HcomReduceScatterInferDataTypeV2(gert::InferDataTypeContext *context)
+static ge::graphStatus HcomReduceScatterInferDataTypeV2(gert::InferDataTypeContext* context)
 {
     OP_INFER_DATATYPE_START;
- 
+
     ge::DataType inputType = context->GetInputDataType(0);
     context->SetOutputDataType(0, inputType);
- 
+
     OP_INFER_DATATYPE_END;
     return GRAPH_SUCCESS;
 }
 
-IMPL_OP_INFERSHAPE(HcomReduceScatter).InferShape(HcomReduceScatterInferShapeV2).InferDataType(HcomReduceScatterInferDataTypeV2);
-}  // namespace ops
+IMPL_OP_INFERSHAPE(HcomReduceScatter)
+    .InferShape(HcomReduceScatterInferShapeV2)
+    .InferDataType(HcomReduceScatterInferDataTypeV2);
+} // namespace ops

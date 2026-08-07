@@ -15,7 +15,7 @@
 
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivReduceScatterLocalTreeCoreCtrl : public AivCommBase {
 public:
     __aicore__ inline AivReduceScatterLocalTreeCoreCtrl() {}
@@ -81,7 +81,7 @@ private:
         return static_cast<uint64_t>(DOUBLE * rankSizeU32_ + offset);
     }
 
-    __aicore__ inline void SplitLogicalRange(uint32_t total, uint32_t &begin, uint32_t &end)
+    __aicore__ inline void SplitLogicalRange(uint32_t total, uint32_t& begin, uint32_t& end)
     {
         const uint32_t baseCnt = total / numBlocks_;
         const uint32_t extra = total % numBlocks_;
@@ -120,7 +120,7 @@ private:
     {
         const uint64_t inputOffset = input_ + static_cast<uint64_t>(targetRank) * inputStride_;
         const uint64_t publishOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalPublishOffset(targetRank);
-        CpGM2GM(reinterpret_cast<__gm__ T *>(publishOffset), reinterpret_cast<__gm__ T *>(inputOffset), lenPerRank_);
+        CpGM2GM(reinterpret_cast<__gm__ T*>(publishOffset), reinterpret_cast<__gm__ T*>(inputOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
         Record(targetRank, rank_, curTag_);
     }
@@ -135,10 +135,10 @@ private:
     __aicore__ inline void FetchOne(uint32_t peerRank)
     {
         WaitFlag(rank_, peerRank, curTag_);
-        const uint64_t peerOffset =
-            reinterpret_cast<uint64_t>(GM_IN[peerRank]) + static_cast<uint64_t>(rank_) * lenPerRank_ * sizeof(T);
+        const uint64_t peerOffset
+            = reinterpret_cast<uint64_t>(GM_IN[peerRank]) + static_cast<uint64_t>(rank_) * lenPerRank_ * sizeof(T);
         const uint64_t stageOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(peerRank);
-        CpGM2GM(reinterpret_cast<__gm__ T *>(stageOffset), reinterpret_cast<__gm__ T *>(peerOffset), lenPerRank_);
+        CpGM2GM(reinterpret_cast<__gm__ T*>(stageOffset), reinterpret_cast<__gm__ T*>(peerOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
         Record(peerRank, FetchDoneFlagOffset(rank_), curTag_);
     }
@@ -176,8 +176,9 @@ private:
                     }
                     const uint64_t frontOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(offset);
                     const uint64_t backOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(backIdx);
-                    CpGM2GM(reinterpret_cast<__gm__ T *>(frontOffset), reinterpret_cast<__gm__ T *>(backOffset),
-                            lenPerRank_, reduceOp_);
+                    CpGM2GM(
+                        reinterpret_cast<__gm__ T*>(frontOffset), reinterpret_cast<__gm__ T*>(backOffset), lenPerRank_,
+                        reduceOp_);
                     pipe_barrier(PIPE_ALL);
                 }
                 Record(rank_, ReduceReadyFlagOffset(offset), static_cast<int32_t>(curTag_ + round + 1));
@@ -194,12 +195,12 @@ private:
         }
 
         const uint64_t resultOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(0);
-        CpGM2GM(reinterpret_cast<__gm__ T *>(output_), reinterpret_cast<__gm__ T *>(resultOffset), lenPerRank_);
+        CpGM2GM(reinterpret_cast<__gm__ T*>(output_), reinterpret_cast<__gm__ T*>(resultOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
     }
 };
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrl(KERNEL_ARGS_DEF)
 {
     AivReduceScatterLocalTreeCoreCtrl<T> op;
@@ -218,7 +219,7 @@ __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrl(KERNEL_ARGS_DEF)
     }
 }
 
-template<typename T>
+template <typename T>
 __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrlSuperKernel(SUPERKERNEL_ARGS_DEF)
 {
     AivReduceScatterLocalTreeCoreCtrl<T> op;

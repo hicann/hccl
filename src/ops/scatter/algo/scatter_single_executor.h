@@ -21,10 +21,10 @@ public:
     ~ScatterSingleExecutor() override = default;
 
 private:
-    HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, AlgResourceCtx* resCtx) override;
 
-    HcclResult KernelRun(const OpParam &param, ExecMem &execMem) override;
+    HcclResult KernelRun(const OpParam& param, ExecMem& execMem) override;
 };
-}
+} // namespace ops_hccl
 
 #endif

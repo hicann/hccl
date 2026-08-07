@@ -19,14 +19,14 @@
 namespace ops_hccl {
 
 struct CcuKernelArgAllGatherMesh1D : CcuKernelArgBase {
-    uint64_t                                rankSize;
-    uint32_t                                rankId;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+    uint64_t rankSize;
+    uint32_t rankId;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
 struct AllGatherMesh1DContext : CcuKernelCtxBase {
-    const CcuKernelArgAllGatherMesh1D *arg;
+    const CcuKernelArgAllGatherMesh1D* arg;
 
     ccu::Variable input;
     std::vector<ccu::Variable> output;

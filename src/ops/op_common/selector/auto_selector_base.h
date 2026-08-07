@@ -19,10 +19,10 @@
 
 namespace ops_hccl {
 
-constexpr uint64_t SMALL_COUNT_512KB = 512*1024; // Byte, UB协议一次传输的最大size
-constexpr uint64_t LARGE_COUNT_1024KB = 1024*1024; // Byte, 可掩盖多mission尾块开销
+constexpr uint64_t SMALL_COUNT_512KB = 512 * 1024;          // Byte, UB协议一次传输的最大size
+constexpr uint64_t LARGE_COUNT_1024KB = 1024 * 1024;        // Byte, 可掩盖多mission尾块开销
 constexpr u64 AIV_MAX_PER_RANK_DATA_SIZE = 8 * 1024 * 1024; // Byte, AIV单卡数据量上限(除alltoallv外)
-constexpr uint64_t SMALL_COUNT_16M = 16 * 1024 * 1024; // 960 大小数据量边界
+constexpr uint64_t SMALL_COUNT_16M = 16 * 1024 * 1024;      // 960 大小数据量边界
 
 constexpr u32 CCU_MS_MODE = 2;
 constexpr double DEFAULT_RANK_SIZE = 8.0;
@@ -30,7 +30,7 @@ constexpr u64 RS_2D_SMALL_DATA_SIZE = 1024 * 1024;
 constexpr u64 RS_M2M_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 CCU_PARALLEL_MAX_DATA_SIZE = 64 * 1024 * 1024;
 
-constexpr u32 MAX_FRAME_NUM_FOR_CCU_ALGO = 16; //仅AR和RS
+constexpr u32 MAX_FRAME_NUM_FOR_CCU_ALGO = 16; // 仅AR和RS
 
 enum class SelectorStatus { MATCH, NOT_MATCH };
 
@@ -65,81 +65,74 @@ const std::map<HcclCMDType, std::string> OP_TYPE_TO_DPU_ALG_MAP = {
 
 };
 
-const std::unordered_map<std::string, std::string> RES_RESUSE_ALG = {
-    {"InsReduceScatterMesh1D", "InsReduceScatterMeshClass"},
-    {"InsReduceScatterMesh1DMeshChunk", "InsReduceScatterMeshClass"},
-    {"InsAllReduceMesh1DOneShot", "InsAllReduceMeshClass"},
-    {"InsAllReduceMesh1DTwoShot", "InsAllReduceMeshClass"},
-    {"InsSend", "InsSendRecv"},
-    {"InsRecv", "InsSendRecv"}
-};
+const std::unordered_map<std::string, std::string> RES_RESUSE_ALG
+    = {{"InsReduceScatterMesh1D", "InsReduceScatterMeshClass"},
+       {"InsReduceScatterMesh1DMeshChunk", "InsReduceScatterMeshClass"},
+       {"InsAllReduceMesh1DOneShot", "InsAllReduceMeshClass"},
+       {"InsAllReduceMesh1DTwoShot", "InsAllReduceMeshClass"},
+       {"InsSend", "InsSendRecv"},
+       {"InsRecv", "InsSendRecv"}};
 
 class AutoSelectorBase {
 public:
-    SelectorStatus Select(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
-                          std::string &selectAlgName) const;
+    SelectorStatus Select(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const;
     bool IsDefaultAlg(const HcclAlgoType algoType) const;
     bool IsSmallData(const u64 dataSize) const;
     bool IsLargeData(const u64 dataSize) const;
-    virtual SelectorStatus SelectCcuMsAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                 const OpParam &opParam,
-                                 const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                 std::string &selectAlgName) const;
-    virtual SelectorStatus SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                 const OpParam &opParam,
-                                 const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                 std::string &selectAlgName) const;
-    virtual SelectorStatus SelectAicpuAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                   const OpParam &opParam,
-                                   const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                   std::string &selectAlgName) const;
-    virtual SelectorStatus SelectAivAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                   const OpParam &opParam,
-                                   const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                   std::string &selectAlgName) const;
-    virtual SelectorStatus SelectDPUAlgo(const TopoInfoWithNetLayerDetails* topoInfo,
-                                   const OpParam &opParam,
-                                   const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                                   std::string &selectAlgName) const;
-    bool IsStarsState(const OpExecuteConfig &opExecuteConfig) const;
-    bool IsRollBackAiv(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo) const;
-    bool IsLayerAllConnetedWithTopo(const TopoInfoWithNetLayerDetails *topoInfo, const u32 netLayer, const CommTopo topoType) const;
-    HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isEqual) const;
-    HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails *topoInfo, bool &isMultiple) const;
-    bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam) const;
+    virtual SelectorStatus SelectCcuMsAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    virtual SelectorStatus SelectCcuScheduleAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    virtual SelectorStatus SelectAicpuAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    virtual SelectorStatus SelectAivAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    virtual SelectorStatus SelectDPUAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    bool IsStarsState(const OpExecuteConfig& opExecuteConfig) const;
+    bool IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo) const;
+    bool IsLayerAllConnetedWithTopo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType) const;
+    HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual) const;
+    HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple) const;
+    bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam) const;
     bool IsDevType960() const;
-    bool IsInputOutputOverlap(const OpParam &opParam) const;
+    bool IsInputOutputOverlap(const OpParam& opParam) const;
     bool IsSmallDataCCU(const u64 dataSize, const u64 rankSize) const;
     // 计算非对称拓扑展开后的 layer0 子组数（框数）。
     // 使用全局 instSizeListOfLayer[0] 的 GCD，避免 localNetInsSizeOfLayer[0] 在非对称场景下各 rank 不同。
     // frameNum = userRankSize / gcd(instSizeListOfLayer[0])，例如 6 卡 / GCD(4,2)=2 / 2 = 3 框。
-    u32 CalcFrameNum(const TopoInfoWithNetLayerDetails *topoInfo) const;
+    u32 CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo) const;
 
 private:
-    bool ProcessAivConfig(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo,
-                          const std::map<HcclCMDType, std::vector<HcclAlgoType>> &configAlgMap,
-                          std::string &selectAlgName, SelectorStatus &ret) const;
+    bool ProcessAivConfig(
+        OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName,
+        SelectorStatus& ret) const;
 };
 
 inline bool Is64BitDataType(const HcclDataType dataType)
 {
-    return dataType == HcclDataType::HCCL_DATA_TYPE_INT64 ||
-           dataType == HcclDataType::HCCL_DATA_TYPE_UINT64 ||
-           dataType == HcclDataType::HCCL_DATA_TYPE_FP64;
+    return dataType == HcclDataType::HCCL_DATA_TYPE_INT64 || dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
+           || dataType == HcclDataType::HCCL_DATA_TYPE_FP64;
 }
 
-inline bool Is8BitDataType(const HcclDataType dataType)
-{
-    return dataType == HcclDataType::HCCL_DATA_TYPE_INT8;
-}
-} // namespace Hccl
+inline bool Is8BitDataType(const HcclDataType dataType) { return dataType == HcclDataType::HCCL_DATA_TYPE_INT8; }
+} // namespace ops_hccl
 
-// AIV_ONLY 额外打 ERROR（前缀 Failed to select AIV algorithm while configured as AIV_ONLY.，直接报错不回退，原因同 BASE_LOG）
-#define HCCL_AIV_NOT_MATCH_LOG(opParam, BASE_LOG, fmt, ...) do { \
-    BASE_LOG(fmt, ##__VA_ARGS__); \
-    if ((opParam).opExecuteConfig == OpExecuteConfig::AIV_ONLY) { \
-        HCCL_ERROR("Failed to select AIV algorithm while configured as AIV_ONLY. " fmt, ##__VA_ARGS__); \
-    } \
-} while (0)
+// AIV_ONLY 额外打 ERROR（前缀 Failed to select AIV algorithm while configured as AIV_ONLY.，直接报错不回退，原因同
+// BASE_LOG）
+#define HCCL_AIV_NOT_MATCH_LOG(opParam, BASE_LOG, fmt, ...)                                                 \
+    do {                                                                                                    \
+        BASE_LOG(fmt, ##__VA_ARGS__);                                                                       \
+        if ((opParam).opExecuteConfig == OpExecuteConfig::AIV_ONLY) {                                       \
+            HCCL_ERROR("Failed to select AIV algorithm while configured as AIV_ONLY. " fmt, ##__VA_ARGS__); \
+        }                                                                                                   \
+    } while (0)
 
 #endif

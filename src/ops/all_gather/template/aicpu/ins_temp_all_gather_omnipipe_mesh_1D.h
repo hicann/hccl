@@ -16,8 +16,9 @@ namespace ops_hccl {
 
 class InsTempAllGatherOmniPipeMesh1D : public InsTempAllGatherMesh1D {
 public:
-    explicit InsTempAllGatherOmniPipeMesh1D(const OpParam& param, const u32 rankId,  // 传通信域的rankId，userRank
-                                            const std::vector<std::vector<u32>>& subCommRanks);
+    explicit InsTempAllGatherOmniPipeMesh1D(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     // Host侧调用
     ~InsTempAllGatherOmniPipeMesh1D() override;
 
@@ -27,15 +28,15 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
 
 private:
-    HcclResult RunAllGatherMesh(const std::vector<ThreadHandle>& threads,
-                                const std::map<u32, std::vector<ChannelInfo>>& channels) override;
+    HcclResult RunAllGatherMesh(
+        const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels) override;
     bool omniLastStepRead_ = false;
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // INS_TEMP_ALL_GATHER_OMNIPIPE_MESH_1D_H
+#endif // INS_TEMP_ALL_GATHER_OMNIPIPE_MESH_1D_H

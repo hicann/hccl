@@ -7,17 +7,15 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "aiv_communication_base_v2.h"
- 
+
 using namespace AscendC;
 
-template<typename T>
+template <typename T>
 class AivReduceMesh1DTwoShot : public AivCommBase {
 public:
-    __aicore__ inline AivReduceMesh1DTwoShot()
-    {
-    }
+    __aicore__ inline AivReduceMesh1DTwoShot() {}
 
     __aicore__ inline void Process(int32_t sliceId)
     {
@@ -69,21 +67,23 @@ private:
         rankChunkStride = innerChunkStride * coreNumPerRank;
         if (blockIdx_ < coreNumFirstStage) {
             targetRank = blockIdx_ / coreNumPerRank;
-            rankChunkSize = ((targetRank + 1) * rankChunkStride <= dataCount)
-                ? rankChunkStride
-                : (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
+            rankChunkSize
+                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
+                      rankChunkStride :
+                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
         } else if (blockIdx_ < coreNumTotal) {
             targetRank = rank_;
-            rankChunkSize = ((rank_ + 1) * rankChunkStride <= dataCount)
-                ? rankChunkStride
-                : (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
+            rankChunkSize = ((rank_ + 1) * rankChunkStride <= dataCount) ?
+                                rankChunkStride :
+                                (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
         }
 
         if (blockIdx_ < coreNumTotal) {
             innerId = blockIdx_ % coreNumPerRank;
-            innerChunkSize = ((innerId + 1) * innerChunkStride <= rankChunkSize)
-                ? innerChunkStride
-                : (rankChunkSize <= innerId * innerChunkStride ? 0 : (rankChunkSize - innerId * innerChunkStride));
+            innerChunkSize
+                = ((innerId + 1) * innerChunkStride <= rankChunkSize) ?
+                      innerChunkStride :
+                      (rankChunkSize <= innerId * innerChunkStride ? 0 : (rankChunkSize - innerId * innerChunkStride));
         }
         ipcReduceFlagOffset = coreNumFirstStage;
     }
@@ -92,11 +92,10 @@ private:
     {
         if (blockIdx_ < coreNumFirstStage) {
             if (innerChunkSize > 0) {
-                uint64_t inputOffset =
-                    input_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
-                uint64_t outputOffset =
-                    reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (rank_ * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
-                CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize);
+                uint64_t inputOffset = input_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
+                uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank])
+                                        + (rank_ * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize);
                 pipe_barrier(PIPE_ALL);
             }
             Record(targetRank, rank_ * coreNumPerRank + innerId, curTag);
@@ -107,11 +106,11 @@ private:
                     if (i == 0) {
                         continue;
                     }
-                    uint64_t inputOffset =
-                        reinterpret_cast<uint64_t>(GM_IN[rank_]) + (i * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
-                    uint64_t outputOffset =
-                        reinterpret_cast<uint64_t>(GM_IN[rank_]) + (innerId * innerChunkStride) * sizeof(T);
-                    CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize, reduceOp_);
+                    uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_])
+                                           + (i * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
+                    uint64_t outputOffset
+                        = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (innerId * innerChunkStride) * sizeof(T);
+                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize, reduceOp_);
                     pipe_barrier(PIPE_ALL);
                 }
             } else {
@@ -131,10 +130,10 @@ private:
         }
         WaitFlag(targetRank, ipcReduceFlagOffset + innerId, curTag);
         if (innerChunkSize > 0) {
-            uint64_t inputOffset =
-                reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerId * innerChunkStride) * sizeof(T);
+            uint64_t inputOffset
+                = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerId * innerChunkStride) * sizeof(T);
             uint64_t outputOffset = output_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
-            CpGM2GM((__gm__ T *)outputOffset, (__gm__ T *)inputOffset, innerChunkSize);
+            CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize);
             pipe_barrier(PIPE_ALL);
         }
     }
@@ -148,8 +147,8 @@ private:
 
     __aicore__ inline void InitMultiRank(int32_t sliceId)
     {
-        useCoreNum_ = maxCoreNum_;  // 少核场景使用全核
-        maxRankPerCore_ = (rankSize_ + maxCoreNum_ - 1) / maxCoreNum_;  // 向上取整
+        useCoreNum_ = maxCoreNum_;                                     // 少核场景使用全核
+        maxRankPerCore_ = (rankSize_ + maxCoreNum_ - 1) / maxCoreNum_; // 向上取整
         coreIdx_ = static_cast<uint32_t>(blockIdx_);
 
         uint64_t dataCount = len_;
@@ -157,7 +156,7 @@ private:
         tailCount_ = dataCount - (rankSize_ - 1) * sliceCount_;
 
         syncTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
-        reduceTagOffset_ = rankSize_;  // reduce流程的tag起始偏移
+        reduceTagOffset_ = rankSize_; // reduce流程的tag起始偏移
     }
 
     __aicore__ inline void ReduceScatterMultiRank()
@@ -174,7 +173,7 @@ private:
             if (processCount > 0) {
                 uint64_t srcOffset = input_ + targetRank * sliceCount_ * sizeof(T);
                 uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + rank_ * processCount * sizeof(T);
-                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, processCount);
+                CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, processCount);
                 pipe_barrier(PIPE_ALL);
             }
             Record(targetRank, rank_, syncTag_);
@@ -195,7 +194,7 @@ private:
             if (reduceCount > 0) {
                 uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + sliceIdx * reduceCount * sizeof(T);
                 uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]);
-                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, reduceCount, reduceOp_);
+                CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, reduceCount, reduceOp_);
                 pipe_barrier(PIPE_ALL);
             }
         }
@@ -220,7 +219,7 @@ private:
                 WaitFlag(targetRank, reduceTagOffset_, syncTag_);
                 uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]);
                 uint64_t dstOffset = output_ + targetRank * sliceCount_ * sizeof(T);
-                CpGM2GM((__gm__ T *)dstOffset, (__gm__ T *)srcOffset, processCount);
+                CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, processCount);
                 pipe_barrier(PIPE_ALL);
             }
         }
@@ -248,12 +247,13 @@ private:
     uint64_t reduceTagOffset_{0};
 };
 
-template<typename T>
+template <typename T>
 class AivReduceMesh1D : public AivCommBase {
     constexpr static uint64_t DATA_SLICE_NUM = 64 * 1024;
+
 public:
     __aicore__ inline AivReduceMesh1D() {}
- 
+
     __aicore__ inline void InitCoreInfo()
     {
         dataSize_ = len_ * sizeof(T);
@@ -278,7 +278,7 @@ public:
             dstOffset_ = output_ + offsetSize_;
         }
     }
- 
+
     __aicore__ inline void Process(int32_t sliceId)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
@@ -288,7 +288,7 @@ public:
         if (rank_ != root_) {
             // 写远端：将自身core负责的Input数据搬运至root的Scratch上
             if (sliceLen_ > 0) {
-                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, sliceLen_);
+                CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceLen_);
                 PipeBarrier<PIPE_ALL>();
             }
             // 写同步：将aivTag写入root上的数据同步标志位，表示数据搬运完成
@@ -302,7 +302,7 @@ public:
         } else {
             // 本地拷贝：将自身core负责的Input数据搬运至本地Output上
             if (sliceLen_ > 0) {
-                CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, sliceLen_);
+                CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceLen_);
                 PipeBarrier<PIPE_ALL>();
             }
             uint32_t sliceIdx = 0;
@@ -316,14 +316,14 @@ public:
                 // 本地规约：将本地ScratchBuffer上的数据Reduce到本地OutputBuffer上
                 if (sliceLen_ > 0) {
                     srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[root_]) + sliceIdx * dataSize_ + offsetSize_;
-                    CpGM2GM((__gm__ T *)dstOffset_, (__gm__ T *)srcOffset_, sliceLen_, reduceOp_);
+                    CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceLen_, reduceOp_);
                     PipeBarrier<PIPE_ALL>();
                 }
                 sliceIdx++;
             }
         }
     }
- 
+
     __aicore__ inline void SplitData(uint64_t dataLen, uint64_t& sliceLen, uint64_t& offsetLen)
     {
         uint64_t sliceLenMin = dataLen / useBlocks_;
@@ -346,8 +346,8 @@ public:
     uint64_t srcOffset_;
     uint64_t dstOffset_;
 };
- 
-template<typename T>
+
+template <typename T>
 __aicore__ inline void AivReduceV2Mesh1D(KERNEL_ARGS_DEF)
 {
     AivReduceMesh1DTwoShot<T> op;

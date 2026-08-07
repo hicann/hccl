@@ -12,17 +12,12 @@
 #include "scatter_nhr.h"
 
 namespace ops_hccl {
-ScatterNHR::ScatterNHR()
-    : NHRBase(), interRank_(0), interRankSize_(0)
-{
-}
+ScatterNHR::ScatterNHR() : NHRBase(), interRank_(0), interRankSize_(0) {}
 
-ScatterNHR::~ScatterNHR()
-{
-}
+ScatterNHR::~ScatterNHR() {}
 
 // scatter的入口函数
-HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo> &channels)
+HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<ChannelInfo>& channels)
 {
     CHK_PTR_NULL(inputMem_.addr);
     CHK_PTR_NULL(outputMem_.addr);
@@ -31,13 +26,14 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     interRankSize_ = rankSize;
 
     unitSize_ = DataUnitSize(dataType_);
-    CHK_PRT_RET(unitSize_ == 0, HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] unit data size is zero", rank),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        unitSize_ == 0, HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] unit data size is zero", rank), HCCL_E_INTERNAL);
 
     // ranksize为1时，只有当input!=ouput时候进行拷贝
     if (interRankSize_ == 1) {
         if (inputMem_.addr != outputMem_.addr) {
-            CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommLocalCopyOnThread(thread_, outputMem_.addr, inputMem_.addr, inputMem_.size)));
         }
         return HCCL_SUCCESS;
     }
@@ -47,7 +43,8 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
         PrepareSlicesData(unitSize_, count_, interRankSize_);
     }
 
-    CHK_PRT_RET(channels.size() < rankSize,
+    CHK_PRT_RET(
+        channels.size() < rankSize,
         HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] link size[%llu] is less than rank size", rank, channels.size()),
         HCCL_E_INTERNAL);
 
@@ -58,8 +55,9 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     // 需要判断input不等于outputmem，scatter输入只有一个input时不用拷贝
     if (inputMem_.addr != outputMem_.addr) {
         u32 targetIdx = sliceMap_[interRank_];
-        void* src = static_cast<void *>(static_cast<u8 *>(inputMem_.addr) + slices_[targetIdx].offset);
-        CHK_RET(static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, src, slices_[targetIdx].size)));
+        void* src = static_cast<void*>(static_cast<u8*>(inputMem_.addr) + slices_[targetIdx].offset);
+        CHK_RET(
+            static_cast<HcclResult>(HcommLocalCopyOnThread(thread_, outputMem_.addr, src, slices_[targetIdx].size)));
     }
 
     // 运行scatter, NHR 算法
@@ -67,54 +65,64 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::SdmaRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const
+HcclResult ScatterNHR::SdmaRx(ChannelInfo& channelLeft, ChannelInfo& channelRight, InterServerAlgoStep& stepInfo) const
 {
     if (channelRight.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK)));
+        CHK_RET(
+            static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK)));
     }
     if (channelLeft.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
         void* srcMemPtr = channelLeft.remoteOutput.addr;
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
-            const Slice &rxSlice = slices_[stepInfo.rxSliceIdxs[i]];
-            void* dst = static_cast<void *>(static_cast<u8 *>(outputMem_.addr) + rxSlice.offset);
-            void* src = static_cast<void *>(static_cast<s8 *>(srcMemPtr) + baseOffset_ + rxSlice.offset);
+            const Slice& rxSlice = slices_[stepInfo.rxSliceIdxs[i]];
+            void* dst = static_cast<void*>(static_cast<u8*>(outputMem_.addr) + rxSlice.offset);
+            void* src = static_cast<void*>(static_cast<s8*>(srcMemPtr) + baseOffset_ + rxSlice.offset);
             HCCL_DEBUG("[ScatterNHR][HcommReadOnThread] src[%p] dst[%p] size[%llu]", src, dst, rxSlice.size);
             CHK_RET(static_cast<HcclResult>(HcommReadOnThread(thread_, channelLeft.handle, dst, src, rxSlice.size)));
         }
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     if (channelRight.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
     }
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRight, InterServerAlgoStep &stepInfo) const
+HcclResult
+ScatterNHR::RdmaTxRx(ChannelInfo& channelLeft, ChannelInfo& channelRight, InterServerAlgoStep& stepInfo) const
 {
     if (channelLeft.isValid) {
         CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
     }
 
     if (channelRight.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
 
         void* dstMemPtr = channelRight.remoteOutput.addr;
         for (u32 i = 0; i < stepInfo.nSlices; i++) {
             const Slice& txSlice = slices_[stepInfo.txSliceIdxs[i]];
-            void* dst = static_cast<void *>(static_cast<u8 *>(dstMemPtr) + txSlice.offset + baseOffset_);
-            void* src = static_cast<void *>(reinterpret_cast<u8 *>(outputMem_.addr) + txSlice.offset);
+            void* dst = static_cast<void*>(static_cast<u8*>(dstMemPtr) + txSlice.offset + baseOffset_);
+            void* src = static_cast<void*>(reinterpret_cast<u8*>(outputMem_.addr) + txSlice.offset);
             HCCL_DEBUG("[ScatterNHR][HcommWriteOnThread] src[%p] dst[%p] size[%llu]", src, dst, txSlice.size);
             CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread_, channelRight.handle, dst, src, txSlice.size)));
         }
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL))); // rdma数据发完
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL))); // rdma数据发完
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
     }
 
     if (channelLeft.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));  // rdma数据收完
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
+        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(
+            thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT))); // rdma数据收完
+        CHK_RET(
+            static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
     }
 
     if (barrierSwitchOn_) {
@@ -123,7 +131,7 @@ HcclResult ScatterNHR::RdmaTxRx(ChannelInfo &channelLeft, ChannelInfo &channelRi
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::RunScatterNHR(std::vector<ChannelInfo> &channels)
+HcclResult ScatterNHR::RunScatterNHR(std::vector<ChannelInfo>& channels)
 {
     // 计算通信步数
     u32 nSteps = GetStepNumInterServer(interRankSize_);
@@ -133,8 +141,9 @@ HcclResult ScatterNHR::RunScatterNHR(std::vector<ChannelInfo> &channels)
         InterServerAlgoStep stepInfo;
         GetStepInfo(step, nSteps, interRank_, interRankSize_, stepInfo);
 
-        HCCL_DEBUG("[ScatterNHR][RunScatterNHR] rank[%u] recvFrom[%u] sendTo[%u] step[%u]",
-            interRank_, stepInfo.fromRank, stepInfo.toRank, step);
+        HCCL_DEBUG(
+            "[ScatterNHR][RunScatterNHR] rank[%u] recvFrom[%u] sendTo[%u] step[%u]", interRank_, stepInfo.fromRank,
+            stepInfo.toRank, step);
 
         ChannelInfo channelLeft;
         ChannelInfo channelRight;
@@ -145,8 +154,8 @@ HcclResult ScatterNHR::RunScatterNHR(std::vector<ChannelInfo> &channels)
             channelLeft = channels[stepInfo.fromRank];
         }
 
-        if ((channelRight.isValid && channelRight.protocol != COMM_PROTOCOL_ROCE) ||
-            (channelLeft.isValid && channelLeft.protocol != COMM_PROTOCOL_ROCE)) {
+        if ((channelRight.isValid && channelRight.protocol != COMM_PROTOCOL_ROCE)
+            || (channelLeft.isValid && channelLeft.protocol != COMM_PROTOCOL_ROCE)) {
             CHK_RET(SdmaRx(channelLeft, channelRight, stepInfo));
         } else {
             CHK_RET(RdmaTxRx(channelLeft, channelRight, stepInfo));
@@ -168,7 +177,7 @@ void ScatterNHR::PrepareSlicesData(const u32 unitSize, const u64 totalCount, con
 }
 
 // NHR每步的算法描述原理函数
-HcclResult ScatterNHR::GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep &stepInfo)
+HcclResult ScatterNHR::GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize, InterServerAlgoStep& stepInfo)
 {
     stepInfo.txSliceIdxs.clear();
     stepInfo.rxSliceIdxs.clear();
@@ -220,25 +229,30 @@ HcclResult ScatterNHR::GetStepInfo(u32 step, u32 nSteps, u32 rank, u32 rankSize,
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterNHR::ExecuteBarrierNhr(ChannelInfo &channelLeft, ChannelInfo &channelRight) const
+HcclResult ScatterNHR::ExecuteBarrierNhr(ChannelInfo& channelLeft, ChannelInfo& channelRight) const
 {
     if (channelLeft.isValid) {
         CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_ACK)));
     }
     if (channelRight.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyRecordOnThread(thread_, channelRight.handle, NOTIFY_IDX_DATA_SIGNAL)));
     }
     if (channelLeft.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelLeft.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));
+        CHK_RET(
+            static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft.handle, NOTIFY_IDX_FIN_ACK)));
     }
     if (channelRight.isValid) {
-        CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyWaitOnThread(thread_, channelRight.handle, NOTIFY_IDX_FIN_ACK, CUSTOM_TIMEOUT)));
     }
 
     return HCCL_SUCCESS;
 }
 
 REGISTER_TEMPLATE(TemplateType::TEMPLATE_SCATTER_NHR, ScatterNHR);
-}
+} // namespace ops_hccl

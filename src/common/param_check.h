@@ -16,16 +16,16 @@
 #include "dev_type.h"
 
 namespace ops_hccl {
-HcclResult HcomCheckGroupName(const char *group);
+HcclResult HcomCheckGroupName(const char* group);
 
-HcclResult HcomCheckOpParam(const char *tag, const u64 count, const HcclDataType dataType, const char *group,
-    const void *stream);
+HcclResult
+HcomCheckOpParam(const char* tag, const u64 count, const HcclDataType dataType, const char* group, const void* stream);
 
-HcclResult HcomCheckOpParam(const char *tag, const u64 count, const HcclDataType dataType, const void *stream);
+HcclResult HcomCheckOpParam(const char* tag, const u64 count, const HcclDataType dataType, const void* stream);
 
-HcclResult HcomCheckOpParam(const char *tag, const u64 count, const HcclDataType dataType);
+HcclResult HcomCheckOpParam(const char* tag, const u64 count, const HcclDataType dataType);
 
-HcclResult HcomCheckTag(const char *tag);
+HcclResult HcomCheckTag(const char* tag);
 
 HcclResult HcomCheckCount(const u64 count);
 
@@ -34,6 +34,6 @@ HcclResult HcomCheckDataType(const HcclDataType dataType);
 HcclResult HcomCheckReductionOp(const HcclReduceOp op);
 
 HcclResult HcomCheckUserRank(const u32 totalRanks, const u32 userRank);
-}
+} // namespace ops_hccl
 
 #endif

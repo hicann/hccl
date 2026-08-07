@@ -20,8 +20,8 @@
 extern "C" {
 #endif
 
-HcclResult HcclAllGatherCustom(void *sendBuf, void *recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm,
-                               aclrtStream stream);
+HcclResult HcclAllGatherCustom(
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }

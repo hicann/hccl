@@ -23,4 +23,4 @@ __attribute__((constructor)) void InitCompat()
     pthread_once(&once, CompatSymInit);
 }
 
-}
+} // namespace ops_hccl

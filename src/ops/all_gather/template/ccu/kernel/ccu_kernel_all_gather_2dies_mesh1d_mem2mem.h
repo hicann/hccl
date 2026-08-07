@@ -24,16 +24,16 @@ constexpr int POST_SYNC_ID = 3;
 constexpr int CKE_IDX_0 = 0;
 
 struct CcuKernelArgAllGather2DiesMeshMem2Mem1D : CcuKernelArgBase {
-    uint64_t                                dimSize;
-    uint32_t                                rankId;
-    std::vector<uint32_t>                   rankIdGroup;
-    bool                                    ifHandleSelfRank;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
-    OpParam                                 opParam;
+    uint64_t dimSize;
+    uint32_t rankId;
+    std::vector<uint32_t> rankIdGroup;
+    bool ifHandleSelfRank;
+    std::vector<std::vector<uint32_t>> subCommRanks;
+    OpParam opParam;
 };
 
 struct AllGather2DiesMeshMem2Mem1DContext : CcuKernelCtxBase {
-    const CcuKernelArgAllGather2DiesMeshMem2Mem1D *arg;
+    const CcuKernelArgAllGather2DiesMeshMem2Mem1D* arg;
 
     uint64_t rankSize;
     std::vector<ccu::Variable> input;
@@ -51,5 +51,5 @@ struct AllGather2DiesMeshMem2Mem1DContext : CcuKernelCtxBase {
 
 CcuResult CcuAllGather2DiesMeshMem2Mem1DKernel(CcuKernelArg arg);
 
-}//namespace ops_hccl
-#endif//HCCL_CCU_KERNEL_ALLGATHER_2DIES_MESH_1D_MEM2MEM_H
+} // namespace ops_hccl
+#endif // HCCL_CCU_KERNEL_ALLGATHER_2DIES_MESH_1D_MEM2MEM_H

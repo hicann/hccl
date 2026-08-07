@@ -23,14 +23,14 @@ class SimThreadMgr {
 public:
     SimThreadMgr(std::string commId, u32 curRank);
     ~SimThreadMgr() = default;
-    HcclResult HcclThreadAcquire(CommEngine engine, uint32_t threadNum,
-        uint32_t notifyNumPerThread, ThreadHandle *threads);
-    HcclResult HcclThreadAcquireWithStream(CommEngine engine,
-        rtStream_t stream, uint32_t notifyNum, ThreadHandle *thread);
-    HcclResult CommGetNotifyNumInThread(ThreadHandle thread, uint32_t *notifyNum);
+    HcclResult
+    HcclThreadAcquire(CommEngine engine, uint32_t threadNum, uint32_t notifyNumPerThread, ThreadHandle* threads);
+    HcclResult
+    HcclThreadAcquireWithStream(CommEngine engine, rtStream_t stream, uint32_t notifyNum, ThreadHandle* thread);
+    HcclResult CommGetNotifyNumInThread(ThreadHandle thread, uint32_t* notifyNum);
 
 private:
-    HcclResult CommEngineToNotifyLoadType(CommEngine engine, NotifyLoadType &type);
+    HcclResult CommEngineToNotifyLoadType(CommEngine engine, NotifyLoadType& type);
 
     std::string commId_;
     u32 curRank_;
@@ -40,7 +40,7 @@ private:
 
     std::mutex mainThreadMutex_;
     std::map<rtStream_t, std::unique_ptr<SimHcclThread>> mainThread_;
-};  // class SimThreadMgr
+}; // class SimThreadMgr
 
-};
-#endif  // SIM_COMMUNICATOR_H
+}; // namespace HcclSim
+#endif // SIM_COMMUNICATOR_H

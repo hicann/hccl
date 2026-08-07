@@ -33,79 +33,100 @@ class GraphRevampBilateralSemantics {
 public:
     HcclResult Revamp(TaskNodePtr dummyStart, AllRankTaskQueues& taskQueue);
     virtual ~GraphRevampBilateralSemantics();
+
 private:
-    HcclResult InitRankHead(TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr> &rank2Head, AllRankTaskQueues& taskQueue);
-    HcclResult RevampGraph(TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr> &rank2Head);
-    HcclResult ProceedNode(TaskNodePtr currNode, std::queue<TaskNodePtr> &graphNodeQue, std::set<TaskNodePtr> &visited);
+    HcclResult
+    InitRankHead(TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head, AllRankTaskQueues& taskQueue);
+    HcclResult RevampGraph(TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head);
+    HcclResult ProceedNode(TaskNodePtr currNode, std::queue<TaskNodePtr>& graphNodeQue, std::set<TaskNodePtr>& visited);
 
-    HcclResult ProcReadNode(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult ProcReadNode(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult ProcSdmaRWNode(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult ProcSdmaRWNode(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult SearchBackwardSdmaRW(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult SearchBackwardSdmaRW(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult SearchForwardSdmaRW(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult SearchForwardSdmaRW(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
     bool IsVirtualTask(TaskNodePtr node);
     bool IsReadWriteWithSameRank(RankId peerRank, TaskNodePtr candNode);
     bool IsBeingReadOrWrittenTask(TaskNodePtr candNode);
-    bool IsProceedParentNode(TaskNodePtr currNode, std::queue<TaskNodePtr> &graphNodeQue, std::set<TaskNodePtr> &visited);
+    bool
+    IsProceedParentNode(TaskNodePtr currNode, std::queue<TaskNodePtr>& graphNodeQue, std::set<TaskNodePtr>& visited);
 
-    HcclResult AddBeingRWNodeToVirtualQue(TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddBeingRWNodeToVirtualQue(
+        TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddBeingRWNodeToVirtualQueWithWait(TaskNodePtr waitNode, TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddBeingRWNodeToVirtualQueWithWait(
+        TaskNodePtr waitNode, TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
     HcclResult InsertNode(TaskNodePtr headNode, TaskNodePtr insertNode);
-    HcclResult AddTerminalNodePeerRankVirtualQue(TaskNodePtr candNode, TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddTerminalNodePeerRankVirtualQue(
+        TaskNodePtr candNode, TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult PrepAvailVirtQueTail(const RankId myRank, const RankId remRank, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult PrepAvailVirtQueTail(
+        const RankId myRank, const RankId remRank, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddVirtQueTail(const RankId myRank, const RankId remRank, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, TaskNodePtr waitFromHeadQueNode);
+    HcclResult AddVirtQueTail(
+        const RankId myRank, const RankId remRank, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        TaskNodePtr waitFromHeadQueNode);
 
-    HcclResult ProcWriteNode(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult ProcWriteNode(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult ProcRdmaWriteNode(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult ProcRdmaWriteNode(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult SearchBackwardRdmaWrite(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult SearchBackwardRdmaWrite(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult SearchForwardRdmaWrite(TaskNodePtr dummyStart, TaskNodePtr currNode,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult SearchForwardRdmaWrite(
+        TaskNodePtr dummyStart, TaskNodePtr currNode, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddBeingWrittenRdmaWithWait(TaskNodePtr candNode, TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddBeingWrittenRdmaWithWait(
+        TaskNodePtr candNode, TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddTerminalNodePeerRankVirtualQue(TaskNodePtr candNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddTerminalNodePeerRankVirtualQue(
+        TaskNodePtr candNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddWaitToCurRankVitualQue(TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddWaitToCurRankVitualQue(
+        TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult TransferCurNodeToVitualQue(TaskNodePtr currNode, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult TransferCurNodeToVitualQue(
+        TaskNodePtr currNode, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
-    HcclResult AddTerminalNodeCurRankVirtualQue(TaskNodePtr candNode, RankId peerRank, TaskNodePtr dummyStart,
-        std::map<RankId, TaskNodePtr> &rank2Head, VirtQueMgr &virtQueManager);
+    HcclResult AddTerminalNodeCurRankVirtualQue(
+        TaskNodePtr candNode, RankId peerRank, TaskNodePtr dummyStart, std::map<RankId, TaskNodePtr>& rank2Head,
+        VirtQueMgr& virtQueManager);
 
     TaskStub* GenTaskStubBeingReadOrWrittern(TaskNodePtr currNode);
-    HcclResult GetPeerRankByTaskNode(TaskNodePtr currNode, RankId &peerRank);
-    HcclResult GetLinkProtoStubByTaskNode(TaskNodePtr currNode, LinkProtoStub &link);
+    HcclResult GetPeerRankByTaskNode(TaskNodePtr currNode, RankId& peerRank);
+    HcclResult GetLinkProtoStubByTaskNode(TaskNodePtr currNode, LinkProtoStub& link);
     map<RankId, u32> rank2QueSize_;
     std::vector<TaskStub*> toDeleteTaskResource_;
     std::vector<TaskNodePtr> toDeleteTaskNodeResource_;
 
-    //for Aiv revamp
+    // for Aiv revamp
     std::map<RankId, std::map<u32, TaskNodePtr>> rank2AivStart_;
     std::map<RankId, std::map<u32, u32>> rank2AivStartSize_;
     HcclResult ProcAivNode(TaskNodePtr aivTaskNode);
@@ -113,19 +134,20 @@ private:
     HcclResult ProcSdmaAivRWNode(TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
     HcclResult SearchBackwardSdmaAivRW(TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
     HcclResult SearchForwardSdmaAivRW(TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
-    HcclResult AddBeingAivRWNodeToVirtualQueWithRecvSync(TaskNodePtr recvNode, TaskNodePtr sendNode, 
-        TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
+    HcclResult AddBeingAivRWNodeToVirtualQueWithRecvSync(
+        TaskNodePtr recvNode, TaskNodePtr sendNode, TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
     HcclResult AddBeingAivRWNodeToVirtualQue(TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
-    HcclResult AddAivTerminalNodePeerRankVirtualQue(TaskNodePtr sendNode, TaskNodePtr recvNode, 
-        TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
-    HcclResult PrepAvailAivVirtQueTail(std::pair<RankId, u32> peerRankAndPosPair, 
-        std::pair<RankId, u32> currRankAndPosPair, VirtAivBlockMgr& virtAivBlockManager);
+    HcclResult AddAivTerminalNodePeerRankVirtualQue(
+        TaskNodePtr sendNode, TaskNodePtr recvNode, TaskNodePtr currNode, VirtAivBlockMgr& virtAivBlockManager);
+    HcclResult PrepAvailAivVirtQueTail(
+        std::pair<RankId, u32> peerRankAndPosPair, std::pair<RankId, u32> currRankAndPosPair,
+        VirtAivBlockMgr& virtAivBlockManager);
     HcclResult InsertAivNode(TaskNodePtr headNode, TaskNodePtr insertNode);
-    HcclResult ProceedAivNode(TaskNodePtr currNode, std::queue<TaskNodePtr> &graphNodeQue,
-                                                      std::set<TaskNodePtr> &isVisited);
-    bool IsProceedAivParentNode(TaskNodePtr currNode, std::queue<TaskNodePtr> &graphNodeQue,
-                                                        std::set<TaskNodePtr> &isVisited);
+    HcclResult
+    ProceedAivNode(TaskNodePtr currNode, std::queue<TaskNodePtr>& graphNodeQue, std::set<TaskNodePtr>& isVisited);
+    bool IsProceedAivParentNode(
+        TaskNodePtr currNode, std::queue<TaskNodePtr>& graphNodeQue, std::set<TaskNodePtr>& isVisited);
 };
-} // namespace Hccl
+} // namespace HcclSim
 
 #endif

@@ -29,7 +29,7 @@ struct CcuKernelArgAllReduceMesh1DOneShot : CcuKernelArgBase {
 };
 
 struct AllReduceMesh1DOneShotContext : CcuKernelCtxBase {
-    const CcuKernelArgAllReduceMesh1DOneShot *arg;
+    const CcuKernelArgAllReduceMesh1DOneShot* arg;
 
     HcclDataType dataType;
     HcclDataType outputDataType;

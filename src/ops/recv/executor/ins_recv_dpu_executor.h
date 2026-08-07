@@ -18,42 +18,42 @@
 #include "coll_alg_v2_exec_registry.h"
 
 namespace ops_hccl {
-    template <typename InsAlgTemplate>
-    class InsRecvDpuExecutor : public InsCollAlgBase {
-    public:
-        std::string Describe() const override;
+template <typename InsAlgTemplate>
+class InsRecvDpuExecutor : public InsCollAlgBase {
+public:
+    std::string Describe() const override;
 
-        // 算法编排
-        HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
-        
-        HcclResult OrchestrateWithThread(
-            const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread) override;
+    // 算法编排
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-        HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo,
-            AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
-        
-        // 资源计算
-        HcclResult CalcRes(
-            HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
-    
-    protected:
-        HcclResult InitCommInfo(
-            HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-            const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
-        // 单算子还是图模式
-        OpMode opMode_;
-        u32 remoteRank_;
-        u32 myRank_;
-        std::vector<ThreadHandle> threads_;
-        // 一次搬运最大数据量
-        u64 maxLoopTransSize_;
-        // 一次搬运最大数据个数
-        u64 maxLoopTransCount_;
+    HcclResult OrchestrateWithThread(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread) override;
 
-        AlgHierarchyInfoForAllLevel algHierarchyInfo_;
-        std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-    };
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    // 资源计算
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+protected:
+    HcclResult InitCommInfo(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
+    // 单算子还是图模式
+    OpMode opMode_;
+    u32 remoteRank_;
+    u32 myRank_;
+    std::vector<ThreadHandle> threads_;
+    // 一次搬运最大数据量
+    u64 maxLoopTransSize_;
+    // 一次搬运最大数据个数
+    u64 maxLoopTransCount_;
+
+    AlgHierarchyInfoForAllLevel algHierarchyInfo_;
+    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
+};
 } // namespace ops_hccl
 
 #endif // HCCL_INS_RECV_EXECUTOR_H

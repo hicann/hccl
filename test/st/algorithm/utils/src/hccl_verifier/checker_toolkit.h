@@ -23,6 +23,6 @@ u64 GetBlockSize(RankId rankId, BufferType bufferType)
     return block.size;
 }
 
-}
+} // namespace HcclSim
 
 #endif

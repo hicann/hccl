@@ -18,11 +18,9 @@
 namespace ops_hccl {
 class InsTempAllGatherOmniPipeNHRDPU : public InsTempAllGatherNHRDPU {
 public:
-    InsTempAllGatherOmniPipeNHRDPU()
-    {
-    }
-    InsTempAllGatherOmniPipeNHRDPU(const OpParam& param, const u32 rankId,
-                                   const std::vector<std::vector<u32>>& subCommRanks);
+    InsTempAllGatherOmniPipeNHRDPU() {}
+    InsTempAllGatherOmniPipeNHRDPU(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempAllGatherOmniPipeNHRDPU() override;
 
@@ -32,16 +30,16 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
     u64 GetThreadNum() const override;
 
 private:
-    HcclResult RunNHR(const TemplateDataParams& tempAlgParams,
-                      const std::map<u32, std::vector<ChannelInfo>>& channels) const override;
+    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels)
+        const override;
 };
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
 #endif

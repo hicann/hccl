@@ -17,24 +17,26 @@ namespace ops_hccl {
 
 class CcuTempAllGatherVMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
-    explicit  CcuTempAllGatherVMesh1DMem2Mem(const OpParam& param, 
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllGatherVMesh1DMem2Mem(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllGatherVMesh1DMem2Mem() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of AllGatherV ccu mesh 1D Mem2Mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of AllGatherV ccu mesh 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     u64 GetThreadNum();
     HcclResult GetRes(AlgResourceRequest& resourceRequest);
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
@@ -43,6 +45,6 @@ private:
     uint32_t mySubCommRank_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_ALL_GATHER_V_MESH_1D_MEM2MEM_H
+#endif // HCCL_CCU_TEMP_ALL_GATHER_V_MESH_1D_MEM2MEM_H

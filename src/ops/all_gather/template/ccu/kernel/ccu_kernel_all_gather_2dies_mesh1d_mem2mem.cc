@@ -13,7 +13,8 @@
 
 namespace ops_hccl {
 
-static CcuResult ParseKernelArg(AllGather2DiesMeshMem2Mem1DContext &ctx, CcuKernelArgAllGather2DiesMeshMem2Mem1D *kernelArg)
+static CcuResult
+ParseKernelArg(AllGather2DiesMeshMem2Mem1DContext& ctx, CcuKernelArgAllGather2DiesMeshMem2Mem1D* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankIdGroup = kernelArg->rankIdGroup;
@@ -22,9 +23,9 @@ static CcuResult ParseKernelArg(AllGather2DiesMeshMem2Mem1DContext &ctx, CcuKern
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllGather2DiesMeshMem2Mem1DContext &ctx)
+static CcuResult InitResource(AllGather2DiesMeshMem2Mem1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelAllGather2DiesMeshMem2Mem1D] channels is empty!");
@@ -42,8 +43,9 @@ static CcuResult InitResource(AllGather2DiesMeshMem2Mem1DContext &ctx)
         } else if (peerId != ctx.rankIdGroup[channelIdx]) {
             // 非本die的rank，本地资源
         } else {
-            HCCL_INFO("[CcuKernelArgAllGather2DiesMeshMem2Mem1D] MyRank[%u], PeerId[%llu], ChannelId[%u]",
-                arg->rankId, peerId, channelIdx);
+            HCCL_INFO(
+                "[CcuKernelArgAllGather2DiesMeshMem2Mem1D] MyRank[%u], PeerId[%llu], ChannelId[%u]", arg->rankId,
+                peerId, channelIdx);
             ctx.output[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], OUTPUT_XN_ID);
             ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
         }
@@ -59,9 +61,9 @@ static CcuResult InitResource(AllGather2DiesMeshMem2Mem1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllGather2DiesMeshMem2Mem1DContext &ctx)
+static CcuResult LoadArgs(AllGather2DiesMeshMem2Mem1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[0], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output[arg->rankId], cnt++));
@@ -75,12 +77,14 @@ static CcuResult LoadArgs(AllGather2DiesMeshMem2Mem1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(AllGather2DiesMeshMem2Mem1DContext &ctx)
+static CcuResult PreSync(AllGather2DiesMeshMem2Mem1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
     uint32_t allBit = ((1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID));
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -89,9 +93,9 @@ static CcuResult PreSync(AllGather2DiesMeshMem2Mem1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllGather2DiesMeshMem2Mem1DContext &ctx)
+static CcuResult PostSync(AllGather2DiesMeshMem2Mem1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
@@ -101,9 +105,9 @@ static CcuResult PostSync(AllGather2DiesMeshMem2Mem1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGather(AllGather2DiesMeshMem2Mem1DContext &ctx)
+static CcuResult DoAllGather(AllGather2DiesMeshMem2Mem1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     ccu::LocalAddr src;
     src.addr = ctx.input[0];
     src.token = ctx.token[arg->rankId];
@@ -112,16 +116,17 @@ static CcuResult DoAllGather(AllGather2DiesMeshMem2Mem1DContext &ctx)
     remoteDst.resize(ctx.rankIdGroup.size());
 
     for (uint64_t rankIdx = 0; rankIdx < ctx.rankIdGroup.size(); rankIdx++) {
-        remoteDst[rankIdx].addr = ctx.output[ctx.rankIdGroup[rankIdx]]; 
+        remoteDst[rankIdx].addr = ctx.output[ctx.rankIdGroup[rankIdx]];
         remoteDst[rankIdx].addr += ctx.offSet;
-        remoteDst[rankIdx].token = ctx.token[ctx.rankIdGroup[rankIdx]]; 
-    
-        CCU_IF(ctx.sliceSize != 0) {
-            CCU_CHK_RET(ccu::Write(arg->channels[rankIdx], remoteDst[rankIdx], src, ctx.sliceSize, ctx.event, 1 << ctx.rankIdGroup[rankIdx]));
+        remoteDst[rankIdx].token = ctx.token[ctx.rankIdGroup[rankIdx]];
+
+        CCU_IF(ctx.sliceSize != 0)
+        {
+            CCU_CHK_RET(ccu::Write(
+                arg->channels[rankIdx], remoteDst[rankIdx], src, ctx.sliceSize, ctx.event,
+                1 << ctx.rankIdGroup[rankIdx]));
         }
-        CCU_IF(ctx.sliceSize == 0) {
-            CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << ctx.rankIdGroup[rankIdx]));
-        }
+        CCU_IF(ctx.sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, 1 << ctx.rankIdGroup[rankIdx])); }
     }
 
     if (ctx.ifHandleSelfRank) {
@@ -143,7 +148,7 @@ static CcuResult DoAllGather(AllGather2DiesMeshMem2Mem1DContext &ctx)
 
 CcuResult CcuAllGather2DiesMeshMem2Mem1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllGather2DiesMeshMem2Mem1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllGather2DiesMeshMem2Mem1D*>(arg);
 
     AllGather2DiesMeshMem2Mem1DContext ctx;
     ctx.resourceAllocated = false;
@@ -174,4 +179,4 @@ CcuResult CcuAllGather2DiesMeshMem2Mem1DKernel(CcuKernelArg arg)
     return CCU_SUCCESS;
 }
 
-}
+} // namespace ops_hccl

@@ -27,7 +27,8 @@ struct HcclOpArgs {
     CommEngine commEngine;
     uint64_t reverse;
 
-    void Init() {
+    void Init()
+    {
         srcDataType = HCCL_DATA_TYPE_FP16;
         dstDataType = HCCL_DATA_TYPE_FP16;
         reduceType = HCCL_REDUCE_SUM;
@@ -35,11 +36,11 @@ struct HcclOpArgs {
     }
 };
 
-HcclResult HcclKfcAllocOpArgs(void **opArgs)
+HcclResult HcclKfcAllocOpArgs(void** opArgs)
 {
     CHK_PTR_NULL(opArgs);
 
-    HcclOpArgs *opArgsMem = (HcclOpArgs *)malloc(sizeof(HcclOpArgs));
+    HcclOpArgs* opArgsMem = (HcclOpArgs*)malloc(sizeof(HcclOpArgs));
     if (opArgsMem == nullptr) {
         HCCL_ERROR("[HcclKfcAllocOpArgs] malloc HcclOpArgs mem failed, please check.");
         return HCCL_E_INTERNAL;
@@ -51,7 +52,7 @@ HcclResult HcclKfcAllocOpArgs(void **opArgs)
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcFreeOpArgs(void *opArgs)
+HcclResult HcclKfcFreeOpArgs(void* opArgs)
 {
     CHK_PTR_NULL(opArgs);
 
@@ -61,40 +62,40 @@ HcclResult HcclKfcFreeOpArgs(void *opArgs)
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetSrcDataType(void *opArgs, uint8_t srcDataType)
+HcclResult HcclKfcOpArgsSetSrcDataType(void* opArgs, uint8_t srcDataType)
 {
     CHK_PTR_NULL(opArgs);
     CHK_RET(HcomCheckDataType(static_cast<HcclDataType>(srcDataType)));
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     opArgsPtr->srcDataType = static_cast<HcclDataType>(srcDataType);
 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetDstDataType(void *opArgs, uint8_t dstDataType)
+HcclResult HcclKfcOpArgsSetDstDataType(void* opArgs, uint8_t dstDataType)
 {
     CHK_PTR_NULL(opArgs);
     CHK_RET(HcomCheckDataType(static_cast<HcclDataType>(dstDataType)));
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     opArgsPtr->dstDataType = static_cast<HcclDataType>(dstDataType);
 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetReduceType(void *opArgs, uint32_t reduceType)
+HcclResult HcclKfcOpArgsSetReduceType(void* opArgs, uint32_t reduceType)
 {
     CHK_PTR_NULL(opArgs);
     CHK_RET(HcomCheckReductionOp(static_cast<HcclReduceOp>(reduceType)));
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     opArgsPtr->reduceType = static_cast<HcclReduceOp>(reduceType);
 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetCount(void *opArgs, uint64_t count)
+HcclResult HcclKfcOpArgsSetCount(void* opArgs, uint64_t count)
 {
     CHK_PTR_NULL(opArgs);
     if (count > SYS_MAX_COUNT) {
@@ -102,18 +103,18 @@ HcclResult HcclKfcOpArgsSetCount(void *opArgs, uint64_t count)
         return HCCL_E_PARA;
     }
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     opArgsPtr->count = count;
 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetAlgConfig(void *opArgs, char *algConfig)
+HcclResult HcclKfcOpArgsSetAlgConfig(void* opArgs, char* algConfig)
 {
     CHK_PTR_NULL(opArgs);
     CHK_PTR_NULL(algConfig);
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     s32 ret = strcpy_s(opArgsPtr->algConfig, ALG_CONFIG_SIZE, algConfig);
     if (ret != EOK) {
         HCCL_ERROR("[%s] strcpy_s algConfig failed, ret[%d]", __func__, ret);
@@ -123,7 +124,7 @@ HcclResult HcclKfcOpArgsSetAlgConfig(void *opArgs, char *algConfig)
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclKfcOpArgsSetCommEngine(void *opArgs, uint8_t commEngine)
+HcclResult HcclKfcOpArgsSetCommEngine(void* opArgs, uint8_t commEngine)
 {
     CHK_PTR_NULL(opArgs);
     // A3只支持AICPU和AIV场景
@@ -132,13 +133,13 @@ HcclResult HcclKfcOpArgsSetCommEngine(void *opArgs, uint8_t commEngine)
         return HCCL_E_NOT_SUPPORT;
     }
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     opArgsPtr->commEngine = static_cast<CommEngine>(commEngine);
 
     return HCCL_SUCCESS;
 }
 
-HcclResult HcclCreateOpResCtx(HcclComm comm, uint8_t opType, void *opArgs, void **opResCtx)
+HcclResult HcclCreateOpResCtx(HcclComm comm, uint8_t opType, void* opArgs, void** opResCtx)
 {
     CHK_PTR_NULL(comm);
     CHK_PTR_NULL(opArgs);
@@ -150,16 +151,18 @@ HcclResult HcclCreateOpResCtx(HcclComm comm, uint8_t opType, void *opArgs, void 
 
     CHK_RET(InitEnvConfig());
 
-    HcclOpArgs *opArgsPtr = static_cast<HcclOpArgs *>(opArgs);
+    HcclOpArgs* opArgsPtr = static_cast<HcclOpArgs*>(opArgs);
     if (GetExternalInputHcclEnableEntryLog()) {
-        HCCL_RUN_INFO("Entry-HcclKfcCreateOpResCtx, opType[%u], opArgs[%p], srcDataType[%u], dstDataType[%u], reduceType[%u], "
+        HCCL_RUN_INFO(
+            "Entry-HcclKfcCreateOpResCtx, opType[%u], opArgs[%p], srcDataType[%u], dstDataType[%u], reduceType[%u], "
             "count[%llu], algConfig[%s], commEngine[%u], opResCtx[%p]",
-            opType, opArgs, opArgsPtr->srcDataType, opArgsPtr->dstDataType, opArgsPtr->reduceType,
-            opArgsPtr->count, opArgsPtr->algConfig, opArgsPtr->commEngine, opResCtx);
+            opType, opArgs, opArgsPtr->srcDataType, opArgsPtr->dstDataType, opArgsPtr->reduceType, opArgsPtr->count,
+            opArgsPtr->algConfig, opArgsPtr->commEngine, opResCtx);
     }
 
-    CHK_RET(HcclCreateOpResCtxInner(comm, opType, opArgsPtr->srcDataType, opArgsPtr->dstDataType,
-        opArgsPtr->reduceType, opArgsPtr->count, opArgsPtr->algConfig, opArgsPtr->commEngine, opResCtx));
+    CHK_RET(HcclCreateOpResCtxInner(
+        comm, opType, opArgsPtr->srcDataType, opArgsPtr->dstDataType, opArgsPtr->reduceType, opArgsPtr->count,
+        opArgsPtr->algConfig, opArgsPtr->commEngine, opResCtx));
 
     return HCCL_SUCCESS;
 }

@@ -21,7 +21,7 @@ int32_t HcclLaunchDPUKernel(uint64_t ptr, int32_t size)
         return static_cast<int32_t>(HCCL_E_PTR);
     }
     // 反序列化共享内存
-    auto shmemPtr = reinterpret_cast<char *>(ptr);
+    auto shmemPtr = reinterpret_cast<char*>(ptr);
     std::vector<char> sequenceData(shmemPtr, shmemPtr + size);
     DPURunInfo dpuRunInfo;
     dpuRunInfo.DeSerialize(sequenceData);
@@ -34,11 +34,13 @@ int32_t HcclLaunchDPUKernel(uint64_t ptr, int32_t size)
     }
 
     // dpu算法展开
-    if (templateIns->DPUKernelRun(dpuRunInfo.tempAlgParams, dpuRunInfo.channels, dpuRunInfo.myRank, dpuRunInfo.subCommRanks) != HCCL_SUCCESS) {
+    if (templateIns->DPUKernelRun(
+            dpuRunInfo.tempAlgParams, dpuRunInfo.channels, dpuRunInfo.myRank, dpuRunInfo.subCommRanks)
+        != HCCL_SUCCESS) {
         HCCL_ERROR("Template[%s] DPUKernelRun failed", dpuRunInfo.templateName.c_str());
         return static_cast<int32_t>(HCCL_E_INTERNAL);
     }
 
     return static_cast<int32_t>(HCCL_SUCCESS);
 }
-}
+} // namespace ops_hccl

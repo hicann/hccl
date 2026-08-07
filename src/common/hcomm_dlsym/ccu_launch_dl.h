@@ -13,7 +13,7 @@
 
 #include "dlsym_common.h"
 #include "ccu_types_dl.h"
-#if CANN_VERSION_NUM >=90100000
+#if CANN_VERSION_NUM >= 90100000
 #include "hccl_res.h"
 #else
 #include "hccl_res_dl.h"
@@ -24,15 +24,18 @@ extern "C" {
 #endif
 
 DECL_WEAK_FUNC(CcuResult, HcommCcuKernelRegisterStart, CcuInsHandle insHandle);
-DECL_WEAK_FUNC(CcuResult, HcommCcuKernelRegister, CcuInsHandle insHandle,  uint32_t dieId, const char *kernelFuncName, const void *kernelFunc, const void **kernelArgs, uint32_t argNum, CcuKernelHandle *kernelHandle);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuKernelRegister, CcuInsHandle insHandle, uint32_t dieId, const char* kernelFuncName,
+    const void* kernelFunc, const void** kernelArgs, uint32_t argNum, CcuKernelHandle* kernelHandle);
 DECL_WEAK_FUNC(CcuResult, HcommCcuKernelRegisterEnd, CcuInsHandle insHandle);
-DECL_WEAK_FUNC(CcuResult, HcommCcuKernelLaunch, ThreadHandle threadHandle, CcuKernelHandle kernelHandle, const void *taskArgs, uint32_t argSize);
+DECL_WEAK_FUNC(
+    CcuResult, HcommCcuKernelLaunch, ThreadHandle threadHandle, CcuKernelHandle kernelHandle, const void* taskArgs,
+    uint32_t argSize);
 
 void CcuLaunchDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif // CCU_LAUNCH_DL_H

@@ -16,12 +16,14 @@
 namespace {
 static thread_local HcclDevType g_deviceType = HcclDevType::DEV_TYPE_COUNT;
 
-HcclResult HcclGetSocVer(std::string &socName)
+HcclResult HcclGetSocVer(std::string& socName)
 {
 #ifndef AICPU_COMPILE
-    const char *socNamePtr = aclrtGetSocName();
-    CHK_PRT_RET((socNamePtr == nullptr), HCCL_ERROR("[Get][SocVer]errNo[0x%016llx] aclrtGet socName failed",
-        HCCL_ERROR_CODE(HCCL_E_RUNTIME)), HCCL_E_RUNTIME);
+    const char* socNamePtr = aclrtGetSocName();
+    CHK_PRT_RET(
+        (socNamePtr == nullptr),
+        HCCL_ERROR("[Get][SocVer]errNo[0x%016llx] aclrtGet socName failed", HCCL_ERROR_CODE(HCCL_E_RUNTIME)),
+        HCCL_E_RUNTIME);
 
     socName = socNamePtr;
 #endif
@@ -33,7 +35,7 @@ HcclResult HcclGetSocVer(std::string &socName)
 #ifdef __cplusplus
 extern "C" {
 #endif
-HcclResult __HcclGetDeviceType(HcclDevType &devType)
+HcclResult __HcclGetDeviceType(HcclDevType& devType)
 {
     if (LIKELY((g_deviceType != HcclDevType::DEV_TYPE_COUNT))) {
         devType = g_deviceType;
@@ -52,8 +54,7 @@ HcclResult __HcclGetDeviceType(HcclDevType &devType)
         return HCCL_SUCCESS;
     }
 
-    if (socName.find("Ascend910_96") != std::string::npos
-        || socName.find("Ascend960") != std::string::npos
+    if (socName.find("Ascend910_96") != std::string::npos || socName.find("Ascend960") != std::string::npos
         || socName.find("ascend960") != std::string::npos) {
         devType = HcclDevType::DEV_TYPE_960;
         g_deviceType = devType;
@@ -63,7 +64,8 @@ HcclResult __HcclGetDeviceType(HcclDevType &devType)
 
     auto iter = HCCL_SOC_VER_CONVERT.find(socName);
     if (iter == HCCL_SOC_VER_CONVERT.end()) {
-        HCCL_ERROR("[Get][DeviceType]errNo[0x%016llx] rtGetSocVersion get illegal chipver, chip_ver[%s].", \
+        HCCL_ERROR(
+            "[Get][DeviceType]errNo[0x%016llx] rtGetSocVersion get illegal chipver, chip_ver[%s].",
             HCCL_ERROR_CODE(HCCL_E_RUNTIME), socName.c_str());
         return HCCL_E_RUNTIME;
     }
@@ -73,5 +75,5 @@ HcclResult __HcclGetDeviceType(HcclDevType &devType)
 }
 hccl_weak_alias(__HcclGetDeviceType, HcclGetDeviceType);
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif

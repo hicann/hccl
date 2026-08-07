@@ -19,17 +19,18 @@
 
 namespace ops_hccl_ag {
 
-HcclResult GetDeviceType(DeviceType *deviceType);
+HcclResult GetDeviceType(DeviceType* deviceType);
 
-HcclResult GetThreadForCcu(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost);
+HcclResult GetThreadForCcu(HcclComm comm, const OpParam& param, AlgResourceCtxSerializable& resCtxHost);
 
-HcclResult GetChannelForCcu(HcclComm comm, const OpParam &param, std::vector<ChannelHandle> &kernelChannels,
-                            uint32_t &dieId);
+HcclResult
+GetChannelForCcu(HcclComm comm, const OpParam& param, std::vector<ChannelHandle>& kernelChannels, uint32_t& dieId);
 
-HcclResult GetCcuKernel(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost,
-    const std::vector<ChannelHandle> &kernelChannels, CcuKernelInfo &kernelInfo, uint32_t dieId);
+HcclResult GetCcuKernel(
+    HcclComm comm, const OpParam& param, AlgResourceCtxSerializable& resCtxHost,
+    const std::vector<ChannelHandle>& kernelChannels, CcuKernelInfo& kernelInfo, uint32_t dieId);
 
-HcclResult AllocAlgResource(HcclComm comm, const OpParam &param, AlgResourceCtxSerializable &resCtxHost);
+HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceCtxSerializable& resCtxHost);
 
 constexpr uint64_t SetBits(uint16_t start, uint16_t end);
 
@@ -43,7 +44,7 @@ uint64_t GetParallelParam(uint64_t repeatNum, uint64_t repeatLoopIndex, uint64_t
 
 uint64_t GetOffsetParam(uint64_t gsaOffset, uint64_t msOffset, uint64_t ckeOffset);
 
-std::vector<uint64_t> CalGoSize(uint64_t size, const LoopGroupConfig &config);
+std::vector<uint64_t> CalGoSize(uint64_t size, const LoopGroupConfig& config);
 
 } // namespace ops_hccl_ag
 

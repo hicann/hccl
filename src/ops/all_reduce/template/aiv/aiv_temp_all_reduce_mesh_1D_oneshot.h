@@ -20,8 +20,9 @@ namespace ops_hccl {
 class AivTempAllReduceMesh1DOneShot : public AivAlgTemplateBase {
 public:
     AivTempAllReduceMesh1DOneShot() = default;
-    explicit AivTempAllReduceMesh1DOneShot(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit AivTempAllReduceMesh1DOneShot(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~AivTempAllReduceMesh1DOneShot() override;
 
     std::string Describe() const override
@@ -30,14 +31,15 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         const TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 };
-}  // namespace Hccl
+} // namespace ops_hccl
 
-#endif  // AIV_TEMP_ALL_REDUCE_MESH_1D_ONESHOT
+#endif // AIV_TEMP_ALL_REDUCE_MESH_1D_ONESHOT

@@ -17,15 +17,15 @@ constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
 constexpr int POST_SYNC_ID = 3;
 
-static CcuResult ParseKernelArg(BroadcastMesh1DContext &ctx, CcuKernelArgBroadcastMesh1D *kernelArg)
+static CcuResult ParseKernelArg(BroadcastMesh1DContext& ctx, CcuKernelArgBroadcastMesh1D* kernelArg)
 {
     ctx.arg = kernelArg;
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(BroadcastMesh1DContext &ctx)
+static CcuResult InitResource(BroadcastMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
@@ -48,9 +48,9 @@ static CcuResult InitResource(BroadcastMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(BroadcastMesh1DContext &ctx)
+static CcuResult LoadArgs(BroadcastMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t argId = 0;
 
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
@@ -65,15 +65,15 @@ static CcuResult LoadArgs(BroadcastMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(BroadcastMesh1DContext &ctx)
+static CcuResult PreSync(BroadcastMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId],
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -83,9 +83,9 @@ static CcuResult PreSync(BroadcastMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(BroadcastMesh1DContext &ctx)
+static CcuResult PostSync(BroadcastMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
@@ -96,9 +96,9 @@ static CcuResult PostSync(BroadcastMesh1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoBroadcast(BroadcastMesh1DContext &ctx)
+static CcuResult DoBroadcast(BroadcastMesh1DContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     ccu::LocalAddr src;
     ccu::LocalAddr localdst;
     std::vector<ccu::RemoteAddr> dst;
@@ -123,15 +123,14 @@ static CcuResult DoBroadcast(BroadcastMesh1DContext &ctx)
         }
     }
 
-    CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount,
-        localdst, dst, src, ctx.goSize, GetCcuVersion()));
+    CCU_CHK_RET(GroupBroadcast(ctx, arg->channels, arg->channelCount, localdst, dst, src, ctx.goSize, GetCcuVersion()));
 
     return CCU_SUCCESS;
 }
 
 CcuResult CcuBroadcastMesh1DKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgBroadcastMesh1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgBroadcastMesh1D*>(arg);
 
     BroadcastMesh1DContext ctx;
     ctx.resourceAllocated = false;

@@ -8,7 +8,6 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-
 #ifndef HCCL_CCU_KERNEL_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_
 #define HCCL_CCU_KERNEL_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_
 
@@ -31,14 +30,14 @@ struct CcuKernelArgAllToAllVMesh1DMultiJetty : CcuKernelArgBase {
 };
 
 struct AllToAllVMesh1DMultiJettyContext : public CcuKernelCtxBase {
-    const CcuKernelArgAllToAllVMesh1DMultiJetty *arg;
+    const CcuKernelArgAllToAllVMesh1DMultiJetty* arg;
 
     // a2a 对每个对端的发送接收信息
     struct A2ASingleSendRecvInfo {
-        ccu::Variable sliceSize;               // 数据块切片大小
-        ccu::Variable tailSliceSize;           // 数据块切片尾片大小
-        ccu::Variable lastSliceSize;           // 尾数据块切片大小
-        ccu::Variable lastTailSliceSize;       // 尾数据块切片尾片大小
+        ccu::Variable sliceSize;         // 数据块切片大小
+        ccu::Variable tailSliceSize;     // 数据块切片尾片大小
+        ccu::Variable lastSliceSize;     // 尾数据块切片大小
+        ccu::Variable lastTailSliceSize; // 尾数据块切片尾片大小
         ccu::Variable loopNum;
         ccu::Variable sendOffset;
         ccu::Variable recvOffset;

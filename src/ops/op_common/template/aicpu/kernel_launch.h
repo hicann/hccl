@@ -15,18 +15,18 @@
 
 namespace ops_hccl {
 
-HcclResult RestoreVarDataBatchSendRecv(OpParam &param);
+HcclResult RestoreVarDataBatchSendRecv(OpParam& param);
 
-HcclResult RestoreVarDataAlltoAllV(OpParam &param, const AlgResourceCtxSerializable &resCtx);
+HcclResult RestoreVarDataAlltoAllV(OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
-HcclResult RestoreVarDataReduceScatterV(OpParam &param, const AlgResourceCtxSerializable &resCtx);
+HcclResult RestoreVarDataReduceScatterV(OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
-HcclResult RestoreVarDataAllGatherV(OpParam &param, const AlgResourceCtxSerializable &resCtx);
+HcclResult RestoreVarDataAllGatherV(OpParam& param, const AlgResourceCtxSerializable& resCtx);
 
-inline bool IsResCtxCacheReusable(const AlgResourceCtxSerializable &cachedResCtx, const OpParam &param)
+inline bool IsResCtxCacheReusable(const AlgResourceCtxSerializable& cachedResCtx, const OpParam& param)
 {
     return param.cacheValid && cachedResCtx.commInfoPtr == param.hcclComm;
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 #endif

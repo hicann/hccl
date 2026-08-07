@@ -22,7 +22,7 @@
 
 namespace HcclSim {
 
-HcclResult Sim_HcclCommInitClusterInfo(const TopoMeta &topoMeta, uint32_t rank, HcclComm *comm);
+HcclResult Sim_HcclCommInitClusterInfo(const TopoMeta& topoMeta, uint32_t rank, HcclComm* comm);
 
 class SimCommunicator {
 public:
@@ -30,22 +30,23 @@ public:
     ~SimCommunicator() = default;
 
 public:
-    HcclResult Init(const char *clusterInfo, uint32_t rank);
-    HcclResult Init(const TopoMeta &topoMeta, uint32_t rank);
+    HcclResult Init(const char* clusterInfo, uint32_t rank);
+    HcclResult Init(const TopoMeta& topoMeta, uint32_t rank);
     uint32_t GetRankId();
     uint32_t GetRankSize();
     std::string GetIdentifier();
-    HcclResult GetHcclBuffer(void **buffer, uint64_t *size);
-    HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, void **buffer, uint64_t *size);
-    HcclResult ChannelCommCreate(const std::string &commId, const std::string &tag, CommEngine engine, 
-        const HcclChannelDesc *channelDescList, uint32_t listNum, ChannelHandle *channelList);
+    HcclResult GetHcclBuffer(void** buffer, uint64_t* size);
+    HcclResult ChannelCommGetHcclBuffer(ChannelHandle channel, void** buffer, uint64_t* size);
+    HcclResult ChannelCommCreate(
+        const std::string& commId, const std::string& tag, CommEngine engine, const HcclChannelDesc* channelDescList,
+        uint32_t listNum, ChannelHandle* channelList);
 
 private:
-    HcclResult GetFileRealPath(const char *rankTable, std::string &realFilePath);
-    HcclResult ParseRankTable(const char *clusterInfo);
+    HcclResult GetFileRealPath(const char* rankTable, std::string& realFilePath);
+    HcclResult ParseRankTable(const char* clusterInfo);
 
-    HcclResult GetDefaultCommConfig(HcclCommConfig &commConfig, const std::string &commName) const;
-    HcclResult SetIndependentOpConfig(const HcclCommConfig &commConfig);
+    HcclResult GetDefaultCommConfig(HcclCommConfig& commConfig, const std::string& commName) const;
+    HcclResult SetIndependentOpConfig(const HcclCommConfig& commConfig);
 
 public:
     std::unique_ptr<TopoModel> topoModel_;
@@ -66,6 +67,6 @@ private:
     std::string identifier_{""};
 }; // SimCommunicator
 
-};
+}; // namespace HcclSim
 
-#endif  // SIM_COMMUNICATOR_H
+#endif // SIM_COMMUNICATOR_H

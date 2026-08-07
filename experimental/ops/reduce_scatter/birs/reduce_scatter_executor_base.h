@@ -17,34 +17,34 @@
 #include "alg_template_base_experimental.h"
 
 namespace ops_hccl_experimental {
-using ops_hccl::ExecutorBase;
-using ops_hccl::OpParam;
-using ops_hccl::AlgResourceCtx;
-using ops_hccl::TopoInfo;
 using ops_hccl::AlgHierarchyInfo;
+using ops_hccl::AlgResourceCtx;
 using ops_hccl::AlgResourceRequest;
 using ops_hccl::AlgType;
-using ops_hccl::Slice;
 using ops_hccl::ChannelInfo;
+using ops_hccl::ExecutorBase;
+using ops_hccl::OpParam;
+using ops_hccl::Slice;
+using ops_hccl::TopoInfo;
 
 class ReduceScatterExecutorBase : public ExecutorBase {
 public:
     explicit ReduceScatterExecutorBase();
     ~ReduceScatterExecutorBase() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, AlgResourceCtx* resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, AlgResourceCtx* resCtx) override;
 
     /* *************** 资源计算 *************** */
-    HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-        AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
+    HcclResult CalcResRequest(
+        HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+        AlgResourceRequest& resourceRequest, AlgType& algType) override;
 
 protected:
     // 用于需要Loop的Executor
-    virtual HcclResult RunLoop(const OpParam &param);
+    virtual HcclResult RunLoop(const OpParam& param);
 
     /* *************** 通用工具 *************** */
-    virtual HcclResult PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum,
-        std::vector<Slice> &dataSlice);
+    virtual HcclResult PrepareDataSlice(u64 dataCount, u32 unitSize, u32 sliceNum, std::vector<Slice>& dataSlice);
     bool IsHugeData(u64 curSize) const;
 
     ThreadHandle thread_ = 0;
@@ -55,6 +55,6 @@ protected:
     u32 root_ = INVALID_VALUE_RANKID;
 };
 
-}
+} // namespace ops_hccl_experimental
 
 #endif

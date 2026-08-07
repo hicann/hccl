@@ -35,7 +35,7 @@ using ops_hccl::OpParam;
 
 HcclResult ProcessA3(HcclComm comm, OpParam& param, uint64_t beginTime);
 
-HcclResult ExecOpBirs(HcclComm comm, OpParam &param);
+HcclResult ExecOpBirs(HcclComm comm, OpParam& param);
 
 bool IsStreamCapture(aclrtStream stream);
 
@@ -43,6 +43,6 @@ bool IsAiCpuMode(HcclDevType deviceType, u32 rankSize);
 
 std::string SetLaunchMode(CommEngine engine);
 
-}
+} // namespace ops_hccl_experimental
 
 #endif

@@ -28,7 +28,7 @@ struct CcuKernelArgAllGatherOmniPipeMesh1DMem2Mem : CcuKernelArgBase {
 };
 
 struct AllGatherOmniPipeMesh1DMem2MemContext : CcuKernelCtxBase {
-    CcuKernelArgAllGatherOmniPipeMesh1DMem2Mem *arg;
+    CcuKernelArgAllGatherOmniPipeMesh1DMem2Mem* arg;
 
     ccu::Variable input;
     std::vector<ccu::Variable> output;
@@ -44,5 +44,5 @@ struct AllGatherOmniPipeMesh1DMem2MemContext : CcuKernelCtxBase {
 
 CcuResult CcuAllGatherOmniPipeMesh1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_ALL_GATHER_OMNIPIPE_MESH1D_MEM2MEM_H

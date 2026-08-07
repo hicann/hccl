@@ -13,28 +13,27 @@
 
 namespace ops_hccl {
 
-AivTempReduceMesh1D::AivTempReduceMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                                       const std::vector<std::vector<u32>> &subCommRanks)
-                                                       : AivAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+AivTempReduceMesh1D::AivTempReduceMesh1D(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : AivAlgTemplateBase(param, rankId, subCommRanks)
+{}
 
-AivTempReduceMesh1D::~AivTempReduceMesh1D()
-{
-}
+AivTempReduceMesh1D::~AivTempReduceMesh1D() {}
 
 u64 AivTempReduceMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
-    (void) inBuffType;
-    (void) outBuffType;
+    (void)inBuffType;
+    (void)outBuffType;
     // TwoShot场景部分数据量切分会有尾快，且需要确定性计算，需要2倍scratch才能保证数据不溢出
     u64 multiple = 2;
     HCCL_INFO("[AivTempReduceMesh1D] scratch multiple is [%llu]", multiple);
     return multiple;
 }
 
-HcclResult AivTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                               AlgResourceRequest& resourceRequest)
+HcclResult AivTempReduceMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -44,11 +43,11 @@ HcclResult AivTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, con
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level0Channels;
-    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
-        for(auto channel : myChannelDescs) {
-            if(channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
                 level0Channels.push_back(channel);
             }
         }
@@ -63,25 +62,25 @@ HcclResult AivTempReduceMesh1D::CalcRes(HcclComm comm, const OpParam& param, con
 
 HcclResult AivTempReduceMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    (void) dataSize;
+    (void)dataSize;
     HCCL_INFO("[AivTempReduceMesh1D] Limit core num[%u]", numBlocksLimit);
     numBlocks = numBlocksLimit;
     HCCL_INFO("[AivTempReduceMesh1D] Actually use core num[%u]", numBlocks);
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
-                                                 const TemplateDataParams& tempAlgParams,
-                                                 const TemplateResource& templateResource)
+HcclResult AivTempReduceMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     HCCL_INFO("[AivTempReduceMesh1D] KernelRun start");
 
-    IncSliceId();  // 自动增长sliceId，传入sliceId
+    IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.DataDes.dataType;
     AivOpArgs aivReduceArgs;
     aivReduceArgs.cmdType = HcclCMDType::HCCL_CMD_REDUCE;
     aivReduceArgs.input = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
-    aivReduceArgs.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
+    aivReduceArgs.output
+        = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
     aivReduceArgs.rank = u32(myRank_);
     aivReduceArgs.rankSize = tempRankSize_;
     aivReduceArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
@@ -92,24 +91,24 @@ HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
     aivReduceArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivReduceArgs.stream = param.stream;
     aivReduceArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
-        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
         HcclResult::HCCL_E_INTERNAL);
     aivReduceArgs.xRankSize = subCommRanks_[0].size();
     aivReduceArgs.yRankSize = 0;
     aivReduceArgs.zRankSize = 0;
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++){
+    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
         aivReduceArgs.topo_[i] = subCommRanks_[0][i];
     }
-    if (subCommRanks_.size() > 1){
+    if (subCommRanks_.size() > 1) {
         aivReduceArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
             aivReduceArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
         }
     }
-    if (subCommRanks_.size() == MAX_DIM_NUM){
+    if (subCommRanks_.size() == MAX_DIM_NUM) {
         aivReduceArgs.zRankSize = subCommRanks_[MAX_DIM_NUM - 1].size();
-        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++) {
             aivReduceArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[MAX_DIM_NUM - 1][i];
         }
     }
@@ -129,4 +128,4 @@ HcclResult AivTempReduceMesh1D::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-}  // namespace Hccl
+} // namespace ops_hccl

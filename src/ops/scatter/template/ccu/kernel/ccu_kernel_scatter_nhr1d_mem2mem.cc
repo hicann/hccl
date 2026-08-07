@@ -13,14 +13,14 @@
 
 namespace ops_hccl {
 
-constexpr uint16_t SCRATCH_XN_ID       = 1;
-constexpr uint16_t TOKEN_XN_ID         = 2;
-constexpr uint16_t POST_SYNC_ID        = 3;
-constexpr uint16_t STEP_POST_SYNC_ID   = 4;
-constexpr uint16_t CKE_IDX_0           = 0;
-constexpr uint16_t RANK_NUM_PER_CKE    = 16;
+constexpr uint16_t SCRATCH_XN_ID = 1;
+constexpr uint16_t TOKEN_XN_ID = 2;
+constexpr uint16_t POST_SYNC_ID = 3;
+constexpr uint16_t STEP_POST_SYNC_ID = 4;
+constexpr uint16_t CKE_IDX_0 = 0;
+constexpr uint16_t RANK_NUM_PER_CKE = 16;
 
-static CcuResult ParseKernelArg(ScatterNHR1DContext &ctx, CcuKernelArgScatterNHRMem2Mem1D *kernelArg)
+static CcuResult ParseKernelArg(ScatterNHR1DContext& ctx, CcuKernelArgScatterNHRMem2Mem1D* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankSize = kernelArg->rankSize;
@@ -38,7 +38,7 @@ static CcuResult ParseKernelArg(ScatterNHR1DContext &ctx, CcuKernelArgScatterNHR
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ScatterNHR1DContext &ctx)
+static CcuResult InitResource(ScatterNHR1DContext& ctx)
 {
     // remote ranks scratch/token
     ctx.scratch.clear();
@@ -48,18 +48,20 @@ static CcuResult InitResource(ScatterNHR1DContext &ctx)
 
     for (uint64_t channelIdx = 0; channelIdx < ctx.localSize; channelIdx++) {
         if (ctx.arg->channelCount <= channelIdx) {
-            HCCL_ERROR("[CcuScatterNHR1DMem2MemKernel] arg->channels size[%llu] < localSize[%u]", ctx.arg->channelCount, ctx.localSize);
+            HCCL_ERROR(
+                "[CcuScatterNHR1DMem2MemKernel] arg->channels size[%llu] < localSize[%u]", ctx.arg->channelCount,
+                ctx.localSize);
             return CCU_E_INTERNAL;
         }
-		ctx.scratch[channelIdx] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], SCRATCH_XN_ID);
+        ctx.scratch[channelIdx] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], SCRATCH_XN_ID);
         ctx.token[channelIdx] = ccu::GetResByChannel<ccu::Variable>(ctx.arg->channels[channelIdx], TOKEN_XN_ID);
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ScatterNHR1DContext &ctx)
+static CcuResult LoadArgs(ScatterNHR1DContext& ctx)
 {
-	uint32_t argId = 0;
+    uint32_t argId = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.scratch[ctx.myRankIdx], argId++));
@@ -80,12 +82,14 @@ static CcuResult LoadArgs(ScatterNHR1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ScatterNHR1DContext &ctx)
+static CcuResult PreSync(ScatterNHR1DContext& ctx)
 {
     uint32_t allBit = (1 << SCRATCH_XN_ID) | (1 << TOKEN_XN_ID);
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
-        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.scratch[ctx.myRankIdx], SCRATCH_XN_ID, CKE_IDX_0, 1 << SCRATCH_XN_ID);
-        ccu::WriteVariableWithNotify(ctx.arg->channels[i], ctx.token[ctx.myRankIdx], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
+        ccu::WriteVariableWithNotify(
+            ctx.arg->channels[i], ctx.scratch[ctx.myRankIdx], SCRATCH_XN_ID, CKE_IDX_0, 1 << SCRATCH_XN_ID);
+        ccu::WriteVariableWithNotify(
+            ctx.arg->channels[i], ctx.token[ctx.myRankIdx], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID);
     }
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
         ccu::NotifyWait(ctx.arg->channels[i], CKE_IDX_0, allBit);
@@ -93,34 +97,24 @@ static CcuResult PreSync(ScatterNHR1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static void DoLocalCopy(ccu::LocalAddr &dst, ccu::LocalAddr &src, ccu::Variable &sliceSize, ccu::Event &event,
-                          uint16_t mask)
+static void
+DoLocalCopy(ccu::LocalAddr& dst, ccu::LocalAddr& src, ccu::Variable& sliceSize, ccu::Event& event, uint16_t mask)
 {
-    CCU_IF(sliceSize == 0)
-    {
-        ccu::EventRecord(event, mask);
-    }
-    CCU_IF(sliceSize != 0)
-    {
-        ccu::LocalCopy(dst, src, sliceSize, event, mask);
-    }
+    CCU_IF(sliceSize == 0) { ccu::EventRecord(event, mask); }
+    CCU_IF(sliceSize != 0) { ccu::LocalCopy(dst, src, sliceSize, event, mask); }
 }
 
-static void DoWrite(ChannelHandle sendChannel, ccu::RemoteAddr &dst, ccu::LocalAddr &src,
-                      ccu::Variable &sliceSize, ccu::Event &event, uint16_t mask)
+static void DoWrite(
+    ChannelHandle sendChannel, ccu::RemoteAddr& dst, ccu::LocalAddr& src, ccu::Variable& sliceSize, ccu::Event& event,
+    uint16_t mask)
 {
-    CCU_IF(sliceSize == 0)
-    {
-        ccu::EventRecord(event, mask);
-    }
-    CCU_IF(sliceSize != 0)
-    {
-        ccu::Write(sendChannel, dst, src, sliceSize, event, mask);
-    }
+    CCU_IF(sliceSize == 0) { ccu::EventRecord(event, mask); }
+    CCU_IF(sliceSize != 0) { ccu::Write(sendChannel, dst, src, sliceSize, event, mask); }
 }
 
-static CcuResult DoSendRecvSlice(ScatterNHR1DContext &ctx, const u32 &toRank, ccu::LocalAddr &src, ccu::RemoteAddr &dst,
-                                 u32 signalIndex, bool isLastSlice)
+static CcuResult DoSendRecvSlice(
+    ScatterNHR1DContext& ctx, const u32& toRank, ccu::LocalAddr& src, ccu::RemoteAddr& dst, u32 signalIndex,
+    bool isLastSlice)
 {
     if (ctx.rank2ChannelIdx.count(toRank) == 0) {
         return CCU_SUCCESS;
@@ -150,8 +144,7 @@ static CcuResult DoSendRecvSlice(ScatterNHR1DContext &ctx, const u32 &toRank, cc
         }
         CCU_IF(ctx.repeatTimeFlag == 0)
         {
-            if(ctx.axisId == 1)
-            {
+            if (ctx.axisId == 1) {
                 if (isLastSlice) {
                     src.addr += ctx.die0TailSize;
                     dst.addr += ctx.die0TailSize;
@@ -167,7 +160,7 @@ static CcuResult DoSendRecvSlice(ScatterNHR1DContext &ctx, const u32 &toRank, cc
         } else {
             ctx.curSliceSize = (ctx.axisId == 0) ? ctx.die0Size : ctx.die1Size;
         }
-		uint16_t mask = 1 << signalIndex;
+        uint16_t mask = 1 << signalIndex;
         DoWrite(sendChannel, dst, src, ctx.curSliceSize, ctx.event, mask);
         ccu::EventWait(ctx.event, mask);
         ctx.repeatTimeFlag = 1;
@@ -175,10 +168,10 @@ static CcuResult DoSendRecvSlice(ScatterNHR1DContext &ctx, const u32 &toRank, cc
     return CCU_SUCCESS;
 }
 
-static CcuResult DoScatterNHRSingleStep(ScatterNHR1DContext &ctx, const NHRStepInfo &nhrStepInfo)
+static CcuResult DoScatterNHRSingleStep(ScatterNHR1DContext& ctx, const NHRStepInfo& nhrStepInfo)
 {
-    const auto &sendSliceIdxList = nhrStepInfo.txSliceIdxs;
-    const auto &recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
+    const auto& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
+    const auto& recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
 
     if (!recvSliceIdxList.empty()) {
         if (ctx.rank2ChannelIdx.count(nhrStepInfo.fromRank) != 0) {
@@ -221,8 +214,8 @@ static CcuResult DoScatterNHRSingleStep(ScatterNHR1DContext &ctx, const NHRStepI
             ctx.dstRemoteMem.addr = ctx.scratch[toRankIdx];
             ctx.dstRemoteMem.addr += ctx.scratchOffset[sendSliceIdx];
 
-            CCU_CHK_RET(DoSendRecvSlice(ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.dstRemoteMem,
-                                        i % RANK_NUM_PER_CKE, isLastSlice));
+            CCU_CHK_RET(DoSendRecvSlice(
+                ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.dstRemoteMem, i % RANK_NUM_PER_CKE, isLastSlice));
         }
 
         ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID);
@@ -230,7 +223,7 @@ static CcuResult DoScatterNHRSingleStep(ScatterNHR1DContext &ctx, const NHRStepI
     return CCU_SUCCESS;
 }
 
-static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
+static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
 {
     ctx.curInputOffset = 0;
     ctx.curScratchOffset = 0;
@@ -246,7 +239,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
         ctx.curScratchOffset += ctx.curScratchStride;
     }
 
-    for (auto &step : ctx.stepInfoVector) {
+    for (auto& step : ctx.stepInfoVector) {
         CCU_CHK_RET(DoScatterNHRSingleStep(ctx, step));
     }
 
@@ -280,8 +273,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
         }
         CCU_IF(ctx.repeatTimeFlag == 0)
         {
-            if(ctx.axisId == 1)
-            {
+            if (ctx.axisId == 1) {
                 if (ctx.rankId != ctx.rankSize - 1) {
                     ctx.srcMem.addr += ctx.die0Size;
                     ctx.dstMem.addr += ctx.die0Size;
@@ -297,7 +289,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
         } else {
             ctx.curSliceSize = (ctx.axisId == 0) ? ctx.die0TailSize : ctx.die1TailSize;
         }
-		uint16_t mask = 1 << ctx.rankId;
+        uint16_t mask = 1 << ctx.rankId;
         CCU_IF(ctx.isOutputScratch == 1)
         {
             CCU_IF(ctx.outputSliceStride == 0)
@@ -315,16 +307,10 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
                             {
                                 DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
                             }
-                            CCU_IF(ctx.isSliceSizeZero == 1)
-                            {
-                                ccu::EventRecord(ctx.event, mask);
-                            }
+                            CCU_IF(ctx.isSliceSizeZero == 1) { ccu::EventRecord(ctx.event, mask); }
                         }
                     }
-                    CCU_IF(ctx.isInputOutputEqual == 1)
-                    {
-                        ccu::EventRecord(ctx.event, mask);
-                    }
+                    CCU_IF(ctx.isInputOutputEqual == 1) { ccu::EventRecord(ctx.event, mask); }
                 }
             }
             CCU_IF(ctx.outputSliceStride != 0)
@@ -337,19 +323,13 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
                         }
                         DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
                     }
-                    CCU_IF(ctx.isInputOutputEqual == 1)
-                    {
-                        ccu::EventRecord(ctx.event, mask);
-                    }
+                    CCU_IF(ctx.isInputOutputEqual == 1) { ccu::EventRecord(ctx.event, mask); }
                 } else {
                     ccu::EventRecord(ctx.event, mask);
                 }
             }
         }
-        CCU_IF(ctx.isOutputScratch != 1)
-        {
-            DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
-        }
+        CCU_IF(ctx.isOutputScratch != 1) { DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask); }
         ccu::EventWait(ctx.event, mask);
         ctx.repeatTimeFlag = 1;
     }
@@ -357,7 +337,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ScatterNHR1DContext &ctx)
+static CcuResult PostSync(ScatterNHR1DContext& ctx)
 {
     for (uint32_t i = 0; i < ctx.arg->channelCount; i++) {
         ccu::NotifyRecord(ctx.arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
@@ -370,7 +350,7 @@ static CcuResult PostSync(ScatterNHR1DContext &ctx)
 
 CcuResult CcuScatterNHR1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgScatterNHRMem2Mem1D *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgScatterNHRMem2Mem1D*>(arg);
     ScatterNHR1DContext ctx;
 
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));

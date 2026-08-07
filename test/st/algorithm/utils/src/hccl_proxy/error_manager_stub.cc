@@ -14,20 +14,17 @@
 #include <cstdarg>
 
 namespace error_message {
-int32_t RegisterFormatErrorMessage(const char *error_msg, size_t error_msg_len)
+int32_t RegisterFormatErrorMessage(const char* error_msg, size_t error_msg_len) { return 0; }
+
+int32_t ReportInnerErrMsg(
+    const char* file_name, const char* func, uint32_t line, const char* error_code, const char* format, ...)
 {
     return 0;
 }
 
-int32_t ReportInnerErrMsg(const char *file_name, const char *func, uint32_t line, const char *error_code,
-                          const char *format, ...)
+int32_t ReportPredefinedErrMsg(
+    const char* error_code, const std::vector<const char*>& key, const std::vector<const char*>& value)
 {
     return 0;
 }
-
-int32_t ReportPredefinedErrMsg(const char *error_code, const std::vector<const char *> &key,
-                               const std::vector<const char *> &value)
-{
-    return 0;
-}
-}
+} // namespace error_message

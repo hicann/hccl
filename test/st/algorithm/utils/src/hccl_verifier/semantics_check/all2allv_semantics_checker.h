@@ -16,8 +16,8 @@
 
 namespace HcclSim {
 
-HcclResult TaskCheckAll2AllVSemantics(std::map<RankId, RankMemorySemantics> &allRankMemSemantics,
-                                      All2AllDataDesTag &all2AllDataDes);
+HcclResult TaskCheckAll2AllVSemantics(
+    std::map<RankId, RankMemorySemantics>& allRankMemSemantics, All2AllDataDesTag& all2AllDataDes);
 
 }
 

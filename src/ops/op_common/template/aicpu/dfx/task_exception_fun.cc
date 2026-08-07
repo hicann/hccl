@@ -19,7 +19,7 @@
 #include "comm_engine_utils.h"
 
 namespace ops_hccl {
-HcclResult CreateScatter(OpParam *param, ScatterOpInfo *opInfo)
+HcclResult CreateScatter(OpParam* param, ScatterOpInfo* opInfo)
 {
     CHK_PTR_NULL(param);
     CHK_PTR_NULL(opInfo);
@@ -36,9 +36,9 @@ HcclResult CreateScatter(OpParam *param, ScatterOpInfo *opInfo)
     return HCCL_SUCCESS;
 }
 
-void GetScatterOpInfo(const void *opInfo, char *outPut, size_t size)
+void GetScatterOpInfo(const void* opInfo, char* outPut, size_t size)
 {
-    const ScatterOpInfo *info = reinterpret_cast<const ScatterOpInfo *>(opInfo);
+    const ScatterOpInfo* info = reinterpret_cast<const ScatterOpInfo*>(opInfo);
     std::stringstream ss;
     ss << "tag:" << info->algTag << ", ";
     ss << "group:" << info->commName << ", ";
@@ -52,26 +52,29 @@ void GetScatterOpInfo(const void *opInfo, char *outPut, size_t size)
     std::string strTmp = ss.str();
     s32 sRet = strncpy_s(outPut, size, strTmp.c_str(), std::min(size, strTmp.size()));
     if (strTmp.size() >= size || sRet != EOK) {
-        HCCL_ERROR("[%s] strncpy_s failed, src size[%zu], dst size[%zu], sRet[%d]", __func__, strTmp.size(), size,
-            sRet);
+        HCCL_ERROR(
+            "[%s] strncpy_s failed, src size[%zu], dst size[%zu], sRet[%d]", __func__, strTmp.size(), size, sRet);
     }
 }
 
-HcclResult GetHcclDfxOpInfoDataType(const OpParam &param, uint32_t &dataType) {
+HcclResult GetHcclDfxOpInfoDataType(const OpParam& param, uint32_t& dataType)
+{
     dataType = 0;
-    if (param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V
-        || param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+    if (param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V || param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V) {
         dataType = static_cast<u32>(param.vDataDes.dataType);
-    } else if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
-        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
+    } else if (
+        param.opType == HcclCMDType::HCCL_CMD_ALLTOALL || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
         || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
         dataType = static_cast<u32>(param.all2AllVDataDes.sendType);
     } else if (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
-        CHK_PRT_RET(param.batchSendRecvDataDes.itemNum == 0, HCCL_INFO("[%s]tag[%s] itemNum is 0, skip",
-            __func__, param.tag), HCCL_SUCCESS);
-        CHK_PRT_RET(param.batchSendRecvDataDes.sendRecvItemsPtr == nullptr,
+        CHK_PRT_RET(
+            param.batchSendRecvDataDes.itemNum == 0, HCCL_INFO("[%s]tag[%s] itemNum is 0, skip", __func__, param.tag),
+            HCCL_SUCCESS);
+        CHK_PRT_RET(
+            param.batchSendRecvDataDes.sendRecvItemsPtr == nullptr,
             HCCL_ERROR("[%s]fail, tag[%s] sendRecvItemsPtr is nullptr", __func__, param.tag), HCCL_E_PTR);
-        dataType = static_cast<u32>(param.batchSendRecvDataDes.sendRecvItemsPtr->dataType); // dfx功能只能上报一个数据类型
+        dataType
+            = static_cast<u32>(param.batchSendRecvDataDes.sendRecvItemsPtr->dataType); // dfx功能只能上报一个数据类型
     } else {
         dataType = static_cast<u32>(param.DataDes.dataType);
     }
@@ -79,7 +82,7 @@ HcclResult GetHcclDfxOpInfoDataType(const OpParam &param, uint32_t &dataType) {
     return HCCL_SUCCESS;
 }
 
-HcclResult ConvertToHcclDfxOpInfo(OpParam *param, HcclDfxOpInfoCompat *hcclDfxOpInfo)
+HcclResult ConvertToHcclDfxOpInfo(OpParam* param, HcclDfxOpInfoCompat* hcclDfxOpInfo)
 {
     CHK_PTR_NULL(param);
     CHK_PTR_NULL(hcclDfxOpInfo);
@@ -92,19 +95,23 @@ HcclResult ConvertToHcclDfxOpInfo(OpParam *param, HcclDfxOpInfoCompat *hcclDfxOp
     hcclDfxOpInfo->engine = param->engine;
     hcclDfxOpInfo->cpuTsThread = param->opThread;
     s32 sRet = strncpy_s(hcclDfxOpInfo->algTag, ALG_TAG_LENGTH, param->algTag, ALG_TAG_LENGTH);
-    CHK_PRT_RET(sRet != EOK, HCCL_ERROR("%s call strncpy_s failed, param.algTag %s, return %d.", __func__, param->algTag, sRet), HCCL_E_MEMORY);
+    CHK_PRT_RET(
+        sRet != EOK, HCCL_ERROR("%s call strncpy_s failed, param.algTag %s, return %d.", __func__, param->algTag, sRet),
+        HCCL_E_MEMORY);
     hcclDfxOpInfo->cpuWaitAicpuNotifyIdx = param->aicpuRecordCpuIdx;
     hcclDfxOpInfo->inputMemAddr = reinterpret_cast<uint64_t>(param->inputPtr);
     hcclDfxOpInfo->inputMemSize = param->inputSize;
     hcclDfxOpInfo->outputMemAddr = reinterpret_cast<uint64_t>(param->outputPtr);
     hcclDfxOpInfo->outputMemSize = param->outputSize;
-    HCCL_INFO("[%s]HcclDfxOpInfo param: algTag[%s], opMode[%u], opType[%u], reduceOp[%u], dataType[%u], dataCount[%llu],"
+    HCCL_INFO(
+        "[%s]HcclDfxOpInfo param: algTag[%s], opMode[%u], opType[%u], reduceOp[%u], dataType[%u], dataCount[%llu],"
         "root[%u], engine[%s], cpuTsThread[%u], cpuWaitAicpuNotifyIdx[%u], "
         "inputMemAddr[0x%llx], inputMemSize[%llu], outputMemAddr[0x%llx], outputMemSize[%llu]",
         __func__, hcclDfxOpInfo->algTag, hcclDfxOpInfo->opMode, hcclDfxOpInfo->opType, hcclDfxOpInfo->reduceOp,
-        hcclDfxOpInfo->dataType, hcclDfxOpInfo->dataCount, hcclDfxOpInfo->root, GetEnumToString(GetCommEngineStatusStrMap(), hcclDfxOpInfo->engine).c_str(),
-        hcclDfxOpInfo->cpuTsThread, hcclDfxOpInfo->cpuWaitAicpuNotifyIdx, hcclDfxOpInfo->inputMemAddr,
-        hcclDfxOpInfo->inputMemSize, hcclDfxOpInfo->outputMemAddr, hcclDfxOpInfo->outputMemSize);
+        hcclDfxOpInfo->dataType, hcclDfxOpInfo->dataCount, hcclDfxOpInfo->root,
+        GetEnumToString(GetCommEngineStatusStrMap(), hcclDfxOpInfo->engine).c_str(), hcclDfxOpInfo->cpuTsThread,
+        hcclDfxOpInfo->cpuWaitAicpuNotifyIdx, hcclDfxOpInfo->inputMemAddr, hcclDfxOpInfo->inputMemSize,
+        hcclDfxOpInfo->outputMemAddr, hcclDfxOpInfo->outputMemSize);
     return HCCL_SUCCESS;
 }
-}
+} // namespace ops_hccl

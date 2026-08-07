@@ -19,24 +19,26 @@ public:
     explicit TopoMatchMultilevel();
     ~TopoMatchMultilevel() override;
 
-    std::string Describe() const override
-    {
-        return "Topo Match for combined Algorithm: layer 0 Mesh, layer 1 NHR.";
-    }
-    HcclResult MatchTopo(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    std::string Describe() const override { return "Topo Match for combined Algorithm: layer 0 Mesh, layer 1 NHR."; }
+    HcclResult MatchTopo(
+        const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
+        AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 private:
-    HcclResult TopoForLayer0(const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank,
-        AlgHierarchyInfoForAllLevel& algHierarchyInfo, uint32_t gcdInstSize = 0) const;
-    HcclResult TopoForLayer1(const HcclComm comm, uint32_t netLayer, uint32_t& layer0Size, const uint32_t myRank,
+    HcclResult TopoForLayer0(
+        const HcclComm comm, uint32_t& layer0Size, const uint32_t myRank, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        uint32_t gcdInstSize = 0) const;
+    HcclResult TopoForLayer1(
+        const HcclComm comm, uint32_t netLayer, uint32_t& layer0Size, const uint32_t myRank,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
-    HcclResult TopoForLayer2(const HcclComm comm, uint32_t netLayer, uint32_t layer0Size, uint32_t layer1Size,
-        const uint32_t myRank, AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
+    HcclResult TopoForLayer2(
+        const HcclComm comm, uint32_t netLayer, uint32_t layer0Size, uint32_t layer1Size, const uint32_t myRank,
+        AlgHierarchyInfoForAllLevel& algHierarchyInfo) const;
     bool CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const;
     uint32_t GcdTwo(uint32_t a, uint32_t b) const;
     uint32_t GcdOfInstSizeList(const uint32_t* instSizeList, uint32_t listSize) const;
 
-    template<typename T>
+    template <typename T>
     std::string PrintCArray(const T* values, const u32 valueNum) const
     {
         std::ostringstream oss;
@@ -46,6 +48,6 @@ private:
         return oss.str();
     }
 };
-}  // namespace Hccl
+} // namespace ops_hccl
 
-#endif  // !TOPO_MATCH_MESH_NHR
+#endif // !TOPO_MATCH_MESH_NHR

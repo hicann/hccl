@@ -20,7 +20,7 @@ class AicpuTaskCacheUtils {
 public:
     static bool IsNonVariableOpType(HcclCMDType opType);
     static HcclResult GetInputOutputInfoForCache(
-        const OpParam &param, const uint32_t rankSize, uint64_t &inputSize, uint64_t &outputSize);
+        const OpParam& param, const uint32_t rankSize, uint64_t& inputSize, uint64_t& outputSize);
 };
 
 } // namespace ops_hccl

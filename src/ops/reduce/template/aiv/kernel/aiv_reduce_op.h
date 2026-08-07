@@ -16,11 +16,12 @@
 
 using namespace AscendC;
 
-#define AIV_REDUCE_KERNEL_BATCH_DEF(type) \
-extern "C" __global__ __aicore__ void aiv_reduce_##type(KERNEL_ARGS_DEF) { \
-    return AivReduceV2Mesh1D<type>(KERNEL_ARGS_CALL); \
-} \
-EXPORT_AIV_META_INFO(aiv_reduce_##type)
+#define AIV_REDUCE_KERNEL_BATCH_DEF(type)                                    \
+    extern "C" __global__ __aicore__ void aiv_reduce_##type(KERNEL_ARGS_DEF) \
+    {                                                                        \
+        return AivReduceV2Mesh1D<type>(KERNEL_ARGS_CALL);                    \
+    }                                                                        \
+    EXPORT_AIV_META_INFO(aiv_reduce_##type)
 
 // 定义各算子各数据类型Kernel入口
 AIV_ATOMIC_DATA_TYPE_DEF(AIV_REDUCE_KERNEL_BATCH_DEF);

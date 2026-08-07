@@ -16,7 +16,8 @@
 
 namespace HcclSim {
 
-HcclResult TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics> &allRankMemSemantics, u64 dataSize, RankId root);
+HcclResult
+TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics>& allRankMemSemantics, u64 dataSize, RankId root);
 
 }
 

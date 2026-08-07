@@ -15,11 +15,12 @@
 #include "aiv_all_to_all_v_mesh_1D.h"
 using namespace AscendC;
 
-#define AIV_ALL_TO_ALL_V_KERNEL_BATCH_DEF(type) \
-extern "C" __global__ __aicore__ void aiv_alltoallv_##type(EXTERN_KERNEL_ARGS_DEF_V2) { \
-    AivAlltoAllVV2Mesh1D<type>(EXTERN_KERNEL_ARGS_CALL); \
-}                                               \
-EXPORT_AIV_META_INFO(aiv_alltoallv_##type)
+#define AIV_ALL_TO_ALL_V_KERNEL_BATCH_DEF(type)                                           \
+    extern "C" __global__ __aicore__ void aiv_alltoallv_##type(EXTERN_KERNEL_ARGS_DEF_V2) \
+    {                                                                                     \
+        AivAlltoAllVV2Mesh1D<type>(EXTERN_KERNEL_ARGS_CALL);                              \
+    }                                                                                     \
+    EXPORT_AIV_META_INFO(aiv_alltoallv_##type)
 
 // 定义各算子各数据类型Kernel入口
 AIV_COPY_DATA_TYPE_DEF(AIV_ALL_TO_ALL_V_KERNEL_BATCH_DEF);

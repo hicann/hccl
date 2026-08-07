@@ -39,47 +39,49 @@ public:
     explicit InsV2AllReduceOrderPreservedExecutor();
     ~InsV2AllReduceOrderPreservedExecutor() override = default;
 
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
 protected:
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult InitExecutorInfo(const OpParam &param);
-    HcclResult CalcSizePerBlock(const OpParam &param);
-    HcclResult CalcGroupSlices(const OpParam &param);
-    
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitExecutorInfo(const OpParam& param);
+    HcclResult CalcSizePerBlock(const OpParam& param);
+    HcclResult CalcGroupSlices(const OpParam& param);
+
     template <typename InsAlgTemplate>
-    HcclResult GenTempResource(const AlgResourceCtxSerializable &resCtx, const u32 channelLevelIdx,
-        const std::shared_ptr<InsAlgTemplate> &algTemplate, TemplateResource &tempResource);
-    
-    void InitTemplateDataParams(const OpParam &param, const AlgResourceCtxSerializable &resCtx, 
-        TemplateDataParams &tempAlgParams);
-    void PrintTemplateResource(const TemplateResource &templateAlgRes);
-    void PrintTemplateDataParams(const TemplateDataParams &tempAlgParams);
-    
-    HcclResult RunReduceScatter(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        u64 currDataCount, u64 processedDataCount,
-        std::shared_ptr<InsAlgTemplateRS> rsTempAlg, TemplateResource &rsTemplateAlgRes);
-    HcclResult RunAllGather(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        u64 currDataCount, u64 processedDataCount,
-        std::shared_ptr<InsAlgTemplateAG> agTempAlg, TemplateResource &agTemplateAlgRes);
+    HcclResult GenTempResource(
+        const AlgResourceCtxSerializable& resCtx, const u32 channelLevelIdx,
+        const std::shared_ptr<InsAlgTemplate>& algTemplate, TemplateResource& tempResource);
+
+    void InitTemplateDataParams(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParams);
+    void PrintTemplateResource(const TemplateResource& templateAlgRes);
+    void PrintTemplateDataParams(const TemplateDataParams& tempAlgParams);
+
+    HcclResult RunReduceScatter(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
+        std::shared_ptr<InsAlgTemplateRS> rsTempAlg, TemplateResource& rsTemplateAlgRes);
+    HcclResult RunAllGather(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
+        std::shared_ptr<InsAlgTemplateAG> agTempAlg, TemplateResource& agTemplateAlgRes);
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
 
     OrderPreservedAllReduceMemInfo memInfo_;
     bool deterministicStrict_{false};
-    
+
     u64 outCclBuffSize_{0};
     u64 inCclBuffSize_{0};
     u64 outCclBuffOffset_{0};
     u64 inCclBuffOffset_{0};
 };
-}
+} // namespace ops_hccl
 
 #endif

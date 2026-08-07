@@ -27,11 +27,12 @@ public:
     explicit InsV2ScatterOmniPipe2DExecutor();
     ~InsV2ScatterOmniPipe2DExecutor() override = default;
     HcclResult CalcAlgHierarchyInfo(
-        HcclComm comm, TopoInfoWithNetLayerDetails *topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfo) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo, AlgResourceRequest &resourceRequest) override;
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
-    HcclResult GetRes(AlgResourceRequest &resourceRequest) const;
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const;
 
 protected:
     u32 rankSizeLevel0_ = 0;
@@ -51,19 +52,23 @@ protected:
     std::vector<ThreadHandle> templateLocalCopyThreads_;
     std::vector<u32> notifyIdxControlToTemplates_;
     std::vector<u32> notifyIdxTemplatesToControl_;
-    HcclResult InitCommInfo(const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-        const AlgHierarchyInfoForAllLevel &algHierarchyInfo);
+    HcclResult InitCommInfo(
+        const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     // 单步数据切片信息生成templateParam
-    HcclResult GenTempAlgParamsIn2HCCLBuff(TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo,
-        u64 processedDataCount, const AlgResourceCtxSerializable &resCtx, const OpParam &param);
-    HcclResult GenTempAlgParamsHCCLBuff2HCCLBuff(TemplateDataParams &tempAlgParams, StepSliceInfo &stepSliceInfo,
-        u64 processedDataCount, const AlgResourceCtxSerializable &resCtx, const OpParam &param);
+    HcclResult GenTempAlgParamsIn2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param);
+    HcclResult GenTempAlgParamsHCCLBuff2HCCLBuff(
+        TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        const AlgResourceCtxSerializable& resCtx, const OpParam& param);
 
     // 为模板准备资源
-    HcclResult PrepareResForTemplate(const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-        InsAlgTempLevel0 &algTempLevel0, InsAlgTempLevel1 &algTempLevel1);
+    HcclResult PrepareResForTemplate(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTempLevel0& algTempLevel0,
+        InsAlgTempLevel1& algTempLevel1);
     // 主执行函数
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx);
+    HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 };
 
 } // namespace ops_hccl

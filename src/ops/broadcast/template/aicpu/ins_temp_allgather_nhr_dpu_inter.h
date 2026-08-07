@@ -19,43 +19,45 @@ namespace ops_hccl {
 
 class InsTempAllGatherNHRDPUInter : public InsAlgTemplateBase {
 public:
-    InsTempAllGatherNHRDPUInter(const OpParam& param, const u32 rankId,
-                               const std::vector<std::vector<u32>> &subCommRanks);
+    InsTempAllGatherNHRDPUInter(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     InsTempAllGatherNHRDPUInter() {}
- 
+
     ~InsTempAllGatherNHRDPUInter() {}
- 
+
     std::string Describe() const override
     {
         std::string info = "Template of AllGather NHR DPU with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }
- 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType) override;
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult DPUKernelRun(const TemplateDataParams& tempAlgParams,
-                            const std::map<u32, std::vector<ChannelInfo>>& channels,
-                            const u32 myRank,
-                            const std::vector<std::vector<uint32_t>>& subCommRanks) override;
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override {};
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override {};                        
- 
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {};
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
+
 private:
-    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo &stepInfo);
+    HcclResult GetStepInfo(uint32_t step, uint32_t nSteps, AicpuNHRStepInfo& stepInfo);
     u32 GetRankFromMap(const uint32_t rankIdx);
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
-    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<std::vector<uint32_t>>& subCommRanks);
-    HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource); 
+    HcclResult RunNHR(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<std::vector<uint32_t>>& subCommRanks);
+    HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
 
     u64 tempRankSize_{0};
     u64 count_{0};
     u64 dataTypeSize_{0};
     u64 dataType_{0};
 };
-}
- 
+} // namespace ops_hccl
+
 #endif

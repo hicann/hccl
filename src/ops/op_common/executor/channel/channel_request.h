@@ -19,12 +19,12 @@ namespace ops_hccl {
 
 constexpr u32 HCCL_RANK_SIZE_EQ_ONE = 1;
 
-HcclResult CalcRingChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32> &connectRanks);
-HcclResult CalcMeshChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32> &connectRanks);
-HcclResult CalcNHRChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32> &connectRanks);
-HcclResult CalcNBChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32> &connectRanks);
-HcclResult CalcMesh2DChannelConnect(u32 myRank, const std::vector<std::vector<u32>> &tempVTopo, std::set<u32> &connectRanks);
-}
-
+HcclResult CalcRingChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32>& connectRanks);
+HcclResult CalcMeshChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32>& connectRanks);
+HcclResult CalcNHRChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32>& connectRanks);
+HcclResult CalcNBChannelConnect(u32 rank, u32 rankSize, u32 root, std::set<u32>& connectRanks);
+HcclResult
+CalcMesh2DChannelConnect(u32 myRank, const std::vector<std::vector<u32>>& tempVTopo, std::set<u32>& connectRanks);
+} // namespace ops_hccl
 
 #endif

@@ -68,18 +68,19 @@ constexpr uint32_t GM_OUT_PONG_OFFSET = 34 * 1024 * 1024;
 constexpr uint64_t PINGPONG_TOTAL_DATA_LIMIT = (GM_OUT_PONG_OFFSET - GM_OUT_PING_OFFSET) / PING_PONG;
 
 /**
- * ccl buffers        GM_OUT               Tag(大小4)             flag1         flag2             BarrierBase                 Clear              data1              data2
- *   0       |         16K          |         512K          |      1M      |       5M      |       9M          |               10M           |   18M             |    34M
- *           BUFFER_OUT_ADDR_OFFSET | AIV_FLAG_CLEAR_OFFSET |  FLAG1_OFFSET|  FLAG2_OFFSET |  BASE_FLAG_OFFSET |  AIV_FLAG_EMPTY_OFFSET |GM_OUT_PING_OFFSET | GM_OUT_PONG_OFFSET
+ * ccl buffers        GM_OUT               Tag(大小4)             flag1         flag2             BarrierBase Clear
+ * data1              data2 0       |         16K          |         512K          |      1M      |       5M      | 9M
+ * |               10M           |   18M             |    34M BUFFER_OUT_ADDR_OFFSET | AIV_FLAG_CLEAR_OFFSET |
+ * FLAG1_OFFSET|  FLAG2_OFFSET |  BASE_FLAG_OFFSET |  AIV_FLAG_EMPTY_OFFSET |GM_OUT_PING_OFFSET | GM_OUT_PONG_OFFSET
  */
 
 // ---------------------------------------------------------------------------
 // 宏、结构体、枚举
 // ---------------------------------------------------------------------------
-#define EXPORT_AIV_META_INFO(kernel_name) \
-static const struct FunLevelKType kernel_name##_kernel_type_section __attribute__ \
-((used, section (".ascend.meta." #kernel_name))) \
-= {{F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}}
+#define EXPORT_AIV_META_INFO(kernel_name)                               \
+    static const struct FunLevelKType kernel_name##_kernel_type_section \
+        __attribute__((used, section(".ascend.meta." #kernel_name)))    \
+        = {{F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}}
 
 struct ExtraArgs {
     uint64_t sendCounts[MAX_RANK_SIZE_V] = {};
@@ -109,63 +110,50 @@ using AivSuperKernelArgs = struct AivSuperKernelArgsDef {
     uint64_t cclBufferSize;
 };
 
-enum class AivNotifyType {
-    ACK,
-    DataSignal,
-    Done
-};
+enum class AivNotifyType { ACK, DataSignal, Done };
 
 enum class CommPattern {
-    //server间
+    // server间
     interRank,
-    //server内
+    // server内
     intraRank
 };
 
-#define KERNEL_ARGS_DEF \
-GM_ADDR buffIn, \
-uint64_t input, uint64_t output, uint32_t rank, uint32_t sendRecvRemoteRank, uint32_t rankSize, uint64_t xRankSize,  uint64_t yRankSize, uint64_t zRankSize, uint64_t len, \
-uint32_t dataType, uint32_t reduceOp, uint32_t root, uint32_t sliceId, \
-uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride, \
-uint32_t numBlocks, bool isOpBase, \
-GM_ADDR headCountMem, \
-GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter
+#define KERNEL_ARGS_DEF                                                                                             \
+    GM_ADDR buffIn, uint64_t input, uint64_t output, uint32_t rank, uint32_t sendRecvRemoteRank, uint32_t rankSize, \
+        uint64_t xRankSize, uint64_t yRankSize, uint64_t zRankSize, uint64_t len, uint32_t dataType,                \
+        uint32_t reduceOp, uint32_t root, uint32_t sliceId, uint64_t inputSliceStride, uint64_t outputSliceStride,  \
+        uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride, uint32_t numBlocks,            \
+        bool isOpBase, GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize,      \
+        bool isEnableCounter
 
-#define EXTERN_KERNEL_ARGS_DEF_V2 \
-KERNEL_ARGS_DEF, ExtraArgs extraArgs
+#define EXTERN_KERNEL_ARGS_DEF_V2 KERNEL_ARGS_DEF, ExtraArgs extraArgs
 
-#define KERNEL_ARGS_CALL \
-buffIn, \
-input, output, rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, sliceId, \
-inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
-numBlocks, isOpBase, \
-headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter
+#define KERNEL_ARGS_CALL                                                                                       \
+    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, \
+        reduceOp, root, sliceId, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride,            \
+        outputRepeatStride, numBlocks, isOpBase, headCountMem, tailCountMem, addOneMem, counterMemSize,        \
+        isEnableCounter
 
-#define EXTERN_KERNEL_ARGS_CALL \
-KERNEL_ARGS_CALL, extraArgs
+#define EXTERN_KERNEL_ARGS_CALL KERNEL_ARGS_CALL, extraArgs
 
-#define KERNEL_CLASS_INIT \
-buffIn, input, output,\
-rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, \
-inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
-headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter, numBlocks
+#define KERNEL_CLASS_INIT                                                                                      \
+    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, \
+        reduceOp, root, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
+        headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter, numBlocks
 
-#define SUPERKERNEL_LITE_ARGS_DEF \
-uint64_t args_offset
+#define SUPERKERNEL_LITE_ARGS_DEF uint64_t args_offset
 
-#define SUPERKERNEL_LITE_ARGS_EXTRACT \
-    GM_ADDR *param_base = (GM_ADDR *)get_para_base();\
-    GM_ADDR hiddenInput = param_base[args_offset++];\
-    GM_ADDR input = param_base[args_offset++];\
+#define SUPERKERNEL_LITE_ARGS_EXTRACT                \
+    GM_ADDR* param_base = (GM_ADDR*)get_para_base(); \
+    GM_ADDR hiddenInput = param_base[args_offset++]; \
+    GM_ADDR input = param_base[args_offset++];       \
     GM_ADDR output = param_base[args_offset++]
 
-#define SUPERKERNEL_ARGS_DEF \
-GM_ADDR hiddenInput, GM_ADDR input, GM_ADDR output
+#define SUPERKERNEL_ARGS_DEF GM_ADDR hiddenInput, GM_ADDR input, GM_ADDR output
 
-#define SUPERKERNEL_ARGS_CALL \
-hiddenInput, input, output
+#define SUPERKERNEL_ARGS_CALL hiddenInput, input, output
 
-#define SUPERKERNEL_CLASS_INIT \
-hiddenInput, input, output
+#define SUPERKERNEL_CLASS_INIT hiddenInput, input, output
 
 #endif // AIV_DEFINES_H

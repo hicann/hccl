@@ -18,15 +18,15 @@ constexpr int CKE_IDX_0 = 0;
 constexpr int POST_SYNC_ID = 3;
 constexpr uint16_t BIT_NUM_PER_CKE = 16;
 
-static CcuResult ParseKernelArg(AllGatherMesh1DMem2MemContext &ctx, CcuKernelArgAllGatherMesh1DMem2Mem *kernelArg)
+static CcuResult ParseKernelArg(AllGatherMesh1DMem2MemContext& ctx, CcuKernelArgAllGatherMesh1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
@@ -45,7 +45,7 @@ static CcuResult InitResource(AllGatherMesh1DMem2MemContext &ctx)
             channelIdx++;
         }
     }
-    
+
     const uint32_t eventNum = (arg->rankSize + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE;
     ctx.events.resize(AG_UNROLL_NUM * eventNum);
 
@@ -56,9 +56,9 @@ static CcuResult InitResource(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t argId = 0;
 
     CCU_CHK_RET(ccu::LoadArg(ctx.input, argId++));
@@ -70,7 +70,7 @@ static CcuResult LoadArgs(AllGatherMesh1DMem2MemContext &ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.inputRepeatStride, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.outputRepeatStride, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.normalSliceSize, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.lastSliceSize, argId++)); 
+    CCU_CHK_RET(ccu::LoadArg(ctx.lastSliceSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.isInputOutputEqual, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.goSize.addrOffset, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.goSize.loopParam, argId++));
@@ -80,15 +80,15 @@ static CcuResult LoadArgs(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult PreSync(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.output[arg->rankId],
-            OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i], ctx.token[arg->rankId],
-            TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.output[arg->rankId], OUTPUT_XN_ID, CKE_IDX_0, 1 << OUTPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << OUTPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -98,9 +98,9 @@ static CcuResult PreSync(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PostSync(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult PostSync(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
@@ -111,9 +111,9 @@ static CcuResult PostSync(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult InitAllGatherAddr(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult InitAllGatherAddr(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     ctx.src.addr = ctx.input;
     ctx.src.addr += ctx.currentRankSliceInputOffset;
@@ -138,10 +138,11 @@ static CcuResult InitAllGatherAddr(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherWrite(AllGatherMesh1DMem2MemContext &ctx, const ccu::LocalAddr &src,
-    const std::vector<ccu::RemoteAddr> &dst, const ccu::Variable &sliceSize, uint32_t unrollIdx)
+static CcuResult DoAllGatherWrite(
+    AllGatherMesh1DMem2MemContext& ctx, const ccu::LocalAddr& src, const std::vector<ccu::RemoteAddr>& dst,
+    const ccu::Variable& sliceSize, uint32_t unrollIdx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t channelId = 0;
     uint32_t numEventsPerIter = (arg->rankSize + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE;
 
@@ -151,17 +152,17 @@ static CcuResult DoAllGatherWrite(AllGatherMesh1DMem2MemContext &ctx, const ccu:
         if (rankIdx == arg->rankId) {
             CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
         } else {
-            CCU_CHK_RET(ccu::Write(arg->channels[channelId], dst[rankIdx],
-                src, sliceSize, ctx.events[eventIdx], rankMask));
+            CCU_CHK_RET(
+                ccu::Write(arg->channels[channelId], dst[rankIdx], src, sliceSize, ctx.events[eventIdx], rankMask));
             channelId++;
         }
     }
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherWait(AllGatherMesh1DMem2MemContext &ctx, uint32_t unrollIdx)
+static CcuResult DoAllGatherWait(AllGatherMesh1DMem2MemContext& ctx, uint32_t unrollIdx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t numEventsPerIter = (arg->rankSize + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE;
 
     for (uint32_t i = 0; i < numEventsPerIter; i++) {
@@ -181,7 +182,7 @@ static CcuResult DoAllGatherWait(AllGatherMesh1DMem2MemContext &ctx, uint32_t un
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherGroupCopy(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult DoAllGatherGroupCopy(AllGatherMesh1DMem2MemContext& ctx)
 {
     CCU_IF(ctx.isInputOutputEqual == 0)
     {
@@ -204,9 +205,9 @@ static CcuResult DoAllGatherGroupCopy(AllGatherMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatAllGather(AllGatherMesh1DMem2MemContext &ctx)
+static CcuResult DoRepeatAllGather(AllGatherMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     CCU_CHK_RET(InitAllGatherAddr(ctx));
     ctx.waitRepeatNum = ctx.tmpRepeatNum;
@@ -250,7 +251,7 @@ static CcuResult DoRepeatAllGather(AllGatherMesh1DMem2MemContext &ctx)
 
 CcuResult CcuAllGatherMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgAllGatherMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgAllGatherMesh1DMem2Mem*>(arg);
 
     AllGatherMesh1DMem2MemContext ctx;
     ctx.resourceAllocated = false;
@@ -269,9 +270,7 @@ CcuResult CcuAllGatherMesh1DMem2MemKernel(CcuKernelArg arg)
 
     ctx.sliceSize = (kernelArg->rankId == (kernelArg->rankSize - 1)) ? ctx.lastSliceSize : ctx.normalSliceSize;
     // sliceSize == 0时不需要执行AllGather，只需前后同步
-    CCU_IF(ctx.sliceSize != 0) {
-        CCU_CHK_RET(DoRepeatAllGather(ctx));
-    }
+    CCU_IF(ctx.sliceSize != 0) { CCU_CHK_RET(DoRepeatAllGather(ctx)); }
 
     CCU_CHK_RET(PostSync(ctx));
     HCCL_INFO("[CcuKernelAllGatherMesh1DMem2Mem] AllGatherMesh1DMem2Mem end");

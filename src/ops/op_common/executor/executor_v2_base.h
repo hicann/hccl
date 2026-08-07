@@ -32,34 +32,39 @@ public:
 
     virtual std::string Describe() const;
 
-    virtual HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                            AlgHierarchyInfoForAllLevel& algHierarchyInfo) = 0;
+    virtual HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+        = 0;
 
-    virtual HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                               const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-                               AlgResourceRequest& resourceRequest) = 0;
+    virtual HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
+        = 0;
 
     // device
-    virtual HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) = 0;
-    
-    virtual HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx);
-    
-    HcclResult SetTempFastLaunchAddr(TemplateFastLaunchCtx &tempFastLaunchCtx, 
-                            void* inputPtr, void* outputPtr, const HcclMem &hcclBuff) const;
+    virtual HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) = 0;
 
-    virtual HcclResult RestoreChannelMap(const AlgResourceCtxSerializable &resCtx,
-        std::vector<std::map<u32, std::vector<ChannelInfo>>> &rankIdToChannelInfo) const;
+    virtual HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx);
 
-    virtual HcclResult OrchestrateWithThread(
-        const OpParam &param, const AlgResourceCtxSerializable &resCtx, ThreadHandle sendRecvThread);
+    HcclResult SetTempFastLaunchAddr(
+        TemplateFastLaunchCtx& tempFastLaunchCtx, void* inputPtr, void* outputPtr, const HcclMem& hcclBuff) const;
+
+    virtual HcclResult RestoreChannelMap(
+        const AlgResourceCtxSerializable& resCtx,
+        std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo) const;
+
+    virtual HcclResult
+    OrchestrateWithThread(const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread);
 
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunchSaveCtxTwoTemplate(const OpParam &param, const u32 threadNum, const u32 ccuKernelNum,
-                                            const std::vector<ThreadHandle> &threads, const std::vector<u32> &ccuKernelNumList,
-                                            const std::vector<std::vector<CcuKernelSubmitInfo>> &submitInfosList, u32 notifyNumOnMainThread) const;
+    HcclResult FastLaunchSaveCtxTwoTemplate(
+        const OpParam& param, const u32 threadNum, const u32 ccuKernelNum, const std::vector<ThreadHandle>& threads,
+        const std::vector<u32>& ccuKernelNumList, const std::vector<std::vector<CcuKernelSubmitInfo>>& submitInfosList,
+        u32 notifyNumOnMainThread) const;
 #endif
 protected:
-    inline void SetOrderPreservedBaseParams(const OrderPreservedBaseParams& params) {
+    inline void SetOrderPreservedBaseParams(const OrderPreservedBaseParams& params)
+    {
         myRank_ = params.myRank;
         rankSize_ = params.rankSize;
         devType_ = params.devType;
@@ -72,24 +77,24 @@ protected:
     }
 
     // CollAlg base params
-    u32           myRank_   = INVALID_VALUE_RANKID;
-    u32           rankSize_ = 0;
-    HcclDevType       devType_  = HcclDevType::DEV_TYPE_COUNT;
+    u32 myRank_ = INVALID_VALUE_RANKID;
+    u32 rankSize_ = 0;
+    HcclDevType devType_ = HcclDevType::DEV_TYPE_COUNT;
 
     // opInfo
-    HcclReduceOp  reduceOp_;
-    u32           root_ = INVALID_VALUE_RANKID;
+    HcclReduceOp reduceOp_;
+    u32 root_ = INVALID_VALUE_RANKID;
     // dataInfo
-    HcclDataType  dataType_;
-    u64           dataCount_ = 0;
+    HcclDataType dataType_;
+    u64 dataCount_ = 0;
 
-    u64           maxTmpMemSize_ = 0;
+    u64 maxTmpMemSize_ = 0;
 
     // dataSize
-    u64           dataSize_ = 0;
-    u64           dataTypeSize_ = 0;
+    u64 dataSize_ = 0;
+    u64 dataTypeSize_ = 0;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // !HCCLV2_INS_COLL_ALG_BASE

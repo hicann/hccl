@@ -12,13 +12,13 @@
 
 namespace ops_hccl {
 
-InsAlgTemplateRegistry &InsAlgTemplateRegistry::Instance()
+InsAlgTemplateRegistry& InsAlgTemplateRegistry::Instance()
 {
     static InsAlgTemplateRegistry globalTempRegistry;
     return globalTempRegistry;
 }
 
-HcclResult InsAlgTemplateRegistry::Register(const std::string &name, const InsAlgTemplateCreator &algTemplateCreator)
+HcclResult InsAlgTemplateRegistry::Register(const std::string& name, const InsAlgTemplateCreator& algTemplateCreator)
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if ((tempCreators_.find(name) != tempCreators_.end()) && (tempCreators_[name] != nullptr)) {
@@ -29,7 +29,7 @@ HcclResult InsAlgTemplateRegistry::Register(const std::string &name, const InsAl
     return HcclResult::HCCL_SUCCESS;
 }
 
-std::unique_ptr<InsAlgTemplateBase> InsAlgTemplateRegistry::GetAlgTemplate(const std::string &name)
+std::unique_ptr<InsAlgTemplateBase> InsAlgTemplateRegistry::GetAlgTemplate(const std::string& name)
 {
     if (tempCreators_.find(name) == tempCreators_.end()) {
         HCCL_ERROR("[InsAlgTemplateRegistry]template name[%s] not found.", name.c_str());
@@ -44,4 +44,4 @@ std::unique_ptr<InsAlgTemplateBase> InsAlgTemplateRegistry::GetAlgTemplate(const
     return std::unique_ptr<InsAlgTemplateBase>(tempCreators_[name]());
 }
 
-}
+} // namespace ops_hccl

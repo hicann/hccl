@@ -13,22 +13,19 @@
 namespace ops_hccl {
 
 AicpuTempScatterMesh1DZAxisDetour::AicpuTempScatterMesh1DZAxisDetour(
-    const OpParam& param, const u32 rankId,
-    const std::vector<std::vector<u32>> &subCommRanks)
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsTempScatterMesh1D(param, rankId, subCommRanks)
-{
-}
+{}
 
-AicpuTempScatterMesh1DZAxisDetour::~AicpuTempScatterMesh1DZAxisDetour()
-{
-}
+AicpuTempScatterMesh1DZAxisDetour::~AicpuTempScatterMesh1DZAxisDetour() {}
 
 HcclResult AicpuTempScatterMesh1DZAxisDetour::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
-    CHK_PRT_RET(topoInfo == nullptr,
-        HCCL_ERROR("[AicpuTempScatterMesh1DZAxisDetour][CalcRes] topoInfo is nullptr"), HCCL_E_PARA);
+    CHK_PRT_RET(
+        topoInfo == nullptr, HCCL_ERROR("[AicpuTempScatterMesh1DZAxisDetour][CalcRes] topoInfo is nullptr"),
+        HCCL_E_PARA);
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1DLevel0(comm, param, topoInfo, subCommRanks_, level0Channels));
     std::vector<HcclChannelDesc> level1Channels;
@@ -41,38 +38,39 @@ HcclResult AicpuTempScatterMesh1DZAxisDetour::CalcRes(
     level1ChannelNumPerRank_ = level1Channels.empty() ? 0 : CalcChannelsPerRank(level1Channels);
     channelsPerRank_ = level0ChannelNumPerRank_ + level1ChannelNumPerRank_;
     CHK_RET(GetRes(resourceRequest));
-    HCCL_DEBUG("[AicpuTempScatterMesh1DZAxisDetour][CalcRes] myRank[%u], channelsPerRank_[%u], "
-               "level0ChannelNum[%zu], level1ChannelNum[%zu], notifyNumOnMainThread[%u], slaveThreadNum[%u]",
-               myRank_, channelsPerRank_, level0Channels.size(), level1Channels.size(),
-               resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
-    HCCL_INFO("[AicpuTempScatterMesh1DZAxisDetour][CalcRes]myRank[%u], channelsPerRank_[%u], "
-               "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
-               myRank_, channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+    HCCL_DEBUG(
+        "[AicpuTempScatterMesh1DZAxisDetour][CalcRes] myRank[%u], channelsPerRank_[%u], "
+        "level0ChannelNum[%zu], level1ChannelNum[%zu], notifyNumOnMainThread[%u], slaveThreadNum[%u]",
+        myRank_, channelsPerRank_, level0Channels.size(), level1Channels.size(), resourceRequest.notifyNumOnMainThread,
+        resourceRequest.slaveThreadNum);
+    HCCL_INFO(
+        "[AicpuTempScatterMesh1DZAxisDetour][CalcRes]myRank[%u], channelsPerRank_[%u], "
+        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
+        myRank_, channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
     return HCCL_SUCCESS;
 }
 
 u64 AicpuTempScatterMesh1DZAxisDetour::GetThreadNum() const
 {
     u32 threadNum = templateRankSize_ > 1 ? ((templateRankSize_ - 1) * channelsPerRank_) : 1;
-    HCCL_INFO("[AicpuTempScatterMesh1DZAxisDetour][GetThreadNum] templateRankSize_[%u] channelsPerRank_[%u] threadNum[%u]",
-              templateRankSize_, channelsPerRank_, threadNum);
+    HCCL_INFO(
+        "[AicpuTempScatterMesh1DZAxisDetour][GetThreadNum] templateRankSize_[%u] channelsPerRank_[%u] threadNum[%u]",
+        templateRankSize_, channelsPerRank_, threadNum);
     return threadNum;
 }
 
 HcclResult AicpuTempScatterMesh1DZAxisDetour::CalcDataSplitByPortGroup(
-    const u64 totalDataCount, const u64 dataTypeSize,
-    const std::vector<ChannelInfo> &channels,
-    std::vector<u64> &elemCountOut, std::vector<u64> &sizeOut,
-    std::vector<u64> &elemOffset)
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset)
 {
     HCCL_INFO("[AicpuTempScatterMesh1DZAxisDetour][CalcDataSplitByPortGroup] Run Start");
-    return CalcDataSplitByPortGroupZAxisDetour(totalDataCount, dataTypeSize, channels,
-        elemCountOut, sizeOut, elemOffset,
-        level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+    return CalcDataSplitByPortGroupZAxisDetour(
+        totalDataCount, dataTypeSize, channels, elemCountOut, sizeOut, elemOffset, level0ChannelNumPerRank_,
+        level1ChannelNumPerRank_, level0DataRatio_);
 }
 
-HcclResult AicpuTempScatterMesh1DZAxisDetour::SetchannelsPerRank(
-    const std::map<u32, std::vector<ChannelInfo>> &channels)
+HcclResult
+AicpuTempScatterMesh1DZAxisDetour::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
     channelsPerRank_ = CalcChannelsPerRank(channels);
@@ -81,9 +79,10 @@ HcclResult AicpuTempScatterMesh1DZAxisDetour::SetchannelsPerRank(
         level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
         level0DataRatio_ = 0.5f;
     }
-    HCCL_INFO("[AicpuTempScatterMesh1DZAxisDetour][SetchannelsPerRank], channelsPerRank_[%u], "
-              "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
-              channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+    HCCL_INFO(
+        "[AicpuTempScatterMesh1DZAxisDetour][SetchannelsPerRank], channelsPerRank_[%u], "
+        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
+        channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
     return HCCL_SUCCESS;
 }
 

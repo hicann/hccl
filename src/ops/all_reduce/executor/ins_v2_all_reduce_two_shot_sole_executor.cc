@@ -33,8 +33,10 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     algHierarchyInfo_ = algHierarchyInfo;
-    HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor][InitCommInfo] myRank [%u], rankSize [%u], redOp [%u], "
-        "dataType [%u] dataTypeSize [%u]", myRank_, rankSize_, reduceOp_, dataType_, dataTypeSize_);
+    HCCL_INFO(
+        "[InsV2AllReduceTwoShotSoleExecutor][InitCommInfo] myRank [%u], rankSize [%u], redOp [%u], "
+        "dataType [%u] dataTypeSize [%u]",
+        myRank_, rankSize_, reduceOp_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
 
@@ -61,10 +63,10 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
         return HCCL_E_INTERNAL;
     }
 
-    std::shared_ptr<InsAlgTemplate0> reduceScatterTempAlg =
-        std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
-    std::shared_ptr<InsAlgTemplate1> allGatherTempAlg =
-        std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate0> reduceScatterTempAlg
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate1> allGatherTempAlg
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[0]);
 
     AlgResourceRequest resReqReduceScatter;
     AlgResourceRequest resReqAllGather;
@@ -76,24 +78,28 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     for (u32 i = 0; i < resourceRequest.slaveThreadNum; ++i) {
         if (i < resReqReduceScatter.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatter.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatter.notifyNumPerThread[i]);
         }
         if (i < resReqAllGather.notifyNumPerThread.size()) {
-            resourceRequest.notifyNumPerThread[i] = std::max(resourceRequest.notifyNumPerThread[i], resReqAllGather.notifyNumPerThread[i]);
+            resourceRequest.notifyNumPerThread[i]
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqAllGather.notifyNumPerThread[i]);
         }
     }
-    resourceRequest.notifyNumOnMainThread = std::max(resReqReduceScatter.notifyNumOnMainThread, resReqAllGather.notifyNumOnMainThread);
+    resourceRequest.notifyNumOnMainThread
+        = std::max(resReqReduceScatter.notifyNumOnMainThread, resReqAllGather.notifyNumOnMainThread);
     resourceRequest.channels.resize(SOLE_EXECUTOR_LEVEL_NUM);
     resourceRequest.channels[0] = resReqReduceScatter.channels[0];
-    HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "\
-        "channel size [%u]", resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread,
-        resourceRequest.channels[0].size());
+    HCCL_INFO(
+        "[InsV2AllReduceTwoShotSoleExecutor] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "
+        "channel size [%u]",
+        resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, resourceRequest.channels[0].size());
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable& resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor][Orchestrate] Orchestrate Start");
     myRank_ = resCtx.topoInfo.userRank;
@@ -110,17 +116,20 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllReduceTwoShotSoleExecutor][Orchestrate] errNo[0x%016llx] "\
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2AllReduceTwoShotSoleExecutor][Orchestrate] errNo[0x%016llx] "
             "AllReduce executor kernel run failed",
-            HCCL_ERROR_CODE(ret)), ret);
+            HCCL_ERROR_CODE(ret)),
+        ret);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenBaseTempAlgParams(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx,
-    TemplateDataParams &tempAlgParamsReduceScatter, TemplateDataParams &tempAlgParamsAllGather) const
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParamsReduceScatter,
+    TemplateDataParams& tempAlgParamsAllGather) const
 {
     tempAlgParamsReduceScatter.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsReduceScatter.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
@@ -141,7 +150,7 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenTempAlgParamsReduceScatter(
     const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-    TemplateDataParams &tempAlgParamsReduceScatter) const
+    TemplateDataParams& tempAlgParamsReduceScatter) const
 {
     tempAlgParamsReduceScatter.count = currDataCount;
     tempAlgParamsReduceScatter.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
@@ -154,7 +163,8 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     tempAlgParamsReduceScatter.inputSliceStride = tempAlgParamsReduceScatter.sliceSize;
     tempAlgParamsReduceScatter.outputSliceStride = 0;
 
-    HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsReduceScatter.inputSliceStride [%u], "
+    HCCL_INFO(
+        "[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsReduceScatter.inputSliceStride [%u], "
         "tempAlgParamsReduceScatter.outputSliceStride [%u], tempAlgParamsReduceScatter.sliceSize [%u], "
         "tempAlgParamsReduceScatter.tailSize [%u], tempAlgParamsReduceScatter.buffInfo.inBuffBaseOff [%u], "
         "tempAlgParamsReduceScatter.buffInfo.outBuffBaseOff [%u]",
@@ -171,7 +181,7 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenTempAlgParamsAllGather(
     const u64 loop, const u64 currDataCount, const u64 processedDataCount,
-    TemplateDataParams &tempAlgParamsAllGather) const
+    TemplateDataParams& tempAlgParamsAllGather) const
 {
     tempAlgParamsAllGather.count = currDataCount;
     tempAlgParamsAllGather.buffInfo.inBuffBaseOff = 0;
@@ -184,7 +194,8 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     tempAlgParamsAllGather.inputSliceStride = 0;
     tempAlgParamsAllGather.outputSliceStride = tempAlgParamsAllGather.sliceSize;
 
-    HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsAllGather.inputSliceStride [%u], "
+    HCCL_INFO(
+        "[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsAllGather.inputSliceStride [%u], "
         "tempAlgParamsAllGather.outputSliceStride [%u], tempAlgParamsAllGather.sliceSize [%u], "
         "tempAlgParamsAllGather.tailSize [%u], tempAlgParamsAllGather.buffInfo.inBuffBaseOff [%u], "
         "tempAlgParamsAllGather.buffInfo.outBuffBaseOff [%u]",
@@ -201,8 +212,8 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 template <typename InsAlgTemplate>
 HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenTempResource(
-    const AlgResourceCtxSerializable &resCtx, const std::shared_ptr<InsAlgTemplate> &algTemplate,
-    TemplateResource &tempResource) const
+    const AlgResourceCtxSerializable& resCtx, const std::shared_ptr<InsAlgTemplate>& algTemplate,
+    TemplateResource& tempResource) const
 {
     AlgResourceRequest req;
     algTemplate->GetRes(req);
@@ -217,7 +228,7 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[InsV2AllReduceTwoShotSoleExecutor][OrchestrateLoop] Start");
 
@@ -225,12 +236,12 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     TemplateDataParams tempAlgParamsAllGather;
     GenBaseTempAlgParams(param, resCtx, tempAlgParamsReduceScatter, tempAlgParamsAllGather);
 
-    std::shared_ptr<InsAlgTemplate0> algTemplateReduceScatter =
-        std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
+    std::shared_ptr<InsAlgTemplate0> algTemplateReduceScatter
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
     algTemplateReduceScatter->SetchannelsPerRank(remoteRankToChannelInfo_[0]);
 
-    std::shared_ptr<InsAlgTemplate1> algTemplateAllGather =
-        std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[0]);
+    std::shared_ptr<InsAlgTemplate1> algTemplateAllGather
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[0]);
     algTemplateAllGather->SetchannelsPerRank(remoteRankToChannelInfo_[0]);
 
     TemplateResource templateResourceReduceScatter;
@@ -245,8 +256,8 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     outCclBuffOffset_ = 0;
     inCclBuffOffset_ = outCclBuffSize_;
 
-    u64 maxCountPerLoop = inCclBuffOffset_ / HCCL_MIN_SLICE_ALIGN *
-                          HCCL_MIN_SLICE_ALIGN / dataTypeSize_ / rankSize_ * rankSize_;
+    u64 maxCountPerLoop
+        = inCclBuffOffset_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_ / rankSize_ * rankSize_;
 
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
@@ -265,10 +276,7 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLREDUCE,
-                                InsAllReduceMesh1DTwoShotZAxisDetour,
-                                InsV2AllReduceTwoShotSoleExecutor,
-                                TopoMatch1D,
-                                InsTempReduceScatterMesh1DZAxisDetour,
-                                InsTempAllGatherMesh1D1DZAxisDetour);
-}
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DTwoShotZAxisDetour, InsV2AllReduceTwoShotSoleExecutor,
+    TopoMatch1D, InsTempReduceScatterMesh1DZAxisDetour, InsTempAllGatherMesh1D1DZAxisDetour);
+} // namespace ops_hccl

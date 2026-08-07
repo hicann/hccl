@@ -15,8 +15,9 @@ namespace HcclSim {
 
 bool IsAllToAllSeries(HcclCMDType opType)
 {
-    return (opType == HcclCMDType::HCCL_CMD_ALLTOALL || opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
-            opType == HcclCMDType::HCCL_CMD_ALLTOALLVC);
+    return (
+        opType == HcclCMDType::HCCL_CMD_ALLTOALL || opType == HcclCMDType::HCCL_CMD_ALLTOALLV
+        || opType == HcclCMDType::HCCL_CMD_ALLTOALLVC);
 }
 
 bool IsSendRecvType(HcclCMDType opType)
@@ -24,13 +25,13 @@ bool IsSendRecvType(HcclCMDType opType)
     return opType == HcclCMDType::HCCL_CMD_SEND || opType == HcclCMDType::HCCL_CMD_RECEIVE;
 }
 
-void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType, 
-    u64 &inputSize, u64 &outputSize, RankId myRank, RankId srcRank, RankId dstRank,
-    VDataDesTag vDataDes, All2AllDataDesTag all2AllDataDes)
+void CalcInputOutputSize(
+    HcclCMDType opType, uint32_t rankSize, uint64_t count, HcclDataType dataType, u64& inputSize, u64& outputSize,
+    RankId myRank, RankId srcRank, RankId dstRank, VDataDesTag vDataDes, All2AllDataDesTag all2AllDataDes)
 {
     u32 unitSize = 0;
-    if (!IsAllToAllSeries(opType) &&
-        opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V && opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+    if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V
+        && opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
         unitSize = HCCL_SIZE_TABLE[dataType];
     }
 
@@ -113,21 +114,21 @@ void CalcInputOutputSize(HcclCMDType opType, uint32_t rankSize, uint64_t count, 
 // 如果输入、输出的count的大小不一样的话，那么opParam中的count是指较小的那个值
 // 比如对于AllGather算子，count指输入；对于ReduceScatter算子，count指输入
 // 如果输入、输出的count大小一样的话，那么opParam中的count既可以指代输入，也可以指代输出
-void CalcDataSize(HcclCMDType opType, uint64_t count, HcclDataType dataType, u64 &dataSize)
+void CalcDataSize(HcclCMDType opType, uint64_t count, HcclDataType dataType, u64& dataSize)
 {
     // 当前AllToAll系列以及不等长算子不使用dataSize，如果后续使用的话，需要适配这个地方
-    if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V &&
-        opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
+    if (!IsAllToAllSeries(opType) && opType != HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V
+        && opType != HcclCMDType::HCCL_CMD_ALLGATHER_V) {
         u32 unitSize = HCCL_SIZE_TABLE[dataType];
         dataSize = count * unitSize;
     }
 }
 
-std::vector<std::string> SplitString(const std::string &str, const char c)
+std::vector<std::string> SplitString(const std::string& str, const char c)
 {
     std::string::size_type startPos = 0;
     std::string::size_type foundPos = str.find(c);
- 
+
     std::vector<std::string> strVector;
     while (foundPos != std::string::npos) {
         strVector.push_back(str.substr(startPos, foundPos - startPos));
@@ -140,21 +141,21 @@ std::vector<std::string> SplitString(const std::string &str, const char c)
     return strVector;
 }
 
-bool DataSliceSizeIsEqual(std::unique_ptr<DataSlice> &a, std::unique_ptr<DataSlice> &b)
+bool DataSliceSizeIsEqual(std::unique_ptr<DataSlice>& a, std::unique_ptr<DataSlice>& b)
 {
     return a->GetSize() == b->GetSize();
 }
- 
-bool DataSliceSizeIsEqual(std::unique_ptr<DataSlice> &a, std::unique_ptr<DataSlice> &b, std::unique_ptr<DataSlice> &c)
+
+bool DataSliceSizeIsEqual(std::unique_ptr<DataSlice>& a, std::unique_ptr<DataSlice>& b, std::unique_ptr<DataSlice>& c)
 {
     return (a->GetSize() == b->GetSize()) && (b->GetSize() == c->GetSize());
 }
 
-void GenTopoMeta(TopoMeta &topoMate, int superPodNum, int serverNum, int rankNum)
+void GenTopoMeta(TopoMeta& topoMate, int superPodNum, int serverNum, int rankNum)
 {
-    for (u32 i = 0; i < superPodNum; i++) {  // box
+    for (u32 i = 0; i < superPodNum; i++) { // box
         SuperPodMeta superPodMeta;
-        for (u32 j = 0; j < serverNum; j++) {  // serverNumPerBox
+        for (u32 j = 0; j < serverNum; j++) { // serverNumPerBox
             ServerMeta serverMate;
             for (u32 k = 0; k < rankNum; k++) {
                 serverMate.push_back(k);
@@ -165,12 +166,12 @@ void GenTopoMeta(TopoMeta &topoMate, int superPodNum, int serverNum, int rankNum
     }
 }
 
-u32 CalRankSize(const TopoMeta &topoMeta)
+u32 CalRankSize(const TopoMeta& topoMeta)
 {
     u32 rankNum = 0;
     for (const auto& superPod : topoMeta) {
         for (const auto& server : superPod) {
-            for (const auto &phyId : server) {
+            for (const auto& phyId : server) {
                 rankNum++;
             }
         }
@@ -179,4 +180,4 @@ u32 CalRankSize(const TopoMeta &topoMeta)
     return rankNum;
 }
 
-} // namespace hccl
+} // namespace HcclSim

@@ -12,15 +12,15 @@
 #include "alg_data_trans_wrapper.h"
 #include "template_utils.h"
 namespace ops_hccl {
-InsTempGatherMesh1dIntra::InsTempGatherMesh1dIntra(const OpParam &param, const u32 rankId,
-    const std::vector<std::vector<u32>> &subCommRanks)
+InsTempGatherMesh1dIntra::InsTempGatherMesh1dIntra(
+    const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+{}
 InsTempGatherMesh1dIntra::~InsTempGatherMesh1dIntra() {}
 
-HcclResult InsTempGatherMesh1dIntra::CalcRes(HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo,
-    AlgResourceRequest &resourceRequest)
+HcclResult InsTempGatherMesh1dIntra::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     GetRes(resourceRequest);
     std::vector<HcclChannelDesc> level0Channels;
@@ -29,20 +29,17 @@ HcclResult InsTempGatherMesh1dIntra::CalcRes(HcclComm comm, const OpParam &param
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempGatherMesh1dIntra::GetRes(AlgResourceRequest &resourceRequest) const
+HcclResult InsTempGatherMesh1dIntra::GetRes(AlgResourceRequest& resourceRequest) const
 {
     u32 level0RankSize = templateRankSize_;
     u32 threadNum = level0RankSize > 1 ? level0RankSize - 1 : 1;
-    resourceRequest.slaveThreadNum = threadNum - 1;  // 主thread可以通过接口传入的stream来做转换
+    resourceRequest.slaveThreadNum = threadNum - 1; // 主thread可以通过接口传入的stream来做转换
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
     return HCCL_SUCCESS;
 }
 
-u64 InsTempGatherMesh1dIntra::GetThreadNum() const
-{
-    return templateRankSize_ > 1 ? templateRankSize_ - 1: 1;
-}
+u64 InsTempGatherMesh1dIntra::GetThreadNum() const { return templateRankSize_ > 1 ? templateRankSize_ - 1 : 1; }
 
 u64 InsTempGatherMesh1dIntra::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
@@ -52,12 +49,12 @@ u64 InsTempGatherMesh1dIntra::CalcScratchMultiple(BufferType inBuffType, BufferT
     return scratchMultiple;
 }
 
-HcclResult InsTempGatherMesh1dIntra::KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-    TemplateResource &templateResource)
+HcclResult InsTempGatherMesh1dIntra::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempGatherMesh1dIntra] Run start");
     threadNum_ = templateResource.threads.size();
-    HCCL_INFO("[InsTempGatherMesh1dIntra][KernelRun] threadNum:%u",threadNum_);
+    HCCL_INFO("[InsTempGatherMesh1dIntra][KernelRun] threadNum:%u", threadNum_);
     tempAlgParams_ = tempAlgParams;
 
     count_ = tempAlgParams.count;
@@ -86,8 +83,8 @@ HcclResult InsTempGatherMesh1dIntra::KernelRun(const OpParam &param, const Templ
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(const std::vector<ThreadHandle> &threads,
-                                                    const std::map<u32, std::vector<ChannelInfo>> &channels)
+HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(
+    const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     HCCL_INFO("[InsTempGatherMesh1dIntra] RunGatherMesh RankIDs[%d].", myRank_);
 
@@ -108,15 +105,18 @@ HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(const std::vector<ThreadHandl
             u32 connectedRank = subCommRanks_[0][(myAlgRank + 1 + threadIdx) % subCommRanks_[0].size()];
             u32 connectedAlgRank = 0;
             CHK_RET(GetAlgRank(connectedRank, subCommRanks_[0], connectedAlgRank));
-            HCCL_INFO("[InsTempGatherMesh1dIntra] RunGatherMesh RankIDs[%d], connectedRank[%d], connectedAlgRank[%d].",
-                      myRank_, connectedRank, connectedAlgRank);
+            HCCL_INFO(
+                "[InsTempGatherMesh1dIntra] RunGatherMesh RankIDs[%d], connectedRank[%d], connectedAlgRank[%d].",
+                myRank_, connectedRank, connectedAlgRank);
 
             // 异常检查
-            CHK_PRT_RET(threadIdx >= threads.size() || !channels.count(connectedRank),
-                        HCCL_ERROR("[InsTempGatherMesh1dIntra][RankID]=%u threadIdx=%u, threads.size=%u, "
-                                   "connectedRank=%d, channels.size=%u",
-                                   myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
-                        HcclResult::HCCL_E_INTERNAL);
+            CHK_PRT_RET(
+                threadIdx >= threads.size() || !channels.count(connectedRank),
+                HCCL_ERROR(
+                    "[InsTempGatherMesh1dIntra][RankID]=%u threadIdx=%u, threads.size=%u, "
+                    "connectedRank=%d, channels.size=%u",
+                    myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
+                HcclResult::HCCL_E_INTERNAL);
 
             u64 connectedAlgOffset = tempAlgParams_.allRankDispls.at(connectedAlgRank);
             u64 connectedAlgSize = tempAlgParams_.allRankSliceSize.at(connectedAlgRank);
@@ -129,8 +129,8 @@ HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(const std::vector<ThreadHandl
 
             ThreadHandle currQue = threads[threadIdx];
             // gather 预留兼容offload模式
-            const ChannelInfo &linkRemote = channels.at(connectedRank)[0];
-            void *remoteCclBuffAddr = linkRemote.remoteCclMem.addr;
+            const ChannelInfo& linkRemote = channels.at(connectedRank)[0];
+            void* remoteCclBuffAddr = linkRemote.remoteCclMem.addr;
 
             u64 txOutOffset = outBaseOff + myAlgOffset;
             u64 txScratchOffset = scratchBase + myAlgOffset;
@@ -140,47 +140,45 @@ HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(const std::vector<ThreadHandl
             u64 rxScratchOffset = scratchBase + connectedAlgOffset;
             u64 rxDstOffset = rxScratchOffset;
 
-            void *txSrcPtr = tempAlgParams_.buffInfo.outputPtr;
-            void *txDstPtr = remoteCclBuffAddr;
-            void *rxSrcPtr = tempAlgParams_.buffInfo.outputPtr;
-            void *rxDstPtr = remoteCclBuffAddr;
+            void* txSrcPtr = tempAlgParams_.buffInfo.outputPtr;
+            void* txDstPtr = remoteCclBuffAddr;
+            void* rxSrcPtr = tempAlgParams_.buffInfo.outputPtr;
+            void* rxDstPtr = remoteCclBuffAddr;
             // gather write模式使用tx, rx地址不生效，仅使用对端link做Post/Wait
             // gather read 模式使用rx, tx地址不生效，仅使用对端link做Post/Wait
-            std::vector<DataSlice> txSrcSlices{
-                DataSlice(txSrcPtr, txOutOffset, myAlgSize, myAlgCount)};  // 本地(send)
-            std::vector<DataSlice> txDstSlices{
-                DataSlice(txDstPtr, txDstOffset, myAlgSize, myAlgCount)};  // 远程(send)
+            std::vector<DataSlice> txSrcSlices{DataSlice(txSrcPtr, txOutOffset, myAlgSize, myAlgCount)}; // 本地(send)
+            std::vector<DataSlice> txDstSlices{DataSlice(txDstPtr, txDstOffset, myAlgSize, myAlgCount)}; // 远程(send)
             // gather read模式使用rx
             std::vector<DataSlice> rxDstSlices{
-                DataSlice(rxDstPtr, rxDstOffset, connectedAlgSize, connectedAlgCount)};  // 本地(recv)
+                DataSlice(rxDstPtr, rxDstOffset, connectedAlgSize, connectedAlgCount)}; // 本地(recv)
             std::vector<DataSlice> rxSrcSlices{
-                DataSlice(rxSrcPtr, rxOutOffset, connectedAlgSize, connectedAlgCount)};  // 远程(recv)
+                DataSlice(rxSrcPtr, rxOutOffset, connectedAlgSize, connectedAlgCount)}; // 远程(recv)
 
             if (myAlgSize == 0) { // 发送数据片为0时，只接收数据
                 SlicesList recvSliceList(rxSrcSlices, rxDstSlices);
                 DataInfo recvInfo(linkRemote, recvSliceList);
-                CHK_PRT_RET(RecvWrite(recvInfo, threads[threadIdx]),
-                    HCCL_ERROR("[InsTempGatherMesh1dIntra] [RunGatherMesh] Recv failed."),
-                    HcclResult::HCCL_E_INTERNAL);
+                CHK_PRT_RET(
+                    RecvWrite(recvInfo, threads[threadIdx]),
+                    HCCL_ERROR("[InsTempGatherMesh1dIntra] [RunGatherMesh] Recv failed."), HcclResult::HCCL_E_INTERNAL);
             } else if (connectedAlgSize == 0) { // 接收数据片为0时，只发送数据
                 SlicesList sendSliceList(txSrcSlices, txDstSlices);
                 DataInfo sendInfo(linkRemote, sendSliceList);
-                CHK_PRT_RET(SendWrite(sendInfo, threads[threadIdx]),
-                    HCCL_ERROR("[InsTempGatherMesh1dIntra][RunGatherMesh] Send failed."),
-                    HcclResult::HCCL_E_INTERNAL);
+                CHK_PRT_RET(
+                    SendWrite(sendInfo, threads[threadIdx]),
+                    HCCL_ERROR("[InsTempGatherMesh1dIntra][RunGatherMesh] Send failed."), HcclResult::HCCL_E_INTERNAL);
             } else {
                 SendRecvInfo sendRecvInfo{
                     {linkRemote, linkRemote}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
-                CHK_PRT_RET(SendRecvWrite(sendRecvInfo, threads[threadIdx]),
-                    HCCL_ERROR("[InsTempGatherMesh1dIntra][RunGatherMesh] Send failed"),
-                    HcclResult::HCCL_E_INTERNAL);
+                CHK_PRT_RET(
+                    SendRecvWrite(sendRecvInfo, threads[threadIdx]),
+                    HCCL_ERROR("[InsTempGatherMesh1dIntra][RunGatherMesh] Send failed"), HcclResult::HCCL_E_INTERNAL);
             }
         }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempGatherMesh1dIntra::LocalDataCopy(const std::vector<ThreadHandle> &threads)
+HcclResult InsTempGatherMesh1dIntra::LocalDataCopy(const std::vector<ThreadHandle>& threads)
 {
     HCCL_INFO("[InsTempGatherMesh1D] LocalDataCopy.");
     if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.outputPtr) {
@@ -208,19 +206,21 @@ HcclResult InsTempGatherMesh1dIntra::LocalDataCopy(const std::vector<ThreadHandl
         DataSlice srcSlice(tempAlgParams_.buffInfo.inputPtr, inOff, sliceSize, sliceCount);
         DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOff, sliceSize, sliceCount);
 
-        HCCL_DEBUG("[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] srcSlice: inBaseOff[%d] inOff[%d] "
-                   "sliceSize[%d] count[%d].",
-                   myRank_, myAlgRank, inBaseOff, inOff, sliceSize, sliceCount);
-        HCCL_DEBUG("[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] dstSlice: outBaseoff[%d] "
-                   "outOff[%d] sliceSize[%d] count[%d].",
-                   myRank_, myAlgRank, outBaseOff, outOff, sliceSize, sliceCount);
+        HCCL_DEBUG(
+            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] srcSlice: inBaseOff[%d] inOff[%d] "
+            "sliceSize[%d] count[%d].",
+            myRank_, myAlgRank, inBaseOff, inOff, sliceSize, sliceCount);
+        HCCL_DEBUG(
+            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] dstSlice: outBaseoff[%d] "
+            "outOff[%d] sliceSize[%d] count[%d].",
+            myRank_, myAlgRank, outBaseOff, outOff, sliceSize, sliceCount);
 
         LocalCopy(threads[0], srcSlice, dstSlice);
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempGatherMesh1dIntra::PostLocalCopy(const std::vector<ThreadHandle> &threads)
+HcclResult InsTempGatherMesh1dIntra::PostLocalCopy(const std::vector<ThreadHandle>& threads)
 {
     HCCL_INFO("[InsTempGatherMesh1dIntra] PostLocalCopy.");
 
@@ -250,27 +250,30 @@ HcclResult InsTempGatherMesh1dIntra::PostLocalCopy(const std::vector<ThreadHandl
             u64 outOffset = sliceOffset + outBaseOff;
             DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
             DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
-            HCCL_DEBUG("[InsTempGatherMesh1D][PostLocalCopy] LocalDataCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
-                       "scratchBase[%d] outBaseOff[%d] scratchOffset[%d] outOffset[%d].",
-                       myRank_, rank, algRank, scratchBase, outBaseOff, scratchOffset, outOffset);
+            HCCL_DEBUG(
+                "[InsTempGatherMesh1D][PostLocalCopy] LocalDataCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
+                "scratchBase[%d] outBaseOff[%d] scratchOffset[%d] outOffset[%d].",
+                myRank_, rank, algRank, scratchBase, outBaseOff, scratchOffset, outOffset);
             LocalCopy(threads[0], srcSlice, dstSlice);
         }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-void InsTempGatherMesh1dIntra::GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub)
+void InsTempGatherMesh1dIntra::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub)
 {
     notifyIdxMianToSub.clear();
     u32 threadNum = threadNum_;
     u32 slaveThreadNum = threadNum - 1;
-    HCCL_INFO("[InsTempGatherMesh1dIntra][GetNotifyIdxMainToSub]threadNum: %u, slaveThreadNum: %u",threadNum,slaveThreadNum);
+    HCCL_INFO(
+        "[InsTempGatherMesh1dIntra][GetNotifyIdxMainToSub]threadNum: %u, slaveThreadNum: %u", threadNum,
+        slaveThreadNum);
     for (u32 slaveThreadIdx = 0; slaveThreadIdx < slaveThreadNum; slaveThreadIdx++) {
         notifyIdxMianToSub.push_back(0);
     }
 }
 
-void InsTempGatherMesh1dIntra::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain)
+void InsTempGatherMesh1dIntra::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
 {
     notifyIdxSubToMain.clear();
     u32 threadNum = threadNum_;
@@ -280,4 +283,4 @@ void InsTempGatherMesh1dIntra::GetNotifyIdxSubToMain(std::vector<u32> &notifyIdx
     }
 }
 
-}  // namespace ops_hccl
+} // namespace ops_hccl

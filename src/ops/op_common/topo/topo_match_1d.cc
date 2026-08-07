@@ -12,36 +12,36 @@
 #include "dlsym_common.h"
 
 namespace ops_hccl {
-TopoMatch1D::TopoMatch1D()
-{
-}
+TopoMatch1D::TopoMatch1D() {}
 
-TopoMatch1D::~TopoMatch1D()
-{
-}
+TopoMatch1D::~TopoMatch1D() {}
 
-HcclResult TopoMatch1D::MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfoExector)
+HcclResult TopoMatch1D::MatchTopo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector)
 {
 #ifndef AICPU_COMPILE
     u32 myRank = topoInfo->userRank;
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > COMM_LAYER_SIZE_3,
-        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.",
-            topoInfo->topoLevelNums),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > COMM_LAYER_SIZE_3,
+        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums), HCCL_E_INTERNAL);
 
-    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
+    CHK_PRT_RET(
+        !shouldGoOutPlace(topoInfo->deviceType),
         HCCL_ERROR("[CollAlgFactory] [TopoMatchMesh] Rank [%d], deviceType not supported yet.", myRank),
         HcclResult::HCCL_E_PARA);
-    CHK_PRT_RET((topoInfo->userRankSize == 0),
-                HCCL_ERROR("[CollAlgFactory] [TopoMatchMesh1D] Rank [%d], rankSize is 0.", myRank),
-                HcclResult::HCCL_E_PARA);
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
+        HCCL_ERROR("[CollAlgFactory] [TopoMatchMesh1D] Rank [%d], rankSize is 0.", myRank), HcclResult::HCCL_E_PARA);
 
-    for (const auto &netLayerIdx : topoInfo->netLayerDetails.netLayers) {
+    for (const auto& netLayerIdx : topoInfo->netLayerDetails.netLayers) {
         CommTopo topoType;
         HcclRankGraphGetTopoTypeByLayer(comm, netLayerIdx, &topoType);
-        CHK_PRT_RET((topoType != COMM_TOPO_CUSTOM && topoType != CommTopo::COMM_TOPO_CLOS),
-                HCCL_ERROR("[CollAlgFactory] [TopoMatchMesh1D] netLayer [%d], topoType not COMM_TOPO_CUSTOM or COMM_TOPO_CLOS.", netLayerIdx),
-                HcclResult::HCCL_E_PARA);
+        CHK_PRT_RET(
+            (topoType != COMM_TOPO_CUSTOM && topoType != CommTopo::COMM_TOPO_CLOS),
+            HCCL_ERROR(
+                "[CollAlgFactory] [TopoMatchMesh1D] netLayer [%d], topoType not COMM_TOPO_CUSTOM or COMM_TOPO_CLOS.",
+                netLayerIdx),
+            HcclResult::HCCL_E_PARA);
     }
 
     std::vector<u32> rankIds;
@@ -54,4 +54,4 @@ HcclResult TopoMatch1D::MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* to
 #endif
     return HcclResult::HCCL_SUCCESS;
 }
-} // namespace Hccl
+} // namespace ops_hccl

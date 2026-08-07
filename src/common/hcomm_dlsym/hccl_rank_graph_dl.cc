@@ -13,17 +13,25 @@
 #include <cstdio>
 #include <cstdlib>
 
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetTopoInstsByLayer, HcclComm comm, uint32_t netLayer, uint32_t** topoInsts, uint32_t* topoInstNum);
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetTopoType, HcclComm comm, uint32_t netLayer, uint32_t topoInstId, CommTopo* topoType);
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetRanksByTopoInst, HcclComm comm, uint32_t netLayer, uint32_t topoInstId,
-                                                      uint32_t** ranks, uint32_t* rankNum);
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetEndpointNum, HcclComm comm, uint32_t layer, uint32_t topoInstId, uint32_t* num);
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetEndpointDesc, HcclComm comm, uint32_t layer, uint32_t topoInstId,
-                                                   uint32_t* descNum, EndpointDesc* endpointDesc);
-DEFINE_WEAK_FUNC(HcclResult, HcclRankGraphGetEndpointInfo, HcclComm comm, uint32_t rankId, const EndpointDesc* endpointDesc,
-                                                   EndpointAttr endpointAttr, uint32_t infoLen, void* info);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetTopoInstsByLayer, HcclComm comm, uint32_t netLayer, uint32_t** topoInsts,
+    uint32_t* topoInstNum);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetTopoType, HcclComm comm, uint32_t netLayer, uint32_t topoInstId, CommTopo* topoType);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetRanksByTopoInst, HcclComm comm, uint32_t netLayer, uint32_t topoInstId,
+    uint32_t** ranks, uint32_t* rankNum);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetEndpointNum, HcclComm comm, uint32_t layer, uint32_t topoInstId, uint32_t* num);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetEndpointDesc, HcclComm comm, uint32_t layer, uint32_t topoInstId, uint32_t* descNum,
+    EndpointDesc* endpointDesc);
+DEFINE_WEAK_FUNC(
+    HcclResult, HcclRankGraphGetEndpointInfo, HcclComm comm, uint32_t rankId, const EndpointDesc* endpointDesc,
+    EndpointAttr endpointAttr, uint32_t infoLen, void* info);
 
-void HcclRankGraphDlInit(void* libHcommHandle) {
+void HcclRankGraphDlInit(void* libHcommHandle)
+{
     INIT_SUPPORT_FLAG(libHcommHandle, HcclRankGraphGetTopoInstsByLayer);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclRankGraphGetTopoType);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclRankGraphGetRanksByTopoInst);

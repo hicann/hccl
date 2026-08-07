@@ -21,24 +21,23 @@ extern "C" {
  * @brief CCU return value definition
  */
 typedef enum {
-    CCU_SUCCESS = 0,               /**< success */
-    CCU_E_PARA = 1,                /**< parameter error */
-    CCU_E_PTR = 2,                 /**< empty pointer */
-    CCU_E_INTERNAL = 4,            /**< internal error */
-    CCU_E_NOT_SUPPORT = 5,         /**< not support feature */
-    CCU_E_NOT_FOUND = 6,           /**< not found specific resource */
-    CCU_E_UNAVAIL = 7,             /**< resource unavailable */
+    CCU_SUCCESS = 0,       /**< success */
+    CCU_E_PARA = 1,        /**< parameter error */
+    CCU_E_PTR = 2,         /**< empty pointer */
+    CCU_E_INTERNAL = 4,    /**< internal error */
+    CCU_E_NOT_SUPPORT = 5, /**< not support feature */
+    CCU_E_NOT_FOUND = 6,   /**< not found specific resource */
+    CCU_E_UNAVAIL = 7,     /**< resource unavailable */
 
     CCU_E_DRV_START = 4096,
 
     CCU_E_DRV_INIT_FAILED = 4097,
-    CCU_E_DRV_BUSY  = 4098,
+    CCU_E_DRV_BUSY = 4098,
 
     CCU_E_DRV_END = 4224,
 
     CCU_E_RESERVED = 9216
 } CcuResult;
-
 
 /**
  * @brief CCU condition type for conditional jump
@@ -70,7 +69,6 @@ typedef struct {
     uint32_t xnOffset;
 } CcuLoopGroupConfig;
 
-
 typedef uint64_t CcuInsHandle;
 
 typedef uint64_t CcuKernelHandle;
@@ -87,7 +85,7 @@ typedef uint64_t CcuLocalAddrHandle;
 
 typedef uint64_t CcuRemoteAddrHandle;
 
-typedef void *CcuKernelArg;
+typedef void* CcuKernelArg;
 
 typedef CcuResult (*CcuKernelFunc)(CcuKernelArg arg);
 

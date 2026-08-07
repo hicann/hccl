@@ -28,8 +28,8 @@ namespace ops_hccl {
 class InsTempReduceScatterOrderPreservedGroup : public InsAlgTemplateBase {
 public:
     InsTempReduceScatterOrderPreservedGroup() = default;
-    explicit InsTempReduceScatterOrderPreservedGroup(const OpParam& param, const u32 rankId,
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempReduceScatterOrderPreservedGroup(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterOrderPreservedGroup() override;
 
     std::string Describe() const override
@@ -39,32 +39,34 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam& param, const TemplateDataParams& tempAlgParams,
-        TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
-    void SetMemBlockInfo(const MemBlockInfo &info) { memBlockInfo_ = info; }
+    void SetMemBlockInfo(const MemBlockInfo& info) { memBlockInfo_ = info; }
 
 protected:
     u32 CalcOutputIndex(const u32 round, const u32 localRank);
     bool IsLastBlockData(const u32 outputIndex);
     bool IsLastRank(const u32 rankId);
 
-    HcclResult PreLocalCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
-    HcclResult SendSingleRankSlice(u32 dstRank, u32 myAlgRank, const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const TemplateDataParams &tempAlgParams, const ThreadHandle &thread);
-    HcclResult RunAllToAll(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads, const TemplateDataParams &tempAlgParams);
-    HcclResult RunLocalReduce(const std::vector<ThreadHandle> &threads,
-        const TemplateDataParams &tempAlgParams);
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads);
+    HcclResult PreLocalCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
+    HcclResult SendSingleRankSlice(
+        u32 dstRank, u32 myAlgRank, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const TemplateDataParams& tempAlgParams, const ThreadHandle& thread);
+    HcclResult RunAllToAll(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        const TemplateDataParams& tempAlgParams);
+    HcclResult RunLocalReduce(const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams);
+    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 
     u64 processSize_{0};
     u64 count_{0};

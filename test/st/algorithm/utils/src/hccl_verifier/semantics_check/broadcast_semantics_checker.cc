@@ -15,8 +15,8 @@
 
 namespace HcclSim {
 
-HcclResult TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics> &allRankMemSemantics, u64 dataSize,
-                                       RankId root)
+HcclResult
+TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics>& allRankMemSemantics, u64 dataSize, RankId root)
 {
     u32 rankSize = allRankMemSemantics.size();
 
@@ -28,32 +28,42 @@ HcclResult TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics> &al
         }
 
         u64 totalSize = 0;
-        for (auto &ele : allRankMemSemantics[rankId][BufferType::INPUT]) {
+        for (auto& ele : allRankMemSemantics[rankId][BufferType::INPUT]) {
             if (ele.startAddr != totalSize) {
-                HCCL_ERROR("[rankId:%u]Missing buffer semantic: expected startAddr is %llu, while cur buffer semantic startAddr is %llu, cur buffer semantic is %s",
+                HCCL_ERROR(
+                    "[rankId:%u]Missing buffer semantic: expected startAddr is %llu, while cur buffer semantic "
+                    "startAddr is %llu, cur buffer semantic is %s",
                     rankId, totalSize, ele.startAddr, ele.Describe().c_str());
                 return HcclResult::HCCL_E_PARA;
             }
 
             if (ele.srcBufs.size() != 1) {
-                HCCL_ERROR("[rankId:%u]Cur buffer semantic should not be reduce, which mean srcBufs size should be 1, while cur buffer semantic is %s", rankId, ele.Describe().c_str());
+                HCCL_ERROR(
+                    "[rankId:%u]Cur buffer semantic should not be reduce, which mean srcBufs size should be 1, while "
+                    "cur buffer semantic is %s",
+                    rankId, ele.Describe().c_str());
                 return HcclResult::HCCL_E_PARA;
             }
 
             if (ele.srcBufs.begin()->rankId != root) {
-                HCCL_ERROR("[rankId:%u]Buffer semantic srcBuf rank[%u] is not from root[%u], cur buffer semantic is %s, cur rank is %u",
+                HCCL_ERROR(
+                    "[rankId:%u]Buffer semantic srcBuf rank[%u] is not from root[%u], cur buffer semantic is %s, cur "
+                    "rank is %u",
                     rankId, ele.srcBufs.begin()->rankId, root, ele.Describe().c_str(), rankId);
                 return HcclResult::HCCL_E_PARA;
             }
 
             if (ele.srcBufs.begin()->bufType != BufferType::INPUT) {
-                HCCL_ERROR("[rankId:%u]Cur buffer semantic srcBufs bufType is not INPUT, cur buffer semantic is %s",
-                    rankId, ele.Describe().c_str());
+                HCCL_ERROR(
+                    "[rankId:%u]Cur buffer semantic srcBufs bufType is not INPUT, cur buffer semantic is %s", rankId,
+                    ele.Describe().c_str());
                 return HcclResult::HCCL_E_PARA;
             }
 
             if (ele.srcBufs.begin()->srcAddr != totalSize) {
-                HCCL_ERROR("[rankId:%u]Cur buffer semantic srcBufs srcAddr should be %llu, while it is %llu, cur buffer semantic is %s",
+                HCCL_ERROR(
+                    "[rankId:%u]Cur buffer semantic srcBufs srcAddr should be %llu, while it is %llu, cur buffer "
+                    "semantic is %s",
                     rankId, totalSize, ele.srcBufs.begin()->srcAddr, ele.Describe().c_str());
                 return HcclResult::HCCL_E_PARA;
             }
@@ -61,7 +71,10 @@ HcclResult TaskCheckBroadcastSemantics(std::map<RankId, RankMemorySemantics> &al
             totalSize += ele.size;
         }
         if (totalSize != dataSize) {
-            HCCL_ERROR("[rankId:%u]Missing buffer semantics in tail: already checked total size is %llu, which should be %llu, cur rank is %u", rankId, totalSize, dataSize, rankId);
+            HCCL_ERROR(
+                "[rankId:%u]Missing buffer semantics in tail: already checked total size is %llu, which should be "
+                "%llu, cur rank is %u",
+                rankId, totalSize, dataSize, rankId);
             return HcclResult::HCCL_E_PARA;
         }
     }

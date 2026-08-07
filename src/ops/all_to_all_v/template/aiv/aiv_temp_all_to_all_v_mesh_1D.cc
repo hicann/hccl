@@ -13,18 +13,17 @@
 
 namespace ops_hccl {
 
-AivTempAlltoAllVMesh1D::AivTempAlltoAllVMesh1D(const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
-                                                       const std::vector<std::vector<u32>> &subCommRanks)
-                                                       : AivAlgTemplateBase(param, rankId, subCommRanks)
-{
-}
+AivTempAlltoAllVMesh1D::AivTempAlltoAllVMesh1D(
+    const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>>& subCommRanks)
+    : AivAlgTemplateBase(param, rankId, subCommRanks)
+{}
 
-AivTempAlltoAllVMesh1D::~AivTempAlltoAllVMesh1D()
-{
-}
+AivTempAlltoAllVMesh1D::~AivTempAlltoAllVMesh1D() {}
 
-HcclResult AivTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                               AlgResourceRequest& resourceRequest)
+HcclResult AivTempAlltoAllVMesh1D::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
@@ -34,11 +33,11 @@ HcclResult AivTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level0Channels;
-    if(topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
-        for(auto channel : myChannelDescs) {
-            if(channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
                 level0Channels.push_back(channel);
             }
         }
@@ -53,7 +52,7 @@ HcclResult AivTempAlltoAllVMesh1D::CalcRes(HcclComm comm, const OpParam& param, 
 
 HcclResult AivTempAlltoAllVMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    (void) dataSize;
+    (void)dataSize;
     HCCL_INFO("[AivTempAlltoAllVMesh1D] Limit core num[%u]", numBlocksLimit);
     if (numBlocksLimit == 0) {
         HCCL_ERROR("[AivTempAlltoAllVMesh1D] numBlocksLimit is 0");
@@ -69,12 +68,12 @@ HcclResult AivTempAlltoAllVMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult AivTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
-    const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
+HcclResult AivTempAlltoAllVMesh1D::KernelRun(
+    const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     HCCL_INFO("[AivTempAlltoAllVMesh1D] KernelRun start");
 
-    IncSliceId();  // 自动增长sliceId，传入sliceId
+    IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.all2AllVDataDes.sendType;
     AivOpArgs aivAlltoAllVArgs;
     aivAlltoAllVArgs.cmdType = HcclCMDType::HCCL_CMD_ALLTOALLV;
@@ -90,39 +89,37 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
     aivAlltoAllVArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivAlltoAllVArgs.stream = param.stream;
     aivAlltoAllVArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(subCommRanks_.empty() || subCommRanks_[0].empty(),
-        HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
         HcclResult::HCCL_E_INTERNAL);
     aivAlltoAllVArgs.xRankSize = subCommRanks_[0].size();
     aivAlltoAllVArgs.yRankSize = 0;
     aivAlltoAllVArgs.zRankSize = 0;
 
     size_t count = tempRankSize_;
-    std::copy(tempAlgParams.sendCounts.data(),
-              tempAlgParams.sendCounts.data() + count,
-              aivAlltoAllVArgs.extraArgs.sendCounts);
-    std::copy(tempAlgParams.sdispls.data(),
-              tempAlgParams.sdispls.data() + count,
-              aivAlltoAllVArgs.extraArgs.sendDispls);
-    std::copy(tempAlgParams.recvCounts.data(),
-              tempAlgParams.recvCounts.data() + count,
-              aivAlltoAllVArgs.extraArgs.recvCounts);
-    std::copy(tempAlgParams.rdispls.data(),
-              tempAlgParams.rdispls.data() + count,
-              aivAlltoAllVArgs.extraArgs.recvDispls);
+    std::copy(
+        tempAlgParams.sendCounts.data(), tempAlgParams.sendCounts.data() + count,
+        aivAlltoAllVArgs.extraArgs.sendCounts);
+    std::copy(
+        tempAlgParams.sdispls.data(), tempAlgParams.sdispls.data() + count, aivAlltoAllVArgs.extraArgs.sendDispls);
+    std::copy(
+        tempAlgParams.recvCounts.data(), tempAlgParams.recvCounts.data() + count,
+        aivAlltoAllVArgs.extraArgs.recvCounts);
+    std::copy(
+        tempAlgParams.rdispls.data(), tempAlgParams.rdispls.data() + count, aivAlltoAllVArgs.extraArgs.recvDispls);
 
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++){
+    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
         aivAlltoAllVArgs.topo_[i] = subCommRanks_[0][i];
     }
-    if (subCommRanks_.size() > 1){
+    if (subCommRanks_.size() > 1) {
         aivAlltoAllVArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
             aivAlltoAllVArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
         }
     }
-    if (subCommRanks_.size() == MAX_DIM_NUM){
+    if (subCommRanks_.size() == MAX_DIM_NUM) {
         aivAlltoAllVArgs.zRankSize = subCommRanks_[MAX_DIM_NUM - 1].size();
-        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++){
+        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++) {
             aivAlltoAllVArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[MAX_DIM_NUM - 1][i];
         }
     }
@@ -142,4 +139,4 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-}  // namespace Hccl
+} // namespace ops_hccl

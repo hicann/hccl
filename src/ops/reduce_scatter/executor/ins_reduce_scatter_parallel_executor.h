@@ -19,45 +19,55 @@
 
 namespace ops_hccl {
 
-
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 class InsReduceScatterParallelExecutor : public InsCollAlgBase {
 public:
     explicit InsReduceScatterParallelExecutor();
     ~InsReduceScatterParallelExecutor() override;
 
-    std::string Describe() const override
-    {
-        return "Instruction based Reduce Scatter Parallel Executor.";
-    }
+    std::string Describe() const override { return "Instruction based Reduce Scatter Parallel Executor."; }
 
     // HOST 接口
-    HcclResult Orchestrate(const OpParam &param, const AlgResourceCtxSerializable &resCtx) override;
+    HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param,
-                       const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-                       AlgResourceRequest& resourceRequest) override;
-    
-    HcclResult CalcAlgHierarchyInfo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-                                    AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
+
+    HcclResult CalcAlgHierarchyInfo(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 #ifndef AICPU_COMPILE
-    HcclResult FastLaunch(const OpParam &param, const CcuFastLaunchCtx *resCtx) override;
-    HcclResult FastLaunchSaveCtx(const OpParam &param, const TemplateResource &templateAlgResIntra,
-                                 const TemplateResource &templateAlgResInter, u32 notifyNumOnMainThread);
+    HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx) override;
+    HcclResult FastLaunchSaveCtx(
+        const OpParam& param, const TemplateResource& templateAlgResIntra, const TemplateResource& templateAlgResInter,
+        u32 notifyNumOnMainThread);
 #endif
 
 private:
-    HcclResult OrchestrateLoop(const OpParam &param, const AlgResourceCtxSerializable &resCtx, InsAlgTemplate0 &tempAlgIntra,
-        InsAlgTemplate1 &tempAlgInter);
-    void GenTemplateAlgParamsIntra0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis0, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsIntra0) const;
-    void GenTemplateAlgParamsIntra1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis1, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsIntra1) const;
-    void GenTemplateAlgParamsInter0(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis0, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter0) const;
-    void GenTemplateAlgParamsInter1(const OpParam &param, const AlgResourceCtxSerializable &resCtx, const u64 dataOffset, const u64 dataCountPerLoopAxis1, std::vector<u64> &scratchOffVec, TemplateDataParams &tempAlgParamsInter1) const;
-    void GetParallelDataSplit(std::vector<float> &splitDataSize) const;
-    HcclResult PrepareResForTemplate(const InsAlgTemplate0 &tempAlgIntra, const InsAlgTemplate1 &tempAlgInter);
-    uint64_t GetRankSize(const std::vector<std::vector<u32>> &subCommRanks) const;
+    HcclResult OrchestrateLoop(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra,
+        InsAlgTemplate1& tempAlgInter);
+    void GenTemplateAlgParamsIntra0(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis0, std::vector<u64>& scratchOffVec,
+        TemplateDataParams& tempAlgParamsIntra0) const;
+    void GenTemplateAlgParamsIntra1(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis1, std::vector<u64>& scratchOffVec,
+        TemplateDataParams& tempAlgParamsIntra1) const;
+    void GenTemplateAlgParamsInter0(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis0, std::vector<u64>& scratchOffVec,
+        TemplateDataParams& tempAlgParamsInter0) const;
+    void GenTemplateAlgParamsInter1(
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
+        const u64 dataCountPerLoopAxis1, std::vector<u64>& scratchOffVec,
+        TemplateDataParams& tempAlgParamsInter1) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize) const;
+    HcclResult PrepareResForTemplate(const InsAlgTemplate0& tempAlgIntra, const InsAlgTemplate1& tempAlgInter);
+    uint64_t GetRankSize(const std::vector<std::vector<u32>>& subCommRanks) const;
     CommEngine engine_{CommEngine::COMM_ENGINE_AICPU};
 
     uint64_t rankSizeLevel0_{0};
@@ -71,10 +81,10 @@ private:
     u32 ccuKernelLaunchNumIntra1_{0};
     u32 ccuKernelLaunchNumInter1_{0};
 
-    ThreadHandle              controlThread_{0};
+    ThreadHandle controlThread_{0};
     std::vector<ThreadHandle> templateMainThreads_;
-    std::vector<u32>          notifyIdxControlToTemplates_;
-    std::vector<u32>          notifyIdxTemplatesToControl_;
+    std::vector<u32> notifyIdxControlToTemplates_;
+    std::vector<u32> notifyIdxTemplatesToControl_;
     std::vector<ThreadHandle> intraThreads_;
     std::vector<ThreadHandle> interThreads_;
     std::map<u32, std::vector<ChannelInfo>> intraChannelMap_;
@@ -82,10 +92,10 @@ private:
     std::vector<ThreadHandle> threads_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     double multipleDimensionSplitRatio_{0.5};
-    MultipleDimensionSplitRatioSource multipleDimensionSplitRatioSource_ =
-        MultipleDimensionSplitRatioSource::BUILTIN_FORMULA;
+    MultipleDimensionSplitRatioSource multipleDimensionSplitRatioSource_
+        = MultipleDimensionSplitRatioSource::BUILTIN_FORMULA;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
 #endif // HCCLV2_INS_REDUCE_SCATTER_PARALLEL_EXECUTOR_H

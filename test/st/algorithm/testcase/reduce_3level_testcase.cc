@@ -21,30 +21,42 @@
 using namespace HcclSim;
 using namespace ops_hccl;
 
-constexpr uint32_t DATATYPE_SIZE_TABLE_REDUCE_3LEVEL[HCCL_DATA_TYPE_RESERVED] = {sizeof(int8_t), sizeof(int16_t), sizeof(int32_t),
-    2, sizeof(float), sizeof(int64_t), sizeof(uint64_t), sizeof(uint8_t), sizeof(uint16_t), sizeof(uint32_t),
-    8, 2, 16, 2, 1, 1, 1, 1};
+constexpr uint32_t DATATYPE_SIZE_TABLE_REDUCE_3LEVEL[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
 
 class ST_REDUCE_3LEVEL_TEST : public ::testing::Test {
 protected:
-    void SetUp() override
-    {
-        ResetAlgEnvConfigInitState();
-    }
+    void SetUp() override { ResetAlgEnvConfigInitState(); }
     void TearDown() override
     {
         unsetenv("HCCL_OP_EXPANSION_MODE");
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
         unsetenv("HCCL_INDEPENDENT_OP");
     }
-    static void SetUpTestCase()
-    {}
-    static void TearDownTestCase()
-    {}
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
 };
 
-void RunReduce3LevelA5(const TopoMeta &topoMeta, const u64 &recvCount, const HcclDataType &dataType,
-    const HcclReduceOp &reduceOp, const uint32_t root)
+void RunReduce3LevelA5(
+    const TopoMeta& topoMeta, const u64& recvCount, const HcclDataType& dataType, const HcclReduceOp& reduceOp,
+    const uint32_t root)
 {
     SimWorld::Global()->Init(topoMeta, HcclDevType::DEV_TYPE_950);
 
@@ -64,8 +76,8 @@ void RunReduce3LevelA5(const TopoMeta &topoMeta, const u64 &recvCount, const Hcc
             HcclComm comm = nullptr;
             CHK_RET(HcclCommInitClusterInfo("./ranktable.json", rankId, &comm));
 
-            void *sendBuf = nullptr;
-            void *recvBuf = nullptr;
+            void* sendBuf = nullptr;
+            void* recvBuf = nullptr;
             u64 sendBufSize = recvCount * dataTypeSize * rankSize;
             u64 recvBufSize = recvCount * dataTypeSize;
             aclrtMalloc(&sendBuf, sendBufSize, static_cast<aclrtMemMallocPolicy>(BUFFER_INPUT_MARK));

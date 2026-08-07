@@ -38,14 +38,14 @@ typedef uint64_t HcommCcuResDescHandle;
  * @brief CCU资源类型枚举
  */
 typedef enum {
-    HCOMM_CCU_RES_TYPE_INVALID = -1,      ///< 无效资源类型
-    HCOMM_CCU_RES_TYPE_LOOP = 0,          ///< Loop资源
-    HCOMM_CCU_RES_TYPE_CCU_BUF = 1,       ///< CCU Buffer资源
-    HCOMM_CCU_RES_TYPE_VARIABLE = 2,      ///< Variable资源
-    HCOMM_CCU_RES_TYPE_ADDRESS = 3,       ///< Address资源
-    HCOMM_CCU_RES_TYPE_EVENT = 4,         ///< Event资源
-    HCOMM_CCU_RES_TYPE_CCU_THREAD = 5,    ///< CCU Thread资源
-    HCOMM_CCU_RES_TYPE_INSTRUCTION = 6    ///< Instruction资源
+    HCOMM_CCU_RES_TYPE_INVALID = -1,   ///< 无效资源类型
+    HCOMM_CCU_RES_TYPE_LOOP = 0,       ///< Loop资源
+    HCOMM_CCU_RES_TYPE_CCU_BUF = 1,    ///< CCU Buffer资源
+    HCOMM_CCU_RES_TYPE_VARIABLE = 2,   ///< Variable资源
+    HCOMM_CCU_RES_TYPE_ADDRESS = 3,    ///< Address资源
+    HCOMM_CCU_RES_TYPE_EVENT = 4,      ///< Event资源
+    HCOMM_CCU_RES_TYPE_CCU_THREAD = 5, ///< CCU Thread资源
+    HCOMM_CCU_RES_TYPE_INSTRUCTION = 6 ///< Instruction资源
 } HcommCcuResType;
 
 #ifdef __cplusplus

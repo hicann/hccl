@@ -22,8 +22,8 @@ const uint32_t ALLTOALLV_DIRECT_FULLMESH_CONCURRENT_SIZE = 16; // fullmesh最大
 class InsTempAlltoAllVMesh1D : public InsAlgTemplateBase {
 public:
     InsTempAlltoAllVMesh1D() = default;
-    explicit InsTempAlltoAllVMesh1D(const OpParam& param, const u32 rankId,
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempAlltoAllVMesh1D(
+        const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempAlltoAllVMesh1D() override;
 
@@ -35,45 +35,50 @@ public:
     }
 
     // 现在的RunAsync就是之前的GenExtIns
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& tempAlgParams,
-                         TemplateResource& templateResource) override;
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                        AlgResourceRequest& resourceRequest) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMianToSub) override;
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override;
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
-    HcclResult RunALLtoALL(const std::map<u32, std::vector<ChannelInfo>> &channels,
-        const std::vector<ThreadHandle> &threads, const TemplateDataParams &tempAlgParams, const u32 myAlgRank);
-    HcclResult PreCopy(const TemplateDataParams &tempAlgParams, const ThreadHandle &thread,
-        const u32 myRankCclBuffIdx, const u32 remoteRank, const u64 &sendSize,
-        const u64 &sendCount, const u64 &sendOffset) const;
-    HcclResult PreCopyByLoop(const std::vector<u32> &commRanks,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
-        const TemplateDataParams &tempAlgParams);
-    HcclResult PostCopy(const TemplateDataParams &tempAlgParams, const ThreadHandle &thread,
-        const u32 myRankCclBuffIdx, const u32 remoteRank, const u64 &recvSize,
-        const u64 &recvCount, const u64 &recvOffset) const;
-    HcclResult LocalCopyForMyRank(const TemplateDataParams &tempAlgParams,
-        const ThreadHandle &thread, const u32 myAlgRank, const u32 queIdx) const;
-    void CalcCommRankSetForOneLoop(const u32 roundIdx, const u32 remainRankSize, std::vector<u32> &commRanks) const;
+    HcclResult RunALLtoALL(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
+        const TemplateDataParams& tempAlgParams, const u32 myAlgRank);
+    HcclResult PreCopy(
+        const TemplateDataParams& tempAlgParams, const ThreadHandle& thread, const u32 myRankCclBuffIdx,
+        const u32 remoteRank, const u64& sendSize, const u64& sendCount, const u64& sendOffset) const;
+    HcclResult PreCopyByLoop(
+        const std::vector<u32>& commRanks, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams);
+    HcclResult PostCopy(
+        const TemplateDataParams& tempAlgParams, const ThreadHandle& thread, const u32 myRankCclBuffIdx,
+        const u32 remoteRank, const u64& recvSize, const u64& recvCount, const u64& recvOffset) const;
+    HcclResult LocalCopyForMyRank(
+        const TemplateDataParams& tempAlgParams, const ThreadHandle& thread, const u32 myAlgRank,
+        const u32 queIdx) const;
+    void CalcCommRankSetForOneLoop(const u32 roundIdx, const u32 remainRankSize, std::vector<u32>& commRanks) const;
     u32 CalcCommLoops() const;
-    void CalcCclBuffIdx(u32 remoteRank, u32 &myRankCclBuffIdx, u32 &remoteCclBuffIdx) const;
-    HcclResult RunSendRecvByLoop(const std::vector<u32> &commRanks, const TemplateDataParams &tempAlgParams,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const std::vector<ThreadHandle> &threads,
+    void CalcCclBuffIdx(u32 remoteRank, u32& myRankCclBuffIdx, u32& remoteCclBuffIdx) const;
+    HcclResult RunSendRecvByLoop(
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
         const u32 roundIdx, const u32 commLoops);
-    HcclResult RunSendRecvByChannel(const TemplateDataParams &tempAlgParams, const u32 roundIdx,
-        const u32 curValidChannelsSize, const std::vector<ChannelInfo> &curChannels, const u32 remoteRank,
-        const std::vector<ThreadHandle> &threads, const u32 commLoops) const;
-    HcclResult RunSendRecv(const SendRecvInfo &sendRecvInfo, const DataInfo &sendInfo, const DataInfo &recvInfo,
+    HcclResult RunSendRecvByChannel(
+        const TemplateDataParams& tempAlgParams, const u32 roundIdx, const u32 curValidChannelsSize,
+        const std::vector<ChannelInfo>& curChannels, const u32 remoteRank, const std::vector<ThreadHandle>& threads,
+        const u32 commLoops) const;
+    HcclResult RunSendRecv(
+        const SendRecvInfo& sendRecvInfo, const DataInfo& sendInfo, const DataInfo& recvInfo,
         const ThreadHandle& thread, const u32 channelId) const;
-    HcclResult PreSyncInterThreadsPerRank(const ThreadHandle &mainThreadCurRank,
-        const std::vector<ThreadHandle> &subThreadsCurRank) const;
-    HcclResult PostSyncInterThreadsPerRank(const ThreadHandle &mainThreadCurRank,
-        const std::vector<ThreadHandle> &subThreadsCurRank) const;
+    HcclResult PreSyncInterThreadsPerRank(
+        const ThreadHandle& mainThreadCurRank, const std::vector<ThreadHandle>& subThreadsCurRank) const;
+    HcclResult PostSyncInterThreadsPerRank(
+        const ThreadHandle& mainThreadCurRank, const std::vector<ThreadHandle>& subThreadsCurRank) const;
 
     u64 dataTypeSize_{0};
     bool isDmaRead_{false};
@@ -86,6 +91,6 @@ private:
     std::vector<u64> recvOffsetSplit_;
 };
 
-} // namespace Hccl
+} // namespace ops_hccl
 
-#endif //INS_TEMP_ALL_TO_ALL_V_MESH_1D_H
+#endif // INS_TEMP_ALL_TO_ALL_V_MESH_1D_H

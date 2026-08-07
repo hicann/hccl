@@ -32,9 +32,7 @@ using NHRStepInfo = struct NHRStepInfo {
     std::vector<u32> txSliceIdxs;
     std::vector<u32> rxSliceIdxs;
 
-    NHRStepInfo() : nSlices(0)
-    {
-    }
+    NHRStepInfo() : nSlices(0) {}
 };
 #endif
 
@@ -51,7 +49,7 @@ struct CcuKernelArgScatterNHRMem2Mem1D : CcuKernelArgBase {
 };
 
 struct ScatterNHR1DContext {
-    const CcuKernelArgScatterNHRMem2Mem1D *arg;
+    const CcuKernelArgScatterNHRMem2Mem1D* arg;
 
     uint64_t rankSize{0};
     uint32_t rankId{0};
@@ -100,5 +98,5 @@ struct ScatterNHR1DContext {
 
 CcuResult CcuScatterNHR1DMem2MemKernel(CcuKernelArg arg);
 
-}  // namespace ops_hccl
-#endif  // HCCL_CCU_KERNEL_SCATTER_NHR_1D_MEM2MEM_H
+} // namespace ops_hccl
+#endif // HCCL_CCU_KERNEL_SCATTER_NHR_1D_MEM2MEM_H

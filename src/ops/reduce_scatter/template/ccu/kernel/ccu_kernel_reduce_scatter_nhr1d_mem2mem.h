@@ -20,20 +20,20 @@
 
 namespace ops_hccl {
 
-struct CcuKernelArgReduceScatterNHR1D: CcuKernelArgBase {
-    uint64_t                                dimSize;
-    uint32_t                                rankId;
-    uint32_t                                mySubCommRankId;
-    uint32_t                                axisId;
-    uint32_t                                axisSize;
-    std::vector<NHRStepInfo>                stepInfoVector;
-    std::map<u32, u32>                      rank2ChannelIdx;
-    OpParam                                 opParam;
-    std::vector<std::vector<uint32_t>>      subCommRanks;
+struct CcuKernelArgReduceScatterNHR1D : CcuKernelArgBase {
+    uint64_t dimSize;
+    uint32_t rankId;
+    uint32_t mySubCommRankId;
+    uint32_t axisId;
+    uint32_t axisSize;
+    std::vector<NHRStepInfo> stepInfoVector;
+    std::map<u32, u32> rank2ChannelIdx;
+    OpParam opParam;
+    std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ReduceScatterNHR1DMem2MemContext: CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterNHR1D *arg;
+struct ReduceScatterNHR1DMem2MemContext : CcuKernelCtxBase {
+    const CcuKernelArgReduceScatterNHR1D* arg;
 
     uint64_t dimSize;
     uint32_t mySubCommRankId;
@@ -72,5 +72,5 @@ struct ReduceScatterNHR1DMem2MemContext: CcuKernelCtxBase {
 
 CcuResult CcuReduceScatterNHR1DMem2MemKernel(CcuKernelArg arg);
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 #endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_1D_MEM2MEM

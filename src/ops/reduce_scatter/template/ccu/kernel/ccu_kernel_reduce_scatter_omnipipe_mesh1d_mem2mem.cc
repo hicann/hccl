@@ -11,38 +11,40 @@
 #include "ccu_kernel_reduce_scatter_omnipipe_mesh1d_mem2mem.h"
 #include "ccu_kernel_utils.h"
 
-
 namespace ops_hccl {
 
-constexpr int CKE_IDX_0   = 0;
+constexpr int CKE_IDX_0 = 0;
 constexpr int INPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int POST_SYNC_ID = 3;
 
-static CcuResult ParseKernelArg(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx, CcuKernelArgReduceScatterOmniPipeMesh1DMem2Mem *kernelArg)
+static CcuResult ParseKernelArg(
+    ReduceScatterOmniPipeMesh1DMem2MemContext& ctx, CcuKernelArgReduceScatterOmniPipeMesh1DMem2Mem* kernelArg)
 {
     ctx.arg = kernelArg;
     ctx.rankId = kernelArg->rankId;
     ctx.rankSize = kernelArg->rankSize;
     ctx.userRank = kernelArg->subCommRanks[0][ctx.rankId];
 
-    ctx.dataType        = kernelArg->opParam.DataDes.dataType;
-    ctx.outputDataType  = kernelArg->opParam.DataDes.outputType;
+    ctx.dataType = kernelArg->opParam.DataDes.dataType;
+    ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
+        HCCL_DEBUG(
+            "[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
-    HCCL_INFO("[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] userRank[%u] rankId[%u], rankSize[%u], "
-                "dataType[%d], outputDataType[%d], reduceOp[%d]", ctx.userRank, ctx.rankId, ctx.rankSize,
-                ctx.dataType, ctx.outputDataType, ctx.reduceOp);
+    HCCL_INFO(
+        "[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] userRank[%u] rankId[%u], rankSize[%u], "
+        "dataType[%d], outputDataType[%d], reduceOp[%d]",
+        ctx.userRank, ctx.rankId, ctx.rankSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp);
     return CCU_SUCCESS;
 }
 
-static CcuResult InitResource(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult InitResource(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
 
     if (arg->channelCount == 0) {
         HCCL_ERROR("[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] channels is empty!");
@@ -58,8 +60,9 @@ static CcuResult InitResource(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
             // 本地资源，默认构造
             continue;
         } else {
-            HCCL_DEBUG("[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] rankId[%u], peerId[%u], channelId[%u]",
-                       arg->rankId, peerId, channelIdx);
+            HCCL_DEBUG(
+                "[CcuKernelReduceScatterOmniPipeMesh1DMem2Mem] rankId[%u], peerId[%u], channelId[%u]", arg->rankId,
+                peerId, channelIdx);
             ctx.input[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], INPUT_XN_ID);
             ctx.token[peerId] = ccu::GetResByChannel<ccu::Variable>(arg->channels[channelIdx], TOKEN_XN_ID);
             channelIdx++;
@@ -75,9 +78,9 @@ static CcuResult InitResource(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     uint32_t cnt = 0;
     CCU_CHK_RET(ccu::LoadArg(ctx.input[arg->rankId], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.output, cnt++));
@@ -96,14 +99,14 @@ static CcuResult LoadArgs(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CCU_SUCCESS;
 }
 
-static CcuResult PreSync(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult PreSync(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i],
-                    ctx.input[arg->rankId],INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
-        CCU_CHK_RET(ccu::WriteVariableWithNotify(arg->channels[i],
-                    ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.input[arg->rankId], INPUT_XN_ID, CKE_IDX_0, 1 << INPUT_XN_ID));
+        CCU_CHK_RET(ccu::WriteVariableWithNotify(
+            arg->channels[i], ctx.token[arg->rankId], TOKEN_XN_ID, CKE_IDX_0, 1 << TOKEN_XN_ID));
     }
 
     uint32_t allBit = (1 << INPUT_XN_ID) | (1 << TOKEN_XN_ID);
@@ -113,9 +116,9 @@ static CcuResult PreSync(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult PostSync(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult PostSync(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID));
     }
@@ -126,59 +129,61 @@ static CcuResult PostSync(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
     return CcuResult::CCU_SUCCESS;
 }
 
-static CcuResult CreateReduceLoop(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx, uint32_t size)
+static CcuResult CreateReduceLoop(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx, uint32_t size)
 {
     AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_M2M_LOCAL_COPY_LOOP_COUNT);
- 
+
     if (ctx.IsLoopEntityRegistered("reduceScatterOmniLocalReduce")) {
         return CCU_SUCCESS;
     }
     ctx.CreateLoopEntity("reduceScatterOmniLocalReduce");
-    auto &loops = ctx.loopMap["reduceScatterOmniLocalReduce"];
-    
+    auto& loops = ctx.loopMap["reduceScatterOmniLocalReduce"];
+
     uint32_t expansionNum = GetReduceExpansionNum(ctx.reduceOp, ctx.dataType, ctx.outputDataType);
-    uint32_t usedBufNum   = size > expansionNum ? size : expansionNum;
- 
+    uint32_t usedBufNum = size > expansionNum ? size : expansionNum;
+
     for (int32_t index = 0; index < 2; index++) { // 需要实例化2个Loop
         ctx.loopScratch[index].resize(size);
         uint32_t bufBase = index * ctx.moConfig.msInterleave;
         ccu::Event loopEvt = ctx.moRes.completedEvent[index];
 
-        loops.body[index].reset(new ccu::Func(
-            [&ctx, index, bufBase, loopEvt, size, expansionNum, usedBufNum]() {
-                // Step 1: 将数据copy到ccuBuf
-                for (uint32_t i = 0; i < size; ++i) {
-                    ccu::LocalCopy(ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt, 1 << i);
-                }
-                ccu::EventWait(loopEvt, (1 << size) - 1);
+        loops.body[index].reset(new ccu::Func([&ctx, index, bufBase, loopEvt, size, expansionNum, usedBufNum]() {
+            // Step 1: 将数据copy到ccuBuf
+            for (uint32_t i = 0; i < size; ++i) {
+                ccu::LocalCopy(
+                    ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt, 1 << i);
+            }
+            ccu::EventWait(loopEvt, (1 << size) - 1);
 
-                // Step 2: LocalReduce
-                if (size > 1) {
-                    ccu::LocalReduce(&ctx.moRes.ccuBuf[bufBase], size, ctx.dataType, ctx.outputDataType, ctx.reduceOp, ctx.loopLen[index], loopEvt, 1);
-                    ccu::EventWait(loopEvt, 1);
-                }
-
-                // Step3: Copy结果到dst
-                ccu::LocalCopy(ctx.loopDst[index], ctx.moRes.ccuBuf[bufBase], ctx.loopLenExp[index], loopEvt, 1);
+            // Step 2: LocalReduce
+            if (size > 1) {
+                ccu::LocalReduce(
+                    &ctx.moRes.ccuBuf[bufBase], size, ctx.dataType, ctx.outputDataType, ctx.reduceOp,
+                    ctx.loopLen[index], loopEvt, 1);
                 ccu::EventWait(loopEvt, 1);
             }
-        ));
-        
+
+            // Step3: Copy结果到dst
+            ccu::LocalCopy(ctx.loopDst[index], ctx.moRes.ccuBuf[bufBase], ctx.loopLenExp[index], loopEvt, 1);
+            ccu::EventWait(loopEvt, 1);
+        }));
+
         loops.loops[index].reset(new ccu::Loop(loops.loopParam[index], *loops.body[index]));
     }
- 
+
     return CCU_SUCCESS;
 }
 
-static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx, ccu::LocalAddr outDstOrg, std::vector<ccu::LocalAddr> &scratchOrg)
+static CcuResult ReduceLoopGroup(
+    ReduceScatterOmniPipeMesh1DMem2MemContext& ctx, ccu::LocalAddr outDstOrg, std::vector<ccu::LocalAddr>& scratchOrg)
 {
-    const auto *arg = ctx.arg;
+    const auto* arg = ctx.arg;
     const uint32_t size = scratchOrg.size();
- 
+
     ccu::LocalAddr dst;
     dst.addr = outDstOrg.addr;
     dst.token = outDstOrg.token;
- 
+
     std::vector<ccu::LocalAddr> scratch;
     for (uint32_t idx = 0; idx < size; idx++) {
         ccu::LocalAddr scratchAddr;
@@ -186,28 +191,28 @@ static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx,
         scratchAddr.token = scratchOrg[idx].token;
         scratch.push_back(scratchAddr);
     }
- 
+
     CCU_CHK_RET(CreateReduceLoop(ctx, size));
-    auto &loops = ctx.loopMap["reduceScatterOmniLocalReduce"];
- 
+    auto& loops = ctx.loopMap["reduceScatterOmniLocalReduce"];
+
     uint32_t expansionNum = GetReduceExpansionNum(ctx.reduceOp, ctx.dataType, ctx.outputDataType);
     ccu::Variable sliceSizeExpansion;
- 
+
     if (expansionNum != 1) {
         ccu::Variable tmp;
         tmp = GetExpansionParam(expansionNum);
         dst.token = dst.token + tmp;
     }
- 
+
     // m部分
-    CCU_IF(ctx.goSize.loopParam != 0)                   // goSize1
+    CCU_IF(ctx.goSize.loopParam != 0) // goSize1
     {
         ccu::Variable loopParam;
         loopParam = GetLoopParam(0, ctx.moConfig.memSlice * ctx.moConfig.loopCount, 0);
         loopParam = loopParam + ctx.goSize.loopParam;
- 
+
         ccu::Variable sliceSize;
-        sliceSize          = ctx.moConfig.memSlice;
+        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
         // 绑定loop0的参数（m部分）
@@ -219,31 +224,31 @@ static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx,
         ctx.loopDst[0].token = dst.token;
         ctx.loopLen[0] = sliceSize;
         ctx.loopLenExp[0] = sliceSizeExpansion;
- 
+
         ccu::Variable paraCfg;
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1);
         ccu::Variable offsetCfg;
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
- 
+
         loops.loopParam[0] = loopParam;
-        std::vector<ccu::Loop> grpLoops{ *loops.loops[0] };
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0]};
         ccu::LoopGroup group(paraCfg, offsetCfg, 1, grpLoops);
     }
- 
-    CCU_IF(ctx.goSize.parallelParam != 0)               // goSize2
+
+    CCU_IF(ctx.goSize.parallelParam != 0) // goSize2
     {
         // p部分，加m的偏移
         for (uint32_t i = 0; i < size; i++) {
             scratch[i].addr += ctx.goSize.addrOffset;
         }
- 
+
         for (uint32_t i = 0; i < expansionNum; i++) {
             dst.addr += ctx.goSize.addrOffset;
         }
- 
+
         sliceSizeExpansion = 0;
         for (uint32_t i = 0; i < expansionNum; i++) {
-            sliceSizeExpansion = sliceSizeExpansion + ctx.goSize.residual;  // goSize3
+            sliceSizeExpansion = sliceSizeExpansion + ctx.goSize.residual; // goSize3
         }
 
         // 绑定loop0的参数（p部分）
@@ -255,18 +260,18 @@ static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx,
         ctx.loopDst[0].token = dst.token;
         ctx.loopLen[0] = ctx.goSize.residual;
         ctx.loopLenExp[0] = sliceSizeExpansion;
- 
+
         // n部分，再加p的偏移
         for (uint32_t i = 0; i < size; i++) {
             scratch[i].addr += ctx.goSize.residual;
         }
- 
+
         for (uint32_t i = 0; i < expansionNum; i++) {
             dst.addr += ctx.goSize.residual;
         }
- 
+
         ccu::Variable sliceSize;
-        sliceSize          = ctx.moConfig.memSlice;
+        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
         // 绑定loop1的参数（n部分）
@@ -278,27 +283,27 @@ static CcuResult ReduceLoopGroup(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx,
         ctx.loopDst[1].token = dst.token;
         ctx.loopLen[1] = sliceSize;
         ctx.loopLenExp[1] = sliceSizeExpansion;
- 
+
         ccu::Variable loopCfg0;
         loopCfg0 = GetLoopParam(0, 0, 1);
         ccu::Variable loopCfg1;
         loopCfg1 = GetLoopParam(0, 0, 1);
         ccu::Variable offsetCfg;
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
- 
+
         loops.loopParam[0] = loopCfg0;
         loops.loopParam[1] = loopCfg1;
-        std::vector<ccu::Loop> grpLoops{ *loops.loops[0], *loops.loops[1] };
+        std::vector<ccu::Loop> grpLoops{*loops.loops[0], *loops.loops[1]};
         ccu::LoopGroup group(ctx.goSize.parallelParam, offsetCfg, NUM_TWO, grpLoops);
     }
 
     return CCU_SUCCESS;
 }
 
-static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext &ctx)
+static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext& ctx)
 {
-    const auto *arg = ctx.arg;
-        
+    const auto* arg = ctx.arg;
+
     ccu::LocalAddr dst;
     std::vector<ccu::RemoteAddr> src;
 
@@ -313,7 +318,9 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext
     // 准备源地址
     uint32_t idx = 0;
     for (auto i = 0; i < ctx.rankSize; ++i) {
-        if (i == arg->rankId) { continue; }
+        if (i == arg->rankId) {
+            continue;
+        }
         src[idx].addr = ctx.input[i];
         src[idx].addr += ctx.inputSliceStride;
         src[idx].addr += ctx.inputOmniPipeSliceStride;
@@ -341,7 +348,10 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext
             ccu::EventRecord(ctx.event, rankMask);
             continue;
         }
-        CCU_IF(ctx.sliceSize != 0) { ccu::Read(arg->channels[channelId], scratchMem[i], src[channelId], ctx.sliceSize, ctx.event, rankMask); }
+        CCU_IF(ctx.sliceSize != 0)
+        {
+            ccu::Read(arg->channels[channelId], scratchMem[i], src[channelId], ctx.sliceSize, ctx.event, rankMask);
+        }
         CCU_IF(ctx.sliceSize == 0) { ccu::EventRecord(ctx.event, rankMask); }
         channelId++;
     }
@@ -353,7 +363,8 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext
     scratchMem[ctx.rankId].addr = dst.addr;
     scratchMem[ctx.rankId].token = dst.token;
     CCU_IF(ctx.sliceSize != 0) { ReduceLoopGroup(ctx, dst, scratchMem); }
-    HCCL_DEBUG("[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter success", ctx.userRank, ctx.rankId);
+    HCCL_DEBUG(
+        "[DoRepeatReduceScatter] userRank[%u] rankId[%u] do repeat ReduceScatter success", ctx.userRank, ctx.rankId);
 
     return CCU_SUCCESS;
 }
@@ -363,7 +374,7 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterOmniPipeMesh1DMem2MemContext
 // ============================================================================
 CcuResult CcuReduceScatterOmniPipeMesh1DMem2MemKernel(CcuKernelArg arg)
 {
-    auto *kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeMesh1DMem2Mem *>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterOmniPipeMesh1DMem2Mem*>(arg);
 
     ReduceScatterOmniPipeMesh1DMem2MemContext ctx;
     ctx.arg = kernelArg;

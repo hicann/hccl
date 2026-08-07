@@ -29,13 +29,11 @@ constexpr u32 CLOS_BW = 10;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllVConcurrentExecutor()
-{
-}
+{}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(HcclComm comm,
-    TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     // 使用topo match计算AlgHierarchyInfoForAllLevel
     AlgTopoMatch topoMatch;
@@ -44,25 +42,28 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(const OpParam& param,
-    const TopoInfoWithNetLayerDetails* topoInfo)
+HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(
+    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
     dataType_ = param.all2AllVDataDes.sendType;
-    dataTypeSize_ =  HCCL_SIZE_TABLE[dataType_];
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
 
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], dataType_ [%u], "
-        "dataCount_ [%llu]", myRank_, rankSize_, devType_, dataType_, dataCount_);
+    HCCL_INFO(
+        "[InsV2AllToAllVConcurrentExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], dataType_ [%u], "
+        "dataCount_ [%llu]",
+        myRank_, rankSize_, devType_, dataType_, dataCount_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SetAlltoAllLocalSendRecvInfo(
-    const OpParam &param)
+HcclResult
+InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SetAlltoAllLocalSendRecvInfo(
+    const OpParam& param)
 {
     HCCL_DEBUG("[SetAlltoAllLocalSendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
     localSendRecvInfo_.sendCounts.resize(rankSize_, 0);
@@ -75,15 +76,18 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     localSendRecvInfo_.recvLength.resize(rankSize_, 0);
     localSendRecvInfo_.recvOffset.resize(rankSize_, 0);
 
-    CHK_PRT_RET(param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
-    HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][SetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
-        param.varMemSize), HCCL_E_PARA);
+    CHK_PRT_RET(
+        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
+        HCCL_ERROR(
+            "[InsV2AllToAllVConcurrentExecutor][SetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
+            param.varMemSize),
+        HCCL_E_PARA);
 
     const u64* data = reinterpret_cast<const u64*>(param.varData);
     for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
         u64 val = i / rankSize_;
         u64 curRank = i % rankSize_;
-        switch(val) {
+        switch (val) {
             case CONST_0:
                 localSendRecvInfo_.sendCounts[curRank] = data[i];
                 localSendRecvInfo_.sendLength[curRank] = data[i] * dataTypeSize_;
@@ -110,7 +114,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitA2ASendRecvInfo(
-    const OpParam &param, A2ASendRecvInfo &sendRecvInfoFirst, A2ASendRecvInfo &sendRecvInfoLast)
+    const OpParam& param, A2ASendRecvInfo& sendRecvInfoFirst, A2ASendRecvInfo& sendRecvInfoLast)
 {
     HCCL_DEBUG("[SplitA2ASendRecvInfo] rank[%u], userRankSize[%u]", myRank_, rankSize_);
 
@@ -144,7 +148,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     sendRecvInfoLast.recvOffset.resize(rankSize_, 0);
 
     // 按照(rankSize_ - 1 ： jettyNum)切分每一个rank的数据
-    for(int i = 0; i < rankSize_; i++) {
+    for (int i = 0; i < rankSize_; i++) {
         // 设置sendRecvInfoFirst数据
         sendRecvInfoFirst.sendCounts[i] = localSendRecvInfo_.sendCounts[i] / factor * factorClos;
         sendRecvInfoFirst.sendDispls[i] = localSendRecvInfo_.sendDispls[i];
@@ -156,10 +160,11 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         sendRecvInfoFirst.recvLength[i] = sendRecvInfoFirst.recvCounts[i] * dataTypeSize_;
         sendRecvInfoFirst.recvOffset[i] = sendRecvInfoFirst.recvDispls[i] * dataTypeSize_;
 
-        HCCL_DEBUG("[SplitA2ASendRecvInfo][sendRecvInfoFirst] rank[%u], sendCounts[%llu], sendDispls[%llu] "\
-            "recvCounts[%llu], recvDispls[%llu], sendLength[%llu], recvLength[%llu]", myRank_, sendRecvInfoFirst.sendCounts[i],
-            sendRecvInfoFirst.sendDispls[i], sendRecvInfoFirst.recvCounts[i], sendRecvInfoFirst.recvDispls[i],
-            sendRecvInfoFirst.sendLength[i], sendRecvInfoFirst.recvLength[i]);
+        HCCL_DEBUG(
+            "[SplitA2ASendRecvInfo][sendRecvInfoFirst] rank[%u], sendCounts[%llu], sendDispls[%llu] "
+            "recvCounts[%llu], recvDispls[%llu], sendLength[%llu], recvLength[%llu]",
+            myRank_, sendRecvInfoFirst.sendCounts[i], sendRecvInfoFirst.sendDispls[i], sendRecvInfoFirst.recvCounts[i],
+            sendRecvInfoFirst.recvDispls[i], sendRecvInfoFirst.sendLength[i], sendRecvInfoFirst.recvLength[i]);
 
         // 设置sendRecvInfoLast数据
         sendRecvInfoLast.sendCounts[i] = localSendRecvInfo_.sendCounts[i] - sendRecvInfoFirst.sendCounts[i];
@@ -172,10 +177,12 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         sendRecvInfoLast.recvLength[i] = sendRecvInfoLast.recvCounts[i] * dataTypeSize_;
         sendRecvInfoLast.recvOffset[i] = sendRecvInfoLast.recvDispls[i] * dataTypeSize_;
 
-        HCCL_DEBUG("[SplitA2ASendRecvInfo][sendRecvInfoLast] rank[%u], sendCounts[%llu], sendDispls[%llu] "\
-            "recvCounts[%llu], recvDispls[%llu], sendLength[%llu], recvLength[%llu]", myRank_, sendRecvInfoLast.sendCounts[i],
-            sendRecvInfoLast.sendDispls[i], sendRecvInfoLast.recvCounts[i], sendRecvInfoLast.recvDispls[i],
-            sendRecvInfoLast.sendLength[i], sendRecvInfoLast.recvLength[i]);;
+        HCCL_DEBUG(
+            "[SplitA2ASendRecvInfo][sendRecvInfoLast] rank[%u], sendCounts[%llu], sendDispls[%llu] "
+            "recvCounts[%llu], recvDispls[%llu], sendLength[%llu], recvLength[%llu]",
+            myRank_, sendRecvInfoLast.sendCounts[i], sendRecvInfoLast.sendDispls[i], sendRecvInfoLast.recvCounts[i],
+            sendRecvInfoLast.recvDispls[i], sendRecvInfoLast.sendLength[i], sendRecvInfoLast.recvLength[i]);
+        ;
     }
     HCCL_DEBUG("[SplitA2ASendRecvInfo] SplitA2ASendRecvInfo success");
     return HCCL_SUCCESS;
@@ -183,9 +190,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(
-    HcclComm comm, const OpParam& param,
-    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-    AlgResourceRequest& resourceRequest)
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     if (param.engine != CommEngine::COMM_ENGINE_CCU) {
         HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor] only support ccu");
@@ -203,10 +209,10 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<std::vector<u32>> subCommRanks1 = {algHierarchyInfo.infos[0][1]};
 
     // 构建template
-    std::shared_ptr<InsAlgTemplate0> algTemplateClos =
-        std::make_shared<InsAlgTemplate0>(param, topoInfo->userRank, subCommRanks0);
-    std::shared_ptr<InsAlgTemplate1> algTemplateMesh =
-        std::make_shared<InsAlgTemplate1>(param, topoInfo->userRank, subCommRanks1);
+    std::shared_ptr<InsAlgTemplate0> algTemplateClos
+        = std::make_shared<InsAlgTemplate0>(param, topoInfo->userRank, subCommRanks0);
+    std::shared_ptr<InsAlgTemplate1> algTemplateMesh
+        = std::make_shared<InsAlgTemplate1>(param, topoInfo->userRank, subCommRanks1);
 
     // 调用计算资源的函数
     AlgResourceRequest resReq0;
@@ -214,19 +220,18 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CHK_RET(algTemplateClos->CalcRes(comm, param, topoInfo, resReq0));
     CHK_RET(algTemplateMesh->CalcRes(comm, param, topoInfo, resReq1));
 
-    resourceRequest.notifyNumOnMainThread = resReq0.slaveThreadNum + 1;  // 用于两个template间同步
+    resourceRequest.notifyNumOnMainThread = resReq0.slaveThreadNum + 1; // 用于两个template间同步
     resourceRequest.slaveThreadNum = resReq0.slaveThreadNum + resReq1.slaveThreadNum + 1;
-    resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
-                                              resReq0.notifyNumPerThread.begin(),
-                                              resReq0.notifyNumPerThread.end());
-    resourceRequest.notifyNumPerThread.emplace_back(resReq1.notifyNumOnMainThread + 1);  // 用于两个template间同步
-    resourceRequest.notifyNumPerThread.insert(resourceRequest.notifyNumPerThread.end(),
-                                              resReq1.notifyNumPerThread.begin(),
-                                              resReq1.notifyNumPerThread.end());
+    resourceRequest.notifyNumPerThread.insert(
+        resourceRequest.notifyNumPerThread.end(), resReq0.notifyNumPerThread.begin(), resReq0.notifyNumPerThread.end());
+    resourceRequest.notifyNumPerThread.emplace_back(resReq1.notifyNumOnMainThread + 1); // 用于两个template间同步
+    resourceRequest.notifyNumPerThread.insert(
+        resourceRequest.notifyNumPerThread.end(), resReq1.notifyNumPerThread.begin(), resReq1.notifyNumPerThread.end());
 
     // ubx机型algHierarchyInfo的level0存在两个topo，4p及以下使用clos topo与mesh topo分别建链
     std::vector<HcclChannelDesc> channelDescs0;
-    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(comm, param, topoInfo, subCommRanks0, channelDescs0, CommTopo::COMM_TOPO_1DMESH));
+    CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
+        comm, param, topoInfo, subCommRanks0, channelDescs0, CommTopo::COMM_TOPO_1DMESH));
     resReq0.ccuKernelInfos[0].channels = channelDescs0;
 
     std::vector<uint32_t> jettyNums;
@@ -283,13 +288,13 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::Orchestrate(
-    const OpParam &param, const AlgResourceCtxSerializable &resCtx)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     if (param.engine != CommEngine::COMM_ENGINE_CCU) {
         HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor] only support ccu");
         return HCCL_E_NOT_SUPPORT;
     }
-    
+
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][Orchestrate] Orchestrate Start");
     HcclResult ret;
     threads_ = resCtx.threads;
@@ -304,13 +309,13 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<std::vector<u32>> subCommRanks1 = {resCtx.algHierarchyInfo.infos[0][1]};
 
     // 构建template
-    std::shared_ptr<InsAlgTemplate0> algTemplateClos =
-        std::make_shared<InsAlgTemplate0>(param, resCtx.topoInfo.userRank, subCommRanks0);
-    std::shared_ptr<InsAlgTemplate1> algTemplateMesh =
-        std::make_shared<InsAlgTemplate1>(param, resCtx.topoInfo.userRank, subCommRanks1);
+    std::shared_ptr<InsAlgTemplate0> algTemplateClos
+        = std::make_shared<InsAlgTemplate0>(param, resCtx.topoInfo.userRank, subCommRanks0);
+    std::shared_ptr<InsAlgTemplate1> algTemplateMesh
+        = std::make_shared<InsAlgTemplate1>(param, resCtx.topoInfo.userRank, subCommRanks1);
 
-    CHK_PRT_RET(SetAlltoAllLocalSendRecvInfo(param),
-        HCCL_ERROR("[InitCommInfo] unable to init DataInfo."),
+    CHK_PRT_RET(
+        SetAlltoAllLocalSendRecvInfo(param), HCCL_ERROR("[InitCommInfo] unable to init DataInfo."),
         HcclResult::HCCL_E_PARA);
 
     A2ASendRecvInfo sendRecvInfoTempClos;
@@ -321,9 +326,11 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     // 准备资源
     TemplateResource templateAlgResClos;
-    CHK_PRT_RET(resCtx.threads.size() < 2 || resCtx.ccuKernels.size() < 2,
-        HCCL_ERROR("[%s] resCtx resource not enough. threads.size[%zu], ccuKernels.size[%zu].",
-            __func__, resCtx.threads.size(), resCtx.ccuKernels.size()),
+    CHK_PRT_RET(
+        resCtx.threads.size() < 2 || resCtx.ccuKernels.size() < 2,
+        HCCL_ERROR(
+            "[%s] resCtx resource not enough. threads.size[%zu], ccuKernels.size[%zu].", __func__,
+            resCtx.threads.size(), resCtx.ccuKernels.size()),
         HcclResult::HCCL_E_INTERNAL);
     templateAlgResClos.threads.push_back(resCtx.threads[0]);
     templateAlgResClos.ccuKernels.push_back(resCtx.ccuKernels[0]);
@@ -361,14 +368,22 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CHK_RET(PreSyncInterThreads(mainThread, subThreads, notifyIdxMainToSub));
 
     ret = algTemplateClos->KernelRun(param, tempAlgParamsClos, templateAlgResClos);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 0 run failed",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 0 "
+            "run failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
 
     ret = algTemplateMesh->KernelRun(param, tempAlgParamsMesh, templateAlgResMesh);
-    CHK_PRT_RET(ret != HCCL_SUCCESS,
-        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 1 run failed",
-            HCCL_ERROR_CODE(ret)), ret);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsV2AllToAllVConcurrentExecutor][Orchestrate]errNo[0x%016llx] alltoallv concurrent executor kernel 1 "
+            "run failed",
+            HCCL_ERROR_CODE(ret)),
+        ret);
 
     CHK_RET(PostSyncInterThreads(mainThread, subThreads, notifyIdxSubToMain));
 
@@ -385,7 +400,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 #ifndef AICPU_COMPILE
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::FastLaunchSaveCtx(
-    const OpParam &param, const TemplateResource &templateAlgRes0, const TemplateResource &templateAlgRes1, u32 notifyNumOnMainThread)
+    const OpParam& param, const TemplateResource& templateAlgRes0, const TemplateResource& templateAlgRes1,
+    u32 notifyNumOnMainThread)
 {
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor] save fast launch ctx.");
     u32 threadNum = threads_.size();
@@ -394,20 +410,21 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         HCCL_INFO("[InsV2AllToAllVConcurrentExecutor] ccu kernel num is 0, no need to save.");
         return HCCL_SUCCESS;
     }
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunchSaveCtx] threadNum[%llu], ccuKernelNum[%llu]",
-        threadNum, ccuKernelNum);
+    HCCL_INFO(
+        "[InsV2AllToAllVConcurrentExecutor][FastLaunchSaveCtx] threadNum[%llu], ccuKernelNum[%llu]", threadNum,
+        ccuKernelNum);
 
-    std::vector<u32> ccuKernelNumList = {static_cast<u32>(templateAlgRes0.submitInfos.size()),
-                                         static_cast<u32>(templateAlgRes1.submitInfos.size())};
-    std::vector<std::vector<CcuKernelSubmitInfo>> submitInfosList = {templateAlgRes0.submitInfos,
-                                                                     templateAlgRes1.submitInfos};
-    return FastLaunchSaveCtxTwoTemplate(param, threadNum, ccuKernelNum, threads_,
-        ccuKernelNumList, submitInfosList, notifyNumOnMainThread);
+    std::vector<u32> ccuKernelNumList
+        = {static_cast<u32>(templateAlgRes0.submitInfos.size()), static_cast<u32>(templateAlgRes1.submitInfos.size())};
+    std::vector<std::vector<CcuKernelSubmitInfo>> submitInfosList
+        = {templateAlgRes0.submitInfos, templateAlgRes1.submitInfos};
+    return FastLaunchSaveCtxTwoTemplate(
+        param, threadNum, ccuKernelNum, threads_, ccuKernelNumList, submitInfosList, notifyNumOnMainThread);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::FastLaunch(
-        const OpParam &param, const CcuFastLaunchCtx *resCtx)
+    const OpParam& param, const CcuFastLaunchCtx* resCtx)
 {
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] Start");
     InsAlgTemplate0 tempAlg0{};
@@ -415,11 +432,12 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     TemplateFastLaunchCtx tempFastLaunchCtx0, tempFastLaunchCtx1;
 
-    ThreadHandle *threads = resCtx->GetThreadHandlePtr();
+    ThreadHandle* threads = resCtx->GetThreadHandlePtr();
     threads_.assign(threads, threads + resCtx->threadNum);
     u64 temp0ThreadsNum = tempAlg0.GetThreadNum();
     if (temp0ThreadsNum > threads_.size()) {
-        HCCL_ERROR("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0ThreadsNum[%llu] exceeds available threads[%llu]",
+        HCCL_ERROR(
+            "[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0ThreadsNum[%llu] exceeds available threads[%llu]",
             temp0ThreadsNum, threads_.size());
         return HCCL_E_PARA;
     }
@@ -442,7 +460,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     tempAlg0.SetA2ASendRecvInfo(sendRecvInfoTemp0);
     tempAlg1.SetA2ASendRecvInfo(sendRecvInfoTemp1);
 
-    CcuKernelSubmitInfo *ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
+    CcuKernelSubmitInfo* ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0 ccuKernelNum[%llu]", resCtx->ccuKernelNum[0]);
 
     std::vector<ThreadHandle> subThreads;
@@ -452,7 +470,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtx0, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtx0.threads = temp0Threads_;
-    tempFastLaunchCtx0.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[0]);
+    tempFastLaunchCtx0.ccuKernelSubmitInfos.assign(
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[0]);
     ccuKernelSubmitInfos += resCtx->ccuKernelNum[0];
     if (resCtx->ccuKernelNum[0] > 0) {
         CHK_RET(tempAlg0.FastLaunch(param, tempFastLaunchCtx0));
@@ -461,7 +480,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp1 ccuKernelNum[%llu]", resCtx->ccuKernelNum[1]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtx1, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtx1.threads = temp1Threads_;
-    tempFastLaunchCtx1.ccuKernelSubmitInfos.assign(ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[1]);
+    tempFastLaunchCtx1.ccuKernelSubmitInfos.assign(
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[1]);
     ccuKernelSubmitInfos += resCtx->ccuKernelNum[1];
     if (resCtx->ccuKernelNum[1] > 0) {
         CHK_RET(tempAlg1.FastLaunch(param, tempFastLaunchCtx1));
@@ -477,13 +497,10 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXECUTOR_BY_TWO_TEMPS(HcclCMDType::HCCL_CMD_ALLTOALLV,
-                                CcuAllToAllVMesh1DConcurrent,
-                                InsV2AllToAllVConcurrentExecutor,
-                                TopoMatchUBX,
-                                CcuTempAllToAllVMesh1DMultiJetty,
-                                CcuTempAllToAllVMesh1DMultiJetty);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLTOALLV, CcuAllToAllVMesh1DConcurrent, InsV2AllToAllVConcurrentExecutor, TopoMatchUBX,
+    CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 
-}
+} // namespace ops_hccl

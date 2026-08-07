@@ -15,13 +15,13 @@
 
 namespace ops_hccl {
 
-AicpuTaskCacheCommManager &AicpuTaskCacheCommManager::Instance()
+AicpuTaskCacheCommManager& AicpuTaskCacheCommManager::Instance()
 {
     static AicpuTaskCacheCommManager instance;
     return instance;
 }
 
-void AicpuTaskCacheCommManager::AddCommTagMap(HcclComm comm, const std::string &tagName)
+void AicpuTaskCacheCommManager::AddCommTagMap(HcclComm comm, const std::string& tagName)
 {
     HCCL_DEBUG("[%s] comm[%p] tagName[%s]", __func__, comm, tagName.c_str());
     std::unique_lock<std::shared_timed_mutex> lock(mutex_);

@@ -28,7 +28,7 @@ struct CcuKernelArgScatterOmniPipeMesh1DMem2Mem : CcuKernelArgBase {
     uint32_t myrealrank;
 };
 struct ScatterOmniPipeMesh1DMem2MemContext {
-    const CcuKernelArgScatterOmniPipeMesh1DMem2Mem *arg;
+    const CcuKernelArgScatterOmniPipeMesh1DMem2Mem* arg;
 
     uint64_t rankSize{0};
     uint32_t rankId{0};

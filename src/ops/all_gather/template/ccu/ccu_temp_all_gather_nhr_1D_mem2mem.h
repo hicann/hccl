@@ -7,10 +7,10 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #ifndef HCCL_CCU_TEMP_ALL_GATHER_NHR_1D
 #define HCCL_CCU_TEMP_ALL_GATHER_NHR_1D
- 
+
 #include "utils.h"
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_all_gather_nhr1d_mem2mem.h"
@@ -20,47 +20,49 @@ namespace ops_hccl {
 class CcuTempAllGatherNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
     CcuTempAllGatherNHR1DMem2Mem() = default;
-    explicit CcuTempAllGatherNHR1DMem2Mem(const OpParam& param, 
-                                              const u32 rankId, // 传通信域的rankId，userRank
-                                              const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllGatherNHR1DMem2Mem(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempAllGatherNHR1DMem2Mem() override;
- 
+
     std::string Describe() const override
     {
-        return StringFormat("Template of AllGather ccu nhr 1D mem2mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of AllGather ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
- 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
- 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
- 
+
 private:
     uint32_t mySubCommRank_ = 0;
     double dieSplitRatio_ = 1.0;
     std::map<u32, std::vector<HcclChannelDesc>> rankIdToChannelDesc_;
-    HcclResult ProcessNHRStepInfo(HcclComm comm,
-                                  std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx,
-                                  u32 enableDieNum, u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
-    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo &stepInfo);
-    HcclResult SplitDataFor2Dies(const OpParam& param, uint64_t sliceSize, uint64_t& die0Size,
-                                 uint64_t& die1Size) const;
-    HcclResult BuildCcuKernelInfos(const OpParam& param, uint32_t dieNum, uint32_t kernelNum,
-                                   const std::vector<NHRStepInfo>& stepInfoVector,
-                                   const std::map<u32, u32>& rank2ChannelIdx,
-                                   const std::vector<std::vector<HcclChannelDesc>>& channelsPerDie,
-                                   AlgResourceRequest& resourceRequest);
-    HcclResult PrepareLaunchArgs(const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
-                                 std::vector<uint64_t>& taskArgs, uint64_t& argSize);
+    HcclResult ProcessNHRStepInfo(
+        HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
+        u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
+    HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo);
+    HcclResult
+    SplitDataFor2Dies(const OpParam& param, uint64_t sliceSize, uint64_t& die0Size, uint64_t& die1Size) const;
+    HcclResult BuildCcuKernelInfos(
+        const OpParam& param, uint32_t dieNum, uint32_t kernelNum, const std::vector<NHRStepInfo>& stepInfoVector,
+        const std::map<u32, u32>& rank2ChannelIdx, const std::vector<std::vector<HcclChannelDesc>>& channelsPerDie,
+        AlgResourceRequest& resourceRequest);
+    HcclResult PrepareLaunchArgs(
+        const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
+        std::vector<uint64_t>& taskArgs, uint64_t& argSize);
 };
- 
+
 } // namespace ops_hccl
- 
+
 #endif // HCCL_CCU_TEMP_ALL_GATHER_NHR_1D

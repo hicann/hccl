@@ -20,40 +20,42 @@ namespace ops_hccl {
 class CcuTempAllToAllVMesh1DMultiJetty : public CcuAlgTemplateBase {
 public:
     CcuTempAllToAllVMesh1DMultiJetty() = default;
-    explicit  CcuTempAllToAllVMesh1DMultiJetty(const OpParam& param,
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempAllToAllVMesh1DMultiJetty(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempAllToAllVMesh1DMultiJetty() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of AlltoAllV ccu mesh 1D MultiJetty with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of AlltoAllV ccu mesh 1D MultiJetty with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
 
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
 
     u64 GetThreadNum() const override;
 
-    void SetA2ASendRecvInfo(const A2ASendRecvInfo &sendRecvInfo);
+    void SetA2ASendRecvInfo(const A2ASendRecvInfo& sendRecvInfo);
 
     HcclResult SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const;
 
 private:
-    HcclResult AddTaskArgA2AInfo(A2ASendRecvInfo &localSendRecvInfo, std::vector<uint64_t> &taskArgs);
+    HcclResult AddTaskArgA2AInfo(A2ASendRecvInfo& localSendRecvInfo, std::vector<uint64_t>& taskArgs);
     A2ASendRecvInfo localSendRecvInfo_;
     std::vector<uint32_t> jettyNums_;
     CommTopo priorityTopo_ = CommTopo::COMM_TOPO_1DMESH;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_
+#endif // HCCL_CCU_TEMP_ALL_TO_ALL_V_MESH_1D_MULTI_JETTY_H_

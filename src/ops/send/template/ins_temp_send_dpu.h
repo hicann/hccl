@@ -26,8 +26,9 @@ namespace ops_hccl {
 class InsTempSendDpu : public InsAlgTemplateBase {
 public:
     explicit InsTempSendDpu();
-    explicit InsTempSendDpu(const OpParam &param, const u32 rankId,  // 传通信域的rankId，userRank
-        const std::vector<std::vector<u32>> &subCommRanks);
+    explicit InsTempSendDpu(
+        const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempSendDpu() override;
 
     std::string Describe() const override
@@ -37,15 +38,16 @@ public:
         return info;
     }
 
-    HcclResult KernelRun(const OpParam &param, const TemplateDataParams &tempAlgParams,
-        TemplateResource &templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     HcclResult CalcRes(
-        HcclComm comm, const OpParam &param, const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest) override;
-    HcclResult DPUKernelRun(const TemplateDataParams &tempAlgParam,
-        const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
-        const std::vector<std::vector<uint32_t>> &subCommRanks);
-    void GetNotifyIdxMainToSub(std::vector<u32> &notifyIdxMainToSub) override{};
-    void GetNotifyIdxSubToMain(std::vector<u32> &notifyIdxSubToMain) override{};
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult DPUKernelRun(
+        const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks);
+    void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override {};
+    void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
 
 private:
     u32 recvRank_{0};
@@ -55,10 +57,10 @@ private:
     u64 dataTypeSize_{0};
     HcclDataType dataType_;
     u64 dataSize_{0};
-    ChannelInfo sendChannel_;  // 只有一个channel
-    ThreadHandle thread_;      // 只涉及一个thread
+    ChannelInfo sendChannel_; // 只有一个channel
+    ThreadHandle thread_;     // 只涉及一个thread
 };
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 // #endif  //OPEN_HCCL_INS_TEMP_SEND_DPU
 #endif

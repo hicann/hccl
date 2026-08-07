@@ -20,73 +20,77 @@ HcclResult InitHcommBatchTransferOnThreadSupported(bool isSupported);
 
 bool IsHcommBatchTransferOnThreadSupported();
 
-HcclResult SendWrite(const DataInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendWrite(const DataInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult SendBatchWrite(const DataInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendBatchWrite(const DataInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult RecvWrite(const DataInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvWrite(const DataInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvWrite(const SendRecvInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvBatchWrite(const SendRecvInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvBatchWrite(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvBatchWriteReduce(const SendRecvReduceInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvBatchWriteReduce(const SendRecvReduceInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendWriteReduce(const DataReduceInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendWriteReduce(const DataReduceInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult SendBatchWriteReduce(const DataReduceInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendBatchWriteReduce(const DataReduceInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult RecvWriteReduce(const DataReduceInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvWriteReduce(const DataReduceInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvWriteReduce(const SendRecvReduceInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvWriteReduce(const SendRecvReduceInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendRead(const DataInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendRead(const DataInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult RecvRead(const DataInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvRead(const DataInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult RecvBatchRead(const DataInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvBatchRead(const DataInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvRead(const SendRecvInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvRead(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvBatchRead(const SendRecvInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvBatchRead(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendReadReduce(const DataReduceInfo &sendInfo, const ThreadHandle &thread);
+HcclResult SendReadReduce(const DataReduceInfo& sendInfo, const ThreadHandle& thread);
 
-HcclResult RecvReadReduce(const DataReduceInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvReadReduce(const DataReduceInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult RecvBatchReadReduce(const DataReduceInfo &recvInfo, const ThreadHandle &thread);
+HcclResult RecvBatchReadReduce(const DataReduceInfo& recvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvReadReduce(const SendRecvReduceInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvReadReduce(const SendRecvReduceInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult SendRecvBatchReadReduce(const SendRecvReduceInfo &sendRecvInfo, const ThreadHandle &thread);
+HcclResult SendRecvBatchReadReduce(const SendRecvReduceInfo& sendRecvInfo, const ThreadHandle& thread);
 
-HcclResult LocalCopy(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice);
+HcclResult LocalCopy(const ThreadHandle& thread, const DataSlice& srcSlice, const DataSlice& dstSlice);
 
-HcclResult LocalReduce(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice,
-                       const HcclDataType dataType, const HcclReduceOp reduceOp);
+HcclResult LocalReduce(
+    const ThreadHandle& thread, const DataSlice& srcSlice, const DataSlice& dstSlice, const HcclDataType dataType,
+    const HcclReduceOp reduceOp);
 
-HcclResult LocalCopySlices(const ThreadHandle &thread, const std::vector<DataSlice> &srcSlices,
-                           const std::vector<DataSlice> &dstSlices);
+HcclResult LocalCopySlices(
+    const ThreadHandle& thread, const std::vector<DataSlice>& srcSlices, const std::vector<DataSlice>& dstSlices);
 
-bool IsContinuousSlice(const DataSlice &nxtSlice, const DataSlice &currSlice);
+bool IsContinuousSlice(const DataSlice& nxtSlice, const DataSlice& currSlice);
 
-HcclResult PreSyncInterThreads(const ThreadHandle &mainThread, const std::vector<ThreadHandle> &subThreads,
-                               const std::vector<u32> &notifyIdxMainToSub);
+HcclResult PreSyncInterThreads(
+    const ThreadHandle& mainThread, const std::vector<ThreadHandle>& subThreads,
+    const std::vector<u32>& notifyIdxMainToSub);
 
-HcclResult PostSyncInterThreads(const ThreadHandle &mainThread, const std::vector<ThreadHandle> &subThreads,
-                                const std::vector<u32> &notifyIdxSubToMain);
+HcclResult PostSyncInterThreads(
+    const ThreadHandle& mainThread, const std::vector<ThreadHandle>& subThreads,
+    const std::vector<u32>& notifyIdxSubToMain);
 
-HcclResult AicpuReduce(const ThreadHandle &thread, const DataSlice &srcSlice, const DataSlice &dstSlice,
-                       const HcclDataType dataType, const HcclReduceOp reduceOp);
+HcclResult AicpuReduce(
+    const ThreadHandle& thread, const DataSlice& srcSlice, const DataSlice& dstSlice, const HcclDataType dataType,
+    const HcclReduceOp reduceOp);
 
 float Fp16ToFp32(uint16_t fp16Bits);
 
 uint16_t Fp32ToFp16(float value);
 
-HcclResult AicpuReduceFp16(u8 *dst, u8 *src, u64 size, const HcclReduceOp reduceOp);
+HcclResult AicpuReduceFp16(u8* dst, u8* src, u64 size, const HcclReduceOp reduceOp);
 
 template <typename T>
 HcclResult AicpuReduceTemplate(T* dst, u64 dstSize, T* src, u64 srcSize, const HcclReduceOp reduceOp);
-}
+} // namespace ops_hccl
 
 #endif // !ALG_DATA_TRANS_WRAPPER

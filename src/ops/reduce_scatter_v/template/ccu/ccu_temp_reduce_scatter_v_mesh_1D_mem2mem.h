@@ -20,34 +20,36 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterVMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
-    explicit  CcuTempReduceScatterVMesh1DMem2Mem(const OpParam& param, 
-                                                const u32 rankId, // 传通信域的rankId，userRank
-                                                const std::vector<std::vector<u32>> &subCommRanks);
+    explicit CcuTempReduceScatterVMesh1DMem2Mem(
+        const OpParam& param,
+        const u32 rankId, // 传通信域的rankId，userRank
+        const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempReduceScatterVMesh1DMem2Mem() override;
 
     std::string Describe() const override
     {
-        return StringFormat("Template of ReduceScatterV ccu mesh 1D Mem2Mem with tempRankSize [%u].",
-                            subCommRanks_[0].size());
+        return StringFormat(
+            "Template of ReduceScatterV ccu mesh 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                       AlgResourceRequest& resourceRequest) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
 
-    HcclResult KernelRun(const OpParam& param,
-                         const TemplateDataParams& templateDataParams,
-                         TemplateResource& templateResource) override;
+    HcclResult KernelRun(
+        const OpParam& param, const TemplateDataParams& templateDataParams,
+        TemplateResource& templateResource) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest);
     u64 GetThreadNum();
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:
-    uint64_t GetTokenWithFallback(const BuffInfo& buffInfo, uint64_t &token);
+    uint64_t GetTokenWithFallback(const BuffInfo& buffInfo, uint64_t& token);
 
     uint32_t mySubCommRank_ = 0;
 };
 
-}// namespace ops_hccl
+} // namespace ops_hccl
 
-#endif// HCCL_CCU_TEMP_REDUCE_SCATTER_V_MESH_1D_MEM2MEM_H
+#endif // HCCL_CCU_TEMP_REDUCE_SCATTER_V_MESH_1D_MEM2MEM_H

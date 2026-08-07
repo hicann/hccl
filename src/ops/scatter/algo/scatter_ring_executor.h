@@ -19,24 +19,26 @@ public:
     explicit ScatterRingExecutor();
     ~ScatterRingExecutor() override = default;
 
-    HcclResult CalcResRequest(HcclComm comm, const OpParam& param, TopoInfo* topoInfo,
-        AlgHierarchyInfo& algHierarchyInfo, AlgResourceRequest& resourceRequest, AlgType& algType) override;
-        
+    HcclResult CalcResRequest(
+        HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
+        AlgResourceRequest& resourceRequest, AlgType& algType) override;
+
 private:
     /* *************** 算法编排 *************** */
-    HcclResult KernelRunLevel2(const OpParam &param, ExecMem &execMem);
-    HcclResult KernelRunLevel1(const OpParam &param, ExecMem &execMem);
-    HcclResult KernelRunLevel0(const OpParam &param, ExecMem &execMem);
-    HcclResult KernelRun(const OpParam &param, ExecMem &execMem) override;
+    HcclResult KernelRunLevel2(const OpParam& param, ExecMem& execMem);
+    HcclResult KernelRunLevel1(const OpParam& param, ExecMem& execMem);
+    HcclResult KernelRunLevel0(const OpParam& param, ExecMem& execMem);
+    HcclResult KernelRun(const OpParam& param, ExecMem& execMem) override;
 
     // 多ring相关
-    HcclResult MultiRingScatter(HcclMem inputMem, HcclMem outputMem, const u64 count,
-        const HcclDataType dataType, const std::vector<Slice> &dataSegsSlice, u32 root, const HcclCollOpInfo *opInfo,
-        const u64 baseOffset);
-    HcclResult MutliSegSlicePrepare(const std::vector<Slice> &dataSegsSlice, u32 ringNum,
-        std::vector<std::vector<Slice>> &mutliSegsSlices) const;
-    HcclResult PrepareMultiRingSlice(const std::vector<Slice> &dataSegsSlice, u32 &ringNum,
-        std::vector<std::vector<Slice>> &mutliRingsSlices, std::vector<std::vector<u32>> &rankOrders);
+    HcclResult MultiRingScatter(
+        HcclMem inputMem, HcclMem outputMem, const u64 count, const HcclDataType dataType,
+        const std::vector<Slice>& dataSegsSlice, u32 root, const HcclCollOpInfo* opInfo, const u64 baseOffset);
+    HcclResult MutliSegSlicePrepare(
+        const std::vector<Slice>& dataSegsSlice, u32 ringNum, std::vector<std::vector<Slice>>& mutliSegsSlices) const;
+    HcclResult PrepareMultiRingSlice(
+        const std::vector<Slice>& dataSegsSlice, u32& ringNum, std::vector<std::vector<Slice>>& mutliRingsSlices,
+        std::vector<std::vector<u32>>& rankOrders);
 
     /* *************** 算法参数 *************** */
     u32 subRoot_ = 0;
@@ -50,6 +52,6 @@ private:
     SubCommInfo level2CommInfo_;
 };
 
-}
+} // namespace ops_hccl
 
 #endif

@@ -7,45 +7,47 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
- 
+
 #include "topo_match_concurrent.h"
 #include "dlsym_common.h"
- 
+
 namespace ops_hccl {
-TopoMatchConcurrent::TopoMatchConcurrent()
-{
-}
- 
-TopoMatchConcurrent::~TopoMatchConcurrent()
-{
-}
- 
-HcclResult TopoMatchConcurrent::MatchTopo(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel &algHierarchyInfoExector)
+TopoMatchConcurrent::TopoMatchConcurrent() {}
+
+TopoMatchConcurrent::~TopoMatchConcurrent() {}
+
+HcclResult TopoMatchConcurrent::MatchTopo(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector)
 {
 #ifndef AICPU_COMPILE
     myRank_ = topoInfo->userRank;
     // 不支持2层以上的拓扑
-    CHK_PRT_RET(topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,
-        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.",
-            topoInfo->topoLevelNums),
-        HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,
+        HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums), HCCL_E_INTERNAL);
 
-    CHK_PRT_RET(!shouldGoOutPlace(topoInfo->deviceType),
+    CHK_PRT_RET(
+        !shouldGoOutPlace(topoInfo->deviceType),
         HCCL_ERROR("[CollAlgFactory] [TopoMatchConcurrent] Rank [%d], deviceType not supported yet.", myRank_),
         HcclResult::HCCL_E_PARA);
 
-    CHK_PRT_RET((topoInfo->userRankSize == 0),
-                HCCL_ERROR("[CollAlgFactory] [TopoMatchConcurrent] Rank [%d], rankSize is 0.", myRank_),
-                HcclResult::HCCL_E_PARA);
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
+        HCCL_ERROR("[CollAlgFactory] [TopoMatchConcurrent] Rank [%d], rankSize is 0.", myRank_),
+        HcclResult::HCCL_E_PARA);
 
-    for (const auto &netLayerIdx : topoInfo->netLayerDetails.netLayers) {
+    for (const auto& netLayerIdx : topoInfo->netLayerDetails.netLayers) {
         CommTopo topoType = COMM_TOPO_RESERVED;
         CHK_RET(HcclRankGraphGetTopoTypeByLayer(comm, netLayerIdx, &topoType));
-        CHK_PRT_RET((topoType != COMM_TOPO_CUSTOM && topoType != CommTopo::COMM_TOPO_CLOS),
-                HCCL_ERROR("[CollAlgFactory] [TopoMatchConcurrent] netLayer [%d], topoType not COMM_TOPO_CUSTOM or COMM_TOPO_CLOS.", netLayerIdx),
-                HcclResult::HCCL_E_PARA);
+        CHK_PRT_RET(
+            (topoType != COMM_TOPO_CUSTOM && topoType != CommTopo::COMM_TOPO_CLOS),
+            HCCL_ERROR(
+                "[CollAlgFactory] [TopoMatchConcurrent] netLayer [%d], topoType not COMM_TOPO_CUSTOM or "
+                "COMM_TOPO_CLOS.",
+                netLayerIdx),
+            HcclResult::HCCL_E_PARA);
     }
- 
+
     for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
         rankIds_.push_back(rankId);
     }

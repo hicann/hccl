@@ -11,7 +11,7 @@
 #include <iostream>
 #include "gtest/gtest.h"
 
-GTEST_API_ int main(int argc, char **argv)
+GTEST_API_ int main(int argc, char** argv)
 {
     std::cout << "Start to run demo for hccl_checker_ops_stest." << std::endl;
     // testing::GTEST_FLAG(filter) = "ST_REDUCE_SCATTER_TEST.test_host_dpu_reducescatter_020";
