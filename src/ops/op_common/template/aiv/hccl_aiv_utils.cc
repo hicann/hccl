@@ -806,6 +806,7 @@ u64 CalcAivCacheKeyHash(const AivOpCacheArgs& cacheKey)
     HashAppendValue(hash, cacheKey.opType);
     HashAppendValue(hash, cacheKey.reduceOp);
     HashAppendValue(hash, cacheKey.root);
+    HashAppendValue(hash, cacheKey.numBlocksLimit);
     HCCL_INFO("[%s] hashKey[%llu]", __func__, hash);
     return hash;
 }

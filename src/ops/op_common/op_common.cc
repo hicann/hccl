@@ -388,11 +388,25 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
         return HCCL_SUCCESS;
     }
 
+    // 提前获取 numBlocksLimit，作为 cache key 的一部分
+    // 与 HcclAivKernelEntranceLaunch 逻辑保持一致：先查 aivParam，再 fallback 到 runtime
+    u32 numBlocksLimit = 0;
+    AivParamStorage* aivParam = nullptr;
+    HcclResult aivParamRet = GetAivParamStorageByComm(comm, &aivParam, false);
+    if (aivParamRet == HCCL_SUCCESS && aivParam != nullptr) {
+        numBlocksLimit = aivParam->aivCoreLimit;
+    }
+    if (numBlocksLimit == 0) {
+        ACLCHECK(aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &numBlocksLimit));
+    }
+    param.numBlocksLimit = numBlocksLimit;
+
     AivOpCacheArgs cacheKey = {};
     cacheKey.commName = param.commName;
     cacheKey.opType = param.opType;
     cacheKey.root = param.root;
     cacheKey.reduceOp = param.reduceType;
+    cacheKey.numBlocksLimit = numBlocksLimit;
     if (param.opType == HCCL_CMD_ALLTOALL) {
         cacheKey.dataType = param.all2AllVDataDes.sendType;
         cacheKey.count = static_cast<const u64*>(param.all2AllVDataDes.sendCounts)[0];
@@ -429,10 +443,6 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
     CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0));
     param.dataCount = hcclDfxOpInfo.dataCount;
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
-
-    u32 numBlocksLimit = MAX_NUM_BLOCKS;
-    ACLCHECK(aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &numBlocksLimit));
-    param.numBlocksLimit = numBlocksLimit;
 
     if (param.opType == HCCL_CMD_ALLTOALLV) {
         CHK_RET(ReplayAivInstructionsV(instructions, insCount, param));
@@ -507,6 +517,7 @@ HcclResult ExecuteAivCacheLogic(
         cacheKey.commName = param.commName;
         cacheKey.opType = param.opType;
         cacheKey.reduceOp = param.reduceType;
+        cacheKey.numBlocksLimit = param.numBlocksLimit;
         if (param.opType == HCCL_CMD_ALLTOALL) {
             cacheKey.dataType = param.all2AllVDataDes.sendType;
             cacheKey.count = static_cast<const u64*>(param.all2AllVDataDes.sendCounts)[0];

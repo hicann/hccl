@@ -194,12 +194,6 @@ HcclResult CcuTempAlltoAllVMesh2Die::KernelRun(
         HCCL_ERROR("[CcuTempAlltoAllVMesh2Die][KernelRun] subCommRanks empty."), HcclResult::HCCL_E_INTERNAL);
 
     buffInfo_ = templateDataParams.buffInfo;
-    CHK_PRT_RET(
-        buffInfo_.inputPtr == nullptr || buffInfo_.outputPtr == nullptr,
-        HCCL_ERROR(
-            "[CcuTempAlltoAllVMesh2Die][KernelRun] Rank[%d] input[%#llx] or output[%#llx] is null", myRank_,
-            buffInfo_.inputPtr, buffInfo_.outputPtr),
-        HcclResult::HCCL_E_PTR);
 
     uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr);
     uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr);

@@ -120,6 +120,7 @@ struct AivOpCacheArgs {
     HcclCMDType opType;
     HcclReduceOp reduceOp;
     u32 root;
+    u32 numBlocksLimit;
 
     bool operator<(const AivOpCacheArgs& other) const
     {
@@ -133,7 +134,9 @@ struct AivOpCacheArgs {
             return opType < other.opType;
         if (reduceOp != other.reduceOp)
             return reduceOp < other.reduceOp;
-        return root < other.root;
+        if (root != other.root)
+            return root < other.root;
+        return numBlocksLimit < other.numBlocksLimit;
     }
 };
 
