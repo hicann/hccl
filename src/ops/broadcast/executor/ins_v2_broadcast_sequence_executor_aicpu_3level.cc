@@ -563,7 +563,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<AlgTopoMatch, InsAlgTemplate0, 
         // ---------------------- Scatter L2 标量分片 ----------------------
         if (!skipLevel2_) {
             root = rootIdx2 * (rankSizeLevel0_ * rankSizeLevel1_) + rankIdxLevel1_ * rankSizeLevel0_ + rankIdxLevel0_;
-            if ((root % (rankSizeLevel1_ * rankSizeLevel2_)) == (algHierarchyInfo_.infos[1][0].back() % (rankSizeLevel1_ * rankSizeLevel2_))) {
+            if ((root % (rankSizeLevel0_ * rankSizeLevel1_)) == (algHierarchyInfo_.infos[1][0].back() % (rankSizeLevel0_ * rankSizeLevel1_))) {
                 u64 l2SliceByte = tempAlgParamsScatterL1.sliceSize;
                 GenTempAlgParamsScatterL2(tempAlgParamsScatterL1.tailSize / dataTypeSize_, l1SliceByte, l2SliceByte, tempAlgParamsScatterL2);
             } else {
