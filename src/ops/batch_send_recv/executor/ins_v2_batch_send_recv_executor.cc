@@ -386,13 +386,13 @@ HcclResult InsV2BatchSendRecvExecutor::Orchestrate(const OpParam &param,
         return HCCL_E_PARA;
     }
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
-    cclMem_ = resCtx.cclMem;
-    maxTmpMemSize_ = std::min(resCtx.cclMem.size, UB_MAX_DATA_SIZE);
-    CHK_PRT_RET((maxTmpMemSize_ == 0),
-        HCCL_ERROR("[InsV2BatchSendRecvExecutor][Orchestrate] maxTmpMemSize equals to zero."),
-        HCCL_E_PARA);
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
+    cclMem_ = resCtx.cclMem;
+    maxTmpMemSize_ = std::min(resCtx.cclMem.size, UB_MAX_DATA_SIZE);
+    CHK_PRT_RET((rankSize_ > 1 && maxTmpMemSize_ == 0),
+        HCCL_ERROR("[InsV2BatchSendRecvExecutor][Orchestrate] maxTmpMemSize equals to zero."),
+        HCCL_E_PARA);
     // 任务信息
     itemNum_ = param.batchSendRecvDataDes.itemNum;
     itemPtr_ = param.batchSendRecvDataDes.sendRecvItemsPtr;
