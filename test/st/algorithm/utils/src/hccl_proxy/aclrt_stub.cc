@@ -422,6 +422,40 @@ rtError_t rtGetTaskIdAndStreamID(uint32_t* taskId, uint32_t* streamId)
     return RT_ERROR_NONE;
 }
 
+aclError aclrtCreateEventExWithFlag(aclrtEvent* event, uint32_t flag)
+{
+    if (event == nullptr) {
+        HCCL_ERROR("[aclrtCreateEventExWithFlag] invalid input event");
+        return ACL_ERROR_INVALID_PARAM;
+    }
+    *event = malloc(sizeof(int));
+    if (*event == nullptr) {
+        HCCL_ERROR("[aclrtCreateEventExWithFlag] malloc event failed");
+        return ACL_ERROR_INTERNAL_ERROR;
+    }
+    return ACL_SUCCESS;
+}
+
+aclError aclrtDestroyEvent(aclrtEvent event)
+{
+    if (event != nullptr) {
+        free(event);
+    }
+    return ACL_SUCCESS;
+}
+
+aclError aclrtRecordEvent(aclrtEvent event, aclrtStream stream)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
+aclError aclrtStreamWaitEvent(aclrtStream stream, aclrtEvent event)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

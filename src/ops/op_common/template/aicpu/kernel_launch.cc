@@ -320,6 +320,25 @@ OpOrchestrate(OpParam* param, const AlgResourceCtxSerializable* resCtxPtr, Threa
     return HCCL_SUCCESS;
 }
 
+static HcclResult HcclOrderLaunchNotifyRecord(const OpParam* param)
+{
+    ThreadHandle exportHostOrderThread = param->exportHostOrderThread;
+    ThreadHandle deviceOrderThread = param->deviceOrderThread;
+    HCCL_INFO(
+        "[%s]. Before Notify1 Record, commName[%s], exportHostOrderThread is [0x%llx], deviceOrderThread is [0x%llx]",
+        __func__, param->commName, exportHostOrderThread, deviceOrderThread);
+
+    if (exportHostOrderThread != 0 && deviceOrderThread != 0) {
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyRecordOnThread(deviceOrderThread, exportHostOrderThread, HOST_ORDER_THREAD_NOTIFY_IDX)));
+        HCCL_INFO(
+            "[%s]. After Notify1 Record deviceOrderThread is [0x%llx], exportHostOrderThread is [0x%llx]", __func__,
+            deviceOrderThread, exportHostOrderThread);
+    }
+
+    return HCCL_SUCCESS;
+}
+
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
 {
     // 修改当前进程的调度策略和优先级
@@ -338,6 +357,9 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
+
+    // AICPU 按序下发
+    CHK_RET(HcclOrderLaunchNotifyRecord(param));
 
     std::string algName = std::string(param->algName);
     if (!ops_hccl::IsOpsV2(param->algName, param->deviceType)) {

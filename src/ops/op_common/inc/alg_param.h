@@ -98,6 +98,13 @@ constexpr u32 TOPO_LEVEL_NUM_1 = 1;
 constexpr u32 TOPO_LEVEL_NUM_2 = 2;
 constexpr u32 TOPO_LEVEL_NUM_3 = 3;
 
+// 按序下发需要
+constexpr u32 ORDER_UNFOLD_THREAD_NOTIFY_IDX = 0;
+constexpr u32 ORDER_UNFOLD_THREAD_NOTIFY_NUM = 1;
+constexpr u32 HOST_ORDER_THREAD_NOTIFY_IDX = 0;
+constexpr u32 HOST_ORDER_THREAD_NOTIFY_NUM = 1;
+constexpr u32 DEVICE_ORDER_THREAD_NOTIFY_NUM = 0;
+
 enum class TopoType {
     TOPO_TYPE_COMMON = 0,         // 普通拓扑类型 ，default单层拓扑使用
     TOPO_TYPE_8P_RING = 1,        // 特殊场景, 服务器内8 rank组成一个ring，4个逻辑环
@@ -626,11 +633,13 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     u64 ctxSize = 0;
     void* resCtx = nullptr;
     ThreadHandle opThread = 0;
-    u32 aicpuRecordCpuIdx = 0;     // aicpu record host的notifyIdx
-    u32 dataCount = 0;             // 算子上报dfx的数据量
-    DevAicpuOpConfig opConfig;     // 收编算子配置类变量
-    bool aicpuCacheEnable = false; // aicpu task cache开关
-    bool isCapture = false;        // 是否为aclgraph
+    u32 aicpuRecordCpuIdx = 0;              // aicpu record host的notifyIdx
+    u32 dataCount = 0;                      // 算子上报dfx的数据量
+    DevAicpuOpConfig opConfig;              // 收编算子配置类变量
+    bool aicpuCacheEnable = false;          // aicpu task cache开关
+    bool isCapture = false;                 // 是否为aclgraph
+    ThreadHandle exportHostOrderThread = 0; // host侧保序流映射到device
+    ThreadHandle deviceOrderThread = 0;     // device侧保序流
     u64 varMemSize{0};
     u8 varData[0];
 };

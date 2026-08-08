@@ -40,8 +40,10 @@
 #include "alg_type.h"
 #include "op_common.h"
 #include "aicpu_timeout.h"
+#include "exec_timeout_manager.h"
 #include "hccl_aiv_utils.h"
 #include "dpu/kernel_launch.h"
+#include "order_launch.h"
 #include "hcomm_host_profiling_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "hccl_res_dl.h"
@@ -893,10 +895,34 @@ HcclResult HcclAicpuKernelEntranceLaunch(
     // Host stream通知Device主thread，使用主流上idx最大的notify
     CHK_RET(static_cast<HcclResult>(
         HcommThreadNotifyRecordOnThread(cpuTsThread, exportedCpuTsThread, notifyNumOnMainThread - 1)));
+
+    // OrderLaunch第一阶段
+    // 获取执行超时时间
+    u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+
+    OrderLaunchMode launchMode = param.isCapture ?
+                                     OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH :
+                                     (param.opMode == OpMode::OFFLOAD ? OrderLaunchMode::ORDER_LAUNCH_GE :
+                                                                        OrderLaunchMode::ORDER_LAUNCH_OPBASE);
+
+    HcclRtEventGuard event0Guard;
+    HcclRtEventGuard event1Guard;
+    if (launchMode == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
+        CHK_RET(event0Guard.Create());
+        CHK_RET(event1Guard.Create());
+    }
+    CHK_RET(HcclOrderLaunchToOrderStream(
+        comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX, execTimeout, launchMode, event0Guard.Get()));
+
     // AicpuKernel report
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
     CHK_RET(AicpuKernelLaunch(comm, param, unfoldThread));
     CHK_PTR_NULL(comm);
+
+    // OrderLaunch第二阶段
+    CHK_RET(HcclOrderLaunchToKernelStream(
+        comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX, execTimeout, launchMode, event1Guard.Get()));
+
     std::string kernelName = "HcclLaunchAicpuKernel";
     char* kernelNameCStr = const_cast<char*>(kernelName.c_str());
     HcclResult ret = HcclReportAicpuKernel(comm, beginTime, kernelNameCStr);
@@ -1512,7 +1538,8 @@ static HcclResult HcclGetThreadWithConfig(
     if (!unfoldReady) {
         ThreadConfig unfoldThreadConfig;
         CHK_RET(static_cast<HcclResult>(ThreadConfigInit(&unfoldThreadConfig, 1)));
-        unfoldThreadConfig.notifyNumPerThread = 0;
+        // 展开流需要一个Notify用于 AICPU按序下发
+        unfoldThreadConfig.notifyNumPerThread = ORDER_UNFOLD_THREAD_NOTIFY_NUM;
         CHK_RET(HcclThreadAcquireWithConfig(
             comm, COMM_ENGINE_CPU, 1, THREAD_TYPE_TS, &unfoldThreadConfig, &resCtxHost->unfoldThread));
     }
@@ -1551,7 +1578,9 @@ static HcclResult HcclGetAicpuThread(
         HCCL_DEBUG("[HcclGetThread] require maxNotifyNum[%u] for all AICPU threads.", maxNotifyNum);
         CHK_RET(HcclThreadAcquire(comm, COMM_ENGINE_AICPU_TS, threadNum, maxNotifyNum + 1, threads.data()));
         if (!unfoldReady) {
-            CHK_RET(HcclThreadAcquire(comm, COMM_ENGINE_CPU, 1, 0, &resCtxHost->unfoldThread));
+            // 展开流需要一个Notify用于 AICPU按序下发
+            CHK_RET(
+                HcclThreadAcquire(comm, COMM_ENGINE_CPU, 1, ORDER_UNFOLD_THREAD_NOTIFY_NUM, &resCtxHost->unfoldThread));
         }
         CHK_RET(SaveMainThreadInfo(comm, param, threads[0], maxNotifyNum + 1));
     }
@@ -1671,7 +1700,7 @@ HcclResult SaveUnfoldThreadInfo(HcclComm comm, const OpParam& param, ThreadHandl
     int ret = snprintf_s(unfoldAlgTag, sizeof(unfoldAlgTag), sizeof(unfoldAlgTag) - 1, "%s_unfold", param.commName);
     CHK_PRT_RET(ret <= 0, HCCL_ERROR("[%s] failed to fill unfoldAlgTag", __func__), HCCL_E_INTERNAL);
     CHK_RET(HcclEngineCtxCreate(comm, unfoldAlgTag, CommEngine::COMM_ENGINE_CPU_TS, size, &ctx));
-    // 填充主流handle信息
+    // 填充展开流handle信息
     ThreadHandle* threadPtr = reinterpret_cast<ThreadHandle*>(ctx);
     *threadPtr = unfoldThread;
     HCCL_INFO(

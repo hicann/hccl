@@ -9,3 +9,22 @@
  */
 
 // 打桩HCCL依赖so所需空文件
+
+#include <cstdint>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// HcclDedicatedThreadAcquire 桩：ST仿真不需要保序流，设置 *thread = 0 触发"OrderLaunch not required"降级路径
+int HcclDedicatedThreadAcquire(void* comm, unsigned int useType, uint32_t notifyNumPerThread, uint64_t* thread)
+{
+    if (thread != nullptr) {
+        *thread = 0;
+    }
+    return 0;
+}
+
+#ifdef __cplusplus
+}
+#endif
