@@ -128,6 +128,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     intraTempDataParams.buffInfo.inputPtr = param.outputPtr;
     intraTempDataParams.buffInfo.outputPtr = param.outputPtr;
     intraTempDataParams.buffInfo.hcclBuff = resCtx.cclMem;
+    intraTempDataParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
 
     // 构建框内template
     InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo_.infos[0]);
