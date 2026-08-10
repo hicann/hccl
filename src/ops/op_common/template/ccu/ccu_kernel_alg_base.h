@@ -37,6 +37,71 @@ constexpr uint64_t CCU_LOOP_CKE_NUM_REDUCE_V2 = 3;
 constexpr uint64_t CCU_LOOP_CKE_NUM_COPY_V2 = 2;
 constexpr uint64_t CCU_LOOP_CKE_NUM_REDUCE_LOOP_V2 = 3;
 
+// 逻辑Event：封装多个物理 ccu::Event，提供超过16位的信号空间。
+// 算法侧按逻辑 signalIdx (0..N-1) 进行 Record/Wait，内部自动处理 event 分组与 mask 计算。
+class CcuEventGroup {
+public:
+    CcuEventGroup() = default;
+
+    // 按逻辑信号数初始化内部 event 向量
+    void Init(uint32_t signalCount)
+    {
+        signalCount_ = signalCount;
+        uint32_t eventNum = (signalCount + EVENT_BIT_WIDTH - 1) / EVENT_BIT_WIDTH;
+        events_.resize(eventNum);
+    }
+
+    // ---- Post 路径：给 ccu::Write/Read/LocalCopy 传参使用 ----
+    ccu::Event& GetEvent(uint32_t signalIdx) { return events_[signalIdx / EVENT_BIT_WIDTH]; }
+    uint16_t GetMask(uint32_t signalIdx) const { return static_cast<uint16_t>(1u << (signalIdx % EVENT_BIT_WIDTH)); }
+
+    // 便捷：直接 Record 一个逻辑信号
+    CcuResult Record(uint32_t signalIdx)
+    {
+        return ccu::EventRecord(events_[signalIdx / EVENT_BIT_WIDTH], GetMask(signalIdx));
+    }
+
+    // ---- Wait 路径 ----
+
+    // 等待所有信号
+    CcuResult WaitAll()
+    {
+        for (uint32_t i = 0; i < events_.size(); i++) {
+            CCU_CHK_RET(ccu::EventWait(events_[i], GetFullMask(i)));
+        }
+        return CCU_SUCCESS;
+    }
+
+    // 等待所有信号，跳过指定信号（如本 rank）
+    CcuResult WaitAllExcept(uint32_t skipIdx)
+    {
+        for (uint32_t i = 0; i < events_.size(); i++) {
+            uint16_t mask = GetFullMask(i);
+            if (i == skipIdx / EVENT_BIT_WIDTH) {
+                mask &= ~GetMask(skipIdx);
+            }
+            if (mask != 0) {
+                CCU_CHK_RET(ccu::EventWait(events_[i], mask));
+            }
+        }
+        return CCU_SUCCESS;
+    }
+
+private:
+    static constexpr uint16_t EVENT_BIT_WIDTH = 16;
+
+    uint16_t GetFullMask(uint32_t eventIdx) const
+    {
+        if (eventIdx == events_.size() - 1 && signalCount_ % EVENT_BIT_WIDTH != 0) {
+            return static_cast<uint16_t>((1u << (signalCount_ % EVENT_BIT_WIDTH)) - 1);
+        }
+        return static_cast<uint16_t>((1u << EVENT_BIT_WIDTH) - 1);
+    }
+
+    std::vector<ccu::Event> events_;
+    uint32_t signalCount_ = 0;
+};
+
 struct LoopGroupConfig {
     uint32_t msInterleave; // loop使用的ms步长，即与前一个loop间的间距
     uint32_t loopCount;    // loop的并行次数

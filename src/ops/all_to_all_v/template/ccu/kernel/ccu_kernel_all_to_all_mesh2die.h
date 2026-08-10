@@ -43,7 +43,7 @@ struct AllToAllMesh2DieContext : CcuKernelCtxBase {
     ccu::Variable outputoffset;
     GroupOpSizeVars groupOpSize;
 
-    ccu::Event event;
+    CcuEventGroup eventGroup;
 };
 
 CcuResult CcuAllToAllMesh2DieKernel(CcuKernelArg arg);

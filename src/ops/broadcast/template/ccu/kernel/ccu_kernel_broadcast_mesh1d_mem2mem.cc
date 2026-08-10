@@ -50,6 +50,8 @@ static CcuResult InitResource(BroadcastMesh1DMem2MemContext& ctx)
     // remoteDstMem 复用于 scatter 和 allgather 两个阶段
     ctx.remoteDstMem.resize(arg->rankSize);
 
+    ctx.eventGroup.Init(arg->rankSize);
+
     ctx.resourceAllocated = false;
     return CCU_SUCCESS;
 }
@@ -113,25 +115,23 @@ static CcuResult DoScatter(BroadcastMesh1DMem2MemContext& ctx, std::vector<ccu::
 
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
         auto& sliceSize = (rankIdx + 1 == arg->rankSize) ? ctx.lastSliceSize : ctx.normalSliceSize;
-        const uint16_t rankMask = 1 << rankIdx;
         CCU_IF(sliceSize != 0)
         {
             if (rankIdx == arg->rankId) {
-                CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
+                CCU_CHK_RET(ctx.eventGroup.Record(rankIdx));
             } else {
                 CCU_CHK_RET(ccu::Write(
-                    arg->channels[channelId], dst[rankIdx], ctx.scattersrcMem[rankIdx], sliceSize, ctx.event,
-                    rankMask));
+                    arg->channels[channelId], dst[rankIdx], ctx.scattersrcMem[rankIdx], sliceSize,
+                    ctx.eventGroup.GetEvent(rankIdx), ctx.eventGroup.GetMask(rankIdx)));
                 HCCL_INFO(
                     "[CcuKernelBroadcastMesh1DMem2Mem][DoScatter] channelsId[%u] rankIdx[%u]", channelId, rankIdx);
                 channelId++;
             }
         }
-        CCU_IF(sliceSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask)); }
+        CCU_IF(sliceSize == 0) { CCU_CHK_RET(ctx.eventGroup.Record(rankIdx)); }
     }
 
-    const uint16_t allRankMask = (1 << arg->rankSize) - 1;
-    CCU_CHK_RET(ccu::EventWait(ctx.event, allRankMask));
+    CCU_CHK_RET(ctx.eventGroup.WaitAll());
     return CCU_SUCCESS;
 }
 
@@ -195,16 +195,16 @@ DoAllGather(BroadcastMesh1DMem2MemContext& ctx, const ccu::LocalAddr& src, const
     CCU_IF(sliceSize != 0)
     {
         for (uint64_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
-            const uint16_t rankMask = 1 << rankIdx;
             if (rankIdx == arg->rankId) {
-                CCU_CHK_RET(ccu::EventRecord(ctx.event, rankMask));
+                CCU_CHK_RET(ctx.eventGroup.Record(rankIdx));
             } else {
-                CCU_CHK_RET(ccu::Write(arg->channels[channelId], dst[rankIdx], src, sliceSize, ctx.event, rankMask));
+                CCU_CHK_RET(ccu::Write(
+                    arg->channels[channelId], dst[rankIdx], src, sliceSize, ctx.eventGroup.GetEvent(rankIdx),
+                    ctx.eventGroup.GetMask(rankIdx)));
                 channelId++;
             }
         }
-        const uint16_t allRankMask = (1 << arg->rankSize) - 1;
-        CCU_CHK_RET(ccu::EventWait(ctx.event, allRankMask));
+        CCU_CHK_RET(ctx.eventGroup.WaitAll());
     }
     return CCU_SUCCESS;
 }

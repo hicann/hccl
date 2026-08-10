@@ -36,6 +36,8 @@ static CcuResult InitResource(AllToAllMesh2DieContext& ctx)
 
     ctx.logicRankSize = arg->withMyRank ? arg->channelCount + 1 : arg->channelCount;
 
+    ctx.eventGroup.Init(ctx.logicRankSize);
+
     return CCU_SUCCESS;
 }
 
@@ -133,12 +135,16 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
             GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize, GetCcuVersion());
             continue;
         }
-        ccu::Write(arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
+        ccu::Write(
+            arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.eventGroup.GetEvent(r),
+            ctx.eventGroup.GetMask(r));
         channelsIdx++;
     }
-    uint16_t waitMask
-        = arg->withMyRank ? ((1 << ctx.logicRankSize) - 1) & (~(1 << arg->channelCount)) : (1 << ctx.logicRankSize) - 1;
-    ccu::EventWait(ctx.event, waitMask);
+    if (arg->withMyRank) {
+        CCU_CHK_RET(ctx.eventGroup.WaitAllExcept(ctx.logicRankSize - 1));
+    } else {
+        CCU_CHK_RET(ctx.eventGroup.WaitAll());
+    }
 
     return CCU_SUCCESS;
 }
