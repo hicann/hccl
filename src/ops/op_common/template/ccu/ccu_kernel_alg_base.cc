@@ -32,7 +32,8 @@ std::vector<uint64_t> CalGoSize(uint64_t size, CcuVersion ccuVersion)
 }
 
 CcuResult AllocGoResource(
-    LoopGroupConfig& config, LoopGroupResource& res, bool& allocated, uint32_t parallelDim, uint32_t msPerLoop)
+    LoopGroupConfig& config, LoopGroupResource& res, bool& allocated, uint32_t parallelDim, uint32_t msPerLoop,
+    uint32_t ckeNum)
 {
     if (allocated) {
         return CCU_SUCCESS;
@@ -42,7 +43,8 @@ CcuResult AllocGoResource(
     config.loopCount = parallelDim;
     config.memSlice = msPerLoop * CCU_MS_SIZE;
 
-    res.eventCount = config.loopCount;
+    // V2算子通过index*ckeNum+offset索引event, 每次loop克隆偏移ckeNum个event, 故需loopCount*ckeNum个event
+    res.eventCount = config.loopCount * ckeNum;
     res.completedEvent = ccu::Array<ccu::Event>(res.eventCount);
 
     res.bufCount = config.loopCount * config.msInterleave;
@@ -153,7 +155,8 @@ CcuResult CreateMultiOpReduceV2(
     CcuKernelCtxBase& ctx, GroupReduceVar& var, const size_t channels[], uint32_t channelCount, HcclDataType dataType,
     HcclDataType outputDataType, HcclReduceOp opType)
 {
-    AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated);
+    AllocGoResource(
+        ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_MS_DEFAULT_LOOP_COUNT, 1, CCU_LOOP_CKE_NUM_REDUCE_V2);
 
     if (ctx.IsLoopEntityRegistered("reduce")) {
         return CCU_SUCCESS;
@@ -472,7 +475,8 @@ CreateMultiOpBroadcastV1(CcuKernelCtxBase& ctx, GroupBroadcastVar& var, const si
 CcuResult
 CreateMultiOpBroadcastV2(CcuKernelCtxBase& ctx, GroupBroadcastVar& var, const size_t channels[], uint32_t channelCount)
 {
-    AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated);
+    AllocGoResource(
+        ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_MS_DEFAULT_LOOP_COUNT, 1, CCU_LOOP_CKE_NUM_BCAST_V2);
 
     if (ctx.IsLoopEntityRegistered("broadcast")) {
         return CCU_SUCCESS;
@@ -980,7 +984,8 @@ CcuResult CreateMultiOpCopyV1(CcuKernelCtxBase& ctx, GroupCopyVar& var)
 CcuResult CreateMultiOpCopyV2(CcuKernelCtxBase& ctx, GroupCopyVar& var)
 {
     AllocGoResource(
-        ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_MS_LOCAL_COPY_LOOP_COUNT, LOCAL_COPY_MS_PER_LOOP);
+        ctx.moConfig, ctx.moRes, ctx.resourceAllocated, CCU_MS_LOCAL_COPY_LOOP_COUNT, LOCAL_COPY_MS_PER_LOOP,
+        CCU_LOOP_CKE_NUM_COPY_V2);
 
     std::string loopType = "localcopy";
     if (ctx.IsLoopEntityRegistered(loopType)) {

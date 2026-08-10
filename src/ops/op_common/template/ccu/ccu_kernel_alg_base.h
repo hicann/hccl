@@ -186,7 +186,8 @@ std::vector<uint64_t>
 CalGoSize(uint64_t size, const LoopGroupConfig& config, CcuVersion ccuVersion = CcuVersion::CCU_V1);
 CcuResult AllocGoResource(
     LoopGroupConfig& config, LoopGroupResource& res, bool& allocated, uint32_t parallelDim = CCU_MS_DEFAULT_LOOP_COUNT,
-    uint32_t msPerLoop = 1);
+    uint32_t msPerLoop = 1,
+    uint32_t ckeNum = 1); // ckeNum: 每个loop克隆的event隔离数, V1默认1, V2传对应CCU_LOOP_CKE_NUM_*常量
 
 CcuResult GroupBroadcastWithoutMyRank(
     CcuKernelCtxBase& ctx, const size_t channels[], uint32_t channelCount, std::vector<ccu::RemoteAddr> dst,

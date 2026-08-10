@@ -149,7 +149,7 @@ static CcuResult CreateReduceLoopV2(
     HcclDataType outputDataType, HcclReduceOp opType)
 {
     constexpr uint32_t LOOP_NUM = 16;
-    AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated, LOOP_NUM);
+    AllocGoResource(ctx.moConfig, ctx.moRes, ctx.resourceAllocated, LOOP_NUM, 1, CCU_LOOP_CKE_NUM_REDUCE_LOOP_V2);
     if (ctx.IsLoopEntityRegistered("reduce_mesh1d_mem2mem")) {
         return CCU_SUCCESS;
     }
