@@ -430,10 +430,10 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
         if (isDataTypeOrReduceTypeSpecial) {
             selectAlgName = "InsAllReduceAicpuReduceNHR";
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            bool Level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (Level0AndLevel1Sym && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
+            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+            if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
                 selectAlgName = "InsV2AllReduceOmniPipeUboe";
-            } else if (!Level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
+            } else if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
                 selectAlgName = "InsAllReduceNHR";
             } else {
                 selectAlgName = "InsAllReduceParallelRSAGUboe";

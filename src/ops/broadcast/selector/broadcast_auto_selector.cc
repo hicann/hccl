@@ -195,10 +195,10 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
     HCCL_DEBUG("[BroadcastAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
-            bool Level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (!Level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
+            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+            if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
                 selectAlgName = "InsBroadcastNHR";
-            } else if (Level0AndLevel1Sym && topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
+            } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
                 selectAlgName = "AicpuBroadcastSequenceMesh1dNHRNHR";
             } else {
                 selectAlgName = "InsBroadcastParallelNHRNHRUboe";

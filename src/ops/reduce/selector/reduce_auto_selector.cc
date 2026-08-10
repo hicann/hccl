@@ -272,8 +272,8 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1 || topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "ReduceNHR";
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level2Uboe) {
-            bool Level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (!Level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
+            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+            if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
                 selectAlgName = "ReduceAicpuReduceNHR";
             } else {
                 selectAlgName = "ReduceParallelNHRNHRUboe";
