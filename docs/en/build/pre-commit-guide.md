@@ -13,7 +13,7 @@
 
 - **Git**: 2.0+
 - **Python**: 3.8+
-- **clang-format**: 14.0+ (code formatting tool)
+- **clang-format**: 18.1.8 (code formatting tool)
 - **Java**: 17+ (OAT tool dependency, can be installed automatically)
 - **Maven**: 3.6+ (OAT tool dependency, can be installed automatically)
 

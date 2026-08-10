@@ -77,7 +77,7 @@ bash build.sh -j64                       # 并行编译
 - 命名：类/函数 PascalCase；成员变量 `camelCase_`（小驼峰+后缀下划线）；常量与宏 `UPPER_SNAKE_CASE`。
 - 风格：遵循根目录 `.clang-format`（120 列、4 空格、指针右对齐、K&R 大括号）；C++14。
 - 静态告警：代码须通过 CANN 静态检查要求（CI codecheck 阶段校验），编译无告警。
-- pre-commit：clang-format v16 + OAT 合规检查；新增源文件须带 CANN-2.0 许可头。
+- pre-commit：clang-format v18.1.8 + OAT 合规检查；新增源文件须带 CANN-2.0 许可头。
 
 参考：[CANN 编码规范](https://gitcode.com/cann/community/tree/master/contributor/coding-standards)、[CANN CI 指南](https://gitcode.com/cann/community/blob/master/contributor/repository/ci-guide.md)、[pre-commit 指导](./docs/zh/build/pre-commit-guide.md)、`.clang-format`、`OAT.xml`。
 

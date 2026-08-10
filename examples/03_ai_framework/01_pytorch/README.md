@@ -20,6 +20,11 @@
 - <term>Atlas A2 训练系列产品</term>
 - <term>Atlas 训练系列产品</term> / <term>Atlas 推理系列产品</term>
 
+本样例依赖以下 Python 包：
+
+- `torch`：PyTorch 深度学习框架，提供 `torch.distributed` 与 `torch.multiprocessing` 等分布式能力。
+- `torch_npu`：PyTorch 的昇腾 NPU 适配插件，HCCL 通过该插件接入 PyTorch 分布式后端。
+
 ### 配置环境变量
 
 ```bash

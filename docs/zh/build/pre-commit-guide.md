@@ -13,7 +13,7 @@ pre-commit是一个Git Hooks框架，用于在 `git commit` 时自动运行代�
 
 - **Git**: 2.0+
 - **Python**: 3.8+
-- **clang-format**: 14.0+ (代码格式化工具)
+- **clang-format**: 18.1.8 (代码格式化工具)
 - **Java**: 17+ (OAT工具依赖，可自动安装)
 - **Maven**: 3.6+ (OAT工具依赖，可自动安装)
 

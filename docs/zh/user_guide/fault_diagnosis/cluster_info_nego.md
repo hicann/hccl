@@ -196,4 +196,4 @@ server节点在调用HcclGetRootinfo接口后会拉起一个背景线程等待�
 
 ### 定位思路
 
-从该典型场景可以看出，当集群发生通信域创建建链超时时，无论是server节点还是已成功连接的节点，都可以从报错日志中快速确认未连接的rank，也就是报错的根节点，此时仅需可以重点排查未连接rank的失败原因即可，如常见的连接超时原因为未配置[HCCL_SOCKET_IFNAME](../hccl_env/HCCL_SOCKET_IFNAME.md)环境变量导致使用未连通的Host网卡。
+从该典型场景可以看出，当集群发生通信域创建建链超时时，无论是server节点还是已成功连接的节点，都可以从报错日志中快速确认未连接的rank，此时仅需重点排查未连接rank的失败原因即可，如常见的连接超时原因为未配置[HCCL_SOCKET_IFNAME](../hccl_env/HCCL_SOCKET_IFNAME.md)环境变量导致使用未连通的Host网卡。

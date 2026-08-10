@@ -259,4 +259,4 @@ HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm com
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-#endif // HCCL_OPS_H
+#endif // HCCL_H_

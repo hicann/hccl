@@ -20,6 +20,11 @@ This sample supports the following products in a single-server N-card configurat
 - <term>Atlas A2 Training Series Products</term>
 - <term>Atlas Training Series Products</term> / <term>Atlas Inference Series Products</term>
 
+This sample depends on the following Python packages:
+
+- `torch`: The PyTorch deep learning framework, which provides distributed capabilities such as `torch.distributed` and `torch.multiprocessing`.
+- `torch_npu`: The Ascend NPU adapter plugin for PyTorch, through which HCCL is integrated into the PyTorch distributed backend.
+
 ### Setting Environment Variables
 
 ```bash
