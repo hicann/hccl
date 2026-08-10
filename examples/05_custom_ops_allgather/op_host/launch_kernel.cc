@@ -1,7 +1,7 @@
-/*
- * Copyright (c) 2025 Huawei Technologies Co., Ltd. All Rights Reserved.
- * This file is a part of the CANN Open Software.
- * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -14,6 +14,9 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <cstdlib>
+#include <limits>
+#include <algorithm>
 #include "acl/acl.h"
 
 namespace ops_hccl_allgather {
@@ -27,6 +30,38 @@ static aclrtFuncHandle g_funcHandle = nullptr;
 // Constants
 const std::string AIV_BINARY_NAME = "hccl_custom_allgather_kernels.o";
 const std::string KERNEL_NAME = "HcclAllGatherAivKernel";
+
+constexpr uint32_t MIN_TIMEOUT_MULTIPLE = 1;
+constexpr uint32_t MAX_TIMEOUT_MULTIPLE = 254;
+
+static uint32_t GetAivTimeoutUs()
+{
+    constexpr uint32_t defaultTimeoutUs = CUSTOM_TIMEOUT * 1000000;
+    const char* env = getenv("HCCL_EXEC_TIMEOUT");
+    if (env == nullptr) {
+        return defaultTimeoutUs;
+    }
+    double timeoutUs = atof(env) * 1000000;
+    if (timeoutUs <= 0) {
+        return defaultTimeoutUs;
+    }
+    if (timeoutUs > static_cast<double>(std::numeric_limits<uint32_t>::max())) {
+        timeoutUs = static_cast<double>(std::numeric_limits<uint32_t>::max());
+    }
+    uint64_t interval = 0;
+    aclError aclRet = aclrtGetOpTimeOutInterval(&interval);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_INFO(
+            "[GetAivTimeoutUs] aclrtGetOpTimeOutInterval failed, ret[%d], use default[%u]us", aclRet, defaultTimeoutUs);
+        return defaultTimeoutUs;
+    }
+    uint64_t minUs = MIN_TIMEOUT_MULTIPLE * interval;
+    uint64_t maxUs = MAX_TIMEOUT_MULTIPLE * interval;
+    uint64_t timeout = static_cast<uint64_t>(timeoutUs);
+    timeout = std::max(minUs, std::min(timeout, maxUs));
+    HCCL_INFO("[GetAivTimeoutUs] HCCL_EXEC_TIMEOUT=%s, interval=%llu, timeout=%lluus", env, interval, timeout);
+    return static_cast<uint32_t>(timeout);
+}
 
 static HcclResult LoadBinaryFromFile(const std::string& fileName, void*& buffer, size_t& length)
 {
@@ -111,7 +146,7 @@ HcclResult ExecuteKernelLaunch(const OpParam& param, aclrtStream stream)
     attr[0].value.schemMode = 1;
 
     attr[1].id = ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT_US;
-    attr[1].value.timeoutUs.timeoutLow = CUSTOM_TIMEOUT * 1000000;
+    attr[1].value.timeoutUs.timeoutLow = GetAivTimeoutUs();
     attr[1].value.timeoutUs.timeoutHigh = 0;
 
     attr[2].id = ACL_RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE;

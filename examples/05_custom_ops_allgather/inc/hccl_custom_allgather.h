@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 HcclResult HcclAllGatherCustom(
-    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
+    void* sendBuf, void* recvBuf, uint64_t dataSize, HcclDataType dataType, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }

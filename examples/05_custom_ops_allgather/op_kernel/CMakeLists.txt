@@ -71,10 +71,19 @@ if(DEFINED OPS_BASE_DIR)
     )
 endif()
 
+set(AIV_CCE_ARCH "dav-c310-vec" CACHE STRING "AIV kernel ccec arch (A5: dav-c310-vec, A3: dav-c220-vec)")
+
+if(AIV_CCE_ARCH MATCHES "c220")
+    set(AIV_ARCH_DEFINES -D__CCE_AICORE__=220 -D__DAV_C220__)
+else()
+    set(AIV_ARCH_DEFINES -D__CCE_AICORE__=310 -D__DAV_C310__)
+endif()
+
 add_custom_command(
     OUTPUT ${KERNEL_OBJ}
     COMMAND ${CCE_COMPILER} -c -x cce -O2 ${KERNEL_SRC} -o ${KERNEL_TMP_OBJ}
-        --cce-aicore-arch=dav-c310-vec
+        --cce-aicore-arch=${AIV_CCE_ARCH}
+        ${AIV_ARCH_DEFINES}
         --cce-aicore-only
         -mllvm -cce-aicore-function-stack-size=0x8000
         -mllvm -cce-aicore-stack-size=0x8000

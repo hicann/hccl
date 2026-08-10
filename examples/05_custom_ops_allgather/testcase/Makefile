@@ -17,5 +17,8 @@ $(TARGET): main.cc
 clean:
 	rm -f $(TARGET)
 
+# 通过 make run NP=<卡数> 控制进程数，默认 2
+NP ?= 2
+
 run: $(TARGET)
-	export LD_LIBRARY_PATH=$(LIB_DIR):$(ASCEND_HOME)/lib64:$$LD_LIBRARY_PATH && mpirun -n 2 ./$(TARGET)
+	export LD_LIBRARY_PATH=$(LIB_DIR):$(ASCEND_HOME)/lib64:$$LD_LIBRARY_PATH && mpirun -n $(NP) ./$(TARGET)
