@@ -74,8 +74,8 @@ void UpdateAicpuTimeoutCtx(const OpParam& param, AlgResourceCtxSerializable& res
     resCtx.waitTimeout = timeout.waitTimeout;
     resCtx.fullTimeout = timeout.fullTimeout;
     HCCL_INFO(
-        "[AicpuTimeout] execTimeout[%u], waitTimeout[%u], fullTimeout[%u], "
-        "hostNotifyTimeout[%u], kernelLaunchTimeout[%u], hcommDefaultTimeoutSupported[%u].",
+        "[AicpuTimeout] execTimeout[%u]s, waitTimeout[%u]s, fullTimeout[%u]s, "
+        "hostNotifyTimeout[%u]s, kernelLaunchTimeout[%u]s, hcommDefaultTimeoutSupported[%u].",
         param.opConfig.execTimeout, timeout.waitTimeout, timeout.fullTimeout, timeout.hostNotifyTimeout,
         timeout.kernelLaunchTimeout, static_cast<u32>(IsHcommDefaultTimeoutSupported()));
 }
@@ -3533,7 +3533,7 @@ HcclResult SetExecTimeout(OpParam& param)
         // 验证转换后的值是否合理
         if (execTimeoutValue < 0 || execTimeoutValue > UINT32_MAX) {
             HCCL_WARNING(
-                "[OpCommon] Exec timeout value %.2f out of range, use default: %u seconds", execTimeoutValue,
+                "[OpCommon] Exec timeout value %.2f s out of range, use default: %u seconds", execTimeoutValue,
                 CUSTOM_TIMEOUT);
             param.opConfig.execTimeout = CUSTOM_TIMEOUT;
         } else {

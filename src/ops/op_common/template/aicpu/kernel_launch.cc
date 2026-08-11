@@ -294,7 +294,7 @@ OpOrchestrate(OpParam* param, const AlgResourceCtxSerializable* resCtxPtr, Threa
         }
     }
     HCCL_DEBUG(
-        "[%s]Notify wait on thread[%llu], maxNotifyNum[%u], timeout[%u]", __func__, thread, maxNotifyNum,
+        "[%s]Notify wait on thread[%llu], maxNotifyNum[%u], timeout[%u] s", __func__, thread, maxNotifyNum,
         resCtxPtr->waitTimeout);
     CHK_RET(HcclThreadNotifyWaitOnThreadDefault(thread, maxNotifyNum, resCtxPtr->waitTimeout));
 
@@ -650,7 +650,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
 
             // 主thread等待Host stream的通知
             HCCL_DEBUG(
-                "[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
+                "[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u] s", __func__, thread,
                 notifyNumOnMainThread, CUSTOM_TIMEOUT);
             CHK_RET(
                 static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, notifyNumOnMainThread, CUSTOM_TIMEOUT)));
@@ -1128,7 +1128,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
             }
         }
         HCCL_DEBUG(
-            "[%s]Notify wait on thread[%llu], maxNotifyNum[%u], timeout[%u]", __func__, thread, maxNotifyNum,
+            "[%s]Notify wait on thread[%llu], maxNotifyNum[%u], timeout[%u] s", __func__, thread, maxNotifyNum,
             CUSTOM_TIMEOUT);
         CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, maxNotifyNum, CUSTOM_TIMEOUT)));
 
@@ -1204,7 +1204,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
 
             // 主thread等待Host stream的通知
             HCCL_DEBUG(
-                "[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u]", __func__, thread,
+                "[%s]Notify wait on thread[%llu], notifyNumOnMainThread[%u], timeout[%u] s", __func__, thread,
                 notifyNumOnMainThread, CUSTOM_TIMEOUT);
             CHK_RET(
                 static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(thread, notifyNumOnMainThread, CUSTOM_TIMEOUT)));

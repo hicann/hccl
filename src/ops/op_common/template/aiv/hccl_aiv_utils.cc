@@ -388,7 +388,7 @@ static u32 GetAivTimeout()
     if (GetExternalInputExecTimeout(execTimeOut)) {
         timeoutUs = execTimeOut * TIME_S_TO_US;
         if (timeoutUs > static_cast<double>(std::numeric_limits<u32>::max())) {
-            HCCL_WARNING("[GetAivTimeout]Get input timeout[%.2f] is out of valid range.", timeoutUs);
+            HCCL_WARNING("[GetAivTimeout]Get input timeout[%.2f] us is out of valid range.", timeoutUs);
             timeoutUs = AIV_TIMEOUT_DEFAULT_US;
         } else if (static_cast<u32>(timeoutUs) == 0) {
             timeoutUs = AIV_TIMEOUT_DEFAULT_US;
@@ -1024,8 +1024,8 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 arg
     cfg.attrs = attr;
 
     HCCL_INFO(
-        "[ExecuteKernelLaunchInner] KernelAttr attr[0]: id=%u, schemMode=%u; attr[1]: id=%u, timeoutLow=%u, "
-        "timeoutHigh=%u; attr[2]: id=%u, engineType=%u; cfg: numAttrs=%u",
+        "[ExecuteKernelLaunchInner] KernelAttr attr[0]: id=%u, schemMode=%u; attr[1]: id=%u, timeoutLow=%u us, "
+        "timeoutHigh=%u us; attr[2]: id=%u, engineType=%u; cfg: numAttrs=%u",
         attr[0].id, attr[0].value.schemMode, attr[1].id, attr[1].value.timeoutUs.timeoutLow,
         attr[1].value.timeoutUs.timeoutHigh, attr[2].id, attr[2].value.engineType, cfg.numAttrs);
 
