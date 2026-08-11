@@ -512,7 +512,7 @@ HcclResult HcclGetAlgExecParamGraphMode(
         "[HcclGetAlgExecParamGraphMode] superKernelArgs: buffersIn[%p], rank[%u], rankSize[%u], "
         "len[%llu], dataType[%u], unitSize[%u], reduceOp[%u], numBlocks[%u], tag[%d], "
         "clearEnable[%d], inputSliceStride[%llu], outputSliceStride[%llu], repeatNum[%llu], "
-        "inputRepeatStride[%llu], outputRepeatStride[%llu], input[%llu], output[%llu], cclBufferSize[%llu]",
+        "inputRepeatStride[%llu], outputRepeatStride[%llu], input[%p], output[%p], cclBufferSize[%llu]",
         superKernelArgs.buffersIn, superKernelArgs.rank, superKernelArgs.rankSize, superKernelArgs.len,
         superKernelArgs.dataType, superKernelArgs.unitSize, superKernelArgs.reduceOp, superKernelArgs.numBlocks,
         superKernelArgs.tag, superKernelArgs.clearEnable, superKernelArgs.inputSliceStride,

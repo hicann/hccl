@@ -119,9 +119,7 @@ public:
     {
         uint32_t rankMultiple = 2;
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
-        if (count * sizeof(T) <= DATA_LIMIT) {
-            RunCtrlCoreSmallCount(count, stride);
-        } else if (count * sizeof(T) >= DATA_LIMIT && numBlocks_ >= rankMultiple * rankSize_) {
+        if (count * sizeof(T) >= DATA_LIMIT && numBlocks_ >= rankMultiple * rankSize_) {
             // 核数大于等于2倍ranksize
             curStageCoreNum = numBlocks_ / rankSize_ * rankSize_; // 总的核数
             coreNumStage1 = rankSize_;
@@ -180,37 +178,6 @@ public:
         }
         for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
             WaitFlag(rank_, rank + rankSize_, curTag_);
-        }
-    }
-
-    __aicore__ inline void RunCtrlCoreSmallCount(uint64_t count, uint64_t stride)
-    {
-        // template控制 核数多的场景下 numBlocks_ = rankSize; 否则就是全核
-        int32_t curNumBlocks = numBlocks_;
-
-        // 小数据场景，每个核单独copy全量数据直接写到对端，PCIE算法按照大数据量走
-        auto input = reinterpret_cast<__gm__ T*>(input_);
-        uint32_t perCoreRankNum = rankSize_ / curNumBlocks;
-        uint32_t remainRankNum = rankSize_ % curNumBlocks;
-        uint32_t curCoreRankNum = blockIdx_ < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
-        uint32_t startRank
-            = blockIdx_ < remainRankNum ? (perCoreRankNum + 1) * blockIdx_ : perCoreRankNum * blockIdx_ + remainRankNum;
-
-        for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            auto gmOthers = reinterpret_cast<__gm__ T*>(
-                reinterpret_cast<uint64_t>(GM_IN[rank_]) + rank * (count * sizeof(T) + 64 - 1) / 64 * 64);
-            CpGM2GM(gmOthers, input, count);
-            PipeBarrier<PIPE_ALL>();
-            Record(rank, rank_, curTag_);
-        }
-
-        for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            auto gmOthers = reinterpret_cast<__gm__ T*>(
-                reinterpret_cast<uint64_t>(GM_IN[rank]) + rank_ * (count * sizeof(T) + 64 - 1) / 64 * 64);
-            auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
-            WaitFlag(rank_, rank, curTag_);
-            CpGM2GM(output, gmOthers, count);
-            PipeBarrier<PIPE_ALL>();
         }
     }
 
