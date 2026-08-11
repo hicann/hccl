@@ -159,8 +159,10 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     if (topoInfo->topoLevelNums == TOPO_LEVEL_3) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D && topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) > 1
-            && !topoInfo->level2Uboe) {
+        bool level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+        if (!level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
+            selectAlgName = "InsScatterNHR";
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
             selectAlgName = "AicpuScatterSequenceMesh1DNHRNHR";
         } else {
             selectAlgName = "InsScatterNHR";
