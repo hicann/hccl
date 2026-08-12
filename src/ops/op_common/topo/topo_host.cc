@@ -707,7 +707,7 @@ static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails
         return HCCL_SUCCESS;
     }
 
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
     u32 myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
     for (u32 dstRank = 0; dstRank < topoInfo->userRankSize; dstRank++) {
