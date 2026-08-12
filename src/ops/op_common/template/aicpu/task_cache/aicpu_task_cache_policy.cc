@@ -24,6 +24,11 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
         return HCCL_SUCCESS;
     }
 
+    if (param.deviceType != HcclDevType::DEV_TYPE_950) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] deviceType[%d] is not supported", param.deviceType);
+        return HCCL_SUCCESS;
+    }
+
     // MC2算子不支持
     if (param.isMc2) {
         HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] mc2 is not supported");
