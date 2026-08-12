@@ -719,7 +719,7 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceSequenceMesh1DNhr, InsV2AllReduceSequenceExecutorAicpu,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHR, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempAllGatherNHR,
     InsTempAllGatherMesh1D1DZAxisDetour);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -727,7 +727,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceSequenceMesh1D, InsV2AllReduceSequenceExecutorAicpu,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMeshMesh, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

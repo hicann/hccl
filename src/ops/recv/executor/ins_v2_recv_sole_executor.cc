@@ -149,6 +149,6 @@ HcclResult InsV2RecvSoleExecutor<InsAlgTemplate>::OrchestrateWithThread(
 }
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_RECEIVE, InsRecvDPU, InsV2RecvSoleExecutor, InsTempRecvDpu);
+REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSole, InsV2RecvSoleExecutor, InsTempRecvDpu);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl

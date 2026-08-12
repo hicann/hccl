@@ -952,20 +952,20 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipeMultilevel, InsV2AllReduceOmniPipeExecutor,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLineMeshNHRMesh, InsV2AllReduceOmniPipeExecutor,
     TopoMatchMultilevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,
     InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipePcie, InsV2AllReduceOmniPipeExecutor, TopoMatchPcieMix,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLinePcie, InsV2AllReduceOmniPipeExecutor, TopoMatchPcieMix,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipe, InsV2AllReduceOmniPipeExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLineUBX, InsV2AllReduceOmniPipeExecutor, TopoMatchUBX,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsV2AllReduceOmniPipeUboe, InsV2AllReduceOmniPipeExecutor, TopoMatch3Level,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLine, InsV2AllReduceOmniPipeExecutor, TopoMatch3Level,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1D,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
 

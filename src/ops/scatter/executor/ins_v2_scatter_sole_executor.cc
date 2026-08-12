@@ -244,21 +244,22 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 
 // 第二个参数是Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, InsScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, InsScatterNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, AivScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, AivTempScatterMesh1D);
+    HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, AivTempScatterMesh1D);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // ccu template
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuScatterMesh1D, InsV2ScatterSoleExecutor, TopoMatch1D, CcuTempScatterMesh1D);
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D,
+    CcuTempScatterMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuScatterNHRMem2Mem1D, InsV2ScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D,
     CcuTempScatterNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

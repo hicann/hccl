@@ -20,7 +20,7 @@ SelectorStatus SendAutoSelector::SelectAicpuAlgo(
     (void)topoInfo;
     HCCL_INFO("[SendAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);
 
-    selectAlgName = "InsSend";
+    selectAlgName = "AicpuSendSole";
     return SelectorStatus::MATCH;
 }
 
@@ -44,7 +44,7 @@ SelectorStatus SendAutoSelector::SelectAivAlgo(
     }
 
     HCCL_INFO("[SendAutoSelector][SelectAivAlgo] opType:%d", opParam.opType);
-    selectAlgName = "AivSend";
+    selectAlgName = "AivSendSole";
     return SelectorStatus::MATCH;
 }
 
@@ -55,7 +55,7 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     HCCL_INFO("[SendAutoSelector][SelectDPUAlgo] opType:%d", opParam.opType);
 
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType
-    // host nic -- device nic 场景走 opv2_insSendHostDpu，其他走 InsSendDPU
+    // host nic -- device nic 场景走 DpuSendSoleHost，其他走 DpuSendSole
     u32 myRank = topoInfo->userRank;
     u32 remoteRank = opParam.sendRecvRemoteRank;
     HcclComm comm = opParam.hcclComm;
@@ -63,8 +63,8 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     // 获取最高层（最后一个 netLayer）
     const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;
     if (netLayers.empty()) {
-        HCCL_WARNING("[SendAutoSelector][SelectDPUAlgo] netLayers is empty, use default InsSendDPU");
-        selectAlgName = "InsSendDPU";
+        HCCL_WARNING("[SendAutoSelector][SelectDPUAlgo] netLayers is empty, use default DpuSendSole");
+        selectAlgName = "DpuSendSole";
         return SelectorStatus::MATCH;
     }
 
@@ -95,18 +95,18 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
 
         // host nic -- device nic: 本端是 HOST，对端是 DEVICE
         if (srcLocType == ENDPOINT_LOC_TYPE_HOST && dstLocType == ENDPOINT_LOC_TYPE_DEVICE) {
-            selectAlgName = "opv2_insSendHostDpu";
+            selectAlgName = "DpuSendSoleHost";
         } else {
-            selectAlgName = "InsSendDPU";
+            selectAlgName = "DpuSendSole";
         }
         return SelectorStatus::MATCH;
     }
 
     // 没有找到链路，使用默认
     HCCL_WARNING(
-        "[SendAutoSelector][SelectDPUAlgo]no link found for rank:%u and rank:%u, use default InsSendDPU", myRank,
+        "[SendAutoSelector][SelectDPUAlgo]no link found for rank:%u and rank:%u, use default DpuSendSole", myRank,
         remoteRank);
-    selectAlgName = "InsSendDPU";
+    selectAlgName = "DpuSendSole";
     return SelectorStatus::MATCH;
 }
 

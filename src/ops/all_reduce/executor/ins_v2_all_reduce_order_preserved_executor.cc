@@ -415,7 +415,7 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreserved, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedMesh, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
     InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(

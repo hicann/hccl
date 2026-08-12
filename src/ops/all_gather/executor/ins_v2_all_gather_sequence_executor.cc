@@ -251,6 +251,6 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherMeshNhrDPU, InsV2AllGatherSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSequenceMeshNHR, InsV2AllGatherSequenceExecutor, TopoMatchMultilevel,
     InsTempAllGatherMesh1D, InsTempAllGatherNHRDPU);
 } // namespace ops_hccl

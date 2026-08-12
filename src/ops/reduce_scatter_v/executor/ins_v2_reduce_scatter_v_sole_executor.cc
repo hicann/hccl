@@ -181,13 +181,13 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
 
 // 第二个参数是Reduce Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, InsReduceScatterVMesh1D, InsV2ReduceScatterVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor, TopoMatch1D,
     InsTempReduceScatterVMesh1D);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, CcuReduceScatterVMesh1D, InsV2ReduceScatterVSoleExecutor, TopoMatch1D,
-    CcuTempReduceScatterVMesh1DMem2Mem);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, CcuSchedReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
+    TopoMatch1D, CcuTempReduceScatterVMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

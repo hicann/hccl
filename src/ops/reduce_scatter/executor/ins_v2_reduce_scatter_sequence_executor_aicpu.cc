@@ -435,15 +435,17 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterSequenceMesh1DNhr, InsV2ReduceScatterSequenceExecutorAicpu,
-    TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHR,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
+    InsTempReduceScatterNHR);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterSequenceMeshMesh, InsV2ReduceScatterSequenceExecutorAicpu,
-    TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterMesh1DMem2Mem);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSequenceMeshMesh,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem,
+    CcuTempReduceScatterMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

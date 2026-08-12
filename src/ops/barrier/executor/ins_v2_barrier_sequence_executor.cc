@@ -98,6 +98,6 @@ HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_BARRIER, InsBarrierMeshNhrDPU, InsV2BarrierSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_BARRIER, DpuBarrierSequenceMeshNHR, InsV2BarrierSequenceExecutor, TopoMatchMultilevel,
     InsTempBarrierMesh1D, InsTempBarrierNHRDPU);
 } // namespace ops_hccl

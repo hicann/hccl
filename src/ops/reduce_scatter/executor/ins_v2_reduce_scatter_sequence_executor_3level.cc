@@ -402,7 +402,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterSequenceMesh1DNHRNHR,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHRNHR,
     InsV2ReduceScatterSequenceExecutor3Level, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR, InsTempReduceScatterNHR);
 

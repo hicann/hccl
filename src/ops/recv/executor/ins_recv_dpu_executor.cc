@@ -132,5 +132,5 @@ HcclResult InsRecvDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
 
 // opv2流程使用opv2_insRecvHostDpu算法名
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
-    HcclCMDType::HCCL_CMD_RECEIVE, opv2_insRecvHostDpu, InsRecvDpuExecutor, InsTempRecvHostNicDpu);
+    HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSoleHost, InsRecvDpuExecutor, InsTempRecvHostNicDpu);
 } // namespace ops_hccl

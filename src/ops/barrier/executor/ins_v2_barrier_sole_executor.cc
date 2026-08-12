@@ -73,6 +73,6 @@ HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
 }
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BARRIER, InsBarrierNhrAicpu, InsV2BarrierSoleExecutor, TopoMatch1D, InsTempBarrierNhrAicpu);
+    HcclCMDType::HCCL_CMD_BARRIER, AicpuBarrierSoleNHR, InsV2BarrierSoleExecutor, TopoMatch1D, InsTempBarrierNhrAicpu);
 
 } // namespace ops_hccl

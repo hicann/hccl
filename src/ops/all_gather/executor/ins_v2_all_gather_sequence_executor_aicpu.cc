@@ -459,14 +459,14 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherSequenceNHRMesh1D, InsV2AllGatherSequenceExecutorAicpu,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHR, InsV2AllGatherSequenceExecutorAicpu,
     TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherSequenceMeshMesh, InsV2AllGatherSequenceExecutorAicpu,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSequenceMeshMesh, InsV2AllGatherSequenceExecutorAicpu,
     TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
 #endif
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

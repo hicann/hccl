@@ -366,7 +366,7 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherSequenceNHRNHRMesh1D, InsV2AllGatherSequenceExecutor3Level,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHRNHR, InsV2AllGatherSequenceExecutor3Level,
     TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR, InsTempAllGatherNHR);
 } // namespace ops_hccl
 // 算法注册

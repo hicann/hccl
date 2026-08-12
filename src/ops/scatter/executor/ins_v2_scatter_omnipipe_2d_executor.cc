@@ -646,7 +646,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuV2ScatterOmniPipe2D, InsV2ScatterOmniPipe2DExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterPipeLineMeshNHR, InsV2ScatterOmniPipe2DExecutor, TopoMatchUBX,
     CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

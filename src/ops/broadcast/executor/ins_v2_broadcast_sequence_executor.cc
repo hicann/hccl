@@ -473,7 +473,6 @@ u64 InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 }
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastSequenceMeshNhrDPU, InsV2BroadcastSequenceExecutor,
-    TopoMatchMultilevel, InsTempScatterMesh1DIntra, InsTempScatterNHRDPUInter, InsTempAllGatherNHRDPUInter,
-    InsTempAllGatherMesh1DIntra);
+    HcclCMDType::HCCL_CMD_BROADCAST, DpuBroadcastSequenceMeshNHR, InsV2BroadcastSequenceExecutor, TopoMatchMultilevel,
+    InsTempScatterMesh1DIntra, InsTempScatterNHRDPUInter, InsTempAllGatherNHRDPUInter, InsTempAllGatherMesh1DIntra);
 } // namespace ops_hccl

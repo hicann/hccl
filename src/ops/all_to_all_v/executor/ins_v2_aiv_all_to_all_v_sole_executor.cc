@@ -298,7 +298,7 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaun
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALLV, AivAlltoAllVMesh1D, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
     AivTempAlltoAllVMesh1D);
 #endif
 } // namespace ops_hccl

@@ -42,7 +42,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectCcuScheduleAlgo(
     }
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        selectAlgName = "CcuAlltoAllVCMesh1D";
+        selectAlgName = "CcuSchedAllToAllVCSoleMesh";
     } else {
         HCCL_DEBUG("hccl algo no match");
         return SelectorStatus::NOT_MATCH;
@@ -59,7 +59,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAicpuAlgo(
     (void)opParam;
     (void)configAlgMap;
 
-    selectAlgName = "InsAlltoAllVCMesh1D";
+    selectAlgName = "AicpuAllToAllVCSoleMesh";
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
@@ -79,14 +79,14 @@ SelectorStatus AlltoAllVCAutoSelector::SelectDPUAlgo(
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "InsAlltoAllVCMesh1DDPU";
+            selectAlgName = "DpuAllToAllVCSoleMesh";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "InsAlltoAllVCClosMesh1DDPU";
+                selectAlgName = "DpuAllToAllVCSoleMeshUBX";
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "InsAlltoAllVCMesh1DDPU";
+                selectAlgName = "DpuAllToAllVCSoleMesh";
                 return SelectorStatus::MATCH;
             }
         }

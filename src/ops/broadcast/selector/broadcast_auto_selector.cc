@@ -42,11 +42,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
             HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuBroadcastMesh1D";
+            selectAlgName = "CcuMSBroadcastSoleMesh";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuBroadcastMesh1D";
+            selectAlgName = "CcuMSBroadcastSoleMesh";
         } else { // MS 不支持
             HCCL_WARNING(
                 "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
@@ -110,10 +110,10 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
                 return SelectorStatus::NOT_MATCH;
             }
             if (topoInfo->Level1Nhr) {
-                selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+                selectAlgName = "CcuSchedBroadcastSoleNHR";
                 HCCL_INFO("[BroadcastAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
             } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) { // 每框出1卡
-                selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+                selectAlgName = "CcuSchedBroadcastSoleNHR";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
@@ -122,17 +122,17 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
                 u64 dataSize = opParam.DataDes.count * perDataSize;
                 u64 perRankSize = (topoInfo->userRankSize > 0) ? (dataSize / topoInfo->userRankSize) : dataSize;
                 if (perRankSize <= BROADCAST_MESH_CCU_MAX_DATA_SIZE && topoInfo->userRankSize <= 64) {
-                    selectAlgName = "CcuBroadcastMesh1DMem2Mem";
+                    selectAlgName = "CcuSchedBroadcastSoleMesh";
                 } else if (
                     (perRankSize <= BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize)
                     || (perRankSize <= BROADCAST_NHR_CCU_MAX_DATA_SIZE && topoInfo->userRankSize >= ccuSize)) {
-                    selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+                    selectAlgName = "CcuSchedBroadcastSoleNHR";
                 } else {
-                    selectAlgName = "CcuBroadcastParallelMesh1DNHR";
+                    selectAlgName = "CcuSchedBroadcastParallelMeshNHR";
                 }
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS && !topoInfo->level0PcieMix) {
-            selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+            selectAlgName = "CcuSchedBroadcastSoleNHR";
         } else {
             HCCL_WARNING(
                 "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu schedule mode.",
@@ -160,11 +160,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuBroadcastMesh1DMem2Mem";
+            selectAlgName = "CcuSchedBroadcastSoleMesh";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuBroadcastMesh1DMem2Mem";
+            selectAlgName = "CcuSchedBroadcastSoleMesh";
         } else if (topoInfo->level0PcieMix) {
             HCCL_WARNING("[BroadcastAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
@@ -172,7 +172,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
             if (dataSize < OMNI2D_UBX_BR_DATA_SIZE) {
                 selectAlgName = "CcuBroadcastParallelMesh1DNHRUBX";
             } else {
-                selectAlgName = "CcuBroadcastOmniPipe2D";
+                selectAlgName = "CcuSchedBroadcastPipeLineMeshNHR";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -180,7 +180,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("[BroadcastAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
-        selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+        selectAlgName = "CcuSchedBroadcastSoleNHR";
     } else {
         HCCL_WARNING(
             "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu schedule mode.",
@@ -200,18 +200,18 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
         if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
             if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-                selectAlgName = "InsBroadcastNHR";
+                selectAlgName = "AicpuBroadcastSoleNHR";
             } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
                 selectAlgName = "AicpuBroadcastSequenceMesh1dNHRNHR";
             } else {
                 selectAlgName = "InsBroadcastParallelNHRNHRUboe";
             }
         } else if (topoInfo->Level1Nhr) {
-            selectAlgName = "InsBroadcastNHR";
+            selectAlgName = "AicpuBroadcastSoleNHR";
         } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-            selectAlgName = "InsBroadcastNHR";
+            selectAlgName = "AicpuBroadcastSoleNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "InsBroadcastParallelMesh1DNHR";
+            selectAlgName = "AicpuBroadcastParallelMeshNHR";
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "AicpuBroadcastSoleNHRTwoShotMultiLink";
         } else {
@@ -230,10 +230,10 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        selectAlgName = "InsBroadcastMesh1DTwoShot";
+        selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "InsBroadcastMesh1DTwoShot";
+            selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
         } else if (topoInfo->level0PcieMix) {
             selectAlgName = "InsBroadcastParallelMesh1DNHRPcie";
         } else {
@@ -303,7 +303,7 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(
             __func__, dataSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
-    selectAlgName = "AivBroadcastMesh1D";
+    selectAlgName = "AivBroadcastSoleMesh";
     HCCL_INFO("[BroadcastAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
@@ -324,11 +324,11 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
         algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "InsBroadcastSequenceMeshNhrDPU";
+            selectAlgName = "DpuBroadcastSequenceMeshNHR";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (topoInfo->level0PcieMix) {
-                selectAlgName = "InsBroadcastSequenceMeshNhrDPU";
+                selectAlgName = "DpuBroadcastSequenceMeshNHR";
                 return SelectorStatus::MATCH;
             }
         }

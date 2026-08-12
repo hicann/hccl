@@ -655,7 +655,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHR, InsV2AllGatherParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelMeshNHR, InsV2AllGatherParallelExecutor, TopoMatchMultilevel,
     InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHRMultiJetty, InsV2AllGatherParallelExecutor,
@@ -665,20 +665,20 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     TopoMatchPcieMix, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHRUboe, InsV2AllGatherParallelExecutor,
-    TopoMatchSqueeze2D, InsTempAllGatherNHR, InsTempAllGatherNHR);
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelNHRNHR, InsV2AllGatherParallelExecutor, TopoMatchSqueeze2D,
+    InsTempAllGatherNHR, InsTempAllGatherNHR);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherParallelMesh1DNHR, InsV2AllGatherParallelExecutor, TopoMatchMultilevel,
-    CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherParallelMeshNHR, InsV2AllGatherParallelExecutor,
+    TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherParallelMesh1DNHRMemMultiJetty, InsV2AllGatherParallelExecutor,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherParallelMeshNHRMultiLink, InsV2AllGatherParallelExecutor,
     TopoMatchUBX, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMultiJettyMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 

@@ -667,16 +667,16 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsV2AllGatherOmniPipeMultilevel, InsV2AllGatherOmniPipeExecutor,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
     TopoMatchMultilevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsV2AllGatherOmniPipePcie, InsV2AllGatherOmniPipeExecutor, TopoMatchPcieMix,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLinePcie, InsV2AllGatherOmniPipeExecutor, TopoMatchPcieMix,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsV2AllGatherOmniPipe, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineUBX, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, InsV2AllGatherOmniPipeUboe, InsV2AllGatherOmniPipeExecutor, TopoMatch3Level,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLine, InsV2AllGatherOmniPipeExecutor, TopoMatch3Level,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
 } // namespace ops_hccl

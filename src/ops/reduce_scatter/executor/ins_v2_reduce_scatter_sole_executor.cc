@@ -52,7 +52,7 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, algHierarchyInfo.infos[0]);
-    // 调用计算资源的函数 InsReduceScatterNHR 在计算资源时按照channels取最大，实际使用资源由SetchannelsPerRank使能
+    // 调用计算资源的函数 AicpuReduceScatterSoleNHR 在计算资源时按照channels取最大，实际使用资源由SetchannelsPerRank使能
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
     return HCCL_SUCCESS;
 }
@@ -119,7 +119,7 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
         = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
     u32 templateScratchMultiplier
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
-    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && std::string(param.algName) != "InsReduceScatterNHR") {
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && std::string(param.algName) != "AicpuReduceScatterSoleNHR") {
         algTemplate->SetchannelsPerRank(templateAlgRes.channels);
     }
 
@@ -265,56 +265,56 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLau
 
 // 第二个参数是Reduce Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterMesh1D, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1D);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterMesh1DMeshChunk, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshChunk, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1DMeshChunk);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterNHR);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterAicpuReduceNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    InsTempReduceScatterAicpuReduceNHR);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,
+    TopoMatch1D, InsTempReduceScatterAicpuReduceNHR);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, InsTempReduceScatterNHR);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterMesh1DZAxisDetour, InsV2ReduceScatterSoleExecutor,
-    TopoMatch1D, InsTempReduceScatterMesh1DZAxisDetour);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    InsTempReduceScatterMesh1DZAxisDetour);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterMesh1D, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     AivTempReduceScatterMesh1D);
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterMesh1DMem2Mem, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterMesh1D, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterNHR1DMem2Mem, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterMeshMem2Mem1D2Die, InsV2ReduceScatterSoleExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, CcuTempReduceScatterMeshMem2Mem1D2Die);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterMesh2Die, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh2Die);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterNhr1DMem2MemMultiJetty, InsV2ReduceScatterSoleExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

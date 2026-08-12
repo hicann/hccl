@@ -1367,7 +1367,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHR, InsBroadcastParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchMultilevel,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
@@ -1382,8 +1382,9 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastParallelMesh1DNHR, InsBroadcastParallelExecutor, TopoMatchMultilevel,
-    CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHR, InsBroadcastParallelExecutor,
+    TopoMatchMultilevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
+    CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);

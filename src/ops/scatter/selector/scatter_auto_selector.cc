@@ -64,22 +64,22 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(
                 return SelectorStatus::NOT_MATCH;
             }
             if (topoInfo->Level1Nhr) {
-                selectAlgName = "CcuScatterNHRMem2Mem1D";
+                selectAlgName = "CcuSchedScatterSoleNHR";
                 HCCL_INFO("[ScatterAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
             } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-                selectAlgName = "CcuScatterNHRMem2Mem1D";
+                selectAlgName = "CcuSchedScatterSoleNHR";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_WARNING("[ScatterAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
                 return SelectorStatus::NOT_MATCH;
             } else {
-                selectAlgName = "CcuScatterParallelMesh1DNHR";
+                selectAlgName = "CcuSchedScatterParallelMeshNHR";
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
                 HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
             }
-            selectAlgName = "CcuScatterNHRMem2Mem1D";
+            selectAlgName = "CcuSchedScatterSoleNHR";
         } else {
             HCCL_WARNING(
                 "[Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
@@ -112,11 +112,11 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("[ScatterAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuScatterMesh1D";
+            selectAlgName = "CcuSchedScatterSoleMesh";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuScatterMesh1D";
+            selectAlgName = "CcuSchedScatterSoleMesh";
         } else if (topoInfo->level0PcieMix) {
             HCCL_WARNING("[ScatterAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
@@ -124,7 +124,7 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
             if (dataSize < OMNI2D_UBX_SC_DATA_SIZE) {
                 selectAlgName = "CcuScatterParallelMesh1DNHRUBX";
             } else {
-                selectAlgName = "CcuV2ScatterOmniPipe2D";
+                selectAlgName = "CcuSchedScatterPipeLineMeshNHR";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -132,7 +132,7 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
-        selectAlgName = "CcuScatterNHRMem2Mem1D";
+        selectAlgName = "CcuSchedScatterSoleNHR";
     } else {
         HCCL_WARNING(
             "[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
@@ -164,20 +164,20 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(
     if (topoInfo->topoLevelNums == TOPO_LEVEL_3) {
         bool level0AndLevel1Sym = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (!level0AndLevel1Sym || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-            selectAlgName = "InsScatterNHR";
+            selectAlgName = "AicpuScatterSoleNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
-            selectAlgName = "AicpuScatterSequenceMesh1DNHRNHR";
+            selectAlgName = "AicpuScatterSequenceMeshConcurNHRNHR";
         } else {
-            selectAlgName = "InsScatterNHR";
+            selectAlgName = "AicpuScatterSoleNHR";
         }
     } else if (topoInfo->Level1Nhr) {
-        selectAlgName = "InsScatterNHR";
+        selectAlgName = "AicpuScatterSoleNHR";
     } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-        selectAlgName = "InsScatterNHR";
+        selectAlgName = "AicpuScatterSoleNHR";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        selectAlgName = "InsScatterParallelMesh1DNHR";
+        selectAlgName = "AicpuScatterParallelMeshNHR";
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        selectAlgName = "InsScatterNHR";
+        selectAlgName = "AicpuScatterSoleNHR";
     } else {
         HCCL_WARNING("[ScatterAutoSelector] topo not match for aicpu algo");
         return SelectorStatus::NOT_MATCH;
@@ -189,10 +189,10 @@ SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        selectAlgName = "InsScatterMesh1D";
+        selectAlgName = "AicpuScatterSoleMesh";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "InsScatterMesh1D";
+            selectAlgName = "AicpuScatterSoleMesh";
         } else if (topoInfo->level0PcieMix) {
             selectAlgName = "InsScatterParallelMesh1DNHRPcie";
         } else {
@@ -200,9 +200,9 @@ SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (topoInfo->level0PcieMix) {
-            selectAlgName = "InsScatterNHR";
+            selectAlgName = "AicpuScatterSoleNHR";
         } else {
-            selectAlgName = "InsScatterMesh1D";
+            selectAlgName = "AicpuScatterSoleMesh";
         }
     } else {
         HCCL_WARNING("[ScatterAutoSelector] topo not match for aicpu algo");
@@ -262,7 +262,7 @@ SelectorStatus ScatterAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    selectAlgName = "AivScatterMesh1D";
+    selectAlgName = "AivScatterSoleMesh";
 
     HCCL_INFO("[ScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -277,8 +277,8 @@ SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
     (void)configAlgMap;
     (void)opParam;
     if (topoInfo->topoLevelNums > 1) {
-        selectAlgName = "InsScatterSequenceMeshNhrDPU";
-        HCCL_INFO("Using algo InsScatterSequenceMeshNhrDPU");
+        selectAlgName = "DpuScatterSequenceMeshNHR";
+        HCCL_INFO("Using algo DpuScatterSequenceMeshNHR");
         return SelectorStatus::MATCH;
     }
 

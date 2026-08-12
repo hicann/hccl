@@ -458,7 +458,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 }
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceSequenceMeshNhrDPU, InsV2AllReduceSequenceExecutor,
-    TopoMatchMultilevel, InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter,
-    InsTempAllGatherNhrDpuInter, InsTempAllGatherMesh1dIntra);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, DpuAllReduceSequenceMeshNHR, InsV2AllReduceSequenceExecutor, TopoMatchMultilevel,
+    InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter, InsTempAllGatherNhrDpuInter,
+    InsTempAllGatherMesh1dIntra);
 } // namespace ops_hccl

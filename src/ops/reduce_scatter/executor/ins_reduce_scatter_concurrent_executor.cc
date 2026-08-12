@@ -513,18 +513,18 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterConcurrentMeshNHR, InsReduceScatterConcurrentExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterConcurMeshNHR, InsReduceScatterConcurrentExecutor,
     TopoMatchUBX, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
 #endif
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterConcurrentMeshNHRSche, InsReduceScatterConcurrentExecutor,
-    TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterConcurMeshNHRMultiLink,
+    InsReduceScatterConcurrentExecutor, TopoMatchUBX,
 
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterConcurrentMeshNHRMs, InsReduceScatterConcurrentExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterConcurMeshNHRMultiLink, InsReduceScatterConcurrentExecutor,
     TopoMatchUBX, CcuTempReduceScatterMesh1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 #endif
 #endif

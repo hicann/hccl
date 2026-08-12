@@ -621,15 +621,15 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
 // 第1个模板走mesh拓扑
 // 第2个模板走clos拓扑
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALL, InsAllToAllMesh1DConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
     InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALLV, InsAllToAllVMesh1DConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
     InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALL, CcuAllToAllMesh1DConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
     CcuTempAllToAllMesh1dMultiJetty, CcuTempAllToAllMesh1dMultiJetty);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

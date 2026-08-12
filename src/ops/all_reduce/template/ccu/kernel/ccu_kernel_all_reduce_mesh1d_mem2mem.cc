@@ -34,7 +34,7 @@ static CcuResult ParseKernelArg(AllReduceMeshMem2Mem1DContext& ctx, CcuKernelArg
     ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuAllReduceMesh1D] outputDataType is [INVALID], set outputDataType to[%d]", ctx.dataType);
+        HCCL_DEBUG("[CcuMSAllReduceSoleMesh] outputDataType is [INVALID], set outputDataType to[%d]", ctx.dataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
     return CCU_SUCCESS;

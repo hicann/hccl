@@ -425,5 +425,5 @@ HcclResult InsV2BatchSendRecvExecutor::Orchestrate(const OpParam& param, const A
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, InsBatchSendRecv, InsV2BatchSendRecvExecutor);
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, AicpuBatchSendRecvSoleMesh, InsV2BatchSendRecvExecutor);
 } // namespace ops_hccl

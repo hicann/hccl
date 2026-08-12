@@ -549,6 +549,6 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
 }
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, InsBatchSendRecvDPU, InsV2BatchSendRecvSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, DpuBatchSendRecvSoleMesh, InsV2BatchSendRecvSoleExecutor, TopoMatch1D,
     InsTempBatchSendRecvDpu);
 } // namespace ops_hccl

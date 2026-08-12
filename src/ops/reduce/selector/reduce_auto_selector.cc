@@ -72,7 +72,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcums(
             HCCL_INFO("[ReduceAutoSelector] Mesh1D dataSize[%llu] >= 8MB, fallback to aicpu.", dataSize);
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuReduceMesh1D";
+            selectAlgName = "CcuMSReduceSoleMesh";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
@@ -81,7 +81,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcums(
                 HCCL_INFO("[ReduceAutoSelector] Mesh1D dataSize[%llu] >= 8MB, fallback to aicpu.", dataSize);
                 return SelectorStatus::NOT_MATCH;
             } else {
-                selectAlgName = "CcuReduceMesh1D";
+                selectAlgName = "CcuMSReduceSoleMesh";
             }
         } else { // MS 不支持
             if (dataSize < OMNI_UBX_MS_DATA_SIZE) {
@@ -158,7 +158,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
                 HCCL_INFO("[ReduceAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
             } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
                 // 每框出 1 卡
-                selectAlgName = "CcuReduceNHR1DMem2Mem";
+                selectAlgName = "CcuSchedReduceSoleNHR";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_WARNING("[ReduceAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
                 return SelectorStatus::NOT_MATCH;
@@ -172,9 +172,9 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
                     SelectorStatus::NOT_MATCH);
                 u64 perRankSize = (topoInfo->userRankSize > 0) ? (dataSize / topoInfo->userRankSize) : dataSize;
                 if (perRankSize <= REDUCE_NHR_CCU_MAX_DATA_SIZE) {
-                    selectAlgName = "CcuReduceNHR1DMem2Mem";
+                    selectAlgName = "CcuSchedReduceSoleNHR";
                 } else {
-                    selectAlgName = "CcuReduceParallelMesh1DNHR";
+                    selectAlgName = "CcuSchedReduceParallelMeshNHR";
                 }
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -182,7 +182,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
                 HCCL_WARNING("[ReduceAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
             }
-            selectAlgName = "CcuReduceNHR1DMem2Mem";
+            selectAlgName = "CcuSchedReduceSoleNHR";
         } else {
             HCCL_WARNING(
                 "[SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
@@ -217,7 +217,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
                     "[ReduceAutoSelector] dataType[%d] is not supported yet for ccu schedule mode.",
                     opParam.DataDes.dataType),
                 SelectorStatus::NOT_MATCH);
-            selectAlgName = "CcuReduceMesh1DTwoShotMem2Mem";
+            selectAlgName = "CcuSchedReduceSoleMeshTwoShot";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
@@ -226,7 +226,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
                 HCCL_INFO("[ReduceAutoSelector] Mesh1D dataSize[%llu] >= 8MB, fallback to aicpu.", dataSize);
                 return SelectorStatus::NOT_MATCH;
             } else {
-                selectAlgName = "CcuReduceMesh1DMem2Mem";
+                selectAlgName = "CcuSchedReduceSoleMesh";
             }
         } else if (topoInfo->level0PcieMix) {
             HCCL_WARNING("[ReduceAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
@@ -250,7 +250,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("[ReduceAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
-        selectAlgName = "CcuReduceNHR1DMem2Mem";
+        selectAlgName = "CcuSchedReduceSoleNHR";
     } else {
         HCCL_WARNING(
             "[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu schedule mode.", topoInfo->level0Topo);
@@ -270,23 +270,23 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
     (void)configAlgMap;
     if (topoInfo->topoLevelNums > 1) {
         if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            selectAlgName = "ReduceAicpuReduceNHR";
+            selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
         } else if (
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1 || topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "ReduceNHR";
+            selectAlgName = "AicpuReduceSoleNHR";
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level2Uboe) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
             if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
-                selectAlgName = "ReduceAicpuReduceNHR";
+                selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
                 selectAlgName = "ReduceParallelNHRNHRUboe";
             }
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
             selectAlgName = "AicpuReduceSequenceMesh1DNHRNHR";
         } else if (topoInfo->Level1Nhr) {
-            selectAlgName = "ReduceNHR";
+            selectAlgName = "AicpuReduceSoleNHR";
         } else if (topoInfo->deviceNumPerModule > 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "ReduceParallelMesh1DNHR";
+            selectAlgName = "AicpuReduceParallelMeshNHR";
         } else {
             return SelectorStatus::NOT_MATCH;
         }
@@ -307,45 +307,45 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
     HCCL_DEBUG("SelectMeshAlgoAicpu %u", topoInfo->level0Topo);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
-            selectAlgName = "ReduceMesh1DTwoShot";
+            selectAlgName = "AicpuReduceSoleMeshTwoShot";
         } else {
-            selectAlgName = "ReduceMesh1D";
+            selectAlgName = "AicpuReduceSoleMesh";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (topoInfo->level0PcieMix) {
             if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
                 if (dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
-                    selectAlgName = "ReduceMesh1DTwoShot";
+                    selectAlgName = "AicpuReduceSoleMeshTwoShot";
                 } else {
-                    selectAlgName = "ReduceMesh1D";
+                    selectAlgName = "AicpuReduceSoleMesh";
                 }
             } else if (
                 Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                selectAlgName = "ReduceAicpuReduceNHR";
+                selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
                 selectAlgName = "ReduceParallelMesh1DNHRPcie";
             }
         } else if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
             if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                selectAlgName = "ReduceMesh1D";
+                selectAlgName = "AicpuReduceSoleMesh";
             } else if (dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
-                selectAlgName = "ReduceMesh1DTwoShot";
+                selectAlgName = "AicpuReduceSoleMeshTwoShot";
             } else {
-                selectAlgName = "ReduceMesh1D";
+                selectAlgName = "AicpuReduceSoleMesh";
             }
         } else {
             if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                selectAlgName = "ReduceAicpuReduceNHR";
+                selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
                 selectAlgName = "ReduceParallelMesh1DNHRUBX";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            selectAlgName = "ReduceAicpuReduceNHR";
+            selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
         } else {
-            selectAlgName = "ReduceNHR";
+            selectAlgName = "AicpuReduceSoleNHR";
         }
     } else {
         HCCL_WARNING("[ReduceAutoSelector] level0Shape[%d] is not supported yet.", topoInfo->level0Topo);
@@ -422,7 +422,7 @@ SelectorStatus ReduceAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    selectAlgName = "AivReduceMesh1D";
+    selectAlgName = "AivReduceSoleMesh";
 
     HCCL_INFO("[ReduceAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -445,13 +445,13 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
         algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "InsReduceSequenceMeshNhrDPU";
-            HCCL_INFO("selectAlgName is InsReduceSequenceMeshNhrDPU");
+            selectAlgName = "DpuReduceSequenceMeshNHR";
+            HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (topoInfo->level0PcieMix) {
-                selectAlgName = "InsReduceSequenceMeshNhrDPU";
-                HCCL_INFO("selectAlgName is InsReduceSequenceMeshNhrDPU");
+                selectAlgName = "DpuReduceSequenceMeshNHR";
+                HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
                 return SelectorStatus::MATCH;
             }
         }

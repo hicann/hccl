@@ -255,31 +255,32 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 #endif
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastMesh1DTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleMeshTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D,
     InsTempBroadcastMesh1DTwoShot);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastNHR, InsV2BroadcastSoleExecutor, TopoMatch1D, InsTempBroadcastNHR);
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    InsTempBroadcastNHR);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRTwoShotMultiLink, InsV2BroadcastSoleExecutor, TopoMatch1D,
     InsTempBroadcastNHR);
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastMesh1D, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     AivTempBroadcastMesh1D);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastMesh1DMem2Mem, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastMesh1D, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuMSBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastNHR1DMem2Mem, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

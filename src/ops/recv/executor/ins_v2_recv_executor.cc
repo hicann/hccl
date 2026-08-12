@@ -169,6 +169,6 @@ HcclResult InsV2RecvExecutor::OrchestrateImpl(const OpParam& param, const AlgRes
     return HcclResult::HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, AivRecv, InsV2RecvExecutor);
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, AivRecvSole, InsV2RecvExecutor);
 
 } // namespace ops_hccl

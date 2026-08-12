@@ -296,12 +296,12 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigMs, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllreduceMesh2DieBigSche, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
     CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

@@ -269,64 +269,65 @@ HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 #endif
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     InsTempAllReduceMesh1DOneShot);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     InsTempAllReduceMesh1DTwoShot);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceNHR, InsV2AllReduceSoleExecutor, TopoMatch1D, InsTempAllReduceNHR);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    InsTempAllReduceNHR);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHRTwoShotMultiLink, InsV2AllReduceSoleExecutor, TopoMatch1D,
     InsTempAllReduceNHR);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceMesh1DTwoShotMeshChunk, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshChunkTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     InsTempAllReduceMesh1DTwoShotMeshChunk);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceAicpuReduceNHR, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHRAicpuReduce, InsV2AllReduceSoleExecutor, TopoMatch1D,
     InsTempAllReduceAicpuReduceNHR);
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceMesh1DOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     AivTempAllReduceMesh1DOneShot);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceMesh1DTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     AivTempAllReduceMesh1DTwoShot);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceNHR1D, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceNHRMem2Mem1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceMesh1DMem2Mem, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleMesh, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceMeshMem2Mem1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceMesh1D, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSoleMesh, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceMesh2Die, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSoleMesh2Die, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllreduceMesh1D2DieOneShot);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceMesh1DOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceMesh1DOneShot);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceMesh1DMem2Mem2DieOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleMesh2Die, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceMesh1DMem2Mem2DieOneShot);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceNHR1DMem2MemMultiJetty, InsV2AllReduceSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleNHRMultiLink, InsV2AllReduceSoleExecutor, TopoMatch1D,
     CcuTempAllReduceNhrMem2Mem1DMultiJetty);
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

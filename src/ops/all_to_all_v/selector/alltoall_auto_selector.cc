@@ -67,7 +67,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
     uint64_t dataSize = sendCount * dataTypeSize * topoInfo->userRankSize;
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D && topoInfo->userRankSize <= ccuSize) {
-            selectAlgName = "CcuAllToAllMesh1D2Die";
+            selectAlgName = "CcuSchedAllToAllSoleMeshMultiLink";
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             HCCL_WARNING("[AlltoAllAutoSelector] levelNum > 1 is not supported yet for clos.");
             return SelectorStatus::NOT_MATCH;
@@ -78,7 +78,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
     } else {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
-                selectAlgName = "CcuAllToAllMesh2Die";
+                selectAlgName = "CcuSchedAllToAllSoleMesh2Die";
             } else if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_NOT_REGULAR) {
                 HCCL_DEBUG("[AlltoAllAutoSelector][%s] TWO_DIE_NOT_REGULAR not match", __func__);
                 return SelectorStatus::NOT_MATCH;
@@ -86,14 +86,14 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
                 if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
                     selectAlgName = "CcuAllToAllSoleMeshScheConcur";
                 } else {
-                    selectAlgName = "CcuAlltoAllMesh1D";
+                    selectAlgName = "CcuSchedAllToAllSoleMesh";
                 }
             }
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
             if (topoInfo->level0PcieMix) {
                 if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-                    selectAlgName = "CcuAlltoAllMesh1D";
+                    selectAlgName = "CcuSchedAllToAllSoleMesh";
                 } else {
                     HCCL_WARNING("[AlltoAllAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
                     return SelectorStatus::NOT_MATCH;
@@ -111,9 +111,9 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
                     HCCL_DEBUG("[AlltoAllAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
                 if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT)
                     && (dataSize > BIG_DATA_SIZE_LIMIT)) { // 同一组4P且大数据量，走并发算法
-                    selectAlgName = "CcuAllToAllMesh1DConcurrent";
+                    selectAlgName = "CcuSchedAllToAllSoleMeshConcurrent";
                 } else {
-                    selectAlgName = "CcuAlltoAllMesh1DMultiJetty";
+                    selectAlgName = "CcuSchedAllToAllSoleMeshUBX";
                 }
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -140,7 +140,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS
             || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            selectAlgName = "InsAlltoAllMesh1D";
+            selectAlgName = "AicpuAllToAllSoleMesh";
         } else {
             HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match");
             return SelectorStatus::NOT_MATCH;
@@ -155,14 +155,14 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
             SelectorStatus::NOT_MATCH);
         uint64_t dataSize = sendCounts[0] * static_cast<u64>(dataTypeSize);
         if (dataSize * topoInfo->userRankSize > ALLTOALL_ENABLE_MULTI_CHANNEL_DATA_SIZE_LIMIT) {
-            selectAlgName = "InsAlltoAllMesh1D";
+            selectAlgName = "AicpuAllToAllSoleMesh";
         } else {
-            selectAlgName = "InsAlltoAllMesh1DSingleChannel";
+            selectAlgName = "AicpuAllToAllSoleMeshSingleChannel";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         // PCIE-SW定制机型，使用mesh1d算法
         if (topoInfo->level0PcieMix) {
-            selectAlgName = "InsAlltoAllMesh1D";
+            selectAlgName = "AicpuAllToAllSoleMesh";
             HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
@@ -179,9 +179,9 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
         if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONCURRENT_RANK_LIMIT)
             && (sendCounts[0] > BIG_DATA_SIZE_LIMIT)) {
             // 同一组4P且大数据量，走并发
-            selectAlgName = "InsAllToAllMesh1DConcurrent";
+            selectAlgName = "AicpuAllToAllSoleMeshConcurrent";
         } else {
-            selectAlgName = "InsAlltoAllMesh1DUBX";
+            selectAlgName = "AicpuAllToAllSoleMeshUBX";
         }
     } else {
         HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match");
@@ -246,7 +246,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAivAlgo(
             __func__, totalSize, cclBufferSize);
         return SelectorStatus::NOT_MATCH;
     }
-    selectAlgName = "AivAlltoAllMesh1D";
+    selectAlgName = "AivAllToAllSoleMesh";
 
     HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -267,14 +267,14 @@ SelectorStatus AlltoAllAutoSelector::SelectDPUAlgo(
         algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "InsAlltoAllMesh1DDPU";
+            selectAlgName = "DpuAllToAllSoleMesh";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "InsAlltoAllClosMesh1DDPU";
+                selectAlgName = "DpuAllToAllSoleMeshUBX";
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "InsAlltoAllMesh1DDPU";
+                selectAlgName = "DpuAllToAllSoleMesh";
                 return SelectorStatus::MATCH;
             }
         }

@@ -55,7 +55,7 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
         HCCL_WARNING("[Algo][AllGatherVAutoSelector] ccu schedule does not support inplace allgatherv."),
         SelectorStatus::NOT_MATCH);
     if (topoInfo->topoLevelNums == 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        selectAlgName = "CcuAllGatherVMesh1D";
+        selectAlgName = "CcuSchedAllGatherVSoleMesh";
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         HCCL_WARNING("[AllGatherVAutoSelector] ccu_schedule not supported for multi-level AllGatherV yet");
         return SelectorStatus::NOT_MATCH;
@@ -81,7 +81,7 @@ SelectorStatus AllGatherVAutoSelector::SelectAicpuAlgo(
         algos[1], algos[2], algos[3]);
 
     if (topoInfo->topoLevelNums >= 1 && topoInfo->topoLevelNums <= TOPO_LEVEL_NUM_3) {
-        selectAlgName = "InsAllGatherVMesh1D";
+        selectAlgName = "AicpuAllGatherVSoleMesh";
     } else {
         return SelectorStatus::NOT_MATCH;
     }

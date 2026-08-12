@@ -90,21 +90,21 @@ SelectorStatus AllReduceAutoSelector::SelectMeshUBXAlgo(
         // 4P mesh
         if (IsSmallData(dataSize)) {
             // 小数据量，用1d mesh算法
-            selectAlgName = "CcuAllReduceMesh1DOneShot";
+            selectAlgName = "CcuMSAllReduceSoleMeshOneShot";
         } else {
             // 大数据量，用mesh+clos并行算法
-            selectAlgName = "CcuAllReduceConcurrentMs";
+            selectAlgName = "CcuMSAllReduceConcurMeshNHRMultiLink";
         }
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
         if (dataSize < OMNI_UBX_AR_MS_DATA_SIZE) {
             HCCL_DEBUG("[AllReduceAutoSelector][%s] MESH_1D_CLOS not match.", __func__);
             return SelectorStatus::NOT_MATCH;
         } else {
-            selectAlgName = "CcuV2AllReduceOmniPipe2DMs";
+            selectAlgName = "CcuMSAllReducePipeLineMeshNHR";
         }
     } else if (topoInfo->userRankSize <= MAX_RANK_NUM_FOR_REDUCE_MS_ALGO) {
         // 跨4p回退
-        selectAlgName = "CcuAllReduceMesh1D";
+        selectAlgName = "CcuMSAllReduceSoleMesh";
     } else {
         HCCL_DEBUG("[AllReduceAutoSelector] level0Topo[%u] is not supported mesh yet.", topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
@@ -133,20 +133,20 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(
         }
         if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
             if (IsSmallData(dataSize)) {
-                selectAlgName = "CcuAllReduceMesh2Die";
+                selectAlgName = "CcuMSAllReduceSoleMesh2Die";
             } else {
-                selectAlgName = "CcuAllreduceMesh2DieBigMs";
+                selectAlgName = "CcuMSAllReduceSequenceMesh2Die";
             }
         } else if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_NOT_REGULAR) {
             HCCL_DEBUG("[AllReduceAutoSelector][%s] TWO_DIE_NOT_REGULAR not match", __func__);
             return SelectorStatus::NOT_MATCH;
         } else if (IsSmallData(dataSize)) {
-            selectAlgName = "CcuAllReduceMesh1DOneShot";
+            selectAlgName = "CcuMSAllReduceSoleMeshOneShot";
         } else {
             if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
                 selectAlgName = "CcuAllReduceSoleMeshMsConcur";
             } else {
-                selectAlgName = "CcuAllReduceMesh1D";
+                selectAlgName = "CcuMSAllReduceSoleMesh";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -213,30 +213,30 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
                 SelectorStatus::NOT_MATCH);
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
             if (topoInfo->Level1Nhr) {
-                selectAlgName = "CcuAllReduceNHR1D";
+                selectAlgName = "CcuSchedAllReduceSoleNHR";
                 HCCL_INFO("[AllReduceAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-                selectAlgName = "CcuAllReduceNHR1D";
+                selectAlgName = "CcuSchedAllReduceSoleNHR";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_DEBUG("[AllReduceAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
             } else if (dataSize <= AR_MORE_64P_SEQ_MAX_DATA_SIZE && topoInfo->userRankSize > ccuSize) {
-                selectAlgName = "CcuAllReduceSequenceMesh1D";
+                selectAlgName = "CcuSchedAllReduceSequenceMeshMesh";
             } else if (
                 dataSize <= RS_MAX_DATA_SIZE && topoInfo->userRankSize >= ccuSize
                 && !Is8BitDataType(opParam.DataDes.dataType)) {
-                selectAlgName = "CcuAllReduceSequenceMesh1D";
+                selectAlgName = "CcuSchedAllReduceSequenceMeshMesh";
                 return SelectorStatus::MATCH;
             } else if (
                 dataSize <= AR_FLATTEN_MAX_DATA_SIZE && topoInfo->userRankSize <= ccuSize
                 && (!IsInputOutputOverlap(opParam)) && !Is8BitDataType(opParam.DataDes.dataType)) {
-                selectAlgName = "CcuAllReduceMesh1DMem2Mem";
+                selectAlgName = "CcuSchedAllReduceSoleMesh";
                 return SelectorStatus::MATCH;
             } else if (
                 dataSize <= 64 * 1024 * 1024 && topoInfo->userRankSize < ccuSize
                 && !Is8BitDataType(opParam.DataDes.dataType)) {
-                selectAlgName = "CcuAllReduceSequenceMesh1D";
+                selectAlgName = "CcuSchedAllReduceSequenceMeshMesh";
                 return SelectorStatus::MATCH;
             } else if (IsSmallDataCCU(dataSize, topoInfo->userRankSize)) { // 64M以下跑ccu
                 // 性能优化改用MS做reduce后不支持int8
@@ -247,14 +247,14 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
                         "reduce. levelNum[%u]",
                         opParam.DataDes.dataType, topoInfo->topoLevelNums),
                     SelectorStatus::NOT_MATCH);
-                selectAlgName = "CcuAllReduceParallelMesh1DNHR";
+                selectAlgName = "CcuSchedAllReduceParallelMeshNHR";
                 return SelectorStatus::MATCH;
             } else {
                 return SelectorStatus::NOT_MATCH; // 64M以上切为aicpu
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS && (!IsInputOutputOverlap(opParam))) {
             if (dataSize < AR_CCU_CLOS_1D_SMALL_DATA_SIZE) {
-                selectAlgName = "CcuAllReduceNHR1D";
+                selectAlgName = "CcuSchedAllReduceSoleNHR";
                 return SelectorStatus::MATCH;
             } else {
                 return SelectorStatus::NOT_MATCH;
@@ -288,21 +288,21 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0UBXAlgo(
         // 4P mesh
         if (IsSmallData(dataSize)) {
             // 小数据量，用1d mesh算法
-            selectAlgName = "CcuAllReduceMesh1DMem2Mem";
+            selectAlgName = "CcuSchedAllReduceSoleMesh";
         } else {
             // 大数据量，用mesh+clos并行算法
-            selectAlgName = "CcuAllReduceConcurrentSche";
+            selectAlgName = "CcuSchedAllReduceConcurMeshNHRMultiLink";
         }
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
         // 矩形场景大数据量，用Parallel并行算法
         if (dataSize < OMNI_UBX_AR_SCHED_DATA_SIZE) {
             selectAlgName = "CcuAllReduceParallelNHR1DMutiJetty";
         } else {
-            selectAlgName = "CcuV2AllReduceOmniPipe2D";
+            selectAlgName = "CcuSchedAllReducePipeLineMeshNHR";
         }
     } else {
         // 其他场景，用1d NHR算法
-        selectAlgName = "CcuAllReduceNHR1DMem2MemMultiJetty";
+        selectAlgName = "CcuSchedAllReduceSoleNHRMultiLink";
     }
 
     HCCL_DEBUG("[AllReduceAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
@@ -333,15 +333,15 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
     }
     if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
         if (IsSmallData(dataSize)) {
-            selectAlgName = "CcuAllReduceMesh1DMem2Mem2DieOneShot";
+            selectAlgName = "CcuSchedAllReduceSoleMesh2Die";
         } else {
-            selectAlgName = "CcuAllreduceMesh2DieBigSche";
+            selectAlgName = "CcuSchedAllReduceSequenceMesh2Die";
         }
     } else if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_NOT_REGULAR) {
         HCCL_DEBUG("[AllReduceAutoSelector][%s] TWO_DIE_NOT_REGULAR not match", __func__);
         return SelectorStatus::NOT_MATCH;
     } else {
-        selectAlgName = "CcuAllReduceMesh1DMem2Mem";
+        selectAlgName = "CcuSchedAllReduceSoleMesh";
     }
     HCCL_DEBUG("[AllReduceAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
@@ -384,7 +384,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0Algo(
             return SelectorStatus::NOT_MATCH;
         }
         if (dataSize < AR_CCU_CLOS_1D_SMALL_DATA_SIZE) {
-            selectAlgName = "CcuAllReduceNHR1D";
+            selectAlgName = "CcuSchedAllReduceSoleNHR";
             return SelectorStatus::MATCH;
         } else {
             return SelectorStatus::NOT_MATCH;
@@ -412,7 +412,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
             selectAlgName = "AllReduceOrderPreservedGroup";
         } else {
             // 内部reducescatter中采用非分组all2all + mesh1D 算法
-            selectAlgName = "AllReduceOrderPreserved";
+            selectAlgName = "AicpuAllReduceStrictOrderedMesh";
         }
         HCCL_INFO(
             "[AllReduceAutoSelector] DETERMINISTIC_STRICT mode, rankSize[%u], threshold[%u], "
@@ -428,34 +428,34 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
 
     if (topoInfo->topoLevelNums > 1) {
         if (isDataTypeOrReduceTypeSpecial) {
-            selectAlgName = "InsAllReduceAicpuReduceNHR";
+            selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
             if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
-                selectAlgName = "InsV2AllReduceOmniPipeUboe";
+                selectAlgName = "AicpuAllReducePipeLine";
             } else if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
-                selectAlgName = "InsAllReduceNHR";
+                selectAlgName = "AicpuAllReduceSoleNHR";
             } else {
                 selectAlgName = "InsAllReduceParallelRSAGUboe";
             }
         } else if (topoInfo->Level1Nhr) {
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
-            selectAlgName = "InsAllReduceNHR";
+            selectAlgName = "AicpuAllReduceSoleNHR";
             HCCL_INFO("[AllReduceAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
         } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
-            selectAlgName = "InsAllReduceNHR";
+            selectAlgName = "AicpuAllReduceSoleNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
-                selectAlgName = "InsV2AllReduceSequenceMesh1DNHRNHR";
+                selectAlgName = "AicpuAllReduceSequenceMeshConcurNHRNHR";
             } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
                 if (dataSize > AR_AICPU_1D_CROSS_SMALL_DATA_SIZE) {
-                    selectAlgName = (dataSize > AR_AICPU_SEQUENCE_DATA_SIZE) ? "InsAllReduceSequenceMesh1DNhr" :
-                                                                               "InsAllReduceParallelRSAG";
+                    selectAlgName = (dataSize > AR_AICPU_SEQUENCE_DATA_SIZE) ? "AicpuAllReduceSequenceMeshConcurNHR" :
+                                                                               "AicpuAllReduceParallelMeshNHR";
                 } else {
-                    selectAlgName = "InsAllReduceNHR";
+                    selectAlgName = "AicpuAllReduceSoleNHR";
                 }
             } else {
-                selectAlgName = "InsAllReduceNHR";
+                selectAlgName = "AicpuAllReduceSoleNHR";
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "AicpuAllReduceSoleNHRTwoShotMultiLink";
@@ -485,22 +485,22 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
         HCCL_ERROR("[Algo][AllReduceAutoSelector] CheckClosNumMultipleOfMeshNum failed."), SelectorStatus::NOT_MATCH);
     if (isMeshNumEqualToClosNum && topoInfo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) {
         if (isDataTypeOrReduceTypeSpecial) {
-            selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "InsAllReduceMesh1DOneShot" :
-                                                                           "InsAllReduceMesh1DTwoShot";
+            selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "AicpuAllReduceSoleMeshOneShot" :
+                                                                           "AicpuAllReduceSoleMeshTwoShot";
         } else if (dataSize <= AR_AICPU_1D_SMALL_DATA_SIZE) {
-            selectAlgName = "InsAllReduceMesh1DOneShot";
+            selectAlgName = "AicpuAllReduceSoleMeshOneShot";
         } else {
             // 大数据量，用mesh+clos并行算法
-            selectAlgName = "InsAllReduceConcurrent";
+            selectAlgName = "AicpuAllReduceConcurMeshTwoShotNHR";
         }
     } else if (isDataTypeOrReduceTypeSpecial) {
-        selectAlgName = "InsAllReduceAicpuReduceNHR";
+        selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
         // 矩形场景大数据量，用Parallel并行算法
         selectAlgName = "InsAllReduceParallelRSAGUBX";
     } else {
         // 其他场景，用1d NHR算法
-        selectAlgName = "InsAllReduceNHR";
+        selectAlgName = "AicpuAllReduceSoleNHR";
     }
 
     HCCL_DEBUG("[AllReduceAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
@@ -529,22 +529,22 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
     bool overSequenceDataThreshold = dataSize > AR_AICPU_SEQUENCE_DATA_SIZE;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (isDataTypeOrReduceTypeSpecial) {
-            selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "InsAllReduceMesh1DOneShot" :
-                                                                           "InsAllReduceMesh1DTwoShot";
+            selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "AicpuAllReduceSoleMeshOneShot" :
+                                                                           "AicpuAllReduceSoleMeshTwoShot";
         } else if (isTwoLevelFlag && topoInfo->userRankSize == 2 && dataSize >= AR_2P_DETOUR_DATA_SIZE) {
             // 两p条件下生效
-            selectAlgName = "InsAllReduceMesh1DTwoShotZAxisDetour";
+            selectAlgName = "AicpuAllReduceSoleMeshConcur";
         } else if (dataSize <= AR_AICPU_1D_SMALL_DATA_SIZE) {
-            selectAlgName = "InsAllReduceMesh1DOneShot";
+            selectAlgName = "AicpuAllReduceSoleMeshOneShot";
         } else if (dataSize * ratio > AR_AICPU_1D_MAX_DATA_SIZE) {
-            selectAlgName = (isTwoLevelFlag && overSequenceDataThreshold) ? "InsAllReduceMesh1DTwoShotZAxisDetour" :
-                                                                            "InsAllReduceMesh1DTwoShotMeshChunk";
+            selectAlgName = (isTwoLevelFlag && overSequenceDataThreshold) ? "AicpuAllReduceSoleMeshConcur" :
+                                                                            "AicpuAllReduceSoleMeshChunkTwoShot";
         } else {
-            selectAlgName = "InsAllReduceMesh1DTwoShot";
+            selectAlgName = "AicpuAllReduceSoleMeshTwoShot";
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (isDataTypeOrReduceTypeSpecial) {
-            selectAlgName = "InsAllReduceAicpuReduceNHR";
+            selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
         } else {
             selectAlgName = "AicpuAllReduceSoleNHRTwoShotMultiLink";
         }
@@ -552,21 +552,21 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
         if (topoInfo->level0PcieMix) {
             if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
                 if (isDataTypeOrReduceTypeSpecial) {
-                    selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "InsAllReduceMesh1DOneShot" :
-                                                                                   "InsAllReduceMesh1DTwoShot";
+                    selectAlgName = dataSize <= AR_AICPU_1D_64DATATYPE_DATA_SIZE ? "AicpuAllReduceSoleMeshOneShot" :
+                                                                                   "AicpuAllReduceSoleMeshTwoShot";
                 } else if (dataSize <= AR_AICPU_1D_SMALL_DATA_SIZE) {
-                    selectAlgName = "InsAllReduceMesh1DOneShot";
+                    selectAlgName = "AicpuAllReduceSoleMeshOneShot";
                 } else if (dataSize * ratio > AR_AICPU_1D_MAX_DATA_SIZE) {
-                    selectAlgName = "InsAllReduceMesh1DTwoShotMeshChunk";
+                    selectAlgName = "AicpuAllReduceSoleMeshChunkTwoShot";
                 } else {
-                    selectAlgName = "InsAllReduceMesh1DTwoShot";
+                    selectAlgName = "AicpuAllReduceSoleMeshTwoShot";
                 }
             } else {
                 if (isDataTypeOrReduceTypeSpecial) {
-                    selectAlgName = "InsAllReduceAicpuReduceNHR";
+                    selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
                 } else {
                     selectAlgName = (dataSize < OMNI_PCIE_AR_DATA_SIZE) ? "InsAllReduceParallelMesh1DNHRPcie" :
-                                                                          "InsV2AllReduceOmniPipePcie";
+                                                                          "AicpuAllReducePipeLinePcie";
                 }
             }
         } else {
@@ -655,19 +655,19 @@ SelectorStatus AllReduceAutoSelector::SelectAivAlgo(
     }
 
     if (topoInfo->level0Topo != Level0Shape::MESH_1D) {
-        selectAlgName = "AivAllReduceMesh1DTwoShot";
+        selectAlgName = "AivAllReduceSoleMeshTwoShot";
     } else if (topoInfo->userRankSize <= AR_AIV_BOARD_SIZE) {
         // 板内8p场景，按照时延拐点选择算法
         if (dataSize < AR_AIV_SMALL_DATA_SIZE_IN_BOARD) {
-            selectAlgName = "AivAllReduceMesh1DOneShot";
+            selectAlgName = "AivAllReduceSoleMeshOneShot";
         } else {
-            selectAlgName = "AivAllReduceMesh1DTwoShot";
+            selectAlgName = "AivAllReduceSoleMeshTwoShot";
         }
     } else {
         if (IsSmallData(dataSize)) {
-            selectAlgName = "AivAllReduceMesh1DOneShot";
+            selectAlgName = "AivAllReduceSoleMeshOneShot";
         } else {
-            selectAlgName = "AivAllReduceMesh1DTwoShot";
+            selectAlgName = "AivAllReduceSoleMeshTwoShot";
         }
     }
 
@@ -698,22 +698,22 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
         return SelectorStatus::NOT_MATCH;
     } else if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "InsAllReduceSequenceMeshNhrDPU"; // 对应executor最后register的第二个参数
-            HCCL_INFO("Using algo InsAllReduceSequenceMeshNhrDPU");
+            selectAlgName = "DpuAllReduceSequenceMeshNHR"; // 对应executor最后register的第二个参数
+            HCCL_INFO("Using algo DpuAllReduceSequenceMeshNHR");
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "InsV2AllReduceOmniPipe";
-                HCCL_INFO("Using algo InsV2AllReduceOmniPipe");
+                selectAlgName = "AicpuAllReducePipeLineUBX";
+                HCCL_INFO("Using algo AicpuAllReducePipeLineUBX");
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "InsAllReduceSequenceMeshNhrDPU";
-                HCCL_INFO("Using algo InsAllReduceSequenceMeshNhrDPU");
+                selectAlgName = "DpuAllReduceSequenceMeshNHR";
+                HCCL_INFO("Using algo DpuAllReduceSequenceMeshNHR");
                 return SelectorStatus::MATCH;
             }
         } else {
-            selectAlgName = "InsAllReduceSequenceMeshNhrDPU";
-            HCCL_INFO("Using algo InsAllReduceSequenceMeshNhrDPU");
+            selectAlgName = "DpuAllReduceSequenceMeshNHR";
+            HCCL_INFO("Using algo DpuAllReduceSequenceMeshNHR");
             return SelectorStatus::MATCH;
         }
     }

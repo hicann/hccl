@@ -49,7 +49,7 @@ HcclResult InsTempAlltoAllVMesh1D::CalcRes(
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
-    if (std::string(param.algName) != "InsAlltoAllMesh1DSingleChannel") {
+    if (std::string(param.algName) != "AicpuAllToAllSoleMeshSingleChannel") {
         channelsPerRank_ = CalcChannelsPerRank(level0Channels);
     }
     HCCL_INFO("[InsTempAlltoAllVMesh1D][CalcRes] channelsPerRank_ is [%u]", channelsPerRank_);
@@ -146,7 +146,7 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(
         HCCL_ERROR("[InsTempAlltoAllVMesh1D][KernelRun] subCommRanks_ or myRank_ is error.");
         return HCCL_E_INTERNAL;
     }
-    if (std::string(param.algName) != "InsAlltoAllMesh1DSingleChannel") {
+    if (std::string(param.algName) != "AicpuAllToAllSoleMeshSingleChannel") {
         channelsPerRank_ = CalcChannelsPerRank(templateResource.channels); // 每个rank的channel数量的最大值
     }
     CHK_RET(RunALLtoALL(templateResource.channels, templateResource.threads, tempAlgParams, myAlgRank));

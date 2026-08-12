@@ -250,5 +250,5 @@ HcclResult InsRecvExecutor::OrchestrateOpbase(
     return HcclResult::HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, InsRecv, InsRecvExecutor);
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, AicpuRecvSole, InsRecvExecutor);
 } // namespace ops_hccl

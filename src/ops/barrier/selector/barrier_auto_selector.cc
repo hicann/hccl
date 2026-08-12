@@ -14,8 +14,8 @@
 namespace ops_hccl {
 
 // Barrier 新流程支持 HostDPU 和 AICPU 两种引擎：
-// - HostDPU 场景：Select() 内部 CheckHostDPUOnly → SelectDPUAlgo → InsBarrierMeshNhrDPU
-// - AICPU 场景：Select() 内部 IsStarsState → SelectAicpuAlgo → InsBarrierNhrAicpu
+// - HostDPU 场景：Select() 内部 CheckHostDPUOnly → SelectDPUAlgo → DpuBarrierSequenceMeshNHR
+// - AICPU 场景：Select() 内部 IsStarsState → SelectAicpuAlgo → AicpuBarrierSoleNHR
 // 其余引擎（CCU/AIV）在 BarrierOutPlace 中已提前回退到旧 HcclBarrier，不会进入算法选择。
 SelectorStatus BarrierAutoSelector::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -24,7 +24,7 @@ SelectorStatus BarrierAutoSelector::SelectDPUAlgo(
     (void)opParam;
     (void)configAlgMap;
     HCCL_DEBUG("[BarrierAutoSelector][%s] start, topoLevelNums[%u]", __func__, topoInfo->topoLevelNums);
-    selectAlgName = "InsBarrierMeshNhrDPU";
+    selectAlgName = "DpuBarrierSequenceMeshNHR";
     HCCL_INFO("[BarrierAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
@@ -38,7 +38,7 @@ SelectorStatus BarrierAutoSelector::SelectAicpuAlgo(
     HCCL_INFO(
         "[BarrierAutoSelector][SelectAicpuAlgo] topoLevelNums[%u], level0Topo[%u]", topoInfo->topoLevelNums,
         topoInfo->level0Topo);
-    selectAlgName = "InsBarrierNhrAicpu";
+    selectAlgName = "AicpuBarrierSoleNHR";
     HCCL_INFO("[BarrierAutoSelector][SelectAicpuAlgo] Algo match[%s]", selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }

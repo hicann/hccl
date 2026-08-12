@@ -147,7 +147,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcuSchedule(
             HCCL_WARNING("[ReduceScatterVAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         } else if (inputDataSize < RSV_CCU_8P_MIN_DATA_SIZE) {
-            selectAlgName = "CcuReduceScatterVMesh1D";
+            selectAlgName = "CcuSchedReduceScatterVSoleMesh";
         } else {
             return SelectorStatus::NOT_MATCH;
         }
@@ -155,7 +155,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcuSchedule(
         // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             if (inputDataSize < RSV_CCU_8P_MIN_DATA_SIZE) {
-                selectAlgName = "CcuReduceScatterVMesh1D";
+                selectAlgName = "CcuSchedReduceScatterVSoleMesh";
             } else {
                 return SelectorStatus::NOT_MATCH;
             }
@@ -187,7 +187,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAicpuAlgo(
     }
 
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_1 && topoInfo->topoLevelNums <= TOPO_LEVEL_3) {
-        selectAlgName = "InsReduceScatterVMesh1D";
+        selectAlgName = "AicpuReduceScatterVSoleMesh";
     } else {
         return SelectorStatus::NOT_MATCH;
     }

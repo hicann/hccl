@@ -445,10 +445,10 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMesh1DNHRNHR, ScatterSequenceAicpu3LevelExecutor,
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHRNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchMultilevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMesh1DNHR, ScatterSequenceAicpu3LevelExecutor,
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchMultilevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
 } // namespace ops_hccl

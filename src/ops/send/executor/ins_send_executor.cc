@@ -242,5 +242,5 @@ HcclResult InsSendExecutor::OrchestrateOpbase(
     return HcclResult::HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, InsSend, InsSendExecutor);
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, AicpuSendSole, InsSendExecutor);
 } // namespace ops_hccl

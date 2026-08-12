@@ -634,7 +634,7 @@ uint64_t InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterParallelMesh1DNHR, InsReduceScatterParallelExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterParallelMeshNHR, InsReduceScatterParallelExecutor,
     TopoMatchMultilevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterParallelMesh1DNHRUBX, InsReduceScatterParallelExecutor,
@@ -651,13 +651,14 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterParallelMesh1DNHR, InsReduceScatterParallelExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterParallelMeshNHR, InsReduceScatterParallelExecutor,
     TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuReduceScatterParallelMesh1DNHRMultiJetty, InsReduceScatterParallelExecutor,
-    TopoMatchUBX, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterParallelMeshNHRMultiLink,
+    InsReduceScatterParallelExecutor, TopoMatchUBX, CcuTempReduceScatterMesh1DMem2Mem,
+    CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

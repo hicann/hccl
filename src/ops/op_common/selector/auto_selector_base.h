@@ -36,20 +36,20 @@ enum class SelectorStatus { MATCH, NOT_MATCH };
 
 const std::map<HcclCMDType, std::string> OP_TYPE_TO_AICPU_SOLE_ALG_MAP = {
     {HcclCMDType::HCCL_CMD_ALLGATHER, "InsAllGatherMesh"},
-    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, "InsReduceScatterNHR"},
-    {HcclCMDType::HCCL_CMD_ALLREDUCE, "InsAllReduceNHR"},
+    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, "AicpuReduceScatterSoleNHR"},
+    {HcclCMDType::HCCL_CMD_ALLREDUCE, "AicpuAllReduceSoleNHR"},
     {HcclCMDType::HCCL_CMD_ALLTOALL, "InsAlltoAllMesh"},
     {HcclCMDType::HCCL_CMD_ALLTOALLV, "InsAlltoAllvMesh"},
     {HcclCMDType::HCCL_CMD_ALLTOALLVC, "InsAlltoAllvcMesh"},
 };
 
 const std::map<HcclCMDType, std::string> OP_TYPE_TO_CCU_1D_ALG_MAP = {
-    {HcclCMDType::HCCL_CMD_ALLGATHER, "CcuAllGatherMesh1D"},
-    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, "CcuReduceScatterMesh1D"},
-    {HcclCMDType::HCCL_CMD_ALLREDUCE, "CcuAllReduceMesh1D"},
-    {HcclCMDType::HCCL_CMD_REDUCE, "CcuReduceMesh1D"},
-    {HcclCMDType::HCCL_CMD_ALLTOALL, "CcuAlltoAllMesh1D"},
-    {HcclCMDType::HCCL_CMD_ALLTOALLV, "CcuAlltoAllVMesh1D"},
+    {HcclCMDType::HCCL_CMD_ALLGATHER, "CcuMSAllGatherSoleMesh"},
+    {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, "CcuMSReduceScatterSoleMesh"},
+    {HcclCMDType::HCCL_CMD_ALLREDUCE, "CcuMSAllReduceSoleMesh"},
+    {HcclCMDType::HCCL_CMD_REDUCE, "CcuMSReduceSoleMesh"},
+    {HcclCMDType::HCCL_CMD_ALLTOALL, "CcuSchedAllToAllSoleMesh"},
+    {HcclCMDType::HCCL_CMD_ALLTOALLV, "CcuSchedAllToAllVSoleMesh"},
     {HcclCMDType::HCCL_CMD_HALF_ALLTOALLV, "CcuHalfAll2AllVMesh1D"},
 };
 
@@ -66,12 +66,12 @@ const std::map<HcclCMDType, std::string> OP_TYPE_TO_DPU_ALG_MAP = {
 };
 
 const std::unordered_map<std::string, std::string> RES_RESUSE_ALG
-    = {{"InsReduceScatterMesh1D", "InsReduceScatterMeshClass"},
-       {"InsReduceScatterMesh1DMeshChunk", "InsReduceScatterMeshClass"},
-       {"InsAllReduceMesh1DOneShot", "InsAllReduceMeshClass"},
-       {"InsAllReduceMesh1DTwoShot", "InsAllReduceMeshClass"},
-       {"InsSend", "InsSendRecv"},
-       {"InsRecv", "InsSendRecv"}};
+    = {{"AicpuReduceScatterSoleMesh", "InsReduceScatterMeshClass"},
+       {"AicpuReduceScatterSoleMeshChunk", "InsReduceScatterMeshClass"},
+       {"AicpuAllReduceSoleMeshOneShot", "InsAllReduceMeshClass"},
+       {"AicpuAllReduceSoleMeshTwoShot", "InsAllReduceMeshClass"},
+       {"AicpuSendSole", "InsSendRecv"},
+       {"AicpuRecvSole", "InsSendRecv"}};
 
 class AutoSelectorBase {
 public:

@@ -460,7 +460,7 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
 }
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE, InsReduceSequenceMeshNhrDPU, InsV2ReduceSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_REDUCE, DpuReduceSequenceMeshNHR, InsV2ReduceSequenceExecutor, TopoMatchMultilevel,
     InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter, InsTempGatherDpuInter,
     InsTempGatherMesh1dIntra);
 } // namespace ops_hccl

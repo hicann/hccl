@@ -133,5 +133,5 @@ HcclResult InsSendDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
 
 // opv2流程使用opv2_insSendHostDpu算法名
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
-    HcclCMDType::HCCL_CMD_SEND, opv2_insSendHostDpu, InsSendDpuExecutor, InsTempSendHostNicDpu);
+    HcclCMDType::HCCL_CMD_SEND, DpuSendSoleHost, InsSendDpuExecutor, InsTempSendHostNicDpu);
 } // namespace ops_hccl

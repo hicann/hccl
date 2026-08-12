@@ -265,6 +265,6 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, InsScatterSequenceMeshNhrDPU, InsV2ScatterSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_SCATTER, DpuScatterSequenceMeshNHR, InsV2ScatterSequenceExecutor, TopoMatchMultilevel,
     InsTempScatterMesh1D, InsTempScatterNHRDPUInterNode);
 } // namespace ops_hccl

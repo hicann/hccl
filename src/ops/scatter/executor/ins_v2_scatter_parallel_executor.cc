@@ -671,7 +671,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, InsScatterParallelMesh1DNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
     InsTempScatterMesh1D, InsTempScatterNHR);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, InsScatterParallelMesh1DNHRPcie, InsV2ScatterParallelExecutor, TopoMatchPcieMix,
@@ -683,7 +683,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuScatterParallelMesh1DNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, CcuScatterParallelMesh1DNHRUBX, InsV2ScatterParallelExecutor, TopoMatchUBX,

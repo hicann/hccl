@@ -707,7 +707,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastOmniPipe2D, InsV2BroadcastOmniPipe2dExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastPipeLineMeshNHR, InsV2BroadcastOmniPipe2dExecutor, TopoMatchUBX,
     CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem, CcuTempAllGatherOmniPipeMesh1DMem2Mem,
     CcuTempAllGatherOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

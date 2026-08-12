@@ -24,7 +24,7 @@ static CcuResult ParseKernelArg(AllReduceMesh1DContext& ctx, CcuKernelArgAllRedu
     ctx.outputDataType = kernelArg->opParam.DataDes.outputType;
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
-        HCCL_DEBUG("[CcuAllReduceMesh1D] outputDataType is [INVALID], set outputDataType to[%d]", ctx.dataType);
+        HCCL_DEBUG("[CcuMSAllReduceSoleMesh] outputDataType is [INVALID], set outputDataType to[%d]", ctx.dataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
     return CCU_SUCCESS;
@@ -36,10 +36,10 @@ static CcuResult InitResource(AllReduceMesh1DContext& ctx)
     uint32_t channelIdx = 0;
 
     if (arg->channelCount == 0) {
-        HCCL_ERROR("[CcuAllReduceMesh1D] channels is empty!");
+        HCCL_ERROR("[CcuMSAllReduceSoleMesh] channels is empty!");
         return CcuResult::CCU_E_INTERNAL;
     }
-    HCCL_INFO("[CcuAllReduceMesh1D] channels.size: [%u]", arg->channelCount);
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] channels.size: [%u]", arg->channelCount);
 
     ctx.input.resize(arg->rankSize);
     ctx.output.resize(arg->rankSize);
@@ -77,7 +77,7 @@ static CcuResult LoadArgs(AllReduceMesh1DContext& ctx)
 
 static CcuResult PreSync(AllReduceMesh1DContext& ctx)
 {
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D PreSync begin");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D PreSync begin");
     const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -93,13 +93,13 @@ static CcuResult PreSync(AllReduceMesh1DContext& ctx)
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyWait(arg->channels[i], CKE_IDX_0, allBit);
     }
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D PreSync end");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D PreSync end");
     return CCU_SUCCESS;
 }
 
 static CcuResult PostSync(AllReduceMesh1DContext& ctx)
 {
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D post sync start");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D post sync start");
     const auto* arg = ctx.arg;
 
     for (uint32_t i = 0; i < arg->channelCount; i++) {
@@ -108,7 +108,7 @@ static CcuResult PostSync(AllReduceMesh1DContext& ctx)
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyWait(arg->channels[i], CKE_IDX_0, 1 << POST_SYNC_ID);
     }
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D post sync end");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D post sync end");
     return CCU_SUCCESS;
 }
 
@@ -191,7 +191,7 @@ CcuResult CcuAllReduceMesh1DKernel(CcuKernelArg arg)
     ctx.moRes.bufCount = 0;
     ctx.enginePool = 0;
 
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D run");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D run");
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));
@@ -201,7 +201,7 @@ CcuResult CcuAllReduceMesh1DKernel(CcuKernelArg arg)
     CCU_CHK_RET(DoAllReduce(ctx));
 
     CCU_CHK_RET(PostSync(ctx));
-    HCCL_INFO("[CcuAllReduceMesh1D] AllReduceMesh1D end");
+    HCCL_INFO("[CcuMSAllReduceSoleMesh] AllReduceMesh1D end");
 
     return CCU_SUCCESS;
 }

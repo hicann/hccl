@@ -464,12 +464,12 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuV2ReduceScatterOmniPipe, InsV2ReduceScatterOmniPipe2dExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterPipeLineMeshNHR, InsV2ReduceScatterOmniPipe2dExecutor,
     TopoMatchUBX, CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuV2ReduceScatterOmniPipeMs, InsV2ReduceScatterOmniPipe2dExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterPipeLineMeshNHR, InsV2ReduceScatterOmniPipe2dExecutor,
     TopoMatchUBX, CcuTempReduceScatterOmniPipeMesh1D, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

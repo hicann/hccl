@@ -856,7 +856,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE, ReduceParallelMesh1DNHR, ReduceParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchMultilevel,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, ReduceParallelMesh1DNHRUBX, ReduceParallelExecutor, TopoMatchUBX,
@@ -873,7 +873,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE, CcuReduceParallelMesh1DNHR, ReduceParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchMultilevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
