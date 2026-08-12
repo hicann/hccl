@@ -68,7 +68,7 @@ struct AlgEnvConfig {
                 DETERMINISTIC_DISABLE); // 确定性配置 0：不支持；1：支持确定性不支持规约保序；2：支持确定性&规约保序
         enableFfts = true;
         taskExceptionEnable = true;
-        aicpuCacheEnable = 0; // 默认关闭aicpu cache
+        aicpuCacheEnable = 1; // 默认开启aicpu cache
         aivOnlyMode = false;
         execTimeOutSet = false;
         execTimeout = 0;

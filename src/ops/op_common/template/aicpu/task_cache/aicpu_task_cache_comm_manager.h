@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <shared_mutex>
 
-#include "hccl_comm.h"
+#include "hccl_types.h"
 
 namespace ops_hccl {
 
