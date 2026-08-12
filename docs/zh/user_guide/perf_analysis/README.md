@@ -6,4 +6,6 @@
   - [Profiling数据中通信算子行为分析](profiling_op_behavior.md)
   - [典型算子行为分析](typical_op_behavior.md)
   - [快慢卡问题分析](slow_fast_card_analysis.md)
+  <!-- npu="A3,910b" id1 -->
   - [交换机存在流量拥塞反压或丢包重传](switch_congestion_loss.md)
+  <!-- end id1 -->

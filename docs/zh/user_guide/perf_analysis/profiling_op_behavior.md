@@ -2,7 +2,7 @@
 
 ## 通信算子下发
 
-通信算子的下发在Profiling数据中的CANN层，如图所示，一个“AscendCL@hcom_allReduce_”则对应一次allreduce算子下发：
+通信算子的下发在Profiling数据中的CANN层，如图所示，一个“AscendCL@OpType::ALLGATHER”则对应一次AllGather算子下发：
 
 ![通信算子下发](figures/comm_op_dispatch.png)
 
