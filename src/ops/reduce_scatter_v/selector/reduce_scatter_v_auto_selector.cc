@@ -58,40 +58,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(const TopoInfoWithNet
 SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcums(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam &opParam,
     std::string &selectAlgName) const
 {
-    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-    u64 dataSize = opParam.DataDes.count * perDataSize;
-
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        if (topoInfo->is2DieFullMesh) {
-            HCCL_WARNING("[ReduceScatterVAutoSelector] 2DieFullMesh is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-            return SelectorStatus::NOT_MATCH;
-        } else {
-            if (IsSmallData(dataSize)) {
-                selectAlgName = "CcuReduceScatterVMesh1D";
-            } else {
-                selectAlgName = "CcuReduceScatterVMesh1DMultiMission";
-            }
-        }
-    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-        if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
-            selectAlgName = "CcuReduceScatterVMesh1D";
-        } else { // MS 不支持
-            HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-            return SelectorStatus::NOT_MATCH;
-        }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
-    } else {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.",
-                topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
-    }
-    return SelectorStatus::MATCH;
+    HCCL_WARNING("[ReduceScatterVAutoSelector] not support ccu_ms mode.");
+    return SelectorStatus::NOT_MATCH;
 }
 
 SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLayerDetails *topoInfo, const OpParam &opParam,
