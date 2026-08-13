@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #include "channel.h"
 #include "ccu_kernel_scatter_omnipipe_mesh1d_mem2mem.h"
 #include "ccu_temp_scatter_omnipipe_mesh1d_mem2mem.h"

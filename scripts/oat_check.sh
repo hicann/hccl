@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------------------------------------
 # Copyright (c) 2026 Huawei Technologies Co., Ltd.
 # This program is free software, you can redistribute it and/or modify it under the terms and conditions of
@@ -8,13 +8,7 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
-# OAT Pre-commit Check Script — Python Edition (oat-py)
-# Replaces the Java-binary-based oat_check.sh.
-#
-# Requires: Python 3.7+  (pip install oat-py>=1.0.0)
-# Works on: Linux / macOS / Windows (Git Bash / MSYS2)
-#
-# Self-healing: strip Windows CRLF if present
+
 _SCRIPT="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 if sed 's/\r//' "$_SCRIPT" 2>/dev/null | diff -q - "$_SCRIPT" >/dev/null 2>&1; then
     :

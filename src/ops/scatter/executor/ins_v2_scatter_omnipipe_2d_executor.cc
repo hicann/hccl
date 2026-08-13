@@ -7,6 +7,7 @@
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
  */
+
 #include "ins_v2_scatter_omnipipe_2d_executor.h"
 #include "omnipipe_scatter_data_slice_calc.h"
 #ifndef AICPU_COMPILE
