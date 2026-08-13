@@ -296,10 +296,13 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam &param, CcuFastLaunchCtx **ccu
 HcclResult ConstructHcclDfxOpInfo(const OpParam &param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo,
     ThreadHandle cpuTsThread)
 {
-    hcclDfxOpInfo.opMode = static_cast<u32>(param.opMode);
-    hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
+    bool isAclGraph = IsStreamInCaptureMode(param.stream);
+ 	hcclDfxOpInfo.opMode = isAclGraph 
+ 	        ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH) 
+            : static_cast<u32>(param.opMode);
+ 	hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
     hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
-    CHK_RET(GetHcclDfxOpInfoDataType(param, hcclDfxOpInfo.dataType));
+ 	CHK_RET(GetHcclDfxOpInfoDataType(param, hcclDfxOpInfo.dataType));
 
     // rankSize获取指定算子的dataCount
     u32 userRankSize{0};
@@ -326,6 +329,21 @@ HcclResult ConstructHcclDfxOpInfo(const OpParam &param, const char* tag, u32 tag
         hcclDfxOpInfo.inputMemAddr, hcclDfxOpInfo.inputMemSize, hcclDfxOpInfo.outputMemAddr,
         hcclDfxOpInfo.outputMemSize, hcclDfxOpInfo.cpuTsThread, hcclDfxOpInfo.cpuWaitAicpuNotifyIdx);
     return HCCL_SUCCESS;
+}
+
+bool IsStreamInCaptureMode(aclrtStream stream)
+{
+    aclmdlRICaptureStatus captureStatus = aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
+    aclmdlRI rtModel = nullptr;
+    aclError aclRet = aclmdlRICaptureGetInfo(stream, &captureStatus, &rtModel);
+    if (aclRet == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
+        return false;
+    }
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_ERROR("[%s] aclmdlRICaptureGetInfo fail, ret[%d]", __func__, aclRet);
+        return false;
+    }
+    return captureStatus == aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_ACTIVE;
 }
 
 HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam &param, const CcuFastLaunchCtx *ccuFastLaunchCtx)
