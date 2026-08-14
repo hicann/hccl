@@ -10,6 +10,7 @@
 
 #include "ins_v2_all_gather_concurrent_executor.h"
 #include <cmath>
+#include <type_traits>
 #include "alg_data_trans_wrapper.h"
 #include "hccl_res.h"
 #include "ccu_alg_template_base.h"
@@ -68,6 +69,50 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
     return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+std::vector<CostModelParam>
+InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+{
+    (void)comm;
+    (void)algName;
+    u32 rankSize = topoInfo->userRankSize;
+    HCCL_DEBUG("[InsV2AllGatherConcurrentExecutor] CalcCostCoeff rankSize:%d", rankSize);
+    // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
+    OpParam param;
+    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
+        param.engine = CommEngine::COMM_ENGINE_CCU;
+    } else {
+        param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    }
+    std::vector<float> dataSplitSize;
+    GetParallelDataSplit(param, dataSplitSize);
+    std::vector<CostModelParam> params = [rankSize, &dataSplitSize, algName] {
+        std::vector<CostModelParam> v;
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(
+            CalcCostCoeffParam{rankSize, dataSplitSize[0], AlgNetType::MESH, true, algName});
+        v.insert(v.end(), p0.begin(), p0.end());
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(
+            CalcCostCoeffParam{rankSize, dataSplitSize[1], AlgNetType::CLOS, true, algName});
+        v.insert(v.end(), p1.begin(), p1.end());
+        return v;
+    }();
+    return params;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+AlgNetMeta InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.groupSizes = {2};
+    return meta;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>

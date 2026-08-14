@@ -107,7 +107,7 @@ public:
     // 计算非对称拓扑展开后的 layer0 子组数（框数）。
     // 使用全局 instSizeListOfLayer[0] 的 GCD，避免 localNetInsSizeOfLayer[0] 在非对称场景下各 rank 不同。
     // frameNum = userRankSize / gcd(instSizeListOfLayer[0])，例如 6 卡 / GCD(4,2)=2 / 2 = 3 框。
-    u32 CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo) const;
+    static u32 CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo);
 
 private:
     bool ProcessAivConfig(

@@ -225,7 +225,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     u32 ccuSize = 32;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
-    u32 frameNum = CalcFrameNum(topoInfo);
+    u32 frameNum = AutoSelectorBase::CalcFrameNum(topoInfo);
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）

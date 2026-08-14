@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class InsTempAllGatherNHR : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.isNhr = true};
     InsTempAllGatherNHR() = default;
     explicit InsTempAllGatherNHR(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
@@ -29,6 +30,8 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;

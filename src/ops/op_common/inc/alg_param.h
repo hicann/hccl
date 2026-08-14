@@ -135,6 +135,20 @@ enum class OpExecuteConfig {
     CCU_FAIL
 };
 
+// OpExecuteConfig → 算法名前缀映射
+// key=前缀, value=引擎; 逆序遍历可实现长前缀优先匹配
+static const std::map<std::string, OpExecuteConfig> ENGINE_PREFIX_MAP = {
+    {"Aicpu", OpExecuteConfig::AICPU_TS},     {"Aiv", OpExecuteConfig::AIV},     {"CcuMS", OpExecuteConfig::CCU_MS},
+    {"CcuSched", OpExecuteConfig::CCU_SCHED}, {"Dpu", OpExecuteConfig::HOSTCPU},
+};
+
+// OpExecuteConfig → 字符串(用于日志)
+static const std::map<OpExecuteConfig, const char*> ENGINE_STR_MAP = {
+    {OpExecuteConfig::AICPU_TS, "AICPU_TS"}, {OpExecuteConfig::AIV, "AIV"},
+    {OpExecuteConfig::CCU_MS, "CCU_MS"},     {OpExecuteConfig::CCU_SCHED, "CCU_SCHED"},
+    {OpExecuteConfig::HOSTCPU, "HOSTCPU"},
+};
+
 enum class OpMode { OFFLOAD = 0, OPBASE = 1, ACLGRAPH = 2 };
 
 enum class Level0Shape {
@@ -210,6 +224,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     bool level0BigClosRange{false};
     bool level2Uboe{false};
     bool level2Ubg{false};
+    bool hostDpuOnly{false};
     bool level0Symmetric{false};
     bool level1Symmetric{false};
     u32 topoInstDetailsOfLayerSize = 0;
@@ -247,6 +262,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream << level0BigClosRange;
         binaryStream << level2Uboe;
         binaryStream << level2Ubg;
+        binaryStream << hostDpuOnly;
         binaryStream << level0Symmetric;
         binaryStream << level1Symmetric;
         binaryStream << topoInstDetailsOfLayerSize;
@@ -298,6 +314,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream >> level0BigClosRange;
         binaryStream >> level2Uboe;
         binaryStream >> level2Ubg;
+        binaryStream >> hostDpuOnly;
         binaryStream >> level0Symmetric;
         binaryStream >> level1Symmetric;
         binaryStream >> topoInstDetailsOfLayerSize;

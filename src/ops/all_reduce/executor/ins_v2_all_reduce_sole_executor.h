@@ -32,6 +32,10 @@ public:
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+    std::vector<CostModelParam>
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const override;
+
 #ifndef AICPU_COMPILE
     HcclResult
     FastLaunchSaveCtx(const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const;

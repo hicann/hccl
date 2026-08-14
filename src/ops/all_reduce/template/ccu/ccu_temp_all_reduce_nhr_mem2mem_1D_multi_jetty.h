@@ -31,6 +31,8 @@ public:
             "Template of All reduce ccu nhr 1D Mem2Mem multi-jetty with tempRankSize [%u].", templateRankSize_);
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

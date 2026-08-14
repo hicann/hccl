@@ -11,6 +11,35 @@
 #include "ins_temp_reduce_scatter_nhr.h"
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    AlgNetType netType = AlgNetType::CLOS;
+    bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleNHR") == 0));
+    int portNum = isSingleChannelNHR ? 6 : 8;
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.n, netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
+    } else {
+        B = 0.0f;
+    }
+    B = B * (param.rankSize / 2 + 1);
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    // SOle NHR 有快慢卡
+    if (isSingleChannelNHR) {
+        C = C + B;
+    }
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    return params;
+}
+
 InsTempReduceScatterNHR::InsTempReduceScatterNHR(
     const OpParam& param, const u32 rankId, // 传通信域的u32，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

@@ -42,6 +42,42 @@ CcuTempAllGatherConcurrentMeshMem2MemNHR::CcuTempAllGatherConcurrentMeshMem2MemN
     }
 }
 
+std::vector<CostModelParam> CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // concurrent: mesh 路径 + NHR(CLOS) 路径并发, 数据按带宽比切分
+    // mesh 路径处理 meshRatio 份额, NHR 路径处理 (1-meshRatio) 份额
+    constexpr float meshRatio = 0.5f;
+    constexpr float closRatio = 1.0f - meshRatio;
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    std::vector<CostModelParam> params;
+    // mesh 路径
+    CostModelManager::Global()->CalcMeshParam(param.n * meshRatio, AlgNetType::MESH, 0, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n * meshRatio, EngineType::CCU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    params.push_back({A, B, C});
+    // NHR 路径
+    CostModelManager::Global()->CalcNHRParams(param.n * closRatio, AlgNetType::CLOS, 6, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n * closRatio, EngineType::CCU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    params.push_back({A, B, C});
+    // TODO 这里是不是直接取max？ratio顺序？
+    HCCL_DEBUG(
+        "[%s] CalcCostCoeff meshRatio=%f closRatio=%f params=%zu.", __func__, meshRatio, closRatio, params.size());
+    return params;
+}
+
 HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)

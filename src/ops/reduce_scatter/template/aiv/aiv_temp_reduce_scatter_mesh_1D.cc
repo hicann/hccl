@@ -10,6 +10,7 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_reduce_scatter_mesh_1D.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -20,6 +21,31 @@ AivTempReduceScatterMesh1D::AivTempReduceScatterMesh1D(
 {}
 
 AivTempReduceScatterMesh1D::~AivTempReduceScatterMesh1D() {}
+
+std::vector<CostModelParam> AivTempReduceScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B2);
+    B = B1 + (param.rankSize - 1) * B2;
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AIV, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    return params;
+}
 
 u64 AivTempReduceScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {

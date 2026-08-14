@@ -19,6 +19,36 @@ InsTempAllReduceMesh1DTwoShot::InsTempAllReduceMesh1DTwoShot(
 
 InsTempAllReduceMesh1DTwoShot::~InsTempAllReduceMesh1DTwoShot() {}
 
+std::vector<CostModelParam> InsTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 20;
+    // 第一步是reducescatter，
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(2 * param.n, param.netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B2);
+    B = B1 + (param.rankSize - 1) * B2;
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    return params;
+}
+
 u64 InsTempAllReduceMesh1DTwoShot::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     (void)inBuffType;

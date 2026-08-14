@@ -29,7 +29,6 @@ class InsV2AllReduceSequence2DieExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceSequence2DieExecutor();
     ~InsV2AllReduceSequence2DieExecutor() override;
-
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */

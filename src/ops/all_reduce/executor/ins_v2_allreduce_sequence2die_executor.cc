@@ -20,7 +20,6 @@
 #endif
 
 namespace ops_hccl {
-
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllReduceSequence2DieExecutor()
 {}

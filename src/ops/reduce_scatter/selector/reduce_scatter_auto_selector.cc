@@ -207,7 +207,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(
 
     constexpr u64 CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 32ULL * 1024 * 1024;
 
-    u32 frameNum = CalcFrameNum(topoInfo);
+    u32 frameNum = AutoSelectorBase::CalcFrameNum(topoInfo);
 
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {

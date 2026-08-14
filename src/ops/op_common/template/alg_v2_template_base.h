@@ -12,6 +12,7 @@
 #define ALG_V2_TEMPLATE_BASE
 
 #include "common_alg_template_base.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -23,6 +24,8 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsAlgTemplateBase() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param) { return {}; }
 
     std::string Describe() const override = 0;
 

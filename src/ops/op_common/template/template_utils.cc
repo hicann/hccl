@@ -178,10 +178,9 @@ bool GetPortGroupSize(const std::map<u32, std::vector<ChannelInfo>>& channels, u
             for (const auto& ch : channelGroup) {
                 portGroupSize += ch.portGroupSize;
             }
-            return true;
         }
     }
-    return false;
+    return true;
 }
 
 // 首个非空inter Channel组恰好包含两条有效跨Die链路时，判定为POD机型。

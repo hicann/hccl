@@ -16,6 +16,23 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
+    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::CCU, B);
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    return params;
+}
+
 constexpr u32 DIE_NUM = 2;
 
 CcuTempReduceScatterMeshMem2Mem1D2Die::CcuTempReduceScatterMeshMem2Mem1D2Die(

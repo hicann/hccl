@@ -32,6 +32,8 @@ public:
             "Template of All Reduce ccu mesh 1D Mem2Mem 2Die OneShot with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

@@ -28,10 +28,11 @@ typedef enum {
 } HcclOpExpansionMode;
 
 typedef enum { HCCL_CONFIG_TYPE_INVALID = -1, HCCL_CONFIG_TYPE_OP_EXPANSION_MODE = 0 } HcclConfigType;
-
 typedef HcclOpExpansionMode HcclConfigTypeOpExpansionMode;
-
 #endif // CANN_VERSION_NUM < CANN_VERSION(9, 1, 0, 1)
+
+// HcclConfigType兼容处理定义，后续新增字段参照此处定义
+#define HCCL_CONFIG_TYPE_HCCL_ALGO 1
 
 #ifdef __cplusplus
 extern "C" {

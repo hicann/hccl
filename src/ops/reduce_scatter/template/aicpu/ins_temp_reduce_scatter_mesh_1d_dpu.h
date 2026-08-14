@@ -35,6 +35,8 @@ public:
         return info;
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     // 现在的RunAsync就是之前的GenExtIns
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
