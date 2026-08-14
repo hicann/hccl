@@ -9,6 +9,7 @@
 # ----------------------------------------------------------------------------
 
 add_library(hccl_kernel_compat SHARED
+    hccl_dl.cc
     hcomm_device_dlsym.cc
     hcomm_primitives_dl.cc
     hcomm_diag_dl.cc

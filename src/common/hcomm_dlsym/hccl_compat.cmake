@@ -10,6 +10,7 @@
 
 if(STATIC_MODE)
     target_sources(hccl PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/hccl_dl.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/hccl_rank_graph_dl.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/hccl_res_dl.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/hcomm_primitives_dl.cc
@@ -89,6 +90,7 @@ else()
     )
 
     target_sources(hccl_compat PRIVATE
+        hccl_dl.cc
         hccl_rank_graph_dl.cc
         hccl_res_dl.cc
         hcomm_primitives_dl.cc

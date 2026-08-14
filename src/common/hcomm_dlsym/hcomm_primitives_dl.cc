@@ -138,7 +138,7 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheExecute);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheClear);
     g_HcommBatchTransferOnThread
-        = reinterpret_cast<HcclHcommBatchTransferOnThreadFunc>(dlsym(libHcommHandle, "HcommBatchTransferOnThread"));
+        = reinterpret_cast<HcclHcommBatchTransferOnThreadFunc>(HcclDlsym(libHcommHandle, "HcommBatchTransferOnThread"));
     if (g_HcommBatchTransferOnThread == nullptr) {
         g_HcommBatchTransferOnThreadSupported = false;
         HCCL_COMPAT_DEBUG("[HcclWrapper] %s not supported", "HcommBatchTransferOnThread");

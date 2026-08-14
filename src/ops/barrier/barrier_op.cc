@@ -15,6 +15,7 @@
 
 #include "barrier_op.h"
 #include "op_common_ops.h"
+#include "hccl_dl.h"
 #include <string>
 
 using namespace std;
@@ -30,7 +31,7 @@ namespace {
 HcclResult BarrierFallbackToOldFlow(HcclComm comm, aclrtStream stream)
 {
     using BarrierFn = HcclResult (*)(HcclComm, aclrtStream);
-    static BarrierFn oldBarrier = reinterpret_cast<BarrierFn>(dlsym(RTLD_NEXT, "HcclBarrier"));
+    static BarrierFn oldBarrier = reinterpret_cast<BarrierFn>(HcclDlsym(RTLD_NEXT, "HcclBarrier"));
     if (oldBarrier != nullptr && oldBarrier != &HcclBarrier) { // 防自递归
         return oldBarrier(comm, stream);
     }

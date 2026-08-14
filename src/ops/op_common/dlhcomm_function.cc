@@ -9,6 +9,7 @@
  */
 
 #include "dlhcomm_function.h"
+#include "hccl_dl.h"
 #include "log.h"
 
 namespace ops_hccl {
@@ -28,18 +29,19 @@ DlHcommFunction::~DlHcommFunction()
         handle_ = nullptr;
     }
     if (h != nullptr) {
-        (void)dlclose(h);
+        (void)HcclDlclose(h);
     }
 }
 
 HcclResult DlHcommFunction::DlHcommFunctionInterInit()
 {
     dlHcclThreadResGetInfo
-        = (HcclResult(*)(HcclComm, ThreadHandle, void*, uint32_t, void**))dlsym(handle_, "HcclThreadResGetInfo");
-    dlHcclConfigGetInfo = (HcclResult(*)(HcclComm, HcclConfigType, uint32_t, void*))dlsym(handle_, "HcclConfigGetInfo");
+        = (HcclResult(*)(HcclComm, ThreadHandle, void*, uint32_t, void**))HcclDlsym(handle_, "HcclThreadResGetInfo");
+    dlHcclConfigGetInfo
+        = (HcclResult(*)(HcclComm, HcclConfigType, uint32_t, void*))HcclDlsym(handle_, "HcclConfigGetInfo");
 
     dlHcommThreadResGetInfo
-        = (HcclResult(*)(ThreadHandle, void*, uint32_t, void**))dlsym(handle_, "HcommThreadResGetInfo");
+        = (HcclResult(*)(ThreadHandle, void*, uint32_t, void**))HcclDlsym(handle_, "HcommThreadResGetInfo");
     return HCCL_SUCCESS;
 }
 
@@ -50,7 +52,7 @@ HcclResult DlHcommFunction::DlHcommFunctionInit()
         return HCCL_SUCCESS;
     }
     // dlopen
-    void* h = dlopen("libhcomm.so", RTLD_NOW);
+    void* h = HcclDlopen("libhcomm.so", RTLD_NOW);
     CHK_PRT_RET(h == nullptr, HCCL_WARNING("dlopen libhcomm.so failed, error: %s", dlerror()), HCCL_E_PTR);
     handle_ = h;
     CHK_RET(DlHcommFunctionInterInit());
