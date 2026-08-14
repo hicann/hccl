@@ -42,6 +42,7 @@ public:
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
+    HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
@@ -106,6 +107,7 @@ private:
     bool skipOwnSliceCopy_{false};
     std::vector<u32> lastStepReadSliceIdxs_;
     u64 dataTypeSize_{0};
+    u32 maxChannelsPerRank_ = 1;
     std::vector<u64> dataSplit_;
     std::vector<u64> dataOffset_;
     std::vector<u64> dataSplitTail_;

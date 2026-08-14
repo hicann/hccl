@@ -713,6 +713,10 @@ HcclResult CalcChannelRequestNhr(
             }
         }
 
+        HCCL_INFO(
+            "[CalcChannelRequestNhr] myRank=%u, remoteRank=%u, channelsCreated=%zu, totalChannels=%zu.", myRank,
+            subcommInfo[0][rankIdx], channels.size() - channelCountBefore, channels.size());
+
         CHK_PRT_RET(
             channels.size() == channelCountBefore,
             HCCL_ERROR(

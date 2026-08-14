@@ -416,6 +416,46 @@ inline u32 CalcChannelsPerRank(const std::vector<HcclChannelDesc>& channels)
     return channelsPerRank;
 }
 
+inline u32 CalcChannelsPerRankMin(const std::vector<HcclChannelDesc>& channels)
+{
+    u32 channelsPerRank = UINT32_MAX;
+    u32 currentRank = INVALID_VALUE_RANKID;
+    u32 currentCount = 0;
+
+    auto updateChannelsPerRank = [&](u32 rank, u32 count) {
+        if (rank != INVALID_VALUE_RANKID) {
+            if (channelsPerRank != UINT32_MAX && count != channelsPerRank) {
+                HCCL_WARNING(
+                    "[CalcChannelsPerRank] channel num[%u] of remote rank[%u] is not equal to "
+                    "channel num[%u] of previous ranks.",
+                    count, rank, channelsPerRank);
+            }
+            if (count < channelsPerRank) {
+                channelsPerRank = count;
+            }
+        }
+    };
+
+    // channels的排列遵循相同远端的channel放在相邻位置
+    for (const auto& channel : channels) {
+        if (channel.remoteRank == currentRank) {
+            // 如果remoteRank不变，则计数一直累加
+            currentCount++;
+        } else {
+            // 如果remoteRank变化了，则更新channelsPerRank并重新开始给下一个remoteRank计数
+            updateChannelsPerRank(currentRank, currentCount);
+            currentRank = channel.remoteRank;
+            currentCount = 1;
+        }
+    }
+    // 处理最后一个rank
+    updateChannelsPerRank(currentRank, currentCount);
+    if (channelsPerRank == UINT32_MAX) {
+        channelsPerRank = 1;
+    }
+    return channelsPerRank;
+}
+
 inline u32 CalcChannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
     u32 channelsPerRank = 1;
@@ -423,6 +463,21 @@ inline u32 CalcChannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& ch
         if (channelsByRank.second.size() > channelsPerRank) {
             channelsPerRank = static_cast<u32>(channelsByRank.second.size());
         }
+    }
+    return channelsPerRank;
+}
+
+inline u32 CalcChannelsPerRankMin(const std::map<u32, std::vector<ChannelInfo>>& channels)
+{
+    u32 channelsPerRank = UINT32_MAX;
+    for (const auto& channelsByRank : channels) {
+        u32 count = static_cast<u32>(channelsByRank.second.size());
+        if (count < channelsPerRank) {
+            channelsPerRank = count;
+        }
+    }
+    if (channelsPerRank == UINT32_MAX) {
+        channelsPerRank = 1;
     }
     return channelsPerRank;
 }

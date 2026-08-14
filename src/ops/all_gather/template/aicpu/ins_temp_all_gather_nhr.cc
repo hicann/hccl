@@ -73,12 +73,14 @@ HcclResult InsTempAllGatherNHR::CalcRes(
         level1Channels = myChannelDescs;
     }
     resourceRequest.channels.push_back(level1Channels);
-    channelsPerRank_ = CalcChannelsPerRank(level1Channels);
+    channelsPerRank_ = CalcChannelsPerRankMin(level1Channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(level1Channels);
     if (channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {
-        HCCL_DEBUG(" %s channelsPerRank_ is %u ", __func__, channelsPerRank_);
+        HCCL_DEBUG(
+            " %s channelsPerRank_ is %u, maxChannelsPerRank_ is %u ", __func__, channelsPerRank_, maxChannelsPerRank_);
     }
     CHK_RET(GetRes(resourceRequest));
     return HCCL_SUCCESS;
@@ -96,7 +98,18 @@ HcclResult InsTempAllGatherNHR::GetRes(AlgResourceRequest& resourceRequest) cons
 u64 InsTempAllGatherNHR::GetThreadNum() const
 {
     // 多申请一倍的流用来最后做PostLocalCopy和NHR最后一个step并行执行
-    return channelsPerRank_ * 2;
+    return maxChannelsPerRank_ * 2;
+}
+
+HcclResult InsTempAllGatherNHR::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
+{
+    CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
+    channelsPerRank_ = CalcChannelsPerRankMin(channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(channels);
+    HCCL_INFO(
+        "[InsTempAllGatherNHR][SetchannelsPerRank] channelsPerRank_[%u], maxChannelsPerRank_[%u]", channelsPerRank_,
+        maxChannelsPerRank_);
+    return HCCL_SUCCESS;
 }
 
 u64 InsTempAllGatherNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
