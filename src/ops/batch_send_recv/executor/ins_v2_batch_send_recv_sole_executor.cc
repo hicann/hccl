@@ -467,27 +467,78 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
     std::vector<u32> notifyIdxMainToSub = {0};
     CHK_RET(PreSyncInterThreads(threads_[0], subThreads, notifyIdxMainToSub));
 
-    for (auto& slice : recvDataSilces_) {
-        // 发recv的record
-        CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
+    auto hasRepeatedRemoteRank = [](const std::deque<SendRecvSlice>& slices) {
+        std::set<u32> remoteRanks;
+        for (const auto& slice : slices) {
+            if (!remoteRanks.insert(slice.remoteRank_).second) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool needSliceRounds = hasRepeatedRemoteRank(sendDataSilces_) || hasRepeatedRemoteRank(recvDataSilces_);
+
+    if (!needSliceRounds) {
+        for (auto& slice : recvDataSilces_) {
+            // 发recv的record
+            CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
+        }
+
+        while (!sendDataSilces_.empty()) {
+            auto& slice = sendDataSilces_.front();
+            // 发writeWithNotify，并在复用本地CCL Buffer前等待本次发送完成
+            CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::SEND));
+            CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::FENCE));
+            sendDataSilces_.pop_front();
+        }
+
+        while (!recvDataSilces_.empty()) {
+            // waitRecv,按recv接收数据
+            CHK_RET(ProcessRecvDataSlice(param, recvDataSilces_.front(), BatchSendRecvOpType::RECV));
+            recvDataSilces_.pop_front();
+        }
+    } else {
+        auto extractOneSlicePerRank = [](std::deque<SendRecvSlice>& slices) {
+            std::deque<SendRecvSlice> roundSlices;
+            std::set<u32> remoteRanks;
+            const size_t sliceNum = slices.size();
+            for (size_t i = 0; i < sliceNum; i++) {
+                SendRecvSlice slice = slices.front();
+                slices.pop_front();
+                if (remoteRanks.insert(slice.remoteRank_).second) {
+                    roundSlices.push_back(slice);
+                } else {
+                    slices.push_back(slice);
+                }
+            }
+            return roundSlices;
+        };
+
+        while (!sendDataSilces_.empty() || !recvDataSilces_.empty()) {
+            std::deque<SendRecvSlice> sendRoundSlices = extractOneSlicePerRank(sendDataSilces_);
+            std::deque<SendRecvSlice> recvRoundSlices = extractOneSlicePerRank(recvDataSilces_);
+
+            for (auto& slice : recvRoundSlices) {
+                CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
+            }
+            for (auto& slice : sendRoundSlices) {
+                CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::SEND));
+                CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::FENCE));
+            }
+            for (auto& slice : recvRoundSlices) {
+                CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECV));
+            }
+
+            if (!recvDataSilces_.empty()) {
+                CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
+                for (const auto& thread : threads_) {
+                    CHK_RET(static_cast<HcclResult>(HcommThreadSynchronize(thread)));
+                }
+                CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(param.algTag)));
+            }
+        }
     }
 
-    for (auto& slice : sendDataSilces_) {
-        // 发writeWithNotify
-        CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::SEND));
-    }
-
-    while (!recvDataSilces_.empty()) {
-        // waitRecv,按recv接收数据
-        CHK_RET(ProcessRecvDataSlice(param, recvDataSilces_.front(), BatchSendRecvOpType::RECV));
-        recvDataSilces_.pop_front();
-    }
-
-    while (!sendDataSilces_.empty()) {
-        // fence
-        CHK_RET(ProcessSendDataSlice(param, sendDataSilces_.front(), BatchSendRecvOpType::FENCE));
-        sendDataSilces_.pop_front();
-    }
     HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][RunLoopSendRecv] Process all tasks finish.");
     // 后同步
     std::vector<u32> notifyIdxSubToMain = {0};
