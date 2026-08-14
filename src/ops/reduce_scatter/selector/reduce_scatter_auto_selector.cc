@@ -28,6 +28,7 @@ constexpr u64 RS_CCU_8P_MIN_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 RS_AICPU_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
 
 constexpr u32 RS_CCU_2DIE_RANK_SIZE = 16;
+constexpr u32 RS_CCU_2DIE_FRAME_NUM = 2;
 constexpr u64 RS_CCU_2DIE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_2DIE_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 RS_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
@@ -230,8 +231,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(
                         "[ReduceScatterAutoSelector] dataType[%d] is not supported yet for ccu schedule mode.",
                         opParam.DataDes.dataType),
                     SelectorStatus::NOT_MATCH);
-                // 16p 且总数据量在 [4M, 16M] 时选择 2Die mem2mem 算法
-                if (topoInfo->userRankSize == RS_CCU_2DIE_RANK_SIZE
+                // 2*8p 组网且总数据量在 [4M, 16M] 时选择 2Die mem2mem 算法（仅支持 2 框 8 卡组网）
+                if (topoInfo->userRankSize == RS_CCU_2DIE_RANK_SIZE && frameNum == RS_CCU_2DIE_FRAME_NUM
                     && dataSize * topoInfo->userRankSize >= RS_CCU_2DIE_MIN_DATA_SIZE
                     && dataSize * topoInfo->userRankSize <= RS_CCU_2DIE_MAX_DATA_SIZE) {
                     selectAlgName = "CcuSchedReduceScatterSoleMesh2Die";
