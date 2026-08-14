@@ -95,7 +95,10 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNe
                     "fallback to aicpu.", topoInfo->userRankSize == 0 ? dataSize : dataSize / topoInfo->userRankSize);
                 return SelectorStatus::NOT_MATCH;
             }
-            if(topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1){ // 每框出1卡
+            if (topoInfo->Level1Nhr) {
+                selectAlgName = "CcuBroadcastNHR1DMem2Mem";
+                HCCL_INFO("[BroadcastAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
+            } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) { // 每框出1卡
                 selectAlgName = "CcuBroadcastNHR1DMem2Mem";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");

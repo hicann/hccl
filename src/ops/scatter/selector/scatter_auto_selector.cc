@@ -52,7 +52,10 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetL
             return SelectorStatus::NOT_MATCH;
         }
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
+            if (topoInfo->Level1Nhr) {
+                selectAlgName = "CcuScatterNHRMem2Mem1D";
+                HCCL_INFO("[ScatterAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
+            } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
                 selectAlgName = "CcuScatterNHRMem2Mem1D";
             } else if (topoInfo->is2DieFullMesh) {
                 HCCL_WARNING("[ScatterAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");

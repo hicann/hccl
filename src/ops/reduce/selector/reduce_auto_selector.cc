@@ -138,7 +138,10 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(const TopoInfoWithNetLa
                     topoInfo->userRankSize == 0 ? dataSize : dataSize / topoInfo->userRankSize);
                 return SelectorStatus::NOT_MATCH;
             }
-            if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
+            if (topoInfo->Level1Nhr) {
+                selectAlgName = "CcuReduceNHR1DMem2Mem";
+                HCCL_INFO("[ReduceAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
+            } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
                 // 每框出 1 卡
                 selectAlgName = "CcuReduceNHR1DMem2Mem";
             } else if (topoInfo->is2DieFullMesh) {
