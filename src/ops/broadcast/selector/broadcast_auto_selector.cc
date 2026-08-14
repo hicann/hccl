@@ -331,6 +331,12 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
                 selectAlgName = "DpuBroadcastSequenceMeshNHR";
                 return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // seq算法兼容level0为clos的场景
+            selectAlgName = "DpuBroadcastSequenceMeshNHR";
+            HCCL_DEBUG(
+                "[BroadcastAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
         }
     }
 

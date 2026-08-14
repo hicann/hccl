@@ -277,6 +277,12 @@ SelectorStatus AlltoAllAutoSelector::SelectDPUAlgo(
                 selectAlgName = "DpuAllToAllSoleMesh";
                 return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // seq算法兼容level0为clos的场景
+            selectAlgName = "DpuAllToAllSoleMesh";
+            HCCL_DEBUG(
+                "[AlltoAllAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
         }
     }
 

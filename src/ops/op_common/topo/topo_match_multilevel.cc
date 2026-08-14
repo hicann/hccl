@@ -348,7 +348,13 @@ HcclResult TopoMatchMultilevel::MatchTopo(
             myRank, topoInfo->topoLevelNums, commLayerSize, algLayer1NetLayer);
     }
     uint32_t layer0Size = 0;
-    if (!isSymmetric) {
+    if (hostDPUOnly && topoInfo->topoLevelNums == COMM_LAYER_SIZE_2 && topoInfo->level0Topo == Level0Shape::CLOS) {
+        // 两级mesh+NHR算法在此退化为单级跨DPU
+        HCCL_INFO("[TopoMatchMultilevel][MatchTopo] level0Topo CLOS + hostDPUOnly 2-level, "
+                  "degenerate level0 to single card, layer1 = full group in top layer.");
+        algHierarchyInfo.infos[0].push_back({myRank});
+        layer0Size = 1;
+    } else if (!isSymmetric) {
         uint32_t gcdInstSize = GcdOfInstSizeList(instSizeList, listSize);
         HCCL_INFO("[TopoMatchMultilevel][MatchTopo] Asymmetric mode, gcdInstSize [%u]", gcdInstSize);
         CHK_RET(TopoForLayer0(comm, layer0Size, myRank, algHierarchyInfo, gcdInstSize));

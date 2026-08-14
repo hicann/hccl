@@ -687,8 +687,8 @@ HcclResult CalcChannelRequestNhr(
         for (auto netLayer : netLayersVector) {
             // PCIE-SW场景，需要建立PCIE的clos链路
             bool isNeedLevel0NhrChannel
-                = (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && topoInfo->level0PcieMix
-                   && topoInfo->serverNum == 1);
+                = ((topoInfo->level0Topo == Level0Shape::CLOS || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS)
+                   && topoInfo->level0PcieMix && topoInfo->serverNum == 1);
             HCCL_INFO(
                 "[CalcChannelRequestNhr] isNeedLevel0NhrChannel[%d] Need to calc NHR channel in level0",
                 isNeedLevel0NhrChannel);
