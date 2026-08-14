@@ -11,9 +11,7 @@
 #ifndef CCU_PRIMITIVES_IMPL_DL_H
 #define CCU_PRIMITIVES_IMPL_DL_H
 
-#ifdef __cplusplus
-#include <cstdbool>
-#else
+#ifndef __cplusplus
 #include <stdbool.h>
 #endif // __cplusplus
 
