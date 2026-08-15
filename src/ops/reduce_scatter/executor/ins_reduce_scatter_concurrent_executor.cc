@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
@@ -253,7 +253,8 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         const u64 bufferRatioTerm0 = portNum0 * templateScratchMultiplier0;
         const u64 bufferRatioTerm1 = portNum * templateScratchMultiplier1;
         const double bufferRatio0 = static_cast<double>(bufferRatioTerm0) / (bufferRatioTerm0 + bufferRatioTerm1);
-        cclMem0.size = cclMemSize * bufferRatio0;
+        cclMem0.size = static_cast<u64>(cclMemSize * bufferRatio0);
+        cclMem0.size = cclMem0.size / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
         cclMem1.addr = static_cast<void*>(static_cast<s8*>(cclMemAddr) + cclMem0.size);
         cclMem1.size = cclMemSize - cclMem0.size;
     }
