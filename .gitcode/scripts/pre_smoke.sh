@@ -12,8 +12,7 @@
 set -euo pipefail
 
 echo "start run test case, please wait ..."
-cd /home/taskspace
-WORKSPACE=/home/taskspace
+cd ${WORKSPACE}
 
 export ASCEND_GLOBAL_LOG_LEVEL=2
 export ASCEND_SLOG_PRINT_TO_STDOUT=0
@@ -30,29 +29,18 @@ log() {
 log "init test case, please wait ..."
 
 # ==============================
-# 确定要测试的 ops 列表
-# ==============================
-declare -a ops
-ops=("is_finite")
-
-# ==============================
 # 运行测试主循环
 # ==============================
 
-for op in "${ops[@]}"; do
-  echo "Processing: $op"
-  mode="eager"
-  [ "$op" = "crop_and_resize" ] && mode="graph"
-  source /usr/local/Ascend/cann/set_env.sh
-  arm_package=$(basename "${arm_run_url}")
-  wget -nv ${arm_run_url}
-  # Add execute permission to the downloaded package
-  echo "Adding execute permission: chmod +x ${arm_package}"
-  chmod +x "${arm_package}" || echo "Failed to add execute permission to the package"
-  echo "y" | bash "${arm_package}" --full --install-path=/usr/local/Ascend --quiet
-  source /usr/local/Ascend/cann/set_env.sh
-  bash build.sh --cb_test_verify 2>&1 | tee -a ./run_test.log
-done
+source /usr/local/Ascend/cann/set_env.sh
+arm_package=$(basename "${arm_run_url}")
+wget -nv ${arm_run_url}
+# Add execute permission to the downloaded package
+echo "Adding execute permission: chmod +x ${arm_package}"
+chmod +x "${arm_package}" || echo "Failed to add execute permission to the package"
+echo "y" | bash "${arm_package}" --full --install-path=/usr/local/Ascend --quiet
+source /usr/local/Ascend/cann/set_env.sh
+bash build.sh --cb_test_verify 2>&1 | tee -a ./run_test.log
 
 # ==============================
 # 打包log
@@ -62,10 +50,6 @@ mkdir -p /root/ascend
 slog_name="slog.tar.gz"
 tar -zcf "${slog_name}" -C /root/ascend log
 
-# upload plog
-if python3 /home/upload.py --bucket-name "ascend-ci" --action upload  --local-file "slog.tar.gz" --obs-object-key "${obs_smoke_path}/${slog_name}"; then
-  echo "::set-output var=plog_url:https://ascend-ci.obs.cn-north-4.myhuaweicloud.com/${obs_smoke_path}/slog.tar.gz"
-fi
 set -e
 
 # ==============================
