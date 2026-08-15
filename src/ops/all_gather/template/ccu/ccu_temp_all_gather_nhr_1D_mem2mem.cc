@@ -15,29 +15,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempAllGatherNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    u32 portNum = param.portNum;
-    if (portNum == 0) {
-        portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    }
-    int log2R = 0;
-    for (u32 r = param.rankSize; r > 1; r >>= 1) {
-        log2R++;
-    }
-    int taskNum = 4 * log2R + 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcNHRParams(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 CcuTempAllGatherNHR1DMem2Mem::CcuTempAllGatherNHR1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

@@ -31,8 +31,6 @@ public:
         return StringFormat("Template of allreduce ccu mesh1D 2die with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
-
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

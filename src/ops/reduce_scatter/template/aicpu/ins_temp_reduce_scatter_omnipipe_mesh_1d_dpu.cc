@@ -11,23 +11,6 @@
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
 
 namespace ops_hccl {
-std::vector<CostModelParam> InsTempReduceScatterOmniPipeMesh1dDpu::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 InsTempReduceScatterOmniPipeMesh1dDpu::InsTempReduceScatterOmniPipeMesh1dDpu() {}
 
 InsTempReduceScatterOmniPipeMesh1dDpu::InsTempReduceScatterOmniPipeMesh1dDpu(

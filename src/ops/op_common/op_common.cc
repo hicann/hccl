@@ -59,8 +59,6 @@
 #include "hccl_ccu_res_dl.h"
 #include "comm_engine_utils.h"
 #include "utils.h"
-#include "selector_engine.h"
-#include "hcomm_dlsym.h"
 
 namespace ops_hccl {
 thread_local bool needInconsistentCheck = false;
@@ -100,12 +98,8 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     CHK_RET(HcclCalcTopoInfo(comm, param, topoInfo));
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
-    if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {
-        CHK_RET(SelectorEngine::Global()->Run(comm, param, topoInfo.get(), algName));
-    } else {
-        std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
-        CHK_RET(collAlgSelector->Run(param, topoInfo.get(), algName));
-    }
+    std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
+    CHK_RET(collAlgSelector->Run(param, topoInfo.get(), algName));
     if (algName == "") {
         HCCL_ERROR("[Selector] select algname fail!");
         return HCCL_E_PTR;
@@ -585,12 +579,8 @@ ReSelector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDe
     // 拓扑已有，无需再计算
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
-    if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {
-        CHK_RET(SelectorEngine::Global()->Run(comm, param, topoInfo.get(), algName));
-    } else {
-        std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
-        CHK_RET(collAlgSelector->Run(param, topoInfo.get(), algName));
-    }
+    std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
+    CHK_RET(collAlgSelector->Run(param, topoInfo.get(), algName));
     if (algName == "") {
         HCCL_ERROR("[ReSelector] select algname fail!");
         return HCCL_E_PTR;
@@ -3173,31 +3163,6 @@ HcclResult HcclGetOpExpansionMode(HcclComm comm, OpParam& param)
         return ret;
     }
     return HCCL_SUCCESS;
-}
-
-HcclResult HcclGetHcclAlgo(HcclComm comm, std::string& hcclAlgo)
-{
-    if (GetHcommVersion() <= CANN_VERSION(9, 2, 0, 1)) {
-        HCCL_INFO("[HcclGetHcclAlgo] HcclConfigGetInfo not supported, skip.");
-        return HcclResult::HCCL_SUCCESS;
-    }
-    auto& hcommFunction = ops_hccl::DlHcommFunction::GetInstance();
-    if (!hcommFunction.dlHcclConfigGetInfo) {
-        HCCL_INFO("[HcclGetHcclAlgo] HcclConfigGetInfo not supported, skip.");
-        return HcclResult::HCCL_SUCCESS;
-    }
-    std::vector<char> buf(HCCL_COMM_ALGO_MAX_LENGTH, '\0');
-    uint32_t infoLen = static_cast<uint32_t>(buf.size());
-    HcclResult ret = hcommFunction.dlHcclConfigGetInfo(
-        comm, static_cast<HcclConfigType>(HCCL_CONFIG_TYPE_HCCL_ALGO), infoLen, buf.data());
-    if (ret != HcclResult::HCCL_SUCCESS) {
-        HCCL_WARNING("[HcclGetHcclAlgo] HcclConfigGetInfo failed, ret: %d", ret);
-        return HcclResult::HCCL_SUCCESS;
-    }
-    hcclAlgo.assign(buf.data(), strnlen(buf.data(), buf.size()));
-    HCCL_DEBUG("[HcclGetHcclAlgo] hcclAlgo from comm: [%s]", hcclAlgo.c_str());
-
-    return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode& finalMode)

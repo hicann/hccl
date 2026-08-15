@@ -15,23 +15,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> InsTempReduceScatterOrderPreservedGroup::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 InsTempReduceScatterOrderPreservedGroup::InsTempReduceScatterOrderPreservedGroup(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)

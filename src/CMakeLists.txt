@@ -77,7 +77,6 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/common/hcomm_dlsym
     ${CMAKE_CURRENT_SOURCE_DIR}/common/hcomm_dlsym/ccu
     ${CMAKE_CURRENT_SOURCE_DIR}/common/op_graph
-    ${CMAKE_CURRENT_SOURCE_DIR}/common/tuner
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common
@@ -88,7 +87,6 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/executor/registry
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector/inc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/registry

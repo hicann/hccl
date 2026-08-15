@@ -9,5 +9,4 @@
 # -----------------------------------------------------------------------------------------------------------
 
 add_subdirectory(common/prepare_ut_env)
-add_subdirectory(common/alg_parse)
 add_subdirectory(reduce_scatter_birs)

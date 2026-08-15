@@ -13,37 +13,6 @@
 #include "template_utils.h"
 
 namespace ops_hccl {
-std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    u32 portNum = param.portNum;
-    if (portNum == 0) {
-        portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    }
-    int log2R = 0;
-    for (u32 r = param.rankSize; r > 1; r >>= 1) {
-        log2R++;
-    }
-    // AllGather NHR: 4*log2(R)+1, 5us/task
-    int taskNum = 4 * log2R + 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcNHRParams(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-    // AllGather 依赖 5us/task 而非默认 10us 固定值, 在此覆盖
-    C = 0.000005f * taskNum;
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 InsTempAllGatherNHR::InsTempAllGatherNHR(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)

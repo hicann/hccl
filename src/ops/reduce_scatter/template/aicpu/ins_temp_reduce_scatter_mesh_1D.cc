@@ -11,35 +11,6 @@
 #include "aicpu/ins_temp_reduce_scatter_mesh_1D.h"
 
 namespace ops_hccl {
-
-std::vector<CostModelParam> InsTempReduceScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    if (param.rankSize > 8) {
-        return {};
-    }
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    float B1 = 0.0f;
-    float B2 = 0.0f;
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
-    } else {
-        B1 = 0.0f;
-    }
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B2);
-    B = B1 + (param.rankSize - 1) * B2;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 InsTempReduceScatterMesh1D::InsTempReduceScatterMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

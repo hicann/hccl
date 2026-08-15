@@ -42,8 +42,6 @@ public:
         std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset) override;
     HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
 
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
-
 protected:
     u32 level0ChannelNumPerRank_{1};
     u32 level1ChannelNumPerRank_{0};

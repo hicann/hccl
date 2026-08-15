@@ -22,38 +22,6 @@
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-std::vector<CostModelParam>
-InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    (void)comm;
-    (void)algName;
-    u32 rankSize = topoInfo->userRankSize;
-    std::vector<CostModelParam> params = [rankSize, algName] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplateRS::CalcCostCoeff(CalcCostCoeffParam{rankSize, 1.0f, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplateAG::CalcCostCoeff(CalcCostCoeffParam{rankSize, 1.0f, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
-    return params;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
-AlgNetMeta InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    (void)topoInfo;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    return meta;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 InsV2AllReduceOrderPreservedExecutor<
     AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::InsV2AllReduceOrderPreservedExecutor()
 {

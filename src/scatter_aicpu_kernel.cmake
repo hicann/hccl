@@ -29,8 +29,6 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/executor/executor_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/executor/executor_v2_base.cc
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector/cost_model.cc
-
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/alg_template_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/alg_v2_template_base.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/template/template_utils.cc

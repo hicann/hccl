@@ -43,40 +43,6 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHier
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-std::vector<CostModelParam> InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    u32 rankSize = topoInfo->userRankSize;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
-    HCCL_DEBUG("[InsV2AllGatherSoleExecutor] CalcCostCoeff delegate to template.");
-    // NHR 或多级拓扑走 CLOS，其余单级走 MESH
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    AlgNetType netType = (InsAlgTemplate::props.isNhr || isMultiLevel) ? AlgNetType::CLOS : AlgNetType::MESH;
-    // AicpuAllGatherSoleNHR 多级时 portNum=6；其他算法 portNum=0 由 template 兜底
-    u32 portNum = 0;
-    if (algName != nullptr && std::string(algName) == "AicpuAllGatherSoleNHR") {
-        portNum = 6;
-    }
-    std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(
-        CalcCostCoeffParam{rankSize, 1.0f, netType, true, algName, portNum, comm, topoInfo});
-    return params;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate>
-AlgNetMeta InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    AlgNetMeta meta;
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    AlgNetType netType = (InsAlgTemplate::props.isNhr || isMultiLevel) ? AlgNetType::CLOS : AlgNetType::MESH;
-    meta.netTypes.push_back(netType);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    return meta;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
@@ -145,7 +111,6 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     }
     templateAlgRes.threads = resCtx.threads;
     templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;
-    templateAlgRes.dieSplitRatio = resCtx.dieSplitRatio;
     // 准备数据
     TemplateDataParams tempAlgParams;
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;

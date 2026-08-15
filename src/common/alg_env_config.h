@@ -37,7 +37,6 @@ struct AlgEnvConfig {
 
     bool interHccsDisable;
     bool enableEntryLog;
-    bool useNewSelector;
     u32 intraRoceSwitch;             // server内的通信方式 与intraPcieSwitch组合使用，默认为0
     int32_t inconsistentCheckSwitch; // 参数一致性校验开关，默认为0
     u8 hcclDeterministic;
@@ -62,7 +61,6 @@ struct AlgEnvConfig {
         initialized = false;
         interHccsDisable = false;
         enableEntryLog = false;
-        useNewSelector = false;
         intraRoceSwitch = 0; // server内的通信方式 与intraPcieSwitch组合使用，默认为0
         inconsistentCheckSwitch = 0; // 参数一致性校验开关 -1：不校验；0：仅校验首算子；1：每次算子下发均校验
         hcclDeterministic = static_cast<u8>(
@@ -127,7 +125,6 @@ HcclResult ParseIntraLinkType();
 HcclResult ParseDeterministic();
 
 HcclResult ParseEntryLogEnable();
-HcclResult ParseNewSelector();
 
 HcclResult ParseInterLinkType();
 
@@ -177,8 +174,6 @@ const bool& GetExternalInputHcclEnableEntryLog();
 
 const u8& GetExternalInputHcclDeterministic();
 
-bool IsNewSelectorEnabled();
-
 const std::map<HcclCMDType, std::vector<HcclAlgoType>> GetExternalInputHcclAlgoConfigAllType();
 
 bool GetExternalInputExecTimeout(double& execTimeOut);
@@ -188,8 +183,6 @@ bool RunIndependentOpExpansion(HcclDevType deviceType);
 bool GetExternalInputMultipleDimensionSplitRatio(double& multipleDimensionSplitRatio);
 
 bool GetExternalInputTaskExceptionEnable();
-
-std::string GetEnv(std::string IdName);
 } // namespace ops_hccl
 
 #endif // HCCL_ALG_ENV_CONFIG_H

@@ -20,20 +20,6 @@ InsTempAllReduceAicpuReduceNHR::InsTempAllReduceAicpuReduceNHR(
     : InsAlgTemplateBase(param, rankId, subCommRanks)
 {}
 
-std::vector<CostModelParam> InsTempAllReduceAicpuReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    // 用aicpu做reduce，不参与性能排序，
-    int taskNum = 10;
-    float A = 10.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
-    return params;
-}
-
 u64 InsTempAllReduceAicpuReduceNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     (void)inBuffType;

@@ -15,28 +15,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempReduceScatterMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    param.netType = (param.rankSize <= 8) ? AlgNetType::MESH : AlgNetType::CLOS;
-    int portNum = (param.rankSize <= 8) ? 1 : 6;
-    int taskNum = 10;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    if (param.rankSize <= 8) { // 全走mesh链路
-        CostModelManager::Global()->CalcMeshParam(param.n, AlgNetType::MESH, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU, B);
-    } else { // 打平走clos链路
-        CostModelManager::Global()->CalcMeshParam(param.n, AlgNetType::CLOS, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 CcuTempReduceScatterMesh1DMem2Mem::CcuTempReduceScatterMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

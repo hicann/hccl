@@ -17,8 +17,6 @@
 #include "alg_template_base.h"
 #include "alg_param.h"
 #include "template_utils.h"
-#include "cost_model.h"
-#include "common_alg_template_base.h"
 
 namespace ops_hccl {
 constexpr uint64_t TOPO_LEN_Y_OFFSET = 8;
@@ -27,15 +25,11 @@ constexpr uint64_t MAX_DIM_NUM = 3;
 
 class AivAlgTemplateBase {
 public:
-    // Template 属性，子类按需覆盖
-    static constexpr TemplateProp props = {};
     explicit AivAlgTemplateBase();
     explicit AivAlgTemplateBase(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
         const std::vector<std::vector<u32>>& subCommRanks);
     virtual ~AivAlgTemplateBase();
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param) { return {}; }
 
     virtual std::string Describe() const = 0;
     virtual HcclResult CalcRes(

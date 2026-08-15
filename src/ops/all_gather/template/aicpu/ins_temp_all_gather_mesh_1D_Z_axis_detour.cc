@@ -11,7 +11,6 @@
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "alg_data_trans_wrapper.h"
 #include "template_utils.h"
-#include "cost_model.h"
 
 namespace ops_hccl {
 InsTempAllGatherMesh1D1DZAxisDetour::InsTempAllGatherMesh1D1DZAxisDetour(
@@ -19,43 +18,6 @@ InsTempAllGatherMesh1D1DZAxisDetour::InsTempAllGatherMesh1D1DZAxisDetour(
     : InsTempAllGatherMesh1D(param, rankId, subCommRanks)
 {}
 InsTempAllGatherMesh1D1DZAxisDetour::~InsTempAllGatherMesh1D1DZAxisDetour() {}
-
-std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    constexpr float meshRatio = 0.5f;
-    int taskNum = 15;
-
-    float meshA = 0.0f;
-    float meshB = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(param.n * meshRatio, AlgNetType::MESH, 1, param.rankSize, meshA);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n * meshRatio, EngineType::AICPU, meshB);
-    } else {
-        meshB = 0.0f;
-    }
-
-    float closA = 0.0f;
-    float closB = 0.0f;
-    int closPortNum = 2;
-    CostModelManager::Global()->CalcMeshParam(
-        param.n * meshRatio, AlgNetType::CLOS, closPortNum, param.rankSize, closA);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n * meshRatio, EngineType::AICPU, closB);
-    } else {
-        closB = 0.0f;
-    }
-
-    float A = std::max(meshA, closA);
-    float B = meshB + closB;
-    float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-    C = 0.000005f * taskNum; // 5us/task
-
-    HCCL_INFO("[InsTempAllGatherMesh1D1DZAxisDetour] CalcCostCoeff meshA=%f closA=%f A=%f B=%f.", meshA, closA, A, B);
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
 
 HcclResult InsTempAllGatherMesh1D1DZAxisDetour::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

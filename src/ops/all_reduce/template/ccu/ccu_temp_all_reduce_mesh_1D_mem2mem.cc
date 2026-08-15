@@ -15,30 +15,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempAllReduceMeshMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    param.netType = (param.rankSize <= 8) ? AlgNetType::MESH : AlgNetType::CLOS;
-    int portNum = (param.rankSize <= 8) ? 1 : 6;
-    int taskNum = 1 * param.rankSize;
-    // 第一步是reducescatter，
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    if (param.rankSize <= 8) { // 全走mesh链路
-        CostModelManager::Global()->CalcMeshParam(2 * param.n, AlgNetType::MESH, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU, B);
-    } else { // 打平走clos链路
-        CostModelManager::Global()->CalcMeshParam(2 * param.n, AlgNetType::CLOS, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
-    return params;
-}
-
 CcuTempAllReduceMeshMem2Mem1D::CcuTempAllReduceMeshMem2Mem1D(
     const OpParam& param,
     const u32 rankId, // 传通信域的rankId，userRank

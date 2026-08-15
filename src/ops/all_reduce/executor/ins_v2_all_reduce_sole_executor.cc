@@ -37,33 +37,6 @@ InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2AllReduceSoleExec
 {}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    (void)comm;
-    (void)algName;
-    u32 rankSize = topoInfo->userRankSize;
-    HCCL_DEBUG("[InsV2AllReduceSoleExecutor] CalcCostCoeff delegate to template.");
-    return InsAlgTemplate::CalcCostCoeff(
-        CalcCostCoeffParam{rankSize, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate>
-AlgNetMeta InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    (void)topoInfo;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    HCCL_DEBUG(
-        "[InsV2AllReduceSoleExecutor] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
-    return meta;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {

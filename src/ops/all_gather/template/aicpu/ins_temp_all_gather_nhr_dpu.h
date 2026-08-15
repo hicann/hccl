@@ -18,7 +18,6 @@
 namespace ops_hccl {
 class InsTempAllGatherNHRDPU : public InsAlgTemplateBase {
 public:
-    static constexpr TemplateProp props = {.isNhr = true};
     InsTempAllGatherNHRDPU() {}
     InsTempAllGatherNHRDPU(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 
@@ -30,8 +29,6 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

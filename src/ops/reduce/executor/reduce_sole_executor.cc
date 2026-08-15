@@ -250,7 +250,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 }
 #endif
 
-// 第五个参数是Reduce的template文件，第二个参数是算法注册名
+// 第二个参数是Reduce的template文件
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleMesh, ReduceSoleExecutor, TopoMatch1D, ReduceMesh1D);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleMeshTwoShot, ReduceSoleExecutor, TopoMatch1D, ReduceMesh1DTwoShot);

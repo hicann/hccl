@@ -48,46 +48,6 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-std::vector<CostModelParam>
-InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    (void)comm;
-    (void)algName;
-    u32 rankSize = topoInfo->userRankSize;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    HCCL_INFO(
-        "[InsV2AllGatherSequenceExecutor] CalcCostCoeff rankSizeLevel0:%d, rankSizeLevel1:%d, rankSize:%d",
-        rankSizeLevel0, rankSizeLevel1, rankSize);
-    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, algName] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f * rankSizeLevel1, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1
-            = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{rankSizeLevel1, 1.0f, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
-    return params;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-AlgNetMeta InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    (void)topoInfo;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    return meta;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)

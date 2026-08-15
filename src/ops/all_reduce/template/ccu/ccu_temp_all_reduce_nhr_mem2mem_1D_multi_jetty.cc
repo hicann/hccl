@@ -18,20 +18,6 @@
 namespace ops_hccl {
 constexpr u32 PORT_NUM = 1;
 
-std::vector<CostModelParam> CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    // 先不算multijetty的模型
-    HCCL_DEBUG("[CcuTempAllReduceNhrMem2Mem1DMultiJetty] CalcCostCoeff.");
-    int taskNum = 1;
-    float A = 1000.0f;
-    float B = 0.0f;
-    float C = 1000.0f;
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 CcuTempAllReduceNhrMem2Mem1DMultiJetty::CcuTempAllReduceNhrMem2Mem1DMultiJetty(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks),

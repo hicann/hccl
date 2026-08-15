@@ -15,28 +15,6 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
-
-std::vector<CostModelParam> CcuTempAllGather2DiesMeshMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::CCU, B);
-    } else {
-        B = 0.0f;
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 #define ALL_GATHER_2DIES_M2M_THREAD_NUM 2
 CcuTempAllGather2DiesMeshMem2Mem1D::CcuTempAllGather2DiesMeshMem2Mem1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)

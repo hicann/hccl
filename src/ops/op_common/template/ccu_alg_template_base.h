@@ -12,7 +12,6 @@
 #define HCCL_CCU_ALG_TEMPLATE_BASE
 
 #include "common_alg_template_base.h"
-#include "cost_model.h"
 #include <array>
 #include <set>
 #include <string>
@@ -33,8 +32,6 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuAlgTemplateBase() override;
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param) { return {}; }
 
     std::string Describe() const override = 0;
 

@@ -9,7 +9,6 @@
  */
 
 #include "ins_temp_reduce_scatter_mesh_1D_meshchunk.h"
-#include "cost_model.h"
 
 namespace ops_hccl {
 InsTempReduceScatterMesh1DMeshChunk::InsTempReduceScatterMesh1DMeshChunk(
@@ -19,31 +18,6 @@ InsTempReduceScatterMesh1DMeshChunk::InsTempReduceScatterMesh1DMeshChunk(
 {}
 
 InsTempReduceScatterMesh1DMeshChunk::~InsTempReduceScatterMesh1DMeshChunk() {}
-
-std::vector<CostModelParam> InsTempReduceScatterMesh1DMeshChunk::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    if (param.rankSize > 8) {
-        return {};
-    }
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
-    }
-    B = B * 2;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
 
 HcclResult InsTempReduceScatterMesh1DMeshChunk::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

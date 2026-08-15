@@ -17,28 +17,6 @@
 namespace ops_hccl {
 
 constexpr u32 DIE_NUM = 2;
-std::vector<CostModelParam> CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    HCCL_DEBUG("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot] CalcCostCoeff.");
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    float n = param.n * param.rankSize;
-    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(n, EngineType::CCU, B);
-    } else {
-        B = 0.0f;
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
 
 CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CcuTempAllReduceMesh1DMem2Mem2DieOneShot(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)

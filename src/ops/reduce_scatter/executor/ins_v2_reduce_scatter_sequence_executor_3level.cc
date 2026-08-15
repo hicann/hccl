@@ -9,7 +9,6 @@
  */
 
 #include "ins_v2_reduce_scatter_sequence_executor_3level.h"
-#include "cost_model.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "alg_data_trans_wrapper.h"
@@ -400,66 +399,6 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
         processedDataCount += currDataCount;
     }
     return HCCL_SUCCESS;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
-std::vector<CostModelParam>
-InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::
-    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    (void)comm;
-    (void)algName;
-    u32 rankSize = topoInfo->userRankSize;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    u32 rankSizeLevel2 = rs.level2;
-    HCCL_INFO(
-        "[InsV2ReduceScatterSequenceExecutor3Level] CalcCostCoeff rankSizeLevel0:%u, rankSizeLevel1:%u, "
-        "rankSizeLevel2:%u, rankSize:%u",
-        rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize);
-    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize, algName] {
-        std::vector<CostModelParam> v;
-        // Step1: 框内 RS（level0 mesh，全量输入的 1/rankSizeLevel0）
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, AlgNetType::MESH, true, algName});
-        // Step2: 框间 RS（level1 NHR，level0 归约后的 1/level0 份）
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, 1.0f * rankSizeLevel2 / rankSize, AlgNetType::CLOS, true, algName});
-        // Step3: 跨 super-pod RS（level2 NHR，level1 归约后的 1/(level0*level1) 份）
-        auto p2 = InsAlgTemplate2::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel2, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
-        if (p0.empty() || p1.empty() || p2.empty()) {
-            HCCL_WARNING(
-                "[InsV2ReduceScatterSequenceExecutor3Level] CalcCostCoeff incomplete, skip "
-                "(p0=%zu p1=%zu p2=%zu).",
-                p0.size(), p1.size(), p2.size());
-            return v;
-        }
-        v.insert(v.end(), p0.begin(), p0.end());
-        v.insert(v.end(), p1.begin(), p1.end());
-        v.insert(v.end(), p2.begin(), p2.end());
-        return v;
-    }();
-    return params;
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
-AlgNetMeta InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    (void)topoInfo;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1, 1};
-    HCCL_INFO(
-        "[InsV2ReduceScatterSequenceExecutor3Level] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.",
-        meta.netTypes.size(), static_cast<int>(meta.intraGroupMode));
-    return meta;
 }
 
 REGISTER_EXEC_V2_MULTI(

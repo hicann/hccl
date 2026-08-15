@@ -16,27 +16,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    if (param.rankSize > 8) {
-        return {};
-    }
-    // 和twoshot相同
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 20;
-    // 第一步是reducescatter，
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(2 * param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
-    return params;
-}
-
 CcuTempAllReduceMesh1D::CcuTempAllReduceMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

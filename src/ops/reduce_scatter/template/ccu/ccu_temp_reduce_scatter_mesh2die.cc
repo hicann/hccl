@@ -15,23 +15,6 @@
 #include "ccu_kernel_reduce_scatter_mesh2die.h"
 
 namespace ops_hccl {
-std::vector<CostModelParam> CcuTempReduceScatterMesh2Die::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::CCU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 constexpr int MISSION_NUM = 2;
 CcuTempReduceScatterMesh2Die::CcuTempReduceScatterMesh2Die(
     const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks)

@@ -18,20 +18,6 @@ namespace ops_hccl {
 constexpr u32 ALL_REDUCE_DIE_NUM = 2;
 constexpr u32 DIE_WORK = 2;
 
-std::vector<CostModelParam> CcuTempAllreduceMesh1D2DieOneShot::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot] CalcCostCoeff.");
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A = 10.0f;
-    float B = 0.0f;
-    float C = 1000.0f;
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 CcuTempAllreduceMesh1D2DieOneShot::CcuTempAllreduceMesh1D2DieOneShot(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

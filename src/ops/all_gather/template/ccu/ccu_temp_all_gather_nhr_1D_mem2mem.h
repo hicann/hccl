@@ -19,7 +19,6 @@ namespace ops_hccl {
 
 class CcuTempAllGatherNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
-    static constexpr TemplateProp props = {.isNhr = true};
     CcuTempAllGatherNHR1DMem2Mem() = default;
     explicit CcuTempAllGatherNHR1DMem2Mem(
         const OpParam& param,
@@ -32,8 +31,6 @@ public:
         return StringFormat(
             "Template of AllGather ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

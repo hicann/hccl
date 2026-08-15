@@ -9,7 +9,6 @@
  */
 
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
-#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -19,47 +18,6 @@ InsTempReduceScatterMesh1DZAxisDetour::InsTempReduceScatterMesh1DZAxisDetour(
 {}
 
 InsTempReduceScatterMesh1DZAxisDetour::~InsTempReduceScatterMesh1DZAxisDetour() {}
-
-std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    if (param.rankSize > 8) {
-        return {};
-    }
-    // ZAxisDetour 两级传输：level0（server 内 mesh）传一半，level1（跨 server）传一半
-    // level0DataRatio_ = 0.5f（SetchannelsPerRank 中设置）
-    float level0Ratio = 0.5f;
-    float level1Ratio = 1.0f - level0Ratio;
-    float nLevel0 = param.n * level0Ratio;
-    float nLevel1 = param.n * level1Ratio;
-
-    // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
-    // level0: server 内 mesh 组网，level1: 跨 server clos 组网
-    int portNum0 = (AlgNetType::MESH == AlgNetType::CLOS) ? 8 : 1;
-    int portNum1 = (AlgNetType::CLOS == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
-    float A0 = 0.0f;
-    float A1 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(nLevel0, AlgNetType::MESH, portNum0, param.rankSize, A0);
-    CostModelManager::Global()->CalcMeshParam(nLevel1, AlgNetType::CLOS, portNum1, param.rankSize, A1);
-    float A = std::max(A0, A1);
-
-    // B: 本地操作，两级各处理一半数据，reduce (rankSize-1) 份
-    float B1 = 0.0f;
-    float B2 = 0.0f;
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
-    }
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B2);
-    float B = B1 + (param.rankSize - 1) * B2;
-
-    float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f (level0Ratio=%f).", __func__, A, B, C, level0Ratio);
-    return params;
-}
 
 HcclResult InsTempReduceScatterMesh1DZAxisDetour::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

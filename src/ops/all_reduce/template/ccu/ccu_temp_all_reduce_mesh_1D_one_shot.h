@@ -41,8 +41,6 @@ public:
             "Template of CcuTempAllReduceMesh1DOneShot subCommRanks_[0].size() [%u].", subCommRanks_[0].size());
     }
 
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
-
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:

@@ -15,23 +15,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    // MESH 单级 portNum=1；CLOS 多级 portNum=6
-    int portNum = (param.netType == AlgNetType::MESH) ? 1 : 6;
-    int taskNum = 10;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    return params;
-}
-
 CcuTempAllGatherMesh1DMem2Mem::CcuTempAllGatherMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

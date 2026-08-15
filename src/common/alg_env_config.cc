@@ -236,19 +236,6 @@ HcclResult InitEnvConfig()
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
-    // 解析新 selector 开关
-    ret = ParseNewSelector();
-    RPT_ENV_ERR(
-        ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({GetEnv("HCCL_USE_NEW_SELECTOR"), "HCCL_USE_NEW_SELECTOR", "must be 0 or 1"}));
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR(
-            "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-            "HCCL_USE_NEW_SELECTOR failed. errorno[%d]",
-            HCCL_ERROR_CODE(ret), ret),
-        ret);
-
     // 解析超节点内节点间链路选择开关
     ret = ParseInterLinkType();
     RPT_ENV_ERR(
@@ -308,28 +295,20 @@ HcclResult InitEnvConfig()
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
-    // 解析算法配置（仅A3设备）, A5走costmodel新流程
-    HcclDevType deviceType;
-    CHK_RET(HcclGetDeviceType(deviceType));
-    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
-        ret = ParseHcclAlgo();
-        RPT_ENV_ERR(
-            ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-            std::vector<std::string>(
-                {GetEnv("HCCL_ALGO"), "HCCL_ALGO",
-                 "level0:NA;level1:<algo> or <op0>=level0:NA;level1:<algo0>/<op1>=level0:NA;level1:<algo1>"}));
-        CHK_PRT_RET(
-            ret != HCCL_SUCCESS,
-            HCCL_ERROR(
-                "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-                "hccl algorithm config failed. errorno[%d]",
-                HCCL_ERROR_CODE(ret), ret),
-            ret);
-    } else {
-        HCCL_INFO(
-            "[Init][EnvVarParam] HCCL_ALGO not parsed on deviceType[%u], A5 uses costmodel flow.",
-            static_cast<uint32_t>(deviceType));
-    }
+    // 解析算法配置
+    ret = ParseHcclAlgo();
+    RPT_ENV_ERR(
+        ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
+        std::vector<std::string>(
+            {GetEnv("HCCL_ALGO"), "HCCL_ALGO",
+             "level0:NA;level1:<algo> or <op0>=level0:NA;level1:<algo0>/<op1>=level0:NA;level1:<algo1>"}));
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
+            "hccl algorithm config failed. errorno[%d]",
+            HCCL_ERROR_CODE(ret), ret),
+        ret);
 
     ret = InitDebugConfigByEnv();
     char* env = std::getenv("HCCL_DEBUG_CONFIG");
@@ -814,28 +793,6 @@ HcclResult ParseEntryLogEnable()
     return HCCL_SUCCESS;
 }
 
-HcclResult ParseNewSelector()
-{
-    std::string useNewSelectorEnv = GetEnv("HCCL_USE_NEW_SELECTOR");
-    if (useNewSelectorEnv == "EmptyString") {
-        HCCL_INFO("HCCL_USE_NEW_SELECTOR set by default to [0]");
-        return HCCL_SUCCESS;
-    }
-    if (useNewSelectorEnv != "0" && useNewSelectorEnv != "1") {
-        HCCL_ERROR(
-            "[Parser][NewSelector]environmental variable HCCL_USE_NEW_SELECTOR [%s] is invalid, set by "
-            "default to [0]",
-            useNewSelectorEnv.c_str());
-        return HCCL_E_PARA;
-    }
-    g_algEnvConfig.useNewSelector = false;
-    if (useNewSelectorEnv == "1") {
-        g_algEnvConfig.useNewSelector = true;
-    }
-    HCCL_INFO("HCCL_USE_NEW_SELECTOR set by environment to [%u]", g_algEnvConfig.useNewSelector);
-    return HCCL_SUCCESS;
-}
-
 HcclResult ParseOpExpansion()
 {
     const std::string& opExpansionModeEnv = GetEnv("HCCL_OP_EXPANSION_MODE");
@@ -1208,7 +1165,4 @@ bool RunIndependentOpExpansion(HcclDevType deviceType)
     }
     return false;
 }
-
-bool IsNewSelectorEnabled() { return g_algEnvConfig.useNewSelector; }
-
 } // namespace ops_hccl

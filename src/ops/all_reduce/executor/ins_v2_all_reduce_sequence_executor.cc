@@ -19,57 +19,6 @@ namespace ops_hccl {
 template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
-std::vector<CostModelParam>
-InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
-{
-    (void)comm;
-    (void)algName;
-    u32 rankSize = topoInfo->userRankSize;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    HCCL_INFO("rankSizeLevel0:%d, rankSizeLevel1:%d, rankSize:%d", rankSizeLevel0, rankSizeLevel1, rankSize);
-    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, algName] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p1.begin(), p1.end());
-        auto p2 = InsAlgTemplate2::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p2.begin(), p2.end());
-        auto p3 = InsAlgTemplate3::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p3.begin(), p3.end());
-        return v;
-    }();
-    return params;
-}
-
-template <
-    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
-    typename InsAlgTemplate3>
-AlgNetMeta
-InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const
-{
-    (void)topoInfo;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1, 1, 1};
-    return meta;
-}
-
-template <
-    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
-    typename InsAlgTemplate3>
 InsV2AllReduceSequenceExecutor<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::InsV2AllReduceSequenceExecutor()
 {}

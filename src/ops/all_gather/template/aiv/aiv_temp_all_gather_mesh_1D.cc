@@ -21,28 +21,6 @@ AivTempAllGatherMesh1D::AivTempAllGatherMesh1D(
 
 AivTempAllGatherMesh1D::~AivTempAllGatherMesh1D() {}
 
-std::vector<CostModelParam> AivTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.netType == AlgNetType::CLOS) ? 6 : 1;
-    int taskNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AIV, B);
-    } else {
-        B = 0.0f;
-    }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AIV, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
-    return params;
-}
-
 HcclResult AivTempAllGatherMesh1D::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
