@@ -212,7 +212,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[ScatterSequenceAicpu3LevelExecutor][Orchestrate] myRank[%u] errNo[0x%016llx] "
-            "scatter excutor kernel run failed",
+            "scatter executor kernel run failed",
             myRank_, HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

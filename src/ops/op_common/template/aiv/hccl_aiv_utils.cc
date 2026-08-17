@@ -386,12 +386,14 @@ static u32 GetAivTimeout()
     u32 timeoutUs = AIV_TIMEOUT_DEFAULT_US;
     double execTimeOut = AIV_TIMEOUT_DEFAULT;
     if (GetExternalInputExecTimeout(execTimeOut)) {
-        timeoutUs = execTimeOut * TIME_S_TO_US;
-        if (timeoutUs > static_cast<double>(std::numeric_limits<u32>::max())) {
-            HCCL_WARNING("[GetAivTimeout]Get input timeout[%.2f] us is out of valid range.", timeoutUs);
+        double execTimeOutUs = execTimeOut * TIME_S_TO_US;
+        if (execTimeOutUs > static_cast<double>(std::numeric_limits<u32>::max())) {
+            HCCL_WARNING("[GetAivTimeout]Get input timeout[%.2f] us is out of valid range.", execTimeOutUs);
             timeoutUs = AIV_TIMEOUT_DEFAULT_US;
-        } else if (static_cast<u32>(timeoutUs) == 0) {
+        } else if (execTimeOutUs <= 0.0) {
             timeoutUs = AIV_TIMEOUT_DEFAULT_US;
+        } else {
+            timeoutUs = static_cast<u32>(execTimeOutUs);
         }
     }
 

@@ -42,7 +42,7 @@ void CcuTempReduceMesh1DMem2Mem::SetRoot(u32 root)
         mySubCommRoot_ = std::distance(ranks.begin(), itRoot);
     }
     HCCL_INFO(
-        "[CcuTempBroadcastMesh1DMem2Mem][SetRoot] myRank_ [%u], set root_ [%u] subCommRanks[%u]", mySubCommRank_, root,
+        "[CcuTempReduceMesh1DMem2Mem][SetRoot] myRank_ [%u], set root_ [%u] subCommRanks[%u]", mySubCommRank_, root,
         mySubCommRoot_);
 }
 

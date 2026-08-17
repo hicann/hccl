@@ -160,7 +160,7 @@ u64 InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     const u64 dividend, const u64 divisor) const
 {
     if (divisor == 0) {
-        HCCL_WARNING("[InsTempAllReduceMesh1DTwoShot][RoundUp] divisor is 0.");
+        HCCL_WARNING("[InsV2AllReduceSequence2DieExecutor][RoundUp] divisor is 0.");
         return dividend;
     }
     return (dividend + divisor - 1) / divisor;

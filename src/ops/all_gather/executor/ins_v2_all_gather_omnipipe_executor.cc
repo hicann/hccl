@@ -105,7 +105,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
             subCommRanks2.emplace_back(std::vector<u32>{myRank_});
         }
     } else {
-        HCCL_INFO("[BuildSubCommAndTempMap] MutiLevel_Pcie");
+        HCCL_INFO("[BuildSubCommAndTempMap] MultiLevel_Pcie");
         if (!algHierarchyInfo_.infos[0].empty()) {
             subCommRanks0 = algHierarchyInfo_.infos[0];
         } else {

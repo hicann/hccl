@@ -38,7 +38,7 @@ HcclResult InsTempReduceScatterMesh1dDpu::CalcRes(
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
-        "[InsTempReduceScatterMeshSeqInter][CalcRes]slaveThreadNum[%u] notifyNumOnMainThread[%u]"
+        "[InsTempReduceScatterMesh1dDpu][CalcRes]slaveThreadNum[%u] notifyNumOnMainThread[%u]"
         " level1Channels[%u].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, level1Channels.size());
     return HCCL_SUCCESS;

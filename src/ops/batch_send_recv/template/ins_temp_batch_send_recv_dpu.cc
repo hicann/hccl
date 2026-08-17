@@ -173,19 +173,19 @@ HcclResult InsTempBatchSendRecvDpu::KernelRun(
             SlicesList recvSlicesList({remoteInputBuffer}, {localCclBuffer});
             DataInfo recvInfo(recvRank_ > myRank_ ? sendRecvChannel_ : subSendRecvChannel_, recvSlicesList);
             CHK_PRT_RET(
-                RecvWrite(recvInfo, subThread_), HCCL_ERROR("[InsTempRecvDpu][KernelRun]Aicpu Run Recv failed"),
-                HcclResult::HCCL_E_INTERNAL);
+                RecvWrite(recvInfo, subThread_),
+                HCCL_ERROR("[InsTempBatchSendRecvDpu][KernelRun] AICPU RecvWrite failed"), HcclResult::HCCL_E_INTERNAL);
             // 把cclbuffer的内容localcopy给outputbuffer
             DataSlice outputBuffer(
                 tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_, count_);
             CHK_PRT_RET(
                 LocalCopy(subThread_, localCclBuffer, outputBuffer),
-                HCCL_ERROR("[InsTempRecvDpu][KernelRun]Aicpu Run Recv failed"),
+                HCCL_ERROR("[InsTempBatchSendRecvDpu][KernelRun] LocalCopy from CCL buffer to output buffer failed"),
                 HcclResult::HCCL_E_INTERNAL); // 本端ccl->本端output
         }
     } else {
         HCCL_ERROR(
-            "[InsTempBatchSendRecvDpu][Kernel Run] location [%d] is not supported!", sendRecvChannel_.locationType);
+            "[InsTempBatchSendRecvDpu][KernelRun] location [%d] is not supported!", sendRecvChannel_.locationType);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
 

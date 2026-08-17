@@ -56,7 +56,7 @@ HcclResult InsTempReduceScatterOmniPipeNHR::KernelRun(
         GetNotifyIdxSubToMain(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
     }
-    HCCL_INFO("[InsTempAllGatherOmniPipeNHR] Run End");
+    HCCL_INFO("[InsTempReduceScatterOmniPipeNHR] Run End");
     return HcclResult::HCCL_SUCCESS;
 }
 

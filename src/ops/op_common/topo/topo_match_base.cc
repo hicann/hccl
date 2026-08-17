@@ -21,7 +21,7 @@ HcclResult TopoMatchBase::MatchTopo(
     (void)comm;
     (void)topoInfo;
     (void)algHierarchyInfo;
-    HCCL_ERROR("[CollAlgFactory] Rank [%d], use proper multi-level interfacce to match topo.", topoInfo->userRank);
+    HCCL_ERROR("[CollAlgFactory] Rank [%d], use proper multi-level interface to match topo.", topoInfo->userRank);
     return HcclResult::HCCL_E_INTERNAL;
 }
 

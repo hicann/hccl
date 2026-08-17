@@ -82,7 +82,7 @@ template <typename InsAlgTemplate>
 HcclResult
 InsV2RecvSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    HCCL_INFO("[InsV2RecvMeshExecutorSole][Orchestrate] Orchestrate Start");
+    HCCL_INFO("[InsV2RecvSoleExecutor][Orchestrate] Orchestrate Start");
     myRank_ = resCtx.topoInfo.userRank;
     sendRank_ = param.sendRecvRemoteRank;
     dataCount_ = param.DataDes.count;

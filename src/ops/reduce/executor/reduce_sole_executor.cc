@@ -186,7 +186,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSaveCtx(
     const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const
 {
     HCCL_INFO("[ReduceSoleExecutor] loopTimes==1, save fast launch ctx.");
-    u32 threadNum = templateAlgRes.submitInfos.size();
+    u32 threadNum = templateAlgRes.threads.size();
     u32 ccuKernelNum = templateAlgRes.submitInfos.size();
     if (ccuKernelNum < 1) {
         HCCL_INFO("[ReduceSoleExecutor] ccu kernel num is 0, no need to save.");
