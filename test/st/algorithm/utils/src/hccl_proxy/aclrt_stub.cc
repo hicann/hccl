@@ -412,6 +412,15 @@ uint32_t aclrtGetDeviceIdFromExceptionInfo(const aclrtExceptionInfo* info)
     return exceptionInfo->deviceid;
 }
 
+uint32_t aclrtGetErrorCodeFromExceptionInfo(const aclrtExceptionInfo* info)
+{
+    if (info == nullptr) {
+        return 0;
+    }
+    const rtExceptionInfo_t* exceptionInfo = reinterpret_cast<const rtExceptionInfo_t*>(info);
+    return exceptionInfo->retcode;
+}
+
 rtError_t rtGetTaskIdAndStreamID(uint32_t* taskId, uint32_t* streamId)
 {
     if (taskId == nullptr || streamId == nullptr) {

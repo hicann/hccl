@@ -134,7 +134,7 @@ HcclResult InsV2RecvExecutor::OrchestrateImpl(const OpParam& param, const AlgRes
         sliceId_++; // 自动增长sliceId，传入aivTag
         u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxScratchDataCount;
         HCCL_INFO(
-            "[InsV2RecvExecutor][OrchestrateOpbase] myRank[%u], loop[%llu] sliceId_[%llu] "
+            "[InsV2RecvExecutor][OrchestrateOpbase] myRank[%u], loop[%llu] sliceId_[%u] "
             "currDataCount[%llu], processedDataCount[%llu]",
             myRank_, loop, sliceId_, currDataCount, processedDataCount);
 

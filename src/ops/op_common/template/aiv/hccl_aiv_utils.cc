@@ -25,6 +25,7 @@
 #include "alg_env_config.h"
 #include "config_log.h"
 #include "dlsym_common.h"
+#include "adapter_error_manager_pub.h"
 #ifdef HCCL_STATIC_MODE
 #include "acl_rt.h"
 #endif
@@ -290,6 +291,7 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
     const u32 taskId = aclrtGetTaskIdFromExceptionInfo(exceptionInfo);
     const u32 streamId = aclrtGetStreamIdFromExceptionInfo(exceptionInfo);
     const u32 deviceId = aclrtGetDeviceIdFromExceptionInfo(exceptionInfo);
+    const u32 errorCode = aclrtGetErrorCodeFromExceptionInfo(exceptionInfo);
 
     TaskParamAiv taskInfo;
     std::deque<TaskParamAiv> taskQueue;
@@ -298,12 +300,30 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
         return;
     }
 
+    if (errorCode == ACL_ERROR_RT_VECTOR_CORE_TIMEOUT) {
+        std::stringstream baseSs;
+        baseSs << "deviceId[" << deviceId << "], streamId[" << streamId << "], TaskId[" << taskId << "]";
+        std::string baseInformation = baseSs.str();
+
+        std::stringstream taskSs;
+        taskSs << "cmdType[" << static_cast<u32>(taskInfo.cmdType) << "], tag[" << taskInfo.tag << "], rank["
+               << taskInfo.rank << "], rankSize[" << taskInfo.rankSize << "], dataCount[" << taskInfo.size
+               << "], blockDim[" << taskInfo.blockDim << "], dataType[" << static_cast<u32>(taskInfo.dataType)
+               << "], beginTime[" << taskInfo.beginTime << "], flagMem[" << taskInfo.flagMem << "]";
+        std::string taskInformation = taskSs.str();
+
+        RPT_INPUT_ERR(
+            true, "EI0002",
+            std::vector<std::string>({"remote_rankid", "base_information", "task_information", "group_rank_content"}),
+            std::vector<std::string>({"FFFFFFFF", baseInformation.c_str(), taskInformation.c_str(), "none"}));
+    }
+
     HCCL_ERROR(
-        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+        "[TaskExceptionHandler][AIV]Task run failed, errorCode[%u], para information is deviceId[%u], streamId[%u], "
         "TaskId[%u], cmdType[%u], tag[%u], rank[%u], rankSize[%u], dataCount[%llu], blockDim[%u], "
         "dataType:[%u], beginTime:[%llu], flagMem[%p]",
-        deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag, taskInfo.rank, taskInfo.rankSize, taskInfo.size,
-        taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime, taskInfo.flagMem);
+        errorCode, deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag, taskInfo.rank, taskInfo.rankSize,
+        taskInfo.size, taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime, taskInfo.flagMem);
 
     HCCL_ERROR(
         "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
