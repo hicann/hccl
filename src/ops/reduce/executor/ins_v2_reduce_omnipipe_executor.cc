@@ -20,6 +20,8 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 namespace ops_hccl {
+constexpr u32 OMNIPIPE_MIN_THREAD_NUM = 2;
+constexpr u32 OMNIPIPE_MIN_CCU_KERNEL_NUM = 4;
 template <
     typename AlgTopoMatch, typename CcuRsAlgTemplateX, typename CcuRsAlgTemplateY, typename CcuGAlgTemplateX,
     typename CcuGAlgTemplateY>
@@ -401,7 +403,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
     TemplateResource templateResourceCommon;
     TemplateResource templateResourceRsX = templateResourceCommon;
     CHK_PRT_RET(
-        resCtx.threads.size() < 2 || resCtx.ccuKernelNum.size() < 4
+        resCtx.threads.size() < OMNIPIPE_MIN_THREAD_NUM || resCtx.ccuKernelNum.size() < OMNIPIPE_MIN_CCU_KERNEL_NUM
             || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1]
                                               + resCtx.ccuKernelNum[2] + resCtx.ccuKernelNum[3],
         HCCL_ERROR(

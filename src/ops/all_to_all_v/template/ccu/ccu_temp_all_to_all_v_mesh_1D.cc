@@ -254,6 +254,7 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
 HcclResult CcuTempAlltoAllVMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     // 遗留：localSendRecvInfo_ 从哪里传入呢？
     HCCL_INFO("[CcuTempAlltoAllVMesh1D] KernelRun");
 

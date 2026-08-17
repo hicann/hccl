@@ -216,6 +216,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::KernelRun(
 
 HcclResult CcuTempAllToAllMesh1D2Die::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     constexpr u32 argInIdx = 0;
     constexpr u32 argOutIdx = 1;
     constexpr u32 metaOutBaseOffIdx = 10;

@@ -19,6 +19,7 @@ constexpr u64 REDUCE_NHR_CCU_MAX_DATA_SIZE = 256 * 1024;
 constexpr int TOPO_LEVEL_3 = 3;
 constexpr u64 OMNI_UBX_MS_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_REDUCE_DATA_SIZE = 128 * 1024 * 1024;
+constexpr u32 REDUCE_CCU_MAX_RANK_SIZE = 64;
 SelectorStatus ReduceAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -135,7 +136,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
     }
     constexpr u64 CCU_SCHEDULE_2LEVEL_LESS_64P_MAX_SIZE = 64ULL * 1024 * 1024;
     constexpr u64 CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 1ULL * 1024 * 1024;
-    u64 ccuSize = 64;
+    u64 ccuSize = REDUCE_CCU_MAX_RANK_SIZE;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
 

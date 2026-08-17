@@ -116,6 +116,7 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(
 HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
     auto stepSliceInfo = templateDataParams.stepSliceInfo;
 

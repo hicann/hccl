@@ -17,6 +17,7 @@ SelectorStatus SendAutoSelector::SelectAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     (void)topoInfo;
     HCCL_INFO("[SendAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);
 
@@ -52,6 +53,7 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     HCCL_INFO("[SendAutoSelector][SelectDPUAlgo] opType:%d", opParam.opType);
 
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType

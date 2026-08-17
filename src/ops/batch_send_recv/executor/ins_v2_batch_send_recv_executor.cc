@@ -18,6 +18,7 @@ InsV2BatchSendRecvExecutor::InsV2BatchSendRecvExecutor() {}
 HcclResult InsV2BatchSendRecvExecutor::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     algHierarchyInfo.infos.resize(1);
     algHierarchyInfo.infos[0].resize(1);
     for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {

@@ -171,7 +171,8 @@ HcclResult GetHcclDfxOpInfoDataCount(const OpParam& param, const u32& rankSize, 
         sendCount = param.DataDes.count;
     }
     HCCL_INFO(
-        "[%s]tag[%s], sendCount[%u], opType[%u], rankSize[%u]", __func__, param.tag, sendCount, param.opType, rankSize);
+        "[%s]tag[%s], sendCount[%llu], opType[%u], rankSize[%u]", __func__, param.tag, sendCount, param.opType,
+        rankSize);
     return HCCL_SUCCESS;
 }
 

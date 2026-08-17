@@ -70,7 +70,9 @@ OmniPipeSplitSliceInfoListAssign(const std::vector<u64> dataWholeSize, u64 rankS
             curSliceCount = curSliceSize / dataTypeSize;
         }
         omniPipeSplitSliceInfoList.emplace_back(offsetSize, curSliceSize, curSliceCount);
-        offsetSize = offsetSize + dataWholeSize[i];
+        if (i < dataWholeSize.size()) {
+            offsetSize = offsetSize + dataWholeSize[i];
+        }
     }
     return omniPipeSplitSliceInfoList;
 }

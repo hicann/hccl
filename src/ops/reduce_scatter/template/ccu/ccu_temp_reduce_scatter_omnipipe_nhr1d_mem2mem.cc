@@ -164,6 +164,7 @@ uint32_t CcuTempReduceScatterOmniPipeNHR1DMem2Mem::RemoteRankId2RankId(const uin
 HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
     uint64_t localCopyFlag = templateDataParams.localCopyFlag;
     auto stepSliceInfo = templateDataParams.stepSliceInfo;

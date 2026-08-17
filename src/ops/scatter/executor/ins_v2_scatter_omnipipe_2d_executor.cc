@@ -20,6 +20,8 @@
 #include "coll_alg_v2_exec_registry.h"
 
 namespace ops_hccl {
+constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
+constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::InsV2ScatterOmniPipe2DExecutor()
@@ -51,7 +53,6 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 {
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
-    rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     myRank_ = topoInfo->userRank;
@@ -398,7 +399,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     // 通道处理
     TemplateResource templateResourceX = templateResourceCommon;
     CHK_PRT_RET(
-        resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2
+        resCtx.threads.size() < OMNIPIPE_2D_MIN_THREAD_NUM
+            || resCtx.ccuKernelNum.size() < OMNIPIPE_2D_MIN_CCU_KERNEL_NUM
             || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
         HCCL_ERROR(
             "[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",

@@ -38,6 +38,7 @@ InsV2SendExecutor::InitSendInfo(const HcclComm comm, const OpParam& param, const
 HcclResult InsV2SendExecutor::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     // 初始化一些基本成员变量
     myRank_ = topoInfo->userRank;
     HCCL_DEBUG("[InsV2SendExecutor][CalcAlgHierarchyInfo][%d] Start.", myRank_);
@@ -77,6 +78,7 @@ HcclResult InsV2SendExecutor::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
+    (void)algHierarchyInfo;
     // 初始化一些基本成员变量
     InitSendInfo(comm, param, topoInfo);
     HCCL_DEBUG("[InsV2SendExecutor][CalcRes][%d]->[%d] Start.", myRank_, remoteRank_);

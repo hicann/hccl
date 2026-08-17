@@ -93,6 +93,7 @@ HcclResult CcuTempBroadcastMesh1DMem2Mem::CalcRes(
 HcclResult
 CcuTempBroadcastMesh1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempBroadcastMesh1DMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -123,6 +124,7 @@ CcuTempBroadcastMesh1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFa
 HcclResult CcuTempBroadcastMesh1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
 
     uint64_t repeatNum = templateDataParams.repeatNum;

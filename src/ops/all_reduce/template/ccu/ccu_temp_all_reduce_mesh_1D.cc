@@ -148,6 +148,7 @@ HcclResult CcuTempAllReduceMesh1D::CheckCcuDataType() const
 HcclResult CcuTempAllReduceMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     if (outputDataType_ == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         outputDataType_ = dataType_;
     }
@@ -194,6 +195,7 @@ HcclResult CcuTempAllReduceMesh1D::KernelRun(
 
 HcclResult CcuTempAllReduceMesh1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllReduceMesh1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;

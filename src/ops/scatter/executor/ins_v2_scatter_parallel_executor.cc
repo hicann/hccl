@@ -82,10 +82,12 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     myRank_ = topoInfo->userRank;
     root_ = param.root;
 
-    HCCL_INFO(
-        "[CalcLocalRankSize] rankSizeLevel0_: algHierarchyInfo.infos[0][0].size()[%d] "
-        "algHierarchyInfo.infos[0][1].size()[%u]",
-        algHierarchyInfo.infos[0][0].size(), algHierarchyInfo.infos[0][1].size());
+    if (algHierarchyInfo.infos[0].size() >= 2) {
+        HCCL_INFO(
+            "[CalcLocalRankSize] rankSizeLevel0_: algHierarchyInfo.infos[0][0].size()[%d] "
+            "algHierarchyInfo.infos[0][1].size()[%u]",
+            algHierarchyInfo.infos[0][0].size(), algHierarchyInfo.infos[0][1].size());
+    }
     rankSizeLevel0_ = GetRankSize(temp0HierarchyInfo);
     rankSizeLevel1_ = GetRankSize(temp1HierarchyInfo);
     if (rankSizeLevel0_ == 0) {
@@ -216,10 +218,12 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
     }
 
-    HCCL_INFO(
-        "[InsV2ScatterParallelExecutor] rankSizeLevel0_: resCtx.algHierarchyInfo.infos[0][0].size()[%d] "
-        "resCtx.algHierarchyInfo.infos[0][1].size()[%u]",
-        resCtx.algHierarchyInfo.infos[0][0].size(), resCtx.algHierarchyInfo.infos[0][1].size());
+    if (resCtx.algHierarchyInfo.infos[0].size() >= 2) {
+        HCCL_INFO(
+            "[InsV2ScatterParallelExecutor] rankSizeLevel0_: resCtx.algHierarchyInfo.infos[0][0].size()[%d] "
+            "resCtx.algHierarchyInfo.infos[0][1].size()[%u]",
+            resCtx.algHierarchyInfo.infos[0][0].size(), resCtx.algHierarchyInfo.infos[0][1].size());
+    }
     rankSizeLevel0_ = GetRankSize(temp0HierarchyInfo_);
     rankSizeLevel1_ = GetRankSize(temp1HierarchyInfo_);
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;

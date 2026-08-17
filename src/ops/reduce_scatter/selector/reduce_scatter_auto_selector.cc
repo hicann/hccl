@@ -28,6 +28,7 @@ constexpr u64 RS_CCU_8P_MIN_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 RS_AICPU_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
 
 constexpr u32 RS_CCU_2DIE_RANK_SIZE = 16;
+constexpr u32 RS_CCU_MAX_RANK_SIZE = 64;
 constexpr u32 RS_CCU_2DIE_FRAME_NUM = 2;
 constexpr u64 RS_CCU_2DIE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_2DIE_MAX_DATA_SIZE = 16 * 1024 * 1024;
@@ -178,7 +179,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(
         return SelectorStatus::NOT_MATCH;
     }
     (void)configAlgMap;
-    u32 ccuSize = 64;
+    u32 ccuSize = RS_CCU_MAX_RANK_SIZE;
 
     // 保序模式不支持CCU_SCHED，需要回退到AICPU
     CHK_PRT_RET(
@@ -537,6 +538,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     HCCL_DEBUG("[ReduceScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->level2Ubg) {

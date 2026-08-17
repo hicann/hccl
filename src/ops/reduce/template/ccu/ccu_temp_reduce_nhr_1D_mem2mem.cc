@@ -185,6 +185,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(
 
 HcclResult CcuTempReduceNHR1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempReduceNHR1DMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;

@@ -88,7 +88,9 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
         return HCCL_E_INTERNAL;
     }
     if (algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
-        || algHierarchyInfo.infos[1][0].empty()) {
+        || algHierarchyInfo.infos[1][0].empty()
+        || ((algHierarchyInfo.infos.size() == SEQUENCE_EXECUTOR_LEVEL_NUM)
+            && (algHierarchyInfo.infos[2].empty() || algHierarchyInfo.infos[2][0].empty()))) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }

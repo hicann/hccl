@@ -92,6 +92,9 @@ SelectorStatus AllGatherVAutoSelector::SelectAivAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)selectAlgName;
+    (void)configAlgMap;
+    (void)topoInfo;
     HCCL_AIV_NOT_MATCH_LOG(
         opParam, HCCL_WARNING,
         "[Algo][AllGatherVAutoSelector] allgatherv is not supported yet for aiv mode, reset to default.");

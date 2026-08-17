@@ -135,6 +135,7 @@ CcuTempAllToAllVMesh1DMultiJetty::AddTaskArgA2AInfo(A2ASendRecvInfo& localSendRe
 HcclResult CcuTempAllToAllVMesh1DMultiJetty::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
 
     uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;

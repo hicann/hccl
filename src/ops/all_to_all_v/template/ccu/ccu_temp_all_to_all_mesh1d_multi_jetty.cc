@@ -76,6 +76,7 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::CalcRes(
 HcclResult
 CcuTempAllToAllMesh1dMultiJetty::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllToAllMesh1dMultiJetty::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;

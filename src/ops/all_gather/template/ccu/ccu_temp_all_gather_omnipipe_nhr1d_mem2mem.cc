@@ -156,6 +156,7 @@ uint32_t CcuTempAllGatherOmniPipeNHR1DMem2Mem::RemoteRankId2RankId(const uint32_
 HcclResult CcuTempAllGatherOmniPipeNHR1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
 
     uint64_t inputAddrBase = PointerToAddr(buffInfo_.inputPtr);

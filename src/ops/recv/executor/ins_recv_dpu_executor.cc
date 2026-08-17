@@ -47,6 +47,7 @@ template <typename InsAlgTemplate>
 HcclResult InsRecvDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     // 初始化一些基本成员变量
     myRank_ = topoInfo->userRank;
     HCCL_DEBUG("[InsRecvDpuExecutor][CalcAlgHierarchyInfo][%d] Start.", myRank_);

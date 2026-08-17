@@ -18,6 +18,8 @@ constexpr u64 BROADCAST_MESH_CCU_MAX_DATA_SIZE = 16 * 1024;
 constexpr u64 BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024;
+constexpr u32 BROADCAST_CCU_MAX_RANK_SIZE = 64;
+constexpr u32 BROADCAST_UBX_AIV_MAX_RANK = 8;
 
 SelectorStatus BroadcastAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -88,7 +90,7 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
             __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
-    u32 ccuSize = 64;
+    u32 ccuSize = BROADCAST_CCU_MAX_RANK_SIZE;
     constexpr u64 CCU_SCHEDULE_2LEVEL_MAX_PER_RANK_DATA_SIZE = 1ULL * 1024 * 1024;
     constexpr u64 CCU_SCHEDULE_2LEVEL_LESS_64P_MAX_SIZE = 64ULL * 1024 * 1024;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -121,7 +123,8 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
                 u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
                 u64 dataSize = opParam.DataDes.count * perDataSize;
                 u64 perRankSize = (topoInfo->userRankSize > 0) ? (dataSize / topoInfo->userRankSize) : dataSize;
-                if (perRankSize <= BROADCAST_MESH_CCU_MAX_DATA_SIZE && topoInfo->userRankSize <= 64) {
+                if (perRankSize <= BROADCAST_MESH_CCU_MAX_DATA_SIZE
+                    && topoInfo->userRankSize <= BROADCAST_CCU_MAX_RANK_SIZE) {
                     selectAlgName = "CcuSchedBroadcastSoleMesh";
                 } else if (
                     (perRankSize <= BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize)
@@ -291,7 +294,7 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(
     bool isAivBigdata = opParam.opExecuteConfig != OpExecuteConfig::AIV_ONLY
                         && dataSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize;
     bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
-    if ((isAivBigdata && !isUBX) || (isUBX && isAivBigdata && topoInfo->userRankSize > 8)) {
+    if ((isAivBigdata && !isUBX) || (isUBX && isAivBigdata && topoInfo->userRankSize > BROADCAST_UBX_AIV_MAX_RANK)) {
         HCCL_DEBUG(
             "[BroadcastAutoSelector][%s] dataSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
             __func__, dataSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);

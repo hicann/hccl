@@ -18,6 +18,7 @@ constexpr uint32_t INDEX_1 = 1;
 constexpr uint32_t INDEX_2 = 2;
 constexpr uint32_t INDEX_3 = 3;
 constexpr uint32_t CONST_4 = 4;
+constexpr uint32_t A2AV_CCU_MAX_RANK_SIZE = 64;
 
 SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -38,7 +39,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(
     }
     (void)opParam;
     (void)configAlgMap;
-    uint32_t userRankSizeMax = 64;
+    uint32_t userRankSizeMax = A2AV_CCU_MAX_RANK_SIZE;
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->level0Topo != Level0Shape::CLOS) {
             if (opParam.all2AllDataDes.sendType == HcclDataType::HCCL_DATA_TYPE_INT8) {
@@ -128,7 +129,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(
         CHK_PRT_RET(
             CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
             HCCL_ERROR("[Algo][AlltoAllVAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
-        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= 4)) { // 同一组4P，走并发算法
+        if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONST_4)) { // 同一组4P，走并发算法
             selectAlgName = "AicpuAllToAllVSoleMeshConcurrent";
         } else {
             selectAlgName = "AicpuAllToAllVSoleMeshUBX";

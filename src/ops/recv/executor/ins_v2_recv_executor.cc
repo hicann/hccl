@@ -41,6 +41,7 @@ HcclResult InsV2RecvExecutor::InitRecvInfo(
 HcclResult InsV2RecvExecutor::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     // 初始化一些基本成员变量
     myRank_ = topoInfo->userRank;
     HCCL_DEBUG("[InsV2RecvExecutor][CalcAlgHierarchyInfo][%d] Start.", myRank_);

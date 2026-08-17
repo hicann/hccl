@@ -29,6 +29,7 @@ namespace ops_hccl {
 constexpr u32 TEMPLATE_NOTIFY_NUM = 2;
 // 并行执行器中两个 template 算法的主 thread 数量
 constexpr u32 TEMPLATE_MAIN_THREAD_NUM = 2;
+constexpr u64 PARALLEL_DATA_ALIGN_SIZE = 16 * 1024;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsReduceScatterParallelExecutor()
@@ -395,7 +396,7 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(dataSplitSize);
-    u64 alignedSize = 16 * 1024; // 假设需要16K对齐
+    u64 alignedSize = PARALLEL_DATA_ALIGN_SIZE;
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;
     u32 intraScatchteMultipleStage0 = tempAlgIntra.CalcScratchMultiple(inBuffType, outBuffType);

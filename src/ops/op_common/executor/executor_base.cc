@@ -28,6 +28,8 @@ HcclResult ExecutorBase::CalcResRequest(
 
 HcclResult ExecutorBase::KernelRun(const OpParam& param, ExecMem& execMem)
 {
+    (void)param;
+    (void)execMem;
     HCCL_WARNING("[ExecutorBase][KernelRun]Using the default kernel run, nothing is done.");
     return HCCL_SUCCESS;
 }

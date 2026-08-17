@@ -102,6 +102,7 @@ HcclResult CcuTempScatterMesh1D::CalcRes(
 
 HcclResult CcuTempScatterMesh1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempScatterMesh1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -129,6 +130,7 @@ HcclResult CcuTempScatterMesh1D::FastLaunch(const OpParam& param, const Template
 HcclResult CcuTempScatterMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     HCCL_INFO("[CcuTempScatterMesh1D] Template KernelRun start.");
     if (templateDataParams.sliceSize == 0 && templateDataParams.tailSize == 0) {
         HCCL_INFO("[CcuTempScatterMesh1D] sliceSize is 0, no need do, just success.");

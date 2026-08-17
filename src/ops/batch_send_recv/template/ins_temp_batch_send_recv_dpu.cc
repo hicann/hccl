@@ -29,6 +29,10 @@ HcclResult InsTempBatchSendRecvDpu::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
+    (void)resourceRequest;
+    (void)topoInfo;
+    (void)param;
+    (void)comm;
     HCCL_INFO("[InsTempBatchSendRecvDpu][CalcRes] Successfully calres!");
     return HCCL_SUCCESS;
 }

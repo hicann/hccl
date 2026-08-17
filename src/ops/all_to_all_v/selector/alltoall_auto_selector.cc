@@ -22,6 +22,7 @@ constexpr uint64_t BIG_DATA_SIZE_LIMIT = 512;
 constexpr uint64_t ALLTOALL_ENABLE_MULTI_CHANNEL_DATA_SIZE_LIMIT = 150 * 1024 * 1024;
 
 constexpr u64 A2A_CCU_64P_MAX_DATA_SIZE = 256 * 1024 * 1024;
+constexpr uint32_t A2A_CCU_MAX_RANK_SIZE = 64;
 SelectorStatus AlltoAllAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -57,7 +58,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
         IsInputOutputOverlap(opParam) == true,
         HCCL_WARNING("[Algo][AlltoAllAutoSelector] ccu schedule does not support inplace alltoall."),
         SelectorStatus::NOT_MATCH);
-    uint32_t ccuSize = 64;
+    uint32_t ccuSize = A2A_CCU_MAX_RANK_SIZE;
     uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllDataDes.sendType];
     uint64_t* sendCountPtr = (uint64_t*)opParam.all2AllVDataDes.sendCounts;
     CHK_PRT_RET(

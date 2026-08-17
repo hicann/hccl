@@ -99,6 +99,7 @@ HcclResult CcuTempReduceMesh1DMem2Mem::CalcRes(
 
 HcclResult CcuTempReduceMesh1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempReduceMesh1DMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -129,6 +130,7 @@ HcclResult CcuTempReduceMesh1DMem2Mem::FastLaunch(const OpParam& param, const Te
 HcclResult CcuTempReduceMesh1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     if (templateDataParams.sliceSize == 0) {
         HCCL_INFO("[CcuTempReduceMesh1DMem2Mem] sliceSize is 0, no need do, just success.");
         return HCCL_SUCCESS;

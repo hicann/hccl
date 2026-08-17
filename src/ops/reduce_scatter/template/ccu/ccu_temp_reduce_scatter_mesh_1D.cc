@@ -82,6 +82,7 @@ HcclResult CcuTempReduceScatterMesh1D::CalcRes(
 
 HcclResult CcuTempReduceScatterMesh1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempReduceScatterMesh1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;

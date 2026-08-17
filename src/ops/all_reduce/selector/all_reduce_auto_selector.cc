@@ -35,6 +35,8 @@ constexpr u64 AR_AIV_BOARD_SIZE = 8;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 constexpr u64 AR_2P_DETOUR_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u32 AR_MORE_64P_SEQ_MAX_DATA_SIZE = 32 * 1024 * 1024;
+constexpr u32 AR_CCU_MAX_RANK_SIZE = 64;
+constexpr u64 AR_CCU_SEQ_MAX_DATA_SIZE = 64 * 1024 * 1024;
 SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -168,7 +170,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)configAlgMap;
-    u32 ccuSize = 64;
+    u32 ccuSize = AR_CCU_MAX_RANK_SIZE;
     HCCL_DEBUG("[AllReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
     if (topoInfo->level2Ubg) {
@@ -234,7 +236,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
                 selectAlgName = "CcuSchedAllReduceSoleMesh";
                 return SelectorStatus::MATCH;
             } else if (
-                dataSize <= 64 * 1024 * 1024 && topoInfo->userRankSize < ccuSize
+                dataSize <= AR_CCU_SEQ_MAX_DATA_SIZE && topoInfo->userRankSize < ccuSize
                 && !Is8BitDataType(opParam.DataDes.dataType)) {
                 selectAlgName = "CcuSchedAllReduceSequenceMeshMesh";
                 return SelectorStatus::MATCH;
@@ -402,6 +404,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     HCCL_DEBUG("[AllReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;

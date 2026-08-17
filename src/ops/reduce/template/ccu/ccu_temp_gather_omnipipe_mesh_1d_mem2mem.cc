@@ -137,6 +137,7 @@ HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::CalcRes(
 HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     HCCL_DEBUG("[CcuTempGatherOmniPipeMesh1DMem2Mem::KernelRun] mesh start");
     buffInfo_ = templateDataParams.buffInfo;
     uint64_t localCopyFlag = templateDataParams.localCopyFlag;

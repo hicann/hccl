@@ -199,6 +199,7 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::CalcSlice(const u64 dataSize, RankSlice
 HcclResult
 CcuTempAllReduceNHRMem2Mem1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllReduceNHRMem2Mem1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -312,6 +313,7 @@ void CcuTempAllReduceNHRMem2Mem1D::SaveSubmitInfo(
 HcclResult CcuTempAllReduceNHRMem2Mem1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     uint64_t dataCount = (templateDataParams.sliceSize / DataTypeSizeGet(dataType_));
     if (dataCount == 0) {
         HCCL_INFO("[CcuTempAllReduceNHRMem2Mem1D] dataCount == 0, Template Run Ends.");

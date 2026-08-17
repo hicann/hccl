@@ -198,6 +198,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAivAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)selectAlgName;
+    (void)configAlgMap;
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     HCCL_AIV_NOT_MATCH_LOG(
         opParam, HCCL_DEBUG, "[Algo][ReduceScatterVAutoSelector] is not supported yet for AIV mode.");

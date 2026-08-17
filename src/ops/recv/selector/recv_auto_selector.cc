@@ -17,6 +17,7 @@ SelectorStatus RecvAutoSelector::SelectAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     (void)topoInfo;
     HCCL_INFO("[RecvAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);
 
@@ -51,6 +52,7 @@ SelectorStatus RecvAutoSelector::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)configAlgMap;
     HCCL_INFO("[RecvAutoSelector][SelectDPUAlgo] opType:%d", opParam.opType);
 
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType

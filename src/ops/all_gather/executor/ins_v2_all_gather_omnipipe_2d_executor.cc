@@ -18,6 +18,8 @@
 #endif
 
 namespace ops_hccl {
+constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
+constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
 template <typename AlgTopoMatch, typename CcuAlgTempLevel0, typename CcuAlgTempLevel1>
 InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel1>::InsV2AllGatherOmniPipe2DExecutor()
 {}
@@ -275,7 +277,8 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     TemplateResource templateResourceCommon;
     TemplateResource templateResourceLevel0 = templateResourceCommon;
     CHK_PRT_RET(
-        resCtx.threads.size() < 3 || resCtx.ccuKernelNum.size() < 2
+        resCtx.threads.size() < OMNIPIPE_2D_MIN_THREAD_NUM
+            || resCtx.ccuKernelNum.size() < OMNIPIPE_2D_MIN_CCU_KERNEL_NUM
             || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
         HCCL_ERROR(
             "[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",

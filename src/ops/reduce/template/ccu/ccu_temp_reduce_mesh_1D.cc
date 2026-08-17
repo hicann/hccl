@@ -86,6 +86,7 @@ HcclResult CcuTempReduceMesh1D::CalcRes(
 
 HcclResult CcuTempReduceMesh1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempReduceMesh1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -116,6 +117,7 @@ HcclResult CcuTempReduceMesh1D::FastLaunch(const OpParam& param, const TemplateF
 HcclResult CcuTempReduceMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
 
     uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;

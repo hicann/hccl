@@ -29,6 +29,7 @@
 #endif
 
 namespace ops_hccl {
+constexpr u64 TMP_MEM_RESERVE_SIZE = 1 * 1024 * 1024;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2ReduceScatterSoleExecutor()
@@ -127,7 +128,7 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     u64 maxDataSizePerLoop = 0;
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     if (param.engine != COMM_ENGINE_AIV) {
-        maxTmpMemSize_ = maxTmpMemSize_ - 1 * 1024 * 1024;
+        maxTmpMemSize_ = maxTmpMemSize_ - TMP_MEM_RESERVE_SIZE;
     }
     u64 transportBoundDataSize = (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) ? maxTmpMemSize_ : UB_MAX_DATA_SIZE;
     HCCL_INFO("[InsV2ReduceScatterSoleExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);

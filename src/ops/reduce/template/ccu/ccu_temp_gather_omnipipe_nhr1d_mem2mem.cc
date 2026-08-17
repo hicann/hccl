@@ -134,6 +134,7 @@ HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::CalcRes(
 HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     if (templateRankSize_ <= 1) {
         return HCCL_SUCCESS;
     }

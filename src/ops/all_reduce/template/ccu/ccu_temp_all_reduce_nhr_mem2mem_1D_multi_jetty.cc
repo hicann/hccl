@@ -101,6 +101,7 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcRes(
 HcclResult
 CcuTempAllReduceNhrMem2Mem1DMultiJetty::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllReduceNhrMem2Mem1DMultiJetty::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -196,6 +197,7 @@ void CcuTempAllReduceNhrMem2Mem1DMultiJetty::FillSubmitInfo(
 HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     HCCL_DEBUG("[%s] begin.", __func__);
     buffInfo_ = templateDataParams.buffInfo;
 

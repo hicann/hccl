@@ -27,6 +27,10 @@ constexpr u64 AG_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 OMNI_PCIE_AG_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 OMNI_UBX_AG_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
+constexpr u32 AG_CCU_MAX_RANK_SIZE = 64;
+constexpr u32 AG_CCU_RANK_SIZE = 32;
+constexpr u32 AG_UBX_AIV_BIGDATA_RANK_UPPER = 8;
+constexpr u32 AG_UBX_AIV_BIGDATA_RANK_LOWER = 4;
 
 SelectorStatus AllGatherAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -221,8 +225,8 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
         return SelectorStatus::NOT_MATCH;
     }
     (void)configAlgMap;
-    u32 ccuMaxSize = 64;
-    u32 ccuSize = 32;
+    u32 ccuMaxSize = AG_CCU_MAX_RANK_SIZE;
+    u32 ccuSize = AG_CCU_RANK_SIZE;
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     u32 frameNum = CalcFrameNum(topoInfo);
@@ -441,7 +445,9 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
                         && totalSize >= AIV_MAX_PER_RANK_DATA_SIZE * topoInfo->userRankSize;
     bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
     if ((isAivBigdata && !isUBX)
-        || (isUBX && isAivBigdata && (topoInfo->userRankSize > 8 || topoInfo->userRankSize <= 4))) {
+        || (isUBX && isAivBigdata
+            && (topoInfo->userRankSize > AG_UBX_AIV_BIGDATA_RANK_UPPER
+                || topoInfo->userRankSize <= AG_UBX_AIV_BIGDATA_RANK_LOWER))) {
         HCCL_DEBUG(
             "[AllGatherAutoSelector][%s] totalSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
             __func__, totalSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);

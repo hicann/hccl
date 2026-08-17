@@ -99,6 +99,7 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes(
 HcclResult
 CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;

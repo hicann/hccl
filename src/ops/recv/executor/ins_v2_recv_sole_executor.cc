@@ -61,6 +61,7 @@ template <typename InsAlgTemplate>
 HcclResult InsV2RecvSoleExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     // AlgHierarchyInfoForAllLevel固定为一层
     CHK_PRT_RET(
         (topoInfo->userRankSize == 0),

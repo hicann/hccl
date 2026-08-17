@@ -133,6 +133,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::GetRes(AlgResourceRequest& resourceReq
 HcclResult
 CcuTempAllReduceMeshMem2Mem1D::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {
+    (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
         HCCL_INFO("[CcuTempAllReduceMeshMem2Mem1D::FastLaunch] ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
@@ -207,6 +208,7 @@ void CcuTempAllReduceMeshMem2Mem1D::SaveSubmitInfo(
 HcclResult CcuTempAllReduceMeshMem2Mem1D::KernelRun(
     const OpParam& param, const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
+    (void)param;
     buffInfo_ = templateDataParams.buffInfo;
 
     RankSliceInfo sliceInfoVec;
