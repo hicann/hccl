@@ -204,6 +204,9 @@ HcclResult CcuTempScatterNHR1DMem2Mem::CalcRes(
     std::map<u32, u32> rank2ChannelIdx;
     std::vector<NHRStepInfo> stepInfoVector;
     CHK_RET(ProcessNHRStepInfo(comm, stepInfoVector, rank2ChannelIdx, enableDieNum, channelsPerDie));
+    if (enableDieNum > 1) { // 通过端口数划分channel，适配跨框die0连die1的场景，避免建链失败
+        CHK_RET(ReverseChannelPerDieIfNeed(comm, myRank_, channelsPerDie));
+    }
 
     CHK_RET(BuildKernelInfos(param, enableDieNum, stepInfoVector, rank2ChannelIdx, channelsPerDie, resourceRequest));
 
