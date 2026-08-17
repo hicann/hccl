@@ -95,6 +95,14 @@ HcclResult AicpuCacheEvictKernelLaunch(HcclComm comm)
 HcclResult AicpuTaskCacheCommStateCallback(HcclComm comm, HcclCommStatePhase state, void* args)
 {
     (void)args;
+    HcclDevType deviceType;
+    CHK_RET(HcclGetDeviceType(deviceType));
+    if (deviceType != HcclDevType::DEV_TYPE_950) {
+        HCCL_DEBUG(
+            "[%s] deviceType[%u] is not DEV_TYPE_950, skip evict aicpu task cache", __func__,
+            static_cast<u32>(deviceType));
+        return HCCL_SUCCESS;
+    }
     HCCL_INFO("[%s] comm[%p] state[%d]", __func__, comm, state);
     if (state == HCCL_COMM_STATE_PHASE_DESTROY_POST || state == HCCL_COMM_STATE_PHASE_RESUME_POST) {
         // 通信域销毁或者N秒快恢时，调用device接口，清理通信域相关的task缓存
