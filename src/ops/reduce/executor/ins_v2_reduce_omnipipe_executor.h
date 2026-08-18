@@ -31,7 +31,7 @@ template <
 class InsV2ReduceOmniPipeExecutor : public InsCollAlgBase {
 public:
     explicit InsV2ReduceOmniPipeExecutor();
-    ~InsV2ReduceOmniPipeExecutor() = default;
+    ~InsV2ReduceOmniPipeExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 

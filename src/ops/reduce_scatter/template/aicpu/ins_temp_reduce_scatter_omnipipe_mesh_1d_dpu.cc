@@ -57,12 +57,22 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::GetRes(AlgResourceRequest& res
 // 语义改为返回当前template的类型，mesh返回1，nhr返回0
 u64 InsTempReduceScatterOmniPipeMesh1dDpu::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
+    (void)inBuffType;
+    (void)outBuffType;
     return 1;
 }
 
-void InsTempReduceScatterOmniPipeMesh1dDpu::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) { return; }
+void InsTempReduceScatterOmniPipeMesh1dDpu::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)
+{
+    (void)notifyIdxMainToSub;
+    return;
+}
 
-void InsTempReduceScatterOmniPipeMesh1dDpu::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) { return; }
+void InsTempReduceScatterOmniPipeMesh1dDpu::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain)
+{
+    (void)notifyIdxSubToMain;
+    return;
+}
 
 HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::DoLocalCopy(
     const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads)

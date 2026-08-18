@@ -36,7 +36,7 @@ public:
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
-    HcclResult GetResWithoutLinks(AlgResourceRequest& resourceReques);
+    HcclResult GetResWithoutLinks(AlgResourceRequest& resourceRequest);
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;

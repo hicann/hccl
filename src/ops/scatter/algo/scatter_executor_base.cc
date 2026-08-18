@@ -173,6 +173,12 @@ HcclResult ScatterExecutorBase::CalcResRequest(
     HcclComm comm, const OpParam& param, TopoInfo* topoInfo, AlgHierarchyInfo& algHierarchyInfo,
     AlgResourceRequest& resourceRequest, AlgType& algType)
 {
+    (void)comm;
+    (void)param;
+    (void)topoInfo;
+    (void)algHierarchyInfo;
+    (void)resourceRequest;
+    (void)algType;
     return HCCL_SUCCESS;
 }
 
@@ -194,6 +200,8 @@ HcclResult ScatterExecutorBase::KernelRunLevel1(
     HcclMem& inputMem, u64 count, HcclDataType dataType, u32& commIndex, u32 root, u32& subRoot, CommPlane commLevel,
     ThreadHandle thread)
 {
+    (void)commIndex;
+    (void)thread;
     SubCommInfo subCommInfo;
     CHK_RET(GetSubCommInfo(commLevel, subCommInfo));
 

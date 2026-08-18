@@ -39,6 +39,8 @@ HcclResult InsTempReduceScatterVMesh1D::CalcRes(
 
 u64 InsTempReduceScatterVMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
+    (void)inBuffType;
+    (void)outBuffType;
     u64 scratchMultiple = templateRankSize_;
     return scratchMultiple;
 }

@@ -18,6 +18,10 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)topoInfo;
+    (void)opParam;
+    (void)configAlgMap;
+    (void)selectAlgName;
     HCCL_WARNING("[Algo][AllGatherVAutoSelector] allgatherv is not supported yet for ccu_ms mode, reset to default.");
     return SelectorStatus::NOT_MATCH;
 }

@@ -199,7 +199,12 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::KernelRun(
     return HcclResult::HCCL_SUCCESS;
 }
 
-u64 CcuTempAllToAllMesh1dMultiJetty::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 0; }
+u64 CcuTempAllToAllMesh1dMultiJetty::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 0;
+}
 
 u64 CcuTempAllToAllMesh1dMultiJetty::GetThreadNum() const { return 1; }
 } // namespace ops_hccl

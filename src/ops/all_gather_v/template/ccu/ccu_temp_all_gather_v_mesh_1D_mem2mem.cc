@@ -123,9 +123,9 @@ u64 CcuTempAllGatherVMesh1DMem2Mem::CalcScratchMultiple(BufferType inBuffType, B
     return 0;
 }
 
-u64 CcuTempAllGatherVMesh1DMem2Mem::GetThreadNum() { return 1; }
+u64 CcuTempAllGatherVMesh1DMem2Mem::GetThreadNum() const { return 1; }
 
-HcclResult CcuTempAllGatherVMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempAllGatherVMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;

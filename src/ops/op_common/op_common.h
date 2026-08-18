@@ -188,7 +188,7 @@ HcclResult HcclAivKernelEntranceLaunch(
 
 HcclResult HcclGetOpExpansionMode(HcclComm comm, OpParam& param);
 
-HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode& finalMod);
+HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode& finalMode);
 
 HcclResult ApplyOpExpansionMode(OpParam& param, HcclOpExpansionMode finalMode);
 

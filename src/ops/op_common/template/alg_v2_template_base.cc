@@ -80,7 +80,12 @@ HcclResult InsAlgTemplateBase::GetRes(AlgResourceRequest& resourceRequest) const
     return HcclResult::HCCL_E_INTERNAL;
 }
 
-u64 InsAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 0; }
+u64 InsAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 0;
+}
 
 u64 InsAlgTemplateBase::GetThreadNum() const { return 0; }
 

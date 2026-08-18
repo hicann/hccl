@@ -55,6 +55,8 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::CalcRes(
 
 u64 InsTempReduceScatterOrderPreservedLevel1::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
+    (void)inBuffType;
+    (void)outBuffType;
     u64 scratchMultiple = templateRankSize_;
     HCCL_INFO("[InsTempReduceScatterOrderPreservedLevel1][CalcScratchMultiple] scratchMultiple[%u]", scratchMultiple);
     return scratchMultiple;

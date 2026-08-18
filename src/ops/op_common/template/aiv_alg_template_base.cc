@@ -27,7 +27,12 @@ AivAlgTemplateBase::AivAlgTemplateBase(
 
 AivAlgTemplateBase::~AivAlgTemplateBase() {}
 
-u64 AivAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 1; }
+u64 AivAlgTemplateBase::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 1;
+}
 
 HcclResult AivAlgTemplateBase::FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx)
 {

@@ -418,9 +418,9 @@ HcclResult ReduceNHR::getMyAlgRank()
     return HCCL_SUCCESS;
 }
 
-void ReduceNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) {}
+void ReduceNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) { (void)notifyIdxMainToSub; }
 
-void ReduceNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) {}
+void ReduceNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) { (void)notifyIdxSubToMain; }
 
 u64 ReduceNHR::GetThreadNum() const { return 1; }
 

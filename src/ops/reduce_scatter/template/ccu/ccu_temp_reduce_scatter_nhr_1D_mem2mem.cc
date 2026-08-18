@@ -38,7 +38,7 @@ u64 CcuTempReduceScatterNHR1DMem2Mem::CalcScratchMultiple(BufferType inBuffType,
 }
 
 HcclResult CcuTempReduceScatterNHR1DMem2Mem::ProcessNHRStepInfo(
-    HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx, u32 dieNum,
+    HcclComm comm, std::vector<NHRStepInfo>& stepInfoVector, std::map<u32, u32>& rank2ChannelIdx, u32 enableDieNum,
     u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
     constexpr u32 DIE_NUM_1 = 1;
@@ -48,13 +48,13 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::ProcessNHRStepInfo(
         NHRStepInfo stepInfo;
         CHK_RET(GetStepInfo(step, stepInfo));
         stepInfoVector.push_back(stepInfo);
-        if (dieNum == DIE_NUM_1) {
+        if (enableDieNum == DIE_NUM_1) {
             CHK_RET(SelectChannelToVec(
                 comm, myRank_, stepInfo.fromRank, rankIdToChannelDesc_, enableDieId, rank2ChannelIdx,
                 channelsPerDie[0]));
             CHK_RET(SelectChannelToVec(
                 comm, myRank_, stepInfo.toRank, rankIdToChannelDesc_, enableDieId, rank2ChannelIdx, channelsPerDie[0]));
-        } else if (dieNum == DIE_NUM_2) {
+        } else if (enableDieNum == DIE_NUM_2) {
             // 加入fromRank 2个die的链路
             CHK_RET(SelectChannelToVec(
                 comm, myRank_, stepInfo.fromRank, rankIdToChannelDesc_, 0, rank2ChannelIdx, channelsPerDie[0]));

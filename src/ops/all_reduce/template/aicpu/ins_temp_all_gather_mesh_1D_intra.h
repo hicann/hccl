@@ -34,7 +34,7 @@ public:
     }
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
-    HcclResult GetRes(AlgResourceRequest& resourceReques) const override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

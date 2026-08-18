@@ -145,6 +145,7 @@ HcclResult InsTempDpuAlltoAllMesh::KernelRun(
 HcclResult InsTempDpuAlltoAllMesh::LocalCopyforMyRank(
     const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads)
 {
+    (void)commRanks;
     u64 sendCount = tempAlgParams.sendCounts[myRank_];
     u64 recvCount = tempAlgParams.recvCounts[myRank_];
     u64 sendSliceSize = sendCount * dataTypeSize_;

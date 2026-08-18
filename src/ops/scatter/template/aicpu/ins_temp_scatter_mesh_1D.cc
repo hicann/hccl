@@ -82,7 +82,12 @@ HcclResult InsTempScatterMesh1D::GetRes(AlgResourceRequest& resourceRequest) con
     return HCCL_SUCCESS;
 }
 
-u64 InsTempScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 1; }
+u64 InsTempScatterMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 1;
+}
 
 HcclResult InsTempScatterMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)

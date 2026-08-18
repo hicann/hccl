@@ -24,6 +24,7 @@ public:
         AlgResourceRequest& resourceRequest, AlgType& algType) override;
 
 private:
+    using ScatterExecutorBase::KernelRunLevel1;
     /* *************** 算法编排 *************** */
     HcclResult KernelRunLevel2(const OpParam& param, ExecMem& execMem);
     HcclResult KernelRunLevel1(const OpParam& param, ExecMem& execMem);

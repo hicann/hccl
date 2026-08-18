@@ -469,6 +469,8 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
+    (void)configAlgMap;
     HCCL_DEBUG("[AllGatherAutoSelector][%s] start, topoInfo topoLevelNums[%u]", __func__, topoInfo->topoLevelNums);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)

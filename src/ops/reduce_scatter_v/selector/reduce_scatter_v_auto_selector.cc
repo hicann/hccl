@@ -62,6 +62,9 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(
 SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcums(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
+    (void)topoInfo;
+    (void)opParam;
+    (void)selectAlgName;
     HCCL_WARNING("[ReduceScatterVAutoSelector] not support ccu_ms mode.");
     return SelectorStatus::NOT_MATCH;
 }

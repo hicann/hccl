@@ -32,7 +32,7 @@ HcclResult HcclAllGatherV(
 HcclResult HcclAllGatherVGraphMode(
     void* sendBuf, void* recvBuf, uint64_t sendCount, const void* recvCounts, const void* recvDispls,
     HcclDataType dataType, const char* group, aclrtStream stream, const char* tag, void** streams, size_t streamCount,
-    void* scratchMemAddr, uint64_t scratchMemSiz);
+    void* scratchMemAddr, uint64_t scratchMemSize);
 
 #ifdef __cplusplus
 }

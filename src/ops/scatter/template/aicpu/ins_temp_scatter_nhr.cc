@@ -74,7 +74,12 @@ HcclResult InsTempScatterNHR::GetRes(AlgResourceRequest& resourceRequest) const
     return HCCL_SUCCESS;
 }
 
-u64 InsTempScatterNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return templateRankSize_; }
+u64 InsTempScatterNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return templateRankSize_;
+}
 
 HcclResult InsTempScatterNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo)
 {

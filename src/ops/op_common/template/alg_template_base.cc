@@ -26,7 +26,11 @@ AlgTemplateBase::AlgTemplateBase()
 
 AlgTemplateBase::~AlgTemplateBase() { slices_.clear(); }
 
-HcclResult AlgTemplateBase::Prepare(PrepareData& param) { return HCCL_E_PARA; }
+HcclResult AlgTemplateBase::Prepare(PrepareData& param)
+{
+    (void)param;
+    return HCCL_E_PARA;
+}
 
 // prepare函数给需要进行集合通信操作进行参数赋值
 HcclResult AlgTemplateBase::Prepare(
@@ -62,12 +66,21 @@ HcclResult AlgTemplateBase::Prepare(
 }
 
 // ScatterMesh
-HcclResult AlgTemplateBase::Prepare(u32 interRank, u32 interRankSize) { return HCCL_E_PARA; }
+HcclResult AlgTemplateBase::Prepare(u32 interRank, u32 interRankSize)
+{
+    (void)interRank;
+    (void)interRankSize;
+    return HCCL_E_PARA;
+}
 
 HcclResult AlgTemplateBase::Prepare(
     HcclCollOpInfo* opInfo, const u32 userRank, const std::vector<u32>& ringsOrders,
     const std::vector<Slice>& userMemInputSlices)
 {
+    (void)opInfo;
+    (void)userRank;
+    (void)ringsOrders;
+    (void)userMemInputSlices;
     return HCCL_E_PARA;
 }
 

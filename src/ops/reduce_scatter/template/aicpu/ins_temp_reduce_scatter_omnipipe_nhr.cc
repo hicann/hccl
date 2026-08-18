@@ -21,7 +21,12 @@ InsTempReduceScatterOmniPipeNHR::InsTempReduceScatterOmniPipeNHR(
 InsTempReduceScatterOmniPipeNHR::~InsTempReduceScatterOmniPipeNHR() {}
 
 // 语义改为返回当前template的类型，mesh返回1，nhr返回0
-u64 InsTempReduceScatterOmniPipeNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 0; }
+u64 InsTempReduceScatterOmniPipeNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 0;
+}
 
 HcclResult InsTempReduceScatterOmniPipeNHR::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)

@@ -20,7 +20,11 @@ ReduceAicpuReduceNHR::ReduceAicpuReduceNHR(
 
 ReduceAicpuReduceNHR::~ReduceAicpuReduceNHR() {}
 
-void ReduceAicpuReduceNHR::SetRoot(u32 root) { return; }
+void ReduceAicpuReduceNHR::SetRoot(u32 root)
+{
+    (void)root;
+    return;
+}
 
 HcclResult ReduceAicpuReduceNHR::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
@@ -204,6 +208,7 @@ HcclResult ReduceAicpuReduceNHR::RunReduce(
     const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
     const std::string& algTag)
 {
+    (void)channels;
     HCCL_INFO("[ReduceAicpuReduceNHR][RunReduce] start");
     if (myRank_ != root_) {
         return HCCL_SUCCESS;
@@ -317,10 +322,10 @@ u32 ReduceAicpuReduceNHR::GetAlgRank(u32 rank) const
     return static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
 }
 
-void ReduceAicpuReduceNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) {}
+void ReduceAicpuReduceNHR::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) { (void)notifyIdxMainToSub; }
 
-void ReduceAicpuReduceNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) {}
+void ReduceAicpuReduceNHR::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) { (void)notifyIdxSubToMain; }
 
-u64 ReduceAicpuReduceNHR::GetThreadNum() { return 1; }
+u64 ReduceAicpuReduceNHR::GetThreadNum() const { return 1; }
 
 } // namespace ops_hccl

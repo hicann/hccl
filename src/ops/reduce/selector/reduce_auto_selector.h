@@ -41,7 +41,8 @@ private:
         const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const;
     SelectorStatus SelectDPUAlgo(
         const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
-        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap,
+        std::string& selectAlgName) const override;
 };
 
 } // namespace ops_hccl

@@ -131,6 +131,7 @@ SelectorStatus AutoSelectorBase::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
     (void)topoInfo;
     (void)configAlgMap;
     (void)selectAlgName;
@@ -141,6 +142,7 @@ SelectorStatus AutoSelectorBase::SelectCcuScheduleAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
     (void)topoInfo;
     (void)configAlgMap;
     (void)selectAlgName;
@@ -151,6 +153,7 @@ SelectorStatus AutoSelectorBase::SelectAicpuAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
     (void)topoInfo;
     (void)configAlgMap;
     (void)selectAlgName;
@@ -161,6 +164,7 @@ SelectorStatus AutoSelectorBase::SelectAivAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
     (void)topoInfo;
     (void)configAlgMap;
     (void)selectAlgName;
@@ -171,6 +175,7 @@ SelectorStatus AutoSelectorBase::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
+    (void)opParam;
     (void)topoInfo;
     (void)configAlgMap;
     (void)selectAlgName;

@@ -147,9 +147,9 @@ u64 CcuTempReduceScatterVMesh1DMem2Mem::CalcScratchMultiple(BufferType inBuffTyp
     return templateRankSize_;
 }
 
-u64 CcuTempReduceScatterVMesh1DMem2Mem::GetThreadNum() { return 1; }
+u64 CcuTempReduceScatterVMesh1DMem2Mem::GetThreadNum() const { return 1; }
 
-HcclResult CcuTempReduceScatterVMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest)
+HcclResult CcuTempReduceScatterVMesh1DMem2Mem::GetRes(AlgResourceRequest& resourceRequest) const
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumOnMainThread = 0;

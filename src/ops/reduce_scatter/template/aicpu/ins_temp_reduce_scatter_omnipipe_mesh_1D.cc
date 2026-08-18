@@ -54,7 +54,12 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::GetRes(AlgResourceRequest& resour
 }
 
 // 语义改为返回当前template的类型，mesh返回1，nhr返回0
-u64 InsTempReduceScatterOmniPipeMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) { return 1; }
+u64 InsTempReduceScatterOmniPipeMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
+{
+    (void)inBuffType;
+    (void)outBuffType;
+    return 1;
+}
 
 // 这个也不用，计算scratch、对齐、loop信息封装在雪松接口里
 u64 InsTempReduceScatterOmniPipeMesh1D::CalcScratchSlice(u64 dataSize) const
