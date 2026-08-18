@@ -93,6 +93,7 @@ const std::unordered_map<std::string, HcclDevType> HCCL_SOC_VER_CONVERT{
     {"Ascend910_9382", HcclDevType::DEV_TYPE_910_93},
     {"Ascend910_9372", HcclDevType::DEV_TYPE_910_93},
     {"Ascend910_9362", HcclDevType::DEV_TYPE_910_93},
+    {"Ascend910_9363", HcclDevType::DEV_TYPE_910_93},
     {"Ascend950PR_958b", HcclDevType::DEV_TYPE_950},
     {"nosoc", HcclDevType::DEV_TYPE_NOSOC}};
 
