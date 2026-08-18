@@ -19,6 +19,29 @@ InsTempAllReduceNHR::InsTempAllReduceNHR(
 
 InsTempAllReduceNHR::~InsTempAllReduceNHR() {}
 
+std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    AlgNetType netType = AlgNetType::CLOS;
+    int portNum = (netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 10;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.n * 2, netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n * param.rankSize * 2, EngineType::AICPU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    return params;
+}
+
 u64 InsTempAllReduceNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     (void)inBuffType;

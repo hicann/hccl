@@ -20,6 +20,37 @@ InsTempAllReduceMesh1DOneShot::InsTempAllReduceMesh1DOneShot(
 
 InsTempAllReduceMesh1DOneShot::~InsTempAllReduceMesh1DOneShot() {}
 
+std::vector<CostModelParam> InsTempAllReduceMesh1DOneShot::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    // 因为不知道是twoshot还是oneshot，executor层统一传twoshot需要的一片数据大小，template层做特殊处理
+    float n = param.n * param.rankSize;
+    // 同时有localreduce和localcopy，所以需要调用两个接口获取两个步骤的B并相加
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(n, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(n, EngineType::AICPU, B2);
+    B = B1 + (param.rankSize - 1) * B2;
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    return params;
+}
+
 HcclResult InsTempAllReduceMesh1DOneShot::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)

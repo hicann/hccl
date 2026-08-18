@@ -103,7 +103,7 @@ bool AutoSelectorBase::IsSmallDataCCU(const u64 dataSize, const u64 rankSize) co
     return (dataSize <= CCU_PARALLEL_MAX_DATA_SIZE) ? true : false;
 }
 
-u32 AutoSelectorBase::CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo) const
+u32 AutoSelectorBase::CalcFrameNum(const TopoInfoWithNetLayerDetails* topoInfo)
 {
     u32 frameNum = 0;
     if (topoInfo->topoLevelNums <= 1 || topoInfo->netLayerDetails.instSizeListOfLayer[0].empty()) {

@@ -16,6 +16,29 @@
 #include "hccl_sym_win.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    // AllGather mesh: 5us/task, taskNum=10 → C=50us
+    int taskNum = 10;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    // AllGather 依赖 5us/task 而非默认 10us 固定值, 在此覆盖
+    C = 0.000005f * taskNum; // 5us/task
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    return params;
+}
+
 InsTempAllGatherMesh1D::InsTempAllGatherMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)

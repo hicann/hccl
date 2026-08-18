@@ -12,6 +12,7 @@
 #define EXECUTOR_BASE_V2_H
 
 #include "alg_param.h"
+#include "cost_model.h"
 #include "topo_host.h"
 #include "channel.h"
 #include "alg_template_base.h"
@@ -22,6 +23,7 @@
 #include "executor_base.h"
 #include "template_utils.h"
 #include "order_preserved_common.h"
+#include <vector>
 
 namespace ops_hccl {
 
@@ -31,6 +33,21 @@ public:
     virtual ~InsCollAlgBase();
 
     virtual std::string Describe() const;
+
+    virtual std::vector<CostModelParam>
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    {
+        (void)comm;
+        (void)topoInfo;
+        (void)algName;
+        return {};
+    }
+
+    virtual AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const
+    {
+        (void)topoInfo;
+        return {};
+    }
 
     virtual HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)

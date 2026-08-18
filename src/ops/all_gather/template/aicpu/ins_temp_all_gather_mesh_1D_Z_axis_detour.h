@@ -26,6 +26,7 @@ public:
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
     u64 GetThreadNum() const override;
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcDataSplitByPortGroup(
         const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,

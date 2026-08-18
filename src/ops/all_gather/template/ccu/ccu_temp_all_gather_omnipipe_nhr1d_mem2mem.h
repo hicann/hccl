@@ -31,6 +31,8 @@ public:
             "Template of All Gather CCU OmniPipe NHR 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

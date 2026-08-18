@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherNHR1DMultiJettyMem2Mem : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.isNhr = true};
     CcuTempAllGatherNHR1DMultiJettyMem2Mem() = default;
     explicit CcuTempAllGatherNHR1DMultiJettyMem2Mem(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
@@ -30,6 +31,8 @@ public:
         return StringFormat(
             "Template of All Gather CCU NHR 1D Multijetty Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

@@ -31,6 +31,8 @@ public:
             "Template of Reduce Scatter ccu mesh 1D 2Die Mem2Mem with tempRankSize [%u].", templateRankSize_);
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

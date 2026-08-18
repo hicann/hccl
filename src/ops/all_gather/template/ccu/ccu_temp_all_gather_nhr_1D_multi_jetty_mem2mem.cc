@@ -34,6 +34,31 @@ CcuTempAllGatherNHR1DMultiJettyMem2Mem::CcuTempAllGatherNHR1DMultiJettyMem2Mem(
 
 CcuTempAllGatherNHR1DMultiJettyMem2Mem::~CcuTempAllGatherNHR1DMultiJettyMem2Mem() {}
 
+std::vector<CostModelParam> CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    u32 portNum = param.portNum;
+    if (portNum == 0) {
+        portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    }
+    int taskNum = 1;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.n, param.netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::CCU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    return params;
+}
+
 HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)

@@ -21,6 +21,33 @@ AivTempAllReduceMesh1DTwoShot::AivTempAllReduceMesh1DTwoShot(
 
 AivTempAllReduceMesh1DTwoShot::~AivTempAllReduceMesh1DTwoShot() {}
 
+std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int taskNum = 15;
+    // 第一步是reducescatter，
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(2 * param.n, param.netType, portNum, param.rankSize, A);
+    if (param.needLocalCopy) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::AICPU, B2);
+    B = B1 + B2;
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AIV, C);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    return params;
+}
+
 u64 AivTempAllReduceMesh1DTwoShot::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {
     (void)inBuffType;

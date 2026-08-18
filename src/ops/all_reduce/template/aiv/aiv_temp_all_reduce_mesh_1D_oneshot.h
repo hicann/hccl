@@ -31,6 +31,8 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams,
         const TemplateResource& templateResource) override;

@@ -44,6 +44,63 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+std::vector<CostModelParam>
+InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+{
+    (void)comm;
+    (void)algName;
+    u32 rankSize = topoInfo->userRankSize;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    HCCL_INFO(
+        "[InsV2AllGatherParallelExecutor] CalcCostCoeff rankSizeLevel0:%d, rankSizeLevel1:%d, rankSize:%d",
+        rankSizeLevel0, rankSizeLevel1, rankSize);
+    constexpr float ratio = 0.5f;
+    float meshFirstRatio = 1.0f - ratio;
+    float closFirstRatio = ratio;
+    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, meshFirstRatio, closFirstRatio, algName] {
+        std::vector<CostModelParam> v;
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(
+            CalcCostCoeffParam{rankSizeLevel0, meshFirstRatio, AlgNetType::MESH, true, algName});
+        v.insert(v.end(), p0.begin(), p0.end());
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(
+            CalcCostCoeffParam{rankSizeLevel1, closFirstRatio, AlgNetType::CLOS, true, algName});
+        v.insert(v.end(), p1.begin(), p1.end());
+        auto p2 = InsAlgTemplate0::CalcCostCoeff(
+            CalcCostCoeffParam{rankSizeLevel0, closFirstRatio * rankSizeLevel1, AlgNetType::MESH, true, algName});
+        v.insert(v.end(), p2.begin(), p2.end());
+        auto p3 = InsAlgTemplate1::CalcCostCoeff(
+            CalcCostCoeffParam{rankSizeLevel1, meshFirstRatio * rankSizeLevel0, AlgNetType::CLOS, true, algName});
+        v.insert(v.end(), p3.begin(), p3.end());
+        // Parallel 固定开销: CCU +35us, AICPU +70us
+        float bConst = (algName != nullptr && std::string(algName).find("CcuSched") != std::string::npos) ? 0.000035f :
+                                                                                                            0.000070f;
+        for (auto& p : v) {
+            p.C += bConst;
+        }
+        return v;
+    }();
+    return params;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+AlgNetMeta InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.groupSizes = {2, 2};
+    return meta;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
