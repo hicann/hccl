@@ -160,14 +160,15 @@ HcclResult FillAllReduceOpParam(
     void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, const HcclComm comm,
     aclrtStream stream, OpMode opMode, OpParam& param)
 {
-    (void)comm;
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 outputSize = count * perDataSize;
     u64 inputSize = outputSize;
 
+    param.hcclComm = comm;
     param.stream = stream;
     param.reduceType = op;
     param.opMode = opMode;
+    param.supportSymmetricMemory = false;
 
     HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
     CHK_RET(HcclGetDeviceType(deviceType));
@@ -184,6 +185,35 @@ HcclResult FillAllReduceOpParam(
     param.deviceType = deviceType;
     param.reduceType = op;
     return HCCL_SUCCESS;
+}
+
+bool AllReduceSupportSymmetricMemory(OpParam& opParam)
+{
+    size_t inputOffset = 0;
+    size_t outputOffset = 0;
+
+    HcclResult ret = HcclCommSymWinGet(
+        opParam.hcclComm, opParam.inputPtr, opParam.inputSize, &opParam.inputSymWindow, &inputOffset);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || opParam.inputSymWindow == nullptr,
+        HCCL_INFO(
+            "[AllReduceSupportSymmetricMemory] input symmetric-window lookup failed; "
+            "disable symmetric-memory optimization, input[%p], size[%llu], ret[%d].",
+            opParam.inputPtr, opParam.inputSize, ret),
+        false);
+    ret = HcclCommSymWinGet(
+        opParam.hcclComm, opParam.outputPtr, opParam.outputSize, &opParam.outputSymWindow, &outputOffset);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || opParam.outputSymWindow == nullptr,
+        HCCL_INFO(
+            "[AllReduceSupportSymmetricMemory] output symmetric-window lookup failed; "
+            "disable symmetric-memory optimization, output[%p], size[%llu], ret[%d].",
+            opParam.outputPtr, opParam.outputSize, ret),
+        false);
+    opParam.supportSymmetricMemory = true;
+    opParam.inputOffset = inputOffset;
+    opParam.outputOffset = outputOffset;
+    return true;
 }
 
 HcclResult AllReduceOutPlaceCommon(
@@ -224,9 +254,16 @@ HcclResult AllReduceOutPlaceCommon(
         return HcclResult::HCCL_SUCCESS;
     }
 
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE) {
+        AllReduceSupportSymmetricMemory(param);
+    }
+
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
+    if (algName != "AicpuAllReducePipeLineUBX") {
+        param.supportSymmetricMemory = false;
+    }
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllReduceOutPlace success.");

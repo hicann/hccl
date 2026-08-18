@@ -664,12 +664,10 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
             return SelectMeshAlgoAicpuForMesh1D(topoInfo, opParam, selectAlgName, dataSize, ratio);
         } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
             selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
+        } else if (dataSize < OMNI_PCIE_RS_DATA_SIZE) {
+            selectAlgName = "InsReduceScatterParallelMesh1DNHRPcie";
         } else {
-            if (dataSize < OMNI_PCIE_RS_DATA_SIZE) {
-                selectAlgName = "InsReduceScatterParallelMesh1DNHRPcie";
-            } else {
-                selectAlgName = "AicpuReduceScatterPipeLinePcie";
-            }
+            selectAlgName = "AicpuReduceScatterPipeLinePcie";
         }
     } else if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
         // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
@@ -677,17 +675,19 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
             selectAlgName = "AicpuReduceScatterSoleMesh";
         } else if (!IsSmallData(dataSize)) {
             selectAlgName = "AicpuReduceScatterConcurMeshNHR";
+        } else if (dataSize * ratio > RS_AICPU_1D_MAX_DATA_SIZE) {
+            selectAlgName = "AicpuReduceScatterSoleMeshChunk";
         } else {
-            if (dataSize * ratio > RS_AICPU_1D_MAX_DATA_SIZE) {
-                selectAlgName = "AicpuReduceScatterSoleMeshChunk";
-            } else {
-                selectAlgName = "AicpuReduceScatterSoleMesh";
-            }
+            selectAlgName = "AicpuReduceScatterSoleMesh";
         }
     } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
         selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
-        selectAlgName = "InsReduceScatterParallelMesh1DNHRUBX";
+        if (opParam.supportSymmetricMemory) {
+            selectAlgName = "AicpuReduceScatterPipeLineUBX";
+        } else {
+            selectAlgName = "InsReduceScatterParallelMesh1DNHRUBX";
+        }
     } else {
         selectAlgName = "AicpuReduceScatterSoleNHR";
     }

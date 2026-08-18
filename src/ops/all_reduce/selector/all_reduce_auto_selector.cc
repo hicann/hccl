@@ -474,7 +474,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
 }
 
 SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
-    const TopoInfoWithNetLayerDetails* topoInfo, const u64 dataSize, std::string& selectAlgName,
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, const u64 dataSize, std::string& selectAlgName,
     bool isDataTypeOrReduceTypeSpecial) const
 {
     // UBX机型
@@ -499,8 +499,12 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
     } else if (isDataTypeOrReduceTypeSpecial) {
         selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
-        // 矩形场景大数据量，用Parallel并行算法
-        selectAlgName = "InsAllReduceParallelRSAGUBX";
+        if (opParam.supportSymmetricMemory) {
+            selectAlgName = "AicpuAllReducePipeLineUBX";
+        } else {
+            // 矩形场景大数据量，用Parallel并行算法
+            selectAlgName = "InsAllReduceParallelRSAGUBX";
+        }
     } else {
         // 其他场景，用1d NHR算法
         selectAlgName = "AicpuAllReduceSoleNHR";
@@ -573,7 +577,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
                 }
             }
         } else {
-            return SelectMeshAlgoAicpuUBX(topoInfo, dataSize, selectAlgName, isDataTypeOrReduceTypeSpecial);
+            return SelectMeshAlgoAicpuUBX(topoInfo, opParam, dataSize, selectAlgName, isDataTypeOrReduceTypeSpecial);
         }
     } else {
         HCCL_ERROR("[AllReduceAutoSelector] topo not match");

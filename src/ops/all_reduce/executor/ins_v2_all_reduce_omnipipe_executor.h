@@ -54,7 +54,9 @@ protected:
         HcclComm comm, const OpParam& param, TopoInfoWithNetLayerDetails* topoInfo,
         AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult InitExectorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
-    HcclResult GenTemplateAlgParamsByDimData(TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo) const;
+    HcclResult GenTemplateAlgParamsByDimData(
+        TemplateDataParams& tempAlgParams, const StepSliceInfo& stepSliceInfo, u64 processedDataCount = 0,
+        bool supportSymmetricMemory = false) const;
 
     HcclResult RestoreChannelMap(
         const AlgResourceCtxSerializable& resCtx,

@@ -50,8 +50,8 @@ private:
         const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap,
         std::string& selectAlgName) const override;
     SelectorStatus SelectMeshAlgoAicpuUBX(
-        const TopoInfoWithNetLayerDetails* topoInfo, const u64 dataSize, std::string& selectAlgName,
-        bool isDataTypeOrReduceTypeSpecial) const;
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, const u64 dataSize,
+        std::string& selectAlgName, bool isDataTypeOrReduceTypeSpecial) const;
     SelectorStatus
     SelectMeshUBXAlgo(const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName, u64 dataSize) const;
 };

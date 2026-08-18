@@ -50,6 +50,9 @@ HcclResult AllReduceOutPlaceCommon(
     void* sendBuf, void* recvBuf, uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
     aclrtStream stream, OpMode opMode, const ResPackGraphMode& resPack, OpParam& param);
 
+// 仅当输入和输出都位于对称窗口内时，记录窗口与偏移并启用对称内存路径。
+bool AllReduceSupportSymmetricMemory(OpParam& opParam);
+
 HcclResult
 CheckAllReduceInputPara(const HcclComm comm, const void* sendBuf, const void* recvBuf, const aclrtStream stream);
 

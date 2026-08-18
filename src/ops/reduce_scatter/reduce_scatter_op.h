@@ -45,6 +45,9 @@ HcclResult ReduceScatterOutPlace(
     OpParam& param, void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op,
     HcclComm comm, aclrtStream stream, u32 userRankSize);
 
+// 仅当输入和输出都位于对称窗口内时，记录窗口与偏移并启用对称内存路径。
+bool ReduceScatterSupportSymmetricMemory(OpParam& opParam);
+
 HcclResult ReduceScatterOutPlaceGraphMode(
     void* sendBuf, void* recvBuf, uint64_t recvCount, HcclDataType dataType, HcclReduceOp op, HcclComm comm,
     aclrtStream stream, const std::string& tag, const ResPackGraphMode& resPack);

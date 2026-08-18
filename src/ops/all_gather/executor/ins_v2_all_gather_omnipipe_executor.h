@@ -95,10 +95,6 @@ private:
     std::vector<ThreadHandle> tempMainThreadsZ_;
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
 
-    std::vector<std::vector<u32>> subCommRanks0_;
-    std::vector<std::vector<u32>> subCommRanks1_;
-    std::vector<std::vector<u32>> subCommRanks2_;
-
     OmniNeedSetStepNum omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
     bool omniUbxLastStepRead_ = false;
 };

@@ -57,8 +57,9 @@ protected:
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
     HcclResult PrepareResForTemplateLevel(u32 level, std::shared_ptr<InsAlgTemplateBase>& tempBase);
-    HcclResult
-    GenTemplateAlgParamsByDimData(TemplateDataParams& tempAlgParams, const StepSliceInfo& stepSliceInfo) const;
+    HcclResult GenTemplateAlgParamsByDimData(
+        TemplateDataParams& tempAlgParams, const StepSliceInfo& stepSliceInfo, u64 processedDataCount,
+        bool supportSymmetricMemory) const;
     HcclResult CalcResLevel(
         HcclComm comm, const OpParam& param, const TopoInfo* topoInfo, std::shared_ptr<InsAlgTemplateBase> tempAlg,
         AlgResourceRequest& resourceRequest) const;
