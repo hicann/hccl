@@ -615,6 +615,21 @@ HcclResult SetOpParamFallbackTag(OpParam& param, const std::string& algName)
     return HCCL_SUCCESS;
 }
 
+static HcclResult ReportOpProfilingInfo(HcclComm comm, HcclCMDType opType, uint64_t beginTime)
+{
+    bool isGroupEnabled = false;
+    if (HcommIsSupportHcclGroupStatusGet()) {
+        CHK_RET(HcclGroupStatusGet(&isGroupEnabled));
+    }
+    bool isSendOrRecv = (opType == HcclCMDType::HCCL_CMD_SEND || opType == HcclCMDType::HCCL_CMD_RECEIVE);
+    // group模式下aicpu的p2p算子reportOp在groupEnd中作为整体算子上报，不在这里处理
+    if (!(isGroupEnabled && isSendOrRecv)) {
+        CHK_RET(HcclProfilingReportOp(comm, beginTime));
+    }
+
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclExecOp(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
     const ResPackGraphMode& resPack)
@@ -751,7 +766,7 @@ HcclResult HcclExecOp(
         CHK_RET(executor->Orchestrate(param, *resCtxHost));
     }
     // op上报
-    CHK_RET(HcclProfilingReportOp(comm, beginTime));
+    CHK_RET(ReportOpProfilingInfo(comm, param.opType, beginTime));
     HCCL_INFO("Execute HcclExecOp success.");
     return HCCL_SUCCESS;
 }

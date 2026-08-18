@@ -594,6 +594,13 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
             CHK_RET(OpOrchestrate(param, resCtxPtr, thread, algName));
         }
 
+        constexpr u32 DEFAULT_NOTIFY_IDX = 0;
+        HCCL_DEBUG(
+            "[%s]Notify record on srcThread[%llu], dstThread[%llu], notifyIdx[%u]", __func__, thread,
+            exportedAicpuTsThread, DEFAULT_NOTIFY_IDX);
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyRecordOnThread(thread, exportedAicpuTsThread, DEFAULT_NOTIFY_IDX)));
+
         // 上报mainstream数据,最后一个任务
         if (HcommProfilingReportKernelEndTask(thread, param->commName) != HCCL_SUCCESS) {
             HCCL_ERROR(
@@ -601,13 +608,6 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
                 param->commName);
             return 1;
         }
-
-        constexpr u32 DEFAULT_NOTIFY_IDX = 0;
-        HCCL_DEBUG(
-            "[%s]Notify record on srcThread[%llu], dstThread[%llu], notifyIdx[%u]", __func__, thread,
-            exportedAicpuTsThread, DEFAULT_NOTIFY_IDX);
-        CHK_RET(static_cast<HcclResult>(
-            HcommThreadNotifyRecordOnThread(thread, exportedAicpuTsThread, DEFAULT_NOTIFY_IDX)));
 
         if (HcommProfilingReportDeviceOp(param->commName) != HCCL_SUCCESS) {
             HCCL_ERROR("%s HcommProfilingReportDeviceOp fail, commName[%s]", __func__, param->commName);
