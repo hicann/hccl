@@ -96,6 +96,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(
     }
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempReduceScatterMesh1dDpuInter";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = templateResource.channels;

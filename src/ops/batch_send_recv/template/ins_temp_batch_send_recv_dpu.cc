@@ -9,9 +9,9 @@
  */
 
 #include "ins_temp_batch_send_recv_dpu.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
-constexpr u32 DPU_TIMEOUT = 180000;
 InsTempBatchSendRecvDpu::InsTempBatchSendRecvDpu() {}
 // ! 已编码完成
 InsTempBatchSendRecvDpu::InsTempBatchSendRecvDpu(
@@ -96,6 +96,7 @@ HcclResult InsTempBatchSendRecvDpu::KernelRun(
             return HCCL_E_INTERNAL;
         }
         DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
         dpuRunInfo.templateName = "InsTempBatchSendRecvDpu";
         dpuRunInfo.tempAlgParams = tempAlgParams;
         dpuRunInfo.channels = templateResource.channels;
@@ -198,6 +199,7 @@ HcclResult InsTempBatchSendRecvDpu::DPUKernelRun(
     const std::vector<std::vector<uint32_t>>& subCommRanks)
 {
 #ifndef AICPU_COMPILE
+    const u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
     if (subCommRanks.empty() || subCommRanks[0].size() < 2) {
         HCCL_ERROR("[InsTempBatchSendRecvDpu] [DPUKernelRun] no rank at all!");
         return HCCL_E_PARA;
@@ -238,7 +240,7 @@ HcclResult InsTempBatchSendRecvDpu::DPUKernelRun(
         const ChannelInfo& sendChannel = sendInfo.channel_;
         u32 sliceNum = srcSlices.size();
         CHK_RET(static_cast<HcclResult>(
-            HcommChannelNotifyWaitOnThread(0, sendChannel.handle, NOTIFY_IDX_ACK, DPU_TIMEOUT)));
+            HcommChannelNotifyWaitOnThread(0, sendChannel.handle, NOTIFY_IDX_ACK, execTimeout)));
         for (int i = 0; i < sliceNum; i++) {
             const DataSlice srcSlice = srcSlices[i];
             const DataSlice dstSlcie = dstSlices[i];
@@ -265,7 +267,7 @@ HcclResult InsTempBatchSendRecvDpu::DPUKernelRun(
         u32 sliceNum = srcSlices.size();
         for (int i = 0; i < sliceNum; i++) {
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, recvChannel.handle, NOTIFY_IDX_DATA_SIGNAL, DPU_TIMEOUT)));
+                HcommChannelNotifyWaitOnThread(0, recvChannel.handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
         }
         CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
         return HCCL_SUCCESS;

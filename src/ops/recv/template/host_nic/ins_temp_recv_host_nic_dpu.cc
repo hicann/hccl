@@ -77,6 +77,7 @@ InsTempRecvHostNicDpu::KernelRun(const OpParam& param, const TemplateDataParams&
     }
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempRecvHostNicDpu";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = res.channels;

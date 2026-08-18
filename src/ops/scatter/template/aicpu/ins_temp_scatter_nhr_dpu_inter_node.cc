@@ -160,6 +160,7 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(
     }
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempScatterNHRDPUInterNode";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = templateResource.channels;

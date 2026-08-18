@@ -12,6 +12,7 @@
 #include "log.h"
 #include "template_utils.h"
 #include "alg_v2_template_register.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 int32_t HcclLaunchDPUKernel(uint64_t ptr, int32_t size)
@@ -25,6 +26,7 @@ int32_t HcclLaunchDPUKernel(uint64_t ptr, int32_t size)
     std::vector<char> sequenceData(shmemPtr, shmemPtr + size);
     DPURunInfo dpuRunInfo;
     dpuRunInfo.DeSerialize(sequenceData);
+    ExecTimeoutManager::Instance().SetExecTimeout(dpuRunInfo.execTimeout);
 
     // 根据名字获取template
     auto templateIns = InsAlgTemplateRegistry::Instance().GetAlgTemplate(dpuRunInfo.templateName);

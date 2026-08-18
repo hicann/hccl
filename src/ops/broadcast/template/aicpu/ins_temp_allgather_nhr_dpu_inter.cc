@@ -75,6 +75,7 @@ HcclResult InsTempAllGatherNHRDPUInter::KernelRun(
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempAllGatherNHRDPUInter";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = templateResource.channels;

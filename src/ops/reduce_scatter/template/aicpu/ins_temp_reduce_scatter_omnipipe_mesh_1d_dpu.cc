@@ -167,6 +167,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::KernelRun(
     }
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempReduceScatterOmniPipeMesh1dDpu";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = templateResource.channels;

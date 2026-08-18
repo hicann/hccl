@@ -94,6 +94,7 @@ HcclResult InsTempAllGatherNhrDpuInter::KernelRun(
 
     u32 sendMsgId = 0;
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempAllGatherNhrDpuInter";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = templateResource.channels;

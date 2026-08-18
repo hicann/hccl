@@ -18,7 +18,6 @@ namespace ops_hccl {
 
 // 用于 step 同步的专用 notify 索引（不与 ACK(0)/DATA(1)/FIN_ACK(2) 冲突）
 constexpr u32 NOTIFY_IDX_STEP_SYNC = 0;
-constexpr u32 STEP_SYNC_TIMEOUT = 18000;
 
 /**
  * @brief 统一的 NHR BatchTransfer 接口，覆盖所有收发场景：

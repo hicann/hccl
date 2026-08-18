@@ -187,6 +187,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
 {
     // 写共享内存，唤醒dpu线程
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempDpuAlltoAllMesh";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.subCommRanks = subCommRanks_;

@@ -9,6 +9,7 @@
  */
 
 #include "dpu_alg_nhr_opt_wrapper.h"
+#include "exec_timeout_manager.h"
 #include "hcomm_primitives.h"
 
 namespace ops_hccl {
@@ -122,6 +123,7 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
     if (pairs.empty()) {
         return HCCL_SUCCESS;
     }
+    const u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
 
     // ====== Phase 1: 前同步 — 批量 rx Record + tx Wait ======
     for (auto& p : pairs) {
@@ -132,7 +134,7 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
     for (auto& p : pairs) {
         if (p.hasSend()) {
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, p.txCh->handle, NOTIFY_IDX_STEP_SYNC, STEP_SYNC_TIMEOUT)));
+                HcommChannelNotifyWaitOnThread(0, p.txCh->handle, NOTIFY_IDX_STEP_SYNC, execTimeout)));
         }
     }
 
@@ -153,7 +155,7 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
         if (p.hasRecv()) {
             for (u32 i = 0; i < p.rxSrcSlices.size(); i++) {
                 CHK_RET(static_cast<HcclResult>(
-                    HcommChannelNotifyWaitOnThread(0, p.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, STEP_SYNC_TIMEOUT)));
+                    HcommChannelNotifyWaitOnThread(0, p.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
             }
         }
     }

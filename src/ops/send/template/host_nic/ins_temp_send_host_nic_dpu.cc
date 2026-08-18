@@ -77,6 +77,7 @@ HcclResult InsTempSendHostNicDpu::KernelRun(
     }
 
     DPURunInfo dpuRunInfo;
+    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
     dpuRunInfo.templateName = "InsTempSendHostNicDpu";
     dpuRunInfo.tempAlgParams = tempAlgParams;
     dpuRunInfo.channels = resource.channels;
