@@ -284,7 +284,12 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
                 selectAlgName = "ReduceParallelNHRNHRUboe";
             }
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "AicpuReduceSequenceMesh1DNHRNHR";
+            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+            if (level0AndLevel1Symetric) {
+                selectAlgName = "AicpuReduceSequenceMesh1DNHRNHR";
+            } else {
+                selectAlgName = "AicpuReduceSoleNHR";
+            }
         } else if (topoInfo->Level1Nhr) {
             selectAlgName = "AicpuReduceSoleNHR";
         } else if (topoInfo->deviceNumPerModule > 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
