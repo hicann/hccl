@@ -205,9 +205,13 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
         topoInfo == nullptr, HCCL_ERROR("[Algo][ReduceAutoSelector] topoInfo is nullptr"), SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
+    u64 smallRankSize = 8;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (topoInfo->is2DieFullMesh) {
             HCCL_WARNING("[ReduceAutoSelector] 2DieFullMesh is not supported yet for ccu schedule mode.");
+            return SelectorStatus::NOT_MATCH;
+        } else if (topoInfo->userRankSize < smallRankSize && dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
+            HCCL_INFO("[ReduceAutoSelector] Mesh1D smallranksize, dataSize[%llu] >= 8MB, fallback to aicpu.", dataSize);
             return SelectorStatus::NOT_MATCH;
         } else if (dataSize > REDUCE_CCU_TWOSHOT_1D_MAX_DATA_SIZE) {
             HCCL_INFO("[ReduceAutoSelector] Mesh1D dataSize[%llu] > 16MB, fallback to aicpu.", dataSize);
