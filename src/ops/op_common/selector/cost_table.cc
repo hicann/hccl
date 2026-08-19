@@ -145,12 +145,11 @@ namespace {
              false,
              {"AicpuAllReduceConcurMeshTwoShotNHR", "AicpuAllReduceParallelMeshNHR",
               "AicpuAllReduceSequenceMeshConcurNHR", "AicpuAllReduceSequenceMeshConcurNHRNHR",
-              "AicpuAllReduceSoleMeshConcur", "CcuAllReduceParallelNHR1DMutiJetty", "CcuAllReduceSoleMeshMsConcur",
-              "CcuMSAllReduceConcurMeshNHRMultiLink", "CcuMSAllReduceSequenceMesh2Die",
-              "CcuSchedAllReduceConcurMeshNHRMultiLink", "CcuSchedAllReduceParallelMeshNHR",
-              "CcuSchedAllReduceSequenceMesh2Die", "CcuSchedAllReduceSequenceMeshMesh", "DpuAllReduceSequenceMeshNHR",
-              "InsAllReduceParallelMesh1DNHRPcie", "InsAllReduceParallelRSAGDpu", "InsAllReduceParallelRSAGUBX",
-              "InsAllReduceParallelRSAGUboe"}},
+              "CcuAllReduceParallelNHR1DMutiJetty", "CcuMSAllReduceConcurMeshNHRMultiLink",
+              "CcuMSAllReduceSequenceMesh2Die", "CcuSchedAllReduceConcurMeshNHRMultiLink",
+              "CcuSchedAllReduceParallelMeshNHR", "CcuSchedAllReduceSequenceMesh2Die",
+              "CcuSchedAllReduceSequenceMeshMesh", "DpuAllReduceSequenceMeshNHR", "InsAllReduceParallelMesh1DNHRPcie",
+              "InsAllReduceParallelRSAGDpu", "InsAllReduceParallelRSAGUBX", "InsAllReduceParallelRSAGUboe"}},
         };
     }
 

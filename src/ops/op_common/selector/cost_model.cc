@@ -112,46 +112,6 @@ CostModelManager::CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo
     return rs;
 }
 
-static bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, HcclCMDType opType)
-{
-    bool isMultiLevel = algName.find("Parallel") != std::string::npos || algName.find("Sequence") != std::string::npos
-                        || algName.find("Concur") != std::string::npos || algName.find("MultiLink") != std::string::npos
-                        || algName.find("OmniPipe") != std::string::npos;
-    bool is3Level;
-    if (opType == HcclCMDType::HCCL_CMD_ALLGATHER) {
-        // AllGather: SequenceMeshConcurNHR 是 2 级算法, ParallelNHRNHR/ConcurNHRNHR/PipeLine/PipeLineMeshNHRNHR 是 3 级
-        is3Level = algName.find("ParallelNHRNHR") != std::string::npos
-                   || algName.find("ConcurNHRNHR") != std::string::npos
-                   || algName.find("PipeLine") != std::string::npos;
-    } else {
-        is3Level = algName.find("SequenceMeshConcur") != std::string::npos;
-    }
-
-    if (topoInfo->topoLevelNums == 1) {
-        if (isMultiLevel || is3Level) {
-            return false;
-        }
-    } else if (topoInfo->topoLevelNums == 2) {
-        if (is3Level) {
-            return false;
-        }
-    } else if (topoInfo->topoLevelNums == 3) {
-        bool oneCardPerServer = !topoInfo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                                && topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
-        if (oneCardPerServer) {
-            if (isMultiLevel && !is3Level) {
-                return false;
-            }
-        } else {
-            if (!is3Level) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
 HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, CostModel& costModel)
 {
     const AllAlgos& allAlgos = *GetAllAlgos();
@@ -171,12 +131,6 @@ HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDe
     for (int i = 0; i < algNum; ++i) {
         const AlgElement& alg = allAlgos.algElements[i];
         std::string algName = (alg.algName != nullptr) ? alg.algName : "";
-
-        if (!IsAlgoMatchTopo(algName, topoInfo, alg.opType)) {
-            HCCL_DEBUG("[CostModelManager] algName=%s skipped by topo filter.", algName.c_str());
-            continue;
-        }
-
         std::unique_ptr<InsCollAlgBase> exec = CollAlgExecRegistryV2::Instance().GetAlgExec(alg.opType, alg.algName);
         if (exec == nullptr) {
             HCCL_WARNING(
