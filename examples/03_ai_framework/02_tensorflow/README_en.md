@@ -2,13 +2,13 @@
 
 ## Sample Description
 
-This sample demonstrates how to perform an AllReduce operation using the TensorFlow interface. It covers the following features:
+This sample demonstrates how to perform an AllReduce operation using the TensorFlow interface. It covers the following functions:
 
 - Initialize the communication domain based on the `ranktable.json` configuration file.
 
 ## Environment Preparation
 
-### Prerequisites
+### Environment Requirements
 
 This sample supports the following products in a single-server 8-card configuration:
 

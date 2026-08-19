@@ -4,7 +4,7 @@
 
 This sample demonstrates how to call the `HcclAlltoAll()` API to perform an `AlltoAll` operation. It covers the following functions:
 
-- Call `aclrtGetDeviceCount()`  to detect devices and query the number of available devices.
+- Call `aclrtGetDeviceCount()` to detect devices and query the number of available devices.
 - Call `HcclGetRootInfo()` and use `rank 0` as the root rank to generate the rootinfo identifier.
 
   > The rootinfo identifier contains the device IP address and device ID. This information must be broadcast to all ranks in the cluster to initialize the communicator.

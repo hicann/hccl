@@ -25,7 +25,7 @@ HCCL is a core component of CANN. It supports multiple AI frameworks upward and 
 HCCL consists of the HCCL collective communication library and the HCOMM (Huawei Communication) basic communication library:
 
 - HCCL: includes built-in and extended communication operators, and provides external communication operator APIs.
-- [HCOMM](https://gitcode.com/cann/hcomm): adopts a layered and decoupled design, dividing communication capabilities into a control plane​ and a data plane.
+- [HCOMM](https://gitcode.com/cann/hcomm): adopts a layered and decoupled design, dividing communication capabilities into a control plane and a data plane.
 
 ## Directory Structure
 

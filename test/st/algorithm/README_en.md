@@ -182,11 +182,11 @@ The following example illustrates what semantics calculation is.
 
    ![](./figures/allgather.png)
 
-2. Action state 1: Move a data block from rank0 Input with offset 20 and size 30 to rank0 Output with offset 35. Result: A semantic block is generated on rank0 Output, recording the movement information.
+2. State 1 action: Move a data block from rank0 Input with offset 20 and size 30 to rank0 Output with offset 35. Result: A semantic block is generated on rank0 Output, recording the movement information.
 
    ![](./figures/allgather-0.png)
 
-3. Action state 2: Move a data block from rank1 Input with offset 70 and size 15 to rank0 Output with offset 50. Result: The destination memory overlaps with the existing semantic block. The existing semantic block must be split, generating two semantic blocks.
+3. State 2 action: Move a data block from rank1 Input with offset 70 and size 15 to rank0 Output with offset 50. Result: The destination memory overlaps with the existing semantic block. The existing semantic block must be split, generating two semantic blocks.
 
    ![](./figures/allgather-1.png)
 

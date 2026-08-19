@@ -2,7 +2,7 @@
 
 ## Sample Description
 
-This sample demonstrates how to perform an AllReduce operation using the PyTorch interface. It covers the following features:
+This sample demonstrates how to perform an AllReduce operation using the PyTorch interface. It covers the following functions:
 
 - Device detection: Query the number of available devices using the `torch_npu.npu.device_count()` interface.
 - Start multiple processes using the `torch.multiprocessing.spawn()` interface.

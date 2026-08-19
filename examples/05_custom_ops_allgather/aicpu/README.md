@@ -201,7 +201,7 @@ export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_P
 
 ```text
 Found 2 NPU device(s) available
-rankId：1, input: [1 1]
+rankId: 1, input: [1 1]
 rankId: 0, input: [0 0]
 rankId: 0, output: [ 0 0 1 1 ]
 rankId: 1, output: [ 0 0 1 1 ]

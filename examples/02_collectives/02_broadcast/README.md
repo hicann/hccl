@@ -9,8 +9,8 @@
 
   > rootinfo 标识信息主要包含：Device IP、Device ID 等信息，此信息需广播至集群内所有 rank 用来初始化通信域。
 
-- 在每个线程中，基于 rootinfo 标识信息通过 `HcclCommInitRootInfo()` 接口初始化通信域。
-- 调用 `HcclBroadcast()` 接口，将通信域内 root 节点的数据广播至其他 rank，并打印结果。
+  - 在每个线程中，基于 rootinfo 标识信息通过 `HcclCommInitRootInfo()` 接口初始化通信域。
+  - 调用 `HcclBroadcast()` 接口，将通信域内 root 节点的数据广播至其他 rank，并打印结果。
 
 ## 目录结构
 

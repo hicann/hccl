@@ -6,7 +6,7 @@
 <!-- If this PR does not involve an Issue, enter "NA". -->
 
 ## Testing
-<!-- Describe what tests you performed to verify your changes. This includes but is not limited to constructing corresponding test cases, secondary smoke tests, operator generalization, and so on. -->
+<!-- Describe what tests you performed to verify your changes. This includes but is not limited to constructing corresponding xx test cases, secondary smoke tests, operator generalization, and so on. -->
 
 ## Documentation Update
 <!-- If this PR includes documentation updates, indicate them here. For example: Updated the README.md file. -->

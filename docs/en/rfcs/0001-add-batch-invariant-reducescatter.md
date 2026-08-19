@@ -14,7 +14,7 @@ Introduce BIRS (Batchsize Invariant ReduceScatter) — a novel batch-invariant R
 
 ### Industry Demand for Deterministic Collective Communication
 
-In distributed training and inference, **deterministic collective communication** requires that reduction operations (AllReduce, ReduceScatter, etc.) produce **bit-identical** results for the same input, regardless of batch size, process count, or memory sharding strategy. This requirement has become a hard constraint in multiple industry scenarios:
+In distributed training and inference, **deterministic collective communication** requires that reduction operations (AllReduce, ReduceScatter, etc.) produce **bit-identical** results for the same input, regardless of batch size, process count, or memory sharding strategy. This requirement has become a hard constraint in multiple industry scenarios.
 
 #### 1. Training Reproducibility and CI/CD
 
@@ -62,9 +62,9 @@ On the A3 server topology (SIO + HCCS hybrid interconnect), RHD cannot simultane
 
 The BIRS algorithm is designed for the 2D topology characteristics of A3 servers, maintaining batch invariance while:
 
-- **First round**: Performing SendReduce over SIO links (cross X-axis reduction)
-- **Subsequent rounds**: Simultaneously utilizing SIO (reduction) and HCCS (intermediate result transfer) links
-- Achieving near-optimal bandwidth utilization, with only the first round not fully utilizing bandwidth
+- **First round**: Performing SendReduce over SIO links (cross X-axis reduction).
+- **Subsequent rounds**: Simultaneously utilizing SIO (reduction) and HCCS (intermediate result transfer) links.
+- Achieving near-optimal bandwidth utilization, with only the first round not fully utilizing bandwidth.
 
 ## Detailed Design
 
@@ -163,7 +163,7 @@ HcclReduceScatter(sendBuf, recvBuf, recvCount, dataType, op, comm, stream);
 
 BIRS constructs a logical 2D layout over the A3/16P topology:
 
-```
+```text
 rankSizeX = 2                          // X-axis direction (SIO links)
 rankSizeY = rankSize / rankSizeX       // Y-axis direction (HCCS links)
 ```
@@ -183,7 +183,7 @@ Each rank maintains the following topology information:
 
 BIRS uses scratch memory to store intermediate reduction results (IM), with a strided layout to satisfy the 910B minimum slice alignment requirement:
 
-```
+```text
 localStrideSize = RoundUp(sliceSize, HCCL_MIN_SLICE_ALIGN_910B)
 
 Scratch buffer is divided into 2 regions with N slots each: Region A is used to accumulate intermediate results for HCCS,
@@ -228,14 +228,15 @@ Inter-thread synchronization is performed via `PreSyncInterThreads` / `PostSyncI
 The core property of the BIRS algorithm is **batch invariance**: the order of reduction additions on each rank is strictly identical, regardless of batch size or memory slicing.
 
 **Notation**:
-- `S(d, i)`: The i-th slice of the input message on device d
-- `rankSizeX = 2`, `rankSizeY = rankSize / 2`
-- `sio_rank = rank XOR 1` (SIO peer)
-- `hccs_ranks[i] = (rank + rankSizeX * i) % rankSize` (HCCS peer sequence)
+
+- `S(d, i)`: The i-th slice of the input message on device d.
+- `rankSizeX = 2`, `rankSizeY = rankSize / 2`.
+- `sio_rank = rank XOR 1` (SIO peer).
+- `hccs_ranks[i] = (rank + rankSizeX * i) % rankSize` (HCCS peer sequence).
 
 #### 4.2 Main Communication Loop
 
-```
+```c
 // Initial: copy the input slice corresponding to the first HCCS peer into scratch memory
 LocalCopy(input[S(hccs_ranks[0])], scratch[IM_0])
 
@@ -268,7 +269,7 @@ for round in 0 ... hccs_ranks.size():
 
 After all rounds complete, each rank holds `rankSizeY` intermediate results in scratch memory. These are merged via a **tree-based local reduction**:
 
-```
+```text
 // Collect all intermediate result offsets
 vec = [IM_0, IM_1, ..., IM_{rankSizeY-1}]  // this rank's result is at the correct position
 
@@ -297,14 +298,14 @@ The BIRS algorithm currently has the following constraints:
 
 | Constraint | Description |
 |------------|-------------|
-| Platform | A3 servers only (SIO + HCCS hybrid topology) |
-| rankSize | Must be even (`rankSize % 2 == 0`), typical values: 4, 8, 16 |
-| Communication domain | Both Intra-server and Inter-server are supported |
-| Data alignment | Slice sizes must satisfy `HCCL_MIN_SLICE_ALIGN_910B` alignment requirements |
+| Platform | A3 servers only (SIO + HCCS hybrid topology). |
+| rankSize | Must be even (`rankSize % 2 == 0`), typical values: 4, 8, 16. |
+| Communication domain | Both Intra-server and Inter-server are supported. |
+| Data alignment | Slice sizes must satisfy `HCCL_MIN_SLICE_ALIGN_910B` alignment requirements. |
 
-ReduceScatterBIRS() is the recommended choice for single-server A3 scenario (rankSize <= 16), ReduceScatterBIRSInter() is chosen automatically for multi-server A3 scenario.
+ReduceScatterBIRS() is the recommended choice for the single-server A3 scenario (rankSize <= 16), ReduceScatterBIRSInter() is chosen automatically for multi-server A3 scenario.
 
-When conditions are not met, the workflow exit and log error messages using hccl. The user must follow the recommendations in the error logs or manually adjust the parameters to comply with the restrictions.
+When conditions are not met, the workflow exits and logs error messages via HCCL. The user must follow the recommendations in the error logs or manually adjust the parameters to comply with the restrictions.
 
 #### 5.3 Rollout Strategy
 
@@ -325,12 +326,12 @@ When conditions are not met, the workflow exit and log error messages using hccl
 
 #### 6.2 Batch Invariance Verification
 
-- Execute ReduceScatter with the same input data but different batch sizes
-- Verify that output results are bit-identical
+- Execute ReduceScatter with the same input data but different batch sizes.
+- Verify that output results are bit-identical.
 
 #### 6.3 Performance Testing
 
-- Compare against the RHD algorithm, measuring Task Duration across different message sizes
+- Compare against the RHD algorithm, measuring Task Duration across different message sizes.
 - Expected: For message sizes >= 16MB, BIRS achieves up to 25% improvement over RHD.
 - Note: At the moment of this RFC creation kernel submission mechanism in HCCL is slower than the one of HCOMM, so 25% performance improvement applies only to operator execution time (without submission overhead).
 
@@ -342,10 +343,10 @@ When conditions are not met, the workflow exit and log error messages using hccl
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| BIRS only available for specific rankSize (even numbers) | Odd rank scenarios cannot use BIRS | `MatchBIRS()` check auto-falls back to existing algorithms; document constraints clearly |
-| Experimental code may introduce stability issues | Affects overall HCCL reliability | Dual gating (compile + runtime) isolation; independent `experimental/` directory; disabled by default |
-| Additional scratch memory overhead | Increased memory usage for large messages | Requires `2 * rankSizeY × localStrideSize` scratch space; pre-allocated via `CalcResRequest` |
-| A3 topology assumption (SIO + HCCS) may not apply to other platforms | Cross-platform compatibility | Algorithm explicitly bound to A3 topology characteristics; other platforms require independent adaptation |
+| BIRS only available for specific rankSize (even numbers) | Odd rank scenarios cannot use BIRS | `MatchBIRS()` check auto-falls back to existing algorithms; document constraints clearly. |
+| Experimental code may introduce stability issues | Affects overall HCCL reliability | Dual gating (compile + runtime) isolation; independent `experimental/` directory; disabled by default. |
+| Additional scratch memory overhead | Increased memory usage for large messages | Requires `2 * rankSizeY × localStrideSize` scratch space; pre-allocated via `CalcResRequest`. |
+| A3 topology assumption (SIO + HCCS) may not apply to other platforms | Cross-platform compatibility | Algorithm explicitly bound to A3 topology characteristics; other platforms require independent adaptation. |
 
 ## Alternative Approaches
 
@@ -353,7 +354,7 @@ N/A
 
 ## Open Questions
 
-1. **AllReduce extension**: Batch-invariant AllReduce which follows the same ideas will be submitted in separate PR
+1. **AllReduce extension**: Batch-invariant AllReduce which follows the same ideas will be submitted in separate PR.
 2. **Efficient support for arbitrary rank enumeration**: Current solution assumes default rank enumeration where rankID of SIO neighbour of RankX can be calculated as (RankX XOR 1). In case of other rank enumerations BIRS is functional but doesn't deliver performance advantage over RHD. Efficient support for custom enumerations have already been implemented and will be submitted in the next PR.
 
 ---

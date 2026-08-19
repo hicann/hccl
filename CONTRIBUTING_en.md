@@ -30,7 +30,7 @@ Community contributions such as new operators, algorithms, or extended features 
 - In principle, **avoid modifying** any files under `src/` as much as possible to prevent polluting stable code.
 - If modifications to `src/` are necessary, explicitly state the reason and impact scope in the PR description and obtain Committer review.
 - Code changes in a PR should focus on the `experimental/` directory.
-- Provide a runtime switch for quick rollback. For details, see [experimental/README.md](./experimental/README_en.md).
+- Provide a runtime switch for quick rollback. For details, see [experimental/README_en.md](./experimental/README_en.md).
 
 ## Contribution Process
 

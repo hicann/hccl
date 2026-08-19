@@ -24,8 +24,8 @@
 
 | 类型 | 开源代码地址 | 文件名                                 | 公网 IP 地址/公网 URL 地址/域名/邮箱地址/压缩文件地址                                                                           | 用途说明                                      |
 | :--: | :----------: | :------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
-| 依赖 |    不涉及    | cmake/third_party/makeself-fetch.cmake | https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz | 从 gitcode 下载 makeself 源码，作为编译依赖   |
-| 依赖 |    不涉及    | cmake/third_party/gtest.cmake          | https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz                          | 从 gitcode 下载 googletest 源码，作为编译依赖 |
+| 依赖 |    不涉及    | cmake/third_party/makeself-fetch.cmake | https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz | 从 GitCode 下载 makeself 源码，作为编译依赖   |
+| 依赖 |    不涉及    | cmake/third_party/gtest.cmake          | https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz                          | 从 GitCode 下载 Google Test 源码，作为编译依赖 |
 
 ---
 

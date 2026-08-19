@@ -60,7 +60,7 @@ Using the root user default installation path as an example:
 source /usr/local/Ascend/cann/set_env.sh
 ```
 
-Additionally, running test cases requires an MPI environment. Ensure that MPI is installed and configured.
+Additionally, running the test cases requires MPI environment support. Please ensure that MPI has been installed and configured correctly. For MPI configuration, please refer to the "MPI Installation and Configuration" section in the corresponding version of the [Ascend Documentation Center - HCCL Performance Test Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolHcclTest).
 
 ## 2. Compilation and Execution
 
