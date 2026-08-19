@@ -666,13 +666,14 @@ static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetail
     }
     u32 myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
+    u32 netLayerIdx = topoInfo->netLayerDetails.netLayers[NET_LAYER_NUM_THREE - 1];
     for (u32 dstRank = 0; dstRank < topoInfo->userRankSize; dstRank++) {
         if (dstRank == myRank) {
             continue;
         }
         CommLink* links = nullptr;
         uint32_t linkNum = 0;
-        CHK_RET(HcclRankGraphGetLinks(comm, NET_LAYER_NUM_THREE - 1, myRank, dstRank, &links, &linkNum));
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayerIdx, myRank, dstRank, &links, &linkNum));
         if (linkNum > 0 && links[0].header.version >= 1) {
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
             topoInfo->level2Uboe = (links[0].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBOE);
