@@ -197,8 +197,8 @@ bool AllReduceSupportSymmetricMemory(OpParam& opParam)
     CHK_PRT_RET(
         ret != HCCL_SUCCESS || opParam.inputSymWindow == nullptr,
         HCCL_INFO(
-            "[AllReduceSupportSymmetricMemory] input symmetric-window lookup failed; "
-            "disable symmetric-memory optimization, input[%p], size[%llu], ret[%d].",
+            "[AllReduceSupportSymmetricMemory] is not support symmetric memory; "
+            "input[%p], size[%llu], ret[%d].",
             opParam.inputPtr, opParam.inputSize, ret),
         false);
     ret = HcclCommSymWinGet(
@@ -206,8 +206,8 @@ bool AllReduceSupportSymmetricMemory(OpParam& opParam)
     CHK_PRT_RET(
         ret != HCCL_SUCCESS || opParam.outputSymWindow == nullptr,
         HCCL_INFO(
-            "[AllReduceSupportSymmetricMemory] output symmetric-window lookup failed; "
-            "disable symmetric-memory optimization, output[%p], size[%llu], ret[%d].",
+            "[AllReduceSupportSymmetricMemory] is not support symmetric memory; "
+            "output[%p], size[%llu], ret[%d].",
             opParam.outputPtr, opParam.outputSize, ret),
         false);
     opParam.supportSymmetricMemory = true;
