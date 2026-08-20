@@ -71,7 +71,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
             subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
             u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-            if (algHierarchyInfo_.infos[0].size() >= 2 && !algHierarchyInfo_.infos[0][1].empty()) {
+            if (algHierarchyInfo_.infos[0].size() >= MIN_SUBGROUP_NUM && !algHierarchyInfo_.infos[0][1].empty()) {
                 for (auto rank : algHierarchyInfo_.infos[0][1]) {
                     if (rank % meshSize == topoInfo->userRank % meshSize) {
                         closRanks.push_back(rank);

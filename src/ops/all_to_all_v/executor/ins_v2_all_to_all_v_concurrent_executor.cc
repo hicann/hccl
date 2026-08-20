@@ -201,7 +201,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 初始化一些基本成员变量
     CHK_RET(InitCommInfo(param, topoInfo));
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -301,7 +301,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 初始化一些基本成员变量
     CHK_RET(InitCommInfo(param, &resCtx.topoInfo));
 
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -327,7 +327,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 准备资源
     TemplateResource templateAlgResClos;
     CHK_PRT_RET(
-        resCtx.threads.size() < 2 || resCtx.ccuKernels.size() < 2,
+        resCtx.threads.size() < MIN_SUBGROUP_NUM || resCtx.ccuKernels.size() < MIN_SUBGROUP_NUM,
         HCCL_ERROR(
             "[%s] resCtx resource not enough. threads.size[%zu], ccuKernels.size[%zu].", __func__,
             resCtx.threads.size(), resCtx.ccuKernels.size()),

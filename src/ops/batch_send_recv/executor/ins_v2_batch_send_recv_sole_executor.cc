@@ -478,7 +478,6 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
         return false;
     };
     const bool needSliceRounds = hasRepeatedRemoteRank(sendDataSilces_) || hasRepeatedRemoteRank(recvDataSilces_);
-
     if (!needSliceRounds) {
         for (auto& slice : recvDataSilces_) {
             // 发recv的record

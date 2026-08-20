@@ -52,7 +52,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         return HCCL_E_PARA;
     }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo.infos[0].size() < 2) {
+        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo.infos[0].size());
             return HCCL_E_PARA;
@@ -82,7 +82,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     myRank_ = topoInfo->userRank;
     root_ = param.root;
 
-    if (algHierarchyInfo.infos[0].size() >= 2) {
+    if (algHierarchyInfo.infos[0].size() >= MIN_SUBGROUP_NUM) {
         HCCL_INFO(
             "[CalcLocalRankSize] rankSizeLevel0_: algHierarchyInfo.infos[0][0].size()[%d] "
             "algHierarchyInfo.infos[0][1].size()[%u]",
@@ -198,7 +198,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         return HCCL_E_PARA;
     }
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
                 resCtx.algHierarchyInfo.infos[0].size());
@@ -218,7 +218,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
     }
 
-    if (resCtx.algHierarchyInfo.infos[0].size() >= 2) {
+    if (resCtx.algHierarchyInfo.infos[0].size() >= MIN_SUBGROUP_NUM) {
         HCCL_INFO(
             "[InsV2ScatterParallelExecutor] rankSizeLevel0_: resCtx.algHierarchyInfo.infos[0][0].size()[%d] "
             "resCtx.algHierarchyInfo.infos[0][1].size()[%u]",

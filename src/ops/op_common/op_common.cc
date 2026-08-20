@@ -2689,8 +2689,8 @@ static HcclResult HcclGetCcuKernelDynamic(
     // 接口语义：未绑定 CcuIns 时返回 HCCL_E_UNAVAIL（不是 insNum=0），需走新建路径
     CcuInsHandle insHandle = 0;
     uint32_t insNum = 0;
-    HcclResult queryRet = HcclCommQueryCcuIns(comm, &insHandle, &insNum);
     bool hasReusableIns = false;
+    HcclResult queryRet = HcclCommQueryCcuIns(comm, &insHandle, &insNum);
     if (queryRet == HCCL_SUCCESS) {
         hasReusableIns = (insNum != 0);
         HCCL_INFO(

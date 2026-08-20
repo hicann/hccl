@@ -15,6 +15,7 @@
 constexpr u32 DIE_NUM_1 = 1;
 constexpr u32 DIE_NUM_2 = 2;
 namespace ops_hccl {
+constexpr double POD_PORT_GROUP_DIVISOR = 2.0; // Pod场景下端口组对半分
 
 HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& algRank)
 {
@@ -278,7 +279,7 @@ static bool PrepareParallelPortInfo(
     portInfo.intraPortGroupSize *= intraRankSize - 1;
     portInfo.isPod = IsPodInterChannelGroup(interChannels);
     portInfo.effectiveInterPortGroupSize
-        = static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? 2.0 : 1.0);
+        = static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? POD_PORT_GROUP_DIVISOR : 1.0);
     if (portInfo.intraPortGroupSize == 0) {
         failureReason = "scaled intraPortGroupSize is 0";
         return false;

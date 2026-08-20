@@ -22,6 +22,8 @@
 namespace ops_hccl {
 constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
+constexpr u32 OMNIPIPE_2D_TEMPLATE_NUM = 2;    // 两个template(intra+inter)
+constexpr u32 OMNIPIPE_2D_MAIN_NOTIFY_NUM = 2; // 两个template各自的notify数
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::InsV2ScatterOmniPipe2DExecutor()
@@ -59,7 +61,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -102,7 +104,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
 
     // 重复的template构造
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -118,7 +120,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     }
 
     // 申请一条控制thread作为主thread，该thread仅用于两个template之间同步
-    resourceRequest.notifyNumOnMainThread = 2;
+    resourceRequest.notifyNumOnMainThread = OMNIPIPE_2D_MAIN_NOTIFY_NUM;
     // 由于主thread被单独作为控制thread，因此总的slaveThread需要额外加上两个template的主thread
     resourceRequest.slaveThreadNum = 0;
     AlgResourceRequest resReqLevel0; // X
@@ -179,7 +181,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         "[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -338,7 +340,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     bool isRoot = (myRank_ == param.root);
 
     // 构造subCommRanks
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM
         || algHierarchyInfo.infos[0][0].empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2 or infos[0][0] empty).", __func__);
         return HcclResult::HCCL_E_PARA;
@@ -641,8 +643,8 @@ template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempL
 HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GetRes(
     AlgResourceRequest& resourceRequest) const
 {
-    resourceRequest.slaveThreadNum = 2;
-    resourceRequest.notifyNumOnMainThread = 2;
+    resourceRequest.slaveThreadNum = OMNIPIPE_2D_TEMPLATE_NUM;
+    resourceRequest.notifyNumOnMainThread = OMNIPIPE_2D_MAIN_NOTIFY_NUM;
     return HcclResult::HCCL_SUCCESS;
 }
 

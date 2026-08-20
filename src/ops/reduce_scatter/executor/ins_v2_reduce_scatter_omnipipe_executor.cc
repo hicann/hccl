@@ -83,7 +83,7 @@ HcclResult InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         return HCCL_E_PARA;
     }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo_.infos[0].size() < 2) {
+        if (algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2.", __func__,
                 algHierarchyInfo_.infos[0].size());

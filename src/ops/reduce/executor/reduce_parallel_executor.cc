@@ -69,7 +69,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
         return HcclResult::HCCL_E_PARA;
     }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo.infos[0].size() < 2) {
+        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo.infos[0].size());
             return HcclResult::HCCL_E_PARA;
@@ -261,7 +261,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
         return HcclResult::HCCL_E_PARA;
     }
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
                 resCtx.algHierarchyInfo.infos[0].size());

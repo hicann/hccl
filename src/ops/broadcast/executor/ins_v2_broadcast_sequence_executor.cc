@@ -147,8 +147,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
 
-    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() || algHierarchyInfo_.infos[1].empty()
-        || algHierarchyInfo_.infos[0][0].empty() || algHierarchyInfo_.infos[1][0].empty()) {
+    if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
+        || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
+        || algHierarchyInfo_.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }

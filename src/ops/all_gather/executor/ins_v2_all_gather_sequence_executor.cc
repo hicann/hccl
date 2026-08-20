@@ -128,8 +128,9 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
-    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() || algHierarchyInfo_.infos[1].empty()
-        || algHierarchyInfo_.infos[0][0].empty() || algHierarchyInfo_.infos[1][0].empty()) {
+    if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
+        || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
+        || algHierarchyInfo_.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }

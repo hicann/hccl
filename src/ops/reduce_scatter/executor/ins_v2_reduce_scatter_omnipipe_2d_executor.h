@@ -78,9 +78,6 @@ private:
     HcclResult PrepareResForTemplate(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTempLevel0& algTempLevel0,
         InsAlgTempLevel1& algTempLevel1);
-    HcclResult RestoreChannelMap(
-        const AlgResourceCtxSerializable& resCtx,
-        std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo);
 };
 } // namespace ops_hccl
 

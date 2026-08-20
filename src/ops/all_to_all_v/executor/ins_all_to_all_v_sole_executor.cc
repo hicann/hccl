@@ -69,7 +69,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
 
     std::vector<std::vector<u32>> tempAlgHierachyInfo;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo.infos[0].size() < 2) {
+        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[InsAlltoAllVSoleExecutor][CalcRes] algHierarchyInfo.infos[0] size[%zu] < 2",
                 algHierarchyInfo.infos[0].size());
@@ -185,7 +185,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
 
     std::vector<std::vector<u32>> tempAlgHierachyInfo;
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[InsAlltoAllVSoleExecutor][OrchestrateLoop] algHierarchyInfo.infos[0] size[%zu] < 2",
                 resCtx.algHierarchyInfo.infos[0].size());

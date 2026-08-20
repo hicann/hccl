@@ -97,6 +97,7 @@ constexpr uint64_t CCU_MAX_RANK_SIZE = 128;
 constexpr u32 TOPO_LEVEL_NUM_1 = 1;
 constexpr u32 TOPO_LEVEL_NUM_2 = 2;
 constexpr u32 TOPO_LEVEL_NUM_3 = 3;
+constexpr u32 MIN_SUBGROUP_NUM = 2; // 每层至少2个子组(intra+inter)
 
 // 按序下发需要
 constexpr u32 ORDER_UNFOLD_THREAD_NOTIFY_IDX = 0;

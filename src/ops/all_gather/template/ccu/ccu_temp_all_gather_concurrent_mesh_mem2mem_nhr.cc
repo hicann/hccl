@@ -21,6 +21,9 @@ namespace ops_hccl {
 // mesh 链路与 CLOS 链路的带宽比，用于按比例切分数据
 constexpr u32 CONCURRENT_MESH_BW = 11;
 constexpr u32 CONCURRENT_CLOS_BW = 10;
+constexpr u32 NHR_SLAVE_THREAD_NUM = 2;        // NHR主流(1) + NHR从流(1)
+constexpr u32 NHR_MAIN_NOTIFY_NUM = 2;         // NHR主流需要额外notify与mesh主流通信
+constexpr u32 CONCURRENT_TOTAL_THREAD_NUM = 3; // mesh主流(1) + NHR主流(1) + NHR从流(1)
 
 // mesh 主流与 NHR 主流之间同步使用的 notify 索引
 // threads[0](mesh 主流/executor 主流): notifyNumOnMainThread=1, 索引 0 用于 PostSync
@@ -123,17 +126,17 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcRes(
 
 HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
-    resourceRequest.slaveThreadNum = 2;        // NHR 主流(1) + NHR 从流(1)
-    resourceRequest.notifyNumOnMainThread = 1; // mesh 主流与 NHR 主流同步
+    resourceRequest.slaveThreadNum = NHR_SLAVE_THREAD_NUM; // NHR 主流(1) + NHR 从流(1)
+    resourceRequest.notifyNumOnMainThread = 1;             // mesh 主流与 NHR 主流同步
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     // NHR 主流需要额外 1 个 notify 与 mesh 主流通信
-    resourceRequest.notifyNumPerThread[0] = 2;
+    resourceRequest.notifyNumPerThread[0] = NHR_MAIN_NOTIFY_NUM;
     return HCCL_SUCCESS;
 }
 
 u64 CcuTempAllGatherConcurrentMeshMem2MemNHR::GetThreadNum() const
 {
-    return 3; // mesh 主流(1) + NHR 主流(1) + NHR 从流(1)
+    return CONCURRENT_TOTAL_THREAD_NUM; // mesh 主流(1) + NHR 主流(1) + NHR 从流(1)
 }
 
 u64 CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
@@ -312,7 +315,7 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::LaunchConcurrentKernels(
     TemplateResource& templateResource, u32 meshKernelNum, u32 nhrKernelNum, bool hasMesh, bool hasNhr,
     const std::vector<uint64_t>& meshTaskArgs, const std::vector<uint64_t>& nhrTaskArgs)
 {
-    if (hasNhr && templateResource.threads.size() >= 2) {
+    if (hasNhr && templateResource.threads.size() >= MIN_SUBGROUP_NUM) {
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_PRE_SYNC}));
     }
     if (hasMesh) {
@@ -321,7 +324,7 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::LaunchConcurrentKernels(
     if (hasNhr) {
         CHK_RET(LaunchNhrKernels(templateResource, nhrTaskArgs, meshKernelNum, nhrKernelNum));
     }
-    if (hasNhr && templateResource.threads.size() >= 2) {
+    if (hasNhr && templateResource.threads.size() >= MIN_SUBGROUP_NUM) {
         CHK_RET(
             PostSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_POST_SYNC}));
     }

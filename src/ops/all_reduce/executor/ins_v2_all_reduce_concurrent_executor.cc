@@ -127,7 +127,7 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -230,7 +230,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::OrchestrateLoop(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }

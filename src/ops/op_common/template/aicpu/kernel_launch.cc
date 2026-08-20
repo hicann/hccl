@@ -237,6 +237,7 @@ std::unique_ptr<AlgResourceCtxSerializable> DeserializeResCtx(const OpParam* par
 } // namespace
 
 namespace ops_hccl {
+constexpr u32 PERCENTAGE_MULTIPLIER = 100; // 命中率转百分比
 // 选择走新（CollAlgExecRegistryV2）/老（CollAlgExecRegistry）算子流程
 // A5芯片或者template名称前缀为"opv2_"（当前A2的HostNic Send/Recv使用）走新流程，其他芯片走老流程
 bool IsOpsV2(const char* algName, HcclDevType deviceType)
@@ -1054,7 +1055,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
                 if (g_cacheManager.GetCommStats(commName, stats, cacheSize)) {
                     HCCL_DEBUG(
                         "[%s] comm[%s] hitRate=%.2f%%, cacheSize=%zu", __func__, commName.c_str(),
-                        stats.hitRate() * 100, cacheSize);
+                        stats.hitRate() * PERCENTAGE_MULTIPLIER, cacheSize);
                 }
                 resCtxPtr = cachedResCtxHolder.get();
             } else {

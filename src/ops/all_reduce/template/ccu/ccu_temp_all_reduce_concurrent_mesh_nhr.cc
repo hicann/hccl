@@ -17,6 +17,7 @@ namespace ops_hccl {
 
 constexpr u32 CLOS_PORT_NUM_AR = 8;
 constexpr u32 MESH_THREAD_NUM_AR = 1;
+constexpr u32 CONCURRENT_LINK_TYPE_NUM = 2; // mesh + nhr 两种链路
 
 CcuTempAllReduceConcurrentMeshNHR::CcuTempAllReduceConcurrentMeshNHR(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
@@ -315,7 +316,8 @@ HcclResult CcuTempAllReduceConcurrentMeshNHR::CalcDataSplit(
 
     const u64 sliceAlignCount = (dataTypeSize_ > 0) ? (HCCL_MIN_SLICE_ALIGN / dataTypeSize_) : 1;
     const u64 dataCount = templateDataParams.count;
-    meshCount = (portNum0 + portNum1) > 0 ? (dataCount * portNum0 / (portNum0 + portNum1)) : (dataCount / 2);
+    meshCount = (portNum0 + portNum1) > 0 ? (dataCount * portNum0 / (portNum0 + portNum1)) :
+                                            (dataCount / CONCURRENT_LINK_TYPE_NUM);
     meshCount = meshCount / sliceAlignCount * sliceAlignCount;
     nhrCount = (dataCount > meshCount) ? (dataCount - meshCount) : 0;
 

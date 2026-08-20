@@ -79,7 +79,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -155,7 +155,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
     // 初始化通信域subCommRanks
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -208,7 +208,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     maxTmpMemSize_ = resCtx.cclMem.size;
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -366,7 +366,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     HCCL_INFO("[%s] Start", __func__);
 
     // 初始化通信域subCommRanks
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }

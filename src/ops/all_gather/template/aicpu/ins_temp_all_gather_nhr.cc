@@ -44,6 +44,7 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     return params;
 }
 
+constexpr u32 CHANNEL_DOUBLE_FACTOR = 2; // 多申请一倍流用于PostLocalCopy与NHR最后step并行
 InsTempAllGatherNHR::InsTempAllGatherNHR(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
@@ -98,7 +99,7 @@ HcclResult InsTempAllGatherNHR::GetRes(AlgResourceRequest& resourceRequest) cons
 u64 InsTempAllGatherNHR::GetThreadNum() const
 {
     // 多申请一倍的流用来最后做PostLocalCopy和NHR最后一个step并行执行
-    return maxChannelsPerRank_ * 2;
+    return maxChannelsPerRank_ * CHANNEL_DOUBLE_FACTOR;
 }
 
 HcclResult InsTempAllGatherNHR::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)

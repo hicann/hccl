@@ -23,7 +23,7 @@ HcclResult TopoMatchConcurrent::MatchTopo(
     myRank_ = topoInfo->userRank;
     // 不支持2层以上的拓扑
     CHK_PRT_RET(
-        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > 2,
+        topoInfo->topoLevelNums == 0 || topoInfo->topoLevelNums > TOPO_LEVEL_NUM_2,
         HCCL_ERROR("[CalcTopoLevelNums] topoLevelNum[%u] is invalid.", topoInfo->topoLevelNums), HCCL_E_INTERNAL);
 
     CHK_PRT_RET(

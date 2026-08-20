@@ -61,10 +61,6 @@ protected:
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, CcuAlgTemplate0& agAlgLevel0,
         CcuAlgTemplate1& agAlgLevel1);
 
-    HcclResult RestoreChannelMap(
-        const AlgResourceCtxSerializable& resCtx,
-        std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo);
-
     HcclResult CalcResLevel(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         CommonAlgTemplateBase& tempAlg, AlgResourceRequest& resourceRequest);

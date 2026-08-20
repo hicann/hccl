@@ -71,7 +71,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -201,7 +201,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
         templateAlgRes.channels = remoteRankToChannelInfo_[index];
     } else {
         CHK_PRT_RET(
-            resCtx.threads.size() < 2 || resCtx.ccuKernels.size() < 2,
+            resCtx.threads.size() < MIN_SUBGROUP_NUM || resCtx.ccuKernels.size() < MIN_SUBGROUP_NUM,
             HCCL_ERROR(
                 "[%s] resCtx resource not enough. threads.size[%zu], ccuKernels.size[%zu].", __func__,
                 resCtx.threads.size(), resCtx.ccuKernels.size()),
@@ -344,7 +344,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
         HCCL_E_PARA);
 
     // 获取子通信域
-    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }

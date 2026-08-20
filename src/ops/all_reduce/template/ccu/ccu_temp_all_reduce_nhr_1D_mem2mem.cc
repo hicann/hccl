@@ -14,6 +14,7 @@
 #include "alg_data_trans_wrapper.h"
 #include "ccu_launch_dl.h"
 namespace ops_hccl {
+constexpr u32 DIE_NUM_2 = 2;
 
 std::vector<CostModelParam> CcuTempAllReduceNHRMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -110,7 +111,7 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::CalcRes(
     }
 
     double ratio = 1.0;
-    if (dieNum == 2) {
+    if (dieNum == DIE_NUM_2) {
         uint32_t p0 = 0, p1 = 0;
         CHK_RET(GetChannelBwCoeff(comm, myRank_, channelsPerDie[0][0], p0));
         CHK_RET(GetChannelBwCoeff(comm, myRank_, channelsPerDie[1][0], p1));
@@ -145,7 +146,6 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::ProcessNHRStepInfo(
     u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
     constexpr u32 DIE_NUM_1 = 1;
-    constexpr u32 DIE_NUM_2 = 2;
     constexpr u32 DIE0 = 0;
     constexpr u32 DIE1 = 1;
     constexpr u32 STAG_NUM_2 = 2;

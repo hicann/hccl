@@ -510,7 +510,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     subCommRanks2.clear();
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo_.infos[0].size() < 2 || algHierarchyInfo_.infos[0][0].empty()) {
+        if (algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM || algHierarchyInfo_.infos[0][0].empty()) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2 or infos[0][0] empty.", __func__,
                 algHierarchyInfo_.infos[0].size());
@@ -595,7 +595,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     tempMap.clear();
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo_.infos[0].size() < 2) {
+        if (algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2.", __func__,
                 algHierarchyInfo_.infos[0].size());

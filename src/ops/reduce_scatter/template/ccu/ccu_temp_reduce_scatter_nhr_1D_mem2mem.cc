@@ -14,6 +14,7 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
+constexpr u32 DIE_NUM_2 = 2;
 
 std::vector<CostModelParam> CcuTempReduceScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -60,7 +61,6 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::ProcessNHRStepInfo(
     u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie)
 {
     constexpr u32 DIE_NUM_1 = 1;
-    constexpr u32 DIE_NUM_2 = 2;
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     for (u32 step = 0; step < nSteps; step++) {
         NHRStepInfo stepInfo;
@@ -138,7 +138,7 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(
     }
 
     double ratio = 1.0;
-    if (dieNum == 2) {
+    if (dieNum == DIE_NUM_2) {
         uint32_t p0 = 0, p1 = 0;
         CHK_RET(GetChannelBwCoeff(comm, myRank_, channelsPerDie[0][0], p0));
         CHK_RET(GetChannelBwCoeff(comm, myRank_, channelsPerDie[1][0], p1));

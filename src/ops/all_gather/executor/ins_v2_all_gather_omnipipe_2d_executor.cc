@@ -59,7 +59,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, InsA
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -115,7 +115,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     HCCL_DEBUG("[%s] ins0618 alleref start", __func__);
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -170,7 +170,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < 2) {
+    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -204,13 +204,13 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 
 template <typename AlgTopoMatch, typename CcuAlgTempLevel0, typename CcuAlgTempLevel1>
 HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel1>::PrepareResForTemplate(
-    const OpParam& param, const AlgResourceCtxSerializable& resCtx, CcuAlgTempLevel0& algTempLevel0,
-    CcuAlgTempLevel1& algTempLevel1)
+    const OpParam& param, const AlgResourceCtxSerializable& resCtx, CcuAlgTempLevel0& agAlgLevel0,
+    CcuAlgTempLevel1& agAlgLevel1)
 {
     HCCL_DEBUG("[%s] start", __func__);
     // 获取每个temp的线程数
-    u64 level0ThreadsNum = algTempLevel0.GetThreadNum();
-    u64 level1ThreadsNum = algTempLevel1.GetThreadNum();
+    u64 level0ThreadsNum = agAlgLevel0.GetThreadNum();
+    u64 level1ThreadsNum = agAlgLevel1.GetThreadNum();
     HCCL_DEBUG("[%s] level0ThreasNum[%u] level1ThreadsNum[%u]", __func__, level0ThreadsNum, level1ThreadsNum);
 
     level0Threads_.assign(threads_.begin() + 1, threads_.begin() + 1 + level0ThreadsNum);
@@ -227,10 +227,10 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 
     // 获取template各自的主thread上有多少notify
     AlgResourceRequest level0TempRequest;
-    CHK_RET(algTempLevel0.GetRes(level0TempRequest));
+    CHK_RET(agAlgLevel0.GetRes(level0TempRequest));
     notifyIdxControlToTemplates_.push_back(level0TempRequest.notifyNumOnMainThread);
     AlgResourceRequest level1TempRequest;
-    CHK_RET(algTempLevel1.GetRes(level1TempRequest));
+    CHK_RET(agAlgLevel1.GetRes(level1TempRequest));
     notifyIdxControlToTemplates_.push_back(level1TempRequest.notifyNumOnMainThread);
     notifyIdxTemplatesToControl_.push_back(0);
     notifyIdxTemplatesToControl_.push_back(1);
@@ -250,7 +250,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 {
     HCCL_DEBUG("[%s] Start", __func__);
     auto algHierarchyInfo = resCtx.algHierarchyInfo;
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }

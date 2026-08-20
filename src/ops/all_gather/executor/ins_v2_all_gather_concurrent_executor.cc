@@ -122,7 +122,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     // 初始化一些基本成员变量
     InitCommInfo(param, topoInfo, algHierarchyInfo);
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < 2) {
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -283,7 +283,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     dataSize_ = dataCount_ * dataTypeSize_;
 
     // 拆分algHierarchyInfo
-    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
+    if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
@@ -300,7 +300,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 分配channels或者ccuKernels
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         CHK_PRT_RET(
-            resCtx.ccuKernelNum.size() < 2
+            resCtx.ccuKernelNum.size() < MIN_SUBGROUP_NUM
                 || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
             HCCL_ERROR(
                 "[%s] resCtx resource not enough. ccuKernelNum.size[%zu], ccuKernels.size[%zu].", __func__,

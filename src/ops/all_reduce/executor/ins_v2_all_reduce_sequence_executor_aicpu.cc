@@ -253,8 +253,9 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
 
-    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() || algHierarchyInfo_.infos[1].empty()
-        || algHierarchyInfo_.infos[0][0].empty() || algHierarchyInfo_.infos[1][0].empty()) {
+    if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
+        || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
+        || algHierarchyInfo_.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
@@ -704,7 +705,7 @@ template <
     typename InsAlgTemplate3>
 HcclResult
 InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx)
+    FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx)
 {
     HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] Start");
     InsAlgTemplate0 tempAlgStepOne{};
@@ -715,51 +716,52 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     TemplateFastLaunchCtx tempFastLaunchCtxStepOne, tempFastLaunchCtxStepTwo;
     TemplateFastLaunchCtx tempFastLaunchCtxStepThree, tempFastLaunchCtxStepFour;
 
-    ThreadHandle* threads = ctx->GetThreadHandlePtr();
-    threads_.assign(threads, threads + ctx->threadNum);
+    ThreadHandle* threads = resCtx->GetThreadHandlePtr();
+    threads_.assign(threads, threads + resCtx->threadNum);
 
     TemplateResource templateAlgResStepOne, templateAlgResStepTwo;
     TemplateResource templateAlgResStepThree, templateAlgResStepFour;
 
-    CcuKernelSubmitInfo* ccuKernelSubmitInfos = ctx->GetCcuKernelSubmitInfoPtr();
+    CcuKernelSubmitInfo* ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
 
-    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepOne ccuKernelNum[%llu]", ctx->ccuKernelNum[0]);
+    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepOne ccuKernelNum[%llu]", resCtx->ccuKernelNum[0]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtxStepOne, param.inputPtr, param.hcclBuff.addr, param.hcclBuff));
     tempFastLaunchCtxStepOne.threads = threads_;
     tempFastLaunchCtxStepOne.ccuKernelSubmitInfos.assign(
-        ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[0]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[0];
-    if (ctx->ccuKernelNum[0] > 0) {
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[0]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[0];
+    if (resCtx->ccuKernelNum[0] > 0) {
         CHK_RET(tempAlgStepOne.FastLaunch(param, tempFastLaunchCtxStepOne));
     }
 
-    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepTwo ccuKernelNum[%llu]", ctx->ccuKernelNum[1]);
+    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepTwo ccuKernelNum[%llu]", resCtx->ccuKernelNum[1]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtxStepTwo, param.hcclBuff.addr, param.hcclBuff.addr, param.hcclBuff));
     tempFastLaunchCtxStepTwo.threads = threads_;
     tempFastLaunchCtxStepTwo.ccuKernelSubmitInfos.assign(
-        ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[1]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[1];
-    if (ctx->ccuKernelNum[1] > 0) {
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[1]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[1];
+    if (resCtx->ccuKernelNum[1] > 0) {
         CHK_RET(tempAlgStepTwo.FastLaunch(param, tempFastLaunchCtxStepTwo));
     }
 
-    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepThree ccuKernelNum[%llu]", ctx->ccuKernelNum[2]);
+    HCCL_INFO(
+        "[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepThree ccuKernelNum[%llu]", resCtx->ccuKernelNum[2]);
     CHK_RET(
         SetTempFastLaunchAddr(tempFastLaunchCtxStepThree, param.hcclBuff.addr, param.hcclBuff.addr, param.hcclBuff));
     tempFastLaunchCtxStepThree.threads = threads_;
     tempFastLaunchCtxStepThree.ccuKernelSubmitInfos.assign(
-        ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[2]);
-    ccuKernelSubmitInfos += ctx->ccuKernelNum[2];
-    if (ctx->ccuKernelNum[2] > 0) {
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[2]);
+    ccuKernelSubmitInfos += resCtx->ccuKernelNum[2];
+    if (resCtx->ccuKernelNum[2] > 0) {
         CHK_RET(tempAlgStepThree.FastLaunch(param, tempFastLaunchCtxStepThree));
     }
 
-    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepFour ccuKernelNum[%llu]", ctx->ccuKernelNum[3]);
+    HCCL_INFO("[InsV2AllReduceSequenceExecutorAicpu][FastLaunch] StepFour ccuKernelNum[%llu]", resCtx->ccuKernelNum[3]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtxStepFour, param.hcclBuff.addr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtxStepFour.threads = threads_;
     tempFastLaunchCtxStepFour.ccuKernelSubmitInfos.assign(
-        ccuKernelSubmitInfos, ccuKernelSubmitInfos + ctx->ccuKernelNum[3]);
-    if (ctx->ccuKernelNum[3] > 0) {
+        ccuKernelSubmitInfos, ccuKernelSubmitInfos + resCtx->ccuKernelNum[3]);
+    if (resCtx->ccuKernelNum[3] > 0) {
         CHK_RET(tempAlgStepFour.FastLaunch(param, tempFastLaunchCtxStepFour));
     }
 

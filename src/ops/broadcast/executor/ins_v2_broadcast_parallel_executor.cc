@@ -25,6 +25,9 @@
 #include <cmath>
 
 namespace ops_hccl {
+constexpr u32 MAIN_THREAD_NUM = 2;       // main(0) + intra main(1) + inter main(2) = 3个main
+constexpr u32 INTRA_SLAVE_START_IDX = 3; // intra slave线程起始索引
+constexpr u32 INTER_SLAVE_OFFSET = 4;    // inter slave线程相对inter main的偏移
 template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
@@ -63,7 +66,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         return HcclResult::HCCL_E_PARA;
     }
     if (!topoInfo->level0PcieMix && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-        if (algHierarchyInfo.infos[0].size() < 2) {
+        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo.infos[0].size());
             return HcclResult::HCCL_E_PARA;
@@ -243,7 +246,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         return HcclResult::HCCL_E_PARA;
     }
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < 2) {
+        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
             HCCL_ERROR(
                 "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
                 resCtx.algHierarchyInfo.infos[0].size());
@@ -370,16 +373,16 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
     intraThreads_.clear();
     intraThreads_.emplace_back(threads_[1]);
-    if (intraThreadsNum + 2 >= 3) {
-        for (u32 i = 3; i < intraThreadsNum + 2; i++) {
+    if (intraThreadsNum + MAIN_THREAD_NUM >= INTRA_SLAVE_START_IDX) {
+        for (u32 i = INTRA_SLAVE_START_IDX; i < intraThreadsNum + MAIN_THREAD_NUM; i++) {
             intraThreads_.emplace_back(threads_[i]);
         }
     }
 
     interThreads_.clear();
-    interThreads_.emplace_back(threads_[intraThreadsNumFinal + 2]);
-    if (threads_.size() >= intraThreadsNumFinal + 4) {
-        for (u32 i = intraThreadsNumFinal + 4; i < threads_.size(); i++) {
+    interThreads_.emplace_back(threads_[intraThreadsNumFinal + MAIN_THREAD_NUM]);
+    if (threads_.size() >= intraThreadsNumFinal + INTER_SLAVE_OFFSET) {
+        for (u32 i = intraThreadsNumFinal + INTER_SLAVE_OFFSET; i < threads_.size(); i++) {
             interThreads_.emplace_back(threads_[i]);
         }
     }
@@ -415,8 +418,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     auto intraNotifyOnMainThread = intraTempRequest1.notifyNumOnMainThread;
     auto interNotifyOnMainThread = interTempRequest1.notifyNumOnMainThread;
 
-    intraThreads_.assign(threads_.begin() + 2, threads_.begin() + intraThreadsNum1 + 2);
-    interThreads_.assign(threads_.begin() + intraThreadsNumFinal + 3, threads_.end());
+    intraThreads_.assign(threads_.begin() + MAIN_THREAD_NUM, threads_.begin() + intraThreadsNum1 + MAIN_THREAD_NUM);
+    interThreads_.assign(threads_.begin() + intraThreadsNumFinal + INTRA_SLAVE_START_IDX, threads_.end());
     // 用于两个算法同步
     mainThread_ = threads_.at(0);
 

@@ -63,7 +63,7 @@ HcclResult ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     InitCommInfo(param, topoInfo, algHierarchyInfo);
 
     skipLevel1_ = (algHierarchyInfo.infos[1][0].size() == 1);
-    skipLevel2_ = (algHierarchyInfo.infos.size() == 2);
+    skipLevel2_ = (algHierarchyInfo.infos.size() == TOPO_LEVEL_NUM_2);
     std::shared_ptr<InsAlgTemplate0> tempAlgLevel0
         = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
     std::shared_ptr<InsAlgTemplate1> tempAlgLevel1
@@ -176,8 +176,9 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
 
-    if (algHierarchyInfo_.infos.size() < 2 || algHierarchyInfo_.infos[0].empty() || algHierarchyInfo_.infos[1].empty()
-        || algHierarchyInfo_.infos[0][0].empty() || algHierarchyInfo_.infos[1][0].empty()) {
+    if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
+        || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
+        || algHierarchyInfo_.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
@@ -189,7 +190,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
 
     skipLevel1_ = (rankSizeLevel1_ == 1);
-    skipLevel2_ = (algHierarchyInfo_.infos.size() == 2);
+    skipLevel2_ = (algHierarchyInfo_.infos.size() == TOPO_LEVEL_NUM_2);
     if (skipLevel1_) {
         HCCL_INFO(
             "[ScatterSequenceAicpu3LevelExecutor] [Orchestrate] myRank[%u] level1 rankSize is 1, skip level1", myRank_);

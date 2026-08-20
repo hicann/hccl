@@ -173,7 +173,7 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::LaunchConcurrentKernels(
     TemplateResource& templateResource, bool hasMesh, bool hasClos, const std::vector<uint64_t>& meshTaskArgs,
     const std::vector<uint64_t>& closTaskArgs)
 {
-    if (hasClos && templateResource.threads.size() >= 2) {
+    if (hasClos && templateResource.threads.size() >= MIN_SUBGROUP_NUM) {
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_PRE_SYNC}));
     }
     if (hasMesh) {
@@ -194,7 +194,7 @@ HcclResult CcuTempAllToAllConcurrentMeshNHR::LaunchConcurrentKernels(
             HCCL_ERROR("[CcuTempAllToAllConcurrentMeshNHR] clos kernel launch failed, ccuRet -> %d", launchRet),
             ConvertCcuToHccl(launchRet));
     }
-    if (hasClos && templateResource.threads.size() >= 2) {
+    if (hasClos && templateResource.threads.size() >= MIN_SUBGROUP_NUM) {
         CHK_RET(
             PostSyncInterThreads(templateResource.threads[0], {templateResource.threads[1]}, {NOTIFY_IDX_POST_SYNC}));
     }

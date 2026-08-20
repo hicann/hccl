@@ -98,15 +98,16 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
-    if (algHierarchyInfo.infos.size() < 2 || algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty()
-        || algHierarchyInfo.infos[0][0].empty() || algHierarchyInfo.infos[1][0].empty()) {
+    if (algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
+        || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
+        || algHierarchyInfo.infos[1][0].empty()) {
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     skipLevel1_ = (rankSizeLevel1_ == 1);
-    skipLevel2_ = (algHierarchyInfo.infos.size() == 2);
+    skipLevel2_ = (algHierarchyInfo.infos.size() == TOPO_LEVEL_NUM_2);
     if (skipLevel2_) {
         rankSizeLevel2_ = 1;
     } else {
@@ -238,7 +239,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
 
     rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
     rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
-    skipLevel2_ = (algHierarchyInfo_.infos.size() == 2);
+    skipLevel2_ = (algHierarchyInfo_.infos.size() == TOPO_LEVEL_NUM_2);
     skipLevel1_ = (rankSizeLevel1_ == 1);
     if (skipLevel2_) {
         rankSizeLevel2_ = 1;
@@ -343,30 +344,28 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
     InsAlgTemplate5>::
     GenTempAlgParamsAGL2(
-        const u64 sliceSize, const u64 tailSize, TemplateDataParams& tempAlgParamsAGL2, u64 l0SliceByte,
-        u64 l1SliceByte) const
+        const u64 sliceSize, const u64 tailSize, TemplateDataParams& params, u64 l0SliceByte, u64 l1SliceByte) const
 {
-    tempAlgParamsAGL2.buffInfo.inBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
-    tempAlgParamsAGL2.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
-    tempAlgParamsAGL2.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
+    params.buffInfo.inBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
+    params.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
+    params.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
     // 与上一步框间Scatter数据量一致
-    tempAlgParamsAGL2.sliceSize = sliceSize;
-    tempAlgParamsAGL2.tailSize = tailSize;
+    params.sliceSize = sliceSize;
+    params.tailSize = tailSize;
 
-    tempAlgParamsAGL2.inputSliceStride = tempAlgParamsAGL2.sliceSize;
-    tempAlgParamsAGL2.outputSliceStride = tempAlgParamsAGL2.sliceSize;
+    params.inputSliceStride = params.sliceSize;
+    params.outputSliceStride = params.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] tempAlgParamsAGL2.inputSliceStride [%u],"
-        "tempAlgParamsAGL2.outputSliceStride [%u] tempAlgParamsAGL2.sliceSize [%u], tempAlgParamsAGL2.tailSize [%u], "
-        "tempAlgParamsAGL2.buffInfo.inBuffBaseOff [%u], tempAlgParamsAGL2.buffInfo.outBuffBaseOff [%u]",
-        tempAlgParamsAGL2.inputSliceStride, tempAlgParamsAGL2.outputSliceStride, tempAlgParamsAGL2.sliceSize,
-        tempAlgParamsAGL2.tailSize, tempAlgParamsAGL2.buffInfo.inBuffBaseOff,
-        tempAlgParamsAGL2.buffInfo.outBuffBaseOff);
+        "[InsV2AllReduceSequenceExecutorAicpu] params.inputSliceStride [%u],"
+        "params.outputSliceStride [%u] params.sliceSize [%u], params.tailSize [%u], "
+        "params.buffInfo.inBuffBaseOff [%u], params.buffInfo.outBuffBaseOff [%u]",
+        params.inputSliceStride, params.outputSliceStride, params.sliceSize, params.tailSize,
+        params.buffInfo.inBuffBaseOff, params.buffInfo.outBuffBaseOff);
 
-    tempAlgParamsAGL2.repeatNum = 1;
-    tempAlgParamsAGL2.inputRepeatStride = 0;
-    tempAlgParamsAGL2.outputRepeatStride = 0;
+    params.repeatNum = 1;
+    params.inputRepeatStride = 0;
+    params.outputRepeatStride = 0;
     return;
 }
 
@@ -376,30 +375,28 @@ template <
 void BroadcastSequenceMesh1dNHRNHRExecutor<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
     InsAlgTemplate5>::
-    GenTempAlgParamsAGL1(
-        const u64 sliceSize, const u64 tailSize, TemplateDataParams& tempAlgParamsAGL1, u64 l0SliceByte) const
+    GenTempAlgParamsAGL1(const u64 sliceSize, const u64 tailSize, TemplateDataParams& params, u64 l0SliceByte) const
 {
-    tempAlgParamsAGL1.buffInfo.inBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
-    tempAlgParamsAGL1.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
-    tempAlgParamsAGL1.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
+    params.buffInfo.inBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
+    params.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
+    params.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
 
-    tempAlgParamsAGL1.sliceSize = sliceSize;
-    tempAlgParamsAGL1.tailSize = tailSize;
+    params.sliceSize = sliceSize;
+    params.tailSize = tailSize;
 
-    tempAlgParamsAGL1.inputSliceStride = tempAlgParamsAGL1.sliceSize;
-    tempAlgParamsAGL1.outputSliceStride = tempAlgParamsAGL1.sliceSize;
+    params.inputSliceStride = params.sliceSize;
+    params.outputSliceStride = params.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] tempAlgParamsAGL1.inputSliceStride [%u], "
-        "tempAlgParamsAGL1.outputSliceStride [%u], tempAlgParamsAGL1.sliceSize [%u], tempAlgParamsAGL1.tailSize [%u], "
-        "tempAlgParamsAGL1.buffInfo.inBuffBaseOff [%u], tempAlgParamsAGL1.buffInfo.outBuffBaseOff [%u]",
-        tempAlgParamsAGL1.inputSliceStride, tempAlgParamsAGL1.outputSliceStride, tempAlgParamsAGL1.sliceSize,
-        tempAlgParamsAGL1.tailSize, tempAlgParamsAGL1.buffInfo.inBuffBaseOff,
-        tempAlgParamsAGL1.buffInfo.outBuffBaseOff);
+        "[InsV2AllReduceSequenceExecutorAicpu] params.inputSliceStride [%u], "
+        "params.outputSliceStride [%u], params.sliceSize [%u], params.tailSize [%u], "
+        "params.buffInfo.inBuffBaseOff [%u], params.buffInfo.outBuffBaseOff [%u]",
+        params.inputSliceStride, params.outputSliceStride, params.sliceSize, params.tailSize,
+        params.buffInfo.inBuffBaseOff, params.buffInfo.outBuffBaseOff);
 
-    tempAlgParamsAGL1.repeatNum = 1;
-    tempAlgParamsAGL1.inputRepeatStride = 0;
-    tempAlgParamsAGL1.outputRepeatStride = 0;
+    params.repeatNum = 1;
+    params.inputRepeatStride = 0;
+    params.outputRepeatStride = 0;
     return;
 }
 
@@ -411,29 +408,30 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     InsAlgTemplate5>::
     GenTempAlgParamsAGL0(
         const u64 processedDataCount, const u64 sliceSize, const u64 tailSize,
-        TemplateDataParams& tempAlgParamsAGL0) const
+        TemplateDataParams& tempAlgParamsStepFour) const
 {
-    tempAlgParamsAGL0.buffInfo.inBuffBaseOff = 0;
-    tempAlgParamsAGL0.buffInfo.outBuffBaseOff = processedDataCount * dataTypeSize_;
-    tempAlgParamsAGL0.buffInfo.hcclBuffBaseOff = 0;
+    tempAlgParamsStepFour.buffInfo.inBuffBaseOff = 0;
+    tempAlgParamsStepFour.buffInfo.outBuffBaseOff = processedDataCount * dataTypeSize_;
+    tempAlgParamsStepFour.buffInfo.hcclBuffBaseOff = 0;
 
-    tempAlgParamsAGL0.sliceSize = sliceSize;
-    tempAlgParamsAGL0.tailSize = tailSize;
+    tempAlgParamsStepFour.sliceSize = sliceSize;
+    tempAlgParamsStepFour.tailSize = tailSize;
 
-    tempAlgParamsAGL0.inputSliceStride = tempAlgParamsAGL0.sliceSize;
-    tempAlgParamsAGL0.outputSliceStride = tempAlgParamsAGL0.sliceSize;
+    tempAlgParamsStepFour.inputSliceStride = tempAlgParamsStepFour.sliceSize;
+    tempAlgParamsStepFour.outputSliceStride = tempAlgParamsStepFour.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] tempAlgParamsAGL0.inputSliceStride [%u], "
-        "tempAlgParamsAGL0.outputSliceStride [%u], tempAlgParamsAGL0.sliceSize [%u], tempAlgParamsAGL0.tailSize [%u], "
-        "tempAlgParamsAGL0.buffInfo.inBuffBaseOff [%u], tempAlgParamsAGL0.buffInfo.outBuffBaseOff [%u]",
-        tempAlgParamsAGL0.inputSliceStride, tempAlgParamsAGL0.outputSliceStride, tempAlgParamsAGL0.sliceSize,
-        tempAlgParamsAGL0.tailSize, tempAlgParamsAGL0.buffInfo.inBuffBaseOff,
-        tempAlgParamsAGL0.buffInfo.outBuffBaseOff);
+        "[InsV2AllReduceSequenceExecutorAicpu] tempAlgParamsStepFour.inputSliceStride [%u], "
+        "tempAlgParamsStepFour.outputSliceStride [%u], tempAlgParamsStepFour.sliceSize [%u], "
+        "tempAlgParamsStepFour.tailSize [%u], "
+        "tempAlgParamsStepFour.buffInfo.inBuffBaseOff [%u], tempAlgParamsStepFour.buffInfo.outBuffBaseOff [%u]",
+        tempAlgParamsStepFour.inputSliceStride, tempAlgParamsStepFour.outputSliceStride,
+        tempAlgParamsStepFour.sliceSize, tempAlgParamsStepFour.tailSize, tempAlgParamsStepFour.buffInfo.inBuffBaseOff,
+        tempAlgParamsStepFour.buffInfo.outBuffBaseOff);
 
-    tempAlgParamsAGL0.repeatNum = 1;
-    tempAlgParamsAGL0.inputRepeatStride = 0;
-    tempAlgParamsAGL0.outputRepeatStride = 0;
+    tempAlgParamsStepFour.repeatNum = 1;
+    tempAlgParamsStepFour.inputRepeatStride = 0;
+    tempAlgParamsStepFour.outputRepeatStride = 0;
     return;
 }
 

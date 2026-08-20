@@ -25,7 +25,7 @@ template <
 class BroadcastSequenceMesh1dNHRNHRExecutor : public InsCollAlgBase {
 public:
     explicit BroadcastSequenceMesh1dNHRNHRExecutor();
-    ~BroadcastSequenceMesh1dNHRNHRExecutor() = default;
+    ~BroadcastSequenceMesh1dNHRNHRExecutor() override = default;
 
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
