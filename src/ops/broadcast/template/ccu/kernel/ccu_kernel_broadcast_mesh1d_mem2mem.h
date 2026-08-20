@@ -47,7 +47,7 @@ struct BroadcastMesh1DMem2MemContext : CcuKernelCtxBase {
     ccu::Variable repeatNumVar;
     ccu::Variable flag;
 
-    ccu::Event event;
+    CcuEventGroup eventGroup;
     ccu::LocalAddr myScatterDst;
     ccu::LocalAddr allgatherSrc;
     std::vector<ccu::LocalAddr> scattersrcMem;
