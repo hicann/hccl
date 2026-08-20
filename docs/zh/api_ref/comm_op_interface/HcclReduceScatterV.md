@@ -39,7 +39,7 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 | sendDispls | 输入 | 参与ReduceScatterV操作的每个rank的数据在sendBuf中的偏移量（单位为dataType），为uint64类型的数组。<br>该数组的第i个元素表示向rank i发送的数据在sendBuf中的偏移量。 |
 | recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。<br>recvBuf与sendBuf配置的地址不能相同。 |
 | recvCount | 输入 | 参与ReduceScatterV操作的rank对应recvBuf的数据size。<br>假设当前rank的编号为i，则recvCount的值需要与sendCounts数组中下标为i的元素值相同。 |
-| dataType | 输入 | ReduceScatterV操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[dataType说明](#datatype说明)。|
+| dataType | 输入 | ReduceScatterV操作的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[dataType说明](#datatype说明)。|
 | op | 输入 | Reduce的操作类型。<br>不同的型号支持的操作类型不同，详细请参见[op说明](#op说明)。|
 | comm | 输入 | 集合通信操作所在的通信域。 |
 | stream | 输入 | 本rank所使用的stream。 |
@@ -76,7 +76,7 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
 
 ## 约束说明
 

@@ -1,6 +1,6 @@
 # HCCL头文件与库文件说明
 
-HCCL（Huawei Collective Communication Library，华为集合通信库）基于昇腾AI处理器，提供单机/多机环境下的高性能集合通信与点对点通信能力，是CANN的核心组件之一。HCCL与通信基础库HCOMM通过dlsym动态加载解耦，HCCL与HCOMM独立编译、独立版本演进，HCOMM的对外头文件与库文件请参考[HCOMM对外头文件与库文件说明](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/hcomm_header_and_lib.md)。
+HCCL（Huawei Collective Communication Library，华为集合通信库）基于昇腾AI处理器，提供单机/多机环境下的高性能集合通信与点对点通信能力，是CANN的核心组件之一。HCCL与通信基础库HCOMM通过dlsym动态加载解耦，HCCL与HCOMM独立编译、独立版本演进，HCOMM的对外头文件与库文件请参考[HCOMM对外头文件与库文件说明](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/hcomm_header_and_lib.md)。
 
 本章节介绍HCCL对外接口的头文件与库文件说明。
 

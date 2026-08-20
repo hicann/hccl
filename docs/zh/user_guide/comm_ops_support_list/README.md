@@ -1,8 +1,6 @@
 # 通信算子支持度清单
 
-  <!-- npu="950" id5 -->
 - [Ascend 950PR/Ascend 950DT](comm_ops_support_950.md)
-  <!-- end id5 -->
   <!-- npu="A3" id4 -->
 - [Atlas A3 训练系列产品/Atlas A3 推理系列产品](comm_ops_support_a3.md)
   <!-- end id4 -->

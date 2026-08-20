@@ -37,11 +37,11 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 | sendBuf | 输入 | 源数据buffer地址。 |
 | sendCounts | 输入 | 表示发送数据量的uint64数组，“sendCounts\[i] = n”表示本rank发给rank i的数据量为n。<br>例如，若“sendType”为float32，“sendCounts\[i] = n”表示本rank发给rank i n个float32数据。 |
 | sdispls | 输入 | 表示发送偏移量的uint64数组，“sdispls\[i] = n”表示本rank发给rank i的数据在sendBuf的起始位置相对sendBuf的偏移量，以sendType为基本单位。 |
-| sendType | 输入 | 发送数据的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
+| sendType | 输入 | 发送数据的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
 | recvBuf | 输出 | 目的数据buffer地址，集合通信结果输出至此buffer中。<br>recvBuf与sendBuf配置的地址不能相同。 |
 | recvCounts | 输入 | 表示接收数据量的uint64数组，“recvCounts\[i] = n”表示本rank从rank i收到的数据量为n。<br>例如，若“recvType”为float32，“recvCounts\[i] = n”表示本rank从rank i收到n个float32数据。 |
 | rdispls | 输入 | 表示接收偏移量的uint64数组，“rdispls\[i] = n”表示本rank从rank i收到的数据存放在recvBuf的起始位置相对recvBuf的偏移量，以recvType为基本单位。 |
-| recvType | 输入 | 接收数据的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
+| recvType | 输入 | 接收数据的数据类型，[HcclDataType](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclDataType.md)类型。<br>不同的型号支持的数据类型不同，详细请参见[数据类型说明](#数据类型说明)。|
 | comm | 输入 | 集合通信操作所在的通信域。 |
 | stream | 输入 | 本rank所使用的stream。 |
 
@@ -65,7 +65,7 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/9.2.0-beta.2/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
 
 ## 约束说明
 
