@@ -135,9 +135,13 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
             GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize, GetCcuVersion());
             continue;
         }
-        ccu::Write(
-            arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.eventGroup.GetEvent(r),
-            ctx.eventGroup.GetMask(r));
+        CCU_IF(ctx.sliceSize != 0)
+        {
+            ccu::Write(
+                arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.eventGroup.GetEvent(r),
+                ctx.eventGroup.GetMask(r));
+        }
+        CCU_ELSE { CCU_CHK_RET(ctx.eventGroup.Record(r)); }
         channelsIdx++;
     }
     if (arg->withMyRank) {
