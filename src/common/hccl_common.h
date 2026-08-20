@@ -57,6 +57,15 @@ const std::map<HcclDataType, std::string> HCOM_DATA_TYPE_STR_MAP{
     {HcclDataType::HCCL_DATA_TYPE_FP8E4M3, "fp8e4m3"}, {HcclDataType::HCCL_DATA_TYPE_FP8E5M2, "fp8e5m2"},
     {HcclDataType::HCCL_DATA_TYPE_FP8E8M0, "fp8e8m0"}, {HcclDataType::HCCL_DATA_TYPE_RESERVED, "reserved"}};
 
+// HcclDataType合法值集合（enum定义见hcomm hccl_types.h，值13为保留gap，255为RESERVED）
+const std::set<HcclDataType> VALID_HCCL_DATA_TYPES{
+    HcclDataType::HCCL_DATA_TYPE_INT8,    HcclDataType::HCCL_DATA_TYPE_INT16,  HcclDataType::HCCL_DATA_TYPE_INT32,
+    HcclDataType::HCCL_DATA_TYPE_FP16,    HcclDataType::HCCL_DATA_TYPE_FP32,   HcclDataType::HCCL_DATA_TYPE_INT64,
+    HcclDataType::HCCL_DATA_TYPE_UINT64,  HcclDataType::HCCL_DATA_TYPE_UINT8,  HcclDataType::HCCL_DATA_TYPE_UINT16,
+    HcclDataType::HCCL_DATA_TYPE_UINT32,  HcclDataType::HCCL_DATA_TYPE_FP64,   HcclDataType::HCCL_DATA_TYPE_BFP16,
+    HcclDataType::HCCL_DATA_TYPE_INT128,  HcclDataType::HCCL_DATA_TYPE_HIF8,   HcclDataType::HCCL_DATA_TYPE_FP8E4M3,
+    HcclDataType::HCCL_DATA_TYPE_FP8E5M2, HcclDataType::HCCL_DATA_TYPE_FP8E8M0};
+
 // 返回const char*，避免string和map查找开销
 inline const char* GetHcclDataTypeStr(HcclDataType type) noexcept
 {

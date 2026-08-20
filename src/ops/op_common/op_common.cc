@@ -13,6 +13,7 @@
 #include <numeric>
 #include <future>
 #include <map>
+#include <set>
 #include <string>
 #include <memory>
 #include <cstdlib> // 包含getenv函数
@@ -2909,12 +2910,14 @@ HcclResult CheckCount(const u64 count)
 HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
 {
     const std::vector<std::string> infoTitle({"ccl_op", "value", "parameter", "expect"});
+    // 查询是否为合法的HcclDataType枚举值
+    bool notValid = VALID_HCCL_DATA_TYPES.find(dataType) == VALID_HCCL_DATA_TYPES.end();
     if (needReduce) {
-        if ((dataType == HCCL_DATA_TYPE_UINT8) || (dataType == HCCL_DATA_TYPE_UINT16)
-            || (dataType == HCCL_DATA_TYPE_UINT32) || (dataType == HCCL_DATA_TYPE_INT128)
-            || (dataType == HCCL_DATA_TYPE_HIF8) || (dataType == HCCL_DATA_TYPE_FP8E4M3)
-            || (dataType == HCCL_DATA_TYPE_FP8E5M2) || (dataType == HCCL_DATA_TYPE_FP8E8M0)
-            || (dataType == HCCL_DATA_TYPE_RESERVED)) {
+        // reduce场景不支持的数据类型
+        static const std::set<HcclDataType> REDUCE_UNSUPPORTED
+            = {HCCL_DATA_TYPE_UINT8, HCCL_DATA_TYPE_UINT16,  HCCL_DATA_TYPE_UINT32,  HCCL_DATA_TYPE_INT128,
+               HCCL_DATA_TYPE_HIF8,  HCCL_DATA_TYPE_FP8E4M3, HCCL_DATA_TYPE_FP8E5M2, HCCL_DATA_TYPE_FP8E8M0};
+        if (notValid || REDUCE_UNSUPPORTED.find(dataType) != REDUCE_UNSUPPORTED.end()) {
             RPT_INPUT_ERR(
                 true, "EI0003", infoTitle,
                 std::vector<std::string>(
@@ -2926,8 +2929,8 @@ HcclResult CheckDataType(const HcclDataType dataType, bool needReduce)
             return HCCL_E_NOT_SUPPORT;
         }
     } else {
-        if ((dataType >= HCCL_DATA_TYPE_RESERVED) || (dataType < HCCL_DATA_TYPE_INT8)
-            || (dataType == HCCL_DATA_TYPE_INT128)) {
+        // 非reduce场景不支持INT128
+        if (notValid || dataType == HCCL_DATA_TYPE_INT128) {
             RPT_INPUT_ERR(
                 true, "EI0003", infoTitle,
                 std::vector<std::string>(
