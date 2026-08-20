@@ -10,6 +10,7 @@
 
 #include "alltoallvc_auto_selector.h"
 #include "selector_registry.h"
+#include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
 constexpr uint32_t INDEX_0 = 0;
@@ -60,6 +61,41 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAicpuAlgo(
     (void)configAlgMap;
 
     selectAlgName = "AicpuAllToAllVCSoleMesh";
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
+SelectorStatus AlltoAllVCAutoSelector::SelectAivAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
+    (void)configAlgMap;
+
+    if (topoInfo->userRankSize > MAX_RANK_SIZE_V) {
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[AlltoAllVCAutoSelector][%s] rankSize[%u] larger than [%u]", __func__,
+            topoInfo->userRankSize, MAX_RANK_SIZE_V);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    if (topoInfo->level2Ubg) {
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[AlltoAllVCAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            __func__);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG,
+            "[AlltoAllVCAutoSelector][%s] aiv is not supported when topoLevelNums >= 3(levelNum[%u]), reset to "
+            "default.",
+            __func__, topoInfo->topoLevelNums);
+        return SelectorStatus::NOT_MATCH;
+    }
+
+    selectAlgName = "AivAllToAllVSoleMesh";
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
