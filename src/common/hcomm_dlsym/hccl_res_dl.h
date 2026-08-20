@@ -59,7 +59,7 @@ static inline HcommResult ThreadConfigInit(ThreadConfig* config, uint32_t num)
 
 #endif
 
-#if CANN_VERSION_NUM < CANN_VERSION(9, 2, 0)
+#if CANN_VERSION_NUM < CANN_VERSION(9, 2, 0, 2)
 typedef enum {
     HCCL_DED_THREAD_TYPE_INVALID = -1,
     HCCL_DED_THREAD_TYPE_AICPU_LAUNCH = 0,
