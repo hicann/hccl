@@ -24,7 +24,7 @@
 #include "dpu_alg_nhr_opt_wrapper.h"
 #include "hccl_res.h"
 namespace ops_hccl {
-const u32 MAX_RANK_NUM_PER_SERVER = 8;
+const u32 MAX_RANK_NUM_PER_SERVER = 32;
 const u64 CCLBUF_SPLIT_PARTS = 2;
 
 class InsTempDpuAlltoAllMesh : public InsAlgTemplateBase {
