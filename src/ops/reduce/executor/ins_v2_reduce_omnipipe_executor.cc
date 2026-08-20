@@ -662,7 +662,6 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
                 TemplateDataParams tempAlgParamLocalCopy = tempAlgParamsCommon;
                 tempAlgParamLocalCopy.localCopyFlag = 1;
                 tempAlgParamLocalCopy.dataType = dataType_;
-                tempAlgParamLocalCopy.buffInfo.inputSize = param.inputSize;
                 tempAlgParamLocalCopy.buffInfo.outputSize = param.outputSize;
                 tempAlgParamLocalCopy.buffInfo.hcclBuff = resCtx.cclMem;
                 tempAlgParamLocalCopy.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
@@ -677,6 +676,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
                     = rankOffset + processedDataCountTmp[i] * dataTypeSize_;
                 if (i == param.root) {
                     tempAlgParamLocalCopy.buffInfo.inputPtr = param.inputPtr;
+                    tempAlgParamLocalCopy.buffInfo.inputSize = param.inputSize;
                     tempAlgParamLocalCopy.buffInfo.inBuffType = BufferType::INPUT;
                     tempAlgParamLocalCopy.buffInfo.inBuffBaseOff
                         = rankOffset + processedDataCountTmp[i] * dataTypeSize_;
@@ -684,6 +684,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
                         = rankOffset + processedDataCountTmp[i] * dataTypeSize_;
                 } else {
                     tempAlgParamLocalCopy.buffInfo.inputPtr = resCtx.cclMem.addr;
+                    tempAlgParamLocalCopy.buffInfo.inputSize = resCtx.cclMem.size;
                     tempAlgParamLocalCopy.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
                     tempAlgParamLocalCopy.buffInfo.inBuffBaseOff = rankLoopOffset;
                     tempAlgParamLocalCopy.stepSliceInfo.buffInfo.inBuffBaseOff = rankLoopOffset;
