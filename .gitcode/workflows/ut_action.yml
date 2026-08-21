@@ -79,6 +79,6 @@ jobs:
             ${{ steps.process_checkout.outputs.path }}/test_*t.log
           object-prefix: ${{ env.obs_path }}/
     if: "${{ default() }}"
-    runs-on: ['self-hosted', 'arch=x64', 'spec=xlarge']
+    runs-on: ['self-hosted', 'arch=x64', 'spec=2xlarge']
     container:
       image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ inputs.image_version }}
