@@ -53,6 +53,11 @@ HcclResult InsTempAllGatherMesh1D::CalcRes(
     std::vector<HcclChannelDesc> level0Channels;
     CHK_PRT_RET(topoInfo == nullptr, HCCL_ERROR("[InsTempAllGatherMesh1D][CalcRes] topoInfo is nullptr"), HCCL_E_PARA);
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
+    channelsPerRank_ = CalcChannelsPerRankMin(level0Channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(level0Channels);
+    HCCL_INFO(
+        "[InsTempAllGatherMesh1D][CalcRes] channelsPerRank_[%u], maxChannelsPerRank_[%u]", channelsPerRank_,
+        maxChannelsPerRank_);
     GetRes(resourceRequest);
     resourceRequest.channels.push_back(level0Channels);
     return HCCL_SUCCESS;
@@ -66,7 +71,21 @@ HcclResult InsTempAllGatherMesh1D::GetRes(AlgResourceRequest& resourceRequest) c
     return HCCL_SUCCESS;
 }
 
-u64 InsTempAllGatherMesh1D::GetThreadNum() const { return templateRankSize_ > 1 ? templateRankSize_ - 1 : 1; }
+u64 InsTempAllGatherMesh1D::GetThreadNum() const
+{
+    return templateRankSize_ > 1 ? (templateRankSize_ - 1) * maxChannelsPerRank_ : 1;
+}
+
+HcclResult InsTempAllGatherMesh1D::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
+{
+    CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
+    channelsPerRank_ = CalcChannelsPerRankMin(channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(channels);
+    HCCL_INFO(
+        "[InsTempAllGatherMesh1D][SetchannelsPerRank] channelsPerRank_[%u], maxChannelsPerRank_[%u]", channelsPerRank_,
+        maxChannelsPerRank_);
+    return HCCL_SUCCESS;
+}
 
 u64 InsTempAllGatherMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType)
 {

@@ -420,8 +420,8 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     agTempAlgParams.buffInfo.inBuffBaseOff = outCclBuffOffset_;
     // 输出缓冲区基址偏移：输出到用户输出缓冲区的已处理数据位置
     agTempAlgParams.buffInfo.outBuffBaseOff = processedDataCount * dataTypeSize_;
-    // 临时缓冲区基址偏移：使用inCclBuff部分，避免与outCclBuff冲突
-    agTempAlgParams.buffInfo.hcclBuffBaseOff = inCclBuffOffset_;
+    // 临时缓冲区基址偏移：与inBuffBaseOff一致，指向outCclBuff区域，使AG从RS归约结果位置读取
+    agTempAlgParams.buffInfo.hcclBuffBaseOff = outCclBuffOffset_;
 
     u64 agSliceSize = currDataCount / rankSize_ * dataTypeSize_;
     u64 agTailSize = (currDataCount / rankSize_ + currDataCount % rankSize_) * dataTypeSize_;

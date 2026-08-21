@@ -41,6 +41,7 @@ public:
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
     u64 GetThreadNum() const override;
+    HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
@@ -60,6 +61,7 @@ protected:
     std::vector<u64> elemCountOut_;
     std::vector<u64> sizeOut_;
     std::vector<u64> elemOffset_;
+    u32 maxChannelsPerRank_{1};
 };
 
 } // namespace ops_hccl
