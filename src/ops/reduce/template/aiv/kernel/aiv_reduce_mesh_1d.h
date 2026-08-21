@@ -22,6 +22,15 @@ public:
     __aicore__ inline void Process(int32_t sliceId)
     {
         maxCoreNum_ = static_cast<uint32_t>(numBlocks_);
+        // 小数据量小通信规模多核场景，减少使用核数
+        if (len_ < maxCoreNum_ && rankSize_ < maxCoreNum_) {
+            maxCoreNum_ = rankSize_;
+        }
+        // 多余核退出
+        if (blockIdx_ >= maxCoreNum_) {
+            return;
+        }
+
         if (maxCoreNum_ >= rankSize_ + 1) {
             ProcessMultiCore(sliceId);
         } else if (maxCoreNum_ >= 1) {
