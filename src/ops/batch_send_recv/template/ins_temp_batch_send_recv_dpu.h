@@ -50,13 +50,13 @@ public:
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
 
 private:
+    HcclResult
+    RunDpuTransfer(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource);
     u32 recvRank_{0};
     u64 count_{0};
     u64 processSize_{0};
-    u64 dataCount_{0};
     u64 dataTypeSize_{0};
     HcclDataType dataType_;
-    u64 dataSize_{0};
     u64 hcclbuffBlockMemSize_{0};
     ChannelInfo sendRecvChannel_;    // 只有一个channel
     ChannelInfo subSendRecvChannel_; // aicpu对应第二条channel
