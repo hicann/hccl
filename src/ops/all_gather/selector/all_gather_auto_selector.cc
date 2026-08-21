@@ -419,7 +419,12 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
                 HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             }
-        } 
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // seq算法兼容level0为clos的场景
+            selectAlgName = "InsAllGatherMeshNhrDPU";
+            HCCL_DEBUG("[AllGatherAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
     }
     HCCL_DEBUG("[AllGatherAutoSelector][%s] end", __func__);
     return SelectorStatus::NOT_MATCH;

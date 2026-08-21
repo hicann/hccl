@@ -179,6 +179,10 @@ SelectorStatus AlltoAllVAutoSelector::SelectDPUAlgo(
                 selectAlgName = "InsAlltoAllVMesh1DDPU";
                 return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            selectAlgName = "InsAlltoAllVMesh1DDPU";
+            HCCL_DEBUG("[AlltoAllVAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
         }
     }
 

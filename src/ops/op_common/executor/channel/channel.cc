@@ -708,7 +708,12 @@ HcclResult CalcChannelRequestNhr(HcclComm comm, const OpParam &param, const Topo
         std::vector<uint32_t> netLayersVector(netLayers, netLayers + netLayerNum);
 
         for (auto netLayer : netLayersVector) {
-            if (netLayerNum > 1 && netLayer == 0) {
+            // PCIE-SW场景，需要建立PCIE的clos链路
+            bool isNeedLevel0NhrChannel = ((topoInfo->level0Topo == Level0Shape::CLOS || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) &&
+                topoInfo->level0PcieMix && topoInfo->serverNum == 1);
+            HCCL_INFO("[CalcChannelRequestNhr] isNeedLevel0NhrChannel[%d] Need to calc NHR channel in level0: level0Topo[%d], level0PcieMix[%d]",
+                isNeedLevel0NhrChannel, topoInfo->level0Topo, topoInfo->level0PcieMix);
+            if (netLayerNum > 1 && netLayer == 0 && !isNeedLevel0NhrChannel) {
                 continue; // 跨框场景，nhr算法只取layer1的的链路
             }
             CommLink *linkList = nullptr;

@@ -609,6 +609,10 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDe
                 HCCL_INFO("Using algo InsAllReduceSequenceMeshNhrDPU");
                 return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            selectAlgName = "InsAllReduceSequenceMeshNhrDPU";
+            HCCL_DEBUG("[AllReduceAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
         }
     }
  

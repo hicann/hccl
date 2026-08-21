@@ -271,6 +271,8 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDe
 
     HCCL_INFO("hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType,
               algos[0], algos[1], algos[2], algos[3]);
+    HCCL_DEBUG("[BroadcastAutoSelector][SelectDPUAlgo] topoLevelNums[%u], deviceNumPerModule[%u], level0Topo[%u]",
+        topoInfo->topoLevelNums, topoInfo->deviceNumPerModule, static_cast<u32>(topoInfo->level0Topo));
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "InsBroadcastSequenceMeshNhrDPU";
@@ -280,6 +282,11 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(const TopoInfoWithNetLayerDe
                 selectAlgName = "InsBroadcastSequenceMeshNhrDPU";
                 return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // seq算法兼容level0为clos的场景
+            selectAlgName = "InsBroadcastSequenceMeshNhrDPU";
+            HCCL_DEBUG("[BroadcastAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
         }
     }
 

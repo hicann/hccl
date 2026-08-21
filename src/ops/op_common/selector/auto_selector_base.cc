@@ -46,11 +46,9 @@ SelectorStatus AutoSelectorBase::Select(OpParam &opParam, TopoInfoWithNetLayerDe
         return ret;
     }
     if (IsStarsState(opParam.opExecuteConfig)) {
-        // level0是PCIE混合的场景，且CLOS规模大于8，alltoall算子选择AIV_ONLY算法
-        if (topoInfo->level0PcieMix && topoInfo->level0BigClosRange &&
-            (opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
-             opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
-             opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC)) {
+        // 需要回退AIV的场景下，回退AIV算法
+        if (IsRollBackAiv(opParam, topoInfo)) {
+            HCCL_INFO("[Algo][AutoSelectorBase] Need to roll back AIV algo");
             opParam.opExecuteConfig = OpExecuteConfig::AIV_ONLY;
             (void)ProcessAivConfig(opParam, topoInfo, configAlgMap, selectAlgName, ret);
             HCCL_INFO("[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.",
@@ -65,6 +63,18 @@ SelectorStatus AutoSelectorBase::Select(OpParam &opParam, TopoInfoWithNetLayerDe
     HCCL_INFO("[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.",
         selectAlgName.c_str(), opParam.opExecuteConfig);
     return ret;
+}
+
+bool AutoSelectorBase::IsRollBackAiv(OpParam &opParam, TopoInfoWithNetLayerDetails* topoInfo) const
+{
+    bool isAllToAllOps = opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL ||
+                        opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLV ||
+                        opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC;
+    bool isInt64ReduceOps = opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64 &&
+                            (opParam.opType == HcclCMDType::HCCL_CMD_ALLREDUCE ||
+                            opParam.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER ||
+                            opParam.opType == HcclCMDType::HCCL_CMD_REDUCE);
+    return topoInfo->level0PcieMix && topoInfo->level0BigClosRange && (isAllToAllOps || isInt64ReduceOps);
 }
 
 bool AutoSelectorBase::IsStarsState(const OpExecuteConfig &opExecuteConfig) const

@@ -29,7 +29,7 @@ HcclResult InsTempDpuAlltoAllMesh::CalcRes(HcclComm comm, const OpParam &param, 
     u32 threadNum = 0;
     std::vector<HcclChannelDesc> level0Channels;
     // level0是mesh1d或者ub+pcie混合拓扑，使用mesh1d的算法
-    if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix) {
+    if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix || topoInfo->deviceNumPerModule == 1) {
         // 框内threadNum最大取MAX_RANK_NUM_PER_SERVER
         threadNum = (templateRankSize_ > MAX_RANK_NUM_PER_SERVER) ? MAX_RANK_NUM_PER_SERVER :
                     (templateRankSize_ > 1)                       ? (templateRankSize_ - 1) :
