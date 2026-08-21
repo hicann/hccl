@@ -94,9 +94,7 @@ InsTempBroadcastNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std:
             tempAlgParams.count);
         CHK_PRT_RET(
             LocalCopy(threads[0], usrInSlice, usrOutSlice),
-            HCCL_ERROR("[InsTempBroadcastNHR] RunScatter userIn to cclIn copy failed"),
-
-            HcclResult::HCCL_E_INTERNAL);
+            HCCL_ERROR("[InsTempBroadcastNHR] RunScatter userIn to cclIn copy failed"), HcclResult::HCCL_E_INTERNAL);
     } else {
         HCCL_INFO("[InsTempBroadcastNHR][PostCopy] Offload Model, skip postcopy");
     }

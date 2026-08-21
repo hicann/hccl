@@ -145,9 +145,11 @@ static const std::map<std::string, OpExecuteConfig> ENGINE_PREFIX_MAP = {
 
 // OpExecuteConfig → 字符串(用于日志)
 static const std::map<OpExecuteConfig, const char*> ENGINE_STR_MAP = {
-    {OpExecuteConfig::AICPU_TS, "AICPU_TS"}, {OpExecuteConfig::AIV, "AIV"},
-    {OpExecuteConfig::CCU_MS, "CCU_MS"},     {OpExecuteConfig::CCU_SCHED, "CCU_SCHED"},
-    {OpExecuteConfig::HOSTCPU, "HOSTCPU"},
+    {OpExecuteConfig::DEFAULT, "DEFAULT"},     {OpExecuteConfig::HOSTCPU_TS, "HOSTCPU_TS"},
+    {OpExecuteConfig::AICPU_TS, "AICPU_TS"},   {OpExecuteConfig::AIV, "AIV"},
+    {OpExecuteConfig::AIV_ONLY, "AIV_ONLY"},   {OpExecuteConfig::CCU_MS, "CCU_MS"},
+    {OpExecuteConfig::CCU_SCHED, "CCU_SCHED"}, {OpExecuteConfig::AICPU, "AICPU"},
+    {OpExecuteConfig::HOSTCPU, "HOSTCPU"},     {OpExecuteConfig::CCU_FAIL, "CCU_FAIL"},
 };
 
 enum class OpMode { OFFLOAD = 0, OPBASE = 1, ACLGRAPH = 2 };

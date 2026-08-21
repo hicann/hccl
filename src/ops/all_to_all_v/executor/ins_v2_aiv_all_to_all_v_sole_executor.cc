@@ -171,6 +171,10 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
     std::vector<std::vector<u32>> tempAlgHierachyInfo;
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
         && param.engine != CommEngine::COMM_ENGINE_AIV) {
+        if (resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos size[%zu] < 2.", __func__, resCtx.algHierarchyInfo.infos.size());
+            return HCCL_E_PARA;
+        }
         tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[1];
     } else {
         tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[0];

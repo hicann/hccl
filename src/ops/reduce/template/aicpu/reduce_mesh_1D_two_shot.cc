@@ -79,7 +79,7 @@ HcclResult ReduceMesh1DTwoShot::KernelRun(
     rankList_ = subCommRanks_.at(0);
 
     opMode_ = param.opMode;
-    GetAlgRank(myRank_, rankList_, myIdx_);
+    CHK_RET(GetAlgRank(myRank_, rankList_, myIdx_));
     CHK_PRT_RET(
         myIdx_ >= templateRankSize_,
         HCCL_ERROR(

@@ -62,6 +62,10 @@ HcclResult ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     HCCL_DEBUG("[ScatterSequenceAicpu3LevelExecutor][CalcRes] myRank[%u] start", myRank_);
     InitCommInfo(param, topoInfo, algHierarchyInfo);
 
+    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid (empty or size < 2).", __func__);
+        return HCCL_E_PARA;
+    }
     skipLevel1_ = (algHierarchyInfo.infos[1][0].size() == 1);
     skipLevel2_ = (algHierarchyInfo.infos.size() == TOPO_LEVEL_NUM_2);
     std::shared_ptr<InsAlgTemplate0> tempAlgLevel0

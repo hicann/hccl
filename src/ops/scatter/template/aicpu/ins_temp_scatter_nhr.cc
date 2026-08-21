@@ -87,9 +87,9 @@ HcclResult InsTempScatterNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo
     u32 myAlgRank;
     u32 rootAlgRank;
     HCCL_DEBUG("[InsTempScatterNHR][GetStepInfo] root_ before getAlgRank [%u] ", root_);
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_DEBUG("[InsTempScatterNHR][GetStepInfo] myRank_[%u], myAlgRank[%u]", myRank_, myAlgRank);
-    GetAlgRank(root_, subCommRanks_[0], rootAlgRank);
+    CHK_RET(GetAlgRank(root_, subCommRanks_[0], rootAlgRank));
     HCCL_DEBUG("[InsTempScatterNHR][GetStepInfo] root_[%u], rootAlgRank[%u]", root_, rootAlgRank);
     stepInfo.txSliceIdxs.clear();
     stepInfo.rxSliceIdxs.clear();
@@ -251,7 +251,7 @@ HcclResult
 InsTempScatterNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
     u32 myAlgRank;
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     u32 curSliceSize
         = tempAlgParams.tailSize != 0 && myAlgRank == templateRankSize_ - 1 ? tempAlgParams.tailSize : processSize_;

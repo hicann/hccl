@@ -226,7 +226,7 @@ HcclResult InsTempAllGatherMesh1DIntra::LocalDataCopy(const std::vector<ThreadHa
             myRank_, myAlgRank, outBaseOff, outOff, sliceSize, sliceCount, tempAlgParams_.buffInfo.outBuffType,
             tempAlgParams_.buffInfo.outputPtr);
 
-        LocalCopy(threads[0], srcSlice, dstSlice);
+        CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -247,7 +247,7 @@ HcclResult InsTempAllGatherMesh1DIntra::PostLocalCopy(const std::vector<ThreadHa
         u64 outOffset = outBaseOff;
         DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
         DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
-        LocalCopy(threads[0], srcSlice, dstSlice);
+        CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
 }

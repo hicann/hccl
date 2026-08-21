@@ -219,7 +219,7 @@ HcclResult InsTempAllGatherVMesh1D::LocalDataCopy(const std::vector<ThreadHandle
             "outOff[%d] sliceSize[%d] count[%d].",
             myRank_, myAlgRank, outBaseOff, outOff, tempAlgParams_.allRankSliceSize[myAlgRank], tempAlgParams_.count);
 
-        LocalCopy(threads[0], srcSlice, dstSlice);
+        CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -249,7 +249,7 @@ HcclResult InsTempAllGatherVMesh1D::PostLocalCopy(const std::vector<ThreadHandle
                 "[InsTempAllGatherVMesh1D] PostLocalCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
                 "scratchBase[%d] outBaseOff[%d] scratchOffset[%d] outOffset[%d].",
                 myRank_, rank, algRank, scratchBase, outBaseOff, scratchOffset, outOffset);
-            LocalCopy(threads[0], srcSlice, dstSlice);
+            CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
         }
     }
     return HcclResult::HCCL_SUCCESS;

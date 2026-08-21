@@ -959,9 +959,9 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
                         "[InsV2AllReduceOmniPipeExecutor][OrchestrateLoop] execute level-0 AG step, "
                         "loop[%llu], stepZ[%d], stepXY[%d], rankSize[%llu].",
                         loop, stepZ, stepXY, rankSizeLevel0_);
-                    GenTemplateAlgParamsByDimData(
+                    CHK_RET(GenTemplateAlgParamsByDimData(
                         tempAlgParamMap[OMNIPIPE_AG_LEVEL0],
-                        OmniPipeSliceInfoAG.dataSliceLevel0[stepZ * intraPodStepNum + stepXY]);
+                        OmniPipeSliceInfoAG.dataSliceLevel0[stepZ * intraPodStepNum + stepXY]));
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL0].omniReadDstStepSliceInfo
                         = OmniPipeSliceInfoAG.dataSliceLevel0[stepZ * intraPodStepNum + stepXY];
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL0].processedDataCount = loopOffsetCount;
@@ -973,9 +973,9 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
                         "[InsV2AllReduceOmniPipeExecutor][OrchestrateLoop] execute level-1 AG step, "
                         "loop[%llu], stepZ[%d], stepXY[%d], rankSize[%llu].",
                         loop, stepZ, stepXY, rankSizeLevel1_);
-                    GenTemplateAlgParamsByDimData(
+                    CHK_RET(GenTemplateAlgParamsByDimData(
                         tempAlgParamMap[OMNIPIPE_AG_LEVEL1],
-                        OmniPipeSliceInfoAG.dataSliceLevel1[stepZ * intraPodStepNum + stepXY]);
+                        OmniPipeSliceInfoAG.dataSliceLevel1[stepZ * intraPodStepNum + stepXY]));
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL1].omniReadDstStepSliceInfo
                         = OmniPipeSliceInfoAG.dataSliceLevel1[stepZ * intraPodStepNum + stepXY];
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL1].processedDataCount = loopOffsetCount;

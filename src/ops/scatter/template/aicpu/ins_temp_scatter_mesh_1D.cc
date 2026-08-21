@@ -154,7 +154,7 @@ InsTempScatterMesh1D::PreCopy(const TemplateDataParams& tempAlgParams, const std
     }
 
     u32 myAlgRank = 0;
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         u64 srcOffset = tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER ?
@@ -193,7 +193,7 @@ InsTempScatterMesh1D::PostCopy(const TemplateDataParams& tempAlgParams, const st
     }
 
     u32 myAlgRank = 0;
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     // root rank数据在inplace场景下需要进行搬运
     if (isInplaceRootRank) {
         HCCL_INFO("[InsTempScatterMesh1D][PostCopy], is inplace root rank, copy from userIn to userOut");
@@ -223,7 +223,7 @@ HcclResult InsTempScatterMesh1D::RunMesh(
     u32 curSliceSize = 0;
     u32 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
-    GetAlgRank(myRank_, subCommRanks_[0], myAlgRank);
+    CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_DEBUG(
         "[InsTempScatterMesh1D][RunMesh] myRank[%d], myAlgRank[%d], channels size[%d]", myRank_, myAlgRank,
         channels.size());

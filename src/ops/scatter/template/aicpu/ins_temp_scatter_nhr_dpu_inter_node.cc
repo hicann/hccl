@@ -233,7 +233,7 @@ HcclResult InsTempScatterNHRDPUInterNode::PostLocalCopy(
     u64 outOffset = tempAlgParams.buffInfo.outBuffBaseOff;
     DataSlice srcSlice(tempAlgParams.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
     DataSlice dstSlice(tempAlgParams.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
-    LocalCopy(templateResource.threads[0], srcSlice, dstSlice);
+    CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
 
     return HcclResult::HCCL_SUCCESS;
 }

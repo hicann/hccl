@@ -207,7 +207,7 @@ InsTempAllGatherNHRDPU::LocalDataCopy(const TemplateDataParams& tempAlgParams, c
 
         DataSlice srcSlices(tempAlgParams.buffInfo.inputPtr, inOff, tempAlgParams.sliceSize, tempAlgParams.count);
         DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, scOff, tempAlgParams.sliceSize, tempAlgParams.count);
-        LocalCopy(templateResource.threads[0], srcSlices, dstSlice);
+        CHK_RET(LocalCopy(templateResource.threads[0], srcSlices, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -257,7 +257,7 @@ InsTempAllGatherNHRDPU::PostLocalCopy(const TemplateDataParams& tempAlgParams, c
                 tempAlgParams.buffInfo.hcclBuff.addr, scratchOffset, tempAlgParams.sliceSize, tempAlgParams.count);
             DataSlice dstSlice(
                 tempAlgParams.buffInfo.outputPtr, outOffset, tempAlgParams.sliceSize, tempAlgParams.count);
-            LocalCopy(templateResource.threads[0], srcSlice, dstSlice);
+            CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
         }
     }
     return HcclResult::HCCL_SUCCESS;

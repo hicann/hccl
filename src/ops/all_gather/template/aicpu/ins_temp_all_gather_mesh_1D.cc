@@ -278,7 +278,7 @@ HcclResult InsTempAllGatherMesh1D::LocalDataCopy(const std::vector<ThreadHandle>
                 "[InsTempAllGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] dstSlice: outBaseoff[%llu] "
                 "outOff[%llu] sliceSize[%llu] count[%llu].",
                 myRank_, myAlgRank, outBaseOff, outOff, sliceSize, sliceCount);
-            LocalCopy(threads[0], srcSlice, dstSlice);
+            CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
         }
 
         if (!enableRemoteMemAccess_ && !supportSymmetricMemory_) {
@@ -294,7 +294,7 @@ HcclResult InsTempAllGatherMesh1D::LocalDataCopy(const std::vector<ThreadHandle>
                     "[InsTempAllGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] copy to ccl: "
                     "cclBaseOff[%llu] cclOff[%llu] sliceSize[%llu] count[%llu].",
                     myRank_, myAlgRank, cclBaseOff, cclOff, sliceSize, sliceCount);
-                LocalCopy(threads[0], srcSlice, cclDstSlice);
+                CHK_RET(LocalCopy(threads[0], srcSlice, cclDstSlice));
             }
         }
     }
@@ -338,7 +338,7 @@ HcclResult InsTempAllGatherMesh1D::PostLocalCopy(const std::vector<ThreadHandle>
                 "[InsTempAllGatherMesh1D] LocalDataCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
                 "scratchBase[%d] outBaseOff[%d] scratchOffset[%d] outOffset[%d].",
                 myRank_, rank, algRank, outBaseOff, outBaseOff, scratchOffset, outOffset);
-            LocalCopy(threads[0], srcSlice, dstSlice);
+            CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
         }
     }
     return HcclResult::HCCL_SUCCESS;

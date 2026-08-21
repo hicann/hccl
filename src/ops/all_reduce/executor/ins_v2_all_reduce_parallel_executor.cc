@@ -153,6 +153,10 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         temp1HierarchyInfo = {closRanks};
     } else {
         temp0HierarchyInfo = algHierarchyInfo.infos[0];
+        if (algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos size[%zu] < 2.", __func__, algHierarchyInfo.infos.size());
+            return HCCL_E_PARA;
+        }
         temp1HierarchyInfo = algHierarchyInfo.infos[1];
     }
     // 实例化算法模板类
@@ -514,6 +518,10 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         temp1HierarchyInfo_ = {closRanks};
     } else {
         temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+        if (resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2) {
+            HCCL_ERROR("[%s] algHierarchyInfo.infos size[%zu] < 2.", __func__, resCtx.algHierarchyInfo.infos.size());
+            return HCCL_E_PARA;
+        }
         temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
     }
 

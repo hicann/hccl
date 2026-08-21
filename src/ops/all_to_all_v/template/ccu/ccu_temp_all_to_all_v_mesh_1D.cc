@@ -278,7 +278,7 @@ HcclResult CcuTempAlltoAllVMesh1D::KernelRun(
             = DataSlice(buffInfo_.inputPtr, buffInfo_.inBuffBaseOff, localSendRecvInfo_.sendLength[myRank_]);
         DataSlice usrOutSlice
             = DataSlice(buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, localSendRecvInfo_.sendLength[myRank_]);
-        LocalCopy(templateResource.threads[0], usrInSlice, usrOutSlice);
+        CHK_RET(LocalCopy(templateResource.threads[0], usrInSlice, usrOutSlice));
 
         HCCL_INFO(
             "[CcuTempAlltoAllVMesh1D] rankSize = 1, use InsLocalCopy for sliceSize[%llu].",

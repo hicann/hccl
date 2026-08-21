@@ -240,7 +240,7 @@ HcclResult InsTempScatterNHRDPUInter::LocalDataCopy(
             "[InsTempScatterNHRDPUInter][LocalCopy] LocalDataCopy RankID [%d] algRankIdx [%d] "
             "srcOff[%d] dstOff[%d] sliceOffset[%d] sliceSize[%d].",
             myRank_, algRankIdx, inOff, scOff, sliceOffset, sliceSize);
-        LocalCopy(templateResource.threads[0], srcSlices, dstSlice);
+        CHK_RET(LocalCopy(templateResource.threads[0], srcSlices, dstSlice));
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -272,7 +272,7 @@ HcclResult InsTempScatterNHRDPUInter::PostLocalCopy(
                 "[InsTempScatterNHRDPUInter][LocalCopy] LocalDataCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
                 "srcOff[%d] dstOff[%d] sliceOffset[%d] sliceSize[%d].",
                 myRank_, rank, algRank, scratchOffset, outOffset, sliceOffset, sliceSize);
-            LocalCopy(templateResource.threads[0], srcSlice, dstSlice);
+            CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
         }
     }
     return HcclResult::HCCL_SUCCESS;

@@ -157,6 +157,10 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
+    if (resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_3) {
+        HCCL_ERROR("[%s] algHierarchyInfo.infos size[%zu] < 3.", __func__, resCtx.algHierarchyInfo.infos.size());
+        return HCCL_E_PARA;
+    }
     levels_.emplace_back(remoteRankToChannelInfo_[0], resCtx.algHierarchyInfo.infos[0]);
     levels_.emplace_back(remoteRankToChannelInfo_[1], resCtx.algHierarchyInfo.infos[1]);
     levels_.emplace_back(remoteRankToChannelInfo_[2], resCtx.algHierarchyInfo.infos[2]);
