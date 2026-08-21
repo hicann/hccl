@@ -692,19 +692,59 @@ static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetail
     return HCCL_SUCCESS;
 }
 
-static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+static bool HasNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, u32 targetNetLayer)
 {
-    topoInfo->level2Ubg = false;
-    constexpr u32 LEVEL2_NET_LAYER = NET_LAYER_NUM_THREE - 1;
-    bool hasLevel2 = false;
     for (u32 netLayer : topoInfo->netLayerDetails.netLayers) {
-        if (netLayer == LEVEL2_NET_LAYER) {
-            hasLevel2 = true;
+        if (netLayer == targetNetLayer) {
+            return true;
+        }
+    }
+    return false;
+}
+
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+static u32 FindUbRtpLink(const CommLink* links, uint32_t linkNum)
+{
+    for (u32 linkIdx = 0; linkIdx < linkNum; linkIdx++) {
+        if (links[linkIdx].header.version >= 1
+            && links[linkIdx].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UB_RTP) {
+            return linkIdx;
+        }
+    }
+    return linkNum;
+}
+
+static HcclResult CheckLowerLayerLink(
+    const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, u32 myRank, u32 dstRank, u32 level2NetLayer,
+    bool& hasLowerLayerLink)
+{
+    hasLowerLayerLink = false;
+    for (u32 netLayer : topoInfo->netLayerDetails.netLayers) {
+        if (netLayer >= level2NetLayer) {
+            continue;
+        }
+        CommLink* lowerLayerLinks = nullptr;
+        uint32_t lowerLayerLinkNum = 0;
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, dstRank, &lowerLayerLinks, &lowerLayerLinkNum));
+        if (lowerLayerLinkNum > 0) {
+            hasLowerLayerLink = true;
+            HCCL_DEBUG(
+                "[TopoHost][CalcLevel2UbRtp] UB_RTP candidate has lower layer link, "
+                "dstRank[%u], netLayer[%u]",
+                dstRank, netLayer);
             break;
         }
     }
-    if (!hasLevel2) {
-        HCCL_INFO("[TopoHost][CalcLevel2Ubg] netLayer_2 does not exist, level2Ubg=false");
+    return HCCL_SUCCESS;
+}
+#endif
+
+static HcclResult CalcLevel2UbRtp(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+{
+    topoInfo->level2UbRtp = false;
+    constexpr u32 LEVEL2_NET_LAYER = NET_LAYER_NUM_THREE - 1;
+    if (!HasNetLayer(topoInfo, LEVEL2_NET_LAYER)) {
+        HCCL_INFO("[TopoHost][CalcLevel2UbRtp] netLayer_2 does not exist, level2UbRtp=false");
         return HCCL_SUCCESS;
     }
 
@@ -722,50 +762,28 @@ static HcclResult CalcLevel2Ubg(const HcclComm comm, TopoInfoWithNetLayerDetails
             continue;
         }
         CHK_PTR_NULL(links);
-        u32 ubgLinkIdx = linkNum;
-        for (u32 linkIdx = 0; linkIdx < linkNum; linkIdx++) {
-            if (links[linkIdx].header.version >= 1
-                && links[linkIdx].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBG) {
-                ubgLinkIdx = linkIdx;
-                break;
-            }
-        }
-        if (ubgLinkIdx == linkNum) {
+        const u32 ubRtpLinkIdx = FindUbRtpLink(links, linkNum);
+        if (ubRtpLinkIdx == linkNum) {
             continue;
         }
 
         bool hasLowerLayerLink = false;
-        for (u32 netLayer : topoInfo->netLayerDetails.netLayers) {
-            if (netLayer >= LEVEL2_NET_LAYER) {
-                continue;
-            }
-            CommLink* lowerLayerLinks = nullptr;
-            uint32_t lowerLayerLinkNum = 0;
-            CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, dstRank, &lowerLayerLinks, &lowerLayerLinkNum));
-            if (lowerLayerLinkNum > 0) {
-                hasLowerLayerLink = true;
-                HCCL_DEBUG(
-                    "[TopoHost][CalcLevel2Ubg] UBG candidate has lower layer link, "
-                    "dstRank[%u], netLayer[%u]",
-                    dstRank, netLayer);
-                break;
-            }
-        }
+        CHK_RET(CheckLowerLayerLink(comm, topoInfo, myRank, dstRank, LEVEL2_NET_LAYER, hasLowerLayerLink));
         if (hasLowerLayerLink) {
             continue;
         }
-        topoInfo->level2Ubg = true;
+        topoInfo->level2UbRtp = true;
         HCCL_INFO(
-            "[TopoHost][CalcLevel2Ubg] UBG link found without lower layer links, "
+            "[TopoHost][CalcLevel2UbRtp] UB_RTP link found without lower layer links, "
             "dstRank[%u], linkIdx[%u]",
-            dstRank, ubgLinkIdx);
+            dstRank, ubRtpLinkIdx);
         return HCCL_SUCCESS;
     }
 #else
-    // 参考Uboe判断版本，低版本 CANN 无 UBG 枚举值
+    // 参考Uboe判断版本，低版本 CANN 无 UB_RTP 枚举值
     (void)comm;
 #endif
-    HCCL_INFO("[TopoHost][CalcLevel2Ubg] no UBG links found on netLayer_2, level2Ubg=false");
+    HCCL_INFO("[TopoHost][CalcLevel2UbRtp] no UB_RTP links found on netLayer_2, level2UbRtp=false");
     return HCCL_SUCCESS;
 }
 
@@ -779,7 +797,7 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(IsLevel0PcieMix(comm, topoInfo));
     CHK_RET(CalcLevel0MeshType(comm, topoInfo));
     CHK_RET(CalcLevel2Uboe(comm, topoInfo));
-    CHK_RET(CalcLevel2Ubg(comm, topoInfo));
+    CHK_RET(CalcLevel2UbRtp(comm, topoInfo));
     CHK_RET(CalcHostDPUOnly(comm, topoInfo));
     return HCCL_SUCCESS;
 }

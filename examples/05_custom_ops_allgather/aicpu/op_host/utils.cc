@@ -53,7 +53,7 @@ HcclResult FillChannelDesc(HcclComm comm, uint32_t srcRank, uint32_t dstRank, Hc
     CHK_RET(HcclRankGraphGetLinks(comm, netLayer, srcRank, dstRank, &linkList, &listSize));
 
     CHK_RET(HcclChannelDescInit(&desc, 1));
-    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
     bool protocolExists = false;
     for (uint32_t idx = 0; idx < listSize; idx++) {
         CommLink link = linkList[idx];

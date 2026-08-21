@@ -115,7 +115,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::CalcRes(
         CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
             comm, param, topoInfo, subCommRanks_, myChannelDescs, CommTopo::COMM_TOPO_1DMESH));
         for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
                 channelDescs.push_back(channel);
             }
         }

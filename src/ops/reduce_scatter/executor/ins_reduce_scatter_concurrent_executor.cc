@@ -89,7 +89,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
         comm, param, topoInfo, temp0HierarchyInfo, channelDescsTemp0, CommTopo::COMM_TOPO_1DMESH));
     for (auto channel : channelDescsTemp0) {
-        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
             channelDescs0.push_back(channel);
         }
     }
@@ -103,7 +103,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, temp1HierarchyInfo, channelDescsTemp1));
     for (auto channel : channelDescsTemp1) {
-        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
             channelDescs1.push_back(channel);
         }
     }

@@ -112,7 +112,7 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::copy_if(
         channelDescsTemp.begin(), channelDescsTemp.end(), std::back_inserter(channelDescs),
         [](const HcclChannelDesc& c) {
-            return c.channelProtocol == COMM_PROTOCOL_UBC_CTP;
+            return c.channelProtocol == COMM_PROTOCOL_UB_CTP;
         });
 
     CHK_PRT_RET(

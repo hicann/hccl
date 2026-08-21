@@ -46,7 +46,7 @@ HcclResult InsTempScatterNHR::CalcRes(
             = !(IsAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH) || dataSize <= SMALL_SIZE_512KB);
         CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, isIsolation));
         for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
                 level0Channels.push_back(channel);
             }
         }

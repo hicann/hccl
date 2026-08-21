@@ -74,7 +74,7 @@ HcclResult CcuTempAllGatherMesh1D::CalcRes(
         CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
             comm, param, topoInfo, subCommRanks_, channelDescs, CommTopo::COMM_TOPO_1DMESH));
         for (auto channel : channelDescs) {
-            if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
+            if (channel.channelProtocol != COMM_PROTOCOL_UB_CTP) {
                 HCCL_ERROR("[CcuTempAllGatherMesh1D][CalcRes] channelProtocol: %u", channel.channelProtocol);
                 return HCCL_E_INTERNAL;
             }

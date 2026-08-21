@@ -210,7 +210,7 @@ HcclResult CcuTempAllReduceConcurrentMeshNHR::CalcMeshRes(
         comm, param, topoInfo, std::vector<std::vector<u32>>{meshGroup_}, myChannelDescs, CommTopo::COMM_TOPO_1DMESH));
     std::vector<HcclChannelDesc> channelDescs;
     for (const auto& ch : myChannelDescs) {
-        if (ch.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+        if (ch.channelProtocol == COMM_PROTOCOL_UB_CTP) {
             channelDescs.push_back(ch);
         }
     }
@@ -238,7 +238,7 @@ HcclResult CcuTempAllReduceConcurrentMeshNHR::CalcNhrRes(
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, std::vector<std::vector<u32>>{nhrGroup_}, myChannelDescs));
     std::vector<HcclChannelDesc> channelDescs;
     for (const auto& ch : myChannelDescs) {
-        if (ch.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+        if (ch.channelProtocol == COMM_PROTOCOL_UB_CTP) {
             channelDescs.push_back(ch);
         }
     }

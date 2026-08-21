@@ -77,9 +77,9 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
     (void)configAlgMap;
     HCCL_DEBUG("[BroadcastAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_INFO(
-            "[BroadcastAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.", __func__);
+            "[BroadcastAutoSelector][%s] ccu schedule is not supported with level2UbRtp, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -268,9 +268,9 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            opParam, HCCL_DEBUG, "[BroadcastAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

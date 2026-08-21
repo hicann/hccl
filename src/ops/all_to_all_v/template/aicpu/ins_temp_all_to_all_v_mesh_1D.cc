@@ -40,7 +40,7 @@ HcclResult InsTempAlltoAllVMesh1D::CalcRes(
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
         for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
                 level0Channels.push_back(channel);
             }
         }

@@ -140,7 +140,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::CalcChannelDescs(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
         for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
                 channelDescs.push_back(channel);
             }
         }

@@ -74,9 +74,9 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_INFO(
-            "[ReduceScatterVAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.",
+            "[ReduceScatterVAutoSelector][%s] ccu schedule is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

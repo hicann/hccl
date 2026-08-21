@@ -224,7 +224,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     bool level0PcieMix{false};
     bool level0BigClosRange{false};
     bool level2Uboe{false};
-    bool level2Ubg{false};
+    bool level2UbRtp{false};
     bool hostDpuOnly{false};
     bool level0Symmetric{false};
     bool level1Symmetric{false};
@@ -262,7 +262,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream << level0PcieMix;
         binaryStream << level0BigClosRange;
         binaryStream << level2Uboe;
-        binaryStream << level2Ubg;
+        binaryStream << level2UbRtp;
         binaryStream << hostDpuOnly;
         binaryStream << level0Symmetric;
         binaryStream << level1Symmetric;
@@ -314,7 +314,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         binaryStream >> level0PcieMix;
         binaryStream >> level0BigClosRange;
         binaryStream >> level2Uboe;
-        binaryStream >> level2Ubg;
+        binaryStream >> level2UbRtp;
         binaryStream >> hostDpuOnly;
         binaryStream >> level0Symmetric;
         binaryStream >> level1Symmetric;

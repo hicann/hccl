@@ -66,7 +66,7 @@ HcclResult AcquireChannel(
 
     HcclChannelDesc desc;
     CHK_RET(HcclChannelDescInit(&desc, 1));
-    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
     bool protocolExists = false;
     for (uint32_t idx = 0; idx < listSize; idx++) {
         CommLink link = linkList[idx];

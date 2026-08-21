@@ -66,7 +66,7 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     uint32_t channelIdx = 0;
     for (auto channel : channelDescs) {
-        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
             myChannelDescs.push_back(channel);
         }
     }

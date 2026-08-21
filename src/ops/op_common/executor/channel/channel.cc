@@ -228,20 +228,19 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol>& 
 {
     protocols.clear();
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+    // HCCL不再选择UBC_TP（值5）；HCOMM仅为兼容历史调用方保留该协议。
     switch (param.engine) {
         case CommEngine::COMM_ENGINE_AICPU:
         case CommEngine::COMM_ENGINE_AICPU_TS:
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_CTP);
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_TP);
+            protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_CTP);
             protocols.push_back(CommProtocol::COMM_PROTOCOL_PCIE);
             protocols.push_back(CommProtocol::COMM_PROTOCOL_UBOE);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBG);
+            protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_RTP);
 #endif
             break;
         case CommEngine::COMM_ENGINE_CCU:
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_CTP);
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_TP);
+            protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_CTP);
             break;
         case CommEngine::COMM_ENGINE_AIV:
             protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_MEM);
@@ -249,8 +248,7 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol>& 
             break;
         case CommEngine::COMM_ENGINE_CPU:
             // level 1到level n-1使用UB协议，server内建联，最外层使用网卡建联
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_CTP);
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UBC_TP);
+            protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_CTP);
             protocols.push_back(CommProtocol::COMM_PROTOCOL_ROCE);
             break;
         case CommEngine::COMM_ENGINE_CPU_TS:
@@ -263,7 +261,7 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol>& 
             break;
     }
 #else
-    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 等枚举值；此函数所在的 CalcChannelRequestXxx/CreateChannelRequestByRankId 通路
+    // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；此函数所在的 CalcChannelRequestXxx/CreateChannelRequestByRankId 通路
     // 仅 9.0.0 新路径使用，运行时已由算子入口 GetHcommVersion() < CANN_VERSION(9, 0, 0) 分流到 HcclXxxInner，
     // 8.5.0 下不会真正走到。这里保留空桩让 libhccl.so 外部链接（hccl_test 等）能解析符号。
     (void)param;
@@ -678,12 +676,12 @@ HcclResult CalcChannelRequestMesh2D(
         CHK_RET(CalcMesh2DChannelConnect(myRank, subcommInfo, connectRanks));
     }
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+    CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
     if (param.engine == CommEngine::COMM_ENGINE_AIV) {
         protocol = CommProtocol::COMM_PROTOCOL_UB_MEM;
     }
 #else
-    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 枚举值；CalcChannelRequestMesh2D 整体属 9.0.0 新特性，
+    // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；CalcChannelRequestMesh2D 整体属 9.0.0 新特性，
     // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_HCCS;
     (void)param;
@@ -1141,9 +1139,9 @@ HcclResult CalcChannelRequestNhrMultiJetty(
     CHK_RET(CalcNHRChannelConnect(localRank, localRankSize, INVALID_VALUE_RANKID, connectRanks));
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? CommProtocol::COMM_PROTOCOL_UB_MEM :
-                                                                                  CommProtocol::COMM_PROTOCOL_UBC_CTP;
+                                                                                  CommProtocol::COMM_PROTOCOL_UB_CTP;
 #else
-    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 枚举值；
+    // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；
     // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
     CommProtocol expectedProtocol = CommProtocol::COMM_PROTOCOL_HCCS;
 #endif
@@ -1200,9 +1198,9 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(
     u32 myRank = topoInfo->userRank;
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? CommProtocol::COMM_PROTOCOL_UB_MEM :
-                                                                                  CommProtocol::COMM_PROTOCOL_UBC_CTP;
+                                                                                  CommProtocol::COMM_PROTOCOL_UB_CTP;
 #else
-    // 8.5.0 CANN 无 UBC_CTP/UB_MEM 枚举值；
+    // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；
     // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
     CommProtocol expectedProtocol = CommProtocol::COMM_PROTOCOL_HCCS;
 #endif

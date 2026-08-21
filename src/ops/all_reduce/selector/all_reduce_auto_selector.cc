@@ -173,9 +173,9 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
     u32 ccuSize = AR_CCU_MAX_RANK_SIZE;
     HCCL_DEBUG("[AllReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_INFO(
-            "[AllReduceAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.", __func__);
+            "[AllReduceAutoSelector][%s] ccu schedule is not supported with level2UbRtp, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -595,9 +595,9 @@ SelectorStatus AllReduceAutoSelector::SelectAivAlgo(
     (void)configAlgMap;
     HCCL_DEBUG("[Algo][AllReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[AllReduceAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            opParam, HCCL_DEBUG, "[AllReduceAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

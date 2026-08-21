@@ -30,9 +30,9 @@ SelectorStatus SendAutoSelector::SelectAivAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     (void)configAlgMap;
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[SendAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            opParam, HCCL_DEBUG, "[SendAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

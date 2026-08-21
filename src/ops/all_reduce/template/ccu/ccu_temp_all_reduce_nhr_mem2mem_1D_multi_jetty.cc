@@ -76,7 +76,7 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcRes(
     std::copy_if(
         channelDescsTemp.begin(), channelDescsTemp.end(), std::back_inserter(channelDescs),
         [](const HcclChannelDesc& c) {
-            return c.channelProtocol == COMM_PROTOCOL_UBC_CTP;
+            return c.channelProtocol == COMM_PROTOCOL_UB_CTP;
         });
 
     std::map<u32, u32> channelIdxMap; // 存放某个通信对端对应channels的索引，例(2,

@@ -212,9 +212,9 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[AllGatherAutoSelector][%s] start", __func__);
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_INFO(
-            "[AllGatherAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.", __func__);
+            "[AllGatherAutoSelector][%s] ccu schedule is not supported with level2UbRtp, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
@@ -418,9 +418,9 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[AllGatherAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            opParam, HCCL_DEBUG, "[AllGatherAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

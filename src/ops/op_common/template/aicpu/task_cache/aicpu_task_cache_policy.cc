@@ -147,10 +147,10 @@ bool AicpuTaskCachePolicy::IsTopoSupported(const AlgResourceCtxSerializable& res
                 continue;
             }
 
-            // 只支持基于UB的跨卡通信 (当前aicpu仅支持UBC_CTP/UBC_TP/UBOE)
+            // 当前AICPU task cache仅支持基于UB_CTP/UBOE的跨卡通信。
+            // UB_RTP虽是AICPU建链候选协议，但不支持AICPU task cache。
             // 不支持其他通信方式, 例如基于外置网卡的跨超RDMA, 基于PCIe的跨卡P2P等
-            if (channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_CTP
-                && channel.protocol != CommProtocol::COMM_PROTOCOL_UBC_TP
+            if (channel.protocol != CommProtocol::COMM_PROTOCOL_UB_CTP
                 && channel.protocol != CommProtocol::COMM_PROTOCOL_UBOE) {
                 HCCL_INFO(
                     "[AicpuTaskCachePolicy][IsTopoSupported] found channel protocol[%d] not supported",

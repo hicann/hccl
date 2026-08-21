@@ -112,8 +112,9 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
     CHK_PRT_RET(
         topoInfo == nullptr, HCCL_ERROR("[Algo][ReduceAutoSelector] topoInfo is nullptr"), SelectorStatus::NOT_MATCH);
     HCCL_DEBUG("[ReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
-    if (topoInfo->level2Ubg) {
-        HCCL_INFO("[ReduceAutoSelector][%s] ccu schedule is not supported with level2Ubg, reset to default.", __func__);
+    if (topoInfo->level2UbRtp) {
+        HCCL_INFO(
+            "[ReduceAutoSelector][%s] ccu schedule is not supported with level2UbRtp, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
@@ -375,9 +376,9 @@ SelectorStatus ReduceAutoSelector::SelectAivAlgo(
     HCCL_DEBUG("[ReduceAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[ReduceAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
+            opParam, HCCL_DEBUG, "[ReduceAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.",
             __func__);
         return SelectorStatus::NOT_MATCH;
     }

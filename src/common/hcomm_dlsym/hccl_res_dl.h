@@ -33,13 +33,19 @@ typedef struct {
     uint64_t size;
 } CommMem;
 
-#define COMM_PROTOCOL_UBC_CTP ((CommProtocol)4)
-#define COMM_PROTOCOL_UBC_TP ((CommProtocol)5)
+#define COMM_PROTOCOL_UB_CTP ((CommProtocol)4)
+#define COMM_PROTOCOL_UBC_CTP COMM_PROTOCOL_UB_CTP
+/* Value 5 is retained by HCOMM as COMM_PROTOCOL_UBC_TP for compatibility; HCCL does not select it. */
 #define COMM_PROTOCOL_UB_MEM ((CommProtocol)6)
 
 #define COMM_ADDR_TYPE_EID ((CommAddrType)3)
 #define COMM_ADDR_EID_LEN 36
 #endif // CANN_VERSION_NUM < CANN_VERSION(9, 0, 0)
+
+/* CANN 9.0.x HCOMM exposes only the legacy COMM_PROTOCOL_UBC_CTP name. */
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0, 2) && CANN_VERSION_NUM < CANN_VERSION(9, 1, 0)
+#define COMM_PROTOCOL_UB_CTP COMM_PROTOCOL_UBC_CTP
+#endif
 
 #if CANN_VERSION_NUM < CANN_VERSION(9, 1, 0)
 #define COMM_PROTOCOL_UBOE ((CommProtocol)7)

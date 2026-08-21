@@ -475,7 +475,7 @@ void TopoModel::Init910DLinkMap()
 
             // 判断是否在同一行或同一列
             if (rowI == rowJ || colI == colJ) {
-                link910d_[{i, j}] = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+                link910d_[{i, j}] = CommProtocol::COMM_PROTOCOL_UB_CTP;
             }
         }
     }
@@ -566,7 +566,7 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
     link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_RESERVED;
 
     // level2
-    link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+    link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
     allLinkMap_[rankPair][NetLayerL2].push_back(link);
 
     // level1 同pod才有level1链路
@@ -578,7 +578,7 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
             link.dstEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
         }
         link.linkAttr.linkProtocol
-            = isDpuEnable ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_UBC_CTP;
+            = isDpuEnable ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_UB_CTP;
         allLinkMap_[rankPair][NetLayerL1].push_back(link);
     }
 
@@ -597,7 +597,7 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
 
     if (is2D) {
         // 910D的level0有两条link(横向或纵向的1DMESH+出框的CLOS)
-        link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
+        link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
         allLinkMap_[rankPair][NetLayerL0].push_back(link);
     }
 }

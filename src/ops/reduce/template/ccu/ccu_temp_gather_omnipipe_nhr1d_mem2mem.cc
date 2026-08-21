@@ -95,7 +95,7 @@ HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::CalcRes(
     CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, channelDescs));
     for (auto channel : channelDescs) {
         HCCL_DEBUG("[%s] channel myrank[%u], remoteRank [%u]", __func__, myRank_, channel.remoteRank);
-        if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol != COMM_PROTOCOL_UB_CTP) {
             HCCL_ERROR("[%s] channelProtocol: %u", __func__, channel.channelProtocol);
             return HCCL_E_INTERNAL;
         }

@@ -217,10 +217,10 @@ namespace {
                  return IsAgInputOutputOverlap(op);
              },
              false, ccuAll},
-            // 必不选：level2Ubg 排除 aiv + ccu_sched
-            {"level2ubg_skip_aiv_ccu_sched",
+            // 必不选：level2UbRtp 排除 aiv + ccu_sched
+            {"level2ub_rtp_skip_aiv_ccu_sched",
              [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level2Ubg;
+                 return topo->level2UbRtp;
              },
              false, aivCcuSched},
             // 必不选：3级拓扑 + level2Uboe 排除 aiv + ccu_sched
@@ -420,10 +420,10 @@ namespace {
                  return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
              },
              false, ccuAivAll},
-            // 必不选：level2Ubg 排除 aiv + ccu_sched
-            {"level2ubg_skip_aiv_ccu_sched",
+            // 必不选：level2UbRtp 排除 aiv + ccu_sched
+            {"level2ub_rtp_skip_aiv_ccu_sched",
              [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level2Ubg;
+                 return topo->level2UbRtp;
              },
              false, aivCcuSched},
             // 必不选：3级拓扑 + level2Uboe 排除 aiv + ccu_sched

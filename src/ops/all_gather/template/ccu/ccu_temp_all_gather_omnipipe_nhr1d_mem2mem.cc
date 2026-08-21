@@ -73,7 +73,7 @@ HcclResult CcuTempAllGatherOmniPipeNHR1DMem2Mem::CalcRes(
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, channelDescs));
     for (auto channel : channelDescs) {
-        if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol != COMM_PROTOCOL_UB_CTP) {
             HCCL_ERROR("[%s] channelProtocol: %u", __func__, channel.channelProtocol);
             return HcclResult::HCCL_E_INTERNAL;
         }

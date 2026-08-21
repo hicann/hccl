@@ -24,7 +24,7 @@ flowchart LR
 |------|------|
 | **集合通信原语** | AllReduce、Broadcast、AllGather、ReduceScatter、AlltoAllv、Send、Receive、…… |
 | **通信算法** | Ring、Mesh、RHD(Halving-Doubling)、Star + 自研算法 |
-| **通信协议** | UBC、UBG、UBoE、RoCE(v2)、HCCS、UB_MEM |
+| **主要通信协议** | UB_CTP、UB_RTP、UBoE、RoCE(v2)、HCCS、UB_MEM |
 | **执行模式** | 单算子模式 + 图模式 |
 | **扩展能力** | 通信算子自定义开发 |
 | **应用场景** | 大模型训练（数据/模型/专家并行）与推理（TP/PP/EP）的集合通信 |

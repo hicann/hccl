@@ -82,7 +82,7 @@ HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcRes(
     CommTopo priorityTopo = COMM_TOPO_CLOS;
     CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, channelDescs));
     for (auto channel : channelDescs) {
-        if (channel.channelProtocol != COMM_PROTOCOL_UBC_CTP) {
+        if (channel.channelProtocol != COMM_PROTOCOL_UB_CTP) {
             HCCL_ERROR(
                 "[CcuTempAllGatherNHR1DMultiJettyMem2Mem][CalcRes] channelProtocol: %u", channel.channelProtocol);
             return HCCL_E_INTERNAL;
