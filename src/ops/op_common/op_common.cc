@@ -2194,7 +2194,8 @@ static bool IsCcuDynamicResApiSupported()
            && HcommIsSupportHcommCcuInsResDescSetNum() && HcommIsSupportHcommCcuInsResDescQueryNum()
            && HcommIsSupportHcommCcuInsCreate() && HcommIsSupportHcommCcuInsDestroy()
            && HcommIsSupportHcommCcuInsQueryResDesc() && HcommIsSupportHcommCcuQueryRemainResDesc()
-           && HcommIsSupportHcommCcuKernelQueryResReq() && HcommIsSupportHcclCommAssignCcuIns();
+           && HcommIsSupportHcommCcuKernelQueryResReq() && HcommIsSupportHcclCommAssignCcuIns()
+           && HcommIsSupportHcclCommQueryAssignedCcuIns();
 }
 
 // 按 dieId 维护资源描述符集合；HcommCcuInsResDescCreate 接口要求每个 desc 必须绑定一个 dieId，
@@ -2691,16 +2692,18 @@ static HcclResult HcclGetCcuKernelDynamic(
     CcuInsHandle insHandle = 0;
     uint32_t insNum = 0;
     bool hasReusableIns = false;
-    HcclResult queryRet = HcclCommQueryCcuIns(comm, &insHandle, &insNum);
+    HcclResult queryRet = HcclCommQueryAssignedCcuIns(comm, &insHandle, &insNum);
     if (queryRet == HCCL_SUCCESS) {
         hasReusableIns = (insNum != 0);
         HCCL_INFO(
-            "[HcclGetCcuKernelDynamic] HcclCommQueryCcuIns success, insHandle[%p] insNum[%u].", insHandle, insNum);
+            "[HcclGetCcuKernelDynamic] HcclCommQueryAssignedCcuIns success, insHandle[%p] insNum[%u].", insHandle,
+            insNum);
     } else if (queryRet == HCCL_E_UNAVAIL) {
         HCCL_INFO(
-            "[HcclGetCcuKernelDynamic] HcclCommQueryCcuIns returns UNAVAIL, no reusable CcuIns, will create new.");
+            "[HcclGetCcuKernelDynamic] HcclCommQueryAssignedCcuIns returns UNAVAIL, no reusable CcuIns, will create "
+            "new.");
     } else {
-        HCCL_ERROR("[HcclGetCcuKernelDynamic] HcclCommQueryCcuIns failed: ret -> %d", queryRet);
+        HCCL_ERROR("[HcclGetCcuKernelDynamic] HcclCommQueryAssignedCcuIns failed: ret -> %d", queryRet);
         DestroyAllDescs(reqDescs);
         return queryRet;
     }
