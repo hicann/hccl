@@ -10,7 +10,7 @@ This sample demonstrates how to use the `HcclSend()` and `HcclRecv()` APIs to im
   > The rootinfo identifier contains the device IP address and device ID. This information must be broadcast to all ranks in the cluster to initialize the communicator.
 
 - In each thread, call `HcclCommInitRootInfo()` to initialize the communicator based on the rootinfo identifier.
-- Call `HcclSend()` and `HcclRecv()` to send and receive data and display the result. Even‑numbered ranks (0, 2, 4, 6) send data, while odd‑numbered ranks (1, 3, 5, 7) receive data.
+- Call `HcclSend()` and `HcclRecv()` to send and receive data and display the result. Even-numbered ranks (0, 2, 4, 6) send data, while odd-numbered ranks (1, 3, 5, 7) receive data.
 
 ## Directory Structure
 
@@ -27,9 +27,9 @@ This sample demonstrates how to use the `HcclSend()` and `HcclRecv()` APIs to im
 This sample supports the following products in a single-server N-card configuration (N >= 2, even number):
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term>
 
 ### Setting Environment Variables
 

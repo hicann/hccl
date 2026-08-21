@@ -27,9 +27,9 @@ This sample demonstrates how to use the `HcclScatter()` API to perform collectiv
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term>
 
 ### Setting Environment Variables
 
@@ -56,7 +56,7 @@ make test
 
 ## Sample Output
 
-The content of the root node is initialized to 0 through 7. After the Scatter operation, the data of the root node in the communication domain is evenly divided and distributed to other ranks.
+The content of the root node is initialized to 0 through 7. After the Scatter operation, the data of the root node in the communicator is evenly divided and distributed to other ranks.
 
 ```
 Found 8 NPU device(s) available

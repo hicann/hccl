@@ -43,8 +43,8 @@ This sample demonstrates how to develop Send and Recv point-to-point communicati
 
 This sample supports the following products in a single-server N-card configuration (N >= 2, even number):
 
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
 
 The following software dependencies are required for compiling this sample. Ensure that the version requirements are met:
 

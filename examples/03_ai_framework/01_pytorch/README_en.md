@@ -6,7 +6,7 @@ This sample demonstrates how to perform an AllReduce operation using the PyTorch
 
 - Device detection: Query the number of available devices using the `torch_npu.npu.device_count()` interface.
 - Start multiple processes using the `torch.multiprocessing.spawn()` interface.
-- In each process, initialize the communication domain using the `torch.distributed.init_process_group()` interface.
+- In each process, initialize the communicator using the `torch.distributed.init_process_group()` interface.
 - In each process, perform the AllReduce operation using the `torch.distributed.all_reduce()` interface.
 
 ## Environment Preparation
@@ -16,9 +16,9 @@ This sample demonstrates how to perform an AllReduce operation using the PyTorch
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term> / <term>Atlas Inference Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term> / <term>Atlas Inference Products</term>
 
 This sample depends on the following Python packages:
 

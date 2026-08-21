@@ -7,8 +7,8 @@ To ensure security and minimize permissions, you are not advised to use administ
 ## File Permission Control
 
 - You are advised to set the system `umask` value to `0027` or higher on hosts (including host machines) and containers. This ensures that new folders have a default maximum permission of `750` and new files have a default maximum permission of `640`.
-- You are advised to take security measures such as permission control on sensitive files, including personal privacy data, commercial assets, and source files. For example, permissions for the project installation directory and public input data files must follow the recommendations in [A–Recommended Maximum Permissions for Files and Folders in Different Scenarios](#a-recommended-maximum-permissions-for-files-and-folders-in-different-scenarios).
-- During installation and usage, you must enforce proper permission control, referring to the same [A–Recommended Maximum Permissions for Files and Folders in Different Scenarios](#a-recommended-maximum-permissions-for-files-and-folders-in-different-scenarios).
+- You are advised to take security measures such as permission control on sensitive files, including personal privacy data, commercial assets, and source files. For example, permissions for the project installation directory and public input data files must follow the recommendations in [A-Recommended Maximum Permissions for Files and Folders in Different Scenarios](#a-recommended-maximum-permissions-for-files-and-folders-in-different-scenarios).
+- During installation and usage, you must enforce proper permission control, referring to the same [A-Recommended Maximum Permissions for Files and Folders in Different Scenarios](#a-recommended-maximum-permissions-for-files-and-folders-in-different-scenarios).
 
 ## Build Security Statement
 

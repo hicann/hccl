@@ -27,9 +27,9 @@ This sample demonstrates how to call the `HcclAlltoAll()` API to perform an `All
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term> / <term>Atlas Inference Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term> / <term>Atlas Inference Products</term>
 
 ### Setting Environment Variables
 

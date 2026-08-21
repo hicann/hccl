@@ -4,7 +4,7 @@
 
 This sample demonstrates how to perform an AllReduce operation using the TensorFlow interface. It covers the following functions:
 
-- Initialize the communication domain based on the `ranktable.json` configuration file.
+- Initialize the communicator based on the `ranktable.json` configuration file.
 
 ## Environment Preparation
 
@@ -13,9 +13,9 @@ This sample demonstrates how to perform an AllReduce operation using the TensorF
 This sample supports the following products in a single-server 8-card configuration:
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term> / <term>Atlas Inference Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term> / <term>Atlas Inference Products</term>
 
 Note: This sample code is developed based on TensorFlow 1.x and is not compatible with TensorFlow 2.x. TensorFlow 1.15.0 is recommended.
 

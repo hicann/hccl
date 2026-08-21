@@ -44,10 +44,10 @@ The key directories of this project are as follows:
 |        ├── broadcast          # Broadcast operator implementation
 |        ├── interface_graph_mode # Graph mode interface implementation
 |        ├── op_common          # Common operator components
-|        │   ├── executor       # Executor
-|        │   ├── selector       # Algorithm selector
-|        │   ├── template       # Algorithm template
-|        │   └── topo           # Communication domain topology information acquisition and conversion
+|        │   ├── executor       # Executor
+|        │   ├── selector       # Algorithm selector
+|        │   ├── template       # Algorithm template
+|        │   └── topo           # Communication domain topology information acquisition and conversion
 |        ├── recv               # Recv operator implementation
 |        ├── reduce             # Reduce operator implementation
 |        ├── reduce_scatter     # ReduceScatter operator implementation

@@ -67,7 +67,7 @@ GTEST_API_ int main(int argc, char **argv)
     // case1: 仅执行ST_ALL_REDUCE_TEST测试套中的st_all_reduce_1shot_boundary_dataCount用例
     // testing::GTEST_FLAG(filter) = "ST_ALL_REDUCE_TEST.st_all_reduce_1shot_boundary_dataCount";
 
-    // case1: 仅执行ST_ALL_REDUCE_TEST测试套中的所有用例
+    // case2: 仅执行ST_ALL_REDUCE_TEST测试套中的所有用例
     // testing::GTEST_FLAG(filter) = "ST_ALL_REDUCE_TEST.*";
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

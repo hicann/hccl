@@ -18,33 +18,33 @@ In distributed training and inference, **deterministic collective communication*
 
 #### 1. Training Reproducibility and CI/CD
 
-Reproducible training is essential for trustworthy research and production pipelines. Non‑deterministic reductions introduce floating‑point noise that masks bugs and makes results impossible to compare across runs.
+Reproducible training is essential for trustworthy research and production pipelines. Non-deterministic reductions introduce floating-point noise that masks bugs and makes results impossible to compare across runs.
 
-- **Picard (2021)** ("Torch.manual_seed(3407) is all you need") demonstrates that random seed variations alone can produce statistically significant outliers in final model performance – when reduction ordering is also non‑deterministic, the variance grows even larger. ([arXiv:2109.08203](https://arxiv.org/abs/2109.08203))
-- **CI/CD and Debugging**: In continuous integration testing and distributed debugging, any non‑determinism turns a reproducible bug into a ghost. Deterministic collectives guarantee that a failing test will fail identically on every rerun, drastically reducing root‑cause analysis time.
+- **Picard (2021)** ("Torch.manual_seed(3407) is all you need") demonstrates that random seed variations alone can produce statistically significant outliers in final model performance - when reduction ordering is also non-deterministic, the variance grows even larger. ([arXiv:2109.08203](https://arxiv.org/abs/2109.08203))
+- **CI/CD and Debugging**: In continuous integration testing and distributed debugging, any non-determinism turns a reproducible bug into a ghost. Deterministic collectives guarantee that a failing test will fail identically on every rerun, drastically reducing root-cause analysis time.
 
 #### 2. Reinforcement Learning (RL, RLHF, PPO)
 
-Reinforcement learning training is highly sensitive to consistency in policy evaluation. In PPO and RLHF pipelines, when the same policy is evaluated with different batch sizes, a change in ReduceScatter reduction ordering due to sharding can inject floating‑point noise into gradient or reward signals, destabilizing policy updates.
+Reinforcement learning training is highly sensitive to consistency in policy evaluation. In PPO and RLHF pipelines, when the same policy is evaluated with different batch sizes, a change in ReduceScatter reduction ordering due to sharding can inject floating-point noise into gradient or reward signals, destabilizing policy updates.
 
-- **verl** ([github.com/verl-project/verl](https://github.com/verl-project/verl)): A mainstream open‑source RLHF or PPO framework that provides a `full_determinism` configuration option and explicitly sets `HCCL_DETERMINISTIC=1` to guarantee reproducible collective operations.
-- **DeepSpeed‑Chat** and derivative frameworks: Require deterministic reductions in RLHF training to keep reward model training consistent across identical inputs.
+- **verl** ([github.com/verl-project/verl](https://github.com/verl-project/verl)): A mainstream open-source RLHF or PPO framework that provides a `full_determinism` configuration option and explicitly sets `HCCL_DETERMINISTIC=1` to guarantee reproducible collective operations.
+- **DeepSpeed-Chat** and derivative frameworks: Require deterministic reductions in RLHF training to keep reward model training consistent across identical inputs.
 
 #### 3. Inference Consistency and Batch Invariance
 
-In large‑model serving, users expect the same prompt to always return the same output. However, dynamic batching means a prompt can be grouped with different neighbours on each request. Without deterministic collective communication, floating‑point reduction order can vary with batch composition, breaking this invariance.
+In large-model serving, users expect the same prompt to always return the same output. However, dynamic batching means a prompt can be grouped with different neighbours on each request. Without deterministic collective communication, floating-point reduction order can vary with batch composition, breaking this invariance.
 
-- **vLLM Batch Invariance**: The vLLM project explicitly calls out that non‑deterministic all‑reduce backends (e.g., NCCL) can cause different logits for the same prompt depending on batch mates. Their batch invariance guarantee relies on deterministic communication to ensure "the output for a given prompt is the same regardless of what other prompts are in the batch." ([Motivation](https://docs.vllm.ai/en/latest/features/batch_invariance/#motivation), [Ascend Guide](https://docs.vllm.ai/projects/ascend/en/latest/user_guide/feature_guide/batch_invariance.html))
+- **vLLM Batch Invariance**: The vLLM project explicitly calls out that non-deterministic all-reduce backends (e.g., NCCL) can cause different logits for the same prompt depending on batch mates. Their batch invariance guarantee relies on deterministic communication to ensure "the output for a given prompt is the same regardless of what other prompts are in the batch." ([Motivation](https://docs.vllm.ai/en/latest/features/batch_invariance/#motivation), [Ascend Guide](https://docs.vllm.ai/projects/ascend/en/latest/user_guide/feature_guide/batch_invariance.html))
 - **SGLang**: Provides an `--enable-deterministic-inference` flag that forces deterministic computation and communication ordering, making inference outputs fully reproducible across different batch sizes and request arrival patterns. ([SGLang deterministic inference](https://sgl-project.github.io/advanced_features/deterministic_inference.html))
-- **OpenAI Community**: Practitioners have long struggled with non‑deterministic GPU operations in production LLM inference, where bit‑for‑bit reproducibility is expected by end‑users and essential for debugging. ([Defeating Nondeterminism in LLM Inference](https://community.openai.com/t/defeating-nondeterminism-in-llm-inference/1358623))
+- **OpenAI Community**: Practitioners have long struggled with non-deterministic GPU operations in production LLM inference, where bit-for-bit reproducibility is expected by end-users and essential for debugging. ([Defeating Nondeterminism in LLM Inference](https://community.openai.com/t/defeating-nondeterminism-in-llm-inference/1358623))
 
 #### 4. Ecosystem API and Framework Support
 
 The demand for determinism is reflected in the official APIs and configuration flags of major ML frameworks:
 
-- **PyTorch**: `torch.use_deterministic_algorithms(True)` requires all operations – including collectives – to produce the same output given the same input on the same hardware or software. ([PyTorch docs](https://docs.pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html))
+- **PyTorch**: `torch.use_deterministic_algorithms(True)` requires all operations - including collectives - to produce the same output given the same input on the same hardware or software. ([PyTorch docs](https://docs.pytorch.org/docs/stable/generated/torch.use_deterministic_algorithms.html))
 - **HuggingFace Transformers or Diffusers**: Provide a standardised `enable_full_determinism()` function that sets `NCCL_DETERMINISTIC=1`, `CUBLAS_WORKSPACE_CONFIG`, and other variables.
-- **LlamaFactory**: Large‑model fine‑tuning framework offering an `enable_full_determinism(seed)` interface for reproducible distributed training.
+- **LlamaFactory**: Large-model fine-tuning framework offering an `enable_full_determinism(seed)` interface for reproducible distributed training.
 - **ByteDance VeOmni**: Enforces `--train.enable_full_determinism true` in CI tests, making deterministic collectives a gate for code acceptance.
 
 ### Limitations of Existing Batch-Invariant Algorithms in HCCL

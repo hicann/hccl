@@ -27,9 +27,9 @@ This sample demonstrates how to use the `HcclBroadcast()` API to perform the Bro
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
 - <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Series Products</term> / <term>Atlas A3 Inference Series Products</term>
-- <term>Atlas A2 Training Series Products</term>
-- <term>Atlas Training Series Products</term>
+- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
+- <term>Atlas A2 Training Products</term>
+- <term>Atlas Training Products</term>
 
 ### Setting Environment Variables
 
@@ -56,7 +56,7 @@ make test
 
 ## Sample Output
 
-The data of the root node is initialized to 0 through 7. After the Broadcast operation, the root node data is broadcast to other ranks in the communication domain.
+The data of the root node is initialized to 0 through 7. After the Broadcast operation, the root node data is broadcast to other ranks in the communicator.
 
 ```
 Found 8 NPU device(s) available
