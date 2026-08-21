@@ -79,10 +79,10 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    if (topoInfo->level2Ubg) {
+    if (topoInfo->level2UbRtp) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[AlltoAllVCAutoSelector][%s] aiv is not supported with level2Ubg, reset to default.",
-            __func__);
+            opParam, HCCL_DEBUG,
+            "[AlltoAllVCAutoSelector][%s] aiv is not supported with level2UbRtp, reset to default.", __func__);
         return SelectorStatus::NOT_MATCH;
     }
 
