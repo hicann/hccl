@@ -301,8 +301,22 @@ HcclResult CcuAlgTemplateBase::SplitChannelsByDie(
     return HCCL_SUCCESS;
 }
 
+HcclResult CcuAlgTemplateBase::HasLinkOnNetLayer0(HcclComm comm, uint32_t myRank, uint32_t remoteRank, bool& hasLink)
+{
+    hasLink = false;
+    constexpr uint32_t NET_LAYER_0 = 0;
+    CommLink* linkList = nullptr;
+    uint32_t linkNum = 0;
+    CHK_RET(HcclRankGraphGetLinks(comm, NET_LAYER_0, myRank, remoteRank, &linkList, &linkNum));
+    hasLink = (linkNum > 0);
+    HCCL_DEBUG(
+        "[CcuAlgTemplateBase::HasLinkOnNetLayer0] rank[%u] to remoteRank[%u] on netLayer0 hasLink[%d].", myRank,
+        remoteRank, hasLink);
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
-    const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
+    HcclComm comm, const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
     const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool is2Plus6, uint32_t myRank,
     uint32_t& kernelCount, uint32_t& fullmeshDieId,
     std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
@@ -323,26 +337,27 @@ HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
             fillKernel(KERNEL_FULLMESH, singleChByDie.at(fullmeshDieId));
         }
         kernelRankGroup[KERNEL_FULLMESH].push_back(myRank);
-        for (auto& pair : multiChByDie) {
-            fillKernel(pair.first == fullmeshDieId ? KERNEL_CLOS_MINOR : KERNEL_CLOS_MAJOR, pair.second);
+        for (const auto& [dieId, dieChannels] : multiChByDie) {
+            fillKernel(dieId == fullmeshDieId ? KERNEL_CLOS_MINOR : KERNEL_CLOS_MAJOR, dieChannels);
         }
     } else {
-        if (singleChByDie.size() < 2) {
+        CHK_PRT_RET(
+            singleChByDie.size() < 2,
             HCCL_ERROR(
                 "[%s][PartitionChannels] singleChByDie size[%zu] is less than 2, "
-                "cannot partition channels for non-2Plus6 topology.",
-                tag.c_str(), singleChByDie.size());
-            return HcclResult::HCCL_E_INTERNAL;
-        }
+                "non-2Plus6 topology requires at least 2 dies but only got [%zu].",
+                tag.c_str(), singleChByDie.size(), singleChByDie.size()),
+            HcclResult::HCCL_E_INTERNAL);
         kernelCount = MAX_KERNEL_NUM_2DIE - 1;
         auto it0 = singleChByDie.begin();
         auto it1 = std::next(it0);
-        if (it0->second.size() > it1->second.size()) {
-            std::swap(it0, it1);
+        bool it0HasLink = false;
+        CHK_RET(HasLinkOnNetLayer0(comm, myRank, it0->second.front().remoteRank, it0HasLink));
+        fullmeshDieId = it0HasLink ? it0->first : it1->first;
+        for (const auto& [dieId, dieChannels] : singleChByDie) {
+            fillKernel(dieId == fullmeshDieId ? KERNEL_FULLMESH : KERNEL_CLOS_MAJOR, dieChannels);
         }
-        fillKernel(KERNEL_FULLMESH, it0->second);
         kernelRankGroup[KERNEL_FULLMESH].push_back(myRank);
-        fillKernel(KERNEL_CLOS_MAJOR, it1->second);
     }
 
     HCCL_INFO(

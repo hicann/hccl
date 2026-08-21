@@ -118,7 +118,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::PartitionChannels(
         SplitChannelsByDie(comm, myRank_, rankIdToChannelDesc, singleChByDie, multiChByDie, is2Plus6_, &closPeers_));
 
     CHK_RET(PartitionChannelsFor2Die(
-        singleChByDie, multiChByDie, is2Plus6_, myRank_, kernelCount_, fullmeshDieId_, kernelChannels_,
+        comm, singleChByDie, multiChByDie, is2Plus6_, myRank_, kernelCount_, fullmeshDieId_, kernelChannels_,
         kernelRankGroup_, "CcuTempAlltoAllVMesh1D2Die"));
 
     return HcclResult::HCCL_SUCCESS;

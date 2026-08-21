@@ -60,7 +60,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
-    HCCL_INFO("channelDescs size[%u]", channelDescs.size());
+    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] channelDescs size[%u]", channelDescs.size());
 
     CHK_RET(PartitionChannels(comm, rankIdToChannelDesc_));
     double ratio = 1.0;
@@ -72,7 +72,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
     resourceRequest.slaveThreadNum = slaveThreadNum;
     resourceRequest.notifyNumPerThread.assign(slaveThreadNum, 1);
     resourceRequest.channels.emplace_back(channelDescs);
-    HCCL_INFO("resourceRequest.channels[%d]", resourceRequest.channels.size());
+    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] resourceRequest.channels[%d]", resourceRequest.channels.size());
     resourceRequest.ccuKernelNum.push_back(kernelCount_);
 
     for (uint32_t i = 0; i < kernelCount_; i++) {
@@ -102,7 +102,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::PartitionChannels(
     std::map<uint32_t, std::vector<HcclChannelDesc>> singleChByDie, multiChByDie;
     CHK_RET(SplitChannelsByDie(comm, myRank_, rankIdToChannelDesc, singleChByDie, multiChByDie, is2Plus6_));
     CHK_RET(PartitionChannelsFor2Die(
-        singleChByDie, multiChByDie, is2Plus6_, myRank_, kernelCount_, fullmeshDieId_, kernelChannels_,
+        comm, singleChByDie, multiChByDie, is2Plus6_, myRank_, kernelCount_, fullmeshDieId_, kernelChannels_,
         kernelRankGroup_, "CcuTempAllToAllMesh1D2Die"));
     return HcclResult::HCCL_SUCCESS;
 }

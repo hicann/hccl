@@ -81,11 +81,12 @@ public:
         std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool& is2Plus6,
         std::set<u32>* closPeers = nullptr);
     static HcclResult PartitionChannelsFor2Die(
-        const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
+        HcclComm comm, const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
         const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool is2Plus6, uint32_t myRank,
         uint32_t& kernelCount, uint32_t& fullmeshDieId,
         std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
         std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup, const std::string& tag);
+    static HcclResult HasLinkOnNetLayer0(HcclComm comm, uint32_t myRank, uint32_t remoteRank, bool& hasLink);
 
 protected:
     OpMode opMode_ = OpMode::OPBASE;
