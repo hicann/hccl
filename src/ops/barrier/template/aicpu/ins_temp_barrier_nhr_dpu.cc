@@ -16,20 +16,21 @@
 #include "alg_v2_template_register.h"
 
 namespace ops_hccl {
-InsTempBarrierNHRDPU::InsTempBarrierNHRDPU(const OpParam &param, const u32 rankId,
-                                           const std::vector<std::vector<u32>> &subCommRanks)
-    : InsAlgTemplateBase(param, rankId, subCommRanks) {}
+InsTempBarrierNHRDPU::InsTempBarrierNHRDPU(
+    const OpParam &param, const u32 rankId, const std::vector<std::vector<u32>> &subCommRanks)
+    : InsAlgTemplateBase(param, rankId, subCommRanks)
+{
+}
 
 HcclResult InsTempBarrierNHRDPU::CalcRes(HcclComm comm, const OpParam &param,
-                                         const TopoInfoWithNetLayerDetails *topoInfo,
-                                         AlgResourceRequest &resourceRequest)
+    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
 {
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumPerThread = {};
     resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
+    CHK_RET(CalcChannelRequestNhrHighestHostRoce(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO("[InsTempBarrierNHRDPU][CalcRes] level1Channels[%u].", level1Channels.size());
     return HCCL_SUCCESS;
@@ -42,9 +43,8 @@ u64 InsTempBarrierNHRDPU::CalcScratchMultiple(BufferType inBufferType, BufferTyp
     return 0;
 }
 
-HcclResult InsTempBarrierNHRDPU::KernelRun(const OpParam &param,
-                                           const TemplateDataParams &tempAlgParams,
-                                           TemplateResource &templateResource)
+HcclResult InsTempBarrierNHRDPU::KernelRun(
+    const OpParam &param, const TemplateDataParams &tempAlgParams, TemplateResource &templateResource)
 {
     (void)tempAlgParams;
     HCCL_INFO("[InsTempBarrierNHRDPU] Run Start, rank[%u] rankSize[%u]", myRank_, templateRankSize_);
@@ -78,7 +78,8 @@ HcclResult InsTempBarrierNHRDPU::KernelRun(const OpParam &param,
 
     u32 sendMsgId = 0;
     if (HcommSendRequest(reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-        static_cast<void *>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId) != 0) {
+            static_cast<void *>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+        != 0) {
         HCCL_ERROR("[InsTempBarrierNHRDPU] HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
@@ -106,9 +107,8 @@ HcclResult InsTempBarrierNHRDPU::KernelRun(const OpParam &param,
 }
 
 HcclResult InsTempBarrierNHRDPU::DPUKernelRun(const TemplateDataParams &tempAlgParams,
-                                              const std::map<u32, std::vector<ChannelInfo>> &channels,
-                                              const u32 myRank,
-                                              const std::vector<std::vector<uint32_t>> &subCommRanks)
+    const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
+    const std::vector<std::vector<uint32_t>> &subCommRanks)
 {
     (void)tempAlgParams;
     myRank_ = myRank;
@@ -151,31 +151,26 @@ HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(const std::map<u32, std::vector<C
             SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
 
             CHK_PRT_RET(SendRecvWrite(sendRecvInfo),
-                HCCL_ERROR("[InsTempBarrierNHRDPU] SendRecvWrite failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                HCCL_ERROR("[InsTempBarrierNHRDPU] SendRecvWrite failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
         } else if (txChannel[0].remoteRank < rxChannel[0].remoteRank) {
             SlicesList sendSliceList(emptySlices, emptySlices);
             DataInfo sendInfo(txChannel[0], sendSliceList);
-            CHK_PRT_RET(SendWrite(sendInfo),
-                HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
+            CHK_PRT_RET(SendWrite(sendInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
 
             SlicesList recvSliceList(emptySlices, emptySlices);
             DataInfo recvInfo(rxChannel[0], recvSliceList);
-            CHK_PRT_RET(RecvWrite(recvInfo),
-                HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
+            CHK_PRT_RET(RecvWrite(recvInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
             SlicesList recvSliceList(emptySlices, emptySlices);
             DataInfo recvInfo(rxChannel[0], recvSliceList);
-            CHK_PRT_RET(RecvWrite(recvInfo),
-                HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
+            CHK_PRT_RET(RecvWrite(recvInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
 
             SlicesList sendSliceList(emptySlices, emptySlices);
             DataInfo sendInfo(txChannel[0], sendSliceList);
-            CHK_PRT_RET(SendWrite(sendInfo),
-                HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
+            CHK_PRT_RET(SendWrite(sendInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         }
     }
@@ -184,4 +179,4 @@ HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(const std::map<u32, std::vector<C
 }
 
 REGISTER_TEMPLATE_V2("InsTempBarrierNHRDPU", InsTempBarrierNHRDPU);
-}  // namespace ops_hccl
+} // namespace ops_hccl

@@ -18,18 +18,18 @@ constexpr uint32_t NetLayerL1 = 1;
 constexpr uint32_t NetLayerL2 = 2;
 constexpr uint32_t SERVER_CLOS_INSTID = 16;
 
-TopoModel::TopoModel(const TopoMeta& topoMeta)
+TopoModel::TopoModel(const TopoMeta &topoMeta)
 {
     uint32_t superpodId = 0;
     uint32_t serverId = 0;
     uint32_t rankId = 0;
     uint32_t devIpStart = 3232238090;
-    for (auto& pod : topoMeta) {
+    for (auto &pod : topoMeta) {
         uint32_t rankNumInPod = 0;
-        for (auto& server : pod) {
+        for (auto &server : pod) {
             uint32_t rankNumInServer = 0;
             InitTopoInstsMap(serverId, rankId, server);
-            for (auto& phyId : server) {
+            for (auto &phyId : server) {
                 rankId2PhyId_[rankId] = phyId;
                 rankId2ServerId_[rankId] = serverId;
                 rankId2PodId_[rankId] = superpodId;
@@ -95,7 +95,7 @@ void TopoModel::InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::
         auto rowInstId = rowId;
         auto rowRankIds = CheckRowPeerDevice(phyIds, rankId, rowId);
         instId2RankIds_[serverId][rowInstId] = rowRankIds;
-        if (rowRankIds.size() > 1) {  // X轴实例1dmesh
+        if (rowRankIds.size() > 1) { // X轴实例1dmesh
             dev2TopoInsts_[serverId][phyId].push_back(rowInstId);
         }
 
@@ -103,7 +103,7 @@ void TopoModel::InitTopoInstsMap(uint32_t serverId, uint32_t rankId, const std::
         auto colInstId = colId + GRID_SIZE;
         auto colRankIds = CheckColPeerDevice(phyIds, rankId, colId);
         instId2RankIds_[serverId][colInstId] = colRankIds;
-        if (colRankIds.size() > 1) {  // Y轴实例1dmesh
+        if (colRankIds.size() > 1) { // Y轴实例1dmesh
             dev2TopoInsts_[serverId][phyId].push_back(colInstId);
         }
 
@@ -132,7 +132,8 @@ std::vector<uint32_t> TopoModel::GetAllRanks(const std::vector<uint32_t> &phyIds
     return ranks;
 }
 
-std::vector<uint32_t> TopoModel::CheckRowPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t rowId)
+std::vector<uint32_t> TopoModel::CheckRowPeerDevice(
+    const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t rowId)
 {
     // curPhyId也计算在内了
     std::vector<uint32_t> devices;
@@ -146,7 +147,8 @@ std::vector<uint32_t> TopoModel::CheckRowPeerDevice(const std::vector<uint32_t> 
     return devices;
 }
 
-std::vector<uint32_t> TopoModel::CheckColPeerDevice(const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t colId)
+std::vector<uint32_t> TopoModel::CheckColPeerDevice(
+    const std::vector<uint32_t> &phyIds, uint32_t rankId, uint32_t colId)
 {
     std::vector<uint32_t> devices;
     for (auto phyId : phyIds) {
@@ -159,7 +161,8 @@ std::vector<uint32_t> TopoModel::CheckColPeerDevice(const std::vector<uint32_t> 
     return devices;
 }
 
-void TopoModel::InitEndpointMap(uint32_t rankId, uint32_t phyId, uint32_t serverId, uint32_t superpodId, uint32_t& devIpStart)
+void TopoModel::InitEndpointMap(
+    uint32_t rankId, uint32_t phyId, uint32_t serverId, uint32_t superpodId, uint32_t &devIpStart)
 {
     EndpointDesc endpoint;
     CommAddr addr;
@@ -212,12 +215,13 @@ void TopoModel::GetInstSizeByNetLayer(uint32_t curRank, uint32_t netLayer, uint3
     }
 }
 
-void TopoModel::GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink **linkList, uint32_t *listSize)
+void TopoModel::GetLinks(
+    DevType devType, uint32_t netLayer, uint32_t srcRank, uint32_t dstRank, CommLink **linkList, uint32_t *listSize)
 {
     auto rankPair = std::make_pair(srcRank, dstRank);
     auto it = allLinkMap_.find(rankPair);
     if (it != allLinkMap_.end()) {
-        auto& levelLinkMap = it->second;
+        auto &levelLinkMap = it->second;
         *listSize = levelLinkMap[netLayer].size();
         *linkList = levelLinkMap[netLayer].data();
         return;
@@ -228,11 +232,11 @@ void TopoModel::GetLinks(DevType devType, uint32_t netLayer, uint32_t srcRank, u
         Create910BLinks(srcRank, dstRank);
     } else if (devType == DevType::DEV_TYPE_910_93) {
         Create910CLinks(srcRank, dstRank);
-    #ifdef MACRO_DEV_TYPE_NEW
+#ifdef MACRO_DEV_TYPE_NEW
     } else if (devType == DevType::DEV_TYPE_950) {
-    #else
+#else
     } else if (devType == DevType::DEV_TYPE_910_95) {
-    #endif
+#endif
         Create910DLinks(srcRank, dstRank);
     }
 
@@ -261,12 +265,12 @@ void TopoModel::GetInstTopoTypeByNetLayer(DevType devType, uint32_t netLayer, Co
             *topoType = CommTopo::COMM_TOPO_1DMESH;
         } else if (devType == DevType::DEV_TYPE_910_93) {
             *topoType = CommTopo::COMM_TOPO_910_93;
-        #ifdef MACRO_DEV_TYPE_NEW
+#ifdef MACRO_DEV_TYPE_NEW
         } else if (devType == DevType::DEV_TYPE_950) {
-        #else
+#else
         } else if (devType == DevType::DEV_TYPE_910_95) {
-        #endif
-            *topoType = CommTopo::COMM_TOPO_CUSTOM;  // A5topo使用新API查询
+#endif
+            *topoType = CommTopo::COMM_TOPO_CUSTOM; // A5topo使用新API查询
         }
     } else if (netLayer == NetLayerL1) {
         *topoType = CommTopo::COMM_TOPO_CLOS;
@@ -308,7 +312,8 @@ void TopoModel::GetTopoInstsByLayer(uint32_t curRank, uint32_t netLayer, uint32_
     }
 }
 
-void TopoModel::GetRanksByTopoInst(uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum)
+void TopoModel::GetRanksByTopoInst(
+    uint32_t curRank, uint32_t netLayer, uint32_t topoInstId, uint32_t **ranks, uint32_t *rankNum)
 {
     auto serverId = rankId2ServerId_[curRank];
     auto podId = rankId2PodId_[curRank];
@@ -350,7 +355,8 @@ void TopoModel::GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoIn
     }
 }
 
-void TopoModel::GetEndpointDesc(uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc)
+void TopoModel::GetEndpointDesc(
+    uint32_t curRank, uint32_t layer, uint32_t topoInstId, uint32_t *descNum, EndpointDesc *endpointDesc)
 {
     // 仅支持hostdpu使用，暂时仅支持layer1的出框的通信对端查询
     if (layer != NetLayerL1) {
@@ -571,16 +577,19 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
     link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_RESERVED;
 
     // level2
-    link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_ROCE;  // 待确定协议类型
+    link.linkAttr.linkProtocol = CommProtocol::COMM_PROTOCOL_ROCE; // 待确定协议类型
     allLinkMap_[rankPair][NetLayerL2].push_back(link);
 
     // level1 同pod才有level1链路
     if (IsSamePod(srcRank, dstRank)) {
-        // HostDPU场景出框的连接需要对端描述为Host
-        if (!IsSameServer(srcRank, dstRank) && isDpuEnable) {
+        // HostDPU场景下level1由DPU执行，ROCE连接两端都位于Host。
+        // 非对称拓扑可能将同server的rank划入level1，因此这里不能只处理跨server链路。
+        if (isDpuEnable) {
+            link.srcEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
             link.dstEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
         }
-        link.linkAttr.linkProtocol = isDpuEnable ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_UBC_CTP;
+        link.linkAttr.linkProtocol
+            = isDpuEnable ? CommProtocol::COMM_PROTOCOL_ROCE : CommProtocol::COMM_PROTOCOL_UBC_CTP;
         allLinkMap_[rankPair][NetLayerL1].push_back(link);
     }
 
@@ -603,4 +612,4 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
         allLinkMap_[rankPair][NetLayerL0].push_back(link);
     }
 }
-};
+}; // namespace HcclSim

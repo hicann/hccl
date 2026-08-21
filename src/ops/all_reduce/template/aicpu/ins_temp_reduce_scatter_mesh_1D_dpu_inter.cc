@@ -16,9 +16,9 @@ InsTempReduceScatterMesh1dDpuInter::InsTempReduceScatterMesh1dDpuInter()
 {
 }
 
-InsTempReduceScatterMesh1dDpuInter::InsTempReduceScatterMesh1dDpuInter(const OpParam& param,
-                                                        const u32 rankId, // 传通信域的rankId，userRank
-                                                        const std::vector<std::vector<u32>> &subCommRanks)
+InsTempReduceScatterMesh1dDpuInter::InsTempReduceScatterMesh1dDpuInter(const OpParam &param,
+    const u32 rankId, // 传通信域的rankId，userRank
+    const std::vector<std::vector<u32>> &subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)
 {
 }
@@ -27,19 +27,20 @@ InsTempReduceScatterMesh1dDpuInter::~InsTempReduceScatterMesh1dDpuInter()
 {
 }
 
-HcclResult InsTempReduceScatterMesh1dDpuInter::CalcRes(HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-                                               AlgResourceRequest& resourceRequest)
+HcclResult InsTempReduceScatterMesh1dDpuInter::CalcRes(HcclComm comm, const OpParam &param,
+    const TopoInfoWithNetLayerDetails *topoInfo, AlgResourceRequest &resourceRequest)
 {
     // host网卡资源，不新增从流和对应Notify，只申请DPU上面
-    resourceRequest.slaveThreadNum = 0;  // 主thread可以通过接口传入的stream来做转换
+    resourceRequest.slaveThreadNum = 0; // 主thread可以通过接口传入的stream来做转换
     resourceRequest.notifyNumPerThread = {};
     resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level1Channels));
+    CHK_RET(CalcChannelRequestMesh1DHighestHostRoce(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
-    HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-        " level1Channels[%u].",
+    HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] "
+              "notifyNumOnMainThread[%u]"
+              " level1Channels[%u].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level1Channels.size());
     return HCCL_SUCCESS;
@@ -47,17 +48,16 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::CalcRes(HcclComm comm, const OpPa
 
 u64 InsTempReduceScatterMesh1dDpuInter::CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType)
 {
-    (void) inBufferType;
-    (void) outBufferType;
+    (void)inBufferType;
+    (void)outBufferType;
     u64 scratchMultiple = subCommRanks_[0].size();
     HCCL_INFO(
         "[InsTempReduceScatterMesh1dDpuInter][CalcScratchMultiple] templateScratchMultiplier[%llu]", scratchMultiple);
     return scratchMultiple;
 }
 
-HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(const OpParam& param,
-                                                    const TemplateDataParams& tempAlgParams,
-                                                    TemplateResource& templateResource)
+HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(
+    const OpParam &param, const TemplateDataParams &tempAlgParams, TemplateResource &templateResource)
 {
     threadNum_ = templateResource.threads.size();
     count_ = tempAlgParams.count;
@@ -88,7 +88,8 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(const OpParam& param,
     u32 sendMsgId = 0;
     auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
     if (HcommSendRequest(reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-        static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId) != 0) {
+            static_cast<void *>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+        != 0) {
         HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
@@ -111,7 +112,8 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(const OpParam& param,
     HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
     if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+        HCCL_ERROR(
+            "[InsTempReduceScatterMesh1dDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
         return HCCL_E_INTERNAL;
     }
 
@@ -121,10 +123,13 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(const OpParam& param,
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataParams& tempAlgParams,
-    const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank, const std::vector<std::vector<uint32_t>>& subCommRanks)
+HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataParams &tempAlgParams,
+    const std::map<u32, std::vector<ChannelInfo>> &channels, const u32 myRank,
+    const std::vector<std::vector<uint32_t>> &subCommRanks)
 {
 #ifndef AICPU_COMPILE
+    CHK_PRT_RET(subCommRanks.empty() || subCommRanks[0].empty(),
+        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] subCommRanks is empty."), HCCL_E_PARA);
     u32 myAlgRank = 0;
     std::vector<u32> rankIds = subCommRanks[0];
     auto iter = std::find(rankIds.begin(), rankIds.end(), myRank);
@@ -134,8 +139,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataPa
         HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][RunReduceScatter] rankIds or myRank is error.");
         return HCCL_E_INTERNAL;
     }
-    HCCL_DEBUG("[InsTempReduceScatterMesh1dDpuInter][sliceNum]: [%u] ",
-            tempAlgParams.allRankSliceSize.size());
+    HCCL_DEBUG("[InsTempReduceScatterMesh1dDpuInter][sliceNum]: [%u] ", tempAlgParams.allRankSliceSize.size());
     u64 recvSize = tempAlgParams.allRankSliceSize.at(myAlgRank);
     u64 recvCount = tempAlgParams.allRankProcessedDataCount.at(myAlgRank);
     u64 recvOffset = tempAlgParams.allRankDispls.at(myAlgRank);
@@ -153,21 +157,36 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataPa
         if (sendSize == 0 && recvSize == 0) {
             continue;
         }
-        const ChannelInfo &link = channels.at(remoteRank)[0];
+        auto channelIt = channels.find(remoteRank);
+        CHK_PRT_RET(channelIt == channels.end() || channelIt->second.empty(),
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] channel to rank[%u] is missing.", remoteRank),
+            HCCL_E_INTERNAL);
+        const ChannelInfo &link = channelIt->second[0];
+        CHK_PRT_RET(!link.isValid || link.handle == 0 || link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_HOST
+                        || link.protocol != CommProtocol::COMM_PROTOCOL_ROCE,
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] invalid DPU channel to rank[%u], "
+                       "isValid[%d], handle[0x%llx], locationType[%d], protocol[%d].",
+                remoteRank, link.isValid, link.handle, link.locationType, link.protocol),
+            HCCL_E_INTERNAL);
+        CHK_PRT_RET(sendSize > 0 && link.remoteCclMem.addr == nullptr,
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] remote CCL buffer of rank[%u] is null.",
+                remoteRank),
+            HCCL_E_INTERNAL);
 
         DpuTransferCtx ctx;
         ctx.txCh = sendSize > 0 ? &link : nullptr;
-        ctx.rxCh = recvSize > 0 ? &link : nullptr;  // samePeer when both
+        ctx.rxCh = recvSize > 0 ? &link : nullptr; // samePeer when both
 
         for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-            void* remoteCclBuffAddr = link.remoteCclMem.addr;
+            void *remoteCclBuffAddr = link.remoteCclMem.addr;
             if (sendSize > 0) {
                 ctx.txSrcSlices.push_back(DataSlice(tempAlgParams.buffInfo.inputPtr,
                     tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride + sendOffset,
                     sendSize, sendCount));
                 ctx.txDstSlices.push_back(DataSlice(remoteCclBuffAddr,
-                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride +
-                    myAlgRank * sendSize,
+                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                        + myAlgRank * sendSize,
                     sendSize, sendCount));
             }
             if (recvSize > 0) {
@@ -175,8 +194,8 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataPa
                     tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride + recvOffset,
                     recvSize, recvCount));
                 ctx.rxDstSlices.push_back(DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride +
-                    rankIdx * recvSize,
+                    tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                        + rankIdx * recvSize,
                     recvSize, recvCount));
             }
         }
@@ -188,7 +207,8 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(const TemplateDataPa
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempReduceScatterMesh1dDpuInter::PostLocalReduce(const OpParam &param, const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
+HcclResult InsTempReduceScatterMesh1dDpuInter::PostLocalReduce(
+    const OpParam &param, const TemplateDataParams &tempAlgParams, const std::vector<ThreadHandle> &threads)
 {
     // 通信结束之后，数据都在 cclBuffer 上，需要搬运到对应的输出位置。
     u32 myAlgRank = 0;
@@ -214,22 +234,17 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::PostLocalReduce(const OpParam &pa
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
         // 将规约后的分片，搬运到output上
         DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.inputPtr,
-            tempAlgParams.buffInfo.inBuffBaseOff +
-            repeatIdx * tempAlgParams.inputRepeatStride +
-            sliceOffset,
-            sliceSize,
+            tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride + sliceOffset, sliceSize,
             sliceCount);
         DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-            tempAlgParams.buffInfo.hcclBuffBaseOff +
-            repeatIdx * tempAlgParams.outputRepeatStride +
-            sliceSize * myAlgRank,
-            sliceSize,
-            sliceCount);
+            tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                + sliceSize * myAlgRank,
+            sliceSize, sliceCount);
         CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
 
         // 增加thread synchronize以支持64类数据类型
-        if ((dataType_ == HCCL_DATA_TYPE_INT64) || (dataType_ == HCCL_DATA_TYPE_UINT64) ||
-            (dataType_ == HCCL_DATA_TYPE_FP64) || (reduceOp_ == HcclReduceOp::HCCL_REDUCE_PROD)) {
+        if ((dataType_ == HCCL_DATA_TYPE_INT64) || (dataType_ == HCCL_DATA_TYPE_UINT64)
+            || (dataType_ == HCCL_DATA_TYPE_FP64) || (reduceOp_ == HcclReduceOp::HCCL_REDUCE_PROD)) {
             // 启动任务并等待所有threads任务执行完成
             CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
             CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(param.algTag)));
@@ -241,27 +256,21 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::PostLocalReduce(const OpParam &pa
         // 将后n-1片数据，规约到第0片数据上
         for (u32 tmpRank = 1; tmpRank < templateRankSize_; tmpRank++) {
             DataSlice srcSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                                           tempAlgParams.buffInfo.hcclBuffBaseOff
-                                           + repeatIdx * tempAlgParams.outputRepeatStride
-                                           + tmpRank * sliceSize,
-                                           sliceSize,
-                                           sliceCount);
+                tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride
+                    + tmpRank * sliceSize,
+                sliceSize, sliceCount);
             DataSlice dstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                                           tempAlgParams.buffInfo.hcclBuffBaseOff
-                                           + repeatIdx * tempAlgParams.outputRepeatStride,
-                                           sliceSize,
-                                           sliceCount);
+                tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride, sliceSize,
+                sliceCount);
             CHK_RET(static_cast<HcclResult>(LocalReduce(threads[0], srcSlice, dstSlice, dataType_, reduceOp_)));
         }
         // 将规约后的分片，搬运到output上
         srcSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr,
-                            tempAlgParams.buffInfo.hcclBuffBaseOff
-                            + repeatIdx * tempAlgParams.outputRepeatStride,
-                            sliceSize, sliceCount);
+            tempAlgParams.buffInfo.hcclBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride, sliceSize,
+            sliceCount);
         dstSlice = DataSlice(tempAlgParams.buffInfo.outputPtr,
-                            tempAlgParams.buffInfo.outBuffBaseOff
-                            + repeatIdx * tempAlgParams.outputRepeatStride,
-                            sliceSize, sliceCount);
+            tempAlgParams.buffInfo.outBuffBaseOff + repeatIdx * tempAlgParams.outputRepeatStride, sliceSize,
+            sliceCount);
         CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
     }
     return HcclResult::HCCL_SUCCESS;
@@ -270,4 +279,4 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::PostLocalReduce(const OpParam &pa
 #ifndef AICPU_COMPILE
 REGISTER_TEMPLATE_V2("InsTempReduceScatterMesh1dDpuInter", InsTempReduceScatterMesh1dDpuInter);
 #endif
-} // namespace Hccl
+} // namespace ops_hccl
