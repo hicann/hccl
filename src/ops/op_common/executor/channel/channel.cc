@@ -9,6 +9,8 @@
  */
 
 #include "channel.h"
+#include <algorithm>
+#include <functional>
 #include <vector>
 #include <set>
 #include <hccl/hccl_types.h>
@@ -425,6 +427,84 @@ HcclResult CalcChannelRequestMesh1D(
     return HCCL_SUCCESS;
 }
 
+#ifndef AICPU_COMPILE
+static HcclResult CalcHighestHostRoceChannels(
+    HcclComm comm, u32 myRank, const std::vector<u32>& remoteRanks, const std::string& funcName,
+    std::vector<HcclChannelDesc>& channels)
+{
+    uint32_t* netLayers = nullptr;
+    uint32_t netLayerNum = 0;
+    CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
+    CHK_PRT_RET(
+        netLayers == nullptr || netLayerNum == 0, HCCL_ERROR("%s net layer list is empty.", funcName.c_str()),
+        HCCL_E_INTERNAL);
+    std::vector<uint32_t> netLayersVector(netLayers, netLayers + netLayerNum);
+    std::sort(netLayersVector.begin(), netLayersVector.end(), std::greater<uint32_t>());
+
+    for (u32 remoteRank : remoteRanks) {
+        if (remoteRank == myRank) {
+            continue;
+        }
+
+        bool channelFound = false;
+        for (u32 netLayer : netLayersVector) {
+            CommLink* linkList = nullptr;
+            u32 listSize = 0;
+            CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, remoteRank, &linkList, &listSize));
+            CHK_PRT_RET(
+                listSize > 0 && linkList == nullptr,
+                HCCL_ERROR(
+                    "%s link list is null between myRank=%u and rank=%u on netLayer=%u.", funcName.c_str(), myRank,
+                    remoteRank, netLayer),
+                HCCL_E_INTERNAL);
+            for (u32 idx = 0; idx < listSize; ++idx) {
+                const CommLink& link = linkList[idx];
+                if (link.linkAttr.linkProtocol != CommProtocol::COMM_PROTOCOL_ROCE
+                    || link.srcEndpointDesc.loc.locType != ENDPOINT_LOC_TYPE_HOST
+                    || link.dstEndpointDesc.loc.locType != ENDPOINT_LOC_TYPE_HOST) {
+                    continue;
+                }
+                CHK_RET(CreateChannelFromLink(comm, myRank, remoteRank, netLayer, idx, link, funcName, channels));
+                channelFound = true;
+            }
+            if (channelFound) {
+                break;
+            }
+        }
+        CHK_PRT_RET(
+            !channelFound,
+            HCCL_ERROR(
+                "%s Failed to create HOST/ROCE channel between myRank=%u and rank=%u.", funcName.c_str(), myRank,
+                remoteRank),
+            HCCL_E_INTERNAL);
+    }
+    return HCCL_SUCCESS;
+}
+#endif
+
+HcclResult CalcChannelRequestMesh1DHighestHostRoce(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
+{
+#ifndef AICPU_COMPILE
+    (void)param;
+    channels.clear();
+    CHK_PTR_NULL(topoInfo);
+    CHK_PRT_RET(
+        subcommInfo.empty() || subcommInfo[COMM_LEVEL0].empty(),
+        HCCL_ERROR("[CalcChannelRequestMesh1DHighestHostRoce] subcommInfo is empty."), HCCL_E_PARA);
+
+    const u32 myRank = topoInfo->userRank;
+    auto rankIt = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), myRank);
+    CHK_PRT_RET(
+        rankIt == subcommInfo[COMM_LEVEL0].end(),
+        HCCL_ERROR("[CalcChannelRequestMesh1DHighestHostRoce] Rank [%u] is not in commInfo.", myRank), HCCL_E_PARA);
+    CHK_RET(CalcHighestHostRoceChannels(
+        comm, myRank, subcommInfo[COMM_LEVEL0], "[CalcChannelRequestMesh1DHighestHostRoce]", channels));
+#endif
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcChannelRequestMesh1DFullMesh(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
@@ -724,6 +804,45 @@ HcclResult CalcChannelRequestNhr(
                 myRank, subcommInfo[0][rankIdx]),
             HcclResult::HCCL_E_INTERNAL);
     }
+#endif
+    return HCCL_SUCCESS;
+}
+
+HcclResult CalcChannelRequestNhrHighestHostRoce(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
+{
+#ifndef AICPU_COMPILE
+    (void)param;
+    channels.clear();
+    CHK_PTR_NULL(topoInfo);
+    CHK_PRT_RET(
+        subcommInfo.empty() || subcommInfo[COMM_LEVEL0].empty(),
+        HCCL_ERROR("[CalcChannelRequestNhrHighestHostRoce] subcommInfo is empty."), HCCL_E_PARA);
+
+    const u32 myRank = topoInfo->userRank;
+    auto rankIt = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), myRank);
+    CHK_PRT_RET(
+        rankIt == subcommInfo[COMM_LEVEL0].end(),
+        HCCL_ERROR("[CalcChannelRequestNhrHighestHostRoce] Rank [%u] is not in commInfo.", myRank), HCCL_E_PARA);
+
+    const u32 localRank = std::distance(subcommInfo[COMM_LEVEL0].begin(), rankIt);
+    const u32 localRankSize = subcommInfo[COMM_LEVEL0].size();
+    std::set<u32> connectRankIndexes;
+    CHK_RET(CalcNHRChannelConnect(localRank, localRankSize, INVALID_VALUE_RANKID, connectRankIndexes));
+
+    std::vector<u32> remoteRanks;
+    remoteRanks.reserve(connectRankIndexes.size());
+    for (u32 rankIdx : connectRankIndexes) {
+        CHK_PRT_RET(
+            rankIdx >= localRankSize,
+            HCCL_ERROR(
+                "[CalcChannelRequestNhrHighestHostRoce] Invalid rank index [%u], rank size [%u].", rankIdx,
+                localRankSize),
+            HCCL_E_INTERNAL);
+        remoteRanks.push_back(subcommInfo[COMM_LEVEL0][rankIdx]);
+    }
+    CHK_RET(CalcHighestHostRoceChannels(comm, myRank, remoteRanks, "[CalcChannelRequestNhrHighestHostRoce]", channels));
 #endif
     return HCCL_SUCCESS;
 }

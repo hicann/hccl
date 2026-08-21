@@ -571,8 +571,10 @@ void TopoModel::Create910DLinks(uint32_t srcRank, uint32_t dstRank)
 
     // level1 同pod才有level1链路
     if (IsSamePod(srcRank, dstRank)) {
-        // HostDPU场景出框的连接需要对端描述为Host
-        if (!IsSameServer(srcRank, dstRank) && isDpuEnable) {
+        // HostDPU场景下level1由DPU执行，ROCE连接两端都位于Host。
+        // 非对称拓扑可能将同server的rank划入level1，因此这里不能只处理跨server链路。
+        if (isDpuEnable) {
+            link.srcEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
             link.dstEndpointDesc.loc.locType = EndpointLocType::ENDPOINT_LOC_TYPE_HOST;
         }
         link.linkAttr.linkProtocol

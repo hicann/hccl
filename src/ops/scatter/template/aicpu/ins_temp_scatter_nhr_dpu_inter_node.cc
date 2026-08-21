@@ -44,7 +44,7 @@ HcclResult InsTempScatterNHRDPUInterNode::CalcRes(
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level0Channels;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
+    CHK_RET(CalcChannelRequestNhrHighestHostRoce(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
     return HCCL_SUCCESS;
 }

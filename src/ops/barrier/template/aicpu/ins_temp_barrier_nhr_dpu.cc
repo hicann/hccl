@@ -30,7 +30,7 @@ HcclResult InsTempBarrierNHRDPU::CalcRes(
     resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
+    CHK_RET(CalcChannelRequestNhrHighestHostRoce(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO("[InsTempBarrierNHRDPU][CalcRes] level1Channels[%u].", level1Channels.size());
     return HCCL_SUCCESS;

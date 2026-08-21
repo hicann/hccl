@@ -30,6 +30,9 @@ HcclResult CalcLevel2ChannelRequest(
 HcclResult CalcChannelRequestMesh1D(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
+HcclResult CalcChannelRequestMesh1DHighestHostRoce(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
 HcclResult CalcChannelRequestMesh1DFullMesh(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
@@ -40,6 +43,9 @@ HcclResult CalcChannelRequestMesh1DLevel1(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
 HcclResult CalcChannelRequestNhr(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
+HcclResult CalcChannelRequestNhrHighestHostRoce(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
 HcclResult CalcChannelRequestMesh2D(

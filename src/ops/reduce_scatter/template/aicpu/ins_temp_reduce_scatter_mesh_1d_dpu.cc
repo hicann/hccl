@@ -55,7 +55,7 @@ HcclResult InsTempReduceScatterMesh1dDpu::CalcRes(
     resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level1Channels));
+    CHK_RET(CalcChannelRequestMesh1DHighestHostRoce(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
         "[InsTempReduceScatterMesh1dDpu][CalcRes]slaveThreadNum[%u] notifyNumOnMainThread[%u]"

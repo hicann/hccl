@@ -51,7 +51,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::CalcRes(
     resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level1Channels));
+    CHK_RET(CalcChannelRequestMesh1DHighestHostRoce(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
         "[InsTempReduceScatterMesh1dDpuInter][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] "
@@ -146,6 +146,9 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
     const std::vector<std::vector<uint32_t>>& subCommRanks)
 {
 #ifndef AICPU_COMPILE
+    CHK_PRT_RET(
+        subCommRanks.empty() || subCommRanks[0].empty(),
+        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] subCommRanks is empty."), HCCL_E_PARA);
     u32 myAlgRank = 0;
     std::vector<u32> rankIds = subCommRanks[0];
     auto iter = std::find(rankIds.begin(), rankIds.end(), myRank);
@@ -173,7 +176,27 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
         if (sendSize == 0 && recvSize == 0) {
             continue;
         }
-        const ChannelInfo& link = channels.at(remoteRank)[0];
+        auto channelIt = channels.find(remoteRank);
+        CHK_PRT_RET(
+            channelIt == channels.end() || channelIt->second.empty(),
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] channel to rank[%u] is missing.", remoteRank),
+            HCCL_E_INTERNAL);
+        const ChannelInfo& link = channelIt->second[0];
+        CHK_PRT_RET(
+            !link.isValid || link.handle == 0 || link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_HOST
+                || link.protocol != CommProtocol::COMM_PROTOCOL_ROCE,
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] invalid DPU channel to rank[%u], "
+                "isValid[%d], handle[0x%llx], locationType[%d], protocol[%d].",
+                remoteRank, link.isValid, link.handle, link.locationType, link.protocol),
+            HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            sendSize > 0 && link.remoteCclMem.addr == nullptr,
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] remote CCL buffer of rank[%u] is null.",
+                remoteRank),
+            HCCL_E_INTERNAL);
 
         DpuTransferCtx ctx;
         ctx.txCh = sendSize > 0 ? &link : nullptr;
