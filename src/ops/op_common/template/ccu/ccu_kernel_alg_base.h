@@ -87,6 +87,31 @@ public:
         return CCU_SUCCESS;
     }
 
+    // 等待 [start, end) 范围内的信号（按物理 event 聚合 mask）
+    CcuResult WaitRange(uint32_t start, uint32_t end) { return WaitRangeExcept(start, end, UINT32_MAX); }
+
+    // 等待 [start, end) 范围内的信号，跳过 skipIdx
+    CcuResult WaitRangeExcept(uint32_t start, uint32_t end, uint32_t skipIdx)
+    {
+        for (uint32_t i = 0; i < events_.size(); i++) {
+            uint32_t lo = i * EVENT_BIT_WIDTH;
+            uint32_t hi = lo + EVENT_BIT_WIDTH;
+            if (end <= lo || start >= hi) {
+                continue;
+            }
+            uint32_t s = (start > lo) ? start : lo;
+            uint32_t e = (end < hi) ? end : hi;
+            uint16_t mask = static_cast<uint16_t>(((1u << (e - s)) - 1) << (s - lo));
+            if (skipIdx >= lo && skipIdx < hi) {
+                mask &= ~static_cast<uint16_t>(1u << (skipIdx % EVENT_BIT_WIDTH));
+            }
+            if (mask != 0) {
+                CCU_CHK_RET(ccu::EventWait(events_[i], mask));
+            }
+        }
+        return CCU_SUCCESS;
+    }
+
 private:
     static constexpr uint16_t EVENT_BIT_WIDTH = 16;
 

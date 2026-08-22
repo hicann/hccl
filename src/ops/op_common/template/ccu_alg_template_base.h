@@ -87,6 +87,15 @@ public:
         std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
         std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup, const std::string& tag);
     static HcclResult HasLinkOnNetLayer0(HcclComm comm, uint32_t myRank, uint32_t remoteRank, bool& hasLink);
+    // peerGroupSize: 对称分组的最小粒度（如8=按板粒度分组），默认1为逐个peer对称
+    static void ReorderRankGroupSymmetric(
+        std::vector<u32>& rankGroup, std::vector<HcclChannelDesc>& channels, uint32_t myRank, uint32_t rankSize,
+        uint32_t peerGroupSize = 1);
+    // 对所有kernel执行对称重排并打印rankGroup日志（FULLMESH kernel不重排，仅打印）
+    static HcclResult ReorderAndLogKernelGroups(
+        uint32_t myRank, uint32_t rankSize, bool is2Plus6, uint32_t kernelCount,
+        std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
+        std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup, const std::string& tag);
 
 protected:
     OpMode opMode_ = OpMode::OPBASE;

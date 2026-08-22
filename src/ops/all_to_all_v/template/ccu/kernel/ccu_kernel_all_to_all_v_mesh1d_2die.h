@@ -63,7 +63,7 @@ struct AllToAllVMesh1D2DieContext : CcuKernelCtxBase {
     GroupOpSizeVars curSendTailGoSize;
     std::vector<A2AVSingleSendRecvInfoCtx1D2Die> sendRecvInfo;
 
-    std::vector<ccu::Event> events;
+    CcuEventGroup eventGroup;
 };
 
 CcuResult CcuAlltoAllVMesh1D2DieKernel(CcuKernelArg arg);

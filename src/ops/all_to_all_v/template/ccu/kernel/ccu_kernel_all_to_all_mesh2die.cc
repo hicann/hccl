@@ -13,6 +13,7 @@
 
 namespace ops_hccl {
 
+constexpr uint32_t PEER_BATCH_SIZE = 32;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
@@ -94,12 +95,11 @@ static uint32_t CalcDstRank(AllToAllMesh2DieContext& ctx, uint32_t peerId)
     return arg->rankGroup[peerId];
 }
 
-static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
+static void CalcSrcDstAddrs(
+    AllToAllMesh2DieContext& ctx, std::vector<ccu::LocalAddr>& src, std::vector<ccu::RemoteAddr>& dst,
+    ccu::LocalAddr& localSrc, ccu::LocalAddr& localDst)
 {
     const auto* arg = ctx.arg;
-    std::vector<ccu::LocalAddr> src(ctx.logicRankSize);
-    std::vector<ccu::RemoteAddr> dst(ctx.logicRankSize);
-
     for (uint64_t r = 0; r < ctx.logicRankSize; r++) {
         const u32 dstRank = CalcDstRank(ctx, r);
         src[r].token = ctx.token[r];
@@ -113,10 +113,8 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
             src[r].addr += ctx.inputSliceStride;
         }
     }
-    ccu::LocalAddr localSrc;
-    ccu::LocalAddr localDst;
     if (arg->withMyRank) {
-        const u32 with_dstRank = CalcDstRank(ctx, ctx.logicRankSize - 1);
+        const u32 withDstRank = CalcDstRank(ctx, ctx.logicRankSize - 1);
 
         localSrc.token = ctx.token[ctx.logicRankSize - 1];
         localSrc.addr = ctx.input;
@@ -124,30 +122,54 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
         localDst.token = ctx.token[ctx.logicRankSize - 1];
         localDst.addr = ctx.output[ctx.logicRankSize - 1];
         localDst.addr += ctx.outputoffset;
-        for (uint64_t i = 0; i < with_dstRank; i++) {
+        for (uint64_t i = 0; i < withDstRank; i++) {
             localSrc.addr += ctx.inputSliceStride;
         }
     }
+}
+
+static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
+{
+    const auto* arg = ctx.arg;
+    std::vector<ccu::LocalAddr> src(ctx.logicRankSize);
+    std::vector<ccu::RemoteAddr> dst(ctx.logicRankSize);
+    ccu::LocalAddr localSrc;
+    ccu::LocalAddr localDst;
+
+    CalcSrcDstAddrs(ctx, src, dst, localSrc, localDst);
+
+    // 单 kernel 同时通信对端数超过阈值时，分批 Write+Wait 以避免 UB 拥塞
+    uint32_t logicSize = static_cast<uint32_t>(ctx.logicRankSize);
+    uint32_t numBatches = (logicSize + PEER_BATCH_SIZE - 1) / PEER_BATCH_SIZE;
 
     u32 channelsIdx = 0;
-    for (uint64_t r = 0; r < ctx.logicRankSize; r++) {
-        if (arg->withMyRank && r == ctx.logicRankSize - 1) {
-            GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize, GetCcuVersion());
-            continue;
+    for (uint32_t batch = 0; batch < numBatches; batch++) {
+        uint32_t start = batch * PEER_BATCH_SIZE;
+        uint32_t end = start + PEER_BATCH_SIZE;
+        if (end > logicSize) {
+            end = logicSize;
         }
-        CCU_IF(ctx.sliceSize != 0)
-        {
-            ccu::Write(
-                arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.eventGroup.GetEvent(r),
-                ctx.eventGroup.GetMask(r));
+
+        for (uint32_t r = start; r < end; r++) {
+            if (arg->withMyRank && r == logicSize - 1) {
+                GroupCopy(ctx, localDst, localSrc, ctx.groupOpSize, GetCcuVersion());
+                continue;
+            }
+            CCU_IF(ctx.sliceSize != 0)
+            {
+                ccu::Write(
+                    arg->channels[channelsIdx], dst[r], src[r], ctx.sliceSize, ctx.eventGroup.GetEvent(r),
+                    ctx.eventGroup.GetMask(r));
+            }
+            CCU_ELSE { CCU_CHK_RET(ctx.eventGroup.Record(r)); }
+            channelsIdx++;
         }
-        CCU_ELSE { CCU_CHK_RET(ctx.eventGroup.Record(r)); }
-        channelsIdx++;
-    }
-    if (arg->withMyRank) {
-        CCU_CHK_RET(ctx.eventGroup.WaitAllExcept(ctx.logicRankSize - 1));
-    } else {
-        CCU_CHK_RET(ctx.eventGroup.WaitAll());
+
+        if (arg->withMyRank && (logicSize - 1) >= start && (logicSize - 1) < end) {
+            CCU_CHK_RET(ctx.eventGroup.WaitRangeExcept(start, end, logicSize - 1));
+        } else {
+            CCU_CHK_RET(ctx.eventGroup.WaitRange(start, end));
+        }
     }
 
     return CCU_SUCCESS;

@@ -15,6 +15,7 @@
 #include <utility>
 
 namespace ops_hccl {
+
 CcuAlgTemplateBase::CcuAlgTemplateBase() {}
 
 CcuAlgTemplateBase::CcuAlgTemplateBase(
@@ -273,6 +274,8 @@ HcclResult CcuAlgTemplateBase::CalcDieSplitRatio(
     return HCCL_SUCCESS;
 }
 
+// 按dieId将channel分类：单channel的归入singleChByDie(框内mesh链路)，多channel的归入multiChByDie(CLOS跨框链路)。
+// 若任一远端rank有多channel，则判定为2Plus6拓扑。closPeers(可选)收集所有CLOS远端rank。
 HcclResult CcuAlgTemplateBase::SplitChannelsByDie(
     HcclComm comm, uint32_t myRank, std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc,
     std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
@@ -315,6 +318,9 @@ HcclResult CcuAlgTemplateBase::HasLinkOnNetLayer0(HcclComm comm, uint32_t myRank
     return HcclResult::HCCL_SUCCESS;
 }
 
+// 将SplitChannelsByDie的结果分配到具体kernel槽位。
+// 2Plus6: singleChByDie→FULLMESH，multiChByDie中与fullmesh同dieId的→CLOS_MINOR，其余→CLOS_MAJOR；
+// 非2Plus6: 两个singleChByDie按channel数分配，小的→FULLMESH，大的→CLOS_MAJOR。
 HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
     HcclComm comm, const std::map<uint32_t, std::vector<HcclChannelDesc>>& singleChByDie,
     const std::map<uint32_t, std::vector<HcclChannelDesc>>& multiChByDie, bool is2Plus6, uint32_t myRank,
@@ -366,6 +372,139 @@ HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
         tag.c_str(), myRank, is2Plus6, kernelCount, kernelRankGroup[KERNEL_FULLMESH].size(),
         kernelRankGroup[KERNEL_CLOS_MAJOR].size(), kernelRankGroup[KERNEL_CLOS_MINOR].size());
     return HcclResult::HCCL_SUCCESS;
+}
+
+// 将rankGroup中前remoteCount个peer建立rank->index映射
+static std::map<u32, size_t> BuildRankIndexMap(const std::vector<u32>& rankGroup, size_t remoteCount)
+{
+    std::map<u32, size_t> rankToIdx;
+    for (size_t i = 0; i < remoteCount; i++) {
+        rankToIdx[rankGroup[i]] = i;
+    }
+    return rankToIdx;
+}
+
+// 按板粒度对称遍历，返回remote peer在原rankGroup中的索引顺序
+// 先确定myRank所在板，然后按板距从近到远对称选取右侧板(升序)和左侧板(降序)
+static std::vector<size_t>
+BuildSymmetricOrder(const std::map<u32, size_t>& rankToIdx, uint32_t myRank, uint32_t rankSize, uint32_t peerGroupSize)
+{
+    std::vector<size_t> newOrder;
+    uint32_t numBoards = rankSize / peerGroupSize;
+    uint32_t myBoard = myRank / peerGroupSize;
+    newOrder.reserve(rankSize - peerGroupSize);
+    for (uint32_t g = 1; g <= numBoards / 2; g++) {
+        uint32_t rightBoard = (myBoard + g) % numBoards;
+        for (uint32_t k = 0; k < peerGroupSize; k++) {
+            u32 r = rightBoard * peerGroupSize + k;
+            auto it = rankToIdx.find(r);
+            if (it != rankToIdx.end()) {
+                newOrder.push_back(it->second);
+            }
+        }
+        uint32_t leftBoard = (myBoard + numBoards - g) % numBoards;
+        if (leftBoard == rightBoard) {
+            continue;
+        }
+        for (int k = static_cast<int>(peerGroupSize) - 1; k >= 0; k--) {
+            u32 r = leftBoard * peerGroupSize + static_cast<u32>(k);
+            auto it = rankToIdx.find(r);
+            if (it != rankToIdx.end()) {
+                newOrder.push_back(it->second);
+            }
+        }
+    }
+    return newOrder;
+}
+
+// 按newOrder重排rankGroup和channels，末尾保留myRank（若hasMyRank）
+static void ApplyReorder(
+    std::vector<u32>& rankGroup, std::vector<HcclChannelDesc>& channels, const std::vector<size_t>& newOrder,
+    uint32_t myRank, bool hasMyRank)
+{
+    std::vector<u32> newRankGroup;
+    std::vector<HcclChannelDesc> newChannels;
+    newRankGroup.reserve(rankGroup.size());
+    newChannels.reserve(channels.size());
+    for (size_t idx : newOrder) {
+        newRankGroup.push_back(rankGroup[idx]);
+        if (idx < channels.size()) {
+            newChannels.push_back(channels[idx]);
+        }
+    }
+    if (hasMyRank) {
+        newRankGroup.push_back(myRank);
+    }
+    rankGroup = std::move(newRankGroup);
+    channels = std::move(newChannels);
+}
+
+// 以myRank为中心对称重排rankGroup和channels，使peer按距离myRank从近到远排序。
+// 这样batch发送时先处理离自己近的rank，减少拥塞；同时A→B与B→A落在同一batch，保证双向链路对称。
+// peerGroupSize: 对称分组的最小粒度（=同板卡数时按板对称，=1时逐个peer对称）
+void CcuAlgTemplateBase::ReorderRankGroupSymmetric(
+    std::vector<u32>& rankGroup, std::vector<HcclChannelDesc>& channels, uint32_t myRank, uint32_t rankSize,
+    uint32_t peerGroupSize)
+{
+    if (rankGroup.size() <= 1 || channels.empty() || rankSize == 0 || peerGroupSize == 0) {
+        return;
+    }
+    // rankGroup 末尾可能追加 myRank（本地拷贝），重排时跳过
+    bool hasMyRank = (rankGroup.back() == myRank);
+    size_t remoteCount = hasMyRank ? rankGroup.size() - 1 : rankGroup.size();
+    if (remoteCount <= 1) {
+        return;
+    }
+    if (rankSize % peerGroupSize != 0) {
+        HCCL_WARNING(
+            "[ReorderRankGroupSymmetric] rankSize[%u] not divisible by peerGroupSize[%u], skip reorder.", rankSize,
+            peerGroupSize);
+        return;
+    }
+    auto rankToIdx = BuildRankIndexMap(rankGroup, remoteCount);
+    auto newOrder = BuildSymmetricOrder(rankToIdx, myRank, rankSize, peerGroupSize);
+    if (newOrder.size() != remoteCount) {
+        HCCL_WARNING(
+            "[ReorderRankGroupSymmetric] newOrder size[%zu] != remoteCount[%zu], skip reorder.", newOrder.size(),
+            remoteCount);
+        return;
+    }
+    ApplyReorder(rankGroup, channels, newOrder, myRank, hasMyRank);
+}
+
+// 将rank序列拼接为逗号分隔字符串，用于日志打印
+static std::string RanksToStr(const std::vector<u32>& ranks)
+{
+    std::string s;
+    for (size_t i = 0; i < ranks.size(); i++) {
+        if (i > 0) {
+            s += ", ";
+        }
+        s += std::to_string(ranks[i]);
+    }
+    return s;
+}
+
+HcclResult CcuAlgTemplateBase::ReorderAndLogKernelGroups(
+    uint32_t myRank, uint32_t rankSize, bool is2Plus6, uint32_t kernelCount,
+    std::array<std::vector<HcclChannelDesc>, MAX_KERNEL_NUM_2DIE>& kernelChannels,
+    std::array<std::vector<u32>, MAX_KERNEL_NUM_2DIE>& kernelRankGroup, const std::string& tag)
+{
+    uint32_t boardSize = is2Plus6 ? static_cast<uint32_t>(kernelRankGroup[KERNEL_FULLMESH].size()) : 1;
+    for (uint32_t i = 0; i < kernelCount; i++) {
+        if (i == KERNEL_FULLMESH) {
+            HCCL_INFO(
+                "[%s] kernel[%u] FULLMESH rankGroup(%s), channels[%zu]", tag.c_str(), i,
+                RanksToStr(kernelRankGroup[i]).c_str(), kernelChannels[i].size());
+            continue;
+        }
+        uint32_t groupSize = is2Plus6 ? boardSize : 1;
+        ReorderRankGroupSymmetric(kernelRankGroup[i], kernelChannels[i], myRank, rankSize, groupSize);
+        HCCL_INFO(
+            "[%s] kernel[%u] CLOS rankGroup(%s), channels[%zu], groupSize[%u]", tag.c_str(), i,
+            RanksToStr(kernelRankGroup[i]).c_str(), kernelChannels[i].size(), groupSize);
+    }
+    return HCCL_SUCCESS;
 }
 
 } // namespace ops_hccl

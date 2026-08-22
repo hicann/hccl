@@ -13,11 +13,11 @@
 
 namespace ops_hccl {
 
+constexpr uint32_t PEER_BATCH_SIZE = 32;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
 constexpr int POST_SYNC_ID = 3;
-constexpr uint16_t BIT_NUM_PER_CKE = 16;
 
 static CcuResult ParseKernelArg(AllToAllVMesh1D2DieContext& ctx, CcuKernelArgAllToAllVMesh1D2Die* kernelArg)
 {
@@ -55,8 +55,7 @@ static CcuResult InitResource(AllToAllVMesh1D2DieContext& ctx)
     ctx.src.resize(arg->channelCount);
     ctx.dst.resize(arg->channelCount);
 
-    const uint32_t eventNum = (ctx.peerSize + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE;
-    ctx.events.resize(eventNum);
+    ctx.eventGroup.Init(ctx.peerSize);
 
     return CCU_SUCCESS;
 }
@@ -139,73 +138,67 @@ static void CalcGroupSrcDst(AllToAllVMesh1D2DieContext& ctx)
     }
 }
 
+static CcuResult ProcessPeerStep(AllToAllVMesh1D2DieContext& ctx, uint32_t peerId)
+{
+    const auto* arg = ctx.arg;
+    CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX) { CCU_CHK_RET(ctx.eventGroup.Record(peerId)); }
+    CCU_ELSE
+    {
+        CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX - 1)
+        {
+            ctx.curSendTailSize = ctx.sendRecvInfo[peerId].sendTailSize;
+            ctx.curSendTailGoSize = ctx.sendRecvInfo[peerId].sendTailGoSize;
+            CCU_IF(ctx.curSendTailSize == 0) { CCU_CHK_RET(ctx.eventGroup.Record(peerId)); }
+            CCU_ELSE
+            {
+                if (arg->withMyRank && peerId == ctx.localId) {
+                    GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize, GetCcuVersion());
+                    CCU_CHK_RET(ctx.eventGroup.Record(peerId));
+                } else {
+                    CCU_CHK_RET(ccu::Write(
+                        arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.curSendTailSize,
+                        ctx.eventGroup.GetEvent(peerId), ctx.eventGroup.GetMask(peerId)));
+                }
+            }
+            ctx.completedRankCount += ctx.xnConst1;
+        }
+        CCU_ELSE
+        {
+            if (arg->withMyRank && peerId == ctx.localId) {
+                GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize, GetCcuVersion());
+                CCU_CHK_RET(ctx.eventGroup.Record(peerId));
+                ctx.localDst.addr += ctx.xnMaxTransportSize;
+                ctx.localSrc.addr += ctx.xnMaxTransportSize;
+            } else {
+                CCU_CHK_RET(ccu::Write(
+                    arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.xnMaxTransportSize,
+                    ctx.eventGroup.GetEvent(peerId), ctx.eventGroup.GetMask(peerId)));
+                ctx.dst[peerId].addr += ctx.xnMaxTransportSize;
+                ctx.src[peerId].addr += ctx.xnMaxTransportSize;
+            }
+        }
+        ctx.sendRecvInfo[peerId].sendLoopNum += ctx.xnConst1;
+    }
+    return CCU_SUCCESS;
+}
+
 static CcuResult LoopStep(AllToAllVMesh1D2DieContext& ctx)
 {
     const auto* arg = ctx.arg;
-    for (uint32_t peerId = 0; peerId < ctx.peerSize; peerId++) {
-        HCCL_DEBUG("[CcuKernelAllToAllVMesh1D2Die] LoopStep start, rankId[%u] peerId[%u]", arg->rankId, peerId);
+    uint32_t numBatches = (ctx.peerSize + PEER_BATCH_SIZE - 1) / PEER_BATCH_SIZE;
 
-        const uint16_t eventIdx = peerId / BIT_NUM_PER_CKE;
-        const uint16_t rankMask = 1 << (peerId % BIT_NUM_PER_CKE);
-
-        CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX)
-        {
-            CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
-        }
-        CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum != UINT64_MAX)
-        {
-            CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum == UINT64_MAX - 1)
-            {
-                ctx.curSendTailSize = ctx.sendRecvInfo[peerId].sendTailSize;
-                ctx.curSendTailGoSize = ctx.sendRecvInfo[peerId].sendTailGoSize;
-                CCU_IF(ctx.curSendTailSize == 0) { CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask)); }
-                CCU_ELSE
-                {
-                    if (arg->withMyRank && peerId == ctx.localId) {
-                        GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.curSendTailGoSize, GetCcuVersion());
-                        CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
-                    } else {
-                        CCU_CHK_RET(ccu::Write(
-                            arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.curSendTailSize,
-                            ctx.events[eventIdx], rankMask));
-                    }
-                }
-                ctx.completedRankCount += ctx.xnConst1;
-            }
-            CCU_IF(ctx.sendRecvInfo[peerId].sendLoopNum != UINT64_MAX - 1)
-            {
-                if (arg->withMyRank && peerId == ctx.localId) {
-                    GroupCopy(ctx, ctx.localDst, ctx.localSrc, ctx.xnMaxTransportGoSize, GetCcuVersion());
-                    CCU_CHK_RET(ccu::EventRecord(ctx.events[eventIdx], rankMask));
-                    ctx.localDst.addr += ctx.xnMaxTransportSize;
-                    ctx.localSrc.addr += ctx.xnMaxTransportSize;
-                } else {
-                    CCU_CHK_RET(ccu::Write(
-                        arg->channels[peerId], ctx.dst[peerId], ctx.src[peerId], ctx.xnMaxTransportSize,
-                        ctx.events[eventIdx], rankMask));
-                    ctx.dst[peerId].addr += ctx.xnMaxTransportSize;
-                    ctx.src[peerId].addr += ctx.xnMaxTransportSize;
-                }
-            }
-            ctx.sendRecvInfo[peerId].sendLoopNum += ctx.xnConst1;
+    for (uint32_t batch = 0; batch < numBatches; batch++) {
+        uint32_t start = batch * PEER_BATCH_SIZE;
+        uint32_t end = start + PEER_BATCH_SIZE;
+        if (end > ctx.peerSize) {
+            end = ctx.peerSize;
         }
 
-        HCCL_DEBUG("[CcuKernelAllToAllVMesh1D2Die] LoopStep end, RankId[%u] peerId[%u]", arg->rankId, peerId);
-    }
-
-    const uint32_t eventNum = (ctx.peerSize + BIT_NUM_PER_CKE - 1) / BIT_NUM_PER_CKE;
-    for (uint32_t i = 0; i < eventNum; i++) {
-        uint16_t eventMask;
-        if (i == eventNum - 1) {
-            if (ctx.peerSize % BIT_NUM_PER_CKE == 0) {
-                eventMask = (1 << BIT_NUM_PER_CKE) - 1;
-            } else {
-                eventMask = (1 << (ctx.peerSize % BIT_NUM_PER_CKE)) - 1;
-            }
-        } else {
-            eventMask = (1 << BIT_NUM_PER_CKE) - 1;
+        for (uint32_t peerId = start; peerId < end; peerId++) {
+            CCU_CHK_RET(ProcessPeerStep(ctx, peerId));
         }
-        CCU_CHK_RET(ccu::EventWait(ctx.events[i], eventMask));
+
+        CCU_CHK_RET(ctx.eventGroup.WaitRange(start, end));
     }
     return CCU_SUCCESS;
 }

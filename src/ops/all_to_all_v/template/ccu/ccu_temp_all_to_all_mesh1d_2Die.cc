@@ -29,12 +29,6 @@ CcuTempAllToAllMesh1D2Die::CcuTempAllToAllMesh1D2Die(
 {
     std::vector<u32> ranks = subCommRanks[0];
     templateRankSize_ = ranks.size();
-    for (u32 i = 0; i < subCommRanks_.size(); i++) {
-        for (u32 j = 0; j < subCommRanks_[i].size(); j++) {
-            HCCL_INFO("subCommRanks_[%u][%u]=%u", i, j, subCommRanks_[i][j]);
-        }
-    }
-
     auto it = std::find(ranks.begin(), ranks.end(), rankId);
     if (it != ranks.end()) {
         myRank_ = std::distance(ranks.begin(), it);
@@ -103,6 +97,9 @@ HcclResult CcuTempAllToAllMesh1D2Die::PartitionChannels(
     CHK_RET(SplitChannelsByDie(comm, myRank_, rankIdToChannelDesc, singleChByDie, multiChByDie, is2Plus6_));
     CHK_RET(PartitionChannelsFor2Die(
         comm, singleChByDie, multiChByDie, is2Plus6_, myRank_, kernelCount_, fullmeshDieId_, kernelChannels_,
+        kernelRankGroup_, "CcuTempAllToAllMesh1D2Die"));
+    CHK_RET(ReorderAndLogKernelGroups(
+        myRank_, static_cast<uint32_t>(subCommRanks_[0].size()), is2Plus6_, kernelCount_, kernelChannels_,
         kernelRankGroup_, "CcuTempAllToAllMesh1D2Die"));
     return HcclResult::HCCL_SUCCESS;
 }
