@@ -18,6 +18,7 @@ using namespace AscendC;
 #define AIV_ALL_TO_ALL_V_KERNEL_BATCH_DEF(type)                                           \
     extern "C" __global__ __aicore__ void aiv_alltoallv_##type(EXTERN_KERNEL_ARGS_DEF_V2) \
     {                                                                                     \
+        AIV_INFO_HINT;                                                                    \
         AivAlltoAllVV2Mesh1D<type>(EXTERN_KERNEL_ARGS_CALL);                              \
     }                                                                                     \
     EXPORT_AIV_META_INFO(aiv_alltoallv_##type)

@@ -156,4 +156,11 @@ enum class CommPattern {
 
 #define SUPERKERNEL_CLASS_INIT hiddenInput, input, output
 
+#define AIV_INFO(format, ...)                   \
+    do {                                        \
+        AscendC::PRINTF(format, ##__VA_ARGS__); \
+    } while (0)
+
+#define AIV_INFO_HINT AIV_INFO("Aiv log dump is enabled in %s\n", __func__)
+
 #endif // AIV_DEFINES_H

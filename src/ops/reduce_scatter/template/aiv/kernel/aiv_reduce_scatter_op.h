@@ -23,6 +23,7 @@ using namespace AscendC;
 #define AIV_REDUCE_SCATTER_KERNEL_BATCH_DEF(type)                                    \
     extern "C" __global__ __aicore__ void aiv_reduce_scatter_##type(KERNEL_ARGS_DEF) \
     {                                                                                \
+        AIV_INFO_HINT;                                                               \
         if (numBlocks > 2 * rankSize) {                                              \
             AivReduceScatterV2Mesh1DBigData<type>(KERNEL_ARGS_CALL);                 \
         } else if (numBlocks >= rankSize) {                                          \

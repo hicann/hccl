@@ -48,6 +48,7 @@ __aicore__ inline void sk_rs_superkernel_dispatch(SUPERKERNEL_ARGS_DEF)
 
 extern "C" __aicore__ void sk_reducescatter_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF)
 {
+    AIV_INFO_HINT;
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_rs_superkernel_dispatch(SUPERKERNEL_ARGS_CALL);
 }

@@ -17,6 +17,7 @@ add_custom_target(hccl_aiv_all_to_all_v_op_910_95 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_95.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_95.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_all_to_all_v_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_95_tmp.o --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         "-I$<JOIN:$<TARGET_PROPERTY:asc_kernel_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
         "-I$<JOIN:$<TARGET_PROPERTY:kernel_tiling_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
@@ -34,6 +35,7 @@ add_custom_target(hccl_aiv_all_to_all_op_910_95 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_95.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_95.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_all_to_all_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_95_tmp.o --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         "-I$<JOIN:$<TARGET_PROPERTY:asc_kernel_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
         "-I$<JOIN:$<TARGET_PROPERTY:kernel_tiling_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
@@ -64,7 +66,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int8_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int8_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int8_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_INT8 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int8
@@ -85,7 +87,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int16_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int16_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int16_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_INT16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int16
@@ -106,7 +108,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int32_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int32_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int32_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_INT32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int32
@@ -127,7 +129,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_float16_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float16_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float16_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_FP16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_float16
@@ -148,7 +150,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_float32_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float32_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float32_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_FP32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_float32
@@ -169,7 +171,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_bfloat16_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_bfloat16_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_bfloat16_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_BFP16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_bfloat16
@@ -190,7 +192,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint8_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint8_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint8_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_UINT8 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint8
@@ -211,7 +213,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint16_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint16_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint16_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_UINT16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint16
@@ -232,7 +234,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint32_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint32_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint32_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_UINT32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint32
@@ -253,7 +255,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int64_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int64_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int64_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_INT64 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int64
@@ -274,7 +276,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint64_v2 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint64_v2.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint64_v2.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-c310-vec
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=310 -D__DAV_C310__
         -DHCCL_DTYPE_UINT64 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint64
@@ -361,6 +363,7 @@ add_custom_target(hccl_aiv_all_to_all_v_op_910_96 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_96.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_all_to_all_v_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_v_op_910_96_tmp.o --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw/lib/
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw
@@ -379,6 +382,7 @@ add_custom_target(hccl_aiv_all_to_all_op_910_96 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_96.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_all_to_all_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_all_to_all_op_910_96_tmp.o --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw/lib/
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw
@@ -410,7 +414,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int8_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int8_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int8_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_INT8 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int8
@@ -432,7 +436,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int16_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int16_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int16_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_INT16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int16
@@ -454,7 +458,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int32_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int32_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int32_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_INT32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int32
@@ -476,7 +480,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_float16_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float16_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float16_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_FP16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_float16
@@ -498,7 +502,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_float32_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float32_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_float32_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_FP32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_float32
@@ -520,7 +524,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_bfloat16_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_bfloat16_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_bfloat16_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_BFP16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_bfloat16
@@ -542,7 +546,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint8_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint8_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint8_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_UINT8 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint8
@@ -564,7 +568,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint16_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint16_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint16_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_UINT16 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint16
@@ -586,7 +590,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint32_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint32_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint32_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_UINT32 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint32
@@ -608,7 +612,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_int64_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int64_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_int64_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_INT64 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_int64
@@ -630,7 +634,7 @@ add_custom_target(hccl_a2a_superkernel_mesh_1d_uint64_v2_910_96 ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint64_v2_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_a2a_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_a2a_superkernel_mesh_1d_uint64_v2_910_96.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
-        -DASCENDC_DUMP --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
         -mllvm -cce-aicore-stack-size=0x8000 -D__CCE_AICORE__=920 -D__DAV_920R1__
         -DHCCL_DTYPE_UINT64 -Dsk_alltoall_mesh_1d=sk_alltoall_mesh_1d_uint64

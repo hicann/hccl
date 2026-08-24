@@ -20,6 +20,7 @@ using namespace AscendC;
 #define AIV_ALL_REDUCE_ONESHOT_KERNEL_BATCH_DEF(type)                           \
     extern "C" __global__ __aicore__ void aiv_allreduce_##type(KERNEL_ARGS_DEF) \
     {                                                                           \
+        AIV_INFO_HINT;                                                          \
         return AivAllReduceV2Mesh1DOneShot<type>(KERNEL_ARGS_CALL);             \
     }                                                                           \
     EXPORT_AIV_META_INFO(aiv_allreduce_##type)
@@ -27,6 +28,7 @@ using namespace AscendC;
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_BATCH_DEF(type)                                    \
     extern "C" __global__ __aicore__ void aiv_allreduce_mesh1d_twoshot_##type(KERNEL_ARGS_DEF) \
     {                                                                                          \
+        AIV_INFO_HINT;                                                                         \
         return AivAllReduceV2Mesh1DTwoShot<type>(KERNEL_ARGS_CALL);                            \
     }                                                                                          \
     EXPORT_AIV_META_INFO(aiv_allreduce_mesh1d_twoshot_##type)

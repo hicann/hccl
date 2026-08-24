@@ -13,6 +13,7 @@
 
 extern "C" __aicore__ void sk_alltoall_mesh_1d(SUPERKERNEL_LITE_ARGS_DEF)
 {
+    AIV_INFO_HINT;
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_a2a_mesh_1d(SUPERKERNEL_ARGS_CALL);
 }

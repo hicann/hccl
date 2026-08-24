@@ -13,6 +13,7 @@
 
 extern "C" __aicore__ void sk_allreduce_mesh_1d_oneshot(SUPERKERNEL_LITE_ARGS_DEF)
 {
+    AIV_INFO_HINT;
     SUPERKERNEL_LITE_ARGS_EXTRACT;
     return sk_ar_mesh_1d_oneshot(SUPERKERNEL_ARGS_CALL);
 }

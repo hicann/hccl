@@ -17,6 +17,7 @@ add_custom_target(hccl_aiv_scatter_op_910_95 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_95.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_95.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_scatter_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_95_tmp.o --cce-aicore-arch=dav-c310-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         "-I$<JOIN:$<TARGET_PROPERTY:asc_kernel_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
         "-I$<JOIN:$<TARGET_PROPERTY:kernel_tiling_headers,INTERFACE_INCLUDE_DIRECTORIES>,;-I>"
@@ -41,6 +42,7 @@ add_custom_target(hccl_aiv_scatter_op_910_96 ALL
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_96.o)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_96.o
         COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_scatter_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_scatter_op_910_96_tmp.o --cce-aicore-arch=dav-920r1-vec
+        -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw/lib/
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw

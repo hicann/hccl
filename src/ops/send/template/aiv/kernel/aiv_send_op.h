@@ -18,6 +18,7 @@ using namespace AscendC;
 #define AIV_SEND_KERNEL_BATCH_DEF(type)                                    \
     extern "C" __global__ __aicore__ void aiv_send_##type(KERNEL_ARGS_DEF) \
     {                                                                      \
+        AIV_INFO_HINT;                                                     \
         AivSendV2Mesh1D<type>(KERNEL_ARGS_CALL);                           \
     }                                                                      \
     EXPORT_AIV_META_INFO(aiv_send_##type)
