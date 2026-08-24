@@ -111,7 +111,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcums(
         } else {
             if (IsDevType960()
                 && (dataSize * topoInfo->userRankSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam))) {
-                selectAlgName = "CcuReduceScatterSoleMeshMSConcur";
+                selectAlgName = "CcuMSReduceScatterSoleMeshConcur";
             } else {
                 selectAlgName = "CcuMSReduceScatterSoleMesh";
             }
@@ -636,8 +636,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "AicpuReduceScatterPipeLineUBX";
-                HCCL_INFO("Using algo AicpuReduceScatterPipeLineUBX");
+                selectAlgName = "DpuReduceScatterPipeLineUBX";
+                HCCL_INFO("Using algo DpuReduceScatterPipeLineUBX");
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuReduceScatterSequenceMeshMesh";

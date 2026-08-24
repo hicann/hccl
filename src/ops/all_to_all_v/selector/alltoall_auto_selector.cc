@@ -85,7 +85,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
                 return SelectorStatus::NOT_MATCH;
             } else {
                 if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
-                    selectAlgName = "CcuAllToAllSoleMeshScheConcur";
+                    selectAlgName = "CcuSchedAllToAllSoleMeshConcur";
                 } else {
                     selectAlgName = "CcuSchedAllToAllSoleMesh";
                 }

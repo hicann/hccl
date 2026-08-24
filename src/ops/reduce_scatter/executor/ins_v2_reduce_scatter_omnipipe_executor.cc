@@ -620,7 +620,7 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLineMeshNHRMesh, InsV2ReduceScatterOmniPipeExecutor,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterPipeLineMeshNHRMesh, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatchMultilevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu);
 REGISTER_EXEC_V2_MULTI(
@@ -631,6 +631,9 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLineUBX, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatchUBX, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu);
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterPipeLineUBX, InsV2ReduceScatterOmniPipeExecutor, TopoMatchUBX,
+    InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLine, InsV2ReduceScatterOmniPipeExecutor,

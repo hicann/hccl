@@ -155,7 +155,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
         return SelectorStatus::NOT_MATCH;
     } else {
         if (IsDevType960() && dataSize > SMALL_COUNT_16M && IsTwoLevelNetLayer(topoInfo, opParam)) {
-            selectAlgName = "CcuAllGatherSoleMeshScheConcur";
+            selectAlgName = "CcuSchedAllGatherSoleMeshConcur";
         } else if (
             IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2
             && dataSize >= AG_2P_DETOUR_DATA_SIZE) {
@@ -480,7 +480,7 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "AicpuAllGatherPipeLineUBX";
+                selectAlgName = "DpuAllGatherPipeLineUBX";
                 HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             } else {

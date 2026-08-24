@@ -158,7 +158,7 @@ namespace {
         static const std::set<std::string> aivAlgos = {"AivAllGatherSoleMesh"};
         static const std::set<std::string> ccuMsAlgos
             = {"CcuMSAllGatherSoleMesh", "CcuMSAllGatherSoleMesh2Die", "CcuSchedAllGatherSoleMesh2Die",
-               "CcuSchedAllGatherSoleNHRMultiLink", "CcuAllGatherSoleMeshScheConcur"};
+               "CcuSchedAllGatherSoleNHRMultiLink", "CcuSchedAllGatherSoleMeshConcur"};
         static const std::set<std::string> ccuSchedAlgos
             = {"CcuSchedAllGatherSoleMesh",
                "CcuSchedAllGatherSoleNHR",
@@ -191,7 +191,7 @@ namespace {
                "AicpuAllGatherSequenceMeshConcurNHR",
                "AicpuAllGatherSequenceMeshConcurNHRNHR",
                "AicpuAllGatherPipeLine",
-               "AicpuAllGatherPipeLineMeshNHRNHR",
+               "DpuAllGatherPipeLineMeshNHRNHR",
                "DpuAllGatherSequenceMeshNHR"};
         // 仅单级拓扑可用的 sole 算法，多级时排除
         static const std::set<std::string> singleLevelOnlyAlgos
@@ -205,6 +205,7 @@ namespace {
                "AicpuAllGatherConcurMeshNHR",
                "InsAllGatherParallelMesh1DNHRMultiJetty",
                "AicpuAllGatherPipeLineUBX",
+               "DpuAllGatherPipeLineUBX",
                "CcuSchedAllGatherConcurMeshNHRMultiLink",
                "CcuSchedAllGatherParallelMeshNHRMultiLink",
                "CcuSchedAllGatherPipeLineMeshNHR",
@@ -272,7 +273,7 @@ namespace {
     {
         static const std::set<std::string> aivAlgos = {"AivReduceScatterSoleMesh"};
         static const std::set<std::string> ccuMsAlgos
-            = {"CcuMSReduceScatterSoleMesh", "CcuMSReduceScatterSoleMesh2Die", "CcuReduceScatterSoleMeshMSConcur",
+            = {"CcuMSReduceScatterSoleMesh", "CcuMSReduceScatterSoleMesh2Die", "CcuMSReduceScatterSoleMeshConcur",
                "CcuMSReduceScatterConcurMeshNHRMultiLink", "CcuMSReduceScatterPipeLineMeshNHR"};
         static const std::set<std::string> ccuSchedAlgos
             = {"CcuSchedReduceScatterSoleNHR",
@@ -316,9 +317,10 @@ namespace {
                "CcuSchedReduceScatterConcurMeshNHRMultiLink",
                "CcuMSReduceScatterConcurMeshNHRMultiLink",
                "CcuSchedReduceScatterSoleNHRMultiLink",
-               "AicpuReduceScatterPipeLineMeshNHRMesh",
+               "DpuReduceScatterPipeLineMeshNHRMesh",
                "AicpuReduceScatterPipeLinePcie",
                "AicpuReduceScatterPipeLineUBX",
+               "DpuReduceScatterPipeLineUBX",
                "AicpuReduceScatterPipeLine",
                "CcuSchedReduceScatterPipeLineMeshNHR",
                "CcuMSReduceScatterPipeLineMeshNHR"};
@@ -337,7 +339,7 @@ namespace {
                "CcuSchedReduceScatterSoleMesh2Die",
                "CcuMSReduceScatterSoleMesh",
                "CcuMSReduceScatterSoleMesh2Die",
-               "CcuReduceScatterSoleMeshMSConcur",
+               "CcuMSReduceScatterSoleMeshConcur",
                "CcuMSReduceScatterConcurMeshNHRMultiLink",
                "CcuMSReduceScatterPipeLineMeshNHR"};
 

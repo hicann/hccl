@@ -91,8 +91,8 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcums(
                     "[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.", topoInfo->level0Topo);
                 return SelectorStatus::NOT_MATCH;
             } else {
-                selectAlgName = "CcuReduceOmniPipe2DMs";
-                HCCL_INFO("[ReduceAutoSelector] selectAlgName is CcuReduceOmniPipe2DMs");
+                selectAlgName = "CcuMSReducePipeLineMeshNHR";
+                HCCL_INFO("[ReduceAutoSelector] selectAlgName is CcuMSReducePipeLineMeshNHR");
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -157,7 +157,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
                 return SelectorStatus::NOT_MATCH;
             }
             if (topoInfo->Level1Nhr) {
-                selectAlgName = "CcuReduceNHR1DMem2Mem";
+                selectAlgName = "CcuSchedReduceSoleNHR";
                 HCCL_INFO("[ReduceAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
             } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
                 // 每框出 1 卡
@@ -249,7 +249,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
             if (dataSize < OMNI2D_UBX_REDUCE_DATA_SIZE) {
                 selectAlgName = "CcuReduceParallelMesh1DNHRUBX";
             } else {
-                selectAlgName = "CcuReduceOmniPipe2D";
+                selectAlgName = "CcuSchedReducePipeLineMeshNHR";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -291,7 +291,7 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
             if (level0AndLevel1Symetric) {
-                selectAlgName = "AicpuReduceSequenceMesh1DNHRNHR";
+                selectAlgName = "AicpuReduceSequenceMeshConcurNHRNHR";
             } else {
                 selectAlgName = "AicpuReduceSoleNHR";
             }

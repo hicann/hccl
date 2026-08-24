@@ -650,7 +650,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMesh1dNHRNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHRNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
     TopoMatchMultilevel,
     AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
     InsTempScatterNHR,                    // Scatter L1 (框间)
@@ -660,7 +660,7 @@ REGISTER_EXEC_V2_MULTI(
     InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMesh1dNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
     TopoMatchMultilevel,
     AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
     InsTempScatterNHR,                    // Scatter L1 (框间)

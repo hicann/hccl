@@ -367,7 +367,7 @@ REGISTER_EXEC_V2(
 
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuAllGatherSoleMeshScheConcur, InsV2AllGatherSoleExecutor, TopoMatchConcurrent,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMeshConcur, InsV2AllGatherSoleExecutor, TopoMatchConcurrent,
     CcuTempAllGatherConcurrentMeshMem2MemNHR);
 #endif // !HCCL_CANN_COMPAT_850
 

@@ -710,13 +710,13 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_REDUCE, CcuReduceOmniPipe2D, InsV2ReduceOmniPipeExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReducePipeLineMeshNHR, InsV2ReduceOmniPipeExecutor, TopoMatchUBX,
     CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem,
     CcuTempGatherOmniPipeMesh1DMem2Mem, CcuTempGatherOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_REDUCE, CcuReduceOmniPipe2DMs, InsV2ReduceOmniPipeExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_REDUCE, CcuMSReducePipeLineMeshNHR, InsV2ReduceOmniPipeExecutor, TopoMatchUBX,
     CcuTempReduceScatterOmniPipeMesh1D, CcuTempReduceScatterOmniPipeNHR1DMem2Mem, CcuTempGatherOmniPipeMesh1DMem2Mem,
     CcuTempGatherOmniPipeNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

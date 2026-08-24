@@ -359,7 +359,7 @@ REGISTER_EXEC_V2(
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuAllReduceSoleMeshMsConcur, InsV2AllReduceSoleExecutor, TopoMatchConcurrent,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSoleMeshConcur, InsV2AllReduceSoleExecutor, TopoMatchConcurrent,
     CcuTempAllReduceConcurrentMeshNHR);
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #endif

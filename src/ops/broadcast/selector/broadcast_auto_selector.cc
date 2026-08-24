@@ -205,7 +205,7 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
             if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
                 selectAlgName = "AicpuBroadcastSoleNHR";
             } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
-                selectAlgName = "AicpuBroadcastSequenceMesh1dNHRNHR";
+                selectAlgName = "AicpuBroadcastSequenceMeshConcurNHRNHR";
             } else {
                 selectAlgName = "InsBroadcastParallelNHRNHRUboe";
             }
