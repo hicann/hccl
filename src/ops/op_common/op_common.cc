@@ -2065,7 +2065,6 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam& param, AlgResource
     return HCCL_SUCCESS;
 }
 
-/* 以总资源量的1/5预设默认资源数量 */
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_ADDRESS = 400;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP = 16;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF = 128;
@@ -2076,16 +2075,18 @@ static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_THREAD = 2;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_MS = 128;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_MS = 1024;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_MS = 160;
+
 // V2(960) 资源规格，与 V1 一致的也单独定义，方便后续独立调整
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_ADDRESS_V2 = 0;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_V2 = 16;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_V2 = 128;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_VARIABLE_V2 = 800;
-static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_V2 = 48;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_V2 = 64;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_THREAD_V2 = 2;
+
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_LOOP_MS_V2 = 128;
 static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_CCU_BUF_MS_V2 = 1024;
-static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_MS_V2 = 160;
+static constexpr uint32_t CCU_DEFAULT_RES_FRACTION_EVENT_MS_V2 = 400;
 
 // 即使本算子未在所有 die 上下 kernel，
 // 也需为所有 die 创建 reqDesc，保证后续算子在该 die 上有 kernel 时容量充足。
