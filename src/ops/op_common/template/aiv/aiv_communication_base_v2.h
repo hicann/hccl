@@ -269,7 +269,7 @@ public:
     uint64_t inputRepeatStride_;
     uint64_t outputRepeatStride_;
 
-    bool useDoubleBuffer_;
+    bool useDoubleBuffer_ = true;
 
     TPipe pipe;
     TBuf<> localFlagBuf;
