@@ -839,11 +839,11 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
             return 1;
         }
 
-        // 上报上报mainstream数据,第一个任务
-        if (HcommProfilingReportKernelStartTask(thread, param->commName) != HCCL_SUCCESS) {
+        // 上报mainstream数据,第一个任务
+        if (HcommProfilingReportKernelStartTask(sendRecvThread, param->commName) != HCCL_SUCCESS) {
             HCCL_ERROR(
-                "%sfailed to report MainStream And FirstTask, thread %lu, param->commName %s.", __func__, thread,
-                param->commName);
+                "%s failed to report MainStream And FirstTask, thread %lu, param->commName %s.", __func__,
+                sendRecvThread, param->commName);
             return 1;
         }
 
@@ -864,10 +864,10 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
             return 1;
         }
         // 上报mainstream数据,最后一个任务
-        if (HcommProfilingReportKernelEndTask(thread, param->commName) != HCCL_SUCCESS) {
+        if (HcommProfilingReportKernelEndTask(sendRecvThread, param->commName) != HCCL_SUCCESS) {
             HCCL_ERROR(
-                "%s failed to report MainStream And LastTask, thread %lu, param->commName %s.", __func__, thread,
-                param->commName);
+                "%s failed to report MainStream And LastTask, thread %lu, param->commName %s.", __func__,
+                sendRecvThread, param->commName);
             return 1;
         }
         if (HcommProfilingReportDeviceOp(param->commName) != HCCL_SUCCESS) {
