@@ -494,6 +494,12 @@ HcclResult HcclGetAlgExecParamGraphMode(
     superKernelArgs.rankSize = aivOpArgs.rankSize;
     superKernelArgs.len = count;
     superKernelArgs.dataType = dataType;
+    if (dataType >= HCCL_DATA_TYPE_RESERVED) {
+        HCCL_ERROR(
+            "[HcclGetAlgExecParamGraphMode] dataType[%u] is out of range[0, %d)", static_cast<u32>(dataType),
+            static_cast<int>(HCCL_DATA_TYPE_RESERVED));
+        return HCCL_E_PARA;
+    }
     superKernelArgs.unitSize = ops_hccl::DATATYPE_SIZE_TABLE[dataType];
     superKernelArgs.reduceOp = op;
     superKernelArgs.numBlocks = aivOpArgs.numBlocks;
@@ -626,6 +632,11 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
     u64 scratchBufferSize = opParam->hcclBufferSize;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 dataType = opParam->dataType;
+    if (dataType >= HCCL_DATA_TYPE_RESERVED) {
+        HCCL_ERROR(
+            "[CalcTaskNum] dataType[%llu] is out of range[0, %d)", dataType, static_cast<int>(HCCL_DATA_TYPE_RESERVED));
+        return HCCL_E_PARA;
+    }
     u64 dataTypeSize = DATATYPE_SIZE_TABLE[dataType];
     u64 maxDataSizePerLoop = 0;
     u64 maxDataCountPerLoop = 0;

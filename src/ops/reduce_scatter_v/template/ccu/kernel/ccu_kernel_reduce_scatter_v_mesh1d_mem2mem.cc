@@ -124,15 +124,16 @@ static void CollectAllRanksSlice(
     for (uint32_t rankIdx = 0; rankIdx < arg->rankSize; rankIdx++) {
         if (rankIdx == arg->rankId) {
             // 跳过本卡
-            ccu::EventRecord(ctx.event, 1 << rankIdx);
+            ccu::EventRecord(ctx.event, static_cast<uint16_t>(1ULL << rankIdx));
         } else {
             ccu::Read(
-                arg->channels[channelId], tmpDst[rankIdx], tmpSrc[rankIdx], ctx.sliceSize, ctx.event, 1 << rankIdx);
+                arg->channels[channelId], tmpDst[rankIdx], tmpSrc[rankIdx], ctx.sliceSize, ctx.event,
+                static_cast<uint16_t>(1ULL << rankIdx));
             channelId++;
         }
     }
     // 等读完所有对端
-    ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
+    ccu::EventWait(ctx.event, static_cast<uint16_t>((arg->rankSize >= 32) ? 0xFFFFU : ((1ULL << arg->rankSize) - 1)));
 }
 
 static void PrepareReduceScatterVData(

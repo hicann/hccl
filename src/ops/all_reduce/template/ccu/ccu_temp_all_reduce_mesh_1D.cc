@@ -183,8 +183,8 @@ HcclResult CcuTempAllReduceMesh1D::KernelRun(
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
 
-    uint64_t sliceSize = sliceInfoVec[myRank_][0].size; // 获取本rank需要处理的数据量
-    uint64_t offSet = sliceInfoVec[myRank_][0].offset;  // 自己需要 reduce 的数据基于 inputAddr 的偏移
+    uint64_t sliceSize = sliceInfoVec[mySubCommRank_][0].size; // 获取本rank需要处理的数据量
+    uint64_t offSet = sliceInfoVec[mySubCommRank_][0].offset; // 自己需要 reduce 的数据基于 inputAddr 的偏移
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_MS_DEFAULT_LOOP_COUNT;

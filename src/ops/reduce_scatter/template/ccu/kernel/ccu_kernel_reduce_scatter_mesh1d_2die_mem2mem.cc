@@ -326,20 +326,20 @@ static CcuResult DoReduceScatter(ReduceScatterMesh1D2DieMem2MemContext& ctx)
     uint32_t channelId = 0;
     for (uint64_t rankIdx = 0; rankIdx < ctx.rankSize; rankIdx++) {
         if (ctx.subRankGroup[rankIdx] == ctx.rankId) {
-            ccu::EventRecord(ctx.event, 1 << rankIdx);
+            ccu::EventRecord(ctx.event, static_cast<uint16_t>(1ULL << rankIdx));
             ctx.scratchMem[rankIdx].addr = ctx.input[ctx.myRankIdx];
             ctx.scratchMem[rankIdx].addr += ctx.currentRankSliceInputOffset;
             ctx.scratchMem[rankIdx].token = ctx.token[ctx.myRankIdx];
         } else {
             CCU_CHK_RET(ccu::Read(
                 ctx.arg->channels[channelId], ctx.scratchMem[rankIdx], ctx.remoteInput[rankIdx], ctx.sliceSize,
-                ctx.event, 1 << rankIdx));
+                ctx.event, static_cast<uint16_t>(1ULL << rankIdx)));
             channelId++;
         }
     }
 
     // 等读完所有对端
-    ccu::EventWait(ctx.event, (1 << ctx.rankSize) - 1);
+    ccu::EventWait(ctx.event, static_cast<uint16_t>((ctx.rankSize >= 32) ? 0xFFFFU : ((1ULL << ctx.rankSize) - 1)));
 
     // 做reduce
     CCU_CHK_RET(ReduceLoopGroup(ctx, myOutput, ctx.scratchMem));
