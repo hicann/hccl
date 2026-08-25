@@ -78,8 +78,6 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
                     }
                 }
             }
-        } else {
-            subCommRanks0.emplace_back(std::vector<u32>{myRank_});
         }
         subCommRanks1 = {closRanks};
         omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_LEVEL_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :

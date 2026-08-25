@@ -148,12 +148,6 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::RunReduceScatter(
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
     uint64_t sliceNum = templateRankSize_ - 1;
-    CHK_PRT_RET(
-        sliceNum == 0,
-        HCCL_ERROR(
-            "[InsTempReduceScatterMesh1DMeshChunk][RunReduceScatter] sliceNum is 0, templateRankSize_[%u].",
-            templateRankSize_),
-        HCCL_E_INTERNAL);
     uint64_t mySliceSize = sliceInfoVec[myAlgRank][0].size; // 获取本rank需要处理的数据量，executor已按4K对齐
     uint64_t mySliceCount = mySliceSize / DATATYPE_SIZE_TABLE[dataType_];
 

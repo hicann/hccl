@@ -136,32 +136,23 @@ static CcuResult DoAlltoAll(AlltoAllMesh1DContext& ctx)
     }
 
     uint32_t channelId = 0;
-    uint16_t allBit = static_cast<uint16_t>(
-        ((arg->rankSize >= 32) ? 0xFFFFU : ((1ULL << arg->rankSize) - 1))
-        & ~((arg->rankId >= 32) ?
-                0U :
-                static_cast<uint32_t>(1ULL << arg->rankId))); // 仅rankid位为0，其他位为1，代表远端准备好了
+    uint16_t allBit = ((1 << arg->rankSize) - 1) & (~(1 << arg->rankId)); // 仅rankid位为0，其他位为1，代表远端准备好了
 
     if (arg->loadFromMem) {
         for (uint64_t r = 0; r < arg->rankSize; r++) {
             if (r == arg->rankId) {
-                ccu::LocalCopy(localDst, src[r], ctx.sliceSize, ctx.event, static_cast<uint16_t>(1ULL << r));
+                ccu::LocalCopy(localDst, src[r], ctx.sliceSize, ctx.event, 1 << r);
             } else {
-                ccu::Write(
-                    arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event,
-                    static_cast<uint16_t>(1ULL << r));
+                ccu::Write(arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
                 channelId++;
             }
         }
         // 等读完所有对端
-        ccu::EventWait(
-            ctx.event, static_cast<uint16_t>((arg->rankSize >= 32) ? 0xFFFFU : ((1ULL << arg->rankSize) - 1)));
+        ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
     } else {
         for (uint64_t r = 0; r < arg->rankSize; r++) {
             if (r != arg->rankId) {
-                ccu::Write(
-                    arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event,
-                    static_cast<uint16_t>(1ULL << r));
+                ccu::Write(arg->channels[channelId], dst[r], src[r], ctx.sliceSize, ctx.event, 1 << r);
                 channelId++;
             }
         }

@@ -159,15 +159,13 @@ static CcuResult CreateReduceLoop(ReduceMesh1DTwoShotMem2MemContext& ctx)
             for (uint32_t i = 0; i < size; i++) {
                 if (i == ctx.arg->rankId) {
                     ccu::LocalCopy(
-                        ctx.moRes.ccuBuf[bufBase + i], ctx.loopSrc[index], ctx.loopLen[index], loopEvt,
-                        static_cast<uint16_t>(1ULL << i));
+                        ctx.moRes.ccuBuf[bufBase + i], ctx.loopSrc[index], ctx.loopLen[index], loopEvt, 1 << i);
                 } else {
                     ccu::LocalCopy(
-                        ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt,
-                        static_cast<uint16_t>(1ULL << i));
+                        ctx.moRes.ccuBuf[bufBase + i], ctx.loopScratch[index][i], ctx.loopLen[index], loopEvt, 1 << i);
                 }
             }
-            ccu::EventWait(loopEvt, static_cast<uint16_t>((size >= 32) ? 0xFFFFU : ((1ULL << size) - 1)));
+            ccu::EventWait(loopEvt, (1 << size) - 1);
 
             if (size > 1) {
                 ccu::LocalReduce(
@@ -344,7 +342,7 @@ static CcuResult DoReduceScatter(ReduceMesh1DTwoShotMem2MemContext& ctx)
 
     uint32_t channelIdx = 0;
     for (uint32_t peerId = 0; peerId < arg->rankSize; peerId++) {
-        uint16_t rankMask = static_cast<uint16_t>(1ULL << peerId);
+        uint16_t rankMask = 1 << peerId;
         if (peerId == arg->rankId) {
             ccu::EventRecord(ctx.event, rankMask);
         } else {
@@ -365,7 +363,7 @@ static CcuResult DoReduceScatter(ReduceMesh1DTwoShotMem2MemContext& ctx)
         }
     }
 
-    uint16_t allBit = static_cast<uint16_t>((arg->rankSize >= 32) ? 0xFFFFU : ((1ULL << arg->rankSize) - 1));
+    uint16_t allBit = (1 << arg->rankSize) - 1;
     ccu::EventWait(ctx.event, allBit);
 
     // ReduceLoopGroup：self input + scratch[0..N-1] → dst

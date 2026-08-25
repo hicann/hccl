@@ -104,7 +104,7 @@ static void DoAllGatherV(AllGatherVMesh1DMem2MemContext& ctx)
                 ctx.localDst.addr = ctx.output[arg->rankId];
                 ctx.localDst.addr += ctx.mySliceSizeOutputOffset;
                 ctx.localDst.token = ctx.token[arg->rankId];
-                ccu::EventRecord(ctx.event, static_cast<uint16_t>(1ULL << rankIdx));
+                ccu::EventRecord(ctx.event, 1 << rankIdx);
             } else {
                 ctx.dst[rankIdx].addr = ctx.output[rankIdx];
                 ctx.dst[rankIdx].addr += ctx.mySliceSizeOutputOffset;
@@ -112,15 +112,13 @@ static void DoAllGatherV(AllGatherVMesh1DMem2MemContext& ctx)
                 CCU_IF(ctx.mySliceSize != 0)
                 {
                     ccu::Write(
-                        arg->channels[channelId], ctx.dst[rankIdx], ctx.src, ctx.mySliceSize, ctx.event,
-                        static_cast<uint16_t>(1ULL << rankIdx));
+                        arg->channels[channelId], ctx.dst[rankIdx], ctx.src, ctx.mySliceSize, ctx.event, 1 << rankIdx);
                 }
                 channelId++;
             }
         }
         GroupCopy(ctx, ctx.localDst, ctx.src, ctx.localGoSize, GetCcuVersion());
-        ccu::EventWait(
-            ctx.event, static_cast<uint16_t>((arg->rankSize >= 32) ? 0xFFFFU : ((1ULL << arg->rankSize) - 1)));
+        ccu::EventWait(ctx.event, (1 << arg->rankSize) - 1);
     }
 }
 

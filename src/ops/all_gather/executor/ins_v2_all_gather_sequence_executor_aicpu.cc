@@ -113,9 +113,9 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo.infos[0]);
 
     AlgResourceRequest resReqIntra;
-    CHK_RET(intraTempAlg.CalcRes(comm, param, topoInfo, resReqIntra));
+    intraTempAlg.CalcRes(comm, param, topoInfo, resReqIntra);
     AlgResourceRequest resReqInter;
-    CHK_RET(interTempAlg.CalcRes(comm, param, topoInfo, resReqInter));
+    interTempAlg.CalcRes(comm, param, topoInfo, resReqInter);
 
     // 分级算法，slaveThread和对应notify可以复用
     resourceRequest.slaveThreadNum = std::max(resReqIntra.slaveThreadNum, resReqInter.slaveThreadNum);
@@ -147,11 +147,6 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
         resourceRequest.ccuKernelInfos.insert(
             resourceRequest.ccuKernelInfos.end(), resReqIntra.ccuKernelInfos.begin(), resReqIntra.ccuKernelInfos.end());
     } else {
-        CHK_PRT_RET(
-            resReqIntra.channels.empty() || resReqInter.channels.empty(),
-            HCCL_ERROR("[InsV2AllGatherSequenceExecutorAicpu][CalcRes] intraTemplate or interTemplate has empty "
-                       "channels."),
-            HcclResult::HCCL_E_INTERNAL);
         resourceRequest.channels = {resReqIntra.channels[0], resReqInter.channels[0]};
     }
     return HCCL_SUCCESS;
