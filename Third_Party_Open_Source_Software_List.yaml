@@ -12,3 +12,6 @@ makeself:
 googletest:
   version: v1.14.0
   type: test
+cann-cmake:
+  version: master-044
+  type: build

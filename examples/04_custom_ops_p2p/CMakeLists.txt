@@ -42,7 +42,7 @@ target_compile_options(hccl_custom_p2p PRIVATE
     -fno-strict-aliasing
     -pipe
     -g -O0
-    -std=c++14
+    -std=c++17
     -fstack-protector-all
 )
 target_compile_definitions(hccl_custom_p2p PRIVATE

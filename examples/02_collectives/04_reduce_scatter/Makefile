@@ -13,7 +13,7 @@ ifndef ASCEND_HOME_PATH
              source environment variables by running `source /path/to/Ascend/cann/set_env.sh`")
 endif
 
-CXXFLAGS := -std=c++14 \
+CXXFLAGS := -std=c++17 \
         -Werror \
         -fstack-protector-strong \
         -fPIE -pie \

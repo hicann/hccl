@@ -10,7 +10,7 @@ The following software dependencies are required for compiling this project. Ens
 
 - python >= 3.7.0
 - pip3 >= 20.3.0
-- gcc and g++: 7.3.0 to 13.3.x
+- gcc and g++: 7.3.0 to 14.2.x
 - cmake >= 3.16.0
 - ccache (optional, used to improve secondary compilation speed)
 - googletest (required only when running UT, recommended version release-1.14.0)
@@ -213,4 +213,4 @@ When compiling this project, the following third-party open-source software is r
 | ------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | makeself | 2.5.0 | [makeself-release-2.5.0-patch1.tar.gz](https://gitcode.com/cann-src-third-party/makeself/releases/download/release-2.5.0-patch1.0/makeself-release-2.5.0-patch1.tar.gz) |
 | googletest | 1.14.0 | [googletest-1.14.0.tar.gz](https://gitcode.com/cann-src-third-party/googletest/releases/download/v1.14.0/googletest-1.14.0.tar.gz) |
-| cann-cmake | master-001 | [cmake-master-001.tar.gz](https://cann-3rd.obs.cn-north-4.myhuaweicloud.com/cmake/cmake-master-001.tar.gz) |
+| cann-cmake | master-044 | [cmake-master-044.tar.gz](https://cann-3rd.obs.cn-north-4.myhuaweicloud.com/cmake/cmake-master-044.tar.gz) |
