@@ -10,6 +10,10 @@
 
 #include "algo_name_mapper.h"
 
+#include <algorithm>
+#include <cctype>
+#include <vector>
+
 #include "alg_parse.h"
 #include "log.h"
 #include "tuner_setup.h"
@@ -23,24 +27,18 @@ AlgoNameMapper* AlgoNameMapper::Global()
     return instance;
 }
 
-/* ===== 构建 2D 表 ===== */
-void AlgoNameMapper::BuildMap2D()
+/* ===== 小写化辅助 ===== */
+static std::string ToLowerStr(const std::string& s)
 {
-    int execCount = 0;
-    int tplCount = 0;
-    const AlgoDimEntry* execs = GetAlgoExecutors(execCount);
-    const AlgoDimEntry* tpls = GetAlgoTemplates(tplCount);
-    for (int ex = 0; ex < execCount; ex++) {
-        for (int t = 0; t < tplCount; t++) {
-            std::string key = std::string(execs[ex].pascal) + tpls[t].pascal;
-            map2D_[key] = {execs[ex].key, tpls[t].key};
-        }
-    }
-    HCCL_DEBUG("[AlgoNameMapper] 2D map built, %zu entries.", map2D_.size());
+    std::string r = s;
+    std::transform(r.begin(), r.end(), r.begin(), [](unsigned char c) {
+        return std::tolower(c);
+    });
+    return r;
 }
 
-/* ===== 2D 查表（仅 init 时调用）===== */
-bool AlgoNameMapper::Lookup2D(const std::string& algName, const std::string& opTypePascal, AlgoDims& dims) const
+/* ===== executor 前缀匹配 + 剩余即 template 拼接串（仅 init 时调用）===== */
+bool AlgoNameMapper::LookupByPrefix(const std::string& algName, const std::string& opTypePascal, AlgoDims& dims) const
 {
     /* 1. 定位 optype，拆出 engine 和 execTpl */
     size_t pos = algName.find(opTypePascal);
@@ -63,22 +61,32 @@ bool AlgoNameMapper::Lookup2D(const std::string& algName, const std::string& opT
         return false;
     }
 
-    /* 3. execTpl = optype 后面，查 2D 表 */
+    /* 3. execTpl = optype 后面，按 executor pascal 长度降序做前缀匹配 */
     std::string execTpl = algName.substr(pos + opTypePascal.size());
-    auto it = map2D_.find(execTpl);
-    if (it == map2D_.end()) {
-        return false;
+
+    /* 收集 executor 并按 pascal 长度降序排序，避免短前缀误匹配（如 Concur 匹配 Concurrent） */
+    int execCount = 0;
+    const AlgoDimEntry* execs = GetAlgoExecutors(execCount);
+    std::vector<AlgoDimEntry> sortedExecs(execs, execs + execCount);
+    std::sort(sortedExecs.begin(), sortedExecs.end(), [](const AlgoDimEntry& a, const AlgoDimEntry& b) {
+        return std::string(a.pascal).size() > std::string(b.pascal).size();
+    });
+
+    for (int i = 0; i < execCount; i++) {
+        const std::string pascal = sortedExecs[i].pascal;
+        if (execTpl.size() >= pascal.size() && execTpl.compare(0, pascal.size(), pascal) == 0) {
+            dims.executorUser = sortedExecs[i].key;
+            /* 4. 剩余串小写化即为 template 拼接串（不切分，支持任意级数） */
+            dims.templateUser = ToLowerStr(execTpl.substr(pascal.size()));
+            return true;
+        }
     }
-    dims.executorUser = it->second.first;
-    dims.templateUser = it->second.second;
-    return true;
+    return false;
 }
 
-/* ===== init：建表 + 缓存所有算法（一次性）===== */
+/* ===== init：缓存所有算法（一次性）===== */
 void AlgoNameMapper::Init(const AllAlgos& allAlgos)
 {
-    BuildMap2D(); /* 30 条，<0.1ms */
-
     for (int i = 0; i < allAlgos.count; ++i) {
         const char* algName = allAlgos.algElements[i].algName;
         HcclCMDType opType = allAlgos.algElements[i].opType;
@@ -91,7 +99,7 @@ void AlgoNameMapper::Init(const AllAlgos& allAlgos)
         }
 
         AlgoDims dims = {};
-        if (Lookup2D(algName, opTypePascal, dims)) {
+        if (LookupByPrefix(algName, opTypePascal, dims)) {
             cache_[algName] = dims;
         } else {
             HCCL_WARNING("[AlgoNameMapper] lookup failed, algName=%s.", algName);
@@ -111,7 +119,7 @@ void AlgoNameMapper::Enrich(hcclTunerAlgoEntry_t* entries, int count)
         if (it != cache_.end()) {
             entries[i].engineName = it->second.engineUser;
             entries[i].executorName = it->second.executorUser;
-            entries[i].templateName = it->second.templateUser;
+            entries[i].templateName = it->second.templateUser.c_str();
         } else {
             entries[i].engineName = "";
             entries[i].executorName = "";

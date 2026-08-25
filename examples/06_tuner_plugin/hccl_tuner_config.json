@@ -27,6 +27,18 @@
           "executor": "sole",
           "template": "meshoneshot",
           "cost": 0.0
+        },
+        {
+          "match": {
+            "min_ranks": 16,
+            "max_ranks": 16,
+            "min_bytes": 0,
+            "max_bytes": 1048576
+          },
+          "engine": "aicpu",
+          "executor": "sequence",
+          "template": "meshconcurnhrnhr",
+          "cost": 0.0
         }
       ]
     },

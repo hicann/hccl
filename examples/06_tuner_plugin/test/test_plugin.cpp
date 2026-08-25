@@ -754,6 +754,67 @@ static void TestCostNegativeSkip(void)
     ASSERT(matched == 1, "rule still matched (matched=1)");
 }
 
+/* 17. 多级算法 template 拼接串匹配（方案 A' 修复验证） */
+static void TestMultiLevelTemplateMatch(void)
+{
+    ResetPluginState();
+    /* 多级算法规则：executor=sequence, template=meshconcurnhrnhr（拼接串，不枚举校验） */
+    FILE* fp = fopen("/tmp/hccl_tuner_test_multi.json", "w");
+    fputs(
+        "{\"version\":1,\"op_types\":{\"allreduce\":{\"rules\":[{\"match\":{\"min_ranks\":8,\"max_ranks\":8,"
+        "\"min_bytes\":0,\"max_bytes\":1048576},"
+        "\"engine\":\"aicpu\",\"executor\":\"sequence\","
+        "\"template\":\"meshconcurnhrnhr\",\"cost\":0.0}]}}}",
+        fp);
+    fclose(fp);
+    setenv("HCCL_TUNER_CONFIG_FILE", "/tmp/hccl_tuner_test_multi.json", 1);
+
+    hcclTunerCommInfo_t commInfo = {};
+    commInfo.nRanks = 8;
+    commInfo.structSize = sizeof(commInfo);
+    hcclTunerHostFunctions_t hf = MakeMockHostFuncs();
+    hcclTunerFuncs_v1_t funcs = hcclTunerPlugin_v1;
+
+    funcs.init((HcclComm)0x1, &commInfo, &hf);
+
+    /* template 拼接串不枚举校验 → configValid=1 */
+    StoredHeader* ctx = TunerGetStoredCtx((HcclComm)0x1);
+    ASSERT(ctx != NULL, "context stored");
+    ASSERT(ctx->configValid == 1, "configValid=1 (template concat string not enum-validated)");
+
+    /* 模拟 Enrich 后的算法条目 */
+    hcclTunerAlgoEntry_t entries[2] = {};
+    /* entry 0: 多级算法，executor=sequence, template=拼接串 */
+    entries[0].structSize = sizeof(hcclTunerAlgoEntry_t);
+    entries[0].algName = "AicpuAllReduceSequenceMeshConcurNHRNHR";
+    entries[0].engineName = "aicpu";
+    entries[0].executorName = "sequence";
+    entries[0].templateName = "meshconcurnhrnhr";
+    entries[0].cost = 5.0f;
+    /* entry 1: 单级算法，不匹配规则（executor=sole） */
+    entries[1] = entries[0];
+    entries[1].algName = "AicpuAllReduceSoleMeshOneShot";
+    entries[1].executorName = "sole";
+    entries[1].templateName = "meshoneshot";
+    entries[1].cost = 10.0f;
+
+    hcclTunerCollInfo_t collInfo = {};
+    int matched = 0;
+    collInfo.collType = HCCL_CMD_ALLREDUCE;
+    collInfo.nBytes = 4096;
+    collInfo.dataType = HCCL_DATA_TYPE_FP16;
+    collInfo.structSize = sizeof(collInfo);
+    funcs.getCollInfo((HcclComm)0x1, &collInfo, entries, 2, &matched);
+
+    /* 多级算法 entry[0] 匹配规则，cost 改为 0.0 */
+    ASSERT(entries[0].cost == 0.0f, "multi-level template matched, cost=0.0");
+    /* 单级算法 entry[1] 不匹配（executor=sole != sequence），cost 不变 */
+    ASSERT(entries[1].cost == 10.0f, "single-level entry not modified");
+    ASSERT(matched == 1, "rule matched");
+
+    WriteTestConfig("/tmp/hccl_tuner_test_cfg.json");
+}
+
 int main(void)
 {
     TestDescriptorAndFuncs();
@@ -772,9 +833,11 @@ int main(void)
     TestRequiredFieldMissing();
     TestRangeValidation();
     TestCostNegativeSkip();
+    TestMultiLevelTemplateMatch();
 
     printf("\n=== %d/%d tests passed ===\n", g_testsPass, g_testsRun);
     unlink("/tmp/hccl_tuner_test_cfg.json");
     unlink("/tmp/hccl_tuner_test_typo.json");
+    unlink("/tmp/hccl_tuner_test_multi.json");
     return (g_testsPass == g_testsRun) ? 0 : 1;
 }

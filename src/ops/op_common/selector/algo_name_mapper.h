@@ -13,7 +13,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <utility>
 
 #include "hccl_algo_dims.h"
 #include "hccl_tuner_plugin.h"
@@ -21,18 +20,20 @@
 
 namespace ops_hccl {
 
-/* 查询结果：算法的 3D 用户名 */
+/* 查询结果：算法的 3D 用户名。
+ * templateUser 为拼接串：单级="mesh"，多级="meshconcurnhrnhr"（executor 后剩余串小写化）。
+ * std::string 随 cache_ 持久化，c_str() 返回的指针在 cache_ 生命周期内稳定。 */
 struct AlgoDims {
     const char* engineUser;   /* "aicpu" */
     const char* executorUser; /* "sole" */
-    const char* templateUser; /* "mesh_one_shot" */
+    std::string templateUser; /* "meshoneshot" 或 "meshconcurnhrnhr" */
 };
 
 class AlgoNameMapper {
 public:
     static AlgoNameMapper* Global();
 
-    /* init：建 2D 表 + 缓存所有算法（HCCL 启动时调用一次） */
+    /* init：缓存所有算法（HCCL 启动时调用一次） */
     void Init(const AllAlgos& allAlgos);
 
     /* enrich：填 3D 名到 entry 数组（每次 op，CostTableGen 之后调用） */
@@ -41,14 +42,11 @@ public:
 private:
     AlgoNameMapper() = default;
 
-    /* 2D 预计算表（init 时构建，30 条） */
-    std::unordered_map<std::string, std::pair<const char*, const char*>> map2D_;
-
     /* 算法缓存（init 时填充，Enrich 直接读） */
     std::unordered_map<std::string, AlgoDims> cache_;
 
-    void BuildMap2D();
-    bool Lookup2D(const std::string& algName, const std::string& opTypePascal, AlgoDims& dims) const;
+    /* executor 前缀匹配 + 剩余即 template 拼接串（init 时调用，替代旧 Lookup2D） */
+    bool LookupByPrefix(const std::string& algName, const std::string& opTypePascal, AlgoDims& dims) const;
 };
 
 } /* namespace ops_hccl */

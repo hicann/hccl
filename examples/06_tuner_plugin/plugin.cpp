@@ -39,9 +39,6 @@
 /* ===== 维度校验（与 alg_parse.cc 的 ENGINE_TYPES/EXECUTOR_TYPES/ALGO_TYPES key 保持一致）===== */
 static const char* g_validEngines[] = {"aicpu", "ccums", "ccusched", "aiv", "dpu"};
 static const char* g_validExecutors[] = {"sole", "sequence", "parallel", "pipeline", "concur"};
-static const char* g_validTemplates[]
-    = {"mesh",          "mesh2die",  "meshoneshot",      "meshtwoshot", "meshconcur",
-       "meshmultilink", "meshchunk", "meshchunktwoshot", "nhr",         "nhrmultilink"};
 
 static int is_valid_name(const char* s, const char** list, int count)
 {
@@ -64,11 +61,6 @@ static int is_valid_engine(const char* s)
 static int is_valid_executor(const char* s)
 {
     return is_valid_name(s, g_validExecutors, (int)(sizeof(g_validExecutors) / sizeof(g_validExecutors[0])));
-}
-
-static int is_valid_template(const char* s)
-{
-    return is_valid_name(s, g_validTemplates, (int)(sizeof(g_validTemplates) / sizeof(g_validTemplates[0])));
 }
 
 static HcclCMDType op_type_from_name(const char* name)
@@ -133,9 +125,9 @@ typedef struct {
 
 typedef struct {
     MatchCond match;
-    char engine[16];       /* "aicpu" 或 "" (通配) */
-    char executor[16];     /* "sole" 或 "" */
-    char templateName[32]; /* "meshoneshot" 或 "" */
+    char engine[16];        /* "aicpu" 或 "" (通配) */
+    char executor[16];      /* "sole" 或 "" */
+    char templateName[128]; /* "meshoneshot" 单级 或 "meshconcurnhrnhr" 多级拼接串 */
     float cost;
     int hasCost;
 } Rule;
@@ -226,8 +218,7 @@ static HcclDataType ParseDataType(const char* name)
     return HCCL_DATA_TYPE_RESERVED;
 }
 
-/* 维度值校验由插件自维护的 is_valid_engine/is_valid_executor/is_valid_template 完成，
- * 与 algo_name_mapper.cc 共享同一权威来源（g_hcclEngines/g_hcclExecutors/g_hcclTemplates）。 */
+/* 维度值校验由插件自维护的 is_valid_engine/is_valid_executor 完成（template 不校验，靠运行时 warning 兜底）。 */
 
 /* ===== JSON 解析（nlohmann/json）===== */
 
@@ -402,8 +393,10 @@ static void ParseRule(const nlohmann::json& ruleObj, Rule* r, SchemaState* s)
     }
     if (ruleObj.contains("template")) {
         std::string buf = ruleObj["template"].get<std::string>();
-        if (!is_valid_template(buf.c_str())) {
-            SchemaError(s, "invalid template '%s'", buf.c_str());
+        /* template 不做枚举校验：单级是单 template 名，多级是拼接串（不可枚举）。
+         * 拼写错误靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
+        if (buf.empty()) {
+            SchemaError(s, "invalid template '%s' (empty)", buf.c_str());
         } else {
             if (snprintf_s(r->templateName, sizeof(r->templateName), sizeof(r->templateName) - 1, "%s", buf.c_str())
                 < 0) {

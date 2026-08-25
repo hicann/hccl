@@ -76,7 +76,8 @@ The plugin searches for the configuration file in the following order, loading t
 
 ### Match Behavior
 
-- `engine` / `executor` / `template` (required) specify the target position in the cost table (see available values below)
+- `engine` / `executor` / `template` (required) specify the target position in the cost table
+- `template` for single-level algorithms is a single template name (e.g., `mesh`); for multi-level algorithms it is the lowercased concatenation of the remaining string after the executor in algName (e.g., `meshconcurnhrnhr`)
 - `cost` (required) sets the cost value at that position; `0.0` means optimal
 - The Selector chooses the minimum cost from the cost table to determine the algorithm
 
@@ -90,7 +91,17 @@ The plugin searches for the configuration file in the following order, loading t
 
 ### template Available Values
 
+Single-level algorithms (enum-validated):
+
 `mesh` / `mesh2die` / `meshoneshot` / `meshtwoshot` / `meshconcur` / `meshmultilink` / `meshchunk` / `meshchunktwoshot` / `nhr` / `nhrmultilink`
+
+Multi-level algorithms (concatenation string, not enum-validated; typos caught at runtime via warning):
+
+Take the lowercased remaining string after the executor in algName, e.g., `AicpuAllReduceSequenceMeshConcurNHRNHR` → `meshconcurnhrnhr`.
+
+```json
+{ "engine": "aicpu", "executor": "sequence", "template": "meshconcurnhrnhr", "cost": 0.0 }
+```
 
 ### Supported op_type
 
@@ -111,3 +122,59 @@ make
 The plugin must export the symbol `hcclTunerPlugin_v1` (type `hcclTunerFuncs_v1_t`), containing two function pointers: `init` and `getCollInfo`. The HCCL core loads the plugin via `dlsym` to obtain this symbol.
 
 See `include/hccl_tuner_plugin.h` for details.
+
+## Runtime Examples
+
+The following are typical outputs from `./test_plugin`, demonstrating the plugin's behaviors.
+
+### Rule Hit and Cost Override
+
+AllReduce with 8 ranks, 4096B, fp32 matches a rule. The target algorithm's cost is changed from 100.0 to 0.0 (optimal preference). The Selector will pick this algorithm:
+
+```
+[TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2
+  engine=aicpu executor=sole template=meshoneshot cost=0.000000
+[TunerDFX] modify: algName=AicpuAllReduceSoleMeshOneShot
+  cost 100.000000 -> 0.000000
+```
+
+Multi-level algorithms are also supported. The `template` field is the lowercased remainder string after the executor in the algorithm name:
+
+```
+[TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/1
+  engine=aicpu executor=sequence template=meshconcurnhrnhr cost=0.000000
+[TunerDFX] modify: algName=AicpuAllReduceSequenceMeshConcurNHRNHR
+  cost 5.000000 -> 0.000000
+```
+
+### No Match — No Intervention
+
+4 ranks is outside the required 8–16 range. No rule matches, the cost table retains CostModel values:
+
+```
+[TunerDFX] no rule matched: opType=2 nBytes=4096 dataType=3
+```
+
+### Target Algorithm Disabled (cost<0) — Skip
+
+The target entry has cost=-1 (already disabled). The plugin does not modify it. In `SelectMinCost`, cost<0 is treated as filtered and excluded from selection:
+
+```
+[TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2
+  engine=aicpu executor=sole template=meshoneshot cost=0.000000
+[TunerDFX] skip disabled: algName=AicpuAllReduceSoleMeshOneShot cost=-1.000000
+[TunerDFX] rule matched but no entry modified
+```
+
+### Schema Validation Failed — No Intervention
+
+When the config contains typos, missing required fields, invalid enums, or any other schema errors, the plugin does not intervene at all (safe degradation):
+
+```
+Schema: unknown field 'mtach' in rule, skipping
+Schema: rule missing required field 'match'
+Schema: invalid engine 'invalid_engine'
+Schema: min_ranks(16) > max_ranks(8)
+tuner config loaded, schemaErrors=4
+Schema validation failed (4 errors), plugin will not intervene
+```
