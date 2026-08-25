@@ -95,7 +95,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    selectAlgName = "AivAllToAllVSoleMesh";
+    selectAlgName = "AivAllToAllVCSoleMesh";
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
