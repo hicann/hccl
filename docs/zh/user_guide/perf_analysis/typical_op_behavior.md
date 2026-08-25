@@ -6,7 +6,7 @@
 
 1. 将通信数据从用户输入内存拷贝至HCCL Buffer内存中。
 
-    ![usermen_to_hcclbuffer](figures/usermen_to_hcclbuffer.png)
+    ![usermem_to_hcclbuffer](figures/usermem_to_hcclbuffer.png)
 
 2. 节点内实现ReduceScatter通信语义，包括notify前同步、ReduceInline内存拷贝、随路运算以及notify尾同步。
 
