@@ -9,6 +9,6 @@
 # -----------------------------------------------------------------------------------------------------------
 
 target_sources(hccl-model-proxy PRIVATE
-    exception_defination.cc
+    exception_definition.cc
     hccl_exception.cc
 )

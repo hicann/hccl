@@ -14,7 +14,7 @@
 #include <exception>
 #include <string>
 #include <vector>
-#include "exception_defination.h"
+#include "exception_definition.h"
 
 namespace HcclSim {
 

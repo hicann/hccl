@@ -13,7 +13,7 @@
 
 #include <string>
 #include "hccl_exception.h"
-#include "exception_defination.h"
+#include "exception_definition.h"
 
 namespace HcclSim {
 
