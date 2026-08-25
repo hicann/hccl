@@ -93,6 +93,10 @@ protected:
     std::vector<ThreadHandle> threads_;
     std::vector<std::vector<u32>> temp0HierarchyInfo_;
     std::vector<std::vector<u32>> temp1HierarchyInfo_;
+
+    double multipleDimensionSplitRatio_{0.5};
+    MultipleDimensionSplitRatioSource multipleDimensionSplitRatioSource_
+        = MultipleDimensionSplitRatioSource::BUILTIN_FORMULA;
 };
 } // namespace ops_hccl
 

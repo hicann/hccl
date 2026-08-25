@@ -278,9 +278,16 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     std::vector<double>& splitDataSize) const
 {
-    double splitData = 0.5;
-    splitDataSize.push_back(splitData);
-    splitDataSize.push_back(splitData);
+    double ratio = multipleDimensionSplitRatio_;
+    if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = CalcParallelDataSplitRatio(
+            rankSizeLevel0_, rankSizeLevel1_, intraChannelInfo_, interChannelInfo_, ParallelDataSplitType::SCATTER,
+            multipleDimensionSplitRatio_);
+    }
+    splitDataSize.push_back(ratio);
+    splitDataSize.push_back(1.0 - ratio);
+    HCCL_INFO(
+        "[InsV2ScatterParallelExecutor] meshFirstRatio[%f], closFirstRatio[%f]", splitDataSize[0], splitDataSize[1]);
     return;
 }
 
@@ -311,8 +318,10 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 {
     HCCL_INFO("[InsV2ScatterParallelExecutor] AlgTemplate intra server is [%s]", tempAlgIntra.Describe().c_str());
     HCCL_INFO("[InsV2ScatterParallelExecutor] AlgTemplate inter server is [%s]", tempAlgInter.Describe().c_str());
+    multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
+    multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<double> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize); // <0.5, 0.5>
+    GetParallelDataSplit(dataSplitSize); // <ratio, 1.0 - ratio>
     double hcclBuffMultipleIntra = std::max(
         dataSplitSize.at(0) * rankSizeLevel1_,
         dataSplitSize.at(1) * rankSizeLevel0_); // intra都是mesh // x/y方向最大rank数 * y/x方向的dataSplitSize
