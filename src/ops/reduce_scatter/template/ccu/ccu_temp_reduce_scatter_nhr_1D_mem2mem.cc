@@ -201,10 +201,10 @@ CcuTempReduceScatterNHR1DMem2Mem::FastLaunch(const OpParam& param, const Templat
         constexpr u32 outputIdx = 1;
         constexpr u32 currentRankSliceOutputOffsetIdx = 8;
         constexpr u32 isInputOutputEqualIdx = 12;
-        constexpr u32 inputOffsetIdx = 13;                 // inBuffBaseOff
-        constexpr u32 outputOffsetIdx = 14;                // outBuffBaseOff
-        constexpr u32 currentRankSliceInputOffsetIdx = 15; // cached currentRankSliceInputOffset
-        uint64_t argSize = 13;
+        constexpr u32 inputOffsetIdx = 21;                 // inBuffBaseOff
+        constexpr u32 outputOffsetIdx = 22;                // outBuffBaseOff
+        constexpr u32 currentRankSliceInputOffsetIdx = 23; // cached currentRankSliceInputOffset
+        uint64_t argSize = 21;
 
         uint64_t inputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
         uint64_t outputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
@@ -311,6 +311,15 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub));
     }
 
+    LoopGroupConfig config{};
+    config.msInterleave = CCU_MS_INTERLEAVE;
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
+    goSizeNormal_[0] = CalGoSize(die0Size, config, GetCcuVersion());
+    goSizeLast_[0] = CalGoSize(die0LastSliceSize, config, GetCcuVersion());
+    goSizeNormal_[1] = CalGoSize(die1Size, config, GetCcuVersion());
+    goSizeLast_[1] = CalGoSize(die1LastSliceSize, config, GetCcuVersion());
+
     for (uint32_t axisId = 0; axisId < kernelNum; axisId++) {
         if ((axisId == 0 && die0Size == 0 && die0LastSliceSize == 0)
             || (axisId == 1 && die1Size == 0 && die1LastSliceSize == 0)) {
@@ -318,12 +327,29 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(
             continue;
         }
 
-        std::vector<uint64_t> taskArgs = {inputAddr,         outputAddr,         token,
-                                          die0Size,          die1Size,           die0LastSliceSize,
-                                          die1LastSliceSize, inputSliceStride,   currentRankSliceOutputOffset,
-                                          inputRepeatStride, outputRepeatStride, repeatNumVar,
-                                          isInputOutputEqual};
-        uint64_t argSize = 13;
+        std::vector<uint64_t> taskArgs
+            = {inputAddr,
+               outputAddr,
+               token,
+               die0Size,
+               die1Size,
+               die0LastSliceSize,
+               die1LastSliceSize,
+               inputSliceStride,
+               currentRankSliceOutputOffset,
+               inputRepeatStride,
+               outputRepeatStride,
+               repeatNumVar,
+               isInputOutputEqual,
+               goSizeNormal_[axisId][0],
+               goSizeNormal_[axisId][1],
+               goSizeNormal_[axisId][2],
+               goSizeNormal_[axisId][3],
+               goSizeLast_[axisId][0],
+               goSizeLast_[axisId][1],
+               goSizeLast_[axisId][2],
+               goSizeLast_[axisId][3]};
+        uint64_t argSize = 21;
 
         CcuResult launchRet = HcommCcuKernelLaunch(
             templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgs.data(), argSize);
@@ -339,15 +365,16 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(
         std::vector<u32> notifyIdxSubToMain(1, 0);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain));
     }
-    // 所有task下发完后再保存参数信息
-    CcuKernelSubmitInfo submitInfo;
-    CHK_RET(FillCachedArgs(
-        submitInfo, inputAddr, outputAddr, token, die0Size, die1Size, die0LastSliceSize, die1LastSliceSize,
-        inputSliceStride, currentRankSliceOutputOffset, inputRepeatStride, outputRepeatStride, repeatNumVar,
-        isInputOutputEqual, buffInfo_.inBuffBaseOff, buffInfo_.outBuffBaseOff, currentRankSliceInputOffset));
+    // 所有task下发完后再保存参数信息，每个die kernel的goSize不同，需分别构建submitInfo
     for (u32 i = 0; i < kernelNum; i++) {
-        // 2个kernel的TaskArg相同
+        CcuKernelSubmitInfo submitInfo;
         submitInfo.kernelHandle = templateResource.ccuKernels[i];
+        CHK_RET(FillCachedArgs(
+            submitInfo, inputAddr, outputAddr, token, die0Size, die1Size, die0LastSliceSize, die1LastSliceSize,
+            inputSliceStride, currentRankSliceOutputOffset, inputRepeatStride, outputRepeatStride, repeatNumVar,
+            isInputOutputEqual, goSizeNormal_[i][0], goSizeNormal_[i][1], goSizeNormal_[i][2], goSizeNormal_[i][3],
+            goSizeLast_[i][0], goSizeLast_[i][1], goSizeLast_[i][2], goSizeLast_[i][3], buffInfo_.inBuffBaseOff,
+            buffInfo_.outBuffBaseOff, currentRankSliceInputOffset));
         templateResource.submitInfos.push_back(submitInfo);
     }
 

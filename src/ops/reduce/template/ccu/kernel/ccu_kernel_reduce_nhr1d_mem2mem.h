@@ -58,6 +58,8 @@ struct ReduceNHR1DMem2MemContext : CcuKernelCtxBase {
     ccu::LocalAddr localSrc;
     ccu::LocalAddr localDst;
     ccu::RemoteAddr remoteDst;
+    GroupOpSizeVars goSizeNormal;
+    GroupOpSizeVars goSizeLast;
 };
 
 CcuResult CcuReduceNHR1DMem2MemKernel(CcuKernelArg arg);

@@ -70,6 +70,8 @@ struct AllGatherNHR1DMem2MemContext : CcuKernelCtxBase {
     ccu::RemoteAddr dstMem;
     ccu::LocalAddr localDst;
     ccu::Variable constVar1;
+    GroupOpSizeVars goSize;
+    ccu::Variable groupCopyRepeatNum;
 };
 
 CcuResult CcuAllGatherNHR1DMem2MemKernel(CcuKernelArg arg);

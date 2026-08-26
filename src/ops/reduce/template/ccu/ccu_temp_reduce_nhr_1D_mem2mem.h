@@ -67,6 +67,11 @@ private:
         const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
         uint64_t& die1DataSize) const;
     HcclResult CalcSliceInfoAllReduce(const u64 dataSize, RankSliceInfo& sliceInfoVec) const;
+    HcclResult PrepareLaunchArgs(
+        const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
+        std::vector<uint64_t>& taskArgs, uint64_t& argSize);
+    std::vector<uint64_t> goSizeNormal_[2];
+    std::vector<uint64_t> goSizeLast_[2];
 };
 
 } // namespace ops_hccl

@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_reduce_scatter_nhr1d_mem2mem.h"
+#include "ccu_kernel_alg_base.h"
 
 namespace ops_hccl {
 class CcuTempReduceScatterNHR1DMem2Mem : public CcuAlgTemplateBase {
@@ -56,6 +57,8 @@ private:
         u32 enableDieId, std::vector<std::vector<HcclChannelDesc>>& channelsPerDie);
     HcclResult
     SplitDataFor2Dies(const OpParam& param, const uint64_t sliceSize, uint64_t& die0Size, uint64_t& die1Size) const;
+    std::vector<uint64_t> goSizeNormal_[2];
+    std::vector<uint64_t> goSizeLast_[2];
 };
 
 } // namespace ops_hccl

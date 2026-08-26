@@ -79,6 +79,14 @@ static CcuResult LoadArgs(ScatterNHR1DContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.die0TailSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die1TailSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.isSliceSizeZero, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.addrOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.loopParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.parallelParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.residual, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.addrOffset, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.loopParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.parallelParam, argId++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.residual, argId++));
     return CCU_SUCCESS;
 }
 
@@ -97,11 +105,19 @@ static CcuResult PreSync(ScatterNHR1DContext& ctx)
     return CCU_SUCCESS;
 }
 
-static void
-DoLocalCopy(ccu::LocalAddr& dst, ccu::LocalAddr& src, ccu::Variable& sliceSize, ccu::Event& event, uint16_t mask)
+static CcuResult DoLocalCopy(
+    ScatterNHR1DContext& ctx, ccu::LocalAddr& dst, ccu::LocalAddr& src, GroupOpSizeVars& goSize, ccu::Event& event,
+    uint16_t mask)
 {
-    CCU_IF(sliceSize == 0) { ccu::EventRecord(event, mask); }
-    CCU_IF(sliceSize != 0) { ccu::LocalCopy(dst, src, sliceSize, event, mask); }
+    ccu::LocalAddr localDst;
+    localDst.addr = dst.addr;
+    localDst.token = dst.token;
+    ccu::LocalAddr localSrc;
+    localSrc.addr = src.addr;
+    localSrc.token = src.token;
+    CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, goSize, GetCcuVersion()));
+    ccu::EventRecord(event, mask);
+    return CCU_SUCCESS;
 }
 
 static void DoWrite(
@@ -289,6 +305,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
         } else {
             ctx.curSliceSize = (ctx.axisId == 0) ? ctx.die0TailSize : ctx.die1TailSize;
         }
+        GroupOpSizeVars& goSize = (ctx.rankId != ctx.rankSize - 1) ? ctx.goSizeNormal : ctx.goSizeLast;
         uint16_t mask = 1 << ctx.rankId;
         CCU_IF(ctx.isOutputScratch == 1)
         {
@@ -301,11 +318,11 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
                     CCU_IF(ctx.isInputOutputEqual != 1)
                     {
                         if (ctx.rankId == ctx.rootId) {
-                            DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
+                            DoLocalCopy(ctx, ctx.dstMem, ctx.srcMem, goSize, ctx.event, mask);
                         } else {
                             CCU_IF(ctx.isSliceSizeZero != 1)
                             {
-                                DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
+                                DoLocalCopy(ctx, ctx.dstMem, ctx.srcMem, goSize, ctx.event, mask);
                             }
                             CCU_IF(ctx.isSliceSizeZero == 1) { ccu::EventRecord(ctx.event, mask); }
                         }
@@ -321,7 +338,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
                         for (uint32_t i = 0; i < ctx.rootId; i++) {
                             ctx.dstMem.addr = ctx.dstMem.addr + ctx.outputSliceStride;
                         }
-                        DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask);
+                        DoLocalCopy(ctx, ctx.dstMem, ctx.srcMem, goSize, ctx.event, mask);
                     }
                     CCU_IF(ctx.isInputOutputEqual == 1) { ccu::EventRecord(ctx.event, mask); }
                 } else {
@@ -329,7 +346,7 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
                 }
             }
         }
-        CCU_IF(ctx.isOutputScratch != 1) { DoLocalCopy(ctx.dstMem, ctx.srcMem, ctx.curSliceSize, ctx.event, mask); }
+        CCU_IF(ctx.isOutputScratch != 1) { DoLocalCopy(ctx, ctx.dstMem, ctx.srcMem, goSize, ctx.event, mask); }
         ccu::EventWait(ctx.event, mask);
         ctx.repeatTimeFlag = 1;
     }
@@ -352,6 +369,12 @@ CcuResult CcuScatterNHR1DMem2MemKernel(CcuKernelArg arg)
 {
     auto* kernelArg = static_cast<CcuKernelArgScatterNHRMem2Mem1D*>(arg);
     ScatterNHR1DContext ctx;
+    ctx.resourceAllocated = false;
+    ctx.moConfig.msInterleave = 0;
+    ctx.moConfig.loopCount = 0;
+    ctx.moConfig.memSlice = 0;
+    ctx.moRes.eventCount = 0;
+    ctx.moRes.bufCount = 0;
 
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
     CCU_CHK_RET(InitResource(ctx));

@@ -86,10 +86,15 @@ private:
         const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
         uint64_t& die1Size) const;
     void FillKernelRunTempArgs(const TemplateDataParams& templateDataParams, KernalRunTempArgs& tempArgs) const;
+    HcclResult PrepareLaunchArgs(const KernalRunTempArgs& tempArgs, std::vector<uint64_t>& taskArgs, uint64_t& argSize);
     HcclResult FillKernelRunArgs(
         const KernalRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams,
-        const TemplateResource& templateResource) const;
-    void SaveSubmitInfo(const KernalRunTempArgs& tempArgs, TemplateResource& templateResource) const;
+        std::vector<uint64_t>& taskArgs, uint64_t argSize, const TemplateResource& templateResource) const;
+    void SaveSubmitInfo(
+        const KernalRunTempArgs& tempArgs, const std::vector<uint64_t>& taskArgs,
+        TemplateResource& templateResource) const;
+    std::vector<uint64_t> goSizeNormal_[2];
+    std::vector<uint64_t> goSizeLast_[2];
 };
 
 } // namespace ops_hccl
