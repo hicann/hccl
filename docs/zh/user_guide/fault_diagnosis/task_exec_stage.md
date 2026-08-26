@@ -27,7 +27,7 @@ HCCL会基于已有的通信域信息与邻近的rank建立起独立的维测链
 
 - HCCL在检测到异常事件后，会在集群中进行信息的扩散转发，HCCL在运行过程中会将收到的异常事件打印到run日志。
 
-    **日志格式为：**\[HeartbeatAbnormal\]local rank\[IP/ID\]：crimer rank\[IP/ID\] status\[4异常事件类型\]by informer rank\[IP/ID\]。
+    **日志格式为：**\[HeartbeatAbnormal\]local rank\[IP/ID\]：crimer rank\[IP/ID\] status\[异常事件类型\]by informer rank\[IP/ID\]。
 
   - HeartbeatAbnormal：代表为心跳异常事件。
   - local rank：当前节点的信息。
@@ -38,7 +38,7 @@ HCCL会基于已有的通信域信息与邻近的rank建立起独立的维测链
     用户可结合关键字“HeartbeatAbnormal”与status状态进行检索，日志示例如下：
 
     ```text
-    [INFO] HCCL(686,python):2025-10-23-07:52:59.191.363 [heartbeat.cc:951] [8970][TaskExecStage][HeartbeatAbnormal]local rank [127.10.0.1/1]: crimer rank [127.10.0.2/2] status[LOST] by informer rank [127.10.0.3/3]
+    [INFO] HCCL(686,python):2025-10-23-07:52:59.191.363 [heartbeat.cc:951] [8970][TaskExecStage][HeartbeatAbnormal]local rank [127.10.0.1/1]: crimer rank [127.10.0.2/2] by informer rank [127.10.0.3/3]
     ```
 
 - 如果后续出现算子执行报错，并且调用了task exception回调函数通知了HCCL，HCCL会根据已经收到的异常事件，结合HCCL_EXEC_TIMEOUT等超时事件配置，推测出最可能的单点故障原因，打印在ERROR日志中。

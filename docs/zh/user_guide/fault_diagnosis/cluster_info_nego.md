@@ -167,7 +167,7 @@ server节点在调用HcclGetRootinfo接口后会拉起一个背景线程等待�
     ```text
     [INFO] HCCL(3079955,all_reduce_test):2025-11-20-11:59:56.716.583 [op_base.cc:1293] [3079955]Entry-HcclCommInitRootInfoInner:ranks[4], rank[3], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[127.10.0.1%enp_60000_0_1763610996711234], deviceLogicId[3]
     [INFO] HCCL(3079952,all_reduce_test):2025-11-20-11:56:36.704.523 [op_base.cc:858] [3079952]Entry-HcclGetRootInfo:rootInfo[0xaaaae85c79a0], deviceLogicId[0]
-    [INFO] HCCL(3079952,all_reduce_test):2025-11-20-11:56:36.711.546 [op_base.cc:1293] [3079952]Entry-HcclCommInitRootInfoInner:ranks[4], rank[0], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[9127.10.0.1%enp_60000_0_1763610996711234], deviceLogicId[0]
+    [INFO] HCCL(3079952,all_reduce_test):2025-11-20-11:56:36.711.546 [op_base.cc:1293] [3079952]Entry-HcclCommInitRootInfoInner:ranks[4], rank[0], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[127.10.0.1%enp_60000_0_1763610996711234], deviceLogicId[0]
     [INFO] HCCL(3079953,all_reduce_test):2025-11-20-11:56:36.712.024 [op_base.cc:1293] [3079953]Entry-HcclCommInitRootInfoInner:ranks[4], rank[1], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[127.10.0.1%enp_60000_0_1763610996711234], deviceLogicId[1]
     [INFO] HCCL(3079954,all_reduce_test):2025-11-20-11:56:36.712.065 [op_base.cc:1293] [3079954]Entry-HcclCommInitRootInfoInner:ranks[4], rank[2], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[127.10.0.1%enp_60000_0_1763610996711234], deviceLogicId[2]
     ```
