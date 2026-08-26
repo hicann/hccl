@@ -1,3 +1,13 @@
+# -----------------------------------------------------------------------------------------------------------
+# Copyright (c) 2026 Huawei Technologies Co., Ltd.
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# CANN Open Software License Agreement Version 2.0 (the "License").
+# Please refer to the License for details. You may not use this file except in compliance with the License.
+# THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE in the root of the software repository for the full text of the License.
+# -----------------------------------------------------------------------------------------------------------
+
 repos:
   # C++ 代码格式化检查
   - repo: https://gitcode.com/pre-commit-clang/mirrors-clang-format
@@ -5,7 +15,7 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c]
-        files: \.(c|h|cpp|hpp|cc|hh|cxx|hxx|asc)$
+        files: \.(c|h|cc|hh|cpp|hpp|cxx|hxx|asc|aicpu)$
         args:
           - "--style=file"
           - "--verbose"
@@ -19,5 +29,5 @@ repos:
         language: system
         pass_filenames: true
         types: [file]
-        stages: [commit]
+        stages: [pre-commit]
         verbose: true
