@@ -52,7 +52,7 @@ export HCCL_RDMA_QP_PORT_CONFIG_PATH=/home/tmp
 ## 产品支持情况
 
 <!-- npu="950" id3 -->
-- Ascend 950PR/Ascend 950DT：不支持
+- Ascend 950PR/Ascend 950DT：支持
 <!-- end id3 -->
 <!-- npu="A3" id2 -->
 - Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
