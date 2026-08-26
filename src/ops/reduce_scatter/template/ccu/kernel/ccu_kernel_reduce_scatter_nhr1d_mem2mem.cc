@@ -86,14 +86,6 @@ static CcuResult LoadArgs(ReduceScatterNHR1DMem2MemContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.outputRepeatStride, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.repeatNumVar, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.isInputOutputEqual, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.addrOffset, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.loopParam, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.parallelParam, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.residual, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.addrOffset, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.loopParam, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.parallelParam, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.residual, cnt++));
     ctx.repeatNumVarTemp = ctx.repeatNumVar;
     HCCL_INFO("[CcuKernelReduceScatterNHR1DMem2Mem] LoadArgs run finished");
     return CCU_SUCCESS;
@@ -275,18 +267,11 @@ static CcuResult DoRepeatReduceScatterNHR(ReduceScatterNHR1DMem2MemContext& ctx)
         }
         ccu::Variable& localSliceSize = (ctx.axisId == 0) ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0Size) :
                                                             (islastSlice ? ctx.die1LastSliceSize : ctx.die1Size);
-        GroupOpSizeVars& goSize = islastSlice ? ctx.goSizeLast : ctx.goSizeNormal;
         CCU_IF(localSliceSize != 0)
         {
             CCU_IF(ctx.isInputOutputEqual == 0)
             {
-                ccu::LocalAddr localDst;
-                localDst.addr = ctx.localDst.addr;
-                localDst.token = ctx.localDst.token;
-                ccu::LocalAddr localSrc;
-                localSrc.addr = ctx.localSrc.addr;
-                localSrc.token = ctx.localSrc.token;
-                CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, goSize, GetCcuVersion()));
+                ccu::LocalCopy(ctx.localDst, ctx.localSrc, localSliceSize, ctx.event, 1);
             }
             CCU_IF(ctx.isInputOutputEqual != 0) { ccu::EventRecord(ctx.event, 1); }
         }

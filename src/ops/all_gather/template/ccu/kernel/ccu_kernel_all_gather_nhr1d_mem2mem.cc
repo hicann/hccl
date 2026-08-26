@@ -81,10 +81,6 @@ static CcuResult LoadArgs(AllGatherNHR1DMem2MemContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.isInputOutputEqual, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die0LastSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die1LastSize, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.addrOffset, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.loopParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.parallelParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSize.residual, argId++));
 
     HCCL_DEBUG("[CcuKernelAllGatherNHR1DMem2Mem] LoadArgs run finished");
     return CCU_SUCCESS;
@@ -206,39 +202,12 @@ static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherNHR1DMem2MemContext& ct
     return CCU_SUCCESS;
 }
 
-static CcuResult DoAllGatherGroupCopy(AllGatherNHR1DMem2MemContext& ctx)
-{
-    CCU_IF(ctx.isInputOutputEqual == 0)
-    {
-        CCU_IF(ctx.groupCopyRepeatNum != UINT64_MAX)
-        {
-            ctx.repeatTimeflag = 0;
-            CCU_WHILE(ctx.groupCopyRepeatNum != UINT64_MAX)
-            {
-                ctx.groupCopyRepeatNum += ctx.constVar1;
-                CCU_IF(ctx.repeatTimeflag != 0)
-                {
-                    ctx.localDst.addr += ctx.outputRepeatStride;
-                    ctx.srcMem.addr += ctx.inputRepeatStride;
-                }
-                ccu::LocalAddr localDst;
-                localDst.addr = ctx.localDst.addr;
-                localDst.token = ctx.localDst.token;
-                ccu::LocalAddr localSrc;
-                localSrc.addr = ctx.srcMem.addr;
-                localSrc.token = ctx.srcMem.token;
-                CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize, GetCcuVersion()));
-                ctx.repeatTimeflag = 1;
-            }
-        }
-    }
-    return CCU_SUCCESS;
-}
-
 static CcuResult DoRepeatAllGatherNHR(AllGatherNHR1DMem2MemContext& ctx)
 {
     const auto* arg = ctx.arg;
     ccu::Variable tmpSliceOffset;
+    ccu::Variable localSliceSize;
+    ccu::Variable tmpCopyRepeatNum;
     tmpSliceOffset = 0;
 
     for (u64 i = 0; i < arg->mySubCommRankId; i++) {
@@ -259,17 +228,43 @@ static CcuResult DoRepeatAllGatherNHR(AllGatherNHR1DMem2MemContext& ctx)
     ctx.localDst.addr = ctx.output[ctx.myRankIdx];
     ctx.localDst.addr += ctx.outputSliceOffset[arg->mySubCommRankId];
     ctx.localDst.token = ctx.token[ctx.myRankIdx];
-    ctx.groupCopyRepeatNum = ctx.repeatNum;
+    tmpCopyRepeatNum = ctx.repeatNum;
 
     bool islastSlice = (arg->mySubCommRankId + 1 == arg->dimSize);
 
-    if (arg->axisId == 1) {
-        ccu::Variable die0Slice = islastSlice ? ctx.die0LastSize : ctx.die0Size;
-        ctx.srcMem.addr += die0Slice;
-        ctx.localDst.addr += die0Slice;
-    }
+    CCU_WHILE(tmpCopyRepeatNum != UINT64_MAX)
+    {
+        localSliceSize = (arg->axisId == 0) ? (islastSlice ? ctx.die0LastSize : ctx.die0Size) :
+                                              (islastSlice ? ctx.die1LastSize : ctx.die1Size);
+        tmpCopyRepeatNum += ctx.constVar1;
+        CCU_IF(ctx.repeatTimeflag != 0)
+        {
+            ctx.srcMem.addr += ctx.inputRepeatStride;
+            ctx.dstMem.addr += ctx.outputRepeatStride;
+            ctx.localDst.addr += ctx.outputRepeatStride;
+        }
+        CCU_ELSE
+        {
+            if (arg->axisId == 1) {
+                ctx.srcMem.addr += (islastSlice ? ctx.die0LastSize : ctx.die0Size);
+                ctx.dstMem.addr += (islastSlice ? ctx.die0LastSize : ctx.die0Size);
+                ctx.localDst.addr += (islastSlice ? ctx.die0LastSize : ctx.die0Size);
+            }
+        }
 
-    CCU_CHK_RET(DoAllGatherGroupCopy(ctx));
+        const uint16_t localMask = 1;
+        CCU_IF(ctx.isInputOutputEqual == 0)
+        {
+            CCU_IF(localSliceSize != 0)
+            {
+                CCU_CHK_RET(ccu::LocalCopy(ctx.localDst, ctx.srcMem, localSliceSize, ctx.localEvent, localMask));
+            }
+            CCU_ELSE { CCU_CHK_RET(ccu::EventRecord(ctx.localEvent, localMask)); }
+        }
+        CCU_ELSE { CCU_CHK_RET(ccu::EventRecord(ctx.localEvent, localMask)); }
+        CCU_CHK_RET(ccu::EventWait(ctx.localEvent, localMask));
+        ctx.repeatTimeflag = 1;
+    }
 
     for (auto& nhrStepInfo : arg->stepInfoVector) {
         CCU_CHK_RET(DoRepeatAllGatherNHRSingleStep(ctx, nhrStepInfo));

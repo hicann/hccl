@@ -46,14 +46,6 @@ static CcuResult LoadArgs(ReduceNHR1DMem2MemContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.die1SliceSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die0LastSliceSize, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.die1LastSliceSize, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.addrOffset, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.loopParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.parallelParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeNormal.residual, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.addrOffset, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.loopParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.parallelParam, argId++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.goSizeLast.residual, argId++));
     HCCL_DEBUG("[CcuKernelReduceNHR1DMem2Mem] LoadArgs run end");
     return CCU_SUCCESS;
 }
@@ -335,19 +327,27 @@ static CcuResult DoGatherNHR(ReduceNHR1DMem2MemContext& ctx)
     }
     return CCU_SUCCESS;
 }
-static CcuResult DoLocalCopySlice(ReduceNHR1DMem2MemContext& ctx, const u32& copySliceIdx)
+
+static CcuResult DoLocalCopySlice(ReduceNHR1DMem2MemContext& ctx, const u32& copySliceIdx, u32 signalIndex)
 {
     const auto* arg = ctx.arg;
+    bool islastSlice;
     // 添加 die1 偏移
     if (arg->axisId == 1) {
         ctx.localSrc.addr += ctx.die0Size;
         ctx.localDst.addr += ctx.die0Size;
     }
 
-    bool islastSlice = (copySliceIdx + 1 == arg->rankSize);
-    GroupOpSizeVars& goSize = islastSlice ? ctx.goSizeLast : ctx.goSizeNormal;
+    islastSlice = (copySliceIdx + 1 == arg->rankSize);
+    ccu::Variable& sliceSize = arg->axisId == 0 ? (islastSlice ? ctx.die0LastSliceSize : ctx.die0SliceSize) :
+                                                  (islastSlice ? ctx.die1LastSliceSize : ctx.die1SliceSize);
 
-    CCU_CHK_RET(GroupCopy(ctx, ctx.localDst, ctx.localSrc, goSize, GetCcuVersion()));
+    CCU_IF(sliceSize != 0) { ccu::LocalCopy(ctx.localDst, ctx.localSrc, sliceSize, ctx.event, 1 << signalIndex); }
+    CCU_IF(sliceSize == 0)
+    {
+        const uint32_t rankMask = 1 << signalIndex;
+        ccu::EventRecord(ctx.event, rankMask);
+    }
     return CCU_SUCCESS;
 }
 
@@ -394,6 +394,12 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext& ctx)
         for (u32 i = 0; i < nonTxSliceIdxList.size(); i++) {
             nonTxSliceIdx = nonTxSliceIdxList[i];
 
+            if (i != 0) {
+                if (i % RANK_NUM_PER_CKE == 0) {
+                    ccu::EventWait(ctx.event, (1 << RANK_NUM_PER_CKE) - 1);
+                }
+            }
+
             ctx.localSrc.addr = ctx.input;
             ctx.localSrc.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.localSrc.token = ctx.myToken;
@@ -401,8 +407,11 @@ static CcuResult LocalCopySlices(ReduceNHR1DMem2MemContext& ctx)
             ctx.localDst.addr = ctx.myOutput;
             ctx.localDst.addr += ctx.sliceOffset[nonTxSliceIdx];
             ctx.localDst.token = ctx.myToken;
-            CCU_CHK_RET(DoLocalCopySlice(ctx, nonTxSliceIdx));
+            CCU_CHK_RET(DoLocalCopySlice(ctx, nonTxSliceIdx, i % RANK_NUM_PER_CKE));
         }
+        // 最后一组slice可能不足16个，也可能正好16个；size%16为0时需等待满16个bit
+        u32 lastGroupSize = ((nonTxSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
     }
     return CCU_SUCCESS;
 }
