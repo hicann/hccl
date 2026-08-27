@@ -67,7 +67,7 @@ constexpr uint32_t OP_ALG_LENGTH = 128;                                       //
 constexpr uint32_t ALG_TAG_LENGTH = TAG_LENGTH + OP_ALG_LENGTH;
 constexpr uint32_t MAX_TAG_LENGTH = 255;
 constexpr uint32_t AICPU_CONTROL_NOTIFY_NUM = 2;
-constexpr uint32_t MAX_MEM_TAG_LENGTH = OP_ALG_LENGTH + 32;
+constexpr uint32_t MAX_MEM_TAG_LENGTH = TAG_LENGTH + 32;
 constexpr uint32_t RES_PACK_TAG_LENGTH = 255;
 constexpr uint32_t MAX_TEMP_NUM_IN_ALGO = 8; // 单个算法中最大template数量
 
