@@ -128,7 +128,15 @@ elseif(ENABLE_CUSTOM)
     # CPack 打包
     pack_custom()
     # 添加自定义算子工程
-    add_subdirectory(${CUSTOM_OPS_PATH})
+    string(REGEX REPLACE ".*/" "" ENGINE_TYPE "${CUSTOM_OPS_PATH}")
+    if(ENGINE_TYPE STREQUAL "aicpu" OR ENGINE_TYPE STREQUAL "aiv" OR ENGINE_TYPE STREQUAL "ccu")
+        message(STATUS "ENGINE_TYPE: ${ENGINE_TYPE}")
+        string(REGEX REPLACE "/[^/]*$" "" CUSTOM_OPS_PATH_PARENT ${CUSTOM_OPS_PATH})
+        message(STATUS "CUSTOM_OPS_PATH_PARENT: ${CUSTOM_OPS_PATH_PARENT}")
+        add_subdirectory(${CUSTOM_OPS_PATH_PARENT})
+    else()
+        add_subdirectory(${CUSTOM_OPS_PATH})
+    endif()
 
 elseif(BUILD_OPEN_PROJECT)
     include(cmake/config.cmake)

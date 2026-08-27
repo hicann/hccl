@@ -1,0 +1,87 @@
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+#ifndef OPS_HCCL_CUSTOM_COMMON_H
+#define OPS_HCCL_CUSTOM_COMMON_H
+
+#include "hccl/hccl_types.h"
+#include "hccl/hccl_res.h"
+#include "hccl/hcomm_primitives.h"
+#include "acl/acl_rt.h"
+#include "log.h"
+#include "extra_args.h"
+
+namespace ops_hccl_reduce_scatter {
+
+constexpr uint32_t CUSTOM_TIMEOUT = 1836;
+
+constexpr uint32_t COMM_IDENTIFIER_MAX_LENGTH = 128;
+constexpr uint32_t OP_NAME_LENGTH = 32;
+constexpr uint32_t TAG_LENGTH = OP_NAME_LENGTH + COMM_IDENTIFIER_MAX_LENGTH;
+
+constexpr uint64_t AIV_TAG_BUFF_LEN = 2 * 1024 * 1024; // 2MB
+
+struct OpParam {
+    char tag[TAG_LENGTH];
+    char commName[COMM_IDENTIFIER_MAX_LENGTH];
+
+    uint64_t buffIn = 0; // cclMem address
+    uint64_t input = 0;
+    uint64_t output = 0;
+    uint32_t rank = 0;
+    uint32_t rankSize = 0;
+    uint64_t xRankSize = 0;
+    uint64_t yRankSize = 0;
+    uint64_t zRankSize = 0;
+    uint64_t len = 0;
+    uint32_t dataType = 0;
+    uint32_t reduceOp = 0;
+    uint32_t root = 0;
+    uint32_t tagId = 0; // Maps to 'tag' in kernel
+
+    uint64_t inputSliceStride = 0;
+    uint64_t outputSliceStride = 0;
+    uint64_t repeatNum = 0;
+    uint64_t inputRepeatStride = 0;
+    uint64_t outputRepeatStride = 0;
+
+    bool isOpBase = false;
+
+    uint64_t headCountMem = 0;
+    uint64_t tailCountMem = 0;
+    uint64_t addOneMem = 0;
+    uint32_t counterMemSize = 0;
+    bool isEnableCounter = false;
+
+    ExtraArgs extraArgs;
+};
+constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
+
+} // namespace ops_hccl_reduce_scatter
+
+#endif // OPS_HCCL_CUSTOM_COMMON_H
