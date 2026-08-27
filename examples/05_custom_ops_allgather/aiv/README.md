@@ -40,9 +40,7 @@
 
 本样例支持以下产品，组网为单机N卡（N>=2）：
 
-- Ascend 950PR/Ascend 950DT
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品（仅支持超节点内通信场景）
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品（仅支持单机通信场景）
+- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
 
 ### 2. 安装 CANN Toolkit 开发套件包
 
@@ -64,46 +62,60 @@ source /usr/local/Ascend/cann/set_env.sh
 
 ### 1. 编译自定义算子库
 
-在样例根目录下执行以下命令：
+在根目录下执行以下命令：
 
 ```bash
-# 1. 创建构建目录
-mkdir build
-
-# 2. 进入构建目录
-cd build
-
-# 3. 执行 CMake 配置
-cmake ..
-
-# 4. 编译项目 (生成 libhccl_custom_allgather.so)
-make
+bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/06_custom_ops_allgather/aiv
 ```
+> 其中：
+> 
+> - `--vendor` 参数表示自定义算子标识
+> - `--ops` 参数表示自定义算子名称
+> - `--custom_ops_path` 参数表示自定义算子工程路径
 
-### 2. 运行测试用例
-
-编译完成后，进入 `testcase` 目录执行测试：
+### 2. 安装算子包
+自定义算子安装包在 `./build_out` 目录下，通过 `--install` 参数进行安装：
 
 ```bash
-# 5. 进入测试用例目录
-cd ../testcase
-
-# 6. 编译并运行测试用例
-# 该命令会自动编译测试程序，设置 LD_LIBRARY_PATH 并使用 mpirun 运行
-make run
+./build_out/cann-hccl_custom_allgather_aiv_linux-<arch>.run --install --install-path=<ascend_cann_path>
 ```
 
-### 3. 预期结果
+> 其中：
+> 
+> - `<arch>` 是当前编译环境的系统架构
+> - `<ascend_cann_path>` 是可选参数，表示 CANN 软件包安装目录。默认为 `ASCEND_CUSTOM_OPP_PATH` 或 `ASCEND_OPP_PATH` 环境变量所在的CANN软件包路径
+
+### 3. 运行测试用例
+
+测试代码在 `examples/05_custom_ops_allgather/testcase`,在前节`1. 编译自定义算子库`已经编译好测试样例
+测试样例二进制文件路径`./build/examples/06_custom_ops_allgather/testcase/custom_allgather_test`
+
+在根目录使用mpirun执行命令
+```
+mpirun -n rank_size build/examples/06_custom_ops_allgather/testcase/custom_allgather_test data_len
+参数说明:
+rank_size: 使用的卡数
+data_len: 数据长度
+```
+
+### 4. 预期结果
 
 运行成功后，终端将输出类似以下的日志信息（以 2 卡运行为例）：
 
 ```text
-[INFO] MPI Initialized. World Size: 2
-[INFO] Device 0 selected (Total devices: 8)
-[INFO] Device 1 selected (Total devices: 8)
-[INFO] HCCL Comm Initialized
-[INFO] Buffers allocated and initialized
-[INFO] Starting HcclAllGatherCustom...
-[INFO] HcclAllGatherCustom completed and synchronized
-[INFO] Test Passed!
+[1786071476.120968] [Rank 0] MPI Initialized. World Size: 2
+[1786071476.120968] [Rank 1] MPI Initialized. World Size: 2
+[1786071476.127411] [Rank 0] Device 0 selected (Total devices: 8)
+[1786071476.127411] [Rank 1] Device 1 selected (Total devices: 8)
+[1786071478.023709] [Rank 0] Root info generated
+[1786071478.023786] [Rank 0] HCCL set device[0]
+[1786071478.023778] [Rank 1] HCCL set device[1]
+[1786071483.214938] [Rank 0] HCCL Comm Initialized
+[1786071483.221873] [Rank 0] Buffers allocated and initialized
+[1786071483.254098] [Rank 1] HCCL Comm Initialized
+[1786071483.259378] [Rank 1] Buffers allocated and initialized
+rank1 dataLen=1024 time=835 ms
+[1786071484.095144] [Rank 1] VerifyResult Passed!
+rank0 dataLen=1024 time=873 ms
+[1786071484.095200] [Rank 0] VerifyResult Passed!
 ```

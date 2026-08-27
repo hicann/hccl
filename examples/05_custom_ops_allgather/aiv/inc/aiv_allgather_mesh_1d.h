@@ -84,14 +84,15 @@ public:
         uint64_t curCountCore = block_idx == numBlocks_ - 1 ? count - countPerCore * (numBlocks_ - 1) : countPerCore;
         auto gmIn = reinterpret_cast<__gm__ T*>(
             reinterpret_cast<uint64_t>(GM_IN[rank_]) + block_idx * countPerCore * dataTypeSize);
-        CpGM2GM(gmIn, input + block_idx * countPerCore, curCountCore);
+        CpGM2GM(gmIn, input + block_idx * countPerCore * dataTypeSize, curCountCore);
         PipeBarrier<PIPE_ALL>();
         Record(rank_, block_idx, tag);
         for (uint32_t idx = 0; idx < numBlocks_; idx++) {
             WaitFlag(rank_, idx, tag);
+            Record(rank_, idx, 0);
         }
         if (block_idx == 0) {
-            Record(rank_, rankSize_ + rank_, tag);
+            Record(rank_, rank_, tag);
         }
         uint32_t perCoreRankNum = rankSize_ / numBlocks_;
         uint32_t curCoreRankNum
@@ -100,7 +101,7 @@ public:
         for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
             auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank]));
             auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
-            WaitFlag(rank, rankSize_ + rank, tag);
+            WaitFlag(rank, rank, tag);
             CpGM2GM(output, gmOthers, count);
             PipeBarrier<PIPE_ALL>();
         }
@@ -115,11 +116,11 @@ __aicore__ inline void AivAllGatherV2Mesh1D(EXTERN_KERNEL_ARGS_DEF_V2)
 {
     AivAllGatherMesh1D<T> op;
     op.Init(KERNEL_CLASS_INIT, true);
-    SyncAllSafe();
+    SyncAll<true>();
     if (block_idx == 0 && tag >> AIV_TAG_MOVE_RIGHT_BITS == 1 && (tag & LOW_16_BITS) == 1) {
         op.BarrierForFirstOP();
     }
-    SyncAllSafe();
+    SyncAll<true>();
 
     op.Process(len, tag, outputSliceStride);
     op.BarrierAll();

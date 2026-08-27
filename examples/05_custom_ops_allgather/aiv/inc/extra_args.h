@@ -8,23 +8,18 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCL_CUSTOM_ALLGATHER_H
-#define HCCL_CUSTOM_ALLGATHER_H
+#ifndef OPS_HCCL_CUSTOM_EXTRA_ARGS_H
+#define OPS_HCCL_CUSTOM_EXTRA_ARGS_H
 
-#include <acl/acl.h>
-#include <hccl/hccl_comm.h>
-#include <hccl/hccl_res.h>
-#include <hccl/hccl_types.h>
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+constexpr uint32_t MAX_RANK_SIZE = 8;
 
-HcclResult HcclAllGatherCustom(
-    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
+struct ExtraArgs {
+    uint64_t sendCounts[MAX_RANK_SIZE] = {};
+    uint64_t sendDispls[MAX_RANK_SIZE] = {};
+    uint64_t recvCounts[MAX_RANK_SIZE] = {};
+    uint64_t recvDispls[MAX_RANK_SIZE] = {};
+};
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif // HCCL_CUSTOM_ALLGATHER_H
+#endif // OPS_HCCL_CUSTOM_EXTRA_ARGS_H

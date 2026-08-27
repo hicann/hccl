@@ -9,8 +9,8 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(KERNEL_SRC ${CMAKE_CURRENT_SOURCE_DIR}/launch_kernel_asc.asc)
-set(KERNEL_TMP_OBJ ${CMAKE_CURRENT_BINARY_DIR}/hccl_custom_allgather_kernels_tmp.o)
-set(KERNEL_OBJ ${CMAKE_CURRENT_BINARY_DIR}/hccl_custom_allgather_kernels.o)
+set(KERNEL_TMP_OBJ ${CMAKE_CURRENT_BINARY_DIR}/hccl_custom_${OP_NAME}_kernels_tmp.o)
+set(KERNEL_OBJ ${CMAKE_CURRENT_BINARY_DIR}/hccl_custom_${OP_NAME}_kernels.o)
 
 set(CCE_DIR ${ASCEND_CANN_PACKAGE_PATH}/tools/ccec_compiler/bin)
 set(CANN_ARCH_BASE ${ASCEND_CANN_PACKAGE_PATH}/${CMAKE_SYSTEM_PROCESSOR}-linux)
@@ -61,6 +61,7 @@ set(ASC_INCLUDE_FLAGS
     -I${CANN_ARCH_BASE}/tikcpp/tikcfw/interface/
     -I${CANN_ARCH_BASE}/tikcpp/tikcfw/impl/
     -I${KERNEL_OPERATOR_DIR}
+    -I${CMAKE_CURRENT_SOURCE_DIR}/../../inc
     -I${CMAKE_CURRENT_SOURCE_DIR}/../inc
     -I${ASCEND_CANN_PACKAGE_PATH}/include
     -I${ASCEND_CANN_PACKAGE_PATH}/include/hccl/
@@ -73,19 +74,11 @@ if(DEFINED OPS_BASE_DIR)
     )
 endif()
 
-set(AIV_CCE_ARCH "dav-c310-vec" CACHE STRING "AIV kernel ccec arch (A5: dav-c310-vec, A3: dav-c220-vec)")
-
-if(AIV_CCE_ARCH MATCHES "c220")
-    set(AIV_ARCH_DEFINES -D__CCE_AICORE__=220 -D__DAV_C220__)
-else()
-    set(AIV_ARCH_DEFINES -D__CCE_AICORE__=310 -D__DAV_C310__)
-endif()
-
 add_custom_command(
     OUTPUT ${KERNEL_OBJ}
     COMMAND ${CCE_COMPILER} -c -x cce -O2 ${KERNEL_SRC} -o ${KERNEL_TMP_OBJ}
-        --cce-aicore-arch=${AIV_CCE_ARCH}
-        ${AIV_ARCH_DEFINES}
+        --cce-aicore-arch=dav-c310-vec
+        --cce-aicore-input-parameter-size=28000
         --cce-aicore-only
         -mllvm -cce-aicore-function-stack-size=0x8000
         -mllvm -cce-aicore-stack-size=0x8000
@@ -107,8 +100,9 @@ install(FILES ${KERNEL_OBJ}
     COMPONENT hccl
 )
 
+message("====${CMAKE_CURRENT_BINARY_DIR}/../../testcase/hccl_custom_${OP_NAME}_kernels.o  ")
 add_custom_command(TARGET generate_kernel_obj POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${KERNEL_OBJ}
-        ${CMAKE_SOURCE_DIR}/testcase/hccl_custom_allgather_kernels.o
+        ${CMAKE_CURRENT_BINARY_DIR}/../../testcase/hccl_custom_${OP_NAME}_kernels.o
 )

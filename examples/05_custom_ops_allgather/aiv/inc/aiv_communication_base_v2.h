@@ -85,22 +85,12 @@ constexpr uint64_t FLAG_FIVE_OFFSET = FLAG_SIZE * 4;
 constexpr uint64_t DOUBLE = 2;
 constexpr uint64_t FLAG_BUF_NUM = 3;
 
-constexpr uint32_t MAX_FLAG_SIZE_PER_KERNEL = 6 * MAX_RANK_SIZE_A3 * FLAG_SIZE;
+constexpr uint32_t MAX_FLAG_SIZE_PER_KERNEL = 6 * MAX_RANK_SIZE * FLAG_SIZE;
 
 #define BASE_FLAG_OFFSET (MAX_FLAG_SIZE_PER_KERNEL)
 
 constexpr int32_t TAG_INIT_VALUE = 1;
 constexpr int32_t TAG_RESET_COUNT = 4096;
-constexpr int32_t TAG_BARRIER_OFFSET = 2048;
-
-__aicore__ inline void SyncAllSafe()
-{
-#ifdef __DAV_C220__
-    PipeBarrier<PIPE_ALL>();
-#else
-    SyncAll<true>();
-#endif
-}
 
 class AivCommBase {
 public:
@@ -153,13 +143,15 @@ public:
 
     __aicore__ inline void InitBuffArray(GM_ADDR buffIn)
     {
-        __gm__ uint64_t* aivCommInfoMem = reinterpret_cast<__gm__ uint64_t*>(buffIn);
+        GlobalTensor<uint64_t> ipcBufferGlobal;
+        ipcBufferGlobal.SetGlobalBuffer((__gm__ uint64_t*)(buffIn));
         for (int i = 0; i < rankSize_; i++) {
-            GM_IN[i] = (GM_ADDR)aivCommInfoMem[2 * i];
-            GM_OUT[i] = (GM_ADDR)aivCommInfoMem[2 * i + 1] + FLAG_ADDR_OFFSET;
+            GM_IN[i] = (GM_ADDR)ipcBufferGlobal.GetValue(i);
+            GM_OUT[i]
+                = (GM_ADDR)ipcBufferGlobal.GetValue(BUFFER_OUT_ADDR_OFFSET / sizeof(uint64_t) + i) + FLAG_ADDR_OFFSET;
         }
         for (int i = 0; i < TOPO_LEN; i++) {
-            TOPO_[i] = (uint64_t)aivCommInfoMem[TOPO_ADDR_OFFSET / sizeof(uint64_t) + i];
+            TOPO_[i] = (uint64_t)ipcBufferGlobal.GetValue(TOPO_ADDR_OFFSET / sizeof(uint64_t) + i);
         }
         pipe_barrier(PIPE_ALL);
     }
@@ -193,8 +185,8 @@ public:
 
     __aicore__ inline void GetTag(GM_ADDR buffIn);
 
-    GM_ADDR GM_IN[MAX_RANK_SIZE_A3];
-    GM_ADDR GM_OUT[MAX_RANK_SIZE_A3];
+    GM_ADDR GM_IN[MAX_RANK_SIZE];
+    GM_ADDR GM_OUT[MAX_RANK_SIZE];
     uint64_t TOPO_[TOPO_LEN];
     uint32_t rank_;
     uint32_t root_;
@@ -277,7 +269,7 @@ __aicore__ inline void AivCommBase::BarrierForFirstOP()
 
 __aicore__ inline void AivCommBase::BarrierAll()
 {
-    SyncAllSafe();
+    SyncAll<true>();
     if (GetBlockIdx() == 0) {
         pipe_barrier(PIPE_ALL);
         for (int i = 0; i < rankSize_; i++) {
@@ -310,11 +302,7 @@ __aicore__ inline void AivCommBase::GetTag(GM_ADDR buffIn)
     DataCopyGM2UB(localIn, ipcBufferGlobal[AIV_FLAG_CLEAR_OFFSET / sizeof(uint32_t)], 1);
     pipe_barrier(PIPE_ALL);
     tag_ = localIn.GetValue(0);
-    tag_ = (tag_ == 0) ? TAG_INIT_VALUE : tag_;
-    Record(rank_, TAG_BARRIER_OFFSET + blockIdx, tag_);
-    for (uint32_t idx = 0; idx < numBlocks_; idx++) {
-        WaitFlag(rank_, TAG_BARRIER_OFFSET + idx, tag_);
-    }
+    SyncAll<true>();
     tag_ = (tag_ == TAG_RESET_COUNT) ? TAG_INIT_VALUE : tag_ + 1;
     if (blockIdx == 0) {
         localIn.SetValue(0, tag_);
@@ -347,25 +335,18 @@ template <typename T>
 __aicore__ inline void
 AivCommBase::DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount)
 {
-    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
-        DataCopy(dstLocal, srcGlobal, calCount);
-    } else {
-        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
-        DataCopyPadExtParams<T> padParams{true, 0, 1, 0};
-        DataCopyPad(dstLocal, srcGlobal, copyParams, padParams);
-    }
+    copy_gm_to_ubuf_align_v2(
+        (__ubuf__ uint8_t*)dstLocal.GetPhyAddr(), (__gm__ uint8_t*)srcGlobal.GetPhyAddr(), 0, 1, calCount * sizeof(T),
+        0, 0, 0, 0, 0, 0);
 }
 
 template <typename T>
 __aicore__ inline void
 AivCommBase::DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount)
 {
-    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
-        DataCopy(dstGlobal, srcLocal, calCount);
-    } else {
-        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
-        DataCopyPad(dstGlobal, srcLocal, copyParams);
-    }
+    copy_ubuf_to_gm_align_v2(
+        reinterpret_cast<const __gm__ uint8_t*>(dstGlobal.GetPhyAddr()),
+        reinterpret_cast<__ubuf__ uint8_t*>(srcLocal.GetPhyAddr()), 0, 1, calCount * sizeof(T), 0, 0, 0);
 }
 
 template <typename T>

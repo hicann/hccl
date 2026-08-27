@@ -1,7 +1,7 @@
-/**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd. All Rights Reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -61,6 +61,30 @@ struct OpParam {
     bool isEnableCounter = false;
 
     ExtraArgs extraArgs;
+};
+constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
+    = {sizeof(int8_t),
+       sizeof(int16_t),
+       sizeof(int32_t),
+       2,
+       sizeof(float),
+       sizeof(int64_t),
+       sizeof(uint64_t),
+       sizeof(uint8_t),
+       sizeof(uint16_t),
+       sizeof(uint32_t),
+       8,
+       2,
+       16,
+       2,
+       1,
+       1,
+       1,
+       1};
+struct AlgResourceCtx {
+    HcclMemHandle memHandle;
+    uint64_t holder[7]; // 占位
+    char aivCommInfoPtr[AIV_TAG_BUFF_LEN];
 };
 
 } // namespace ops_hccl_allgather

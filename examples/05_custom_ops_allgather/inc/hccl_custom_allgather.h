@@ -11,18 +11,20 @@
 #ifndef HCCL_CUSTOM_ALLGATHER_H
 #define HCCL_CUSTOM_ALLGATHER_H
 
-#include "hccl/hccl.h"
-#include "hccl/hccl_types.h"
+#include <acl/acl.h>
+#include <hccl/hccl_comm.h>
+#include <hccl/hccl_res.h>
+#include <hccl/hccl_types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 HcclResult HcclAllGatherCustom(
-    void* sendBuf, void* recvBuf, uint64_t dataSize, HcclDataType dataType, HcclComm comm, aclrtStream stream);
+    void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // HCCL_CUSTOM_ALLGATHER_H

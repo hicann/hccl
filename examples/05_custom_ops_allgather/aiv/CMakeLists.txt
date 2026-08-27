@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------------------------------------
 # Copyright (c) 2025 Huawei Technologies Co., Ltd.
-# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+# This program is free software, you can redistribute it and/or modify it under the terms and conditions of
 # CANN Open Software License Agreement Version 2.0 (the "License").
 # Please refer to the License for details. You may not use this file except in compliance with the License.
 # THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
@@ -10,30 +10,29 @@
 
 cmake_minimum_required(VERSION 3.16.0)
 
-message(STATUS "Custom ops name: ${CUSTOM_OPS_NAME}")
-message(STATUS "Custom ops vendor: ${CUSTOM_OPS_VENDOR}")
-message(STATUS "Custom ops path: ${CUSTOM_OPS_PATH}")
-
 string(REGEX REPLACE "_[^_]*$" "" OP_NAME ${CUSTOM_OPS_NAME})
-message(STATUS "OP_NAME: ${OP_NAME}")
+message("OP_NAME: ${OP_NAME}")
 
-set(MPI_LIB )
-if(CUSTOM_OPS_NAME STREQUAL ${OP_NAME}_ccu)
-  set(ENGINE_TYPE ccu)
-  add_subdirectory(ccu)
-elseif(CUSTOM_OPS_NAME STREQUAL ${OP_NAME}_aiv)
-  find_package(MPI REQUIRED)
-  set(MPI_LIB MPI::MPI_CXX)
-  set(ENGINE_TYPE aiv)
-  add_definitions(-DENABLE_MPI)
-  add_subdirectory(aiv)
-elseif(CUSTOM_OPS_NAME STREQUAL ${OP_NAME}_aicpu)
-  set(ENGINE_TYPE aicpu)
-  add_subdirectory(aicpu)
-else()
-  message("Unsupported ops ${CUSTOM_OPS_NAME}")
+find_package(ASC REQUIRED)
+
+project(hccl_custom_${OP_NAME} LANGUAGES CXX ASC)
+set(CMAKE_SYSTEM_PROCESSOR "x86_64")
+
+if (NOT DEFINED CUSTOM_OPS_OPP_LIB_PATH)
+    set(CUSTOM_OPS_OPP_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
 endif()
 
-message(STATUS "ENGINE_TYPE: ${ENGINE_TYPE}")
+if (NOT DEFINED CUSTOM_OPS_OPP_INC_PATH)
+    set(CUSTOM_OPS_OPP_INC_PATH ${CMAKE_INSTALL_PREFIX}/include)
+endif()
 
-add_subdirectory(testcase)
+# Install headers
+install(FILES
+    ../inc/${PROJECT_NAME}.h
+    DESTINATION ${CUSTOM_OPS_OPP_INC_PATH}
+    COMPONENT hccl
+)
+
+add_subdirectory(op_kernel)
+add_subdirectory(op_host)
+# add_subdirectory(testcase)

@@ -1,7 +1,7 @@
-/**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd. All Rights Reserved.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
@@ -13,10 +13,8 @@
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <vector>
 #include <string>
-#include <cstdlib>
-#include <limits>
-#include <algorithm>
 #include "acl/acl.h"
 
 namespace ops_hccl_allgather {
@@ -31,39 +29,7 @@ static aclrtFuncHandle g_funcHandle = nullptr;
 const std::string AIV_BINARY_NAME = "hccl_custom_allgather_kernels.o";
 const std::string KERNEL_NAME = "HcclAllGatherAivKernel";
 
-constexpr uint32_t MIN_TIMEOUT_MULTIPLE = 1;
-constexpr uint32_t MAX_TIMEOUT_MULTIPLE = 254;
-
-static uint32_t GetAivTimeoutUs()
-{
-    constexpr uint32_t defaultTimeoutUs = CUSTOM_TIMEOUT * 1000000;
-    const char* env = getenv("HCCL_EXEC_TIMEOUT");
-    if (env == nullptr) {
-        return defaultTimeoutUs;
-    }
-    double timeoutUs = atof(env) * 1000000;
-    if (timeoutUs <= 0) {
-        return defaultTimeoutUs;
-    }
-    if (timeoutUs > static_cast<double>(std::numeric_limits<uint32_t>::max())) {
-        timeoutUs = static_cast<double>(std::numeric_limits<uint32_t>::max());
-    }
-    uint64_t interval = 0;
-    aclError aclRet = aclrtGetOpTimeOutInterval(&interval);
-    if (aclRet != ACL_SUCCESS) {
-        HCCL_INFO(
-            "[GetAivTimeoutUs] aclrtGetOpTimeOutInterval failed, ret[%d], use default[%u]us", aclRet, defaultTimeoutUs);
-        return defaultTimeoutUs;
-    }
-    uint64_t minUs = MIN_TIMEOUT_MULTIPLE * interval;
-    uint64_t maxUs = MAX_TIMEOUT_MULTIPLE * interval;
-    uint64_t timeout = static_cast<uint64_t>(timeoutUs);
-    timeout = std::max(minUs, std::min(timeout, maxUs));
-    HCCL_INFO("[GetAivTimeoutUs] HCCL_EXEC_TIMEOUT=%s, interval=%llu, timeout=%lluus", env, interval, timeout);
-    return static_cast<uint32_t>(timeout);
-}
-
-static HcclResult LoadBinaryFromFile(const std::string& fileName, void*& buffer, size_t& length)
+static HcclResult LoadBinaryFromFile(const std::string& fileName, std::vector<char>& buffer, size_t& length)
 {
     std::ifstream file(fileName, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
@@ -74,16 +40,14 @@ static HcclResult LoadBinaryFromFile(const std::string& fileName, void*& buffer,
     length = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    buffer = new (std::nothrow) char[length];
-    if (buffer == nullptr) {
+    buffer.resize(length);
+    if (buffer.empty()) {
         HCCL_ERROR("[LoadBinaryFromFile] Failed to allocate memory for binary, size: %zu", length);
         return HCCL_E_INTERNAL;
     }
 
-    if (!file.read(static_cast<char*>(buffer), length)) {
+    if (!file.read(buffer.data(), length)) {
         HCCL_ERROR("[LoadBinaryFromFile] Failed to read file: %s", fileName.c_str());
-        delete[] static_cast<char*>(buffer);
-        buffer = nullptr;
         return HCCL_E_INTERNAL;
     }
 
@@ -92,23 +56,24 @@ static HcclResult LoadBinaryFromFile(const std::string& fileName, void*& buffer,
 
 HcclResult RegisterKernel()
 {
+    HCCL_INFO("[RegisterKernel] enter");
     std::lock_guard<std::mutex> guard(g_mut);
     if (g_init) {
+        HCCL_INFO("[RegisterKernel] has inited");
         return HCCL_SUCCESS;
     }
 
     std::string binPath = AIV_BINARY_NAME;
     HCCL_INFO("[RegisterKernel] Binary path: %s", binPath.c_str());
 
-    void* binBuffer = nullptr;
+    std::vector<char> binBuffer;
     size_t binSize = 0;
     CHK_RET(LoadBinaryFromFile(binPath, binBuffer, binSize));
     HCCL_INFO("[RegisterKernel] Binary loaded. Size: %zu", binSize);
 
-    aclrtBinary binary = aclrtCreateBinary(binBuffer, binSize);
+    aclrtBinary binary = aclrtCreateBinary(binBuffer.data(), binSize);
     if (binary == nullptr) {
         HCCL_ERROR("[RegisterKernel] aclrtCreateBinary failed");
-        delete[] static_cast<char*>(binBuffer);
         return HCCL_E_INTERNAL;
     }
 
@@ -116,7 +81,6 @@ HcclResult RegisterKernel()
     if (aclRet != ACL_SUCCESS) {
         HCCL_ERROR("[RegisterKernel] aclrtBinaryLoad failed, ret: %d", aclRet);
         aclrtDestroyBinary(binary);
-        delete[] static_cast<char*>(binBuffer);
         return HCCL_E_INTERNAL;
     }
 
@@ -136,6 +100,7 @@ HcclResult RegisterKernel()
 HcclResult ExecuteKernelLaunch(const OpParam& param, aclrtStream stream)
 {
     if (!g_init) {
+        HCCL_INFO("[ExecuteKernelLaunch] init");
         CHK_RET(RegisterKernel());
     }
 
@@ -146,7 +111,7 @@ HcclResult ExecuteKernelLaunch(const OpParam& param, aclrtStream stream)
     attr[0].value.schemMode = 1;
 
     attr[1].id = ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT_US;
-    attr[1].value.timeoutUs.timeoutLow = GetAivTimeoutUs();
+    attr[1].value.timeoutUs.timeoutLow = CUSTOM_TIMEOUT * 1000000;
     attr[1].value.timeoutUs.timeoutHigh = 0;
 
     attr[2].id = ACL_RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE;

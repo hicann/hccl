@@ -42,9 +42,9 @@
 
 ### 1. 环境要求
 
-本样例支持以下昇腾产品，组网为单机N卡（N>=2）：
+本样例支持以下昇腾产品, 组网为单机N卡（N>=2）：
 
-- Ascend 950PR/Ascend 950DT
+- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
 
 本样例编译用到的软件依赖如下，注意满足版本号要求：
 
@@ -201,7 +201,7 @@ export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_P
 
 ```text
 Found 2 NPU device(s) available
-rankId: 1, input: [1 1]
+rankId：1, input: [1 1]
 rankId: 0, input: [0 0]
 rankId: 0, output: [ 0 0 1 1 ]
 rankId: 1, output: [ 0 0 1 1 ]

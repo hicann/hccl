@@ -10,33 +10,11 @@
 
 #include <string>
 #include <vector>
-
-#include <ccu/ccu_launch.h>
-#include <ccu/ccu_res.h>
-#include <hccl/hccl_ccu_res.h>
-
 #include "log.h"
-#include "utils.h"
-
-namespace {
-
-// 创建 CCU 实例时各资源类型的默认申请数量
-const std::unordered_map<HcommCcuResType, uint32_t> CCU_DEFAULT_RES_MAP = {
-    {HCOMM_CCU_RES_TYPE_ADDRESS, CCU_DEFAULT_RES_FRACTION_ADDRESS},
-    {HCOMM_CCU_RES_TYPE_LOOP, CCU_DEFAULT_RES_FRACTION_LOOP},
-    {HCOMM_CCU_RES_TYPE_CCU_BUF, CCU_DEFAULT_RES_FRACTION_CCU_BUF},
-    {HCOMM_CCU_RES_TYPE_VARIABLE, CCU_DEFAULT_RES_FRACTION_VARIABLE},
-    {HCOMM_CCU_RES_TYPE_EVENT, CCU_DEFAULT_RES_FRACTION_EVENT},
-    {HCOMM_CCU_RES_TYPE_CCU_THREAD, CCU_DEFAULT_RES_FRACTION_CCU_THREAD},
-};
-
-void DestroyAllDescs(std::vector<HcommCcuResDescHandle>& descs)
-{
-    for (auto& desc : descs) {
-        (void)HcommCcuInsResDescDestroy(desc);
-    }
-}
-} // namespace
+#include "common.h"
+#include "ccu_kernel.h"
+#include "ccu_launch.h"
+#include "hccl_ccu_res.h"
 
 namespace ops_hccl_ag {
 constexpr uint32_t CHANNEL_NOTIFY_NUM = 3;
@@ -77,12 +55,10 @@ HcclResult GetThreadForCcu(HcclComm comm, const OpParam& param, AlgResourceCtxSe
     return HCCL_SUCCESS;
 }
 
-HcclResult
-GetChannelForCcu(HcclComm comm, const OpParam& param, std::vector<ChannelHandle>& kernelChannels, uint32_t& dieId)
+HcclResult GetChannelForCcu(HcclComm comm, const OpParam& param, std::vector<ChannelHandle>& kernelChannels)
 {
     uint32_t channelNum = param.rankSize - 1;
     kernelChannels.resize(channelNum);
-    dieId = 0;
 
     uint32_t channelIndex = 0;
     for (uint32_t remoteRank = 0; remoteRank < param.rankSize; remoteRank++) {
@@ -98,7 +74,7 @@ GetChannelForCcu(HcclComm comm, const OpParam& param, std::vector<ChannelHandle>
 
         HcclChannelDesc desc;
         CHK_RET(HcclChannelDescInit(&desc, 1));
-        CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
+        CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UBC_CTP;
         bool protocolExists = false;
         for (uint32_t idx = 0; idx < listSize; idx++) {
             CommLink link = linkList[idx];
@@ -123,87 +99,18 @@ GetChannelForCcu(HcclComm comm, const OpParam& param, std::vector<ChannelHandle>
             return HCCL_E_NOT_FOUND;
         }
         CHK_RET(HcclChannelAcquire(comm, param.engine, &desc, 1, &kernelChannels[channelIndex])); // 获取channelhandle
-
-        // 从首条channel获取dieId（同一kernel的所有channel在同一die上）
-        if (channelIndex == 0) {
-            EndpointAttrDieId dieIdValue = 0;
-            CHK_RET(HcclRankGraphGetEndpointInfo(
-                comm, param.myRank, &desc.localEndpoint, ENDPOINT_ATTR_DIE_ID, sizeof(EndpointAttrDieId), &dieIdValue));
-            dieId = dieIdValue;
-            HCCL_INFO("[GetChannelForCcu] Get dieId[%u] from first channel.", dieId);
-        }
         channelIndex++;
     }
 
     return HCCL_SUCCESS;
 }
 
-// 遍历所有 IO Die，查询使能状态，为使能的 die 创建资源描述符并设置默认资源量，
-// 最后基于这些描述符创建 CCU 实例。HcommCcuInsCreate 成功后 resDescs 即可销毁（实例已持有资源快照）。
-HcclResult CreateCcuInsWithEnabledDies(CcuInsHandle& insHandle)
-{
-    std::vector<HcommCcuResDescHandle> resDescs;
-    for (uint32_t dieId = 0; dieId < CCU_DIE_NUM; dieId++) {
-        HcommCcuResDescHandle desc = 0;
-        CcuResult descCreateRet = HcommCcuInsResDescCreate(dieId, &desc);
-        if (descCreateRet != CCU_SUCCESS) {
-            // 资源销毁
-            (void)HcommCcuInsResDescDestroy(desc);
-            DestroyAllDescs(resDescs);
-            return ConvertCcuToHccl(descCreateRet);
-        }
-
-        // 探测 die 是否使能：CCU_E_UNAVAIL 表示未使能，跳过该 die
-        CcuResult probeRet = HcommCcuQueryRemainResDesc(desc);
-        if (probeRet == CCU_E_UNAVAIL) {
-            (void)HcommCcuInsResDescDestroy(desc);
-            HCCL_INFO("[CreateCcuInsWithEnabledDies] dieId[%u] not enabled, skip.", dieId);
-            continue;
-        }
-        if (probeRet != CCU_SUCCESS) {
-            // 资源销毁
-            (void)HcommCcuInsResDescDestroy(desc);
-            DestroyAllDescs(resDescs);
-            return ConvertCcuToHccl(probeRet);
-        }
-
-        // 按资源类型设置 CCU 资源描述符中的资源数量
-        for (const auto& pair : CCU_DEFAULT_RES_MAP) {
-            CcuResult setRet = HcommCcuInsResDescSetNum(desc, pair.first, pair.second);
-            if (setRet != CCU_SUCCESS) {
-                // 资源销毁
-                (void)HcommCcuInsResDescDestroy(desc);
-                DestroyAllDescs(resDescs);
-                HCCL_ERROR("[CreateCcuInsWithEnabledDies] SetNum failed, ccuRet[%d], dieId[%u]", setRet, dieId);
-                return ConvertCcuToHccl(setRet);
-            }
-        }
-        resDescs.push_back(desc);
-        HCCL_INFO("[CreateCcuInsWithEnabledDies] dieId[%u] enabled, added.", dieId);
-    }
-
-    if (resDescs.empty()) {
-        HCCL_ERROR("[CreateCcuInsWithEnabledDies] No enabled die found, cannot create CcuIns.");
-        return HCCL_E_INTERNAL;
-    }
-
-    CcuResult createRet = HcommCcuInsCreate(resDescs.data(), resDescs.size(), &insHandle);
-    // resDescs 创建实例后即可销毁，实例内部已持有资源快照
-    DestroyAllDescs(resDescs);
-    if (createRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CreateCcuInsWithEnabledDies] HcommCcuInsCreate failed: ccuRet -> %d", createRet);
-        return ConvertCcuToHccl(createRet);
-    }
-    return HCCL_SUCCESS;
-}
-
 HcclResult GetCcuKernel(
     HcclComm comm, const OpParam& param, AlgResourceCtxSerializable& resCtxHost,
-    const std::vector<ChannelHandle>& kernelChannels, CcuKernelInfo& kernelInfo, uint32_t dieId)
+    const std::vector<ChannelHandle>& kernelChannels, CcuKernelInfo& kernelInfo)
 {
     // 设置kernel函数名和函数指针
-    CHK_SAFETY_FUNC_RET(
-        strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllGatherMesh1DMem2MemKernel"));
+    strcpy_s(kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuAllGatherMesh1DMem2MemKernel");
     kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuAllGatherMesh1DMem2MemKernel);
 
     auto kernelArg = std::make_shared<CcuKernelArgAllGatherMesh1DMem2Mem>();
@@ -222,15 +129,11 @@ HcclResult GetCcuKernel(
     }
     kernelArgBase->channelCount = static_cast<uint32_t>(kernelChannels.size());
 
-    // 创建 CCU 实例
-    CcuInsHandle insHandle = 0;
-    CHK_RET(CreateCcuInsWithEnabledDies(insHandle));
-    // 将 CCU 实例绑定到指定通信域
-    HcclResult assignRet = HcclCommAssignCcuIns(comm, insHandle);
-    if (assignRet != HCCL_SUCCESS) {
-        (void)HcommCcuInsDestroy(insHandle);
-        return assignRet;
-    }
+    CcuInsHandle insHandle{0};
+    uint32_t insNum = 0;
+    CHK_RET(HcclCommQueryCcuIns(comm, &insHandle, &insNum));
+    CHK_PRT_RET(
+        insNum != 1, HCCL_ERROR("[GetCcuKernel] HcclCommQueryCcuIns fail! insNum is [%u]", insNum), HCCL_E_INTERNAL);
 
     resCtxHost.ccuKernels.resize(1); // 只注册1个kernel
 
@@ -243,6 +146,7 @@ HcclResult GetCcuKernel(
     CcuKernelHandle kernelHandle;
     const void* kernelArgs[] = {kernelInfo.kernelArg};
 
+    constexpr uint32_t dieId = 0; // 预留接口，暂无含义
     constexpr uint32_t kernelArgNum = 1;
     CcuResult regRet = HcommCcuKernelRegister(
         insHandle, dieId, kernelInfo.kernelFuncName, reinterpret_cast<void*>(kernelInfo.kernelFunc), kernelArgs,
@@ -256,7 +160,7 @@ HcclResult GetCcuKernel(
 
     CcuResult regEndRet = HcommCcuKernelRegisterEnd(insHandle);
     if (regEndRet != CCU_SUCCESS) {
-        HCCL_ERROR("ccu kernel register end failed: ccuRet -> %d", regEndRet);
+        HCCL_ERROR("ccu kernel register start failed: ccuRet -> %d", regEndRet);
         return ConvertCcuToHccl(regEndRet);
     }
     resCtxHost.ccuKernelNum = {1};
@@ -283,11 +187,10 @@ HcclResult AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceCtxS
     }
 
     std::vector<ChannelHandle> kernelChannels;
-    uint32_t dieId = 0;
-    CHK_RET(GetChannelForCcu(comm, param, kernelChannels, dieId)); // 申请channel资源
+    CHK_RET(GetChannelForCcu(comm, param, kernelChannels)); // 申请channel资源
 
     CcuKernelInfo kernelInfo;
-    CHK_RET(GetCcuKernel(comm, param, resCtxHost, kernelChannels, kernelInfo, dieId)); // 注册kernel
+    CHK_RET(GetCcuKernel(comm, param, resCtxHost, kernelChannels, kernelInfo)); // 注册kernel
 
     HCCL_INFO("End to execute AllocAlgResourceCCU success.");
     return HCCL_SUCCESS;

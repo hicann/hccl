@@ -1,12 +1,12 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
- * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
- * CANN Open Software License Agreement Version 2.0 (the "License").
- * Please refer to the License for details. You may not use this file except in compliance with the License.
- * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
- * See LICENSE in the root of the software repository for the full text of the License.
- */
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
 
 #ifndef OPS_HCCL_CUSTOM_LOG_H
 #define OPS_HCCL_CUSTOM_LOG_H
@@ -15,7 +15,7 @@
 #include <cstdio>
 
 #ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_LEVEL_INFO // Changed to INFO for debugging
+#define LOG_LEVEL LOG_LEVEL_ERROR // 默认日志级别为：ERROR
 #endif
 
 typedef enum {
@@ -37,7 +37,6 @@ typedef enum {
     do {                                                                                           \
         if (LOG_LEVEL <= LOG_LEVEL_DEBUG) {                                                        \
             printf("[DEBUG][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-            fflush(stdout);                                                                        \
         }                                                                                          \
     } while (0)
 
@@ -45,7 +44,6 @@ typedef enum {
     do {                                                                                          \
         if (LOG_LEVEL <= LOG_LEVEL_INFO) {                                                        \
             printf("[INFO][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-            fflush(stdout);                                                                       \
         }                                                                                         \
     } while (0)
 
@@ -53,7 +51,6 @@ typedef enum {
     do {                                                                                          \
         if (LOG_LEVEL <= LOG_LEVEL_WARNING) {                                                     \
             printf("[WARN][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-            fflush(stdout);                                                                       \
         }                                                                                         \
     } while (0)
 
@@ -61,7 +58,6 @@ typedef enum {
     do {                                                                                           \
         if (LOG_LEVEL <= LOG_LEVEL_ERROR) {                                                        \
             printf("[ERROR][%s][%s:%d]" format "\n", __func__, __FILE__, __LINE__, ##__VA_ARGS__); \
-            fflush(stdout);                                                                        \
         }                                                                                          \
     } while (0)
 
@@ -126,4 +122,21 @@ typedef enum {
         }                                                                                                       \
     } while (0)
 
-#endif // OPS_HCCL_CUSTOM_LOG_H
+#define HCCL_TO_CCU_RET(hcclRet) static_cast<CcuResult>(hcclRet)
+#define CCU_CHK_RET(call)                                                 \
+    do {                                                                  \
+        CcuResult ccuRet = HCCL_TO_CCU_RET(call);                         \
+        if (UNLIKELY(ccuRet != CCU_SUCCESS)) {                            \
+            HCCL_ERROR("[%s]call trace: ccuRet -> %d", __func__, ccuRet); \
+            return ccuRet;                                                \
+        }                                                                 \
+    } while (0)
+#define CHK_SAFETY_FUNC_RET(call)                                                   \
+    do {                                                                            \
+        int32_t ret = call;                                                         \
+        if (UNLIKELY(ret != EOK)) {                                                 \
+            HCCL_ERROR("[%s]call trace: safety func err ret -> %d", __func__, ret); \
+            return HCCL_E_INTERNAL;                                                 \
+        }                                                                           \
+    } while (0)
+#endif // OPS_HCCL_P2P_LOG_H
