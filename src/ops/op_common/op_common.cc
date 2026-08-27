@@ -1843,6 +1843,8 @@ HcclResult HcclAllocAlgResourceAiv(
     HCCL_INFO("[%s]Start to execute.", __func__);
     HcclMemHandle memHandle; // 注册到通信域内存的handle，用于建链
     // 获取存放AIV对端信息和标记区的空间
+    void* buffersIn[MAX_RANK_SIZE] = {};
+    void* buffersOut[MAX_RANK_SIZE] = {};
     uint64_t commInfoSize = 0;
     HcclResult ret = HcclEngineCtxGet(comm, param.commModeTag, param.engine, &(resCtxHost->aivCommInfoPtr), &commInfoSize);
     if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
@@ -1864,6 +1866,15 @@ HcclResult HcclAllocAlgResourceAiv(
                 __func__, param.commModeTag, memHandleCachePtr, memHandleCacheSize),
                 HCCL_E_INTERNAL);
         memHandle = static_cast<HcclMemHandle*>(memHandleCachePtr)[0];
+
+        // 有的算子，如send recv，可能多个算子对端不同导致buffer被覆盖，需先获取一遍之前的信息
+        CHK_RET(haclrtMemcpy(
+            buffersIn, MAX_RANK_SIZE * sizeof(void*), resCtxHost->aivCommInfoPtr, MAX_RANK_SIZE * sizeof(void*),
+            ACL_MEMCPY_DEVICE_TO_HOST));
+        CHK_RET(haclrtMemcpy(
+            buffersOut, MAX_RANK_SIZE * sizeof(void*),
+            static_cast<u8*>(resCtxHost->aivCommInfoPtr) + AIV_TAG_ADDR_OFFSET, MAX_RANK_SIZE * sizeof(void*),
+            ACL_MEMCPY_DEVICE_TO_HOST));
     }
     HCCL_INFO("[%s]commModeTag[%s] regMemAddr[%p] memHandle[%p]", __func__, param.commModeTag, resCtxHost->aivCommInfoPtr,
         memHandle);
@@ -1875,8 +1886,6 @@ HcclResult HcclAllocAlgResourceAiv(
     HCCL_INFO("[%s]local cclBufferAddr[%p] cclBufferSize[%llu]", __func__, cclBufferAddr, cclBufferSize);
     resCtxHost->cclMem = HcclMem{HCCL_MEM_TYPE_DEVICE, cclBufferAddr, cclBufferSize};
 
-    void* buffersIn[MAX_RANK_SIZE] = {};
-    void* buffersOut[MAX_RANK_SIZE] = {};
     buffersIn[resCtxHost->topoInfo.userRank] = cclBufferAddr;
     buffersOut[resCtxHost->topoInfo.userRank] = resCtxHost->aivCommInfoPtr;
 
