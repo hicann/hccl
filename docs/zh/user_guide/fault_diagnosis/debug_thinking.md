@@ -212,7 +212,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 |               |Not Supported | 算子执行阶段不支持场景 |
 |               |Timeout | [算子执行阶段执行超时](./task_exec_stage_troubleshooting.md#定位思路) |
 |               |RunFailed | [算子执行阶段执行失败](./_dump_task_exception_mechanism.md#task-exception机制) |
-|               |HeartbeatAbnormal | [算子执行阶段发现心跳异常事件](_dump_cluster_heartbeat_mechanism.md#集群心跳机制) |  |
+|               |HeartbeatAbnormal | [算子执行阶段发现心跳异常事件](_dump_cluster_heartbeat_mechanism.md#集群心跳机制) |
 
 ### HCCL相关故障码
 
