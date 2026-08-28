@@ -53,27 +53,7 @@ chmod 755 <hccl_vm_install>/lib/aarch64/libhccl_device.so
 
 > HCCL-VM 不对源码编译的 `.so` 做签名校验，直接拷贝即可（真机环境才需关闭 `npu-smi` 验签并配置白名单）。
 
-### 4. 配置 AICPU Kernel 描述文件
-
-Host 侧 `LaunchAICPUKernel` 从 `$ASCEND_HOME_PATH/opp/vendors/cust/aicpu/config/aicpu_kernel.json` 加载 Kernel 描述（见 `op_host/launch_aicpu_kernel.cc`）。HCCL-VM 的 `aclrtBinaryLoadFromFile` 桩会解析该 JSON，建立 `functionName -> kernelSo` 映射；随后 Device 进程按 `kernelSo` 名到 `lib/aarch64/` 下 dlopen 对应 `.so` 并 dlsym `HcclAICPUKernel` 执行。
-
-创建 `$ASCEND_HOME_PATH/opp/vendors/cust/aicpu/config/aicpu_kernel.json`，内容如下：
-
-```json
-{
-  "HcclAICPUKernel": {
-    "opInfo": {
-      "opKernelLib": "AICPUKernel",
-      "kernelSo": "libhccl_device.so",
-      "functionName": "HcclAICPUKernel"
-    }
-  }
-}
-```
-
-> `kernelSo` 须与上一步拷贝的文件名一致；`functionName` 须与 `op_kernel_aicpu/aicpu_kernel.cc` 中 `extern "C" unsigned int HcclAICPUKernel(OpParam *param)` 的符号名一致。
-
-### 5. 配置 Host 侧库
+### 4. 配置 Host 侧库
 
 样例 `libhccl.so` 提供 `HcclAlltoAll`，并通过 `libhcomm.so` 的弱符号获得通信域初始化等接口。运行用例前，将其置于 `LD_LIBRARY_PATH` 最前，以替换标准 `libhccl.so` 的 `HcclAlltoAll` 实现：
 
@@ -81,7 +61,7 @@ Host 侧 `LaunchAICPUKernel` 从 `$ASCEND_HOME_PATH/opp/vendors/cust/aicpu/confi
 export LD_LIBRARY_PATH=<样例路径>/build/lib64:$ASCEND_HOME_PATH/lib64:$ASCEND_HOME_PATH/devlib:$LD_LIBRARY_PATH
 ```
 
-### 6. 配置环境变量并执行
+### 5. 配置环境变量并执行
 
 ```bash
 cd <hccl_vm_install>
