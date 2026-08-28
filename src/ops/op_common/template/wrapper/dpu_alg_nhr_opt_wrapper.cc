@@ -161,10 +161,12 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
     }
     // Fence：发送通道 + 接收通道（去重，samePeer 时仅一次）
     for (auto& p : pairs) {
-        if (p.hasSend() && !p.txSrcSlices.empty()) {
+        bool txFenced = false;
+        if (p.hasSend()) {
             CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, p.txCh->handle)));
+            txFenced = true;
         }
-        if (p.hasRecv() && !p.rxSrcSlices.empty() && p.rxCh != p.txCh) {
+        if (p.hasRecv() && (!txFenced || p.rxCh->handle != p.txCh->handle)) {
             CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, p.rxCh->handle)));
         }
     }

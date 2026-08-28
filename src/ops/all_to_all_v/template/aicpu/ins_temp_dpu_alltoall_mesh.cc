@@ -489,6 +489,10 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize + remoteRank * hcclbuffBlockMemSize,
                 recvSliceSize, recvCount));
         }
+        HCCL_INFO(
+            "[InsTempDpuAlltoAllMesh][DPUKernelRun] myRank[%u], remoteRank[%u], sendCount[%llu], recvCount[%llu], "
+            "channel[0x%llx], txSliceNum[%zu], rxSliceNum[%zu].",
+            myRank, remoteRank, sendCount, recvCount, link.handle, ctx.txSrcSlices.size(), ctx.rxSrcSlices.size());
         pairs.push_back(ctx);
     }
 

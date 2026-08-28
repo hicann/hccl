@@ -42,15 +42,17 @@ HcclResult BatchTransferNHR(
 // ========== 三阶段批量传输 ==========
 
 struct DpuTransferCtx {
-    const ChannelInfo* txCh;            // 发送通道（nullptr 表示无发送，remoteRank 等均可从此获取）
-    const ChannelInfo* rxCh;            // 接收通道（nullptr 表示无接收，samePeer 时 == txCh）
+    const ChannelInfo* txCh;            // 发送方向通道（非空仅表示链路存在）
+    const ChannelInfo* rxCh;            // 接收方向通道（非空仅表示链路存在，samePeer 时 == txCh）
     std::vector<DataSlice> txSrcSlices; // 发送源切片
     std::vector<DataSlice> txDstSlices; // 发送目标切片
     std::vector<DataSlice> rxSrcSlices; // 接收源切片
     std::vector<DataSlice> rxDstSlices; // 接收目标切片
 
-    bool hasSend() const { return txCh != nullptr; }
-    bool hasRecv() const { return rxCh != nullptr; }
+    bool hasTxChannel() const { return txCh != nullptr; }
+    bool hasRxChannel() const { return rxCh != nullptr; }
+    bool hasSend() const { return hasTxChannel() && !txSrcSlices.empty(); }
+    bool hasRecv() const { return hasRxChannel() && !rxSrcSlices.empty(); }
 };
 
 /**
