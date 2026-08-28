@@ -19,6 +19,9 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
+
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllReduceSequence2DieExecutor()
@@ -297,11 +300,25 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
+REGISTER_ALG_ATTRS(CcuMSAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportProd = false;
+                   op.unsupportedDataTypes
+                   = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
+                      HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+                   op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
     CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
+REGISTER_ALG_ATTRS(CcuSchedAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupportLevel0PcieMix = true;
+                   topo.requireAllMeshConnected = true; op.isSupportProd = false;
+                   op.unsupportedDataTypes
+                   = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
+                      HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+                   op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

@@ -13,6 +13,8 @@
 #include "ins_temp_reduce_scatter_mesh_1D_dpu_inter.h"
 #include "ins_temp_all_gather_nhr_dpu_inter.h"
 #include "ins_temp_all_gather_mesh_1D_intra.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 // ! 已经编码完成
@@ -521,4 +523,14 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, DpuAllReduceSequenceMeshNHR, InsV2AllReduceSequenceExecutor, TopoMatchMultilevel,
     InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter, InsTempAllGatherNhrDpuInter,
     InsTempAllGatherMesh1dIntra);
+REGISTER_ALG_ATTRS(
+    DpuAllReduceSequenceMeshNHR,
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->deviceNumPerModule == 1;
+    };
+    op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64});
 } // namespace ops_hccl

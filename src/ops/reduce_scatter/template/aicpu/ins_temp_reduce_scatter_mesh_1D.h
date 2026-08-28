@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class InsTempReduceScatterMesh1D : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     InsTempReduceScatterMesh1D() = default;
     explicit InsTempReduceScatterMesh1D(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

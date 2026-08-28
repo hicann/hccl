@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherOmniPipeNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     CcuTempAllGatherOmniPipeNHR1DMem2Mem() = default;
     explicit CcuTempAllGatherOmniPipeNHR1DMem2Mem(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

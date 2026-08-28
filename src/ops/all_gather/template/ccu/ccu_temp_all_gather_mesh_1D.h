@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherMesh1D : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     CcuTempAllGatherMesh1D() = default;
     explicit CcuTempAllGatherMesh1D(
         const OpParam& param,

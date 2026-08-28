@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllReduceNhrMem2Mem1DMultiJetty : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR_MULTILINK};
     CcuTempAllReduceNhrMem2Mem1DMultiJetty() = default;
     explicit CcuTempAllReduceNhrMem2Mem1DMultiJetty(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

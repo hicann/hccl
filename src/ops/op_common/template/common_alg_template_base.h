@@ -13,12 +13,13 @@
 
 #include "template_utils.h"
 #include "alg_param.h"
+#include "alg_parse.h"
 
 namespace ops_hccl {
 
 // Template 属性结构体，子类按需覆盖成员值（用于 cost model 等场景判断 template 特征）
 struct TemplateProp {
-    bool isNhr = false; // 是否为 NHR 算法（影响 cost model 的 netType 选择）
+    AlgoType algoType = AlgoType::UNKNOWN;
 };
 
 class CommonAlgTemplateBase {
@@ -28,7 +29,7 @@ public:
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
     virtual ~CommonAlgTemplateBase() = default;
 
-    // Template 属性，子类按需覆盖（如 NHR 算法覆盖为 {.isNhr = true}）
+    // Template 属性，子类按需覆盖
     static constexpr TemplateProp props = {};
 
     virtual std::string Describe() const = 0;

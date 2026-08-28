@@ -18,6 +18,8 @@
 #include "order_preserved_common.h"
 #include <cmath>
 #include <algorithm>
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
@@ -449,9 +451,21 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedMesh, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
     InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceStrictOrderedMesh,
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreservedGroup, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
     InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(
+    AllReduceOrderPreservedGroup,
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true);
 
 } // namespace ops_hccl

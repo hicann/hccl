@@ -31,6 +31,7 @@ public:
     std::vector<CostModelParam>
     CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName) override;
     AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const override;
+
 #ifndef AICPU_COMPILE
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
     HcclResult FastLaunchSaveCtx(

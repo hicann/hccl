@@ -15,6 +15,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <vector>
 #include "executor_v2_base.h"
 #include "cost_model.h"
 

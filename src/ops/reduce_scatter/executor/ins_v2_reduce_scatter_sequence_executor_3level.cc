@@ -14,6 +14,8 @@
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "alg_data_trans_wrapper.h"
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
 
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 3;
@@ -471,5 +473,7 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHRNHR,
     InsV2ReduceScatterSequenceExecutor3Level, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR, InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 
 } // namespace ops_hccl

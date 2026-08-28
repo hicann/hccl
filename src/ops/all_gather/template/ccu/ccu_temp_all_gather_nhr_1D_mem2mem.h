@@ -19,7 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
-    static constexpr TemplateProp props = {.isNhr = true};
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     CcuTempAllGatherNHR1DMem2Mem() = default;
     explicit CcuTempAllGatherNHR1DMem2Mem(
         const OpParam& param,

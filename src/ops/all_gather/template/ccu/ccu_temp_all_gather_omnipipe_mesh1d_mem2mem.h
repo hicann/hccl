@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherOmniPipeMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     CcuTempAllGatherOmniPipeMesh1DMem2Mem() = default;
     explicit CcuTempAllGatherOmniPipeMesh1DMem2Mem(
         const OpParam& param,

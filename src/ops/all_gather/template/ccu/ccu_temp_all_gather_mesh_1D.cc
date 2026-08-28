@@ -26,8 +26,6 @@ std::vector<CostModelParam> CcuTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
     CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
     CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
 
-    A = 0.95 * A; // 保证ms比sched快
-
     std::vector<CostModelParam> params;
     params.push_back({A, B, C});
     return params;

@@ -20,6 +20,7 @@ namespace ops_hccl {
 
 class InsTempReduceScatterNHR : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     InsTempReduceScatterNHR() = default;
     explicit InsTempReduceScatterNHR(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

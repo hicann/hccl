@@ -42,6 +42,7 @@ struct NHRSliceInfo {
 
 class InsTempAllReduceNHR : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     InsTempAllReduceNHR() = default;
     explicit InsTempAllReduceNHR(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

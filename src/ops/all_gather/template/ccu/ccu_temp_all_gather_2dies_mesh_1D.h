@@ -21,6 +21,7 @@ using RankGroup = std::vector<RankId>;
 
 class CcuTempAllGather2DiesMesh1D : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_2DIE};
     CcuTempAllGather2DiesMesh1D() = default;
     explicit CcuTempAllGather2DiesMesh1D(
         const OpParam& param,

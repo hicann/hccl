@@ -819,7 +819,7 @@ HcclResult CalcHostDPUOnly(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     uint32_t netLayerNum = 0;
     CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
     if ((netLayers == nullptr) || (netLayerNum == 0)) {
-        HCCL_WARNING("HcclRankGraphGetLayers fail");
+        HCCL_ERROR("HcclRankGraphGetLayers fail");
         return HCCL_E_INTERNAL;
     }
 
@@ -835,7 +835,7 @@ HcclResult CalcHostDPUOnly(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
         uint32_t topoInsNum = 0;
         CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, netLayer, &topoInsts, &topoInsNum));
         if ((topoInsts == nullptr) || (topoInsNum == 0)) {
-            HCCL_WARNING("HcclRankGraphGetTopoInstsByLayer fail, netLayer[%u]", netLayer);
+            HCCL_ERROR("HcclRankGraphGetTopoInstsByLayer fail, netLayer[%u]", netLayer);
             return HCCL_E_INTERNAL;
         }
         for (uint32_t topoInsIdx = 0; topoInsIdx < topoInsNum; topoInsIdx++) {

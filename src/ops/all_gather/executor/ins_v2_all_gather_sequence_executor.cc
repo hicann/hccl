@@ -13,6 +13,7 @@
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -294,4 +295,12 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSequenceMeshNHR, InsV2AllGatherSequenceExecutor, TopoMatchMultilevel,
     InsTempAllGatherMesh1D, InsTempAllGatherNHRDPU);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
+    topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) {
+        return !topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+               && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+    });
 } // namespace ops_hccl

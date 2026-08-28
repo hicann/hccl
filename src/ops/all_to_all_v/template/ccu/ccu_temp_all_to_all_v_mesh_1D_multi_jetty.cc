@@ -17,7 +17,7 @@
 namespace ops_hccl {
 constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_4 = 4;
-constexpr u64 HCCL_MIN_SLICE_ALIGN = 128;
+// HCCL_MIN_SLICE_ALIGN defined in alg_template_base.h
 
 CcuTempAllToAllVMesh1DMultiJetty::CcuTempAllToAllVMesh1DMultiJetty(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)

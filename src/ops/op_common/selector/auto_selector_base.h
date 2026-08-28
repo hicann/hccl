@@ -16,6 +16,7 @@
 #include "alg_param.h"
 #include "log.h"
 #include "alg_env_config.h"
+#include "alg_attrs.h"
 
 namespace ops_hccl {
 
@@ -96,12 +97,12 @@ public:
         const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
     bool IsStarsState(const OpExecuteConfig& opExecuteConfig) const;
     bool IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo) const;
-    bool IsLayerAllConnetedWithTopo(
-        const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType) const;
-    HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual) const;
-    HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple) const;
-    bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam) const;
-    bool IsDevType960() const;
+    static bool IsLayerAllConnetedWithTopo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType);
+    static HcclResult CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual);
+    static HcclResult CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple);
+    static bool IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
+    static bool IsDevType960();
     bool IsInputOutputOverlap(const OpParam& opParam) const;
     bool IsSmallDataCCU(const u64 dataSize, const u64 rankSize) const;
     // 计算非对称拓扑展开后的 layer0 子组数（框数）。

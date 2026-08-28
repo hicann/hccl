@@ -27,6 +27,7 @@ struct SplitSliceInfo {
 
 class InsTempAllReduceMesh1DTwoShot : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_TWOSHOT};
     InsTempAllReduceMesh1DTwoShot() = default;
     explicit InsTempAllReduceMesh1DTwoShot(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

@@ -17,6 +17,7 @@
 #include "topo_match_multilevel.h"
 #include "topo_match_ubx.h"
 #include "topo_match_pcie_mix.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 constexpr u32 OMNIPIPE_LEVEL2_IDX = 2;
@@ -419,5 +420,7 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHRNHR, InsV2AllGatherSequenceExecutor3Level,
     TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHRNHR, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 } // namespace ops_hccl
 // 算法注册

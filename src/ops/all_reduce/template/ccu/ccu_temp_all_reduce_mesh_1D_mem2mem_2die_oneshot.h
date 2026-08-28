@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class CcuTempAllReduceMesh1DMem2Mem2DieOneShot : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_2DIE};
     CcuTempAllReduceMesh1DMem2Mem2DieOneShot() = default;
     explicit CcuTempAllReduceMesh1DMem2Mem2DieOneShot(
         const OpParam& param,

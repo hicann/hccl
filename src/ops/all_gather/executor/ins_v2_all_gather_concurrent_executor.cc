@@ -28,6 +28,8 @@
 
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
@@ -36,6 +38,7 @@ constexpr u32 MESH_BW = 11;
 constexpr u32 CLOS_JETTY = 4;
 constexpr u32 MESH_BW_AICPU = 37;
 constexpr u32 CLOS_BW_AICPU = 25;
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllGatherConcurrentExecutor()
@@ -539,12 +542,33 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherConcurMeshNHR, InsV2AllGatherConcurrentExecutor, TopoMatchUBX,
     InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+    });
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherConcurMeshNHRMultiLink, InsV2AllGatherConcurrentExecutor,
     TopoMatchUBX, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMultiJettyMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherConcurMeshNHRMultiLink, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

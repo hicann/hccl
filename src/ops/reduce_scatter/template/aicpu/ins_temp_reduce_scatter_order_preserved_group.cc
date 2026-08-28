@@ -26,6 +26,8 @@ std::vector<CostModelParam> InsTempReduceScatterOrderPreservedGroup::CalcCostCoe
     CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
     CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B);
     CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    A = 1000;
+    C = 1000;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C});

@@ -37,9 +37,7 @@ public:
     // 候选引擎列表转为前缀字符串列表
     static std::vector<std::string> CandidateEnginesToPrefixes(const std::vector<OpExecuteConfig>& engines);
 
-    // 根据 topoInfo->hostDpuOnly + opExecuteConfig 返回可选择的引擎列表,按优先级高到低排序
-    static std::vector<OpExecuteConfig>
-    GetEnginePriority(TopoInfoWithNetLayerDetails* topoInfo, OpExecuteConfig opExecuteConfig);
+    static std::vector<OpExecuteConfig> GetEnginePriority(OpExecuteConfig opExecuteConfig);
 
     // 根据候选引擎列表过滤 CostModel: 不属于候选引擎的算法 count 置 -1
     static HcclResult FilterCmByEngine(CostModel& cm, const std::vector<OpExecuteConfig>& candidateEngines);

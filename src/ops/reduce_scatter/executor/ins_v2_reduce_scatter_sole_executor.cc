@@ -28,7 +28,14 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
+#include "hccl_aiv_utils.h"
+constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u32 RS_CCU_2DIE_RANK_SIZE = 16;
+constexpr u32 RS_CCU_2DIE_FRAME_NUM = 2;
 constexpr u64 TMP_MEM_RESERVE_SIZE = 1 * 1024 * 1024;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -297,60 +304,200 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLau
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1D);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshChunk, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1DMeshChunk);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMeshChunk,
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel1Nhr = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe
+               && !(
+                   (topo->level0Symmetric && topo->level1Symmetric)
+                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+               && !(
+                   !(topo->level0Symmetric && topo->level1Symmetric)
+                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+               && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+    });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, InsTempReduceScatterAicpuReduceNHR);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSoleNHRAicpuReduce,
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1DZAxisDetour);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMeshConcur,
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     AivTempReduceScatterMesh1D);
+REGISTER_ALG_ATTRS(
+    AivReduceScatterSoleMesh,
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 2; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= ops_hccl::MAX_RANK_SIZE;
+    };
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 totalSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType] * topo->userRankSize;
+        void* bufAddr = nullptr;
+        uint64_t bufSize = 0;
+        if (HcclGetHcclBuffer(opParam.hcclComm, &bufAddr, &bufSize) != HCCL_SUCCESS) {
+            return false;
+        }
+        return totalSize <= bufSize * ops_hccl::AIV_MAX_CCL_LOOP_NUM;
+    });
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+    op.isSupportInplace = false; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual
+               && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
+               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh1D);
+REGISTER_ALG_ATTRS(
+    CcuMSReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual
+               && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
+               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::CalcFrameNum(topo) > MAX_FRAME_NUM_FOR_CCU_ALGO
+               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, CcuTempReduceScatterMeshMem2Mem1D2Die);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterSoleMesh2Die, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
+    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        // MESH_1D场景：仅支持 2框16卡组网，不满足则过滤
+        if (topo->topoLevelNums > 1) {
+            return topo->level0Topo == Level0Shape::MESH_1D && topo->userRankSize == RS_CCU_2DIE_RANK_SIZE
+                   && AutoSelectorBase::CalcFrameNum(topo) == RS_CCU_2DIE_FRAME_NUM;
+        } else if (topo->topoLevelNums == 1) {
+            return topo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR;
+        }
+        return true;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
     CcuTempReduceScatterMesh2Die);
+REGISTER_ALG_ATTRS(
+    CcuMSReduceScatterSoleMesh2Die, topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.maxTopoLevelNum = 1;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
     TopoMatch1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterSoleNHRMultiLink, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    };
+    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO)
+               && !(isMultiple && dataSize >= SMALL_COUNT_512KB);
+    });
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor,
     TopoMatchConcurrent, CcuTempReduceScatterConcurrentMeshNHR);
+REGISTER_ALG_ATTRS(
+    CcuMSReduceScatterSoleMeshConcur, topo.maxTopoLevelNum = 1; topo.supportDevTypes = {HcclDevType::DEV_TYPE_960};
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    };
+    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO)
+               && !(isMultiple && dataSize >= SMALL_COUNT_512KB);
+    });
 #endif /* CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0) */
 #endif
 

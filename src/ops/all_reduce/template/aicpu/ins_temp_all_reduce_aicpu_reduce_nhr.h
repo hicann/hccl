@@ -20,6 +20,7 @@ namespace ops_hccl {
 
 class InsTempAllReduceAicpuReduceNHR : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR_AICPU_REDUCE};
     InsTempAllReduceAicpuReduceNHR() = default;
     explicit InsTempAllReduceAicpuReduceNHR(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

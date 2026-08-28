@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterOmniPipeMesh1D : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     CcuTempReduceScatterOmniPipeMesh1D() = default;
     explicit CcuTempReduceScatterOmniPipeMesh1D(
         const OpParam& param,

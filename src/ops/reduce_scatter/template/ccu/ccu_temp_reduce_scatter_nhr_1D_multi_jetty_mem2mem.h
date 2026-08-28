@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterNhrMultiJettyMem2Mem1D : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR_MULTILINK};
     CcuTempReduceScatterNhrMultiJettyMem2Mem1D() = default;
     explicit CcuTempReduceScatterNhrMultiJettyMem2Mem1D(
         const OpParam& param,

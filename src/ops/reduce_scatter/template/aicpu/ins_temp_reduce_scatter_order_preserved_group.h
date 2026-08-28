@@ -27,6 +27,7 @@ namespace ops_hccl {
 //   - 适用于大卡数场景（rankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED）
 class InsTempReduceScatterOrderPreservedGroup : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     InsTempReduceScatterOrderPreservedGroup() = default;
     explicit InsTempReduceScatterOrderPreservedGroup(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

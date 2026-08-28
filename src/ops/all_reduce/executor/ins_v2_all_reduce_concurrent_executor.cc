@@ -17,6 +17,8 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ins_temp_all_reduce_nhr.h"
 #include "ins_temp_all_reduce_mesh_1D_two_shot.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 constexpr u32 CLOS_PORT_NUM = 4;
 constexpr u32 MESH_BW_SCHED = 11;
@@ -542,14 +544,55 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceConcurMeshNHRMultiLink, InsV2AllReduceConcurrentExecutor,
     TopoMatchUBX, CcuTempAllReduceMeshMem2Mem1D, CcuTempAllReduceNhrMem2Mem1DMultiJetty);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllReduceConcurMeshNHRMultiLink, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
+       HcclDataType::HCCL_DATA_TYPE_FP64};
+    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= 4;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceConcurMeshNHRMultiLink, InsV2AllReduceConcurrentExecutor,
     TopoMatchUBX, CcuTempAllReduceMesh1D, CcuTempAllReduceNhrMem2Mem1DMultiJetty);
+REGISTER_ALG_ATTRS(
+    CcuMSAllReduceConcurMeshNHRMultiLink, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.isSupportProd = false; op.unsupportedDataTypes
+                              = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
+                                 HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= 4;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceConcurMeshTwoShotNHR, InsV2AllReduceConcurrentExecutor, TopoMatchUBX,
     InsTempAllReduceMesh1DTwoShot, InsTempAllReduceNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceConcurMeshTwoShotNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return isEqual && topo->userRankSize <= 4 && dataSize >= SMALL_COUNT_512KB;
+    });
 } // namespace ops_hccl

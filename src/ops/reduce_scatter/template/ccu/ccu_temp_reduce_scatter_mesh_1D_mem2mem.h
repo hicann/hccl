@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterMesh1DMem2Mem : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     CcuTempReduceScatterMesh1DMem2Mem() = default;
     explicit CcuTempReduceScatterMesh1DMem2Mem(
         const OpParam& param,

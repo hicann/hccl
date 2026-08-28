@@ -12,6 +12,8 @@
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
 
 // 序列执行器需要的层级数
@@ -292,4 +294,12 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshMesh, InsV2ReduceScatterSequenceExecutor,
     TopoMatchMultilevel, InsTempReduceScatterMesh1D, InsTempReduceScatterMesh1dDpu);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterSequenceMeshMesh,
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.minTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+    });
 } // namespace ops_hccl

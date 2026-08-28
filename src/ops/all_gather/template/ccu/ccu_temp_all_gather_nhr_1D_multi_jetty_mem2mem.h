@@ -19,7 +19,7 @@ namespace ops_hccl {
 
 class CcuTempAllGatherNHR1DMultiJettyMem2Mem : public CcuAlgTemplateBase {
 public:
-    static constexpr TemplateProp props = {.isNhr = true};
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR_MULTILINK};
     CcuTempAllGatherNHR1DMultiJettyMem2Mem() = default;
     explicit CcuTempAllGatherNHR1DMultiJettyMem2Mem(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

@@ -10,516 +10,42 @@
 
 #include "cost_table.h"
 
-#include "hccl_algo_dims.h"
-
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <functional>
-#include <map>
 #include <new>
-#include <set>
+#include <limits>
 
 #include "auto_selector_base.h"
 #include "hccl_aiv_utils.h"
-#include "order_preserved_common.h"
 #include "selector_engine.h"
+#include "alg_attrs_registry.h"
+#include "order_preserved_common.h"
 
 namespace ops_hccl {
 
 // ---------------------------------------------------------------------------
-// 匿名命名空间：规则构建函数 + helper
+// 公共函数：判断输入输出是否 overlap（按算子类型区分）
+// AllReduce/Reduce/ReduceScatter: input 和 output 是同一块内存
+// AllGather/Broadcast/Scatter: output 可能包含 input 的部分
+// AllToAll/AllToAllV: input 和 output 完全独立
+// Send/Recv: 只有一个 buffer
 // ---------------------------------------------------------------------------
-namespace {
-
-    inline bool IsAgInputOutputOverlap(const OpParam& op)
-    {
-        if (op.inputPtr == nullptr || op.outputPtr == nullptr || op.inputSize == 0 || op.outputSize == 0) {
-            return false;
-        }
-        uintptr_t inStart = reinterpret_cast<uintptr_t>(op.inputPtr);
-        uintptr_t outStart = reinterpret_cast<uintptr_t>(op.outputPtr);
-        return inStart <= outStart + op.outputSize - 1 && outStart <= inStart + op.inputSize - 1;
+bool IsInputOutputOverlap(const OpParam& opParam)
+{
+    if (opParam.inputPtr == nullptr || opParam.outputPtr == nullptr || opParam.inputSize == 0
+        || opParam.outputSize == 0) {
+        return false;
     }
-
-    std::vector<AlgFilterRule> BuildAllReduceRules()
-    {
-        static const std::set<std::string> aivAlgos = {"AivAllReduceSoleMeshOneShot", "AivAllReduceSoleMeshTwoShot"};
-        static const std::set<std::string> ccuMsAlgos
-            = {"CcuMSAllReduceSoleMeshOneShot",        "CcuMSAllReduceSoleMesh",
-               "CcuMSAllReduceSoleMesh2Die",           "CcuMSAllReduceSequenceMesh2Die",
-               "CcuMSAllReduceConcurMeshNHRMultiLink", "CcuMSAllReduceSoleMeshMsConcur",
-               "CcuMSAllReducePipeLineMeshNHR"};
-        static const std::set<std::string> ccuSchedAlgos = {"CcuSchedAllReduceSoleNHR",
-                                                            "CcuSchedAllReduceSequenceMeshMesh",
-                                                            "CcuSchedAllReduceSoleMesh",
-                                                            "CcuSchedAllReduceParallelMeshNHR",
-                                                            "CcuSchedAllReduceConcurMeshNHRMultiLink",
-                                                            "CcuAllReduceParallelNHR1DMutiJetty",
-                                                            "CcuSchedAllReducePipeLineMeshNHR",
-                                                            "CcuSchedAllReduceSoleNHRMultiLink",
-                                                            "CcuSchedAllReduceSoleMesh2Die",
-                                                            "CcuSchedAllReduceSequenceMesh2Die"};
-
-        std::set<std::string> ccuAll = ccuMsAlgos;
-        ccuAll.insert(ccuSchedAlgos.begin(), ccuSchedAlgos.end());
-        std::set<std::string> ccuAivAll = ccuAll;
-        ccuAivAll.insert(aivAlgos.begin(), aivAlgos.end());
-
-        return {
-            // 必不选：int8 排除 ccu sched 的 SequenceMesh1D/Mesh1DMem2Mem
-            {"int8_skip_ccu_seq",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return op.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8;
-             },
-             false,
-             {"CcuSchedAllReduceSequenceMeshMesh", "CcuSchedAllReduceSoleMesh"}},
-            // 必不选：PROD 排除 ccu + aiv
-            {"prod_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return op.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
-             },
-             false, ccuAivAll},
-            // 必不选：64bit(INT64/UINT64/FP64) 排除 ccu + aiv
-            {"64bit_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return Is64BitDataType(op.DataDes.dataType);
-             },
-             false, ccuAivAll},
-            // 必不选：保序模式排除 ccu + aiv（回退 aicpu）
-            {"order_preserved_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
-             },
-             false, ccuAivAll},
-            // 必不选：aiv + topLevelUboe 排除 aiv
-            {"aiv_skip_topLevelUboe",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
-             },
-             false, aivAlgos},
-            // 必选：保序模式 + rankSize > 32 → AllReduceOrderPreservedGroup
-            {"order_preserved_group",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize)
-                        && topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-             },
-             true,
-             {"AllReduceOrderPreservedGroup"}},
-            // 必选：保序模式 + rankSize <= 32 → AicpuAllReduceStrictOrderedMesh
-            {"order_preserved",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize)
-                        && topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-             },
-             true,
-             {"AicpuAllReduceStrictOrderedMesh"}},
-            // 必选：3级拓扑 → AicpuAllReduceSequenceMeshConcurNHRNHR
-            {"three_level_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3;
-             },
-             true,
-             {"AicpuAllReduceSequenceMeshConcurNHRNHR"}},
-            // 必选：level0 本地实例仅1卡（每框仅1卡参与通信）→ SoleNHR
-            {"single_card_per_server_sole_nhr",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return !topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                        && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
-             },
-             true,
-             {"CcuSchedAllReduceSoleNHR", "AicpuAllReduceSoleNHR", "AivAllReduceSoleMeshOneShot",
-              "AivAllReduceSoleMeshTwoShot"}},
-            // 必不选：2Die 算法仅在 TWO_DIE_REGULAR 拓扑下可选，其他拓扑排除
-            {"two_die_regular_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0MeshType != Level0MeshType::TWO_DIE_REGULAR;
-             },
-             false,
-             {"CcuSchedAllReduceSoleMesh2Die", "CcuSchedAllReduceSequenceMesh2Die"}},
-            // 必不选：parallel/sequence/concurrent 算法仅在多级拓扑(topoLevelNums>1)下可选
-            {"multilevel_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == 1;
-             },
-             false,
-             {"AicpuAllReduceConcurMeshTwoShotNHR", "AicpuAllReduceParallelMeshNHR",
-              "AicpuAllReduceSequenceMeshConcurNHR", "AicpuAllReduceSequenceMeshConcurNHRNHR",
-              "CcuAllReduceParallelNHR1DMutiJetty", "CcuMSAllReduceConcurMeshNHRMultiLink",
-              "CcuMSAllReduceSequenceMesh2Die", "CcuSchedAllReduceConcurMeshNHRMultiLink",
-              "CcuSchedAllReduceParallelMeshNHR", "CcuSchedAllReduceSequenceMesh2Die",
-              "CcuSchedAllReduceSequenceMeshMesh", "DpuAllReduceSequenceMeshNHR", "InsAllReduceParallelMesh1DNHRPcie",
-              "InsAllReduceParallelRSAGDpu", "InsAllReduceParallelRSAGUBX", "InsAllReduceParallelRSAGUboe"}},
-        };
-    }
-
-    std::vector<AlgFilterRule> BuildAllGatherRules()
-    {
-        static const std::set<std::string> aivAlgos = {"AivAllGatherSoleMesh"};
-        static const std::set<std::string> ccuMsAlgos
-            = {"CcuMSAllGatherSoleMesh", "CcuMSAllGatherSoleMesh2Die", "CcuSchedAllGatherSoleMesh2Die",
-               "CcuSchedAllGatherSoleNHRMultiLink", "CcuSchedAllGatherSoleMeshConcur"};
-        static const std::set<std::string> ccuSchedAlgos
-            = {"CcuSchedAllGatherSoleMesh",
-               "CcuSchedAllGatherSoleNHR",
-               "CcuSchedAllGatherSequenceMeshMesh",
-               "CcuSchedAllGatherParallelMeshNHR",
-               "CcuSchedAllGatherParallelMeshNHRMultiLink",
-               "CcuMSAllGatherConcurMeshNHRMultiLink",
-               "CcuSchedAllGatherConcurMeshNHRMultiLink",
-               "CcuSchedAllGatherPipeLineMeshNHR"};
-        static const std::set<std::string> ccuAll = [&]() {
-            std::set<std::string> s = ccuMsAlgos;
-            s.insert(ccuSchedAlgos.begin(), ccuSchedAlgos.end());
-            return s;
-        }();
-        static const std::set<std::string> aivCcuSched = [&]() {
-            std::set<std::string> s = aivAlgos;
-            s.insert(ccuSchedAlgos.begin(), ccuSchedAlgos.end());
-            return s;
-        }();
-        static const std::set<std::string> twoDieAlgos
-            = {"CcuMSAllGatherSoleMesh2Die", "CcuSchedAllGatherSoleMesh2Die"};
-        static const std::set<std::string> concurrentAlgos
-            = {"CcuMSAllGatherConcurMeshNHRMultiLink", "CcuSchedAllGatherConcurMeshNHRMultiLink",
-               "AicpuAllGatherConcurMeshNHR"};
-        static const std::set<std::string> multilevelAlgos
-            = {"CcuSchedAllGatherSequenceMeshMesh",
-               "CcuSchedAllGatherParallelMeshNHR",
-               "AicpuAllGatherParallelMeshNHR",
-               "AicpuAllGatherParallelNHRNHR",
-               "AicpuAllGatherSequenceMeshConcurNHR",
-               "AicpuAllGatherSequenceMeshConcurNHRNHR",
-               "AicpuAllGatherPipeLine",
-               "DpuAllGatherPipeLineMeshNHRNHR",
-               "DpuAllGatherSequenceMeshNHR"};
-        // 仅单级拓扑可用的 sole 算法，多级时排除
-        static const std::set<std::string> singleLevelOnlyAlgos
-            = {"AicpuAllGatherSoleMeshConcur", "AicpuAllGatherSoleMesh"};
-        // 仅在非 MESH_1D 拓扑(CLOS/MESH_1D_CLOS)下才会被 selector 选中的算法
-        // 依据 all_gather_auto_selector.cc：这些算法在 level0Topo==MESH_1D 的任何分支都不会被选中
-        static const std::set<std::string> nonMesh1dAlgos
-            = {"AicpuAllGatherSoleNHRMultiLink",
-               "InsAllGatherParallelMesh1DNHRPcie",
-               "AicpuAllGatherPipeLinePcie",
-               "AicpuAllGatherConcurMeshNHR",
-               "InsAllGatherParallelMesh1DNHRMultiJetty",
-               "AicpuAllGatherPipeLineUBX",
-               "DpuAllGatherPipeLineUBX",
-               "CcuSchedAllGatherConcurMeshNHRMultiLink",
-               "CcuSchedAllGatherParallelMeshNHRMultiLink",
-               "CcuSchedAllGatherPipeLineMeshNHR",
-               "CcuSchedAllGatherSoleNHRMultiLink"};
-
-        return {
-            // 必不选：inplace(input/output overlap) 排除 ccu(ccu_ms和ccu_sched都不支持)
-            {"inplace_skip_ccu",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return IsAgInputOutputOverlap(op);
-             },
-             false, ccuAll},
-            // 必不选：level2UbRtp 排除 aiv + ccu_sched
-            {"level2ub_rtp_skip_aiv_ccu_sched",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level2UbRtp;
-             },
-             false, aivCcuSched},
-            // 必不选：3级拓扑 + topLevelUboe 排除 aiv + ccu_sched
-            {"topLevelUboe_skip_aiv_ccu_sched",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
-             },
-             false, aivCcuSched},
-            // 必不选：ccu_ms 仅支持单级拓扑，多级拓扑排除
-            {"ccu_ms_single_level_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums > 1;
-             },
-             false, ccuMsAlgos},
-            // 必不选：2Die 算法仅在 TWO_DIE_REGULAR 拓扑下可选，其他拓扑排除
-            {"two_die_regular_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0MeshType != Level0MeshType::TWO_DIE_REGULAR;
-             },
-             false, twoDieAlgos},
-            // 必不选：concurrent 算法仅在 MESH_1D_CLOS(UBX) 拓扑下可选，其他拓扑排除
-            {"concurrent_ubx_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0Topo != Level0Shape::MESH_1D_CLOS;
-             },
-             false, concurrentAlgos},
-            // 必不选：仅在非 MESH_1D 拓扑下可选的算法，在 level0 topo 为 MESH_1D 时排除
-            {"non_mesh1d_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0Topo == Level0Shape::MESH_1D;
-             },
-             false, nonMesh1dAlgos},
-            // 必不选：parallel/sequence/concurrent/omnipipe/DPU 算法仅在多级拓扑(topoLevelNums>1)下可选
-            {"multilevel_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == 1;
-             },
-             false, multilevelAlgos},
-            // 必不选：仅单级拓扑可用的 sole 算法，多级时排除
-            {"single_level_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums > 1;
-             },
-             false, singleLevelOnlyAlgos},
-        };
-    }
-
-    std::vector<AlgFilterRule> BuildReduceScatterRules()
-    {
-        static const std::set<std::string> aivAlgos = {"AivReduceScatterSoleMesh"};
-        static const std::set<std::string> ccuMsAlgos
-            = {"CcuMSReduceScatterSoleMesh", "CcuMSReduceScatterSoleMesh2Die", "CcuMSReduceScatterSoleMeshConcur",
-               "CcuMSReduceScatterConcurMeshNHRMultiLink", "CcuMSReduceScatterPipeLineMeshNHR"};
-        static const std::set<std::string> ccuSchedAlgos
-            = {"CcuSchedReduceScatterSoleNHR",
-               "CcuSchedReduceScatterSequenceMeshMesh",
-               "CcuSchedReduceScatterParallelMeshNHR",
-               "CcuSchedReduceScatterParallelMeshNHRMultiLink",
-               "CcuSchedReduceScatterConcurMeshNHRMultiLink",
-               "CcuSchedReduceScatterSoleNHRMultiLink",
-               "CcuSchedReduceScatterPipeLineMeshNHR",
-               "CcuSchedReduceScatterSoleMesh",
-               "CcuSchedReduceScatterSoleMesh2Die"};
-        static const std::set<std::string> ccuAll = [&]() {
-            std::set<std::string> s = ccuMsAlgos;
-            s.insert(ccuSchedAlgos.begin(), ccuSchedAlgos.end());
-            return s;
-        }();
-        static const std::set<std::string> ccuAivAll = [&]() {
-            std::set<std::string> s = ccuAll;
-            s.insert(aivAlgos.begin(), aivAlgos.end());
-            return s;
-        }();
-        static const std::set<std::string> aivCcuSched = [&]() {
-            std::set<std::string> s = aivAlgos;
-            s.insert(ccuSchedAlgos.begin(), ccuSchedAlgos.end());
-            return s;
-        }();
-        static const std::set<std::string> twoDieAlgos
-            = {"CcuMSReduceScatterSoleMesh2Die", "CcuSchedReduceScatterSoleMesh2Die"};
-        static const std::set<std::string> multilevelAlgos
-            = {"AicpuReduceScatterParallelMeshNHR",
-               "InsReduceScatterParallelMesh1DNHRUBX",
-               "InsReduceScatterParallelMesh1DNHRPcie",
-               "InsReduceScatterParallelNHRNHRUboe",
-               "DpuReduceScatterSequenceMeshMesh",
-               "AicpuReduceScatterSequenceMeshConcurNHRNHR",
-               "AicpuReduceScatterSequenceMeshConcurNHR",
-               "AicpuReduceScatterConcurMeshNHR",
-               "CcuSchedReduceScatterSequenceMeshMesh",
-               "CcuSchedReduceScatterParallelMeshNHR",
-               "CcuSchedReduceScatterParallelMeshNHRMultiLink",
-               "CcuSchedReduceScatterConcurMeshNHRMultiLink",
-               "CcuMSReduceScatterConcurMeshNHRMultiLink",
-               "CcuSchedReduceScatterSoleNHRMultiLink",
-               "DpuReduceScatterPipeLineMeshNHRMesh",
-               "AicpuReduceScatterPipeLinePcie",
-               "AicpuReduceScatterPipeLineUBX",
-               "DpuReduceScatterPipeLineUBX",
-               "AicpuReduceScatterPipeLine",
-               "CcuSchedReduceScatterPipeLineMeshNHR",
-               "CcuMSReduceScatterPipeLineMeshNHR"};
-        // 仅在 UBX(MESH_1D_CLOS) 拓扑下才可选的算法
-        static const std::set<std::string> ubxOnlyAlgos
-            = {"InsReduceScatterParallelMesh1DNHRUBX", "InsReduceScatterParallelNHRNHRUboe",
-               "InsReduceScatterParallelMesh1DNHRPcie"};
-        // CCU mesh 类算法（受 frameNum 和数据量硬约束），不含 SoleNHR/SoleNHRMultiLink
-        static const std::set<std::string> ccuMeshAlgos
-            = {"CcuSchedReduceScatterSequenceMeshMesh",
-               "CcuSchedReduceScatterParallelMeshNHR",
-               "CcuSchedReduceScatterParallelMeshNHRMultiLink",
-               "CcuSchedReduceScatterConcurMeshNHRMultiLink",
-               "CcuSchedReduceScatterPipeLineMeshNHR",
-               "CcuSchedReduceScatterSoleMesh",
-               "CcuSchedReduceScatterSoleMesh2Die",
-               "CcuMSReduceScatterSoleMesh",
-               "CcuMSReduceScatterSoleMesh2Die",
-               "CcuMSReduceScatterSoleMeshConcur",
-               "CcuMSReduceScatterConcurMeshNHRMultiLink",
-               "CcuMSReduceScatterPipeLineMeshNHR"};
-
-        return {
-            // 必选：保序模式 + rankSize > 32 → ReduceScatterOrderPreservedGroup
-            {"order_preserved_group",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize)
-                        && topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-             },
-             true,
-             {"ReduceScatterOrderPreservedGroup"}},
-            // 必选：保序模式 + rankSize <= 32 → AicpuReduceScatterStrictOrderedMesh
-            {"order_preserved",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize)
-                        && topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-             },
-             true,
-             {"AicpuReduceScatterStrictOrderedMesh"}},
-            // 必选：每机出1卡(localNetInsSizeOfLayer[0]==1) → 选 SoleNHR / AIV SoleMesh
-            {"one_card_per_server_nhr",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums > 1 && !topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                        && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 && !topo->hostDpuOnly
-                        && !IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
-             },
-             true,
-             {"CcuSchedReduceScatterSoleNHR", "AicpuReduceScatterSoleNHR", "AivReduceScatterSoleMesh"}},
-            // 必选：Level1Nhr/Level0Nhr(GCD==1) → 选 SoleNHR
-            // 旧路径 reduce_scatter_auto_selector.cc:222(ccu_sched) / :431(aicpu Level1Nhr) / :434(aicpu Level0Nhr)
-            {"nhr_by_gcd",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return (topo->Level1Nhr || topo->Level0Nhr) && !topo->hostDpuOnly
-                        && !IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
-             },
-             true,
-             {"CcuSchedReduceScatterSoleNHR", "AicpuReduceScatterSoleNHR", "AivReduceScatterSoleMesh"}},
-            // 必选：3级拓扑 → AicpuReduceScatterSequenceMeshConcurNHRNHR
-            // 旧路径优先级：Level1Nhr/Level0Nhr/localNetIns[0]==1 先于3级MESH_1D分支
-            // 因此排除 GCD==1 和每机1卡场景，避免与 nhr_by_gcd/one_card_per_server_nhr 同时命中
-            {"three_level_only",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 bool oneCardPerServer = !topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                                         && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && !topo->hostDpuOnly
-                        && !IsNeedStrictModeForOrderPreserved(op, topo->userRankSize) && !topo->Level1Nhr
-                        && !topo->Level0Nhr && !oneCardPerServer;
-             },
-             true,
-             {"AicpuReduceScatterSequenceMeshConcurNHRNHR"}},
-            // 必不选：inplace(input/output overlap) 排除 ccu
-            {"inplace_skip_ccu",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return IsAgInputOutputOverlap(op);
-             },
-             false, ccuAll},
-            // 必不选：int8 排除 ccu（ccu_ms 和 ccu_sched 均不支持 INT8 的 ms reduce）
-            // 旧路径 reduce_scatter_auto_selector.cc:70(ccu_ms) / :228(多级ccu_sched) / :332(单级ccu_sched)
-            {"int8_skip_ccu",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return op.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT8;
-             },
-             false, ccuAll},
-            // 必不选：PROD 排除 ccu + aiv
-            {"prod_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return op.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
-             },
-             false, ccuAivAll},
-            // 必不选：64bit(INT64/UINT64/FP64) 排除 ccu + aiv
-            {"64bit_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails*) {
-                 return Is64BitDataType(op.DataDes.dataType);
-             },
-             false, ccuAivAll},
-            // 必不选：保序模式排除 ccu + aiv
-            {"order_preserved_skip_ccu_aiv",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
-             },
-             false, ccuAivAll},
-            // 必不选：level2UbRtp 排除 aiv + ccu_sched
-            {"level2ub_rtp_skip_aiv_ccu_sched",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level2UbRtp;
-             },
-             false, aivCcuSched},
-            // 必不选：3级拓扑 + topLevelUboe 排除 aiv + ccu_sched
-            {"topLevelUboe_skip_aiv_ccu_sched",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
-             },
-             false, aivCcuSched},
-            // 必不选：ccu_ms 仅支持单级拓扑，多级拓扑排除
-            {"ccu_ms_single_level_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums > 1;
-             },
-             false, ccuMsAlgos},
-            // 必不选：2Die 算法仅在 TWO_DIE_REGULAR 拓扑下可选
-            {"two_die_regular_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0MeshType != Level0MeshType::TWO_DIE_REGULAR;
-             },
-             false, twoDieAlgos},
-            // 必不选：parallel/sequence/concurrent/omnipipe 算法仅在多级拓扑(topoLevelNums>1)下可选
-            {"multilevel_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == 1;
-             },
-             false, multilevelAlgos},
-            // 必不选：UBX/Pcie/Uboe 专用算法仅在 MESH_1D_CLOS(UBX) 拓扑下可选
-            {"ubx_only",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->level0Topo != Level0Shape::MESH_1D_CLOS;
-             },
-             false, ubxOnlyAlgos},
-            // ── 资源硬约束（旧路径 NOT_MATCH 降级，新路径 must-not-select 排除）──
-            // 必不选：frameNum > 16 时排除 CCU mesh 类算法（kernel repeatNum 上限）
-            // 旧路径 reduce_scatter_auto_selector.cc:259-264 回退到 CcuSchedReduceScatterSoleNHR
-            {"ccu_frame_num_limit",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return AutoSelectorBase::CalcFrameNum(topo) > 16;
-             },
-             false, ccuMeshAlgos},
-            // 必不选：AIV 数据量超限排除 AIV 算法
-            // 旧路径 reduce_scatter_auto_selector.cc:594-605 (totalSize >= 8MB*rankSize 或 > cclBuffer*16)
-            {"aiv_data_size_limit",
-             [](const OpParam& op, const TopoInfoWithNetLayerDetails* topo) {
-                 u64 perDataSize = DATATYPE_SIZE_TABLE[op.DataDes.dataType];
-                 u64 totalSize = op.DataDes.count * perDataSize * topo->userRankSize;
-                 if (op.opExecuteConfig != OpExecuteConfig::AIV_ONLY
-                     && totalSize >= 8 * 1024 * 1024 * topo->userRankSize) {
-                     return true;
-                 }
-                 void* cclBufferAddr = nullptr;
-                 uint64_t cclBufferSize = 0;
-                 if (HcclGetHcclBuffer(op.hcclComm, &cclBufferAddr, &cclBufferSize) == HCCL_SUCCESS) {
-                     return totalSize > cclBufferSize * 16;
-                 }
-                 return false;
-             },
-             false, aivAlgos},
-            // 必不选：AIV rankSize 超限排除 AIV 算法（kernel 硬编码 MAX_RANK_SIZE=2048）
-            // 旧路径 reduce_scatter_auto_selector.cc:579-583
-            {"aiv_rank_size_limit",
-             [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->userRankSize > 2048;
-             },
-             false, aivAlgos},
-        };
-    }
-
-} // namespace
+    uintptr_t inStart = reinterpret_cast<uintptr_t>(opParam.inputPtr);
+    uintptr_t outStart = reinterpret_cast<uintptr_t>(opParam.outputPtr);
+    return inStart <= outStart + opParam.outputSize - 1 && outStart <= inStart + opParam.inputSize - 1;
+}
 
 // ---------------------------------------------------------------------------
 // CostTableManager 方法实现
 // ---------------------------------------------------------------------------
-
-HcclResult CostTableManager::FilterCMByConfig(
-    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
-{
-    HCCL_DEBUG(
-        "[FilterCMByConfig] filter cost model by config, opType=%d, algCount=%d.", static_cast<int>(opParam.opType),
-        cm.count);
-    switch (opParam.opType) {
-        case HcclCMDType::HCCL_CMD_ALLREDUCE:
-            return FilterAllReduce(cm, ct, topoInfo, opParam);
-        case HcclCMDType::HCCL_CMD_ALLGATHER:
-            return FilterAllGather(cm, ct, topoInfo, opParam);
-        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
-            return FilterReduceScatter(cm, ct, topoInfo, opParam);
-        default:
-            HCCL_WARNING(
-                "[FilterCMByConfig] opType=%d not supported yet, keep all algorithms.",
-                static_cast<int>(opParam.opType));
-            return HcclResult::HCCL_SUCCESS;
-    }
-}
 
 void CostTableManager::DumpCostTable(const CostTable& ct)
 {
@@ -531,11 +57,10 @@ void CostTableManager::DumpCostTable(const CostTable& ct)
     HCCL_INFO("====== [DFX_CostTableDump] dump end ======");
 }
 
-HcclResult CostTableManager::FilterByRules(
-    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
-    const std::vector<AlgFilterRule>& rules, const std::string& tag)
+HcclResult CostTableManager::InitAndFilterByAttrs(
+    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
 {
-    HCCL_INFO("[%s] filter, algCount=%d.", tag.c_str(), cm.count);
+    HCCL_INFO("[InitAndFilterByAttrs] filter, algCount=%d.", cm.count);
     ct.costs = nullptr;
     ct.count = 0;
     if (cm.count <= 0) {
@@ -543,99 +68,91 @@ HcclResult CostTableManager::FilterByRules(
     }
     ct.costs = new (std::nothrow) AlgoCost[cm.count]();
     if (ct.costs == nullptr) {
-        HCCL_ERROR("[%s] alloc AlgoCost failed, count=%d.", tag.c_str(), cm.count);
+        HCCL_ERROR("[InitAndFilterByAttrs] alloc AlgoCost failed, count=%d.", cm.count);
         return HcclResult::HCCL_E_PARA;
     }
 
     u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    HcclDataType dataType = opParam.DataDes.dataType;
+    bool needOrderPreserved = IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize);
+    bool isInplace = IsInputOutputOverlap(opParam);
 
-    const char* opTypePascal = HcclOpTypeToPascal(opParam.opType);
-
-    std::set<std::string> mustSelect;
-    for (const auto& rule : rules) {
-        if (rule.isMustSelect && rule.condition(opParam, topoInfo)) {
-            mustSelect.insert(rule.algos.begin(), rule.algos.end());
-        }
-    }
-    if (!mustSelect.empty()) {
-        for (int i = 0; i < cm.count; ++i) {
-            if (cm.costAlgoParams[i].count <= 0) {
-                continue;
-            }
-            const char* algName = cm.costAlgoParams[i].algName;
-            std::string name = (algName != nullptr) ? algName : "";
-            if (mustSelect.count(name) == 0) {
-                continue;
-            }
-            float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType);
-            ct.costs[ct.count].algName = algName;
-            ct.costs[ct.count].cost = cost;
-            ++ct.count;
-        }
-        HCCL_INFO("[%s] mustSelect matched, count=%d.", tag.c_str(), ct.count);
-        DumpCostTable(ct);
-        return HcclResult::HCCL_SUCCESS;
-    }
-
-    std::set<std::string> mustNotSelect;
-    std::map<std::string, std::string> filteredByRule;
-    for (const auto& rule : rules) {
-        if (!rule.isMustSelect && rule.condition(opParam, topoInfo)) {
-            for (const auto& algo : rule.algos) {
-                mustNotSelect.insert(algo);
-                filteredByRule[algo] = rule.name;
-            }
-        }
-    }
-    bool isAivOnly = (opParam.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY);
     for (int i = 0; i < cm.count; ++i) {
         if (cm.costAlgoParams[i].count <= 0) {
             continue;
         }
         const char* algName = cm.costAlgoParams[i].algName;
         std::string name = (algName != nullptr) ? algName : "";
-        if (opTypePascal != nullptr && name.find(opTypePascal) == std::string::npos) {
-            HCCL_INFO(
-                "[%s] algName=%s filtered out by op-type mismatch (expected %s).", tag.c_str(), name.c_str(),
-                opTypePascal);
+        const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(name);
+        if (attrs == nullptr) {
+            HCCL_DEBUG("[InitAndFilterByAttrs] algName=%s filtered: no attrs.", name.c_str());
             continue;
         }
-        if (mustNotSelect.count(name) > 0) {
-            std::string ruleName = filteredByRule.count(name) > 0 ? filteredByRule[name] : "unknown";
-            if (isAivOnly && SelectorEngine::GetEngineByAlgName(name) == OpExecuteConfig::AIV) {
-                HCCL_ERROR(
-                    "[%s] AIV_ONLY: algName=%s filtered out by rule[%s].", tag.c_str(), name.c_str(), ruleName.c_str());
-            } else {
-                HCCL_DEBUG("[%s] algName=%s filtered out by rule[%s].", tag.c_str(), name.c_str(), ruleName.c_str());
-            }
+        if (attrs->opType != opParam.opType) {
+            HCCL_DEBUG("[InitAndFilterByAttrs] algName=%s filtered: opType mismatch.", name.c_str());
             continue;
         }
+
+        // normal filter
+        const auto& op = attrs->op;
+        std::string filterReason;
+        if (op.unsupportedDataTypes.count(dataType) > 0) {
+            filterReason = "unsupportedDataTypes";
+        }
+        if (filterReason.empty() && !op.isSupportProd && opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
+            filterReason = "isSupportProd=false with PROD";
+        }
+        if (filterReason.empty() && !op.isSupportInplace && isInplace) {
+            filterReason = "isSupportInplace=false with overlap";
+        }
+        if (filterReason.empty() && needOrderPreserved && !op.isSupportFloatOrderPreserved) {
+            filterReason = "isSupportFloatOrderPreserved=false with order-preserved";
+        }
+        if (filterReason.empty() && op.opCustomCheck && !op.opCustomCheck(opParam, topoInfo)) {
+            filterReason = "opCustomCheck returned false";
+        }
+
+        if (!filterReason.empty()) {
+            HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: %s.", name.c_str(), filterReason.c_str());
+            continue;
+        }
+
         float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType);
         ct.costs[ct.count].algName = algName;
         ct.costs[ct.count].cost = cost;
         ++ct.count;
-        HCCL_INFO("[%s] algName=%s cost=%f.", tag.c_str(), name.c_str(), cost);
+        HCCL_INFO("[InitAndFilterByAttrs] algName=%s cost=%f.", name.c_str(), cost);
     }
+
+    // Phase 2: priority — if any algo's opPriorityCheck returns true, keep only those.
+    if (ct.count > 0) {
+        std::vector<int> priorityIndices;
+        for (int i = 0; i < ct.count; ++i) {
+            const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(ct.costs[i].algName);
+            if (attrs != nullptr && attrs->op.opPriorityCheck && attrs->op.opPriorityCheck(opParam, topoInfo)) {
+                priorityIndices.push_back(i);
+                HCCL_INFO("[InitAndFilterByAttrs] opPriority matched algName=%s.", ct.costs[i].algName);
+            }
+        }
+        if (!priorityIndices.empty() && static_cast<int>(priorityIndices.size()) < ct.count) {
+            AlgoCost* newCosts = new (std::nothrow) AlgoCost[ct.count]();
+            if (newCosts == nullptr) {
+                HCCL_ERROR("[InitAndFilterByAttrs] alloc newCosts for opPriority failed.");
+                DumpCostTable(ct);
+                return HcclResult::HCCL_SUCCESS;
+            }
+            for (size_t i = 0; i < priorityIndices.size(); ++i) {
+                newCosts[i] = ct.costs[priorityIndices[i]];
+            }
+            delete[] ct.costs;
+            ct.costs = newCosts;
+            ct.count = static_cast<int>(priorityIndices.size());
+            HCCL_INFO("[InitAndFilterByAttrs] opPriority applied, kept=%d.", ct.count);
+        }
+    }
+
     DumpCostTable(ct);
     return HcclResult::HCCL_SUCCESS;
-}
-
-HcclResult CostTableManager::FilterAllReduce(
-    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
-{
-    return FilterByRules(cm, ct, topoInfo, opParam, BuildAllReduceRules(), "FilterAllReduce");
-}
-
-HcclResult CostTableManager::FilterAllGather(
-    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
-{
-    return FilterByRules(cm, ct, topoInfo, opParam, BuildAllGatherRules(), "FilterAllGather");
-}
-
-HcclResult CostTableManager::FilterReduceScatter(
-    CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
-{
-    return FilterByRules(cm, ct, topoInfo, opParam, BuildReduceScatterRules(), "FilterReduceScatter");
 }
 
 float CostTableManager::CalcAlgCost(
@@ -700,9 +217,9 @@ HcclResult CostTableManager::CostTableGen(
     CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
 {
     HCCL_INFO("[CostTableGen] generate cost table, algCount=%d.", cm.count);
-    HcclResult ret = FilterCMByConfig(cm, ct, topoInfo, opParam);
+    HcclResult ret = InitAndFilterByAttrs(cm, ct, topoInfo, opParam);
     if (ret != HcclResult::HCCL_SUCCESS) {
-        HCCL_ERROR("[CostTableGen] FilterCMByConfig failed, ret=%d.", static_cast<int>(ret));
+        HCCL_ERROR("[CostTableGen] InitAndFilterByAttrs failed, ret=%d.", static_cast<int>(ret));
     }
     return ret;
 }
@@ -729,7 +246,6 @@ HcclResult CostTableManager::QueryUbUtil(
             "[CostTableManager] ub util table empty, netType=%d dataSize=%llu.", static_cast<int>(netType), dataSize);
         return HcclResult::HCCL_E_PARA;
     }
-    // AllGather: CLOS 小数据量(< 1MB)统一用 1MB 的 util
     if (opType == HcclCMDType::HCCL_CMD_ALLGATHER && netType == AlgNetType::CLOS && dataSize < 1 * 1024 * 1024ULL) {
         dataSize = 1 * 1024 * 1024ULL;
     }

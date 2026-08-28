@@ -73,6 +73,7 @@ struct CcuAllGatherNHR1DMem2MemArgLayout {
 // kernel 分配: ccuKernels[0] -> mesh, ccuKernels[1] -> NHR。
 class CcuTempAllGatherConcurrentMeshMem2MemNHR : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_CONCUR};
     CcuTempAllGatherConcurrentMeshMem2MemNHR() = default;
     explicit CcuTempAllGatherConcurrentMeshMem2MemNHR(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

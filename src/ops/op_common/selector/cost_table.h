@@ -21,6 +21,7 @@
 #include "cost_model.h"
 #include "hccl_tuner_plugin.h"
 #include "log.h"
+#include "alg_attrs.h"
 
 namespace ops_hccl {
 
@@ -34,13 +35,6 @@ typedef struct {
 struct UbUtilEntry {
     double upperBound;
     float utilization;
-};
-
-struct AlgFilterRule {
-    std::string name;
-    std::function<bool(const OpParam&, const TopoInfoWithNetLayerDetails*)> condition;
-    bool isMustSelect;
-    std::set<std::string> algos;
 };
 
 class CostTableManager {
@@ -58,16 +52,7 @@ public:
 private:
     CostTableManager() = default;
 
-    HcclResult
-    FilterCMByConfig(CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
-    HcclResult FilterByRules(
-        CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
-        const std::vector<AlgFilterRule>& rules, const std::string& tag);
-    HcclResult
-    FilterAllReduce(CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
-    HcclResult
-    FilterAllGather(CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
-    HcclResult FilterReduceScatter(
+    HcclResult InitAndFilterByAttrs(
         CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
     float CalcAlgCost(
         const std::string& algName, u64 dataSize, const CostAlgoParams& algoParams,

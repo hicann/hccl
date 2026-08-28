@@ -14,6 +14,8 @@
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
@@ -746,5 +748,10 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHRNHR, InsV2AllReduceSequenceExecutorAicpu3Level,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportProd = false;
+                   op.unsupportedDataTypes
+                   = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
+                      HcclDataType::HCCL_DATA_TYPE_FP64});
 
 } // namespace ops_hccl

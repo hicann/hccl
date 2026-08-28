@@ -29,6 +29,7 @@
 #include "inconsistent_check.h"
 #include "executor_base.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs.h"
 #include "alg_env_config.h"
 #include "adapter_acl.h"
 #include "topo_host.h"
@@ -1209,6 +1210,12 @@ HcclResult HcclGetAlgRes(
     const ResPackGraphMode& resPack)
 {
     HCCL_INFO("[HcclGetAlgRes] Start to execute HcclGetAlgRes.");
+
+    // 获取当前算法的完整属性
+    AlgAttrs algoMeta = executor->GetAlgoMeta(std::string(param.algName));
+    HCCL_INFO(
+        "[HcclGetAlgRes] algName=%s, engine=%d, opType=%d, algoTypes.size=%zu.", param.algName,
+        static_cast<int>(algoMeta.engine), static_cast<int>(algoMeta.opType), algoMeta.algoTypes.size());
 
     bool increCreateChannelFlag = false;
     uint64_t size = 0;

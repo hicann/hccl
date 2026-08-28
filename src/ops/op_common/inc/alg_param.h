@@ -136,13 +136,6 @@ enum class OpExecuteConfig {
     CCU_FAIL
 };
 
-// OpExecuteConfig → 算法名前缀映射
-// key=前缀, value=引擎; 逆序遍历可实现长前缀优先匹配
-static const std::map<std::string, OpExecuteConfig> ENGINE_PREFIX_MAP = {
-    {"Aicpu", OpExecuteConfig::AICPU_TS},     {"Aiv", OpExecuteConfig::AIV},     {"CcuMS", OpExecuteConfig::CCU_MS},
-    {"CcuSched", OpExecuteConfig::CCU_SCHED}, {"Dpu", OpExecuteConfig::HOSTCPU},
-};
-
 // OpExecuteConfig → 字符串(用于日志)
 static const std::map<OpExecuteConfig, const char*> ENGINE_STR_MAP = {
     {OpExecuteConfig::DEFAULT, "DEFAULT"},     {OpExecuteConfig::HOSTCPU_TS, "HOSTCPU_TS"},

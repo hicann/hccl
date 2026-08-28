@@ -20,6 +20,7 @@ namespace ops_hccl {
 
 class InsTempReduceScatterOmniPipeMesh1D : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     explicit InsTempReduceScatterOmniPipeMesh1D(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 

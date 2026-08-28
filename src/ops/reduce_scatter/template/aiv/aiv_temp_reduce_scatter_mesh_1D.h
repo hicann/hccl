@@ -21,6 +21,7 @@ constexpr u64 REDUCE_SCATTER_SMALL_COUNT_512KB = 512 * 1024;
 
 class AivTempReduceScatterMesh1D : public AivAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     AivTempReduceScatterMesh1D() = default;
     explicit AivTempReduceScatterMesh1D(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

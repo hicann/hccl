@@ -21,6 +21,8 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
 
 // 序列执行器需要的层级数
@@ -496,6 +498,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHR,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterSequenceMesh1DNHRAicpuReducePcie,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchPcieMix, InsTempReduceScatterMesh1D,
@@ -508,6 +512,12 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSequenceMeshMesh,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempReduceScatterMesh1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterSequenceMeshMesh, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

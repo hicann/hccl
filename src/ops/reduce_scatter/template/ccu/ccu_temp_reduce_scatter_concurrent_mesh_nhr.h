@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterConcurrentMeshNHR : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_CONCUR};
     CcuTempReduceScatterConcurrentMeshNHR() = default;
     explicit CcuTempReduceScatterConcurrentMeshNHR(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

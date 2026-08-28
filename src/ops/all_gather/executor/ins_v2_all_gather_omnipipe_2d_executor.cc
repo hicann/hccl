@@ -16,10 +16,13 @@
 #include "ccu_temp_all_gather_omnipipe_nhr1d_mem2mem.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 template <typename AlgTopoMatch, typename CcuAlgTempLevel0, typename CcuAlgTempLevel1>
 InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel1>::InsV2AllGatherOmniPipe2DExecutor()
 {}
@@ -413,6 +416,18 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherPipeLineMeshNHR, InsV2AllGatherOmniPipe2DExecutor, TopoMatchUBX,
     CcuTempAllGatherOmniPipeMesh1DMem2Mem, CcuTempAllGatherOmniPipeNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherPipeLineMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

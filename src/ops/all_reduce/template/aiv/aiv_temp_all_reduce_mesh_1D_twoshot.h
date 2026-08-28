@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class AivTempAllReduceMesh1DTwoShot : public AivAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_TWOSHOT};
     AivTempAllReduceMesh1DTwoShot() = default;
     explicit AivTempAllReduceMesh1DTwoShot(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

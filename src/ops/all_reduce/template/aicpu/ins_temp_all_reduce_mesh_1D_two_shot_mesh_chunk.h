@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class InsTempAllReduceMesh1DTwoShotMeshChunk : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_CHUNK_TWOSHOT};
     InsTempAllReduceMesh1DTwoShotMeshChunk() = default;
     explicit InsTempAllReduceMesh1DTwoShotMeshChunk(
         const OpParam& param,

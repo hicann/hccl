@@ -13,9 +13,12 @@
 #include "ins_temp_reduce_scatter_order_preserved_group.h"
 #include "alg_env_config.h"
 #include "order_preserved_common.h"
+#include "cost_model.h"
 #include <cmath>
 #include <algorithm>
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -218,6 +221,27 @@ InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::InitExec
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+{
+    (void)comm;
+    u32 rankSize = topoInfo->userRankSize;
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{rankSize, 1.0f, AlgNetType::MESH, true, algName});
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    return meta;
+}
+
 // 向上对齐到除数的倍数
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::RoundUpWithDivisor(
@@ -233,10 +257,22 @@ u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Roun
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedMesh, InsV2ReduceScatterOrderPreservedExecutor,
     TopoMatch1D, InsTempReduceScatterOrderPreservedLevel1);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterStrictOrderedMesh,
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true);
 
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreservedGroup, InsV2ReduceScatterOrderPreservedExecutor,
     TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
+REGISTER_ALG_ATTRS(
+    ReduceScatterOrderPreservedGroup,
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true);
 
 } // namespace ops_hccl

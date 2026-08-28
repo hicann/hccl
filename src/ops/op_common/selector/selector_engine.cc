@@ -44,10 +44,12 @@ bool SelectorEngine::IsOpSupported(HcclCMDType opType)
 
 OpExecuteConfig SelectorEngine::GetEngineByAlgName(const std::string& algName)
 {
-    // 逆序遍历: 长前缀优先(CcuSched > CcuMS)
-    for (auto it = ENGINE_PREFIX_MAP.rbegin(); it != ENGINE_PREFIX_MAP.rend(); ++it) {
-        if (algName.rfind(it->first, 0) == 0) {
-            return it->second;
+    int count = 0;
+    const EnginePrefixEntry* entries = GetEnginePrefixEntries(count);
+    for (int i = 0; i < count; ++i) {
+        size_t len = strlen(entries[i].pascal);
+        if (algName.size() >= len && algName.substr(0, len) == entries[i].pascal) {
+            return entries[i].engine;
         }
     }
     return OpExecuteConfig::AICPU_TS;
@@ -57,45 +59,35 @@ std::vector<std::string> SelectorEngine::CandidateEnginesToPrefixes(const std::v
 {
     std::set<OpExecuteConfig> engineSet(engines.begin(), engines.end());
     std::vector<std::string> prefixes;
-    for (const auto& entry : ENGINE_PREFIX_MAP) {
-        if (engineSet.count(entry.second) != 0) {
-            prefixes.emplace_back(entry.first);
+    int count = 0;
+    const EnginePrefixEntry* entries = GetEnginePrefixEntries(count);
+    for (int i = 0; i < count; ++i) {
+        if (engineSet.count(entries[i].engine) != 0) {
+            prefixes.emplace_back(entries[i].pascal);
         }
     }
     return prefixes;
 }
 
-std::vector<OpExecuteConfig>
-SelectorEngine::GetEnginePriority(TopoInfoWithNetLayerDetails* topoInfo, OpExecuteConfig opExecuteConfig)
+std::vector<OpExecuteConfig> SelectorEngine::GetEnginePriority(OpExecuteConfig opExecuteConfig)
 {
-    // hostDpuOnly 已在 HcclCalcTopoInfo 中计算并缓存
-    if (topoInfo != nullptr && topoInfo->hostDpuOnly) {
-        HCCL_INFO("[GetEnginePriority] hostDpuOnly=true, return [HOSTCPU].");
-        return {OpExecuteConfig::HOSTCPU};
-    }
-
     switch (opExecuteConfig) {
         case OpExecuteConfig::CCU_MS:
-            // CCU_MS → CCU_SCHED → AICPU 回退链
-            return {OpExecuteConfig::CCU_MS, OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS};
+            return {
+                OpExecuteConfig::CCU_MS, OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS,
+                OpExecuteConfig::HOSTCPU};
         case OpExecuteConfig::CCU_SCHED:
-            // CCU_SCHED → AICPU 回退链
-            return {OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS};
+            return {OpExecuteConfig::CCU_SCHED, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
         case OpExecuteConfig::AIV:
-            // AIV → AICPU 回退链
-            return {OpExecuteConfig::AIV, OpExecuteConfig::AICPU_TS};
+            return {OpExecuteConfig::AIV, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
         case OpExecuteConfig::AIV_ONLY:
-            // AIV only, 不回退
             return {OpExecuteConfig::AIV};
         case OpExecuteConfig::AICPU_TS:
-            // AICPU only
-            return {OpExecuteConfig::AICPU_TS};
+            return {OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
         case OpExecuteConfig::HOSTCPU:
-            // HOSTCPU(DPU)
             return {OpExecuteConfig::HOSTCPU};
         default:
-            // 安全回退:仅 AICPU
-            return {OpExecuteConfig::AICPU_TS};
+            return {OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
     }
 }
 
@@ -166,7 +158,7 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
     CostModelManager::FreeCostModel(srcCm);
 
     // 根据候选引擎过滤 costModel,再调用 algo 模块按 HCCL_ALGO 配置过滤
-    std::vector<OpExecuteConfig> candidateEngines = GetEnginePriority(topoInfo, param.opExecuteConfig);
+    std::vector<OpExecuteConfig> candidateEngines = GetEnginePriority(param.opExecuteConfig);
     CHK_RET(FilterCmByEngine(*storedCm, candidateEngines));
     std::vector<std::string> candidatePrefixes = CandidateEnginesToPrefixes(candidateEngines);
     CHK_RET(FilterCmByHcclAlgo(comm, *storedCm, candidatePrefixes));

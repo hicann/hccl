@@ -23,6 +23,10 @@
 #include "executor_base.h"
 #include "template_utils.h"
 #include "order_preserved_common.h"
+#include "alg_attrs.h"
+#ifndef AICPU_COMPILE
+#include "alg_attrs_registry.h"
+#endif
 #include <vector>
 
 namespace ops_hccl {
@@ -62,6 +66,17 @@ public:
     virtual HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) = 0;
 
     virtual HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* resCtx);
+
+    virtual AlgAttrs GetAlgoMeta(const std::string& algName) const
+    {
+#ifndef AICPU_COMPILE
+        const auto* attrs = AlgAttrsRegistry::Instance().Get(algName);
+        return attrs != nullptr ? *attrs : AlgAttrs{};
+#else
+        (void)algName;
+        return AlgAttrs{};
+#endif
+    }
 
     HcclResult SetTempFastLaunchAddr(
         TemplateFastLaunchCtx& tempFastLaunchCtx, void* inputPtr, void* outputPtr, const HcclMem& hcclBuff) const;

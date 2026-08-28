@@ -16,6 +16,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/selector_engine.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/cost_model.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/cost_table.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/alg_attrs_registry.cc
 )
 
 if(TARGET hccl)

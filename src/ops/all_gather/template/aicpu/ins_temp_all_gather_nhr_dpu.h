@@ -18,7 +18,7 @@
 namespace ops_hccl {
 class InsTempAllGatherNHRDPU : public InsAlgTemplateBase {
 public:
-    static constexpr TemplateProp props = {.isNhr = true};
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     InsTempAllGatherNHRDPU() {}
     InsTempAllGatherNHRDPU(const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);
 

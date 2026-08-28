@@ -18,6 +18,7 @@ namespace ops_hccl {
 
 class InsTempAllGatherMesh1D : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     InsTempAllGatherMesh1D() = default;
     explicit InsTempAllGatherMesh1D(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

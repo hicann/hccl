@@ -827,4 +827,142 @@ const AlgoDimEntry* GetAlgoTemplates(int& count)
     return entries.data();
 }
 
+const EnginePrefixEntry* GetEnginePrefixEntries(int& count)
+{
+    static const std::vector<EnginePrefixEntry> entries = {
+        {"CcuSched", OpExecuteConfig::CCU_SCHED}, {"CcuMS", OpExecuteConfig::CCU_MS},
+        {"Aicpu", OpExecuteConfig::AICPU_TS},     {"Aiv", OpExecuteConfig::AIV},
+        {"Dpu", OpExecuteConfig::HOSTCPU},
+    };
+    count = static_cast<int>(entries.size());
+    return entries.data();
+}
+
+const OpTypePatternEntry* GetOpTypePatternEntries(int& count)
+{
+    static const std::vector<OpTypePatternEntry> entries = {
+        {"ReduceScatterV", HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V},
+        {"ReduceScatter", HcclCMDType::HCCL_CMD_REDUCE_SCATTER},
+        {"AllGatherV", HcclCMDType::HCCL_CMD_ALLGATHER_V},
+        {"AllGather", HcclCMDType::HCCL_CMD_ALLGATHER},
+        {"AllReduce", HcclCMDType::HCCL_CMD_ALLREDUCE},
+        {"AllToAllVC", HcclCMDType::HCCL_CMD_ALLTOALLVC},
+        {"AllToAllV", HcclCMDType::HCCL_CMD_ALLTOALLV},
+        {"AllToAll", HcclCMDType::HCCL_CMD_ALLTOALL},
+        {"Broadcast", HcclCMDType::HCCL_CMD_BROADCAST},
+        {"Reduce", HcclCMDType::HCCL_CMD_REDUCE},
+        {"Scatter", HcclCMDType::HCCL_CMD_SCATTER},
+    };
+    count = static_cast<int>(entries.size());
+    return entries.data();
+}
+
+const std::map<AlgoType, std::string>& GetAlgoTypeToNameMap()
+{
+    static const std::map<AlgoType, std::string> map = {
+        {AlgoType::MESH, "Mesh"},
+        {AlgoType::MESH_2DIE, "Mesh2Die"},
+        {AlgoType::MESH_ONESHOT, "MeshOneShot"},
+        {AlgoType::MESH_TWOSHOT, "MeshTwoShot"},
+        {AlgoType::MESH_CONCUR, "MeshConcur"},
+        {AlgoType::MESH_MULTILINK, "MeshMultiLink"},
+        {AlgoType::MESH_CHUNK, "MeshChunk"},
+        {AlgoType::MESH_CHUNK_TWOSHOT, "MeshChunkTwoShot"},
+        {AlgoType::NHR, "NHR"},
+        {AlgoType::NHR_MULTILINK, "NHRMultiLink"},
+        {AlgoType::NHR_AICPU_REDUCE, "NHRAicpuReduce"},
+        {AlgoType::MESH_SINGLE_CHANNEL, "MeshSingleChannel"},
+        {AlgoType::MESH_CONCURRENT, "MeshConcurrent"},
+    };
+    return map;
+}
+
+const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap()
+{
+    static const std::map<std::string, AlgoType> map = {
+        {"Mesh", AlgoType::MESH},
+        {"Mesh2Die", AlgoType::MESH_2DIE},
+        {"MeshOneShot", AlgoType::MESH_ONESHOT},
+        {"MeshTwoShot", AlgoType::MESH_TWOSHOT},
+        {"MeshConcur", AlgoType::MESH_CONCUR},
+        {"MeshMultiLink", AlgoType::MESH_MULTILINK},
+        {"MeshChunk", AlgoType::MESH_CHUNK},
+        {"MeshChunkTwoShot", AlgoType::MESH_CHUNK_TWOSHOT},
+        {"NHR", AlgoType::NHR},
+        {"NHRMultiLink", AlgoType::NHR_MULTILINK},
+        {"NHRAicpuReduce", AlgoType::NHR_AICPU_REDUCE},
+        {"MeshSingleChannel", AlgoType::MESH_SINGLE_CHANNEL},
+        {"MeshConcurrent", AlgoType::MESH_CONCURRENT},
+    };
+    return map;
+}
+
+std::string AlgoTypeToString(AlgoType t)
+{
+    const auto& map = GetAlgoTypeToNameMap();
+    auto it = map.find(t);
+    if (it != map.end()) {
+        return it->second;
+    }
+    return "Unknown";
+}
+
+std::string HcclCMDTypeToString(HcclCMDType opType)
+{
+    switch (opType) {
+        case HcclCMDType::HCCL_CMD_ALLREDUCE:
+            return "AllReduce";
+        case HcclCMDType::HCCL_CMD_ALLGATHER:
+            return "AllGather";
+        case HcclCMDType::HCCL_CMD_ALLGATHER_V:
+            return "AllGatherV";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
+            return "ReduceScatter";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
+            return "ReduceScatterV";
+        case HcclCMDType::HCCL_CMD_BROADCAST:
+            return "Broadcast";
+        case HcclCMDType::HCCL_CMD_REDUCE:
+            return "Reduce";
+        case HcclCMDType::HCCL_CMD_SCATTER:
+            return "Scatter";
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+            return "AllToAll";
+        case HcclCMDType::HCCL_CMD_ALLTOALLV:
+            return "AllToAllV";
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            return "AllToAllVC";
+        case HcclCMDType::HCCL_CMD_BARRIER:
+            return "Barrier";
+        case HcclCMDType::HCCL_CMD_SEND:
+            return "Send";
+        case HcclCMDType::HCCL_CMD_RECEIVE:
+            return "Recv";
+        case HcclCMDType::HCCL_CMD_BATCH_SEND_RECV:
+            return "BatchSendRecv";
+        default:
+            return "Unknown";
+    }
+}
+
+std::string OpExecuteConfigToString(OpExecuteConfig engine)
+{
+    switch (engine) {
+        case OpExecuteConfig::AICPU_TS:
+            return "Aicpu";
+        case OpExecuteConfig::AIV:
+            return "Aiv";
+        case OpExecuteConfig::AIV_ONLY:
+            return "AivOnly";
+        case OpExecuteConfig::HOSTCPU:
+            return "Dpu";
+        case OpExecuteConfig::CCU_MS:
+            return "CcuMS";
+        case OpExecuteConfig::CCU_SCHED:
+            return "CcuSched";
+        default:
+            return "Unknown";
+    }
+}
+
 } // namespace ops_hccl

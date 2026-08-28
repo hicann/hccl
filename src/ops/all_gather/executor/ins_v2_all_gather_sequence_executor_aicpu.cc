@@ -18,10 +18,13 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 2;
+constexpr u32 CCU_MAX_SIZE = 64;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitCommInfo(
@@ -502,6 +505,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHR, InsV2AllGatherSequenceExecutorAicpu,
     TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHR, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -509,6 +514,12 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSequenceMeshMesh, InsV2AllGatherSequenceExecutorAicpu,
     TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherSequenceMeshMesh, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;
+    op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= CCU_MAX_SIZE;
+    });
 #endif
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl

@@ -205,7 +205,7 @@ SelectorStatus AutoSelectorBase::SelectDPUAlgo(
 }
 
 bool AutoSelectorBase::IsLayerAllConnetedWithTopo(
-    const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType)
 {
     CHK_PRT_RET(
         topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
@@ -235,8 +235,7 @@ bool AutoSelectorBase::IsLayerAllConnetedWithTopo(
     return false;
 }
 
-HcclResult
-AutoSelectorBase::CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual) const
+HcclResult AutoSelectorBase::CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isEqual)
 {
     const auto& topoInstDetails = topoInfo->topoInstDetailsOfLayer;
 
@@ -261,7 +260,7 @@ AutoSelectorBase::CheckMeshNumEqualToClosNum(const TopoInfoWithNetLayerDetails* 
 }
 
 HcclResult
-AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple) const
+AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetails* topoInfo, bool& isMultiple)
 {
     const auto& topoInstDetails = topoInfo->topoInstDetailsOfLayer;
     // 检查topoInstDetails是否为空
@@ -288,7 +287,7 @@ AutoSelectorBase::CheckClosNumMultipleOfMeshNum(const TopoInfoWithNetLayerDetail
     return HCCL_SUCCESS;
 }
 
-bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam) const
+bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam)
 {
     CHK_PRT_RET(
         topoInfo == nullptr, HCCL_WARNING("[AutoSelectorBase][IsTwoLevelNetLayer] topoInfo is nullptr."), false);
@@ -328,7 +327,7 @@ bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* top
     return true;
 }
 
-bool AutoSelectorBase::IsDevType960() const
+bool AutoSelectorBase::IsDevType960()
 {
     HcclDevType deviceType;
     HcclGetDeviceType(deviceType);

@@ -23,6 +23,7 @@ namespace ops_hccl {
 
 class InsTempReduceScatterOrderPreservedLevel1 : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     InsTempReduceScatterOrderPreservedLevel1() = default;
     explicit InsTempReduceScatterOrderPreservedLevel1(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

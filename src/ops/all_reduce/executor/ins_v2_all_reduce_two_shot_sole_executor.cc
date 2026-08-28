@@ -11,6 +11,8 @@
 #include "ins_v2_all_reduce_two_shot_sole_executor.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
@@ -311,4 +313,6 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshConcur, InsV2AllReduceTwoShotSoleExecutor, TopoMatch1D,
     InsTempReduceScatterMesh1DZAxisDetour, InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_ALG_ATTRS(AicpuAllReduceSoleMeshConcur, op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+                   topo.maxTopoLevelNum = 1);
 } // namespace ops_hccl

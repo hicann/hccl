@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempReduceScatterMeshMem2Mem1D2Die : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH_2DIE};
     CcuTempReduceScatterMeshMem2Mem1D2Die() = default;
     explicit CcuTempReduceScatterMeshMem2Mem1D2Die(
         const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks);

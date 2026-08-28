@@ -15,6 +15,8 @@
 #include "ins_temp_reduce_scatter_omnipipe_nhr.h"
 #include "topo_match_pcie_mix.h"
 #include "omnipipe_template_utils.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 namespace ops_hccl {
 constexpr uint32_t HIERARCHY_SIZE_3 = 3;
 constexpr uint64_t RANK_SIZE_LEVEL_2 = 2;
@@ -623,10 +625,13 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterPipeLineMeshNHRMesh, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatchMultilevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu);
+
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLinePcie, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatchPcieMix, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu);
+REGISTER_ALG_ATTRS(AicpuReduceScatterPipeLinePcie, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLineUBX, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatchUBX, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
@@ -634,10 +639,37 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterPipeLineUBX, InsV2ReduceScatterOmniPipeExecutor, TopoMatchUBX,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterPipeLineUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.minTopoLevelNum = 2;
+    topo.minTopoLevelNum = 2; topo.isHostDpuOnly = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
+    };
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLine, InsV2ReduceScatterOmniPipeExecutor,
     TopoMatch3Level, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1D);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterPipeLine, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe && (topo->level0Symmetric && topo->level1Symmetric) && topo->deviceNumPerModule == 8;
+    });
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterPipeLineUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return isMultiple;
+    };
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return opParam.supportSymmetricMemory;
+    });
 
 } // namespace ops_hccl

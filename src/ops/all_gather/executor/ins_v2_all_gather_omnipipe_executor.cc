@@ -21,11 +21,15 @@
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "topo_match_3_level.h"
 #include "omnipipe_template_utils.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr u32 RANK_LEVEL_2 = 2;
 constexpr u32 RANK_LEVEL_4 = 4;
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
 InsV2AllGatherOmniPipeExecutor<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::InsV2AllGatherOmniPipeExecutor()
@@ -726,14 +730,42 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLinePcie, InsV2AllGatherOmniPipeExecutor, TopoMatchPcieMix,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(AicpuAllGatherPipeLinePcie, topo.isSupportLevel0PcieMix = true; topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineUBX, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherPipeLineUBX, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
+               && dataSize > SMALL_COUNT_512KB;
+    });
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherPipeLineUBX, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherPipeLineUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.minTopoLevelNum = 2;
+    topo.isHostDpuOnly = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLine, InsV2AllGatherOmniPipeExecutor, TopoMatch3Level,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherPipeLine, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric
+               && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8;
+    });
 } // namespace ops_hccl

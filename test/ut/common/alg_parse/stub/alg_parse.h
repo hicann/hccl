@@ -13,6 +13,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <cstdint>
 #include <hccl/hccl_types.h>
 #include "log.h"
 
@@ -83,6 +85,73 @@ struct AlgoDimEntry {
 const AlgoDimEntry* GetAlgoEngines(int& count);
 const AlgoDimEntry* GetAlgoExecutors(int& count);
 const AlgoDimEntry* GetAlgoTemplates(int& count);
+
+// ---------------------------------------------------------------------------
+// AlgoType 枚举：算法模板类型（与 ALGO_TYPES 映射表一一对应）
+// ---------------------------------------------------------------------------
+enum class AlgoType : uint8_t {
+    MESH,
+    MESH_2DIE,
+    MESH_ONESHOT,
+    MESH_TWOSHOT,
+    MESH_CONCUR,
+    MESH_MULTILINK,
+    MESH_CHUNK,
+    MESH_CHUNK_TWOSHOT,
+    NHR,
+    NHR_MULTILINK,
+    NHR_AICPU_REDUCE,
+    MESH_SINGLE_CHANNEL,
+    MESH_CONCURRENT,
+    UNKNOWN,
+};
+
+// ---------------------------------------------------------------------------
+// 通信域粒度加速模式（mock，与 alg_param.h 中定义保持一致）
+// ---------------------------------------------------------------------------
+enum class OpExecuteConfig {
+    DEFAULT = 0,
+    HOSTCPU_TS = 1,
+    AICPU_TS = 2,
+    AIV = 3,
+    AIV_ONLY = 4,
+    CCU_MS = 5,
+    CCU_SCHED = 6,
+    AICPU = 7,
+    HOSTCPU = 8,
+    CCU_FAIL
+};
+
+// ---------------------------------------------------------------------------
+// 引擎前缀 → OpExecuteConfig 映射（按前缀长度降序，用于从算法名解析引擎）
+// ---------------------------------------------------------------------------
+struct EnginePrefixEntry {
+    const char* pascal;
+    OpExecuteConfig engine;
+};
+const EnginePrefixEntry* GetEnginePrefixEntries(int& count);
+
+// ---------------------------------------------------------------------------
+// OpType 驼峰名 → HcclCMDType 映射（按名称长度降序，用于从算法名解析 OpType）
+// ---------------------------------------------------------------------------
+struct OpTypePatternEntry {
+    const char* pascal;
+    HcclCMDType opType;
+};
+const OpTypePatternEntry* GetOpTypePatternEntries(int& count);
+
+// ---------------------------------------------------------------------------
+// AlgoType 枚举 ↔ 驼峰名映射
+// ---------------------------------------------------------------------------
+const std::map<AlgoType, std::string>& GetAlgoTypeToNameMap();
+const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap();
+std::string AlgoTypeToString(AlgoType t);
+
+// HcclCMDType → 字符串名
+std::string HcclCMDTypeToString(HcclCMDType opType);
+
+// OpExecuteConfig → 字符串名
+std::string OpExecuteConfigToString(OpExecuteConfig engine);
 
 HcclResult static SetHcclAlgoConfig(const std::string& config) { return HCCL_SUCCESS; }
 } // namespace ops_hccl

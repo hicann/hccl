@@ -17,6 +17,7 @@
 #include "ccu_temp_all_gather_v_mesh_1D_mem2mem.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
+
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>

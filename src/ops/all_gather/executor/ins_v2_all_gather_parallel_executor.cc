@@ -27,8 +27,14 @@
 #include "topo_match_ubx.h"
 #include "topo_match_pcie_mix.h"
 #include "topo_match_squeeze_2d.h"
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
+
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
+constexpr u32 CCU_MAX_SIZE = 64;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllGatherParallelExecutor()
@@ -714,16 +720,46 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelMeshNHR, InsV2AllGatherParallelExecutor, TopoMatchMultilevel,
     InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuAllGatherParallelMeshNHR, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHRMultiJetty, InsV2AllGatherParallelExecutor,
     TopoMatchUBX, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(
+    InsAllGatherParallelMesh1DNHRMultiJetty, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
+               && dataSize > SMALL_COUNT_512KB;
+    });
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, InsAllGatherParallelMesh1DNHRPcie, InsV2AllGatherParallelExecutor,
     TopoMatchPcieMix, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(InsAllGatherParallelMesh1DNHRPcie, topo.isSupportLevel0PcieMix = true; topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelNHRNHR, InsV2AllGatherParallelExecutor, TopoMatchSqueeze2D,
     InsTempAllGatherNHR, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherParallelNHRNHR, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe
+               && !(
+                   (topo->level0Symmetric && topo->level1Symmetric)
+                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+               && !(
+                   !(topo->level0Symmetric && topo->level1Symmetric)
+                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1);
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
@@ -731,12 +767,31 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherParallelMeshNHR, InsV2AllGatherParallelExecutor,
     TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherParallelMeshNHR, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;
+    op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= CCU_MAX_SIZE;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherParallelMeshNHRMultiLink, InsV2AllGatherParallelExecutor,
     TopoMatchUBX, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMultiJettyMem2Mem);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherParallelMeshNHRMultiLink, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return false;
+        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #endif

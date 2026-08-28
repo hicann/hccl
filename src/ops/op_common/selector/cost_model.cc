@@ -14,18 +14,26 @@
 #include <memory>
 
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs_registry.h"
+#include "selector_engine.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
 AllAlgos* GetAllAlgos()
 {
+#ifndef AICPU_COMPILE
     static AllAlgos globalAllAlgos{nullptr, 0, 0};
     return &globalAllAlgos;
+#else
+    return nullptr;
+#endif
 }
 
 HcclResult AddAlgToAllAlgos(
     HcclCMDType opType, const char* algName, const char* executorName, const char** templateName, int templateNum)
 {
+#ifndef AICPU_COMPILE
     AllAlgos* allAlgos = GetAllAlgos();
     if (allAlgos->count >= allAlgos->capacity) {
         int newCapacity = (allAlgos->capacity == 0) ? 16 : allAlgos->capacity * 2;
@@ -47,9 +55,22 @@ HcclResult AddAlgToAllAlgos(
         "[AllAlgos] add algName=%s executorName=%s templateNum=%d opType=%d, total=%d.", algName, executorName,
         templateNum, opType, allAlgos->count);
     return HcclResult::HCCL_SUCCESS;
+#else
+    (void)opType;
+    (void)algName;
+    (void)executorName;
+    (void)templateName;
+    (void)templateNum;
+    return HcclResult::HCCL_SUCCESS;
+#endif
 }
 
-CostModelManager::CostModelManager() { InitBandwidth(); }
+CostModelManager::CostModelManager()
+{
+#ifndef AICPU_COMPILE
+    InitBandwidth();
+#endif
+}
 
 CostModelManager* CostModelManager::Global()
 {
@@ -59,6 +80,7 @@ CostModelManager* CostModelManager::Global()
 
 void CostModelManager::FreeCostModel(CostModel& costModel)
 {
+#ifndef AICPU_COMPILE
     if (costModel.costAlgoParams != nullptr) {
         for (int i = 0; i < costModel.count; ++i) {
             delete[] costModel.costAlgoParams[i].param;
@@ -68,10 +90,14 @@ void CostModelManager::FreeCostModel(CostModel& costModel)
         costModel.costAlgoParams = nullptr;
     }
     costModel.count = 0;
+#else
+    (void)costModel;
+#endif
 }
 
 void CostModelManager::InitBandwidth()
 {
+#ifndef AICPU_COMPILE
     HCCL_DEBUG("[CostModelManager] InitBandwidth.");
     localCopyBw_ = 750.0f * 1000 * 1000 * 1000;
     localReduceBw_ = 483.0f * 1000 * 1000 * 1000;
@@ -86,6 +112,7 @@ void CostModelManager::InitBandwidth()
         "ccuLocalCopyBw=%f ccuLocalReduceBw=%f ccuCircleLocalCopyBw=%f ccuCircleLocalReduceBw=%f.",
         localCopyBw_, localReduceBw_, crossChipBw_, crossChipReduceBw_, ccuLocalCopyBw_, ccuLocalReduceBw_,
         ccuCircleLocalCopyBw_, ccuCircleLocalReduceBw_);
+#endif
 }
 
 CostModelManager::RankSizePerLevel
@@ -112,8 +139,171 @@ CostModelManager::CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo
     return rs;
 }
 
+#ifndef AICPU_COMPILE
+static bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(algName);
+    if (attrs == nullptr) {
+        return true;
+    }
+
+    const auto& t = attrs->topo;
+
+    if (topoInfo->topoLevelNums < t.minTopoLevelNum) {
+        HCCL_INFO(
+            "[IsAlgoMatchTopo] algName=%s filtered: topoLevelNums=%u < minTopoLevelNum=%u.", algName.c_str(),
+            topoInfo->topoLevelNums, t.minTopoLevelNum);
+        return false;
+    }
+    if (topoInfo->topoLevelNums > t.maxTopoLevelNum) {
+        HCCL_INFO(
+            "[IsAlgoMatchTopo] algName=%s filtered: topoLevelNums=%u > maxTopoLevelNum=%u.", algName.c_str(),
+            topoInfo->topoLevelNums, t.maxTopoLevelNum);
+        return false;
+    }
+
+    if (!(t.supportLevel0Topos & (1 << static_cast<uint8_t>(topoInfo->level0Topo)))) {
+        HCCL_INFO(
+            "[IsAlgoMatchTopo] algName=%s filtered: level0Topo=%u not in supportLevel0Topos=0x%02x.", algName.c_str(),
+            static_cast<uint8_t>(topoInfo->level0Topo), t.supportLevel0Topos);
+        return false;
+    }
+
+    if (t.supportLevel0MeshTypes != MESH_TYPE_ANY) {
+        if ((topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS)
+            && (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED)) {
+            if (!(t.supportLevel0MeshTypes & (1 << static_cast<uint8_t>(topoInfo->level0MeshType)))) {
+                HCCL_INFO(
+                    "[IsAlgoMatchTopo] algName=%s filtered: level0MeshType=%u not in supportLevel0MeshTypes=0x%02x.",
+                    algName.c_str(), static_cast<uint8_t>(topoInfo->level0MeshType), t.supportLevel0MeshTypes);
+                return false;
+            }
+        }
+    }
+
+    if (topoInfo->is2DieFullMesh && !t.isSupport2DieFullMesh) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D
+            && (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED)) {
+            HCCL_INFO(
+                "[IsAlgoMatchTopo] algName=%s filtered: is2DieFullMesh=true, isSupport2DieFullMesh=false.",
+                algName.c_str());
+            return false;
+        }
+    }
+
+    if (topoInfo->level0PcieMix && !t.isSupportLevel0PcieMix) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0Topo == Level0Shape::CLOS) {
+            HCCL_INFO(
+                "[IsAlgoMatchTopo] algName=%s filtered: level0PcieMix=true, isSupportLevel0PcieMix=false.",
+                algName.c_str());
+            return false;
+        }
+    }
+
+    if (topoInfo->Level1Nhr && !t.isSupportLevel1Nhr) {
+        HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: Level1Nhr=true, isSupportLevel1Nhr=false.", algName.c_str());
+        return false;
+    }
+
+    if (t.requireAllMeshConnected && topoInfo->level0PcieMix
+        && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+        HCCL_INFO(
+            "[IsAlgoMatchTopo] algName=%s filtered: requireAllMeshConnected but not all mesh connected.",
+            algName.c_str());
+        return false;
+    }
+
+    if (!t.supportDevTypes.empty()) {
+        bool devTypeMatched = false;
+        for (auto devType : t.supportDevTypes) {
+            if (devType == topoInfo->deviceType) {
+                devTypeMatched = true;
+                break;
+            }
+        }
+        if (!devTypeMatched) {
+            HCCL_INFO(
+                "[IsAlgoMatchTopo] algName=%s filtered: deviceType=%d not in supportDevTypes.", algName.c_str(),
+                static_cast<int>(topoInfo->deviceType));
+            return false;
+        }
+    }
+
+    // hostDpuOnly 算法仅在 hostDpuOnly 拓扑下可用，非 hostDpuOnly 算法在 hostDpuOnly
+    // 拓扑下不可用，支持dpu算法的cost评估后可放开
+    if (t.isHostDpuOnly && !topoInfo->hostDpuOnly) {
+        HCCL_INFO(
+            "[IsAlgoMatchTopo] algName=%s filtered: isHostDpuOnly=true but topo hostDpuOnly=false.", algName.c_str());
+        return false;
+    }
+    if (!t.isHostDpuOnly && topoInfo->hostDpuOnly) {
+        HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: hostDpuOnly=true, isHostDpuOnly=false.", algName.c_str());
+        return false;
+    }
+
+    if (t.topoCustomCheck) {
+        if (!t.topoCustomCheck(topoInfo)) {
+            HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: topoCustomCheck returned false.", algName.c_str());
+            return false;
+        }
+    }
+
+    return true;
+}
+#endif
+
+#ifndef AICPU_COMPILE
+// 从已过滤的算法中筛选优先级算法。按 opType 分组，仅在有 priority 匹配的 opType 内过滤。
+static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    // 1. 收集每个 opType 的 priority 匹配索引
+    std::map<HcclCMDType, std::vector<int>> priorityByOpType;
+    for (int i = 0; i < costModel.count; ++i) {
+        const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
+        if (attrs != nullptr && attrs->topo.topoPriorityCheck && attrs->topo.topoPriorityCheck(topoInfo)) {
+            priorityByOpType[attrs->opType].push_back(i);
+            HCCL_INFO("[CostModelManager] topoPriority matched algName=%s.", costModel.costAlgoParams[i].algName);
+        }
+    }
+
+    // 2. 对有 priority 匹配的 opType，只保留匹配的算法
+    std::set<int> toRemove;
+    for (auto& [opType, indices] : priorityByOpType) {
+        std::set<int> keepSet(indices.begin(), indices.end());
+        for (int i = 0; i < costModel.count; ++i) {
+            const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
+            if (attrs != nullptr && attrs->opType == opType && keepSet.count(i) == 0) {
+                toRemove.insert(i);
+            }
+        }
+    }
+
+    if (toRemove.empty()) {
+        return;
+    }
+
+    int newCount = costModel.count - static_cast<int>(toRemove.size());
+    CostAlgoParams* newParams = new (std::nothrow) CostAlgoParams[newCount];
+    if (newParams == nullptr) {
+        HCCL_ERROR("[CostModelManager] alloc newParams for topoPriority failed.");
+        return;
+    }
+    int j = 0;
+    for (int i = 0; i < costModel.count; ++i) {
+        if (toRemove.count(i) == 0) {
+            newParams[j++] = costModel.costAlgoParams[i];
+        }
+    }
+    delete[] costModel.costAlgoParams;
+    costModel.costAlgoParams = newParams;
+    costModel.count = newCount;
+    HCCL_INFO("[CostModelManager] topoPriority applied, kept=%d.", costModel.count);
+}
+#endif
+
 HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, CostModel& costModel)
 {
+#ifndef AICPU_COMPILE
     const AllAlgos& allAlgos = *GetAllAlgos();
     int algNum = allAlgos.count;
     if (algNum <= 0) {
@@ -131,6 +321,12 @@ HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDe
     for (int i = 0; i < algNum; ++i) {
         const AlgElement& alg = allAlgos.algElements[i];
         std::string algName = (alg.algName != nullptr) ? alg.algName : "";
+
+        if (!IsAlgoMatchTopo(algName, topoInfo)) {
+            HCCL_INFO("[CostModelManager] algName=%s skipped by topo filter.", algName.c_str());
+            continue;
+        }
+
         std::unique_ptr<InsCollAlgBase> exec = CollAlgExecRegistryV2::Instance().GetAlgExec(alg.opType, alg.algName);
         if (exec == nullptr) {
             HCCL_WARNING(
@@ -166,10 +362,18 @@ HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDe
     if (costModel.count == 0) {
         delete[] costModel.costAlgoParams;
         costModel.costAlgoParams = nullptr;
+    } else {
+        ApplyTopoPriority(costModel, topoInfo);
     }
 
-    HCCL_DEBUG("[CostModelManager] InitCostModel done, total=%d calibrated=%d.", algNum, costModel.count);
+    HCCL_INFO("[CostModelManager] InitCostModel done, total=%d calibrated=%d.", algNum, costModel.count);
     return HcclResult::HCCL_SUCCESS;
+#else
+    (void)comm;
+    (void)topoInfo;
+    (void)costModel;
+    return HcclResult::HCCL_SUCCESS;
+#endif
 }
 
 void CostModelManager::CalcMeshParam(float n, AlgNetType netType, int portNum, u32 rankSize, float& A)
@@ -250,21 +454,31 @@ void CostModelManager::CalcLatencyParams(int taskNum, EngineType engine, float& 
 
 AlgNetMetaRegistry* AlgNetMetaRegistry::Global()
 {
+#ifndef AICPU_COMPILE
     static AlgNetMetaRegistry* globalRegistry = new AlgNetMetaRegistry;
     return globalRegistry;
+#else
+    return nullptr;
+#endif
 }
 
 void AlgNetMetaRegistry::Register(const std::string& algName, AlgNetMeta meta)
 {
+#ifndef AICPU_COMPILE
     const std::lock_guard<std::mutex> lock(mu_);
     metas_[algName] = meta;
     HCCL_DEBUG(
         "[AlgNetMetaRegistry] register algName=%s netTypes=%zu intraGroupMode=%d groupSizes=%zu.", algName.c_str(),
         meta.netTypes.size(), static_cast<int>(meta.intraGroupMode), meta.groupSizes.size());
+#else
+    (void)algName;
+    (void)meta;
+#endif
 }
 
 bool AlgNetMetaRegistry::Query(const std::string& algName, AlgNetMeta& meta) const
 {
+#ifndef AICPU_COMPILE
     const std::lock_guard<std::mutex> lock(mu_);
     auto it = metas_.find(algName);
     if (it == metas_.end()) {
@@ -272,6 +486,11 @@ bool AlgNetMetaRegistry::Query(const std::string& algName, AlgNetMeta& meta) con
     }
     meta = it->second;
     return true;
+#else
+    (void)algName;
+    (void)meta;
+    return false;
+#endif
 }
 
 } // namespace ops_hccl

@@ -18,6 +18,7 @@
 namespace ops_hccl {
 class CcuTempReduceScatterNHR1DMem2Mem : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     CcuTempReduceScatterNHR1DMem2Mem() = default;
     explicit CcuTempReduceScatterNHR1DMem2Mem(
         const OpParam& param,
