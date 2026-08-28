@@ -419,17 +419,15 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
     }
 
     if (topoInfo->topoLevelNums > 1) {
+        bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
             selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
-        } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
-                selectAlgName = "AicpuReduceScatterPipeLine";
-            } else if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
-                selectAlgName = "AicpuReduceScatterSoleNHR";
-            } else {
-                selectAlgName = "InsReduceScatterParallelNHRNHRUboe";
-            }
+        } else if (
+            level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
+            && topoInfo->topLevelUboe) {
+            selectAlgName = "AicpuReduceScatterPipeLine";
+        } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
+            selectAlgName = "InsReduceScatterParallelNHRNHRUboe";
         } else if (topoInfo->Level1Nhr) {
             selectAlgName = "AicpuReduceScatterSoleNHR";
             HCCL_INFO("[ReduceScatterAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
@@ -441,7 +439,12 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
             constexpr u64 AICPU_MAX_RANKSIZE = 256;
             constexpr u64 AICPU_2LEVEL_MAX_TOTAL_DATA_SIZE = 1ULL * 1024 * 1024 * 1024;
             if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
-                selectAlgName = "AicpuReduceScatterSequenceMeshConcurNHRNHR";
+                if (level0AndLevel1Symetric) {
+                    selectAlgName = "AicpuReduceScatterSequenceMeshConcurNHRNHR";
+                } else {
+                    selectAlgName = "AicpuReduceScatterSoleNHR";
+                }
+
             } else if (
                 dataSize * topoInfo->userRankSize >= AICPU_2LEVEL_MAX_TOTAL_DATA_SIZE
                 && topoInfo->userRankSize >= AICPU_MAX_RANKSIZE) {

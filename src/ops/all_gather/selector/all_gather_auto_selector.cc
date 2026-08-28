@@ -312,15 +312,12 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
         "[AllGatherAutoSelector][SelectAicpuAlgo] topoLevelNums=[%d], deviceNumPerModule=[%d], level0Topo=[%d]",
         topoInfo->topoLevelNums, topoInfo->deviceNumPerModule, topoInfo->level0Topo);
     if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
-                selectAlgName = "AicpuAllGatherPipeLine";
-            } else if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
-                selectAlgName = "AicpuAllGatherSoleNHR";
-            } else {
-                selectAlgName = "AicpuAllGatherParallelNHRNHR";
-            }
+        bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
+        if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
+            && topoInfo->topLevelUboe) {
+            selectAlgName = "AicpuAllGatherPipeLine";
+        } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
+            selectAlgName = "AicpuAllGatherParallelNHRNHR";
         } else if (topoInfo->Level1Nhr) {
             selectAlgName = "AicpuAllGatherSoleNHR";
             HCCL_INFO("[AllGatherAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
@@ -332,7 +329,11 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
             constexpr u64 AICPU_MAX_RANKSIZE = 1024;
             constexpr u64 AICPU_2LEVEL_MAX_TOTAL_DATA_SIZE = 1ULL * 1024 * 1024 * 1024;
             if (topoInfo->topoLevelNums >= TOPO_LEVEL_NUM_3) {
-                selectAlgName = "AicpuAllGatherSequenceMeshConcurNHRNHR";
+                if (level0AndLevel1Symetric) {
+                    selectAlgName = "AicpuAllGatherSequenceMeshConcurNHRNHR";
+                } else {
+                    selectAlgName = "AicpuAllGatherSoleNHR";
+                }
             } else if (
                 dataSize * topoInfo->userRankSize >= AICPU_2LEVEL_MAX_TOTAL_DATA_SIZE
                 && topoInfo->userRankSize >= AICPU_MAX_RANKSIZE) {

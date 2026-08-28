@@ -281,7 +281,7 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
         } else if (
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1 || topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "AicpuReduceSoleNHR";
-        } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level2Uboe) {
+        } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->topLevelUboe) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
             if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
                 selectAlgName = "AicpuReduceSoleNHRAicpuReduce";

@@ -382,6 +382,11 @@ bool AutoSelectorBase::ProcessAivConfig(
         return false;
     }
 
+    if (topoInfo->topLevelUboe) {
+        opParam.opExecuteConfig = OpExecuteConfig::CCU_FAIL;
+        return false;
+    }
+
     ret = SelectAivAlgo(topoInfo, opParam, configAlgMap, selectAlgName);
     if (ret == SelectorStatus::NOT_MATCH) {
         if (opParam.opExecuteConfig == OpExecuteConfig::AIV_ONLY) {

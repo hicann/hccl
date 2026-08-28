@@ -165,7 +165,7 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(
         bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
             selectAlgName = "AicpuScatterSoleNHR";
-        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->level2Uboe) {
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->topLevelUboe) {
             selectAlgName = "AicpuScatterSequenceMeshConcurNHRNHR";
         } else {
             selectAlgName = "AicpuScatterSoleNHR";

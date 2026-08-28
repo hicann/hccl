@@ -659,14 +659,11 @@ static HcclResult CalcLevel1Nhr(const HcclComm comm, TopoInfoWithNetLayerDetails
     return HCCL_SUCCESS;
 }
 
-static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
+static HcclResult CalcTopLevelUboe(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
-    if (topoInfo->topoLevelNums < NET_LAYER_NUM_THREE) {
-        return HCCL_SUCCESS;
-    }
     u32 myRank;
     CHK_RET(HcclGetRankId(comm, &myRank));
-    u32 netLayerIdx = topoInfo->netLayerDetails.netLayers[NET_LAYER_NUM_THREE - 1];
+    u32 netLayerIdx = topoInfo->netLayerDetails.netLayers[topoInfo->topoLevelNums - 1];
     for (u32 dstRank = 0; dstRank < topoInfo->userRankSize; dstRank++) {
         if (dstRank == myRank) {
             continue;
@@ -676,19 +673,19 @@ static HcclResult CalcLevel2Uboe(const HcclComm comm, TopoInfoWithNetLayerDetail
         CHK_RET(HcclRankGraphGetLinks(comm, netLayerIdx, myRank, dstRank, &links, &linkNum));
         if (linkNum > 0 && links[0].header.version >= 1) {
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-            topoInfo->level2Uboe = (links[0].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBOE);
+            topoInfo->topLevelUboe = (links[0].linkAttr.linkProtocol == CommProtocol::COMM_PROTOCOL_UBOE);
 #else
             // 8.5.0 CANN 无 UBOE 枚举值；
             // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；
-            topoInfo->level2Uboe = false;
+            topoInfo->topLevelUboe = false;
 #endif
             HCCL_INFO(
-                "[TopoHost][CalcLevel2Uboe] level2 protocol[%u], level2Uboe[%d]",
-                static_cast<u32>(links[0].linkAttr.linkProtocol), topoInfo->level2Uboe);
+                "[TopoHost][CalcTopLevelUboe] top level protocol[%u], topLevelUboe[%d]",
+                static_cast<u32>(links[0].linkAttr.linkProtocol), topoInfo->topLevelUboe);
             return HCCL_SUCCESS;
         }
     }
-    HCCL_INFO("[TopoHost][CalcLevel2Uboe] no level2 links found, level2Uboe=false");
+    HCCL_INFO("[TopoHost][CalcTopLevelUboe] no top level links found, topLevelUboe=false");
     return HCCL_SUCCESS;
 }
 
@@ -796,7 +793,7 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(Is2DieFullMesh(comm, topoInfo));
     CHK_RET(IsLevel0PcieMix(comm, topoInfo));
     CHK_RET(CalcLevel0MeshType(comm, topoInfo));
-    CHK_RET(CalcLevel2Uboe(comm, topoInfo));
+    CHK_RET(CalcTopLevelUboe(comm, topoInfo));
     CHK_RET(CalcLevel2UbRtp(comm, topoInfo));
     CHK_RET(CalcHostDPUOnly(comm, topoInfo));
     return HCCL_SUCCESS;

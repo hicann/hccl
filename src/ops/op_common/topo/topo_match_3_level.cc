@@ -162,13 +162,21 @@ HcclResult TopoMatch3Level::MatchTopo(
     uint32_t layer0Size = 0;
     CHK_RET(TopoForLayer0(comm, layer0Size, myRank, algHierarchyInfo));
     uint32_t baseModSizeL1 = layer0Size;
-
+    uint32_t interServerLayerIdx = 1;
+    if (layerNum == LAYERNUM2) {
+        algHierarchyInfo.infos[1].push_back({{myRank}});
+        interServerLayerIdx = 2;
+        HCCL_INFO(
+            "[TopoMatch3Level] Rank [%d], layerNum [%u], insert self-only level at infos[1], "
+            "inter-server ranks moved to infos[2].",
+            myRank, layerNum);
+    }
     if (layerNum >= LAYERNUM2) {
-        uint32_t netLayerL1 = 1;
-        CHK_RET(TopoForLayerGeneric(comm, netLayerL1, baseModSizeL1, myRank, algHierarchyInfo, 1));
+        uint32_t netLayerL1 = topoInfo->netLayerDetails.netLayers[1];
+        CHK_RET(TopoForLayerGeneric(comm, netLayerL1, baseModSizeL1, myRank, algHierarchyInfo, interServerLayerIdx));
     }
     if (layerNum >= LAYERNUM3) {
-        uint32_t netLayerL2 = 2;
+        uint32_t netLayerL2 = topoInfo->netLayerDetails.netLayers[2];
         // 应该除以超节点数量
         uint32_t layer1Size = topoInfo->netLayerDetails.localNetInsSizeOfLayer[1];
         uint32_t layer2Size = topoInfo->netLayerDetails.localNetInsSizeOfLayer[2];

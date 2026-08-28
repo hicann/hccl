@@ -92,10 +92,10 @@ namespace {
                  return IsNeedStrictModeForOrderPreserved(op, topo->userRankSize);
              },
              false, ccuAivAll},
-            // 必不选：aiv + level2Uboe 排除 aiv
-            {"aiv_skip_level2uboe",
+            // 必不选：aiv + topLevelUboe 排除 aiv
+            {"aiv_skip_topLevelUboe",
              [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->level2Uboe;
+                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
              },
              false, aivAlgos},
             // 必选：保序模式 + rankSize > 32 → AllReduceOrderPreservedGroup
@@ -224,10 +224,10 @@ namespace {
                  return topo->level2UbRtp;
              },
              false, aivCcuSched},
-            // 必不选：3级拓扑 + level2Uboe 排除 aiv + ccu_sched
-            {"level2uboe_skip_aiv_ccu_sched",
+            // 必不选：3级拓扑 + topLevelUboe 排除 aiv + ccu_sched
+            {"topLevelUboe_skip_aiv_ccu_sched",
              [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->level2Uboe;
+                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
              },
              false, aivCcuSched},
             // 必不选：ccu_ms 仅支持单级拓扑，多级拓扑排除
@@ -428,10 +428,10 @@ namespace {
                  return topo->level2UbRtp;
              },
              false, aivCcuSched},
-            // 必不选：3级拓扑 + level2Uboe 排除 aiv + ccu_sched
-            {"level2uboe_skip_aiv_ccu_sched",
+            // 必不选：3级拓扑 + topLevelUboe 排除 aiv + ccu_sched
+            {"topLevelUboe_skip_aiv_ccu_sched",
              [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) {
-                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->level2Uboe;
+                 return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->topLevelUboe;
              },
              false, aivCcuSched},
             // 必不选：ccu_ms 仅支持单级拓扑，多级拓扑排除

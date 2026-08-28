@@ -99,6 +99,9 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     param.hcclComm = comm;
     // 获取基础拓扑
     CHK_RET(HcclCalcTopoInfo(comm, param, topoInfo));
+    if (topoInfo->topLevelUboe) {
+        param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    }
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
     if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {

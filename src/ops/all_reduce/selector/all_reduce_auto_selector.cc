@@ -430,17 +430,15 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
                                          || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
 
     if (topoInfo->topoLevelNums > 1) {
+        bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (isDataTypeOrReduceTypeSpecial) {
             selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
-        } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->level2Uboe) {
-            bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
-            if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8) {
-                selectAlgName = "AicpuAllReducePipeLine";
-            } else if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
-                selectAlgName = "AicpuAllReduceSoleNHR";
-            } else {
-                selectAlgName = "InsAllReduceParallelRSAGUboe";
-            }
+        } else if (
+            level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
+            && topoInfo->topLevelUboe) {
+            selectAlgName = "AicpuAllReducePipeLine";
+        } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
+            selectAlgName = "InsAllReduceParallelRSAGUboe";
         } else if (topoInfo->Level1Nhr) {
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
             selectAlgName = "AicpuAllReduceSoleNHR";
@@ -449,7 +447,11 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
             selectAlgName = "AicpuAllReduceSoleNHR";
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
-                selectAlgName = "AicpuAllReduceSequenceMeshConcurNHRNHR";
+                if (level0AndLevel1Symetric) {
+                    selectAlgName = "AicpuAllReduceSequenceMeshConcurNHRNHR";
+                } else {
+                    selectAlgName = "AicpuAllReduceSoleNHR";
+                }
             } else if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
                 if (dataSize > AR_AICPU_1D_CROSS_SMALL_DATA_SIZE) {
                     selectAlgName = (dataSize > AR_AICPU_SEQUENCE_DATA_SIZE) ? "AicpuAllReduceSequenceMeshConcurNHR" :
