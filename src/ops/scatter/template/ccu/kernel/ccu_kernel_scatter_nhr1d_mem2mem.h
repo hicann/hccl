@@ -48,7 +48,7 @@ struct CcuKernelArgScatterNHRMem2Mem1D : CcuKernelArgBase {
     std::vector<std::vector<uint32_t>> subCommRanks;
 };
 
-struct ScatterNHR1DContext {
+struct ScatterNHR1DContext : CcuKernelCtxBase {
     const CcuKernelArgScatterNHRMem2Mem1D* arg;
 
     uint64_t rankSize{0};
@@ -94,6 +94,8 @@ struct ScatterNHR1DContext {
     ccu::LocalAddr dstMem;
     ccu::RemoteAddr dstRemoteMem;
     ccu::Event event;
+    GroupOpSizeVars goSizeNormal;
+    GroupOpSizeVars goSizeLast;
 };
 
 CcuResult CcuScatterNHR1DMem2MemKernel(CcuKernelArg arg);

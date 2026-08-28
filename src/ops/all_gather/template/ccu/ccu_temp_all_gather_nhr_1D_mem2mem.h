@@ -64,6 +64,11 @@ private:
     HcclResult PrepareLaunchArgs(
         const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
         std::vector<uint64_t>& taskArgs, uint64_t& argSize);
+    HcclResult LaunchKernels(
+        u32 kernelNum, const TemplateDataParams& templateDataParams, uint64_t die0Size, uint64_t die1Size,
+        std::vector<uint64_t>& taskArgs, uint64_t argSize, TemplateResource& templateResource);
+    HcclResult SaveSubmitInfo(u32 kernelNum, const std::vector<uint64_t>& taskArgs, TemplateResource& templateResource);
+    std::vector<uint64_t> goSize_[2];
 };
 
 } // namespace ops_hccl

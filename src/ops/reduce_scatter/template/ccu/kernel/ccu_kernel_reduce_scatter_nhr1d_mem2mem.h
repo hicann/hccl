@@ -68,6 +68,8 @@ struct ReduceScatterNHR1DMem2MemContext : CcuKernelCtxBase {
     ccu::RemoteAddr remoteDst;
     ccu::Variable isRepeatIter;
     std::vector<ccu::Variable> sliceOffset;
+    GroupOpSizeVars goSizeNormal;
+    GroupOpSizeVars goSizeLast;
 };
 
 CcuResult CcuReduceScatterNHR1DMem2MemKernel(CcuKernelArg arg);
