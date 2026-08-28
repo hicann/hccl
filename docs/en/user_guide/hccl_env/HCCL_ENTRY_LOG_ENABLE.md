@@ -12,7 +12,7 @@ This environment variable controls whether to print the call behavior logs of co
 
 Defaults to `0`.
 
-The default run log storage path of HCCL is `$HOME/ascend/log/run/plog/plog-_pid__\*.log`. For details about logs, see [Log Reference](https://hiascend.com/document/redirect/CannCommunitylogref).
+The default run log storage path of HCCL is `$HOME/ascend/log/run/plog/plog-_pid__\*.log`. For details about logs, see [Log Reference](https://hiascend.com/en/document/redirect/CannCommunitylogref).
 
 ## Configuration Example
 

@@ -4,9 +4,9 @@
 
 Collective communication is a global collaborative behavior within a communicator. It is often difficult to analyze the performance issues of collective communication using the profile data of only one rank. Therefore, you need to collect the profile data of all ranks to accurately identify the performance bottleneck of collective communication. Currently, profile data can be collected in the following two ways:
 
-- Method 1: Refer to *[Performance Tuning Tool User Guide](https://hiascend.com/document/redirect/CannCommunityToolProfiling)* to collect profile data.
+- Method 1: Refer to *[Performance Tuning Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolProfiling)* to collect profile data.
 
-- Method 2: Refer to *[HCCL Performance Test Tool User Guide](https://hiascend.com/document/redirect/CannCommunityToolHcclTest)* and use HCCL Test to collect profile data and perform performance tests.
+- Method 2: Refer to *[HCCL Performance Test Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolHcclTest)* and use HCCL Test to collect profile data and perform performance tests.
 
   Follow the steps below to run HCCL Test for collecting profile data:
 
@@ -17,5 +17,5 @@ Collective communication is a global collaborative behavior within a communicato
     export HCCL_TEST_PROFILING_PATH=/home/profiling
     ```
 
-    If HCCL_TEST_PROFILING is enabled, profile data is generated in the directory specified by `HCCL_TEST_PROFILING_PATH` after the HCCL Test tool completes execution. For profile data parsing, see the "Using the msprof Command to Parse, Query, and Export the Profile Data" section in *[Performance Tuning Tool User Guide](https://hiascend.com/document/redirect/CannCommunityToolProfiling)*.
+    If HCCL_TEST_PROFILING is enabled, profile data is generated in the directory specified by `HCCL_TEST_PROFILING_PATH` after the HCCL Test tool completes execution. For profile data parsing, see the "Using the msprof Command to Parse, Query, and Export the Profile Data" section in *[Performance Tuning Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolProfiling)*.
     

@@ -281,7 +281,7 @@ EI0005: 2024-04-24-06:32:27.781.599 The arguments for collective communication a
 
 ### 解决方法
 
-1. 如果在未启用SuperKernel时功能正常，但启用了SuperKernel后出现初始化不一致的问题，此时建议将HCCL算子移出SuperKernel的标定范围。具体操作方法可参考《[PyTorch图模式使用指南](https://hiascend.com/document/redirect/pttorchairuseguide)》中的“max-autotune模式功能 > 图内标定SuperKernel范围”章节。
+1. 如果在未启用SuperKernel时功能正常，但启用了SuperKernel后出现初始化不一致的问题，此时建议将HCCL算子移出SuperKernel的标定范围。具体操作方法可参考《[PyTorch图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/latest/index/index.html)》中的“max-autotune模式功能 > 图内标定SuperKernel范围”章节。
 2. 根据报错信息从业务上排查参数校验不一致的两端下发的算子不一致的根因。
 
     **注意**：日志中部分打印为枚举值，其中cmdType为算子类型，op为规约类型，枚举值对应关系表格如下：

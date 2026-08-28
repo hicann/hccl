@@ -171,7 +171,7 @@ You can use HCCL Test to test collective communication functionality and perform
 
 1. Tool build
 
-   Before using HCCL Test, you need to install MPI dependencies and build HCCL Test. For details, see "Installing and Configuring MPI" and "Compilation" in the corresponding version of [HCCL Performance Test Tool User Guide](https://hiascend.com/document/redirect/CannCommunityToolHcclTest).
+   Before using HCCL Test, you need to install MPI dependencies and build HCCL Test. For details, see "Installing and Configuring MPI" and "Compilation" in the corresponding version of [HCCL Performance Test Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolHcclTest).
 
 2. Disable signature verification.
 
@@ -200,7 +200,7 @@ You can use HCCL Test to test collective communication functionality and perform
    mpirun -n 8 ./bin/all_reduce_test -b 8K -e 64M -f 2 -d fp32 -o sum -p 8
    ```
 
-   For detailed tool instructions, see "Execution" in [HCCL Performance Test Tool User Guide](https://hiascend.com/document/redirect/CannCommunityToolHcclTest).
+   For detailed tool instructions, see "Execution" in [HCCL Performance Test Tool User Guide](https://hiascend.com/en/document/redirect/CannCommunityToolHcclTest).
 
 4. View the results.
 

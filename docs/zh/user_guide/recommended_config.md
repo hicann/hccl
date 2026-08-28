@@ -35,7 +35,7 @@
   | 环境变量 | 配置说明 |
   | --- | --- |
   | [HCCL_CONNECT_TIMEOUT](./hccl_env/HCCL_CONNECT_TIMEOUT.md) | 配置socket建链超时等待时间，默认值为120，单位s。该场景下，建议根据网络规模大小适当调整建链超时等待时间。<br>export HCCL_CONNECT_TIMEOUT=1200 |
-  | [HCCL_OP_EXPANSION_MODE](./hccl_env/HCCL_OP_EXPANSION_MODE.md) | 配置通信算子的展开模式。<br>该场景下建议保持默认值“AI_CPU”，代表通信算子在AI CPU展开。<br>export HCCL_OP_EXPANSION_MODE="AI_CPU"<br>需要注意：<br>针对推理通信域，需要通过通信域级别的配置参数将推理通信域的算子展开位置设置为“Vector Core”，针对PyTorch框架网络，可通过“hccl_op_expansion_mode”参数配置，配置方法如下：<br>options = torch_npu._C._distributed_c10d.ProcessGroupHCCL.Options()<br>   options.hccl_config ={"hccl_op_expansion_mode":3}<br>   torch.distributed.init_process_group(backend="hccl", pg_options=options)<br>PyTorch框架参数的详细介绍可在《[TorchNPU产品文档](https://hiascend.com/document/redirect/pytorchuserguide)》中搜索“通过pg_options配置HCCL通信域参数”查看。 |
+  | [HCCL_OP_EXPANSION_MODE](./hccl_env/HCCL_OP_EXPANSION_MODE.md) | 配置通信算子的展开模式。<br>该场景下建议保持默认值“AI_CPU”，代表通信算子在AI CPU展开。<br>export HCCL_OP_EXPANSION_MODE="AI_CPU"<br>需要注意：<br>针对推理通信域，需要通过通信域级别的配置参数将推理通信域的算子展开位置设置为“Vector Core”，针对PyTorch框架网络，可通过“hccl_op_expansion_mode”参数配置，配置方法如下：<br>options = torch_npu._C._distributed_c10d.ProcessGroupHCCL.Options()<br>   options.hccl_config ={"hccl_op_expansion_mode":3}<br>   torch.distributed.init_process_group(backend="hccl", pg_options=options)<br>PyTorch框架参数的详细介绍可在《[TorchNPU产品文档](https://www.hiascend.com/document/detail/zh/Pytorch/latest/index/index.html)》中搜索“通过pg_options配置HCCL通信域参数”查看。 |
   | [HCCL_DETERMINISTIC](./hccl_env/HCCL_DETERMINISTIC.md) | 是否开启确定性计算，用户可以根据使用场景选择开启或关闭，默认值为false，代表关闭确定性计算。<br>export HCCL_DETERMINISTIC=false |
 
 ## Atlas A2 训练系列产品/Atlas A2 推理系列产品

@@ -4,7 +4,7 @@
 
 ## Installing Driver Firmware and CANN Software Package
 
-The use of the HCCL collective communication library and the development of communication operators depend on the driver firmware and CANN software package. For detailed installation steps, see *[CANN Software Installation Guide](https://hiascend.com/document/redirect/CannCommunityInstSoftware)*.
+The use of the HCCL collective communication library and the development of communication operators depend on the driver firmware and CANN software package. For detailed installation steps, see *[CANN Software Installation Guide](https://hiascend.com/en/document/redirect/CannCommunityInstSoftware)*.
 
 > [!NOTE]Note
 > If only app development and compilation are performed without involving execution, the driver firmware package is not required.

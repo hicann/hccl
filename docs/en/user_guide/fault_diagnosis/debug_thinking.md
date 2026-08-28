@@ -50,7 +50,7 @@ The descriptions of the HCCL implementation mechanisms in this document are inte
 
 ### HCCL-Related Log Description
 
-HCCL log information is recorded in CANN logs. For details about CANN logs, see *[Log Reference](https://hiascend.com/document/redirect/CannCommunitylogref)*.
+HCCL log information is recorded in CANN logs. For details about CANN logs, see *[Log Reference](https://hiascend.com/en/document/redirect/CannCommunitylogref)*.
 
 - When HCCL reports an error, key fault information is printed in the debug directory of CANN logs. In addition, in some service scenarios where training frameworks are used, HCCL also prints key error information in the service logs.
 

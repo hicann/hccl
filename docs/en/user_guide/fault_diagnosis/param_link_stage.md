@@ -297,7 +297,7 @@ The node information of the two endpoints with inconsistent parameters can be co
 
 ### Solution
 
-1. If the functionality works properly when SuperKernel is not enabled but an initialization inconsistency occurs after SuperKernel is enabled, it is recommended to move the HCCL operator out of the SuperKernel calibration scope. For specific instructions, see the "max-autotune Mode Features > Calibrating the SuperKernel Scope Within a Graph" section in [*PyTorch Graph Mode Usage Guide*](https://hiascend.com/document/redirect/pttorchairuseguide).
+1. If the functionality works properly when SuperKernel is not enabled but an initialization inconsistency occurs after SuperKernel is enabled, it is recommended to move the HCCL operator out of the SuperKernel calibration scope. For specific instructions, see the "max-autotune Mode Features > Calibrating the SuperKernel Scope Within a Graph" section in [*PyTorch Graph Mode Usage Guide*](https://hiascend.com/en/document/detail/en/Pytorch/latest/index/index.html).
 
 2. Based on the error information, troubleshoot the root cause of the inconsistency between the operators delivered by the two ends that failed the parameter consistency check from the service perspective.
 
