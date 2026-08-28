@@ -25,11 +25,19 @@ bash build.sh
 
 ### 1. 前置条件
 
-参照 HCCL-VM 指导手册完成工具的安装与编译（一键安装或手动构建），并确认：
+参照 HCCL-VM 指导手册完成工具的安装与编译（一键安装或手动构建）。后续步骤沿用 HCCL-VM 手册的默认路径约定，实际安装路径以本机为准：
 
-- CANN Toolkit 已安装，`source <ascend_path>/cann/set_env.sh` 生效。
-- hccl_test 工具已编译（位于 `$ASCEND_HOME_PATH/tools/hccl_test/bin/`）。
-- HCCL-VM 安装目录 `<hccl_vm_install>` 存在，标准 Device 侧符号已通过 `bash build_pkg.sh` 部署到 `<hccl_vm_install>/lib/aarch64/`。
+| 占位符 | 默认路径 | 说明 |
+| --- | --- | --- |
+| `<ascend_path>` | `/home/workspace/Ascend` | CANN Toolkit 安装根目录，对应安装时的 `--install-path`；执行 `source <ascend_path>/cann/set_env.sh` 后由 CANN 导出 `ASCEND_HOME_PATH` |
+| `<hccl_vm_install>` | `/home/workspace/hcomm/test/hccl_vm/hccl_vm_install` | HCCL-VM 安装目录，在源码目录 `/home/workspace/hcomm/test/hccl_vm` 下执行 `build.sh` 生成；内含 `bin/`（`hccl-vm`）、`lib/aarch64/`（aarch64 设备侧 `.so`）、`data/`（`ranktable.json`、`topo.json`）、`config/`（拓扑配置）等子目录 |
+
+安装与编译完成后，请逐项确认：
+
+- CANN Toolkit 已安装，`source <ascend_path>/cann/set_env.sh` 生效，`$ASCEND_HOME_PATH` 已正确导出。
+- hccl_test 工具已编译，二进制位于 `<ascend_path>/cann/tools/hccl_test/bin/`（即 `$ASCEND_HOME_PATH/tools/hccl_test/bin/`）。
+- HCCL-VM 安装目录 `<hccl_vm_install>` 存在，且 `<hccl_vm_install>/bin/hccl-vm` 可执行。
+- AICPU 展开模式所需的标准 Device 侧符号已通过 `bash build_pkg.sh` 部署到 `<hccl_vm_install>/lib/aarch64/`（含 `libascend_hal.so`、`libc_sec.so`、`libmmpa.so` 及 aicpu 算子包解压产物）。
 
 ### 2. 构建样例产物
 
