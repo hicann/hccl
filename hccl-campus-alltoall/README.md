@@ -7,6 +7,8 @@
 - `op_host/`：编译生成 `libhccl.so`，提供算子入口 `HcclAlltoAll` 及 AICPU Kernel 的加载/下发逻辑（`LaunchAICPUKernel`）。Host 侧通过 `libhcomm.so` 提供的弱符号（`HcclCommInitRootInfo`、`HcclGetRootInfo`、`HcclGetRankId`、`HcclChannelAcquire` 等）完成通信域初始化与资源管理，因此 `libhccl.so` 可独立运行，替换标准 HCCL 库中的 `HcclAlltoAll` 实现。
 - `op_kernel_aicpu/`：交叉编译生成 aarch64 的 `libhccl_device.so`，提供 AICPU Kernel 入口 `HcclAICPUKernel`，在 Device 侧编排 AlltoAll 通信算法（`ExecOp`），通过 `Hcomm*` 原语（`HcommWriteOnThread`、`HcommLocalCopyOnThread`、`HcommChannelNotify*`）完成数据收发。
 
+> **注意**：本工程需搭配 **hcomm 仓竞赛分支（`competition/campus-2026`）下的 HCCL-VM 虚拟执行环境** 使用。HCCL-VM 位于 hcomm 仓 `test/hccl_vm`，提供无真实昇腾硬件条件下的算子执行与校验能力。请确保 hcomm 仓已切换至 `competition/campus-2026` 分支，并按其 README 完成 HCCL-VM 的安装与编译。
+
 ## 编译运行
 
 ```bash
@@ -17,7 +19,9 @@ bash build.sh
 
 ## 对接 HCCL-VM 虚拟执行环境
 
-[HCCL-VM](../../hcomm/test/hccl_vm/README.md)（位于 hcomm 仓 `test/hccl_vm`）是无真实昇腾硬件条件下执行/校验 HCCL 算子的虚拟环境。本样例采用 AICPU 展开模式，在 HCCL-VM 中的对接流程如下。
+> 本样例需搭配 **hcomm 仓竞赛分支（`competition/campus-2026`）** 的 [HCCL-VM](../../hcomm/test/hccl_vm/README.md) 工具使用。HCCL-VM 位于 hcomm 仓 `test/hccl_vm`，是无真实昇腾硬件条件下执行/校验 HCCL 算子的虚拟环境。请先切换 hcomm 仓至 `competition/campus-2026` 分支，确保 HCCL-VM 版本与本样例匹配。
+
+本样例采用 AICPU 展开模式，在 HCCL-VM 中的对接流程如下。
 
 ### 1. 前置条件
 
