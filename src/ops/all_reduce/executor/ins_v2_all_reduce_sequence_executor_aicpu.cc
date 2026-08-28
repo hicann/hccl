@@ -13,6 +13,9 @@
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
+#include "ins_temp_reduce_scatter_mesh_1D.h"
+#include "ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.h"
+#include "ins_temp_all_gather_mesh_1D.h"
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -775,6 +778,10 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHR, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempAllGatherNHR,
     InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_EXECUTOR_BY_FOUR_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, InsAllReduceSequenceMesh1DNHRAicpuReducePcie, InsV2AllReduceSequenceExecutorAicpu,
+    TopoMatchPcieMix, InsTempReduceScatterMesh1D, InsTempReduceScatterAicpuReduceNHRPcie, InsTempAllGatherNHR,
+    InsTempAllGatherMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE

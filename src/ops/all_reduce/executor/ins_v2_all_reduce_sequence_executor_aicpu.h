@@ -16,6 +16,7 @@
 #include "topo_host.h"
 #include "channel.h"
 #include "topo_match_multilevel.h"
+#include "topo_match_pcie_mix.h"
 #include "utils.h"
 #include "executor_v2_base.h"
 #include "log.h"

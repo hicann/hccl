@@ -13,6 +13,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1D_meshchunk.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.cc
 )
 if(NOT HCCL_CANN_COMPAT_850)

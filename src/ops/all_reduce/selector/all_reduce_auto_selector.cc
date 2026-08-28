@@ -570,7 +570,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
                 }
             } else {
                 if (isDataTypeOrReduceTypeSpecial) {
-                    selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
+                    selectAlgName = "InsAllReduceSequenceMesh1DNHRAicpuReducePcie";
                 } else {
                     selectAlgName = (dataSize < OMNI_PCIE_AR_DATA_SIZE) ? "InsAllReduceParallelMesh1DNHRPcie" :
                                                                           "AicpuAllReducePipeLinePcie";

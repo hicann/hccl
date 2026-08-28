@@ -663,7 +663,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             return SelectMeshAlgoAicpuForMesh1D(topoInfo, opParam, selectAlgName, dataSize, ratio);
         } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
+            selectAlgName = "InsReduceScatterSequenceMesh1DNHRAicpuReducePcie";
         } else if (dataSize < OMNI_PCIE_RS_DATA_SIZE) {
             selectAlgName = "InsReduceScatterParallelMesh1DNHRPcie";
         } else {

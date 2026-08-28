@@ -69,6 +69,7 @@ AutoSelectorBase::Select(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo
 
 bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo) const
 {
+    // Mesh类算法场景，ATU资源受限，切换为AIV算法
     bool isAllToAllOps = opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL
                          || opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
                          || opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC;
@@ -76,7 +77,28 @@ bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetai
                             && (opParam.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
                                 || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
                                 || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE);
-    return topoInfo->level0PcieMix && topoInfo->level0BigClosRange && (isAllToAllOps || isInt64ReduceOps);
+    bool isPcieMeshScene
+        = topoInfo->level0PcieMix && topoInfo->level0BigClosRange && (isAllToAllOps || isInt64ReduceOps);
+
+    // P2P算子场景，ATU资源受限，使用PCIE链路的切换为AIV算法
+    bool isP2pOps = (opParam.opType == HcclCMDType::HCCL_CMD_SEND) || (opParam.opType == HcclCMDType::HCCL_CMD_RECEIVE);
+    bool isLayer0AllConnetedWithMesh = IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH);
+    bool isPcieP2pScene
+        = topoInfo->level0PcieMix && topoInfo->serverNum == 1 && isP2pOps && !isLayer0AllConnetedWithMesh;
+
+    bool isRollBackAiv = false;
+    if (isPcieMeshScene) {
+        HCCL_INFO(
+            "[AutoSelectorBase] Need to rollback aiv, isPcieMeshScene[%d]: isAllToAllOps[%d] isInt64ReduceOps[%d]",
+            isPcieMeshScene, isAllToAllOps, isInt64ReduceOps);
+        isRollBackAiv = true;
+    } else if (isPcieP2pScene) {
+        HCCL_INFO(
+            "[AutoSelectorBase] Need to rollback aiv, isPcieP2pScene[%d]: isP2pOps[%d] isLayer0AllConnetedWithMesh[%u]",
+            isPcieP2pScene, isP2pOps, isLayer0AllConnetedWithMesh);
+        isRollBackAiv = true;
+    }
+    return isRollBackAiv;
 }
 
 bool AutoSelectorBase::IsStarsState(const OpExecuteConfig& opExecuteConfig) const
