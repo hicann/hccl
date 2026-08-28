@@ -40,32 +40,6 @@ public:
         }
     }
 
-    __aicore__ inline void ProcessSpk()
-    {
-        uint32_t dstRankSpk = coreIdx_;
-        if (dstRankSpk >= rankSize_) {
-            return;
-        }
-
-        // PutRemote阶段
-        srcOffset_ = input_ + dstRankSpk * inputSliceStride_;
-        dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRankSpk]) + rank_ * dataSize_;
-        CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
-        pipe_barrier(PIPE_ALL);
-
-        uint64_t setFlagIdxSpk = rank_;
-        Record(dstRankSpk, setFlagIdxSpk, curTag_); // 按照数据源rank编排flag的偏移量
-
-        // PostCopy阶段
-        uint64_t waitFlagIdxSpk = dstRankSpk;
-        WaitFlag(rank_, waitFlagIdxSpk, curTag_);
-
-        srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRankSpk * dataSize_;
-        dstOffset_ = output_ + dstRankSpk * outputSliceStride_;
-        CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
-        pipe_barrier(PIPE_ALL);
-    }
-
 private:
     __aicore__ inline void ProcessMultiCore()
     {
@@ -229,7 +203,7 @@ __aicore__ inline void AivAlltoAllV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
 
         op.len_ = curCount;
         op.InitCommon(loopTag);
-        op.ProcessSpk();
+        op.Process();
         op.BarrierAll();
 
         countLeft -= curCount;
