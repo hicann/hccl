@@ -65,7 +65,7 @@ private:
     HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
     u32 GetAlgRank(u32 rank) const;
 
-    ThreadHandle thread_;
+    ThreadHandle thread_ = 0;
     u64 processSize_{0};
     u64 count_{0};
     u32 myIdx_ = UINT32_MAX; // 本rank在通信域内的索引

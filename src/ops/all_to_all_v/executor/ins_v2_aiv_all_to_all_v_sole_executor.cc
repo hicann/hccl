@@ -89,7 +89,6 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
     sendTypeSize_ = DATATYPE_SIZE_TABLE[param.all2AllVDataDes.sendType];
     recvTypeSize_ = DATATYPE_SIZE_TABLE[param.all2AllVDataDes.recvType];
-    dataSize_ = dataCount_ * dataTypeSize_;
 
     // Init sendRevc data for alltoall/alltoallV/alltoallVC algorithm
     CHK_PRT_RET(

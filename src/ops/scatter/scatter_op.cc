@@ -420,6 +420,7 @@ HcclResult ExecOp(HcclComm comm, OpParam& param)
                 return HCCL_E_INTERNAL;
             }
         }
+        CHK_RET(static_cast<HcclResult>(HcommReleaseComm(param.commName)));
     } else {
         CHK_RET(executor->Orchestrate(param, resCtx));
         param.resCtx = resCtx;

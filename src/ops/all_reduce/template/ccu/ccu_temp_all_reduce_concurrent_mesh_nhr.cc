@@ -287,7 +287,7 @@ HcclResult CcuTempAllReduceConcurrentMeshNHR::CalcRes(
 
     // 合并资源：mesh 0 从流、nhr 1 从流 + 1 跨模板同步 → slaveThreadNum=2
     resourceRequest.notifyNumOnMainThread = 1;
-    resourceRequest.slaveThreadNum = 2;
+    resourceRequest.slaveThreadNum = CONCURRENT_LINK_TYPE_NUM;
     resourceRequest.notifyNumPerThread = {2, 1};
     resourceRequest.ccuKernelNum.push_back(MESH_THREAD_NUM_AR);
     resourceRequest.ccuKernelNum.push_back(1);
@@ -461,7 +461,7 @@ CcuTempAllReduceConcurrentMeshNHR::FastLaunch(const OpParam& param, const Templa
 {
     (void)param;
     const auto& submitInfos = tempFastLaunchCtx.ccuKernelSubmitInfos;
-    if (submitInfos.size() < 2) {
+    if (submitInfos.size() < CONCURRENT_LINK_TYPE_NUM) {
         HCCL_INFO("[CcuTempAllReduceConcurrentMeshNHR][FastLaunch] submitInfos[%zu] < 2, skip", submitInfos.size());
         return HCCL_SUCCESS;
     }

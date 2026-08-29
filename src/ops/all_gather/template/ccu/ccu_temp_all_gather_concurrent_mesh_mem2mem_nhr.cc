@@ -75,7 +75,6 @@ std::vector<CostModelParam> CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcCostCo
     }
     CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
     params.push_back({A, B, C});
-    // TODO 这里是不是直接取max？ratio顺序？
     HCCL_DEBUG(
         "[%s] CalcCostCoeff meshRatio=%f closRatio=%f params=%zu.", __func__, meshRatio, closRatio, params.size());
     return params;

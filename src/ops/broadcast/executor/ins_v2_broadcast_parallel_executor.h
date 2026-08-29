@@ -78,7 +78,7 @@ private:
     HcclResult RunTemplateIntra1(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset, const u64 currCountPart,
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
-        InsAlgTemplate0& tempAlgInter);
+        InsAlgTemplate0& tempAlgIntra);
     HcclResult RunTemplateInter01(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset, const u64 currCountPart,
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
@@ -86,7 +86,7 @@ private:
     HcclResult RunTemplateIntra11(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset, const u64 currCountPart,
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
-        InsAlgTemplate2& tempAlgInter1);
+        InsAlgTemplate2& tempAlgIntra1);
     HcclResult RunTemplateIntra01(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset, const u64 currCountPart,
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
@@ -96,8 +96,8 @@ private:
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
         InsAlgTemplate3& tempAlgInter1) const;
     HcclResult OrchestrateLoop(
-        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra0,
-        InsAlgTemplate1& tempAlgInter0, InsAlgTemplate2& tempAlgIntra1, InsAlgTemplate3& tempAlgInter1);
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra,
+        InsAlgTemplate1& tempAlgInter, InsAlgTemplate2& tempAlgIntra1, InsAlgTemplate3& tempAlgInter1);
     HcclResult FastLaunchTemplateIntra0(
         const OpParam& param, const u32 kernelNum, TemplateFastLaunchCtx& tempFastLaunchCtxIntra,
         InsAlgTemplate0& tempAlgIntra) const;

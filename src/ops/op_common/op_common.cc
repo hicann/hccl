@@ -2733,7 +2733,6 @@ static HcclResult HcclGetCcuKernelDynamic(
     HcclResult finalRet = hasReusableIns ?
                               ReuseExistingCcuIns(insHandle, reqDescs, resRequest, resCtxHost) :
                               CreateAndAssignNewCcuIns(comm, opExpansionMode, reqDescs, resRequest, resCtxHost);
-
     // 资源不足导致回退时记一条 run info，便于运维统计动态资源申请的回退频率
     if (finalRet == HCCL_E_UNAVAIL) {
         HCCL_RUN_INFO(

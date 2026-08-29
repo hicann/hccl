@@ -95,6 +95,12 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 {
     // 初始化一些基本成员变量
     InitCommInfo(comm, param, topoInfo, algHierarchyInfo);
+    if (algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
+        || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
+        || algHierarchyInfo.infos[1][0].empty()) {
+        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        return HCCL_E_PARA;
+    }
 
     InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo.infos[0]);
     InsAlgTemplate1 interTempAlg(param, myRank_, algHierarchyInfo.infos[1]);

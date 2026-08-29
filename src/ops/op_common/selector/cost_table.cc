@@ -246,8 +246,11 @@ HcclResult CostTableManager::QueryUbUtil(
             "[CostTableManager] ub util table empty, netType=%d dataSize=%llu.", static_cast<int>(netType), dataSize);
         return HcclResult::HCCL_E_PARA;
     }
-    if (opType == HcclCMDType::HCCL_CMD_ALLGATHER && netType == AlgNetType::CLOS && dataSize < 1 * 1024 * 1024ULL) {
-        dataSize = 1 * 1024 * 1024ULL;
+    // AllGather: CLOS 小数据量(< 1MB)统一用 1MB 的 util
+    constexpr u64 AG_CLOS_MIN_UB_UTIL_DATA_SIZE = 1024ULL * 1024 * 1;
+    if (opType == HcclCMDType::HCCL_CMD_ALLGATHER && netType == AlgNetType::CLOS
+        && dataSize < AG_CLOS_MIN_UB_UTIL_DATA_SIZE) {
+        dataSize = AG_CLOS_MIN_UB_UTIL_DATA_SIZE;
     }
     auto it = std::lower_bound(table.begin(), table.end(), dataSize, [](const UbUtilEntry& e, u64 ds) {
         return e.upperBound < ds;
