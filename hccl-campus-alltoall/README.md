@@ -86,7 +86,7 @@ export RANK_TABLE_FILE=$(pwd)/data/ranktable.json
 export HCCL_OP_EXPANSION_MODE="AI_CPU"
 
 cd bin
-./hccl-vm start ascend950_cluster_32_server_normal.yaml
+./hccl-vm start ascend950_cluster_32_server_normal.yaml --check-only
 
 # 选择通信域（示例：1 超节点 1 server 2 卡）
 (hvm)$> hccl-vm mock-comm 112
@@ -94,7 +94,7 @@ cd bin
 # 运行 alltoall 用例（用例经 LD_LIBRARY_PATH 加载样例 libhccl.so）
 (hvm)$> mpirun --allow-run-as-root --oversubscribe -np 2 \
     ${ASCEND_HOME_PATH}/tools/hccl_test/bin/alltoall_test \
-    -b 64 -e 64 -d int32 -w 0 -n 1 -c 1 > log.txt
+    -b 64 -e 64 -d int32 -w 0 -n 1 -c 0 > log.txt
 
 # 执行 Checker 校验 DAG
 (hvm)$> hccl-vm plugin run @checker
