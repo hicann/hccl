@@ -88,11 +88,6 @@ export HCCL_OP_EXPANSION_MODE="AI_CPU"
 cd bin
 ./hccl-vm start ascend950_cluster_32_server_normal.yaml
 
-# （可选）安装 Runner 插件以模拟执行并输出 output 数据
-# 注意：Runner 插件用于在虚拟环境中模拟执行并产出 output 数据，便于 hccl_test 的 data 校验。
-# 若不安装 Runner 插件，hccl_test 的 check_result 仍会输出，但数据校验可能为 failed（无 output 数据可比对）。
-(hvm)$> hccl-vm plugin install @runner
-
 # 选择通信域（示例：1 超节点 1 server 2 卡）
 (hvm)$> hccl-vm mock-comm 112
 
@@ -107,7 +102,7 @@ cd bin
 (hvm)$> exit
 ```
 
-> hccl_test 各参数含义及支持的取值以 hccl_test 工具说明为准；结果查看参见 HCCL-VM 手册的 [Runner 结果](../../hcomm/test/hccl_vm/README-Competition.md#491-runner插件结果) 与 [Checker 结果](../../hcomm/test/hccl_vm/README-Competition.md#492-checker插件结果)章节。
+> hccl_test 各参数含义及支持的取值以 hccl_test 工具说明为准；结果查看参见 HCCL-VM 手册的 [Checker 结果](../../hcomm/test/hccl_vm/README-Competition.md#492-checker插件结果)章节。
 
 ### 对接原理
 
