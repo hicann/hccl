@@ -17,23 +17,29 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempReduceScatterMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    param.netType = (param.rankSize <= 8) ? AlgNetType::MESH : AlgNetType::CLOS;
-    int portNum = (param.rankSize <= 8) ? 1 : 6;
-    int taskNum = 10;
+    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = (param.netType == CommTopo::COMM_TOPO_1DMESH) ? 1 : 6;
+    int kernelNum = 6;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
     if (param.rankSize <= 8) { // 全走mesh链路
-        CostModelManager::Global()->CalcMeshParam(param.n, AlgNetType::MESH, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU, B);
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, param.rankSize, A, param.isPod);
+        CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
     } else { // 打平走clos链路
-        CostModelManager::Global()->CalcMeshParam(param.n, AlgNetType::CLOS, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, param.rankSize, A, param.isPod);
+        CostModelManager::Global()->CalcLocalReduceParams(
+            param.dataRatio * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

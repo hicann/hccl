@@ -20,23 +20,26 @@ constexpr u32 DIE_NUM = 2;
 std::vector<CostModelParam> CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcCostCoeff(CalcCostCoeffParam param)
 {
     HCCL_DEBUG("[CcuTempAllReduceMesh1DMem2Mem2DieOneShot] CalcCostCoeff.");
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    float n = param.n * param.rankSize;
-    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
+    float n = param.dataRatio * param.rankSize;
+    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(n, EngineType::CCU, B);
     } else {
         B = 0.0f;
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

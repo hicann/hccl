@@ -23,14 +23,14 @@ InsTempAllReduceAicpuReduceNHR::InsTempAllReduceAicpuReduceNHR(
 std::vector<CostModelParam> InsTempAllReduceAicpuReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // 用aicpu做reduce，不参与性能排序，
-    int taskNum = 10;
     float A = 10.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
     return params;
 }
 

@@ -23,28 +23,31 @@ AivTempAllReduceMesh1DOneShot::~AivTempAllReduceMesh1DOneShot() {}
 
 std::vector<CostModelParam> AivTempAllReduceMesh1DOneShot::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 5;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 5;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
     // 同时有localreduce和localcopy，所以需要调用两个接口获取两个步骤的B并相加
     float B1 = 0.0f;
     float B2 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(1, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
+    CostModelManager::Global()->CalcMeshParam(1, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(1, EngineType::AICPU, B1);
     } else {
         B1 = 0.0f;
     }
     CostModelManager::Global()->CalcLocalReduceParams(param.rankSize - 1, EngineType::AICPU, B2);
     B = B1 + B2;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

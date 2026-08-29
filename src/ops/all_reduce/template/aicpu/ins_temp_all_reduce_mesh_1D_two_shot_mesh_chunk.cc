@@ -24,24 +24,28 @@ std::vector<CostModelParam> InsTempAllReduceMesh1DTwoShotMeshChunk::CalcCostCoef
     if (param.rankSize > 8) {
         return {};
     }
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = param.rankSize * 5;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = param.rankSize * 5;
+    int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize) * (param.rankSize - 1)
+                  + CostModelManager::CalcSyncTaskNum(param.rankSize) * param.rankSize
+                  + CostModelManager::CalcTransTaskNum(param.rankSize);
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(2 * param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(
+        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

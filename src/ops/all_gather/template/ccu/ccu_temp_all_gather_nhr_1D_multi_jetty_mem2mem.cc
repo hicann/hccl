@@ -36,26 +36,30 @@ CcuTempAllGatherNHR1DMultiJettyMem2Mem::~CcuTempAllGatherNHR1DMultiJettyMem2Mem(
 
 std::vector<CostModelParam> CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    u32 portNum = param.portNum;
-    if (portNum == 0) {
-        portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
     }
-    int taskNum = 1;
+    int taskNum = 4 * log2R + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::CCU, B);
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
     } else {
         B = 0.0f;
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

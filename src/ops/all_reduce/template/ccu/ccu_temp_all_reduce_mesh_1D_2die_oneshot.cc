@@ -21,14 +21,13 @@ constexpr u32 DIE_WORK = 2;
 std::vector<CostModelParam> CcuTempAllreduceMesh1D2DieOneShot::CalcCostCoeff(CalcCostCoeffParam param)
 {
     HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot] CalcCostCoeff.");
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
     float A = 10.0f;
     float B = 0.0f;
     float C = 1000.0f;
+    float D = 0.0f;
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

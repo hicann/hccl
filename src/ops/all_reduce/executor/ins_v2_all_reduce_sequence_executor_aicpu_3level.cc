@@ -27,39 +27,67 @@ template <
     typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
 std::vector<CostModelParam> InsV2AllReduceSequenceExecutorAicpu3Level<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
-    InsAlgTemplate5>::CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    InsAlgTemplate5>::
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
     (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;
     u32 rankSizeLevel1 = rs.level1;
     u32 rankSizeLevel2 = rs.level2;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: CommTopo netTypeLevel2 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[2]);
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
+    std::vector<u32> portNumLevel1 = {8};
+    // TODO: std::vector<u32> portNumLevel2 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[2]);
+    std::vector<u32> portNumLevel2 = {8};
     HCCL_INFO(
-        "rankSizeLevel0:%d, rankSizeLevel1:%d, rankSizeLevel2:%d", rankSizeLevel0, rankSizeLevel1, rankSizeLevel2);
-    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, algName] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p1.begin(), p1.end());
-        auto p2 = InsAlgTemplate2::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel2, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p2.begin(), p2.end());
-        auto p3 = InsAlgTemplate3::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p3.begin(), p3.end());
-        auto p4 = InsAlgTemplate4::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, 1.0f / rankSize, AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p4.begin(), p4.end());
-        auto p5 = InsAlgTemplate5::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel2, 1.0f / rankSize, AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p5.begin(), p5.end());
-        return v;
-    }();
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, rankSizeLevel2=%d, "
+        "portNumLevel0=%d, portNumLevel1=%d, portNumLevel2=%d, netTypeLevel0=%d, netTypeLevel1=%d, netTypeLevel2=%d",
+        rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2));
+    std::vector<CostModelParam> params
+        = [rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
+           netTypeLevel0, netTypeLevel1, netTypeLevel2, isPod] {
+              std::vector<CostModelParam> v;
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p1.begin(), p1.end());
+              auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel2, isPod});
+              v.insert(v.end(), p2.begin(), p2.end());
+              auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p3.begin(), p3.end());
+              auto p4 = InsAlgTemplate4::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p4.begin(), p4.end());
+              auto p5 = InsAlgTemplate5::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel2, isPod});
+              v.insert(v.end(), p5.begin(), p5.end());
+              return v;
+          }();
     return params;
 }
 
@@ -70,14 +98,19 @@ AlgNetMeta InsV2AllReduceSequenceExecutorAicpu3Level<
     AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
     InsAlgTemplate5>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: CommTopo netTypeLevel2 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[2]);
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel2);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel2);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1, 1, 1, 1, 1};
     return meta;

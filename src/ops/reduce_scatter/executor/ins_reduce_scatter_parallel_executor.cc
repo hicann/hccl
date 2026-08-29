@@ -47,34 +47,52 @@ InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 std::vector<CostModelParam>
 InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     (void)comm;
-    (void)comm;
     (void)algName;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;
     u32 rankSizeLevel1 = rs.level1;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
+    std::vector<u32> portNumLevel1 = {8};
     // 数据按 ratio 分成 part0 + part1，默认 0.5
     float ratio = 0.5f;
     float ratio0 = ratio;
     float ratio1 = 1.0f - ratio;
     HCCL_INFO(
-        "[InsReduceScatterParallelExecutor] CalcCostCoeff rankSizeLevel0:%u, rankSizeLevel1:%u, rankSize:%u, ratio:%f",
-        rankSizeLevel0, rankSizeLevel1, rankSize, ratio);
-    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, ratio0, ratio1, algName] {
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
+        rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1), ratio);
+    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, ratio0, ratio1, portNumLevel0, portNumLevel1,
+                                          netTypeLevel0, netTypeLevel1, isPod] {
         std::vector<CostModelParam> v;
         // Step1: intra 处理 ratio0 比例数据, inter 处理 ratio1 比例数据（并行）
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, ratio0 * rankSizeLevel1, AlgNetType::MESH, true, algName});
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, ratio1 * rankSizeLevel0, AlgNetType::CLOS, true, algName});
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, ratio0 * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, ratio1 * rankSizeLevel0, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         // Step2: inter 处理 ratio0 比例数据, intra 处理 ratio1 比例数据（并行，从 scratch，无 localCopy）
-        auto p2 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel1, ratio0, AlgNetType::CLOS, false, algName});
-        auto p3 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, ratio1, AlgNetType::MESH, false, algName});
+        auto p2 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, ratio0, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+        auto p3 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, ratio1, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
         if (p0.empty() || p1.empty() || p2.empty() || p3.empty()) {
             HCCL_WARNING(
@@ -95,17 +113,17 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 AlgNetMeta InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::CLOS);
-    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2, 2};
-    HCCL_DEBUG(
-        "[InsReduceScatterParallelExecutor] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
     return meta;
 }
 

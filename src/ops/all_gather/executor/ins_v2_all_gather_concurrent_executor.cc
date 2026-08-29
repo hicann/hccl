@@ -77,31 +77,48 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 std::vector<CostModelParam>
 InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
     (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    HCCL_DEBUG("[InsV2AllGatherConcurrentExecutor] CalcCostCoeff rankSize:%d", rankSize);
+    bool isPod = true;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
+    std::vector<u32> portNumLevel1 = {8};
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, portNumLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
+        portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
     // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
-    OpParam param;
+    OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        param.engine = CommEngine::COMM_ENGINE_CCU;
+        localParam.engine = CommEngine::COMM_ENGINE_CCU;
     } else {
-        param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(param, dataSplitSize);
-    std::vector<CostModelParam> params = [rankSize, &dataSplitSize, algName] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSize, dataSplitSize[0], AlgNetType::MESH, true, algName});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(
-            CalcCostCoeffParam{rankSize, dataSplitSize[1], AlgNetType::CLOS, true, algName});
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
+    GetParallelDataSplit(localParam, dataSplitSize);
+    std::vector<CostModelParam> params
+        = [rankSize, &dataSplitSize, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
+              std::vector<CostModelParam> v;
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, dataSplitSize[0], netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, dataSplitSize[1], netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p1.begin(), p1.end());
+              return v;
+          }();
     return params;
 }
 
@@ -109,10 +126,13 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 AlgNetMeta InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2};
     return meta;

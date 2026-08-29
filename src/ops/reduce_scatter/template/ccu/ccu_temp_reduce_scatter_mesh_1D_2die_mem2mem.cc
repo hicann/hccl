@@ -18,18 +18,43 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
+    int kernelNum = 15;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    int portNum0 = 7;
+    int portNum1 = 6;
+    float level0Ratio = 0.5f;
+    float level1Ratio = 1.0f - level0Ratio;
+    float nLevel0 = param.dataRatio * level0Ratio;
+    float nLevel1 = param.dataRatio * level1Ratio;
+    u32 ranksize0 = static_cast<u32>(param.rankSize * level0Ratio + 0.5f);
+    u32 ranksize1 = param.rankSize - ranksize0;
+    float A0 = 0.0f;
+    float A1 = 0.0f;
+    float B0 = 0.0f;
+    float B1 = 0.0f;
+    float D = 0.0f;
+    (void)nLevel0;
+    (void)nLevel1;
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum0, ranksize0, A0, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum1, ranksize1, A1, param.isPod);
+    A = std::max(A0, A1);
 
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::CCU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    // ms reduce 一次做8张卡，所以一次reduce
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B0);
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B1);
+    // 跟实际标定，后面再改
+    // B0 = B0 * 4.7;
+    B = B0 + B1;
 
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

@@ -13,18 +13,21 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempReduceScatterOmniPipeMesh1dDpu::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

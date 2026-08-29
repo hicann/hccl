@@ -23,13 +23,15 @@ InsTempAllGatherMesh1D1DZAxisDetour::~InsTempAllGatherMesh1D1DZAxisDetour() {}
 std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
     constexpr float meshRatio = 0.5f;
-    int taskNum = 15;
+    int kernelNum = 15;
+    int taskNum = 5 * (param.rankSize - 1);
 
     float meshA = 0.0f;
     float meshB = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(param.n * meshRatio, AlgNetType::MESH, 1, param.rankSize, meshA);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n * meshRatio, EngineType::AICPU, meshB);
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_1DMESH, 1, param.rankSize, meshA, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * meshRatio, EngineType::AICPU, meshB);
     } else {
         meshB = 0.0f;
     }
@@ -38,9 +40,9 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float closB = 0.0f;
     int closPortNum = 2;
     CostModelManager::Global()->CalcMeshParam(
-        param.n * meshRatio, AlgNetType::CLOS, closPortNum, param.rankSize, closA);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n * meshRatio, EngineType::AICPU, closB);
+        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_CLOS, closPortNum, param.rankSize, closA, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * meshRatio, EngineType::AICPU, closB);
     } else {
         closB = 0.0f;
     }
@@ -48,12 +50,14 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float A = std::max(meshA, closA);
     float B = meshB + closB;
     float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    float D = 0.0f;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
     C = 0.000005f * taskNum; // 5us/task
 
     HCCL_INFO("[InsTempAllGatherMesh1D1DZAxisDetour] CalcCostCoeff meshA=%f closA=%f A=%f B=%f.", meshA, closA, A, B);
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

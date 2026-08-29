@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
@@ -15,32 +15,28 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    u32 portNum = param.portNum;
-    if (portNum == 0) {
-        portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    }
+    u32 portNum = (param.netType != CommTopo::COMM_TOPO_CLOS) ? param.portNum[0] : param.portNum[0] + param.portNum[1];
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
     // AllGather NHR: 4*log2(R)+1, 5us/task
-    int taskNum = 4 * log2R + 1;
+    int kernelNum = log2R;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
-
-    CostModelManager::Global()->CalcNHRParams(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
+    float D = 0.0f;
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-    // AllGather 依赖 5us/task 而非默认 10us 固定值, 在此覆盖
-    C = 0.000005f * taskNum;
 
+    C = 0.000005f * kernelNum;
+    D = 1e-6 * taskNum;
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

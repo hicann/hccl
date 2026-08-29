@@ -429,4 +429,37 @@ double CalcParallelDataSplitRatio(
     LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, quantizedRatio);
     return quantizedRatio;
 }
+
+// double CalcParallelDataSplitRatio(
+//     uint64_t intraRankSize, uint64_t interRankSize, TopoInfoWithNetLayerDetails* topoInfo,
+//     ParallelDataSplitType splitType, double fallbackRatio)
+// {
+//     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
+//     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
+//     ParallelPortInfo portInfo;
+//     const char* failureReason = nullptr;
+
+//     portInfo.intraPortGroupSize = ;
+//     portInfo.interPortGroupSize = ;
+//     portInfo.effectiveInterPortGroupSize = ;
+//     portInfo.isPod = ;
+
+//     ParallelTimeCoeff timeCoeff;
+//     if (!CalcParallelTimeCoeff(intraRankSize, interRankSize, portInfo, splitType, timeCoeff)) {
+//         return ReturnParallelDataSplitFallback(
+//             "unknown splitType", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+//     }
+
+//     double ratio = 0.0;
+//     if (!CalcRawParallelDataSplitRatio(timeCoeff, ratio, failureReason)) {
+//         return ReturnParallelDataSplitFallback(
+//             failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
+//     }
+
+//     const double limitedRatio = LimitParallelDataSplitRatio(splitType, ratio);
+//     const double quantizedRatio = QuantizeParallelDataSplitRatio(limitedRatio);
+//     LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, limitedRatio,
+//     quantizedRatio); return quantizedRatio;
+// }
+
 } // namespace ops_hccl

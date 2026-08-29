@@ -17,25 +17,31 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempAllReduceMeshMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    param.netType = (param.rankSize <= 8) ? AlgNetType::MESH : AlgNetType::CLOS;
-    int portNum = (param.rankSize <= 8) ? 1 : 6;
-    int taskNum = 1 * param.rankSize;
+    param.netType = (param.rankSize <= 8) ? CommTopo::COMM_TOPO_1DMESH : CommTopo::COMM_TOPO_CLOS;
+    int portNum = (param.rankSize <= 8) ? 1 : 8;
+    int kernelNum = 1 * param.rankSize;
+    int taskNum = 5 * (param.rankSize - 1);
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
     if (param.rankSize <= 8) { // 全走mesh链路
-        CostModelManager::Global()->CalcMeshParam(2 * param.n, AlgNetType::MESH, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU, B);
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, param.rankSize, A, param.isPod);
+        CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
     } else { // 打平走clos链路
-        CostModelManager::Global()->CalcMeshParam(2 * param.n, AlgNetType::CLOS, portNum, param.rankSize, A);
-        CostModelManager::Global()->CalcLocalReduceParams(param.n * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, param.rankSize, A, param.isPod);
+        CostModelManager::Global()->CalcLocalReduceParams(
+            param.dataRatio * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

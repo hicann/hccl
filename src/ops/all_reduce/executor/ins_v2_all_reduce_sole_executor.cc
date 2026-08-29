@@ -44,28 +44,39 @@ InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2AllReduceSoleExec
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
     (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    HCCL_DEBUG("[InsV2AllReduceSoleExecutor] CalcCostCoeff delegate to template.");
-    return InsAlgTemplate::CalcCostCoeff(
-        CalcCostCoeffParam{rankSize, 1.0f / rankSize, AlgNetType::MESH, true, algName});
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
+        portNumLevel0, static_cast<int>(netTypeLevel0));
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    HCCL_DEBUG(
-        "[InsV2AllReduceSoleExecutor] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
     return meta;
 }
 

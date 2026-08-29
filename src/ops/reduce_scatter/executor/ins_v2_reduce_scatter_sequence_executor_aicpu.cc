@@ -70,36 +70,53 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 std::vector<CostModelParam>
 InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
     (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;
     u32 rankSizeLevel1 = rs.level1;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
+    std::vector<u32> portNumLevel1 = {8};
     HCCL_INFO(
-        "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff rankSizeLevel0:%u, rankSizeLevel1:%u, rankSize:%u",
-        rankSizeLevel0, rankSizeLevel1, rankSize);
-    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, algName] {
-        std::vector<CostModelParam> v;
-        // Step1: 框内 RS（全量输入）
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(
-            CalcCostCoeffParam{rankSizeLevel0, 1.0f * rankSizeLevel1, AlgNetType::MESH, true, algName});
-        // Step2: 框间 RS（从 cclBuff 读取）
-        auto p1
-            = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{rankSizeLevel1, 1.0f, AlgNetType::CLOS, true, algName});
-        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
-        if (p0.empty() || p1.empty()) {
-            HCCL_WARNING(
-                "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).", p0.size(),
-                p1.size());
-            return v;
-        }
-        v.insert(v.end(), p0.begin(), p0.end());
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "netTypeLevel0=%d, netTypeLevel1=%d",
+        rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1));
+    std::vector<CostModelParam> params
+        = [rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
+              std::vector<CostModelParam> v;
+              // Step1: 框内 RS（全量输入）
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              // Step2: 框间 RS（从 cclBuff 读取）
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+              if (p0.empty() || p1.empty()) {
+                  HCCL_WARNING(
+                      "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).",
+                      p0.size(), p1.size());
+                  return v;
+              }
+              v.insert(v.end(), p0.begin(), p0.end());
+              v.insert(v.end(), p1.begin(), p1.end());
+              return v;
+          }();
     return params;
 }
 
@@ -107,15 +124,15 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
-    meta.netTypes.push_back(AlgNetType::CLOS);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1};
-    HCCL_DEBUG(
-        "[InsV2ReduceScatterSequenceExecutorAicpu] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
     return meta;
 }
 

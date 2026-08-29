@@ -171,11 +171,12 @@ float CostTableManager::CalcAlgCost(
 
     std::vector<float> utils(static_cast<size_t>(algoParams.count), 1.0f);
     float cost = 0.0f;
+    float totalD = 0.0f;
     u32 idx = 0;
     for (u32 g = 0; g < groups.size() && idx < static_cast<u32>(algoParams.count); ++g) {
         float groupCost = 0.0f;
         for (u32 k = 0; k < groups[g] && idx < static_cast<u32>(algoParams.count); ++k, ++idx) {
-            AlgNetType nt = (idx < meta.netTypes.size()) ? meta.netTypes[idx] : AlgNetType::MESH;
+            CommTopo nt = (idx < meta.netTypes.size()) ? meta.netTypes[idx] : CommTopo::COMM_TOPO_1DMESH;
             float util = 1.0f;
             if (QueryUbUtil(nt, dataSize, engine, util, opType) != HcclResult::HCCL_SUCCESS) {
                 util = 1.0f;
@@ -184,32 +185,34 @@ float CostTableManager::CalcAlgCost(
             float abCost = (params[idx].A / util + params[idx].B) * static_cast<float>(dataSize);
             float segCost = abCost + params[idx].C;
             groupCost = (meta.intraGroupMode == CostAggMode::MAX) ? std::max(groupCost, segCost) : groupCost + segCost;
+            totalD += params[idx].D;
         }
         cost += groupCost;
     }
-    if (engine == OpExecuteConfig::AICPU_TS && opType != HcclCMDType::HCCL_CMD_ALLGATHER) {
-        cost = std::max(cost, 0.0005f);
-    }
-    std::string paramInfo;
-    char buf[64];
-    for (int j = 0; j < algoParams.count; ++j) {
-        if (snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "%e", params[j].A) < 0) {
-            buf[0] = '\0';
-        }
-        std::string aStr = buf;
-        if (snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "%e", params[j].B) < 0) {
-            buf[0] = '\0';
-        }
-        std::string bStr = buf;
-        if (snprintf_s(buf, sizeof(buf), sizeof(buf) - 1, "%e", params[j].C) < 0) {
-            buf[0] = '\0';
-        }
-        std::string cStr = buf;
-        paramInfo += " [A=" + aStr + " B=" + bStr + " C=" + cStr + " util=" + std::to_string(utils[j]) + "]";
-    }
+
+    cost = std::max(cost, totalD);
     HCCL_INFO(
-        "[CalcAlgCost] algName=%s segCount=%d dataSize=%llu cost=%f params:%s.", algName.c_str(), algoParams.count,
-        dataSize, cost, paramInfo.c_str());
+        "[CalcAlgCost] algName=%s segCount=%d dataSize=%llu cost=%f totalD=%f "
+        "groupCount=%zu intraMode=%d interMode=%d groups=[%s].",
+        algName.c_str(), algoParams.count, dataSize, cost, totalD, groups.size(), static_cast<int>(meta.intraGroupMode),
+        static_cast<int>(meta.interGroupMode),
+        [&]() {
+            std::string s;
+            for (auto g : groups) {
+                s += std::to_string(g) + ",";
+            }
+            if (!s.empty())
+                s.pop_back();
+            return s;
+        }()
+            .c_str());
+    for (int j = 0; j < algoParams.count; ++j) {
+        HCCL_INFO(
+            "[CalcAlgCost]   seg[%d] A=%e B=%e A*ds=%e B*ds=%e C=%e D=%e util=%f segCost=%e.", j, params[j].A,
+            params[j].B, params[j].A / utils[j] * static_cast<float>(dataSize),
+            params[j].B * static_cast<float>(dataSize), params[j].C, params[j].D, utils[j],
+            (params[j].A / utils[j] + params[j].B) * static_cast<float>(dataSize) + params[j].C);
+    }
     return cost;
 }
 
@@ -238,9 +241,9 @@ const std::vector<UbUtilEntry> CostTableManager::meshUbUtilTable_
 CostTableManager::~CostTableManager() {}
 
 HcclResult CostTableManager::QueryUbUtil(
-    AlgNetType netType, u64 dataSize, OpExecuteConfig engine, float& utilization, HcclCMDType opType) const
+    CommTopo netType, u64 dataSize, OpExecuteConfig engine, float& utilization, HcclCMDType opType) const
 {
-    const std::vector<UbUtilEntry>& table = (netType == AlgNetType::CLOS) ? closUbUtilTable_ : meshUbUtilTable_;
+    const std::vector<UbUtilEntry>& table = (netType == CommTopo::COMM_TOPO_CLOS) ? closUbUtilTable_ : meshUbUtilTable_;
     if (table.empty()) {
         HCCL_WARNING(
             "[CostTableManager] ub util table empty, netType=%d dataSize=%llu.", static_cast<int>(netType), dataSize);
@@ -248,7 +251,7 @@ HcclResult CostTableManager::QueryUbUtil(
     }
     // AllGather: CLOS 小数据量(< 1MB)统一用 1MB 的 util
     constexpr u64 AG_CLOS_MIN_UB_UTIL_DATA_SIZE = 1024ULL * 1024 * 1;
-    if (opType == HcclCMDType::HCCL_CMD_ALLGATHER && netType == AlgNetType::CLOS
+    if (opType == HcclCMDType::HCCL_CMD_ALLGATHER && netType == CommTopo::COMM_TOPO_CLOS
         && dataSize < AG_CLOS_MIN_UB_UTIL_DATA_SIZE) {
         dataSize = AG_CLOS_MIN_UB_UTIL_DATA_SIZE;
     }

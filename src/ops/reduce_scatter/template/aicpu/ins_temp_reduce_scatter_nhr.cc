@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright (c) 2025 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
@@ -14,29 +14,36 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    AlgNetType netType = AlgNetType::CLOS;
+    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleNHR") == 0));
+    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int portNum = isSingleChannelNHR ? 6 : 8;
-    int taskNum = 1;
+    int kernelNum = 15;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    taskNum = isSingleChannelNHR ? taskNum : taskNum * 2;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(param.n, netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     }
-    B = B * (param.rankSize / 2 + 1);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-    // SOle NHR 有快慢卡
-    if (isSingleChannelNHR) {
-        C = C + B;
+    if (param.outputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B2);
     }
+    B = B1 * (param.rankSize / 2) + B2;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    // nhr实测和理论估计相差较大，先用经验值
+    // D = 1e-6 * taskNum;
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

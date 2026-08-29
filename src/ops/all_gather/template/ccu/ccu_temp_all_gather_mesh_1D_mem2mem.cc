@@ -18,17 +18,20 @@ namespace ops_hccl {
 std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // MESH 单级 portNum=1；CLOS 多级 portNum=6
-    int portNum = (param.netType == AlgNetType::MESH) ? 1 : 6;
-    int taskNum = 10;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 5;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

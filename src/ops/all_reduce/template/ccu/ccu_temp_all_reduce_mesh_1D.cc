@@ -22,18 +22,22 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffP
         return {};
     }
     // 和twoshot相同
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 20;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 20;
+    int taskNum = 5 * (param.rankSize - 1);
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(2 * param.n, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    float D = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(
+        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

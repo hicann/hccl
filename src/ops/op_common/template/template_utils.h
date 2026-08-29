@@ -533,7 +533,10 @@ double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
     const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType,
     double fallbackRatio);
-
+// double CalcParallelDataSplitRatio(
+//     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+//     const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType,
+//     double fallbackRatio);
 const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType);
 
 } // namespace ops_hccl

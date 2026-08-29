@@ -15,6 +15,13 @@
 
 namespace ops_hccl {
 
+// 2Die 算法拓扑硬约束常量，供 AutoSelector 与 cost_table 共享
+// 对齐 reduce_scatter_auto_selector.cc 中 SelectCcuScheduleAlgo 的 16p/2框 触发条件
+constexpr u32 RS_CCU_2DIE_RANK_SIZE = 16;
+constexpr u32 RS_CCU_2DIE_FRAME_NUM = 2;
+constexpr u64 RS_CCU_2DIE_MIN_DATA_SIZE = 4 * 1024 * 1024;
+constexpr u64 RS_CCU_2DIE_MAX_DATA_SIZE = 16 * 1024 * 1024;
+
 class ReduceScatterAutoSelector : public AutoSelectorBase {
 private:
     SelectorStatus SelectCcuMsAlgo(

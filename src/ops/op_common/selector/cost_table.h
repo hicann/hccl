@@ -46,7 +46,7 @@ public:
     HcclResult
     CostTableGen(CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
     HcclResult QueryUbUtil(
-        AlgNetType netType, u64 dataSize, OpExecuteConfig engine, float& utilization,
+        CommTopo netType, u64 dataSize, OpExecuteConfig engine, float& utilization,
         HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID) const;
 
 private:

@@ -23,23 +23,26 @@ AivTempAllGatherMesh1D::~AivTempAllGatherMesh1D() {}
 
 std::vector<CostModelParam> AivTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.netType == AlgNetType::CLOS) ? 6 : 1;
-    int taskNum = 1;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AIV, B);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AIV, B);
     } else {
         B = 0.0f;
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

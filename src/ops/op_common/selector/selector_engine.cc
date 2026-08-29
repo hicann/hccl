@@ -120,7 +120,7 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
     // 调用 CostModelManager 初始化，costModel 作为出参返回（局部变量，无线程安全问题）
     CostModelManager* costModelMgr = CostModelManager::Global();
     CostModel srcCm{nullptr, 0};
-    CHK_RET(costModelMgr->InitCostModel(comm, topoInfo, srcCm));
+    CHK_RET(costModelMgr->InitCostModel(comm, topoInfo, srcCm, param));
 
     // CostModel 含指针(costAlgoParams),分段拷贝: [CostModel header][CostAlgoParams array]
     void* ctxPtr = nullptr;

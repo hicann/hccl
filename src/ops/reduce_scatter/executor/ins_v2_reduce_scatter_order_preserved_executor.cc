@@ -223,11 +223,13 @@ InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::InitExec
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     (void)comm;
+    (void)param;
     u32 rankSize = topoInfo->userRankSize;
-    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{rankSize, 1.0f, AlgNetType::MESH, true, algName});
+    return InsAlgTemplate::CalcCostCoeff(
+        CalcCostCoeffParam{rankSize, 1.0f, CommTopo::COMM_TOPO_1DMESH, {}, {}, {}, {}, true, algName});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -236,7 +238,7 @@ AlgNetMeta InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
 {
     (void)topoInfo;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
     return meta;

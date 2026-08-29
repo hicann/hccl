@@ -39,11 +39,12 @@ public:
     virtual std::string Describe() const;
 
     virtual std::vector<CostModelParam>
-    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
     {
         (void)comm;
         (void)topoInfo;
         (void)algName;
+        (void)param;
         return {};
     }
 

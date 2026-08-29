@@ -18,24 +18,24 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.netType == AlgNetType::CLOS) ? 8 : 1;
-    // AllGather mesh: 5us/task, taskNum=10 → C=50us
-    int taskNum = 10;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
+    int portNum = param.portNum[0];
+    int kernelNum = 1;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    float A = 0;
+    float B = 0;
+    float C = 0;
+    float D = 0;
 
-    CostModelManager::Global()->CalcMeshParam(param.n, param.netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-    // AllGather 依赖 5us/task 而非默认 10us 固定值, 在此覆盖
-    C = 0.000005f * taskNum; // 5us/task
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
+    params.push_back({A, B, C, D});
     return params;
 }
 

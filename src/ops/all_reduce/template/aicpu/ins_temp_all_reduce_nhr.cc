@@ -21,24 +21,33 @@ InsTempAllReduceNHR::~InsTempAllReduceNHR() {}
 
 std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    AlgNetType netType = AlgNetType::CLOS;
-    int portNum = (netType == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 10;
+    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
+    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = 8;
+    int kernelNum = 10;
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    int taskNum = 8 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
+    float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(param.n * 2, netType, portNum, param.rankSize, A);
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n * param.rankSize * 2, EngineType::AICPU, B);
+    CostModelManager::Global()->CalcNHRParams(
+        param.dataRatio * 2, netType, portNum / 2, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::AICPU, B);
     } else {
         B = 0.0f;
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
-
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    // nhr实测和理论估计相差较大，先用经验值
+    D = 1e-6 * taskNum;
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, A, B, C);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

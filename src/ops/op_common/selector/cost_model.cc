@@ -104,7 +104,7 @@ void CostModelManager::InitBandwidth()
     crossChipBw_ = 56.0f * 1000 * 1000 * 1000;
     crossChipReduceBw_ = 56.0f * 1000 * 1000 * 1000;
     ccuLocalCopyBw_ = 200.0f * 1000 * 1000 * 1000;
-    ccuLocalReduceBw_ = 160.0f * 1000 * 1000 * 1000;
+    ccuLocalReduceBw_ = 35.0f * 1000 * 1000 * 1000;
     ccuCircleLocalCopyBw_ = 47.6f * 1024 * 1024 * 1024;
     ccuCircleLocalReduceBw_ = 47.6f * 1024 * 1024 * 1024;
     HCCL_DEBUG(
@@ -140,7 +140,8 @@ CostModelManager::CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo
 }
 
 #ifndef AICPU_COMPILE
-static bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+__attribute__((unused)) static bool
+IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(algName);
     if (attrs == nullptr) {
@@ -254,7 +255,7 @@ static bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLay
 
 #ifndef AICPU_COMPILE
 // 从已过滤的算法中筛选优先级算法。按 opType 分组，仅在有 priority 匹配的 opType 内过滤。
-static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDetails* topoInfo)
+__attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     // 1. 收集每个 opType 的 priority 匹配索引
     std::map<HcclCMDType, std::vector<int>> priorityByOpType;
@@ -301,7 +302,8 @@ static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDe
 }
 #endif
 
-HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, CostModel& costModel)
+HcclResult CostModelManager::InitCostModel(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, CostModel& costModel, const OpParam& param)
 {
 #ifndef AICPU_COMPILE
     const AllAlgos& allAlgos = *GetAllAlgos();
@@ -334,7 +336,7 @@ HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDe
             continue;
         }
 
-        std::vector<CostModelParam> params = exec->CalcCostCoeff(comm, topoInfo, alg.algName);
+        std::vector<CostModelParam> params = exec->CalcCostCoeff(comm, topoInfo, alg.algName, param);
         if (params.empty()) {
             HCCL_WARNING("[CostModelManager] CalcCostCoeff uncalibrated, skip algName=%s.", alg.algName);
             continue;
@@ -376,14 +378,17 @@ HcclResult CostModelManager::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDe
 #endif
 }
 
-void CostModelManager::CalcMeshParam(float n, AlgNetType netType, int portNum, u32 rankSize, float& A)
+void CostModelManager::CalcMeshParam(float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod)
 {
     // n用来表示传输数据量和总数据量之间的关系
     A = 0.0f;
-    if (netType == AlgNetType::MESH) {
+    if (isPod && netType == CommTopo::COMM_TOPO_CLOS) {
+        portNum = portNum / 2;
+    }
+    if (netType == CommTopo::COMM_TOPO_1DMESH) {
         // cost = D/B(write)
         A = n / crossChipBw_;
-    } else if (netType == AlgNetType::CLOS) {
+    } else if (netType == CommTopo::COMM_TOPO_CLOS) {
         // cost = nD/B(write)
         A = (n * (rankSize - 1)) / (portNum * crossChipBw_);
     } else {
@@ -394,19 +399,16 @@ void CostModelManager::CalcMeshParam(float n, AlgNetType netType, int portNum, u
     return;
 }
 
-void CostModelManager::CalcNHRParams(float n, AlgNetType netType, int portNum, u32 rankSize, float& A)
+void CostModelManager::CalcNHRParams(float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod)
 {
     // n用来表示传输数据和总数据量之间的关系
     // rankSize是指总共通信的rankSize
     A = 0.0f;
-    float data = n * (rankSize - 1);
-    if (netType == AlgNetType::MESH) {
-        A = data / crossChipBw_;
-    } else if (netType == AlgNetType::CLOS) {
-        A = data / (portNum * crossChipBw_);
-    } else {
-        HCCL_ERROR("[CostModelManager] CalcNHRParams unsupported netType=%d.", static_cast<int>(netType));
+    if (isPod && netType == CommTopo::COMM_TOPO_CLOS) {
+        portNum = portNum / 2;
     }
+    float data = n * (rankSize - 1);
+    A = data / (portNum * crossChipBw_);
     HCCL_DEBUG(
         "[CostModelManager] CalcNHRParams n=%f netType=%d portNum=%d A=%f.", n, static_cast<int>(netType), portNum, A);
     return;
@@ -451,6 +453,24 @@ void CostModelManager::CalcLatencyParams(int taskNum, EngineType engine, float& 
     HCCL_DEBUG("[CostModelManager] CalcLatencyParams taskNum=%d engine=%d C=%f.", taskNum, static_cast<int>(engine), C);
     return;
 }
+
+void CostModelManager::CalcLaunchParams(int taskNum, EngineType engine, float& D)
+{
+    D = 0.0f;
+    if (engine == EngineType::AICPU) {
+        D = 0.0000005 * taskNum;
+    } else if (engine == EngineType::AIV) {
+        D = 0;
+    } else if (engine == EngineType::CCU) {
+        D = 0;
+    }
+    HCCL_DEBUG("[CostModelManager] CalcLaunchParams taskNum=%d engine=%d D=%f.", taskNum, static_cast<int>(engine), D);
+    return;
+}
+
+int CostModelManager::CalcTransTaskNum(u32 rankSize) { return static_cast<int>(5 * (rankSize - 1)); }
+
+int CostModelManager::CalcSyncTaskNum(u32 rankSize) { return static_cast<int>(2 * (rankSize - 1)); }
 
 AlgNetMetaRegistry* AlgNetMetaRegistry::Global()
 {

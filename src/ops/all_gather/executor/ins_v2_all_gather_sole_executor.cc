@@ -52,35 +52,38 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHier
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
+    (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
-    HCCL_DEBUG("[InsV2AllGatherSoleExecutor] CalcCostCoeff delegate to template.");
-    // NHR 或多级拓扑走 CLOS，其余单级走 MESH
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    AlgNetType netType
-        = (InsAlgTemplate::props.algoType == AlgoType::NHR || isMultiLevel) ? AlgNetType::CLOS : AlgNetType::MESH;
-    // AicpuAllGatherSoleNHR 多级时 portNum=6；其他算法 portNum=0 由 template 兜底
-    u32 portNum = 0;
-    if (algName != nullptr && std::string(algName) == "AicpuAllGatherSoleNHR") {
-        portNum = 6;
-    }
-    std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(
-        CalcCostCoeffParam{rankSize, 1.0f, netType, true, algName, portNum, comm, topoInfo});
-    return params;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
+        portNumLevel0, static_cast<int>(netTypeLevel0));
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    AlgNetType netType
-        = (InsAlgTemplate::props.algoType == AlgoType::NHR || isMultiLevel) ? AlgNetType::CLOS : AlgNetType::MESH;
-    meta.netTypes.push_back(netType);
+
+    meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
     return meta;
@@ -345,14 +348,16 @@ REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->topLevelUboe
-               && !(
-                   (topo->level0Symmetric && topo->level1Symmetric)
-                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-               && !(
-                   !(topo->level0Symmetric && topo->level1Symmetric)
-                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-               && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+        return (topo->topLevelUboe
+                && !(
+                    (topo->level0Symmetric && topo->level1Symmetric)
+                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+                && !(
+                    !(topo->level0Symmetric && topo->level1Symmetric)
+                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
     });
 
 REGISTER_EXEC_V2(

@@ -54,30 +54,39 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlg
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
-    (void)comm;
     (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
+    (void)algHierarchyInfo;
+    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    HCCL_DEBUG("[InsV2ReduceScatterSoleExecutor] CalcCostCoeff delegate to template.");
-    std::vector<CostModelParam> params
-        = InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{rankSize, 1.0f, AlgNetType::MESH, true, algName});
-    return params;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = (rankSize <= 8) ? CommTopo::COMM_TOPO_1DMESH : CommTopo::COMM_TOPO_CLOS;
+    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
+    std::vector<u32> portNumLevel0 = {1};
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
+        portNumLevel0, static_cast<int>(netTypeLevel0));
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod, algName});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo) const
 {
-    (void)topoInfo;
+    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
-    meta.netTypes.push_back(AlgNetType::MESH);
+    meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    HCCL_DEBUG(
-        "[InsV2ReduceScatterSoleExecutor] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
     return meta;
 }
 
@@ -321,14 +330,16 @@ REGISTER_ALG_ATTRS(
     AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel1Nhr = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->topLevelUboe
-               && !(
-                   (topo->level0Symmetric && topo->level1Symmetric)
-                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-               && !(
-                   !(topo->level0Symmetric && topo->level1Symmetric)
-                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-               && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+        return (topo->topLevelUboe
+                && !(
+                    (topo->level0Symmetric && topo->level1Symmetric)
+                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+                && !(
+                    !(topo->level0Symmetric && topo->level1Symmetric)
+                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,

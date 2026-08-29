@@ -29,35 +29,44 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     // level0DataRatio_ = 0.5f（SetchannelsPerRank 中设置）
     float level0Ratio = 0.5f;
     float level1Ratio = 1.0f - level0Ratio;
-    float nLevel0 = param.n * level0Ratio;
-    float nLevel1 = param.n * level1Ratio;
+    float nLevel0 = param.dataRatio * level0Ratio;
+    float nLevel1 = param.dataRatio * level1Ratio;
 
     // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     // level0: server 内 mesh 组网，level1: 跨 server clos 组网
-    int portNum0 = (AlgNetType::MESH == AlgNetType::CLOS) ? 8 : 1;
-    int portNum1 = (AlgNetType::CLOS == AlgNetType::CLOS) ? 8 : 1;
-    int taskNum = 1;
+    int portNum0 = param.portNum[0];
+    // int portNum1 = (param.portNum.size() > 1) ? param.portNum[1] : 0;
+    int portNum1 = 8;
+    int kernelNum = 11;
+    // pod 先乘3,后续需要考虑server
+    int taskNum = 3
+                  * (CostModelManager::CalcTransTaskNum(param.rankSize)
+                     + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
     float A0 = 0.0f;
     float A1 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(nLevel0, AlgNetType::MESH, portNum0, param.rankSize, A0);
-    CostModelManager::Global()->CalcMeshParam(nLevel1, AlgNetType::CLOS, portNum1, param.rankSize, A1);
+    CostModelManager::Global()->CalcMeshParam(
+        nLevel0, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(
+        nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, param.isPod);
     float A = std::max(A0, A1);
 
     // B: 本地操作，两级各处理一半数据，reduce (rankSize-1) 份
     float B1 = 0.0f;
     float B2 = 0.0f;
-    if (param.needLocalCopy) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.n, EngineType::AICPU, B1);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     }
-    CostModelManager::Global()->CalcLocalReduceParams(param.n, EngineType::AICPU, B2);
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B2);
     float B = B1 + (param.rankSize - 1) * B2;
 
     float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
+    float D = 0.0f;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f (level0Ratio=%f).", __func__, A, B, C, level0Ratio);
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f (level0Ratio=%f).", __func__, A, B, C, D, level0Ratio);
     return params;
 }
 
