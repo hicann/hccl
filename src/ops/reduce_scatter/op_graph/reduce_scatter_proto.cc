@@ -18,6 +18,7 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 
 using namespace ge;
 
@@ -25,6 +26,7 @@ namespace ops {
 
 static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     // Get RuntimeAttrs
@@ -32,6 +34,11 @@ static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext* co
     constexpr size_t reduceScatterFusionIndex = 1;
     constexpr size_t reduceScatterFusionIdIndex = 2;
     if (CheckOPAttr(opName, attrs, reduceScatterFusionIndex, reduceScatterFusionIdIndex) == GRAPH_FAILED) {
+        return GRAPH_FAILED;
+    }
+
+    constexpr size_t reduceScatterReductionIndex = 0;
+    if (CheckReductionAttr(opName, attrs, reduceScatterReductionIndex, true) == GRAPH_FAILED) {
         return GRAPH_FAILED;
     }
 
@@ -53,6 +60,11 @@ static ge::graphStatus HcomReduceScatterInferShapeV2(gert::InferShapeContext* co
         *outputShape = *inputShape;
         OP_LOGI(opName, "the op infershape end, shape first dim is unknown.");
         return GRAPH_SUCCESS;
+    }
+
+    if (inputShape->GetDimNum() == 0) {
+        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: > 0, actual: 0.");
+        return GRAPH_FAILED;
     }
 
     if (inputShape->GetDim(0) % rankSize) {

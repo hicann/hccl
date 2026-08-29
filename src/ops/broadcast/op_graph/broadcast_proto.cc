@@ -18,6 +18,7 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 
 using namespace ge;
 
@@ -25,6 +26,7 @@ namespace ops {
 
 static ge::graphStatus HcomBroadcastInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     // Get RuntimeAttrs

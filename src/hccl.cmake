@@ -158,11 +158,14 @@ set(OP_PROTO_INCLUDE
 
 add_library(opgraph_hccl SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/common/log.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/op_graph/hcom_vinputvec_set_pass.cc
 )
 
 target_include_directories(opgraph_hccl PRIVATE
     ${INCLUDE_LIST}
     ${OP_PROTO_INCLUDE}
+    ${ASCEND_CANN_PACKAGE_PATH}/include
+    ${ASCEND_CANN_PACKAGE_PATH}/include/external
 )
 target_compile_options(opgraph_hccl PRIVATE
     -Wno-error=cpp
@@ -186,6 +189,7 @@ target_link_libraries(opgraph_hccl PRIVATE
     -Wl,--whole-archive
     rt2_registry
     -Wl,--no-whole-archive
+    ge_common
     -Wl,-Bsymbolic
     -Wl,-z,relro
     -Wl,-z,now

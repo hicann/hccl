@@ -18,6 +18,7 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 
 using namespace ge;
 
@@ -25,6 +26,7 @@ namespace ops {
 
 static ge::graphStatus HcomReceiveInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     auto attrs = context->GetAttrs();
@@ -55,8 +57,14 @@ static ge::graphStatus HcomReceiveInferDataTypeV2(gert::InferDataTypeContext* co
 {
     OP_INFER_DATATYPE_START;
 
-    ge::DataType inputType = context->GetInputDataType(0);
-    context->SetOutputDataType(0, inputType);
+    auto attrs = context->GetAttrs();
+    OP_CHECK(attrs == nullptr, CUBE_INNER_ERR_REPORT(opName, "attrs is null"), return GRAPH_FAILED);
+
+    constexpr size_t dtypeAttrIndex = 4;
+    auto dtypePtr = attrs->GetAttrPointer<ge::DataType>(dtypeAttrIndex);
+    OP_CHECK(dtypePtr == nullptr, CUBE_INNER_ERR_REPORT(opName, "attr dtype is null"), return GRAPH_FAILED);
+
+    context->SetOutputDataType(0, *dtypePtr);
 
     OP_INFER_DATATYPE_END;
     return GRAPH_SUCCESS;

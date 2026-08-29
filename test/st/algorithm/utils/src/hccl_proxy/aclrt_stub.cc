@@ -81,6 +81,12 @@ aclError aclrtStreamGetId(aclrtStream stream, int32_t* streamId_)
     return ACL_SUCCESS;
 }
 
+aclError aclrtGetThreadLastTaskId(uint32_t* taskId)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 aclError aclrtMemcpy(void* dst, size_t destMax, const void* src, size_t count, aclrtMemcpyKind kind)
 {
     if (dst == nullptr || src == nullptr) {

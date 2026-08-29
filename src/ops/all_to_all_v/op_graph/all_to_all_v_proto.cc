@@ -18,61 +18,67 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 #include <cmath>
 
 using namespace ge;
 
 namespace ops {
 
-static bool HcomIsConstData(gert::InferShapeContext* context, const gert::Tensor* shape_tensor)
+static bool HcomAllToAllShapeFullDefined(const gert::Shape* shape)
 {
-    if (shape_tensor == nullptr) {
-        OP_LOGE(context->GetNodeName(), "[%s] the op shape tensor is null.", __func__);
+    if (shape == nullptr) {
         return false;
     }
-    return IsConstTensor(shape_tensor);
-}
-
-static void HcomGetConstValue(
-    gert::InferShapeContext* context, const gert::Tensor* const_tensor, const DataType& dtype,
-    std::vector<int64_t>& const_data)
-{
-    if (dtype == ge::DT_INT64) {
-        const int64_t* const_data_ptr = const_tensor->GetData<int64_t>();
-        size_t size = const_tensor->GetShapeSize();
-        OP_LOGD(context->GetNodeName(), "size : %zu", size);
-        for (size_t i = 0; i < size; ++i) {
-            const_data.push_back(*(const_data_ptr + i));
-            OP_LOGD(context->GetNodeName(), "[%s] const data int64  %ld", __func__, (int64_t)(*(const_data_ptr + i)));
-        }
-    } else if (dtype == ge::DT_INT32) {
-        const int32_t* const_data_ptr = const_tensor->GetData<int32_t>();
-        size_t size = const_tensor->GetShapeSize();
-        for (size_t i = 0; i < size; ++i) {
-            const_data.push_back(*(const_data_ptr + i));
-            OP_LOGD(context->GetNodeName(), "[%s] const data int32  %d", __func__, (int32_t)(*(const_data_ptr + i)));
+    for (size_t i = 0; i < shape->GetDimNum(); i++) {
+        if (shape->GetDim(i) == ge::UNKNOWN_DIM) {
+            return false;
         }
     }
-    return;
+    return true;
 }
 
-void HcomGetConstValue(
-    gert::InferShapeContext* context, const gert::Tensor* const_tensor, const DataType& dtype,
-    std::vector<uint64_t>& const_data)
+static ge::graphStatus HcomAllToAllInferShapeV2(gert::InferShapeContext* context)
 {
-    if (dtype == ge::DT_UINT64) {
-        const uint64_t* const_data_ptr = const_tensor->GetData<uint64_t>();
-        size_t size = const_tensor->GetShapeSize();
-        for (size_t i = 0; i < size; ++i) {
-            const_data.push_back(*(const_data_ptr + i));
-            OP_LOGD(context->GetNodeName(), "[%s] const data int64  %lu", __func__, (uint64_t)(*(const_data_ptr + i)));
-        }
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
+    OP_INFER_SHAPE_START;
+
+    const auto inputShape = context->GetInputShape(0);
+    OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
+    auto outputShape = context->GetOutputShape(0);
+    OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
+
+    if (!HcomAllToAllShapeFullDefined(inputShape)) {
+        *outputShape = *inputShape;
+        OP_LOGI(opName, "the op infershape end, shape is unknown.");
+        return GRAPH_SUCCESS;
     }
-    return;
+
+    if (inputShape->GetDimNum() == 0) {
+        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: > 0, actual: 0.");
+        return GRAPH_FAILED;
+    }
+
+    *outputShape = *inputShape;
+
+    OP_INFER_SHAPE_END;
+    return GRAPH_SUCCESS;
+}
+
+static ge::graphStatus HcomAllToAllInferDataTypeV2(gert::InferDataTypeContext* context)
+{
+    OP_INFER_DATATYPE_START;
+
+    ge::DataType inputType = context->GetInputDataType(0);
+    context->SetOutputDataType(0, inputType);
+
+    OP_INFER_DATATYPE_END;
+    return GRAPH_SUCCESS;
 }
 
 static ge::graphStatus HcomAllToAllVInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     auto outputShape = context->GetOutputShape(0);
@@ -81,7 +87,7 @@ static ge::graphStatus HcomAllToAllVInferShapeV2(gert::InferShapeContext* contex
     const gert::Tensor* recvDispTensor = context->GetInputTensor(4);
     const gert::Tensor* recvCountsTensor = context->GetInputTensor(3);
 
-    if (!HcomIsConstData(context, recvDispTensor) || !HcomIsConstData(context, recvCountsTensor)) {
+    if (!HcomIsConstData(opName, recvDispTensor) || !HcomIsConstData(opName, recvCountsTensor)) {
         outputShape->SetDimNum(1);
         outputShape->SetDim(0, ge::UNKNOWN_DIM_NUM);
         OP_LOGI(opName, "[%s] the op inferShape unknown.", __func__);
@@ -90,11 +96,11 @@ static ge::graphStatus HcomAllToAllVInferShapeV2(gert::InferShapeContext* contex
 
     auto recvDispDtype = context->GetInputTensor(4);
     vector<int64_t> recvDisp;
-    HcomGetConstValue(context, recvDispTensor, recvDispDtype->GetDataType(), recvDisp);
+    HcomGetConstValue(opName, recvDispTensor, recvDispDtype->GetDataType(), recvDisp);
 
     auto recvCountsDtype = context->GetInputTensor(3);
     vector<int64_t> recvCounts;
-    HcomGetConstValue(context, recvCountsTensor, recvCountsDtype->GetDataType(), recvCounts);
+    HcomGetConstValue(opName, recvCountsTensor, recvCountsDtype->GetDataType(), recvCounts);
 
     if (recvDisp.size() != recvCounts.size()) {
         OP_LOGE(
@@ -130,6 +136,7 @@ static ge::graphStatus HcomAllToAllVInferDataTypeV2(gert::InferDataTypeContext* 
 
 static ge::graphStatus HcomAllToAllVCInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     // Get RuntimeAttrs
@@ -145,7 +152,7 @@ static ge::graphStatus HcomAllToAllVCInferShapeV2(gert::InferShapeContext* conte
 
     const gert::Tensor* sendCountMatrixTensor = context->GetInputTensor(1);
 
-    if (!HcomIsConstData(context, sendCountMatrixTensor)) {
+    if (!HcomIsConstData(opName, sendCountMatrixTensor)) {
         outputShape->SetDimNum(1);
         outputShape->SetDim(0, ge::UNKNOWN_DIM_NUM);
         OP_LOGI(opName, "[%s] the op inferShape unknown.", __func__);
@@ -154,7 +161,7 @@ static ge::graphStatus HcomAllToAllVCInferShapeV2(gert::InferShapeContext* conte
 
     vector<int64_t> sendCountMatrix;
     auto sendCountDtype = context->GetInputTensor(1);
-    HcomGetConstValue(context, sendCountMatrixTensor, sendCountDtype->GetDataType(), sendCountMatrix);
+    HcomGetConstValue(opName, sendCountMatrixTensor, sendCountDtype->GetDataType(), sendCountMatrix);
 
     for (size_t i = 0; i < sendCountMatrix.size(); ++i) {
         OP_LOGD(opName, "[%s] sendCountMatrix : %zu : %ld ", __func__, i, sendCountMatrix[i]);
@@ -203,6 +210,7 @@ static ge::graphStatus HcomAllToAllVCInferDataTypeV2(gert::InferDataTypeContext*
     return GRAPH_SUCCESS;
 }
 
+IMPL_OP_INFERSHAPE(HcomAllToAll).InferShape(HcomAllToAllInferShapeV2).InferDataType(HcomAllToAllInferDataTypeV2);
 IMPL_OP_INFERSHAPE(HcomAllToAllV)
     .InferShape(HcomAllToAllVInferShapeV2)
     .InferDataType(HcomAllToAllVInferDataTypeV2)

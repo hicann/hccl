@@ -33,6 +33,12 @@
 using namespace std;
 using namespace ops_hccl;
 
+extern "C" {
+// aclrtExceptionInfoCallbackRegister 为新接口，部分旧版 cann 可能不存在，保留 weak 声明做运行时 nullptr 判断。
+aclError aclrtExceptionInfoCallbackRegister(void (*callback)(aclrtExceptionInfo*)) __attribute__((weak));
+}
+
+// 兼容性处理，aclrtExceptionInfoCallbackRegister不可用时回退到 rtRegTaskFailCallbackByModule
 extern "C" rtError_t rtRegTaskFailCallbackByModule(const char_t* moduleName, rtTaskFailCallback callback)
     __attribute__((weak));
 
@@ -195,6 +201,20 @@ thread_local std::string g_aivCurrentCommName;
 
 static void RegisterAivExceptionCallback()
 {
+    if (aclrtExceptionInfoCallbackRegister != nullptr) {
+        aclError aclRet = aclrtExceptionInfoCallbackRegister(ProcessAivExceptionCallBack);
+        if (aclRet == ACL_SUCCESS) {
+            HCCL_INFO("[AIV][RegisterAivExceptionCallback] aclrt register callback success.");
+            return;
+        }
+        HCCL_WARNING(
+            "[AIV][RegisterAivExceptionCallback] aclrt register callback failed, ret[%d], fallback to runtime.",
+            aclRet);
+    } else {
+        HCCL_INFO("[AIV][RegisterAivExceptionCallback] aclrt interface not supported, fallback to runtime.");
+    }
+
+    // 兼容性处理，当 aclrtExceptionInfoCallbackRegister 函数不可用时，回退到 rtRegTaskFailCallbackByModule
     if (rtRegTaskFailCallbackByModule == nullptr) {
         HCCL_INFO("[AIV][RegisterAivExceptionCallback] runtime callback registration is not supported.");
         return;
@@ -210,11 +230,16 @@ static void RegisterAivExceptionCallback()
 static HcclResult SaveAivDfxTaskInfo(const AivOpArgs& opArgs)
 {
     u32 taskId = 0;
-    u32 streamId = 0;
-    rtError_t rtRet = rtGetTaskIdAndStreamID(&taskId, &streamId);
+    int32_t streamIdSigned = 0;
+    aclError aclRet = aclrtGetThreadLastTaskId(&taskId);
     CHK_PRT_RET(
-        rtRet != RT_ERROR_NONE, HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] rtGetTaskIdAndStreamID failed, ret[%d].", rtRet),
+        aclRet != ACL_SUCCESS,
+        HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] aclrtGetThreadLastTaskId failed, ret[%d].", aclRet), HCCL_E_RUNTIME);
+    aclRet = aclrtStreamGetId(opArgs.stream, &streamIdSigned);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS, HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] aclrtStreamGetId failed, ret[%d].", aclRet),
         HCCL_E_RUNTIME);
+    u32 streamId = static_cast<u32>(streamIdSigned);
 
     TaskParamAiv taskInfo;
     taskInfo.taskId = taskId;

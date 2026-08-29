@@ -18,6 +18,7 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 
 using namespace ge;
 
@@ -25,7 +26,19 @@ namespace ops {
 
 static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+
+    auto attrs = context->GetAttrs();
+    constexpr size_t allReduceReductionIndex = 0;
+    if (CheckReductionAttr(opName, attrs, allReduceReductionIndex, true) == GRAPH_FAILED) {
+        return GRAPH_FAILED;
+    }
+    constexpr size_t allReduceFusionIndex = 2;
+    constexpr size_t allReduceFusionIdIndex = 3;
+    if (CheckAllReduceFusionAttr(opName, attrs, allReduceFusionIndex, allReduceFusionIdIndex) == GRAPH_FAILED) {
+        return GRAPH_FAILED;
+    }
 
     const auto inputShape = context->GetInputShape(0);
     OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
@@ -33,7 +46,7 @@ static ge::graphStatus HcomAllReduceInferShapeV2(gert::InferShapeContext* contex
     OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
     uint32_t inputSize = context->GetComputeNodeInputNum();
 
-    OP_LOGD(opName, "[%s] the op  inputSize %u ", __func__, inputSize);
+    OP_LOGD(opName, "[%s] the op inputSize %u ", __func__, inputSize);
     for (uint32_t index = 0; index < inputSize; index++) {
         const auto inputShape = context->GetInputShape(index);
         OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
@@ -52,7 +65,7 @@ static ge::graphStatus HcomAllReduceInferDataTypeV2(gert::InferDataTypeContext* 
 
     uint32_t inputSize = context->GetComputeNodeInputNum();
 
-    OP_LOGD(opName, "[%s] the op  inputSize %u ", __func__, inputSize);
+    OP_LOGD(opName, "[%s] the op inputSize %u ", __func__, inputSize);
     for (uint32_t index = 0; index < inputSize; index++) {
         ge::DataType inputType = context->GetInputDataType(index);
         context->SetOutputDataType(index, inputType);

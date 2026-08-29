@@ -18,6 +18,7 @@
 #include "runtime/infer_shape_context.h"
 #include "runtime/infer_datatype_context.h"
 #include "op_util.h"
+#include "base/alog_pub.h"
 
 using namespace ge;
 
@@ -25,6 +26,7 @@ namespace ops {
 
 static ge::graphStatus HcomAllGatherInferShapeV2(gert::InferShapeContext* context)
 {
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
 
     // Get RuntimeAttrs
@@ -53,6 +55,10 @@ static ge::graphStatus HcomAllGatherInferShapeV2(gert::InferShapeContext* contex
         *outputShape = *inputShape;
         OP_LOGI(opName, "the op infershape end, shape first dim is unknown.");
         return GRAPH_SUCCESS;
+    }
+    if (inputShape->GetDimNum() == 0) {
+        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: > 0, actual: 0.");
+        return GRAPH_FAILED;
     }
     *outputShape = *inputShape;
     outputShape->SetDim(0, inputShape->GetDim(0) * rankSize);

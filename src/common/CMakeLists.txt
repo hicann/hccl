@@ -42,3 +42,7 @@ endif()
 
 add_subdirectory(hcomm_dlsym)
 add_subdirectory(tuner)
+
+if(PRODUCT_SIDE STREQUAL "host")
+    add_subdirectory(framework/tf_plugin)
+endif()
