@@ -21,7 +21,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
       -
         name: download
         uses: obs-download
@@ -63,7 +62,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
       -
         name: download
         uses: obs-download
@@ -93,7 +91,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
           path: "./runner"
       -
         name: Checkout
@@ -121,7 +118,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
           path: "./runner"
       -
         name: Checkout
@@ -149,7 +145,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
           path: "./runner"
       -
         name: Checkout
@@ -163,8 +158,8 @@ jobs:
         run: |
           cd ${{ steps.process_checkout.outputs.path }}
           cd CI/scripts
-          python3 codecheck_gitcode.py --access_key ${{secrets.CODECHECK_AK}} --secret_access_key ${{secrets.CODECHECK_SK}} --access_key_get ${{secrets.CODECHECK_AK_GET}} --secret_access_key_get ${{secrets.CODECHECK_SK_GET}} --org_name ${org_name} --pr_id ${MERGE_ID} --repo ${repo_name} --commit_id ${{ atomgit.event.pull_request.merge_commit_sha }}
-    if: "${{ default() }}"
+          python3 codecheck_gitcode.py --access_key ${{secrets.CODECHECK_AK}} --secret_access_key ${{secrets.CODECHECK_SK}} --access_key_get ${{secrets.CODECHECK_AK_GET}} --secret_access_key_get ${{secrets.CODECHECK_SK_GET}} --org_name ${org_name} --pr_id ${MERGE_ID} --repo ${repo_name} --commit_id ${{ atomgit.event.pull_request.merge_commit_sha }} --online ${{ vars.APPLY_LABEL }}
+    if: env.online == 'true'
     runs-on: ['self-hosted', 'arch=x64', 'spec=small']
     container:
       image: swr.cn-north-4.myhuaweicloud.com/ci_cann/${{ inputs.codecheck_image_version }}

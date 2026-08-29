@@ -1,7 +1,7 @@
 name: PR-pipeline_hccl
 
 concurrency:
-  max: 5
+  max: 10
   exceed-action: QUEUE
   enable: true
   preemption:
@@ -14,7 +14,7 @@ on:
       keyword: '^(?:\/)?compile*'
   pull_request_comment:
     types: [created]
-    branches: [ '*' ]
+    branches: [ '**' ]
     comments: [ '^(?:\/)?compile*' ]
 
 env:
@@ -23,7 +23,7 @@ env:
   MERGE_ID: ${{ atomgit.event.pull_request.number }}
   TARGET_BRANCH: ${{atomgit.base_ref}}
   SOURCE_BRANCH: ${{atomgit.head_ref}}
-  obs_path: "${{ vars.OBS_PATH }}/${{ env.MERGE_ID }}"  
+  obs_path: "${{ env.org_name }}/${{ env.repo_name }}/ci/package/${{ env.MERGE_ID }}"   
   obs_smoke_path_A2: "${{ env.obs_path }}/presmoke/2" 
   obs_smoke_path_A3: "${{ env.obs_path }}/presmoke/3"
   online: ${{ vars.APPLY_LABEL }}
@@ -32,23 +32,6 @@ stages:
   stage1:
     name: PreBuild
     jobs:
-      JOB_pre:
-        name: Test_pre_pipeline
-        steps:
-          - name: pre_pipeline
-            uses: cann/.gitcode/actions/pre-pipeline@master
-            with:
-              owner: ${{ env.org_name }}
-              repo: ${{ env.repo_name }}
-              pr_number: ${{ atomgit.event.pull_request.number }}
-              token: ${{ secrets.GIT_TOKEN }}
-              apply_label: ${{ vars.APPLY_LABEL }}
-          - name: associate-pr-comment
-            uses: associate-pr-comment
-            if: env.online == 'true'
-        runs-on: ['self-hosted', 'arch=x64', 'spec=small']
-        container:
-          image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:k8s_v1.1006
       JOB_image:
         name: Test_image
         steps:
@@ -56,79 +39,15 @@ stages:
             identifier: revise_image
             uses: cann/.gitcode/actions/revise-img@master
             with:
-              repo_name: "hccl"
+              repo_name: ${{ env.repo_name }}
               target_branch: ${{ env.TARGET_BRANCH }}
               repo_url: ${{ vars.CI_PATH }}
-          -
-            name: show_output
-            run: |
-              echo "image: ${{ steps.revise_image.outputs.Compile_Ascend_X86 }}"
-        if: "${{ default() }}"
-        runs-on: ['self-hosted', 'arch=x64', 'spec=small']
+        runs-on: ['self-hosted', 'arch=x64', 'spec=slim']
         container:
           image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:k8s_v1.1006
-      JOB_pr:  
-        name: Test_get-pr
-        steps:
-          - 
-            name: Checkout
-            identifier: process_checkout
-            uses: checkout
-            with:
-              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-              token: ${{secrets.GIT_TOKEN}}
-          -
-            name: get_pr
-            identifier: get_pr
-            uses: cann/.gitcode/actions/get-pr@master
-            with:
-              workspace: ${{ steps.process_checkout.outputs.path }}
-              target_branch: ${{ env.TARGET_BRANCH }}
-              owner: ${{ env.org_name }}
-              repo: ${{ env.repo_name }}
-              pr_number: ${{ atomgit.event.pull_request.number }}
-              git_token: ${{secrets.GIT_TOKEN}}
-          - 
-            name: upload
-            uses: obs-upload
-            with:
-              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
-              bucket: "ascend-ci"
-              access-key: ${{secrets.AK}}
-              secret-key: ${{secrets.SK}}
-              artifact-path: |
-                ${{ steps.process_checkout.outputs.path }}/pr_filelist.txt
-                ${{ steps.process_checkout.outputs.path }}/pr_filelist_mod.txt
-                ${{ steps.process_checkout.outputs.path }}/pr_filelist_precommit.txt
-                ${{ steps.process_checkout.outputs.path }}/update_file_detail.txt
-                ${{ steps.process_checkout.outputs.path }}/gitdiff.txt
-              object-prefix: ${{ env.obs_path }}/
-        runs-on: 
-        - default
-      JOB_shell:
-        name: Test_get-shell
-        steps:
-          -
-            name: Checkout
-            identifier: process_checkout
-            uses: checkout
-            with:
-              ref: master
-              token: ${{secrets.GIT_TOKEN}}
-          -
-            name: upload
-            uses: obs-upload
-            with:
-              endpoint: "https://obs.cn-north-4.myhuaweicloud.com"
-              bucket: "ascend-ci"
-              access-key: ${{secrets.AK}}
-              secret-key: ${{secrets.SK}}
-              artifact-path: |
-                ${{ steps.process_checkout.outputs.path }}/.gitcode/scripts/*
-              object-prefix: ${{ env.obs_path }}/
-        if: "${{ default() }}"
-        runs-on:
-        - default
+      JOB_pre:
+        name: Test_PreBuild
+        uses: cann/.gitcode/.gitcode/workflows/pre_action.yml@master
     pre:
     - type: auto
     fail-fast: true
@@ -213,7 +132,6 @@ stages:
             uses: checkout
             with:
               ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-              token: ${{secrets.GIT_TOKEN}}
           -
             name: api_check
             identifier: api_check
@@ -238,7 +156,6 @@ stages:
         with:
           ut_type: 'ut'
           ut_package: 'coverage_*.info'
-          token: ${{secrets.GIT_TOKEN}}
           image_version: ${{ jobs.JOB_image.outputs.UT_Test }}
       JOB_ST_TEST:
         name: ST_TEST
@@ -248,7 +165,6 @@ stages:
         with:
           ut_type: 'st'
           ut_package: 'coverage_*.info'
-          token: ${{secrets.GIT_TOKEN}}
           image_version: ${{ jobs.JOB_image.outputs.ST_Test }}
     pre:
     - type: auto
@@ -265,8 +181,7 @@ stages:
             identifier: process_checkout
             uses: checkout
             with:
-              token: ${{secrets.GIT_TOKEN}}
-              path: "./runner"
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
           -
             name: download
             uses: obs-download
@@ -300,7 +215,7 @@ stages:
               bucket: "ascend-ci"
               access-key: ${{ secrets.AK }}
               secret-key: ${{ secrets.SK }}
-              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog.tar.gz"
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog*.tar.gz"
               object-prefix: ${obs_smoke_path}/plog/
         if: env.TARGET_BRANCH == 'master'
         runs-on: ['self-hosted','npu=2','smoke=204']
@@ -315,8 +230,7 @@ stages:
             identifier: process_checkout
             uses: checkout
             with:
-              token: ${{secrets.GIT_TOKEN}}
-              path: "./runner"
+              ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
           -
             name: download
             uses: obs-download
@@ -350,7 +264,7 @@ stages:
               bucket: "ascend-ci"
               access-key: ${{ secrets.AK }}
               secret-key: ${{ secrets.SK }}
-              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog.tar.gz"
+              artifact-path: "${{ steps.process_checkout.outputs.path }}/slog*.tar.gz"
               object-prefix: ${obs_smoke_path}/plog/
         if: env.TARGET_BRANCH == 'master'
         runs-on: ['self-hosted','npu=2','smoke=301']

@@ -28,7 +28,6 @@ jobs:
         uses: checkout
         with:
           ref: ${{ atomgit.event.pull_request.merge_commit_sha }}
-          token: ${{secrets.GIT_TOKEN}}
       -
         name: download
         uses: obs-download
@@ -65,7 +64,6 @@ jobs:
           workspace: ${{ steps.process_checkout.outputs.path }}
           ut_type: ${{ inputs.ut_type }}
           target_branch: ${{ env.TARGET_BRANCH }}
-          git_token: ${{secrets.GIT_TOKEN}}
       -
         name: upload
         uses: obs-upload
