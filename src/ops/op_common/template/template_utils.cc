@@ -213,10 +213,13 @@ struct ParallelPortInfo {
     bool isPod = false;                       // Server间是否为双Channel、跨Die的POD链路
 };
 
-// 两个并行通信域处理单位数据所需的时间系数。
+// 两片数据在各自主导阶段处理单位数据所需的时间系数。
+// mesh对应"先Mesh后Clos"的数据片，clos对应"先Clos后Mesh"的数据片；
+// 数据逐级收缩的算子(ReduceScatter/Scatter类)主导阶段为第一阶段，
+// 数据逐级放大的算子(AllGather)主导阶段为第二阶段，此时系数对应的物理链路与命名相反。
 struct ParallelTimeCoeff {
-    double mesh = 0.0; // 先Mesh后Clos路径第一阶段的时间系数
-    double clos = 0.0; // 先Clos后Mesh路径第一阶段的时间系数
+    double mesh = 0.0; // 先Mesh后Clos数据片的主导阶段时间系数
+    double clos = 0.0; // 先Clos后Mesh数据片的主导阶段时间系数
 };
 
 // 将异常回退值限制到[0, 1]；非有限值统一回退到0.5。
@@ -313,8 +316,14 @@ static bool CalcParallelTimeCoeff(
                              / (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
             return true;
         case ParallelDataSplitType::ALL_GATHER:
-            timeCoeff.mesh = static_cast<double>(intraRankSize - 1) / portInfo.intraPortGroupSize;
-            timeCoeff.clos = static_cast<double>(interRankSize - 1) / portInfo.effectiveInterPortGroupSize;
+            // AllGather的数据逐级放大，第二阶段的通信量分别是第一阶段的intraRankSize和interRankSize倍，
+            // 第二阶段为耗时主导项，因此按第二阶段配平：
+            // 先Mesh后Clos的数据片在第二阶段走Server间链路，通信量放大intraRankSize倍；
+            // 先Clos后Mesh的数据片在第二阶段走机内Mesh链路，通信量放大interRankSize倍。
+            timeCoeff.mesh = static_cast<double>(intraRankSize) * static_cast<double>(interRankSize - 1)
+                             / portInfo.effectiveInterPortGroupSize;
+            timeCoeff.clos = static_cast<double>(interRankSize) * static_cast<double>(intraRankSize - 1)
+                             / static_cast<double>(portInfo.intraPortGroupSize);
             return true;
         default:
             return false;
@@ -346,16 +355,6 @@ static double QuantizeParallelDataSplitRatio(double ratio)
     const double nearestRatioIndex = std::round(ratio / ratioStep);
     const double clampedRatioIndex = std::max(minRatioIndex, std::min(nearestRatioIndex, maxRatioIndex));
     return clampedRatioIndex * ratioStep;
-}
-
-// AllGather在Server数增大时公式值会继续升高，但实测超过0.5后收益变差，因此限制上限。
-static double LimitParallelDataSplitRatio(ParallelDataSplitType splitType, double ratio)
-{
-    constexpr double allGatherMaxRatio = 0.5;
-    if (splitType == ParallelDataSplitType::ALL_GATHER) {
-        return std::min(ratio, allGatherMaxRatio);
-    }
-    return ratio;
 }
 
 const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType)
@@ -390,15 +389,15 @@ static double ReturnParallelDataSplitFallback(
 // 统一记录公式原始结果、POD修正信息及最终量化结果。
 static void LogParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo, ParallelDataSplitType splitType,
-    double rawRatio, double limitedRatio, double quantizedRatio)
+    double rawRatio, double quantizedRatio)
 {
     HCCL_INFO(
         "[CalcParallelDataSplitRatio] intraRankSize[%llu], interRankSize[%llu], "
         "intraPortGroupSize[%llu], interPortGroupSize[%llu], effectiveInterPortGroupSize[%f], isPod[%d], "
-        "splitType[%s], rawRatio[%f], limitedRatio[%f], quantizedRatio[%f]",
+        "splitType[%s], rawRatio[%f], quantizedRatio[%f]",
         intraRankSize, interRankSize, portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
         portInfo.effectiveInterPortGroupSize, portInfo.isPod, ParallelDataSplitTypeToStr(splitType), rawRatio,
-        limitedRatio, quantizedRatio);
+        quantizedRatio);
 }
 
 double CalcParallelDataSplitRatio(
@@ -426,9 +425,8 @@ double CalcParallelDataSplitRatio(
             failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
     }
 
-    const double limitedRatio = LimitParallelDataSplitRatio(splitType, ratio);
-    const double quantizedRatio = QuantizeParallelDataSplitRatio(limitedRatio);
-    LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, limitedRatio, quantizedRatio);
+    const double quantizedRatio = QuantizeParallelDataSplitRatio(ratio);
+    LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, quantizedRatio);
     return quantizedRatio;
 }
 } // namespace ops_hccl

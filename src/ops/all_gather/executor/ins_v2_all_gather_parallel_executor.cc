@@ -459,12 +459,16 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     std::vector<float>& splitDataSize) const
 {
+    // AllGather的数据片0为"先Mesh后Clos"、数据片1为"先Clos后Mesh"，
+    // 与ReduceScatter等算子相反，配置值multipleDimensionSplitRatio_表示数据片1的比例，
+    // 因此此处的ratio统一表示数据片1(先Clos后Mesh)的比例。
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0_, rankSizeLevel1_, intraLinkMap_, interLinkMap_, ParallelDataSplitType::ALL_GATHER,
-            multipleDimensionSplitRatio_);
-        ratio = 1.0 - ratio;
+        // 公式返回的是"先Mesh后Clos"的比例，回退值也需按该语义传入，取反后即为数据片1的比例。
+        ratio = 1.0
+                - CalcParallelDataSplitRatio(
+                    rankSizeLevel0_, rankSizeLevel1_, intraLinkMap_, interLinkMap_, ParallelDataSplitType::ALL_GATHER,
+                    1.0 - multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(1.0 - ratio);
     splitDataSize.push_back(ratio);

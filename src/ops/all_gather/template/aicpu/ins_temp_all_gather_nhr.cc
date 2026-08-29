@@ -363,7 +363,7 @@ HcclResult InsTempAllGatherNHR::RunStepNHR(
         "[InsTempAllGatherNHR] rank[%u] rankSize[%u] recvFrom[%u] sendTo[%u] step[%u] nSteps[%u] nSlices[%u]", myRank_,
         templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
 
-    const bool readLastStepToOutput = readLastStepToOutput_ && step == nSteps - 1 && stepInfo.nSlices > 1;
+    const bool readLastStepToOutput = readLastStepToOutput_ && step == nSteps - 1;
     if (readLastStepToOutput) {
         CHK_RET(RunLastStepReadToOutput(
             threads, channelSend, channelRecv, stepInfo, channelIdx, step, postLocalCopyLaunched));
