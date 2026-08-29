@@ -334,6 +334,15 @@ aclError aclrtRecordNotify(aclrtNotify notify, aclrtStream stream)
 
 aclError aclrtGetDeviceInfo(uint32_t deviceId, aclrtDevAttr attr, int64_t* value)
 {
+// 老CANN的acl_rt.h没有这个枚举, 探测与它同批引入的宏, 口径同adapter_acl.h
+#ifdef ACL_DEVICE_FORM_FACTOR_POD
+    // 本函数其余分支不回写*value。调用方普遍把出参初始化为0, 而ACL_DEVICE_FORM_FACTOR_POD恰好是0,
+    // 不显式给出非POD取值的话, ST会把每个用例都建模成POD机型
+    if (attr == ACL_DEV_ATTR_DEVICE_FORM_FACTOR) {
+        *value = ACL_DEVICE_FORM_FACTOR_A_X;
+        return ACL_SUCCESS;
+    }
+#endif
     HCCL_WARNING("[%s] not support.", __func__);
     return ACL_SUCCESS;
 }
@@ -341,6 +350,13 @@ aclError aclrtGetDeviceInfo(uint32_t deviceId, aclrtDevAttr attr, int64_t* value
 aclError aclrtGetLogicDevIdByPhyDevId(int32_t phyDevId, int32_t* const logicDevId)
 {
     HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
+aclError aclrtGetLogicDevIdByUserDevId(const int32_t userDevId, int32_t* const logicDevId)
+{
+    // SimWorld不区分user/logic设备号, aclrtGetDevice直接返回curr_dev_id, 这里原样透传
+    *logicDevId = userDevId;
     return ACL_SUCCESS;
 }
 

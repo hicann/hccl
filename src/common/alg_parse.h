@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <cstdint>
 #include "hccl_common.h"
 #include "op_common.h"
@@ -21,7 +22,6 @@
 #include "cost_model.h"
 
 namespace ops_hccl {
-
 // ---------------------------------------------------------------------------
 // AlgoType 枚举：算法模板类型（与 ALGO_TYPES 映射表一一对应）
 // ---------------------------------------------------------------------------
@@ -41,6 +41,17 @@ enum class AlgoType : uint8_t {
     MESH_CONCURRENT,
     UNKNOWN,
 };
+
+// Mesh 类算法集合
+const std::set<AlgoType> MESH_ALGO_TYPES
+    = {AlgoType::MESH,           AlgoType::MESH_2DIE,          AlgoType::MESH_ONESHOT,
+       AlgoType::MESH_TWOSHOT,   AlgoType::MESH_CONCUR,        AlgoType::MESH_MULTILINK,
+       AlgoType::MESH_CHUNK,     AlgoType::MESH_CHUNK_TWOSHOT, AlgoType::MESH_SINGLE_CHANNEL,
+       AlgoType::MESH_CONCURRENT};
+// NHR 类算法集合
+const std::set<AlgoType> NHR_ALGO_TYPES = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE};
+// MeshConcur 类算法（MESH_CONCUR 与 MESH_CONCURRENT 都触发 CLOS 双层规则）
+const std::set<AlgoType> MESH_CONCUR_ALGO_TYPES = {AlgoType::MESH_CONCUR, AlgoType::MESH_CONCURRENT};
 
 // ---------------------------------------------------------------------------
 // 算法（template）条目

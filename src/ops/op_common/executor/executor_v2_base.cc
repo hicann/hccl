@@ -23,6 +23,38 @@ std::string InsCollAlgBase::Describe() const
     return s;
 }
 
+CommTopo InsCollAlgBase::GetPhysicalLevelTopoType(const TopoInfoWithNetLayerDetails* topoInfo, u32 levelIdx) const
+{
+    // 不用CHK_PTR_NULL: 它返回HcclResult, 与本函数的返回类型对不上
+    if (topoInfo == nullptr) {
+        HCCL_WARNING("[InsCollAlgBase][GetPhysicalLevelTopoType] topoInfo is null");
+        return CommTopo::COMM_TOPO_RESERVED;
+    }
+    if (levelIdx >= topoInfo->physicalLevels.size()) {
+        HCCL_WARNING(
+            "[InsCollAlgBase][GetPhysicalLevelTopoType] levelIdx[%u] out of range, physicalLevelNum[%zu]", levelIdx,
+            topoInfo->physicalLevels.size());
+        return CommTopo::COMM_TOPO_RESERVED;
+    }
+    return topoInfo->physicalLevels[levelIdx].topoType;
+}
+
+std::vector<u32>
+InsCollAlgBase::GetPhysicalLevelPortNums(const TopoInfoWithNetLayerDetails* topoInfo, u32 levelIdx) const
+{
+    if (topoInfo == nullptr) {
+        HCCL_WARNING("[InsCollAlgBase][GetPhysicalLevelPortNums] topoInfo is null");
+        return std::vector<u32>();
+    }
+    if (levelIdx >= topoInfo->physicalLevels.size()) {
+        HCCL_WARNING(
+            "[InsCollAlgBase][GetPhysicalLevelPortNums] levelIdx[%u] out of range, physicalLevelNum[%zu]", levelIdx,
+            topoInfo->physicalLevels.size());
+        return std::vector<u32>();
+    }
+    return topoInfo->physicalLevels[levelIdx].portNums;
+}
+
 HcclResult InsCollAlgBase::RestoreChannelMap(
     const AlgResourceCtxSerializable& resCtx,
     std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo) const

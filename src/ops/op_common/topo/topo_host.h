@@ -94,6 +94,12 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult CalcHostDPUOnly(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
+/**
+ * 查询本卡是否为POD机型并写入topoInfo->isPod。不依赖HcclComm, 只查本设备。
+ * 恒返回HCCL_SUCCESS: 取不到时停在false, 不影响任何现有字段与执行路径。
+ */
+HcclResult CalcDeviceFormFactor(TopoInfoWithNetLayerDetails* topoInfo);
+
 HcclResult ExtractNetLayerDetails(const HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);
 
 HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo);

@@ -13,7 +13,15 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_host.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_1d.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_base.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_base_v2.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_concurrent.cc
+    # PhysicalLevel标准化: 不依赖版本宏, 因此放在无条件块
+    ${CMAKE_CURRENT_SOURCE_DIR}/physical_level_build.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/physical_level_normalize.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_one_level.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_two_level.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_three_level.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_concurrent_v2.cc
 )
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list

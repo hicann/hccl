@@ -23,6 +23,7 @@
 #include "dev_type.h"
 #include "dlsym_common.h"
 #include "hccl_rank_graph_dl.h"
+#include "physical_level.h"
 
 constexpr u32 FACTOR_NUM_TWO = 2;
 constexpr s32 DEVICE_PER_MODULE = 8;
@@ -784,6 +785,62 @@ static HcclResult CalcLevel2UbRtp(const HcclComm comm, TopoInfoWithNetLayerDetai
     return HCCL_SUCCESS;
 }
 
+/**
+ * 查询本卡是否为POD机型。恒返回HCCL_SUCCESS: 该字段是纯附加信息, 取不到时停在false,
+ * 现有字段与旧执行路径完全不受影响。
+ */
+HcclResult CalcDeviceFormFactor(TopoInfoWithNetLayerDetails* topoInfo)
+{
+    CHK_PTR_NULL(topoInfo);
+    topoInfo->isPod = false;
+#ifndef AICPU_COMPILE
+#if !HCCL_SUPPORT_DEV_FORM_FACTOR
+    // 老CANN的acl_rt.h没有ACL_DEV_ATTR_DEVICE_FORM_FACTOR, 无从查起, 一律按非POD建模。
+    // 与成功路径同为INFO同前缀: 现场grep一次就能分清走的是哪一条
+    HCCL_INFO("[Topo][CalcDeviceFormFactor] acl has no device form factor attr, isPod stays false");
+#else
+    // aclrtGetDevice返回的是userDevId, 不是logicDevId, 变量名必须如实反映
+    s32 userDevId = 0;
+    aclError aclRet = aclrtGetDevice(&userDevId);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_WARNING("[Topo][CalcDeviceFormFactor] get current device failed, ret[%d]. isPod stays false.", aclRet);
+        return HCCL_SUCCESS;
+    }
+
+    // userDevId -> logicDevId。aclrtGetDeviceInfo要的是logicDevId, 少这一步在配了
+    // ASCEND_RT_VISIBLE_DEVICES的环境上会静默读到另一张卡的形态
+    s32 logicDevId = 0;
+    aclRet = aclrtGetLogicDevIdByUserDevId(userDevId, &logicDevId);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_WARNING(
+            "[Topo][CalcDeviceFormFactor] get logic dev id by user dev id[%d] failed, ret[%d]. "
+            "isPod stays false.",
+            userDevId, aclRet);
+        return HCCL_SUCCESS;
+    }
+
+    s64 val = 0;
+    // quiet: 老驱动不支持该infoType时会稳定失败, 按ERROR打会在正常的老环境上持续刷错误日志
+    HcclResult ret = hcalrtGetDeviceInfo(static_cast<u32>(logicDevId), ACL_DEV_ATTR_DEVICE_FORM_FACTOR, val, true);
+    if (ret != HCCL_SUCCESS) {
+        HCCL_WARNING(
+            "[Topo][CalcDeviceFormFactor] get device form factor failed, ret[%d], logicDevId[%d]. "
+            "isPod stays false.",
+            ret, logicDevId);
+        return HCCL_SUCCESS;
+    }
+
+    // 必须是严格相等的正向判断: ACL将来新增形态时, 未识别的取值必须落到false一侧
+    topoInfo->isPod = (val == ACL_DEVICE_FORM_FACTOR_POD);
+    // 原始取值与两个设备号都打出来: 现场据此分辨"确实不是POD"还是"取到了个没见过的形态"
+    HCCL_INFO(
+        "[Topo][CalcDeviceFormFactor] userDevId[%d] logicDevId[%d] formFactor[%ld] isPod[%d]", userDevId, logicDevId,
+        val, static_cast<s32>(topoInfo->isPod));
+#endif // HCCL_SUPPORT_DEV_FORM_FACTOR
+#endif // AICPU_COMPILE
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     CHK_RET(ExtractNetLayerDetails(comm, topoInfo));
@@ -796,6 +853,11 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(CalcTopLevelUboe(comm, topoInfo));
     CHK_RET(CalcLevel2UbRtp(comm, topoInfo));
     CHK_RET(CalcHostDPUOnly(comm, topoInfo));
+    // 与comm无关, 只查本卡; 恒返回HCCL_SUCCESS, 取不到时停在false
+    CHK_RET(CalcDeviceFormFactor(topoInfo));
+    // 放在最后: 现有字段的提取与派生逻辑完全不受影响, 且可复用已提取的netLayerDetails。
+    // BuildPhysicalLevels恒返回HCCL_SUCCESS, 内部失败一律降级为空视图
+    CHK_RET(BuildPhysicalLevels(comm, topoInfo));
     return HCCL_SUCCESS;
 }
 

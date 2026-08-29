@@ -9,8 +9,9 @@
  */
 
 #include "ins_v2_all_gather_v_sole_executor.h"
-#include "topo_match_1d.h"
+#include "topo_match_one_level.h"
 #include "ins_temp_all_gather_v_mesh_1D.h"
+#include "alg_attrs_registry.h"
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -28,9 +29,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -194,13 +204,16 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
 }
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER_V, AicpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER_V, AicpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.maxTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER_V, CcuSchedAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER_V, CcuSchedAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherVMesh1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedAllGatherVSoleMesh, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   op.isSupportInplace = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

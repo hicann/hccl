@@ -17,6 +17,17 @@
 #include "acl_base.h"
 #include "acl_rt.h"
 
+/* ACL_DEV_ATTR_DEVICE_FORM_FACTOR是新版acl_rt.h才有的枚举值, 老CANN上引用会编译不过。
+ * 枚举对预处理器不可见, 因此探测与它同批引入、且只为它服务的宏ACL_DEVICE_FORM_FACTOR_POD。
+ */
+#ifndef HCCL_SUPPORT_DEV_FORM_FACTOR
+#ifdef ACL_DEVICE_FORM_FACTOR_POD
+#define HCCL_SUPPORT_DEV_FORM_FACTOR 1
+#else
+#define HCCL_SUPPORT_DEV_FORM_FACTOR 0
+#endif
+#endif
+
 namespace ops_hccl {
 
 #define ACLCHECK(cmd)                                                                                           \
@@ -38,7 +49,11 @@ haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus& captureStatus, u
 
 HcclResult haclrtGetDeviceIndexByPhyId(u32 devicePhyId, u32& deviceLogicId);
 
-HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val);
+/**
+ * @param quiet 取不到时是否降噪。默认false保持原有行为(按ERROR打); 对"取不到就走降级值"的可选属性
+ *              传true, 失败改按WARNING打。传true的调用方必须自己判返回值并给出降级值。
+ */
+HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val, bool quiet = false);
 
 HcclResult LoadBinaryFromFile(
     const char* binPath, aclrtBinaryLoadOptionType optionType, uint32_t cpuKernelMode, aclrtBinHandle& binHandle);

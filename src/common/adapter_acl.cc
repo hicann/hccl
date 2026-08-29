@@ -96,15 +96,16 @@ HcclResult haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus& captu
     return HCCL_SUCCESS;
 }
 
-HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val)
+HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val, bool quiet)
 {
 #ifndef AICPU_COMPILE
-    static const std::set<aclrtDevAttr> supportType
-        = {{ACL_DEV_ATTR_PHY_CHIP_ID},
-           {ACL_DEV_ATTR_SUPER_POD_DEVIDE_ID},
-           {ACL_DEV_ATTR_SUPER_POD_SERVER_ID},
-           {ACL_DEV_ATTR_SUPER_POD_ID},
-           {ACL_DEV_ATTR_CUST_OP_PRIVILEGE}};
+    static const std::set<aclrtDevAttr> supportType = {
+        {ACL_DEV_ATTR_PHY_CHIP_ID},        {ACL_DEV_ATTR_SUPER_POD_DEVIDE_ID}, {ACL_DEV_ATTR_SUPER_POD_SERVER_ID},
+        {ACL_DEV_ATTR_SUPER_POD_ID},       {ACL_DEV_ATTR_CUST_OP_PRIVILEGE},
+#if HCCL_SUPPORT_DEV_FORM_FACTOR
+        {ACL_DEV_ATTR_DEVICE_FORM_FACTOR},
+#endif
+    };
 
     auto it = supportType.find(devAttr);
     CHK_PRT_RET(
@@ -112,10 +113,19 @@ HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val)
         HCCL_E_NOT_SUPPORT);
 
     aclError ret = aclrtGetDeviceInfo(deviceId, devAttr, reinterpret_cast<int64_t*>(&val));
-    CHK_PRT_RET(
-        ret != ACL_SUCCESS,
-        HCCL_ERROR("[hcalrtGetDeviceInfo]rt get device info failed. ret[%d], attr[%d], val[%ld]", ret, devAttr, val),
-        HCCL_E_RUNTIME);
+    if (ret != ACL_SUCCESS) {
+        // quiet用于"取不到就降级"的可选属性: 老驱动不支持某个infoType时会稳定失败,
+        // 按ERROR打会在完全正常的老环境上持续刷错误日志。传quiet的调用方必须自己处理返回值
+        if (quiet) {
+            HCCL_WARNING(
+                "[hcalrtGetDeviceInfo]rt get device info failed. ret[%d], attr[%d]. caller will fall back.", ret,
+                devAttr);
+        } else {
+            HCCL_ERROR(
+                "[hcalrtGetDeviceInfo]rt get device info failed. ret[%d], attr[%d], val[%ld]", ret, devAttr, val);
+        }
+        return HCCL_E_RUNTIME;
+    }
     HCCL_DEBUG("Call aclrtGetDeviceInfo, ret[%d], attr[%d], val[%ld]", ret, devAttr, val);
 #endif
     return HCCL_SUCCESS;

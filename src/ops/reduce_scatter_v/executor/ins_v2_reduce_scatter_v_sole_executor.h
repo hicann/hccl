@@ -12,7 +12,7 @@
 #define HCCLV2_INS_V2_REDUCE_SCATTER_V_SOLE_EXECUTOR_H
 
 #include "executor_common_ops.h"
-#include "topo_match_1d.h"
+#include "topo_match_one_level.h"
 #include "topo_match_base.h"
 
 namespace ops_hccl {
@@ -31,6 +31,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     /* *************** 算法编排 *************** */

@@ -793,7 +793,12 @@ HcclResult GeReuseResource(
 {
     // 计算AlgHierarchyInfo
     AlgHierarchyInfoForAllLevel algHierarchyInfo; // 分级通信域信息{localRankId, localRankSize}
-    CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+        AlgAttrs algAttrs = executor->GetAlgoMeta(std::string(param.algName));
+        CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algAttrs));
+    } else {
+        CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
+    }
     // 资源计算
     AlgResourceRequest resRequest;
     CHK_RET(executor->CalcRes(comm, param, topoInfo, algHierarchyInfo, resRequest));
@@ -1228,7 +1233,11 @@ HcclResult HcclGetAlgRes(
 
     // 计算AlgHierarchyInfo
     AlgHierarchyInfoForAllLevel algHierarchyInfo; // 分级通信域信息{localRankId, localRankSize}
-    CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V) {
+        CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algoMeta));
+    } else {
+        CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
+    }
     // 资源计算
     HCCL_INFO("[HcclGetAlgRes] executor->CalcRes.");
     AlgResourceRequest resRequest;

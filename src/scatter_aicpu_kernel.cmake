@@ -167,6 +167,11 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_pcie_mix.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_3_level.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_squeeze_2d.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_base_v2.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_one_level.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_two_level.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_three_level.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/topo/topo_match_concurrent_v2.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/executor/ins_reduce_scatter_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/executor/ins_v2_all_gather_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/executor/ins_v2_all_to_all_concurrent_executor.cc

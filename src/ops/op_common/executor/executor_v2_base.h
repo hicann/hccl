@@ -57,6 +57,15 @@ public:
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
         = 0;
 
+    virtual HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+    {
+        (void)topoInfo;
+        (void)algHierarchyInfo;
+        (void)algAttrs;
+        return HcclResult::HCCL_SUCCESS;
+    }
+
     virtual HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
@@ -95,6 +104,21 @@ public:
         u32 notifyNumOnMainThread) const;
 #endif
 protected:
+    /*
+     * 读取physicalLevels[levelIdx]的互联形态。Level下标与netLayer编号没有固定对应关系,
+     * 一个netLayer可能贡献一级或两级, 拓扑形态必须走这里回查, 不能由下标推断。
+     * 下标越界或physicalLevels为空(标准化降级)时返回COMM_TOPO_RESERVED并告警;
+     * 该级无TopoInstance时字段本身就停在COMM_TOPO_RESERVED, 与前者同值, 调用方均按"形态不可用"处理。
+     */
+    CommTopo GetPhysicalLevelTopoType(const TopoInfoWithNetLayerDetails* topoInfo, u32 levelIdx) const;
+
+    /*
+     * 读取physicalLevels[levelIdx]上本卡各条物理链路的端口数, 降序, 按iface去重。
+     * 局部量: 同一级上各rank可能不同, 不能用它做跨rank一致的决策。
+     * 返回空统一表示"端口数不可用"(越界/无TopoInstance/采集降级), 不表示该级有0个端口。
+     */
+    std::vector<u32> GetPhysicalLevelPortNums(const TopoInfoWithNetLayerDetails* topoInfo, u32 levelIdx) const;
+
     inline void SetOrderPreservedBaseParams(const OrderPreservedBaseParams& params)
     {
         myRank_ = params.myRank;

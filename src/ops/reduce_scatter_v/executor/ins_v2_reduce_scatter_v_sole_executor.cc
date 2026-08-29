@@ -9,7 +9,9 @@
  */
 
 #include "ins_v2_reduce_scatter_v_sole_executor.h"
+#include "topo_match_one_level.h"
 #include "ins_temp_reduce_scatter_v_mesh_1D.h"
+#include "alg_attrs_registry.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_reduce_scatter_v_mesh_1D_mem2mem.h"
 
@@ -24,9 +26,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -181,13 +192,16 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
 
 // 第二个参数是Reduce Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor, TopoMatch1D,
-    InsTempReduceScatterVMesh1D);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterVMesh1D);
+REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMesh, topo.maxTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, CcuSchedReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
-    TopoMatch1D, CcuTempReduceScatterVMesh1DMem2Mem);
+    TopoMatchOneLevel, CcuTempReduceScatterVMesh1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedReduceScatterVSoleMesh, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

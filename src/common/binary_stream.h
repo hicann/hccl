@@ -160,6 +160,40 @@ private:
     std::stringstream stream;
 };
 
+/*
+ * 读写方向适配器。把方向从字段清单里剥离出来, 使Serialize与DeSerialize能共用同一份清单,
+ * 两侧顺序不一致这类错误因此不可能再发生。用法: BinaryWriter ar(bs); ar & a & b & c;
+ */
+class BinaryWriter {
+public:
+    explicit BinaryWriter(BinaryStream& stream) : stream_(stream) {}
+
+    template <typename T>
+    BinaryWriter& operator&(const T& t)
+    {
+        stream_ << t;
+        return *this;
+    }
+
+private:
+    BinaryStream& stream_;
+};
+
+class BinaryReader {
+public:
+    explicit BinaryReader(BinaryStream& stream) : stream_(stream) {}
+
+    template <typename T>
+    BinaryReader& operator&(T& t)
+    {
+        stream_ >> t;
+        return *this;
+    }
+
+private:
+    BinaryStream& stream_;
+};
+
 } // namespace ops_hccl
 
 #endif // HCCL_SERIALIZATION
