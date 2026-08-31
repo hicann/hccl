@@ -11,6 +11,11 @@
 cmake_minimum_required(VERSION 3.16.0)
 project(hccl)
 
+# [HCCL-ALGO-Plugin] 插件机制总开关，默认OFF：不显式打开时，
+# 本文件中所有 ENABLE_HCCL_ALGO_PLUGIN 分支都不会被编译，HCCL_ALGO_PLUGIN_ENABLE 宏也不会被定义，
+# 对主线代码路径（src/ops/op_common/op_common.cc 等）零影响。
+option(ENABLE_HCCL_ALGO_PLUGIN "Enable HCCL Algo Plugin mechanism (custom algorithm plugin/broker)" OFF)
+
 set(HCCL_CANN_VERSION_NUM 0)
 
 if(BUILD_OPEN_PROJECT)
@@ -209,6 +214,15 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/template
 )
 
+# [HCCL-ALGO-Plugin] 仅当显式开启插件开关时，才把 algo_plugin 目录加入包含路径，
+# 默认（OFF）状态下 INCLUDE_LIST 与插件引入前完全一致。
+if(ENABLE_HCCL_ALGO_PLUGIN)
+    list(APPEND INCLUDE_LIST
+        ${CMAKE_CURRENT_SOURCE_DIR}/algo_plugin
+        ${CMAKE_CURRENT_SOURCE_DIR}/algo_plugin/inc
+    )
+endif()
+
 if(NOT BUILD_OPEN_PROJECT)
     list(APPEND INCLUDE_LIST
         ${TOP_DIR}/inc
@@ -266,6 +280,16 @@ if(PRODUCT_SIDE STREQUAL "host")
     add_subdirectory(ops)
 endif()
 
+# [HCCL-ALGO-Plugin] 插件机制整体挂在 ENABLE_HCCL_ALGO_PLUGIN 开关下：
+# 1) 关闭时不进入 algo_plugin 子目录，HcclAlgoPluginMgr 相关源码根本不参与编译；
+# 2) 打开时才给 hccl 目标定义 HCCL_ALGO_PLUGIN_ENABLE，
+#    src/ops/op_common/op_common.cc 里的 #ifdef HCCL_ALGO_PLUGIN_ENABLE 分支据此生效。
+if(ENABLE_HCCL_ALGO_PLUGIN)
+    add_subdirectory(algo_plugin)
+    if(TARGET hccl)
+        target_compile_definitions(hccl PRIVATE HCCL_ALGO_PLUGIN_ENABLE)
+    endif()
+endif()
 
 # 定义AIV算子聚合目标
 set(AIV_TARGETS

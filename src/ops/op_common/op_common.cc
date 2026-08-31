@@ -20,6 +20,9 @@
 #include <cstring> // 包含strcmp函数
 #include <stdexcept>
 
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+#include "hccl_algo_plugin_mgr.h" // [HCCL-ALGO-Plugin]
+#endif
 #include <hccl/hccl_types.h>
 #include <hccl/hccl_comm.h>
 #include "dev_type.h"
@@ -84,6 +87,64 @@ void UpdateAicpuTimeoutCtx(const OpParam& param, AlgResourceCtxSerializable& res
         timeout.kernelLaunchTimeout, static_cast<u32>(IsHcommDefaultTimeoutSupported()));
 }
 
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+namespace {
+
+    HcclResult TryHandlePluginSelector(
+        HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* topoInfo, std::string& algName, bool& handled)
+    {
+        handled = false;
+        param.pluginSelected = false;
+
+        CHK_RET(HcclAlgoPluginMgr::Instance().Init());
+        if (!HcclAlgoPluginMgr::Instance().IsLoaded()) {
+            return HCCL_SUCCESS;
+        }
+
+        HcclAlgoPlugin_t* plugin = HcclAlgoPluginMgr::Instance().GetPlugin();
+        void* pluginCtx = HcclAlgoPluginMgr::Instance().GetContext();
+
+        HcclAlgoPluginParam pluginParam{};
+        FillHcclAlgoPluginParam(param, topoInfo, pluginParam);
+
+        char pluginAlgName[HCCL_ALGO_PLUGIN_ALG_NAME_LEN] = {0};
+        if (!plugin->SelectAlg(pluginCtx, &pluginParam, pluginAlgName, sizeof(pluginAlgName))) {
+            return HCCL_SUCCESS;
+        }
+
+        algName = pluginAlgName;
+        param.pluginSelected = true;
+        HCCL_INFO(
+            "[Selector] plugin algorithm selected, algName=[%s], opType=[%d]", algName.c_str(),
+            static_cast<int>(param.opType));
+
+        if (algName == "") {
+            HCCL_ERROR("[Selector] select algname fail!");
+            return HCCL_E_PTR;
+        }
+
+        // 保持原来 Plugin 命中后的公共收尾行为
+        CHK_RET(SetOpParamAlgTag(param, algName));
+        CHK_RET(SetExecTimeout(param));
+        CHK_RET(SetMultipleDimensionSplitRatio(comm, param));
+
+        HCCL_INFO("Success to execute Selector.");
+        handled = true;
+        return HCCL_SUCCESS;
+    }
+
+} // namespace
+
+#define HCCL_ALGO_PLUGIN_SELECTOR_FAST_PATH(comm, param, topoInfo, algName)                      \
+    do {                                                                                         \
+        bool pluginHandled = false;                                                              \
+        CHK_RET(TryHandlePluginSelector((comm), (param), (topoInfo), (algName), pluginHandled)); \
+        if (pluginHandled) {                                                                     \
+            return HCCL_SUCCESS;                                                                 \
+        }                                                                                        \
+    } while (0)
+#endif
+
 HcclResult
 Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName)
 {
@@ -103,6 +164,10 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     if (topoInfo->topLevelUboe) {
         param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }
+
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+    HCCL_ALGO_PLUGIN_SELECTOR_FAST_PATH(comm, param, topoInfo.get(), algName);
+#endif
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
     if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {
@@ -630,6 +695,36 @@ HcclResult SetOpParamFallbackTag(OpParam& param, const std::string& algName)
     return HCCL_SUCCESS;
 }
 
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+HcclResult
+ExecutePluginAlgorithm(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* topoInfo, const std::string& algName)
+{
+    if (!HcclAlgoPluginMgr::Instance().IsLoaded()) {
+        HCCL_ERROR("[HcclExecOp] pluginSelected=true but PluginBroker is not loaded, algName=[%s]", algName.c_str());
+        return HCCL_E_INTERNAL;
+    }
+
+    HcclAlgoPlugin_t* plugin = HcclAlgoPluginMgr::Instance().GetPlugin();
+    void* pluginCtx = HcclAlgoPluginMgr::Instance().GetContext();
+
+    HcclAlgoPluginParam pluginParam{};
+    FillHcclAlgoPluginParam(param, topoInfo, pluginParam);
+
+    int execRet
+        = plugin->ExecuteAlg(pluginCtx, algName.c_str(), pluginParam.opName, &pluginParam, static_cast<void*>(comm));
+
+    if (execRet != HCCL_SUCCESS) {
+        HCCL_ERROR(
+            "[HcclExecOp] plugin ExecuteAlg failed, algName=[%s], opType=[%d], ret=[%d]", algName.c_str(),
+            static_cast<int>(param.opType), execRet);
+        return HCCL_E_INTERNAL;
+    }
+
+    HCCL_INFO("[HcclExecOp] plugin algorithm execute success, algName=[%s]", algName.c_str());
+    return HCCL_SUCCESS;
+}
+#endif
+
 static HcclResult ReportOpProfilingInfo(HcclComm comm, HcclCMDType opType, uint64_t beginTime)
 {
     bool isGroupEnabled = false;
@@ -651,6 +746,22 @@ HcclResult HcclExecOp(
 {
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
     HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu]", beginTime);
+
+    // [HCCL-ALGO-Plugin]
+    // 算法执行阶段：
+    // 若Selector()阶段已选中自定义算法，则改为调用PluginBroker的ExecuteAlg()完成通信，
+    // 不再复用HCCL原有的资源申请/线程管理/executor->Orchestrate()等执行路径。
+    // 调用失败或执行出错时直接返回HCCL_E_INTERNAL，不回退至HCCL原有执行逻辑。
+    // 未编译HCCL_ALGO_PLUGIN_ENABLE宏时，本段整体不参与编译；
+    // 又因Selector()中param.pluginSelected此时恒为false，执行流程与插件引入前完全一致。
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+    if (param.pluginSelected) {
+        CHK_RET(ExecutePluginAlgorithm(comm, param, topoInfo.get(), algName));
+        CHK_RET(ReportOpProfilingInfo(comm, param.opType, beginTime));
+        return HCCL_SUCCESS;
+    }
+#endif
+
     // 当前通信域的某个算法回退过，则下次直接回退
     void* fallbackCtx = nullptr;
     uint64_t fallbackCtxSize = 0;

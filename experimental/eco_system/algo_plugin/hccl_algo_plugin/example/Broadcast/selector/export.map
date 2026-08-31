@@ -1,0 +1,10 @@
+/*
+ * 仅显式导出Select与HcclAlgoPluginQueryEntries两个符号，其余(包括注册表单例)一律hidden。
+ */
+HCCL_ALGO_PLUGIN_1.0 {
+    global:
+        Select;
+        HcclAlgoPluginQueryEntries;
+    local:
+        *;
+};

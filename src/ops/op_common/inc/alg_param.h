@@ -703,6 +703,15 @@ struct OpParam { // 不申请ctx，每个算子单独下发
     ThreadHandle exportHostOrderThread = 0; // host侧保序流映射到device
     ThreadHandle deviceOrderThread = 0;     // device侧保序流
     u64 varMemSize{0};
+/*
+ * [HCCL-ALGO-Plugin]
+ * Selector()阶段若HCCL-ALGO-Plugin命中自定义算法则置true，
+ * HcclExecOp()据此决定是否改为调用PluginBroker执行自定义算法。
+ * 默认false，未配置HCCL_ALGO_PLUGIN_PATH时该字段恒为false，HCCL行为与原有完全一致。
+ */
+#ifdef HCCL_ALGO_PLUGIN_ENABLE
+    bool pluginSelected = false;
+#endif
     u8 varData[0];
 };
 
