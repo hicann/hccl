@@ -76,6 +76,9 @@ void CalcScatterFirstStepSize(
     u64* xStepP2pDataSize, u64* yStepP2pDataSize, double bandwidthRatio, u64 xRankSize, u64 yRankSize,
     u64 dataSizeEachRank, double scale, u64 step)
 {
+    if (xStepP2pDataSize == nullptr || yStepP2pDataSize == nullptr) {
+        return;
+    }
     u64 justifyLen = HCCL_MIN_SLICE_ALIGN;
     if (scale > 1) {
         xStepP2pDataSize[0]

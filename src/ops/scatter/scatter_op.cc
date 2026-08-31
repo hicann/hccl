@@ -495,6 +495,9 @@ HcclResult GetDefaultAlgoLevel0Module(TopoInfo* topoInfo, AlgTypeLevel0& algType
 
 HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLevel1& algType, HcclCMDType opType)
 {
+    if (topoInfo == nullptr) {
+        return HCCL_E_PTR;
+    }
     HcclAlgoType algoConfigShadow = algoConfig;
     switch (algoConfig) {
         case HcclAlgoType::HCCL_ALGO_TYPE_HDR:

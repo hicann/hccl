@@ -338,7 +338,8 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherInter.buffInfo.outBuffBaseOff = 0;
         tempAlgParamsAllGatherInter.buffInfo.hcclBuffBaseOff
             = tempAlgParamsScatterIntra.allRankDispls.at(rankIdxLevel0_); // 将框内的切片偏移传到框间
-        tempAlgParamsScatterInter.root = (param.root / rankSizeLevel0_) * rankSizeLevel0_ + (myRank_ % rankSizeLevel0_);
+        tempAlgParamsAllGatherInter.root
+            = (param.root / rankSizeLevel0_) * rankSizeLevel0_ + (myRank_ % rankSizeLevel0_);
 
         tempAlgParamsAllGatherInter.allRankDispls = tempAlgParamsScatterInter.allRankDispls;
         tempAlgParamsAllGatherInter.allRankSliceSize = tempAlgParamsScatterInter.allRankSliceSize;

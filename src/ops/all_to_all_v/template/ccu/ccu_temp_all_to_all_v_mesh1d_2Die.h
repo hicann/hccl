@@ -69,11 +69,17 @@ struct Mesh2DieCacheCtx {
     {
         size_t off = 0;
         auto read = [&off, buf, len](void* dst, size_t n) -> errno_t {
+            if (off + n > len) {
+                return ERANGE;
+            }
             errno_t ret = memcpy_s(dst, n, buf + off, n);
             off += n;
             return ret;
         };
         auto readVec = [&off, buf, len](std::vector<RankId>& v) -> errno_t {
+            if (off + sizeof(uint32_t) > len) {
+                return ERANGE;
+            }
             uint32_t sz;
             errno_t ret = memcpy_s(&sz, sizeof(uint32_t), buf + off, sizeof(uint32_t));
             off += sizeof(uint32_t);
@@ -84,11 +90,17 @@ struct Mesh2DieCacheCtx {
             if (sz == 0) {
                 return EOK;
             }
+            if (off + sz * sizeof(RankId) > len) {
+                return ERANGE;
+            }
             ret = memcpy_s(v.data(), sz * sizeof(RankId), buf + off, sz * sizeof(RankId));
             off += sz * sizeof(RankId);
             return ret;
         };
         auto readSet = [&off, buf, len](std::set<RankId>& s) -> errno_t {
+            if (off + sizeof(uint32_t) > len) {
+                return ERANGE;
+            }
             uint32_t sz;
             errno_t ret = memcpy_s(&sz, sizeof(uint32_t), buf + off, sizeof(uint32_t));
             off += sizeof(uint32_t);
@@ -97,6 +109,9 @@ struct Mesh2DieCacheCtx {
             }
             s.clear();
             for (uint32_t i = 0; i < sz; i++) {
+                if (off + sizeof(RankId) > len) {
+                    return ERANGE;
+                }
                 RankId v;
                 ret = memcpy_s(&v, sizeof(RankId), buf + off, sizeof(RankId));
                 off += sizeof(RankId);

@@ -235,6 +235,14 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 maxCountPerLoop = tempAlgParamsReduceScatterMesh1D.buffInfo.hcclBuff.size / 2 / HCCL_MIN_SLICE_ALIGN
                           * HCCL_MIN_SLICE_ALIGN / dataTypeSize_; // 这边看前面有/10*10，不知道要不要加上
+    // 防止除零：当 hcclBuff.size < 2*HCCL_MIN_SLICE_ALIGN 或 dataTypeSize_==0 时 maxCountPerLoop 可能为 0
+    if (maxCountPerLoop == 0) {
+        HCCL_ERROR(
+            "[InsV2ReduceSequenceExecutor][OrchestrateLoop] maxCountPerLoop is 0, hcclBuff.size[%llu], "
+            "dataTypeSize[%llu], dataCount[%llu].",
+            tempAlgParamsReduceScatterMesh1D.buffInfo.hcclBuff.size, dataTypeSize_, dataCount_);
+        return HCCL_E_INTERNAL;
+    }
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
