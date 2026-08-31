@@ -475,10 +475,10 @@ REGISTER_ALG_ATTRS(
     op.isSupportFloatOrderPreserved = true);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AllReduceOrderPreservedGroup, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
-    InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedGroupMesh, InsV2AllReduceOrderPreservedExecutor,
+    TopoMatch1D, InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
-    AllReduceOrderPreservedGroup,
+    AicpuAllReduceStrictOrderedGroupMesh,
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };

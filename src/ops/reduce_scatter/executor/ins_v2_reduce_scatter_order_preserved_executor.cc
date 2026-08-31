@@ -268,10 +268,10 @@ REGISTER_ALG_ATTRS(
 
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, ReduceScatterOrderPreservedGroup, InsV2ReduceScatterOrderPreservedExecutor,
-    TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
+    InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
 REGISTER_ALG_ATTRS(
-    ReduceScatterOrderPreservedGroup,
+    AicpuReduceScatterStrictOrderedGroupMesh,
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };

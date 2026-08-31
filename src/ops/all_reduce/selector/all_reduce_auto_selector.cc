@@ -412,7 +412,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
     if (IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize)) {
         if (topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED) {
             // 内部reducescatter中采用分组all2all + NHR 算法
-            selectAlgName = "AllReduceOrderPreservedGroup";
+            selectAlgName = "AicpuAllReduceStrictOrderedGroupMesh";
         } else {
             // 内部reducescatter中采用非分组all2all + mesh1D 算法
             selectAlgName = "AicpuAllReduceStrictOrderedMesh";
