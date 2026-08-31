@@ -632,7 +632,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -645,7 +645,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -658,7 +658,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllGather</p>
@@ -673,7 +673,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -686,7 +686,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -699,7 +699,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllGatherV</p>
@@ -714,7 +714,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -727,7 +727,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -740,7 +740,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Reduce</p>
@@ -755,7 +755,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -768,7 +768,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -781,7 +781,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllReduce</p>
@@ -796,7 +796,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -809,7 +809,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -822,7 +822,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Scatter</p>
@@ -837,7 +837,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -850,7 +850,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -863,7 +863,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatter</p>
@@ -878,7 +878,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -891,7 +891,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -904,7 +904,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatterV</p>
@@ -919,7 +919,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -932,7 +932,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -945,7 +945,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAll</p>
@@ -960,7 +960,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -973,7 +973,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -986,7 +986,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllV</p>
@@ -1001,7 +1001,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1014,7 +1014,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1027,7 +1027,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllVC</p>
@@ -1042,7 +1042,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1055,7 +1055,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1068,7 +1068,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Send</p>
@@ -1083,7 +1083,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1096,7 +1096,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1109,7 +1109,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Recv</p>
@@ -1124,7 +1124,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1137,7 +1137,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1150,7 +1150,7 @@
 </td>
 <td><p>√</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>BatchSendRecv</p>
@@ -1165,7 +1165,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1178,7 +1178,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1191,7 +1191,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 </tbody>
@@ -1227,7 +1227,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1240,7 +1240,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1253,7 +1253,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllGather</p>
@@ -1268,7 +1268,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1281,7 +1281,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1294,7 +1294,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllGatherV</p>
@@ -1303,39 +1303,39 @@
 </td>
 <td><p>NA</p>
 </td>
-<td><p>x</p>
-</td>
 <td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
+</td>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
 <td><p>NA</p>
 </td>
-<td><p>x</p>
-</td>
 <td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
+</td>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
 </td>
-<td><p>x</p>
-</td>
 <td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
+</td>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Reduce</p>
@@ -1350,7 +1350,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1363,7 +1363,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1376,7 +1376,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AllReduce</p>
@@ -1391,7 +1391,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1404,7 +1404,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1417,7 +1417,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>Scatter</p>
@@ -1432,7 +1432,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1445,7 +1445,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1458,7 +1458,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatter</p>
@@ -1473,7 +1473,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1486,7 +1486,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1499,7 +1499,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatterV</p>
@@ -1514,7 +1514,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1527,7 +1527,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1540,7 +1540,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAll</p>
@@ -1555,7 +1555,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
@@ -1568,7 +1568,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
@@ -1581,7 +1581,7 @@
 </td>
 <td><p>×</p>
 </td>
-<td><p>x</p>
+<td><p>×</p>
 </td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllV</p>
