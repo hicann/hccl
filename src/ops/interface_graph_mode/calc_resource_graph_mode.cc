@@ -404,15 +404,18 @@ HcclResult RecordAivOpArgsGraphMode(
     ops_hccl::g_baseOutputAddr = reinterpret_cast<u64>(outputPtr);
     ops_hccl::g_recordOnlyMode = true;
 
-    // 计算AlgHierarchyInfo
-    ops_hccl::AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo.get(), algHierarchyInfo));
-    // 资源计算
-    ops_hccl::AlgResourceRequest resRequest;
-    CHK_RET(executor->CalcRes(comm, param, topoInfo.get(), algHierarchyInfo, resRequest));
-    // host侧资源
+    int algNameRet = sprintf_s(param.algName, sizeof(param.algName), "%s", algName.c_str());
+    CHK_PRT_RET(
+        algNameRet <= 0, HCCL_ERROR("[RecordAivOpArgsGraphMode] failed to fill param.algName"), HCCL_E_INTERNAL);
+
+    // host侧资源，HcclGetAlgRes内部完成分级通信域计算、资源计算、资源申请及参数一致性校验
+    std::unique_ptr<ops_hccl::AlgResourceCtxSerializable> resCtxHostObj
+        = std::make_unique<ops_hccl::AlgResourceCtxSerializable>();
     void* resCtxSequence = nullptr;
-    CHK_RET(ops_hccl::GetAlgResAiv(comm, param, resRequest, topoInfo.get(), algHierarchyInfo, &resCtxSequence));
+    bool isResourceReused = false;
+    ops_hccl::ResPackGraphMode resPack = {};
+    CHK_RET(ops_hccl::HcclGetAlgRes(
+        comm, param, executor, topoInfo.get(), resCtxHostObj, &resCtxSequence, isResourceReused, resPack));
     // 编排
     ops_hccl::AlgResourceCtxSerializable* resCtxHost
         = static_cast<ops_hccl::AlgResourceCtxSerializable*>(resCtxSequence);
