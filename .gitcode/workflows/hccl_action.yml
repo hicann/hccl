@@ -41,7 +41,8 @@ stages:
             with:
               repo_name: ${{ env.repo_name }}
               target_branch: ${{ env.TARGET_BRANCH }}
-              repo_url: ${{ vars.CI_PATH }}
+              comment: ${{ atomgit.event.comment.body }}
+              token: ${{secrets.GIT_TOKEN}}
         runs-on: ['self-hosted', 'arch=x64', 'spec=slim']
         container:
           image: swr.cn-north-4.myhuaweicloud.com/ci_cann/ubuntu20.04.05_x86:k8s_v1.1006
@@ -84,6 +85,7 @@ stages:
           image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_X86_monitor }}
           arch: 'x64'
           package_name: 'cann-hccl_linux-x86_64_monitor.run'
+        if: env.TARGET_BRANCH == 'master'
       JOB_arm_compile:
         name: Compile_Ascend_ARM
         uses: .gitcode/workflows/compile_action.yml
@@ -108,6 +110,7 @@ stages:
           image_version: ${{ jobs.JOB_image.outputs.Compile_Ascend_ARM_monitor }}
           arch: 'arm64'
           package_name: 'cann-hccl_linux-aarch64_monitor.run'
+        if: env.TARGET_BRANCH == 'master'
       JOB_staticcheck_md_check:
         name: CodeCheck_staticcheck_md_check
         uses: .gitcode/workflows/staticcheck_action.yml
