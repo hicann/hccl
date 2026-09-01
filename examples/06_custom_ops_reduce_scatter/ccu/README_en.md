@@ -141,6 +141,7 @@ Test Sample has generated at `2. Compiling the Custom Operator Package`, the bin
 
 ### 4.2 Run the Test Sample
 
+```bash
 # Set the environment variable: HCCL_OP_EXPANSION_MODE specifies the expansion mode of communication operators. CCU_SCHED enables CCU scheduling.
 export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
 

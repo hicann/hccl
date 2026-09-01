@@ -136,12 +136,8 @@ The custom operator package installation information is as follows:
 
 ### 4.1 Compile the Test Sample
 
-Run the following commands in the `examples/05_custom_ops_allgather/ccu/testcase` directory:
-
-```bash
-# Compile the test sample
-make
-```
+Test Sample has generated at `2. Compiling the Custom Operator Package`, the binary file path is:
+`build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
 
 ### 4.2 Run the Test Sample
 
@@ -151,12 +147,12 @@ Run the following commands in the `examples/05_custom_ops_allgather/ccu/testcase
 # Set the environment variable: HCCL_OP_EXPANSION_MODE specifies the expansion mode of communication operators. CCU_SCHED enables CCU scheduling.
 export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
 
-# Run the test sample
-make test
-
-# Or run the sample binary directly
+# run the sample binary directly
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
-./custom_allgather_ccu
+./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test rank_size data_len
+Parameter Description:
+rank_size: used rank number
+data_len: date length
 ```
 
 ### 4.3 Sample Output
@@ -164,9 +160,15 @@ export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_P
 The input data of all nodes is initialized to the Device ID of that node. After successful execution, the terminal displays log output similar to the following (using 2 cards as an example):
 
 ```text
-Found 2 NPU device(s) available
-rankId: 1, input: [ 1 ]
-rankId: 0, input: [ 0 ]
-rankId: 0, output: [ 0 1 ]
-rankId: 1, output: [ 0 1 ]
+Found 8 NPU device(s) available
+[1787900726.548004] [Rank 0] HCCL set device[0]
+[1787900727.114232] [Rank 1] HCCL set device[1]
+[1787900730.534289] [Rank 1] HCCL Comm Initialized
+[1787900730.534813] [Rank 1] Buffers allocated and initialized
+[1787900730.774367] [Rank 0] HCCL Comm Initialized
+[1787900730.774995] [Rank 0] Buffers allocated and initialized
+rank1 dataLen=32 time=561 ms
+rank0 dataLen=32 time=321 ms
+[1787900731.096175] [Rank 1] VerifyResult Passed!
+[1787900731.096191] [Rank 0] VerifyResult Passed!
 ```

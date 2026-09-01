@@ -21,17 +21,13 @@ This sample demonstrates how to develop an AllGather custom communication operat
 |   ├── CMakeLists.txt
 |   └── launch_kernel_asc.asc           # Operator Kernel-side implementation (Ascend C)
 ├── inc/
-|   ├── hccl_custom_allgather.h         # Custom operator external interface header file
-|   ├── common.h                        # Common type definitions and macros
-|   ├── aiv_all_gather_mesh_1d.h        # AIV AllGather core algorithm implementation
-|   ├── aiv_communication_base_v2.h     # AIV communication base class
-|   ├── log.h                           # Logging utility
-|   ├── extra_args.h                    # Additional parameter definitions
-|   └── sync_interface.h                # Synchronization interface definition
-└── testcase/
-    ├── CMakeLists.txt                  # Test case CMake configuration file
-    ├── Makefile                        # Test case Makefile (for compilation and running)
-    └── main.cc                         # Test case main program
+    ├── hccl_custom_allgather.h         # Custom operator external interface header file
+    ├── common.h                        # Common type definitions and macros
+    ├── aiv_all_gather_mesh_1d.h        # AIV AllGather core algorithm implementation
+    ├── aiv_communication_base_v2.h     # AIV communication base class
+    ├── log.h                           # Logging utility
+    ├── extra_args.h                    # Additional parameter definitions
+    └── sync_interface.h                # Synchronization interface definition
 ```
 
 ## 1. Environment Preparation
@@ -65,7 +61,7 @@ This sample provides a CMake-based build process.
 Run the following commands in the sample root directory:
 
 ```bash
-bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/06_custom_ops_allgather/aiv
+bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
 ```
 
 > Where:
@@ -97,33 +93,36 @@ The custom operator package installation information is as follows:
 ### 2.3 Run Test Cases
 
 Test Sample has generated at `2.1 Compile the Custom Operator Library`, the binary file path is:
-`./build/examples/06_custom_ops_allgather/testcase/custom_allgather_test`
+`build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
 
+```bash
 # run the sample binary directly
-mpirun -n rank_size ./build/examples/06_custom_ops_allgather/testcase/custom_allgather_test data_len
+export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
+cd build/examples/05_custom_ops_allgather/testcase
+mpirun -n rank_size ./custom_allgather_test data_len
 Parameter Description:
 rank_size: used rank number
 data_len: date length
 ```
 
-### 2.3 Expected Results
+### 2.4 Expected Results
 
 After successful execution, the terminal displays log output similar to the following (using 2 cards as an example):
 
 ```text
-[1786071476.120968] [Rank 0] MPI Initialized. World Size: 2
-[1786071476.120968] [Rank 1] MPI Initialized. World Size: 2
-[1786071476.127411] [Rank 0] Device 0 selected (Total devices: 8)
-[1786071476.127411] [Rank 1] Device 1 selected (Total devices: 8)
-[1786071478.023709] [Rank 0] Root info generated
-[1786071478.023786] [Rank 0] HCCL set device[0]
-[1786071478.023778] [Rank 1] HCCL set device[1]
-[1786071483.214938] [Rank 0] HCCL Comm Initialized
-[1786071483.221873] [Rank 0] Buffers allocated and initialized
-[1786071483.254098] [Rank 1] HCCL Comm Initialized
-[1786071483.259378] [Rank 1] Buffers allocated and initialized
-rank1 dataLen=1024 time=835 ms
-[1786071484.095144] [Rank 1] VerifyResult Passed!
-rank0 dataLen=1024 time=873 ms
-[1786071484.095200] [Rank 0] VerifyResult Passed!
+[1787902520.136766] [Rank 1] MPI Initialized. World Size: 2
+[1787902520.136768] [Rank 0] MPI Initialized. World Size: 2
+[1787902520.145917] [Rank 0] Device 0 selected (Total devices: 8)
+[1787902520.145918] [Rank 1] Device 1 selected (Total devices: 8)
+[1787902520.724696] [Rank 0] Root info generated
+[1787902520.724744] [Rank 0] HCCL set device[0]
+[1787902520.727436] [Rank 1] HCCL set device[1]
+[1787902522.982323] [Rank 0] HCCL Comm Initialized
+[1787902522.982908] [Rank 0] Buffers allocated and initialized
+[1787902523.008164] [Rank 1] HCCL Comm Initialized
+[1787902523.008742] [Rank 1] Buffers allocated and initialized
+rank1 dataLen=32 time=439 ms
+[1787902523.447898] [Rank 1] VerifyResult Passed!
+rank0 dataLen=32 time=465 ms
+[1787902523.447966] [Rank 0] VerifyResult Passed!
 ```

@@ -136,7 +136,7 @@ bash build.sh --vendor=cust --ops=reduce_scatter_ccu --custom_ops_path=./example
 
 ### 1. 编译测试样例
 
-测试代码在 `examples/05_custom_ops_reduce_scatter/testcase`,在前节`二、编译自定义算子包`已经编译好测试样例
+测试代码在 `examples/06_custom_ops_reduce_scatter/testcase`,在前节`二、编译自定义算子包`已经编译好测试样例
 测试样例二进制文件路径`./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`
 
 

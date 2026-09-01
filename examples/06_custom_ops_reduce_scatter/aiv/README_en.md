@@ -99,14 +99,17 @@ The custom operator package installation information is as follows:
 Test Sample has generated at `2.1 Compile the Custom Operator Library`, the binary file path is:
 `./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`
 
+```bash
 # run the sample binary directly
-mpirun -n rank_size ./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test data_len
+export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
+cd build/examples/06_custom_ops_reduce_scatter/testcase/
+mpirun -n rank_size ./custom_reduce_scatter_test data_len
 Parameter Description:
 rank_size: used rank number
 data_len: date length
 ```
 
-### 2.3 Expected Results
+### 2.4 Expected Results
 
 After successful execution, the terminal displays log output similar to the following (using 2 cards as an example):
 

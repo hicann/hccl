@@ -21,17 +21,13 @@
 │   ├── CMakeLists.txt
 │   └── launch_kernel_asc.asc           # 算子 Kernel 侧实现 (Ascend C)
 ├── inc/
-│   ├── hccl_custom_allgather.h         # 自定义算子对外接口头文件
-│   ├── common.h                        # 公共类型定义与宏
-│   ├── aiv_all_gather_mesh_1d.h        # AIV AllGather 核心算法实现
-│   ├── aiv_communication_base_v2.h     # AIV 通信基类
-│   ├── log.h                           # 日志工具
-│   ├── extra_args.h                    # 额外参数定义
-│   └── sync_interface.h                # 同步接口定义
-└── testcase/
-    ├── CMakeLists.txt                  # 测试用例 CMake 配置文件
-    ├── Makefile                        # 测试用例 Makefile (用于编译运行)
-    └── main.cc                         # 测试用例主程序
+    ├── hccl_custom_allgather.h         # 自定义算子对外接口头文件
+    ├── common.h                        # 公共类型定义与宏
+    ├── aiv_all_gather_mesh_1d.h        # AIV AllGather 核心算法实现
+    ├── aiv_communication_base_v2.h     # AIV 通信基类
+    ├── log.h                           # 日志工具
+    ├── extra_args.h                    # 额外参数定义
+    └── sync_interface.h                # 同步接口定义
 ```
 
 ## 一、环境准备
@@ -65,7 +61,7 @@ source /usr/local/Ascend/cann/set_env.sh
 在根目录下执行以下命令：
 
 ```bash
-bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/06_custom_ops_allgather/aiv
+bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
 ```
 > 其中：
 > 
@@ -88,11 +84,13 @@ bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/06_
 ### 3. 运行测试用例
 
 测试代码在 `examples/05_custom_ops_allgather/testcase`,在前节`1. 编译自定义算子库`已经编译好测试样例
-测试样例二进制文件路径`./build/examples/06_custom_ops_allgather/testcase/custom_allgather_test`
+测试样例二进制文件路径`build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
 
 在根目录使用mpirun执行命令
-```
-mpirun -n rank_size build/examples/06_custom_ops_allgather/testcase/custom_allgather_test data_len
+```bash
+export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
+cd build/examples/05_custom_ops_allgather/testcase
+mpirun -n rank_size ./custom_allgather_test data_len
 参数说明:
 rank_size: 使用的卡数
 data_len: 数据长度
@@ -103,19 +101,19 @@ data_len: 数据长度
 运行成功后，终端将输出类似以下的日志信息（以 2 卡运行为例）：
 
 ```text
-[1786071476.120968] [Rank 0] MPI Initialized. World Size: 2
-[1786071476.120968] [Rank 1] MPI Initialized. World Size: 2
-[1786071476.127411] [Rank 0] Device 0 selected (Total devices: 8)
-[1786071476.127411] [Rank 1] Device 1 selected (Total devices: 8)
-[1786071478.023709] [Rank 0] Root info generated
-[1786071478.023786] [Rank 0] HCCL set device[0]
-[1786071478.023778] [Rank 1] HCCL set device[1]
-[1786071483.214938] [Rank 0] HCCL Comm Initialized
-[1786071483.221873] [Rank 0] Buffers allocated and initialized
-[1786071483.254098] [Rank 1] HCCL Comm Initialized
-[1786071483.259378] [Rank 1] Buffers allocated and initialized
-rank1 dataLen=1024 time=835 ms
-[1786071484.095144] [Rank 1] VerifyResult Passed!
-rank0 dataLen=1024 time=873 ms
-[1786071484.095200] [Rank 0] VerifyResult Passed!
+[1787902520.136766] [Rank 1] MPI Initialized. World Size: 2
+[1787902520.136768] [Rank 0] MPI Initialized. World Size: 2
+[1787902520.145917] [Rank 0] Device 0 selected (Total devices: 8)
+[1787902520.145918] [Rank 1] Device 1 selected (Total devices: 8)
+[1787902520.724696] [Rank 0] Root info generated
+[1787902520.724744] [Rank 0] HCCL set device[0]
+[1787902520.727436] [Rank 1] HCCL set device[1]
+[1787902522.982323] [Rank 0] HCCL Comm Initialized
+[1787902522.982908] [Rank 0] Buffers allocated and initialized
+[1787902523.008164] [Rank 1] HCCL Comm Initialized
+[1787902523.008742] [Rank 1] Buffers allocated and initialized
+rank1 dataLen=32 time=439 ms
+[1787902523.447898] [Rank 1] VerifyResult Passed!
+rank0 dataLen=32 time=465 ms
+[1787902523.447966] [Rank 0] VerifyResult Passed!
 ```

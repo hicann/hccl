@@ -92,7 +92,9 @@ bash build.sh --vendor=cust --ops=reduce_scatter_aiv --custom_ops_path=./example
 
 在根目录使用mpirun执行命令
 ```
-mpirun -n rank_size build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test data_len
+export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
+cd build/examples/06_custom_ops_reduce_scatter/testcase/
+mpirun -n rank_size ./custom_reduce_scatter_test data_len
 参数说明:
 rank_size: 使用的卡数
 data_len: 数据长度

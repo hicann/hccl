@@ -21,12 +21,9 @@
 │   ├── exec_op.cc                      # CCU 算子编排逻辑
 │   └── exec_op.h                       # CCU 算子编排头文件
 ├── inc/
-│   ├── hccl_custom_allgather.h         # 自定义 allgather 算子接口头文件
-│   ├── common.h                        # 公共类型头文件
-│   └── log.h                           # 日志宏定义
-└── testcase/
-    ├── main.cc                         # 样例实现源文件
-    └── Makefile                        # 编译/构建配置文件
+    ├── hccl_custom_allgather.h         # 自定义 allgather 算子接口头文件
+    ├── common.h                        # 公共类型头文件
+    └── log.h                           # 日志宏定义
 ```
 
 > 自定义算子编译工程依赖 HCCL 代码仓中的 [cmake](../../../cmake) 配置和编译脚本 [build.sh](../../../build.sh)，其中：
@@ -136,27 +133,23 @@ bash build.sh --vendor=cust --ops=allgather_ccu --custom_ops_path=./examples/05_
 
 ### 1. 编译测试样例
 
-在 `examples/05_custom_ops_allgather/ccu/testcase` 代码目录下执行如下命令：
-
-```bash
-# 编译测试样例
-make
-```
+测试代码路径: `examples/05_custom_ops_allgather/testcase`,
+在前节 `二、编译自定义算子包` 已经编译好测试样例，测试样例二进制文件路径: 
+`./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
 
 ### 2. 执行测试样例
 
-在 `examples/05_custom_ops_allgather/ccu/testcase` 代码目录下执行如下命令：
  	 
 ```bash
 # 设置环境变量：HCCL_OP_EXPANSION_MODE 用于指定通信算子的展开模式，取值 CCU_SCHED 表示启用 CCU 调度模式
 export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
 
-# 运行测试样例
-make test
-
-# 或直接执行样例二进制
+# 执行样例二进制
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
-./custom_allgather_ccu
+./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test rank_size data_len
+参数说明:
+rank_size: 使用的卡数
+data_len: 数据长度
 ```
 
 ### 3. 样例结果示例
@@ -164,9 +157,15 @@ export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_P
 所有节点的输入数据初始化为该节点的 DeviceId。运行成功后，终端将输出类似以下的日志信息（以 2 卡运行为例）：
 
 ```text
-Found 2 NPU device(s) available
-rankId: 1, input: [ 1 ]
-rankId: 0, input: [ 0 ]
-rankId: 0, output: [ 0 1 ]
-rankId: 1, output: [ 0 1 ]
+Found 8 NPU device(s) available
+[1787900726.548004] [Rank 0] HCCL set device[0]
+[1787900727.114232] [Rank 1] HCCL set device[1]
+[1787900730.534289] [Rank 1] HCCL Comm Initialized
+[1787900730.534813] [Rank 1] Buffers allocated and initialized
+[1787900730.774367] [Rank 0] HCCL Comm Initialized
+[1787900730.774995] [Rank 0] Buffers allocated and initialized
+rank1 dataLen=32 time=561 ms
+rank0 dataLen=32 time=321 ms
+[1787900731.096175] [Rank 1] VerifyResult Passed!
+[1787900731.096191] [Rank 0] VerifyResult Passed!
 ```
