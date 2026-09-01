@@ -121,6 +121,9 @@ InsV2RecvSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const A
         = recvChannel_.remoteInput.addr; // send端的input 数据来源有send端input和ccl 但是这里的地址实际上不会被使用
     tempAlgParams.buffInfo.outputPtr = param.outputPtr; // 最后读到本端ccl上
     tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;    // 本端的ccl
+    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     // template资源
     TemplateResource templateResource;
     templateResource.threads = resCtx.threads;

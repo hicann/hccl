@@ -168,6 +168,9 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     tempAlgParamsReduceScatterMesh1D.buffInfo.inputPtr = param.inputPtr;
     tempAlgParamsReduceScatterMesh1D.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsReduceScatterMesh1D.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsReduceScatterMesh1D.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParamsReduceScatterMesh1D.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsReduceScatterMesh1D.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsReduceScatterMesh1D.root = param.root;
 
     // 构建框内ReduceScatterMesh1D的template
@@ -179,6 +182,9 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     tempAlgParamsReduceScatterMesh1dDpu.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsReduceScatterMesh1dDpu.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsReduceScatterMesh1dDpu.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsReduceScatterMesh1dDpu.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsReduceScatterMesh1dDpu.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsReduceScatterMesh1dDpu.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsReduceScatterMesh1dDpu.root = param.root;
 
     // 构建框间ReduceScatterMesh1dDpu的template
@@ -190,6 +196,9 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     tempAlgParamsGatherDpu.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsGatherDpu.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsGatherDpu.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsGatherDpu.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsGatherDpu.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsGatherDpu.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsGatherDpu.root = param.root;
 
     // 构建框间GatherDpu的template
@@ -201,6 +210,9 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     tempAlgParamsGatherMesh1D.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsGatherMesh1D.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsGatherMesh1D.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsGatherMesh1D.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsGatherMesh1D.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParamsGatherMesh1D.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsGatherMesh1D.root = param.root;
 
     // 构建框内GatherMesh1D的template

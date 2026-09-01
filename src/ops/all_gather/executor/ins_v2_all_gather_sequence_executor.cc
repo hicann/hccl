@@ -187,6 +187,9 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     interTempDataParams.buffInfo.inputPtr = param.inputPtr;
     interTempDataParams.buffInfo.outputPtr = param.outputPtr;
     interTempDataParams.buffInfo.hcclBuff = resCtx.cclMem;
+    interTempDataParams.buffInfo.inBuffType = BufferType::INPUT;
+    interTempDataParams.buffInfo.outBuffType = BufferType::OUTPUT;
+    interTempDataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间template
     InsAlgTemplate1 interTempAlg(param, myRank_, algHierarchyInfo_.infos[1]);
@@ -196,6 +199,9 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     intraTempDataParams.buffInfo.inputPtr = param.outputPtr;
     intraTempDataParams.buffInfo.outputPtr = param.outputPtr;
     intraTempDataParams.buffInfo.hcclBuff = resCtx.cclMem;
+    intraTempDataParams.buffInfo.inBuffType = BufferType::OUTPUT;
+    intraTempDataParams.buffInfo.outBuffType = BufferType::OUTPUT;
+    intraTempDataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     intraTempDataParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
 
     // 构建框内template

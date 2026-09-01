@@ -19,6 +19,7 @@ HcclResult FillOmniPipeTemplateAlgParams(
 {
     tempAlgParams.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams.buffInfo.inBuffBaseOff = stepSliceInfo.buffInfo.inBuffBaseOff;
     tempAlgParams.buffInfo.outBuffBaseOff = stepSliceInfo.buffInfo.outBuffBaseOff;
     tempAlgParams.buffInfo.hcclBuffBaseOff = stepSliceInfo.buffInfo.hcclBuffBaseOff;

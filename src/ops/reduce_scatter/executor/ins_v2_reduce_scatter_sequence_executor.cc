@@ -177,6 +177,9 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     // 声明框间templateargs，ccl-in写到对端ccl-out，最终规约到outputPtr上
     TemplateDataParams tempAlgParamsIntra;
+    tempAlgParamsIntra.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsIntra.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParamsIntra.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsIntra.buffInfo.inputPtr
         = cclOutMem.addr; // ! 如果上面验证有问题，这里改成用CCL-OUT做输入，CCL-IN做Buffer
     tempAlgParamsIntra.buffInfo.outputPtr = param.outputPtr;

@@ -118,6 +118,9 @@ InsV2SendSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const A
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;
     tempAlgParams.buffInfo.outputPtr = sendChannel_.remoteCclMem.addr; // 无论跨框还是框内 都要发送到对方的ccl上
     tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;                   // 整个ccl buffer
+    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     // template资源
     TemplateResource templateResource;
     templateResource.channels = remoteRankToChannelInfo_[0];

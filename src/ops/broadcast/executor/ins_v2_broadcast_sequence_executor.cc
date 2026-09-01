@@ -191,6 +191,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsScatterIntra.buffInfo.inputPtr = param.inputPtr;
     tempAlgParamsScatterIntra.buffInfo.outputPtr = resCtx.cclMem.addr;
     tempAlgParamsScatterIntra.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsScatterIntra.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParamsScatterIntra.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsScatterIntra.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框内Scatter template
     std::shared_ptr<InsAlgTemplate0> algTemplateScatterIntra
@@ -201,6 +204,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsScatterInter.buffInfo.inputPtr = resCtx.cclMem.addr;
     tempAlgParamsScatterInter.buffInfo.outputPtr = resCtx.cclMem.addr;
     tempAlgParamsScatterInter.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsScatterInter.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsScatterInter.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsScatterInter.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间Scatter template
     std::shared_ptr<InsAlgTemplate1> algTemplateScatterInter
@@ -211,6 +217,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsAllGatherInter.buffInfo.inputPtr = resCtx.cclMem.addr;
     tempAlgParamsAllGatherInter.buffInfo.outputPtr = resCtx.cclMem.addr;
     tempAlgParamsAllGatherInter.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsAllGatherInter.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsAllGatherInter.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsAllGatherInter.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间AllGather template
     std::shared_ptr<InsAlgTemplate2> algTemplateAllGatherInter
@@ -221,6 +230,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsAllGatherIntra.buffInfo.inputPtr = resCtx.cclMem.addr;
     tempAlgParamsAllGatherIntra.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsAllGatherIntra.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsAllGatherIntra.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsAllGatherIntra.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParamsAllGatherIntra.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框内AllGather template
     std::shared_ptr<InsAlgTemplate3> algTemplateAllGatherIntra

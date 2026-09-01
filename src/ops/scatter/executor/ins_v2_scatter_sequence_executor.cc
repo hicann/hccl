@@ -152,6 +152,7 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     tempAlgParamsScatterIntra.buffInfo.outputPtr = resCtx.cclMem.addr;
     tempAlgParamsScatterIntra.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsScatterIntra.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsScatterIntra.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框内Scatter template
     std::shared_ptr<InsAlgTemplate0> algTemplateScatterIntra
@@ -161,9 +162,12 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     TemplateDataParams tempAlgParamsScatterInter;
     // 从ccl buffer取数据
     tempAlgParamsScatterInter.buffInfo.inputPtr = resCtx.cclMem.addr;
+    tempAlgParamsScatterInter.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
     // 最终输出到userOut
     tempAlgParamsScatterInter.buffInfo.outputPtr = param.outputPtr;
+    tempAlgParamsScatterInter.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsScatterInter.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsScatterInter.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间Scatter template
     std::shared_ptr<InsAlgTemplate1> algTemplateScatterInter

@@ -390,8 +390,10 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
         = std::make_shared<InsAlgTemplate>(sendRecvParam, myRank_, algHierarchyInfo_.infos[0]);
     TemplateDataParams tempAlgParams;
     tempAlgParams.buffInfo.inputPtr = sendSlice.addr_;
-    tempAlgParams.buffInfo.outputPtr = sendChannel.remoteCclMem.addr;
-    ;                                          // 无论跨框还是框内 都要发送到对方的ccl上
+    tempAlgParams.buffInfo.outputPtr = sendChannel.remoteCclMem.addr; // 无论跨框还是框内，都发送到对端CCL Buffer
+    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams.buffInfo.hcclBuff = cclMem_; // 本端的ccl
     tempAlgParams.sliceSize = sendSlice.size_;
     tempAlgParams.count = sendSlice.size_ / dataTypeSize_;
@@ -439,6 +441,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
         = recvChannel.remoteInput.addr; // 此处channel.remoteInput不是对端input buffer 这里地址实际上不会被使用
     tempAlgParams.buffInfo.outputPtr = recvSlice.addr_; // 最后读到本端ccl上
     tempAlgParams.buffInfo.hcclBuff = cclMem_;          // 本端的ccl
+    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams.sliceSize = recvSlice.size_;
     tempAlgParams.count = recvSlice.size_ / dataTypeSize_;
     tempAlgParams.opType = opType; // 传入实际操作

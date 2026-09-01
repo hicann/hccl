@@ -264,6 +264,9 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsStepOne.buffInfo.inputPtr = param.inputPtr;
     tempAlgParamsStepOne.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsStepOne.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsStepOne.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParamsStepOne.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepOne.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框内ReduceScatterMesh1D的template
     std::shared_ptr<InsAlgTemplate0> algTemplateStepOne
@@ -274,6 +277,9 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsStepTwo.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsStepTwo.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsStepTwo.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsStepTwo.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepTwo.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepTwo.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间ReduceScatterMesh1dDpu的template
     std::shared_ptr<InsAlgTemplate1> algTemplateStepTwo
@@ -284,6 +290,9 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsStepThree.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsStepThree.buffInfo.outputPtr = cclOutMem.addr;
     tempAlgParamsStepThree.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsStepThree.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepThree.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepThree.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间AllGatherNhrDPU的template
     std::shared_ptr<InsAlgTemplate2> algTemplateStepThree
@@ -294,6 +303,9 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     tempAlgParamsStepFour.buffInfo.inputPtr = cclOutMem.addr;
     tempAlgParamsStepFour.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsStepFour.buffInfo.hcclBuff = cclInMem;
+    tempAlgParamsStepFour.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsStepFour.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParamsStepFour.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框内AllGatherMesh1D的template
     std::shared_ptr<InsAlgTemplate3> algTemplateStepFour

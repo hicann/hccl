@@ -107,6 +107,9 @@ InsSendDpuExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const AlgR
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
+    tempAlgParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构造template资源
     TemplateResource templateResource;
