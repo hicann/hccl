@@ -469,6 +469,10 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
                 selectAlgName = "DpuReduceSequenceMeshNHR";
                 HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
                 return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "AicpuReducePipeLineUBX";
+                HCCL_INFO("selectAlgName is AicpuReducePipeLineUBX");
+                return SelectorStatus::MATCH;
             }
         }
     }
