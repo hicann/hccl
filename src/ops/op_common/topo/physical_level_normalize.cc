@@ -195,7 +195,7 @@ HcclResult NormalizePhysicalLevels(
 
 namespace {
 
-    // 不变量2: 非空、升序严格递增(等价于无重复)、无越界、含当前rank
+    // 非空、升序严格递增(等价于无重复)、无越界、含当前rank
     HcclResult ValidateRankList(const PhysicalLevelInfo& level, size_t idx, u32 userRank, u32 userRankSize)
     {
         if (level.localRanks.empty() || !IsStrictlyAscending(level.localRanks)) {
@@ -215,8 +215,8 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量3a: view必须是有效枚举值。底层类型是u32, 不白名单则非法值会静默落进else被当成GLOBAL
-    // 不变量3b: ref.netLayer恒有效。无效值说明构建侧漏填, 消费侧回查时会拿到错误的层
+    // view必须是有效枚举值。底层类型是u32, 不白名单则非法值会静默落进else被当成GLOBAL
+    // ref.netLayer恒有效。无效值说明构建侧漏填, 消费侧回查时会拿到错误的层
     HcclResult ValidateViewAndRef(const PhysicalLevelInfo& level, size_t idx)
     {
         if (level.view != PhysicalLevelView::LOCAL && level.view != PhysicalLevelView::GLOBAL) {
@@ -231,7 +231,7 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量3c之有TopoInstance侧: 链路属性必须自洽, 否则消费侧会把无效值当成真实链路事实建模
+    // 链路属性必须自洽, 否则消费侧会把无效值当成真实链路事实建模
     HcclResult ValidateTopoInstAttrs(const PhysicalLevelInfo& level, size_t idx)
     {
         if (level.ref.topoInstId == INVALID_UINT) {
@@ -266,8 +266,7 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量3c之无TopoInstance侧: 全部链路属性必须保持无效值。"半有"状态最危险 —— 消费侧判定为
-    // 不可用, 却又能从字段里读出看似合理的值
+    // 全部链路属性必须保持无效值。
     HcclResult ValidateNoTopoInstAttrs(const PhysicalLevelInfo& level, size_t idx)
     {
         const bool clean = level.ref.topoInstId == INVALID_UINT && level.topoType == CommTopo::COMM_TOPO_RESERVED
@@ -280,7 +279,7 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量4/4b/5: GLOBAL级的instSizeListByLayer是该netLayer对整个通信域的一次完整划分
+    // GLOBAL级的instSizeListByLayer是该netLayer对整个通信域的一次完整划分
     HcclResult ValidatePartitionList(const PhysicalLevelInfo& level, size_t idx, u32 userRankSize)
     {
         const auto begin = level.instSizeListByLayer.begin();
@@ -292,13 +291,14 @@ namespace {
                 total, userRankSize);
             return HCCL_E_NOT_SUPPORT;
         }
-        // 不变量4b: 每个分区非空。0能完整穿过本块其余检查, 于是幽灵空分区会被当成真实Instance计入
+        // 每个分区非空。0能完整穿过本块其余检查, 于是幽灵空分区会被当成真实Instance计入
         if (std::find(begin, end, 0U) != end) {
             HCCL_WARNING("[PhysicalLevel][Validate] level[%zu] instSizeListByLayer contains a zero entry", idx);
             return HCCL_E_NOT_SUPPORT;
         }
-        // 不变量5: 当前rank的块大小必须是这一层的某个真实分区。逻辑上被不变量6蕴含, 单列是为了
-        // 把两类失败分开: 本条不过是"大小根本不存在", 只有本条过、6不过才是布局假设出了问题
+        // 当前rank的块大小必须是这一层的某个真实分区。这是instSizeListByLayer上
+        // 唯一一条既能本地验证、又与元素顺序无关的性质 —— HCOMM侧以unordered_map实现,
+        // 返回序在非对称拓扑上会真实乱序, 任何依赖下标位置的校验都不成立
         if (std::find(begin, end, static_cast<u32>(level.localRanks.size())) == end) {
             HCCL_WARNING(
                 "[PhysicalLevel][Validate] level[%zu] localRankNum[%zu] is not one of the inst sizes", idx,
@@ -308,32 +308,11 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量6: 布局自检。用userRank做前缀和必然落进某一块, 其大小必须等于localRanks.size()。
-    // 这是instSizeListByLayer唯一一处能在本地验证的跨rank性质
-    HcclResult ValidateRankLocatable(const PhysicalLevelInfo& level, size_t idx, u32 userRank)
-    {
-        u32 cumulative = 0;
-        bool located = false;
-        for (u32 instSize : level.instSizeListByLayer) {
-            cumulative += instSize;
-            if (userRank < cumulative) {
-                located = (instSize == static_cast<u32>(level.localRanks.size()));
-                break;
-            }
-        }
-        if (!located) {
-            HCCL_WARNING(
-                "[PhysicalLevel][Validate] level[%zu] rank[%u] cannot be located in instSizeListByLayer "
-                "with a block of localRankNum[%zu]",
-                idx, userRank, level.localRanks.size());
-            return HCCL_E_NOT_SUPPORT;
-        }
-        return HCCL_SUCCESS;
-    }
-
-    // 不变量3d: view与instSizeListByLayer是否为空严格等价; 错开之后消费侧会把只知道本块的级
-    // 当成全局分区来切算法
-    HcclResult ValidatePartition(const PhysicalLevelInfo& level, size_t idx, u32 userRank, u32 userRankSize)
+    /**
+     * view与instSizeListByLayer是否为空严格等价; 错开之后消费侧会把只知道本块的级
+     * 当成全局分区来切算法。
+     */
+    HcclResult ValidatePartition(const PhysicalLevelInfo& level, size_t idx, u32 userRankSize)
     {
         if (level.view == PhysicalLevelView::LOCAL) {
             if (!level.instSizeListByLayer.empty()) {
@@ -342,11 +321,7 @@ namespace {
             }
             return HCCL_SUCCESS;
         }
-        HcclResult ret = ValidatePartitionList(level, idx, userRankSize);
-        if (ret == HCCL_SUCCESS) {
-            ret = ValidateRankLocatable(level, idx, userRank);
-        }
-        return ret;
+        return ValidatePartitionList(level, idx, userRankSize);
     }
 
     HcclResult ValidateLevel(const PhysicalLevelInfo& level, size_t idx, u32 userRank, u32 userRankSize)
@@ -359,7 +334,7 @@ namespace {
             ret = level.hasTopoInst ? ValidateTopoInstAttrs(level, idx) : ValidateNoTopoInstAttrs(level, idx);
         }
         if (ret == HCCL_SUCCESS) {
-            ret = ValidatePartition(level, idx, userRank, userRankSize);
+            ret = ValidatePartition(level, idx, userRankSize);
         }
         return ret;
     }
@@ -383,7 +358,7 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 不变量8: 身份(netLayer, topoInstId)全域唯一。LevelLess的兜底键正是靠这两项才构成全序,
+    // 身份(netLayer, topoInstId)全域唯一。LevelLess的兜底键正是靠这两项才构成全序,
     // 重复则两个Level在比较器下等价, std::sort的相对顺序未指定, 各rank的下标语义会分叉。
     // levels规模是个位数(上限PHYSICAL_LEVEL_NUM_LIMIT), 两两比较不需要额外容器
     HcclResult ValidateUniqueSource(const std::vector<PhysicalLevelInfo>& levels)

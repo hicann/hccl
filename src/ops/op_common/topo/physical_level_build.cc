@@ -222,15 +222,17 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-    // 校验分区布局: 非空、总和等于通信域规模, 且用myRank做前缀和能定位到大小正确的那一块
-    HcclResult ValidateInstSizeLayout(
-        const std::vector<u32>& instSizeList, u32 layer, u32 myRank, size_t localRankNum, u32 userRankSize)
+    /**
+     * 校验分区: 非空、总和等于通信域规模、无空分区, 且本地实例的规模是其中某个分区的大小。
+     */
+    HcclResult
+    ValidateInstSizeLayout(const std::vector<u32>& instSizeList, u32 layer, size_t localRankNum, u32 userRankSize)
     {
         if (instSizeList.empty()) {
             HCCL_WARNING("[PhysicalLevel][Build] netLayer[%u] inst size list is empty", layer);
             return HCCL_E_INTERNAL;
         }
-        // 哨兵, 正常路径永不触发(ExtractNetLayerDetails已用同一等式先行校验过)。
+        // 正常路径永不触发(ExtractNetLayerDetails已用同一等式先行校验过)。
         // 保留它只为在HCOMM改变分层语义时第一时间暴露
         const u32 totalRankNum = std::accumulate(instSizeList.begin(), instSizeList.end(), 0U);
         if (totalRankNum != userRankSize) {
@@ -239,24 +241,22 @@ namespace {
                 totalRankNum, userRankSize);
             return HCCL_E_INTERNAL;
         }
-        // 布局自检: 定位到本rank所在的块, 其大小必须等于本地实例的rank数。两个量来源独立,
-        // 对得上才说明"按最小rankId升序"这个布局假设在本层成立
-        u32 cumulative = 0;
-        for (u32 instSize : instSizeList) {
-            cumulative += instSize;
-            if (myRank >= cumulative) {
-                continue;
-            }
-            if (instSize == static_cast<u32>(localRankNum)) {
-                return HCCL_SUCCESS;
-            }
-            HCCL_WARNING(
-                "[PhysicalLevel][Build] netLayer[%u] rank[%u] locates a block of size[%u] but local "
-                "instance has [%zu] ranks, inst size list is not laid out by ascending min rankId",
-                layer, myRank, instSize, localRankNum);
+        // 0能完整穿过其余检查, 于是幽灵空分区会被当成真实Instance计入
+        if (std::find(instSizeList.begin(), instSizeList.end(), 0U) != instSizeList.end()) {
+            HCCL_WARNING("[PhysicalLevel][Build] netLayer[%u] inst size list contains a zero entry", layer);
             return HCCL_E_INTERNAL;
         }
-        return HCCL_E_INTERNAL;
+        // 顺序无关的自检: 本地实例的规模必须是这一层真实存在的某个分区大小。两个量来源独立
+        // (前者来自GetRanksByLayer, 后者来自GetInstSizeListByLayer), 对不上说明两次调用之间
+        // RankGraph发生了变化
+        if (std::find(instSizeList.begin(), instSizeList.end(), static_cast<u32>(localRankNum)) == instSizeList.end()) {
+            HCCL_WARNING(
+                "[PhysicalLevel][Build] netLayer[%u] local instance has [%zu] ranks, which is not one of the "
+                "inst sizes",
+                layer, localRankNum);
+            return HCCL_E_INTERNAL;
+        }
+        return HCCL_SUCCESS;
     }
 
     // 取该netLayer本地NetInstance的rank集合与全层分区。这是"合一"里ranktable那一半:
@@ -275,10 +275,10 @@ namespace {
         if (ret != HCCL_SUCCESS) {
             return ret;
         }
-        // 原样透传HCOMM的返回序, 不重排。该序是"按最小rankId升序的分区布局",
-        // topo_host.cc的CalcGroupIdx/GetCurrentServerStartRank已在其上做前缀和定位, 必须与之一致
+        // 原样透传HCOMM的返回序, 不重排。该序不保证任何含义(HCOMM侧以unordered_map实现),
+        // 消费侧只做与顺序无关的判断(IsInstListSymmetric/CalcGcd), 排序反而会掩盖乱序这件事
         instSizeListByLayer = details.instSizeListOfLayer[layer];
-        return ValidateInstSizeLayout(instSizeListByLayer, layer, myRank, ranks.size(), topoInfo->userRankSize);
+        return ValidateInstSizeLayout(instSizeListByLayer, layer, ranks.size(), topoInfo->userRankSize);
     }
 
     // 取该layer上全部TopoInstance的id。空map是合法结果, 返回空列表且不算失败
