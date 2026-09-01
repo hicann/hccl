@@ -20,6 +20,7 @@ constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u32 BROADCAST_CCU_MAX_RANK_SIZE = 64;
 constexpr u32 BROADCAST_UBX_AIV_MAX_RANK = 8;
+constexpr u32 UBX_BC_CONCURR_DATA_SIZE = 2 * 1024 * 1024;
 
 SelectorStatus BroadcastAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -39,6 +40,8 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
     (void)opParam;
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (topoInfo->is2DieFullMesh) {
             HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
@@ -48,7 +51,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuMSBroadcastSoleMesh";
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+                selectAlgName = "CcuMSBroadcastSoleMesh";
+            } else {
+                selectAlgName = "CcuMsBroadcastConcurMeshNHR";
+            }
         } else { // MS 不支持
             HCCL_WARNING(
                 "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
@@ -167,7 +174,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuSchedBroadcastSoleMesh";
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+                selectAlgName = "CcuSchedBroadcastSoleMesh";
+            } else {
+                selectAlgName = "CcuSchedBroadcastConcurMeshNHR";
+            }
         } else if (topoInfo->level0PcieMix) {
             HCCL_WARNING("[BroadcastAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
@@ -240,7 +251,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
         selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+                selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
+            } else {
+                selectAlgName = "AicpuBroadcastConcurMeshNHR";
+            }
         } else if (topoInfo->level0PcieMix) {
             selectAlgName = "InsBroadcastParallelMesh1DNHRPcie";
         } else {

@@ -170,4 +170,6 @@ HcclResult CcuTempBroadcastMesh1D::KernelRun(
 
     return HCCL_SUCCESS;
 }
+
+u64 CcuTempBroadcastMesh1D::GetThreadNum() const { return 1; }
 } // namespace ops_hccl

@@ -57,6 +57,9 @@ private:
     HcclResult SplitDataFor2Dies(
         const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
         uint64_t& die1Size) const;
+    HcclResult CalcChannelDescs(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        std::vector<HcclChannelDesc>& channelDescs);
     u32 mySubCommRank_ = 0;
     u32 subCommRootId_ = 0;
     u32 root_ = 0;
