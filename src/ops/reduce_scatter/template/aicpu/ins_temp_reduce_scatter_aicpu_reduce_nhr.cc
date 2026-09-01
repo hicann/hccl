@@ -11,6 +11,21 @@
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr.h"
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> InsTempReduceScatterAicpuReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // 用aicpu做reduce，不参与性能排序，
+    float A = 10.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
+    return params;
+}
+
 InsTempReduceScatterAicpuReduceNHR::InsTempReduceScatterAicpuReduceNHR(
     const OpParam& param, const u32 rankId, // 传通信域的u32，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

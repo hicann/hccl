@@ -371,15 +371,15 @@ REGISTER_EXEC_V2(
     InsTempAllReduceAicpuReduceNHR);
 REGISTER_ALG_ATTRS(AicpuAllReduceSoleNHRAicpuReduce,
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.isSupportLevel0PcieMix = true);
+                   topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true);
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     AivTempAllReduceMesh1DOneShot);
 REGISTER_ALG_ATTRS(
-    AivAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    AivAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;
+    topo.isSupportLevel1Nhr = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
@@ -398,6 +398,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };

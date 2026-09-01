@@ -264,17 +264,17 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.isSupportFloatOrderPreserved = true);
+    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
 
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
     InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
 REGISTER_ALG_ATTRS(
-    AicpuReduceScatterStrictOrderedGroupMesh,
+    AicpuReduceScatterStrictOrderedGroupMesh, topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.isSupportFloatOrderPreserved = true);
+    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
 
 } // namespace ops_hccl

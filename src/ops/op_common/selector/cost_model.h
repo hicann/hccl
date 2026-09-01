@@ -42,6 +42,16 @@ AllAlgos* GetAllAlgos();
 HcclResult AddAlgToAllAlgos(
     HcclCMDType opType, const char* algName, const char* executorName, const char** templateName, int templateNum);
 
+// 检查算法是否匹配当前拓扑，返回 true=匹配，false=不匹配
+bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo);
+
+// topo 匹配检查结果（不打日志，供调用方决定日志级别）
+struct TopoMatchResult {
+    bool matched = true;
+    std::string reason; // matched=false 时的过滤原因
+};
+TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo);
+
 typedef struct {
     float A; // 用来描述跨卡传输的时间随DataSize变化的趋势，会受到UB带宽利用率的影响
     float B; // 用来描述本地传输的时间随DataSize变化的趋势，不受到UB带宽利用率的影响

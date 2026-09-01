@@ -32,6 +32,14 @@ typedef struct {
     int count;
 } CostTable;
 
+// op 匹配检查结果（不打日志，供调用方决定日志级别）
+struct OpMatchResult {
+    bool matched = true;
+    std::string reason; // matched=false 时的过滤原因
+};
+OpMatchResult
+CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo);
+
 struct UbUtilEntry {
     double upperBound;
     float utilization;

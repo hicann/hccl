@@ -15,6 +15,7 @@
 #include "alg_v2_template_base.h"
 #include "executor_v2_base.h"
 #include "alg_data_trans_wrapper.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -26,6 +27,8 @@ public:
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
         const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempReduceScatterAicpuReduceNHR() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

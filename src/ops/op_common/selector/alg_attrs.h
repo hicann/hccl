@@ -63,6 +63,9 @@ struct TopoAttrs {
 struct OpAttrs {
     bool isSupportProd = true;
     std::set<HcclDataType> unsupportedDataTypes = {};
+    // 白名单：非空时仅允许列出的数据类型，优先于 unsupportedDataTypes。
+    // 空 = 不限制（走 unsupportedDataTypes 黑名单）。
+    std::set<HcclDataType> supportedDataTypes = {};
     bool isSupportInplace = true;
     bool isSupportFloatOrderPreserved = false;
 
@@ -82,6 +85,11 @@ static const std::set<HcclDataType> UNSUPPORTED_64BIT
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
 static const std::set<HcclDataType> UNSUPPORTED_UINT64_FP64
     = {HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+
+// 仅支持浮点类型：用于保序算法（OrderPreserved）
+static const std::set<HcclDataType> SUPPORTED_FLOAT_ONLY
+    = {HcclDataType::HCCL_DATA_TYPE_FP16, HcclDataType::HCCL_DATA_TYPE_FP32, HcclDataType::HCCL_DATA_TYPE_BFP16,
+       HcclDataType::HCCL_DATA_TYPE_FP64};
 
 struct AlgAttrs {
     std::string name;

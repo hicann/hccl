@@ -140,44 +140,44 @@ CostModelManager::CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo
 }
 
 #ifndef AICPU_COMPILE
-__attribute__((unused)) static bool
-IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
 {
+    TopoMatchResult result;
     const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(algName);
     if (attrs == nullptr) {
-        return true;
+        return result;
     }
 
     const auto& t = attrs->topo;
 
     if (topoInfo->topoLevelNums < t.minTopoLevelNum) {
-        HCCL_INFO(
-            "[IsAlgoMatchTopo] algName=%s filtered: topoLevelNums=%u < minTopoLevelNum=%u.", algName.c_str(),
-            topoInfo->topoLevelNums, t.minTopoLevelNum);
-        return false;
+        result.matched = false;
+        result.reason = "topoLevelNums=" + std::to_string(topoInfo->topoLevelNums)
+                        + " < minTopoLevelNum=" + std::to_string(t.minTopoLevelNum);
+        return result;
     }
     if (topoInfo->topoLevelNums > t.maxTopoLevelNum) {
-        HCCL_INFO(
-            "[IsAlgoMatchTopo] algName=%s filtered: topoLevelNums=%u > maxTopoLevelNum=%u.", algName.c_str(),
-            topoInfo->topoLevelNums, t.maxTopoLevelNum);
-        return false;
+        result.matched = false;
+        result.reason = "topoLevelNums=" + std::to_string(topoInfo->topoLevelNums)
+                        + " > maxTopoLevelNum=" + std::to_string(t.maxTopoLevelNum);
+        return result;
     }
 
     if (!(t.supportLevel0Topos & (1 << static_cast<uint8_t>(topoInfo->level0Topo)))) {
-        HCCL_INFO(
-            "[IsAlgoMatchTopo] algName=%s filtered: level0Topo=%u not in supportLevel0Topos=0x%02x.", algName.c_str(),
-            static_cast<uint8_t>(topoInfo->level0Topo), t.supportLevel0Topos);
-        return false;
+        result.matched = false;
+        result.reason = "level0Topo=" + std::to_string(static_cast<uint8_t>(topoInfo->level0Topo))
+                        + " not in supportLevel0Topos=0x" + std::to_string(t.supportLevel0Topos);
+        return result;
     }
 
     if (t.supportLevel0MeshTypes != MESH_TYPE_ANY) {
         if ((topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS)
             && (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED)) {
             if (!(t.supportLevel0MeshTypes & (1 << static_cast<uint8_t>(topoInfo->level0MeshType)))) {
-                HCCL_INFO(
-                    "[IsAlgoMatchTopo] algName=%s filtered: level0MeshType=%u not in supportLevel0MeshTypes=0x%02x.",
-                    algName.c_str(), static_cast<uint8_t>(topoInfo->level0MeshType), t.supportLevel0MeshTypes);
-                return false;
+                result.matched = false;
+                result.reason = "level0MeshType=" + std::to_string(static_cast<uint8_t>(topoInfo->level0MeshType))
+                                + " not in supportLevel0MeshTypes=0x" + std::to_string(t.supportLevel0MeshTypes);
+                return result;
             }
         }
     }
@@ -185,33 +185,31 @@ IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* t
     if (topoInfo->is2DieFullMesh && !t.isSupport2DieFullMesh) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D
             && (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED)) {
-            HCCL_INFO(
-                "[IsAlgoMatchTopo] algName=%s filtered: is2DieFullMesh=true, isSupport2DieFullMesh=false.",
-                algName.c_str());
-            return false;
+            result.matched = false;
+            result.reason = "is2DieFullMesh=true, isSupport2DieFullMesh=false";
+            return result;
         }
     }
 
     if (topoInfo->level0PcieMix && !t.isSupportLevel0PcieMix) {
         if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0Topo == Level0Shape::CLOS) {
-            HCCL_INFO(
-                "[IsAlgoMatchTopo] algName=%s filtered: level0PcieMix=true, isSupportLevel0PcieMix=false.",
-                algName.c_str());
-            return false;
+            result.matched = false;
+            result.reason = "level0PcieMix=true, isSupportLevel0PcieMix=false";
+            return result;
         }
     }
 
     if (topoInfo->Level1Nhr && !t.isSupportLevel1Nhr) {
-        HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: Level1Nhr=true, isSupportLevel1Nhr=false.", algName.c_str());
-        return false;
+        result.matched = false;
+        result.reason = "Level1Nhr=true, isSupportLevel1Nhr=false";
+        return result;
     }
 
     if (t.requireAllMeshConnected && topoInfo->level0PcieMix
         && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-        HCCL_INFO(
-            "[IsAlgoMatchTopo] algName=%s filtered: requireAllMeshConnected but not all mesh connected.",
-            algName.c_str());
-        return false;
+        result.matched = false;
+        result.reason = "requireAllMeshConnected but not all mesh connected";
+        return result;
     }
 
     if (!t.supportDevTypes.empty()) {
@@ -223,33 +221,42 @@ IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* t
             }
         }
         if (!devTypeMatched) {
-            HCCL_INFO(
-                "[IsAlgoMatchTopo] algName=%s filtered: deviceType=%d not in supportDevTypes.", algName.c_str(),
-                static_cast<int>(topoInfo->deviceType));
-            return false;
+            result.matched = false;
+            result.reason
+                = "deviceType=" + std::to_string(static_cast<int>(topoInfo->deviceType)) + " not in supportDevTypes";
+            return result;
         }
     }
 
-    // hostDpuOnly 算法仅在 hostDpuOnly 拓扑下可用，非 hostDpuOnly 算法在 hostDpuOnly
-    // 拓扑下不可用，支持dpu算法的cost评估后可放开
     if (t.isHostDpuOnly && !topoInfo->hostDpuOnly) {
-        HCCL_INFO(
-            "[IsAlgoMatchTopo] algName=%s filtered: isHostDpuOnly=true but topo hostDpuOnly=false.", algName.c_str());
-        return false;
+        result.matched = false;
+        result.reason = "isHostDpuOnly=true but topo hostDpuOnly=false";
+        return result;
     }
     if (!t.isHostDpuOnly && topoInfo->hostDpuOnly) {
-        HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: hostDpuOnly=true, isHostDpuOnly=false.", algName.c_str());
-        return false;
+        result.matched = false;
+        result.reason = "hostDpuOnly=true, isHostDpuOnly=false";
+        return result;
     }
 
     if (t.topoCustomCheck) {
         if (!t.topoCustomCheck(topoInfo)) {
-            HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: topoCustomCheck returned false.", algName.c_str());
-            return false;
+            result.matched = false;
+            result.reason = "topoCustomCheck returned false";
+            return result;
         }
     }
 
-    return true;
+    return result;
+}
+
+bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    auto result = CheckAlgoMatchTopoWithReason(algName, topoInfo);
+    if (!result.matched) {
+        HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: %s.", algName.c_str(), result.reason.c_str());
+    }
+    return result.matched;
 }
 #endif
 

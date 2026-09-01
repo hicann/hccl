@@ -472,16 +472,16 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.isSupportFloatOrderPreserved = true);
+    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedGroupMesh, InsV2AllReduceOrderPreservedExecutor,
     TopoMatch1D, InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
-    AicpuAllReduceStrictOrderedGroupMesh,
+    AicpuAllReduceStrictOrderedGroupMesh, topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.isSupportFloatOrderPreserved = true);
+    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
 
 } // namespace ops_hccl

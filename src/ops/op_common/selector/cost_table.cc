@@ -43,6 +43,49 @@ bool IsInputOutputOverlap(const OpParam& opParam)
     return inStart <= outStart + opParam.outputSize - 1 && outStart <= inStart + opParam.inputSize - 1;
 }
 
+OpMatchResult
+CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    OpMatchResult result;
+    const auto& op = attrs.op;
+    HcclDataType dataType = opParam.DataDes.dataType;
+    bool isInplace = IsInputOutputOverlap(opParam);
+    bool needOrderPreserved = IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize);
+
+    if (!op.supportedDataTypes.empty()) {
+        if (op.supportedDataTypes.count(dataType) == 0) {
+            result.matched = false;
+            result.reason = "not in supportedDataTypes";
+            return result;
+        }
+    } else if (op.unsupportedDataTypes.count(dataType) > 0) {
+        result.matched = false;
+        result.reason = "unsupportedDataTypes";
+        return result;
+    }
+    if (!op.isSupportProd && opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
+        result.matched = false;
+        result.reason = "isSupportProd=false with PROD";
+        return result;
+    }
+    if (!op.isSupportInplace && isInplace) {
+        result.matched = false;
+        result.reason = "isSupportInplace=false with overlap";
+        return result;
+    }
+    if (needOrderPreserved && !op.isSupportFloatOrderPreserved) {
+        result.matched = false;
+        result.reason = "isSupportFloatOrderPreserved=false with order-preserved";
+        return result;
+    }
+    if (op.opCustomCheck && !op.opCustomCheck(opParam, topoInfo)) {
+        result.matched = false;
+        result.reason = "opCustomCheck returned false";
+        return result;
+    }
+    return result;
+}
+
 // ---------------------------------------------------------------------------
 // CostTableManager 方法实现
 // ---------------------------------------------------------------------------
@@ -73,9 +116,6 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
     }
 
     u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-    HcclDataType dataType = opParam.DataDes.dataType;
-    bool needOrderPreserved = IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize);
-    bool isInplace = IsInputOutputOverlap(opParam);
 
     for (int i = 0; i < cm.count; ++i) {
         if (cm.costAlgoParams[i].count <= 0) {
@@ -94,26 +134,9 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         }
 
         // normal filter
-        const auto& op = attrs->op;
-        std::string filterReason;
-        if (op.unsupportedDataTypes.count(dataType) > 0) {
-            filterReason = "unsupportedDataTypes";
-        }
-        if (filterReason.empty() && !op.isSupportProd && opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            filterReason = "isSupportProd=false with PROD";
-        }
-        if (filterReason.empty() && !op.isSupportInplace && isInplace) {
-            filterReason = "isSupportInplace=false with overlap";
-        }
-        if (filterReason.empty() && needOrderPreserved && !op.isSupportFloatOrderPreserved) {
-            filterReason = "isSupportFloatOrderPreserved=false with order-preserved";
-        }
-        if (filterReason.empty() && op.opCustomCheck && !op.opCustomCheck(opParam, topoInfo)) {
-            filterReason = "opCustomCheck returned false";
-        }
-
-        if (!filterReason.empty()) {
-            HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: %s.", name.c_str(), filterReason.c_str());
+        auto opResult = CheckAlgoMatchOpWithReason(*attrs, opParam, topoInfo);
+        if (!opResult.matched) {
+            HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: %s.", name.c_str(), opResult.reason.c_str());
             continue;
         }
 

@@ -18,6 +18,9 @@
 #include "alg_parse.h"
 #include "algo_name_mapper.h"
 #include "cost_model.h"
+#include "cost_table.h"
+#include "alg_attrs.h"
+#include "alg_attrs_registry.h"
 #include "tuner_setup.h"
 
 namespace ops_hccl {
@@ -104,6 +107,51 @@ HcclResult SelectorEngine::FilterCmByEngine(CostModel& cm, const std::vector<OpE
         }
     }
     return HCCL_SUCCESS;
+}
+
+void SelectorEngine::LogAivOnlyNotMatch(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    HCCL_ERROR(
+        "Failed to select AIV algorithm while configured as AIV_ONLY. "
+        "Current topology: topoLevelNums=%u, level0Topo=%u, level0PcieMix=%d, level2UbRtp=%d, "
+        "Level1Nhr=%d, userRankSize=%u. opType=%d, dataType=%d, dataSize=%llu, reduceOp=%d.",
+        topoInfo->topoLevelNums, static_cast<uint32_t>(topoInfo->level0Topo), static_cast<int>(topoInfo->level0PcieMix),
+        static_cast<int>(topoInfo->level2UbRtp), static_cast<int>(topoInfo->Level1Nhr), topoInfo->userRankSize,
+        static_cast<int>(param.opType), static_cast<int>(param.DataDes.dataType), param.inputSize,
+        static_cast<int>(param.reduceType));
+
+    // 回溯检查所有 AIV 算法被过滤的原因
+    HCCL_ERROR("[SelectorEngine] AIV algorithm filter details:");
+    const AllAlgos* allAlgos = GetAllAlgos();
+    if (allAlgos == nullptr) {
+        return;
+    }
+    for (int i = 0; i < allAlgos->count; ++i) {
+        const AlgElement& alg = allAlgos->algElements[i];
+        if (alg.opType != param.opType || alg.algName == nullptr) {
+            continue;
+        }
+        const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(alg.algName);
+        if (attrs == nullptr || attrs->engine != OpExecuteConfig::AIV) {
+            continue;
+        }
+        std::string algName = alg.algName;
+
+        // topo 层检查
+        auto topoResult = CheckAlgoMatchTopoWithReason(algName, topoInfo);
+        if (!topoResult.matched) {
+            HCCL_ERROR("[SelectorEngine] algName=%s filtered by topo: %s.", algName.c_str(), topoResult.reason.c_str());
+            continue;
+        }
+
+        // op 层检查
+        auto opResult = CheckAlgoMatchOpWithReason(*attrs, param, topoInfo);
+        if (!opResult.matched) {
+            HCCL_ERROR("[SelectorEngine] algName=%s filtered by op: %s.", algName.c_str(), opResult.reason.c_str());
+        } else {
+            HCCL_ERROR("[SelectorEngine] algName=%s passed all filters.", algName.c_str());
+        }
+    }
 }
 
 HcclResult
@@ -201,9 +249,7 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
     CostTable ct{nullptr, 0};
     CHK_RET(CostTableManager::Global()->CostTableGen(*cm, ct, topoInfo, param));
 
-    if (ct.count <= 0) {
-        HCCL_WARNING("[SelectorEngine] costTable is empty after CostTableGen.");
-    } else if (HcclTunerIsLoaded()) {
+    if (ct.count > 0 && HcclTunerIsLoaded()) {
         // step 2.2: tuner（Enrich 填 3D 名 + 调用插件改 cost）
         AlgoNameMapper::Global()->Enrich(ct.costs, ct.count);
         bool tunerModified = false;
@@ -225,6 +271,9 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
 
     if (ret != HCCL_SUCCESS) {
         HCCL_ERROR("[SelectorEngine] Run failed, no algorithm selected.");
+        if (param.opExecuteConfig == OpExecuteConfig::AIV_ONLY) {
+            LogAivOnlyNotMatch(param, topoInfo);
+        }
         return ret;
     }
 
@@ -236,6 +285,13 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
 
 HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, std::string& algName)
 {
+    if (ct.count <= 0) {
+        HCCL_ERROR(
+            "[SelectorEngine] SelectMinCost: costTable is empty, opType=%d, dataSize=%llu.",
+            static_cast<int>(param.opType), param.inputSize);
+        return HCCL_E_NOT_SUPPORT;
+    }
+
     // 遍历找最小 cost 并打印 costTable 明细, 格式: | idx | algName | engine | cost | status |
     HCCL_INFO(
         "[SelectorEngine] SelectMinCost: costTable count=%d, opType=%d, dataSize=%llu.", ct.count,

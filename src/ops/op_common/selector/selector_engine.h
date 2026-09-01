@@ -48,6 +48,9 @@ private:
     HcclResult InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param, CostModel*& cm);
 
     HcclResult SelectMinCost(const CostTable& ct, OpParam& param, std::string& algName);
+
+    // AIV_ONLY 模式下选不到 AIV 算法时打印 ERROR，包含当前拓扑条件
+    static void LogAivOnlyNotMatch(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
 };
 
 } // namespace ops_hccl

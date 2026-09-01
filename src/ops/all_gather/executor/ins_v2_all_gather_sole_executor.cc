@@ -427,9 +427,9 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatch1D,
     AivTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllGatherSoleMesh, op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
-    topo.maxTopoLevelNum = 2;
+    AivAllGatherSoleMesh, topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };
