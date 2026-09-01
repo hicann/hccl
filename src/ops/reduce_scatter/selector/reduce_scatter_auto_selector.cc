@@ -681,7 +681,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
         }
     } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
         selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
-    } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
+    } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
         if (opParam.supportSymmetricMemory) {
             selectAlgName = "AicpuReduceScatterPipeLineUBX";
         } else {

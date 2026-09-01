@@ -232,6 +232,10 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
 SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = opParam.DataDes.count * perDataSize;
+    HCCL_DEBUG("[SelectMeshAlgoCcuSchedule] dataSize[%llu]", dataSize);
+
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -240,7 +244,11 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
         } else if (topoInfo->level0PcieMix) {
             selectAlgName = "InsBroadcastParallelMesh1DNHRPcie";
         } else {
-            selectAlgName = "InsBroadcastParallelMesh1DNHRUBX";
+            if (IsLargeData(dataSize)) {
+                selectAlgName = "InsBroadcastParallelMesh1DNHRUBX";
+            } else {
+                selectAlgName = "AicpuBroadcastSoleNHR";
+            }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         selectAlgName = "AicpuBroadcastSoleNHRTwoShotMultiLink";

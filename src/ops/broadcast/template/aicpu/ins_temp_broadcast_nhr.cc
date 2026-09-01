@@ -25,7 +25,22 @@ HcclResult InsTempBroadcastNHR::CalcRes(
     AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> level0Channels;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
+    // MESH_1D_CLOS 层0 CLOS/MESH 实例尺寸对称（GCD>1），Level1Nhr 不可达；本分支仅单级拓扑可达
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        std::vector<HcclChannelDesc> myChannelDescs;
+        CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
+                level0Channels.push_back(channel);
+            }
+        }
+        HCCL_DEBUG("[InsTempBroadcastNHR::CalcRes] Get Channel Success!");
+    } else {
+        CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
+    }
+    CHK_PRT_RET(
+        level0Channels.empty(), HCCL_ERROR("[InsTempBroadcastNHR::CalcRes] no UB_CTP channel after filter"),
+        HcclResult::HCCL_E_INTERNAL);
     resourceRequest.channels.push_back(level0Channels);
     channelsPerRank_ = CalcChannelsPerRank(level0Channels);
     if (channelsPerRank_ > MAX_JETTY_NUM) {

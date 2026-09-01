@@ -500,7 +500,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
         }
     } else if (isDataTypeOrReduceTypeSpecial) {
         selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
-    } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
+    } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
         if (opParam.supportSymmetricMemory) {
             selectAlgName = "AicpuAllReducePipeLineUBX";
         } else {

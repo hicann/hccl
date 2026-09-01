@@ -36,7 +36,22 @@ HcclResult ReduceNHR::CalcRes(
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     std::vector<HcclChannelDesc> level1Channels;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
+    // MESH_1D_CLOS 层0 CLOS/MESH 实例尺寸对称（GCD>1），Level1Nhr 不可达；本分支仅单级拓扑可达
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        std::vector<HcclChannelDesc> myChannelDescs;
+        CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
+        for (const auto& channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
+                level1Channels.push_back(channel);
+            }
+        }
+        HCCL_INFO("[ReduceNHR::CalcRes] channels total[%zu] ubctp[%zu]", myChannelDescs.size(), level1Channels.size());
+    } else {
+        CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
+    }
+    CHK_PRT_RET(
+        level1Channels.empty(), HCCL_ERROR("[ReduceNHR::CalcRes] no UB_CTP channel after filter"),
+        HcclResult::HCCL_E_INTERNAL);
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
         "[ReduceNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"

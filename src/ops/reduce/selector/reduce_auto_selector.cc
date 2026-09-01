@@ -350,7 +350,11 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
             if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
                 selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
-                selectAlgName = "ReduceParallelMesh1DNHRUBX";
+                if (IsLargeData(dataSize)) {
+                    selectAlgName = "ReduceParallelMesh1DNHRUBX";
+                } else {
+                    selectAlgName = "AicpuReduceSoleNHR";
+                }
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
