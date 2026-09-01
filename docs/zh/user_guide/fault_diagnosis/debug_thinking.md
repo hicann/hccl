@@ -6,7 +6,7 @@
 
 对于HCCL来说，故障码会涵盖大部分常见问题，如果报错中未包含故障码信息，或故障码信息为EI9999，可能为较为少见的故障场景或HCCL内部问题，请基于实际的CANN日志和代码进行分析，如果无法解决请联系技术支持。
 
-对于没有清晰首报错的问题，大集群故障定位时，需要梳理每个rank的行为，通过rank之间的依赖关系找到根节点。面对这个难题，HCCL提供了建链根节点定位能力和集群心跳能力，并会在常见问题中给出诊断结果，相关原理请参见[建链失败定位思路](./param_link_stage.md#建链失败定位思路)、[集群心跳机制](./task_exec_stage.md#集群心跳机制)  。
+对于没有清晰首报错的问题，大集群故障定位时，需要梳理每个rank的行为，通过rank之间的依赖关系找到根节点。面对这个难题，HCCL提供了建链根节点定位能力和集群心跳能力，并会在常见问题中给出诊断结果，相关原理请参见[建链失败定位思路](./param_link_stage_troubleshooting.md#建链失败定位思路)、[集群心跳机制](./_dump_cluster_heartbeat_mechanism.md#集群心跳机制)  。
 
 本文档适用场景如下：
 
@@ -191,8 +191,8 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
     - HCCL提供了通信域创建接口和通信算子接口，且接口均为同步下发，异步执行。因此可分为以下几个场景：
         - 若业务在调用通信域创建接口失败时，或在报错日志中有`topoinfo`、`ranktable`关键字打印，可参考[通信域初始化阶段](comm_domain_init_stage.md)章节进一步排查。
-        - 若业务在调用通信算子接口失败时，或在报错日志中有`transport`关键字打印，可参考[参数面建链阶段](param_link_stage.md)章节进一步排查。
-        - 若业务创建通信域接口和通信算子下发均成功，而是在触发流同步时有HCCL的算子执行失败，或在报错日志中有"TaskExceptionHandler"、"FFTS+ run failed"、"Task run failed"关键字打印，可参考[任务下发执行阶段](task_exec_stage.md)章节做进一步排查。
+        - 若业务在调用通信算子接口失败时，或在报错日志中有`transport`关键字打印，可参考[参数面建链阶段](_dump_param_link_stage.md)章节进一步排查。
+        - 若业务创建通信域接口和通信算子下发均成功，而是在触发流同步时有HCCL的算子执行失败，或在报错日志中有"TaskExceptionHandler"、"FFTS+ run failed"、"Task run failed"关键字打印，可参考[任务下发执行阶段](_dump_task_exec_stage.md)章节做进一步排查。
 
             除此三个阶段的关键信息外，若在业务的打屏日志中有明确的错误码信息，如`EI0001`，可直接根据错误码在后续内容中找到对应的故障码，并进一步排查。
 
@@ -200,35 +200,35 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
 | 一级关键字 | 二级检索关键字 | 故障场景 |
 | --- | --- | --- |
-| InitGroupStage | EnvConfig | [通信域初始化阶段环境变量配置异常](env_config_error_EI0001.md) |
-|                |RanktableConfig | [通信域初始化阶段rankTable文件读取失败](rank_table_load_fail.md) |
-|                |RanktableCheck | [通信域初始化阶段rankTable集群信息校验失败](cluster_info_verify_fail.md) |
-|                |RanktableDetect | [通信域初始化阶段集群信息探测失败](cluster_info_nego.md) |
+| InitGroupStage | EnvConfig | [通信域初始化阶段环境变量配置异常](_dump_env_config_error_EI0001.md) |
+|                |RanktableConfig | [通信域初始化阶段rankTable文件读取失败](rank_table_file_read_fail_EI0004.md) |
+|                |RanktableCheck | [通信域初始化阶段rankTable集群信息校验失败](_dump_cluster_info_verify_fail.md) |
+|                |RanktableDetect | [通信域初始化阶段集群信息探测失败](_dump_cluster_info_nego.md) |
 |                |Resource | 通信域初始化节点资源初始化失败 |
-| InitChannelStage | ParameterConflict | [参数面建链阶段参数一致性校验失败](./param_link_stage.md#参数一致性校验ei0005) |
+| InitChannelStage | ParameterConflict | [参数面建链阶段参数一致性校验失败](./param_consistency_check_EI0005.md#参数一致性校验ei0005) |
 |                |VersionConflict | 参数面建链阶段HCCL版本不一致校验失败 |
-|                |Timeout | [参数面建链阶段超时报错](./param_link_stage.md#建链超时ei0006) |
+|                |Timeout | [参数面建链阶段超时报错](./link_timeout_EI0006.md#建链超时ei0006) |
 | TaskExecStage | InvalidArgument | 算子执行阶段入参校验失败 |
 |               |Not Supported | 算子执行阶段不支持场景 |
-|               |Timeout | [算子执行阶段执行超时](./task_exec_stage.md#定位思路) |
-|               |RunFailed | [算子执行阶段执行失败](./task_exec_stage.md#task-exception机制) |
-|               |HeartbeatAbnormal | [算子执行阶段发现心跳异常事件](./task_exec_stage.md#集群心跳机制) |  |
+|               |Timeout | [算子执行阶段执行超时](./task_exec_stage_troubleshooting.md#定位思路) |
+|               |RunFailed | [算子执行阶段执行失败](./_dump_task_exception_mechanism.md#task-exception机制) |
+|               |HeartbeatAbnormal | [算子执行阶段发现心跳异常事件](_dump_cluster_heartbeat_mechanism.md#集群心跳机制) |  |
 
 ### HCCL相关故障码
 
 | 故障码 | 故障码说明 |
 | --- | --- |
-| EI0001 | [环境变量配置异常](env_config_error_EI0001.md) |
-| EI0002 | [通信算子执行超时](./task_exec_stage.md#定位思路) |
+| EI0001 | [环境变量配置异常](_dump_env_config_error_EI0001.md) |
+| EI0002 | [通信算子执行超时](task_exec_stage_troubleshooting.md#定位思路) |
 | EI0003 | 集合通信算子入参校验失败 |
-| EI0004 | [rankTable文件加载失败](rank_table_load_fail.md) |
-| EI0005 | [参数一致性校验失败](./param_link_stage.md#参数一致性校验ei0005) |
-| EI0006 | [通信算子参数面建链超时](./param_link_stage.md#建链超时ei0006) |
+| EI0004 | [rankTable文件加载失败](_dump_rank_table_load_fail.md) |
+| EI0005 | [参数一致性校验失败](param_consistency_check_EI0005.md#参数一致性校验ei0005) |
+| EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时ei0006) |
 | EI0007 | 资源初始化失败 |
 | EI0008 | HCCL版本不一致，校验失败 |
-| EI0011 | [QP内存资源申请失败](./param_link_stage.md#qp内存资源申请相关ei0011) |
-| EI0012 | [算子执行时发生SDMA任务异常](./task_exec_stage.md#sdma-errorei0012) |
-| EI0013 | [算子执行时发生ROCE CQE ERROR异常](./task_exec_stage.md#error-cqe报错ei0013) |
-| EI0014 | [集群信息校验失败](cluster_info_verify_fail.md) |
-| EI0015 | [通信域集群信息协商阶段超时](cluster_info_nego.md) |
-| EI0019 | [通信域创建阶段server节点端口绑定失败](./cluster_info_nego.md#server节点端口绑定失败ei0019)或[参数面建链阶段端口绑定失败](./param_link_stage.md#参数面端口绑定失败ei0019) |
+| EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) |
+| EI0012 | [算子执行时发生SDMA任务异常](./sdma_error_EI0012.md#sdma-errorei0012) |
+| EI0013 | [算子执行时发生ROCE CQE ERROR异常](./error_cqe_report_EI0013.md#error-cqe报错ei0013) |
+| EI0014 | [集群信息校验失败](_dump_cluster_info_verify_fail.md) |
+| EI0015 | [通信域集群信息协商阶段超时](_dump_cluster_info_nego.md) |
+| EI0019 | [通信域创建阶段server节点端口绑定失败](./server_node_port_bind_fail_EI0019.md#server节点端口绑定失败ei0019)或[参数面建链阶段端口绑定失败](./param_port_bind_fail_EI0019.md#参数面端口绑定失败ei0019) |
