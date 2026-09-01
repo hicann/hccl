@@ -14,6 +14,7 @@
 
 namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_SC_DATA_SIZE = 16 * 1024 * 1024;
+constexpr u64 UBX_SC_CONCURR_DATA_SIZE = 8 * 1024 * 1024;
 constexpr uint32_t TOPO_LEVEL_3 = 3;
 
 SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(
@@ -116,7 +117,11 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "CcuSchedScatterSoleMesh";
+            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURR_DATA_SIZE) {
+                selectAlgName = "CcuSchedScatterSoleMesh";
+            } else { // UBX机型数据量大于等于8MB，使用Concurrent
+                selectAlgName = "CcuSchedScatterConcurMeshNHR";
+            }
         } else if (topoInfo->level0PcieMix) {
             HCCL_WARNING("[ScatterAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
@@ -149,9 +154,13 @@ SelectorStatus ScatterAutoSelector::SelectAicpuAlgo(
     (void)opParam;
     (void)configAlgMap;
     HCCL_DEBUG("[ScatterAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
+    u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 userRankSize = topoInfo->userRankSize;
+    u64 dataSize = opParam.DataDes.count * perDataSize * userRankSize;
+    HCCL_INFO("[ScatterAutoSelector][%s] dataSize[%llu]", __func__, dataSize);
 
     SelectorStatus ret = (topoInfo->topoLevelNums > 1) ? SelectMultiLevelAicpuAlgo(topoInfo, selectAlgName) :
-                                                         SelectSingleLevelAicpuAlgo(topoInfo, selectAlgName);
+                                                         SelectSingleLevelAicpuAlgo(topoInfo, selectAlgName, dataSize);
     if (ret == SelectorStatus::MATCH) {
         HCCL_INFO("[ScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     }
@@ -186,13 +195,17 @@ SelectorStatus ScatterAutoSelector::SelectMultiLevelAicpuAlgo(
 }
 
 SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
-    const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName) const
+    const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName, u64 dataSize) const
 {
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "AicpuScatterSoleMesh";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            selectAlgName = "AicpuScatterSoleMesh";
+            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURR_DATA_SIZE) {
+                selectAlgName = "AicpuScatterSoleMesh";
+            } else { // UBX机型数据量大于等于8MB，使用Concurrent
+                selectAlgName = "AicpuScatterConcurMeshNHR";
+            }
         } else if (topoInfo->level0PcieMix) {
             selectAlgName = "InsScatterParallelMesh1DNHRPcie";
         } else {
