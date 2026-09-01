@@ -109,5 +109,10 @@ HcclResult ReduceScatterBIRSExecutor::KernelRunLevel0(const OpParam& param, Exec
     return HCCL_SUCCESS;
 }
 
-REGISTER_EXEC("ReduceScatterBIRSExecutor", ReduceScatterBIRS, ReduceScatterBIRSExecutor);
+// 与仓内 experimental 示例一致：REGISTER_EXEC 需在 ops_hccl 命名空间内注册，
+// 执行器类型用 ops_hccl_experimental 全限定名，避免未限定查找失败。
 } // namespace ops_hccl_experimental
+
+namespace ops_hccl {
+REGISTER_EXEC("ReduceScatterBIRSExecutor", ReduceScatterBIRS, ops_hccl_experimental::ReduceScatterBIRSExecutor);
+} // namespace ops_hccl

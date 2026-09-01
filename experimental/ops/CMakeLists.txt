@@ -14,6 +14,7 @@ endif()
 
 add_subdirectory(op_common)
 add_subdirectory(reduce_scatter)
+add_subdirectory(all_reduce/example)
 
 set(EXPERIMENTAL_INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/../
@@ -24,6 +25,12 @@ set(EXPERIMENTAL_INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter/
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter/birs/
     ${CMAKE_CURRENT_SOURCE_DIR}/reduce_scatter/birs/template/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/example/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/example/template/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/example/template/ccu/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/example/template/ccu/kernel/
+    ${CMAKE_CURRENT_SOURCE_DIR}/all_reduce/example/executor/
 )
 
 if(TARGET scatter_aicpu_kernel)
