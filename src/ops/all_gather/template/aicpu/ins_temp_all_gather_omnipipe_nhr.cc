@@ -76,6 +76,7 @@ void InsTempAllGatherOmniPipeNHR::InitKernelParams(const OpParam& param, const T
     dataType_ = param.DataDes.dataType;
     tempAlgParams_.buffInfo.outputPtr = param.outputPtr;
     omniLastStepRead_ = tempAlgParams.omniLastStepRead_;
+    lastStepNhrCopy_ = false;
     inputSymWindow_ = param.inputSymWindow;
     outputSymWindow_ = param.outputSymWindow;
     inputOffset_ = param.inputOffset;
@@ -110,7 +111,7 @@ namespace {
 
     NhrSliceOffsets CalcNhrSliceOffsets(
         const TemplateDataParams& tempAlgParams, const std::vector<std::vector<std::vector<u64>>>& dataOffsetVec,
-        u32 txIdx, u32 rxIdx, u32 rpt, u32 channelIdx, u32 dataTypeSize)
+        u32 txIdx, u32 rxIdx, u32 rpt, u32 channelIdx, u32 dataTypeSize, bool needOutputOffset)
     {
         NhrSliceOffsets off;
         off.txScratchBase = tempAlgParams.buffInfo.inBuffBaseOff
@@ -121,6 +122,9 @@ namespace {
                             + dataOffsetVec[rxIdx][rpt][channelIdx];
         off.txScratchOff = off.txScratchBase + tempAlgParams.stepSliceInfo.stepInputSliceStride[txIdx];
         off.rxScratchOff = off.rxScratchBase + tempAlgParams.stepSliceInfo.stepInputSliceStride[rxIdx];
+        if (!needOutputOffset) {
+            return off;
+        }
 
         const u64 txOutBase = tempAlgParams.buffInfo.inBuffBaseOff
                               + tempAlgParams.omniReadDstStepSliceInfo.inputOmniPipeSliceStride[txIdx][rpt]
@@ -152,8 +156,8 @@ HcclResult InsTempAllGatherOmniPipeNHR::DoLastStepCopyNhr(
             for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
                 const u32 txIdx = stepInfo.txSliceIdxs[i];
                 const u32 rxIdx = stepInfo.rxSliceIdxs[i];
-                const NhrSliceOffsets off
-                    = CalcNhrSliceOffsets(tempAlgParams_, dataOffsetVec_, txIdx, rxIdx, rpt, channelIdx, dataTypeSize);
+                const NhrSliceOffsets off = CalcNhrSliceOffsets(
+                    tempAlgParams_, dataOffsetVec_, txIdx, rxIdx, rpt, channelIdx, dataTypeSize, true);
                 DataSlice rxSrcSlices = DataSlice(
                     tempAlgParams_.buffInfo.hcclBuff.addr, off.rxScratchOff, dataSplitVec_[rxIdx][rpt][channelIdx],
                     dataSplitVec_[rxIdx][rpt][channelIdx] / dataTypeSize);
@@ -236,13 +240,13 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
             "[InsTempAllGatherOmniPipeNHR][RunAllGatherNHR] build communication step, rank[%u], "
             "rankSize[%u], recvFromAlgRank[%u], sendToAlgRank[%u], step[%u], stepCount[%u], sliceCount[%u].",
             myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
-
+        const bool needOutputOffset = supportSymmetricMemory_ || isLastStepRead;
         for (u32 i = 0; i < stepInfo.nSlices; ++i) {
             const u32 txIdx = stepInfo.txSliceIdxs[i];
             const u32 rxIdx = stepInfo.rxSliceIdxs[i];
             for (u32 rpt = 0; rpt < tempAlgParams_.stepSliceInfo.inputOmniPipeSliceStride[myAlgRank].size(); ++rpt) {
-                const NhrSliceOffsets off
-                    = CalcNhrSliceOffsets(tempAlgParams_, dataOffsetVec_, txIdx, rxIdx, rpt, channelIdx, dataTypeSize);
+                const NhrSliceOffsets off = CalcNhrSliceOffsets(
+                    tempAlgParams_, dataOffsetVec_, txIdx, rxIdx, rpt, channelIdx, dataTypeSize, needOutputOffset);
                 HCCL_DEBUG(
                     "[InsTempAllGatherOmniPipeNHR][RunAllGatherNHR] calculate send scratch base, "
                     "step[%u], channelIdx[%u], sliceIdx[%u], repeatIdx[%u], sliceStride[%llu], "

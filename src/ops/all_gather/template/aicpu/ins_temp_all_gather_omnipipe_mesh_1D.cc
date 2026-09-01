@@ -211,6 +211,8 @@ void InsTempAllGatherOmniPipeMesh1D::BuildScratchReadSlice(
                           + tempAlgParams_.omniReadDstStepSliceInfo.inputOmniPipeSliceStride[myAlgRank][rpt];
     const u64 rxOutBase = tempAlgParams_.buffInfo.outBuffBaseOff
                           + tempAlgParams_.omniReadDstStepSliceInfo.outputOmniPipeSliceStride[connectedAlgRank][rpt];
+    const u64 txOutOff = tempAlgParams_.omniReadDstStepSliceInfo.stepInputSliceStride[myAlgRank] + txOutBase
+                         + tempAlgParams_.processedDataCount * dataTypeSize;
     const u64 rxOutOff = tempAlgParams_.omniReadDstStepSliceInfo.stepOutputSliceStride[connectedAlgRank] + rxOutBase
                          + tempAlgParams_.processedDataCount * dataTypeSize;
     const u64 txScratchSize = tempAlgParams_.stepSliceInfo.stepSliceSize[myAlgRank][rpt];
@@ -218,7 +220,7 @@ void InsTempAllGatherOmniPipeMesh1D::BuildScratchReadSlice(
     const u64 txOutSize = tempAlgParams_.omniReadDstStepSliceInfo.stepSliceSize[myAlgRank][rpt];
     const u64 rxOutSize = tempAlgParams_.omniReadDstStepSliceInfo.stepSliceSize[connectedAlgRank][rpt];
     const u64 txCount = tempAlgParams_.stepSliceInfo.stepCount[myAlgRank][rpt];
-    const MeshSliceInfo txSrc{tempAlgParams_.buffInfo.outputPtr, txOutBase, txOutSize, txCount};
+    const MeshSliceInfo txSrc{tempAlgParams_.buffInfo.outputPtr, txOutOff, txOutSize, txCount};
     const MeshSliceInfo txDst{remoteCclBuffAddr, txScratchOff, txScratchSize, txCount};
     const MeshSliceInfo rxSrc{remoteCclBuffAddr, rxScratchOff, rxScratchSize, rxScratchSize};
     const MeshSliceInfo rxDst{tempAlgParams_.buffInfo.outputPtr, rxOutOff, rxOutSize, rxOutSize};
