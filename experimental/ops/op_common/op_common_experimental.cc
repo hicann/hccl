@@ -14,7 +14,7 @@
 #include "coll_alg_exec_registry.h"
 #include "config_log.h"
 #include "op_common_ops.h"
-#include "scatter_op.h"
+#include "scatter.h"
 #include "topo.h"
 #include "topo_host.h"
 #include "hcomm_host_profiling_dl.h"

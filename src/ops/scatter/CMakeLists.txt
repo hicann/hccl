@@ -8,13 +8,11 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-add_subdirectory(algo)
-add_subdirectory(executor)
+add_subdirectory(algorithm)
 add_subdirectory(selector)
-add_subdirectory(template)
 
 set(src_list
-    ${CMAKE_CURRENT_SOURCE_DIR}/scatter_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/scatter.cc
 )
 
 if(TARGET hccl)

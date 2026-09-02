@@ -15,9 +15,9 @@ HCCL（Huawei Collective Communication Library）是 CANN 的核心集合通信�
 ```text
 src/
 ├── ops/                  # 集合通信算子实现（all_reduce/all_gather/broadcast/reduce_scatter/send/recv/...）
-│   └── op_common/        # 四大通用组件：executor/selector/template/topo
+│   └── op_common/        # 公共组件：algorithm/{executor,template,topo_match} + selector + topo_info + inc
 └── common/               # 通用逻辑：adapter_acl/alg_env_config/log/param_check/sal/hcomm_dlsym/op_graph/utils/hccl_mc2
-experimental/             # 社区贡献的试验性代码（结构与 src 一致，含 ops/；不保证兼容性，不编入商用版本）
+experimental/             # 社区贡献的试验性代码（当前尚未完全与 src 对齐，含 ops/；不保证兼容性，不编入商用版本）
 include/                  # 对外头文件：hccl.h（算子 API）、hccl_mc2.h（MC2 自定义算子框架）
 test/                     # ut / st
 docs/                     # 资料文档
@@ -47,7 +47,7 @@ build.sh                  # 一键编译脚本
 | **分层依赖方向**：上层依赖下层，下层不能反向依赖上层（HCOMM 的 `base_comm` ↛ `coll_communicator_mgr` ↛ `coll_comm_ops`） | HCCL 不得被 HCOMM 反向依赖；HCCL 算子通过 dlsym 调 HCOMM，不得要求 HCOMM 反向 include HCCL 头 |
 | **控制面/数据面分离**：资源管理、拓扑查询（控制面）与数据搬运/同步（数据面）接口独立演进 | HCCL 算子属数据面消费方；不得在算子层引入对 HCOMM 控制面内部实现的耦合 |
 | **HCCL 与 HCOMM 解耦**：HCCL 算子通过 `dlsym` 动态加载 HCOMM 接口，两仓独立编译、独立版本演进 | HCCL 不得 `#include` HCOMM 私有头；不得引入对 `cann/hcomm` 的编译期硬依赖；跨仓调用走 `src/common/hcomm_dlsym/` 的符号表 + `dlsym` |
-| **新算子落标准结构**：官方新算子落 `src/ops/<op>/`；社区贡献的试验性新算子落 `experimental/ops/<op>/`（结构与 `src` 一致，不保证兼容性、不编入商用版本）。均按 `executor/selector/template` 组织 | 新算子须提供 selector（算法选择）与 template（引擎模板：aicpu/aiv/ccu）；官方算子落 `src/ops/`，社区试验算子落 `experimental/ops/`，禁止散落其他目录 |
+| **新算子落标准结构**：官方新算子落 `src/ops/<op>/`；社区贡献的试验性新算子落 `experimental/ops/<op>/`（结构与 `src` 一致，不保证兼容性、不编入商用版本）。均按 `selector` + `algorithm/{executor,template}` 组织 | 新算子须提供 selector（算法选择）与 template（引擎模板：aicpu/aiv/ccu）；官方算子落 `src/ops/`，社区试验算子落 `experimental/ops/`，禁止散落其他目录 |
 
 ### 对外 API
 

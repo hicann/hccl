@@ -44,10 +44,13 @@ HCCL包含HCCL集合通信库与HCOMM（Huawei Communication）通信基础库�
 |        ├── broadcast          # Broadcast算子实现
 |        ├── interface_graph_mode # 图模式接口实现
 |        ├── op_common          # 算子通用组件
-|        │   ├── executor       # 执行器
-|        │   ├── selector       # 算法选择器
-|        │   ├── template       # 算法模板
-|        │   └── topo           # 通信域拓扑信息获取和转换
+|        │   ├── algorithm      # 算法层
+|        │   │   ├── executor   # 执行器
+|        │   │   ├── template   # 算法模板
+|        │   │   └── topo_match # 算法执行阶段拓扑层级匹配
+|        │   ├── selector       # 算法选择、CostModel等选择逻辑
+|        │   ├── topo_info      # 公共拓扑信息生成、转换与Rank映射
+|        │   └── inc            # 公共头文件
 |        ├── recv               # Recv算子实现
 |        ├── reduce             # Reduce算子实现
 |        ├── reduce_scatter     # ReduceScatter算子实现

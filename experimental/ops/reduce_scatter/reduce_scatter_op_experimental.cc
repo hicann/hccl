@@ -16,7 +16,7 @@
 #include <string>
 #include "op_common_experimental.h"
 #include "param_check.h"
-#include "reduce_scatter_op.h"
+#include "reduce_scatter.h"
 #include "load_kernel.h"
 #include "hcomm_dlsym.h"
 #include "hcomm_host_profiling_dl.h"

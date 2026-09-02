@@ -213,10 +213,13 @@ hccl
 |        ├── batch_send_recv    # BatchSendRecv算子实现
 |        ├── broadcast          # Broadcast算子实现
 |        ├── op_common          # 算子通用组件
-|        │   ├── executor       # 算法执行器
-|        │   ├── selector       # 算法选择器
-|        │   ├── template       # 算法模板
-|        │   └── topo           # 通信算子的rankGraph拓扑信息适配
+|        │   ├── algorithm      # 算法层
+|        │   │   ├── executor   # 算法执行器
+|        │   │   ├── template   # 算法模板
+|        │   │   └── topo_match # 算法执行阶段拓扑层级匹配
+|        │   ├── selector       # 算法选择、CostModel等选择逻辑
+|        │   ├── topo_info      # 公共拓扑信息生成、转换与Rank映射
+|        │   └── inc            # 公共头文件
 |        ├── recv               # Recv算子实现
 |        ├── reduce             # Reduce算子实现
 |        ├── reduce_scatter     # ReduceScatter算子实现
@@ -224,7 +227,7 @@ hccl
 |        ├── scatter            # Scatter算子实现
 |        └── send               # Send算子实现
 ├── include                     # HCCL对外头文件
-├── experimental                # 社区贡献的试验性代码目录（内部主要目录结构和src保持一致，不保证新接口的兼容性，当前也不会被商用版本采纳）
+├── experimental                # 社区贡献的试验性代码目录（内部主要目录结构当前尚未完全与 src 对齐，相关目录调整将在后续任务中跟踪，不保证新接口的兼容性，当前也不会被商用版本采纳）
 ```
 
 HCOMM仓的目标目录结构：
@@ -249,7 +252,7 @@ hcomm
 │       └── ascend950                    # A5旧流程兼容代码
 ├── include                              # 对外头文件
 ├── pkg_inc                              # 包间接口头文件
-├── experimental                         # 社区贡献的试验性代码目录（内部主要目录结构和src保持一致，不保证新接口的兼容性，当前也不会被商用版本采纳）
+├── experimental                         # 社区贡献的试验性代码目录（内部主要目录结构当前尚未完全与 src 对齐，相关目录调整将在后续任务中跟踪，不保证新接口的兼容性，当前也不会被商用版本采纳）
 ```
 
 > **legacy = 历史兼容，不持续演进**

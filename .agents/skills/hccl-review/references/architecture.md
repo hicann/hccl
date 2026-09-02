@@ -18,12 +18,12 @@
 ## 新算子落标准结构
 
 - 官方新算子落 `src/ops/<op>/`；社区试验性新算子落 `experimental/ops/<op>/`（结构与 src 一致，不保证兼容性、不编入商用版本）
-- 均按 `executor/selector/template` 组织；新算子须提供 selector（算法选择）与 template（引擎模板：aicpu/aiv/ccu）
+- 均按 `selector` + `algorithm/{executor,template}` 组织；新算子须提供 selector（算法选择）与 template（引擎模板：aicpu/aiv/ccu）
 - 禁止散落其他目录
 
 ## 目录与结构对齐
 
-- 目录结构对齐 architecture-brief 3.2（`src/ops/` 按算子组织、`src/common/` 通用逻辑、`src/op_common/` 四大通用组件）
+- 目录结构对齐 architecture-brief 3.2（`src/ops/` 按算子组织、`src/common/` 通用逻辑、`src/op_common/` 通用组件）
 - `src/` 重命名/移动时同步检查：`CMakeLists.txt`、测试 include 路径、`#include` 相对路径、`cmake/`、`build.sh`
 - 重命名 PR 检查是否混入 brief 未明确要求的无关修改
 
@@ -32,7 +32,7 @@
 | 区域 | 风险 |
 |------|------|
 | 算子主流程（`src/ops/<op>/`） | 算法正确性、selector 覆盖、template 引擎匹配 |
-| 通用组件（`src/ops/op_common/` 的 executor/selector/template/topo） | 算法选择逻辑、执行器引擎分发 |
+| 通用组件（`src/ops/op_common/` 的 algorithm/{executor,template,topo_match} + selector + topo_info） | 算法选择逻辑、执行器引擎分发 |
 | hcomm_dlsym（`src/common/hcomm_dlsym/`） | 符号表与 dlsym 加载、版本兼容 |
 | 环境配置（`src/common/alg_env_config/`） | 环境变量解析与默认值 |
 | 图模式与 MC2（`src/common/op_graph/`、`src/common/hccl_mc2/`） | 图构建正确性、自定义算子框架兼容 |

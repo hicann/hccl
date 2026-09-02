@@ -9,12 +9,11 @@
 # -----------------------------------------------------------------------------------------------------------
 
 if(NOT HCCL_CANN_COMPAT_850)
-    add_subdirectory(executor)
+    add_subdirectory(algorithm)
     add_subdirectory(selector)
-    add_subdirectory(template)
 
     set(src_list
-        ${CMAKE_CURRENT_SOURCE_DIR}/barrier_op.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/barrier.cc
     )
     
     if(TARGET hccl)

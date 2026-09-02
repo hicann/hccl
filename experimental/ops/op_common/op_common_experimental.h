@@ -17,7 +17,7 @@
 #include "executor_base.h"
 #include "alg_type.h"
 #include "op_common.h"
-#include "scatter_op.h"
+#include "scatter.h"
 
 #ifdef __cplusplus
 extern "C" {

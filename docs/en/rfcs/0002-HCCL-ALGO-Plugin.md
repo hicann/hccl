@@ -58,16 +58,19 @@ The key directories of the HCCL communication library are shown below:
 |        ├── all_gather          # AllGather operator implementation
 |        ├── all_reduce          # AllReduce operator implementation
 |        ├── broadcast           # Broadcast operator implementation
-|        |   ├── executor        # Broadcast operator executor
+|        |   ├── algorithm       # Broadcast algorithm layer
+|        |   |   ├── executor    # Broadcast operator executor
+|        |   |   └── template    # Broadcast algorithm template
 |        |   ├── selector        # Broadcast algorithm selector
-|        |   ├── template        # Broadcast algorithm template
-|        |   └── broadcast_op.cc # External API implementation of the Broadcast operator
+|        |   └── broadcast.cc    # External API implementation of the Broadcast operator
 |        ├── ......              # Other operator implementations
 |        └──  op_common          # Common operator components
-|            ├── executor        # Executors
+|            ├── algorithm       # Algorithm layer
+|            |   ├── executor    # Executors
+|            |   ├── template    # Algorithm templates
+|            |   └── topo_match  # Topology hierarchy matching
 |            ├── selector        # Algorithm selectors
-|            ├── template        # Algorithm templates
-|            ├── topo            # Communication-domain topology acquisition and conversion
+|            ├── topo_info       # Communication-domain topology acquisition and conversion
 |            └── op_common.cc    # Common operator functions
 ├── include                      # HCCL public headers
 ├── test                         # Test code directory
@@ -76,7 +79,7 @@ The key directories of the HCCL communication library are shown below:
 └── .......                      # Other directories
 
 ```
-The `/ops` directory defines HCCL operator implementations, including common collective communication operators such as `all_gather` and `all_reduce`. Each operator implements its executor (`executor`), algorithm selector (`selector`), algorithm template (`template`), and public API file (`XX_op.cc`).
+The `/ops` directory defines HCCL operator implementations, including common collective communication operators such as `all_gather` and `all_reduce`. Each operator implements its executor (`executor`), algorithm selector (`selector`), algorithm template (`template`), and operator entry implementation file (`XX.cc`).
 
 The `/op_common` directory under `/ops` defines common operator components, including executor base classes, shared algorithm-selection logic, algorithm-template base classes, communication-domain topology processing, and other infrastructure shared by operators.
 
@@ -109,11 +112,11 @@ Select the algorithm name according to topology information, such as the exact s
 ② Create threads and calculate the resources required for communication;
 ③ Execute the algorithm by invoking the algorithm orchestration of the `executor`, namely `executor->Orchestrate()`.
 
-2) The `Orchestrate()` function of the `executor` is located in `src/ops/broadcast/executor/ins_v2_broadcast_sole_executor.cc`. Its main logic is:
+2) The `Orchestrate()` function of the `executor` is located in `src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sole_executor.cc`. Its main logic is:
 ① Further calculate resources, perform data slicing, and complete other preparation steps;
 ② Invoke the `KernelRun` function of the `ParallelMesh1DNHR` algorithm template to complete the communication operation, namely `algTemplate->KernelRun()`.
 
-3) The `KernelRun` function of the `ParallelMesh1DNHR` algorithm is located in `src/ops/broadcast/template/aicpu/ins_temp_broadcast_nhr.cc`. Its main logic is:
+3) The `KernelRun` function of the `ParallelMesh1DNHR` algorithm is located in `src/ops/broadcast/algorithm/template/aicpu/ins_temp_broadcast_nhr.cc`. Its main logic is:
 Execute remote reads, remote writes, local thread synchronization, local data copies, and other operations according to the NHR algorithm logic to complete the communication.
 
 ---

@@ -75,7 +75,7 @@ BIRS算法作为实验特性集成到HCCL中，通过独立代码路径和编译
 ```text
 HCCL
 ├── src/ops/reduce_scatter/          # 现有 ReduceScatter 实现
-│   └── reduce_scatter_op.cc/.h      # 入口函数（新增BIRS分发逻辑）
+│   └── reduce_scatter.cc/.h         # 入口函数（新增BIRS分发逻辑）
 │
 ├── experimental/ops/                # 实验特性目录（新增）
 │   ├── op_common/                   # 公共基础设施

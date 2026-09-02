@@ -58,16 +58,19 @@
 |        ├── all_gather          # AllGather算子实现
 |        ├── all_reduce          # AllReduce算子实现
 |        ├── broadcast           # Broadcast算子实现
-|        |   ├── executor        # Broadcast算子执行器
+|        |   ├── algorithm       # Broadcast算法层
+|        |   |   ├── executor    # Broadcast算子执行器
+|        |   |   └── template    # Broadcast算法模板
 |        |   ├── selector        # Broadcast算法选择器
-|        |   ├── template        # Broadcast算法模板
-|        |   └── broadcast_op.cc # Broadcast算子对外提供的API实现
+|        |   └── broadcast.cc    # Broadcast算子对外提供的API实现
 |        ├── ......              # 其他算子实现
 |        └──  op_common          # 算子通用组件
-|            ├── executor        # 执行器
-|            ├── selector        # 算法选择器
-|            ├── template        # 算法模板
-|            ├── topo            # 通信域拓扑信息获取和转换 
+|            ├── algorithm       # 算法层
+|            |   ├── executor    # 执行器
+|            |   ├── template    # 算法模板
+|            |   └── topo_match  # 拓扑层级匹配
+|            ├── selector        # 算法选择器
+|            ├── topo_info       # 通信域拓扑信息获取和转换
 |            └── op_common.cc    # 算子通用函数文件
 ├── include                      # HCCL对外头文件
 ├── test                         # 测试代码目录
@@ -76,7 +79,7 @@
 └── .......                      # 其他目录
 
 ```
-　　`/ops`目录定义了HCCL算子实现，包含`all_gather`、`all_reduce`等常见集合通信算子，每个算子实现其执行器（`executor`）、算法选择器（`selector`）、算法模板（`template`）和对外提供的API文件（`XX_op.cc`）。  
+　　`/ops`目录定义了HCCL算子实现，包含`all_gather`、`all_reduce`等常见集合通信算子，每个算子实现其执行器（`executor`）、算法选择器（`selector`）、算法模板（`template`）和算子入口实现文件（`XX.cc`）。
 
 　　`/ops`目录下的`/op_common`目录定义了算子通用组件，包括算子执行器基类、算法选择器公共逻辑、算法模板基类、通信域拓扑处理等各算子共用的基础设施。
 
@@ -101,10 +104,10 @@
 　　　　　　① 根据操作类型和选定的算法名称(以下都假定选中`ParallelMesh1DNHR`算法)，获取对应的`executor`实例。  
 　　　　　　　　　　　　② 创建线程、计算通信所需资源等。  
 　　　　　　　　　　　　③ 算法执行：调用`executor`的算法编排，即调用`executor->Orchestrate()`函数。  
-　　　　2) `executor`的`Orchestrate()`函数位于`src/ops/broadcast/executor/ins_v2_broadcast_sole_executor.cc`中，主要逻辑为：  
+　　　　2) `executor`的`Orchestrate()`函数位于`src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sole_executor.cc`中，主要逻辑为：
 　　　　　　① 进一步计算资源、进行数据分片等步骤。  
 　　　　　　　　　　　　② 调用`ParallelMesh1DNHR`算法模板的`KernelRun`函数，完成该次通信操作，即`algTemplate->KernelRun()`。  
-　　　　3) `ParallelMesh1DNHR`算法的`KernelRun`函数位于`src/ops/broadcast/template/aicpu/ins_temp_broadcast_nhr.cc`中，其主要逻辑为：  
+　　　　3) `ParallelMesh1DNHR`算法的`KernelRun`函数位于`src/ops/broadcast/algorithm/template/aicpu/ins_temp_broadcast_nhr.cc`中，其主要逻辑为：
 　　　　　　根据NHR算法逻辑执行远端读、远端写、本地线程同步、本地数据拷贝等操作来完成该次通信。
 
 ---

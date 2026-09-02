@@ -69,8 +69,8 @@ set(ASC_INCLUDE_FLAGS
 
 if(DEFINED OPS_BASE_DIR)
     list(APPEND ASC_INCLUDE_FLAGS
-        -I${OPS_BASE_DIR}/src/ops/op_common/template/aiv/
-        -I${OPS_BASE_DIR}/src/ops/op_common/template/aiv/aiv_interface/
+        -I${OPS_BASE_DIR}/src/ops/op_common/algorithm/template/aiv/
+        -I${OPS_BASE_DIR}/src/ops/op_common/algorithm/template/aiv/aiv_interface/
     )
 endif()
 

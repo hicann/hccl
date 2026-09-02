@@ -8,13 +8,12 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-add_subdirectory(executor)
+add_subdirectory(algorithm)
 add_subdirectory(selector)
-add_subdirectory(template)
 add_subdirectory(op_graph)
 
 set(src_list
-    ${CMAKE_CURRENT_SOURCE_DIR}/broadcast_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/broadcast.cc
 )
 
 if(TARGET hccl)

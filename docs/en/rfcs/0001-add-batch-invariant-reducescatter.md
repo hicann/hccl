@@ -75,7 +75,7 @@ The BIRS algorithm is integrated into HCCL as an experimental feature, isolated 
 ```text
 HCCL
 ├── src/ops/reduce_scatter/          # Existing ReduceScatter implementation
-│   └── reduce_scatter_op.cc/.h      # Entry function (with BIRS dispatch logic added)
+│   └── reduce_scatter.cc/.h         # Entry function (with BIRS dispatch logic added)
 │
 ├── experimental/ops/                # Experimental features directory (new)
 │   ├── op_common/                   # Common infrastructure
