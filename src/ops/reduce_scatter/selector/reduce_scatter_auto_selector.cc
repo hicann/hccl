@@ -619,15 +619,9 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
 {
     HCCL_INFO(
         "topoInfo->topoLevelNums is %u, topoInfo->level0Topo is %u", topoInfo->topoLevelNums, topoInfo->level0Topo);
+    (void)opParam;
     (void)configAlgMap;
-    bool isDataTypeOrReduceTypeSpecial = opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64
-                                         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
-                                         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64
-                                         || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
-    if (isDataTypeOrReduceTypeSpecial) {
-        HCCL_INFO("[ReduceScatterAutoSelector][SelectDPUAlgo] not support INT64, UINT64, FP64.");
-        return SelectorStatus::NOT_MATCH;
-    } else if (topoInfo->topoLevelNums > 1) {
+    if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
             || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuReduceScatterSequenceMeshMesh";

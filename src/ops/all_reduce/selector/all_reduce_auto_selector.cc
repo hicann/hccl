@@ -698,14 +698,7 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
     HCCL_INFO(
         "hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType, algos[0],
         algos[1], algos[2], algos[3]);
-    bool isDataTypeOrReduceTypeSpecial = opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_INT64
-                                         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
-                                         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64
-                                         || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
-    if (isDataTypeOrReduceTypeSpecial) {
-        HCCL_INFO("[AllReduceAutoSelector][SelectDPUAlgo] not support INT64, UINT64, FP64.");
-        return SelectorStatus::NOT_MATCH;
-    } else if (topoInfo->topoLevelNums > 1) {
+    if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuAllReduceSequenceMeshNHR"; // 对应executor最后register的第二个参数
             HCCL_INFO("Using algo DpuAllReduceSequenceMeshNHR");
