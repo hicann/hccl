@@ -55,9 +55,9 @@ stages:
   stage2:
     name: Compile
     jobs:
-      JOB_codecheck_action:
+      JOB_codecheck:
         name: CodeCheck
-        uses: .gitcode/workflows/codecheck_action.yml
+        uses: cann/.gitcode/.gitcode/workflows/codecheck_action.yml@master
         with:
           precommit_image_version: ${{ jobs.JOB_image.outputs.precommit }}
           codecheck_image_version: ${{ jobs.JOB_image.outputs.codecheck }}
