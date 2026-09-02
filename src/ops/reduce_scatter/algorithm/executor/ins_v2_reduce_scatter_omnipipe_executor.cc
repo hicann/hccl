@@ -368,9 +368,9 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 
     if (resCtx.topoInfo.level0PcieMix) {
         if (rankSizeLevel1_ == RANK_SIZE_LEVEL_2) {
-            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_RS_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
         } else if (rankSizeLevel1_ == RANK_SIZE_LEVEL_4) {
-            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_RS_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
         }
     } else if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS) {
         bw_rs_l1 = BW_OMNI_UBX_RS_CLOS;
@@ -415,6 +415,14 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     scratchParam.opMode = param.opMode;
     scratchParam.engine = param.engine;
     scratchParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        scratchParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    HCCL_DEBUG(
+        "[InsV2ReduceScatterOmniPipeExecutor][OrchestrateLoop] scratch multipleDimensionSplitRatioSource=[%d], "
+        "opConfigRatio=[%f], scratchParamRatio=[%f]",
+        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
+        scratchParam.multipleDimensionSplitRatio);
     std::vector<u64> loopInfo = CalcOmniPipeScratchInfo(scratchParam);
     u64 maxCountPerLoop = loopInfo[0];
     u64 loopTimes = loopInfo[1];
@@ -440,6 +448,14 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     sliceParam.opMode = param.opMode;
     sliceParam.engine = param.engine;
     sliceParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        sliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    HCCL_DEBUG(
+        "[InsV2ReduceScatterOmniPipeExecutor][OrchestrateLoop] multipleDimensionSplitRatioSource=[%d], "
+        "opConfigRatio=[%f], sliceParamRatio=[%f]",
+        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
+        sliceParam.multipleDimensionSplitRatio);
     OmniPipeSliceInfo alignSliceInfo = CalcRSOmniPipeSliceInfo(sliceParam);
 
     // 4、计算第n次的loop的slice信息

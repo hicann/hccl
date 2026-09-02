@@ -29,6 +29,8 @@ constexpr double BW_OMNI_PCIE_EIGHT_AG_CLOS = 20;
 constexpr double BW_OMNI_PCIE_EIGHT_RS_CLOS = 29;
 constexpr double BW_OMNI_PCIE_SIXTEEN_RS_CLOS = 35;
 constexpr double BW_OMNI_PCIE_SIXTEEN_AG_CLOS = 35;
+constexpr double BW_OMNI_PCIE_EIGHT_CLOS = 25;
+constexpr double BW_OMNI_PCIE_SIXTEEN_CLOS = 35;
 constexpr double BW_OMNI_UBX_ROCE = 25;
 
 constexpr double BW_OMNI_UBX_AG_CLOS = 191;
@@ -44,6 +46,20 @@ constexpr double BW_OMNI_UBX_CCU_SCHED_AG_CLOS = 180;
 enum OmniPipeLevel { OMNIPIPE_LEVEL0 = 0, OMNIPIPE_LEVEL1 = 1, OMNIPIPE_LEVEL2 = 2, OMNIPIPE_LEVEL_NUM = 3 };
 
 enum OmniNeedSetStepNum { OMNIPIPE_DEFAULT = 0, OMNIPIPE_UBX_16P = 1, OMNIPIPE_UBX_32P = 2 };
+
+// 将 vector 以 "[a, b, c]" 格式追加到输出流，消除各 toString 中的重复拼接逻辑
+template <typename T>
+void AppendVecToStream(std::ostringstream& oss, const std::string& label, const std::vector<T>& vec)
+{
+    oss << label << ": [";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        oss << vec[i];
+        if (i != vec.size() - 1) {
+            oss << ", ";
+        }
+    }
+    oss << "]\n";
+}
 
 struct OmniPipeSliceInfo {
     std::vector<StepSliceInfo> dataSliceLevel0; // x轴每步数据偏移信息
@@ -80,63 +96,17 @@ struct OmniPipeSliceParam {
     OpMode opMode;
     CommEngine engine;
     OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+    double multipleDimensionSplitRatio = -1.0; // 多维切分比例，用于覆盖带宽比；(0,1)时生效，否则用原始带宽比
     std::string toString()
     {
         std::ostringstream oss;
-        // 输出 levelRankSize
-        oss << "levelRankSize: [";
-        for (size_t i = 0; i < levelRankSize.size(); ++i) {
-            oss << levelRankSize[i];
-            if (i != levelRankSize.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 endpointAttrBw
-        oss << "endpointAttrBw: [";
-        for (size_t i = 0; i < endpointAttrBw.size(); ++i) {
-            oss << endpointAttrBw[i];
-            if (i != endpointAttrBw.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 dataSizePerLoop, dataTypeSize, dataWholeSize
-        oss << "dataSizePerLoop: [";
-        for (size_t i = 0; i < dataSizePerLoop.size(); ++i) {
-            oss << dataSizePerLoop[i];
-            if (i != dataSizePerLoop.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
+        AppendVecToStream(oss, "levelRankSize", levelRankSize);
+        AppendVecToStream(oss, "endpointAttrBw", endpointAttrBw);
+        AppendVecToStream(oss, "dataSizePerLoop", dataSizePerLoop);
         oss << "dataTypeSize: " << dataTypeSize << "\n";
-        oss << "dataWholeSize: [";
-        for (size_t i = 0; i < dataWholeSize.size(); ++i) {
-            oss << dataWholeSize[i];
-            if (i != dataWholeSize.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 levelRankId
-        oss << "levelRankId: [";
-        for (size_t i = 0; i < levelRankId.size(); ++i) {
-            oss << levelRankId[i];
-            if (i != levelRankId.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 levelAlgType
-        oss << "levelAlgType: [";
-        for (size_t i = 0; i < levelAlgType.size(); ++i) {
-            oss << levelAlgType[i];
-            if (i != levelAlgType.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
+        AppendVecToStream(oss, "dataWholeSize", dataWholeSize);
+        AppendVecToStream(oss, "levelRankId", levelRankId);
+        AppendVecToStream(oss, "levelAlgType", levelAlgType);
         return oss.str();
     }
 };
@@ -152,52 +122,17 @@ struct OmniPipeScratchParam {
     OpMode opMode;
     CommEngine engine;
     OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+    double multipleDimensionSplitRatio = -1.0; // 多维切分比例，用于覆盖带宽比；(0,1)时生效，否则用原始带宽比
     std::string toString()
     {
         std::ostringstream oss;
-        // 输出 levelRankSize
-        oss << "levelRankSize: [";
-        for (size_t i = 0; i < levelRankSize.size(); ++i) {
-            oss << levelRankSize[i];
-            if (i != levelRankSize.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-
-        // 输出 endpointAttrBw
-        oss << "endpointAttrBw: [";
-        for (size_t i = 0; i < endpointAttrBw.size(); ++i) {
-            oss << endpointAttrBw[i];
-            if (i != endpointAttrBw.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 dataSize
-        oss << "dataSize: [";
-        for (size_t i = 0; i < dataSize.size(); ++i) {
-            oss << dataSize[i];
-            if (i != dataSize.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
-        // 输出 dataTypeSize
+        AppendVecToStream(oss, "levelRankSize", levelRankSize);
+        AppendVecToStream(oss, "endpointAttrBw", endpointAttrBw);
+        AppendVecToStream(oss, "dataSize", dataSize);
         oss << "dataTypeSize: " << dataTypeSize << "\n";
-        // 输出 maxTmpMemSize
         oss << "maxTmpMemSize: " << maxTmpMemSize << "\n";
-        // 输出 levelAlgType
-        oss << "levelAlgType: [";
-        for (size_t i = 0; i < levelAlgType.size(); ++i) {
-            oss << levelAlgType[i];
-            if (i != levelAlgType.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]\n";
+        AppendVecToStream(oss, "levelAlgType", levelAlgType);
         oss << "\n";
-
         return oss.str();
     }
 };
@@ -221,7 +156,8 @@ u64 CalAllgatherDataSizeRatio2D(
     double dataSize, u64 maxStep);
 u64 CalAllgatherDataSize2D(
     u64* xStepP2pDataSize, u64* yStepP2pDataSize, double xB, double yB, u64 xRankSize, u64 yRankSize,
-    u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS);
+    u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS,
+    double multipleDimensionSplitRatio = -1.0);
 OmniPipeSliceInfo CalcAGOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam);
 
 std::vector<u64> CalScratchSize(
@@ -235,7 +171,8 @@ void CalReducescatter2DOffset(
     u64* xRSOffset, u64* yRSOffset, u64 stepNum, u64 xRankSize, u64 yRankSize, u64* xRSDataSize, u64* yRSDataSize);
 u64 CalReducescatterDataSize2D(
     u64* xStepP2pDataSize, u64* yStepP2pDataSize, double xB, double yB, u64 xRankSize, u64 yRankSize,
-    u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS);
+    u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS,
+    double multipleDimensionSplitRatio = -1.0);
 std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam& omniPipeScratchParam);
 OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam);
 HcclResult CalLocalCopySlice(

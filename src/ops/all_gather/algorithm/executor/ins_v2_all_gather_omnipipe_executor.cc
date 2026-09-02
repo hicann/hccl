@@ -349,9 +349,9 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     if (resCtx.topoInfo.level0PcieMix) { // PCIE
         if (rankSizeLevel_[OMNIPIPE_LEVEL1] == RANK_LEVEL_2) {
-            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_AG_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
         } else if (rankSizeLevel_[OMNIPIPE_LEVEL1] == RANK_LEVEL_4) {
-            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_AG_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
         }
         // UBX
     } else if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -412,6 +412,14 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     omniPipeSliceParam.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     omniPipeSliceParam.dataWholeSize = dataWholeSize;
     omniPipeSliceParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        omniPipeSliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    HCCL_DEBUG(
+        "[InsV2AllGatherOmniPipeExecutor][OrchestrateLoop] multipleDimensionSplitRatioSource=[%d], "
+        "opConfigRatio=[%f], sliceParamRatio=[%f]",
+        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
+        omniPipeSliceParam.multipleDimensionSplitRatio);
 
     OmniPipeSliceInfo alignSliceInfo = CalcAGOmniPipeSliceInfo(omniPipeSliceParam);
 
@@ -429,6 +437,9 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     std::vector<u64> dataWholeSizeLocalcopy(rankSize_, dataSize_);
     localcopySliceParam.dataWholeSize = dataWholeSizeLocalcopy; // 这里用整体数据量算一遍
     localcopySliceParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        localcopySliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
 
     OmniPipeSliceInfo localcopySliceInfo = CalcAGOmniPipeSliceInfo(localcopySliceParam);
 

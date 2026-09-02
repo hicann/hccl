@@ -372,6 +372,14 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     scratchParam.opMode = param.opMode;
     scratchParam.engine = param.engine;
     scratchParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        scratchParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    HCCL_DEBUG(
+        "[InsV2AllReduceOmniPipeExecutor][InitOmniPipeScratchParam] multipleDimensionSplitRatioSource=[%d], "
+        "opConfigRatio=[%f], scratchParamRatio=[%f]",
+        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
+        scratchParam.multipleDimensionSplitRatio);
     return HCCL_SUCCESS;
 }
 
@@ -411,6 +419,14 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     sliceParam.opMode = param.opMode;
     sliceParam.engine = param.engine;
     sliceParam.needSetStepNum = omniNeedSetStepNum_;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        sliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    HCCL_DEBUG(
+        "[InsV2AllReduceOmniPipeExecutor][InitOmniPipeSliceParam] multipleDimensionSplitRatioSource=[%d], "
+        "opConfigRatio=[%f], sliceParamRatio=[%f]",
+        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
+        sliceParam.multipleDimensionSplitRatio);
     return HCCL_SUCCESS;
 }
 
@@ -560,11 +576,11 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 
     if (resCtx.topoInfo.level0PcieMix) {
         if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_2) {
-            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_AG_CLOS;
-            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_RS_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
         } else if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_4) {
-            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_AG_CLOS;
-            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_RS_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
         }
     }
     bdvec = {bw_ag_l0, bw_ag_l1, bw_ag_l2, bw_rs_l0, bw_rs_l1, bw_rs_l2};
@@ -744,11 +760,11 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 
     if (resCtx.topoInfo.level0PcieMix) {
         if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_2) {
-            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_AG_CLOS;
-            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_RS_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_EIGHT_CLOS;
         } else if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_4) {
-            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_AG_CLOS;
-            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_RS_CLOS;
+            bw_ag_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
+            bw_rs_l1 = BW_OMNI_PCIE_SIXTEEN_CLOS;
         }
     } else if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS) {
         bw_ag_l1 = BW_OMNI_UBX_AG_CLOS;
