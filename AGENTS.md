@@ -93,6 +93,7 @@ bash build.sh -j64                       # 并行编译
 - 简单问题：Issue → 认领 → PR → Committer 检视 → `/lgtm` + `/approve` 合入。
 - 新功能：Requirement Issue → SIG 决策 → `docs/zh/rfcs/` RFC 评审 → 实现（含 UT+ST）→ 检视合入。
 - 所有 PR 必须关联 Issue，描述按 `.gitcode/PULL_REQUEST_TEMPLATE.zh-CN.md` 填写。
+- 从代码获取到 PR 合入的贡献链路操作（代码同步、Issue 查重创建、PR 提交触发 CI、CI 轮询与失败修复、检视意见处置）：使用仓内贡献流程 skill（[`.agents/skills/hccl-contribute/`](./.agents/skills/hccl-contribute/)）；本地构建与测试命令以本文件第 4 节与 [`docs/zh/build/build.md`](./docs/zh/build/build.md) 为准。
 
 详见 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
