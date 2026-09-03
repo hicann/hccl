@@ -465,9 +465,6 @@ using AivKernelArgs = struct AivKernelArgsDef {
     u32 rank;
     u32 sendRecvRemoteRank;
     u32 rankSize;
-    u64 xRankSize;
-    u64 yRankSize;
-    u64 zRankSize;
     u64 len;
     u32 dataType;
     u32 reduceOp;
@@ -487,20 +484,17 @@ using AivKernelArgs = struct AivKernelArgsDef {
     bool isEnableCounter;
 
     AivKernelArgsDef(
-        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 xRankSize,
-        u64 yRankSize, u64 zRankSize, u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride,
-        u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
-        bool isOpBase = true, const void* headCountMem = nullptr, const void* tailCountMem = nullptr,
-        const void* addOneMem = nullptr, u32 counterMemSize = 0, bool isEnableCounter = false)
+        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 len,
+        u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
+        u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
+        const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
+        u32 counterMemSize = 0, bool isEnableCounter = false)
         : buffersIn(buffIn),
           input(input),
           output(output),
           rank(rank),
           sendRecvRemoteRank(sendRecvRemoteRank),
           rankSize(rankSize),
-          xRankSize(xRankSize),
-          yRankSize(yRankSize),
-          zRankSize(zRankSize),
           len(len),
           dataType(dataType),
           reduceOp(reduceOp),
@@ -528,9 +522,6 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     u32 rank;
     u32 sendRecvRemoteRank;
     u32 rankSize;
-    u64 xRankSize;
-    u64 yRankSize;
-    u64 zRankSize;
     u64 len;
     u32 dataType;
     u32 reduceOp;
@@ -551,20 +542,17 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     ExtraArgs extraArgs;
 
     AivExtraKernelArgsDef(
-        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 xRankSize,
-        u64 yRankSize, u64 zRankSize, u64 len, u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride,
-        u64 outputSliceStride, u64 repeatNum, u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks,
-        bool isOpBase = true, const void* headCountMem = nullptr, const void* tailCountMem = nullptr,
-        const void* addOneMem = nullptr, u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr)
+        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 len,
+        u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
+        u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
+        const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
+        u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr)
         : buffersIn(buffIn),
           input(input),
           output(output),
           rank(rank),
           sendRecvRemoteRank(sendRecvRemoteRank),
           rankSize(rankSize),
-          xRankSize(xRankSize),
-          yRankSize(yRankSize),
-          zRankSize(zRankSize),
           len(len),
           dataType(dataType),
           reduceOp(reduceOp),
@@ -1154,9 +1142,6 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             opArgs.rank,
             opArgs.sendRecvRemoteRank,
             opArgs.rankSize,
-            opArgs.xRankSize,
-            opArgs.yRankSize,
-            opArgs.zRankSize,
             opArgs.count,
             opArgs.dataType,
             opArgs.op,
@@ -1183,9 +1168,6 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             opArgs.rank,
             opArgs.sendRecvRemoteRank,
             opArgs.rankSize,
-            opArgs.xRankSize,
-            opArgs.yRankSize,
-            opArgs.zRankSize,
             opArgs.count,
             opArgs.dataType,
             opArgs.op,

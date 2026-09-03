@@ -104,7 +104,7 @@ private:
         }
 
         const uint64_t inputOffset = input_ + static_cast<uint64_t>(blockIdx_) * inputStride_;
-        const uint64_t cclOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalPublishOffset(blockIdx_);
+        const uint64_t cclOffset = reinterpret_cast<uint64_t>(myGmIn_) + LocalPublishOffset(blockIdx_);
         CpGM2GM(reinterpret_cast<__gm__ T*>(cclOffset), reinterpret_cast<__gm__ T*>(inputOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
 
@@ -121,8 +121,8 @@ private:
         WaitFlag(rank_, peerRank, curTag_);
 
         const uint64_t peerOffset
-            = reinterpret_cast<uint64_t>(GM_IN[peerRank]) + static_cast<uint64_t>(rank_) * lenPerRank_ * sizeof(T);
-        const uint64_t stageOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(peerRank);
+            = reinterpret_cast<uint64_t>(GetGmIn(peerRank)) + static_cast<uint64_t>(rank_) * lenPerRank_ * sizeof(T);
+        const uint64_t stageOffset = reinterpret_cast<uint64_t>(myGmIn_) + LocalStageOffset(peerRank);
         CpGM2GM(reinterpret_cast<__gm__ T*>(stageOffset), reinterpret_cast<__gm__ T*>(peerOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
         Record(peerRank, FetchDoneFlagOffset(rank_), curTag_);
@@ -154,10 +154,8 @@ private:
                             WaitFlag(rank_, ReduceReadyFlagOffset(offset), static_cast<int32_t>(curTag_ + round));
                             WaitFlag(rank_, ReduceReadyFlagOffset(backIdx), static_cast<int32_t>(curTag_ + round));
                         }
-                        const uint64_t frontOffset
-                            = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(offset);
-                        const uint64_t backOffset
-                            = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(backIdx);
+                        const uint64_t frontOffset = reinterpret_cast<uint64_t>(myGmIn_) + LocalStageOffset(offset);
+                        const uint64_t backOffset = reinterpret_cast<uint64_t>(myGmIn_) + LocalStageOffset(backIdx);
                         CpGM2GM(
                             reinterpret_cast<__gm__ T*>(frontOffset), reinterpret_cast<__gm__ T*>(backOffset),
                             lenPerRank_, reduceOp_);
@@ -177,7 +175,7 @@ private:
             return;
         }
 
-        const uint64_t resultOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + LocalStageOffset(0);
+        const uint64_t resultOffset = reinterpret_cast<uint64_t>(myGmIn_) + LocalStageOffset(0);
         CpGM2GM(reinterpret_cast<__gm__ T*>(output_), reinterpret_cast<__gm__ T*>(resultOffset), lenPerRank_);
         pipe_barrier(PIPE_ALL);
     }

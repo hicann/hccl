@@ -138,27 +138,6 @@ HcclResult AivTempAlltoAllMesh1D::KernelRun(
     aivAlltoAllArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivAlltoAllArgs.stream = param.stream;
     aivAlltoAllArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(
-        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
-        HcclResult::HCCL_E_INTERNAL);
-    aivAlltoAllArgs.xRankSize = subCommRanks_[0].size();
-    aivAlltoAllArgs.yRankSize = 0;
-    aivAlltoAllArgs.zRankSize = 0;
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
-        aivAlltoAllArgs.topo_[i] = subCommRanks_[0][i];
-    }
-    if (subCommRanks_.size() > 1) {
-        aivAlltoAllArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
-            aivAlltoAllArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
-        }
-    }
-    if (subCommRanks_.size() == MAX_DIM_NUM) {
-        aivAlltoAllArgs.zRankSize = subCommRanks_[MAX_DIM_NUM - 1].size();
-        for (u32 i = 0; i < subCommRanks_[MAX_DIM_NUM - 1].size(); i++) {
-            aivAlltoAllArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[MAX_DIM_NUM - 1][i];
-        }
-    }
 
     CHK_RET(CalNumBlocks(aivAlltoAllArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 

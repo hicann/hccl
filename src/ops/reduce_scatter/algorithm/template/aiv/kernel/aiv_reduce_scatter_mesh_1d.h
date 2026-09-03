@@ -29,13 +29,13 @@ public:
             int64_t outerOffset = targetRank * inputStride; // inputStride是整个算子的输入size
             int64_t ipcRankOffset = targetRank * len * sizeof(T);
             inputOffset = input_ + outerOffset; // 这里的input是已经偏移过前面处理完数据量的地址了
-            outputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + ipcRankOffset;
+            outputOffset = reinterpret_cast<uint64_t>(myGmIn_) + ipcRankOffset;
         } else if (blockIdx_ < (coreNumPerStage * stageNum)) { // ipc->output,一个block负责一个卡的数据
             int64_t outerOffset = (blockIdx_ % coreNumPerStage) * processNum * sizeof(T);
             outputOffset = output_ + outerOffset;
             int64_t consumInOffset;
             for (int index = 0; index < rankSize_; index++) { // 轮询每个rank的数据，拉取过来，做顺序累加
-                consumInOffset = reinterpret_cast<uint64_t>(GM_IN[(index + blockIdx_) % rankSize_])
+                consumInOffset = reinterpret_cast<uint64_t>(GetGmIn((index + blockIdx_) % rankSize_))
                                  + len * rank_ * sizeof(T) + outerOffset; // 本卡的数据都在ipc
                 inputOffVec[index] = consumInOffset;
             }

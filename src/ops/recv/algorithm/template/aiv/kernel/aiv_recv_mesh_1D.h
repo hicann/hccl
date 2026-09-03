@@ -33,7 +33,7 @@ public:
             innerDispls = coreIndex * dataPerCore + remainder;
             recvCurCount = dataPerCore;
         }
-        recvInputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + innerDispls * sizeof(T);
+        recvInputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + innerDispls * sizeof(T);
         recvOutputOffset = output_ + innerDispls * sizeof(T); // 能不能直接拿着这个地址就用
     }
 

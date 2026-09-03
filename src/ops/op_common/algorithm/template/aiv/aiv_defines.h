@@ -22,8 +22,6 @@ constexpr uint32_t MAX_RANK_SIZE = 1024; // server内最大卡数
 constexpr uint32_t MAX_RANK_SIZE_V = 256;
 constexpr uint32_t BR_CTRL_CORE_LIMIT_RANK_SIZE = 16;
 constexpr uint64_t BUFFER_OUT_ADDR_OFFSET = 16 * 1024;
-constexpr uint64_t TOPO_LEN_Y_OFFSET = 8;
-constexpr uint64_t TOPO_LEN_Z_OFFSET = 16;
 constexpr uint64_t LOCAL_FLAG_BUF_LEN = 2560;
 constexpr uint64_t AIV_TAG_MOVE_RIGHT_BITS = 16;
 constexpr uint64_t LOW_16_BITS = 0xFFFF;
@@ -121,26 +119,24 @@ enum class CommPattern {
 
 #define KERNEL_ARGS_DEF                                                                                             \
     GM_ADDR buffIn, uint64_t input, uint64_t output, uint32_t rank, uint32_t sendRecvRemoteRank, uint32_t rankSize, \
-        uint64_t xRankSize, uint64_t yRankSize, uint64_t zRankSize, uint64_t len, uint32_t dataType,                \
-        uint32_t reduceOp, uint32_t root, uint32_t sliceId, uint64_t inputSliceStride, uint64_t outputSliceStride,  \
-        uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride, uint32_t numBlocks,            \
-        bool isOpBase, GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize,      \
-        bool isEnableCounter
+        uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, uint32_t sliceId,                        \
+        uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride,      \
+        uint64_t outputRepeatStride, uint32_t numBlocks, bool isOpBase, GM_ADDR headCountMem, GM_ADDR tailCountMem, \
+        GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter
 
 #define EXTERN_KERNEL_ARGS_DEF_V2 KERNEL_ARGS_DEF, ExtraArgs extraArgs
 
-#define KERNEL_ARGS_CALL                                                                                       \
-    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, \
-        reduceOp, root, sliceId, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride,            \
-        outputRepeatStride, numBlocks, isOpBase, headCountMem, tailCountMem, addOneMem, counterMemSize,        \
-        isEnableCounter
+#define KERNEL_ARGS_CALL                                                                                            \
+    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, len, dataType, reduceOp, root, sliceId,              \
+        inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, numBlocks, isOpBase, \
+        headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter
 
 #define EXTERN_KERNEL_ARGS_CALL KERNEL_ARGS_CALL, extraArgs
 
-#define KERNEL_CLASS_INIT                                                                                      \
-    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, \
-        reduceOp, root, inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, \
-        headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter, numBlocks
+#define KERNEL_CLASS_INIT                                                                                           \
+    buffIn, input, output, rank, sendRecvRemoteRank, rankSize, len, dataType, reduceOp, root, inputSliceStride,     \
+        outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, headCountMem, tailCountMem, addOneMem, \
+        counterMemSize, isEnableCounter, numBlocks
 
 #define SUPERKERNEL_LITE_ARGS_DEF uint64_t args_offset
 

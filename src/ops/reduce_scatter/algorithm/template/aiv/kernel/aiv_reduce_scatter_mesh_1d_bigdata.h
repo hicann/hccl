@@ -47,7 +47,7 @@ public:
             if (sendCurCount > 0) {
                 uint64_t usrInOffset = input_ + targetRank * inputStride + innerDispls * sizeof(T);
                 uint64_t cclInOffset
-                    = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (targetRank * len + innerDispls) * sizeof(T);
+                    = reinterpret_cast<uint64_t>(myGmIn_) + (targetRank * len + innerDispls) * sizeof(T);
                 CpGM2GM((__gm__ T*)cclInOffset, (__gm__ T*)usrInOffset, sendCurCount);
                 PipeBarrier<PIPE_ALL>();
                 // 每个核写flag
@@ -82,9 +82,9 @@ public:
             WaitFlag(targetRank, rank_ * coreNumPerRank + coreIndex, curTag);
 
             uint64_t srcCclInOffset
-                = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (rank_ * len + innerDispls) * sizeof(T);
-            uint64_t dstCclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride
-                                       + (targetRank * len + innerDispls) * sizeof(T);
+                = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rank_ * len + innerDispls) * sizeof(T);
+            uint64_t dstCclOutOffset
+                = reinterpret_cast<uint64_t>(myGmIn_) + cclBufferStride + (targetRank * len + innerDispls) * sizeof(T);
             if (targetRank != 0) { // targetRank == 0 的那张卡，一会直接到output就可以了
                 CpGM2GM((__gm__ T*)dstCclOutOffset, (__gm__ T*)srcCclInOffset, recvCurCount);
                 PipeBarrier<PIPE_ALL>();
@@ -99,7 +99,7 @@ public:
                 for (int index = 0; index < rankSize_; index++) {
                     // 按照顺序把数据reduce 到 output
                     WaitFlag(rank_, rankSize_ * coreNumPerRank + index * coreNumPerRank + coreIndex, curTag);
-                    uint64_t cclOutOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + cclBufferStride
+                    uint64_t cclOutOffset = reinterpret_cast<uint64_t>(myGmIn_) + cclBufferStride
                                             + (index * len + innerDispls) * sizeof(T);
                     if (index == 0) { // 通过直接覆盖output把数据清一下
                         CpGM2GM((__gm__ T*)usrOutOffset, (__gm__ T*)srcCclInOffset, recvCurCount);

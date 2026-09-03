@@ -19,9 +19,8 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr u32 MAX_RANK_SIZE = 1024;     // 注意要和device侧的一致
-constexpr u32 MAX_RANK_SIZE_V = 256;    // 注意要和device侧的一致
-constexpr s32 TOPO_LEN = MAX_RANK_SIZE; // 当前一级拓扑，暂时和MAX_RANK_SIZE保持一致
+constexpr u32 MAX_RANK_SIZE = 1024;  // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
@@ -92,9 +91,6 @@ struct AivOpArgs {
     u32 rank = 0;
     u32 sendRecvRemoteRank = 0;
     u32 rankSize = 0;
-    u64 xRankSize = 0;
-    u64 yRankSize = 0;
-    u64 zRankSize = 0;
     u64 count = 0;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
     HcclReduceOp op = HcclReduceOp::HCCL_REDUCE_SUM;
@@ -107,7 +103,6 @@ struct AivOpArgs {
     u64 outputRepeatStride = 0;
     bool isOpBase = false;
     ExtraArgs extraArgs = {};
-    uint64_t topo_[TOPO_LEN] = {0};
     AivOpArgs() {};
     KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER;
 };

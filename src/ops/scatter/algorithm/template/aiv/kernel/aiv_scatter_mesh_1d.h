@@ -43,7 +43,7 @@ private:
             for (int i = 0; i < copyNumThisCore; i++) {
                 dstRank = i * coreNum_ + coreIdx_;
                 srcOffset_ = input_ + dstRank * inputSliceStride_;
-                dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]);
+                dstOffset_ = reinterpret_cast<uint64_t>(GetGmIn(dstRank));
                 CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
                 pipe_barrier(PIPE_ALL);
             }
@@ -58,7 +58,7 @@ private:
             dstRank = i * coreNum_ + coreIdx_;
             WaitFlag(rank_, dstRank, curTag_);
             if (dstRank == root_) {
-                srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]);
+                srcOffset_ = reinterpret_cast<uint64_t>(myGmIn_);
                 dstOffset_ = output_;
                 CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
                 pipe_barrier(PIPE_ALL);

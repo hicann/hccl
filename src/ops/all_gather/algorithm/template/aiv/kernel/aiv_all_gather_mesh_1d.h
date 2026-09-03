@@ -55,7 +55,7 @@ public:
             if (sendCurCount > 0) {
                 uint64_t usrInOffset = input_ + (innerDisplsPerRank + innerDispls) * sizeof(T);
                 uint64_t cclInOffset
-                    = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (innerDisplsPerRank + innerDispls) * sizeof(T);
+                    = reinterpret_cast<uint64_t>(myGmIn_) + (innerDisplsPerRank + innerDispls) * sizeof(T);
                 CpGM2GM((__gm__ T*)cclInOffset, (__gm__ T*)usrInOffset, sendCurCount);
                 PipeBarrier<PIPE_ALL>();
                 // 每个核写flag
@@ -107,7 +107,7 @@ public:
                 WaitFlag(targetRank, innerIndex * coreNumPerRank + coreIndex, curTag_);
 
                 uint64_t srcCclInOffset
-                    = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerDisplsPerRank + innerDispls) * sizeof(T);
+                    = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (innerDisplsPerRank + innerDispls) * sizeof(T);
                 uint64_t usrOutOffset = output_ + targetRank * stride + (innerDisplsPerRank + innerDispls) * sizeof(T);
                 CpGM2GM((__gm__ T*)usrOutOffset, (__gm__ T*)srcCclInOffset, sendCurCount);
                 PipeBarrier<PIPE_ALL>();
@@ -155,7 +155,7 @@ public:
         uint64_t curCountCore
             = blockIdx_ == curNumBlocks - 1 ? count - countPerCore * (curNumBlocks - 1) : countPerCore;
         auto gmIn = reinterpret_cast<__gm__ T*>(
-            reinterpret_cast<uint64_t>(GM_IN[rank_]) + blockIdx_ * countPerCore * dataTypeSize);
+            reinterpret_cast<uint64_t>(myGmIn_) + blockIdx_ * countPerCore * dataTypeSize);
         CpGM2GM(gmIn, input + blockIdx_ * countPerCore, curCountCore);
         SyncAll<true>();
 
@@ -169,7 +169,7 @@ public:
             Record(rank, rank_, curTag_);
         }
         for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank]));
+            auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GetGmIn(rank)));
             auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
             WaitFlag(rank_, rank, curTag_);
             CpGM2GM(output, gmOthers, count);

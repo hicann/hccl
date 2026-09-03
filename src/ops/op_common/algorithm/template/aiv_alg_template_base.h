@@ -21,8 +21,6 @@
 #include "common_alg_template_base.h"
 
 namespace ops_hccl {
-constexpr uint64_t TOPO_LEN_Y_OFFSET = 8;
-constexpr uint64_t TOPO_LEN_Z_OFFSET = 16;
 constexpr uint64_t MAX_DIM_NUM = 3;
 
 class AivAlgTemplateBase {

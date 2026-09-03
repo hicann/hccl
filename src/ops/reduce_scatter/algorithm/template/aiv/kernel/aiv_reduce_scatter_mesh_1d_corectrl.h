@@ -112,7 +112,7 @@ private:
         const uint64_t ipcRankOffset = static_cast<uint64_t>(producerId) * lenPerRank_ * sizeof(T);
 
         __gm__ T* src = reinterpret_cast<__gm__ T*>(input_ + outerOffsetBytes);
-        __gm__ T* dst = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GM_IN[rank_]) + ipcRankOffset);
+        __gm__ T* dst = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(myGmIn_) + ipcRankOffset);
 
         CpGM2GM(dst, src, len_);
 
@@ -136,7 +136,7 @@ private:
         for (uint32_t idx = 0; idx < rankSizeU32_; ++idx) {
             const uint32_t rankIdx = (idx + consumerId) % rankSizeU32_;
             const uint64_t baseIpc
-                = reinterpret_cast<uint64_t>(GM_IN[rankIdx]) + lenPerRank_ * static_cast<uint64_t>(rank_) * sizeof(T);
+                = reinterpret_cast<uint64_t>(GetGmIn(rankIdx)) + lenPerRank_ * static_cast<uint64_t>(rank_) * sizeof(T);
             inputOffVec_[idx] = baseIpc + outerOffsetBytes;
         }
 

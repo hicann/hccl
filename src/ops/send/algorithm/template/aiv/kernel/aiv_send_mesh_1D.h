@@ -34,7 +34,7 @@ public:
             sendCurCount = dataPerCore;
         }
         sendInputOffset = input_ + innerDispls * sizeof(T);
-        sendOutputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + innerDispls * sizeof(T);
+        sendOutputOffset = reinterpret_cast<uint64_t>(myGmIn_) + innerDispls * sizeof(T);
     }
 
     __aicore__ inline void Producer()

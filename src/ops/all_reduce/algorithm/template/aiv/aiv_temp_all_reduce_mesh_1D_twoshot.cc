@@ -127,27 +127,6 @@ HcclResult AivTempAllReduceMesh1DTwoShot::KernelRun(
     aivAllReduceArgs.buffersIn = templateResource.aivCommInfoPtr;
     aivAllReduceArgs.stream = param.stream;
     aivAllReduceArgs.isOpBase = (param.opMode == OpMode::OPBASE);
-    CHK_PRT_RET(
-        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[%s] subCommRanks_[0] is empty.", __func__),
-        HcclResult::HCCL_E_INTERNAL);
-    aivAllReduceArgs.xRankSize = subCommRanks_[0].size();
-
-    for (u32 i = 0; i < subCommRanks_[0].size(); i++) {
-        aivAllReduceArgs.topo_[i] = subCommRanks_[0][i];
-    }
-    u32 sizeOne = 1, sizeTwo = 1;
-    if (subCommRanks_.size() > sizeOne) {
-        aivAllReduceArgs.yRankSize = subCommRanks_[1].size();
-        for (u32 i = 0; i < subCommRanks_[1].size(); i++) {
-            aivAllReduceArgs.topo_[TOPO_LEN_Y_OFFSET + i] = subCommRanks_[1][i];
-        }
-    }
-    if (subCommRanks_.size() > sizeTwo) {
-        aivAllReduceArgs.zRankSize = subCommRanks_[2].size();
-        for (u32 i = 0; i < subCommRanks_[2].size(); i++) {
-            aivAllReduceArgs.topo_[TOPO_LEN_Z_OFFSET + i] = subCommRanks_[2][i];
-        }
-    }
 
     CHK_RET(CalNumBlocks(aivAllReduceArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 

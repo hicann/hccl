@@ -57,7 +57,7 @@ private:
 
         // PreCopy阶段
         srcOffset_ = input_ + dstRank * inputSliceStride_ + sliceOffsetSize;
-        dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * dataSize_ + sliceOffsetSize;
+        dstOffset_ = reinterpret_cast<uint64_t>(myGmIn_) + dstRank * dataSize_ + sliceOffsetSize;
         CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceCount);
         pipe_barrier(PIPE_ALL);
 
@@ -68,7 +68,7 @@ private:
         uint64_t waitFlagIdx = rank_ * coreNumPerDstRank + coreIdxForDstRank;
         WaitFlag(dstRank, waitFlagIdx, curTag_);
 
-        srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * dataSize_ + sliceOffsetSize;
+        srcOffset_ = reinterpret_cast<uint64_t>(GetGmIn(dstRank)) + rank_ * dataSize_ + sliceOffsetSize;
         dstOffset_ = output_ + dstRank * outputSliceStride_ + sliceOffsetSize;
         CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceCount);
         pipe_barrier(PIPE_ALL);
@@ -87,7 +87,7 @@ private:
 
             // PreCopy阶段
             srcOffset_ = input_ + dstRank * inputSliceStride_;
-            dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * dataSize_;
+            dstOffset_ = reinterpret_cast<uint64_t>(myGmIn_) + dstRank * dataSize_;
             CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
             pipe_barrier(PIPE_ALL);
 
@@ -105,7 +105,7 @@ private:
             uint64_t waitFlagIdx = rank_;
             WaitFlag(dstRank, waitFlagIdx, curTag_);
 
-            srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * dataSize_;
+            srcOffset_ = reinterpret_cast<uint64_t>(GetGmIn(dstRank)) + rank_ * dataSize_;
             dstOffset_ = output_ + dstRank * outputSliceStride_;
             CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
             pipe_barrier(PIPE_ALL);
@@ -122,7 +122,7 @@ private:
 
         // PutRemote
         srcOffset_ = input_ + dstRank * inputSliceStride_;
-        dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * dataSize_;
+        dstOffset_ = reinterpret_cast<uint64_t>(GetGmIn(dstRank)) + rank_ * dataSize_;
         CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
         pipe_barrier(PIPE_ALL);
 
@@ -131,7 +131,7 @@ private:
         // PostCopy
         WaitFlag(rank_, dstRank, curTag_);
 
-        srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * dataSize_;
+        srcOffset_ = reinterpret_cast<uint64_t>(myGmIn_) + dstRank * dataSize_;
         dstOffset_ = output_ + dstRank * outputSliceStride_;
         CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
     }

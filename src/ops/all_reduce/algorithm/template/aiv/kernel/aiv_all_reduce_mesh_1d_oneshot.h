@@ -34,13 +34,13 @@ public:
     {
         uint32_t waitRank = 0;
         uint64_t outerOffset = waitRank * len_ * sizeof(T); // rank_  * len;
-        inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + outerOffset;
+        inputOffset = reinterpret_cast<uint64_t>(myGmIn_) + outerOffset;
         WaitFlag(rank_, waitRank, curTag_);
         CpGM2GM((__gm__ T*)output_, (__gm__ T*)inputOffset, len_);
         pipe_barrier(PIPE_ALL);
         for (waitRank = 1; waitRank < rankSize_; waitRank++) {
             outerOffset = waitRank * len_ * sizeof(T); // rank_  * len;
-            inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + outerOffset;
+            inputOffset = reinterpret_cast<uint64_t>(myGmIn_) + outerOffset;
             WaitFlag(rank_, waitRank, curTag_);
             CpGM2GM((__gm__ T*)output_, (__gm__ T*)inputOffset, len_, reduceOp_);
             pipe_barrier(PIPE_ALL);
@@ -63,7 +63,7 @@ public:
         if (blockIdx_ < coreNumPerStage) {
             targetRank = blockIdx_;
             uint64_t outerOffset = rank_ * this->curCount * sizeof(T);
-            outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + outerOffset;
+            outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + outerOffset;
             Producer();
             SyncAll<true>();
         } else if (blockIdx_ < coreNumPerStage + coreNumPerRank) {
@@ -83,7 +83,7 @@ public:
         for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
             targetRank = blockIdx_ + i * numBlocks_;
             uint64_t outerOffset = rank_ * this->curCount * sizeof(T);
-            outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + outerOffset;
+            outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + outerOffset;
             Producer();
         }
         SyncAll<true>();

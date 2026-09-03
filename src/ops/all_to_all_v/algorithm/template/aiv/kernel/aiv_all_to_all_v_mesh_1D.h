@@ -38,7 +38,7 @@ public:
             sendCurCount_ = dataPerCore;
         }
         sendInputOffset_ = input_ + (sendDisplThisLoop + innerDispls) * sizeof(T);
-        sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_])
+        sendOutputOffset_ = reinterpret_cast<uint64_t>(myGmIn_)
                             + (targetRank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
 
         // 接收数据的编排
@@ -57,7 +57,7 @@ public:
             innerDispls = coreIndex_ * dataPerCore + remainder;
             recvCurCount_ = dataPerCore;
         }
-        recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[targetRank_])
+        recvInputOffset_ = reinterpret_cast<uint64_t>(GetGmIn(targetRank_))
                            + (rank_ * cclBufferCountPerRank_ + innerDisplsForCcl_) * sizeof(T);
         recvOutputOffset_ = output_ + (recvDisplThisLoop + innerDispls) * sizeof(T);
     }
@@ -132,7 +132,7 @@ public:
     __aicore__ inline void
     ProduceConsumeCtrlCore(uint64_t loop, ExtraArgs& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
     {
-        // PRODUCE：本核负责的每个 dstRank，input 本轮 chunk -> GM_IN[rank_][dstRank 区]
+        // PRODUCE：本核负责的每个 dstRank，input 本轮 chunk -> myGmIn_[dstRank 区]
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
             uint32_t dstRank = blockIdx_ * rankNumPerCore_ + idx;
             if (dstRank >= rankSize_) {
@@ -152,12 +152,12 @@ public:
             WaitFlag(rank_, dstRank, ackTag); // P 区 [rank_][dstRank]
             uint64_t sendDisplThisLoop = extraArgs.sendDispls[dstRank] + processedDataCount;
             sendInputOffset_ = input_ + sendDisplThisLoop * sizeof(T);
-            sendOutputOffset_ = reinterpret_cast<uint64_t>(GM_IN[rank_]) + dstRank * cclBufferCountPerRank_ * sizeof(T);
+            sendOutputOffset_ = reinterpret_cast<uint64_t>(myGmIn_) + dstRank * cclBufferCountPerRank_ * sizeof(T);
             CpGM2GM((__gm__ T*)sendOutputOffset_, (__gm__ T*)sendInputOffset_, sendCurCount_);
             PipeBarrier<PIPE_ALL>();
             Record(dstRank, rank_ + rankSize_, loop); // C 区 [dstRank][rank_+rankSize] = data-ready
         }
-        // CONSUME：本核负责的每个 dstRank，GM_IN[dstRank][rank_ 区] -> output
+        // CONSUME：本核负责的每个 dstRank，GetGmIn(dstRank)[rank_ 区] -> output
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
             uint32_t dstRank = blockIdx_ * rankNumPerCore_ + idx;
             if (dstRank >= rankSize_) {
@@ -172,7 +172,8 @@ public:
             }
             WaitFlag(rank_, dstRank + rankSize_, loop); // C 区 [rank_][dstRank+rankSize] = data-ready
             uint64_t recvDisplThisLoop = extraArgs.recvDispls[dstRank] + processedDataCount;
-            recvInputOffset_ = reinterpret_cast<uint64_t>(GM_IN[dstRank]) + rank_ * cclBufferCountPerRank_ * sizeof(T);
+            recvInputOffset_
+                = reinterpret_cast<uint64_t>(GetGmIn(dstRank)) + rank_ * cclBufferCountPerRank_ * sizeof(T);
             recvOutputOffset_ = output_ + recvDisplThisLoop * sizeof(T);
             CpGM2GM((__gm__ T*)recvOutputOffset_, (__gm__ T*)recvInputOffset_, recvCurCount_);
             PipeBarrier<PIPE_ALL>();

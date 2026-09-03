@@ -151,9 +151,6 @@ HcclResult InsV2RecvExecutor::OrchestrateImpl(const OpParam& param, const AlgRes
         aivSendArgs.buffersIn = resCtx.aivCommInfoPtr;
         aivSendArgs.stream = param.stream;
         aivSendArgs.isOpBase = (opMode_ == OpMode::OPBASE);
-        aivSendArgs.yRankSize = 0;
-        aivSendArgs.zRankSize = 0;
-        aivSendArgs.xRankSize = resCtx.topoInfo.userRankSize;
         CHK_RET(CalNumBlocks(aivSendArgs.numBlocks, currDataCount * dataTypeSize_, param.numBlocksLimit));
 
         aivSendArgs.inputSliceStride = 0;

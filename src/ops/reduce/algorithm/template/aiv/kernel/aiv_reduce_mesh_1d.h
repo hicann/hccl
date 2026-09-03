@@ -93,7 +93,7 @@ private:
         if (blockIdx_ < coreNumFirstStage) {
             if (innerChunkSize > 0) {
                 uint64_t inputOffset = input_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
-                uint64_t outputOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank])
+                uint64_t outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank))
                                         + (rank_ * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
                 CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize);
                 pipe_barrier(PIPE_ALL);
@@ -106,10 +106,10 @@ private:
                     if (i == 0) {
                         continue;
                     }
-                    uint64_t inputOffset = reinterpret_cast<uint64_t>(GM_IN[rank_])
+                    uint64_t inputOffset = reinterpret_cast<uint64_t>(myGmIn_)
                                            + (i * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
                     uint64_t outputOffset
-                        = reinterpret_cast<uint64_t>(GM_IN[rank_]) + (innerId * innerChunkStride) * sizeof(T);
+                        = reinterpret_cast<uint64_t>(myGmIn_) + (innerId * innerChunkStride) * sizeof(T);
                     CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize, reduceOp_);
                     pipe_barrier(PIPE_ALL);
                 }
@@ -131,7 +131,7 @@ private:
         WaitFlag(targetRank, ipcReduceFlagOffset + innerId, curTag);
         if (innerChunkSize > 0) {
             uint64_t inputOffset
-                = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + (innerId * innerChunkStride) * sizeof(T);
+                = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (innerId * innerChunkStride) * sizeof(T);
             uint64_t outputOffset = output_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
             CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize);
             pipe_barrier(PIPE_ALL);
@@ -172,7 +172,7 @@ private:
             uint64_t processCount = (targetRank == rankSize_ - 1) ? tailCount_ : sliceCount_;
             if (processCount > 0) {
                 uint64_t srcOffset = input_ + targetRank * sliceCount_ * sizeof(T);
-                uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]) + rank_ * processCount * sizeof(T);
+                uint64_t dstOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + rank_ * processCount * sizeof(T);
                 CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, processCount);
                 pipe_barrier(PIPE_ALL);
             }
@@ -192,8 +192,8 @@ private:
         for (uint32_t sliceIdx = 1; sliceIdx < rankSize_; ++sliceIdx) {
             WaitFlag(rank_, sliceIdx, syncTag_);
             if (reduceCount > 0) {
-                uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]) + sliceIdx * reduceCount * sizeof(T);
-                uint64_t dstOffset = reinterpret_cast<uint64_t>(GM_IN[rank_]);
+                uint64_t srcOffset = reinterpret_cast<uint64_t>(myGmIn_) + sliceIdx * reduceCount * sizeof(T);
+                uint64_t dstOffset = reinterpret_cast<uint64_t>(myGmIn_);
                 CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, reduceCount, reduceOp_);
                 pipe_barrier(PIPE_ALL);
             }
@@ -217,7 +217,7 @@ private:
             uint64_t processCount = (targetRank == rankSize_ - 1) ? tailCount_ : sliceCount_;
             if (processCount > 0) {
                 WaitFlag(targetRank, reduceTagOffset_, syncTag_);
-                uint64_t srcOffset = reinterpret_cast<uint64_t>(GM_IN[targetRank]);
+                uint64_t srcOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank));
                 uint64_t dstOffset = output_ + targetRank * sliceCount_ * sizeof(T);
                 CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, processCount);
                 pipe_barrier(PIPE_ALL);
@@ -269,10 +269,10 @@ public:
         offsetSize_ = offsetLen_ * sizeof(T);
         if (rank_ < root_) {
             srcOffset_ = input_ + offsetSize_;
-            dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[root_]) + offsetSize_ + rank_ * dataSize_;
+            dstOffset_ = reinterpret_cast<uint64_t>(GetGmIn(root_)) + offsetSize_ + rank_ * dataSize_;
         } else if (rank_ > root_) {
             srcOffset_ = input_ + offsetSize_;
-            dstOffset_ = reinterpret_cast<uint64_t>(GM_IN[root_]) + offsetSize_ + (rank_ - 1) * dataSize_;
+            dstOffset_ = reinterpret_cast<uint64_t>(GetGmIn(root_)) + offsetSize_ + (rank_ - 1) * dataSize_;
         } else {
             srcOffset_ = input_ + offsetSize_;
             dstOffset_ = output_ + offsetSize_;
@@ -315,7 +315,7 @@ public:
                 WaitFlag(rank_, flagOffset, curTag_);
                 // 本地规约：将本地ScratchBuffer上的数据Reduce到本地OutputBuffer上
                 if (sliceLen_ > 0) {
-                    srcOffset_ = reinterpret_cast<uint64_t>(GM_IN[root_]) + sliceIdx * dataSize_ + offsetSize_;
+                    srcOffset_ = reinterpret_cast<uint64_t>(GetGmIn(root_)) + sliceIdx * dataSize_ + offsetSize_;
                     CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceLen_, reduceOp_);
                     PipeBarrier<PIPE_ALL>();
                 }
