@@ -799,7 +799,8 @@ HcclResult CalcDeviceFormFactor(TopoInfoWithNetLayerDetails* topoInfo)
     // 与成功路径同为INFO同前缀: 现场grep一次就能分清走的是哪一条
     HCCL_INFO("[Topo][CalcDeviceFormFactor] acl has no device form factor attr, isPod stays false");
 #else
-    // aclrtGetDevice返回的是userDevId, 不是logicDevId, 变量名必须如实反映
+    // aclrtGetDeviceInfo的deviceId形参就是userDevId(aclrtGetDevice的返回值), ACL内部自己做user->logic映射。
+    // 这里不能再调aclrtGetLogicDevIdByUserDevId转一道: 配了ASCEND_RT_VISIBLE_DEVICES时会二次映射, 读到另一张卡
     s32 userDevId = 0;
     aclError aclRet = aclrtGetDevice(&userDevId);
     if (aclRet != ACL_SUCCESS) {
@@ -807,35 +808,23 @@ HcclResult CalcDeviceFormFactor(TopoInfoWithNetLayerDetails* topoInfo)
         return HCCL_SUCCESS;
     }
 
-    // userDevId -> logicDevId。aclrtGetDeviceInfo要的是logicDevId, 少这一步在配了
-    // ASCEND_RT_VISIBLE_DEVICES的环境上会静默读到另一张卡的形态
-    s32 logicDevId = 0;
-    aclRet = aclrtGetLogicDevIdByUserDevId(userDevId, &logicDevId);
-    if (aclRet != ACL_SUCCESS) {
-        HCCL_WARNING(
-            "[Topo][CalcDeviceFormFactor] get logic dev id by user dev id[%d] failed, ret[%d]. "
-            "isPod stays false.",
-            userDevId, aclRet);
-        return HCCL_SUCCESS;
-    }
-
     s64 val = 0;
     // quiet: 老驱动不支持该infoType时会稳定失败, 按ERROR打会在正常的老环境上持续刷错误日志
-    HcclResult ret = hcalrtGetDeviceInfo(static_cast<u32>(logicDevId), ACL_DEV_ATTR_DEVICE_FORM_FACTOR, val, true);
+    HcclResult ret = hcalrtGetDeviceInfo(static_cast<u32>(userDevId), ACL_DEV_ATTR_DEVICE_FORM_FACTOR, val, true);
     if (ret != HCCL_SUCCESS) {
         HCCL_WARNING(
-            "[Topo][CalcDeviceFormFactor] get device form factor failed, ret[%d], logicDevId[%d]. "
+            "[Topo][CalcDeviceFormFactor] get device form factor failed, ret[%d], userDevId[%d]. "
             "isPod stays false.",
-            ret, logicDevId);
+            ret, userDevId);
         return HCCL_SUCCESS;
     }
 
     // 必须是严格相等的正向判断: ACL将来新增形态时, 未识别的取值必须落到false一侧
     topoInfo->isPod = (val == ACL_DEVICE_FORM_FACTOR_POD);
-    // 原始取值与两个设备号都打出来: 现场据此分辨"确实不是POD"还是"取到了个没见过的形态"
+    // 原始取值和设备号都打出来: 现场据此分辨"确实不是POD"还是"取到了个没见过的形态"
     HCCL_INFO(
-        "[Topo][CalcDeviceFormFactor] userDevId[%d] logicDevId[%d] formFactor[%ld] isPod[%d]", userDevId, logicDevId,
-        val, static_cast<s32>(topoInfo->isPod));
+        "[Topo][CalcDeviceFormFactor] userDevId[%d] formFactor[%ld] isPod[%d]", userDevId, val,
+        static_cast<s32>(topoInfo->isPod));
 #endif // HCCL_SUPPORT_DEV_FORM_FACTOR
 #endif // AICPU_COMPILE
     return HCCL_SUCCESS;
