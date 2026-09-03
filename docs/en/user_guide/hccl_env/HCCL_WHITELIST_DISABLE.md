@@ -10,7 +10,7 @@ Whether to enable the communication trustlist when using HCCL.
 
 - `1`: No. The trustlist is not verified.
 
-The default value is `1`. If trustlist verification is enabled, specify the trustist configuration file path through [HCCL_WHITELIST_FILE](HCCL_WHITELIST_FILE.md).
+The default value is `1`. If trustlist verification is enabled, specify the trustlist configuration file path through [HCCL_WHITELIST_FILE](HCCL_WHITELIST_FILE.md).
 
 ## Configuration Example
 

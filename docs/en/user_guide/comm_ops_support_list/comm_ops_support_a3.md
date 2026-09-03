@@ -29,7 +29,7 @@ This section provides the communication operator support status for the Atlas A3
 </tr>
 </thead>
 <tbody><tr><td rowspan="3"><p>Broadcast</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>✓</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -37,7 +37,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -45,7 +45,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -54,7 +54,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllGather</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>✓</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -62,7 +62,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -70,7 +70,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -79,7 +79,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllGatherV</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -87,7 +87,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -95,7 +95,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -104,7 +104,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>Reduce</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -112,7 +112,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -120,7 +120,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -129,7 +129,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllReduce</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -137,7 +137,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -145,7 +145,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -154,7 +154,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="2"><p>Scatter</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -162,7 +162,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -171,7 +171,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatter</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -179,7 +179,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -187,7 +187,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -196,7 +196,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatterV</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -204,7 +204,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -212,7 +212,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
 <td><p>✓</p></td>
@@ -221,7 +221,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAll</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -229,7 +229,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -237,7 +237,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -246,7 +246,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllV</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -254,7 +254,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -262,7 +262,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -271,7 +271,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllVC</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -279,7 +279,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -287,7 +287,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -296,7 +296,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>Send</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -304,7 +304,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -312,7 +312,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -321,7 +321,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="3"><p>Recv</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -329,7 +329,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -337,7 +337,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -346,7 +346,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 </tr>
 <tr><td rowspan="2"><p>BatchSendRecv</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -354,7 +354,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>✓</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>NA</p></td>
 <td><p>NA</p></td>
 <td><p>✓</p></td>
@@ -378,7 +378,7 @@ This section provides the communication operator support status for the Atlas A3
 </tr>
 </thead>
 <tbody><tr><td rowspan="3"><p>Broadcast</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -386,7 +386,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -394,7 +394,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -403,7 +403,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllGather</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -411,7 +411,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -419,7 +419,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -428,7 +428,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllReduce</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -436,7 +436,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -444,7 +444,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -453,7 +453,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatter</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -461,7 +461,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -469,7 +469,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>✓</p></td>
 <td><p>×</p></td>
@@ -478,7 +478,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAll</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -486,7 +486,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -494,7 +494,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -503,7 +503,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllV</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -511,7 +511,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -519,7 +519,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -528,7 +528,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AlltoAllVC</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -536,7 +536,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -544,7 +544,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -553,7 +553,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>AllGather</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -561,7 +561,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -569,7 +569,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>NA</p></td>
 <td><p>×</p></td>
@@ -578,7 +578,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>×</p></td>
 </tr>
 <tr><td rowspan="3"><p>ReduceScatterV</p></td>
-<td><p>Single Operator Mode</p></td>
+<td><p>Single-operator</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>
@@ -586,7 +586,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Mode Ascend IR</p></td>
+<tr><td><p>Graph (Ascend IR)</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>
@@ -594,7 +594,7 @@ This section provides the communication operator support status for the Atlas A3
 <td><p>✓</p></td>
 <td><p>×</p></td>
 </tr>
-<tr><td><p>Graph Capture Mode aclgraph</p></td>
+<tr><td><p>Graph capture (ACL graph)</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>
 <td><p>×</p></td>

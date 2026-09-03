@@ -56,7 +56,7 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
 
 ### dataType Description
 
-- For Ascend 950PR/Ascend 950DT, supported data types: int8, int16, int32, int64, uint64, float16, float32, float64, bfp16. For int64, uint64, and float64, only intra-node communication is currently supported.
+- For Ascend 950PR/Ascend 950DT, supported data types: int8, int16, int32, int64, uint64, float16, float32, float64, bfp16.
 
 - For Atlas A3 training products/Atlas A3 inference products, supported data types: int8, int16, int32, int64, float16, float32, bfp16.
 

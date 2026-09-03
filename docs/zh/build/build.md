@@ -199,9 +199,9 @@ bash build.sh --ut
    ![hccltest_result](./figures/hccl_test_result.png)
 
    - “check_result”为success，代表通信算子执行结果成功，AllReduce算子功能正确。
-   - ”aveg_time“：集合通信算子的执行耗时，单位us。
-   - ”alg_bandwidth“：集合通信算子执行带宽，单位为GB/s。
-   - ”data_size“：单个NPU上参与集合通信的数据量，单位为Bytes。
+   - “aveg_time”：集合通信算子的执行耗时，单位us。
+   - “alg_bandwidth”：集合通信算子执行带宽，单位为GB/s。
+   - “data_size”：单个NPU上参与集合通信的数据量，单位为Bytes。
 
 ## 附录
 

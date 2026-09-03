@@ -212,7 +212,7 @@ You can use HCCL Test to test collective communication functionality and perform
 
    - `aveg_time`: execution time of the collective communication operator, in μs.
 
-   - `alg_bandwidth`: execution bandwidth of the collective communication operator, in Gb/s.
+   - `alg_bandwidth`: execution bandwidth of the collective communication operator, in GB/s.
 
    - `data_size`: amount of data participating in collective communication on a single NPU, in bytes.
 
