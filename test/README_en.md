@@ -1,10 +1,12 @@
 # HCCL Test
 
+English | [简体中文](./README.md)
+
 This directory contains the HCCL test code, which is divided into system tests (ST) and unit tests (UT).
 
 ## Directory Structure
 
-```
+```text
 test/
 ├── st/                         # System Test
 │   ├── algorithm/              # Algorithm analyzer tests

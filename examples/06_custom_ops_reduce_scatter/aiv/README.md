@@ -4,9 +4,9 @@
 
 本样例展示如何基于 HCCL AIV 通信编程接口开发 ReduceScatter 自定义通信算子，主要功能点：
 
-1.  基于 AIV (AI Vector) 通信引擎实现 ReduceScatter 集合通信算子。
-2.  包含 Host 侧算子逻辑与 Device 侧 Kernel 实现。
-3.  提供完整的编译构建与测试验证流程。
+1. 基于 AIV (AI Vector) 通信引擎实现 ReduceScatter 集合通信算子。
+2. 包含 Host 侧算子逻辑与 Device 侧 Kernel 实现。
+3. 提供完整的编译构建与测试验证流程。
 
 ## 目录结构
 
@@ -40,7 +40,7 @@
 
 本样例支持以下产品，组网为单机N卡（N>=2）：
 
-- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
+- Ascend 950PR/Ascend 950DT
 
 ### 2. 安装 CANN Toolkit 开发套件包
 

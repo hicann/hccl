@@ -1,5 +1,7 @@
 # experimental/ —— 开发者实验与贡献目录
 
+简体中文 | [English](./README_en.md)
+
 ## 1. 目的
 
 `experimental/` 是为 HCCL 社区提供的**实验空间**，与主干 `src/` 的区别：

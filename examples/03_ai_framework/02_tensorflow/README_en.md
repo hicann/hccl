@@ -12,10 +12,11 @@ This sample demonstrates how to perform an AllReduce operation using the TensorF
 
 This sample supports the following products in a single-server 8-card configuration:
 
-- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
-- <term>Atlas A2 Training Products</term>
-- <term>Atlas Training Products</term> / <term>Atlas Inference Products</term>
+- Ascend 950PR/Ascend 950DT
+- Atlas A3 training products/Atlas A3 inference products
+- Atlas A2 training products
+- Atlas training products
+- Atlas inference products
 
 Note: This sample code is developed based on TensorFlow 1.x and is not compatible with TensorFlow 2.x. TensorFlow 1.15.0 is recommended.
 

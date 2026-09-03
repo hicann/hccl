@@ -15,10 +15,11 @@ This sample demonstrates how to perform an AllReduce operation using the PyTorch
 
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
-- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
-- <term>Atlas A3 Training Products</term> / <term>Atlas A3 Inference Products</term>
-- <term>Atlas A2 Training Products</term>
-- <term>Atlas Training Products</term> / <term>Atlas Inference Products</term>
+- Ascend 950PR/Ascend 950DT
+- Atlas A3 training products/Atlas A3 inference products
+- Atlas A2 training products
+- Atlas training products
+- Atlas inference products
 
 This sample depends on the following Python packages:
 

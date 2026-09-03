@@ -1,5 +1,7 @@
 # HCCL Code Examples
 
+English | [简体中文](./README.md)
+
 This directory provides sample code for using the HCCL interface to implement collective communication in different scenarios.
 
 ## Point-to-Point Communication

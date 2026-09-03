@@ -36,7 +36,9 @@ This sample demonstrates how to develop an AllGather custom communication operat
 
 This sample supports the following products in a single-server N-card configuration (N >= 2):
 
-- <term>Ascend 950PR</term> / <term>Ascend 950DT</term>
+- Ascend 950PR/Ascend 950DT
+- Atlas A3 training products/Atlas A3 inference products (Only supports intra-super-node communication scenarios)
+- Atlas A2 training products/Atlas A2 inference products (Only supports single-device communication scenarios)
 
 ### 1.2 Install the CANN Toolkit Development Kit Package
 

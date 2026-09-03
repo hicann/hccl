@@ -2,7 +2,7 @@
 
 ## 安装驱动固件与CANN软件包
 
-HCCL集合通信库的使用以及通信算子的开发依赖固件驱动与CANN软件包，详细安装步骤请参考《[CANN 软件安装指南](https://hiascend.com/document/redirect/CannCommunityInstSoftware)》。
+HCCL集合通信库的使用以及通信算子的开发依赖固件驱动与CANN软件包，详细安装步骤请参考《[CANN软件安装](https://hiascend.com/document/redirect/CannCommunityInstSoftware)》。
 
 > [!NOTE]说明
 > 如果仅做应用程序的开发与编译，不涉及执行，则不依赖驱动固件包。

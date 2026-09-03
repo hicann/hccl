@@ -1,5 +1,7 @@
 # experimental/ — Developer Experiment and Contribution Directory
 
+English | [简体中文](./README.md)
+
 ## 1. Purpose
 
 The `experimental/` directory provides an **experimental space** for the HCCL community. The following table describes the differences from the main `src/` directory:

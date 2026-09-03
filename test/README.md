@@ -1,10 +1,12 @@
 # HCCL Test
 
+简体中文 | [English](./README_en.md)
+
 本目录包含 HCCL 的测试代码，分为系统测试（ST）和单元测试（UT）两大类。
 
 ## 目录结构
 
-```
+```text
 test/
 ├── st/                         # 系统测试（System Test）
 │   ├── algorithm/              # 算法分析器测试
