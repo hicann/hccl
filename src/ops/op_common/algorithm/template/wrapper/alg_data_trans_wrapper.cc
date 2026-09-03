@@ -938,6 +938,11 @@ HcclResult LocalCopySlices(
             srcSlices.size(), dstSlices.size()),
         HcclResult::HCCL_E_INTERNAL);
 
+    // 两数组长度必然相等，只检查先使用的srcSlices是否空数组。
+    CHK_PRT_RET(
+        srcSlices.empty(), HCCL_ERROR("[InsCollAlgFactory] [AlgDataTransWrapper] LocalCopySlices: srcSlices is empty."),
+        HcclResult::HCCL_E_INTERNAL);
+
     // tmpSlices: slices to be transfer in this loop
     DataSlice tmpSrcSlice = srcSlices[0];
     DataSlice tmpDstSlice = dstSlices[0];
