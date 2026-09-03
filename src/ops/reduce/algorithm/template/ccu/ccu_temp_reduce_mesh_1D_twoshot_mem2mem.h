@@ -31,6 +31,8 @@ public:
             "Template of Reduce ccu mesh 1D TwoShot Mem2Mem with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     void SetRoot(u32 root);
 
     HcclResult KernelRun(

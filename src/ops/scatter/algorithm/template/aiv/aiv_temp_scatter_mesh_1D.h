@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class AivTempScatterMesh1D : public AivAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     AivTempScatterMesh1D() = default;
     explicit AivTempScatterMesh1D(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
@@ -31,6 +32,8 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

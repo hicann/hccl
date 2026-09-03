@@ -15,6 +15,33 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempBroadcastNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // NHR递归halving-doubling算法（scatter+allgather两阶段），始终走CLOS网络
+    param.netType = CommTopo::COMM_TOPO_CLOS;
+    int portNum = 8;
+    // NHR步数=2*ceil(log2(rankSize))(Scatter+AllGather两轮)，加5是固定开销
+    int nhrSteps = 0;
+    for (u32 tmp = param.rankSize - 1; tmp != 0; tmp >>= 1, nhrSteps++) {
+    }
+    int kernelNum = 5 + 2 * nhrSteps;
+    int taskNum = 0;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
+    CostModelManager::Global()->CalcNHRParams(
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempBroadcastNHR1DMem2Mem::CcuTempBroadcastNHR1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

@@ -660,8 +660,7 @@ REGISTER_ALG_ATTRS(
     topo.minTopoLevelNum = 2; topo.isHostDpuOnly = true;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
-    };
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+    });
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterPipeLine, InsV2ReduceScatterOmniPipeExecutor,

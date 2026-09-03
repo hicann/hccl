@@ -12,21 +12,22 @@
 #include "ccu_temp_reduce_scatter_nhr_1D_mem2mem.h"
 #include "ccu_kernel_reduce_scatter_nhr1d_mem2mem.h"
 #include "ccu_launch_dl.h"
+#include <math.h>
 
 namespace ops_hccl {
 constexpr u32 DIE_NUM_2 = 2;
 
 std::vector<CostModelParam> CcuTempReduceScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    param.netType = CommTopo::COMM_TOPO_CLOS;
+    // param.netType = CommTopo::COMM_TOPO_CLOS;
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : param.portNum[0];
-    int kernelNum = 2 * param.rankSize + 2;
+    int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
+    int kernelNum = (0.6 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2) / 2;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int taskNum = 4 * log2R + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -35,7 +36,6 @@ std::vector<CostModelParam> CcuTempReduceScatterNHR1DMem2Mem::CalcCostCoeff(Calc
     CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize, EngineType::CCU, B);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

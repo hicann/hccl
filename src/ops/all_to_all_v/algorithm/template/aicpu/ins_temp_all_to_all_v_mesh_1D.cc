@@ -9,10 +9,44 @@
  */
 
 #include "aicpu/ins_temp_all_to_all_v_mesh_1D.h"
+#include <cstring>
 
 #define NET_NUM 2
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // AllToAll: 每个rank向其他rankSize-1个rank发送数据
+    // 板内MESH组网portNum不参与计算(MESH公式无portNum因子);
+    // 跨板CLOS组网: SingleChannel单链路portNum=6，否则portNum=8
+    bool isSingleChannel = (param.algName != nullptr && strstr(param.algName, "SingleChannel") != nullptr);
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? (isSingleChannel ? 6 : 8) : param.portNum[0];
+    int kernelNum = 10;
+    // SingleChannel单通道每peer 5个trans + 4个sync = 9；多通道(channelsPerRank=2)每个通道对应一组trans/sync
+    int channelsPerRank = isSingleChannel ? 1 : 2;
+    int taskNum
+        = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2)
+          * channelsPerRank;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // AICPU模板使用hcclBuff做中转，input->hcclBuff(PreCopy)和hcclBuff->output(PostCopy)都需要local copy
+    // 但inputBuffer(INPUT) != scratchBuffer(HCCL_BUFFER)，且outputBuffer(OUTPUT) != scratchBuffer(HCCL_BUFFER)
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 InsTempAlltoAllVMesh1D::InsTempAlltoAllVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

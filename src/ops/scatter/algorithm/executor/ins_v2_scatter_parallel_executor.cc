@@ -9,8 +9,10 @@
  */
 
 #include "ins_v2_scatter_parallel_executor.h"
+#include "cost_model.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_scatter_mesh1d.h"
@@ -24,6 +26,91 @@ constexpr uint32_t NUM_CONTROL_THREADS = 2;
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2ScatterParallelExecutor()
 {}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)algName;
+    (void)param;
+    u32 rankSize = topoInfo->userRankSize;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    // 数据按 ratio 分成 part0 + part1，默认 0.5
+    float ratio = 0.5f;
+    float ratio0 = ratio;
+    float ratio1 = 1.0f - ratio;
+    bool isPod = topoInfo->isPod;
+    // portNum 向量即通道形态（统一约定，打桩只在本层）：
+    //   MESH 段（p0/p3）：{1}（MESH 分支 A=n/bw，端口数不参与公式）
+    //   CLOS 段（p1/p2，NHR 段 SetchannelsPerRank 使能多通道）：isPod=true {6,2}（双 die 双 channel）；false {8}（单
+    //   die）
+    std::vector<u32> portNumLevel0 = {1};
+    std::vector<u32> portNumLevel1 = isPod ? std::vector<u32>{6, 2} : std::vector<u32>{8};
+    HCCL_INFO(
+        "[InsV2ScatterParallelExecutor] CalcCostCoeff rankSizeLevel0:%u, rankSizeLevel1:%u, rankSize:%u, ratio:%f",
+        rankSizeLevel0, rankSizeLevel1, rankSize, ratio);
+    std::vector<CostModelParam> params
+        = [rankSizeLevel0, rankSizeLevel1, ratio0, ratio1, portNumLevel0, portNumLevel1, isPod] {
+              std::vector<CostModelParam> v;
+              // Step1: intra 处理 ratio0 比例数据, inter 处理 ratio1 比例数据（并行）
+              // buffer 组合对齐运行态真实数据流：intra0 INPUT→HCCL_BUFFER（只有 PreCopy），inter0
+              // HCCL_BUFFER→OUTPUT（只有 PostCopy）
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, ratio0 * rankSizeLevel1, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT,
+                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, ratio1 * rankSizeLevel0, CommTopo::COMM_TOPO_CLOS, BufferType::HCCL_BUFFER,
+                  BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              // Step2: inter 处理 ratio0 比例数据, intra 处理 ratio1 比例数据（并行，从 scratch，无 localCopy）
+              auto p2 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, ratio0, CommTopo::COMM_TOPO_CLOS, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              auto p3 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, ratio1, CommTopo::COMM_TOPO_1DMESH, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+              if (p0.empty() || p1.empty() || p2.empty() || p3.empty()) {
+                  HCCL_WARNING(
+                      "[InsV2ScatterParallelExecutor] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu p2=%zu p3=%zu).",
+                      p0.size(), p1.size(), p2.size(), p3.size());
+                  return v;
+              }
+              v.insert(v.end(), p0.begin(), p0.end());
+              v.insert(v.end(), p1.begin(), p1.end());
+              v.insert(v.end(), p2.begin(), p2.end());
+              v.insert(v.end(), p3.begin(), p3.end());
+              return v;
+          }();
+    return params;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+AlgNetMeta InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    // 对齐 CalcCostCoeff 的段划分:p0/p3=intra(Mesh, ratio0·L1 量纲),p1/p2=inter(CLOS, ratio·rankSize 量纲)
+    // dataRatio 归一化到全量 dataSize 口径:intra 段 = 0.5·rankSizeLevel1/rankSize,inter 段 = 0.5
+    float ratio = 0.5f;
+    float intraDr = ratio * static_cast<float>(rankSizeLevel1) / static_cast<float>(rankSize);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_CLOS);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_CLOS);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.groupSizes = {2, 2};
+    meta.dataRatios = {intraDr, ratio, ratio, intraDr};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0};
+    return meta;
+}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
@@ -686,6 +773,8 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
     InsTempScatterMesh1D, InsTempScatterNHR);
+REGISTER_ALG_ATTRS(AicpuScatterParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, InsScatterParallelMesh1DNHRPcie, InsV2ScatterParallelExecutor, TopoMatchPcieMix,
     InsTempScatterMesh1D, InsTempScatterNHR);
@@ -698,6 +787,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchMultilevel,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedScatterParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, CcuScatterParallelMesh1DNHRUBX, InsV2ScatterParallelExecutor, TopoMatchUBX,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);

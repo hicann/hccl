@@ -9,9 +9,41 @@
  */
 
 #include "ins_temp_broadcast_nhr.h"
+#include <cstring>
 #include "channel.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // NHR递归halving-doubling算法（scatter+allgather两阶段），始终走CLOS网络
+    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
+    bool isMultiLink = (param.algName != nullptr && strstr(param.algName, "TwoShotMultiLink") != nullptr);
+    // TwoShotMultiLink走CLOS 8端口，普通NHR走6端口
+    int portNum = isMultiLink ? 8 : 6;
+    // TwoShotMultiLink多通道并行，数据拆分和同步开销略大，kernelNum增加2
+    int kernelNum = isMultiLink ? 12 : 10;
+    int taskNum = 8 * (param.rankSize - 1);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
+    CostModelManager::Global()->CalcNHRParams(
+        param.dataRatio * 2 / param.rankSize, netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    // nhr实测和理论估计相差较大，先用经验值（和all_reduce NHR一致）
+    D = 1e-6 * taskNum;
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 InsTempBroadcastNHR::InsTempBroadcastNHR(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

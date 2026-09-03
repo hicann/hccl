@@ -37,11 +37,11 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     int portNum0 = param.portNum[0];
     // int portNum1 = (param.portNum.size() > 1) ? param.portNum[1] : 0;
     int portNum1 = 8;
-    int kernelNum = 11;
+    int kernelNum = 15;
     // pod 先乘3,后续需要考虑server
-    int taskNum = 3
-                  * (CostModelManager::CalcTransTaskNum(param.rankSize)
-                     + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
+    int taskNum
+        = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
+    taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
     float A0 = 0.0f;
     float A1 = 0.0f;
     CostModelManager::Global()->CalcMeshParam(

@@ -11,6 +11,8 @@
 #include "ins_v2_scatter_sole_executor.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
+#include "alg_attrs_registry.h"
+#include "hccl_aiv_utils.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_scatter_mesh_1D.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -24,6 +26,52 @@ namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2ScatterSoleExecutor()
 {}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)param;
+    u32 rankSize = topoInfo->userRankSize;
+    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
+    CommTopo netType = (InsAlgTemplate::props.algoType == AlgoType::NHR || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS :
+                                                                                           CommTopo::COMM_TOPO_1DMESH;
+    bool isPod = topoInfo->isPod;
+    // portNum 向量即通道形态（统一约定，打桩只在本层）：
+    //   MESH 段：{1}（MESH 分支 A=n/bw，端口数不参与公式）
+    //   CLOS 段：isPod=true 传 {6,2}（双 die 双 channel）；isPod=false 传 {8}（单 die 单链路 8 端口）
+    // sole 场景（SoleNHR 单通道）由 isPod=false 路径自然覆盖；isPod=true 时模板按单/多通道规则取值
+    std::vector<u32> portNum;
+    if (netType == CommTopo::COMM_TOPO_1DMESH) {
+        portNum = {1};
+    } else {
+        portNum = isPod ? std::vector<u32>{6, 2} : std::vector<u32>{8};
+    }
+    std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSize, 1.0f, netType, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNum, isPod,
+        algName, comm, topoInfo});
+    return params;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
+    bool isNhrAlg = InsAlgTemplate::props.algoType == AlgoType::NHR;
+    CommTopo netType = (isNhrAlg || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
+    meta.netTypes.push_back(netType);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    // SoleMesh: root 数据均分 R 份,每份 1/R;SoleNHR: 每步转发等量(对齐模板 dataRatio=1.0f 的入参口径)
+    meta.dataRatios = {isNhrAlg ? 1.0f : 1.0f / static_cast<float>(rankSize)};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
@@ -245,22 +293,42 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 // 第二个参数是Scatter的template文件
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
+// supportLevel0Topos 对齐旧 selector 实际选入面：SoleMesh 在 MESH_1D(:191)/MESH_1D_CLOS 全连(:195)/
+// CLOS 非 PcieMix(:205) 三形态下均被选中
+REGISTER_ALG_ATTRS(AicpuScatterSoleMesh, topo.maxTopoLevelNum = 3;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
+// SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它，三形态显式并集
+REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = 3;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, AivTempScatterMesh1D);
+REGISTER_ALG_ATTRS(
+    AivScatterSoleMesh, topo.maxTopoLevelNum = 2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= MAX_RANK_SIZE;
+    };);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // ccu template
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D,
     CcuTempScatterMesh1D);
+// inplace 排除对齐旧 selector：仅单级 MESH_1D 分支查 inplace（scatter_auto_selector.cc:108），
+// 同算法的 MESH_1D_CLOS 全连分支不查；其余 scatter 算法执行侧均支持 inplace（kernel isInputOutputEqual 等）
+REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   op.isSupportInplace = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D,
     CcuTempScatterNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #endif

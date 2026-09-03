@@ -24,7 +24,6 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffP
     // 和twoshot相同
     int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int kernelNum = 20;
-    int taskNum = 5 * (param.rankSize - 1);
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
@@ -33,7 +32,6 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffP
     CostModelManager::Global()->CalcMeshParam(
         2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

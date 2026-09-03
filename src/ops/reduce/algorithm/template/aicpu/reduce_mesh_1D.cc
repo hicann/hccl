@@ -12,6 +12,39 @@
 #include "reduce_mesh_1D.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> ReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize)
+                  + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2 + (param.rankSize - 1);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+    float n = param.dataRatio * param.rankSize;
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(n, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(n, EngineType::AICPU, B2);
+    B = B1 + (param.rankSize - 1) * B2;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 ReduceMesh1D::ReduceMesh1D(
     const OpParam& param,
     const u32 rankId, // 传通信域的rankId，userRank

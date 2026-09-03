@@ -13,9 +13,44 @@
 #include "ccu_temp_scatter_nhr1d_mem2mem.h"
 #include "ccu_launch_dl.h"
 #include "alg_data_trans_wrapper.h"
+#include "cost_model.h"
 #include <iostream>
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> CcuTempScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // CCU 执行侧每 die 只建 1 条 channel（channelsPerDie 限制），无跨 die 聚合形态：
+    // portNum 取主链路 [0] 不求和（与 AICPU NHR 的多 channel 求和口径不同；isPod 时框架内减半仍作用）
+    int portNum = static_cast<int>(param.portNum[0]);
+    // C 为同步时延：PreSync + PostSync + 每步 NHR 一个同步点（⌈log2R⌉ 步烘焙进 kernel arg，但同步时延真实发生）
+    // 对齐 AICPU 侧 NHR（kernelNum=log2R）与 RS 同族 CCU NHR 的口径
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    int kernelNum = 2 + log2R;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // kernel 末尾 "final local copy to output"：非 root 从 scratch 拷 1 份到 output
+    // （ccu_kernel_scatter_nhr1d_mem2mem.cc 的 DoScatterNHR 收尾，串行于 NHR 步进循环后不被掩盖；
+    // root 第一跳直读 input 无铺开）。B 按 buffer 判据：output==HCCL_BUFFER 时该拷贝写给下一级，跳过
+    if (param.outputBuffer != BufferType::HCCL_BUFFER) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(
+        CostModelManager::CalcTransTaskNum(param.rankSize), EngineType::CCU,
+        D); // CCU 的 D 恒为 0（kernel launch 无展开）
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
 
 CcuTempScatterNHR1DMem2Mem::CcuTempScatterNHR1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)

@@ -32,6 +32,8 @@ public:
         return StringFormat("Template of Reduce ccu mesh 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     void SetRoot(u32 root);
 
     HcclResult KernelRun(

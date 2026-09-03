@@ -155,6 +155,8 @@ struct CalcCostCoeffParam {
 
 struct AlgNetMeta {
     std::vector<CommTopo> netTypes;                // 每个 template 一个，顺序与 costmodel 中 A/B/C 一致
+    std::vector<float> dataRatios;                 // 每个 segment 的 dataRatio，用于查 UB 利用率
+    std::vector<u32> rankSizes;                    // 每个 segment 使用的 rankSize
     CostAggMode intraGroupMode = CostAggMode::SUM; // 组内聚合方式
     CostAggMode interGroupMode = CostAggMode::SUM; // 组间聚合方式，默认为SUM
     std::vector<u32> groupSizes;                   // 每组 template 数量，为空时按每组1个兜底

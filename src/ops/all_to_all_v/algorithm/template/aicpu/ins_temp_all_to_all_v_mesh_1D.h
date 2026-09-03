@@ -12,6 +12,7 @@
 #define INS_TEMP_ALL_TO_ALL_V_MESH_1D_H
 
 #include "alg_v2_template_base.h"
+#include "cost_model.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -41,6 +42,8 @@ public:
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMianToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;

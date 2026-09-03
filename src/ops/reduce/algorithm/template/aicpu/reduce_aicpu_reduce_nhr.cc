@@ -11,6 +11,20 @@
 #include "reduce_aicpu_reduce_nhr.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> ReduceAicpuReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    (void)param;
+    float A = 10.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
+    return params;
+}
+
 ReduceAicpuReduceNHR::ReduceAicpuReduceNHR(
     const OpParam& param,
     const u32 rankId, // 传通信域的rankId，userRank

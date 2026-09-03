@@ -15,6 +15,27 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // oneshot算法，硬编码netType=MESH（CcuMSBroadcastSoleMesh maxTopoLevelNum=1，仅单级场景入选）
+    param.netType = CommTopo::COMM_TOPO_1DMESH;
+    int portNum = 1;
+    int kernelNum = 3; // oneshot算法固定3个kernel
+    int taskNum = 0;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // oneshot: n=dataRatio（不除以R，root直接全量发给所有peer）
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempBroadcastMesh1D::CcuTempBroadcastMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

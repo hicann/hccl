@@ -12,6 +12,30 @@
 #include "alg_data_trans_wrapper.h"
 #include "template_utils.h"
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempGatherMesh1dIntra::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 InsTempGatherMesh1dIntra::InsTempGatherMesh1dIntra(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)

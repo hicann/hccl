@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_aiv_all_to_all_v_sole_executor.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_all_to_all_v_mesh_1D.h"
 #endif
@@ -303,8 +304,10 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaun
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
     AivTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AivAllToAllVSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AivAllToAllVCSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
     AivTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AivAllToAllVCSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
 #endif
 } // namespace ops_hccl

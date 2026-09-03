@@ -18,6 +18,7 @@
 namespace ops_hccl {
 class InsTempScatterNHR : public InsAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::NHR};
     InsTempScatterNHR() = default;
     explicit InsTempScatterNHR(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
@@ -44,6 +45,8 @@ public:
 
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
 private:
     HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;

@@ -20,6 +20,8 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 
+#include "alg_attrs_registry.h"
+#include <cstring>
 namespace ops_hccl {
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -34,6 +36,49 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHier
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
     return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)param;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    (void)algHierarchyInfo;
+    u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
+    // NHR算法始终用CLOS；Mesh算法在单级拓扑用MESH，跨框多级拓扑下打平等效为CLOS
+    bool isNhr = (algName != nullptr && strstr(algName, "NHR") != nullptr);
+    bool isMultiLevel = (topoInfo->topoLevelNums > 1);
+    lastNetType_ = (isNhr || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
+    // portNum由template根据algName内部分辨（CLOS下不同算法portNum不同：mesh twoshot=6，NHR=6/8等），
+    // 1DMESH统一port=1；这里传{1}，template在CLOS下自行硬编码正确portNum
+    std::vector<u32> portNumLevel0 = {1};
+    HCCL_INFO(
+        "[CalcCostCoeff] algName=%s rankSize=%d isNhr=%d isMultiLevel=%d netType=%d", algName, rankSize, isNhr,
+        isMultiLevel, static_cast<int>(lastNetType_));
+    // broadcast是in-place操作，output==input，故outputBuffer=INPUT；scratch=HCCL_BUFFER
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSize, 1.0f, lastNetType_, BufferType::INPUT, BufferType::INPUT, BufferType::HCCL_BUFFER, portNumLevel0,
+        isPod, algName, comm, topoInfo});
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    // NHR用CLOS，Mesh用MESH（netType由CalcCostCoeff缓存到lastNetType_）
+    meta.netTypes.push_back(lastNetType_);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    // SoleMesh: root 数据均分 R 份,每份 1/R; NHR/CLOS: 每步转发等量
+    meta.dataRatios = {lastNetType_ == CommTopo::COMM_TOPO_CLOS ? 1.0f : 1.0f / static_cast<float>(rankSize)};
+    meta.rankSizes = {rankSize};
+    return meta;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -254,31 +299,45 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 }
 #endif
 
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleMeshTwoShot, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel1Nhr = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleMeshTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D,
     InsTempBroadcastMesh1DTwoShot);
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
     InsTempBroadcastNHR);
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHRTwoShotMultiLink, topo.isSupportLevel1Nhr = true;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRTwoShotMultiLink, InsV2BroadcastSoleExecutor, TopoMatch1D,
     InsTempBroadcastNHR);
 
 #ifndef AICPU_COMPILE
+REGISTER_ALG_ATTRS(AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 2;
+                   topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     AivTempBroadcastMesh1D);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 2;
+                   topo.isSupportLevel1Nhr = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_ALG_ATTRS(CcuMSBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuMSBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
     CcuTempBroadcastNHR1DMem2Mem);

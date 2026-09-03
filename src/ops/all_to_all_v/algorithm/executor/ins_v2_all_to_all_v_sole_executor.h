@@ -12,6 +12,7 @@
 #define HCCLV2_INS_V2_ALL_TO_ALL_V_SOLE_EXECUTOR_H
 
 #include "executor_common_ops.h"
+#include "cost_model.h"
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
 #include "topo_match_ubx.h"
@@ -35,6 +36,10 @@ public:
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest) override;
 
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+
 #ifndef AICPU_COMPILE
     HcclResult
     FastLaunchSaveCtx(const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const;
@@ -48,6 +53,7 @@ protected:
     u64 sendTypeSize_{0};
     u64 recvTypeSize_{0};
     A2ASendRecvInfo localSendRecvInfo_;
+    mutable CommTopo lastNetType_{CommTopo::COMM_TOPO_1DMESH};
 
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 };

@@ -23,7 +23,6 @@ std::vector<CostModelParam> CcuTempAllGatherOmniPipeNHR1DMem2Mem::CalcCostCoeff(
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int taskNum = 4 * log2R + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -36,7 +35,6 @@ std::vector<CostModelParam> CcuTempAllGatherOmniPipeNHR1DMem2Mem::CalcCostCoeff(
         B = 0.0f;
     }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

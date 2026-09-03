@@ -124,8 +124,16 @@ InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    (void)rankSizeLevel0;
+    (void)rankSizeLevel1;
+    u32 rankSize = topoInfo->userRankSize;
+    std::vector<float> dataSplitSize;
+    GetParallelDataSplit(param, dataSplitSize);
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -135,6 +143,8 @@ AlgNetMeta InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2};
+    meta.dataRatios = {dataSplitSize[0], dataSplitSize[1]};
+    meta.rankSizes = {rankSize, rankSize};
     return meta;
 }
 

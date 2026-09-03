@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include "reduce_parallel_executor.h"
+#include "alg_attrs_registry.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr.h"
@@ -37,6 +38,113 @@ template <
     typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3>
 ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3>::ReduceParallelExecutor()
 {}
+
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3>
+std::vector<CostModelParam>
+ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    (void)algHierarchyInfo;
+    u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    std::vector<u32> portNumLevel0 = {1};
+    std::vector<u32> portNumLevel1 = {8};
+    float ratio = 0.5f;
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
+        rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1), ratio);
+    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1,
+                                          netTypeLevel0, netTypeLevel1, ratio, isPod] {
+        std::vector<CostModelParam> v;
+        auto p0 = AlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+        auto p1 = AlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, (1 - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+        auto p2 = AlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, (1 - ratio) / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+        auto p3 = AlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, ratio / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+        auto p4 = AlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, (1 - ratio) / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+        auto p5 = AlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, ratio / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+        auto p6 = AlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+        auto p7 = AlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, (1 - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+        if (p0.empty() || p1.empty() || p2.empty() || p3.empty() || p4.empty() || p5.empty() || p6.empty()
+            || p7.empty()) {
+            HCCL_WARNING(
+                "[ReduceParallelExecutor] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu p2=%zu p3=%zu p4=%zu p5=%zu "
+                "p6=%zu p7=%zu).",
+                p0.size(), p1.size(), p2.size(), p3.size(), p4.size(), p5.size(), p6.size(), p7.size());
+            return v;
+        }
+        v.insert(v.end(), p0.begin(), p0.end());
+        v.insert(v.end(), p1.begin(), p1.end());
+        v.insert(v.end(), p2.begin(), p2.end());
+        v.insert(v.end(), p3.begin(), p3.end());
+        v.insert(v.end(), p4.begin(), p4.end());
+        v.insert(v.end(), p5.begin(), p5.end());
+        v.insert(v.end(), p6.begin(), p6.end());
+        v.insert(v.end(), p7.begin(), p7.end());
+        return v;
+    }();
+    return params;
+}
+
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3>
+AlgNetMeta ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSize = topoInfo->userRankSize;
+    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = 0.5f;
+    }
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.groupSizes = {2, 2, 2, 2};
+    meta.dataRatios = {ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1, (1 - ratio) / rankSize,
+                       ratio / rankSize,       (1 - ratio) / rankSize,       ratio / rankSize,
+                       ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1,
+                      rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
+    return meta;
+}
 
 template <
     typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3>
@@ -858,6 +966,8 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchMultilevel,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuReduceParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, ReduceParallelMesh1DNHRUBX, ReduceParallelExecutor, TopoMatchUBX,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
@@ -876,6 +986,9 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchMultilevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedReduceParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuReduceParallelMesh1DNHRUBX, ReduceParallelExecutor, TopoMatchUBX,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,

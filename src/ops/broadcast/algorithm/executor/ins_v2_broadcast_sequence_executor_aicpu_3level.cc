@@ -14,6 +14,7 @@
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
 
+#include "alg_attrs_registry.h"
 namespace ops_hccl {
 // 当前sequence支持两级和三级组网
 
@@ -649,6 +650,9 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     return HCCL_SUCCESS;
 }
 
+REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHRNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; topo.isSupportLevel1Nhr = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHRNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
     TopoMatchMultilevel,
@@ -659,6 +663,9 @@ REGISTER_EXEC_V2_MULTI(
     InsTempAllGatherNHR,                  // AllGather L1 (框间)
     InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
 
+REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; topo.isSupportLevel1Nhr = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
     TopoMatchMultilevel,

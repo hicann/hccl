@@ -10,6 +10,7 @@
 
 #include "template_utils.h"
 #include "ins_all_to_all_v_sole_executor.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #if !defined(HCCL_CANN_COMPAT_850)
 #include "ccu_temp_all_to_all_v_mesh_1D.h"
@@ -316,27 +317,38 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMesh, InsAlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, CcuSchedAllToAllVCSoleMesh, InsAlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVCSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMesh2Die, InsAlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAlltoAllVMesh2Die);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMesh2Die, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshMultiLink, InsAlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAlltoAllVMesh1D2Die);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMeshMultiLink, topo.minTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshUBX, InsAlltoAllVSoleExecutor, TopoMatchUBX,
     CcuTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

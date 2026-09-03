@@ -111,8 +111,17 @@ InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = 0.5f;
+    }
+    float ratio0 = ratio;
+    float ratio1 = 1.0f - ratio;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -124,6 +133,8 @@ AlgNetMeta InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2, 2};
+    meta.dataRatios = {ratio0 * rankSizeLevel1, ratio1 * rankSizeLevel0, ratio0, ratio1};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0};
     return meta;
 }
 

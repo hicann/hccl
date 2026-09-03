@@ -12,6 +12,7 @@
 #define INS_TEMP_BROADCAST_MESH_1D_TWO_SHOT_H
 
 #include "alg_v2_template_base.h"
+#include "cost_model.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -24,6 +25,8 @@ public:
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
         const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempBroadcastMesh1DTwoShot() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

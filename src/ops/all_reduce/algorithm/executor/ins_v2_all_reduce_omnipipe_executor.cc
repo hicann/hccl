@@ -1104,8 +1104,7 @@ REGISTER_ALG_ATTRS(
     DpuAllReducePipeLineUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.isHostDpuOnly = true;
     topo.minTopoLevelNum = 2; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !topo->level0PcieMix;
-    };
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+    });
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLine, InsV2AllReduceOmniPipeExecutor, TopoMatch3Level,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1D,

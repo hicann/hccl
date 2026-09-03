@@ -24,6 +24,7 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include <cmath>
 
+#include "alg_attrs_registry.h"
 namespace ops_hccl {
 constexpr u32 MAIN_THREAD_NUM = 2;       // main(0) + intra main(1) + inter main(2) = 3个main
 constexpr u32 INTRA_SLAVE_START_IDX = 3; // intra slave线程起始索引
@@ -294,6 +295,97 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
             HCCL_ERROR_CODE(ret)),
         ret);
     return HcclResult::HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
+std::vector<CostModelParam>
+InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    (void)algHierarchyInfo;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    std::vector<u32> portNumLevel0 = {1};
+    std::vector<u32> portNumLevel1 = {8};
+    float ratio = 0.5f;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    std::vector<CostModelParam> params;
+    // Step1: Scatter L0(MESH) part0 ‖ Scatter L1(CLOS) part1（INPUT→HCCL_BUFFER，root发送）
+    // L0首次scatter part0=ratio*D，R0子组内每peer发ratio*D/R0 → n=ratio/R0
+    auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p0.begin(), p0.end());
+    // L1首次scatter part1=(1-ratio)*D，R1子组(CLOS)内每步每partner发(1-ratio)*D/R1 → n=(1-ratio)/R1
+    auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, (1.0f - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p1.begin(), p1.end());
+    // Step2: Scatter L1(CLOS) part0 ‖ Scatter L0(MESH) part1（HCCL_BUFFER内转发）
+    // part0跨L1 NHR转发，R1子组内每步每partner发ratio*D/R1 → n=ratio/R1
+    auto p2 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, ratio / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p2.begin(), p2.end());
+    // part1在L0 mesh转发，R0子组内每peer发(1-ratio)*D/R0 → n=(1-ratio)/R0
+    auto p3 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p3.begin(), p3.end());
+    // Step3: AllGather L1(CLOS) part0 ‖ AllGather L0(MESH) part1（HCCL_BUFFER内聚合）
+    // part0在L1层NHR allgather，R1子组内每步每partner收ratio*D/R1 → n=ratio/R1
+    auto p4 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, ratio / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p4.begin(), p4.end());
+    // part1在L0层mesh allgather，R0子组内每peer收(1-ratio)*D/R0 → n=(1-ratio)/R0
+    auto p5 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p5.begin(), p5.end());
+    // Step4: AllGather L0(MESH) part0 ‖ AllGather L1(CLOS) part1（HCCL_BUFFER→INPUT，最终写回）
+    // part0在L0层mesh allgather写回，R0子组内每peer收ratio*D/R0 → n=ratio/R0
+    auto p6 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::INPUT,
+        BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p6.begin(), p6.end());
+    // part1在L1层NHR allgather写回，R1子组内每步每partner收(1-ratio)*D/R1 → n=(1-ratio)/R1
+    auto p7 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, (1.0f - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::INPUT,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p7.begin(), p7.end());
+    return params;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
+AlgNetMeta
+InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    meta.netTypes = {netTypeLevel0, netTypeLevel1, netTypeLevel1, netTypeLevel0,
+                     netTypeLevel1, netTypeLevel0, netTypeLevel0, netTypeLevel1};
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.groupSizes = {2, 2, 2, 2};
+    // 8 segments 对应 4 步 scatter/allgather 的 L0/L1 交替, 每段 dataRatio 默认 1.0f
+    meta.dataRatios = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    meta.rankSizes = {rankSize, rankSize, rankSize, rankSize, rankSize, rankSize, rankSize, rankSize};
+    return meta;
 }
 
 template <
@@ -1369,25 +1461,42 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_ALG_ATTRS(AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchMultilevel,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(InsBroadcastParallelMesh1DNHRUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHRPcie, InsBroadcastParallelExecutor, TopoMatchPcieMix,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelNHRNHRUboe, InsBroadcastParallelExecutor, TopoMatchSqueeze2D,
     InsTempScatterNHR, InsTempScatterNHR, InsTempAllGatherNHR, InsTempAllGatherNHR);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_ALG_ATTRS(
+    CcuSchedBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = 2;
+    topo.isSupportLevel1Nhr = false; topo.maxTopoLevelNum = 2; op.isSupportProd = true;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+    // TODO: 算法实现有问题，暂时通过opCustomCheck禁用
+    op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) {
+        return false;
+    };);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHR, InsBroadcastParallelExecutor,
     TopoMatchMultilevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
+
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);

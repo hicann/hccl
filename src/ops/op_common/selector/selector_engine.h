@@ -47,6 +47,10 @@ private:
 
     HcclResult InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param, CostModel*& cm);
 
+    // 生成 costTable 并调 tuner 改 cost（含 AllToAll(V/VC) dataType 特判）
+    HcclResult TunerEnrichCostTable(
+        HcclComm comm, CostModel* cm, CostTable& ct, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param);
+
     HcclResult SelectMinCost(const CostTable& ct, OpParam& param, std::string& algName);
 
     // AIV_ONLY 模式下选不到 AIV 算法时打印 ERROR，包含当前拓扑条件

@@ -64,7 +64,7 @@ private:
         CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
     float CalcAlgCost(
         const std::string& algName, u64 dataSize, const CostAlgoParams& algoParams,
-        HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID) const;
+        HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID, const std::vector<AlgoType>& algoTypes = {}) const;
 
     static void DumpCostTable(const CostTable& ct);
 

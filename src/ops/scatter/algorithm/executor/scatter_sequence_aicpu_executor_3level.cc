@@ -9,8 +9,10 @@
  */
 
 #include "scatter_sequence_aicpu_executor_3level.h"
+#include "cost_model.h"
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_scatter_nhr.h"
+#include "alg_attrs_registry.h"
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
@@ -449,11 +451,135 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+std::vector<CostModelParam>
+ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)algName;
+    (void)param;
+    u32 rankSize = topoInfo->userRankSize;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSizeLevel2 = rs.level2;
+    // 与编排侧的跳级语义对齐（Orchestrate 中 skipLevel1_/skipLevel2_）：
+    // 单级拓扑只有 level0 一段；两级拓扑只有 level0+level1 两段。
+    // cost 计算必须只累计实际执行的段，否则单级下凭空多算 L1/L2、两级下凭空多算 L2。
+    bool skipLevel1 = (rankSizeLevel1 == 1);
+    bool skipLevel2 = (topoInfo->topoLevelNums < TOPO_LEVEL_NUM_3);
+    bool isPod = topoInfo->isPod;
+    // portNum 向量即通道形态（统一约定，打桩只在本层）：
+    //   CLOS 段（p1/p2 NHR 段 SetchannelsPerRank 使能多通道；p0 ZAxis 的 CLOS 分量同形态）：
+    //   isPod=true 传 {6,2}（双 die 双 channel）；isPod=false 传 {8}（单 die 8 端口）
+    // ZAxis 段的 MESH 分支值不参与公式（A=n/bw），元素数仍作其 taskNum 倍数判据
+    std::vector<u32> portNumClos = isPod ? std::vector<u32>{6, 2} : std::vector<u32>{8};
+    HCCL_INFO(
+        "[ScatterSequenceAicpu3LevelExecutor] CalcCostCoeff rankSizeLevel0:%u, rankSizeLevel1:%u, "
+        "rankSizeLevel2:%u, rankSize:%u, skipLevel1:%d, skipLevel2:%d",
+        rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize, static_cast<int>(skipLevel1),
+        static_cast<int>(skipLevel2));
+    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize, skipLevel1,
+                                          skipLevel2, portNumClos, isPod] {
+        std::vector<CostModelParam> v;
+        if (skipLevel1 && skipLevel2) {
+            // 单级退化：仅 level0 mesh 一段，处理全量（数据流等价 SoleMesh）
+            auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                rankSizeLevel0, 1.0f, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT, BufferType::OUTPUT,
+                BufferType::HCCL_BUFFER, portNumClos, isPod});
+            if (p0.empty()) {
+                HCCL_WARNING(
+                    "[ScatterSequenceAicpu3LevelExecutor] CalcCostCoeff incomplete (single level, p0=%zu).", p0.size());
+                return v;
+            }
+            v.insert(v.end(), p0.begin(), p0.end());
+            return v;
+        }
+        if (skipLevel2) {
+            // 两级退化：level0 mesh 发 repeatNum=L1 份（每份完整 X）+ level1 NHR 发 repeatNum=L2=1 份
+            // n 语义 = 该段总搬运量 / X（对齐执行侧 GenIntraTemplateParams/GenInterTemplateParams 的 repeatNum）
+            auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                rankSizeLevel0, 1.0f * rankSizeLevel1, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT,
+                BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumClos, isPod});
+            auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
+                BufferType::HCCL_BUFFER, portNumClos, isPod});
+            if (p0.empty() || p1.empty()) {
+                HCCL_WARNING(
+                    "[ScatterSequenceAicpu3LevelExecutor] CalcCostCoeff incomplete (two level, p0=%zu p1=%zu).",
+                    p0.size(), p1.size());
+                return v;
+            }
+            v.insert(v.end(), p0.begin(), p0.end());
+            v.insert(v.end(), p1.begin(), p1.end());
+            return v;
+        }
+        // 三级完整：框内 Mesh → 框间 NHR → 跨 pod NHR 逐级扇出，每级传完整 X 的 repeatNum 份
+        // n = repeatNum（该段总搬运量 / X）：p0=L1·L2, p1=L2, p2=1（对齐执行侧 repeatNum 赋值）
+        // Step1: 框内 Scatter（level0 mesh，发 L1·L2 份）
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT,
+            BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumClos, isPod});
+        // Step2: 框间 Scatter（level1 NHR，发 L2 份）
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumClos, isPod});
+        // Step3: 跨 super-pod Scatter（level2 NHR，发 1 份）
+        auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel2, 1.0f, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumClos, isPod});
+        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+        if (p0.empty() || p1.empty() || p2.empty()) {
+            HCCL_WARNING(
+                "[ScatterSequenceAicpu3LevelExecutor] CalcCostCoeff incomplete, skip "
+                "(p0=%zu p1=%zu p2=%zu).",
+                p0.size(), p1.size(), p2.size());
+            return v;
+        }
+        v.insert(v.end(), p0.begin(), p0.end());
+        v.insert(v.end(), p1.begin(), p1.end());
+        v.insert(v.end(), p2.begin(), p2.end());
+        return v;
+    }();
+    return params;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+AlgNetMeta
+ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSizeLevel2 = rs.level2;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_CLOS);
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_CLOS);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1, 1, 1};
+    // 对齐 CalcCostCoeff 的逐级扇出量纲(repeatNum 口径):p0 发 L1·L2 份、p1 发 L2 份、p2 发 1 份,
+    // dataRatio 归一化到全量:repeatNum/rankSize
+    meta.dataRatios
+        = {static_cast<float>(rankSizeLevel1 * rankSizeLevel2) / static_cast<float>(rankSize),
+           static_cast<float>(rankSizeLevel2) / static_cast<float>(rankSize), 1.0f / static_cast<float>(rankSize)};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel2};
+    return meta;
+}
+
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHRNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchMultilevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
+REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchMultilevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
+REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 } // namespace ops_hccl

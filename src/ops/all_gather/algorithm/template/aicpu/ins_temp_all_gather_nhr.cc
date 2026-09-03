@@ -15,7 +15,12 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    u32 portNum = (param.netType != CommTopo::COMM_TOPO_CLOS) ? param.portNum[0] : param.portNum[0] + param.portNum[1];
+    // u32 portNum = (param.netType != CommTopo::COMM_TOPO_CLOS) ? param.portNum[0] : param.portNum[0] +
+    // param.portNum[1];
+    param.netType = CommTopo::COMM_TOPO_CLOS;
+    bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuAllGatherSoleNHR") == 0));
+    int portNum = isSingleChannelNHR ? 6 : 8;
+    portNum = param.isPod ? portNum : 8;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
@@ -24,6 +29,8 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     int kernelNum = log2R;
     int taskNum
         = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
+
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

@@ -14,6 +14,7 @@
 #include "ins_temp_allgather_nhr_dpu_inter.h"
 #include "ins_temp_allgather_mesh_1D_intra.h"
 
+#include "alg_attrs_registry.h"
 namespace ops_hccl {
 
 template <

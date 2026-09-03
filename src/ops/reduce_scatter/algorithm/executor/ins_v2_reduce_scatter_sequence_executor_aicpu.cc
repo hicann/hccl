@@ -122,8 +122,12 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -133,6 +137,8 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
     meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1};
+    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
     return meta;
 }
 

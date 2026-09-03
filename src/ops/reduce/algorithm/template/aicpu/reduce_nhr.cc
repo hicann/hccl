@@ -11,6 +11,33 @@
 #include "reduce_nhr.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> ReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
+    int portNum = 8;
+    int kernelNum = 10;
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    int taskNum = 8 * (param.rankSize - 1);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio * 2, netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    D = 1e-6 * taskNum;
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 ReduceNHR::ReduceNHR(
     const OpParam& param,
     const u32 rankId, // 传通信域的rankId，userRank

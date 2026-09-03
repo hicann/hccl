@@ -9,6 +9,7 @@
  */
 
 #include "reduce_sequence_executor_aicpu_3level.h"
+#include "alg_attrs_registry.h"
 #include <algorithm>
 #include "alg_data_trans_wrapper.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
@@ -30,6 +31,103 @@ ReduceSequenceExecutorAicpu3Level<
     AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4,
     AlgTemplate5>::ReduceSequenceExecutorAicpu3Level()
 {}
+
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+std::vector<CostModelParam> ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)algName;
+    (void)comm;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    (void)algHierarchyInfo;
+    u32 rankSize = topoInfo->userRankSize;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSizeLevel2 = rs.level2;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    std::vector<u32> portNumLevel0 = {1};
+    std::vector<u32> portNumLevel1 = {8};
+    std::vector<u32> portNumLevel2 = {8};
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, rankSizeLevel2=%d, "
+        "portNumLevel0=%d, portNumLevel1=%d, portNumLevel2=%d, netTypeLevel0=%d, netTypeLevel1=%d, netTypeLevel2=%d",
+        rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2));
+    std::vector<CostModelParam> params
+        = [rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
+           netTypeLevel0, netTypeLevel1, netTypeLevel2, isPod] {
+              std::vector<CostModelParam> v;
+              auto p0 = AlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0, BufferType::INPUT,
+                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = AlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f * rankSizeLevel2 / rankSize, netTypeLevel1, BufferType::INPUT,
+                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p1.begin(), p1.end());
+              auto p2 = AlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel2, isPod});
+              v.insert(v.end(), p2.begin(), p2.end());
+              auto p3 = AlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel2, isPod});
+              v.insert(v.end(), p3.begin(), p3.end());
+              auto p4 = AlgTemplate4::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f * rankSizeLevel2 / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p4.begin(), p4.end());
+              auto p5 = AlgTemplate5::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0,
+                  BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p5.begin(), p5.end());
+              return v;
+          }();
+    return params;
+}
+
+template <
+    typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
+    typename AlgTemplate4, typename AlgTemplate5>
+AlgNetMeta ReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4,
+    AlgTemplate5>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSizeLevel2 = rs.level2;
+    u32 rankSize = topoInfo->userRankSize;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel2);
+    meta.netTypes.push_back(netTypeLevel2);
+    meta.netTypes.push_back(netTypeLevel1);
+    meta.netTypes.push_back(netTypeLevel0);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1, 1, 1, 1, 1, 1};
+    meta.dataRatios
+        = {1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize,
+           1.0f * rankSizeLevel2 / rankSize,
+           1.0f / rankSize,
+           1.0f / rankSize,
+           1.0f * rankSizeLevel2 / rankSize,
+           1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSizeLevel2, rankSizeLevel1, rankSizeLevel0};
+    return meta;
+}
 
 template <
     typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3,
@@ -724,10 +822,14 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshConcurNHRNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshConcurNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
+REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
 
 } // namespace ops_hccl

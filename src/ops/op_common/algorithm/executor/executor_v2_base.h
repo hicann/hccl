@@ -48,9 +48,10 @@ public:
         return {};
     }
 
-    virtual AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const
+    virtual AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
     {
         (void)topoInfo;
+        (void)param;
         return {};
     }
 

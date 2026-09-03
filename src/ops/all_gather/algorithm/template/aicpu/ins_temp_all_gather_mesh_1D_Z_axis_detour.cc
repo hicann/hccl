@@ -24,7 +24,9 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
 {
     constexpr float meshRatio = 0.5f;
     int kernelNum = 15;
-    int taskNum = 5 * (param.rankSize - 1);
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    taskNum *= 2;
 
     float meshA = 0.0f;
     float meshB = 0.0f;
@@ -38,7 +40,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
 
     float closA = 0.0f;
     float closB = 0.0f;
-    int closPortNum = 2;
+    int closPortNum = 4;
     CostModelManager::Global()->CalcMeshParam(
         param.dataRatio * meshRatio, CommTopo::COMM_TOPO_CLOS, closPortNum, param.rankSize, closA, param.isPod);
     if (param.inputBuffer != param.scratchBuffer) {
@@ -53,7 +55,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float D = 0.0f;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
-    C = 0.000005f * taskNum; // 5us/task
+    // C = 0.000005f * taskNum; // 5us/task
 
     HCCL_INFO("[InsTempAllGatherMesh1D1DZAxisDetour] CalcCostCoeff meshA=%f closA=%f A=%f B=%f.", meshA, closA, A, B);
     std::vector<CostModelParam> params;

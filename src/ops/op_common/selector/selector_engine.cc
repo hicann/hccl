@@ -21,6 +21,7 @@
 #include "cost_table.h"
 #include "alg_attrs.h"
 #include "alg_attrs_registry.h"
+#include "hccl_algo_dims.h"
 #include "tuner_setup.h"
 
 namespace ops_hccl {
@@ -36,11 +37,11 @@ SelectorEngine* SelectorEngine::Global()
 
 bool SelectorEngine::IsOpSupported(HcclCMDType opType)
 {
-    // 本迭代新选择器仅支持 AllReduce/ReduceScatter/AllGather, 其他算子走老流程
+    // 本迭代新选择器支持 AllReduce/ReduceScatter/AllGather/Reduce/Scatter/Broadcast/AlltoAll, 其他算子走老流程
     static const std::set<HcclCMDType> supportedOps = {
-        HcclCMDType::HCCL_CMD_ALLREDUCE,
-        HcclCMDType::HCCL_CMD_REDUCE_SCATTER,
-        HcclCMDType::HCCL_CMD_ALLGATHER,
+        HcclCMDType::HCCL_CMD_ALLREDUCE, HcclCMDType::HCCL_CMD_REDUCE_SCATTER, HcclCMDType::HCCL_CMD_ALLGATHER,
+        HcclCMDType::HCCL_CMD_REDUCE,    HcclCMDType::HCCL_CMD_SCATTER,        HcclCMDType::HCCL_CMD_BROADCAST,
+        HcclCMDType::HCCL_CMD_ALLTOALL,
     };
     return supportedOps.count(opType) > 0;
 }
@@ -217,6 +218,32 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
     return HCCL_SUCCESS;
 }
 
+HcclResult SelectorEngine::TunerEnrichCostTable(
+    HcclComm comm, CostModel* cm, CostTable& ct, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param)
+{
+    CHK_RET(CostTableManager::Global()->CostTableGen(*cm, ct, topoInfo, param));
+
+    if (ct.count > 0 && HcclTunerIsLoaded()) {
+        // tuner: Enrich 填 3D 名 + 调用插件改 cost
+        AlgoNameMapper::Global()->Enrich(ct.costs, ct.count);
+        bool tunerModified = false;
+        // AllToAll(V/VC) 的 dataType 存在 all2AllVDataDes.sendType 中，而非 DataDes.dataType
+        HcclDataType tunerDataType = param.DataDes.dataType;
+        if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
+            || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+            tunerDataType = param.all2AllVDataDes.sendType;
+        }
+        CHK_RET(HcclTunerCallGetCollInfo(
+            comm, param.opType, param.inputSize, tunerDataType, ct.costs, ct.count, &tunerModified));
+        if (tunerModified) {
+            HCCL_INFO("[SelectorEngine] tuner modified cost table.");
+        } else {
+            HCCL_INFO("[SelectorEngine] tuner did not modify cost table, using CostModel selection.");
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult
 SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* topoInfo, std::string& algName)
 {
@@ -245,22 +272,9 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
         CHK_RET(InitCostModel(comm, topoInfo, param, cm));
     }
 
-    // step 2.1: 从 costModel 生成 costTable
+    // step 2: 生成 costTable 并调 tuner 改 cost
     CostTable ct{nullptr, 0};
-    CHK_RET(CostTableManager::Global()->CostTableGen(*cm, ct, topoInfo, param));
-
-    if (ct.count > 0 && HcclTunerIsLoaded()) {
-        // step 2.2: tuner（Enrich 填 3D 名 + 调用插件改 cost）
-        AlgoNameMapper::Global()->Enrich(ct.costs, ct.count);
-        bool tunerModified = false;
-        CHK_RET(HcclTunerCallGetCollInfo(
-            comm, param.opType, param.inputSize, param.DataDes.dataType, ct.costs, ct.count, &tunerModified));
-        if (tunerModified) {
-            HCCL_INFO("[SelectorEngine] tuner modified cost table.");
-        } else {
-            HCCL_INFO("[SelectorEngine] tuner did not modify cost table, using CostModel selection.");
-        }
-    }
+    CHK_RET(TunerEnrichCostTable(comm, cm, ct, topoInfo, param));
 
     // step 3: min(ct)
     HcclResult ret = SelectMinCost(ct, param, algName);
@@ -296,9 +310,12 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
     HCCL_INFO(
         "[SelectorEngine] SelectMinCost: costTable count=%d, opType=%d, dataSize=%llu.", ct.count,
         static_cast<int>(param.opType), param.inputSize);
-    HCCL_INFO("[SelectorEngine] +-----+----------------------------------+----------+--------------+----------+");
-    HCCL_INFO("[SelectorEngine] | idx | algName                          | engine   | cost         | status   |");
-    HCCL_INFO("[SelectorEngine] +-----+----------------------------------+----------+--------------+----------+");
+    HCCL_INFO("[SelectorEngine] "
+              "+-----+--------------------------------------------------+----------+--------------+----------+");
+    HCCL_INFO("[SelectorEngine] | idx | algName                                          | engine   | cost         | "
+              "status   |");
+    HCCL_INFO("[SelectorEngine] "
+              "+-----+--------------------------------------------------+----------+--------------+----------+");
     int minIdx = -1;
     float minCost = 0.0f;
     std::vector<std::string> tiedAlgos;
@@ -316,7 +333,7 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
             return HCCL_E_INTERNAL;
         }
         HCCL_INFO(
-            "[SelectorEngine] | %3d | %-32s | %-8s | %12s | %-8s |", i, nameStr.substr(0, 32).c_str(),
+            "[SelectorEngine] | %3d | %-48s | %-8s | %12s | %-8s |", i, nameStr.substr(0, 48).c_str(),
             engineStr.substr(0, 8).c_str(), costBuf, status.c_str());
 
         if (name == nullptr || cost < 0.0f) {
@@ -331,7 +348,8 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
             tiedAlgos.emplace_back(name);
         }
     }
-    HCCL_INFO("[SelectorEngine] +-----+----------------------------------+----------+--------------+----------+");
+    HCCL_INFO("[SelectorEngine] "
+              "+-----+--------------------------------------------------+----------+--------------+----------+");
 
     if (minIdx < 0) {
         HCCL_ERROR(

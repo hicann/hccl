@@ -63,7 +63,6 @@ std::vector<CostModelParam> CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcCostCo
 
     std::vector<CostModelParam> params;
     // mesh 路径
-    int taskNum = 5 * (param.rankSize - 1);
     CostModelManager::Global()->CalcMeshParam(
         param.dataRatio * meshRatio, CommTopo::COMM_TOPO_1DMESH, 0, param.rankSize, A, param.isPod);
     if (param.inputBuffer != param.scratchBuffer) {
@@ -72,10 +71,8 @@ std::vector<CostModelParam> CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcCostCo
         B = 0.0f;
     }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     params.push_back({A, B, C, D});
     // NHR 路径
-    taskNum = 4 * log2R + 1;
     CostModelManager::Global()->CalcNHRParams(
         param.dataRatio * closRatio, CommTopo::COMM_TOPO_CLOS, 6, param.rankSize, A, param.isPod);
     if (param.inputBuffer != param.scratchBuffer) {
@@ -85,7 +82,6 @@ std::vector<CostModelParam> CcuTempAllGatherConcurrentMeshMem2MemNHR::CalcCostCo
     }
 
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     params.push_back({A, B, C, D});
 
     // TODO 这里是不是直接取max？ratio顺序？

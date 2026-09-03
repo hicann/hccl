@@ -9,6 +9,8 @@
  */
 
 #include "ins_v2_all_to_all_v_sole_executor.h"
+#include <cstring>
+#include "alg_attrs_registry.h"
 #include "ins_temp_all_to_all_v_mesh_1D.h"
 #include "ins_temp_dpu_alltoall_mesh.h"
 #include "ins_temp_ubx_all_to_all_v_mesh_1D.h"
@@ -452,45 +454,108 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 }
 
 #endif
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)param;
+    u32 rankSize = topoInfo->userRankSize;
+    // AllToAll: 单卡总发送/接收量 = dataSize（Σ sendCounts[i] * typeSize），所有peer链路并行
+    // 1DMESH: A = 1*dataSize/bw（满聚合带宽）；CLOS: A = 1*(R-1)*dataSize/(p*bw)（串行(R-1)步，每步满链路带宽）
+    // 板内单级拓扑用 MESH, 跨板多级拓扑用 CLOS（Concur/NHR 算法始终走 CLOS）
+    bool isNhrOrConcurrent = (algName != nullptr && strstr(algName, "Concur") != nullptr);
+    bool isMultiLevel = (topoInfo->topoLevelNums > 1);
+    lastNetType_ = (isNhrOrConcurrent || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
+
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    std::vector<u32> portNumLevel0 = {1};
+    bool isPod = true;
+    HCCL_DEBUG(
+        "[InsV2AlltoAllVSoleExecutor] CalcCostCoeff algName=%s netType=%d multiLevel=%d rankSize=%d rankSizeLevel0=%d.",
+        algName, static_cast<int>(lastNetType_), isMultiLevel, rankSize, rankSizeLevel0);
+    // AllToAll非in-place: input=INPUT, output=OUTPUT, scratch=HCCL_BUFFER
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, 1.0f, lastNetType_, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod, algName, comm, topoInfo});
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    // netType 由 CalcCostCoeff 缓存到 lastNetType_
+    meta.netTypes.push_back(lastNetType_);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    // dataSize 为单 peer 数据量，每段传输量 = dataSize * 1，故 dataRatio=1.0f
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    HCCL_DEBUG("[InsV2AlltoAllVSoleExecutor] GetAlgNetMeta netType=%d.", static_cast<int>(lastNetType_));
+    return meta;
+}
+
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshSingleChannel, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshSingleChannel, op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     InsTempUBXAllToAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     InsTempUBXAllToAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, DpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, DpuAllToAllVSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllVSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, DpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, DpuAllToAllSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, DpuAllToAllVSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllVSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, DpuAllToAllVCSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     InsTempDpuAlltoAllMesh);
+REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.isHostDpuOnly = true);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
@@ -498,27 +563,42 @@ REGISTER_EXEC_V2(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAlltoAllMesh1D);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiLink, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAllToAllMesh1D2Die);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     AivTempAlltoAllMesh1D);
+REGISTER_ALG_ATTRS(AivAllToAllSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh2Die, InsV2AlltoAllVSoleExecutor, TopoMatch1D,
     CcuTempAllToAllMesh2Die);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshUBX, InsV2AlltoAllVSoleExecutor, TopoMatchUBX1d,
     CcuTempAllToAllMesh1dMultiJetty);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcur, InsV2AlltoAllVSoleExecutor, TopoMatchConcurrent,
     CcuTempAllToAllConcurrentMeshNHR);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshConcur, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = true;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #endif
 } // namespace ops_hccl

@@ -11,6 +11,33 @@
 #include "aicpu/ins_temp_broadcast_mesh_1D_two_shot.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempBroadcastMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // twoshot mesh：CLOS下portNum=6，MESH下portNum=1（netType由executor根据isNhr/isMultiLevel确定后传入）
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 6 : 1;
+    int kernelNum = 10;
+    // twoshot：scatter 阶段 (R-1) 个 trans + (R-1) 个 sync，allgather 阶段同理，合计 9*(R-1)
+    int taskNum = 9 * (param.rankSize - 1);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 InsTempBroadcastMesh1DTwoShot::InsTempBroadcastMesh1DTwoShot(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

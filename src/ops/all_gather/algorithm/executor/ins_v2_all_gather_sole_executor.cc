@@ -64,21 +64,26 @@ std::vector<CostModelParam> InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTempl
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel0 = topoInfo->topoLevelNums > 1 ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
     // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
     std::vector<u32> portNumLevel0 = {1};
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
         portNumLevel0, static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    (void)rankSizeLevel1;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
@@ -86,6 +91,8 @@ AlgNetMeta InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSizeLevel0};
     return meta;
 }
 

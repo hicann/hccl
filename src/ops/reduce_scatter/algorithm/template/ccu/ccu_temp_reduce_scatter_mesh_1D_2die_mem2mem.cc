@@ -18,7 +18,7 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int kernelNum = 15;
+    int kernelNum = 19;
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
@@ -52,7 +52,6 @@ std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff
     B = B0 + B1;
 
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
     return params;

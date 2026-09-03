@@ -12,6 +12,7 @@
 #define INS_TEMP_BROADCAST_NHR_H
 
 #include "alg_v2_template_base.h"
+#include "cost_model.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -25,6 +26,8 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
 
     ~InsTempBroadcastNHR() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

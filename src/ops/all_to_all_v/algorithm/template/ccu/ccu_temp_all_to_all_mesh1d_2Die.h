@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_alg_base.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -31,6 +32,9 @@ public:
     {
         return StringFormat("Template of alltoall ccu mesh 2Die with rankSize[%u]", templateRankSize_);
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

@@ -12,8 +12,33 @@
 #include "ccu_kernel_scatter_mesh1d.h"
 #include "ccu_temp_scatter_mesh1d.h"
 #include "ccu_launch_dl.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> CcuTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
+    int portNum = static_cast<int>(param.portNum[0]);
+    int kernelNum = 1; // 单 kernel 下发
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // B=0：kernel 内 root 自留份 GroupCopy 与 7 份远端 Write 并发执行
+    // （ccu_kernel_scatter_mesh1d.cc DoScatterOnce 注释"Write与GroupCopy并行执行"），
+    // 本地 1 份搬运被远端传输掩盖，关键路径上无独立贡献
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(
+        CostModelManager::CalcTransTaskNum(param.rankSize), EngineType::CCU,
+        D); // CCU 的 D 恒为 0（kernel launch 无展开）
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
 
 CcuTempScatterMesh1D::CcuTempScatterMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)

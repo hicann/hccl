@@ -15,6 +15,26 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 5;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio * param.rankSize, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempReduceMesh1D::CcuTempReduceMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

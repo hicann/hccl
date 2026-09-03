@@ -19,8 +19,8 @@ std::vector<CostModelParam> CcuTempReduceScatterMesh1DMem2Mem::CalcCostCoeff(Cal
 {
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int portNum = (param.netType == CommTopo::COMM_TOPO_1DMESH) ? 1 : 6;
-    int kernelNum = 6;
-    int taskNum = 5 * (param.rankSize - 1);
+    int kernelNum = static_cast<int>(0.7f * param.rankSize);
+    kernelNum = (kernelNum > 6) ? kernelNum : 6;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -28,16 +28,15 @@ std::vector<CostModelParam> CcuTempReduceScatterMesh1DMem2Mem::CalcCostCoeff(Cal
 
     if (param.rankSize <= 8) { // 全走mesh链路
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, param.rankSize, A, param.isPod);
+            param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
         CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
     } else { // 打平走clos链路
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, param.rankSize, A, param.isPod);
+            param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
         CostModelManager::Global()->CalcLocalReduceParams(
             param.dataRatio * (param.rankSize - 1), EngineType::CCU_CIR_MODE, B);
     }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
     return params;

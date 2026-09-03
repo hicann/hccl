@@ -35,8 +35,7 @@ std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffPara
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * 2, netType, portNum / 2, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio * 2, netType, portNum, param.rankSize, A, param.isPod);
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::AICPU, B);
     } else {

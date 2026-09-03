@@ -19,6 +19,7 @@ namespace ops_hccl {
 
 class CcuTempScatterMesh1D : public CcuAlgTemplateBase {
 public:
+    static constexpr TemplateProp props = {.algoType = AlgoType::MESH};
     CcuTempScatterMesh1D() = default;
     explicit CcuTempScatterMesh1D(
         const OpParam& param,
@@ -31,6 +32,8 @@ public:
     {
         return StringFormat("Template of Scatter ccu mesh 1D with templateRankSize [%u].", subCommRanks_[0].size());
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

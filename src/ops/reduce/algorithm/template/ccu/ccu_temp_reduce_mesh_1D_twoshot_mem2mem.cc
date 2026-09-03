@@ -17,6 +17,29 @@ namespace ops_hccl {
 
 constexpr uint32_t REDUCE_LOOP_COUNT = 16;
 
+std::vector<CostModelParam> CcuTempReduceMesh1DTwoShotMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1 * param.rankSize;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+    float B1, B2;
+    CostModelManager::Global()->CalcMeshParam(
+        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B1);
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B2);
+    B = B1 + B2;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempReduceMesh1DTwoShotMem2Mem::CcuTempReduceMesh1DTwoShotMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

@@ -69,14 +69,23 @@ std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTempl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    (void)rankSizeLevel0;
+    (void)rankSizeLevel1;
+    u32 rankSize = topoInfo->userRankSize;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
+    meta.dataRatios = {1.0f / rankSize};
+    meta.rankSizes = {rankSize};
     return meta;
 }
 
@@ -396,7 +405,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatch1D,
     AivTempAllReduceMesh1DTwoShot);
 REGISTER_ALG_ATTRS(
-    AivAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 2;
+    AivAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

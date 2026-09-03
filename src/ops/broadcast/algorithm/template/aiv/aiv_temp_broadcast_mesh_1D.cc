@@ -13,6 +13,32 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // twoshot mesh：CLOS下portNum=6，MESH下portNum=1（netType由executor根据isNhr/isMultiLevel确定后传入）
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 6 : 1;
+    int kernelNum = 10;
+    int taskNum = 0; // AIV的D=0
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        // 本地拷贝1份全量数据（root拷入、非root拷出，平均1份）
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AIV, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 AivTempBroadcastMesh1D::AivTempBroadcastMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

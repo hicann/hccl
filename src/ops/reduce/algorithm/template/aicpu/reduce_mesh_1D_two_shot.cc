@@ -12,6 +12,42 @@
 #include "reduce_mesh_1D_two_shot.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> ReduceMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    if (param.rankSize > 8) {
+        return {};
+    }
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 11;
+    int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize) * 2
+                  + CostModelManager::CalcSyncTaskNum(param.rankSize) * 3 + 10;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio * 2, param.netType, portNum, param.rankSize, A, param.isPod);
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    float B3 = 0.0f;
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
+    }
+    if (param.outputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B2);
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B3);
+    B = B1 + B2 + (param.rankSize - 1) * B3;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 ReduceMesh1DTwoShot::ReduceMesh1DTwoShot(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsAlgTemplateBase(param, rankId, subCommRanks)

@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_reduce_omnipipe_executor.h"
+#include "alg_attrs_registry.h"
 #include "alg_data_trans_wrapper.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

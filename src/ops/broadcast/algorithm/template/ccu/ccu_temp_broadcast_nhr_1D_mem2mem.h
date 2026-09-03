@@ -12,6 +12,7 @@
 #define HCCL_CCU_TEMP_BROADCAST_NHR_1D_MEM2MEM_H
 
 #include "ccu_alg_template_base.h"
+#include "cost_model.h"
 #include "utils.h"
 #include "ccu_kernel_broadcast_nhr1d_mem2mem.h"
 
@@ -26,6 +27,8 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempBroadcastNHR1DMem2Mem() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

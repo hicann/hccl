@@ -13,6 +13,7 @@
 
 #include "utils.h"
 #include "ccu_alg_template_base.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -30,6 +31,8 @@ public:
     {
         return StringFormat("Template of All to All ccu mesh 1D with tempRankSize [%u].", tempRankSize_);
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

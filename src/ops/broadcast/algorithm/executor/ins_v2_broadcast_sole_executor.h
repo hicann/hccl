@@ -12,6 +12,7 @@
 #define HCCLV2_INS_V2_BROADCAST_SOLE_EXECUTOR_H
 
 #include "executor_common_ops.h"
+#include "cost_model.h"
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
 
@@ -33,6 +34,11 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+
 #ifndef AICPU_COMPILE
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* fastLaunchCtx) override;
     HcclResult
@@ -44,6 +50,7 @@ private:
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
+    mutable CommTopo lastNetType_ = CommTopo::COMM_TOPO_1DMESH; // CalcCostCoeff缓存，供GetAlgNetMeta使用
 };
 } // namespace ops_hccl
 

@@ -12,6 +12,7 @@
 #define HCCL_CCU_TEMP_BROADCAST_MESH_1D_MEM2MEM_H
 
 #include "ccu_alg_template_base.h"
+#include "cost_model.h"
 #include "utils.h"
 
 namespace ops_hccl {
@@ -25,6 +26,8 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
 
     ~CcuTempBroadcastMesh1DMem2Mem() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

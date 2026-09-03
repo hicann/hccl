@@ -12,6 +12,7 @@
 #define AIV_TEMP_ALL_TO_ALL_MESH_1D
 
 #include "aiv_alg_template_base.h"
+#include "cost_model.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -31,13 +32,16 @@ public:
         info += std::to_string(tempRankSize_);
         return info;
     }
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
+    HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams,
         const TemplateResource& templateResource) override;
-    HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
 };
 } // namespace ops_hccl
 

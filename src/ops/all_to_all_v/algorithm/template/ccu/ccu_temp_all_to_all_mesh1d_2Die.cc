@@ -23,6 +23,52 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // 2Die场景: 板内MESH（同Die）和跨Die CLOS（8端口）并行执行，取max(A)
+    // 板内卡数 = 每个module的device数（2Die一般为4或8）
+    u32 intraDieRankSize = (param.topoInfo != nullptr) ? param.topoInfo->deviceNumPerModule : param.rankSize;
+    if (intraDieRankSize == 0 || intraDieRankSize >= param.rankSize) {
+        intraDieRankSize = param.rankSize / 2; // fallback: 对称分成两半
+    }
+    u32 interDieRankSize = param.rankSize - intraDieRankSize; // 另一个Die的对端数
+
+    int meshPortNum = 1; // MESH: portNum不参与公式
+    int closPortNum = 8; // CLOS跨Die: 8个上行vPort并行
+    // CLOS公式: A = n*(groupSize-1)/(portNum*bw)，groupSize含自己，所以 +1
+    u32 closGroupSize = interDieRankSize + 1;
+
+    float A_mesh = 0.0f;
+    float A_clos = 0.0f;
+    float B = 0.0f; // CCU无需本地拷贝
+    float C = 0.0f;
+    float D = 0.0f;
+
+    // 板内MESH: 同Die内intraDieRankSize个rank
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio, CommTopo::COMM_TOPO_1DMESH, meshPortNum, intraDieRankSize, A_mesh, param.isPod);
+    // 板外CLOS: 跨Die到interDieRankSize个对端，closPortNum端口共享
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio, CommTopo::COMM_TOPO_CLOS, closPortNum, closGroupSize, A_clos, param.isPod);
+
+    // 两条路径并行，A取max
+    float A = std::max(A_mesh, A_clos);
+    // 2Die场景: 多个kernel并行+跨Die同步，kernelNum固定12
+    int kernelNum = 12;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(0, EngineType::CCU, D);
+
+    HCCL_INFO(
+        "[CcuTempAllToAllMesh1D2Die::CalcCostCoeff] rankSize=%u intraDie=%u interDie=%u dataRatio=%f "
+        "A_mesh=%e A_clos=%e A=%e B=%e C=%e kernelNum=%d meshPortNum=%d closPortNum=%d",
+        param.rankSize, intraDieRankSize, interDieRankSize, param.dataRatio, A_mesh, A_clos, A, B, C, kernelNum,
+        meshPortNum, closPortNum);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempAllToAllMesh1D2Die::CcuTempAllToAllMesh1D2Die(
     const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

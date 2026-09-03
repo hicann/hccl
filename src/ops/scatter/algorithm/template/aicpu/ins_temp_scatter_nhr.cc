@@ -9,8 +9,70 @@
  */
 
 #include "ins_temp_scatter_nhr.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // 通道形态与端口数全部由 executor 通过 portNum 向量注入（模板零魔法数字），统一约定：
+    //   MESH 段：{1}；CLOS 且 isPod=true：{6,2}（双 die 双 channel）；CLOS 且 isPod=false：{8}（单 die 单链路）
+    // single channel 判定 = 算法名单通道（SoleNHR 执行侧不 SetchannelsPerRank 恒单链路——即使
+    // executor 按拓扑形态传了 {6,2} 也只走一条链路）或向量单元素；是则取 portNum[0]，
+    // 否则取 portNum 求和（多通道每通道各发一遍）。Parallel/Sequence 的 NHR 段由 executor
+    // SetchannelsPerRank 使能多通道且未传 algName → 按向量元素数判多通道
+    bool isSingleChannel
+        = (param.algName != nullptr && strcmp(param.algName, "AicpuScatterSoleNHR") == 0) || param.portNum.size() == 1;
+    int portNum
+        = isSingleChannel ? static_cast<int>(param.portNum[0]) : static_cast<int>(param.portNum[0] + param.portNum[1]);
+    // NHR 有 ⌈log2R⌉ 步，每步一个同步点，kernelNum 按步数取
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    int kernelNum = log2R;
+    // taskNum（B 方案定案）：传输 task = 3/次（send 单边通信）× log2R 步（NHR 步进扇出，非 Mesh 的 R-1 线性）；
+    // 多通道（executor 注入的向量双元素）翻倍。local copy task = 1/份：
+    // PreCopy root 铺开 R 份 + PostCopy 每 rank 1 份（与 B 系数份数同口径）
+    // 发送侧视角（3 task/步）：每 rank 每步 tx/rx 互斥（GetStepInfo 的 deltaRoot 区间不重叠），
+    // 收侧为 4 task/步（SendRead 多一条 Record）；用户定案取 1（发送视角）
+    int transTaskNum = 3 * log2R;
+    if (!isSingleChannel) {
+        transTaskNum *= 2;
+    }
+    int localCopyCount = 0;
+    if (param.inputBuffer != BufferType::HCCL_BUFFER) {
+        localCopyCount += static_cast<int>(param.rankSize); // PreCopy：root 铺开全量 R 份
+    }
+    if (param.outputBuffer != BufferType::HCCL_BUFFER) {
+        localCopyCount += 1; // PostCopy：每 rank 1 份
+    }
+    int taskNum = transTaskNum + localCopyCount;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
+    // PreCopy 在 input==HCCL_BUFFER 时跳过（root 铺开全量 α·R）；PostCopy 在 output==HCCL_BUFFER 时跳过（每 rank 1 份
+    // α）
+    float preCopyB = 0.0f;
+    float postCopyB = 0.0f;
+    if (param.inputBuffer != BufferType::HCCL_BUFFER) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize, EngineType::AICPU, preCopyB);
+    }
+    if (param.outputBuffer != BufferType::HCCL_BUFFER) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, postCopyB);
+    }
+    B = preCopyB + postCopyB;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 InsTempScatterNHR::InsTempScatterNHR(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

@@ -12,6 +12,7 @@
 #define AIV_TEMP_ALL_BROADCAST_MESH_1D
 
 #include "aiv_alg_template_base.h"
+#include "cost_model.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
@@ -26,6 +27,8 @@ public:
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
         const std::vector<std::vector<u32>>& subCommRanks);
     ~AivTempBroadcastMesh1D() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {

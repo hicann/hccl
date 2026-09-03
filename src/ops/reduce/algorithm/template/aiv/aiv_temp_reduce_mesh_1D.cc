@@ -10,8 +10,38 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_reduce_mesh_1D.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
+
+std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : 1;
+    int kernelNum = 15;
+    int taskNum = 5 * (param.rankSize - 1);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(
+        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
+    } else {
+        B1 = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio * (param.rankSize - 1), EngineType::AICPU, B2);
+    B = B1 + B2;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
 
 AivTempReduceMesh1D::AivTempReduceMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank

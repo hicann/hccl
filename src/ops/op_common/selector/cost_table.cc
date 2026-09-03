@@ -21,6 +21,7 @@
 #include "hccl_aiv_utils.h"
 #include "selector_engine.h"
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "order_preserved_common.h"
 
 namespace ops_hccl {
@@ -115,7 +116,19 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         return HcclResult::HCCL_E_PARA;
     }
 
-    u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    u64 dataSize = 0;
+    HcclDataType dataType = opParam.DataDes.dataType;
+    if (opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
+        // AllToAll: dataSize = 单 rank 发给单个 peer 的数据量 = sendCounts[0] * typeSize
+        // 模板内 dataRatio=1.0f，配套此单 peer 口径
+        const u64* sendCounts = static_cast<const u64*>(opParam.all2AllVDataDes.sendCounts);
+        u32 typeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
+        dataType = opParam.all2AllVDataDes.sendType;
+        u64 perRankSendCount = (sendCounts != nullptr) ? sendCounts[0] : 0;
+        dataSize = perRankSendCount * typeSize;
+    } else {
+        dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    }
 
     for (int i = 0; i < cm.count; ++i) {
         if (cm.costAlgoParams[i].count <= 0) {
@@ -140,7 +153,7 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
             continue;
         }
 
-        float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType);
+        float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType, attrs->algoTypes);
         ct.costs[ct.count].algName = algName;
         ct.costs[ct.count].cost = cost;
         ++ct.count;
@@ -179,7 +192,8 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
 }
 
 float CostTableManager::CalcAlgCost(
-    const std::string& algName, u64 dataSize, const CostAlgoParams& algoParams, HcclCMDType opType) const
+    const std::string& algName, u64 dataSize, const CostAlgoParams& algoParams, HcclCMDType opType,
+    const std::vector<AlgoType>& algoTypes) const
 {
     AlgNetMeta meta;
     AlgNetMetaRegistry::Global()->Query(algName, meta);
@@ -200,8 +214,18 @@ float CostTableManager::CalcAlgCost(
         float groupCost = 0.0f;
         for (u32 k = 0; k < groups[g] && idx < static_cast<u32>(algoParams.count); ++k, ++idx) {
             CommTopo nt = (idx < meta.netTypes.size()) ? meta.netTypes[idx] : CommTopo::COMM_TOPO_1DMESH;
+            float dr = (idx < meta.dataRatios.size() && meta.dataRatios[idx] > 0.0f) ? meta.dataRatios[idx] : 1.0f;
+            AlgoType at = (idx < algoTypes.size()) ? algoTypes[idx] : AlgoType::UNKNOWN;
+            if (at == AlgoType::NHR || at == AlgoType::NHR_MULTILINK) {
+                u32 rs = (idx < meta.rankSizes.size()) ? meta.rankSizes[idx] : 1;
+                dr *= static_cast<float>(rs) / 2.0f;
+            }
+            u64 perTransferSize = static_cast<u64>(static_cast<float>(dataSize) * dr);
+            if (perTransferSize == 0) {
+                perTransferSize = dataSize;
+            }
             float util = 1.0f;
-            if (QueryUbUtil(nt, dataSize, engine, util, opType) != HcclResult::HCCL_SUCCESS) {
+            if (QueryUbUtil(nt, perTransferSize, engine, util, opType) != HcclResult::HCCL_SUCCESS) {
                 util = 1.0f;
             }
             utils[idx] = util;
@@ -251,7 +275,7 @@ HcclResult CostTableManager::CostTableGen(
 }
 
 const std::vector<UbUtilEntry> CostTableManager::closUbUtilTable_
-    = {{0.125 * 1024 * 1024ULL, 0.02755f}, {0.25 * 1024 * 1024ULL, 0.05357f}, {0.5 * 1024 * 1024ULL, 0.10388f},
+    = {{0.125 * 1024 * 1024ULL, 0.05357f}, {0.25 * 1024 * 1024ULL, 0.05357f}, {0.5 * 1024 * 1024ULL, 0.10388f},
        {1 * 1024 * 1024ULL, 0.1855f},      {2 * 1024 * 1024ULL, 0.3f},        {4 * 1024 * 1024ULL, 0.4288f},
        {8 * 1024 * 1024ULL, 0.5302f},      {16 * 1024 * 1024ULL, 0.568f},     {32 * 1024 * 1024ULL, 0.6549f},
        {64 * 1024 * 1024ULL, 0.7184f},     {128 * 1024 * 1024ULL, 0.7408f},   {256 * 1024 * 1024ULL, 0.7644f}};

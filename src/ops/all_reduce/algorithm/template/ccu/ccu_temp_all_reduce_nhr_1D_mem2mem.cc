@@ -27,7 +27,6 @@ std::vector<CostModelParam> CcuTempAllReduceNHRMem2Mem1D::CalcCostCoeff(CalcCost
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int taskNum = 4 * log2R + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -37,7 +36,6 @@ std::vector<CostModelParam> CcuTempAllReduceNHRMem2Mem1D::CalcCostCoeff(CalcCost
         param.dataRatio * 2, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::CCU, B);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

@@ -19,7 +19,6 @@ std::vector<CostModelParam> CcuTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
 {
     int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int kernelNum = 1;
-    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -27,7 +26,6 @@ std::vector<CostModelParam> CcuTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

@@ -59,8 +59,15 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 AlgNetMeta InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    (void)rankSizeLevel0;
+    (void)rankSizeLevel1;
+    u32 rankSize = topoInfo->userRankSize;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
@@ -68,6 +75,8 @@ AlgNetMeta InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1};
+    meta.dataRatios = {1.0f / rankSize, 1.0f / rankSize};
+    meta.rankSizes = {rankSize, rankSize};
     return meta;
 }
 

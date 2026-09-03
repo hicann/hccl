@@ -16,6 +16,28 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // AllToAll: CCU mesh1D，mem2mem模式，无本地拷贝
+    // MESH场景固定5，CLOS跨框场景固定10(跨框同步开销更大)
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 6 : param.portNum[0];
+    int kernelNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 10 : 5;
+    int taskNum = 0; // CCU的D=0
+    float A = 0.0f;
+    // MESH: A = n/bw; CLOS: A = n*(rankSize-1)/(portNum*bw)
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    float B = 0.0f;
+    // CCU mem2mem，无本地拷贝，B=0
+    float C = 0.0f;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    float D = 0.0f;
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempAlltoAllMesh1D::CcuTempAlltoAllMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

@@ -14,6 +14,28 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // AllToAll: AIV直接使用input/output，无本地拷贝，单kernel启动
+    // 板内MESH组网portNum不参与计算(MESH公式无portNum因子), 跨板CLOS组网portNum=8
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : param.portNum[0];
+    int kernelNum = 1; // AIV单kernel启动
+    int taskNum = 0;   // AIV的D=0
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // AIV模板直接使用input/output，无本地拷贝，B=0
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 AivTempAlltoAllMesh1D::AivTempAlltoAllMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

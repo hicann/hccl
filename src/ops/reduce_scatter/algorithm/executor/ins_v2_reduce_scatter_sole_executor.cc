@@ -79,14 +79,23 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    (void)param;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    (void)rankSizeLevel0;
+    (void)rankSizeLevel1;
+    u32 rankSize = topoInfo->userRankSize;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
     return meta;
 }
 

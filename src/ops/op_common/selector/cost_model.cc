@@ -261,26 +261,28 @@ bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetai
 #endif
 
 #ifndef AICPU_COMPILE
-// 从已过滤的算法中筛选优先级算法。按 opType 分组，仅在有 priority 匹配的 opType 内过滤。
+// 从已过滤的算法中筛选优先级算法。按 (opType, engine) 分组，仅在有 priority 匹配的组内过滤。
+// 不同引擎（AICPU/CCU/AIV）的 priority 互不影响，避免 AIV 算法被 AICPU/CCU 的 priority 规则误删。
 __attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDetails* topoInfo)
 {
-    // 1. 收集每个 opType 的 priority 匹配索引
-    std::map<HcclCMDType, std::vector<int>> priorityByOpType;
+    // 1. 收集每个 (opType, engine) 的 priority 匹配索引
+    std::map<std::pair<HcclCMDType, OpExecuteConfig>, std::vector<int>> priorityByKey;
     for (int i = 0; i < costModel.count; ++i) {
         const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
         if (attrs != nullptr && attrs->topo.topoPriorityCheck && attrs->topo.topoPriorityCheck(topoInfo)) {
-            priorityByOpType[attrs->opType].push_back(i);
+            priorityByKey[{attrs->opType, attrs->engine}].push_back(i);
             HCCL_INFO("[CostModelManager] topoPriority matched algName=%s.", costModel.costAlgoParams[i].algName);
         }
     }
 
-    // 2. 对有 priority 匹配的 opType，只保留匹配的算法
+    // 2. 对有 priority 匹配的 (opType, engine) 组，只保留匹配的算法
     std::set<int> toRemove;
-    for (auto& [opType, indices] : priorityByOpType) {
+    for (auto& [key, indices] : priorityByKey) {
+        auto [opType, engine] = key;
         std::set<int> keepSet(indices.begin(), indices.end());
         for (int i = 0; i < costModel.count; ++i) {
             const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
-            if (attrs != nullptr && attrs->opType == opType && keepSet.count(i) == 0) {
+            if (attrs != nullptr && attrs->opType == opType && attrs->engine == engine && keepSet.count(i) == 0) {
                 toRemove.insert(i);
             }
         }
@@ -358,7 +360,7 @@ HcclResult CostModelManager::InitCostModel(
         }
         std::copy(params.begin(), params.end(), ownedParam);
 
-        AlgNetMetaRegistry::Global()->Register(alg.algName, exec->GetAlgNetMeta(topoInfo));
+        AlgNetMetaRegistry::Global()->Register(alg.algName, exec->GetAlgNetMeta(topoInfo, param));
 
         CostAlgoParams cap;
         cap.algName = alg.algName;
