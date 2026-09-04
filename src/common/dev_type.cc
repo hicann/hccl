@@ -54,8 +54,7 @@ HcclResult __HcclGetDeviceType(HcclDevType& devType)
         return HCCL_SUCCESS;
     }
 
-    if (socName.find("Ascend910_96") != std::string::npos || socName.find("Ascend960") != std::string::npos
-        || socName.find("ascend960") != std::string::npos) {
+    if (socName.find("Ascend960") != std::string::npos || socName.find("ascend960") != std::string::npos) {
         devType = HcclDevType::DEV_TYPE_960;
         g_deviceType = devType;
         HCCL_DEBUG("[HcclGetDeviceType]DeviceType = %d.", static_cast<s32>(g_deviceType));

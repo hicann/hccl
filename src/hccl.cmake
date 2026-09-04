@@ -61,8 +61,8 @@ if(HCCL_CANN_COMPAT_850)
     target_compile_definitions(hccl PRIVATE HCCL_CANN_COMPAT_850)
 endif()
 
-if(HCCL_ENABLE_910_96)
-    target_compile_definitions(hccl PRIVATE HCCL_ENABLE_910_96)
+if(HCCL_ENABLE_960)
+    target_compile_definitions(hccl PRIVATE HCCL_ENABLE_960)
 endif()
 
 target_compile_options(hccl PRIVATE

@@ -199,11 +199,11 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v
     COMPONENT hccl
 )
 
-if(HCCL_ENABLE_910_96)
-add_custom_target(hccl_aiv_reduce_scatter_op_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_reduce_scatter_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96_tmp.o --cce-aicore-arch=dav-920r1-vec
+if(HCCL_ENABLE_960)
+add_custom_target(hccl_aiv_reduce_scatter_op_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_reduce_scatter_op.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960_tmp.o --cce-aicore-arch=dav-920r1-vec
         -DASCENDC_DUMP=${ASCENDC_DUMP}
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-stack-size=0x8000
         -I${ASCEND_CANN_PACKAGE_PATH}/tools/tikcpp/tikcfw/lib/
@@ -215,20 +215,20 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op
         -I${OPS_BASE_DIR}/src/ops/op_common/algorithm/template/aiv/aiv_interface/
         -mllvm -cce-aicore-record-overflow=false -mllvm -cce-aicore-addr-transform -mllvm
         --cce-aicore-jump-expand=true -std=c++17 -fstack-protector-all
-        COMMAND ${CCE_DIR}/ld.lld -m aicorelinux -Ttext=0 ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96_tmp.o -static -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96.o
+        COMMAND ${CCE_DIR}/ld.lld -m aicorelinux -Ttext=0 ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960_tmp.o -static -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960.o
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_910_96.o 
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_aiv_reduce_scatter_op_960.o 
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_int8_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_int8_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -247,10 +247,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_int16_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_int16_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -269,10 +269,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_int32_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_int32_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -291,10 +291,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_float16_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_float16_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -313,10 +313,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_float32_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_float32_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -335,10 +335,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_custom_target(hccl_rs_superkernel_mesh_1d_bfloat16_v2_910_96 ALL
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_910_96.o)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_910_96.o
-        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_910_96.o
+add_custom_target(hccl_rs_superkernel_mesh_1d_bfloat16_v2_960 ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_960.o)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_960.o
+        COMMAND ${CCE_DIR}/ccec -c -x cce -O2 ${CMAKE_CURRENT_SOURCE_DIR}/aiv_rs_mesh_1d_superkernel.h -o ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_960.o
         -DTILING_KEY_VAR=0UL -D__ASCENDC_ENABLE_SUPER_KERNEL__ -DL2_CACHE_HINT -DCONST_TILING -DDETERMINISTIC_MODE=0
         -DASCENDC_DUMP=${ASCENDC_DUMP} --cce-aicore-arch=dav-920r1-vec
         --cce-aicore-input-parameter-size=28000 --cce-aicore-only -mllvm -cce-aicore-function-stack-size=0x8000 -mllvm -cce-aicore-dcci-insert-for-scalar=false
@@ -357,37 +357,37 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int8_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int16_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_int32_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float16_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_float32_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_910_96.o
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/hccl_rs_superkernel_mesh_1d_bfloat16_v2_960.o
     DESTINATION ${INSTALL_LIBRARY_DIR}
     ${INSTALL_OPTIONAL}
     COMPONENT hccl

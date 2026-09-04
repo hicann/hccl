@@ -27,9 +27,9 @@ CUSTOM_OPTION="-DCMAKE_INSTALL_PREFIX=${OUTPUT_DIR}"
 STATIC_MODE="false"  # 新增变量，用于控制是否静态编译
 ENABLE_BUILD_DEVICE="OFF"
 ENABLE_BUILD_AARCH="OFF" 
-# 910_96(960) AIV kernel 编译开关：ENABLE_910_96="ON"即编, ENABLE_910_96="OFF"即不编
+# 960(960) AIV kernel 编译开关：ENABLE_960="ON"即编, ENABLE_960="OFF"即不编
 # 如需覆盖，请编辑同目录下的 build_config.sh，无需改动本文件
-ENABLE_910_96="OFF"
+ENABLE_960="OFF"
 if [ -f "${CURRENT_DIR}/build_config.sh" ]; then
     . "${CURRENT_DIR}/build_config.sh"
 fi
@@ -311,7 +311,7 @@ function build_static() {
          AIV_EMBED_COUNT=$((AIV_EMBED_COUNT + 1)) 
          log "Info: Embedded AIV kernel: ${AIV_BASENAME}" 
       done < <(find "${BUILD_DIR}/src/ops" -type f \ 
-                  \( -name 'hccl_aiv_*_op_910_95.o' -o -name 'hccl_aiv_*_op_910_96.o' \) -print0) 
+                  \( -name 'hccl_aiv_*_op_910_95.o' -o -name 'hccl_aiv_*_op_960.o' \) -print0) 
      log "Info: Total AIV kernels embedded: ${AIV_EMBED_COUNT}" 
  
  
@@ -983,7 +983,7 @@ CUSTOM_OPTION="${CUSTOM_OPTION} -DCANN_3RD_LIB_PATH=${CANN_3RD_LIB_PATH}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DENABLE_BUILD_DEVICE=${ENABLE_BUILD_DEVICE}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DENABLE_BUILD_AARCH=${ENABLE_BUILD_AARCH}"
-CUSTOM_OPTION="${CUSTOM_OPTION} -DHCCL_ENABLE_910_96=${ENABLE_910_96}"
+CUSTOM_OPTION="${CUSTOM_OPTION} -DHCCL_ENABLE_960=${ENABLE_960}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DCUSTOM_SIGN_SCRIPT=${CUSTOM_SIGN_SCRIPT}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DENABLE_SIGN=${ENABLE_SIGN}"
 CUSTOM_OPTION="${CUSTOM_OPTION} -DVERSION_INFO=${VERSION_INFO}"

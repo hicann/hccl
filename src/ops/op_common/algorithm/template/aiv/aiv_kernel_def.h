@@ -210,16 +210,16 @@ static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>
 };
 
 // A6版本（dav-920r1-vec）对应的二进制名，kernel信息列表与A5版本一致
-static std::string g_allreduceAivBinaryNameA6 = "hccl_aiv_all_reduce_op_910_96.o";
-static std::string g_reduceScatterAivBinaryNameA6 = "hccl_aiv_reduce_scatter_op_910_96.o";
-static std::string g_allgatherAivBinaryNameA6 = "hccl_aiv_all_gather_op_910_96.o";
-static std::string g_broadcastAivBinaryNameA6 = "hccl_aiv_broadcast_op_910_96.o";
-static std::string g_alltoallAivBinaryNameA6 = "hccl_aiv_all_to_all_op_910_96.o";
-static std::string g_alltoallvAivBinaryNameA6 = "hccl_aiv_all_to_all_v_op_910_96.o";
-static std::string g_scatterAivBinaryNameA6 = "hccl_aiv_scatter_op_910_96.o";
-static std::string g_reduceAivBinaryNameA6 = "hccl_aiv_reduce_op_910_96.o";
-static std::string g_sendAivBinaryNameA6 = "hccl_aiv_send_op_910_96.o";
-static std::string g_recvAivBinaryNameA6 = "hccl_aiv_recv_op_910_96.o";
+static std::string g_allreduceAivBinaryNameA6 = "hccl_aiv_all_reduce_op_960.o";
+static std::string g_reduceScatterAivBinaryNameA6 = "hccl_aiv_reduce_scatter_op_960.o";
+static std::string g_allgatherAivBinaryNameA6 = "hccl_aiv_all_gather_op_960.o";
+static std::string g_broadcastAivBinaryNameA6 = "hccl_aiv_broadcast_op_960.o";
+static std::string g_alltoallAivBinaryNameA6 = "hccl_aiv_all_to_all_op_960.o";
+static std::string g_alltoallvAivBinaryNameA6 = "hccl_aiv_all_to_all_v_op_960.o";
+static std::string g_scatterAivBinaryNameA6 = "hccl_aiv_scatter_op_960.o";
+static std::string g_reduceAivBinaryNameA6 = "hccl_aiv_reduce_op_960.o";
+static std::string g_sendAivBinaryNameA6 = "hccl_aiv_send_op_960.o";
+static std::string g_recvAivBinaryNameA6 = "hccl_aiv_recv_op_960.o";
 
 static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>> g_aivKernelInfoMapA6 = {
     {HcclCMDType::HCCL_CMD_ALLREDUCE, {g_allreduceAivBinaryNameA6, g_allreduceAivKernelInfoList}},
