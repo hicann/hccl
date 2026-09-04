@@ -72,6 +72,10 @@ private:
         const ChannelInfo& linkRemote, const ThreadHandle& thread, u32 connectedRank, u32 threadIdx,
         const MeshPeerSlices& slices);
     bool omniLastStepRead_ = false;
+    u64 inputOffset_{0};
+    u64 outputOffset_{0};
+    void* inputSymWindow_;
+    void* outputSymWindow_;
 };
 
 } // namespace ops_hccl

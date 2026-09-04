@@ -15,6 +15,7 @@ add_library(hccl_kernel_compat SHARED
     hcomm_diag_dl.cc
     hcomm_device_profiling_dl.cc
     hccl_device_comm_dl.cc
+    hccl_sym_win_dl.cc
 )
 
 hccl_apply_cann_compat(hccl_kernel_compat)

@@ -63,9 +63,13 @@ HcclResult InsCollAlgBase::RestoreChannelMap(
     rankIdToChannelInfo.resize(algHierarchyInfo.infos.size());
     HCCL_INFO("algHierarchyInfo.infos.size [%zu]", algHierarchyInfo.infos.size());
     for (u32 level = 0; level < algHierarchyInfo.infos.size(); level++) {
-        for (auto& channel : resCtx.channels[level]) {
+        for (auto channel : resCtx.channels[level]) {
             u32 remoteRank = channel.remoteRank;
             HCCL_INFO("remoteRank [%u]", remoteRank);
+            if (supportSymmetricMemory_) {
+                CHK_RET(FillChannelSymWinPeerAddrs(
+                    inputSymWindow_, inputOffset_, outputSymWindow_, outputOffset_, channel));
+            }
             rankIdToChannelInfo[level][remoteRank].push_back(channel);
         }
         // 不需要再resize内层的map，因为map会自动管理元素

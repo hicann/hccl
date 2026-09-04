@@ -52,6 +52,8 @@ private:
     HcclResult PrepareDataSplitForMultiChannel(const TemplateResource& templateResource);
     HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
     HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult PreSyncSubThreads(const std::vector<ThreadHandle>& threads);
+    HcclResult PostSyncSubThreads(const std::vector<ThreadHandle>& threads);
     HcclResult RunScatter(
         const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
         u32 channelIdx);

@@ -251,6 +251,9 @@ InsTempAllGatherNHR::CalcSliceInfo(const AicpuNHRStepInfo& stepInfo, u32 rpt, u3
     info.scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
     info.txScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.txIdx + info.txPartialOffset;
     info.rxScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.rxIdx + info.rxPartialOffset;
+    info.outBase = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+    info.txOutOff = info.outBase + tempAlgParams_.outputSliceStride * info.txIdx + info.txPartialOffset;
+    info.rxOutOff = info.outBase + tempAlgParams_.outputSliceStride * info.rxIdx + info.rxPartialOffset;
     info.txSliceSize = (info.txIdx == templateRankSize_ - 1 && tempAlgParams_.tailSize != 0) ?
                            dataSplitTail_[channelIdx] :
                            dataSplit_[channelIdx];
@@ -268,6 +271,10 @@ HcclResult InsTempAllGatherNHR::BuildStepSlices(
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     void* sendCclBuffAddr = channelSend.remoteCclMem.addr;
     void* recvCclBuffAddr = channelRecv.remoteCclMem.addr;
+    void* localBuff
+        = (!enableRemoteMemAccess_) ? tempAlgParams_.buffInfo.hcclBuff.addr : tempAlgParams_.buffInfo.outputPtr;
+    void* sendRemoteBuff = (!enableRemoteMemAccess_) ? sendCclBuffAddr : channelSend.remoteOutputGraphMode.addr;
+    void* recvRemoteBuff = (!enableRemoteMemAccess_) ? recvCclBuffAddr : channelRecv.remoteOutputGraphMode.addr;
 
     for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         for (u32 i = 0; i < stepInfo.nSlices; ++i) {
@@ -286,16 +293,12 @@ HcclResult InsTempAllGatherNHR::BuildStepSlices(
                     lastStepReadSliceIdxs_.push_back(info.rxIdx);
                 }
             } else {
-                txSrcSlices.emplace_back(
-                    tempAlgParams_.buffInfo.hcclBuff.addr, info.txScratchOff, info.txSliceSize,
-                    info.txSliceSize / dataTypeSize);
-                txDstSlices.emplace_back(
-                    sendCclBuffAddr, info.txScratchOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
-                rxSrcSlices.emplace_back(
-                    recvCclBuffAddr, info.rxScratchOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
-                rxDstSlices.emplace_back(
-                    tempAlgParams_.buffInfo.hcclBuff.addr, info.rxScratchOff, info.rxSliceSize,
-                    info.rxSliceSize / dataTypeSize);
+                u64 txOff = (!enableRemoteMemAccess_) ? info.txScratchOff : info.txOutOff;
+                u64 rxOff = (!enableRemoteMemAccess_) ? info.rxScratchOff : info.rxOutOff;
+                txSrcSlices.emplace_back(localBuff, txOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
+                txDstSlices.emplace_back(sendRemoteBuff, txOff, info.txSliceSize, info.txSliceSize / dataTypeSize);
+                rxSrcSlices.emplace_back(recvRemoteBuff, rxOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
+                rxDstSlices.emplace_back(localBuff, rxOff, info.rxSliceSize, info.rxSliceSize / dataTypeSize);
             }
         }
     }
@@ -462,24 +465,39 @@ HcclResult InsTempAllGatherNHR::LocalDataCopy(const std::vector<ThreadHandle>& t
     }
     for (u64 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         const u64 inBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff + rpt * tempAlgParams_.inputRepeatStride;
-        const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
-        const u64 scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
-
         const u64 inOff = tempAlgParams_.inputSliceStride * myAlgRank + inBaseOff + partialOffset;
-        const u64 scOff = tempAlgParams_.sliceSize * myAlgRank + scratchBaseoff + partialOffset;
-        if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.hcclBuff.addr && inOff == scOff) {
-            continue;
-        }
         u64 sliceCount = partialSliceSize / dataTypeSize;
-        DataSlice srcSlices(tempAlgParams_.buffInfo.inputPtr, inOff, partialSliceSize, sliceCount);
-        DataSlice dstSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scOff, partialSliceSize, sliceCount);
-        CHK_RET(LocalCopy(threads[channelIdx], srcSlices, dstSlice));
+
+        if (enableRemoteMemAccess_) {
+            const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+            const u64 outOff = tempAlgParams_.outputSliceStride * myAlgRank + outBaseOff + partialOffset;
+            if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.outputPtr && inOff == outOff) {
+                continue;
+            }
+            DataSlice srcSlice(tempAlgParams_.buffInfo.inputPtr, inOff, partialSliceSize, sliceCount);
+            DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOff, partialSliceSize, sliceCount);
+            CHK_RET(LocalCopy(threads[channelIdx], srcSlice, dstSlice));
+        } else {
+            const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
+            const u64 scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
+            const u64 scOff = tempAlgParams_.sliceSize * myAlgRank + scratchBaseoff + partialOffset;
+            if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.hcclBuff.addr && inOff == scOff) {
+                continue;
+            }
+            DataSlice srcSlices(tempAlgParams_.buffInfo.inputPtr, inOff, partialSliceSize, sliceCount);
+            DataSlice dstSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scOff, partialSliceSize, sliceCount);
+            CHK_RET(LocalCopy(threads[channelIdx], srcSlices, dstSlice));
+        }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult InsTempAllGatherNHR::PostLocalCopy(const ThreadHandle& thread, const u32& channelIdx)
 {
+    if (enableRemoteMemAccess_) {
+        HCCL_INFO("[InsTempAllGatherNHR] PostLocalCopy skip because remote memory access enabled");
+        return HcclResult::HCCL_SUCCESS;
+    }
     if (tempAlgParams_.buffInfo.outputPtr == tempAlgParams_.buffInfo.hcclBuff.addr) {
         HCCL_INFO("[InsTempAllGatherNHR] PostLocalCopy skip because output is scratch");
         return HcclResult::HCCL_SUCCESS;

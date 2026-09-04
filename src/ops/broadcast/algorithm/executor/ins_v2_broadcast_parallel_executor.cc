@@ -228,6 +228,13 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
     HCCL_INFO("[InsBroadcastParallelExecutor][Orchestrate] threads_size[%d]", threads_.size());
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
         intraLinks_ = remoteRankToChannelInfo_[0];
@@ -589,23 +596,38 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, const u32 LocalRankSize) const
 {
     dataParams.buffInfo.inputPtr
-        = dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER ? resCtx.cclMem.addr : param.inputPtr;
+        = (dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              resCtx.cclMem.addr :
+              param.inputPtr;
     dataParams.buffInfo.outputPtr
-        = dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER ? resCtx.cclMem.addr : param.inputPtr;
+        = (dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              resCtx.cclMem.addr :
+              param.inputPtr;
     dataParams.buffInfo.inputSize
-        = dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER ? resCtx.cclMem.size : param.inputSize;
+        = (dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              resCtx.cclMem.size :
+              param.inputSize;
     dataParams.buffInfo.outputSize
-        = dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER ? resCtx.cclMem.size : param.outputSize;
+        = (dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              resCtx.cclMem.size :
+              param.outputSize;
     dataParams.buffInfo.hcclBuff = resCtx.cclMem;
     dataParams.buffInfo.hcclBuffBaseOff = scratchOffsetCount * dataTypeSize_;
     dataParams.buffInfo.inBuffBaseOff
-        = dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER ? dataParams.buffInfo.hcclBuffBaseOff : dataOffset;
+        = (dataParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              dataParams.buffInfo.hcclBuffBaseOff :
+              dataOffset;
     dataParams.buffInfo.outBuffBaseOff
-        = dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER ? dataParams.buffInfo.hcclBuffBaseOff : dataOffset;
+        = (dataParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER && !param.supportSymmetricMemory) ?
+              dataParams.buffInfo.hcclBuffBaseOff :
+              dataOffset;
     GenDataParamsAllRank(sliceCount, LocalRankSize, dataParams);
     dataParams.repeatNum = 1;
     dataParams.inputRepeatStride = 0;
     dataParams.outputRepeatStride = 0;
+    if (param.supportSymmetricMemory) {
+        dataParams.enableRemoteMemAccess = true;
+    }
     HCCL_INFO(
         "[InsBroadcastParallelExecutor][GenDataParamstempAlg]myRank_[%u] hcclBuffBaseOff[%llu]", myRank_,
         dataParams.buffInfo.hcclBuffBaseOff);
@@ -706,6 +728,22 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
 template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
+void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    AlignSliceCount(u32 remainingLoopTimes, u64 sliceCountPart0, u64& currCountPart0, u64& currCountPart1) const
+{
+    if (remainingLoopTimes > 1 || currCountPart0 > sliceCountPart0) {
+        u64 alignedCountPart0 = currCountPart0 * dataTypeSize_ / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_;
+        u64 alignedCountPart1 = currCountPart1 * dataTypeSize_ / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_;
+        if (alignedCountPart0 + alignedCountPart1 > 0) {
+            currCountPart0 = alignedCountPart0;
+            currCountPart1 = alignedCountPart1;
+        }
+    }
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
 HcclResult
 InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     OrchestrateLoop(
@@ -746,6 +784,10 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         u64 scratchCount = maxTmpMemSize_ / dataTypeSize_; // 按照count来切分
         sliceCount = std::min(static_cast<u64>(float(scratchCount) / multiple), sliceCountUB0);
         sliceCount = std::min(sliceCount, dataCount_);
+    }
+    if (param.supportSymmetricMemory) {
+        sliceCount = dataCount_;
+        HCCL_INFO("[InsBroadcastParallelExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
     }
     HCCL_DEBUG(
         "[InsBroadcastParallelExecutor][OrchestrateLoop] dataCount_[%lu], myRank_[%d], sliceCountUB[%d], "
@@ -796,16 +838,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         currCount = std::min(currCount, sliceCount);
         u64 currCountPart0 = static_cast<u64>(float(currCount) * dataSplitSize.at(0));
         u64 currCountPart1 = currCount - currCountPart0;
-        if (remainingLoopTimes > 1 || currCountPart0 > sliceCountPart0) {
-            u64 alignedCountPart0 = currCountPart0;
-            u64 alignedCountPart1 = currCountPart1;
-            alignedCountPart0 = alignedCountPart0 * dataTypeSize_ / alignSize * alignSize / dataTypeSize_;
-            alignedCountPart1 = alignedCountPart1 * dataTypeSize_ / alignSize * alignSize / dataTypeSize_;
-            if (alignedCountPart0 + alignedCountPart1 > 0) {
-                currCountPart0 = alignedCountPart0;
-                currCountPart1 = alignedCountPart1;
-            }
-        }
+        AlignSliceCount(remainingLoopTimes, sliceCountPart0, currCountPart0, currCountPart1);
         const u64 currProcessedCount = currCountPart0 + currCountPart1;
         CHK_PRT_RET(
             currProcessedCount == 0, HCCL_ERROR("[InsBroadcastParallelExecutor][OrchestrateLoop] currCount is 0"),

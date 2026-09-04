@@ -150,35 +150,6 @@ CheckAllGatherInputPara(const HcclComm comm, const void* sendBuf, const void* re
     return HCCL_SUCCESS;
 }
 
-bool AllGatherSupportSymmetricMemory(OpParam& opParam)
-{
-    size_t inputOffset = 0;
-    size_t outputOffset = 0;
-
-    HcclResult ret = HcclCommSymWinGet(
-        opParam.hcclComm, opParam.inputPtr, opParam.inputSize, &opParam.inputSymWindow, &inputOffset);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS || opParam.inputSymWindow == nullptr,
-        HCCL_INFO(
-            "[AllGatherSupportSymmetricMemory] is not support symmetric memory; "
-            "input[%p], size[%llu], ret[%d].",
-            opParam.inputPtr, opParam.inputSize, ret),
-        false);
-    ret = HcclCommSymWinGet(
-        opParam.hcclComm, opParam.outputPtr, opParam.outputSize, &opParam.outputSymWindow, &outputOffset);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS || opParam.outputSymWindow == nullptr,
-        HCCL_INFO(
-            "[AllGatherSupportSymmetricMemory] is not support symmetric memory; "
-            "output[%p], size[%llu], ret[%d].",
-            opParam.outputPtr, opParam.outputSize, ret),
-        false);
-    opParam.supportSymmetricMemory = true;
-    opParam.inputOffset = inputOffset;
-    opParam.outputOffset = outputOffset;
-    return true;
-}
-
 HcclResult AllGatherOutPlaceCommon(
     void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, HcclComm comm, aclrtStream stream,
     const std::string& tag, OpMode opMode, const ResPackGraphMode& resPack)
@@ -253,11 +224,10 @@ HcclResult AllGatherOutPlaceCommon(
     const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllGatherPipeLineUBX"
                                        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
                                        && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
-    const bool isAllGatherMesh1D = (algName == "AicpuAllGatherSoleMesh");
     if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
-        && (isAllGatherMesh1D || isTwoLevelMeshNhrOmni)) {
-        // 窗口探测失败只关闭对称内存优化，算子继续使用普通内存路径执行。
-        AllGatherSupportSymmetricMemory(param);
+        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isTwoLevelMeshNhrOmni)) {
+        CheckAndSetSymmetricMemory(param);
     }
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     HCCL_INFO("Execute AllGatherOutPlace success.");

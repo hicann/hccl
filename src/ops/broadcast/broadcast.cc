@@ -207,13 +207,9 @@ HcclResult BroadcastOutPlaceGraphMode(
     return HCCL_SUCCESS;
 }
 
-HcclResult BroadcastOutPlace(
-    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
+HcclResult BroadcastOutPlacePrepareParam(
+    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, aclrtStream stream)
 {
-    HCCL_INFO("Start to execute BroadcastOutPlace");
-    u32 userRankSize;
-    CHK_RET(HcclGetRankSize(comm, &userRankSize));
-
     u32 perDataSize = DATATYPE_SIZE_TABLE[dataType];
     u64 inputSize = count * perDataSize;
     u64 outputSize = inputSize;
@@ -224,7 +220,6 @@ HcclResult BroadcastOutPlace(
     HcclDevType deviceType = HcclDevType::DEV_TYPE_COUNT;
     CHK_RET(HcclGetDeviceType(deviceType));
 
-    // 参数准备
     param.inputPtr = buf;
     param.inputSize = inputSize;
     param.outputPtr = buf;
@@ -235,6 +230,18 @@ HcclResult BroadcastOutPlace(
     param.opType = HcclCMDType::HCCL_CMD_BROADCAST;
     param.enableDetour = false;
     param.deviceType = deviceType;
+
+    return HCCL_SUCCESS;
+}
+
+HcclResult BroadcastOutPlace(
+    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream)
+{
+    HCCL_INFO("Start to execute BroadcastOutPlace");
+    u32 userRankSize;
+    CHK_RET(HcclGetRankSize(comm, &userRankSize));
+
+    CHK_RET(BroadcastOutPlacePrepareParam(param, buf, count, dataType, root, stream));
 
     CHK_RET(HcclGetOpExpansionMode(comm, param));
 
@@ -266,6 +273,10 @@ HcclResult BroadcastOutPlace(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+        && param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        CheckAndSetSymmetricMemory(param);
+    }
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName));
     return HCCL_SUCCESS;
 }

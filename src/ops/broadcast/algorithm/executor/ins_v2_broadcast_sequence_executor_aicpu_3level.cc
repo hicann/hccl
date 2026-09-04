@@ -216,6 +216,13 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     CHK_RET(InitExecutorInfo(param, resCtx));
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -558,11 +565,53 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     templateAllgatherResourceL0.threads = resCtx.threads;
     CHK_RET(GenTempResource(resCtx, 0, algTemplateAllGatherL0, templateAllgatherResourceL0));
 
+    // 对称内存零拷贝：所有模板直接使用用户buffer，bypass ccl buffer
+    if (param.supportSymmetricMemory) {
+        tempAlgParamsScatterL0.buffInfo.outputPtr = param.inputPtr;
+        tempAlgParamsScatterL0.buffInfo.outBuffType = BufferType::INPUT;
+        tempAlgParamsScatterL0.enableRemoteMemAccess = true;
+
+        tempAlgParamsScatterL1.buffInfo.inputPtr = param.inputPtr;
+        tempAlgParamsScatterL1.buffInfo.outputPtr = param.inputPtr;
+        tempAlgParamsScatterL1.buffInfo.inBuffType = BufferType::INPUT;
+        tempAlgParamsScatterL1.buffInfo.outBuffType = BufferType::INPUT;
+        tempAlgParamsScatterL1.enableRemoteMemAccess = true;
+
+        if (!skipLevel2_) {
+            tempAlgParamsScatterL2.buffInfo.inputPtr = param.inputPtr;
+            tempAlgParamsScatterL2.buffInfo.outputPtr = param.inputPtr;
+            tempAlgParamsScatterL2.buffInfo.inBuffType = BufferType::INPUT;
+            tempAlgParamsScatterL2.buffInfo.outBuffType = BufferType::INPUT;
+            tempAlgParamsScatterL2.enableRemoteMemAccess = true;
+
+            tempAlgParamsAllGatherL2.buffInfo.inputPtr = param.inputPtr;
+            tempAlgParamsAllGatherL2.buffInfo.outputPtr = param.inputPtr;
+            tempAlgParamsAllGatherL2.buffInfo.inBuffType = BufferType::INPUT;
+            tempAlgParamsAllGatherL2.buffInfo.outBuffType = BufferType::INPUT;
+            tempAlgParamsAllGatherL2.enableRemoteMemAccess = true;
+        }
+
+        tempAlgParamsAllGatherL1.buffInfo.inputPtr = param.inputPtr;
+        tempAlgParamsAllGatherL1.buffInfo.outputPtr = param.inputPtr;
+        tempAlgParamsAllGatherL1.buffInfo.inBuffType = BufferType::INPUT;
+        tempAlgParamsAllGatherL1.buffInfo.outBuffType = BufferType::INPUT;
+        tempAlgParamsAllGatherL1.enableRemoteMemAccess = true;
+
+        tempAlgParamsAllGatherL0.buffInfo.inputPtr = param.inputPtr;
+        tempAlgParamsAllGatherL0.buffInfo.inBuffType = BufferType::INPUT;
+        tempAlgParamsAllGatherL0.enableRemoteMemAccess = true;
+        HCCL_INFO(
+            "[BroadcastSequenceMesh1dNHRNHRExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
+
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     u64 dataCount_ = param.DataDes.count;
     u64 maxCountPerLoop
         = tempAlgParamsScatterL0.buffInfo.hcclBuff.size / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_;
+    if (param.supportSymmetricMemory) {
+        maxCountPerLoop = dataCount_;
+    }
     CHK_PRT_RET(
         maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0, dataTypeSize_[%llu].", __func__, dataTypeSize_),
         HCCL_E_INTERNAL);

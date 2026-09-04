@@ -174,14 +174,9 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RootSendData(
     u64 sendDstOffset0 = sliceInfoVec[remoteRankIdx][0].offset;
 
     const ChannelInfo& linkSend = channels.at(remoteRank)[0];
-    void* DstPtr = linkSend.remoteCclMem.addr;
-
-    if (dstBufferType_ == BufferType::HCCL_BUFFER) {
-        sendDstOffset0 += tempAlgParams.buffInfo.hcclBuffBaseOff;
-    } else {
-        sendDstOffset0 += tempAlgParams.buffInfo.outBuffBaseOff;
-        DstPtr = linkSend.remoteOutputGraphMode.addr;
-    }
+    void* DstPtr = (!enableRemoteMemAccess_) ? linkSend.remoteCclMem.addr : linkSend.remoteOutputGraphMode.addr;
+    sendDstOffset0
+        += (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff : tempAlgParams.buffInfo.outBuffBaseOff;
     DataSlice sendSrcSlice0
         = DataSlice(tempAlgParams.buffInfo.inputPtr, sendSrcOffset0, sliceInfoVec[remoteRankIdx][0].size);
     DataSlice sendDstSlice0 = DataSlice(DstPtr, sendDstOffset0, sliceInfoVec[remoteRankIdx][0].size);
@@ -196,12 +191,8 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RootSendData(
     u64 sendSrcOffset1 = sliceInfoVec[myRankIdx][0].offset + memOffset;
     u64 sendDstOffset1 = sliceInfoVec[myRankIdx][0].offset;
 
-    if (dstBufferType_ == BufferType::HCCL_BUFFER) {
-        sendDstOffset1 += tempAlgParams.buffInfo.hcclBuffBaseOff;
-    } else {
-        sendDstOffset1 += tempAlgParams.buffInfo.outBuffBaseOff;
-        DstPtr = linkSend.remoteOutputGraphMode.addr;
-    }
+    sendDstOffset1
+        += (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff : tempAlgParams.buffInfo.outBuffBaseOff;
     DataSlice sendSrcSlice1
         = DataSlice(tempAlgParams.buffInfo.inputPtr, sendSrcOffset1, sliceInfoVec[myRankIdx][0].size);
     DataSlice sendDstSlice1 = DataSlice(DstPtr, sendDstOffset1, sliceInfoVec[myRankIdx][0].size);
@@ -241,13 +232,9 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RankRecvData(
     u64 sendSrcOffset0 = sliceInfoVec[myRankIdx][0].offset + memOffset;
     u64 sendDstOffset0 = sliceInfoVec[myRankIdx][0].offset;
 
-    void* DstPtr = tempAlgParams.buffInfo.hcclBuff.addr;
-    if (dstBufferType_ == BufferType::HCCL_BUFFER) {
-        sendDstOffset0 += tempAlgParams.buffInfo.hcclBuffBaseOff;
-    } else {
-        sendDstOffset0 += tempAlgParams.buffInfo.outBuffBaseOff;
-        DstPtr = tempAlgParams.buffInfo.outputPtr;
-    }
+    void* DstPtr = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+    sendDstOffset0
+        += (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff : tempAlgParams.buffInfo.outBuffBaseOff;
     const ChannelInfo& linkRecv = channels.at(remoteRank)[0];
     HCCL_DEBUG("[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u] resource end", myRank_);
 
@@ -269,12 +256,8 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RankRecvData(
     u64 sendSrcOffset1 = sliceInfoVec[rootIdx][0].offset + memOffset;
     u64 sendDstOffset1 = sliceInfoVec[rootIdx][0].offset;
 
-    if (dstBufferType_ == BufferType::HCCL_BUFFER) {
-        sendDstOffset1 += tempAlgParams.buffInfo.hcclBuffBaseOff;
-    } else {
-        sendDstOffset1 += tempAlgParams.buffInfo.outBuffBaseOff;
-        DstPtr = tempAlgParams.buffInfo.outputPtr;
-    }
+    sendDstOffset1
+        += (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff : tempAlgParams.buffInfo.outBuffBaseOff;
     DataSlice recvSrcSlice1 = DataSlice(tempAlgParams.buffInfo.inputPtr, sendSrcOffset1, sliceInfoVec[rootIdx][0].size);
     DataSlice recvDstSlice1 = DataSlice(DstPtr, sendDstOffset1, sliceInfoVec[rootIdx][0].size);
 
@@ -357,29 +340,22 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RunAllGather(
         u64 recvSrcOffset = sliceInfoVec[remoteRankIdx][0].offset;
         u64 recvDstOffset = sliceInfoVec[remoteRankIdx][0].offset;
 
-        void* SrcPtr = tempAlgParams.buffInfo.hcclBuff.addr;
-        void* DstPtr = tempAlgParams.buffInfo.hcclBuff.addr;
-
         const ChannelInfo& linkSendRecv = channels.at(remoteRank)[0];
-        void* remoteDstPtr = linkSendRecv.remoteCclMem.addr;
 
-        if (srcBufferType_ == BufferType::HCCL_BUFFER) {
-            sendSrcOffset += tempAlgParams.buffInfo.hcclBuffBaseOff;
-            recvSrcOffset += tempAlgParams.buffInfo.hcclBuffBaseOff;
-        } else {
-            sendSrcOffset += tempAlgParams.buffInfo.inBuffBaseOff;
-            recvSrcOffset += tempAlgParams.buffInfo.inBuffBaseOff;
-            SrcPtr = tempAlgParams.buffInfo.inputPtr;
-            DstPtr = tempAlgParams.buffInfo.outputPtr;
-            remoteDstPtr = linkSendRecv.remoteOutputGraphMode.addr;
-        }
-        if (dstBufferType_ == BufferType::HCCL_BUFFER) {
-            sendDstOffset += tempAlgParams.buffInfo.hcclBuffBaseOff;
-            recvDstOffset += tempAlgParams.buffInfo.hcclBuffBaseOff;
-        } else {
-            sendDstOffset += tempAlgParams.buffInfo.outBuffBaseOff;
-            recvDstOffset += tempAlgParams.buffInfo.outBuffBaseOff;
-        }
+        void* SrcPtr
+            = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.inputPtr;
+        void* DstPtr
+            = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
+        void* remoteDstPtr
+            = (!enableRemoteMemAccess_) ? linkSendRecv.remoteCclMem.addr : linkSendRecv.remoteOutputGraphMode.addr;
+        u64 sendSrcBaseOff
+            = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff : tempAlgParams.buffInfo.inBuffBaseOff;
+        u64 sendDstBaseOff = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuffBaseOff :
+                                                         tempAlgParams.buffInfo.outBuffBaseOff;
+        sendSrcOffset += sendSrcBaseOff;
+        recvSrcOffset += sendSrcBaseOff;
+        sendDstOffset += sendDstBaseOff;
+        recvDstOffset += sendDstBaseOff;
         DataSlice sendSrcSlice = DataSlice(SrcPtr, sendSrcOffset, sliceInfoVec[myRankIdx][0].size);
         DataSlice sendDstSlice = DataSlice(remoteDstPtr, sendDstOffset, sliceInfoVec[myRankIdx][0].size);
         std::vector<DataSlice> sendSrcSliceVec = {sendSrcSlice};
@@ -445,10 +421,6 @@ HcclResult InsTempBroadcastMesh1DTwoShot::KernelRun(
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     CHK_PRT_RET(templateRankSize_ == 0, HCCL_ERROR("[%s] templateRankSize_ is 0", __func__), HCCL_E_INTERNAL);
 
-    if (!enableRemoteMemAccess_) {
-        srcBufferType_ = BufferType::HCCL_BUFFER;
-        dstBufferType_ = BufferType::HCCL_BUFFER;
-    }
     for (int i = 0; i < subCommRanks_[0].size(); i++) {
         tempVirtRankMap_.insert(std::make_pair(subCommRanks_[0][i], i));
     }

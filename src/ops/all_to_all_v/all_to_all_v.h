@@ -54,11 +54,15 @@ constexpr u64 SEND_COUNT_IDX = 0;
 constexpr u64 RECV_COUNT_IDX = 1;
 constexpr u64 SEND_DISPL_IDX = 2;
 constexpr u64 RECV_DISPL_IDX = 3;
+constexpr u64 PEER_RECV_DISPL_IDX = 4;
+
 HcclResult
 ConvertAlltoAllParam(const u64 recvCount, const u32 rankSize, std::vector<u64>& sdispls, std::vector<u64>& rdispls);
 HcclResult ConvertAlltoAllVCParam(
     const u32 rankSize, const u32 userRank, const void* sendCountMatrix, std::vector<u64>& sendCounts,
     std::vector<u64>& recvCounts, std::vector<u64>& sdispls, std::vector<u64>& rdispls);
+HcclResult
+ConvertPeerRdispls(const u32 rankSize, const u32 userRank, const void* sendCountMatrix, std::vector<u64>& peerRdispls);
 HcclResult GenResPack(
     const char* tag, void** streams, const size_t streamCount, void* scratchMemAddr, const uint64_t scratchMemSize,
     ResPackGraphMode& resPack);
@@ -83,15 +87,23 @@ HcclResult CheckBufNullptr(
 HcclResult AlltoAllVConstructOpParam(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, OpMode opMode, u64 varMemSize, OpParam& param);
+    HcclCMDType opType, u32 rankSize, OpMode opMode, u64 varMemSize, OpParam& param, const void* peerRdispls = nullptr,
+    bool hasPeerRdisplsSlot = false);
+HcclResult PreCheckSymmetricMemory(
+    OpParam& probeParam, HcclComm comm, OpMode opMode, HcclCMDType opType, const void* sendBuf, const void* sendCounts,
+    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize);
+HcclResult AlltoAllVExecDispatch(
+    HcclComm comm, OpParam& param, const OpParam& probeParam, OpMode opMode, u32 rankSize, bool& useInnerOp,
+    const ResPackGraphMode& resPack);
 HcclResult AlltoAllVOutPlaceCommon(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, bool& useInnerOp, OpMode opMode, const ResPackGraphMode& resPack);
+    HcclCMDType opType, u32 rankSize, bool& useInnerOp, OpMode opMode, const ResPackGraphMode& resPack,
+    const void* peerRdispls = nullptr);
 HcclResult AlltoAllVOutPlace(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, bool& useInnerOp);
+    HcclCMDType opType, u32 rankSize, bool& useInnerOp, const void* peerRdispls = nullptr);
 HcclResult AlltoAllVOutPlaceGraphMode(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,

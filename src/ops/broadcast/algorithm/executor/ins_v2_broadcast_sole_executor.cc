@@ -102,8 +102,15 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
 {
     HCCL_INFO("[InsV2BroadcastSoleExecutor][Orchestrate] Orchestrate Start");
     maxTmpMemSize_ = resCtx.cclMem.size; // maxTmpMemSize_设定为cclIn的大小，op中将申请的HcclBuff全给了cclIn
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -145,7 +152,9 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParams.buffInfo.outBuffType = BufferType::INPUT;
     tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    if (std::string(param.algName) != "AicpuBroadcastSoleNHR") {
+        tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    }
     CHK_PTR_NULL(tempAlgParams.buffInfo.inputPtr);
     CHK_PTR_NULL(tempAlgParams.buffInfo.outputPtr);
     CHK_PTR_NULL(tempAlgParams.buffInfo.hcclBuff.addr);
@@ -194,6 +203,12 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         HCCL_ERROR("[InsV2BroadcastSoleExecutor][OrchestrateOpbase] maxDataCountPerLoop is 0"), HCCL_E_INTERNAL);
 
     u64 loopTimes = dataSize / maxLoopOutputSize + static_cast<u64>(dataSize % maxLoopOutputSize != 0);
+    // 如果是对称内存，每次传输的大小不受cclbuffer和UB_MAX_DATA_SIZE的限制
+    if (param.supportSymmetricMemory) {
+        loopTimes = 1;
+        tempAlgParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2BroadcastSoleExecutor][OrchestrateOpbase] %s: symmetric memory enabled", param.algName);
+    }
     HCCL_INFO(
         "[InsV2BroadcastSoleExecutor][OrchestrateOpbase] myRank_[%llu], dataSize[%llu], dataTypeSize_[%llu], "
         "maxDataCountPerLoop[%llu], loopTimes[%llu]",

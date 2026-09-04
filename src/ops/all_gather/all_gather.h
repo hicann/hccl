@@ -49,9 +49,6 @@ HcclResult AllGatherInitAndCheck(
     HcclComm comm, void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream,
     std::string& opTag);
 
-// 仅当输入和输出都位于对称窗口内时，记录窗口与偏移并启用对称内存路径。
-bool AllGatherSupportSymmetricMemory(OpParam& opParam);
-
 HcclResult AllGatherEntryLog(
     void* sendBuf, void* recvBuf, uint64_t sendCount, HcclDataType dataType, aclrtStream stream, const std::string& tag,
     const std::string& opName, bool forceLog = false);

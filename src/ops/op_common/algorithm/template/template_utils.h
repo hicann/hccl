@@ -227,7 +227,6 @@ struct TemplateDataParams {
     u64 outputRepeatStride{0};
     u64 tailSize{0};
     bool enableRemoteMemAccess{false};
-    bool supportSymmetricMemory{false};
     u64 processedDataCount{0};
     u64 root{0};
     HcclDataType dataType{HCCL_DATA_TYPE_INT8};
@@ -239,6 +238,7 @@ struct TemplateDataParams {
     std::vector<u64> recvCounts;
     std::vector<u64> sdispls;
     std::vector<u64> rdispls;
+    std::vector<u64> peerRdispls;
     StepSliceInfo stepSliceInfo;
     BatchSendRecvOpType opType{BatchSendRecvOpType::DEFAULT};
     StepSliceInfo omniReadDstStepSliceInfo;
@@ -258,13 +258,13 @@ struct TemplateDataParams {
         binaryStream << outputRepeatStride;
         binaryStream << tailSize;
         binaryStream << enableRemoteMemAccess;
-        binaryStream << supportSymmetricMemory;
         binaryStream << allRankSliceSize;
         binaryStream << allRankDispls;
         binaryStream << sendCounts;
         binaryStream << recvCounts;
         binaryStream << sdispls;
         binaryStream << rdispls;
+        binaryStream << peerRdispls;
         binaryStream << allRankProcessedDataCount;
         binaryStream << root;
         binaryStream << dataType;
@@ -291,13 +291,13 @@ struct TemplateDataParams {
         binaryStream >> outputRepeatStride;
         binaryStream >> tailSize;
         binaryStream >> enableRemoteMemAccess;
-        binaryStream >> supportSymmetricMemory;
         binaryStream >> allRankSliceSize;
         binaryStream >> allRankDispls;
         binaryStream >> sendCounts;
         binaryStream >> recvCounts;
         binaryStream >> sdispls;
         binaryStream >> rdispls;
+        binaryStream >> peerRdispls;
         binaryStream >> allRankProcessedDataCount;
         binaryStream >> root;
         binaryStream >> dataType;
@@ -538,6 +538,9 @@ double CalcParallelDataSplitRatio(
 //     const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType,
 //     double fallbackRatio);
 const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType);
+
+HcclResult FillChannelSymWinPeerAddrs(
+    void* inputSymWindow, u64 inputOffset, void* outputSymWindow, u64 outputOffset, ChannelInfo& channel);
 
 } // namespace ops_hccl
 #endif

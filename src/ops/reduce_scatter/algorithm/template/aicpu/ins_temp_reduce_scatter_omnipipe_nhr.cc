@@ -49,7 +49,7 @@ HcclResult InsTempReduceScatterOmniPipeNHR::KernelRun(
     channels_ = templateResource.channels;
     dataType_ = param.DataDes.dataType;
     // 缓存 user input 对称窗口、窗口内偏移和开关，供 RunNHR 获取对端 input 地址。
-    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    enableRemoteMemAccess_ = param.supportSymmetricMemory;
     inputSymWindow_ = param.inputSymWindow;
     inputOffset_ = param.inputOffset;
 
@@ -149,7 +149,7 @@ HcclResult InsTempReduceScatterOmniPipeNHR::GetNHRDataSize(
 
             // 对称路径在 user input 上原位归约，对端地址由 RunNHR 传入。
             void* localAddr
-                = supportSymmetricMemory_ ? tempAlgParams_.buffInfo.inputPtr : tempAlgParams_.buffInfo.hcclBuff.addr;
+                = enableRemoteMemAccess_ ? tempAlgParams_.buffInfo.inputPtr : tempAlgParams_.buffInfo.hcclBuff.addr;
             DataSlice txSrcSlice = DataSlice(
                 localAddr, txScOff, dataSplitVec_[txIdx][rpt][channelIdx],
                 dataSplitVec_[txIdx][rpt][channelIdx] / dataTypeSize); // 发送源
@@ -249,12 +249,12 @@ HcclResult InsTempReduceScatterOmniPipeNHR::GetNHRRemoteAddrs(
     u32 recvFromRank, u32 sendToRank, const ChannelInfo& linkRecv, const ChannelInfo& linkSend, void*& recvRemoteAddr,
     void*& sendRemoteAddr)
 {
-    if (!supportSymmetricMemory_) {
+    if (!enableRemoteMemAccess_) {
         sendRemoteAddr = linkSend.remoteCclMem.addr;
         recvRemoteAddr = linkRecv.remoteCclMem.addr;
         return HcclResult::HCCL_SUCCESS;
     }
-    HcclResult ret = HcclSymWinGetPeerPointer(inputSymWindow_, inputOffset_, sendToRank, &sendRemoteAddr);
+    HcclResult ret = GetSymWinRemoteMem(inputSymWindow_, inputOffset_, sendToRank, &sendRemoteAddr);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS || sendRemoteAddr == nullptr,
         HCCL_ERROR(
@@ -262,7 +262,7 @@ HcclResult InsTempReduceScatterOmniPipeNHR::GetNHRRemoteAddrs(
             "the send target, sendToRank[%u], ret[%d], ptr[%p].",
             sendToRank, ret, sendRemoteAddr),
         HcclResult::HCCL_E_INTERNAL);
-    ret = HcclSymWinGetPeerPointer(inputSymWindow_, inputOffset_, recvFromRank, &recvRemoteAddr);
+    ret = GetSymWinRemoteMem(inputSymWindow_, inputOffset_, recvFromRank, &recvRemoteAddr);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS || recvRemoteAddr == nullptr,
         HCCL_ERROR(

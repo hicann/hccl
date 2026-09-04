@@ -167,15 +167,17 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(
     threadNum_ = templateResource.threads.size();
     dataType_ = param.all2AllVDataDes.sendType;
     dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
+    opType_ = param.opType;
+    enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
 
     bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempAlltoAllVMesh1D][KernelRun] Use Dma Read[%d]", isDmaRead_);
 
-    u32 myAlgRank = 0;
+    myAlgRank_ = 0;
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);
     if (iter != subCommRanks_[0].end()) {
-        myAlgRank = std::distance(subCommRanks_[0].begin(), iter);
+        myAlgRank_ = std::distance(subCommRanks_[0].begin(), iter);
     } else {
         HCCL_ERROR("[InsTempAlltoAllVMesh1D][KernelRun] subCommRanks_ or myRank_ is error.");
         return HCCL_E_INTERNAL;
@@ -183,7 +185,7 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(
     if (std::string(param.algName) != "AicpuAllToAllSoleMeshSingleChannel") {
         channelsPerRank_ = CalcChannelsPerRank(templateResource.channels); // 每个rank的channel数量的最大值
     }
-    CHK_RET(RunALLtoALL(templateResource.channels, templateResource.threads, tempAlgParams, myAlgRank));
+    CHK_RET(RunALLtoALL(templateResource.channels, templateResource.threads, tempAlgParams, myAlgRank_));
 
     HCCL_INFO("[InsTempAlltoAllVMesh1D][KernelRun] Run End");
     return HcclResult::HCCL_SUCCESS;
@@ -226,7 +228,7 @@ HcclResult InsTempAlltoAllVMesh1D::RunALLtoALL(
     }
     for (u32 roundIdx = 0; roundIdx < commLoops && remainRankSize > 0; roundIdx++) {
         CalcCommRankSetForOneLoop(roundIdx, remainRankSize, commRanks); // 计算本轮通信rank
-        if (isDmaRead_) {
+        if (isDmaRead_ && !enableRemoteMemAccess_) {
             if (roundIdx == 0) {
                 // 如果是read模式，第一轮做统一的前拷贝
                 CHK_RET(PreCopyByLoop(commRanks, channels, threads, tempAlgParams));
@@ -336,7 +338,7 @@ HcclResult InsTempAlltoAllVMesh1D::RunSendRecvByChannel(
         }
     }
     for (u32 channelId = 0; channelId < curValidChannelsSize; channelId++) {
-        if (roundIdx != 0 && isDmaRead_ && sendSizeSplit_[channelId] > 0) {
+        if (!enableRemoteMemAccess_ && roundIdx != 0 && isDmaRead_ && sendSizeSplit_[channelId] > 0) {
             CHK_RET(static_cast<HcclResult>(PreCopy(
                 tempAlgParams, threads[queIdx], myRankCclBuffIdx, remoteRank, sendSizeSplit_[channelId],
                 sendCountsSplit_[channelId], sendOffsetSplit_[channelId])));
@@ -348,34 +350,9 @@ HcclResult InsTempAlltoAllVMesh1D::RunSendRecvByChannel(
         std::vector<DataSlice> rxSrcSlices;
         std::vector<DataSlice> rxDstSlices;
 
-        void* remoteCclBuffAddr = channelRecv.remoteCclMem.addr;
-        // write模式下，本端src数据input buffer slice
-        DataSlice txSrcSlice = DataSlice(
-            tempAlgParams.buffInfo.inputPtr,
-            tempAlgParams.sdispls[remoteRank] * dataTypeSize_ + sendOffsetSplit_[channelId], sendSizeSplit_[channelId],
-            sendCountsSplit_[channelId]);
-        // write模式下，远端dst数据ccl buffer slice
-        DataSlice txDstSlice = DataSlice(
-            remoteCclBuffAddr,
-            remoteCclBuffIdx * tempAlgParams.inputSliceStride + tempAlgParams.buffInfo.hcclBuffBaseOff
-                + sendOffsetSplit_[channelId],
-            sendSizeSplit_[channelId], sendCountsSplit_[channelId]);
-        // read模式下，远端src数据ccl buffer slice
-        DataSlice rxSrcSlice = DataSlice(
-            remoteCclBuffAddr,
-            remoteCclBuffIdx * tempAlgParams.inputSliceStride + tempAlgParams.buffInfo.hcclBuffBaseOff
-                + recvOffsetSplit_[channelId],
-            recvSizeSplit_[channelId], recvCountsSplit_[channelId]);
-        // read模式下，本端dst数据output buffer slice
-        DataSlice rxDstSlice = DataSlice(
-            tempAlgParams.buffInfo.outputPtr,
-            tempAlgParams.rdispls[remoteRank] * dataTypeSize_ + recvOffsetSplit_[channelId], recvSizeSplit_[channelId],
-            recvCountsSplit_[channelId]);
-
-        txSrcSlices.push_back(txSrcSlice);
-        txDstSlices.push_back(txDstSlice);
-        rxSrcSlices.push_back(rxSrcSlice);
-        rxDstSlices.push_back(rxDstSlice);
+        CHK_RET(BuildDataSlices(
+            tempAlgParams, remoteRank, channelSend, channelRecv, channelId, remoteCclBuffIdx, txSrcSlices, txDstSlices,
+            rxSrcSlices, rxDstSlices));
 
         DataInfo sendInfo{channelSend, {txSrcSlices, txDstSlices}, dataType_};
         DataInfo recvInfo{channelRecv, {rxSrcSlices, rxDstSlices}, dataType_};
@@ -386,7 +363,7 @@ HcclResult InsTempAlltoAllVMesh1D::RunSendRecvByChannel(
             "[InsTempAlltoAllVMesh1D][RunSendRecvByLoop] do send recv write on thread[%u], channelId[%u], "
             "send size[%llu], recv size[%llu], remote rank[%u].",
             queIdx, channelId, sendSizeSplit_[channelId], recvSizeSplit_[channelId], remoteRank);
-        if (!isDmaRead_ && recvSizeSplit_[channelId] > 0) {
+        if (!enableRemoteMemAccess_ && !isDmaRead_ && recvSizeSplit_[channelId] > 0) {
             CHK_RET(PostCopy(
                 tempAlgParams, threads[queIdx], myRankCclBuffIdx, remoteRank, recvSizeSplit_[channelId],
                 recvCountsSplit_[channelId], recvOffsetSplit_[channelId]));
@@ -436,6 +413,95 @@ HcclResult InsTempAlltoAllVMesh1D::RunSendRecv(
                     HcclResult::HCCL_E_INTERNAL);
             }
         }
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempAlltoAllVMesh1D::BuildDataSlices(
+    const TemplateDataParams& tempAlgParams, const u32 remoteRank, const ChannelInfo& channelSend,
+    const ChannelInfo& channelRecv, const u32 channelId, const u32 remoteCclBuffIdx,
+    std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices,
+    std::vector<DataSlice>& rxDstSlices) const
+{
+    if (enableRemoteMemAccess_) {
+        CHK_RET(BuildRemoteMemSlices(
+            tempAlgParams, remoteRank, channelSend, channelRecv, channelId, txSrcSlices, txDstSlices, rxSrcSlices,
+            rxDstSlices));
+    } else {
+        void* remoteCclBuffAddr = channelRecv.remoteCclMem.addr;
+        // write模式下，本端src数据input buffer slice
+        DataSlice txSrcSlice = DataSlice(
+            tempAlgParams.buffInfo.inputPtr,
+            tempAlgParams.sdispls[remoteRank] * dataTypeSize_ + sendOffsetSplit_[channelId], sendSizeSplit_[channelId],
+            sendCountsSplit_[channelId]);
+        // write模式下，远端dst数据ccl buffer slice
+        DataSlice txDstSlice = DataSlice(
+            remoteCclBuffAddr,
+            remoteCclBuffIdx * tempAlgParams.inputSliceStride + tempAlgParams.buffInfo.hcclBuffBaseOff
+                + sendOffsetSplit_[channelId],
+            sendSizeSplit_[channelId], sendCountsSplit_[channelId]);
+        // read模式下，远端src数据ccl buffer slice
+        DataSlice rxSrcSlice = DataSlice(
+            remoteCclBuffAddr,
+            remoteCclBuffIdx * tempAlgParams.inputSliceStride + tempAlgParams.buffInfo.hcclBuffBaseOff
+                + recvOffsetSplit_[channelId],
+            recvSizeSplit_[channelId], recvCountsSplit_[channelId]);
+        // read模式下，本端dst数据output buffer slice
+        DataSlice rxDstSlice = DataSlice(
+            tempAlgParams.buffInfo.outputPtr,
+            tempAlgParams.rdispls[remoteRank] * dataTypeSize_ + recvOffsetSplit_[channelId], recvSizeSplit_[channelId],
+            recvCountsSplit_[channelId]);
+
+        txSrcSlices.push_back(txSrcSlice);
+        txDstSlices.push_back(txDstSlice);
+        rxSrcSlices.push_back(rxSrcSlice);
+        rxDstSlices.push_back(rxDstSlice);
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempAlltoAllVMesh1D::BuildRemoteMemSlices(
+    const TemplateDataParams& tempAlgParams, const u32 remoteRank, const ChannelInfo& channelSend,
+    const ChannelInfo& channelRecv, const u32 channelId, std::vector<DataSlice>& txSrcSlices,
+    std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices, std::vector<DataSlice>& rxDstSlices) const
+{
+    if (opType_ == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        // alltoallvc对称内存零拷贝：远端用peerRdispls，只需发送切片
+        (void)channelRecv;
+        void* remoteOutputAddr = channelSend.remoteOutputGraphMode.addr;
+        DataSlice txSrcSlice = DataSlice(
+            tempAlgParams.buffInfo.inputPtr,
+            tempAlgParams.sdispls[remoteRank] * dataTypeSize_ + sendOffsetSplit_[channelId], sendSizeSplit_[channelId],
+            sendCountsSplit_[channelId]);
+        DataSlice txDstSlice = DataSlice(
+            remoteOutputAddr, tempAlgParams.peerRdispls[remoteRank] * dataTypeSize_ + sendOffsetSplit_[channelId],
+            sendSizeSplit_[channelId], sendCountsSplit_[channelId]);
+        txSrcSlices.push_back(txSrcSlice);
+        txDstSlices.push_back(txDstSlice);
+    } else {
+        // alltoall对称内存零拷贝：本端用outputSliceStride，远端用outputSliceStride，完整send+recv切片
+        u64 sendBaseOff = remoteRank * tempAlgParams.outputSliceStride + tempAlgParams.buffInfo.inBuffBaseOff;
+        u64 recvBaseOff = remoteRank * tempAlgParams.outputSliceStride + tempAlgParams.buffInfo.outBuffBaseOff;
+        u64 peerRecvOff = myAlgRank_ * tempAlgParams.outputSliceStride + tempAlgParams.buffInfo.outBuffBaseOff;
+        u64 peerSendOff = myAlgRank_ * tempAlgParams.outputSliceStride + tempAlgParams.buffInfo.inBuffBaseOff;
+
+        DataSlice txSrcSlice = DataSlice(
+            tempAlgParams.buffInfo.inputPtr, sendBaseOff + sendOffsetSplit_[channelId], sendSizeSplit_[channelId],
+            sendCountsSplit_[channelId]);
+        DataSlice txDstSlice = DataSlice(
+            channelSend.remoteOutputGraphMode.addr, peerRecvOff + sendOffsetSplit_[channelId],
+            sendSizeSplit_[channelId], sendCountsSplit_[channelId]);
+        DataSlice rxSrcSlice = DataSlice(
+            channelRecv.remoteInputGraphMode.addr, peerSendOff + recvOffsetSplit_[channelId], recvSizeSplit_[channelId],
+            recvCountsSplit_[channelId]);
+        DataSlice rxDstSlice = DataSlice(
+            tempAlgParams.buffInfo.outputPtr, recvBaseOff + recvOffsetSplit_[channelId], recvSizeSplit_[channelId],
+            recvCountsSplit_[channelId]);
+
+        txSrcSlices.push_back(txSrcSlice);
+        txDstSlices.push_back(txDstSlice);
+        rxSrcSlices.push_back(rxSrcSlice);
+        rxDstSlices.push_back(rxDstSlice);
     }
     return HcclResult::HCCL_SUCCESS;
 }

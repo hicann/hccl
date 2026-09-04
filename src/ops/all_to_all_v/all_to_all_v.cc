@@ -180,7 +180,10 @@ HcclResult HcclAlltoAllVC(
     std::vector<u64> recvCounts(rankSize, 0);
     std::vector<u64> sdispls(rankSize, 0);
     std::vector<u64> rdispls(rankSize, 0);
+    // 额外构造一个peerRdispls矩阵，存储对端recvBuf中本端的数据偏移地址
+    std::vector<u64> peerRdispls(rankSize, 0);
     CHK_RET(ConvertAlltoAllVCParam(rankSize, userRank, sendCountMatrix, sendCounts, recvCounts, sdispls, rdispls));
+    CHK_RET(ConvertPeerRdispls(rankSize, userRank, sendCountMatrix, peerRdispls));
     CHK_RET(CheckBufNullptr(sendCounts.data(), rankSize, sendBuf, std::string(__func__), "sendBuf"));
     CHK_RET(CheckBufNullptr(recvCounts.data(), rankSize, recvBuf, std::string(__func__), "recvBuf"));
 
@@ -194,7 +197,7 @@ HcclResult HcclAlltoAllVC(
     CHK_RET_AND_PRINT_IDE(
         AlltoAllVOutPlace(
             sendBuf, sendCounts.data(), sdispls.data(), recvBuf, recvCounts.data(), rdispls.data(), recvType, comm,
-            stream, tag, HcclCMDType::HCCL_CMD_ALLTOALLVC, rankSize, useInnerOp),
+            stream, tag, HcclCMDType::HCCL_CMD_ALLTOALLVC, rankSize, useInnerOp, peerRdispls.data()),
         tag.c_str());
 
     CHK_RET(LogHcclExit("HcclAlltoAllVC", tag.c_str(), startut));
@@ -450,6 +453,21 @@ HcclResult ConvertAlltoAllVCParam(
         rdispls[i] = dataCountOffset;
         dataCountOffset += recvCounts[i];
     }
+
+    return HCCL_SUCCESS;
+}
+
+HcclResult
+ConvertPeerRdispls(const u32 rankSize, const u32 userRank, const void* sendCountMatrix, std::vector<u64>& peerRdispls)
+{
+    const u64* data = static_cast<const u64*>(sendCountMatrix);
+    for (u64 j = 0; j < rankSize; j++) {
+        u64 peerRecvOff = 0;
+        for (u64 k = 0; k < userRank; k++) {
+            peerRecvOff += data[k * rankSize + j]; // matrix[k][j]
+        }
+        peerRdispls[j] = peerRecvOff;
+    }
     return HCCL_SUCCESS;
 }
 
@@ -623,7 +641,8 @@ HcclResult ConstructVarData(
 HcclResult AlltoAllVConstructOpParam(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, OpMode opMode, u64 varMemSize, OpParam& param)
+    HcclCMDType opType, u32 rankSize, OpMode opMode, u64 varMemSize, OpParam& param, const void* peerRdispls,
+    bool hasPeerRdisplsSlot)
 {
     CHK_RET(HcclGetCommName(comm, param.commName));
     param.stream = stream;
@@ -666,41 +685,52 @@ HcclResult AlltoAllVConstructOpParam(
     param.all2AllVDataDes.sdispls = data + SEND_DISPL_IDX * rankSize;
     param.all2AllVDataDes.rdispls = data + RECV_DISPL_IDX * rankSize;
 
-    for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize; i++) {
+    if (hasPeerRdisplsSlot && peerRdispls != nullptr) {
+        const u64* peerRdisplsData = static_cast<const u64*>(peerRdispls);
+        u64* peerRdisplsSlot = data + PEER_RECV_DISPL_IDX * rankSize;
+        for (u64 i = 0; i < rankSize; i++) {
+            peerRdisplsSlot[i] = peerRdisplsData[i];
+        }
+        param.all2AllVDataDes.peerRdispls = peerRdisplsSlot;
+    }
+
+    u64 logNum = varMemSize / (rankSize * sizeof(u64));
+    for (u64 i = 0; i < logNum * rankSize; i++) {
         HCCL_INFO("[AlltoAllVConstructOpParam] varData[%u] is [%u]", i, data[i]);
     }
     HCCL_INFO("[AlltoAllVConstructOpParam] HCCL_SIZE_TABLE[dataType] is [%u]", HCCL_SIZE_TABLE[dataType]);
     return HCCL_SUCCESS;
 }
 
-HcclResult AlltoAllVOutPlaceCommon(
-    const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
-    const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, bool& useInnerOp, OpMode opMode, const ResPackGraphMode& resPack)
+HcclResult PreCheckSymmetricMemory(
+    OpParam& probeParam, HcclComm comm, OpMode opMode, HcclCMDType opType, const void* sendBuf, const void* sendCounts,
+    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize)
 {
-    u64 varMemSize = ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64);
-    void* paramMem = malloc(sizeof(OpParam) + varMemSize);
-    if (!paramMem) {
-        // 内存分配失败
-        HCCL_ERROR("[AlltoAllVOutPlaceCommon] malloc OpParam failed!");
-        return HCCL_E_INTERNAL;
+    const u64* sendCountsData = static_cast<const u64*>(sendCounts);
+    const u64* recvCountsData = static_cast<const u64*>(recvCounts);
+    const u64* sdisplsData = static_cast<const u64*>(sdispls);
+    const u64* rdisplsData = static_cast<const u64*>(rdispls);
+    u64 inputSize = 0;
+    u64 outputSize = 0;
+    CHK_RET(
+        CalcInputOutputSize(sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, inputSize, outputSize));
+
+    probeParam.hcclComm = comm;
+    probeParam.inputPtr = const_cast<void*>(sendBuf);
+    probeParam.inputSize = inputSize;
+    probeParam.outputPtr = const_cast<void*>(recvBuf);
+    probeParam.outputSize = outputSize;
+    if (opMode == OpMode::OPBASE && GetHcommVersion() >= CANN_VERSION(9, 1, 0)
+        && (opType == HcclCMDType::HCCL_CMD_ALLTOALL || opType == HcclCMDType::HCCL_CMD_ALLTOALLVC)) {
+        CheckAndSetSymmetricMemory(probeParam);
     }
-    OpParam* tmpParamPtr = new (paramMem) OpParam();
-    auto deleter = [](OpParam* p) {
-        if (p) {
-            p->~OpParam();
-            free(p);
-        }
-    };
-    std::unique_ptr<OpParam, decltype(deleter)> paramPtr(tmpParamPtr, deleter);
-    OpParam& param = *paramPtr;
+    return HCCL_SUCCESS;
+}
 
-    CHK_RET(AlltoAllVConstructOpParam(
-        sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, dataType, comm, stream, tag, opType, rankSize,
-        opMode, varMemSize, param));
-
-    CHK_RET(HcclGetOpExpansionMode(comm, param));
-
+HcclResult AlltoAllVExecDispatch(
+    HcclComm comm, OpParam& param, const OpParam& probeParam, OpMode opMode, u32 rankSize, bool& useInnerOp,
+    const ResPackGraphMode& resPack)
+{
     // 9.0.0 ccu模式走老流程
     if (opMode == OpMode::OPBASE && GetHcommVersion() == CANN_VERSION(9, 0, 0)
         && param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -731,8 +761,55 @@ HcclResult AlltoAllVOutPlaceCommon(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_PTR_NULL(topoInfo);
     CHK_RET(Selector(comm, param, topoInfo, algName));
+    if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
+        && topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
+        param.inputSymWindow = probeParam.inputSymWindow;
+        param.inputOffset = probeParam.inputOffset;
+        param.outputSymWindow = probeParam.outputSymWindow;
+        param.outputOffset = probeParam.outputOffset;
+    }
 
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
+    return HCCL_SUCCESS;
+}
+
+HcclResult AlltoAllVOutPlaceCommon(
+    const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
+    const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
+    HcclCMDType opType, u32 rankSize, bool& useInnerOp, OpMode opMode, const ResPackGraphMode& resPack,
+    const void* peerRdispls)
+{
+    OpParam probeParam;
+    CHK_RET(PreCheckSymmetricMemory(
+        probeParam, comm, opMode, opType, sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, rankSize));
+
+    bool needPeerRdisplsSlot = (opType == HcclCMDType::HCCL_CMD_ALLTOALLVC && probeParam.supportSymmetricMemory);
+    u64 vectorNum = needPeerRdisplsSlot ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
+    u64 varMemSize = vectorNum * rankSize * sizeof(u64);
+    void* paramMem = malloc(sizeof(OpParam) + varMemSize);
+    if (!paramMem) {
+        // 内存分配失败
+        HCCL_ERROR("[AlltoAllVOutPlaceCommon] malloc OpParam failed!");
+        return HCCL_E_INTERNAL;
+    }
+    OpParam* tmpParamPtr = new (paramMem) OpParam();
+    auto deleter = [](OpParam* p) {
+        if (p) {
+            p->~OpParam();
+            free(p);
+        }
+    };
+    std::unique_ptr<OpParam, decltype(deleter)> paramPtr(tmpParamPtr, deleter);
+    OpParam& param = *paramPtr;
+
+    CHK_RET(AlltoAllVConstructOpParam(
+        sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, dataType, comm, stream, tag, opType, rankSize,
+        opMode, varMemSize, param, peerRdispls, needPeerRdisplsSlot));
+
+    CHK_RET(HcclGetOpExpansionMode(comm, param));
+
+    CHK_RET(AlltoAllVExecDispatch(comm, param, probeParam, opMode, rankSize, useInnerOp, resPack));
     return HCCL_SUCCESS;
 }
 
@@ -757,12 +834,12 @@ HcclResult AlltoAllVOutPlaceGraphMode(
 HcclResult AlltoAllVOutPlace(
     const void* sendBuf, const void* sendCounts, const void* sdispls, const void* recvBuf, const void* recvCounts,
     const void* rdispls, HcclDataType dataType, HcclComm comm, aclrtStream stream, const std::string& tag,
-    HcclCMDType opType, u32 rankSize, bool& useInnerOp)
+    HcclCMDType opType, u32 rankSize, bool& useInnerOp, const void* peerRdispls)
 {
     HCCL_INFO("Start to execute AlltoAllVOutPlace");
     CHK_RET(AlltoAllVOutPlaceCommon(
         sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, dataType, comm, stream, tag, opType, rankSize,
-        useInnerOp, OpMode::OPBASE, ResPackGraphMode()));
+        useInnerOp, OpMode::OPBASE, ResPackGraphMode(), peerRdispls));
     HCCL_INFO("Execute AlltoAllVOutPlace success.");
     return HCCL_SUCCESS;
 }

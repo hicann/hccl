@@ -78,6 +78,16 @@ private:
     HcclResult RunSendRecv(
         const SendRecvInfo& sendRecvInfo, const DataInfo& sendInfo, const DataInfo& recvInfo,
         const ThreadHandle& thread, const u32 channelId) const;
+    HcclResult BuildDataSlices(
+        const TemplateDataParams& tempAlgParams, const u32 remoteRank, const ChannelInfo& channelSend,
+        const ChannelInfo& channelRecv, const u32 channelId, const u32 remoteCclBuffIdx,
+        std::vector<DataSlice>& txSrcSlices, std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices,
+        std::vector<DataSlice>& rxDstSlices) const;
+    HcclResult BuildRemoteMemSlices(
+        const TemplateDataParams& tempAlgParams, const u32 remoteRank, const ChannelInfo& channelSend,
+        const ChannelInfo& channelRecv, const u32 channelId, std::vector<DataSlice>& txSrcSlices,
+        std::vector<DataSlice>& txDstSlices, std::vector<DataSlice>& rxSrcSlices,
+        std::vector<DataSlice>& rxDstSlices) const;
     HcclResult PreSyncInterThreadsPerRank(
         const ThreadHandle& mainThreadCurRank, const std::vector<ThreadHandle>& subThreadsCurRank) const;
     HcclResult PostSyncInterThreadsPerRank(
@@ -86,6 +96,8 @@ private:
     u64 dataTypeSize_{0};
     bool isDmaRead_{false};
     u32 concurrentSendRecvNum_{1};
+    u32 myAlgRank_{0};
+    HcclCMDType opType_{HcclCMDType::HCCL_CMD_INVALID};
     std::vector<u64> sendCountsSplit_;
     std::vector<u64> sendSizeSplit_;
     std::vector<u64> sendOffsetSplit_;

@@ -81,7 +81,7 @@ void InsTempAllGatherOmniPipeNHR::InitKernelParams(const OpParam& param, const T
     outputSymWindow_ = param.outputSymWindow;
     inputOffset_ = param.inputOffset;
     outputOffset_ = param.outputOffset;
-    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    enableRemoteMemAccess_ = param.supportSymmetricMemory;
 }
 
 HcclResult InsTempAllGatherOmniPipeNHR::SyncInterThreads(const std::vector<ThreadHandle>& threads, bool mainToSub)
@@ -206,8 +206,8 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
         u32 sendRank = GetRankFromMap(stepInfo.toRank);
         void* sendRemoteOut = nullptr;
         void* recvRemoteOut = nullptr;
-        if (supportSymmetricMemory_) {
-            HcclResult ret = HcclSymWinGetPeerPointer(outputSymWindow_, outputOffset_, sendRank, &sendRemoteOut);
+        if (enableRemoteMemAccess_) {
+            HcclResult ret = GetSymWinRemoteMem(outputSymWindow_, outputOffset_, sendRank, &sendRemoteOut);
             CHK_PRT_RET(
                 ret != HCCL_SUCCESS || sendRemoteOut == nullptr,
                 HCCL_ERROR(
@@ -216,7 +216,7 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
                     sendRank, ret, sendRemoteOut),
                 HcclResult::HCCL_E_INTERNAL);
 
-            ret = HcclSymWinGetPeerPointer(outputSymWindow_, outputOffset_, recvRank, &recvRemoteOut);
+            ret = GetSymWinRemoteMem(outputSymWindow_, outputOffset_, recvRank, &recvRemoteOut);
             CHK_PRT_RET(
                 ret != HCCL_SUCCESS || recvRemoteOut == nullptr,
                 HCCL_ERROR(
@@ -240,7 +240,7 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
             "[InsTempAllGatherOmniPipeNHR][RunAllGatherNHR] build communication step, rank[%u], "
             "rankSize[%u], recvFromAlgRank[%u], sendToAlgRank[%u], step[%u], stepCount[%u], sliceCount[%u].",
             myRank_, templateRankSize_, stepInfo.fromRank, stepInfo.toRank, step, nSteps, stepInfo.nSlices);
-        const bool needOutputOffset = supportSymmetricMemory_ || isLastStepRead;
+        const bool needOutputOffset = enableRemoteMemAccess_ || isLastStepRead;
         for (u32 i = 0; i < stepInfo.nSlices; ++i) {
             const u32 txIdx = stepInfo.txSliceIdxs[i];
             const u32 rxIdx = stepInfo.rxSliceIdxs[i];
@@ -261,7 +261,7 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
                     dataOffsetVec_[rxIdx][rpt][channelIdx], off.rxScratchBase);
 
                 // 对称路径在本端 outputPtr 与相应对端的 output 窗口之间直接收发。
-                if (supportSymmetricMemory_) {
+                if (enableRemoteMemAccess_) {
                     txSrcSlices.emplace_back(
                         tempAlgParams_.buffInfo.outputPtr, off.txOutOff, dataSplitVec_[txIdx][rpt][channelIdx],
                         dataSplitVec_[txIdx][rpt][channelIdx] / dataTypeSize);

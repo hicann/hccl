@@ -35,6 +35,8 @@ HcclResult HcclBroadcastGraphMode(
 #endif
 
 namespace ops_hccl {
+HcclResult BroadcastOutPlacePrepareParam(
+    OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, aclrtStream stream);
 HcclResult BroadcastOutPlace(
     OpParam& param, void* buf, uint64_t count, HcclDataType dataType, uint32_t root, HcclComm comm, aclrtStream stream);
 HcclResult BroadcastOutPlaceGraphMode(

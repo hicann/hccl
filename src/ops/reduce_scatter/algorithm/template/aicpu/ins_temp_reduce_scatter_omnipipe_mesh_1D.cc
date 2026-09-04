@@ -183,7 +183,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::KernelRun(
     threadNum_ = templateResource.threads.size();
     dataType_ = param.DataDes.dataType;
     // 缓存对称内存状态：RunReduceScatter 用窗口和偏移取得对端 input，PostReduce 据开关选择归约目标。
-    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    enableRemoteMemAccess_ = param.supportSymmetricMemory;
     inputSymWindow_ = param.inputSymWindow;
     inputOffset_ = param.inputOffset;
     HCCL_INFO(
@@ -228,7 +228,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::PostReduce(
     HCCL_INFO(
         "[InsTempReduceScatterOmniPipeMesh1D][PostReduce] start reducing peer temporary slices into the "
         "local target, rank[%u], symmetric[%d].",
-        myRank_, supportSymmetricMemory_);
+        myRank_, enableRemoteMemAccess_);
     // 普通路径的本 rank 初值由 executor 预拷到 ccl scratch；对称路径直接使用 user input 中的初值。
     void* cclBuffAddr = tempAlgParams.buffInfo.hcclBuff.addr;
     HCCL_INFO(
@@ -246,7 +246,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::PostReduce(
                 // 对称路径把对端临时分片归约到本端 user input 的本 rank 分片。
                 void* dstAddr = cclBuffAddr;
                 u64 dstBaseOff = tempAlgParams.buffInfo.outBuffBaseOff;
-                if (supportSymmetricMemory_) {
+                if (enableRemoteMemAccess_) {
                     dstAddr = tempAlgParams.buffInfo.inputPtr;
                     dstBaseOff = tempAlgParams.buffInfo.inBuffBaseOff;
                 }
@@ -274,7 +274,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::RunReduceScatter(
     HCCL_INFO(
         "[InsTempReduceScatterOmniPipeMesh1D][RunReduceScatter] start exchanging Mesh slices, "
         "rank[%u], channelCount[%zu], symmetric[%d].",
-        myRank_, channels.size(), supportSymmetricMemory_);
+        myRank_, channels.size(), enableRemoteMemAccess_);
     u32 myAlgRank = 0;
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);
     if (iter != subCommRanks_[0].end()) {
@@ -309,9 +309,9 @@ HcclResult InsTempReduceScatterOmniPipeMesh1D::RunReduceScatter(
         // 对称路径的发送源为本端 user input，接收源为对端 input；收发目标仍使用 scratch 临时分片。
         void* txSrcAddr = localCclBuffAddr;
         void* rxSrcAddr = remoteCclBuffAddr;
-        if (supportSymmetricMemory_) {
+        if (enableRemoteMemAccess_) {
             txSrcAddr = tempAlgParam.buffInfo.inputPtr;
-            HcclResult ret = HcclSymWinGetPeerPointer(inputSymWindow_, inputOffset_, remoteRank, &rxSrcAddr);
+            HcclResult ret = GetSymWinRemoteMem(inputSymWindow_, inputOffset_, remoteRank, &rxSrcAddr);
             CHK_PRT_RET(
                 ret != HCCL_SUCCESS || rxSrcAddr == nullptr,
                 HCCL_ERROR(

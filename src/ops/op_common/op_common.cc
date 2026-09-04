@@ -201,6 +201,7 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
         HCCL_DEBUG("[Selector] is aiv mode");
         CHK_RET(RegisterKernel()); // 该函数内部有防止重复加载的逻辑
     }
+
     CHK_RET(SetOpParamAlgTag(param, algName));
     // 设定执行超时时间
     CHK_RET(SetExecTimeout(param));
@@ -3834,5 +3835,32 @@ bool IsBarrierHostDpu(HcclComm comm)
         return true;
     }
     return false;
+}
+
+void CheckAndSetSymmetricMemory(OpParam& param)
+{
+    size_t inputOffset = 0;
+    size_t outputOffset = 0;
+
+    HcclResult ret
+        = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
+    if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {
+        HCCL_INFO(
+            "[%s] input[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.inputPtr,
+            param.inputSize, ret);
+        return;
+    }
+
+    ret = HcclCommSymWinGet(param.hcclComm, param.outputPtr, param.outputSize, &param.outputSymWindow, &outputOffset);
+    if (ret != HCCL_SUCCESS || param.outputSymWindow == nullptr) {
+        HCCL_INFO(
+            "[%s] output[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.outputPtr,
+            param.outputSize, ret);
+        return;
+    }
+    param.supportSymmetricMemory = true;
+    param.inputOffset = inputOffset;
+    param.outputOffset = outputOffset;
+    return;
 }
 } // namespace ops_hccl

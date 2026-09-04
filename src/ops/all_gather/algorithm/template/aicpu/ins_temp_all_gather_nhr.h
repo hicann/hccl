@@ -66,9 +66,12 @@ private:
         u64 rxPartialOffset;
         u64 txScratchOff;
         u64 rxScratchOff;
+        u64 txOutOff;
+        u64 rxOutOff;
         u64 txSliceSize;
         u64 rxSliceSize;
         u64 scratchBase;
+        u64 outBase;
     };
     SliceCalcInfo CalcSliceInfo(const AicpuNHRStepInfo& stepInfo, u32 rpt, u32 i, u32 channelIdx) const;
     enum class StepBuildMode { NORMAL, LAST_STEP_READ_TO_OUTPUT };

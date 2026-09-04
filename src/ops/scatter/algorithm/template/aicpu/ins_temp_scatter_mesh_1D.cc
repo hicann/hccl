@@ -182,10 +182,11 @@ HcclResult InsTempScatterMesh1D::KernelRun(
 HcclResult
 InsTempScatterMesh1D::PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
 {
-    // 非根节点 或 in/outBuffType均为CCL BUFFER 则跳过前拷贝
+    // 非根节点 或 in/outBuffType均为CCL BUFFER 或 零拷贝 则跳过前拷贝
     if (u32(myRank_) != root_
         || (tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER
-            && tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER)) {
+            && tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER)
+        || enableRemoteMemAccess_) {
         HCCL_INFO("[InsTempScatterMesh1D][PreCopy] skip precopy, myRank = %u, root = %u", myRank_, root_);
         return HCCL_SUCCESS;
     }

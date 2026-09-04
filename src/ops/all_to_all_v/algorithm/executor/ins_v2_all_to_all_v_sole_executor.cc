@@ -104,6 +104,13 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
             && resCtx.algHierarchyInfo.infos.size() > 1) {
@@ -114,8 +121,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
                     resCtx.channels.size(), CONST_ONE),
                 HCCL_E_PARA); // 框内和跨框场景都使用1D算法
             remoteRankToChannelInfo_.resize(CONST_ONE);
-            for (auto& channel : resCtx.channels[0]) {
+            for (auto channel : resCtx.channels[0]) {
                 u32 remoteRank = channel.remoteRank;
+                if (supportSymmetricMemory_) {
+                    CHK_RET(FillChannelSymWinPeerAddrs(
+                        inputSymWindow_, inputOffset_, outputSymWindow_, outputOffset_, channel));
+                }
                 remoteRankToChannelInfo_[0][remoteRank].push_back(channel);
             }
         } else {
@@ -131,8 +142,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     dataSize_ = dataCount_ * dataTypeSize_;
 
     // Init sendRevc data for alltoall/alltoallV/alltoallVC algorithm
+    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
+        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
         HCCL_ERROR("[CalcAlltoAllVSendRecvInfo] param.varMemSize [%llu] is invalid", param.varMemSize), HCCL_E_PARA);
     localSendRecvInfo_.sendCounts.resize(rankSize_, 0);
     localSendRecvInfo_.sendDispls.resize(rankSize_, 0);
@@ -320,6 +335,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.inputSliceStride = maxDataCountPerLoop * dataTypeSize_;
     // 这里用来放每张卡之间的stride大小
     tempAlgParams.outputSliceStride = maxSendOrRecvDataCount * dataTypeSize_;
+    // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
+    if (param.supportSymmetricMemory) {
+        loopTimes = 1;
+        tempAlgParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? maxSendOrRecvDataCount - processedDataCount : maxDataCountPerLoop;
 
@@ -366,6 +387,13 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             } else {
                 tempAlgParams.recvCounts[i] = 0;
                 tempAlgParams.rdispls[i] = rdispls[i] + recvCounts[i];
+            }
+        }
+
+        if (param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+            tempAlgParams.peerRdispls.resize(rankSize_, 0);
+            for (u64 i = 0; i < rankSize_; i++) {
+                tempAlgParams.peerRdispls[i] = reinterpret_cast<u64*>(param.all2AllVDataDes.peerRdispls)[i];
             }
         }
 

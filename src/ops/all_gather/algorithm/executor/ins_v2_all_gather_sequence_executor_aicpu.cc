@@ -206,6 +206,13 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     engine_ = param.engine;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     // ccu路径无channel数据，跳过RestoreChannelMap
     if (param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
@@ -254,7 +261,7 @@ void InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     interTempDataParams.inputRepeatStride = 0;
     interTempDataParams.outputRepeatStride = 0;
 
-    if (engine_ == CommEngine::COMM_ENGINE_CCU) {
+    if (engine_ == CommEngine::COMM_ENGINE_CCU || supportSymmetricMemory_) {
         interTempDataParams.buffInfo.outBuffBaseOff = rankIdxLevel0_ * dataSize_ + processedDataCount * dataTypeSize_;
         interTempDataParams.outputSliceStride = dataSize_ * rankSizeLevel0_;
     }
@@ -292,7 +299,7 @@ void InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     intraTempDataParams.inputRepeatStride = currDataCount * dataTypeSize_;
     intraTempDataParams.outputRepeatStride = dataSize_ * rankSizeLevel0_;
 
-    if (engine_ == CommEngine::COMM_ENGINE_CCU) {
+    if (engine_ == CommEngine::COMM_ENGINE_CCU || supportSymmetricMemory_) {
         intraTempDataParams.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
         intraTempDataParams.inputSliceStride = dataSize_;
         intraTempDataParams.inputRepeatStride = dataSize_ * rankSizeLevel0_;
@@ -341,8 +348,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     // 框间template
     TemplateDataParams interTempDataParams;
     interTempDataParams.buffInfo.inputPtr = param.inputPtr;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
-        // ccu: 用output作为中转，减少一次拷贝
+    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.supportSymmetricMemory) {
+        // ccu/零拷贝: 用output作为中转，减少一次拷贝
         interTempDataParams.buffInfo.outputPtr = param.outputPtr;
         interTempDataParams.buffInfo.outBuffType = BufferType::OUTPUT;
     } else {
@@ -360,8 +367,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 
     // 框内template
     TemplateDataParams intraTempDataParams;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
-        // ccu: 用output作为中转，input=output，isInputOutputEqual=1，跳过GroupCopy
+    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.supportSymmetricMemory) {
+        // ccu/零拷贝: 用output作为中转，input=output，isInputOutputEqual=1，跳过GroupCopy
         intraTempDataParams.buffInfo.inputPtr = param.outputPtr;
         intraTempDataParams.buffInfo.inBuffType = BufferType::OUTPUT;
     } else {
@@ -376,6 +383,13 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     // 构建框内template（aicpu路径需要SetchannelsPerRank）
     if (param.engine != CommEngine::COMM_ENGINE_CCU) {
         intraTempAlg.SetchannelsPerRank(remoteRankToChannelInfo_[0]);
+    }
+
+    // 对称内存零拷贝
+    if (param.supportSymmetricMemory) {
+        interTempDataParams.enableRemoteMemAccess = true;
+        intraTempDataParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2AllGatherSequenceExecutorAicpu][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
     }
 
     // ccl buffer按框数切分
@@ -400,6 +414,9 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     u64 maxCountPerLoop = 0;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         maxCountPerLoop = UB_MAX_DATA_SIZE / dataTypeSize_;
+    } else if (param.supportSymmetricMemory) {
+        // 对称内存零拷贝：不受cclBuffer限制，一次传完
+        maxCountPerLoop = dataCount_;
     } else {
         if (templateScratchMultiplier == 0) {
             HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);

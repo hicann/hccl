@@ -912,24 +912,34 @@ HcclResult ops_hccl::RestoreVarDataBatchSendRecv(OpParam& param)
 HcclResult ops_hccl::RestoreVarDataAlltoAllV(OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
+    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64),
+        param.varMemSize < minVectorNum * rankSize * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize * sizeof(u64),
         HCCL_ERROR(
             "[RestoreVarDataAlltoAllV] param.varMemSize [%llu] is invalid,"
-            " ALL_TO_ALL_V_VECTOR_NUM is [%u], rankSize is [%u], sizeof(u64) is [%u],",
-            param.varMemSize, ALL_TO_ALL_V_VECTOR_NUM, rankSize, sizeof(u64)),
+            " minVectorNum is [%llu], maxVectorNum is [%llu], rankSize is [%llu], sizeof(u64) is [%llu],",
+            param.varMemSize, minVectorNum, maxVectorNum, rankSize, sizeof(u64)),
         HCCL_E_PARA);
 
     constexpr u32 ALL_TO_ALL_V_OFFSET_SCOUNTS = 0;
     constexpr u32 ALL_TO_ALL_V_OFFSET_RECV_COUNTS = 1;
     constexpr u32 ALL_TO_ALL_V_OFFSET_SDISPLS = 2;
     constexpr u32 ALL_TO_ALL_V_OFFSET_RDISPLS = 3;
+    constexpr u32 ALL_TO_ALL_VC_OFFSET_PEER_RDISPLS = 4;
 
     u64* data = reinterpret_cast<u64*>(param.varData);
     param.all2AllVDataDes.sendCounts = data;
     param.all2AllVDataDes.recvCounts = data + ALL_TO_ALL_V_OFFSET_RECV_COUNTS * rankSize;
     param.all2AllVDataDes.sdispls = data + ALL_TO_ALL_V_OFFSET_SDISPLS * rankSize;
     param.all2AllVDataDes.rdispls = data + ALL_TO_ALL_V_OFFSET_RDISPLS * rankSize;
+
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC
+        && param.varMemSize == ALL_TO_ALL_VC_VECTOR_NUM * rankSize * sizeof(u64)) {
+        param.all2AllVDataDes.peerRdispls = data + ALL_TO_ALL_VC_OFFSET_PEER_RDISPLS * rankSize;
+    }
 
     return HCCL_SUCCESS;
 }

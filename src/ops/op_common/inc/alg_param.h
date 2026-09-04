@@ -27,6 +27,7 @@
 #include "alg_type.h"
 #include "hccl_res_dl.h"
 #include "hcomm_primitives_dl.h"
+#include "hccl_sym_win_dl.h"
 #include "hccl_rank_graph_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "binary_stream.h"
@@ -85,6 +86,8 @@ constexpr u32 TIME_S_TO_US = 1000000;
 constexpr u32 MAX_LENGTH = 128;
 constexpr u32 ALG_MAX_LENGTH = 128;
 
+// alltoallvc需要
+constexpr u64 ALL_TO_ALL_VC_VECTOR_NUM = 5;
 // alltoallv需要
 constexpr u64 ALL_TO_ALL_V_VECTOR_NUM = 4;
 constexpr u64 REDUCE_SCATTER_V_VECTOR_NUM = 2;
@@ -466,8 +469,8 @@ struct ChannelInfo {
     u32 dieId = INVALID_VALUE_RANKID; // A5用的, 用于识别Server间双Die POD链路
     ChannelHandle handle = 0;
     HcclMem remoteCclMem;          // A5用的
-    HcclMem remoteInputGraphMode;  // A5用的, 图模式下远端sendBuf地址
-    HcclMem remoteOutputGraphMode; // A5用的，图模式下远端recvBuf地址
+    HcclMem remoteInputGraphMode;  // A5用的, 图模式/对称内存下远端sendBuf地址
+    HcclMem remoteOutputGraphMode; // A5用的，图模式/对称内存下远端recvBuf地址
     HcclMem remoteInput;           // A3用的，cclIn
     HcclMem remoteOutput;          // A3用的, cclOut
 };
@@ -673,7 +676,8 @@ struct OpParam { // 不申请ctx，每个算子单独下发
             void* sendCounts;
             void* recvCounts;
             void* sdispls;
-            void* rdispls; // 指向变长区指针
+            void* rdispls;     // 指向变长区指针
+            void* peerRdispls; // AlltoAllVC零拷贝: 对端recvBuf中本端的数据偏移地址
         } all2AllVDataDes;
         struct {
             HcclDataType sendType;

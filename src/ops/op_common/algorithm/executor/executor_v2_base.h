@@ -151,6 +151,13 @@ protected:
     // dataSize
     u64 dataSize_ = 0;
     u64 dataTypeSize_ = 0;
+
+    // symmetric memory
+    bool supportSymmetricMemory_ = false;
+    u64 inputOffset_{0};
+    u64 outputOffset_{0};
+    void* inputSymWindow_;
+    void* outputSymWindow_;
 };
 
 } // namespace ops_hccl

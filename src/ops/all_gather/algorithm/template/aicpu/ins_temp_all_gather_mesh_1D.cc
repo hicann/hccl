@@ -113,14 +113,6 @@ HcclResult InsTempAllGatherMesh1D::KernelRun(
         HCCL_INFO("[InsTempAllGatherMesh1D] Rank [%d], get slicesize zero.", myRank_);
         return HCCL_SUCCESS;
     }
-    supportSymmetricMemory_ = tempAlgParams.supportSymmetricMemory;
-    if (supportSymmetricMemory_) {
-        HCCL_INFO("[InsTempAllGatherMesh1D] symmetric memory enabled");
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-    }
 
     threadNum_ = GetThreadNum();
     tempAlgParams_ = tempAlgParams;
@@ -149,7 +141,7 @@ HcclResult InsTempAllGatherMesh1D::KernelRun(
 
 HcclResult InsTempAllGatherMesh1D::RunAllGatherMeshOnChannel(
     const ThreadHandle& thread, const ChannelInfo& linkRemote, const u32 connectedRank, const u32 connectedAlgRank,
-    const u32 channelIdx, void* remoteOut)
+    const u32 channelIdx)
 {
     void* remoteCclBuffAddr = linkRemote.remoteCclMem.addr;
     std::vector<DataSlice> rxDstSlicesAll;
@@ -167,19 +159,13 @@ HcclResult InsTempAllGatherMesh1D::RunAllGatherMeshOnChannel(
         u64 rxSrcOffset = 0;
         void* rxSrcPtr = nullptr;
         void* rxDstPtr = tempAlgParams_.buffInfo.outputPtr;
-
-        if (!supportSymmetricMemory_) {
-            u64 rxScratchOffset = scratchBase + tempAlgParams_.sliceSize * connectedAlgRank + elemOffset_[channelIdx];
-            if (tempAlgParams_.buffInfo.inBuffType == BufferType::HCCL_BUFFER) {
-                rxScratchOffset
-                    = scratchBase + tempAlgParams_.inputSliceStride * connectedAlgRank + elemOffset_[channelIdx];
-            }
-            rxSrcOffset = (!enableRemoteMemAccess_) ? rxScratchOffset : rxOutOffset;
-            rxSrcPtr = (!enableRemoteMemAccess_) ? remoteCclBuffAddr : linkRemote.remoteOutputGraphMode.addr;
-        } else {
-            rxSrcOffset = rxOutOffset;
-            rxSrcPtr = remoteOut;
+        u64 rxScratchOffset = scratchBase + tempAlgParams_.sliceSize * connectedAlgRank + elemOffset_[channelIdx];
+        if (tempAlgParams_.buffInfo.inBuffType == BufferType::HCCL_BUFFER) {
+            rxScratchOffset
+                = scratchBase + tempAlgParams_.inputSliceStride * connectedAlgRank + elemOffset_[channelIdx];
         }
+        rxSrcOffset = (!enableRemoteMemAccess_) ? rxScratchOffset : rxOutOffset;
+        rxSrcPtr = (!enableRemoteMemAccess_) ? remoteCclBuffAddr : linkRemote.remoteOutputGraphMode.addr;
 
         rxDstSlicesAll.emplace_back(rxDstPtr, rxOutOffset, sizeOut_[channelIdx], elemCountOut_[channelIdx]);
         rxSrcSlicesAll.emplace_back(rxSrcPtr, rxSrcOffset, sizeOut_[channelIdx], elemCountOut_[channelIdx]);
@@ -233,23 +219,6 @@ HcclResult InsTempAllGatherMesh1D::RunAllGatherMesh(
         u64 sliceCount = sliceSize / dataTypeSize;
         CHK_RET(CalcDataSplitByPortGroup(sliceCount, dataTypeSize, curChannels, elemCountOut_, sizeOut_, elemOffset_));
 
-        // 对称内存下，远端地址需要通过HcclSymWinGetPeerPointer获取
-        void* remoteOut = nullptr;
-        if (supportSymmetricMemory_) {
-            HcclResult ret = HcclSymWinGetPeerPointer(outputSymWindow_, outputOffset_, connectedRank, &remoteOut);
-            CHK_PRT_RET(
-                ret != HCCL_SUCCESS || remoteOut == nullptr,
-                HCCL_ERROR(
-                    "[InsTempAllGatherSymmetryMemoryMesh1D] HcclSymWinGetPeerPointer failed, "
-                    "remoteRank[%u] outputRet[%d] out[%p]",
-                    connectedRank, ret, remoteOut),
-                HcclResult::HCCL_E_INTERNAL);
-            HCCL_INFO(
-                "[InsTempAllGatherSymmetryMemoryMesh1D] HcclSymWinGetPeerPointer success, "
-                "remoteRank[%u] out[%p]",
-                connectedRank, remoteOut);
-        }
-
         const u32 curChannelNum = std::min(static_cast<u32>(curChannels.size()), channelsPerRank_);
         for (u32 channelIdx = 0; channelIdx < curChannelNum; channelIdx++) {
             CHK_PRT_RET(
@@ -258,8 +227,8 @@ HcclResult InsTempAllGatherMesh1D::RunAllGatherMesh(
                     "[InsTempAllGatherMesh1D][RankID]=%u queIdx=%u, threads.size=%zu", myRank_, queIdx, threads.size()),
                 HcclResult::HCCL_E_INTERNAL);
             const ChannelInfo& linkRemote = curChannels[channelIdx];
-            CHK_RET(RunAllGatherMeshOnChannel(
-                threads[queIdx], linkRemote, connectedRank, connectedAlgRank, channelIdx, remoteOut));
+            CHK_RET(
+                RunAllGatherMeshOnChannel(threads[queIdx], linkRemote, connectedRank, connectedAlgRank, channelIdx));
             queIdx++;
         }
     }
@@ -306,7 +275,7 @@ HcclResult InsTempAllGatherMesh1D::LocalDataCopy(const std::vector<ThreadHandle>
             CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));
         }
 
-        if (!enableRemoteMemAccess_ && !supportSymmetricMemory_) {
+        if (!enableRemoteMemAccess_) {
             const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
             const u64 cclBaseOff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
             u64 cclOff = cclBaseOff + tempAlgParams_.sliceSize * myAlgRank;

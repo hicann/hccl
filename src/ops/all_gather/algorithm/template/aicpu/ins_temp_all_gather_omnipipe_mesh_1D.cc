@@ -48,7 +48,7 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::KernelRun(
     outputSymWindow_ = param.outputSymWindow;
     inputOffset_ = param.inputOffset;
     outputOffset_ = param.outputOffset;
-    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    enableRemoteMemAccess_ = param.supportSymmetricMemory;
     HCCL_DEBUG(
         "[InsTempAllGatherOmniPipeMesh1D][KernelRun] communication threads are ready, "
         "rank[%u], threadNum[%u].",
@@ -110,7 +110,7 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunMeshPeer(
     MeshPeerSlices slices;
     const ChannelInfo& linkRemote = channels.at(connectedRank)[0];
     void* remoteOut = nullptr;
-    if (supportSymmetricMemory_) {
+    if (enableRemoteMemAccess_) {
         CHK_RET(GetPeerSymmetricPointers(connectedRank, remoteOut));
         BuildSymmetricSlices(myAlgRank, connectedAlgRank, connectedRank, dataTypeSize, remoteOut, slices);
     } else {
@@ -122,7 +122,7 @@ HcclResult InsTempAllGatherOmniPipeMesh1D::RunMeshPeer(
 
 HcclResult InsTempAllGatherOmniPipeMesh1D::GetPeerSymmetricPointers(u32 connectedRank, void*& remoteOut)
 {
-    HcclResult ret = HcclSymWinGetPeerPointer(outputSymWindow_, outputOffset_, connectedRank, &remoteOut);
+    HcclResult ret = GetSymWinRemoteMem(outputSymWindow_, outputOffset_, connectedRank, &remoteOut);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS || remoteOut == nullptr,
         HCCL_ERROR(

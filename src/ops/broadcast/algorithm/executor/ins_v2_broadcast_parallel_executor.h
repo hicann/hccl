@@ -100,8 +100,9 @@ private:
         const u64 scratchOffsetCount, TemplateDataParams& dataParams, TemplateResource& templateResource,
         InsAlgTemplate3& tempAlgInter1) const;
     HcclResult OrchestrateLoop(
-        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra,
-        InsAlgTemplate1& tempAlgInter, InsAlgTemplate2& tempAlgIntra1, InsAlgTemplate3& tempAlgInter1);
+        const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgIntra0,
+        InsAlgTemplate1& tempAlgInter0, InsAlgTemplate2& tempAlgIntra1, InsAlgTemplate3& tempAlgInter1);
+    void AlignSliceCount(u32 remainingLoopTimes, u64 sliceCountPart0, u64& currCountPart0, u64& currCountPart1) const;
     HcclResult FastLaunchTemplateIntra0(
         const OpParam& param, const u32 kernelNum, TemplateFastLaunchCtx& tempFastLaunchCtxIntra,
         InsAlgTemplate0& tempAlgIntra) const;

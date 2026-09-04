@@ -105,8 +105,12 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlltoAllLo
     localSendRecvInfo.recvLength.resize(rankSize_, 0);
     localSendRecvInfo.recvOffset.resize(rankSize_, 0);
 
+    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
+        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
         HCCL_ERROR(
             "[InsAlltoAllVSoleExecutor][GetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
             param.varMemSize),

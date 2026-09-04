@@ -126,8 +126,15 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
 {
     HCCL_INFO("[InsV2AllGatherSoleExecutor][Orchestrate] Orchestrate Start");
     myRank_ = resCtx.topoInfo.userRank;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
 
     threads_ = resCtx.threads;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -204,16 +211,17 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     } else {
         maxDataSizePerLoop = transportBoundDataSize;
     }
-
-    // 如果是对称内存，且算法是InsAllGatherMesh1D，每次传输的大小不受cclbuffer和UB_MAX_DATA_SIZE的限制
-    if (param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllGatherSoleMesh") {
-        maxDataSizePerLoop = dataSize_;
-        tempAlgParams.supportSymmetricMemory = true;
-    }
     u64 maxCountPerLoop = maxDataSizePerLoop / dataTypeSize_;
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
+
+    // 如果是对称内存，每次传输的大小不受cclbuffer和UB_MAX_DATA_SIZE的限制
+    if (param.supportSymmetricMemory) {
+        loopTimes = 1;
+        tempAlgParams.enableRemoteMemAccess = true;
+        HCCL_INFO("[InsV2AllGatherSoleExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
     HCCL_INFO(
         "[InsV2AllGatherSoleExecutor][OrchestrateLoop] myRank[%u], templateScratchMultiplier[%u] "
         "maxCountPerLoop[%llu], loopTimes[%llu]",

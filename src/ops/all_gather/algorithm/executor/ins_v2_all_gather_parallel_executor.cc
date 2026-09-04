@@ -262,7 +262,7 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     tempAlgParamsIntra0.repeatNum = 1;
     tempAlgParamsIntra0.inputRepeatStride = 0;
     tempAlgParamsIntra0.outputRepeatStride = 0;
-    tempAlgParamsIntra0.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    tempAlgParamsIntra0.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
 
     HCCL_DEBUG(
         "[InsV2AllGatherParallelExecutor][GenTemplateAlgParamsIntra0] rank[%d] inBuffBaseOff[%llu] "
@@ -299,7 +299,7 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     tempAlgParamsInter0.repeatNum = rankSizeLevel0_;
     tempAlgParamsInter0.inputRepeatStride = dataSize_;
     tempAlgParamsInter0.outputRepeatStride = dataSize_;
-    tempAlgParamsInter0.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    tempAlgParamsInter0.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
     HCCL_DEBUG(
         "[InsV2AllGatherParallelExecutor][GenTemplateAlgParamsInter0] rank[%u] inBuffBaseOff[%llu] "
         "outBuffBaseOff[%llu] scratchBuffBaseOff[%llu] sliceSize[%llu] outputSliceStride[%llu] "
@@ -335,7 +335,7 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     tempAlgParamsInter1.repeatNum = 1;
     tempAlgParamsInter1.inputRepeatStride = 0;
     tempAlgParamsInter1.outputRepeatStride = 0;
-    tempAlgParamsInter1.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    tempAlgParamsInter1.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
     HCCL_DEBUG(
         "[InsV2AllGatherParallelExecutor][GenTemplateAlgParamsInter1] rank[%u] inBuffBaseOff[%llu] "
         "outBuffBaseOff[%llu] scratchBuffBaseOff[%llu] sliceSize[%llu] outputSliceStride[%llu]",
@@ -370,7 +370,7 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     tempAlgParamsIntra1.repeatNum = rankSizeLevel1_;
     tempAlgParamsIntra1.inputRepeatStride = dataSize_ * rankSizeLevel0_;
     tempAlgParamsIntra1.outputRepeatStride = dataSize_ * rankSizeLevel0_;
-    tempAlgParamsIntra1.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    tempAlgParamsIntra1.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
     HCCL_DEBUG(
         "[InsV2AllGatherParallelExecutor][GenTemplateAlgParamsIntra1] rank[%u] inBuffBaseOff[%llu] "
         "outBuffBaseOff[%llu] scratchBuffBaseOff[%llu] sliceSize[%llu] outputSliceStride[%llu] "
@@ -403,6 +403,13 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     HCCL_INFO("[InsV2AllGatherParallelExecutor][Orchestrate] Orchestrate Start");
     maxTmpMemSize_ = resCtx.cclMem.size; // maxTmpMemSize_设定为cclIn的大小，op中将申请的HcclBuff全给了cclIn
     myRank_ = resCtx.topoInfo.userRank;
+    supportSymmetricMemory_ = param.supportSymmetricMemory;
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
@@ -543,6 +550,13 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     u64 maxCountPerLoop
         = std::min(static_cast<u64>(scratchMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE)) / dataTypeSize_;
+
+    // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
+    if (param.supportSymmetricMemory) {
+        maxCountPerLoop = dataCount_;
+        HCCL_INFO("[InsV2AllGatherParallelExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
+
     CHK_PRT_RET(
         maxCountPerLoop == 0, HCCL_ERROR("[InsV2AllGatherParallelExecutor][OrchestrateLoop] maxCountPerLoop is 0"),
         HcclResult::HCCL_E_INTERNAL);

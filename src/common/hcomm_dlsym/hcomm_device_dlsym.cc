@@ -15,6 +15,7 @@
 #include "hcomm_device_profiling_dl.h"
 #include "hcomm_diag_dl.h"
 #include "hccl_device_comm_dl.h"
+#include "hccl_sym_win_dl.h"
 #include <pthread.h>
 #include <dlfcn.h>
 #include <cstdio>
@@ -37,6 +38,7 @@ void HcommDeviceDlInit(void)
     dlerror();
 
     HcommPrimitivesDlInit(gLibHandle);
+    HcclSymWinDlInit(gLibHandle);
     HcommDeviceProfilingDlInit(gLibHandle);
     HcommDiagDlInit(gLibHandle);
     HcclDeviceCommDlInit(gLibHandle);

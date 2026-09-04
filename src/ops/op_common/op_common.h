@@ -223,6 +223,8 @@ HcclResult SetExecTimeout(OpParam& param);
 bool IsHostDpu(HcclComm comm);
 
 bool IsBarrierHostDpu(HcclComm comm);
+
+void CheckAndSetSymmetricMemory(OpParam& param);
 } // namespace ops_hccl
 
 #endif

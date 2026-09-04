@@ -55,6 +55,10 @@ DECL_SUPPORT_FLAG(HcclAicpuKernelLaunch);
 DECL_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char* regName, HcclCommStateCallback cb, void* args);
 DECL_SUPPORT_FLAG(HcclCommRegCommStateCallback);
 
+DECL_WEAK_FUNC(
+    HcclResult, HcclCommSymWinGet, HcclComm comm, void* ptr, size_t size, HcclCommSymWindow* winHandle, size_t* offset);
+DECL_SUPPORT_FLAG(HcclCommSymWinGet);
+
 void HcclCommDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus

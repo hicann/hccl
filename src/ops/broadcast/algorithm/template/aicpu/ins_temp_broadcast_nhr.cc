@@ -529,11 +529,32 @@ HcclResult InsTempBroadcastNHR::PrepareDataSplitForMultiChannel(const TemplateRe
     return HCCL_SUCCESS;
 }
 
+HcclResult InsTempBroadcastNHR::PreSyncSubThreads(const std::vector<ThreadHandle>& threads)
+{
+    if (threadNum_ <= 1) {
+        return HCCL_SUCCESS;
+    }
+    std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.begin() + threadNum_);
+    GetNotifyIdxMainToSub(notifyIdxMainToSub_);
+    return PreSyncInterThreads(threads[0], subThreads, notifyIdxMainToSub_);
+}
+
+HcclResult InsTempBroadcastNHR::PostSyncSubThreads(const std::vector<ThreadHandle>& threads)
+{
+    if (threadNum_ <= 1) {
+        return HCCL_SUCCESS;
+    }
+    std::vector<ThreadHandle> subThreads(threads.begin() + 1, threads.begin() + threadNum_);
+    GetNotifyIdxSubToMain(notifyIdxSubToMain_);
+    return PostSyncInterThreads(threads[0], subThreads, notifyIdxSubToMain_);
+}
+
 HcclResult InsTempBroadcastNHR::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR entry.");
     buffInfo_ = tempAlgParams.buffInfo;
+    enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
     bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
@@ -563,22 +584,12 @@ HcclResult InsTempBroadcastNHR::KernelRun(
         "[InsTempBroadcastNHR Run]RankID:[%d], root:[%u], channelsPerRank_:[%u]", myRank_, root_, channelsPerRank_);
 
     CHK_RET(PreCopy(tempAlgParams, templateResource.threads));
-    if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(
-            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
-        GetNotifyIdxMainToSub(notifyIdxMainToSub_);
-        CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub_));
-    }
+    CHK_RET(PreSyncSubThreads(templateResource.threads));
     for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
         CHK_RET(RunScatter(templateResource.channels, templateResource.threads, channelIdx));
         CHK_RET(RunAllGather(templateResource.channels, templateResource.threads, channelIdx));
     }
-    if (threadNum_ > 1) {
-        std::vector<ThreadHandle> subThreads(
-            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
-        GetNotifyIdxSubToMain(notifyIdxSubToMain_);
-        CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
-    }
+    CHK_RET(PostSyncSubThreads(templateResource.threads));
     CHK_RET(PostCopy(tempAlgParams, templateResource.threads));
 
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR finish.");
