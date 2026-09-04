@@ -9,7 +9,10 @@
  */
 
 #include "ins_v2_all_reduce_concurrent_executor.h"
+#include <string>
+#include <type_traits>
 #include "alg_data_trans_wrapper.h"
+#include "ccu_alg_template_base.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_reduce_mesh_1D.h"
 #include "ccu_temp_all_reduce_mesh_1D_mem2mem.h"
@@ -41,7 +44,7 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     (void)algHierarchyInfo;
     // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
+    bool isPod = false;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -49,22 +52,36 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
     std::vector<u32> portNumLevel0 = {1};
     // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
-    std::vector<u32> portNumLevel1 = {8};
+    std::vector<u32> portNumLevel1 = {4};
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, portNumLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
         portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params = [rankSize, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-            portNumLevel0, isPod});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-            portNumLevel1, isPod});
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
+    // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
+    OpParam localParam;
+    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
+        localParam.engine = CommEngine::COMM_ENGINE_CCU;
+        localParam.opExecuteConfig = (std::string(algName) == "CcuMSAllReduceConcurMeshNHRMultiLink") ?
+                                         OpExecuteConfig::CCU_MS :
+                                         OpExecuteConfig::CCU_SCHED;
+    } else {
+        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    }
+    std::vector<float> dataSplitSize;
+    GetParallelDataSplit(localParam, dataSplitSize);
+
+    std::vector<CostModelParam> params
+        = [rankSize, &dataSplitSize, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
+              std::vector<CostModelParam> v;
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, dataSplitSize[0] / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, dataSplitSize[1] / rankSize, netTypeLevel1, BufferType::INPUT, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+              v.insert(v.end(), p1.begin(), p1.end());
+              return v;
+          }();
     return params;
 }
 
@@ -74,11 +91,16 @@ AlgNetMeta InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     (void)param;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    (void)rankSizeLevel0;
-    (void)rankSizeLevel1;
     u32 rankSize = topoInfo->userRankSize;
+    OpParam localParam;
+    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
+        localParam.engine = CommEngine::COMM_ENGINE_CCU;
+        localParam.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
+    } else {
+        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    }
+    std::vector<float> dataSplitSize;
+    GetParallelDataSplit(localParam, dataSplitSize);
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -86,9 +108,9 @@ AlgNetMeta InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::SUM;
+    meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2};
-    meta.dataRatios = {1.0f / rankSize, 1.0f / rankSize};
+    meta.dataRatios = {dataSplitSize[0] / rankSize, dataSplitSize[1] / rankSize};
     meta.rankSizes = {rankSize, rankSize};
     return meta;
 }
@@ -162,6 +184,31 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         HcclResult::HCCL_E_INTERNAL);
 
     return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+void InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
+    const OpParam& param, std::vector<float>& splitDataSize) const
+{
+    u32 portNum0 = rankSize_ - 1; // mesh端口数为rank size - 1
+    u32 portNum1 = CLOS_PORT_NUM;
+    if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
+        portNum0 = MESH_BW_SCHED;
+        portNum1 = CLOS_BW_SCHED;
+    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+        portNum0 = MESH_BW_MS;
+        portNum1 = CLOS_BW_MS;
+    } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
+        portNum0 = MESH_BW_AICPU;
+        portNum1 = CLOS_BW_AICPU;
+    }
+    double splitData = static_cast<double>(portNum0) / (portNum0 + portNum1);
+    splitDataSize.push_back(splitData);
+    splitDataSize.push_back(1 - splitData);
+    HCCL_INFO(
+        "[InsV2AllReduceConcurrentExecutor][GetParallelDataSplit] portNum0[%u], portNum1[%u], splitData[%.4f]",
+        portNum0, portNum1, splitData);
+    return;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -592,9 +639,6 @@ REGISTER_ALG_ATTRS(
        HcclDataType::HCCL_DATA_TYPE_FP64};
     op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return isEqual && topo->userRankSize <= 4;
     });
@@ -605,14 +649,12 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     TopoMatchConcurrentV2, CcuTempAllReduceMesh1D, CcuTempAllReduceNhrMem2Mem1DMultiJetty);
 REGISTER_ALG_ATTRS(
     CcuMSAllReduceConcurMeshNHRMultiLink, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-    op.isSupportProd = false; op.unsupportedDataTypes
-                              = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
-                                 HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true; op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
+       HcclDataType::HCCL_DATA_TYPE_FP64};
     op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return isEqual && topo->userRankSize <= 4;
     });
@@ -626,13 +668,9 @@ REGISTER_ALG_ATTRS(
     op.isSupportProd = false;
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return isEqual && topo->userRankSize <= 4 && dataSize >= SMALL_COUNT_512KB;
+        return isEqual && topo->userRankSize <= 4;
     });
 } // namespace ops_hccl

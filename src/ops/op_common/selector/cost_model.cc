@@ -69,6 +69,7 @@ CostModelManager::CostModelManager()
 {
 #ifndef AICPU_COMPILE
     InitBandwidth();
+    InitDpuSftCost();
 #endif
 }
 
@@ -113,6 +114,16 @@ void CostModelManager::InitBandwidth()
         localCopyBw_, localReduceBw_, crossChipBw_, crossChipReduceBw_, ccuLocalCopyBw_, ccuLocalReduceBw_,
         ccuCircleLocalCopyBw_, ccuCircleLocalReduceBw_);
 #endif
+}
+
+void CostModelManager::InitDpuSftCost()
+{
+    HCCL_DEBUG("[CostModelManager] InitDpuSftCost.");
+    preSync_ = 0.000016;
+    channelFence_ = 0.000002;
+    threadFence_ = 0.000006;
+    sndRcvCall_ = 0.000006;
+    hDLatency_ = 0.000014; // 单位是s，14u，包括D2H和H2D的处理
 }
 
 CostModelManager::RankSizePerLevel
@@ -460,6 +471,17 @@ void CostModelManager::CalcLatencyParams(int taskNum, EngineType engine, float& 
         C = 0.000002 * taskNum; // 单位是s，10u
     }
     HCCL_DEBUG("[CostModelManager] CalcLatencyParams taskNum=%d engine=%d C=%f.", taskNum, static_cast<int>(engine), C);
+    return;
+}
+
+void CostModelManager::CalcDpuLatencyParams(int stepNum, int syncNum, int channelNum, int sndRcvnum, float& C)
+{
+    float stepC = preSync_ * syncNum + channelFence_ * channelNum + threadFence_;
+    float sndRcvC = sndRcvnum * sndRcvCall_;
+    C = stepNum * stepC + sndRcvC + hDLatency_;
+    HCCL_DEBUG(
+        "[CostModelManager] CalcDpuLatencyParams stepNum=%d syncNum=%d channelNum=%d sndRcvnum=%d C=%f.", stepNum,
+        syncNum, channelNum, sndRcvnum, C);
     return;
 }
 

@@ -103,6 +103,9 @@ struct AlgAttrs {
 // 公共函数：判断输入输出是否 overlap（按算子类型区分）
 bool IsInputOutputOverlap(const OpParam& opParam);
 
+// 公共函数：从最高层向下查找链路，本端 HOST、对端 DEVICE 时为 host nic 场景
+bool IsHostNicToDeviceNicLink(const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo);
+
 } // namespace ops_hccl
 
 #endif // HCCL_ALG_ATTRS_H

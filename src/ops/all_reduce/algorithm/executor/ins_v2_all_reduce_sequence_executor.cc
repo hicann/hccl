@@ -31,10 +31,11 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     (void)algHierarchyInfo;
     // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
+    bool isPod = false;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;
     u32 rankSizeLevel1 = rs.level1;
+    u32 allRankSize = rankSizeLevel0 * rankSizeLevel1;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -42,29 +43,29 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
     std::vector<u32> portNumLevel0 = {1};
     // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
-    std::vector<u32> portNumLevel1 = {8};
+    std::vector<u32> portNumLevel1 = {1};
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1,
-                                          netTypeLevel0, netTypeLevel1, isPod] {
+    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, allRankSize, portNumLevel0,
+                                          portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
         std::vector<CostModelParam> v;
         auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p0.begin(), p0.end());
         auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            rankSizeLevel1, 1.0f / allRankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p1.begin(), p1.end());
         auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            rankSizeLevel1, 1.0f / allRankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p2.begin(), p2.end());
         auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+            rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
             BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p3.begin(), p3.end());
         return v;
@@ -579,8 +580,13 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
 REGISTER_ALG_ATTRS(
     DpuAllReduceSequenceMeshNHR,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.minTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->deviceNumPerModule == 1;
-    });
+    topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 3; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    // MESH_1D_CLOS 非pcieMix 且每module多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+            return true;
+        }
+        return topo->level0PcieMix || topo->deviceNumPerModule == 1;
+    };);
 } // namespace ops_hccl

@@ -95,6 +95,28 @@ static inline HcclDataType GetOpDataType(const OpParam& opParam)
             return opParam.DataDes.dataType;
     }
 }
+bool IsHostNicToDeviceNicLink(const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;
+    if (netLayers.empty()) {
+        return false;
+    }
+    for (auto it = netLayers.rbegin(); it != netLayers.rend(); ++it) {
+        CommLink* linkList = nullptr;
+        u32 listSize = 0;
+        if (HcclRankGraphGetLinks(
+                opParam.hcclComm, *it, topoInfo->userRank, opParam.sendRecvRemoteRank, &linkList, &listSize)
+            != HCCL_SUCCESS) {
+            continue;
+        }
+        if (listSize == 0 || linkList == nullptr) {
+            continue;
+        }
+        return linkList[0].srcEndpointDesc.loc.locType == ENDPOINT_LOC_TYPE_HOST
+               && linkList[0].dstEndpointDesc.loc.locType == ENDPOINT_LOC_TYPE_DEVICE;
+    }
+    return false;
+}
 
 OpMatchResult
 CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)

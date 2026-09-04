@@ -23,10 +23,16 @@ InsTempAllGatherNhrDpuInter::InsTempAllGatherNhrDpuInter(
 
 std::vector<CostModelParam> InsTempAllGatherNhrDpuInter::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    float A = 1000.0f;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+
+    float A = 0.0f;
     float B = 0.0f;
-    float C = 1000.0f;
+    float C = 0.0f;
     float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A);
+    CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * (param.rankSize + 1), EngineType::AICPU, B);
+    CostModelManager::Global()->CalcDpuLatencyParams(GetNHRStepNum(param.rankSize), 1, 2, param.rankSize - 1, C);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

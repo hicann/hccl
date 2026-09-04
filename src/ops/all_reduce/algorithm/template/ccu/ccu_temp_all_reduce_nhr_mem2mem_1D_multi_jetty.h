@@ -51,7 +51,7 @@ private:
     HcclResult GetReduceScatterStepInfo(u32 step, NHRStepInfo& stepInfo) const;
     HcclResult GetAllGatherStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
-    uint32_t GetNHRStepNum(const uint32_t rankSize) const;
+    static uint32_t GetNHRStepNum(const uint32_t rankSize);
     uint32_t localRank2UserRank(const uint32_t localRank) const;
     HcclResult ProcessNHRStepInfo(std::vector<NHRStepInfo>& algStepInfoList) const;
     void CalcSliceParams(

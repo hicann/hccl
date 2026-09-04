@@ -16,6 +16,28 @@
 
 namespace ops_hccl {
 constexpr uint32_t STUB_JETTY_NUM = 1;
+
+std::vector<CostModelParam> CcuTempAllToAllMesh1dMultiJetty::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int taskNum = param.rankSize;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // 本地GroupCopy自己的1/rankSize片
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    return params;
+}
+
 CcuTempAllToAllMesh1dMultiJetty::CcuTempAllToAllMesh1dMultiJetty(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

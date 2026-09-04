@@ -10,6 +10,7 @@
 
 #include "ins_recv_dpu_executor.h"
 #include "alg_data_trans_wrapper.h"
+#include "ins_temp_recv_host_nic_dpu.h"
 #include "alg_attrs_registry.h"
 #include "../template/host_nic/ins_temp_recv_host_nic_dpu.h"
 
@@ -69,6 +70,28 @@ HcclResult InsRecvDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
     return HcclResult::HCCL_SUCCESS;
 }
 
+template <typename InsAlgTemplate>
+std::vector<CostModelParam> InsRecvDpuExecutor<InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename InsAlgTemplate>
+AlgNetMeta InsRecvDpuExecutor<InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    return meta;
+}
 template <typename InsAlgTemplate>
 HcclResult InsRecvDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfoV2(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
@@ -161,5 +184,10 @@ HcclResult InsRecvDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
 // opv2流程使用opv2_insRecvHostDpu算法名
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
     HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSoleHost, InsRecvDpuExecutor, InsTempRecvHostNicDpu);
-REGISTER_ALG_ATTRS(DpuRecvSoleHost);
+REGISTER_ALG_ATTRS(
+    DpuRecvSoleHost, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return IsHostNicToDeviceNicLink(opParam, topo);
+    });
 } // namespace ops_hccl

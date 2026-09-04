@@ -25,7 +25,6 @@ std::vector<CostModelParam> CcuTempReduceScatterMesh2Die::CalcCostCoeff(CalcCost
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
     std::vector<CostModelParam> params;

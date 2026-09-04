@@ -23,11 +23,18 @@ InsTempAllGatherNHRDPU::InsTempAllGatherNHRDPU(
 
 std::vector<CostModelParam> InsTempAllGatherNHRDPU::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // dpu的不用我算
-    float A = 1000.0f;
+    float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, param.portNum[0], param.rankSize, A);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.rankSize + 1, EngineType::CPU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcDpuLatencyParams(GetNHRStepNum(param.rankSize), 1, 2, param.rankSize - 1, C);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

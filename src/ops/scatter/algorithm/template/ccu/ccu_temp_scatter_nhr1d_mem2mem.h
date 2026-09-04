@@ -14,6 +14,7 @@
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_scatter_nhr1d_mem2mem.h"
 #include "ccu_kernel_alg_base.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -48,12 +49,12 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
     ~CcuTempScatterNHR1DMem2Mem() override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     std::string Describe() const override
     {
         return StringFormat("Template of Scatter ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& templateDataParams,

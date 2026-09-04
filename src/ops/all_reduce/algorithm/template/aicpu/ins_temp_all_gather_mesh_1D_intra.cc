@@ -22,7 +22,7 @@ InsTempAllGatherMesh1dIntra::~InsTempAllGatherMesh1dIntra() {}
 std::vector<CostModelParam> InsTempAllGatherMesh1dIntra::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int kernelNum = 6;
+    int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
@@ -30,11 +30,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1dIntra::CalcCostCoeff(CalcCostC
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
-    } else {
-        B = 0.0f;
-    }
+    CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize, EngineType::AICPU, B);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
 

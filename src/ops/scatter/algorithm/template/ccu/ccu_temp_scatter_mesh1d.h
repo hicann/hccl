@@ -14,6 +14,7 @@
 #include "utils.h"
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_alg_base.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -28,12 +29,12 @@ public:
 
     ~CcuTempScatterMesh1D() override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     std::string Describe() const override
     {
         return StringFormat("Template of Scatter ccu mesh 1D with templateRankSize [%u].", subCommRanks_[0].size());
     }
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

@@ -27,6 +27,10 @@ public:
     explicit InsV2AllToAllConcurrentExecutor();
     ~InsV2AllToAllConcurrentExecutor() override = default;
 
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */
@@ -76,6 +80,7 @@ private:
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParams) const;
     HcclResult RestoreSendRecvData(const OpParam& param);
     HcclResult SplitSendRecvData(const OpParam& param, std::vector<SendRecvData>& splitData);
+    void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
     HcclResult GetMaxSendRecvDataCount(u64& maxSendRecvDataCount, const SendRecvData& splitData) const;
     HcclResult CalcMaxDataCountPerLoop(
         const OpParam& param, const std::vector<u64> scratchMulti, std::vector<u64>& maxDataCountPerLoop) const;

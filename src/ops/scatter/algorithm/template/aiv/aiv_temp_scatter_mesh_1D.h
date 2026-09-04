@@ -14,6 +14,7 @@
 #include "aiv_alg_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -26,13 +27,14 @@ public:
         const std::vector<std::vector<u32>>& subCommRanks);
     ~AivTempScatterMesh1D() override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     std::string Describe() const override
     {
         std::string info = "Template of scatter Mesh with tempRankSize ";
         info += std::to_string(tempRankSize_);
         return info;
     }
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

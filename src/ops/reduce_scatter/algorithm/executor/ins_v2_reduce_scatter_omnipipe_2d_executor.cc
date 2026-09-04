@@ -9,6 +9,11 @@
  */
 
 #include "ins_v2_reduce_scatter_omnipipe_2d_executor.h"
+
+#include <algorithm>
+#include <string>
+
+#include "template_utils.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_reduce_scatter_omnipipe_mesh1d_mem2mem.h"
@@ -21,9 +26,50 @@
 #include "auto_selector_base.h"
 namespace ops_hccl {
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u64 OMNI_UBX_RS_SCHED_DATA_SIZE = 4 * 1024 * 1024; // UBX机型ccu并行与流水算法的数据量分界，与selector保持一致
+constexpr u64 OMNI_UBX_RS_MS_DATA_SIZE = 2 * 1024 * 1024; // MS模式UBX流水算法数据量下限，与selector保持一致
+
 constexpr u32 DUAL_TEMPLATE_NUM = 2;
 constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
+namespace {
+    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
+    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
+
+    bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
+    {
+        if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
+            return false;
+        }
+        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
+        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
+        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
+        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
+            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
+            return false;
+        }
+        meshRankSize = meshIt->second[0];
+        closRankSize = closIt->second[0] / meshRankSize;
+        return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
+    }
+
+    u64 CalcStepNumByAxes(
+        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum)
+    {
+        if (firstBandwidth <= secondBandwidth) {
+            return CalcReducescatterStepNum2D(
+                firstBandwidth, secondBandwidth, firstRankSize, secondRankSize, maxStepNum);
+        }
+        return CalcReducescatterStepNum2D(secondBandwidth, firstBandwidth, secondRankSize, firstRankSize, maxStepNum);
+    }
+
+    float CalcTemplateLatency(u32 taskNum)
+    {
+        float latency = 0.0f;
+        CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, latency);
+        return latency;
+    }
+} // namespace
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ReduceScatterOmniPipe2dExecutor<
@@ -48,6 +94,84 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
+std::vector<CostModelParam>
+InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    if (topoInfo == nullptr || algName == nullptr) {
+        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        return {};
+    }
+    u64 meshRankSize = 1;
+    u64 closRankSize = 1;
+    if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
+        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        return {};
+    }
+
+    const bool isCcuMs = std::string(algName) == "CcuMSReduceScatterPipeLineMeshNHR";
+    const double meshBandwidth
+        = (isCcuMs ? BW_OMNI_UBX_CCU_MS_RS_MESH : BW_OMNI_UBX_CCU_SCHED_RS_MESH) / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double closBandwidth
+        = (isCcuMs ? BW_OMNI_UBX_CCU_MS_RS_CLOS : BW_OMNI_UBX_CCU_SCHED_RS_CLOS) / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double closPlanBandwidth = closRankSize > 1 ? closBandwidth / (closRankSize - 1) : closBandwidth;
+    const u64 maxStepNum = static_cast<u64>(SetMaxStepNumOmni(OmniNeedSetStepNum::OMNIPIPE_DEFAULT) + 1);
+    const u64 stepNum = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum);
+
+    const bool meshActive = meshRankSize > 1;
+    const bool closActive = closRankSize > 1;
+    const bool useSched2dCost
+        = meshActive && closActive && std::string(algName) == "CcuSchedReduceScatterPipeLineMeshNHR";
+    CostModelParam costParam{};
+    double transferCoeff = 0.0;
+    double meshDataRatio = 0.0;
+    double closDataRatio = 0.0;
+    if (useSched2dCost) {
+        transferCoeff = CalcReducescatterTransferCoeff2D(
+            meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum, meshDataRatio, closDataRatio);
+    } else if (meshActive && closActive) {
+        if (stepNum == maxStepNum) {
+            transferCoeff = meshBandwidth <= closPlanBandwidth ? (meshRankSize - 1) / meshBandwidth :
+                                                                 (closRankSize - 1) / closBandwidth;
+        } else {
+            transferCoeff = (topoInfo->userRankSize - 1) / (meshBandwidth + closBandwidth);
+        }
+    } else if (meshActive) {
+        transferCoeff = (meshRankSize - 1) / meshBandwidth;
+    } else if (closActive) {
+        transferCoeff = (closRankSize - 1) / closBandwidth;
+    }
+    costParam.A = static_cast<float>(transferCoeff / GBPS_TO_BYTES_PER_SECOND);
+    if (!useSched2dCost) {
+        CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::CCU, costParam.B);
+    }
+
+    const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
+    const float nhrLatency = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize))) : 0.0f;
+    costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
+
+    HCCL_INFO(
+        "[%s] algName[%s] axes[%llu,%llu] step[%llu] maxStep[%d] sched2dCost[%d] "
+        "dataRatio[%f,%f] planBandwidth[%f,%f] transferCoeff[%e] Ufixed[%f] A[%e] B[%e] C[%e].",
+        __func__, algName, meshRankSize, closRankSize, stepNum, stepNum == maxStepNum, useSched2dCost, meshDataRatio,
+        closDataRatio, meshBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, closPlanBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION,
+        transferCoeff, OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A, costParam.B, costParam.C);
+    return {costParam};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
+AlgNetMeta InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
+    meta.groupSizes = {1};
+    return meta;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
@@ -470,24 +594,15 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
-    };
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
-               && dataSize >= SMALL_COUNT_512KB;
-    });
+               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    };);
+
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
@@ -496,24 +611,15 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
-    };
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
-               && dataSize >= SMALL_COUNT_512KB;
-    });
+               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+    };);
+
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

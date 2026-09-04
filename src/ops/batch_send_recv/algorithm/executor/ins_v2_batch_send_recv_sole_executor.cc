@@ -46,6 +46,17 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlg
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
@@ -604,17 +615,6 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
-std::vector<CostModelParam> InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
-{
-    (void)comm;
-    (void)topoInfo;
-    (void)algName;
-    (void)param;
-    return {{0.0f, 0.0f, 1.0f, 0.0f}};
-}
-
-template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
@@ -632,5 +632,7 @@ AlgNetMeta InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgN
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, DpuBatchSendRecvSoleMesh, InsV2BatchSendRecvSoleExecutor, TopoMatchOneLevel,
     InsTempBatchSendRecvDpu);
-REGISTER_ALG_ATTRS(DpuBatchSendRecvSoleMesh);
+REGISTER_ALG_ATTRS(DpuBatchSendRecvSoleMesh, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+                   topo.isSupportLevel1Nhr = true;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
 } // namespace ops_hccl

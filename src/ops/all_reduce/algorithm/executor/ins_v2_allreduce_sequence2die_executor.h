@@ -32,6 +32,11 @@ class InsV2AllReduceSequence2DieExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceSequence2DieExecutor();
     ~InsV2AllReduceSequence2DieExecutor() override;
+
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
 
     /* *************** 资源计算 *************** */

@@ -14,24 +14,26 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempReduceScatterMesh1dDpu::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
-        return {};
-    }
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int kernelNum = 1;
-    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B);
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, param.portNum[0], param.rankSize, A);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * 2, EngineType::CPU, B);
+    } else {
+        B = 0.0f;
+    }
+    CostModelManager::Global()->CalcLocalReduceParams((param.rankSize - 1) * param.dataRatio, EngineType::AICPU, B2);
+    B = B1 + B2;
+    CostModelManager::Global()->CalcDpuLatencyParams(GetNHRStepNum(param.rankSize), 1, 2, param.rankSize - 1, C);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

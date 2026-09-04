@@ -11,8 +11,8 @@
 #include <string>
 #include "ins_send_dpu_executor.h"
 #include "alg_data_trans_wrapper.h"
+#include "ins_temp_send_host_nic_dpu.h"
 #include "alg_attrs_registry.h"
-#include "../template/host_nic/ins_temp_send_host_nic_dpu.h"
 
 namespace ops_hccl {
 template <typename InsAlgTemplate>
@@ -72,6 +72,29 @@ HcclResult InsSendDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
 }
 
 template <typename InsAlgTemplate>
+std::vector<CostModelParam> InsSendDpuExecutor<InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename InsAlgTemplate>
+AlgNetMeta InsSendDpuExecutor<InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    return meta;
+}
+template <typename InsAlgTemplate>
+
 HcclResult InsSendDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfoV2(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
@@ -161,9 +184,13 @@ HcclResult InsSendDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
     (void)sendRecvThread;
     return Orchestrate(param, resCtx);
 }
-
 // opv2流程使用opv2_insSendHostDpu算法名
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
     HcclCMDType::HCCL_CMD_SEND, DpuSendSoleHost, InsSendDpuExecutor, InsTempSendHostNicDpu);
-REGISTER_ALG_ATTRS(DpuSendSoleHost);
+REGISTER_ALG_ATTRS(
+    DpuSendSoleHost, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return IsHostNicToDeviceNicLink(opParam, topo);
+    });
 } // namespace ops_hccl

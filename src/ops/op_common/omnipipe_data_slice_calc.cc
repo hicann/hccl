@@ -348,6 +348,33 @@ u64 CalAllgatherDataSize2D(
     return step;
 }
 
+u64 CalcAllgatherStepNum2D(
+    double slowBandwidth, double fastBandwidth, u64 slowRankSize, u64 fastRankSize, u64 maxStepNum)
+{
+    if (slowRankSize == 1 || fastRankSize == 1) {
+        return 1;
+    }
+    if (slowBandwidth <= 0.0 || fastBandwidth <= 0.0 || maxStepNum == 0) {
+        return maxStepNum;
+    }
+
+    const double bandwidthRatio = fastBandwidth / slowBandwidth;
+    if (static_cast<double>(slowRankSize) <= bandwidthRatio) {
+        return maxStepNum;
+    }
+    const double omniPipeRatio = (slowRankSize - 1) / bandwidthRatio;
+    double step = 0.0;
+    if (std::abs(omniPipeRatio - 1.0) < 1e-9) {
+        step = bandwidthRatio + 1.0;
+    } else {
+        step = std::ceil(std::log(slowRankSize - bandwidthRatio) / std::log(omniPipeRatio)) + 1.0;
+    }
+    if (!std::isfinite(step) || step <= 0.0 || step > static_cast<double>(maxStepNum)) {
+        return maxStepNum;
+    }
+    return static_cast<u64>(step);
+}
+
 // 计算2Drs每步数据量存进数组，返回通信步数，y轴快，数据需要整除对齐。补充计算两轴数据量最大的一步的数据量。
 // 按照现有executor128对齐，为满足确定性计算，这里最后一步拆为两步，两片参数:
 // xStepP2pDataSize慢轴数据量，yStepP2pDataSize快轴数据量，xB慢轴带宽，yB快轴带宽，xRankSize慢轴卡数，yRankSize快轴卡数，
@@ -480,6 +507,78 @@ u64 CalReducescatterDataSize2D(
     }
     HCCL_INFO("[CalReducescatterDataSize2D] end");
     return step;
+}
+
+double CalcReducescatterTransferCoeff2D(
+    double xBandwidth, double yBandwidth, u64 xRankSize, u64 yRankSize, u64 maxStepNum, double& xDataRatio,
+    double& yDataRatio)
+{
+    xDataRatio = 0.0;
+    yDataRatio = 0.0;
+    if (xBandwidth <= 0.0 || yBandwidth <= 0.0 || maxStepNum == 0) {
+        HCCL_WARNING(
+            "[%s] invalid bandwidth or maxStepNum, xBandwidth[%f] yBandwidth[%f] maxStepNum[%llu].", __func__,
+            xBandwidth, yBandwidth, maxStepNum);
+        return 0.0;
+    }
+
+    constexpr u64 NORMALIZED_DATA_SIZE = 1024ULL * 1024ULL * 1024ULL;
+    std::vector<u64> xStepDataSize(maxStepNum, 0);
+    std::vector<u64> yStepDataSize(maxStepNum, 0);
+    u64 stepNum = 0;
+    if (xBandwidth <= yBandwidth) {
+        stepNum = CalReducescatterDataSize2D(
+            xStepDataSize.data(), yStepDataSize.data(), xBandwidth, yBandwidth, xRankSize, yRankSize,
+            NORMALIZED_DATA_SIZE, maxStepNum, CommEngine::COMM_ENGINE_CCU);
+    } else {
+        stepNum = CalReducescatterDataSize2D(
+            yStepDataSize.data(), xStepDataSize.data(), yBandwidth, xBandwidth, yRankSize, xRankSize,
+            NORMALIZED_DATA_SIZE, maxStepNum, CommEngine::COMM_ENGINE_CCU);
+    }
+
+    u64 xDataSize = 0;
+    u64 yDataSize = 0;
+    for (u64 index = 0; index < stepNum; ++index) {
+        xDataSize += xStepDataSize[index];
+        yDataSize += yStepDataSize[index];
+    }
+    xDataRatio = static_cast<double>(xDataSize) / NORMALIZED_DATA_SIZE;
+    yDataRatio = static_cast<double>(yDataSize) / NORMALIZED_DATA_SIZE;
+    const double transferCoeff = xDataRatio / xBandwidth + yDataRatio / yBandwidth;
+    HCCL_INFO(
+        "[%s] axes[%llu,%llu] step[%llu] maxStep[%llu] dataRatio[%f,%f] bandwidth[%f,%f] "
+        "transferCoeff[%e].",
+        __func__, xRankSize, yRankSize, stepNum, maxStepNum, xDataRatio, yDataRatio, xBandwidth, yBandwidth,
+        transferCoeff);
+    return transferCoeff;
+}
+
+u64 CalcReducescatterStepNum2D(
+    double slowBandwidth, double fastBandwidth, u64 slowRankSize, u64 fastRankSize, u64 maxStepNum)
+{
+    constexpr u64 RS_FINAL_STEP_NUM = 2;
+    if (slowRankSize == 1 || fastRankSize == 1) {
+        return 1;
+    }
+    if (slowBandwidth <= 0.0 || fastBandwidth <= 0.0 || maxStepNum <= RS_FINAL_STEP_NUM) {
+        return maxStepNum;
+    }
+
+    const double bandwidthRatio = fastBandwidth / slowBandwidth;
+    if (static_cast<double>(slowRankSize) <= bandwidthRatio) {
+        return maxStepNum;
+    }
+    const double omniPipeRatio = (slowRankSize - 1) / bandwidthRatio;
+    double step = 0.0;
+    if (std::abs(omniPipeRatio - 1.0) < 1e-9) {
+        step = bandwidthRatio + RS_FINAL_STEP_NUM;
+    } else {
+        step = std::ceil(std::log(slowRankSize - bandwidthRatio) / std::log(omniPipeRatio)) + RS_FINAL_STEP_NUM;
+    }
+    if (!std::isfinite(step) || step <= 0.0 || step > static_cast<double>(maxStepNum)) {
+        return maxStepNum;
+    }
+    return static_cast<u64>(step);
 }
 
 // 2d打平带宽计算,y轴快,不考虑两个轴大小都为1，都为1应该走1D

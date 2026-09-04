@@ -26,7 +26,12 @@
 #define CONST_TWO 2
 #define CONST_THREE 3
 
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
+
 namespace ops_hccl {
+// 与 alltoallv_auto_selector.cc 保持一致：4P 且 mesh 数等于 clos 数时走并发算法的卡数上限
+constexpr uint32_t CONCURRENT_RANK_LIMIT = 4;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsAlltoAllVSoleExecutor()
@@ -341,7 +346,8 @@ REGISTER_EXEC_V2(
     CcuTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     CcuSchedAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 2; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         if (t->level2UbRtp) {
             return false;
         }
@@ -405,9 +411,14 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshMultiJetty, InsAlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.maxTopoLevelNum = 2; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 2;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return !(isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT);
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

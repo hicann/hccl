@@ -36,6 +36,12 @@ constexpr double BW_OMNI_UBX_ROCE = 25;
 constexpr double BW_OMNI_UBX_AG_CLOS = 191;
 constexpr double BW_OMNI_UBX_RS_CLOS = 225;
 
+// CostModel effective bandwidth calibrated with 1GiB data on 2D UBX OmniPipe.
+constexpr double BW_OMNI_UBX_2D_COST_AG_MESH = 92.049;
+constexpr double BW_OMNI_UBX_2D_COST_AG_CLOS = 150.847;
+constexpr double BW_OMNI_UBX_2D_COST_RS_MESH = 74.035;
+constexpr double BW_OMNI_UBX_2D_COST_RS_CLOS = 145.515;
+
 constexpr double BW_OMNI_UBX_CCU_SCHED_RS_MESH = 25;
 constexpr double BW_OMNI_UBX_CCU_SCHED_RS_CLOS = 200;
 constexpr double BW_OMNI_UBX_CCU_MS_RS_MESH = 47;
@@ -158,6 +164,8 @@ u64 CalAllgatherDataSize2D(
     u64* xStepP2pDataSize, u64* yStepP2pDataSize, double xB, double yB, u64 xRankSize, u64 yRankSize,
     u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS,
     double multipleDimensionSplitRatio = -1.0);
+u64 CalcAllgatherStepNum2D(
+    double slowBandwidth, double fastBandwidth, u64 slowRankSize, u64 fastRankSize, u64 maxStepNum);
 OmniPipeSliceInfo CalcAGOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam);
 
 std::vector<u64> CalScratchSize(
@@ -173,6 +181,11 @@ u64 CalReducescatterDataSize2D(
     u64* xStepP2pDataSize, u64* yStepP2pDataSize, double xB, double yB, u64 xRankSize, u64 yRankSize,
     u64 dataSizeEachRank, u64 maxStep, CommEngine engine = CommEngine::COMM_ENGINE_AICPU_TS,
     double multipleDimensionSplitRatio = -1.0);
+double CalcReducescatterTransferCoeff2D(
+    double xBandwidth, double yBandwidth, u64 xRankSize, u64 yRankSize, u64 maxStepNum, double& xDataRatio,
+    double& yDataRatio);
+u64 CalcReducescatterStepNum2D(
+    double slowBandwidth, double fastBandwidth, u64 slowRankSize, u64 fastRankSize, u64 maxStepNum);
 std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam& omniPipeScratchParam);
 OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam);
 HcclResult CalLocalCopySlice(

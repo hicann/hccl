@@ -16,28 +16,6 @@
 
 namespace ops_hccl {
 
-std::vector<CostModelParam> CcuTempAllGatherOmniPipeMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
-{
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int kernelNum = 1;
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-    float D = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
-    } else {
-        B = 0.0f;
-    }
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-
-    std::vector<CostModelParam> params;
-    params.push_back({A, B, C, D});
-    return params;
-}
-
 CcuTempAllGatherOmniPipeMesh1DMem2Mem::CcuTempAllGatherOmniPipeMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

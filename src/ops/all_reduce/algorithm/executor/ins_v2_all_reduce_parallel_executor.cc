@@ -33,6 +33,9 @@ constexpr u32 MAIN_THREAD_NUM = 2;       // main(0) + intra main(1) + inter main
 constexpr u32 INTRA_SLAVE_START_IDX = 3; // intra slave线程起始索引
 constexpr u32 INTER_SLAVE_OFFSET = 4;    // inter slave线程相对inter main的偏移
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
+constexpr u64 OMNI_UBX_AR_SCHED_DATA_SIZE = 64 * 1024 * 1024; // UBX机型ccu流水算法数据量下限，与selector保持一致
+
 template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
@@ -592,11 +595,13 @@ template <
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     GetParallelDataSplit(std::vector<float>& splitDataSize) const
 {
-    double ratio = multipleDimensionSplitRatio_;
+    float ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_,
-            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
+        // TODO: CalcParallelDataSplitRatio 未实现，暂用默认 0.5
+        // ratio = CalcParallelDataSplitRatio(
+        //     intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_,
+        //     ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
+        ratio = 0.5;
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
@@ -1409,12 +1414,35 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceParallelMeshNHR, InsAllReduceParallelExecutor, TopoMatchTwoLevel,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuAllReduceParallelMeshNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return (topo->level0PcieMix
+                && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH))
+               || (topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric
+                   && topo->netLayerDetails.localNetInsSizeOfLayer.size() > 1
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[1] > 1);
+    });
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceParallelMeshNHRMultiJetty, InsAllReduceParallelExecutor,
     TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D,
     InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuAllReduceParallelMeshNHRMultiJetty);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 1; op.isSupportProd = false;
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
+    };
+    // 对称内存场景由PipeLineUBX参选，本算法不参与候选
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
+        return !opParam.supportSymmetricMemory;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
@@ -1442,14 +1470,9 @@ REGISTER_ALG_ATTRS(
     op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return !topo->level0PcieMix && !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO)
-               && isMultiple && dataSize >= SMALL_COUNT_512KB;
+        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
     });
 
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

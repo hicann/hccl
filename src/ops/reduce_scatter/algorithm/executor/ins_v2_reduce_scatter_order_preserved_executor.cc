@@ -282,7 +282,10 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
 
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
@@ -293,6 +296,9 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
-    op.supportedDataTypes = SUPPORTED_FLOAT_ONLY; op.isSupportFloatOrderPreserved = true);
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
+    };
+    op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
 
 } // namespace ops_hccl

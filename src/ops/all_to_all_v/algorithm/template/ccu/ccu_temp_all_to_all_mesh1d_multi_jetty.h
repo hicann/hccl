@@ -32,6 +32,8 @@ public:
         return StringFormat("Template of AlltoAll ccu mesh 1D multi jetty with tempRankSize [%u].", templateRankSize_);
     }
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;

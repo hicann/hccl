@@ -27,11 +27,6 @@ std::vector<CostModelParam> CcuTempAllGather2DiesMesh1D::CalcCostCoeff(CalcCostC
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
-    } else {
-        B = 0.0f;
-    }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
     std::vector<CostModelParam> params;

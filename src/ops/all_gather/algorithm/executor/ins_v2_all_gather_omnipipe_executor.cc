@@ -9,14 +9,18 @@
  */
 
 #include "ins_v2_all_gather_omnipipe_executor.h"
+
 #include <algorithm>
 #include <sstream>
+#include <string>
+
 #include "alg_data_trans_wrapper.h"
 #include "alg_param.h"
 #include "ins_temp_all_gather_omnipipe_mesh_1D.h"
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "omnipipe_template_utils.h"
+#include "template_utils.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 
@@ -24,7 +28,84 @@ namespace ops_hccl {
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr u32 RANK_LEVEL_2 = 2;
 constexpr u32 RANK_LEVEL_4 = 4;
+namespace {
+    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
+    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
+
+    struct OmniPipeCostAxes {
+        u64 mesh = 1;
+        u64 clos = 1;
+        u64 third = 1;
+    };
+
+    bool CalcOmniPipeCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, OmniPipeCostAxes& axes)
+    {
+        if (topoInfo == nullptr || topoInfo->userRankSize == 0) {
+            return false;
+        }
+
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix) {
+            if (topoInfo->topoInstDetailsOfLayer.empty()) {
+                return false;
+            }
+            const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
+            auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
+            auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
+            if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
+                || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
+                return false;
+            }
+            axes.mesh = meshIt->second[0];
+            axes.clos = closIt->second[0] / axes.mesh;
+        } else {
+            const auto& localSizes = topoInfo->netLayerDetails.localNetInsSizeOfLayer;
+            if (localSizes.empty() || localSizes[0] == 0) {
+                return false;
+            }
+            axes.mesh = localSizes[0];
+            if (topoInfo->topoLevelNums > 1) {
+                if (localSizes.size() < 2 || localSizes[1] < axes.mesh || localSizes[1] % axes.mesh != 0) {
+                    return false;
+                }
+                axes.clos = localSizes[1] / axes.mesh;
+            }
+        }
+
+        const u64 xyRankSize = axes.mesh * axes.clos;
+        if (xyRankSize == 0 || topoInfo->userRankSize % xyRankSize != 0) {
+            return false;
+        }
+        axes.third = topoInfo->userRankSize / xyRankSize;
+        return axes.third > 0;
+    }
+
+    u64 CalcStepNumByAxes(
+        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum)
+    {
+        if (firstBandwidth <= secondBandwidth) {
+            return CalcAllgatherStepNum2D(firstBandwidth, secondBandwidth, firstRankSize, secondRankSize, maxStepNum);
+        }
+        return CalcAllgatherStepNum2D(secondBandwidth, firstBandwidth, secondRankSize, firstRankSize, maxStepNum);
+    }
+
+    float CalcTemplateLatency(u32 taskNum, EngineType engine)
+    {
+        float latency = 0.0f;
+        CostModelManager::Global()->CalcLatencyParams(taskNum, engine, latency);
+        return latency;
+    }
+
+    float CalcDpuTemplateLatency(int stepNum, int syncNum, int channelNum, int sndRcvnum)
+    {
+        float latency = 0.0f;
+        CostModelManager::Global()->CalcDpuLatencyParams(stepNum, syncNum, channelNum, sndRcvnum, latency);
+        return latency;
+    }
+} // namespace
+
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u64 OMNI_PCIE_AG_DATA_SIZE = 4 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
+
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
 InsV2AllGatherOmniPipeExecutor<
@@ -126,6 +207,143 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+std::vector<CostModelParam>
+InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    if (topoInfo == nullptr || algName == nullptr) {
+        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        return {};
+    }
+
+    OmniPipeCostAxes axes;
+    if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
+        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        return {};
+    }
+
+    OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+    if (axes.clos == RANK_LEVEL_4) {
+        needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_UBX_16P;
+    }
+    if (axes.third > 1) {
+        needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_UBX_32P;
+    }
+
+    double meshBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double closBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double thirdBandwidth = BW_OMNI_UBX_ROCE / OMNIPIPE_FIXED_UB_UTILIZATION;
+    if (topoInfo->level0PcieMix) {
+        if (axes.clos == RANK_LEVEL_2) {
+            closBandwidth = BW_OMNI_PCIE_EIGHT_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        } else if (axes.clos == RANK_LEVEL_4) {
+            closBandwidth = BW_OMNI_PCIE_SIXTEEN_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        }
+    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        closBandwidth = BW_OMNI_UBX_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    }
+    double costMeshBandwidth = meshBandwidth;
+    double costClosBandwidth = closBandwidth;
+    const bool useUbx2dCostBandwidth = !topoInfo->level0PcieMix && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+                                       && axes.mesh > 1 && axes.clos > 1 && axes.third == 1;
+    if (useUbx2dCostBandwidth) {
+        costMeshBandwidth = BW_OMNI_UBX_2D_COST_AG_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+        costClosBandwidth = BW_OMNI_UBX_2D_COST_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    }
+
+    CostModelParam costParam{};
+    const u64 maxStepNum = static_cast<u64>(SetMaxStepNumOmni(needSetStepNum));
+    const double meshPlanBandwidth = meshBandwidth;
+    const double closPlanBandwidth = axes.clos > 1 ? closBandwidth / (axes.clos - 1) : closBandwidth;
+    const u64 innerStepNum = CalcStepNumByAxes(meshPlanBandwidth, closPlanBandwidth, axes.mesh, axes.clos, maxStepNum);
+
+    double xyBandwidth = meshPlanBandwidth;
+    if (axes.mesh > 1 && axes.clos > 1) {
+        if (meshPlanBandwidth <= closPlanBandwidth) {
+            xyBandwidth = CalcBandwidth2D(meshPlanBandwidth, closPlanBandwidth, axes.mesh, axes.clos, maxStepNum);
+        } else {
+            xyBandwidth = CalcBandwidth2D(closPlanBandwidth, meshPlanBandwidth, axes.clos, axes.mesh, maxStepNum);
+        }
+    } else if (axes.clos > 1) {
+        xyBandwidth = closPlanBandwidth;
+    }
+
+    const double thirdPlanBandwidth = axes.third > 1 ? thirdBandwidth / (axes.third - 1) : thirdBandwidth;
+    const u64 outerStepNum
+        = CalcStepNumByAxes(xyBandwidth, thirdPlanBandwidth, axes.mesh * axes.clos, axes.third, maxStepNum);
+    const u64 xyStepNum = innerStepNum * outerStepNum;
+    const u64 thirdStepNum = axes.third > 1 ? outerStepNum : 0;
+    const bool innerReachesMax = innerStepNum == maxStepNum;
+    const bool thirdActive = axes.third > 1;
+    const bool outerReachesMax = thirdActive && outerStepNum == maxStepNum;
+    const bool thirdIsOuterSlow = thirdActive && xyBandwidth > thirdPlanBandwidth;
+
+    const bool meshActive = axes.mesh > 1;
+    const bool closActive = axes.clos > 1;
+    double transferCoeff = 0.0;
+    if (meshActive && closActive) {
+        if (innerReachesMax) {
+            transferCoeff = meshPlanBandwidth <= closPlanBandwidth ? (axes.mesh - 1) / costMeshBandwidth :
+                                                                     (axes.clos - 1) / costClosBandwidth;
+        } else {
+            transferCoeff = (topoInfo->userRankSize - 1) / (costMeshBandwidth + costClosBandwidth);
+        }
+    } else if (meshActive) {
+        transferCoeff = (axes.mesh - 1) / costMeshBandwidth;
+    } else if (closActive) {
+        transferCoeff = (axes.clos - 1) / costClosBandwidth;
+    }
+    if (thirdActive) {
+        if (outerReachesMax) {
+            transferCoeff = thirdIsOuterSlow ? 1.0 / thirdPlanBandwidth : 1.0 / xyBandwidth;
+        } else {
+            double activeBandwidth = thirdBandwidth;
+            activeBandwidth += meshActive ? meshBandwidth : 0.0;
+            activeBandwidth += closActive ? closBandwidth : 0.0;
+            transferCoeff = (topoInfo->userRankSize - 1) / activeBandwidth;
+        }
+    }
+    costParam.A = static_cast<float>(transferCoeff / GBPS_TO_BYTES_PER_SECOND);
+
+    const bool symmetricMemory = std::string(algName) == "AicpuAllGatherPipeLine";
+    const float copyRatio = symmetricMemory ? 1.0f : static_cast<float>(topoInfo->userRankSize + 1);
+    CostModelManager::Global()->CalcLocalCopyParams(copyRatio, EngineType::AICPU, costParam.B);
+
+    const float meshLatency = meshActive ? CalcTemplateLatency(1, EngineType::AICPU) : 0.0f;
+    const float nhrLatency
+        = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(axes.clos)), EngineType::AICPU) : 0.0f;
+    const float thirdLatency
+        = axes.third > 1 ? CalcDpuTemplateLatency(
+                               GetNHRStepNum(static_cast<u32>(axes.third)), 2, 1, static_cast<u32>(axes.third) - 1) :
+                           0.0f;
+
+    costParam.C = 2.0f * static_cast<float>(xyStepNum) * std::max(meshLatency, nhrLatency)
+                  + static_cast<float>(thirdStepNum) * thirdLatency;
+
+    HCCL_INFO(
+        "[%s] algName[%s] axes[%llu,%llu,%llu] steps[%llu,%llu] planBandwidth[%f,%f] "
+        "costBandwidth[%f,%f] xyBandwidth[%f] thirdPlanBandwidth[%f] "
+        "innerMax[%d] outerMax[%d] thirdIsOuterSlow[%d] transferCoeff[%f] Ufixed[%f] A[%e] B[%e] C[%e].",
+        __func__, algName, axes.mesh, axes.clos, axes.third, xyStepNum, thirdStepNum, meshBandwidth, closBandwidth,
+        costMeshBandwidth, costClosBandwidth, xyBandwidth, thirdPlanBandwidth, innerReachesMax, outerReachesMax,
+        thirdIsOuterSlow, transferCoeff, OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A, costParam.B, costParam.C);
+    return {costParam};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+AlgNetMeta
+InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
+    meta.groupSizes = {1};
+    return meta;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
@@ -698,15 +916,33 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHR, InsV2AllGatherOmniPipeExecutor, TopoMatchTwoLevel,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(AicpuAllGatherPipeLineMeshNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return (topo->level0PcieMix
+                && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH))
+               || (!(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple);
+    });
 // 3级算法: TopoMatchThreeLevel 产出 3 级 infos，3 个模板全部执行
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
     TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
-REGISTER_ALG_ATTRS(AicpuAllGatherPipeLineMeshNHRNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherPipeLineMeshNHRNHR, topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric
+               && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8;
+    });
 // 3级算法: HostDPU 场景，L2 使用 DPU 专用模板
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
     TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(DpuAllGatherPipeLineMeshNHRNHR);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherPipeLineMeshNHRNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 } // namespace ops_hccl

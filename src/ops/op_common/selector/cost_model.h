@@ -96,6 +96,7 @@ public:
     InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, CostModel& costModel, const OpParam& param);
     static void FreeCostModel(CostModel& costModel);
     void InitBandwidth();
+    void InitDpuSftCost();
     RankSizePerLevel CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo) const;
 
     // n: 每次发送数据量占总数据量的比例
@@ -114,6 +115,8 @@ public:
     void CalcLocalReduceParams(float n, EngineType scene, float& B);
     // 计算Latency参数, taskNum需要写算法的人预估
     void CalcLatencyParams(int taskNum, EngineType engine, float& C);
+    // 计算dpu Latency参数
+    void CalcDpuLatencyParams(int stepNum, int syncNum, int channelNum, int sndRcvnum, float& C);
     // 计算Launch参数, taskNum需要写算法的人预估
     void CalcLaunchParams(int taskNum, EngineType engine, float& D);
     // 计算一般通信流程的跨卡传输task数, 返回5*(rankSize-1)
@@ -131,6 +134,13 @@ private:
     float ccuLocalReduceBw_{};       // ccu场景本地reduce带宽
     float ccuCircleLocalCopyBw_{};   // ccu环形场景本地拷贝带宽
     float ccuCircleLocalReduceBw_{}; // ccu环形场景本地reduce带宽
+
+    // dpu软件栈开销
+    float preSync_{};
+    float channelFence_{};
+    float threadFence_{};
+    float sndRcvCall_{};
+    float hDLatency_{};
 };
 
 enum class CostAggMode : int {

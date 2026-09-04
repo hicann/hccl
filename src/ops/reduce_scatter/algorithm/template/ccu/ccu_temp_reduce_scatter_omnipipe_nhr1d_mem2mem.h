@@ -32,8 +32,6 @@ public:
             "Template of Reduce Scatter CCU OmniPipe NHR 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
-
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
     HcclResult CalcRes(

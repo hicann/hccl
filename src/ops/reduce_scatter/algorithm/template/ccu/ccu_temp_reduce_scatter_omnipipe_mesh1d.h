@@ -31,8 +31,6 @@ public:
         return StringFormat("Template of Reduce Scatter ccu OmniPipe mesh 1D with tempRankSize[%u]", templateRankSize_);
     }
 
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
-
     u64 GetThreadNum() const override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 

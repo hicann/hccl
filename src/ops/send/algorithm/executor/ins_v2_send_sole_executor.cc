@@ -81,6 +81,28 @@ HcclResult InsV2SendSoleExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
 }
 
 template <typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2SendSoleExecutor<InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename InsAlgTemplate>
+AlgNetMeta InsV2SendSoleExecutor<InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    return meta;
+}
+template <typename InsAlgTemplate>
 HcclResult InsV2SendSoleExecutor<InsAlgTemplate>::CalcAlgHierarchyInfoV2(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
@@ -173,6 +195,11 @@ HcclResult InsV2SendSoleExecutor<InsAlgTemplate>::OrchestrateWithThread(
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_SEND, DpuSendSoleMesh, InsV2SendSoleExecutor, InsTempSendDpu);
-REGISTER_ALG_ATTRS(DpuSendSoleMesh);
+REGISTER_ALG_ATTRS(
+    DpuSendSoleMesh, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !IsHostNicToDeviceNicLink(opParam, topo);
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl

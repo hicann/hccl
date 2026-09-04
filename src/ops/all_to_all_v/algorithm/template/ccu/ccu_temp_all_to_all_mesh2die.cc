@@ -23,6 +23,27 @@ CcuTempAllToAllMesh2Die::CcuTempAllToAllMesh2Die(
 
 CcuTempAllToAllMesh2Die::~CcuTempAllToAllMesh2Die() {}
 
+std::vector<CostModelParam> CcuTempAllToAllMesh2Die::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    // // 2Die全互连: 两个die kernel并发、各管一半peer, 链路全走mesh单链路
+    // int portNum = 1;
+    // // 全互连直写: 每rank向其余rankSize-1个peer各发1/rankSize数据, 每peer一次任务
+    // int taskNum = param.rankSize;
+    // float A = 0.0f;
+    // float B = 0.0f;
+    // float C = 0.0f;
+
+    // CostModelManager::Global()->CalcMeshParam(
+    //     param.n, param.netType, portNum, param.rankSize, EngineType::CCU, A);
+    // // 本地GroupCopy自己的1/rankSize片(withMyRank的die kernel内完成)
+    // CostModelManager::Global()->CalcLocalCopyParams(param.n / param.rankSize, EngineType::CCU, B);
+    // CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    std::vector<CostModelParam> params;
+    params.push_back({1.0f, 1.0f, 1.0f, 1.0f});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, 1.0f, 1.0f, 1.0f);
+    return params;
+}
+
 HcclResult CcuTempAllToAllMesh2Die::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)

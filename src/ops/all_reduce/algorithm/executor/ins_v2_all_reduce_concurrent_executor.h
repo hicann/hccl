@@ -62,6 +62,8 @@ protected:
         const std::vector<std::vector<u32>>& subCommRanks, std::vector<HcclChannelDesc>& channelDescs,
         CommTopo topo) const;
 
+    void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
+
     std::vector<ThreadHandle> threads_;
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<ThreadHandle> temp0Threads_;

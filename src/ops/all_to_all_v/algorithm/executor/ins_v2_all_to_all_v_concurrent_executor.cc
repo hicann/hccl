@@ -10,6 +10,7 @@
 
 #include "channel.h"
 #include "ins_v2_all_to_all_v_concurrent_executor.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_to_all_v_mesh_1D_multi_jetty.h"
@@ -18,6 +19,7 @@
 #endif
 #include "alg_data_trans_wrapper.h"
 #include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 constexpr uint32_t CONST_0 = 0;
@@ -25,6 +27,8 @@ constexpr uint32_t CONST_1 = 1;
 constexpr uint32_t CONST_2 = 2;
 constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
+// 与 alltoallv_auto_selector.cc 保持一致：4P 且 mesh 数等于 clos 数时走并发算法的卡数上限
+constexpr uint32_t CONCURRENT_RANK_LIMIT = 4;
 constexpr u32 MESH_BW = 12;
 constexpr u32 CLOS_BW = 10;
 
@@ -510,7 +514,14 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshConcurrent, InsV2AllToAllVConcurrentExecutor,
     TopoMatchConcurrentV2, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMeshConcurrent);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllVSoleMeshConcurrent, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT;
+    };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 

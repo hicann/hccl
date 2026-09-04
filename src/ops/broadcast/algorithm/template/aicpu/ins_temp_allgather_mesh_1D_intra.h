@@ -31,6 +31,7 @@ public:
         info += std::to_string(templateRankSize_);
         return info;
     }
+
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
     HcclResult CalcRes(

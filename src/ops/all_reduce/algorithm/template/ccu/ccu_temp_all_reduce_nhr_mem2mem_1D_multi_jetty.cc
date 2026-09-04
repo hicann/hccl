@@ -14,18 +14,31 @@
 #include "alg_template_base.h"
 #include "ccu_launch_dl.h"
 #include "ccu_kernel_all_reduce_nhr_mem2mem_1D_multi_jetty.h"
+#include "template_utils.h"
 
 namespace ops_hccl {
 constexpr u32 PORT_NUM = 1;
 
 std::vector<CostModelParam> CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // 先不算multijetty的模型
-    HCCL_DEBUG("[CcuTempAllReduceNhrMem2Mem1DMultiJetty] CalcCostCoeff.");
-    float A = 1000.0f;
+    HCCL_DEBUG("[CcuTempAllReduceNHRMem2Mem1D] CalcCostCoeff.");
+    param.netType = CommTopo::COMM_TOPO_CLOS;
+    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = 8;
+    int kernelNum = 2 * param.rankSize;
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    float A = 0.0f;
     float B = 0.0f;
-    float C = 1000.0f;
+    float C = 0.0f;
     float D = 0.0f;
+
+    CostModelManager::Global()->CalcNHRParams(
+        param.dataRatio * 2, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::CCU, B);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
@@ -363,7 +376,7 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetStepInfo(u32 step, u32 nSt
     return HcclResult::HCCL_SUCCESS;
 }
 
-uint32_t CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetNHRStepNum(const uint32_t rankSize) const
+uint32_t CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetNHRStepNum(const uint32_t rankSize)
 {
     uint32_t nSteps = 0;
     for (uint32_t tmp = rankSize - 1; tmp != 0; tmp >>= 1, nSteps++) {

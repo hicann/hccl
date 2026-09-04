@@ -14,6 +14,9 @@
 
 namespace ops_hccl {
 constexpr u32 UBX_BOARD_PAIR_SIZE = 2;
+// 跨框CLOS端口数：与 InsTempAlltoAllVMesh1D 约定一致，CLOS 场景 portNum 传 8；
+// CalcMeshParam 在 isPod=true 时内部 /2，得 4jetty 并发（对应 maxPathNum_ 的“跨框最多4jetty”）。
+constexpr u32 UBX_CLOS_PORT_NUM = 4;
 InsTempUBXAllToAllVMesh1D::InsTempUBXAllToAllVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)
@@ -21,6 +24,65 @@ InsTempUBXAllToAllVMesh1D::InsTempUBXAllToAllVMesh1D(
 {}
 
 InsTempUBXAllToAllVMesh1D::~InsTempUBXAllToAllVMesh1D() {}
+
+std::vector<CostModelParam> InsTempUBXAllToAllVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    // UBX拓扑: 板内fullmesh(rankNumPerBoard卡, 单链) + 跨框CLOS(boardNum板, 4jetty), R = B*P
+    // 板内卡数P取layer0的1DMESH实例rank数(与运行时GetRankNumPerBoard同源于rank graph), 板数B = rankSize/P
+    u32 rankNumPerBoard = 0;
+    if (param.topoInfo != nullptr && !param.topoInfo->topoInstDetailsOfLayer.empty()) {
+        const auto& rankNumMap = param.topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
+        auto meshItr = rankNumMap.find(CommTopo::COMM_TOPO_1DMESH);
+        if (meshItr != rankNumMap.end() && !meshItr->second.empty()) {
+            rankNumPerBoard = meshItr->second[0];
+        }
+    }
+    if (rankNumPerBoard == 0 || rankNumPerBoard > param.rankSize || param.rankSize % rankNumPerBoard != 0) {
+        // 兜底: UBX机型fullmesh内最多4卡
+        rankNumPerBoard = std::min(param.rankSize, 4U);
+    }
+    u32 boardNum = param.rankSize / rankNumPerBoard;
+
+    // A: 传输时间, 以总数据量S为单位
+    // 跨框: (B-1)轮板配对 * 每轮P步 * 每步S/R数据, 4jetty并发 => (B-1)*S/(4B*bw)
+    float aClos = 0.0f;
+    if (boardNum > 1) {
+        // 跨框CLOS 4jetty 并发，portNum 取 UBX_CLOS_PORT_NUM(8)，不能直接用 executor 传入的 param.portNum[0]（其值为
+        // 1）： isPod=true 时 CalcMeshParam 内部会 /2，1/2 整数除法得 0，导致 A = n*(rankSize-1)/(0*bw) = inf。
+        CostModelManager::Global()->CalcMeshParam(
+            1.0f * rankNumPerBoard, CommTopo::COMM_TOPO_CLOS, static_cast<int>(UBX_CLOS_PORT_NUM), boardNum, aClos,
+            param.isPod);
+    }
+    // 板内: fullmesh一轮, 每链路S/R数据(链路间并行) => S/(R*bw)
+    float aMesh = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(1.0f, CommTopo::COMM_TOPO_1DMESH, 1, rankNumPerBoard, aMesh, param.isPod);
+    // 板内fullmesh与首轮跨框并发, 取较大值
+    A = std::max(aClos, aMesh);
+
+    // B: 落地拷贝(scratch->output)与下一轮跨框传输流水重叠被掩盖, 仅最后一轮暴露S/B
+    // (单板B=1时无传输可掩盖, 恰好退化为全量落地)
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::AICPU, B);
+    }
+
+    // C: 任务数 = (B-1)轮*P步跨框收发 + 板内fullmesh(P-1次) + 自环, 约等于rankSize
+    CostModelManager::Global()->CalcLatencyParams(static_cast<int>(rankNumPerBoard), EngineType::AICPU, C);
+
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    HCCL_INFO(
+        "[%s] rankSize=%u boardNum=%u rankNumPerBoard=%u, CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, param.rankSize,
+        boardNum, rankNumPerBoard, A, B, C, D);
+    return params;
+}
 
 HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

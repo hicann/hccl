@@ -15,6 +15,7 @@
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 #include "ins_temp_scatter_mesh_1D.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -26,9 +27,11 @@ public:
 
     ~AicpuTempScatterMesh1DZAxisDetour() override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     std::string Describe() const override
     {
-        std::string info = "Template of reduce scatter Mesh 1D Z axis detour with tempRankSize ";
+        std::string info = "Template of scatter Mesh 1D Z axis detour with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }
@@ -41,8 +44,6 @@ public:
         const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
         std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset) override;
     HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
 protected:
     u32 level0ChannelNumPerRank_{1};

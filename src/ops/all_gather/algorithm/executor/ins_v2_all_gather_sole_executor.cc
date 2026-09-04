@@ -32,8 +32,11 @@
 namespace ops_hccl {
 
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
+constexpr u32 AG_UBX_AIV_BIGDATA_RANK_UPPER = 8; // 与selector保持一致：UBX大数据场景AIV算法rank上限
+constexpr u32 AG_UBX_AIV_BIGDATA_RANK_LOWER = 4; // 与selector保持一致：UBX大数据场景AIV算法rank下限
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 constexpr u32 CCU_MAX_SIZE = 64;
+constexpr u64 AG_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2AllGatherSoleExecutor()
@@ -95,7 +98,6 @@ AlgNetMeta InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     AlgNetMeta meta;
-
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
@@ -371,27 +373,38 @@ REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return (topo->topLevelUboe
-                && !(
-                    (topo->level0Symmetric && topo->level1Symmetric)
-                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-                && !(
-                    !(topo->level0Symmetric && topo->level1Symmetric)
-                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
-               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
+        // UBX矩形拓扑(8/16P等)：老selector小数据量/非对称场景会选SoleNHR，需与
+        // PipeLineUBX/MultiJetty同条件命中priority，否则被ApplyTopoPriority移出候选
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            bool isEqual = false;
+            bool isMultiple = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+            return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
+        }
+        // 该分支对应旧selector多层(topoLevelNums > 1)场景，单层时localNetInsSizeOfLayer仅1个元素，
+        // 访问[1]会越界；且单层MESH_1D旧selector不选SoleNHR，直接返回false
+        if (topo->topoLevelNums <= 1 || topo->netLayerDetails.localNetInsSizeOfLayer.size() < 2) {
+            return false;
+        }
+        return topo->topLevelUboe
+               && !(
+                   (topo->level0Symmetric && topo->level1Symmetric)
+                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+               && !(
+                   !(topo->level0Symmetric && topo->level1Symmetric)
+                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+               && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     });
-
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
-    InsTempAllGatherNHRDPU);
-REGISTER_ALG_ATTRS(DpuAllGatherSoleNHR);
 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleNHRMultiLink, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuAllGatherSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->level0Topo == Level0Shape::CLOS;
+    });
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -401,14 +414,13 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleMesh, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    op.isSupportInplace = false;
+    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        // UBX参与候选
+        return topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D_CLOS;
+    };
+
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !(topo->topoLevelNums == 2 && topo->userRankSize > CCU_MAX_SIZE);
-    };
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix
-               && dataSize <= SMALL_COUNT_512KB;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
@@ -420,12 +432,10 @@ REGISTER_ALG_ATTRS(
     CcuMSAllGatherSoleMesh, topo.maxTopoLevelNum = 1;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; op.isSupportInplace = false;
-    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return true;
-        }
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return dataSize <= SMALL_COUNT_512KB;
+    // UBX定制机型场景命中topoPriority，避免被其他算法的topoPriorityCheck提前淘汰
+    // （topo阶段无数据量信息，数据量条件由opCustomCheck/opPriorityCheck在op阶段保证）
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
@@ -437,6 +447,10 @@ REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; op.isSupportInplace = false;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        // CLOS定制机型（单层/多层）命中，避免被其他算法的topoPriorityCheck提前淘汰
+        if (topo->level0Topo == Level0Shape::CLOS) {
+            return true;
+        }
         return !topo->netLayerDetails.localNetInsSizeOfLayer.empty()
                && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     };
@@ -455,6 +469,9 @@ REGISTER_ALG_ATTRS(
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->userRankSize <= MAX_RANK_SIZE;
+    };
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -492,13 +509,11 @@ REGISTER_ALG_ATTRS(
     op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && !isMultiple;
-    });
+    };);
+
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if !defined(HCCL_CANN_COMPAT_850)
@@ -512,11 +527,11 @@ REGISTER_ALG_ATTRS(
                                                             [](const TopoInfoWithNetLayerDetails* topo) {
                                                                 return topo->netLayerDetails.netLayerNum > 1;
                                                             };
-    op.isSupportInplace = false;
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return dataSize > SMALL_COUNT_16M;
-    });
+    topo.topoPriorityCheck =
+        [](const TopoInfoWithNetLayerDetails* topo) {
+            return topo->netLayerDetails.netLayerNum > 1;
+        };
+    op.isSupportInplace = false;);
 #endif // !HCCL_CANN_COMPAT_850
 #endif // AICPU_COMPILE
 

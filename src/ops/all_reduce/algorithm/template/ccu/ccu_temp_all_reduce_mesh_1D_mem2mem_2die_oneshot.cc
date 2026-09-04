@@ -29,11 +29,7 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1DMem2Mem2DieOneShot::CalcCostCo
 
     float n = param.dataRatio * param.rankSize;
     CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A, param.isPod);
-    if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(n, EngineType::CCU, B);
-    } else {
-        B = 0.0f;
-    }
+    CostModelManager::Global()->CalcLocalReduceParams(n, EngineType::CCU, B);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
     std::vector<CostModelParam> params;

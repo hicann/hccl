@@ -13,6 +13,7 @@
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
+#include "template_utils.h"
 #include "topo_match_multilevel.h"
 #include "topo_match_pcie_mix.h"
 #include "topo_match_squeeze_2d.h"
@@ -24,13 +25,15 @@
 #include "ccu_temp_scatter_mesh1d.h"
 #include "ccu_temp_scatter_nhr1d_mem2mem.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+#include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 #include <cmath>
 
-#include "alg_attrs_registry.h"
 namespace ops_hccl {
-constexpr u32 MAIN_THREAD_NUM = 2;       // main(0) + intra main(1) + inter main(2) = 3个main
-constexpr u32 INTRA_SLAVE_START_IDX = 3; // intra slave线程起始索引
-constexpr u32 INTER_SLAVE_OFFSET = 4;    // inter slave线程相对inter main的偏移
+constexpr u32 MAIN_THREAD_NUM = 2;                        // main(0) + intra main(1) + inter main(2) = 3个main
+constexpr u32 INTRA_SLAVE_START_IDX = 3;                  // intra slave线程起始索引
+constexpr u32 INTER_SLAVE_OFFSET = 4;                     // inter slave线程相对inter main的偏移
+constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024; // UBX机型ccu并行/流水算法数据量分界，与selector保持一致
 template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
@@ -1482,23 +1485,40 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_ALG_ATTRS(AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;);
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false; topo.isSupportLevel0PcieMix = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->level0PcieMix
+               && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    });
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
-
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHRMultiJetty, InsBroadcastParallelExecutor,
     TopoMatchTwoLevel, InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 1; topo.isSupportLevel1Nhr = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    });
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelNHRNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
     InsTempScatterNHR, InsTempScatterNHR, InsTempAllGatherNHR, InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuBroadcastParallelNHRNHR);
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastParallelNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return (topo->level0Symmetric && topo->level1Symmetric) && topo->netLayerDetails.localNetInsSizeOfLayer[0] != 1
+               && (topo->topLevelUboe || topo->level0Topo != Level0Shape::MESH_1D);
+    };
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return (topo->level0Symmetric && topo->level1Symmetric) && topo->netLayerDetails.localNetInsSizeOfLayer[0] != 1
+               && (topo->topLevelUboe || topo->level0Topo != Level0Shape::MESH_1D);
+    });
 
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
@@ -1518,7 +1538,11 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHRMultiJetty, InsBroadcastParallelExecutor,
     TopoMatchTwoLevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedBroadcastParallelMeshNHRMultiJetty);
+REGISTER_ALG_ATTRS(
+    CcuSchedBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 1; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

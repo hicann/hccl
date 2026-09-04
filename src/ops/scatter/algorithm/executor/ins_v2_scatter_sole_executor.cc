@@ -305,13 +305,24 @@ REGISTER_EXEC_V2(
     InsTempScatterMesh1D);
 // supportLevel0Topos 对齐旧 selector 实际选入面：SoleMesh 在 MESH_1D(:191)/MESH_1D_CLOS 全连(:195)/
 // CLOS 非 PcieMix(:205) 三形态下均被选中
-REGISTER_ALG_ATTRS(AicpuScatterSoleMesh, topo.maxTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
+REGISTER_ALG_ATTRS(
+    AicpuScatterSoleMesh, topo.maxTopoLevelNum = 3;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool customTopo
+            = topo->serverNum == 1 && topo->topoLevelNums == 1
+              && (topo->level0Topo == Level0Shape::CLOS
+                  || (topo->level0Topo == Level0Shape::MESH_1D_CLOS
+                      && AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)));
+        return topo->level0PcieMix || customTopo;
+    });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel, InsTempScatterNHR);
-// SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它，三形态显式并集
+// SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它。
+// MESH_1D_CLOS 形态由 SoleMesh(全连)/UBX/Pcie 算法处理，SoleNHR 不参与（对齐旧 selector）
 REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
@@ -319,9 +330,14 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivScatterSoleMesh, topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool customTopo = topo->serverNum == 1 && topo->topoLevelNums == 1
+                          && (topo->level0Topo == Level0Shape::CLOS || topo->level0Topo == Level0Shape::MESH_1D_CLOS);
+        return topo->level0PcieMix || customTopo;
+    };
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
-    };);
+    });
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // ccu template
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -330,16 +346,27 @@ REGISTER_EXEC_V2(
     CcuTempScatterMesh1D);
 // inplace 排除对齐旧 selector：仅单级 MESH_1D 分支查 inplace（scatter_auto_selector.cc:108），
 // 同算法的 MESH_1D_CLOS 全连分支不查；其余 scatter 算法执行侧均支持 inplace（kernel isInputOutputEqual 等）
-REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-                   op.isSupportInplace = false;);
+REGISTER_ALG_ATTRS(
+    CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
+    topo.requireAllMeshConnected = true; op.isSupportInplace = false;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool customFullMesh = topo->serverNum == 1 && topo->topoLevelNums == 1
+                              && topo->level0Topo == Level0Shape::MESH_1D_CLOS
+                              && AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        return topo->level0PcieMix || customFullMesh;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
+REGISTER_ALG_ATTRS(
+    CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->serverNum == 1 && topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::CLOS
+               && !topo->level0PcieMix;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #endif

@@ -14,6 +14,7 @@
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 class InsTempScatterNHR : public InsAlgTemplateBase {
@@ -24,6 +25,8 @@ public:
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
         const std::vector<std::vector<u32>>& subCommRanks);
     ~InsTempScatterNHR() override;
+
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
     std::string Describe() const override
     {
@@ -45,8 +48,6 @@ public:
 
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
-
-    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
 
 private:
     HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;

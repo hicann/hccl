@@ -9,6 +9,10 @@
  */
 
 #include "ins_v2_all_reduce_omnipipe_executor.h"
+
+#include <algorithm>
+#include <string>
+
 #include "topo_match_3_level.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1D.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
@@ -18,14 +22,194 @@
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "omnipipe_data_slice_calc.h"
 #include "omnipipe_template_utils.h"
+#include "template_utils.h"
 #include <cmath>
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 
 namespace ops_hccl {
+constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4; // 与selector保持一致：并发算法的卡数上限
+constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
+namespace {
+    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
+    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
+
+    struct OmniPipeCostAxes {
+        u64 mesh = 1;
+        u64 clos = 1;
+        u64 third = 1;
+    };
+
+    struct OmniPipeStageCost {
+        double transferCoeff = 0.0;
+        double xyBandwidth = 0.0;
+        double thirdPlanBandwidth = 0.0;
+        float syncCost = 0.0f;
+        u64 xyStepNum = 0;
+        u64 thirdStepNum = 0;
+        bool innerReachesMaxStep = false;
+        bool outerReachesMaxStep = false;
+        bool thirdIsOuterSlow = false;
+    };
+
+    bool CalcOmniPipeCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, OmniPipeCostAxes& axes)
+    {
+        if (topoInfo == nullptr || topoInfo->userRankSize == 0) {
+            return false;
+        }
+
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix) {
+            if (topoInfo->topoInstDetailsOfLayer.empty()) {
+                return false;
+            }
+            const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
+            auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
+            auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
+            if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
+                || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
+                return false;
+            }
+            axes.mesh = meshIt->second[0];
+            axes.clos = closIt->second[0] / axes.mesh;
+        } else {
+            const auto& localSizes = topoInfo->netLayerDetails.localNetInsSizeOfLayer;
+            if (localSizes.empty() || localSizes[0] == 0) {
+                return false;
+            }
+            axes.mesh = localSizes[0];
+            if (topoInfo->topoLevelNums > 1) {
+                if (localSizes.size() < 2 || localSizes[1] < axes.mesh || localSizes[1] % axes.mesh != 0) {
+                    return false;
+                }
+                axes.clos = localSizes[1] / axes.mesh;
+            }
+        }
+
+        const u64 xyRankSize = axes.mesh * axes.clos;
+        if (xyRankSize == 0 || topoInfo->userRankSize % xyRankSize != 0) {
+            return false;
+        }
+        axes.third = topoInfo->userRankSize / xyRankSize;
+        return axes.third > 0;
+    }
+
+    u64 CalcStepNumByAxes(
+        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum,
+        bool isReduceScatter)
+    {
+        const bool firstIsSlow = firstBandwidth <= secondBandwidth;
+        const double slowBandwidth = firstIsSlow ? firstBandwidth : secondBandwidth;
+        const double fastBandwidth = firstIsSlow ? secondBandwidth : firstBandwidth;
+        const u64 slowRankSize = firstIsSlow ? firstRankSize : secondRankSize;
+        const u64 fastRankSize = firstIsSlow ? secondRankSize : firstRankSize;
+        return isReduceScatter ?
+                   CalcReducescatterStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum) :
+                   CalcAllgatherStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum);
+    }
+
+    float CalcTemplateLatency(u32 taskNum, EngineType engine)
+    {
+        float latency = 0.0f;
+        CostModelManager::Global()->CalcLatencyParams(taskNum, engine, latency);
+        return latency;
+    }
+
+    float CalcDpuTemplateLatency(int stepNum, int syncNum, int channelNum, int sndRcvnum)
+    {
+        float latency = 0.0f;
+        CostModelManager::Global()->CalcDpuLatencyParams(stepNum, syncNum, channelNum, sndRcvnum, latency);
+        return latency;
+    }
+
+    OmniPipeStageCost CalcStageCost(
+        const OmniPipeCostAxes& axes, u64 totalRankSize, double meshBandwidth, double closBandwidth,
+        double thirdBandwidth, double costMeshBandwidth, double costClosBandwidth, OmniNeedSetStepNum needSetStepNum,
+        bool isReduceScatter, EngineType engine)
+    {
+        OmniPipeStageCost stage;
+        const u64 maxStepNum = static_cast<u64>(SetMaxStepNumOmni(needSetStepNum) + (isReduceScatter ? 1 : 0));
+        const double meshPlanBandwidth = meshBandwidth;
+        const double closPlanBandwidth = axes.clos > 1 ? closBandwidth / (axes.clos - 1) : closBandwidth;
+        const u64 innerStepNum = CalcStepNumByAxes(
+            meshPlanBandwidth, closPlanBandwidth, axes.mesh, axes.clos, maxStepNum, isReduceScatter);
+
+        double xyBandwidth = meshPlanBandwidth;
+        if (axes.mesh > 1 && axes.clos > 1) {
+            const int bandwidthMaxStep = static_cast<int>(maxStepNum - (isReduceScatter ? 1 : 0));
+            if (meshPlanBandwidth <= closPlanBandwidth) {
+                xyBandwidth
+                    = CalcBandwidth2D(meshPlanBandwidth, closPlanBandwidth, axes.mesh, axes.clos, bandwidthMaxStep);
+            } else {
+                xyBandwidth
+                    = CalcBandwidth2D(closPlanBandwidth, meshPlanBandwidth, axes.clos, axes.mesh, bandwidthMaxStep);
+            }
+        } else if (axes.clos > 1) {
+            xyBandwidth = closPlanBandwidth;
+        }
+
+        const double thirdPlanBandwidth = axes.third > 1 ? thirdBandwidth / (axes.third - 1) : thirdBandwidth;
+        const u64 outerStepNum = CalcStepNumByAxes(
+            xyBandwidth, thirdPlanBandwidth, axes.mesh * axes.clos, axes.third, maxStepNum, isReduceScatter);
+        stage.xyStepNum = innerStepNum * outerStepNum;
+        stage.thirdStepNum = axes.third > 1 ? outerStepNum : 0;
+        stage.xyBandwidth = xyBandwidth;
+        stage.thirdPlanBandwidth = thirdPlanBandwidth;
+        stage.innerReachesMaxStep = innerStepNum == maxStepNum;
+        const bool thirdActive = axes.third > 1;
+        stage.outerReachesMaxStep = thirdActive && outerStepNum == maxStepNum;
+        stage.thirdIsOuterSlow = thirdActive && xyBandwidth > thirdPlanBandwidth;
+
+        const bool meshActive = axes.mesh > 1;
+        const bool closActive = axes.clos > 1;
+        if (meshActive && closActive) {
+            if (stage.innerReachesMaxStep) {
+                stage.transferCoeff = meshPlanBandwidth <= closPlanBandwidth ? (axes.mesh - 1) / costMeshBandwidth :
+                                                                               (axes.clos - 1) / costClosBandwidth;
+            } else {
+                stage.transferCoeff = (totalRankSize - 1) / (costMeshBandwidth + costClosBandwidth);
+            }
+        } else if (meshActive) {
+            stage.transferCoeff = (axes.mesh - 1) / costMeshBandwidth;
+        } else if (closActive) {
+            stage.transferCoeff = (axes.clos - 1) / costClosBandwidth;
+        }
+        if (thirdActive) {
+            if (stage.outerReachesMaxStep) {
+                stage.transferCoeff = stage.thirdIsOuterSlow ? 1.0 / thirdPlanBandwidth : 1.0 / xyBandwidth;
+            } else {
+                double activeBandwidth = thirdBandwidth;
+                activeBandwidth += meshActive ? meshBandwidth : 0.0;
+                activeBandwidth += closActive ? closBandwidth : 0.0;
+                stage.transferCoeff = (totalRankSize - 1) / activeBandwidth;
+            }
+        }
+
+        const float meshLatency = meshActive ? CalcTemplateLatency(1, engine) : 0.0f;
+        const float nhrLatency
+            = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(axes.clos)), engine) : 0.0f;
+        float thirdLatency = 0.0f;
+        if (isReduceScatter) {
+            thirdLatency
+                = axes.third > 1 ?
+                      CalcDpuTemplateLatency(static_cast<u32>(axes.third) - 1, 2, 1, static_cast<u32>(axes.third) - 1) :
+                      0.0f;
+        } else {
+            thirdLatency = axes.third > 1 ? CalcDpuTemplateLatency(
+                                                GetNHRStepNum(static_cast<u32>(axes.third)), 2, 1,
+                                                static_cast<u32>(axes.third) - 1) :
+                                            0.0f;
+        }
+        stage.syncCost = 2.0f * static_cast<float>(stage.xyStepNum) * std::max(meshLatency, nhrLatency)
+                         + static_cast<float>(stage.thirdStepNum) * thirdLatency;
+        ;
+
+        return stage;
+    }
+} // namespace
+
 template <
     typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
     typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
@@ -84,6 +268,110 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
+    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
+std::vector<CostModelParam> InsV2AllReduceOmniPipeExecutor<
+    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
+    InsAgAlgTemplateZ>::
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    if (topoInfo == nullptr || algName == nullptr) {
+        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        return {};
+    }
+
+    OmniPipeCostAxes axes;
+    if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
+        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        return {};
+    }
+
+    OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+    if (axes.clos == RANK_SIZE_LEVEL1_4) {
+        needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_UBX_16P;
+    }
+    if (axes.third > 1) {
+        needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_UBX_32P;
+    }
+
+    double rsMeshBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double rsClosBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double agMeshBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double agClosBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double thirdBandwidth = BW_OMNI_UBX_ROCE / OMNIPIPE_FIXED_UB_UTILIZATION;
+    if (topoInfo->level0PcieMix) {
+        if (axes.clos == RANK_SIZE_LEVEL1_2) {
+            rsClosBandwidth = BW_OMNI_PCIE_EIGHT_RS_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+            agClosBandwidth = BW_OMNI_PCIE_EIGHT_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        } else if (axes.clos == RANK_SIZE_LEVEL1_4) {
+            rsClosBandwidth = BW_OMNI_PCIE_SIXTEEN_RS_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+            agClosBandwidth = BW_OMNI_PCIE_SIXTEEN_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        }
+    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        rsClosBandwidth = BW_OMNI_UBX_RS_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        agClosBandwidth = BW_OMNI_UBX_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    }
+    double rsCostMeshBandwidth = rsMeshBandwidth;
+    double rsCostClosBandwidth = rsClosBandwidth;
+    double agCostMeshBandwidth = agMeshBandwidth;
+    double agCostClosBandwidth = agClosBandwidth;
+    const bool useUbx2dCostBandwidth = !topoInfo->level0PcieMix && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+                                       && axes.mesh > 1 && axes.clos > 1 && axes.third == 1;
+    if (useUbx2dCostBandwidth) {
+        rsCostMeshBandwidth = BW_OMNI_UBX_2D_COST_RS_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+        rsCostClosBandwidth = BW_OMNI_UBX_2D_COST_RS_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+        agCostMeshBandwidth = BW_OMNI_UBX_2D_COST_AG_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+        agCostClosBandwidth = BW_OMNI_UBX_2D_COST_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    }
+
+    const OmniPipeStageCost rsCost = CalcStageCost(
+        axes, topoInfo->userRankSize, rsMeshBandwidth, rsClosBandwidth, thirdBandwidth, rsCostMeshBandwidth,
+        rsCostClosBandwidth, needSetStepNum, true, EngineType::AICPU);
+    const OmniPipeStageCost agCost = CalcStageCost(
+        axes, topoInfo->userRankSize, agMeshBandwidth, agClosBandwidth, thirdBandwidth, agCostMeshBandwidth,
+        agCostClosBandwidth, needSetStepNum, false, EngineType::AICPU);
+
+    CostModelParam costParam{};
+    costParam.A = static_cast<float>(
+        (rsCost.transferCoeff + agCost.transferCoeff) / topoInfo->userRankSize / GBPS_TO_BYTES_PER_SECOND);
+    const bool symmetricMemory = std::string(algName) == "AicpuAllReducePipeLine";
+    const float copyRatio = symmetricMemory ? 1.0f / topoInfo->userRankSize : 2.0f;
+    CostModelManager::Global()->CalcLocalCopyParams(copyRatio, EngineType::AICPU, costParam.B);
+    costParam.C = rsCost.syncCost + agCost.syncCost;
+
+    HCCL_INFO(
+        "[%s] algName[%s] axes[%llu,%llu,%llu] rsPlanBandwidth[%f,%f] rsCostBandwidth[%f,%f] "
+        "rsSteps[%llu,%llu] rsXyBandwidth[%f] "
+        "rsThirdPlanBandwidth[%f] rsInnerMax[%d] rsOuterMax[%d] rsThirdIsOuterSlow[%d] rsTransferCoeff[%f] "
+        "agPlanBandwidth[%f,%f] agCostBandwidth[%f,%f] agSteps[%llu,%llu] agXyBandwidth[%f] "
+        "agThirdPlanBandwidth[%f] agInnerMax[%d] agOuterMax[%d] "
+        "agThirdIsOuterSlow[%d] agTransferCoeff[%f] Ufixed[%f] A[%e] B[%e] C[%e].",
+        __func__, algName, axes.mesh, axes.clos, axes.third, rsMeshBandwidth, rsClosBandwidth, rsCostMeshBandwidth,
+        rsCostClosBandwidth, rsCost.xyStepNum, rsCost.thirdStepNum, rsCost.xyBandwidth, rsCost.thirdPlanBandwidth,
+        rsCost.innerReachesMaxStep, rsCost.outerReachesMaxStep, rsCost.thirdIsOuterSlow, rsCost.transferCoeff,
+        agMeshBandwidth, agClosBandwidth, agCostMeshBandwidth, agCostClosBandwidth, agCost.xyStepNum,
+        agCost.thirdStepNum, agCost.xyBandwidth, agCost.thirdPlanBandwidth, agCost.innerReachesMaxStep,
+        agCost.outerReachesMaxStep, agCost.thirdIsOuterSlow, agCost.transferCoeff, OMNIPIPE_FIXED_UB_UTILIZATION,
+        costParam.A, costParam.B, costParam.C);
+    return {costParam};
+}
+
+template <
+    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
+    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
+AlgNetMeta InsV2AllReduceOmniPipeExecutor<
+    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
+    InsAgAlgTemplateZ>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)topoInfo;
+    AlgNetMeta meta;
+    meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
+    meta.groupSizes = {1};
+    return meta;
 }
 
 template <
@@ -1013,7 +1301,17 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLineMeshNHR, InsV2AllReduceOmniPipeExecutor, TopoMatchTwoLevel,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(AicpuAllReducePipeLineMeshNHR);
+REGISTER_ALG_ATTRS(
+    AicpuAllReducePipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        bool isMultiple = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
+        return (topo->level0PcieMix
+                && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH))
+               || (!(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple);
+    });
 // 3级算法: TopoMatchThreeLevel 产出 3 级 infos，6 个模板全部执行
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReducePipeLineMeshNHRNHR, InsV2AllReduceOmniPipeExecutor,
@@ -1025,6 +1323,10 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric && topo->deviceNumPerModule == 8;
     };
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric && topo->deviceNumPerModule == 8;
+    };
+
     op.isSupportProd = false;
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64});
@@ -1034,6 +1336,10 @@ REGISTER_EXEC_V2_MULTI(
     TopoMatchThreeLevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,
     InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(DpuAllReducePipeLineMeshNHRNHR);
+REGISTER_ALG_ATTRS(
+    DpuAllReducePipeLineMeshNHRNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 
 } // namespace ops_hccl

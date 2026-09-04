@@ -20,14 +20,23 @@ constexpr u32 DIE_WORK = 2;
 
 std::vector<CostModelParam> CcuTempAllreduceMesh1D2DieOneShot::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    HCCL_DEBUG("[CcuTempAllreduceMesh1D2DieOneShot] CalcCostCoeff.");
-    float A = 10.0f;
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 1;
+    float A = 0.0f;
     float B = 0.0f;
-    float C = 1000.0f;
+    float C = 0.0f;
     float D = 0.0f;
+    float n = param.dataRatio * param.rankSize;
+    CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A, param.isPod);
+    // 本地规约: GroupReduce远程读+规约(在A中), DoLocalReduce合并2die结果(D/N)
+    if (param.inputBuffer != param.outputBuffer) {
+        CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
+    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 
