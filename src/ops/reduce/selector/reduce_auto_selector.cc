@@ -433,8 +433,9 @@ SelectorStatus ReduceAutoSelector::SelectAivAlgo(
     }
     if (dataSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
         HCCL_AIV_NOT_MATCH_LOG(
-            opParam, HCCL_DEBUG, "[ReduceAutoSelector][%s] dataSize[%llu] too large for cclBufferSize [%llu]", __func__,
-            dataSize, cclBufferSize);
+            opParam, HCCL_DEBUG,
+            "[ReduceAutoSelector][%s] dataSize[%llu] too large for cclBufferSize[%llu], maxSupportSize[%llu]", __func__,
+            dataSize, cclBufferSize, cclBufferSize * AIV_MAX_CCL_LOOP_NUM);
         return SelectorStatus::NOT_MATCH;
     }
 
