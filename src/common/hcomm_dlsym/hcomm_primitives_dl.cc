@@ -56,6 +56,7 @@ DEFINE_WEAK_FUNC(int32_t, HcommFlush);
 DEFINE_WEAK_FUNC(int32_t, HcommChannelFence, ChannelHandle channel);
 DEFINE_WEAK_FUNC(int32_t, HcommFenceOnThread, ThreadHandle thread);
 DEFINE_WEAK_FUNC(int32_t, HcommChannelFenceOnThread, ThreadHandle thread, ChannelHandle channel);
+DEFINE_WEAK_FUNC(int32_t, HcommChannelDrainOnThread, ThreadHandle thread, ChannelHandle channel);
 DEFINE_WEAK_FUNC(HcclResult, HcommThreadJoin, ThreadHandle thread, uint32_t timeout);
 #ifdef HCOMM_TIMEOUT_FLOAT_TYPE
 DEFINE_WEAK_FUNC(int32_t, HcommThreadResAcquireTimeOut, float timeOut);
@@ -120,6 +121,7 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelFence);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommFenceOnThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelFenceOnThread);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelDrainOnThread);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommThreadJoin);
 
     INIT_SUPPORT_FLAG(libHcommHandle, HcommThreadResAcquireTimeOut);

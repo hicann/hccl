@@ -18,6 +18,10 @@
 
 namespace ops_hccl {
 
+#ifndef AICPU_COMPILE
+HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle thread, ChannelHandle channel);
+#endif
+
 HcclResult SendWrite(const DataInfo& sendInfo);
 HcclResult RecvWrite(const DataInfo& recvInfo);
 HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo);

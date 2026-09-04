@@ -907,6 +907,14 @@ int32_t HcommChannelFenceOnThread(ThreadHandle thread, ChannelHandle channel)
     return 0;
 }
 
+int32_t HcommChannelDrainOnThread(ThreadHandle thread, ChannelHandle channel)
+{
+    (void)thread;
+    (void)channel;
+    HCCL_WARNING("[%s] not support.", __func__);
+    return 0;
+}
+
 int32_t HcommWaitResponse(uint64_t handle, void* dst, size_t sizeByte, uint32_t* msgId)
 {
     HCCL_WARNING("[%s] not support.", __func__);

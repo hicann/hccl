@@ -9,6 +9,7 @@
  */
 
 #include "dpu_alg_nhr_opt_wrapper.h"
+#include "dpu_alg_data_trans_wrapper.h"
 #include "exec_timeout_manager.h"
 #include "hcomm_primitives.h"
 
@@ -159,15 +160,15 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
             }
         }
     }
-    // Fence：发送通道 + 接收通道（去重，samePeer 时仅一次）
+    // Drain：发送通道 + 接收通道（去重，samePeer 时仅一次）
     for (auto& p : pairs) {
-        bool txFenced = false;
+        bool txDrained = false;
         if (p.hasSend()) {
-            CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, p.txCh->handle)));
-            txFenced = true;
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, p.txCh->handle));
+            txDrained = true;
         }
-        if (p.hasRecv() && (!txFenced || p.rxCh->handle != p.txCh->handle)) {
-            CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, p.rxCh->handle)));
+        if (p.hasRecv() && (!txDrained || p.rxCh->handle != p.txCh->handle)) {
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, p.rxCh->handle));
         }
     }
     CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));

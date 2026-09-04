@@ -159,7 +159,7 @@ HcclResult InsTempSendHostNicDpu::DPUKernelRun(
             // 后同步
             CHK_RET(static_cast<HcclResult>(
                 HcommChannelNotifyWaitOnThread(0, channels.at(rankIdx)[0].handle, 2, timeOutSize)));
-            CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, channels.at(rankIdx)[0].handle)));
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, channels.at(rankIdx)[0].handle));
         }
     }
 #endif

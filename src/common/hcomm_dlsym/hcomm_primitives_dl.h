@@ -103,6 +103,7 @@ DECL_WEAK_FUNC(
     int32_t, HcommWriteWithNotifyNbiOnThread, ThreadHandle thread, ChannelHandle channel, void* dst, const void* src,
     uint64_t len, uint32_t remoteNotifyIdx);
 DECL_WEAK_FUNC(int32_t, HcommChannelFenceOnThread, ThreadHandle thread, ChannelHandle channel);
+DECL_WEAK_FUNC(int32_t, HcommChannelDrainOnThread, ThreadHandle thread, ChannelHandle channel);
 DECL_SUPPORT_FLAG(HcommBatchTransferOnThread);
 DECL_SUPPORT_FLAG(HcommThreadResAcquireTimeOut);
 DECL_SUPPORT_FLAG(HcommSetNotifyWaitTimeOut);

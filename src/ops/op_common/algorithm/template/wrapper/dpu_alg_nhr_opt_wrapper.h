@@ -58,7 +58,7 @@ struct DpuTransferCtx {
 /**
  * @brief 三阶段批量传输：前同步 → 写数据 → 后同步
  *        调用方负责填充 DpuTransferCtx 列表（含正确的 txDst/txSrc 偏移），
- *        本函数批量执行 Phase 1（step sync）/ Phase 2（HcommWriteNbi）/ Phase 3（data sync + Fence）。
+ *        本函数批量执行 Phase 1（step sync）/ Phase 2（HcommWriteNbi）/ Phase 3（data sync + Drain）。
  */
 HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs);
 

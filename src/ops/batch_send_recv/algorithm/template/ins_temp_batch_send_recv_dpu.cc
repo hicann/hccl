@@ -282,7 +282,7 @@ HcclResult InsTempBatchSendRecvDpu::DPUKernelRun(
         return HCCL_SUCCESS;
     } else if (tempAlgParam.opType == BatchSendRecvOpType::FENCE) {
         ChannelInfo linkRecv = channelIter->second[0];
-        CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, linkRecv.handle)));
+        CHK_RET(HcommChannelDrainOnThreadWithCompat(0, linkRecv.handle));
         CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
     }
 

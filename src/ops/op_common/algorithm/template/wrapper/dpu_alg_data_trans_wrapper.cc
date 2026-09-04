@@ -11,8 +11,42 @@
 #include "dpu_alg_data_trans_wrapper.h"
 #include "exec_timeout_manager.h"
 #include "hcomm_primitives.h"
+#ifndef AICPU_COMPILE
+#include "dlsym_common.h"
+#include "hcomm_dlsym.h"
+#include "log.h"
+#endif
 
 namespace ops_hccl {
+
+#ifndef AICPU_COMPILE
+HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle thread, ChannelHandle channel)
+{
+    if (channel == 0) {
+        HCCL_ERROR("[HcommChannelDrainOnThread] channel is nullptr.");
+        return HCCL_E_PTR;
+    }
+
+    constexpr int hostChannelDrainMinVersion = CANN_VERSION(9, 2, 0, 2);
+    const int hcommVersion = GetHcommVersion();
+    if (hcommVersion < hostChannelDrainMinVersion) {
+        HCCL_WARNING(
+            "[HcommChannelDrainOnThread] HCOMM version[%d] does not support Host Channel Drain, "
+            "fallback to HcommChannelFenceOnThread.",
+            hcommVersion);
+        return static_cast<HcclResult>(HcommChannelFenceOnThread(thread, channel));
+    }
+
+    const HcclResult drainRet = static_cast<HcclResult>(HcommChannelDrainOnThread(thread, channel));
+    if (drainRet == HCCL_E_PTR) {
+        HCCL_ERROR(
+            "[HcommChannelDrainOnThread] failed with HCCL_E_PTR, channel[0x%llx], HCOMM version[%d]. "
+            "Check channel or update HCOMM.",
+            static_cast<unsigned long long>(channel), hcommVersion);
+    }
+    return drainRet;
+}
+#endif
 
 HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo)
 {
@@ -43,7 +77,7 @@ HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo)
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, sendChannel.handle, NOTIFY_IDX_FIN_ACK)));
     CHK_RET(static_cast<HcclResult>(
         HcommChannelNotifyWaitOnThread(0, recvChannel.handle, NOTIFY_IDX_FIN_ACK, execTimeout)));
-    CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, sendChannel.handle)));
+    CHK_RET(HcommChannelDrainOnThreadWithCompat(0, sendChannel.handle));
     CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
 #endif
     return HCCL_SUCCESS;
@@ -73,7 +107,7 @@ HcclResult SendWrite(const DataInfo& sendInfo)
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, sendChannel.handle, NOTIFY_IDX_FIN_ACK)));
     CHK_RET(static_cast<HcclResult>(
         HcommChannelNotifyWaitOnThread(0, sendChannel.handle, NOTIFY_IDX_FIN_ACK, execTimeout)));
-    CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, sendChannel.handle)));
+    CHK_RET(HcommChannelDrainOnThreadWithCompat(0, sendChannel.handle));
     CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
 #endif
     return HCCL_SUCCESS;
@@ -99,7 +133,7 @@ HcclResult RecvWrite(const DataInfo& recvInfo)
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, recvChannel.handle, NOTIFY_IDX_FIN_ACK)));
     CHK_RET(static_cast<HcclResult>(
         HcommChannelNotifyWaitOnThread(0, recvChannel.handle, NOTIFY_IDX_FIN_ACK, execTimeout)));
-    CHK_RET(static_cast<HcclResult>(HcommChannelFenceOnThread(0, recvChannel.handle)));
+    CHK_RET(HcommChannelDrainOnThreadWithCompat(0, recvChannel.handle));
     CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
 #endif
     return HCCL_SUCCESS;
