@@ -482,7 +482,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedMesh, InsV2AllReduceOrderPreservedExecutor,
     TopoMatchOneLevel, InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuAllReduceStrictOrderedMesh,
+    AicpuAllReduceStrictOrderedMesh, topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
