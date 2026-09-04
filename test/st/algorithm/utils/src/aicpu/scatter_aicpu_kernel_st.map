@@ -31,6 +31,7 @@
             "ops_hccl::CollAlgExecRegistryV2::Instance()";
             "ops_hccl::CollAlgExecRegistryV2::GetAlgExec(HcclCMDType, std::string const&)";
 
+            "ops_hccl::HcclGetHcclAlgo(void*, std::string&)";
             "ops_hccl::HcclGetAlgRes(void*, ops_hccl::OpParam&, std::unique_ptr<ops_hccl::InsCollAlgBase, std::default_delete<ops_hccl::InsCollAlgBase> >&, ops_hccl::TopoInfoWithNetLayerDetails*, std::unique_ptr<ops_hccl::AlgResourceCtxSerializable, std::default_delete<ops_hccl::AlgResourceCtxSerializable> >&, void**, bool&, ops_hccl::ResPackGraphMode const&)";
         };
 };

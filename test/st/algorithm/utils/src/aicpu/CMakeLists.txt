@@ -164,6 +164,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/common/adapter_error_manager_pub.cc
     ${HCCL_DEV_BASE}/src/common/alg_env_config.cc
     ${HCCL_DEV_BASE}/src/common/hcomm_dlsym/hcomm_primitives_dl.cc
+    ${HCCL_DEV_BASE}/src/common/hcomm_dlsym/hccl_sym_win_dl.cc
 
     ${HCCL_DEV_BASE}/src/ops/op_common/exec_timeout_manager.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/executor/channel/channel.cc
@@ -295,12 +296,19 @@ set_property(TARGET scatter_aicpu_kernel APPEND PROPERTY
 )
 
 target_sources(scatter_aicpu_kernel PRIVATE
+    # ST-local HCCL configuration stub.
+    ${CMAKE_CURRENT_LIST_DIR}/hccl_algo_stub.cc
+
     # ST-local selector and cost-model implementations.
     ${HCCL_DEV_BASE}/src/ops/op_common/selector/cost_model.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/selector/alg_attrs_registry.cc
+    ${HCCL_DEV_BASE}/src/common/alg_parse.cc
 
     # ST-local topology matching implementations.
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_base_v2.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_one_level.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_two_level.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_three_level.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_squeeze_2d.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_ubx_1d.cc
 
