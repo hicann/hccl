@@ -71,12 +71,14 @@ protected:
         std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo) const override;
 
     HcclResult InitOmniPipeScratchParam(
-        OmniPipeScratchParam& scratchParam, const OpParam& param, const std::vector<double>& endpointAttrBwNew,
+        OmniPipeScratchParam& scratchParam, const OpParam& param, const AlgResourceCtxSerializable& resCtx,
+        const std::vector<double>& endpointAttrBwNew,
         std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap) const;
 
     HcclResult InitOmniPipeSliceParam(
-        OmniPipeSliceParam& sliceParam, const OpParam& param, const std::vector<double>& endpointAttrBwNew,
-        std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap, u64 maxCountPerLoop) const;
+        OmniPipeSliceParam& sliceParam, const OpParam& param, const AlgResourceCtxSerializable& resCtx,
+        const std::vector<double>& endpointAttrBwNew, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
+        u64 maxCountPerLoop) const;
 
     HcclResult CalcResLevel(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

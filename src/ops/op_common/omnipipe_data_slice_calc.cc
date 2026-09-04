@@ -152,10 +152,6 @@ u64 CalAllgatherDataSizeRatio2D(
     double dataSize, u64 maxStep)
 {
     HCCL_INFO("[CalAllgatherDataSizeRatio2D] start");
-    HCCL_DEBUG(
-        "[CalAllgatherDataSizeRatio2D][DEBUG] input: xB=[%f], yB=[%f], xRankSize=[%llu], yRankSize=[%llu], "
-        "dataSize=[%f], maxStep=[%llu]",
-        xB, yB, xRankSize, yRankSize, dataSize, maxStep);
     u64 step = 1;
     if (yRankSize == 1) {
         xStepP2pDataSize[0] = dataSize;
@@ -194,11 +190,6 @@ u64 CalAllgatherDataSizeRatio2D(
             "[CalAllgatherDataSizeRatio2D] "
             "bandwidthRatio=[%f],omniPipeRatio=[%f],scale=[%f],step=[%llu]",
             bandwidthRatio, omniPipeRatio, scale, step);
-        HCCL_DEBUG(
-            "[CalAllgatherDataSizeRatio2D][DEBUG] maxStep=[%llu], xRankSize-bandwidthRatio=[%f], "
-            "isMaxStepBranch=[%d], bandwidthRatio=[%f], omniPipeRatio=[%f], scale=[%f], step=[%llu]",
-            maxStep, xRankSize - bandwidthRatio, (xRankSize - bandwidthRatio > 0) ? 1 : 0, bandwidthRatio,
-            omniPipeRatio, scale, step);
         // 1. 计算第一步的通信数据
         xStepP2pDataSize[0] = scale * dataSize / (wholeRankSize * bandwidthRatio);
         yStepP2pDataSize[0] = dataSize / wholeRankSize;
@@ -227,14 +218,6 @@ u64 CalAllgatherDataSizeRatio2D(
                                        - (sumYDataSzie - yStepP2pDataSize[0]) * (yRankSize - 1))
                                       - xStepP2pDataSize[step - 1] * (xRankSize - 1))
                                      / (yRankSize - 1);
-        for (u64 i = 0; i < step; i++) {
-            HCCL_DEBUG(
-                "[CalAllgatherDataSizeRatio2D][DEBUG] xStepP2pDataSize[%llu]=[%f], yStepP2pDataSize[%llu]=[%f]", i,
-                xStepP2pDataSize[i], i, yStepP2pDataSize[i]);
-        }
-        HCCL_DEBUG(
-            "[CalAllgatherDataSizeRatio2D][DEBUG] sumXDataSize=[%f], sumYDataSize=[%f], totalDataSize=[%f]",
-            sumXDataSzie, sumYDataSzie, dataSize);
     }
     HCCL_INFO("[CalAllgatherDataSizeRatio2D] step=[%llu]", step);
     for (int i = 0; i < step; i++) {
@@ -259,10 +242,6 @@ u64 CalAllgatherDataSize2D(
     u64 dataSizeEachRank, u64 maxStep, CommEngine engine, double multipleDimensionSplitRatio)
 {
     HCCL_INFO("[CalAllgatherDataSize2D] start");
-    HCCL_DEBUG(
-        "[CalAllgatherDataSize2D][DEBUG] input: xB=[%f], yB=[%f], xRankSize=[%llu], yRankSize=[%llu], "
-        "dataSizeEachRank=[%llu], maxStep=[%llu]",
-        xB, yB, xRankSize, yRankSize, dataSizeEachRank, maxStep);
     u64 step = 1;
     // CCU对齐使用128，其他使用512
     u64 justifyLen
@@ -279,10 +258,6 @@ u64 CalAllgatherDataSize2D(
         // 由 omniPipeRatio = (xRankSize-1)/bandwidthRatio 反推 bandwidthRatio = (xRankSize-1)/(1-R)
         if (IsValidMultipleDimensionSplitRatio(multipleDimensionSplitRatio)) {
             bandwidthRatio = (xRankSize - 1) / (1.0 - multipleDimensionSplitRatio);
-            HCCL_DEBUG(
-                "[CalAllgatherDataSize2D][DEBUG] override bandwidthRatio by multipleDimensionSplitRatio, "
-                "splitRatio=[%f], overriddenBandwidthRatio=[%f]",
-                multipleDimensionSplitRatio, bandwidthRatio);
         }
         u64 wholeRankSize = xRankSize * yRankSize;
         // 计算斜对角等比

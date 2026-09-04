@@ -341,8 +341,8 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::
     InitOmniPipeScratchParam(
-        OmniPipeScratchParam& scratchParam, const OpParam& param, const std::vector<double>& endpointAttrBwNew,
-        std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap) const
+        OmniPipeScratchParam& scratchParam, const OpParam& param, const AlgResourceCtxSerializable& resCtx,
+        const std::vector<double>& endpointAttrBwNew, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap) const
 {
     std::vector<u64> levelRankSizeVec = {rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_};
     std::vector<u64> levelRankIdVec = {rankIdxLevel0_, rankIdxLevel1_, rankIdxLevel2_};
@@ -368,14 +368,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     scratchParam.opMode = param.opMode;
     scratchParam.engine = param.engine;
     scratchParam.needSetStepNum = omniNeedSetStepNum_;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+    if (resCtx.topoInfo.level0PcieMix
+        && param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         scratchParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
     }
-    HCCL_DEBUG(
-        "[InsV2AllReduceOmniPipeExecutor][InitOmniPipeScratchParam] multipleDimensionSplitRatioSource=[%d], "
-        "opConfigRatio=[%f], scratchParamRatio=[%f]",
-        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
-        scratchParam.multipleDimensionSplitRatio);
     return HCCL_SUCCESS;
 }
 
@@ -386,8 +382,9 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::
     InitOmniPipeSliceParam(
-        OmniPipeSliceParam& sliceParam, const OpParam& param, const std::vector<double>& endpointAttrBwNew,
-        std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap, u64 maxCountPerLoop) const
+        OmniPipeSliceParam& sliceParam, const OpParam& param, const AlgResourceCtxSerializable& resCtx,
+        const std::vector<double>& endpointAttrBwNew, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
+        u64 maxCountPerLoop) const
 {
     (void)maxCountPerLoop;
     std::vector<u64> levelRankSizeVec = {rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_};
@@ -415,14 +412,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     sliceParam.opMode = param.opMode;
     sliceParam.engine = param.engine;
     sliceParam.needSetStepNum = omniNeedSetStepNum_;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+    if (resCtx.topoInfo.level0PcieMix
+        && param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         sliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
     }
-    HCCL_DEBUG(
-        "[InsV2AllReduceOmniPipeExecutor][InitOmniPipeSliceParam] multipleDimensionSplitRatioSource=[%d], "
-        "opConfigRatio=[%f], sliceParamRatio=[%f]",
-        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
-        sliceParam.multipleDimensionSplitRatio);
     return HCCL_SUCCESS;
 }
 
@@ -748,7 +741,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 
     // 2.1 计算scratch
     OmniPipeScratchParam scratchParam;
-    CHK_RET(InitOmniPipeScratchParam(scratchParam, param, endpointAttrBwNew, tempMap));
+    CHK_RET(InitOmniPipeScratchParam(scratchParam, param, resCtx, endpointAttrBwNew, tempMap));
     scratchParam.maxTmpMemSize = resCtx.cclMem.size;
 
     // 2.2 获取每个rank切分的数据量count
@@ -774,7 +767,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 
     // 3. 计算loop的slice信息
     OmniPipeSliceParam sliceParam;
-    CHK_RET(InitOmniPipeSliceParam(sliceParam, param, endpointAttrBwNew, tempMap, maxCountPerLoop));
+    CHK_RET(InitOmniPipeSliceParam(sliceParam, param, resCtx, endpointAttrBwNew, tempMap, maxCountPerLoop));
 
     u64 processedDataCount = 0;
     OmniPipeSliceInfo OmniPipeSliceInfoRS;

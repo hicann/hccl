@@ -374,14 +374,10 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     omniPipeSliceParam.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     omniPipeSliceParam.dataWholeSize = dataWholeSize;
     omniPipeSliceParam.needSetStepNum = omniNeedSetStepNum_;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+    if (resCtx.topoInfo.level0PcieMix
+        && param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         omniPipeSliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
     }
-    HCCL_DEBUG(
-        "[InsV2AllGatherOmniPipeExecutor][OrchestrateLoop] multipleDimensionSplitRatioSource=[%d], "
-        "opConfigRatio=[%f], sliceParamRatio=[%f]",
-        static_cast<int>(param.opConfig.multipleDimensionSplitRatioSource), param.opConfig.multipleDimensionSplitRatio,
-        omniPipeSliceParam.multipleDimensionSplitRatio);
 
     OmniPipeSliceInfo alignSliceInfo = CalcAGOmniPipeSliceInfo(omniPipeSliceParam);
 
@@ -399,7 +395,8 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     std::vector<u64> dataWholeSizeLocalcopy(rankSize_, dataSize_);
     localcopySliceParam.dataWholeSize = dataWholeSizeLocalcopy; // 这里用整体数据量算一遍
     localcopySliceParam.needSetStepNum = omniNeedSetStepNum_;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+    if (resCtx.topoInfo.level0PcieMix
+        && param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         localcopySliceParam.multipleDimensionSplitRatio = param.opConfig.multipleDimensionSplitRatio;
     }
 
