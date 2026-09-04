@@ -216,7 +216,7 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
 
         tempAlgParams.sliceSize = currDataCount * dataTypeSize_;
         tempAlgParams.tailSize = tempAlgParams.sliceSize;
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParams.inputSliceStride = dataSize_; // 如果是输入，偏移是算子的output datasize
         tempAlgParams.outputSliceStride = 0;
 

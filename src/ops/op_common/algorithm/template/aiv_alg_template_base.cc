@@ -114,7 +114,7 @@ HcclResult AivAlgTemplateBase::PreSync(const u32 queIdx, const std::vector<Threa
         // Semaphore Post
         for (u32 qidx = 1; qidx < threads.size(); qidx++) {
             // 主流向从流发送post
-            // 第三个参数是目标流的notify的索引，在exector中计算资源的时候会确定从流需要多少索引
+            // 第三个参数是目标流的notify的索引，在executor中计算资源的时候会确定从流需要多少索引
             CHK_RET(static_cast<HcclResult>(
                 HcommThreadNotifyRecordOnThread(currThread, threads[qidx], LOCAL_NOTIFY_IDX_ZERO)));
         }

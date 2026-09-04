@@ -712,7 +712,7 @@ HcclResult GetAlgRes(
     uint64_t size = 0;
     if (HcclEngineCtxGet(comm, param.algTag, param.engine, &ctx, &size) == HCCL_SUCCESS) {
         *resCtx = static_cast<AlgResourceCtx*>(ctx);
-        HCCL_INFO("[%s] Res Allready Exist", __func__);
+        HCCL_INFO("[%s] Res Already Exist", __func__);
         if (HcommIsProfilingSupported()) {
             CHK_PRT(ReportProfilingThread(comm, param, *resCtx, topoInfo));
         }

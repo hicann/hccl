@@ -130,7 +130,7 @@ HcclResult ScatterMesh::RunRecvScatter(const u32 srcRank, const Slice& slice, st
         HCCL_ERROR("[Run][RecvScatter]SrcRank[%u] is out of range, linkSize[%llu]", srcRank, channels.size());
         return HCCL_E_INTERNAL;
     }
-    HCCL_DEBUG("rank[%u] will rcv with ouput's offset[%llu], size[%llu]", interRank_, slice.offset, slice.size);
+    HCCL_DEBUG("rank[%u] will rcv with output's offset[%llu], size[%llu]", interRank_, slice.offset, slice.size);
 
     // 向root节点发送tx同步,rxmem可用
     CHK_RET(

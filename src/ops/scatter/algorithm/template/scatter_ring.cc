@@ -177,7 +177,7 @@ HcclResult ScatterRing::RunAsync(const u32 rank, const u32 rankSize, std::vector
     CHK_PRT_RET(
         unitSize == 0, HCCL_ERROR("[ScatterRing][RunAsync]rank[%u] unit data size is zero", rank), HCCL_E_INTERNAL);
 
-    // 带入vecotr为空，计算每个rank的结果偏移和大小
+    // 带入vector为空，计算每个rank的结果偏移和大小
     if (slices_.size() == 0) {
         PrepareSlicesData(unitSize, count_, interRankSize_);
     }

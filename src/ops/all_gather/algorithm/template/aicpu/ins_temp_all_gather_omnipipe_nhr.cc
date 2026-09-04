@@ -146,7 +146,7 @@ HcclResult InsTempAllGatherOmniPipeNHR::DoLastStepCopyNhr(
 {
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
-    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， celi(log2(rankSize))
+    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， ceil(log2(rankSize))
     bool isPcieProtocal = IsPcieProtocol(channels);      // 判断是否存在pcie链路
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 step = 0; step < nSteps - 1; ++step) {
@@ -181,7 +181,7 @@ HcclResult InsTempAllGatherOmniPipeNHR::RunAllGatherNHR(
         myRank_, channelIdx, tempAlgParams_.enableRemoteMemAccess);
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
-    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， celi(log2(rankSize))
+    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， ceil(log2(rankSize))
     bool isPcieProtocal = IsPcieProtocol(channels);      // 判断是否存在pcie链路
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 step = 0; step < nSteps; ++step) {

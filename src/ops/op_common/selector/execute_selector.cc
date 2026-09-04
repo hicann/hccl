@@ -25,7 +25,7 @@ ExecuteSelector::Run(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, st
     if (opParam.isMc2) {
         auto iter = selectors.find(18);
         if (iter == selectors.end()) {
-            HCCL_ERROR("[Algo][Selector] CCU selector is not registried.");
+            HCCL_ERROR("[Algo][Selector] CCU selector is not registered.");
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         if (iter->second->Select(opParam, topoInfo, selectAlgName) == SelectorStatus::MATCH) {

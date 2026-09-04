@@ -423,7 +423,7 @@ HcclResult RecvWrite(const DataInfo& recvInfo, const ThreadHandle& thread)
  这个SendRecv是以notify的视角去看的，针对一个thread上的notify，即有record操作也有wait操作。
  为什么是SendRecv：因为是一个双向的写，rank 0需要向rank 1写，而rank 1也需要向rank 0写，
  因此对于rank 0来说需要向rank 1 record告诉rank 1自己准备好了可以写了，
- 而rank 0也需要wait一下rank 1的record知道rnak 1那边也可以写了。
+ 而rank 0也需要wait一下rank 1的record知道rank 1那边也可以写了。
 */
 HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread)
 {

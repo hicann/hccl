@@ -115,9 +115,9 @@ REG_OP(HcomAllGather)
      * @attention Constraints:
      * @li "group" is limited to 128 characters. Use "hccl_world_group"
       as the name of a world group.
-     * @li For Altas 300I Duo, "prod"/"max"/"min" does not support int16
-     * @li For Altas A2, "prod" does not support int16/bfp16
-     * @li For Altas A3, "prod" does not support int16/bfp16
+     * @li For Atlas 300I Duo, "prod"/"max"/"min" does not support int16
+     * @li For Atlas A2, "prod" does not support int16/bfp16
+     * @li For Atlas A3, "prod" does not support int16/bfp16
      */
     REG_OP(HcomAllReduce)
     .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))

@@ -28,7 +28,7 @@ public:
 
     std::string Describe() const override
     {
-        std::string info = "Template of all resduce (one-shot) 1D Mesh with tempRankSize ";
+        std::string info = "Template of all reduce (one-shot) 1D Mesh with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }

@@ -1191,7 +1191,7 @@ HcclResult HcclAivKernelEntranceLaunch(
     if (ret == HCCL_SUCCESS && aivParam != nullptr) {
         numBlocksLimit = aivParam->aivCoreLimit;
     } else if (param.opMode == OpMode::OFFLOAD) {
-        HCCL_ERROR("[%s] GetAivParamStorageByComm faile, ret[%d], aivParam[%p]", __func__, ret, aivParam);
+        HCCL_ERROR("[%s] GetAivParamStorageByComm fail, ret[%d], aivParam[%p]", __func__, ret, aivParam);
         return HCCL_E_INTERNAL;
     }
     if (numBlocksLimit == 0 && param.opMode == OpMode::OPBASE) {
@@ -2038,7 +2038,7 @@ HcclResult RegGraphModeBuffers(
         return HcclResult::HCCL_E_INTERNAL;
     }
 
-    HCCL_INFO("[RegGraphModeBuffers] graph mode regstry remote buuffer");
+    HCCL_INFO("[RegGraphModeBuffers] graph mode registry remote buffer");
     if (param.inputPtr != nullptr && param.inputSize != 0) {
         HcclMemHandle inputHandle = nullptr;
         CHK_RET(HcclRegstryBuff(comm, inputBuffTag, param.inputPtr, param.inputSize, &inputHandle));

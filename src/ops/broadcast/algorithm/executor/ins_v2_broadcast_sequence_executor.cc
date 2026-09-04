@@ -286,7 +286,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
         tempAlgParamsScatterIntra.sliceSize = 0;
         tempAlgParamsScatterIntra.tailSize = 0;
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParamsScatterIntra.inputSliceStride = 0;
         tempAlgParamsScatterIntra.outputSliceStride = 0;
 
@@ -321,7 +321,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
             "[InsV2BroadcastSequenceExecutor][SplitData][ScatterInter] count[%u] slicenum[%u]",
             tempAlgParamsScatterInter.count, rankSizeLevel1_);
 
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParamsScatterInter.inputSliceStride = 0;
         tempAlgParamsScatterInter.outputSliceStride = 0;
 
@@ -360,7 +360,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
         tempAlgParamsAllGatherInter.sliceSize = 0;
         tempAlgParamsAllGatherInter.tailSize = 0;
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParamsAllGatherInter.inputSliceStride = 0; // 如果是输入，偏移是算子的output datasize
         tempAlgParamsAllGatherInter.outputSliceStride = 0; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
@@ -401,7 +401,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherIntra.sliceSize = 0;
         tempAlgParamsAllGatherIntra.tailSize = 0;
 
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParamsAllGatherIntra.inputSliceStride = 0; // 如果是输入，偏移是算子的output datasize
         tempAlgParamsAllGatherIntra.outputSliceStride = 0; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 

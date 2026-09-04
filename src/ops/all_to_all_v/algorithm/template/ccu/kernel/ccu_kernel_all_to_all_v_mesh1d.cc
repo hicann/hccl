@@ -103,7 +103,7 @@ static CcuResult InitResource(AlltoAllVMesh1DContext& ctx)
 
 static CcuResult PreSync(AlltoAllVMesh1DContext& ctx)
 {
-    HCCL_INFO("[CcuKernelAlltoAllVMesh1D] PreSync begain!");
+    HCCL_INFO("[CcuKernelAlltoAllVMesh1D] PreSync begin!");
     const auto* arg = ctx.arg;
     ccu::Variable tempDst;
 

@@ -183,7 +183,7 @@ protected:
     ThreadHandle thread_;
 
     bool barrierSwitchOn_;
-    // 用于91093 aligend double ring算法
+    // 用于91093 aligned double ring算法
     std::vector<std::vector<Slice>> multRingsSlices_;
 
 private:

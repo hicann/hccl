@@ -240,7 +240,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
-            "[InsV2ReduceOmniPipeExecutor][Orchestrate]errNo[0x%016llx] excutor kernel run failed",
+            "[InsV2ReduceOmniPipeExecutor][Orchestrate]errNo[0x%016llx] executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

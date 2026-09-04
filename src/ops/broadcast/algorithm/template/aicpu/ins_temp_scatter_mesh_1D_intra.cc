@@ -41,7 +41,7 @@ HcclResult InsTempScatterMesh1DIntra::CalcRes(
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
 
     // mesh算法只做level 0的，因此这里算的channels也是level 0的
-    // 多级的时候需要分别在template中计算，然后在exector中将channels组合
+    // 多级的时候需要分别在template中计算，然后在executor中将channels组合
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);

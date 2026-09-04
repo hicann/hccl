@@ -1066,7 +1066,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         u64 currDataCount = multiLoopAllRankSplitData[loop][myRank_];
 
         // 4.2 RS在每次loop进行之前先将所有数据从usrin拷贝到ccl
-        // intput -> ccl
+        // input -> ccl
         // ccl : 从每个rank-intputmem 上面拿到的数据放到 ccl
         tempParamLocalcopy.buffInfo.inBuffType = BufferType::INPUT;
         tempParamLocalcopy.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;

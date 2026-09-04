@@ -216,7 +216,7 @@ HcclResult InsTempReduceScatterAicpuReduceNHRPcie::PostLocalReduce(const std::ve
 
 HcclResult InsTempReduceScatterAicpuReduceNHRPcie::RunAllGather(const std::vector<ThreadHandle>& threads)
 {
-    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， celi(log2(rankSize))
+    const u32 nSteps = GetNHRStepNum(templateRankSize_); // NHR 通信步数， ceil(log2(rankSize))
 
     for (u32 step = 0; step < nSteps; ++step) {
         AicpuNHRStepInfo stepInfo;

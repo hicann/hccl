@@ -1269,7 +1269,7 @@ HcclResult IsLevel0PcieMix(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
             HCCL_INFO("[IsLevel0PcieMix]link[%u] protocol[%u]", i, srcProtocol);
             if (srcProtocol == COMM_PROTOCOL_PCIE) {
                 topoInfo->level0PcieMix = true;
-                HCCL_INFO("[IsLevel0PcieMix] Level 0 has PCIE protocal");
+                HCCL_INFO("[IsLevel0PcieMix] Level 0 has PCIE protocol");
                 return HCCL_SUCCESS;
             }
         }

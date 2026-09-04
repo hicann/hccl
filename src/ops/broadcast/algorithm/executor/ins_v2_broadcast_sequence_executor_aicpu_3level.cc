@@ -229,7 +229,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
-            "[BroadcastSequenceMesh1dNHRNHRExecutor][Orchestrate]errNo[0x%016llx] Broadcast excutor kernel run failed",
+            "[BroadcastSequenceMesh1dNHRNHRExecutor][Orchestrate]errNo[0x%016llx] Broadcast executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     return HCCL_SUCCESS;

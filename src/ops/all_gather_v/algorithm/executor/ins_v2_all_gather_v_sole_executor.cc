@@ -175,7 +175,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
         tempAlgParams.buffInfo.outBuffBaseOff = processedDataCount * dataTypeSize_;
         tempAlgParams.allRankProcessedDataCount = allRankProcessedDataCount;
         tempAlgParams.buffInfo.hcclBuffBaseOff = 0;
-        // 这里的stride当成传统意义上的sreide 间隔
+        // 这里的stride当成传统意义上的stride 间隔
         tempAlgParams.inputSliceStride = dataSize_; // 如果是输入，偏移是算子的output datasize
         tempAlgParams.outputSliceStride
             = maxCountPerLoop * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量

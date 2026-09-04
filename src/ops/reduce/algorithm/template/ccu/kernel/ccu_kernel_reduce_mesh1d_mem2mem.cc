@@ -272,7 +272,7 @@ DoRepeatReduce(ReduceMesh1DMem2MemContext& ctx, const std::vector<ccu::Variable>
                 "[ReadReduceRmtToLoc] debug rankId[%llu], root[%llu] chkId[%llu], rmtId[%llu] channelId[%llu]",
                 arg->rankId, arg->rootId, chkId, rmtId, channelId);
 
-            // 计算一下offset 0~(chikd-1)
+            // 计算一下offset 0~(child-1)
             for (uint16_t j = 0; j < chkId; ++j) {
                 ctx.chunkOffset += ctx.chunkSize[j];
             }

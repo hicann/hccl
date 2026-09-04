@@ -27,7 +27,6 @@ HcclResult ConvertCcuToHccl(CcuResult ccuResult)
             return HCCL_E_NOT_FOUND;
         case CCU_E_UNAVAIL:
             return HCCL_E_UNAVAIL;
-            ;
 
         default:
             return HCCL_E_INTERNAL;

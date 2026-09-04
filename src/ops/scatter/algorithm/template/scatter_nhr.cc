@@ -29,7 +29,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
     CHK_PRT_RET(
         unitSize_ == 0, HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] unit data size is zero", rank), HCCL_E_INTERNAL);
 
-    // ranksize为1时，只有当input!=ouput时候进行拷贝
+    // ranksize为1时，只有当input!=output时候进行拷贝
     if (interRankSize_ == 1) {
         if (inputMem_.addr != outputMem_.addr) {
             CHK_RET(static_cast<HcclResult>(
@@ -38,7 +38,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
         return HCCL_SUCCESS;
     }
 
-    // 带入vecotr为空，计算每个rank的结果偏移和大小
+    // 带入vector为空，计算每个rank的结果偏移和大小
     if (slices_.size() == 0) {
         PrepareSlicesData(unitSize_, count_, interRankSize_);
     }

@@ -184,7 +184,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     // mesh的流向nhr的流发一个信号，并等nhr流收到
     PrepareThreadFromTemplate(tempAlg0, tempAlg1); // 计算不同的流
     TemplateResource templateAlgResforTemp0;
-    templateAlgResforTemp0.threads = temp0Threads_; // 这里用重新算出的thream计算
+    templateAlgResforTemp0.threads = temp0Threads_; // 这里用重新算出的thread计算
     TemplateResource templateAlgResforTemp1;
     templateAlgResforTemp1.threads = temp1Threads_;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {

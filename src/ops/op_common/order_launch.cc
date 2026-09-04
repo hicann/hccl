@@ -197,7 +197,7 @@ HcclResult HcclOrderLaunchToOrderStream(
         param.exportHostOrderThread = 0;
         param.deviceOrderThread = 0;
         HCCL_INFO(
-            "[%s]. HcclDedicatedThreadAcquire unabled to obtain deviceOrderThread, %s OrderLaunch is not Required.",
+            "[%s]. HcclDedicatedThreadAcquire unable to obtain deviceOrderThread, %s OrderLaunch is not Required.",
             __func__, modeName);
         return HCCL_SUCCESS;
     }

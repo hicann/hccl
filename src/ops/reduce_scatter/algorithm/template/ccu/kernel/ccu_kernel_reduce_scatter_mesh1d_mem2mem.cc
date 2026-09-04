@@ -208,7 +208,7 @@ static CcuResult PairwiseLocalReduce(
     // 每轮将数据划分为2组做规约，总规约次数log2(n)
     uint32_t remainPieces = arg->rankSize;
     while (remainPieces > 1) {
-        // 每轮将最后remain/2块，reduce到最前remian/2块
+        // 每轮将最后remain/2块，reduce到最前remain/2块
         uint32_t reducePieces = remainPieces / 2;
         uint32_t srcIdx = remainPieces - reducePieces;
         uint32_t dstIdx = 0;
