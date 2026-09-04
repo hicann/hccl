@@ -10,6 +10,7 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_reduce_scatter_mesh_1D.h"
+#include "config_log.h"
 #include "cost_model.h"
 
 namespace ops_hccl {
@@ -97,7 +98,8 @@ HcclResult AivTempReduceScatterMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize
             numBlocks = stepNum * tempRankSize_;
         }
     }
-    HCCL_INFO("[AivTempReduceScatterMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempReduceScatterMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

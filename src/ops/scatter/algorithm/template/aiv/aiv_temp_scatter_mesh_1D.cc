@@ -11,6 +11,7 @@
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_scatter_mesh_1D.h"
 #include "cost_model.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -87,7 +88,8 @@ HcclResult AivTempScatterMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     numBlocks = numBlocksLimit;
-    HCCL_INFO("[AivTempScatterMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempScatterMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

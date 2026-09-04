@@ -10,6 +10,7 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_reduce_mesh_1D_oneshot.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -97,7 +98,8 @@ HcclResult AivTempAllReduceMesh1DOneShot::CalNumBlocks(u32& numBlocks, u64 dataS
         // 如果要用更少的核心可以在这里折算，比如rankSize/2个核心
         numBlocks = numBlocksLimit;
     }
-    HCCL_INFO("[AivTempAllReduceMesh1DOneShot] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempAllReduceMesh1DOneShot] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

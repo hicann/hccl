@@ -11,6 +11,7 @@
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_reduce_mesh_1D.h"
 #include "cost_model.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -93,9 +94,8 @@ HcclResult AivTempReduceMesh1D::CalcRes(
 HcclResult AivTempReduceMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
     (void)dataSize;
-    HCCL_INFO("[AivTempReduceMesh1D] Limit core num[%u]", numBlocksLimit);
     numBlocks = numBlocksLimit;
-    HCCL_INFO("[AivTempReduceMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(HCCL_ALG, "[AivTempReduceMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

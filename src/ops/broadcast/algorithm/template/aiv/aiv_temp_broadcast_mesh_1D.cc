@@ -10,6 +10,7 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_broadcast_mesh_1D.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -88,7 +89,8 @@ HcclResult AivTempBroadcastMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
     } else {
         numBlocks = numBlocksLimit;
     }
-    HCCL_INFO("[AivTempBroadcastMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempBroadcastMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

@@ -10,6 +10,7 @@
 
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_gather_mesh_1D.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -79,7 +80,8 @@ HcclResult AivTempAllGatherMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
 {
     (void)dataSize;
     numBlocks = numBlocksLimit;
-    HCCL_INFO("[AivTempAllGatherMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempAllGatherMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_to_all_mesh_1D.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 
@@ -75,7 +76,8 @@ HcclResult AivTempAlltoAllMesh1D::CalcRes(
 
 HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit)
 {
-    HCCL_INFO("[AivTempAlltoAllMesh1D] Limit core num[%u]", numBlocksLimit);
+    u32 originalLimit = numBlocksLimit;
+    HCCL_CONFIG_INFO(HCCL_ALG, "[AivTempAlltoAllMesh1D] Limit core num[%u]", originalLimit);
 
     // 小于1的场景
     if (numBlocksLimit < 1) {
@@ -106,7 +108,8 @@ HcclResult AivTempAlltoAllMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u32
         numBlocks = numBlocksLimit / tempRankSize_ * tempRankSize_;
     }
 
-    HCCL_INFO("[AivTempAlltoAllMesh1D] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempAlltoAllMesh1D] Actually use core num[%u], limit[%u]", numBlocks, originalLimit);
     return HcclResult::HCCL_SUCCESS;
 }
 

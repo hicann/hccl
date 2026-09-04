@@ -17,11 +17,13 @@
 #include "alg_env_config.h"
 #include "alg_parse.h"
 #include "algo_name_mapper.h"
+#include "config_log.h"
 #include "cost_model.h"
 #include "cost_table.h"
 #include "alg_attrs.h"
 #include "alg_attrs_registry.h"
 #include "hccl_algo_dims.h"
+#include "hccl_common.h"
 #include "tuner_setup.h"
 
 namespace ops_hccl {
@@ -291,10 +293,69 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
         return ret;
     }
 
+    LogSelectedAlgo(param, topoInfo, algName);
+
+    return HCCL_SUCCESS;
+}
+
+void SelectorEngine::LogSelectedAlgo(
+    const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const std::string& algName)
+{
     HCCL_INFO(
         "[SelectorEngine] The opExecuteConfig is %s, the selected algo type is %s",
         ENGINE_STR_MAP.at(param.opExecuteConfig), algName.c_str());
-    return HCCL_SUCCESS;
+
+    HCCL_CONFIG_INFO(
+        HCCL_ALG,
+        "op[%s] algName[%s] engine[%s] executor[%s] templates[%s] "
+        "opMode[%d] deterministic[%u] isCapture[%d] "
+        "dataSize[%llu] dataType[%s] reduceType[%s] root[%u] "
+        "userRank[%u] rankSize[%u] serverNum[%u] superPodNum[%u] "
+        "topoLevelNums[%u] level0Topo[%d] level0MeshType[%d] level0PcieMix[%d] "
+        "deviceType[%d] commName[%s] enableDetour[%d] symMem[%d]",
+        HcclCMDTypeToString(param.opType).c_str(), algName.c_str(), ENGINE_STR_MAP.at(param.opExecuteConfig),
+        QueryExecutorName(algName).c_str(), QueryTemplateInfo(algName).c_str(), static_cast<int>(param.opMode),
+        GetExternalInputHcclDeterministic(), static_cast<int>(param.isCapture), param.inputSize,
+        GetDataTypeEnumStr(param.DataDes.dataType).c_str(), GetReduceOpEnumStr(param.reduceType).c_str(), param.root,
+        topoInfo->userRank, topoInfo->userRankSize, topoInfo->serverNum, topoInfo->superPodNum, topoInfo->topoLevelNums,
+        static_cast<int>(topoInfo->level0Topo), static_cast<int>(topoInfo->level0MeshType),
+        static_cast<int>(topoInfo->level0PcieMix), static_cast<int>(param.deviceType), param.commName,
+        static_cast<int>(param.enableDetour), static_cast<int>(param.supportSymmetricMemory));
+}
+
+std::string SelectorEngine::QueryTemplateInfo(const std::string& algName)
+{
+    std::string templateInfo;
+    AllAlgos* allAlgos = GetAllAlgos();
+    if (allAlgos == nullptr) {
+        return templateInfo;
+    }
+    for (int i = 0; i < allAlgos->count; ++i) {
+        if (allAlgos->algElements[i].algName != nullptr && algName == allAlgos->algElements[i].algName) {
+            for (int t = 0; t < allAlgos->algElements[i].templateNum; ++t) {
+                if (t > 0) {
+                    templateInfo += ",";
+                }
+                templateInfo += allAlgos->algElements[i].templateName[t];
+            }
+            break;
+        }
+    }
+    return templateInfo;
+}
+
+std::string SelectorEngine::QueryExecutorName(const std::string& algName)
+{
+    AllAlgos* allAlgos = GetAllAlgos();
+    if (allAlgos == nullptr) {
+        return "";
+    }
+    for (int i = 0; i < allAlgos->count; ++i) {
+        if (allAlgos->algElements[i].algName != nullptr && algName == allAlgos->algElements[i].algName) {
+            return allAlgos->algElements[i].executorName != nullptr ? allAlgos->algElements[i].executorName : "";
+        }
+    }
+    return "";
 }
 
 HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, std::string& algName)

@@ -55,6 +55,13 @@ private:
 
     // AIV_ONLY 模式下选不到 AIV 算法时打印 ERROR，包含当前拓扑条件
     static void LogAivOnlyNotMatch(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
+
+    static std::string QueryTemplateInfo(const std::string& algName);
+
+    static std::string QueryExecutorName(const std::string& algName);
+
+    static void
+    LogSelectedAlgo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const std::string& algName);
 };
 
 } // namespace ops_hccl

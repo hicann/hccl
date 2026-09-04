@@ -9,6 +9,7 @@
  */
 
 #include "aiv_alg_template_base.h"
+#include "config_log.h"
 
 namespace ops_hccl {
 AivAlgTemplateBase::AivAlgTemplateBase() {}
@@ -78,7 +79,7 @@ HcclResult AivAlgTemplateBase::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 nu
     } else {
         numBlocks = numBlocksLimit;
     }
-    HCCL_INFO("[AivAlgTemplateBase] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(HCCL_ALG, "[AivAlgTemplateBase] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HCCL_SUCCESS;
 }
 // 可能用不到，预留

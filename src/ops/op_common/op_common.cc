@@ -823,6 +823,10 @@ HcclResult HcclExecOp(
 
     param.cacheValid = isResourceReused;
 
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "resourceReuse[%d] algName[%s] engine[%s] algTag[%s]", static_cast<int>(param.cacheValid),
+        param.algName, ENGINE_STR_MAP.at(param.opExecuteConfig), param.algTag);
+
     // Op注册
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
     CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, cpuTsThread));
