@@ -298,7 +298,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0UBXAlgo(
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
         // 矩形场景大数据量，用Parallel并行算法
         if (dataSize < OMNI_UBX_AR_SCHED_DATA_SIZE) {
-            selectAlgName = "CcuAllReduceParallelNHR1DMutiJetty";
+            selectAlgName = "CcuSchedAllReduceParallelMeshNHRMultiJetty";
         } else {
             selectAlgName = "CcuSchedAllReducePipeLineMeshNHR";
         }
@@ -436,9 +436,9 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
         } else if (
             level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
             && topoInfo->topLevelUboe) {
-            selectAlgName = "AicpuAllReducePipeLine";
+            selectAlgName = "AicpuAllReducePipeLineMeshNHRNHR";
         } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
-            selectAlgName = "InsAllReduceParallelRSAGUboe";
+            selectAlgName = "AicpuAllReduceParallelMeshNHR";
         } else if (topoInfo->Level1Nhr) {
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
             selectAlgName = "AicpuAllReduceSoleNHR";
@@ -463,7 +463,7 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
                 selectAlgName = "AicpuAllReduceSoleNHR";
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "AicpuAllReduceSoleNHRTwoShotMultiLink";
+            selectAlgName = "AicpuAllReduceSoleNHRMultiLink";
         } else {
             return SelectorStatus::NOT_MATCH;
         }
@@ -502,10 +502,10 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
         selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
         if (opParam.supportSymmetricMemory) {
-            selectAlgName = "AicpuAllReducePipeLineUBX";
+            selectAlgName = "AicpuAllReducePipeLineMeshNHR";
         } else {
             // 矩形场景大数据量，用Parallel并行算法
-            selectAlgName = "InsAllReduceParallelRSAGUBX";
+            selectAlgName = "AicpuAllReduceParallelMeshNHRMultiJetty";
         }
     } else {
         // 其他场景，用1d NHR算法
@@ -555,7 +555,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
         if (isDataTypeOrReduceTypeSpecial) {
             selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
         } else {
-            selectAlgName = "AicpuAllReduceSoleNHRTwoShotMultiLink";
+            selectAlgName = "AicpuAllReduceSoleNHRMultiLink";
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (topoInfo->level0PcieMix) {
@@ -572,10 +572,10 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpu(
                 }
             } else {
                 if (isDataTypeOrReduceTypeSpecial) {
-                    selectAlgName = "InsAllReduceSequenceMesh1DNHRAicpuReducePcie";
+                    selectAlgName = "AicpuAllReduceSequenceMeshNHRAicpuReduce";
                 } else {
-                    selectAlgName = (dataSize < OMNI_PCIE_AR_DATA_SIZE) ? "InsAllReduceParallelMesh1DNHRPcie" :
-                                                                          "AicpuAllReducePipeLinePcie";
+                    selectAlgName = (dataSize < OMNI_PCIE_AR_DATA_SIZE) ? "AicpuAllReduceParallelMeshNHR" :
+                                                                          "AicpuAllReducePipeLineMeshNHR";
                 }
             }
         } else {
@@ -706,8 +706,8 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllReducePipeLineUBX";
-                HCCL_INFO("Using algo DpuAllReducePipeLineUBX");
+                selectAlgName = "DpuAllReducePipeLineMeshNHRNHR";
+                HCCL_INFO("Using algo DpuAllReducePipeLineMeshNHRNHR");
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuAllReduceSequenceMeshNHR";

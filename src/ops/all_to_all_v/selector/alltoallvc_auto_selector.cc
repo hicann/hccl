@@ -119,7 +119,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllToAllVCSoleMeshUBX";
+                selectAlgName = "DpuAllToAllVCSoleMesh";
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuAllToAllVCSoleMesh";

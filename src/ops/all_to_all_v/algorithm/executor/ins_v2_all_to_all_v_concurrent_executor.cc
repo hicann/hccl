@@ -17,6 +17,7 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #include "alg_data_trans_wrapper.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 constexpr uint32_t CONST_0 = 0;
@@ -35,9 +36,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -499,7 +509,8 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshConcurrent, InsV2AllToAllVConcurrentExecutor,
-    TopoMatchUBX, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
+    TopoMatchConcurrentV2, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllVSoleMeshConcurrent);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 

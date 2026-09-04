@@ -24,6 +24,10 @@
 #include "topo_match_base.h"
 #include "topo_match_multilevel.h"
 #include "topo_match_ubx.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include "topo_match_three_level.h"
+#include <type_traits>
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
@@ -43,6 +47,9 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
     HcclResult RestoreChannelMap(
         const AlgResourceCtxSerializable& resCtx,
         std::vector<std::map<u32, std::vector<ChannelInfo>>>& rankIdToChannelInfo) const override;
@@ -98,9 +105,6 @@ protected:
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
-
-    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
-    TopoType topoType_ = TopoType::UBX_2LEVEL;
 
     HcclResult BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,

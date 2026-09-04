@@ -15,6 +15,9 @@
 #include "cost_model.h"
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_one_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 
@@ -35,8 +38,13 @@ public:
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
+
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+
     AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
 
 #ifndef AICPU_COMPILE

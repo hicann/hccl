@@ -11,6 +11,7 @@
 #include <algorithm>
 #include "alg_data_trans_wrapper.h"
 #include "ins_v2_batch_send_recv_executor.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 InsV2BatchSendRecvExecutor::InsV2BatchSendRecvExecutor() {}
@@ -19,6 +20,18 @@ HcclResult InsV2BatchSendRecvExecutor::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
+    algHierarchyInfo.infos.resize(1);
+    algHierarchyInfo.infos[0].resize(1);
+    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
+        algHierarchyInfo.infos[0][0].push_back(rankId);
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsV2BatchSendRecvExecutor::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    (void)algAttrs;
     algHierarchyInfo.infos.resize(1);
     algHierarchyInfo.infos[0].resize(1);
     for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
@@ -426,5 +439,30 @@ HcclResult InsV2BatchSendRecvExecutor::Orchestrate(const OpParam& param, const A
     return HCCL_SUCCESS;
 }
 
+std::vector<CostModelParam> InsV2BatchSendRecvExecutor::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+AlgNetMeta
+InsV2BatchSendRecvExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, AicpuBatchSendRecvSoleMesh, InsV2BatchSendRecvExecutor);
+REGISTER_ALG_ATTRS(AicpuBatchSendRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
 } // namespace ops_hccl

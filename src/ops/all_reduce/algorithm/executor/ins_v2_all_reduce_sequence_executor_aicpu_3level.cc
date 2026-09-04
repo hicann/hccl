@@ -167,10 +167,23 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
+HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<
+    AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
+    InsAlgTemplate5>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -788,7 +801,7 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHRNHR, InsV2AllReduceSequenceExecutorAicpu3Level,
-    TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
+    TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
 REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportProd = false;

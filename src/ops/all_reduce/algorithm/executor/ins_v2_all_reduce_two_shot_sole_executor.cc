@@ -103,10 +103,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -336,7 +344,7 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshConcur, InsV2AllReduceTwoShotSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshConcur, InsV2AllReduceTwoShotSoleExecutor, TopoMatchOneLevel,
     InsTempReduceScatterMesh1DZAxisDetour, InsTempAllGatherMesh1D1DZAxisDetour);
 REGISTER_ALG_ATTRS(AicpuAllReduceSoleMeshConcur, op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
                    topo.maxTopoLevelNum = 1);

@@ -70,6 +70,8 @@ private:
     HcclResult PostCopyDataToRecvBuf(
         const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 
+    u32 GetIntraRankNumFromPhysicalLevels(const TopoInfoWithNetLayerDetails* topoInfo);
+
     u64 processSize_{0};
     u64 count_{0};
     u32 threadNum_{0};

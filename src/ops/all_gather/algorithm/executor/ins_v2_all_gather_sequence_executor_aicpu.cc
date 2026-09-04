@@ -9,7 +9,6 @@
  */
 
 #include "ins_v2_all_gather_sequence_executor_aicpu.h"
-#include "topo_match_multilevel.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
 #ifndef AICPU_COMPILE
@@ -18,6 +17,7 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #include "coll_alg_v2_exec_registry.h"
+#include "topo_match_two_level.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 
@@ -51,10 +51,20 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 {
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
+    (void)comm;
 
     // 使用topo match计算AlgHierarchyInfoForAllLevel
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -547,7 +557,7 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHR, InsV2AllGatherSequenceExecutorAicpu,
-    TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR);
+    TopoMatchTwoLevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHR, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -556,7 +566,7 @@ REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHR, topo.maxTopoLevelNum = 2
 #ifndef AICPU_COMPILE
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSequenceMeshMesh, InsV2AllGatherSequenceExecutorAicpu,
-    TopoMatchMultilevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
+    TopoMatchTwoLevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSequenceMeshMesh, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;

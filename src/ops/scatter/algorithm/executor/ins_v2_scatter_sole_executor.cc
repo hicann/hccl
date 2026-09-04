@@ -77,9 +77,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -292,19 +301,21 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 
 // 第二个参数是Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterMesh1D);
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
+    InsTempScatterMesh1D);
 // supportLevel0Topos 对齐旧 selector 实际选入面：SoleMesh 在 MESH_1D(:191)/MESH_1D_CLOS 全连(:195)/
 // CLOS 非 PcieMix(:205) 三形态下均被选中
 REGISTER_ALG_ATTRS(AicpuScatterSoleMesh, topo.maxTopoLevelNum = 3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D, InsTempScatterNHR);
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel, InsTempScatterNHR);
 // SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它，三形态显式并集
 REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = 3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D, AivTempScatterMesh1D);
+    HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
+    AivTempScatterMesh1D);
 REGISTER_ALG_ATTRS(
     AivScatterSoleMesh, topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
@@ -315,7 +326,7 @@ REGISTER_ALG_ATTRS(
 // ccu template
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterMesh1D);
 // inplace 排除对齐旧 selector：仅单级 MESH_1D 分支查 inplace（scatter_auto_selector.cc:108），
 // 同算法的 MESH_1D_CLOS 全连分支不查；其余 scatter 算法执行侧均支持 inplace（kernel isInputOutputEqual 等）
@@ -325,7 +336,7 @@ REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);

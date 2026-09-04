@@ -12,6 +12,7 @@
 #include "channel.h"
 #include "ins_v2_all_to_all_concurrent_executor.h"
 #include "aicpu/ins_temp_all_to_all_v_mesh_1D.h"
+#include "alg_attrs_registry.h"
 
 #ifndef AICPU_COMPILE
 #include "ccu/ccu_temp_all_to_all_mesh1d_multi_jetty.h"
@@ -57,12 +58,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -622,16 +629,19 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
 // 第1个模板走mesh拓扑
 // 第2个模板走clos拓扑
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
-    InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
+    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor,
+    TopoMatchConcurrentV2, InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshConcurrent);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
-    InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor,
+    TopoMatchConcurrentV2, InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMeshConcurrent);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor, TopoMatchUBX,
-    CcuTempAllToAllMesh1dMultiJetty, CcuTempAllToAllMesh1dMultiJetty);
+    HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor,
+    TopoMatchConcurrentV2, CcuTempAllToAllMesh1dMultiJetty, CcuTempAllToAllMesh1dMultiJetty);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshConcurrent);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 

@@ -39,17 +39,27 @@ enum class AlgoType : uint8_t {
     NHR_AICPU_REDUCE,
     MESH_SINGLE_CHANNEL,
     MESH_CONCURRENT,
+    NHR_MULTIJETTY,
+    MESH_MULTIJETTY,
     UNKNOWN,
 };
 
 // Mesh 类算法集合
 const std::set<AlgoType> MESH_ALGO_TYPES
-    = {AlgoType::MESH,           AlgoType::MESH_2DIE,          AlgoType::MESH_ONESHOT,
-       AlgoType::MESH_TWOSHOT,   AlgoType::MESH_CONCUR,        AlgoType::MESH_MULTILINK,
-       AlgoType::MESH_CHUNK,     AlgoType::MESH_CHUNK_TWOSHOT, AlgoType::MESH_SINGLE_CHANNEL,
-       AlgoType::MESH_CONCURRENT};
+    = {AlgoType::MESH,
+       AlgoType::MESH_2DIE,
+       AlgoType::MESH_ONESHOT,
+       AlgoType::MESH_TWOSHOT,
+       AlgoType::MESH_CONCUR,
+       AlgoType::MESH_MULTILINK,
+       AlgoType::MESH_CHUNK,
+       AlgoType::MESH_CHUNK_TWOSHOT,
+       AlgoType::MESH_SINGLE_CHANNEL,
+       AlgoType::MESH_CONCURRENT,
+       AlgoType::MESH_MULTIJETTY};
 // NHR 类算法集合
-const std::set<AlgoType> NHR_ALGO_TYPES = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE};
+const std::set<AlgoType> NHR_ALGO_TYPES
+    = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE, AlgoType::NHR_MULTIJETTY};
 // MeshConcur 类算法（MESH_CONCUR 与 MESH_CONCURRENT 都触发 CLOS 双层规则）
 const std::set<AlgoType> MESH_CONCUR_ALGO_TYPES = {AlgoType::MESH_CONCUR, AlgoType::MESH_CONCURRENT};
 

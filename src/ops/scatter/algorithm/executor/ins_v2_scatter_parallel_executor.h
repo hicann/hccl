@@ -21,6 +21,9 @@
 #include "topo_match_multilevel.h"
 #include "topo_match_pcie_mix.h"
 #include "topo_match_ubx.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 #include "channel.h"
 #include "alg_v2_template_base.h"
 
@@ -41,6 +44,9 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;

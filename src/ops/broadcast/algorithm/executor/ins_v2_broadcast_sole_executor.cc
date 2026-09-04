@@ -11,6 +11,7 @@
 #include "ins_v2_broadcast_sole_executor.h"
 #include "ins_temp_broadcast_mesh_1D_two_shot.h"
 #include "ins_temp_broadcast_nhr.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_broadcast_mesh_1D.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -32,9 +33,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -170,7 +180,7 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
     if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && std::string(param.algName) == "AicpuBroadcastSoleNHRTwoShotMultiLink") {
+        && std::string(param.algName) == "AicpuBroadcastSoleNHRMultiLink") {
         CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
     }
 
@@ -315,46 +325,43 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 #endif
 
 REGISTER_ALG_ATTRS(AicpuBroadcastSoleMeshTwoShot, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.maxTopoLevelNum = 1; topo.isSupportLevel1Nhr = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+                   topo.maxTopoLevelNum = 1; topo.isSupportLevel1Nhr = false;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleMeshTwoShot, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleMeshTwoShot, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastMesh1DTwoShot);
-REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHR, topo.isSupportLevel1Nhr = true;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
-REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHRTwoShotMultiLink, topo.isSupportLevel1Nhr = true;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHRMultiLink, topo.isSupportLevel1Nhr = true;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRTwoShotMultiLink, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRMultiLink, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
 
 #ifndef AICPU_COMPILE
 REGISTER_ALG_ATTRS(AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 2;
-                   topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+                   topo.isSupportLevel1Nhr = true;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AivBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     AivTempBroadcastMesh1D);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 2;
-                   topo.isSupportLevel1Nhr = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+                   topo.isSupportLevel1Nhr = false;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastMesh1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_ALG_ATTRS(CcuMSBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+REGISTER_ALG_ATTRS(CcuMSBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuMSBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuMSBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastNHR1DMem2Mem);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

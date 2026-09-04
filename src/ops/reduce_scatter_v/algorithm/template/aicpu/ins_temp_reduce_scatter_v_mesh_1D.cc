@@ -11,6 +11,37 @@
 #include "aicpu/ins_temp_reduce_scatter_v_mesh_1D.h"
 
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempReduceScatterVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int kernelNum = 14;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    float B1 = 0.0f;
+    float B2 = 0.0f;
+    float B3 = 0.0f;
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
+    }
+    if (param.outputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B2);
+    }
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B3);
+    B = B1 + B2 + (param.rankSize - 1) * B3;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 InsTempReduceScatterVMesh1D::InsTempReduceScatterVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

@@ -16,6 +16,8 @@
 #include "topo_match_multilevel.h"
 #include "topo_match_pcie_mix.h"
 #include "topo_match_squeeze_2d.h"
+#include "alg_attrs_registry.h"
+#include "topo_match_two_level.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
 #include "ccu_temp_all_gather_nhr_1D_mem2mem.h"
@@ -44,9 +46,22 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
+HcclResult
+InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -66,25 +81,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
         return HcclResult::HCCL_E_PARA;
     }
-    if (!topoInfo->level0PcieMix && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
-            HCCL_ERROR(
-                "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo.infos[0].size());
-            return HcclResult::HCCL_E_PARA;
-        }
-        temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
-        std::vector<u32> closRanks;
-        u32 meshRankSize = algHierarchyInfo.infos[0][0].size();
-        for (auto rank : algHierarchyInfo.infos[0][1]) {
-            if (rank % meshRankSize == topoInfo->userRank % meshRankSize) {
-                closRanks.push_back(rank);
-            }
-        }
-        temp1HierarchyInfo = {closRanks};
-    } else {
-        temp0HierarchyInfo = algHierarchyInfo.infos[0];
-        temp1HierarchyInfo = algHierarchyInfo.infos[1];
-    }
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
+            || algHierarchyInfo.infos[1].empty(),
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+    temp0HierarchyInfo = algHierarchyInfo.infos[0];
+    temp1HierarchyInfo = algHierarchyInfo.infos[1];
 
     // 实例化算法模板类
     // 构建template
@@ -253,26 +255,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
         return HcclResult::HCCL_E_PARA;
     }
-    if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
-            HCCL_ERROR(
-                "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
-                resCtx.algHierarchyInfo.infos[0].size());
-            return HcclResult::HCCL_E_PARA;
-        }
-        temp0HierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][0]};
-        std::vector<u32> closRanks;
-        u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();
-        for (auto rank : resCtx.algHierarchyInfo.infos[0][1]) {
-            if (rank % meshSize == resCtx.topoInfo.userRank % meshSize) {
-                closRanks.push_back(rank);
-            }
-        }
-        temp1HierarchyInfo_ = {closRanks};
-    } else {
-        temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
-        temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
-    }
+    CHK_PRT_RET(
+        resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || resCtx.algHierarchyInfo.infos[0].empty()
+            || resCtx.algHierarchyInfo.infos[1].empty(),
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+    temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+    temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
 
     // 计算localRankSize和localRoot
     intraLocalRankSize_ = GetRankSize(temp0HierarchyInfo_);
@@ -1495,44 +1483,42 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+                   topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(InsBroadcastParallelMesh1DNHRUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+
+REGISTER_EXECUTOR_BY_FOUR_TEMPS(
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHRMultiJetty, InsBroadcastParallelExecutor,
+    TopoMatchTwoLevel, InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;
                    op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
-REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
-    InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelMesh1DNHRPcie, InsBroadcastParallelExecutor, TopoMatchPcieMix,
-    InsTempScatterMesh1D, InsTempScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
-
-REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, InsBroadcastParallelNHRNHRUboe, InsBroadcastParallelExecutor, TopoMatchSqueeze2D,
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelNHRNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
     InsTempScatterNHR, InsTempScatterNHR, InsTempAllGatherNHR, InsTempAllGatherNHR);
+REGISTER_ALG_ATTRS(AicpuBroadcastParallelNHRNHR);
+
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(
     CcuSchedBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = 2;
     topo.isSupportLevel1Nhr = false; topo.maxTopoLevelNum = 2; op.isSupportProd = true;
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
     // TODO: 算法实现有问题，暂时通过opCustomCheck禁用
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) {
         return false;
     };);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHR, InsBroadcastParallelExecutor,
-    TopoMatchMultilevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
-    CcuTempAllGatherNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
+    CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuBroadcastParallelMesh1DNHRUBX, InsBroadcastParallelExecutor, TopoMatchUBX,
-    CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastParallelMeshNHRMultiJetty, InsBroadcastParallelExecutor,
+    TopoMatchTwoLevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
+    CcuTempAllGatherNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedBroadcastParallelMeshNHRMultiJetty);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

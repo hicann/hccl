@@ -41,6 +41,8 @@ public:
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
 private:
     uint32_t mySubCommRank_ = 0;
 };

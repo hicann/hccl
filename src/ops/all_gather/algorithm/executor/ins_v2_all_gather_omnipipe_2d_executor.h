@@ -22,11 +22,12 @@
 #include "executor_v2_base.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_base.h"
-#include "topo_match_1d.h"
-#include "topo_match_multilevel.h"
 #include "alg_data_trans_wrapper.h"
 #include "omnipipe_data_slice_calc.h"
 #include "topo_match_ubx.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename CcuAlgTemplate0, typename CcuAlgTemplate1>
@@ -45,6 +46,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     /* *************** 算法编排 *************** */

@@ -15,8 +15,15 @@
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
 #include "topo_match_ubx.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_one_level.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
+constexpr uint32_t A2AV_CCU_MAX_RANK_SIZE = 64;
+constexpr uint32_t A2AV_CCU_RANK_THRESHOLD = 4;
+
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 class InsAlltoAllVSoleExecutor : public InsCollAlgBase {
 public:
@@ -35,6 +42,14 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 #ifndef AICPU_COMPILE
     HcclResult

@@ -11,6 +11,8 @@
 #include "ins_v2_send_executor.h"
 #include "alg_data_trans_wrapper.h"
 #include "hccl_aiv_utils.h"
+#include "cost_model.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 std::string InsV2SendExecutor::Describe() const { return "Instruction based Send Executor."; }
@@ -56,6 +58,28 @@ HcclResult InsV2SendExecutor::CalcAlgHierarchyInfo(
     }
 
     HCCL_DEBUG("[InsV2SendExecutor][CalcAlgHierarchyInfo][%d] Success.", myRank_);
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsV2SendExecutor::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    (void)algAttrs;
+    myRank_ = topoInfo->userRank;
+    HCCL_DEBUG("[InsV2SendExecutor][CalcAlgHierarchyInfoV2][%d] Start.", myRank_);
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
+        HCCL_ERROR("[InsV2SendExecutor][CalcAlgHierarchyInfoV2] Rank [%d], rankSize is 0.", myRank_),
+        HcclResult::HCCL_E_PARA);
+
+    algHierarchyInfo.infos.resize(1);
+    algHierarchyInfo.infos[0].resize(1);
+    algHierarchyInfo.infos[0][0].clear();
+    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
+        algHierarchyInfo.infos[0][0].push_back(rankId);
+    }
+
+    HCCL_DEBUG("[InsV2SendExecutor][CalcAlgHierarchyInfoV2][%d] Success.", myRank_);
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -165,6 +189,41 @@ HcclResult InsV2SendExecutor::OrchestrateImpl(const OpParam& param, const AlgRes
     return HcclResult::HCCL_SUCCESS;
 }
 
-REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, AivSendSole, InsV2SendExecutor);
+std::vector<CostModelParam> InsV2SendExecutor::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    float A = 0.0f;
+    u32 p2pRankSize = 2;
+    CostModelManager::Global()->CalcMeshParam(1.0f, CommTopo::COMM_TOPO_1DMESH, 1, p2pRankSize, A);
+    float B = 0.0f;
+    CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::AIV, B);
+    float C = 0.0f;
+    CostModelManager::Global()->CalcLatencyParams(1, EngineType::AIV, C);
+    return {{A, B, C, 0.0f}};
+}
+
+AlgNetMeta InsV2SendExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
+REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, AivSendSoleMesh, InsV2SendExecutor);
+REGISTER_ALG_ATTRS(
+    AivSendSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp;
+    };);
 
 } // namespace ops_hccl

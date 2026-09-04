@@ -131,12 +131,22 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
+HcclResult
+InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -556,7 +566,8 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
 }
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE, DpuReduceSequenceMeshNHR, InsV2ReduceSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_REDUCE, DpuReduceSequenceMeshNHR, InsV2ReduceSequenceExecutor, TopoMatchTwoLevel,
     InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter, InsTempGatherDpuInter,
     InsTempGatherMesh1dIntra);
+REGISTER_ALG_ATTRS(DpuReduceSequenceMeshNHR);
 } // namespace ops_hccl

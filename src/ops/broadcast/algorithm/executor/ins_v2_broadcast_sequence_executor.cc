@@ -54,9 +54,22 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3>
+HcclResult
+InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -495,6 +508,7 @@ u64 InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 }
 
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, DpuBroadcastSequenceMeshNHR, InsV2BroadcastSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_BROADCAST, DpuBroadcastSequenceMeshNHR, InsV2BroadcastSequenceExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1DIntra, InsTempScatterNHRDPUInter, InsTempAllGatherNHRDPUInter, InsTempAllGatherMesh1DIntra);
+REGISTER_ALG_ATTRS(DpuBroadcastSequenceMeshNHR);
 } // namespace ops_hccl

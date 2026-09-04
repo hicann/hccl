@@ -71,8 +71,8 @@ const std::unordered_map<std::string, std::string> RES_RESUSE_ALG
        {"AicpuReduceScatterSoleMeshChunk", "InsReduceScatterMeshClass"},
        {"AicpuAllReduceSoleMeshOneShot", "InsAllReduceMeshClass"},
        {"AicpuAllReduceSoleMeshTwoShot", "InsAllReduceMeshClass"},
-       {"AicpuSendSole", "InsSendRecv"},
-       {"AicpuRecvSole", "InsSendRecv"}};
+       {"AicpuSendSoleMesh", "InsSendRecv"},
+       {"AicpuRecvSoleMesh", "InsSendRecv"}};
 
 class AutoSelectorBase {
 public:

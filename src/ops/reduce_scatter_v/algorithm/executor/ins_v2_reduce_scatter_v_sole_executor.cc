@@ -12,6 +12,7 @@
 #include "topo_match_one_level.h"
 #include "ins_temp_reduce_scatter_v_mesh_1D.h"
 #include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_reduce_scatter_v_mesh_1D_mem2mem.h"
 
@@ -190,18 +191,63 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)algName;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    std::vector<u32> portNumLevel0 = {1};
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rs.level0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        portNumLevel0, topoInfo->isPod, algName, comm, topoInfo});
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 // 第二个参数是Reduce Scatter的template文件
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
     TopoMatchOneLevel, InsTempReduceScatterVMesh1D);
-REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMesh, topo.maxTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+                   op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, CcuSchedReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
     TopoMatchOneLevel, CcuTempReduceScatterVMesh1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceScatterVSoleMesh, topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceScatterVSoleMesh, topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        if (t->level2UbRtp) {
+            return false;
+        }
+        if (t->level0Topo == Level0Shape::MESH_1D && t->is2DieFullMesh) {
+            return false;
+        }
+        if (t->level0Topo == Level0Shape::MESH_1D_CLOS
+            && !AutoSelectorBase::IsLayerAllConnetedWithTopo(t, 0, CommTopo::COMM_TOPO_1DMESH)) {
+            return false;
+        }
+        return true;
+    };
+    op.isSupportInplace = false; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

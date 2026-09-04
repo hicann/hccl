@@ -13,8 +13,11 @@
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
+#include "alg_attrs_registry.h"
 
 #include "alg_attrs_registry.h"
+#include "topo_match_two_level.h"
+#include "topo_match_three_level.h"
 namespace ops_hccl {
 // 当前sequence支持两级和三级组网
 
@@ -83,9 +86,23 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
+HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
+    AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
+    InsAlgTemplate5>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -699,25 +716,109 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     return HCCL_SUCCESS;
 }
 
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
+std::vector<CostModelParam> BroadcastSequenceMesh1dNHRNHRExecutor<
+    AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
+    InsAlgTemplate5>::
+    CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)param;
+    bool isPod = true;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    u32 rankSizeLevel0 = rs.level0;
+    u32 rankSizeLevel1 = rs.level1;
+    u32 rankSizeLevel2 = rs.level2;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    std::vector<u32> portNumLevel0 = {1};
+    std::vector<u32> portNumLevel1 = {8};
+    std::vector<u32> portNumLevel2 = {8};
+    float r0 = static_cast<float>(rankSizeLevel0);
+    float r1 = static_cast<float>(rankSizeLevel1);
+    float r2 = static_cast<float>(rankSizeLevel2);
+
+    HCCL_INFO(
+        "[CalcCostCoeff] algName=%s rankSizeLevel0=%u rankSizeLevel1=%u rankSizeLevel2=%u", algName, rankSizeLevel0,
+        rankSizeLevel1, rankSizeLevel2);
+
+    std::vector<CostModelParam> params;
+    // Step1: Scatter L0(MESH) root发送，每peer收 D/R0
+    auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, 1.0f / r0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p0.begin(), p0.end());
+    // Step2: Scatter L1(CLOS) 每peer收 D/(R0*R1)
+    auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, 1.0f / (r0 * r1), netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p1.begin(), p1.end());
+    // Step3: Scatter L2(CLOS) 每peer收 D/(R0*R1*R2)
+    auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel2, 1.0f / (r0 * r1 * r2), netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel2, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p2.begin(), p2.end());
+    // Step4: AllGather L2(CLOS) 每peer发 D/(R0*R1*R2)
+    auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel2, 1.0f / (r0 * r1 * r2), netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel2, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p3.begin(), p3.end());
+    // Step5: AllGather L1(CLOS) 每peer发 D/(R0*R1)
+    auto p4 = InsAlgTemplate4::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel1, 1.0f / (r0 * r1), netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p4.begin(), p4.end());
+    // Step6: AllGather L0(MESH) 写回INPUT
+    auto p5 = InsAlgTemplate5::CalcCostCoeff(CalcCostCoeffParam{
+        rankSizeLevel0, 1.0f / r0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::INPUT, BufferType::HCCL_BUFFER,
+        portNumLevel0, isPod, algName, comm, topoInfo});
+    params.insert(params.end(), p5.begin(), p5.end());
+    return params;
+}
+
+template <
+    typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
+    typename InsAlgTemplate3, typename InsAlgTemplate4, typename InsAlgTemplate5>
+AlgNetMeta BroadcastSequenceMesh1dNHRNHRExecutor<
+    AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3, InsAlgTemplate4,
+    InsAlgTemplate5>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    AlgNetMeta meta;
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    meta.netTypes = {netTypeLevel0, netTypeLevel1, netTypeLevel2, netTypeLevel2, netTypeLevel1, netTypeLevel0};
+    meta.intraGroupMode = CostAggMode::SUM; // 6步顺序执行
+    meta.groupSizes = {1, 1, 1, 1, 1, 1};
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    float r0 = static_cast<float>(rs.level0);
+    float r1 = static_cast<float>(rs.level1);
+    float r2 = static_cast<float>(rs.level2);
+    meta.dataRatios
+        = {1.0f / r0, 1.0f / (r0 * r1), 1.0f / (r0 * r1 * r2), 1.0f / (r0 * r1 * r2), 1.0f / (r0 * r1), 1.0f / r0};
+    meta.rankSizes = {rs.level0, rs.level1, rs.level2, rs.level2, rs.level1, rs.level0};
+    return meta;
+}
+
 REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHRNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; topo.isSupportLevel1Nhr = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+                   topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; topo.isSupportLevel1Nhr = false;);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHRNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
-    TopoMatchMultilevel,
+    TopoMatchThreeLevel,
     AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
     InsTempScatterNHR,                    // Scatter L1 (框间)
     InsTempScatterNHR,                    // Scatter L2 (跨超节点)
     InsTempAllGatherNHR,                  // AllGather L2 (跨超节点)
     InsTempAllGatherNHR,                  // AllGather L1 (框间)
     InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
-
 REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; topo.isSupportLevel1Nhr = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+                   topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = false;);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
-    TopoMatchMultilevel,
+    TopoMatchTwoLevel,
     AicpuTempScatterMesh1DZAxisDetour,    // Scatter L0 (框内, Z轴绕路)
     InsTempScatterNHR,                    // Scatter L1 (框间)
     InsTempScatterNHR,                    // Scatter L2 (跨超节点)

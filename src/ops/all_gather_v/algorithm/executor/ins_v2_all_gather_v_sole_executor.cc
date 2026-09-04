@@ -203,17 +203,50 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)algName;
+    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
+    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    std::vector<u32> portNumLevel0 = {1};
+    return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
+        rs.level0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+        portNumLevel0, topoInfo->isPod, algName, comm, topoInfo});
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER_V, AicpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.maxTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER_V, CcuSchedAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherVMesh1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedAllGatherVSoleMesh, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   op.isSupportInplace = false;);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllGatherVSoleMesh, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp;
+    };
+    op.isSupportInplace = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

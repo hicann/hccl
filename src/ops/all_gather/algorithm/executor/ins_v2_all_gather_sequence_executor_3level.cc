@@ -14,9 +14,6 @@
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
 
-#include "topo_match_multilevel.h"
-#include "topo_match_ubx.h"
-#include "topo_match_pcie_mix.h"
 #include "alg_attrs_registry.h"
 
 namespace ops_hccl {
@@ -32,8 +29,19 @@ HcclResult InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, I
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+HcclResult InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -497,7 +505,7 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHRNHR, InsV2AllGatherSequenceExecutor3Level,
-    TopoMatchMultilevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR, InsTempAllGatherNHR);
+    TopoMatchThreeLevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHRNHR, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 } // namespace ops_hccl

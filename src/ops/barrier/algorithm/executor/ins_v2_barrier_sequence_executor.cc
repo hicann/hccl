@@ -9,10 +9,10 @@
  */
 
 #include "ins_v2_barrier_sequence_executor.h"
-#include "topo_match_multilevel.h"
 #include "ins_temp_barrier_mesh_1D.h"
 #include "ins_temp_barrier_nhr_dpu.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 
@@ -20,11 +20,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -97,7 +104,34 @@ HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+std::vector<CostModelParam> InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+AlgNetMeta InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_BARRIER, DpuBarrierSequenceMeshNHR, InsV2BarrierSequenceExecutor, TopoMatchMultilevel,
+    HcclCMDType::HCCL_CMD_BARRIER, DpuBarrierSequenceMeshNHR, InsV2BarrierSequenceExecutor, TopoMatchTwoLevel,
     InsTempBarrierMesh1D, InsTempBarrierNHRDPU);
+REGISTER_ALG_ATTRS(DpuBarrierSequenceMeshNHR, topo.isHostDpuOnly = true);
 } // namespace ops_hccl

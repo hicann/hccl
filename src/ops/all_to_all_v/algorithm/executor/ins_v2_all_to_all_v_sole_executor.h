@@ -16,7 +16,10 @@
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
 #include "topo_match_ubx.h"
-#include "topo_match_ubx_1d.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_one_level.h"
+#include "topo_match_concurrent_v2.h"
+#include <type_traits>
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -31,6 +34,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,

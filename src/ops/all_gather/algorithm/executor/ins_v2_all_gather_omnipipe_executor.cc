@@ -13,13 +13,9 @@
 #include <sstream>
 #include "alg_data_trans_wrapper.h"
 #include "alg_param.h"
-#include "topo_match_ubx.h"
-#include "topo_match_multilevel.h"
-#include "topo_match_pcie_mix.h"
 #include "ins_temp_all_gather_omnipipe_mesh_1D.h"
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
-#include "topo_match_3_level.h"
 #include "omnipipe_template_utils.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
@@ -68,65 +64,32 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         "[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] build sub-communicators from "
         "algorithm hierarchy, hierarchy[%s].",
         ThreeDVecToStrOmni(algHierarchyInfo_.infos).c_str());
+    // 统一按 infos 层级数赋值 subCommRanks（同位卡过滤已由 topoMatch 完成）
+    if (algHierarchyInfo_.infos.size() >= 1 && !algHierarchyInfo_.infos[0].empty()) {
+        subCommRanks0 = algHierarchyInfo_.infos[0];
+    } else {
+        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
+    }
+    if (algHierarchyInfo_.infos.size() >= 2 && !algHierarchyInfo_.infos[1].empty()) {
+        subCommRanks1 = algHierarchyInfo_.infos[1];
+    } else {
+        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
+    }
+    if (algHierarchyInfo_.infos.size() >= 3 && !algHierarchyInfo_.infos[2].empty()
+        && !algHierarchyInfo_.infos[2][0].empty()) {
+        subCommRanks2 = algHierarchyInfo_.infos[2];
+    } else {
+        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
+    }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] select UBX mesh-plus-CLOS "
-                  "sub-communicator layout.");
-        std::vector<u32> closRanks;
-        if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
-            subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
-            u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-            if (algHierarchyInfo_.infos[0].size() >= MIN_SUBGROUP_NUM && !algHierarchyInfo_.infos[0][1].empty()) {
-                for (auto rank : algHierarchyInfo_.infos[0][1]) {
-                    if (rank % meshSize == topoInfo->userRank % meshSize) {
-                        closRanks.push_back(rank);
-                    }
-                }
-            }
-        }
-        subCommRanks1 = {closRanks};
+        HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] UBX specific optimization flags.");
         omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_LEVEL_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :
                                                                           OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
         omniUbxLastStepRead_ = true;
-        if (!algHierarchyInfo_.infos[1].empty()) {
-            subCommRanks2 = algHierarchyInfo_.infos[1];
-            omniUbxLastStepRead_ = (subCommRanks2[0].size() > 1) ? false : omniUbxLastStepRead_;
-            omniNeedSetStepNum_
-                = (subCommRanks2[0].size() > 1) ? OmniNeedSetStepNum::OMNIPIPE_UBX_32P : omniNeedSetStepNum_;
-        } else {
-            subCommRanks2.emplace_back(std::vector<u32>{myRank_});
+        if (subCommRanks2[0].size() > 1) {
+            omniUbxLastStepRead_ = false;
+            omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_UBX_32P;
         }
-    } else if (topoType_ == TopoType::THREE_LEVEL) {
-        HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] select three-level "
-                  "sub-communicator layout.");
-        if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
-            subCommRanks0.push_back(algHierarchyInfo_.infos[0][0]);
-        } else {
-            subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-        }
-        if (!algHierarchyInfo_.infos[1].empty() && !algHierarchyInfo_.infos[1][0].empty()) {
-            subCommRanks1.push_back(algHierarchyInfo_.infos[1][0]);
-        } else {
-            subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-        }
-        if (!algHierarchyInfo_.infos[2].empty() && !algHierarchyInfo_.infos[2][0].empty()) {
-            subCommRanks2.push_back(algHierarchyInfo_.infos[2][0]);
-        } else {
-            subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-        }
-    } else {
-        HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] select multi-level PCIe "
-                  "sub-communicator layout.");
-        if (!algHierarchyInfo_.infos[0].empty()) {
-            subCommRanks0 = algHierarchyInfo_.infos[0];
-        } else {
-            subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-        }
-        if (!algHierarchyInfo_.infos[1].empty()) {
-            subCommRanks1 = algHierarchyInfo_.infos[1];
-        } else {
-            subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-        }
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     }
     rankSizeLevel_[OMNIPIPE_LEVEL0] = subCommRanks0[0].size();
     rankSizeLevel_[OMNIPIPE_LEVEL1] = subCommRanks1[0].size();
@@ -149,8 +112,19 @@ HcclResult
 InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
+HcclResult
+InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -161,12 +135,6 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 {
     // 初始化一些基本成员变量
     InitCommInfo(param, topoInfo, algHierarchyInfo);
-    if (algHierarchyInfo_.infos.size() == ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        topoType_ = TopoType::THREE_LEVEL;
-    } else {
-        topoType_ = TopoType::UBX_2LEVEL;
-    }
     // 计算subCommRanks
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
@@ -271,12 +239,6 @@ HcclResult InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
-    if (algHierarchyInfo_.infos.size() == ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        topoType_ = TopoType::THREE_LEVEL;
-    } else {
-        topoType_ = TopoType::UBX_2LEVEL;
-    }
     maxTmpMemSize_ = resCtx.cclMem.size; // maxTmpMemSize_设定为cclIn的大小，op中将申请的HcclBuff全给了cclIn
 
     // 计算subCommRanks
@@ -735,48 +697,19 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     return HCCL_SUCCESS;
 }
 
+// 2级算法: TopoMatchTwoLevel 产出 2 级 infos，3 个模板中 L2 模板不执行（subCommRanks2 退化为单卡）
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHR, InsV2AllGatherOmniPipeExecutor, TopoMatchTwoLevel,
+    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(AicpuAllGatherPipeLineMeshNHR);
+// 3级算法: TopoMatchThreeLevel 产出 3 级 infos，3 个模板全部执行
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
+    TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
+REGISTER_ALG_ATTRS(AicpuAllGatherPipeLineMeshNHRNHR);
+// 3级算法: HostDPU 场景，L2 使用 DPU 专用模板
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
-    TopoMatchMultilevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLinePcie, InsV2AllGatherOmniPipeExecutor, TopoMatchPcieMix,
-    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(AicpuAllGatherPipeLinePcie, topo.isSupportLevel0PcieMix = true; topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS);
-REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineUBX, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
-    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(
-    AicpuAllGatherPipeLineUBX, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
-               && dataSize > SMALL_COUNT_512KB;
-    });
-REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherPipeLineUBX, InsV2AllGatherOmniPipeExecutor, TopoMatchUBX,
-    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
-REGISTER_ALG_ATTRS(
-    DpuAllGatherPipeLineUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.minTopoLevelNum = 2;
-    topo.isHostDpuOnly = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return !topo->level0PcieMix;
-    });
-
-REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLine, InsV2AllGatherOmniPipeExecutor, TopoMatch3Level,
-    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
-REGISTER_ALG_ATTRS(
-    AicpuAllGatherPipeLine, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric
-               && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8;
-    });
+    TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(DpuAllGatherPipeLineMeshNHRNHR);
 } // namespace ops_hccl

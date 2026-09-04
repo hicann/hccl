@@ -114,7 +114,7 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
                     && (dataSize > BIG_DATA_SIZE_LIMIT)) { // 同一组4P且大数据量，走并发算法
                     selectAlgName = "CcuSchedAllToAllSoleMeshConcurrent";
                 } else {
-                    selectAlgName = "CcuSchedAllToAllSoleMeshUBX";
+                    selectAlgName = "CcuSchedAllToAllSoleMeshMultiJetty";
                 }
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
@@ -182,7 +182,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
             // 同一组4P且大数据量，走并发
             selectAlgName = "AicpuAllToAllSoleMeshConcurrent";
         } else {
-            selectAlgName = "AicpuAllToAllSoleMeshUBX";
+            selectAlgName = "AicpuAllToAllSoleMeshMultiJetty";
         }
     } else {
         HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match");
@@ -273,7 +273,7 @@ SelectorStatus AlltoAllAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllToAllSoleMeshUBX";
+                selectAlgName = "DpuAllToAllSoleMesh";
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuAllToAllSoleMesh";

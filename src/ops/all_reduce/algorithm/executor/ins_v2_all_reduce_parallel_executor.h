@@ -24,6 +24,9 @@
 #include "topo_match_ubx.h"
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 
@@ -48,6 +51,11 @@ public:
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
+
 #ifndef AICPU_COMPILE
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;
     HcclResult FastLaunchSaveCtx(

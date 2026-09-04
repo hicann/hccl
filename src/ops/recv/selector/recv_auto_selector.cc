@@ -21,7 +21,7 @@ SelectorStatus RecvAutoSelector::SelectAicpuAlgo(
     (void)topoInfo;
     HCCL_INFO("[RecvAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);
 
-    selectAlgName = "AicpuRecvSole";
+    selectAlgName = "AicpuRecvSoleMesh";
     return SelectorStatus::MATCH;
 }
 
@@ -45,7 +45,7 @@ SelectorStatus RecvAutoSelector::SelectAivAlgo(
         return SelectorStatus::NOT_MATCH;
     }
     HCCL_INFO("[RecvAutoSelector][SelectAivAlgo] opType:%d", opParam.opType);
-    selectAlgName = "AivRecvSole";
+    selectAlgName = "AivRecvSoleMesh";
     return SelectorStatus::MATCH;
 }
 
@@ -57,7 +57,7 @@ SelectorStatus RecvAutoSelector::SelectDPUAlgo(
     HCCL_INFO("[RecvAutoSelector][SelectDPUAlgo] opType:%d", opParam.opType);
 
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType
-    // host nic -- device nic 场景走 DpuRecvSoleHost，其他走 DpuRecvSole
+    // host nic -- device nic 场景走 DpuRecvSoleHost，其他走 DpuRecvSoleMesh
     u32 myRank = topoInfo->userRank;
     u32 remoteRank = opParam.sendRecvRemoteRank;
     HcclComm comm = opParam.hcclComm;
@@ -65,8 +65,8 @@ SelectorStatus RecvAutoSelector::SelectDPUAlgo(
     // 获取最高层（最后一个 netLayer）
     const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;
     if (netLayers.empty()) {
-        HCCL_WARNING("[RecvAutoSelector][SelectDPUAlgo] netLayers is empty, use default DpuRecvSole");
-        selectAlgName = "DpuRecvSole";
+        HCCL_WARNING("[RecvAutoSelector][SelectDPUAlgo] netLayers is empty, use default DpuRecvSoleMesh");
+        selectAlgName = "DpuRecvSoleMesh";
         return SelectorStatus::MATCH;
     }
 
@@ -99,16 +99,16 @@ SelectorStatus RecvAutoSelector::SelectDPUAlgo(
         if (srcLocType == ENDPOINT_LOC_TYPE_HOST && dstLocType == ENDPOINT_LOC_TYPE_DEVICE) {
             selectAlgName = "DpuRecvSoleHost";
         } else {
-            selectAlgName = "DpuRecvSole";
+            selectAlgName = "DpuRecvSoleMesh";
         }
         return SelectorStatus::MATCH;
     }
 
     // 没有找到链路，使用默认
     HCCL_WARNING(
-        "[RecvAutoSelector][SelectDPUAlgo]No link found for rank:%u and rank:%u, use default DpuRecvSole", myRank,
+        "[RecvAutoSelector][SelectDPUAlgo]No link found for rank:%u and rank:%u, use default DpuRecvSoleMesh", myRank,
         remoteRank);
-    selectAlgName = "DpuRecvSole";
+    selectAlgName = "DpuRecvSoleMesh";
     return SelectorStatus::MATCH;
 }
 

@@ -20,7 +20,12 @@
 #include "config_log.h"
 #include "executor_v2_base.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs.h"
 #include "omnipipe_data_slice_calc.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include "topo_match_three_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
@@ -38,6 +43,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     HcclResult GenTemplateAlgParamsByDimData(TemplateDataParams& tempAlgParams, StepSliceInfo& stepSliceInfo) const;
@@ -67,9 +76,6 @@ protected:
         const u64 processedDataCount, int step) const;
 
 private:
-    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
-    TopoType topoType_ = TopoType::UBX_2LEVEL;
-
     HcclResult BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,

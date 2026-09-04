@@ -13,6 +13,7 @@
 #include "ins_v2_batch_send_recv_sole_executor.h"
 #include "ins_temp_batch_send_recv_dpu.h"
 #include "hccl_rank_graph.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -30,19 +31,17 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlg
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
-    // AlgHierarchyInfoForAllLevel固定为一层
-    CHK_PRT_RET(
-        (topoInfo->userRankSize == 0),
-        HCCL_ERROR("[InsV2BatchSendRecvSoleExecutor][CalcAlgHierarchyInfo] Rank [%u], rankSize is 0.", myRank_),
-        HcclResult::HCCL_E_PARA);
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
 
-    algHierarchyInfo.infos.resize(1);
-    algHierarchyInfo.infos[0].resize(1);
-    algHierarchyInfo.infos[0][0].clear();
-    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
-        algHierarchyInfo.infos[0][0].push_back(rankId);
-    }
-    HCCL_INFO("[InsV2BatchSendRecvSoleExecutor][CalcAlgHierarchyInfo] [%u] Success.", myRank_);
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -604,7 +603,34 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, DpuBatchSendRecvSoleMesh, InsV2BatchSendRecvSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, DpuBatchSendRecvSoleMesh, InsV2BatchSendRecvSoleExecutor, TopoMatchOneLevel,
     InsTempBatchSendRecvDpu);
+REGISTER_ALG_ATTRS(DpuBatchSendRecvSoleMesh);
 } // namespace ops_hccl

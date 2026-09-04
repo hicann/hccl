@@ -11,6 +11,7 @@
 #include <string>
 #include "ins_send_dpu_executor.h"
 #include "alg_data_trans_wrapper.h"
+#include "alg_attrs_registry.h"
 #include "../template/host_nic/ins_temp_send_host_nic_dpu.h"
 
 namespace ops_hccl {
@@ -67,6 +68,31 @@ HcclResult InsSendDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
     algHierarchyInfo_ = algHierarchyInfo;
 
     HCCL_DEBUG("[InsSendDpuExecutor][CalcAlgHierarchyInfo][%d] Success.", myRank_);
+    return HcclResult::HCCL_SUCCESS;
+}
+
+template <typename InsAlgTemplate>
+HcclResult InsSendDpuExecutor<InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    (void)algAttrs;
+    myRank_ = topoInfo->userRank;
+    HCCL_DEBUG("[InsSendDpuExecutor][CalcAlgHierarchyInfoV2][%d] Start.", myRank_);
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
+        HCCL_ERROR("[InsSendDpuExecutor][CalcAlgHierarchyInfoV2] Rank [%d], rankSize is 0.", myRank_),
+        HcclResult::HCCL_E_PARA);
+
+    algHierarchyInfo.infos.resize(1);
+    algHierarchyInfo.infos[0].resize(1);
+    algHierarchyInfo.infos[0][0].clear();
+    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
+        algHierarchyInfo.infos[0][0].push_back(rankId);
+    }
+
+    algHierarchyInfo_ = algHierarchyInfo;
+
+    HCCL_DEBUG("[InsSendDpuExecutor][CalcAlgHierarchyInfoV2][%d] Success.", myRank_);
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -139,4 +165,5 @@ HcclResult InsSendDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
 // opv2流程使用opv2_insSendHostDpu算法名
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
     HcclCMDType::HCCL_CMD_SEND, DpuSendSoleHost, InsSendDpuExecutor, InsTempSendHostNicDpu);
+REGISTER_ALG_ATTRS(DpuSendSoleHost);
 } // namespace ops_hccl

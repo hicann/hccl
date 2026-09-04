@@ -63,9 +63,23 @@ static inline const char* HcclOpTypeToPascal(HcclCMDType opType)
         case HCCL_CMD_SCATTER:
             return "Scatter";
         case HCCL_CMD_ALLTOALL:
-            return "AlltoAll";
+            return "AllToAll";
         case HCCL_CMD_ALLTOALLV:
-            return "AlltoAllV";
+            return "AllToAllV";
+        case HCCL_CMD_ALLTOALLVC:
+            return "AllToAllVC";
+        case HCCL_CMD_ALLGATHER_V:
+            return "AllGatherV";
+        case HCCL_CMD_REDUCE_SCATTER_V:
+            return "ReduceScatterV";
+        case HCCL_CMD_SEND:
+            return "Send";
+        case HCCL_CMD_RECEIVE:
+            return "Recv";
+        case HCCL_CMD_BARRIER:
+            return "Barrier";
+        case HCCL_CMD_BATCH_SEND_RECV:
+            return "BatchSendRecv";
         default:
             return nullptr;
     }

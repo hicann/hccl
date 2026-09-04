@@ -34,19 +34,20 @@ template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempL
 HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
 
-    for (auto i = 0; i < algHierarchyInfo.infos.size(); ++i) {
-        for (auto j = 0; j < algHierarchyInfo.infos[i].size(); ++j) {
-            for (auto k = 0; k < algHierarchyInfo.infos[i][j].size(); ++k) {
-                HCCL_DEBUG(
-                    "[CalcAlgHierarchyInfo] myRank[%u] (%d, %d, %d) %u", topoInfo->userRank, i, j, k,
-                    algHierarchyInfo.infos[i][j][k]);
-            }
-        }
-    }
-    return HcclResult::HCCL_SUCCESS;
+template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
+HcclResult
+InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
+    return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
@@ -63,7 +64,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     devType_ = topoInfo->deviceType;
     reduceOp_ = param.reduceType;
 
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -73,7 +74,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
         return HcclResult::HCCL_E_PARA;
     }
 
-    rankSizeLevel1_ = algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
+    rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
         HCCL_ERROR("[InitCommInfo] rankSizeLevel1 is 0");
         return HcclResult::HCCL_E_PARA;
@@ -98,17 +99,14 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     CHK_RET(InitCommInfo(param, topoInfo, algHierarchyInfo));
 
     // 重复的template构造
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
-    subCommRanks1.resize(1);
-    for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
-        subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
-    }
+    subCommRanks1.push_back(algHierarchyInfo.infos[1][0]);
     InsAlgTempLevel0 algTempLevel0(param, myRank_, subCommRanks0);
     InsAlgTempLevel1 algTempLevel1(param, myRank_, subCommRanks1);
 
@@ -161,7 +159,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
     maxTmpMemSize_ = resCtx.cclMem.size;
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (resCtx.algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -171,7 +169,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
         return HcclResult::HCCL_E_PARA;
     }
 
-    rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
+    rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
         HCCL_ERROR("[Orchestrate] rankSizeLevel1 is 0, expected to be greater than 0");
         return HcclResult::HCCL_E_PARA;
@@ -268,17 +266,14 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 
     auto algHierarchyInfo = resCtx.algHierarchyInfo;
     // 重复的template构造
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
-    subCommRanks1.resize(1);
-    for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
-        subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
-    }
+    subCommRanks1.push_back(algHierarchyInfo.infos[1][0]);
     InsAlgTempLevel0 algTemplateLevel0(param, myRank_, subCommRanks0); // [[0,1]]
     InsAlgTempLevel1 algTemplateLevel1(param, myRank_, subCommRanks1); // [[0,2]]
 
@@ -471,7 +466,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterPipeLineMeshNHR, InsV2ReduceScatterOmniPipe2dExecutor,
-    TopoMatchUBX, CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
+    TopoMatchTwoLevel, CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
@@ -497,7 +492,7 @@ REGISTER_ALG_ATTRS(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterPipeLineMeshNHR, InsV2ReduceScatterOmniPipe2dExecutor,
-    TopoMatchUBX, CcuTempReduceScatterOmniPipeMesh1D, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
+    TopoMatchTwoLevel, CcuTempReduceScatterOmniPipeMesh1D, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;

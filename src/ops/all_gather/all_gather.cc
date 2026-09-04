@@ -221,7 +221,7 @@ HcclResult AllGatherOutPlaceCommon(
 
     // 单个 MESH_1D_CLOS 网络层在 Omni executor 内展开为 Mesh+NHR 两层；
     // 额外网络层会继续展开出 DPU 第三层，因此不能进入当前对称内存路径。
-    const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllGatherPipeLineUBX"
+    const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllGatherPipeLineMeshNHR"
                                        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
                                        && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
     if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE

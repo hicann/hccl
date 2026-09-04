@@ -17,6 +17,9 @@
 #include "topo_match_base.h"
 #include "topo_match_multilevel.h"
 #include "topo_match_ubx.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 
@@ -38,6 +41,9 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     /* *************** 算法编排 *************** */

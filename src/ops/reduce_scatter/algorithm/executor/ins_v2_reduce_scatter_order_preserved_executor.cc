@@ -33,8 +33,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -266,7 +276,7 @@ u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Roun
 // 注册保序ReduceScatter执行器（32卡及以内场景）
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedMesh, InsV2ReduceScatterOrderPreservedExecutor,
-    TopoMatch1D, InsTempReduceScatterOrderPreservedLevel1);
+    TopoMatchOneLevel, InsTempReduceScatterOrderPreservedLevel1);
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterStrictOrderedMesh,
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -277,7 +287,7 @@ REGISTER_ALG_ATTRS(
 // 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
-    InsV2ReduceScatterOrderPreservedExecutor, TopoMatch1D, InsTempReduceScatterOrderPreservedGroup);
+    InsV2ReduceScatterOrderPreservedExecutor, TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup);
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterStrictOrderedGroupMesh, topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

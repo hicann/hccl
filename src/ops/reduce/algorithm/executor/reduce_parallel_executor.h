@@ -14,6 +14,9 @@
 #include <array>
 #include "common_alg_template_base.h"
 #include "executor_v2_base.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include <type_traits>
 
 namespace ops_hccl {
 template <
@@ -40,6 +43,9 @@ public:
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
 

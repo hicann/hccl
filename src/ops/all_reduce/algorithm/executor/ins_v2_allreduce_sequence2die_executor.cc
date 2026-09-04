@@ -36,10 +36,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
 
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -298,8 +306,8 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
-    CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor,
+    TopoMatchOneLevel, CcuTempReduceScatterMesh2Die, CcuTempAllGather2DiesMesh1D);
 REGISTER_ALG_ATTRS(CcuMSAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportProd = false;
                    op.unsupportedDataTypes
@@ -309,8 +317,8 @@ REGISTER_ALG_ATTRS(CcuMSAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor, TopoMatch1D,
-    CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor,
+    TopoMatchOneLevel, CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
 REGISTER_ALG_ATTRS(CcuSchedAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupportLevel0PcieMix = true;

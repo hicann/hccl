@@ -421,14 +421,14 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
         } else if (
             level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
             && topoInfo->topLevelUboe) {
-            selectAlgName = "AicpuReduceScatterPipeLine";
+            selectAlgName = "AicpuReduceScatterPipeLineMeshNHRMesh";
         } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
-            selectAlgName = "InsReduceScatterParallelNHRNHRUboe";
+            selectAlgName = "AicpuReduceScatterParallelMeshNHR";
         } else if (topoInfo->Level1Nhr) {
             selectAlgName = "AicpuReduceScatterSoleNHR";
             HCCL_INFO("[ReduceScatterAutoSelector] Level1Nhr=true, select [%s]", selectAlgName.c_str());
         } else if (topoInfo->Level0Nhr) {
-            selectAlgName = "AicpuReduceScatterSoleNHR"; // InsReduceScatterParallelNHRNHR备用
+            selectAlgName = "AicpuReduceScatterSoleNHR";
         } else if (
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) > 1
             && topoInfo->level0Topo == Level0Shape::MESH_1D) {
@@ -453,7 +453,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
                 selectAlgName = "AicpuReduceScatterSoleNHR";
             }
         } else if (topoInfo->netLayerDetails.localNetInsSizeOfLayer.at(0) == 1) {
-            selectAlgName = "AicpuReduceScatterSoleNHR"; // InsReduceScatterParallelNHRNHR备用
+            selectAlgName = "AicpuReduceScatterSoleNHR";
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "AicpuReduceScatterSoleNHRMultiLink";
         } else {
@@ -630,8 +630,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuReduceScatterPipeLineUBX";
-                HCCL_INFO("Using algo DpuReduceScatterPipeLineUBX");
+                selectAlgName = "DpuReduceScatterPipeLineMeshNHRMesh";
+                HCCL_INFO("Using algo DpuReduceScatterPipeLineMeshNHRMesh");
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuReduceScatterSequenceMeshMesh";
@@ -657,11 +657,11 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             return SelectMeshAlgoAicpuForMesh1D(topoInfo, opParam, selectAlgName, dataSize, ratio);
         } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            selectAlgName = "InsReduceScatterSequenceMesh1DNHRAicpuReducePcie";
+            selectAlgName = "AicpuReduceScatterSequenceMeshNHRAicpuReduce";
         } else if (dataSize < OMNI_PCIE_RS_DATA_SIZE) {
-            selectAlgName = "InsReduceScatterParallelMesh1DNHRPcie";
+            selectAlgName = "AicpuReduceScatterParallelMeshNHR";
         } else {
-            selectAlgName = "AicpuReduceScatterPipeLinePcie";
+            selectAlgName = "AicpuReduceScatterPipeLineMeshNHR";
         }
     } else if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
         // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
@@ -678,9 +678,9 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
         selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
         if (opParam.supportSymmetricMemory) {
-            selectAlgName = "AicpuReduceScatterPipeLineUBX";
+            selectAlgName = "AicpuReduceScatterPipeLineMeshNHR";
         } else {
-            selectAlgName = "InsReduceScatterParallelMesh1DNHRUBX";
+            selectAlgName = "AicpuReduceScatterParallelMeshNHRMultiJetty";
         }
     } else {
         selectAlgName = "AicpuReduceScatterSoleNHR";

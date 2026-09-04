@@ -10,6 +10,7 @@
 
 #include "ins_v2_recv_sole_executor.h"
 #include "ins_temp_recv_dpu.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 template <typename InsAlgTemplate>
@@ -75,6 +76,26 @@ HcclResult InsV2RecvSoleExecutor<InsAlgTemplate>::CalcAlgHierarchyInfo(
         algHierarchyInfo.infos[0][0].push_back(rankId);
     }
     HCCL_INFO("[InsV2RecvSoleExecutor][CalcAlgHierarchyInfo] [%u] Success.", myRank_);
+    return HCCL_SUCCESS;
+}
+
+template <typename InsAlgTemplate>
+HcclResult InsV2RecvSoleExecutor<InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    (void)algAttrs;
+    CHK_PRT_RET(
+        (topoInfo->userRankSize == 0),
+        HCCL_ERROR("[InsV2RecvSoleExecutor][CalcAlgHierarchyInfoV2] Rank [%u], rankSize is 0.", myRank_),
+        HcclResult::HCCL_E_PARA);
+
+    algHierarchyInfo.infos.resize(1);
+    algHierarchyInfo.infos[0].resize(1);
+    algHierarchyInfo.infos[0][0].clear();
+    for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
+        algHierarchyInfo.infos[0][0].push_back(rankId);
+    }
+    HCCL_INFO("[InsV2RecvSoleExecutor][CalcAlgHierarchyInfoV2] [%u] Success.", myRank_);
     return HCCL_SUCCESS;
 }
 
@@ -153,6 +174,8 @@ HcclResult InsV2RecvSoleExecutor<InsAlgTemplate>::OrchestrateWithThread(
 }
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSole, InsV2RecvSoleExecutor, InsTempRecvDpu);
+REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
+    HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSoleMesh, InsV2RecvSoleExecutor, InsTempRecvDpu);
+REGISTER_ALG_ATTRS(DpuRecvSoleMesh);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl

@@ -9,7 +9,6 @@
  */
 
 #include "ins_v2_all_gather_sole_executor.h"
-#include "topo_match_1d.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
@@ -23,9 +22,9 @@
 #include "ccu_temp_all_gather_2dies_mesh_1D.h"
 #include "ccu_temp_all_gather_nhr_1D_multi_jetty_mem2mem.h"
 #endif
-#include "topo_match_ubx.h"
-#include "topo_match_concurrent.h"
 #include "ccu_temp_all_gather_concurrent_mesh_mem2mem_nhr.h"
+#include "topo_match_one_level.h"
+#include "topo_match_concurrent_v2.h"
 #include "alg_attrs_registry.h"
 #include "hccl_aiv_utils.h"
 #include "auto_selector_base.h"
@@ -44,9 +43,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -335,7 +343,7 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 #endif
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleMesh, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
@@ -351,13 +359,13 @@ REGISTER_ALG_ATTRS(
     });
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleMeshConcur, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleMeshConcur, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherMesh1D1DZAxisDetour);
 REGISTER_ALG_ATTRS(AicpuAllGatherSoleMeshConcur, topo.maxTopoLevelNum = 1;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHR, topo.isSupportLevel1Nhr = true;
@@ -376,18 +384,19 @@ REGISTER_ALG_ATTRS(
     });
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherNHRDPU);
+REGISTER_ALG_ATTRS(DpuAllGatherSoleNHR);
 
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleNHRMultiLink, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleNHRMultiLink, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(AicpuAllGatherSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS);
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleMesh, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
@@ -405,7 +414,7 @@ REGISTER_ALG_ATTRS(
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuMSAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuMSAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
     CcuMSAllGatherSoleMesh, topo.maxTopoLevelNum = 1;
@@ -422,7 +431,7 @@ REGISTER_ALG_ATTRS(
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
@@ -439,7 +448,7 @@ REGISTER_ALG_ATTRS(
 
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     AivTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
     AivAllGatherSoleMesh, topo.maxTopoLevelNum = 2;
@@ -460,14 +469,14 @@ REGISTER_ALG_ATTRS(
 
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuMSAllGatherSoleMesh2Die, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuMSAllGatherSoleMesh2Die, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGather2DiesMesh1D);
 REGISTER_ALG_ATTRS(CcuMSAllGatherSoleMesh2Die, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMesh2Die, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMesh2Die, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGather2DiesMeshMem2Mem1D);
 REGISTER_ALG_ATTRS(CcuSchedAllGatherSoleMesh2Die, topo.isSupportLevel0PcieMix = true;
                    topo.requireAllMeshConnected = true; topo.maxTopoLevelNum = 1;
@@ -476,7 +485,7 @@ REGISTER_ALG_ATTRS(CcuSchedAllGatherSoleMesh2Die, topo.isSupportLevel0PcieMix = 
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleNHRMultiLink, InsV2AllGatherSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleNHRMultiLink, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherNHR1DMultiJettyMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleNHRMultiLink, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
@@ -494,7 +503,7 @@ REGISTER_ALG_ATTRS(
 
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMeshConcur, InsV2AllGatherSoleExecutor, TopoMatchConcurrent,
+    HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleMeshConcur, InsV2AllGatherSoleExecutor, TopoMatchConcurrentV2,
     CcuTempAllGatherConcurrentMeshMem2MemNHR);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleMeshConcur, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;

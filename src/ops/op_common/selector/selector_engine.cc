@@ -39,11 +39,13 @@ SelectorEngine* SelectorEngine::Global()
 
 bool SelectorEngine::IsOpSupported(HcclCMDType opType)
 {
-    // 本迭代新选择器支持 AllReduce/ReduceScatter/AllGather/Reduce/Scatter/Broadcast/AlltoAll, 其他算子走老流程
+    // 本迭代新选择器仅支持以下算子, 其他算子走老流程
     static const std::set<HcclCMDType> supportedOps = {
-        HcclCMDType::HCCL_CMD_ALLREDUCE, HcclCMDType::HCCL_CMD_REDUCE_SCATTER, HcclCMDType::HCCL_CMD_ALLGATHER,
-        HcclCMDType::HCCL_CMD_REDUCE,    HcclCMDType::HCCL_CMD_SCATTER,        HcclCMDType::HCCL_CMD_BROADCAST,
-        HcclCMDType::HCCL_CMD_ALLTOALL,
+        HcclCMDType::HCCL_CMD_ALLREDUCE,  HcclCMDType::HCCL_CMD_REDUCE_SCATTER,  HcclCMDType::HCCL_CMD_ALLGATHER,
+        HcclCMDType::HCCL_CMD_REDUCE,     HcclCMDType::HCCL_CMD_SCATTER,         HcclCMDType::HCCL_CMD_BROADCAST,
+        HcclCMDType::HCCL_CMD_BARRIER,    HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, HcclCMDType::HCCL_CMD_ALLTOALLV,
+        HcclCMDType::HCCL_CMD_ALLTOALLVC, HcclCMDType::HCCL_CMD_ALLGATHER_V,     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V,
+        HcclCMDType::HCCL_CMD_SEND,       HcclCMDType::HCCL_CMD_RECEIVE,         HcclCMDType::HCCL_CMD_ALLTOALL,
     };
     return supportedOps.count(opType) > 0;
 }

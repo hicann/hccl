@@ -25,6 +25,10 @@
 #include "topo_match_multilevel.h"
 #include "topo_match_ubx.h"
 #include "topo_match_pcie_mix.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_two_level.h"
+#include "topo_match_three_level.h"
+#include <type_traits>
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
@@ -46,6 +50,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     /* *************** 算法编排 *************** */
@@ -139,9 +147,6 @@ protected:
         OMNIPIPE_AG_LEVEL2 = 5,
         OMNIPIPE_AR_LEVEL_NUM = 6
     };
-
-    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
-    TopoType topoType_ = TopoType::UBX_2LEVEL;
 
     HcclResult BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,

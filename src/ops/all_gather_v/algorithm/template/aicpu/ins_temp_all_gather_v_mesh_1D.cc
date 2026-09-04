@@ -12,6 +12,28 @@
 #include "alg_data_trans_wrapper.h"
 #include "template_utils.h"
 namespace ops_hccl {
+std::vector<CostModelParam> InsTempAllGatherVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = param.portNum[0];
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    float A = 0;
+    float B = 0;
+    float C = 0;
+    float D = 0;
+
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    if (param.inputBuffer != param.scratchBuffer) {
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    CostModelManager::Global()->CalcLatencyParams(1, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 InsTempAllGatherVMesh1D::InsTempAllGatherVMesh1D(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
     const std::vector<std::vector<u32>>& subCommRanks)

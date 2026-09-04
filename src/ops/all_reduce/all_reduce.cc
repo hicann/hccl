@@ -261,7 +261,10 @@ HcclResult AllReduceOutPlaceCommon(
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
-    if (algName != "AicpuAllReducePipeLineUBX") {
+    const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllReducePipeLineMeshNHR"
+                                       && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
+                                       && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    if (!isTwoLevelMeshNhrOmni) {
         param.supportSymmetricMemory = false;
     }
 

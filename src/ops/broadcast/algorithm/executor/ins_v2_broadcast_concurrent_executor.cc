@@ -19,6 +19,7 @@
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #include "alg_env_config.h"
+#include "alg_attrs_registry.h"
 
 constexpr u32 MESH_BW_SCHED = 20;
 constexpr u32 CLOS_BW_SCHED = 27;
@@ -37,9 +38,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -433,20 +443,23 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor, TopoMatchUBX,
-    InsTempBroadcastMesh1DTwoShot, InsTempBroadcastNHR);
+    HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor,
+    TopoMatchConcurrentV2, InsTempBroadcastMesh1DTwoShot, InsTempBroadcastNHR);
+REGISTER_ALG_ATTRS(AicpuBroadcastConcurMeshNHR);
 #endif
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor, TopoMatchUBX,
-    CcuTempBroadcastMesh1DMem2Mem, CcuTempBroadcastNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor,
+    TopoMatchConcurrentV2, CcuTempBroadcastMesh1DMem2Mem, CcuTempBroadcastNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedBroadcastConcurMeshNHR);
 #endif
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuMsBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor, TopoMatchUBX,
-    CcuTempBroadcastMesh1D, CcuTempBroadcastNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuMsBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor,
+    TopoMatchConcurrentV2, CcuTempBroadcastMesh1D, CcuTempBroadcastNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuMsBroadcastConcurMeshNHR);
 #endif
 #endif
 } // namespace ops_hccl

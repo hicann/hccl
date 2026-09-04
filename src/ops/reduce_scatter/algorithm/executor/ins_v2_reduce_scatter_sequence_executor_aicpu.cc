@@ -59,11 +59,19 @@ HcclResult
 InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult
+InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -522,21 +530,22 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHR,
-    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, InsTempReduceScatterMesh1DZAxisDetour,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
                    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterSequenceMesh1DNHRAicpuReducePcie,
-    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchPcieMix, InsTempReduceScatterMesh1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshNHRAicpuReduce,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1D,
     InsTempReduceScatterAicpuReduceNHRPcie);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshNHRAicpuReduce);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSequenceMeshMesh,
-    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempReduceScatterMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSequenceMeshMesh, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; op.isSupportProd = false;

@@ -42,8 +42,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -519,7 +529,7 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterConcurMeshNHR, InsReduceScatterConcurrentExecutor,
-    TopoMatchUBX, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
+    TopoMatchConcurrentV2, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
 REGISTER_ALG_ATTRS(AicpuReduceScatterConcurMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #endif
@@ -527,12 +537,12 @@ REGISTER_ALG_ATTRS(AicpuReduceScatterConcurMeshNHR, topo.supportLevel0Topos = LE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterConcurMeshNHRMultiLink,
-    InsReduceScatterConcurrentExecutor, TopoMatchUBX,
+    InsReduceScatterConcurrentExecutor, TopoMatchConcurrentV2,
 
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterConcurMeshNHRMultiLink, InsReduceScatterConcurrentExecutor,
-    TopoMatchUBX, CcuTempReduceScatterMesh1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
+    TopoMatchConcurrentV2, CcuTempReduceScatterMesh1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterConcurMeshNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;

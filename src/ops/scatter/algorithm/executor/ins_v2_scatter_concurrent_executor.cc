@@ -11,6 +11,7 @@
 #include "ins_v2_scatter_concurrent_executor.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
+#include "alg_attrs_registry.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_scatter_mesh1d.h"
@@ -35,9 +36,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -421,14 +431,16 @@ HcclResult InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterConcurMeshNHR, InsV2ScatterConcurrentExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterConcurMeshNHR, InsV2ScatterConcurrentExecutor, TopoMatchConcurrentV2,
     InsTempScatterMesh1D, InsTempScatterNHR);
+REGISTER_ALG_ATTRS(AicpuScatterConcurMeshNHR);
 #endif
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterConcurMeshNHR, InsV2ScatterConcurrentExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterConcurMeshNHR, InsV2ScatterConcurrentExecutor, TopoMatchConcurrentV2,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedScatterConcurMeshNHR);
 #endif
 #endif
 } // namespace ops_hccl

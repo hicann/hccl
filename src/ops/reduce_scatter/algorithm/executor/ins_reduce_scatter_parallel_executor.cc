@@ -150,25 +150,12 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
-            HCCL_ERROR(
-                "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo.infos[0].size());
-            return HCCL_E_PARA;
-        }
-        temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
-        std::vector<u32> closRanks;
-        u32 meshSize = algHierarchyInfo.infos[0][0].size();
-        for (auto rank : algHierarchyInfo.infos[0][1]) {
-            if (rank % meshSize == topoInfo->userRank % meshSize) {
-                closRanks.push_back(rank);
-            }
-        }
-        temp1HierarchyInfo = {closRanks};
-    } else {
-        temp0HierarchyInfo = algHierarchyInfo.infos[0];
-        temp1HierarchyInfo = algHierarchyInfo.infos[1];
-    }
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
+            || algHierarchyInfo.infos[1].empty(),
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+    temp0HierarchyInfo = algHierarchyInfo.infos[0];
+    temp1HierarchyInfo = algHierarchyInfo.infos[1];
     InsAlgTemplate0 intraTempAlg(param, topoInfo->userRank, temp0HierarchyInfo);
     InsAlgTemplate1 interTempAlg(param, topoInfo->userRank, temp1HierarchyInfo);
 
@@ -221,8 +208,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -432,26 +429,12 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
-    if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
-        if (resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
-            HCCL_ERROR(
-                "[%s] algHierarchyInfo.infos[0] size[%zu] is less than 2.", __func__,
-                resCtx.algHierarchyInfo.infos[0].size());
-            return HCCL_E_PARA;
-        }
-        temp0HierarchyInfo = {resCtx.algHierarchyInfo.infos[0][0]};
-        std::vector<u32> closRanks;
-        u32 meshSize = resCtx.algHierarchyInfo.infos[0][0].size();
-        for (auto rank : resCtx.algHierarchyInfo.infos[0][1]) {
-            if (rank % meshSize == resCtx.topoInfo.userRank % meshSize) {
-                closRanks.push_back(rank);
-            }
-        }
-        temp1HierarchyInfo = {closRanks};
-    } else {
-        temp0HierarchyInfo = resCtx.algHierarchyInfo.infos[0];
-        temp1HierarchyInfo = resCtx.algHierarchyInfo.infos[1];
-    }
+    CHK_PRT_RET(
+        resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || resCtx.algHierarchyInfo.infos[0].empty()
+            || resCtx.algHierarchyInfo.infos[1].empty(),
+        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+    temp0HierarchyInfo = resCtx.algHierarchyInfo.infos[0];
+    temp1HierarchyInfo = resCtx.algHierarchyInfo.infos[1];
 
     rankSizeLevel0_ = GetRankSize(temp0HierarchyInfo);
     rankSizeLevel1_ = GetRankSize(temp1HierarchyInfo);
@@ -732,53 +715,22 @@ uint64_t InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 // 算法注册
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+// 合并注册：标准 MESH_1D 两级 / PCIE-SW / Uboe 三级场景共用，分流由 selector 保证
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterParallelMeshNHR, InsReduceScatterParallelExecutor,
-    TopoMatchMultilevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(AicpuReduceScatterParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(AicpuReduceScatterParallelMeshNHR);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterParallelMesh1DNHRUBX, InsReduceScatterParallelExecutor,
-    TopoMatchUBX, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(
-    InsReduceScatterParallelMesh1DNHRUBX, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isMultiple = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
-        AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
-        return isMultiple;
-    });
-REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterParallelMesh1DNHRPcie, InsReduceScatterParallelExecutor,
-    TopoMatchPcieMix, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(InsReduceScatterParallelMesh1DNHRPcie, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
-
-REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, InsReduceScatterParallelNHRNHRUboe, InsReduceScatterParallelExecutor,
-    TopoMatchSqueeze2D, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(
-    InsReduceScatterParallelNHRNHRUboe, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; op.isSupportProd = false;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->topLevelUboe
-               && !(
-                   (topo->level0Symmetric && topo->level1Symmetric)
-                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-               && !(
-                   !(topo->level0Symmetric && topo->level1Symmetric)
-                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1);
-    });
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterParallelMeshNHRMultiJetty, InsReduceScatterParallelExecutor,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNHR);
+REGISTER_ALG_ATTRS(AicpuReduceScatterParallelMeshNHRMultiJetty);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterParallelMeshNHR, InsReduceScatterParallelExecutor,
-    TopoMatchMultilevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem);
+    TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(CcuSchedReduceScatterParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
                    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
                    op.isSupportInplace = false);
@@ -786,7 +738,7 @@ REGISTER_ALG_ATTRS(CcuSchedReduceScatterParallelMeshNHR, topo.minTopoLevelNum = 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterParallelMeshNHRMultiLink,
-    InsReduceScatterParallelExecutor, TopoMatchUBX, CcuTempReduceScatterMesh1DMem2Mem,
+    InsReduceScatterParallelExecutor, TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterParallelMeshNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;

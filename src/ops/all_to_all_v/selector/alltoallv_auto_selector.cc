@@ -87,7 +87,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectCcuScheduleAlgo(
                 if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONST_4)) { // 同一组4P，走并发算法
                     selectAlgName = "CcuSchedAllToAllVSoleMeshConcurrent";
                 } else {
-                    selectAlgName = "CcuSchedAllToAllVSoleMeshUBX";
+                    selectAlgName = "CcuSchedAllToAllVSoleMeshMultiJetty";
                 }
             }
         } else {
@@ -132,7 +132,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(
         if ((isMeshNumEqualToClosNum == true) && (topoInfo->userRankSize <= CONST_4)) { // 同一组4P，走并发算法
             selectAlgName = "AicpuAllToAllVSoleMeshConcurrent";
         } else {
-            selectAlgName = "AicpuAllToAllVSoleMeshUBX";
+            selectAlgName = "AicpuAllToAllVSoleMeshMultiJetty";
         }
     } else {
         HCCL_ERROR("[AlltoAllVAutoSelector][%s] hccl algo no match");
@@ -195,7 +195,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllToAllVSoleMeshUBX";
+                selectAlgName = "DpuAllToAllVSoleMesh";
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuAllToAllVSoleMesh";

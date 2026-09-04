@@ -91,14 +91,19 @@ template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTempl
 HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
-    HCCL_INFO(
-        "[InsV2AllReduceOrderPreservedExecutor][CalcAlgHierarchyInfo] myRank[%u], rankSize[%u] (flat level1 only)",
-        myRank_, rankSize_);
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
+HcclResult
+InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -474,8 +479,8 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedMesh, InsV2AllReduceOrderPreservedExecutor, TopoMatch1D,
-    InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
+    HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedMesh, InsV2AllReduceOrderPreservedExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterOrderPreservedLevel1, InsTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
     AicpuAllReduceStrictOrderedMesh,
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -485,7 +490,7 @@ REGISTER_ALG_ATTRS(
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceStrictOrderedGroupMesh, InsV2AllReduceOrderPreservedExecutor,
-    TopoMatch1D, InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
+    TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
     AicpuAllReduceStrictOrderedGroupMesh, topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

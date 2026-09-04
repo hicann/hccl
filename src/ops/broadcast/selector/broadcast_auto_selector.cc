@@ -184,7 +184,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
             return SelectorStatus::NOT_MATCH;
         } else {
             if (dataSize < OMNI2D_UBX_BR_DATA_SIZE) {
-                selectAlgName = "CcuBroadcastParallelMesh1DNHRUBX";
+                selectAlgName = "CcuSchedBroadcastParallelMeshNHRMultiJetty";
             } else {
                 selectAlgName = "CcuSchedBroadcastPipeLineMeshNHR";
             }
@@ -218,7 +218,7 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
             } else if (topoInfo->level0Topo == Level0Shape::MESH_1D && !topoInfo->topLevelUboe) {
                 selectAlgName = "AicpuBroadcastSequenceMeshConcurNHRNHR";
             } else {
-                selectAlgName = "InsBroadcastParallelNHRNHRUboe";
+                selectAlgName = "AicpuBroadcastParallelNHRNHR";
             }
         } else if (topoInfo->Level1Nhr) {
             selectAlgName = "AicpuBroadcastSoleNHR";
@@ -227,7 +227,7 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             selectAlgName = "AicpuBroadcastParallelMeshNHR";
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "AicpuBroadcastSoleNHRTwoShotMultiLink";
+            selectAlgName = "AicpuBroadcastSoleNHRMultiLink";
         } else {
             HCCL_WARNING("[BroadcastAutoSelector] topo not match");
             return SelectorStatus::NOT_MATCH;
@@ -257,16 +257,16 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
                 selectAlgName = "AicpuBroadcastConcurMeshNHR";
             }
         } else if (topoInfo->level0PcieMix) {
-            selectAlgName = "InsBroadcastParallelMesh1DNHRPcie";
+            selectAlgName = "AicpuBroadcastParallelMeshNHR";
         } else {
             if (IsLargeData(dataSize)) {
-                selectAlgName = "InsBroadcastParallelMesh1DNHRUBX";
+                selectAlgName = "AicpuBroadcastParallelMeshNHRMultiJetty";
             } else {
                 selectAlgName = "AicpuBroadcastSoleNHR";
             }
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        selectAlgName = "AicpuBroadcastSoleNHRTwoShotMultiLink";
+        selectAlgName = "AicpuBroadcastSoleNHRMultiLink";
     } else {
         HCCL_WARNING("[BroadcastAutoSelector] topo not match");
         return SelectorStatus::NOT_MATCH;

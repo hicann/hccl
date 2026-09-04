@@ -9,9 +9,9 @@
  */
 
 #include "ins_v2_barrier_sole_executor.h"
-#include "topo_match_1d.h"
 #include "ins_temp_barrier_nhr_aicpu.h"
 #include "coll_alg_v2_exec_registry.h"
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 
@@ -19,8 +19,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -72,7 +82,35 @@ HcclResult InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate(
     return HCCL_SUCCESS;
 }
 
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    (void)param;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_BARRIER, AicpuBarrierSoleNHR, InsV2BarrierSoleExecutor, TopoMatch1D, InsTempBarrierNhrAicpu);
+    HcclCMDType::HCCL_CMD_BARRIER, AicpuBarrierSoleNHR, InsV2BarrierSoleExecutor, TopoMatchOneLevel,
+    InsTempBarrierNhrAicpu);
+REGISTER_ALG_ATTRS(AicpuBarrierSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
 
 } // namespace ops_hccl

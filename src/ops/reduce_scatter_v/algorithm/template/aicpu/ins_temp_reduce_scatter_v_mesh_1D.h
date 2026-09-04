@@ -39,6 +39,8 @@ public:
         AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
     HcclResult
     PostCopy(const OpParam& param, const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads);
 

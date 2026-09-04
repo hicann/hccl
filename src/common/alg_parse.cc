@@ -28,11 +28,15 @@ static const std::map<std::string, std::string> OP_TYPES
        {"alltoall", "AllToAll"},
        {"alltoallv", "AllToAllV"},
        {"alltoallvc", "AllToAllVC"},
+       {"barrier", "Barrier"},
+       {"batchsendrecv", "BatchSendRecv"},
        {"broadcast", "Broadcast"},
        {"reduce", "Reduce"},
        {"reducescatter", "ReduceScatter"},
        {"reducescatterv", "ReduceScatterV"},
-       {"scatter", "Scatter"}};
+       {"scatter", "Scatter"},
+       {"send", "Send"},
+       {"recv", "Recv"}};
 static const std::map<std::string, std::string> EXECUTOR_TYPES
     = {{"sole", "Sole"},         {"sequence", "Sequence"}, {"parallel", "Parallel"},
        {"pipeline", "PipeLine"}, {"concur", "Concur"},     {"strictordered", "StrictOrdered"}};
@@ -49,6 +53,8 @@ static const std::map<std::string, std::string> ALGO_TYPES
        {"nhrmultilink", "NHRMultiLink"},
        {"nhraicpureduce", "NHRAicpuReduce"},
        {"nhrsinglechannel", "MeshSingleChannel"},
+       {"nhrmultijetty", "NHRMultiJetty"},
+       {"meshmultijetty", "MeshMultiJetty"},
        {"meshconcurrent", "MeshConcurrent"}};
 
 // 小写字符串转换（自由函数，供全局使用）
@@ -849,9 +855,13 @@ const OpTypePatternEntry* GetOpTypePatternEntries(int& count)
         {"AllToAllVC", HcclCMDType::HCCL_CMD_ALLTOALLVC},
         {"AllToAllV", HcclCMDType::HCCL_CMD_ALLTOALLV},
         {"AllToAll", HcclCMDType::HCCL_CMD_ALLTOALL},
+        {"Barrier", HcclCMDType::HCCL_CMD_BARRIER},
+        {"BatchSendRecv", HcclCMDType::HCCL_CMD_BATCH_SEND_RECV},
         {"Broadcast", HcclCMDType::HCCL_CMD_BROADCAST},
         {"Reduce", HcclCMDType::HCCL_CMD_REDUCE},
         {"Scatter", HcclCMDType::HCCL_CMD_SCATTER},
+        {"Send", HcclCMDType::HCCL_CMD_SEND},
+        {"Recv", HcclCMDType::HCCL_CMD_RECEIVE},
     };
     count = static_cast<int>(entries.size());
     return entries.data();
@@ -872,6 +882,8 @@ const std::map<AlgoType, std::string>& GetAlgoTypeToNameMap()
         {AlgoType::NHR_MULTILINK, "NHRMultiLink"},
         {AlgoType::NHR_AICPU_REDUCE, "NHRAicpuReduce"},
         {AlgoType::MESH_SINGLE_CHANNEL, "MeshSingleChannel"},
+        {AlgoType::NHR_MULTIJETTY, "NHRMultiJetty"},
+        {AlgoType::MESH_MULTIJETTY, "MeshMultiJetty"},
         {AlgoType::MESH_CONCURRENT, "MeshConcurrent"},
     };
     return map;
@@ -892,6 +904,8 @@ const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap()
         {"NHRMultiLink", AlgoType::NHR_MULTILINK},
         {"NHRAicpuReduce", AlgoType::NHR_AICPU_REDUCE},
         {"MeshSingleChannel", AlgoType::MESH_SINGLE_CHANNEL},
+        {"NHRMultiJetty", AlgoType::NHR_MULTIJETTY},
+        {"MeshMultiJetty", AlgoType::MESH_MULTIJETTY},
         {"MeshConcurrent", AlgoType::MESH_CONCURRENT},
     };
     return map;

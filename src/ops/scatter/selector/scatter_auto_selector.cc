@@ -127,7 +127,7 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
             return SelectorStatus::NOT_MATCH;
         } else {
             if (dataSize < OMNI2D_UBX_SC_DATA_SIZE) {
-                selectAlgName = "CcuScatterParallelMesh1DNHRUBX";
+                selectAlgName = "CcuSchedScatterParallelMeshNHRMultiJetty";
             } else {
                 selectAlgName = "CcuSchedScatterPipeLineMeshNHR";
             }
@@ -207,9 +207,9 @@ SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
                 selectAlgName = "AicpuScatterConcurMeshNHR";
             }
         } else if (topoInfo->level0PcieMix) {
-            selectAlgName = "InsScatterParallelMesh1DNHRPcie";
+            selectAlgName = "AicpuScatterParallelMeshNHR";
         } else {
-            selectAlgName = "InsScatterParallelMesh1DNHRUBX";
+            selectAlgName = "AicpuScatterParallelMeshNHRMultiJetty";
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (topoInfo->level0PcieMix) {

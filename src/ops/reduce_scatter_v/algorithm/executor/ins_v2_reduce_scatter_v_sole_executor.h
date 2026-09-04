@@ -16,6 +16,8 @@
 #include "topo_match_base.h"
 
 namespace ops_hccl {
+constexpr u64 RSV_CCU_8P_MIN_DATA_SIZE = 32 * 1024 * 1024;
+
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 class InsV2ReduceScatterVSoleExecutor : public InsCollAlgBase {
 public:
@@ -35,6 +37,11 @@ public:
     HcclResult CalcAlgHierarchyInfoV2(
         TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         const AlgAttrs& algAttrs) override;
+
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
 
 protected:
     /* *************** 算法编排 *************** */

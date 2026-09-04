@@ -12,6 +12,7 @@
 #define HCCLV2_INS_V2_ALL_GATHER_SEQUENCE_3_LEVEL_EXECUTOR_H
 
 #include "executor_common_ops.h"
+#include "topo_match_three_level.h"
 namespace ops_hccl {
 constexpr u32 SEQUENCE_EXECUTOR_3_LEVEL_NUM = 3;
 
@@ -28,6 +29,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;

@@ -15,6 +15,27 @@
 
 namespace ops_hccl {
 
+std::vector<CostModelParam> CcuTempReduceScatterVMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
+{
+    int portNum = (param.netType == CommTopo::COMM_TOPO_1DMESH) ? 1 : 6;
+    int kernelNum = 1;
+    int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize);
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+
+    CostModelManager::Global()->CalcMeshParam(
+        param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, param.rankSize, A, param.isPod);
+    // 走GroupLocalReduce，不用串行做localReduce
+    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
+    std::vector<CostModelParam> params;
+    params.push_back({A, B, C, D});
+    return params;
+}
+
 CcuTempReduceScatterVMesh1DMem2Mem::CcuTempReduceScatterVMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)

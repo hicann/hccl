@@ -315,7 +315,7 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
         bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
             && topoInfo->topLevelUboe) {
-            selectAlgName = "AicpuAllGatherPipeLine";
+            selectAlgName = "AicpuAllGatherPipeLineMeshNHRNHR";
         } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
             selectAlgName = "AicpuAllGatherParallelNHRNHR";
         } else if (topoInfo->Level1Nhr) {
@@ -366,8 +366,8 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
                 if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
                     selectAlgName = "AicpuAllGatherSoleMesh";
                 } else {
-                    selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "InsAllGatherParallelMesh1DNHRPcie" :
-                                                                          "AicpuAllGatherPipeLinePcie";
+                    selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "AicpuAllGatherParallelMeshNHR" :
+                                                                          "AicpuAllGatherPipeLineMeshNHR";
                 }
                 HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
@@ -388,8 +388,8 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
                     selectAlgName = "AicpuAllGatherSoleMesh";
                 }
             } else if (isClosNumMultipleOfMeshNum && dataSize > SMALL_COUNT_512KB) {
-                selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "InsAllGatherParallelMesh1DNHRMultiJetty" :
-                                                                      "AicpuAllGatherPipeLineUBX";
+                selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "AicpuAllGatherParallelMeshNHRMultiJetty" :
+                                                                      "AicpuAllGatherPipeLineMeshNHR";
             } else {
                 // 4P外非对称场景，大小数据量都用NHR算法
                 selectAlgName = "AicpuAllGatherSoleNHR";
@@ -482,7 +482,7 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllGatherPipeLineUBX";
+                selectAlgName = "DpuAllGatherPipeLineMeshNHRNHR";
                 HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             } else {

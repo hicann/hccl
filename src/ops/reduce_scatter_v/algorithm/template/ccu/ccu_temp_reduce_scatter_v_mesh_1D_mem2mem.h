@@ -44,6 +44,8 @@ public:
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
+    static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);
+
 private:
     uint64_t GetTokenWithFallback(const BuffInfo& buffInfo, uint64_t& token);
 

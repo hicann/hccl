@@ -46,9 +46,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -321,19 +330,19 @@ HcclResult InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLau
 
 // 第二个参数是Reduce Scatter的template文件
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatchOneLevel,
     InsTempReduceScatterMesh1D);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshChunk, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    InsTempReduceScatterMesh1DMeshChunk);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshChunk, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterMesh1DMeshChunk);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMeshChunk,
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
                    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatchOneLevel,
     InsTempReduceScatterNHR);
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
@@ -352,25 +361,25 @@ REGISTER_ALG_ATTRS(
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,
-    TopoMatch1D, InsTempReduceScatterAicpuReduceNHR);
+    TopoMatchOneLevel, InsTempReduceScatterAicpuReduceNHR);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSoleNHRAicpuReduce,
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
                    topo.isSupportLevel1Nhr = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
-    TopoMatch1D, InsTempReduceScatterNHR);
+    TopoMatchOneLevel, InsTempReduceScatterNHR);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
                    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    InsTempReduceScatterMesh1DZAxisDetour);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterMesh1DZAxisDetour);
 REGISTER_ALG_ATTRS(AicpuReduceScatterSoleMeshConcur,
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
                    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AivReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatchOneLevel,
     AivTempReduceScatterMesh1D);
 REGISTER_ALG_ATTRS(
     AivReduceScatterSoleMesh,
@@ -392,8 +401,8 @@ REGISTER_ALG_ATTRS(
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    CcuTempReduceScatterMesh1DMem2Mem);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, CcuTempReduceScatterMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
@@ -411,7 +420,7 @@ REGISTER_ALG_ATTRS(
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh, InsV2ReduceScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceScatterMesh1D);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
@@ -429,8 +438,8 @@ REGISTER_ALG_ATTRS(
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    CcuTempReduceScatterNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHR, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, CcuTempReduceScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
     topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2; op.isSupportProd = false;
@@ -444,7 +453,7 @@ REGISTER_ALG_ATTRS(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor,
-    TopoMatch1D, CcuTempReduceScatterMeshMem2Mem1D2Die);
+    TopoMatchOneLevel, CcuTempReduceScatterMeshMem2Mem1D2Die);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleMesh2Die, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
@@ -463,8 +472,8 @@ REGISTER_ALG_ATTRS(
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor, TopoMatch1D,
-    CcuTempReduceScatterMesh2Die);
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMesh2Die, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, CcuTempReduceScatterMesh2Die);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterSoleMesh2Die, topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.maxTopoLevelNum = 1;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
@@ -475,7 +484,7 @@ REGISTER_ALG_ATTRS(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
-    TopoMatch1D, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
+    TopoMatchOneLevel, CcuTempReduceScatterNhrMultiJettyMem2Mem1D);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleNHRMultiLink, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
@@ -498,7 +507,7 @@ REGISTER_ALG_ATTRS(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuMSReduceScatterSoleMeshConcur, InsV2ReduceScatterSoleExecutor,
-    TopoMatchConcurrent, CcuTempReduceScatterConcurrentMeshNHR);
+    TopoMatchConcurrentV2, CcuTempReduceScatterConcurrentMeshNHR);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterSoleMeshConcur, topo.maxTopoLevelNum = 1; topo.supportDevTypes = {HcclDevType::DEV_TYPE_960};
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;

@@ -10,6 +10,7 @@
 
 #include "ins_v2_aiv_all_to_all_v_sole_executor.h"
 #include "alg_attrs_registry.h"
+#include "hccl_aiv_utils.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_all_to_all_v_mesh_1D.h"
 #endif
@@ -30,9 +31,18 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -305,13 +315,46 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaun
 #endif
 
 #ifndef AICPU_COMPILE
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+std::vector<CostModelParam> InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
+{
+    (void)comm;
+    (void)topoInfo;
+    (void)algName;
+    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgNetMeta InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+{
+    (void)param;
+    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    AlgNetMeta meta;
+    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.intraGroupMode = CostAggMode::SUM;
+    meta.groupSizes = {1};
+    meta.dataRatios = {1.0f};
+    meta.rankSizes = {rankSize};
+    return meta;
+}
+
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AivAllToAllVSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
+REGISTER_ALG_ATTRS(
+    AivAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
+    };);
 REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLTOALLVC, AivAllToAllVCSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatch1D,
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, AivAllToAllVCSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AivAllToAllVCSoleMesh, op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
+REGISTER_ALG_ATTRS(
+    AivAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
+    };);
 #endif
 } // namespace ops_hccl

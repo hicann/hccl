@@ -21,7 +21,7 @@ SelectorStatus SendAutoSelector::SelectAicpuAlgo(
     (void)topoInfo;
     HCCL_INFO("[SendAutoSelector][SelectAicpuAlgo] opType:%d", opParam.opType);
 
-    selectAlgName = "AicpuSendSole";
+    selectAlgName = "AicpuSendSoleMesh";
     return SelectorStatus::MATCH;
 }
 
@@ -46,7 +46,7 @@ SelectorStatus SendAutoSelector::SelectAivAlgo(
     }
 
     HCCL_INFO("[SendAutoSelector][SelectAivAlgo] opType:%d", opParam.opType);
-    selectAlgName = "AivSendSole";
+    selectAlgName = "AivSendSoleMesh";
     return SelectorStatus::MATCH;
 }
 
@@ -58,7 +58,7 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     HCCL_INFO("[SendAutoSelector][SelectDPUAlgo] opType:%d", opParam.opType);
 
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType
-    // host nic -- device nic 场景走 DpuSendSoleHost，其他走 DpuSendSole
+    // host nic -- device nic 场景走 DpuSendSoleHost，其他走 DpuSendSoleMesh
     u32 myRank = topoInfo->userRank;
     u32 remoteRank = opParam.sendRecvRemoteRank;
     HcclComm comm = opParam.hcclComm;
@@ -66,8 +66,8 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     // 获取最高层（最后一个 netLayer）
     const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;
     if (netLayers.empty()) {
-        HCCL_WARNING("[SendAutoSelector][SelectDPUAlgo] netLayers is empty, use default DpuSendSole");
-        selectAlgName = "DpuSendSole";
+        HCCL_WARNING("[SendAutoSelector][SelectDPUAlgo] netLayers is empty, use default DpuSendSoleMesh");
+        selectAlgName = "DpuSendSoleMesh";
         return SelectorStatus::MATCH;
     }
 
@@ -100,16 +100,16 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
         if (srcLocType == ENDPOINT_LOC_TYPE_HOST && dstLocType == ENDPOINT_LOC_TYPE_DEVICE) {
             selectAlgName = "DpuSendSoleHost";
         } else {
-            selectAlgName = "DpuSendSole";
+            selectAlgName = "DpuSendSoleMesh";
         }
         return SelectorStatus::MATCH;
     }
 
     // 没有找到链路，使用默认
     HCCL_WARNING(
-        "[SendAutoSelector][SelectDPUAlgo]no link found for rank:%u and rank:%u, use default DpuSendSole", myRank,
+        "[SendAutoSelector][SelectDPUAlgo]no link found for rank:%u and rank:%u, use default DpuSendSoleMesh", myRank,
         remoteRank);
-    selectAlgName = "DpuSendSole";
+    selectAlgName = "DpuSendSoleMesh";
     return SelectorStatus::MATCH;
 }
 

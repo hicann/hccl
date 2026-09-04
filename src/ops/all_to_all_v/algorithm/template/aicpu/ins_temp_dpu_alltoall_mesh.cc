@@ -10,7 +10,7 @@
 
 #include "ins_temp_dpu_alltoall_mesh.h"
 
-#define NET_NUM 2
+#include <algorithm>
 
 namespace ops_hccl {
 
@@ -22,13 +22,40 @@ InsTempDpuAlltoAllMesh::InsTempDpuAlltoAllMesh(
 
 InsTempDpuAlltoAllMesh::~InsTempDpuAlltoAllMesh() {}
 
+u32 InsTempDpuAlltoAllMesh::GetIntraRankNumFromPhysicalLevels(const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    u32 intraRankNum = 0;
+    s32 hostIdx = -1;
+    for (size_t i = 0; i < topoInfo->physicalLevels.size(); i++) {
+        if (topoInfo->physicalLevels[i].locType == EndpointLocType::ENDPOINT_LOC_TYPE_HOST) {
+            hostIdx = static_cast<s32>(i);
+            break;
+        }
+    }
+    if (hostIdx < 0) {
+        HCCL_ERROR("[InsTempDpuAlltoAllMesh] no HOST level found in physicalLevels.");
+        return 0;
+    }
+    s32 idx = hostIdx - 1;
+    while (idx >= 0 && !topoInfo->physicalLevels[idx].hasTopoInst) {
+        idx--;
+    }
+    if (idx < 0) {
+        HCCL_ERROR("[InsTempDpuAlltoAllMesh] no level with hasTopoInst=true below HOST level.");
+        return 0;
+    }
+    for (auto size : topoInfo->physicalLevels[idx].instSizeListByLayer) {
+        intraRankNum = std::max(intraRankNum, size);
+    }
+    return intraRankNum;
+}
+
 HcclResult InsTempDpuAlltoAllMesh::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = 0;
     std::vector<HcclChannelDesc> level0Channels;
-    // level0是mesh1d或者ub+pcie混合拓扑，使用mesh1d的算法
     if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix
         || topoInfo->deviceNumPerModule == 1) {
         // 框内threadNum最大取MAX_RANK_NUM_PER_SERVER
@@ -37,14 +64,8 @@ HcclResult InsTempDpuAlltoAllMesh::CalcRes(
                                                                     1;
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     } else {
-        CHK_PRT_RET(
-            subCommRanks_.size() != NET_NUM,
-            HCCL_ERROR(
-                "[InsTempDpuAlltoAllMesh][CalcRes] subCommRankNum[%zu] is not [%u]", subCommRanks_.size(), NET_NUM),
-            HCCL_E_PARA);
-        u32 intraRankNum = subCommRanks_[0].size();
+        u32 intraRankNum = GetIntraRankNumFromPhysicalLevels(topoInfo);
         threadNum = (intraRankNum > 1) ? (intraRankNum - 1) : 1;
-        subCommRanks_ = {subCommRanks_[1]};
         CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
             comm, param, topoInfo, subCommRanks_, level0Channels, CommTopo::COMM_TOPO_1DMESH));
     }

@@ -44,12 +44,64 @@ bool IsInputOutputOverlap(const OpParam& opParam)
     return inStart <= outStart + opParam.outputSize - 1 && outStart <= inStart + opParam.inputSize - 1;
 }
 
+static inline u64 CalcCostTableDataSize(const OpParam& opParam, u32 userRankSize)
+{
+    switch (opParam.opType) {
+        case HcclCMDType::HCCL_CMD_ALLGATHER_V:
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V: {
+            const u64* counts = reinterpret_cast<const u64*>(opParam.vDataDes.counts);
+            u64 maxC = 0;
+            for (u32 i = 0; i < userRankSize; ++i) {
+                maxC = std::max(maxC, counts[i]);
+            }
+            return maxC * DATATYPE_SIZE_TABLE[opParam.vDataDes.dataType];
+        }
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+        case HcclCMDType::HCCL_CMD_ALLTOALLV:
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC: {
+            u64 sendCount = *reinterpret_cast<const u64*>(opParam.all2AllVDataDes.sendCounts);
+            return sendCount * DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
+        }
+        case HcclCMDType::HCCL_CMD_BATCH_SEND_RECV: {
+            if (opParam.batchSendRecvDataDes.itemNum == 0 || opParam.batchSendRecvDataDes.sendRecvItemsPtr == nullptr) {
+                return 0;
+            }
+            u64 count = static_cast<u64>(opParam.batchSendRecvDataDes.sendRecvItemsPtr[0].count);
+            return count * DATATYPE_SIZE_TABLE[opParam.batchSendRecvDataDes.sendRecvItemsPtr[0].dataType];
+        }
+        case HcclCMDType::HCCL_CMD_BARRIER:
+            return 0;
+        default:
+            return opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    }
+}
+
+static inline HcclDataType GetOpDataType(const OpParam& opParam)
+{
+    switch (opParam.opType) {
+        case HcclCMDType::HCCL_CMD_ALLGATHER_V:
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
+            return opParam.vDataDes.dataType;
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+        case HcclCMDType::HCCL_CMD_ALLTOALLV:
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            return opParam.all2AllVDataDes.sendType;
+        case HcclCMDType::HCCL_CMD_BATCH_SEND_RECV:
+            if (opParam.batchSendRecvDataDes.itemNum == 0 || opParam.batchSendRecvDataDes.sendRecvItemsPtr == nullptr) {
+                return HCCL_DATA_TYPE_RESERVED;
+            }
+            return opParam.batchSendRecvDataDes.sendRecvItemsPtr[0].dataType;
+        default:
+            return opParam.DataDes.dataType;
+    }
+}
+
 OpMatchResult
 CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     OpMatchResult result;
     const auto& op = attrs.op;
-    HcclDataType dataType = opParam.DataDes.dataType;
+    HcclDataType dataType = GetOpDataType(opParam);
     bool isInplace = IsInputOutputOverlap(opParam);
     bool needOrderPreserved = IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize);
 
@@ -116,19 +168,7 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         return HcclResult::HCCL_E_PARA;
     }
 
-    u64 dataSize = 0;
-    HcclDataType dataType = opParam.DataDes.dataType;
-    if (opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
-        // AllToAll: dataSize = 单 rank 发给单个 peer 的数据量 = sendCounts[0] * typeSize
-        // 模板内 dataRatio=1.0f，配套此单 peer 口径
-        const u64* sendCounts = static_cast<const u64*>(opParam.all2AllVDataDes.sendCounts);
-        u32 typeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
-        dataType = opParam.all2AllVDataDes.sendType;
-        u64 perRankSendCount = (sendCounts != nullptr) ? sendCounts[0] : 0;
-        dataSize = perRankSendCount * typeSize;
-    } else {
-        dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-    }
+    u64 dataSize = CalcCostTableDataSize(opParam, topoInfo->userRankSize);
 
     for (int i = 0; i < cm.count; ++i) {
         if (cm.costAlgoParams[i].count <= 0) {

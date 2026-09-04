@@ -16,7 +16,8 @@ namespace ops_hccl {
 
 namespace {
     // 计算内层维度 d0：LOCAL 取 localRanks.size()；GLOBAL 对称取 localRanks.size()，非对称 GCD 打平
-    HcclResult CalcLevel0Dim(const PhysicalLevelInfo& level0, u32 myRank, u32& d0, bool& asymmetric, u32& gcd)
+    HcclResult CalcLevel0Dim(
+        const PhysicalLevelInfo& level0, u32 myRank, u32& d0, bool& asymmetric, u32& gcd, const AlgAttrs& profile)
     {
         if (level0.view == PhysicalLevelView::LOCAL) {
             d0 = static_cast<u32>(level0.localRanks.size());
@@ -35,7 +36,7 @@ namespace {
         asymmetric = true;
         gcd = CalcGcd(level0.instSizeListByLayer);
         HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric level0, instList GCD[%u], d0=gcd.", myRank, gcd);
-        if (gcd == 1) {
+        if (gcd == 1 && profile.engine != OpExecuteConfig::HOSTCPU) {
             HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric GCD=1, not support.", myRank);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
@@ -85,8 +86,8 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
     u32 d0 = 0;
     bool asymmetric = false;
     u32 gcd = 0;
-    CHK_RET(CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd));
-    if (d0 <= 1 || userRankSize % d0 != 0) {
+    CHK_RET(CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd, profile));
+    if (d0 == 0 || userRankSize % d0 != 0 || (d0 == 1 && profile.engine != OpExecuteConfig::HOSTCPU)) {
         HCCL_INFO("[TopoMatchTwoLevel] userRankSize[%u] not divisible by d0[%u].", myRank, userRankSize, d0);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }

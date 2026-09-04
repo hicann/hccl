@@ -18,6 +18,7 @@
 #include "ccu_temp_all_gather_omnipipe_nhr1d_mem2mem.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
+#include "alg_attrs_registry.h"
 
 namespace ops_hccl {
 
@@ -37,18 +38,22 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
 
-    for (auto i = 0; i < algHierarchyInfo.infos.size(); ++i) {
-        for (auto j = 0; j < algHierarchyInfo.infos[i].size(); ++j) {
-            for (auto k = 0; k < algHierarchyInfo.infos[i][j].size(); ++k) {
-                HCCL_DEBUG(
-                    "[%s] myRank[%u] (%d, %d, %d) %u", __func__, topoInfo->userRank, i, j, k,
-                    algHierarchyInfo.infos[i][j][k]);
-            }
-        }
-    }
+template <
+    typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
+    typename CcuAgAlgTemplateY>
+HcclResult InsV2BroadcastOmniPipe2dExecutor<
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -61,7 +66,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -78,7 +83,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
         HCCL_ERROR("[%s] broadcast rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
-    rankSizeLevel1_ = algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
+    rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
         HCCL_ERROR("[%s] broadcast rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
@@ -138,17 +143,14 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    if (algHierarchyInfo.infos.empty() || algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     subCommRanks0.clear();
     subCommRanks1.clear();
     subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
-    subCommRanks1.resize(1);
-    for (auto i = myRank_ % rankSizeLevel0_; i < algHierarchyInfo.infos[0][1].size(); i += rankSizeLevel0_) {
-        subCommRanks1[0].push_back(algHierarchyInfo.infos[0][1][i]);
-    }
+    subCommRanks1.push_back(algHierarchyInfo.infos[1][0]);
 
     return HCCL_SUCCESS;
 }
@@ -211,7 +213,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
     AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
     CcuAgAlgTemplateY>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (resCtx.algHierarchyInfo.infos.empty()) {
         HCCL_ERROR("[%s] resCtx.algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
@@ -229,7 +231,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
         return HcclResult::HCCL_E_PARA;
     }
 
-    rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[0][1].size() / rankSizeLevel0_;
+    rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
         HCCL_ERROR("[%s] broadcast rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
@@ -707,9 +709,10 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastPipeLineMeshNHR, InsV2BroadcastOmniPipe2dExecutor, TopoMatchUBX,
-    CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem, CcuTempAllGatherOmniPipeMesh1DMem2Mem,
-    CcuTempAllGatherOmniPipeNHR1DMem2Mem);
+    HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastPipeLineMeshNHR, InsV2BroadcastOmniPipe2dExecutor,
+    TopoMatchTwoLevel, CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem,
+    CcuTempAllGatherOmniPipeMesh1DMem2Mem, CcuTempAllGatherOmniPipeNHR1DMem2Mem);
+REGISTER_ALG_ATTRS(CcuSchedBroadcastPipeLineMeshNHR);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

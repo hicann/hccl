@@ -247,7 +247,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
                     opParam.DataDes.dataType, topoInfo->topoLevelNums),
                 SelectorStatus::NOT_MATCH);
             if (dataSize < OMNI2D_UBX_REDUCE_DATA_SIZE) {
-                selectAlgName = "CcuReduceParallelMesh1DNHRUBX";
+                selectAlgName = "CcuSchedReduceParallelMeshNHRMultiJetty";
             } else {
                 selectAlgName = "CcuSchedReducePipeLineMeshNHR";
             }
@@ -286,7 +286,7 @@ SelectorStatus ReduceAutoSelector::SelectAicpuAlgo(
             if (!level0AndLevel1Symetric || topoInfo->netLayerDetails.localNetInsSizeOfLayer[1] == 1) {
                 selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
-                selectAlgName = "ReduceParallelNHRNHRUboe";
+                selectAlgName = "AicpuReduceParallelNHRNHR";
             }
         } else if (topoInfo->topoLevelNums == TOPO_LEVEL_3 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
@@ -335,7 +335,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
                 Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
                 selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
-                selectAlgName = "ReduceParallelMesh1DNHRPcie";
+                selectAlgName = "AicpuReduceParallelMeshNHR";
             }
         } else if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
@@ -351,7 +351,7 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
                 selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
             } else {
                 if (IsLargeData(dataSize)) {
-                    selectAlgName = "ReduceParallelMesh1DNHRUBX";
+                    selectAlgName = "AicpuReduceParallelMeshNHRMultiJetty";
                 } else {
                     selectAlgName = "AicpuReduceSoleNHR";
                 }
