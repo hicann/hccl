@@ -1,0 +1,153 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ *
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*
+ * Export whitelist for libhccl_kernel_compat.so.
+ *
+ * Sections follow the source-file order in hccl_kernel_compat.cmake.
+ * Symbols within each section are sorted lexicographically.
+ *
+ * No exported symbols are retained from:
+ * hccl_dl.cc and hcomm_device_profiling_dl.cc.
+ */
+{
+    global:
+        /*
+         * Source: hcomm_device_dlsym.cc
+         * Consumer: scatter_aicpu_kernel.so device compatibility
+         * initialization in common/device_compat.cc.
+         */
+        HcommDeviceDlInit;
+
+        /*
+         * Source: hcomm_primitives_dl.cc
+         * Consumer: scatter_aicpu_kernel.so algorithm templates,
+         * AICPU kernel launch, task cache and DPU data-transfer paths.
+         *
+         * Weak Hcomm* definitions intentionally remain dynamically
+         * visible so that strong device-side implementations can
+         * override them at runtime.
+         *
+         * HcommIsSupport* functions expose the runtime capability
+         * detection results to scatter_aicpu_kernel.so.
+         */
+        HcclChannelNotifyWaitDefault;
+        HcclChannelNotifyWaitOnThreadDefault;
+        HcclCommSymWinGet;
+        HcclHcommBatchTransferOnThread;
+        HcclSetNotifyWaitTimeOut;
+        HcclSymWinGetPeerPointer;
+        HcclThreadNotifyWaitOnThreadDefault;
+        HcclThreadResAcquireTimeOut;
+        HcommAicpuTsTaskCacheClear;
+        HcommAicpuTsTaskCacheEnd;
+        HcommAicpuTsTaskCacheExecute;
+        HcommAicpuTsTaskCacheLookup;
+        HcommAicpuTsTaskCacheStart;
+        HcommChannelFence;
+        HcommChannelFenceOnThread;
+        HcommChannelNotifyRecord;
+        HcommChannelNotifyRecordOnThread;
+        HcommChannelNotifyWait;
+        HcommChannelNotifyWaitOnThread;
+        HcommChannelNotifyWaitOnThreadWithDefaultTimeout;
+        HcommChannelNotifyWaitWithDefaultTimeout;
+        HcommFenceOnThread;
+        HcommFlush;
+        HcommIsSupportHcclCommSymWinGet;
+        HcommIsSupportHcclSymWinGetPeerPointer;
+        HcommIsSupportHcommAicpuTsTaskCacheClear;
+        HcommIsSupportHcommAicpuTsTaskCacheEnd;
+        HcommIsSupportHcommAicpuTsTaskCacheExecute;
+        HcommIsSupportHcommAicpuTsTaskCacheLookup;
+        HcommIsSupportHcommAicpuTsTaskCacheStart;
+        HcommIsSupportHcommBatchTransferOnThread;
+        HcommIsSupportHcommChannelFence;
+        HcommIsSupportHcommChannelFenceOnThread;
+        HcommIsSupportHcommChannelNotifyRecord;
+        HcommIsSupportHcommChannelNotifyRecordOnThread;
+        HcommIsSupportHcommChannelNotifyWait;
+        HcommIsSupportHcommChannelNotifyWaitOnThread;
+        HcommIsSupportHcommChannelNotifyWaitOnThreadWithDefaultTimeout;
+        HcommIsSupportHcommChannelNotifyWaitWithDefaultTimeout;
+        HcommIsSupportHcommFenceOnThread;
+        HcommIsSupportHcommFlush;
+        HcommIsSupportHcommReadNbi;
+        HcommIsSupportHcommReadNbiOnThread;
+        HcommIsSupportHcommReadReduceOnThread;
+        HcommIsSupportHcommSendRequest;
+        HcommIsSupportHcommSetNotifyWaitTimeOut;
+        HcommIsSupportHcommSymWinGetPeerPointer;
+        HcommIsSupportHcommThreadJoin;
+        HcommIsSupportHcommThreadNotifyRecordOnThread;
+        HcommIsSupportHcommThreadNotifyWaitOnThread;
+        HcommIsSupportHcommThreadNotifyWaitOnThreadWithDefaultTimeout;
+        HcommIsSupportHcommThreadResAcquireTimeOut;
+        HcommIsSupportHcommThreadSynchronize;
+        HcommIsSupportHcommWaitResponse;
+        HcommIsSupportHcommWriteNbi;
+        HcommIsSupportHcommWriteNbiOnThread;
+        HcommIsSupportHcommWriteReduceWithNotifyOnThread;
+        HcommIsSupportHcommWriteWithNotifyNbi;
+        HcommIsSupportHcommWriteWithNotifyNbiOnThread;
+        HcommIsSupportHcommWriteWithNotifyOnThread;
+        HcommReadNbi;
+        HcommReadNbiOnThread;
+        HcommReadReduceOnThread;
+        HcommSendRequest;
+        HcommSetNotifyWaitTimeOut;
+        HcommSymWinGetPeerPointer;
+        HcommThreadJoin;
+        HcommThreadNotifyRecordOnThread;
+        HcommThreadNotifyWaitOnThread;
+        HcommThreadNotifyWaitOnThreadWithDefaultTimeout;
+        HcommThreadResAcquireTimeOut;
+        HcommThreadSynchronize;
+        HcommWaitResponse;
+        HcommWriteNbi;
+        HcommWriteNbiOnThread;
+        HcommWriteReduceWithNotifyOnThread;
+        HcommWriteWithNotifyNbi;
+        HcommWriteWithNotifyNbiOnThread;
+        HcommWriteWithNotifyOnThread;
+        IsHcommDefaultTimeoutSupported;
+
+        /*
+         * Source: hcomm_diag_dl.cc
+         * Consumer: scatter_aicpu_kernel.so AICPU kernel-launch
+         * diagnostics and task-exception reporting paths.
+         */
+        HcommIsSupportHcommRegOpInfo;
+        HcommIsSupportHcommRegOpTaskException;
+
+        /*
+         * Source: hccl_device_comm_dl.cc
+         * Consumer: scatter_aicpu_kernel.so communication-status checks
+         * and send/receive executor group-status checks.
+         *
+         * HcclGroupStatusGet is a weak fallback definition directly
+         * consumed together with its support flag.
+         */
+        HcclGroupStatusGet;
+        HcommIsSupportHcclCommGetStatus;
+        HcommIsSupportHcclGroupStatusGet;
+
+        /*
+        * Source: hccl_sym_win_dl.cc
+        * Consumer: collective algorithm templates querying
+        * remote symmetric-window memory.
+        */
+        GetSymWinRemoteMem;
+
+    local:
+        *;
+};

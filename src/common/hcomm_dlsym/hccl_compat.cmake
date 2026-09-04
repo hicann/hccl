@@ -63,6 +63,18 @@ else()
         $<$<CONFIG:Release>:-s>
     )
 
+    set(HCCL_COMPAT_EXPORT_MAP
+        "${CMAKE_CURRENT_LIST_DIR}/hccl_compat.map"
+    )
+
+    target_link_options(hccl_compat PRIVATE
+        "-Wl,--version-script=${HCCL_COMPAT_EXPORT_MAP}"
+    )
+
+    set_property(TARGET hccl_compat APPEND PROPERTY
+        LINK_DEPENDS "${HCCL_COMPAT_EXPORT_MAP}"
+    )
+
     if(BUILD_OPEN_PROJECT)
         target_link_libraries(hccl_compat PRIVATE
             $<BUILD_INTERFACE:intf_pub>

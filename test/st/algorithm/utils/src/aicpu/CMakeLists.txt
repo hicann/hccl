@@ -23,6 +23,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/executor/registry
 
     ${HCCL_DEV_BASE}/src/ops/op_common/selector
+    ${HCCL_DEV_BASE}/src/ops/op_common/selector/inc
 
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/registry
@@ -58,6 +59,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/selector
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template/ccu
 
     ${HCCL_DEV_BASE}/src/ops/scatter
     ${HCCL_DEV_BASE}/src/ops/scatter/algorithm
@@ -279,6 +281,61 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/reduce_nhr.cc
     ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/reduce_aicpu_reduce_nhr.cc
 )
+
+set(ST_SCATTER_AICPU_EXPORT_MAP
+    "${CMAKE_CURRENT_LIST_DIR}/scatter_aicpu_kernel_st.map"
+)
+
+target_link_options(scatter_aicpu_kernel PRIVATE
+    "-Wl,--version-script=${ST_SCATTER_AICPU_EXPORT_MAP}"
+)
+
+set_property(TARGET scatter_aicpu_kernel APPEND PROPERTY
+    LINK_DEPENDS "${ST_SCATTER_AICPU_EXPORT_MAP}"
+)
+
+target_sources(scatter_aicpu_kernel PRIVATE
+    # ST-local selector and cost-model implementations.
+    ${HCCL_DEV_BASE}/src/ops/op_common/selector/cost_model.cc
+
+    # ST-local topology matching implementations.
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_base_v2.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_one_level.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_squeeze_2d.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_ubx_1d.cc
+
+    # ST-local algorithm template implementations.
+    ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/reduce_mesh_1D_two_shot.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_ubx_all_to_all_v_mesh_1D.cc
+
+    # AicpuReduceScatterVSoleMesh.
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/executor/ins_v2_reduce_scatter_v_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template/aicpu/ins_temp_reduce_scatter_v_mesh_1D.cc
+)
+
+if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
+    target_sources(scatter_aicpu_kernel PRIVATE
+        # AicpuBroadcastSequenceMeshConcurNHRNHR
+        # DpuBroadcastSequenceMeshNHR
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor_aicpu_3level.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_dpu_inter.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_mesh_1D_intra.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_mesh_1D_intra.cc
+
+        # DpuReduceSequenceMeshNHR
+        ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/executor/ins_v2_reduce_sequence_executor.cc
+        ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/ins_temp_gather_dpu_inter.cc
+        ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/ins_temp_gather_mesh_1D_intra.cc
+
+        # DpuScatterSequenceMeshNHR
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
+    )
+endif()
 
 target_include_directories(scatter_aicpu_kernel PRIVATE
     ${INCLUDE_LIST}

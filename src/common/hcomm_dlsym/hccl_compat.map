@@ -1,0 +1,192 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ *
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*
+ * Export whitelist for libhccl_compat.so.
+ *
+ * Sections follow the source-file order in hccl_compat.cmake.
+ * Symbols within each section are sorted lexicographically.
+ *
+ * No exported symbols are retained from:
+ * hccl_rank_graph_dl.cc, hccl_inner_dl.cc,
+ * hcomm_host_profiling_dl.cc, and ccu_launch_dl.cc.
+ */
+{
+    global:
+        /*
+        * Source: hccl_dl.cc
+        * Consumer: libhccl.so HCOMM dynamic loading and
+        * Barrier fallback paths.
+        */
+        HcclDlclose;
+        HcclDlopen;
+        HcclDlsym;
+
+        /*
+         * Source: hccl_res_dl.cc
+         * Consumer: libhccl.so resource and thread-management paths.
+         */
+        HcommIsSupportHcclDedicatedThreadAcquire;
+        HcommIsSupportHcclThreadAcquireWithConfig;
+
+        /*
+         * Source: hcomm_dlsym.cc
+         * Consumer: libhccl.so compatibility initialization and version checks.
+         */
+        GetHcommVersion;
+        HcommDlInit;
+        HcommIsExportThreadSupported;
+        HcommIsProfilingSupported;
+
+        /*
+         * Source: hccl_host_comm_dl.cc
+         * Consumer: libhccl.so host communication and status-management paths.
+         */
+        HcommIsSupportHcclAicpuKernelLaunch;
+        HcommIsSupportHcclCommGetStatus;
+        HcommIsSupportHcclCommRegCommStateCallback;
+        HcommIsSupportHcclGroupStatusGet;
+
+        /*
+         * Source: hccl_res_expt_dl.cc
+         * Consumer: libhccl.so exchange-information and consistency-check paths.
+         */
+        HcommIsSupportHcclCommAddExchangeInfo;
+        HcommIsSupportHcclCommGetExchangeInfo;
+
+        /*
+         * Source: ccu_res_dl.cc
+         * Consumer: libhccl.so CCU resource capability checks.
+         */
+        HcommIsSupportHcommCcuInsCreate;
+        HcommIsSupportHcommCcuInsDestroy;
+        HcommIsSupportHcommCcuInsQueryResDesc;
+        HcommIsSupportHcommCcuInsResDescCreate;
+        HcommIsSupportHcommCcuInsResDescDestroy;
+        HcommIsSupportHcommCcuInsResDescQueryNum;
+        HcommIsSupportHcommCcuInsResDescSetNum;
+        HcommIsSupportHcommCcuKernelQueryResReq;
+        HcommIsSupportHcommCcuQueryRemainResDesc;
+
+        /*
+         * Source: hccl_ccu_res_dl.cc
+         * Consumer: libhccl.so CCU instance query and assignment paths.
+         */
+        HcommIsSupportHcclCommAssignCcuIns;
+        HcommIsSupportHcclCommQueryAssignedCcuIns;
+
+        /*
+         * Source: ccu_primitives_impl_dl.cc
+         * Consumer: libhccl.so CCU V2 capability checks.
+         */
+        HcommIsSupportCcuV2;
+
+        /*
+        * Source: hccl_sym_win_dl.cc
+        * Consumer: collective algorithm templates querying
+        * remote symmetric-window memory.
+        */
+        GetSymWinRemoteMem;
+
+        /*
+        * Source: hcomm_primitives_dl.cc
+        * Consumer: libhccl.so HCOMM primitive, timeout,
+        * task-cache and data-transfer paths.
+        *
+        * Weak Hcomm* definitions intentionally remain dynamically
+        * visible so that strong definitions from libhcomm.so can
+        * override them at runtime.
+        */
+        HcclChannelNotifyWaitDefault;
+        HcclChannelNotifyWaitOnThreadDefault;
+        HcclCommSymWinGet;
+        HcclHcommBatchTransferOnThread;
+        HcclSetNotifyWaitTimeOut;
+        HcclSymWinGetPeerPointer;
+        HcclThreadNotifyWaitOnThreadDefault;
+        HcclThreadResAcquireTimeOut;
+        HcommAicpuTsTaskCacheClear;
+        HcommAicpuTsTaskCacheEnd;
+        HcommAicpuTsTaskCacheExecute;
+        HcommAicpuTsTaskCacheLookup;
+        HcommAicpuTsTaskCacheStart;
+        HcommChannelFence;
+        HcommChannelFenceOnThread;
+        HcommChannelNotifyRecord;
+        HcommChannelNotifyRecordOnThread;
+        HcommChannelNotifyWait;
+        HcommChannelNotifyWaitOnThread;
+        HcommChannelNotifyWaitOnThreadWithDefaultTimeout;
+        HcommChannelNotifyWaitWithDefaultTimeout;
+        HcommFenceOnThread;
+        HcommFlush;
+        HcommIsSupportHcclCommSymWinGet;
+        HcommIsSupportHcclSymWinGetPeerPointer;
+        HcommIsSupportHcommAicpuTsTaskCacheClear;
+        HcommIsSupportHcommAicpuTsTaskCacheEnd;
+        HcommIsSupportHcommAicpuTsTaskCacheExecute;
+        HcommIsSupportHcommAicpuTsTaskCacheLookup;
+        HcommIsSupportHcommAicpuTsTaskCacheStart;
+        HcommIsSupportHcommBatchTransferOnThread;
+        HcommIsSupportHcommChannelFence;
+        HcommIsSupportHcommChannelFenceOnThread;
+        HcommIsSupportHcommChannelNotifyRecord;
+        HcommIsSupportHcommChannelNotifyRecordOnThread;
+        HcommIsSupportHcommChannelNotifyWait;
+        HcommIsSupportHcommChannelNotifyWaitOnThread;
+        HcommIsSupportHcommChannelNotifyWaitOnThreadWithDefaultTimeout;
+        HcommIsSupportHcommChannelNotifyWaitWithDefaultTimeout;
+        HcommIsSupportHcommFenceOnThread;
+        HcommIsSupportHcommFlush;
+        HcommIsSupportHcommReadNbi;
+        HcommIsSupportHcommReadNbiOnThread;
+        HcommIsSupportHcommReadReduceOnThread;
+        HcommIsSupportHcommSendRequest;
+        HcommIsSupportHcommSetNotifyWaitTimeOut;
+        HcommIsSupportHcommSymWinGetPeerPointer;
+        HcommIsSupportHcommThreadJoin;
+        HcommIsSupportHcommThreadNotifyRecordOnThread;
+        HcommIsSupportHcommThreadNotifyWaitOnThread;
+        HcommIsSupportHcommThreadNotifyWaitOnThreadWithDefaultTimeout;
+        HcommIsSupportHcommThreadResAcquireTimeOut;
+        HcommIsSupportHcommThreadSynchronize;
+        HcommIsSupportHcommWaitResponse;
+        HcommIsSupportHcommWriteNbi;
+        HcommIsSupportHcommWriteNbiOnThread;
+        HcommIsSupportHcommWriteReduceWithNotifyOnThread;
+        HcommIsSupportHcommWriteWithNotifyNbi;
+        HcommIsSupportHcommWriteWithNotifyNbiOnThread;
+        HcommIsSupportHcommWriteWithNotifyOnThread;
+        HcommReadNbi;
+        HcommReadNbiOnThread;
+        HcommReadReduceOnThread;
+        HcommSendRequest;
+        HcommSetNotifyWaitTimeOut;
+        HcommSymWinGetPeerPointer;
+        HcommThreadJoin;
+        HcommThreadNotifyRecordOnThread;
+        HcommThreadNotifyWaitOnThread;
+        HcommThreadNotifyWaitOnThreadWithDefaultTimeout;
+        HcommThreadResAcquireTimeOut;
+        HcommThreadSynchronize;
+        HcommWaitResponse;
+        HcommWriteNbi;
+        HcommWriteNbiOnThread;
+        HcommWriteReduceWithNotifyOnThread;
+        HcommWriteWithNotifyNbi;
+        HcommWriteWithNotifyNbiOnThread;
+        HcommWriteWithNotifyOnThread;
+        IsHcommDefaultTimeoutSupported;
+
+    local:
+        *;
+};

@@ -127,6 +127,18 @@ if(NOT STATIC_MODE)
         -Wl,-z,noexecstack
         $<$<CONFIG:Release>:-s>
     )
+
+    set(HCCL_EXPORT_MAP
+        "${CMAKE_CURRENT_LIST_DIR}/hccl.map"
+    )
+
+    target_link_options(hccl PRIVATE
+        "-Wl,--version-script=${HCCL_EXPORT_MAP}"
+    )
+
+    set_property(TARGET hccl APPEND PROPERTY
+        LINK_DEPENDS "${HCCL_EXPORT_MAP}"
+    )
 endif()
 
 if(STATIC_MODE)
@@ -160,6 +172,20 @@ add_library(opgraph_hccl SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/common/log.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/common/op_graph/hcom_vinputvec_set_pass.cc
 )
+
+if(NOT ENABLE_TEST)
+    set(OPGRAPH_HCCL_EXPORT_MAP
+        "${CMAKE_CURRENT_LIST_DIR}/opgraph_hccl.map"
+    )
+
+    target_link_options(opgraph_hccl PRIVATE
+        "-Wl,--version-script=${OPGRAPH_HCCL_EXPORT_MAP}"
+    )
+
+    set_property(TARGET opgraph_hccl APPEND PROPERTY
+        LINK_DEPENDS "${OPGRAPH_HCCL_EXPORT_MAP}"
+    )
+endif()
 
 target_include_directories(opgraph_hccl PRIVATE
     ${INCLUDE_LIST}
@@ -223,6 +249,26 @@ add_es_library_and_whl(
     OPP_PROTO_TARGET opgraph_hccl
     OUTPUT_PATH ${CMAKE_BINARY_DIR}/es_output
 )
+
+if(NOT ENABLE_TEST)
+    set(ES_HCCL_EXPORT_MAP
+        "${CMAKE_CURRENT_LIST_DIR}/es_hccl.map"
+    )
+
+    if(NOT TARGET es_hccl_so)
+        message(FATAL_ERROR
+            "GenerateEsPackage did not create the expected es_hccl_so target"
+        )
+    endif()
+
+    target_link_options(es_hccl_so PRIVATE
+        "-Wl,--version-script=${ES_HCCL_EXPORT_MAP}"
+    )
+
+    set_property(TARGET es_hccl_so APPEND PROPERTY
+        LINK_DEPENDS "${ES_HCCL_EXPORT_MAP}"
+    )
+endif()
 
 add_dependencies(hccl es_hccl)
 

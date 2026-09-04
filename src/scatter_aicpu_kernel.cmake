@@ -233,6 +233,18 @@ target_link_options(scatter_aicpu_kernel PRIVATE
     $<$<CONFIG:Release>:-s>
 )
 
+set(SCATTER_AICPU_KERNEL_EXPORT_MAP
+    "${CMAKE_CURRENT_LIST_DIR}/scatter_aicpu_kernel.map"
+)
+
+target_link_options(scatter_aicpu_kernel PRIVATE
+    "-Wl,--version-script=${SCATTER_AICPU_KERNEL_EXPORT_MAP}"
+)
+
+set_property(TARGET scatter_aicpu_kernel APPEND PROPERTY
+    LINK_DEPENDS "${SCATTER_AICPU_KERNEL_EXPORT_MAP}"
+)
+
 target_compile_definitions(scatter_aicpu_kernel PRIVATE
     -DAICPU_COMPILE
 )

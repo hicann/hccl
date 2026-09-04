@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ *
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+/*
+ * Symbol isolation rules for the ST-only libscatter_aicpu_kernel.so.
+ *
+ * ST relies on global weak-symbol interposition provided by hccl_stub.cc,
+ * so symbols remain globally visible by default.
+ *
+ * The C++ interfaces below are localized to prevent them from binding to
+ * the implementations exported by libhccl.so.
+ */
+{
+    global:
+        *;
+
+    local:
+        extern "C++" {
+            "ops_hccl::ExecuteSelector::ExecuteSelector()";
+            "ops_hccl::ExecuteSelector::Run(ops_hccl::OpParam&, ops_hccl::TopoInfoWithNetLayerDetails*, std::string&) const";
+
+            "ops_hccl::CollAlgExecRegistryV2::Instance()";
+            "ops_hccl::CollAlgExecRegistryV2::GetAlgExec(HcclCMDType, std::string const&)";
+
+            "ops_hccl::HcclGetAlgRes(void*, ops_hccl::OpParam&, std::unique_ptr<ops_hccl::InsCollAlgBase, std::default_delete<ops_hccl::InsCollAlgBase> >&, ops_hccl::TopoInfoWithNetLayerDetails*, std::unique_ptr<ops_hccl::AlgResourceCtxSerializable, std::default_delete<ops_hccl::AlgResourceCtxSerializable> >&, void**, bool&, ops_hccl::ResPackGraphMode const&)";
+        };
+};

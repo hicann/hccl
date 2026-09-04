@@ -1,0 +1,115 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ *
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+{
+    global:
+        /*
+         * Package dispatcher for the Barrier flow.
+         * Selects the HCCL Barrier implementation and falls back to
+         * the legacy HCOMM HcclBarrier through RTLD_NEXT.
+         */
+        HcclBarrier;
+
+        /*
+         * Public APIs declared in include/.
+         */
+        HcclAllReduce;
+        HcclBroadcast;
+        HcclReduceScatter;
+        HcclReduceScatterV;
+        HcclScatter;
+        HcclAllGather;
+        HcclAllGatherV;
+        HcclSend;
+        HcclRecv;
+        HcclAlltoAllVC;
+        HcclAlltoAllV;
+        HcclAlltoAll;
+        HcclReduce;
+        HcclBatchSendRecv;
+        HcclKfcAllocOpArgs;
+        HcclKfcFreeOpArgs;
+        HcclKfcOpArgsSetSrcDataType;
+        HcclKfcOpArgsSetDstDataType;
+        HcclKfcOpArgsSetReduceType;
+        HcclKfcOpArgsSetCount;
+        HcclKfcOpArgsSetAlgConfig;
+        HcclKfcOpArgsSetCommEngine;
+        HcclCreateOpResCtx;
+
+        /*
+         * Package interfaces defined in
+         * ops/interface_graph_mode/calc_resource_graph_mode.cc.
+         */
+        HcclCalcAivCoreNumGraphMode;
+        HcclCalcOpResOfflineGraphMode;
+        HcclCalcOpResOnlineGraphMode;
+        HcclCreateOpParamGraphMode;
+        HcclDestroyOpParamGraphMode;
+        HcclGetAlgExecParamGraphMode;
+        HcclSelectAlgGraphMode;
+        HcclSetAivCoreLimitGraphMode;
+        HcclSetAivSelectOpParamGraphMode;
+        HcclSetOpParamGraphModeDataCount;
+        HcclSetOpParamGraphModeDataType;
+        HcclSetOpParamGraphModeHCCLBufferSize;
+        HcclSetOpParamGraphModeOpType;
+        HcclSetOpParamGraphModeRankSize;
+
+        /*
+         * Graph-mode operation entry points consumed by custom_op_ge.
+         */
+        HcclAllGatherGraphMode;
+        HcclAllGatherVGraphMode;
+        HcclAllReduceGraphMode;
+        HcclAlltoAllGraphMode;
+        HcclAlltoAllVGraphMode;
+        HcclAlltoAllVCGraphMode;
+        HcclBroadcastGraphMode;
+        HcclRecvGraphMode;
+        HcclReduceGraphMode;
+        HcclReduceScatterGraphMode;
+        HcclReduceScatterVGraphMode;
+        HcclSendGraphMode;
+
+        /*
+         * Package interposition interface defined in
+         * common/dev_type.cc.
+         *
+         * The weak definition is overridden by environment-specific
+         * strong implementations such as the algorithm ST stub.
+         */
+        HcclGetDeviceType;
+
+        /*
+         * C++ package interfaces dynamically resolved by
+         * ASCENDCKERNEL cann_host_bridge for MC2/RDV resource
+         * selection and allocation.
+         *
+         * Sources:
+         * - ops/op_common/selector/execute_selector.cc
+         * - ops/op_common/algorithm/executor/registry/coll_alg_v2_exec_registry.cc
+         * - ops/op_common/op_common.cc
+         */
+        extern "C++" {
+            "ops_hccl::ExecuteSelector::ExecuteSelector()";
+            "ops_hccl::ExecuteSelector::Run(ops_hccl::OpParam&, ops_hccl::TopoInfoWithNetLayerDetails*, std::string&) const";
+
+            "ops_hccl::CollAlgExecRegistryV2::Instance()";
+            "ops_hccl::CollAlgExecRegistryV2::GetAlgExec(HcclCMDType, std::string const&)";
+
+            "ops_hccl::HcclGetAlgRes(void*, ops_hccl::OpParam&, std::unique_ptr<ops_hccl::InsCollAlgBase, std::default_delete<ops_hccl::InsCollAlgBase> >&, ops_hccl::TopoInfoWithNetLayerDetails*, std::unique_ptr<ops_hccl::AlgResourceCtxSerializable, std::default_delete<ops_hccl::AlgResourceCtxSerializable> >&, void**, bool&, ops_hccl::ResPackGraphMode const&)";
+        };
+
+    local:
+        *;
+};

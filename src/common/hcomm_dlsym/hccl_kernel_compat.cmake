@@ -45,3 +45,15 @@ target_link_options(hccl_kernel_compat PRIVATE
     -Wl,-z,noexecstack
     $<$<CONFIG:Release>:-s>
 )
+
+set(HCCL_KERNEL_COMPAT_EXPORT_MAP
+    "${CMAKE_CURRENT_LIST_DIR}/hccl_kernel_compat.map"
+)
+
+target_link_options(hccl_kernel_compat PRIVATE
+    "-Wl,--version-script=${HCCL_KERNEL_COMPAT_EXPORT_MAP}"
+)
+
+set_property(TARGET hccl_kernel_compat APPEND PROPERTY
+    LINK_DEPENDS "${HCCL_KERNEL_COMPAT_EXPORT_MAP}"
+)
