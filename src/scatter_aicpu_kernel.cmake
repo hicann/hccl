@@ -20,6 +20,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/common/dev_type.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/omnipipe_data_slice_calc.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/omnipipe_scatter_data_slice_calc.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/exec_timeout_manager.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/executor/channel/channel.cc
@@ -206,6 +207,11 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_concurrent_executor.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_mesh1d.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_omnipipe_executor.cc
     )
 endif()
 

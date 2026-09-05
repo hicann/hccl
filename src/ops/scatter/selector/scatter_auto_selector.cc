@@ -290,7 +290,18 @@ SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
         "topoInfo->topoLevelNums is %u, topoInfo->level0Topo is %u", topoInfo->topoLevelNums, topoInfo->level0Topo);
     (void)configAlgMap;
     (void)opParam;
+
     if (topoInfo->topoLevelNums > 1) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topoInfo->level0PcieMix) {
+                if (!(IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)
+                      || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)) {
+                    selectAlgName = "DpuScatterOmniPipeMeshNHR";
+                    HCCL_INFO("Using algo DpuScatterOmniPipeMeshNHR");
+                    return SelectorStatus::MATCH;
+                }
+            }
+        }
         selectAlgName = "DpuScatterSequenceMeshNHR";
         HCCL_INFO("Using algo DpuScatterSequenceMeshNHR");
         return SelectorStatus::MATCH;

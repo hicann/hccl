@@ -210,6 +210,7 @@ SelectorStatus BroadcastAutoSelector::SelectAicpuAlgo(
 {
     (void)configAlgMap;
     HCCL_DEBUG("[BroadcastAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
+
     if (topoInfo->topoLevelNums > 1) {
         if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3) {
             bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
@@ -352,10 +353,15 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
             selectAlgName = "DpuBroadcastSequenceMeshNHR";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (topoInfo->level0PcieMix) {
-                selectAlgName = "DpuBroadcastSequenceMeshNHR";
-                return SelectorStatus::MATCH;
+            if (!topoInfo->level0PcieMix) {
+                if (!(IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)
+                      || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)) {
+                    selectAlgName = "DpuBroadcastOmniPipeMeshNHR";
+                    return SelectorStatus::MATCH;
+                }
             }
+            selectAlgName = "DpuBroadcastSequenceMeshNHR";
+            return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             // seq算法兼容level0为clos的场景
             selectAlgName = "DpuBroadcastSequenceMeshNHR";

@@ -13,6 +13,9 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr_dpu_inter_node.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_temp_scatter_mesh_1D_Z_axis_detour.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_omnipipe_mesh1d.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_omnipipe_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_omnipipe_nhr_dpu.cc
 )
 
 if(TARGET hccl)
