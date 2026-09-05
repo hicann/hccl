@@ -471,9 +471,11 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
                 HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "AicpuReducePipeLineUBX";
-                HCCL_INFO("selectAlgName is AicpuReducePipeLineUBX");
-                return SelectorStatus::MATCH;
+                if (!IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+                    selectAlgName = "AicpuReducePipeLineUBX";
+                    HCCL_INFO("selectAlgName is AicpuReducePipeLineUBX");
+                    return SelectorStatus::MATCH;
+                }
             }
         }
     }

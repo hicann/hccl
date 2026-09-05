@@ -712,7 +712,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
 
     CHK_RET(BuildSubCommRanks(algHierarchyInfo, subCommRanks0, subCommRanks1, subCommRanks2, topoInfo));
 
-    if (subCommRanks0.empty()) {
+    if (!subCommRanks0.empty()) {
         rankSizeLevel0_ = subCommRanks0[0].size();
     }
     if (!subCommRanks1.empty()) {
