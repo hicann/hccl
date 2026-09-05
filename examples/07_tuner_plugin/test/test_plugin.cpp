@@ -336,7 +336,7 @@ static void TestRuleNoMatch(void)
     ASSERT(changed == 0, "no modification when rule does not match");
 }
 
-/* 5. first-match-wins */
+/* 5. 首条命中即返回 */
 static void TestFirstMatchWins(void)
 {
     ResetPluginState();
@@ -624,7 +624,7 @@ static void TestMatchMinRanksZero(void)
     collInfo.nBytes = 4096;
     collInfo.structSize = sizeof(collInfo);
     funcs.getCollInfo((HcclComm)0x1, &collInfo, entries, MOCK_ENTRY_COUNT, &matched);
-    /* min_ranks=-1 应跳过检查，规则仍命中 */
+    /* min_ranks=0 不阻断匹配，规则仍命中 */
     ASSERT(entries[0].cost == 0.0f, "min_ranks=0 does not block match");
 
     WriteTestConfig("/tmp/hccl_tuner_test_cfg.json");

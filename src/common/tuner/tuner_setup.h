@@ -39,9 +39,8 @@ void TunerLogFunction(int level, const char* file, int line, const char* fmt, ..
 #if defined(__cplusplus)
 /* ===== 对外接口 ===== */
 
-/* 信任边界：插件 .so 在本进程内执行，拥有与 HCCL 同等权限（对标 NCCL tuner）。
- * 管理员须确保 HCCL_TUNER_PLUGIN 指向可信 .so。无路径校验（by-design）。
- * 慢调用保护（C5）：getCollInfo 连续 3 次超过 100ms 则自动禁用插件，回退 CostModel。 */
+/* 信任边界：插件 .so 在本进程内执行。
+ * 慢调用保护：getCollInfo 连续 3 次超过 100ms 则自动禁用插件，回退 CostModel。 */
 
 /* comm 创建时调用：dlopen 插件 + dlsym + 版本校验 + 引用计数 + 构造 hostFuncs + 调用插件 init。
  * topoInfo 用于填充 hcclTunerCommInfo_t。未配置 HCCL_TUNER_PLUGIN 或加载失败时为 no-op，返回 HCCL_SUCCESS。 */

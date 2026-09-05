@@ -38,7 +38,7 @@ hcclTunerFuncs_v1_t g_funcs = {};
 
 constexpr uint32_t TUNER_COMM_NAME_MAX_LENGTH = 128;
 constexpr const char* TUNER_CTX_PREFIX = "__tuner_";
-constexpr uint64_t TUNER_SLOW_CALL_THRESHOLD_MS = 100;  /* getCollInfo 慢调用阈值（C5） */
+constexpr uint64_t TUNER_SLOW_CALL_THRESHOLD_MS = 100;  /* getCollInfo 慢调用阈值 */
 constexpr uint32_t TUNER_SLOW_CALL_LIMIT = 3;           /* 连续慢调用上限，超过则禁用插件 */
 constexpr uint64_t TUNER_SLOW_INIT_THRESHOLD_MS = 5000; /* init 慢调用阈值（一次性，不禁用） */
 std::atomic<uint32_t> g_slowCallCount{0};               /* 连续慢调用计数（原子，无锁） */
@@ -69,8 +69,7 @@ bool LoadPluginLocked()
         return false;
     }
 
-    /* 信任边界：插件 .so 在本进程内执行，拥有与 HCCL 同等权限（对标 NCCL tuner）。
-     * 管理员须确保 HCCL_TUNER_PLUGIN 指向可信 .so。无路径校验（by-design）。 */
+    /* 信任边界：插件 .so 在本进程内执行*/
     void* handle = dlopen(pluginPath.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (handle == nullptr) {
         HCCL_WARNING("[Tuner] dlopen failed, path[%s], err[%s].", pluginPath.c_str(), dlerror());
@@ -238,7 +237,7 @@ HcclResult HcclTunerCallGetCollInfo(
     HcclResult ret = funcs.getCollInfo(comm, &collInfo, algoEntries, algoCount, &matched);
     auto callMs
         = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - callStart).count();
-    /* C5：慢调用检测——连续超过阈值则禁用 tuner，后续 op 回退 CostModel */
+    /* 慢调用检测：连续超过阈值则禁用 tuner，后续 op 回退 CostModel */
     if (static_cast<uint64_t>(callMs) > TUNER_SLOW_CALL_THRESHOLD_MS) {
         uint32_t count = ++g_slowCallCount;
         HCCL_WARNING(
@@ -275,7 +274,7 @@ HcclResult HcclTunerDestroy(HcclComm comm)
     if (g_refCount > 0) {
         g_refCount--;
     }
-    /* .so 故意不 dlclose：避免与在途 getCollInfo 竞争（C3），且 §5.3-5.5 已论证零代价。
+    /* .so 故意不 dlclose：避免与在途 getCollInfo 竞争，且无额外内存代价。
      * .so 随进程退出由 OS 回收。refCount 仅记录存活 comm 数，不影响功能。 */
     return HCCL_SUCCESS;
 }

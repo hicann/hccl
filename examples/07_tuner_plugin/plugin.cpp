@@ -772,7 +772,7 @@ static HcclResult MyGetCollInfo(
     if (g_hostFuncs.ctxGet(comm, "main", &ctxPtr, &ctxSize) != HCCL_SUCCESS || ctxPtr == NULL) {
         return HCCL_SUCCESS;
     }
-    /* C17：校验 ctxGet 返回的 size，防止 engine bug 或版本不一致导致越界读 */
+    /* 校验 ctxGet 返回的 size，防止 engine bug 或版本不一致导致越界读 */
     if (ctxSize < sizeof(StoredHeader)) {
         if (g_hostFuncs.logFunction != NULL) {
             g_hostFuncs.logFunction(
@@ -794,7 +794,7 @@ static HcclResult MyGetCollInfo(
         if (desc->opType != collInfo->collType) {
             continue;
         }
-        for (int j = 0; j < desc->ruleCount; j++) { /* first-match-wins */
+        for (int j = 0; j < desc->ruleCount; j++) { /* 首条命中即返回 */
             Rule* r = &rules[desc->ruleOffset + j];
             if (MatchRule(r, collInfo, &ctx->commInfo)) {
                 if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
