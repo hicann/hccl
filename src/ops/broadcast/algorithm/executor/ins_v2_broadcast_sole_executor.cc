@@ -326,17 +326,12 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 }
 #endif
 
-// supportLevel0Topos 对齐旧 selector 实际选入面：SoleMeshTwoShot 在 MESH_1D(:239)/MESH_1D_CLOS 全连(:242)
-// 两形态下被选中；MESH_1D_CLOS 非全连由 Parallel UBX/Pcie 的 topoPriorityCheck 排除，此处显式限定全连参选
 REGISTER_ALG_ATTRS(
     AicpuBroadcastSoleMeshTwoShot, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true; topo.maxTopoLevelNum = 1;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo != Level0Shape::MESH_1D_CLOS
                || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0PcieMix;
     };
     op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 REGISTER_EXEC_V2(
@@ -346,32 +341,18 @@ REGISTER_ALG_ATTRS(
     AicpuBroadcastSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    // 旧selector等价替换：MESH_1D_CLOS 非全连非 pcieMix 的小数据量(<1MB)由 SoleNHR 兜底；
-    // MESH_1D 多层 Level1Nhr/localNetInsSize==1 场景仍按原拓扑条件参与，不受数据量限制
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
             return true;
         }
         return !topo->level0PcieMix
                && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
-        }
-        return !topo->level0PcieMix
-               && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
-    };);
+    });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
-REGISTER_ALG_ATTRS(
-    AicpuBroadcastSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    // 旧selector等价替换：CLOS 定制机型（单层/多层）命中时优先保留本算法
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0Topo == Level0Shape::CLOS;
-    });
+REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRMultiLink, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
@@ -380,8 +361,11 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0PcieMix;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return topo->level0PcieMix;
+        }
+        return true;
     };
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
@@ -391,8 +375,11 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     CcuSchedBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0PcieMix;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return topo->level0PcieMix;
+        }
+        return true;
     };
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
@@ -403,8 +390,11 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     CcuMSBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0PcieMix;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return topo->level0PcieMix;
+        }
+        return true;
     };
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
 REGISTER_EXEC_V2(
@@ -412,14 +402,9 @@ REGISTER_EXEC_V2(
     CcuTempBroadcastMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_ALG_ATTRS(
-    CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-    // CLOS定制机型（单层/多层）命中，避免被其他算法的topoPriorityCheck提前淘汰
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0Topo == Level0Shape::CLOS;
-    });
+REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastNHR1DMem2Mem);

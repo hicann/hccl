@@ -543,27 +543,13 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempUBXAllToAllVMesh1D);
-REGISTER_ALG_ATTRS(
-    AicpuAllToAllSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    // 老selector：同一组4P仅大数据量走并发算法，小数据量仍走本算法，故本算法在MESH_1D_CLOS下均参与候选。
-    // priorityCheck需返回true：4P时与并发算法同时命中priority，两算法共存，由cost模型按数据量选择
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        (void)topo;
-        return true;
-    });
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempUBXAllToAllVMesh1D);
-REGISTER_ALG_ATTRS(
-    AicpuAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    // 老selector：同一组4P仅大数据量走并发算法，小数据量仍走本算法，故本算法在MESH_1D_CLOS下均参与候选。
-    // priorityCheck需返回true：4P时与并发算法同时命中priority，两算法共存，由cost模型按数据量选择
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        (void)topo;
-        return true;
-    });
+REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
@@ -622,15 +608,9 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1dMultiJetty);
-REGISTER_ALG_ATTRS(
-    CcuSchedAllToAllSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
-    // 老selector：同一组4P仅大数据量走并发算法，小数据量仍走本算法，故本算法在MESH_1D_CLOS下均参与候选。
-    // priorityCheck需返回true：4P时与并发算法同时命中priority，两算法共存，由cost模型按数据量选择
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        (void)topo;
-        return true;
-    });
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(

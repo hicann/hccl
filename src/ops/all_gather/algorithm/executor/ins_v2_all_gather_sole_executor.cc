@@ -402,7 +402,7 @@ REGISTER_EXEC_V2(
     InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo == Level0Shape::CLOS;
     });
 
@@ -414,11 +414,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleMesh, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        // UBX参与候选
-        return topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D_CLOS;
-    };
-
+    op.isSupportInplace = false;
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !(topo->topoLevelNums == 2 && topo->userRankSize > CCU_MAX_SIZE);
     });
@@ -469,9 +465,6 @@ REGISTER_ALG_ATTRS(
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->userRankSize <= MAX_RANK_SIZE;
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -527,10 +520,6 @@ REGISTER_ALG_ATTRS(
                                                             [](const TopoInfoWithNetLayerDetails* topo) {
                                                                 return topo->netLayerDetails.netLayerNum > 1;
                                                             };
-    topo.topoPriorityCheck =
-        [](const TopoInfoWithNetLayerDetails* topo) {
-            return topo->netLayerDetails.netLayerNum > 1;
-        };
     op.isSupportInplace = false;);
 #endif // !HCCL_CANN_COMPAT_850
 #endif // AICPU_COMPILE

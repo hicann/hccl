@@ -821,7 +821,7 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     topo.isSupportLevel0PcieMix = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isMultiple = false;
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return (topo->level0PcieMix || isMultiple)

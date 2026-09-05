@@ -1488,9 +1488,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 REGISTER_ALG_ATTRS(
     AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false; topo.isSupportLevel0PcieMix = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->level0PcieMix
-               && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return topo->level0PcieMix
+                   && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
     });
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastParallelMeshNHR, InsBroadcastParallelExecutor, TopoMatchTwoLevel,
@@ -1501,7 +1504,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
 REGISTER_ALG_ATTRS(
     AicpuBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; topo.isSupportLevel1Nhr = false;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 
@@ -1512,10 +1515,6 @@ REGISTER_ALG_ATTRS(
     AicpuBroadcastParallelNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return (topo->level0Symmetric && topo->level1Symmetric) && topo->netLayerDetails.localNetInsSizeOfLayer[0] != 1
-               && (topo->topLevelUboe || topo->level0Topo != Level0Shape::MESH_1D);
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return (topo->level0Symmetric && topo->level1Symmetric) && topo->netLayerDetails.localNetInsSizeOfLayer[0] != 1
                && (topo->topLevelUboe || topo->level0Topo != Level0Shape::MESH_1D);
     });
@@ -1540,7 +1539,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 1; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.maxTopoLevelNum = 1; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
