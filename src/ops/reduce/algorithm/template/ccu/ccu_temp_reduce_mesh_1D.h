@@ -43,6 +43,7 @@ public:
         TemplateResource& templateResource) override;
 
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
+    u64 GetThreadNum() const override;
 
 private:
     uint32_t mySubCommRank_ = 0;

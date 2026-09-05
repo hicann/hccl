@@ -185,4 +185,5 @@ HcclResult CcuTempReduceMesh1D::KernelRun(
     return HcclResult::HCCL_SUCCESS;
 }
 
+u64 CcuTempReduceMesh1D::GetThreadNum() const { return 1; }
 } // namespace ops_hccl

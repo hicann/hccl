@@ -142,7 +142,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(
     AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> channelDescs;
-    CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, channelDescs));
+    CHK_RET(CalcChannelDescs(comm, param, topoInfo, channelDescs));
     CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
 
     // 1.从获得的channelDesc，判断kernel发送到几个die上
@@ -203,6 +203,24 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcRes(
         "ccuKernelInfos.size()=%llu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult CcuTempReduceNHR1DMem2Mem::CalcChannelDescs(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    std::vector<HcclChannelDesc>& channelDescs)
+{
+    std::vector<HcclChannelDesc> myChannelDescs;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
+        for (auto channel : myChannelDescs) {
+            if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
+                channelDescs.push_back(channel);
+            }
+        }
+    } else {
+        CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, channelDescs));
+    }
     return HcclResult::HCCL_SUCCESS;
 }
 

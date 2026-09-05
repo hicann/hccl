@@ -20,6 +20,7 @@ constexpr int TOPO_LEVEL_3 = 3;
 constexpr u64 OMNI_UBX_MS_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_REDUCE_DATA_SIZE = 128 * 1024 * 1024;
 constexpr u32 REDUCE_CCU_MAX_RANK_SIZE = 64;
+constexpr u32 UBX_REDUCE_CONCURR_DATA_SIZE = 2 * 1024 * 1024;
 SelectorStatus ReduceAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -341,8 +342,8 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
             // MESH_1D 即可链接所有卡， 使用 MESH_1D 算法
             if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
                 selectAlgName = "AicpuReduceSoleMesh";
-            } else if (dataSize >= REDUCE_AICPU_1D_MAX_DATA_SIZE) {
-                selectAlgName = "AicpuReduceSoleMeshTwoShot";
+            } else if (dataSize >= UBX_REDUCE_CONCURR_DATA_SIZE) {
+                selectAlgName = "AicpuReduceConcurMeshNHR";
             } else {
                 selectAlgName = "AicpuReduceSoleMesh";
             }

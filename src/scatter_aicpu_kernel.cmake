@@ -206,6 +206,7 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/algorithm/executor/ins_v2_reduce_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_dpu.cc

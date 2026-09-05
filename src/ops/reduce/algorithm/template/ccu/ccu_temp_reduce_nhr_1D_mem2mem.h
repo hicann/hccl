@@ -69,6 +69,9 @@ private:
         const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
         uint64_t& die1DataSize) const;
     HcclResult CalcSliceInfoAllReduce(const u64 dataSize, RankSliceInfo& sliceInfoVec) const;
+    HcclResult CalcChannelDescs(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        std::vector<HcclChannelDesc>& channelDescs);
     HcclResult PrepareLaunchArgs(
         const OpParam& param, const TemplateDataParams& templateDataParams, u32 kernelNum,
         std::vector<uint64_t>& taskArgs, uint64_t& argSize);
