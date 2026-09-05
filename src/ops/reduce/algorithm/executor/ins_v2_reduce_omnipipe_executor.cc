@@ -217,6 +217,9 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     reduceOp_ = param.reduceType;
+    rankSize_ = topoInfo->userRankSize;
+    myRank_ = topoInfo->userRank;
+    devType_ = topoInfo->deviceType;
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
