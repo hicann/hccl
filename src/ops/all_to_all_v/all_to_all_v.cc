@@ -761,8 +761,12 @@ HcclResult AlltoAllVExecDispatch(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_PTR_NULL(topoInfo);
     CHK_RET(Selector(comm, param, topoInfo, algName));
+    const bool isSoleAlltoAllUbxSymmetric
+        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshUBX"
+          && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+          && !topoInfo->level0PcieMix;
     if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isSoleAlltoAllUbxSymmetric)) {
         param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
         param.inputSymWindow = probeParam.inputSymWindow;
         param.inputOffset = probeParam.inputOffset;

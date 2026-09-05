@@ -294,6 +294,20 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     if (param.engine == CommEngine::COMM_ENGINE_AIV) {
         maxDataCountPerLoop = maxDataCountPerLoop / rankSize_;
     }
+    u64 maxSendOrRecvDataCount = 0;
+    for (u64 i = 0; i < rankSize_; i++) {
+        maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, sendCounts[i]);
+        maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, recvCounts[i]);
+    }
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor] maxSendOrRecvDataCount[%u]", maxSendOrRecvDataCount);
+
+    // 对称路径直读对端input并写入本地output，不受ccl scratch和UB_MAX_DATA_SIZE限制。
+    if (param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
+        && std::string(param.algName) == "AicpuAllToAllSoleMeshUBX") {
+        maxDataCountPerLoop = maxSendOrRecvDataCount;
+        maxDataSizePerLoop = maxDataCountPerLoop * dataTypeSize_;
+        tempAlgParams.enableRemoteMemAccess = true;
+    }
     HCCL_INFO(
         "[InsV2AlltoAllVSoleExecutor][OrchestrateOpbase] maxDataCountPerLoop[%llu], maxDataSizePerLoop[%llu], "
         "transportBoundDataSize[%llu], templateScratchMultiplier[%llu]",
@@ -301,13 +315,6 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     CHK_PRT_RET(
         maxDataCountPerLoop == 0,
         HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][OrchestrateOpbase] maxDataCountPerLoop is 0"), HCCL_E_INTERNAL);
-
-    u64 maxSendOrRecvDataCount = 0;
-    for (u64 i = 0; i < rankSize_; i++) {
-        maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, sendCounts[i]);
-        maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, recvCounts[i]);
-    }
-    HCCL_INFO("[InsV2AlltoAllVSoleExecutor] maxSendOrRecvDataCount[%u]", maxSendOrRecvDataCount);
 
     // 计算loopTimes，alltoallv的时候，有些算子的loopTimes可能是0
     u64 loopTimes = maxSendOrRecvDataCount / maxDataCountPerLoop

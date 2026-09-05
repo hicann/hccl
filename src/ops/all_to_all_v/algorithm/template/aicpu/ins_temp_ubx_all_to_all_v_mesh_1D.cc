@@ -309,6 +309,24 @@ InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, 
             CHK_RET(LocalCopy(threads[fullMeshThreadId], usrInSlices, usrOutSlices));
         } else {                                                             // 和板内其他卡去收发
             const ChannelInfo& channelSendRecv = channels.at(targetRank)[0]; // 和对端收发
+            // 对称路径直读对端input中发往本卡的数据并写入本地output，不经过scratch。
+            if (enableRemoteMemAccess_) {
+                const u32 peerRank = subCommRanks_[0][targetRank];
+                void* peerInput = nullptr;
+                CHK_RET(GetSymmetricPeerInput(peerRank, &peerInput));
+                DataSlice rxSrcSlice(
+                    peerInput, tempAlgParams.sdispls[myAlgRank_] * dataTypeSize_,
+                    tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
+                DataSlice rxDstSlice(
+                    tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
+                    tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
+                std::vector<DataSlice> emptySlices;
+                TxRxSlicesList sendRecvSlicesList({emptySlices, emptySlices}, {{rxSrcSlice}, {rxDstSlice}});
+                TxRxChannels sendRecvChannels(channelSendRecv, channelSendRecv);
+                SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+                CHK_RET(SendRecvBatchRead(sendRecvInfo, threads[fullMeshThreadId]));
+                continue;
+            }
             std::vector<DataSlice> txSrcSlices;
             std::vector<DataSlice> txDstSlices;
             DataSlice txSrcSlice = DataSlice(
@@ -402,6 +420,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
             "targetBoard is [%u], linkNumSendRecv is[%u]",
             myAlgRank_, targetRank, currBoard_, targetBoard, linkNumSendRecv);
         const std::vector<ChannelInfo>& channelSendRecv = channels.at(targetRank);
+        void* peerInput = nullptr;
+        if (enableRemoteMemAccess_) {
+            const u32 peerRank = subCommRanks_[0][targetRank];
+            CHK_RET(GetSymmetricPeerInput(peerRank, &peerInput));
+        }
         std::vector<float> dataSplitRate(linkNumSendRecv, (float)1.0 / (float)linkNumSendRecv);
         u64 innerSendOffset = 0;
         u64 innerRecvOffset = 0;
@@ -417,6 +440,24 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
             u64 innerCurrSendDataSize = innerCurrSendDataCount * dataTypeSize_;
             u64 innerCurrRecvDataSize = innerCurrRecvDataCount * dataTypeSize_;
             u32 queId = j + 1; // 主流用来后同步了
+            // 对称路径只提交read任务，数据从对端input直接落入本地output。
+            if (enableRemoteMemAccess_) {
+                DataSlice rxSrcSlice(
+                    peerInput, (tempAlgParams.sdispls[myAlgRank_] + innerRecvOffset) * dataTypeSize_,
+                    innerCurrRecvDataSize, innerCurrRecvDataCount);
+                DataSlice rxDstSlice(
+                    tempAlgParams.buffInfo.outputPtr,
+                    (tempAlgParams.rdispls[targetRank] + innerRecvOffset) * dataTypeSize_, innerCurrRecvDataSize,
+                    innerCurrRecvDataCount);
+                std::vector<DataSlice> emptySlices;
+                TxRxSlicesList sendRecvSlicesList({emptySlices, emptySlices}, {{rxSrcSlice}, {rxDstSlice}});
+                TxRxChannels sendRecvChannels(channelSendRecv[j], channelSendRecv[j]);
+                SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
+                CHK_RET(SendRecvBatchRead(sendRecvInfo, threads[queId]));
+                innerSendOffset += innerCurrSendDataCount;
+                innerRecvOffset += innerCurrRecvDataCount;
+                continue;
+            }
             std::vector<DataSlice> txSrcSlices;
             std::vector<DataSlice> txDstSlices;
 
@@ -458,16 +499,18 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
             innerRecvOffset += innerCurrRecvDataCount;
         }
 
-        // recv 完成之后，后同步信息保留下来
-        DataSlice scratchSlices = DataSlice(
-            tempAlgParams.buffInfo.hcclBuff.addr, targetRank * scratchBufferSizePerRank_,
-            curRecvDataCount * dataTypeSize_, curRecvDataCount);
-        DataSlice usrOutSlices = DataSlice(
-            tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
-            curRecvDataCount * dataTypeSize_, curRecvDataCount);
-        localCopyInfo_.clear();
-        if (curRecvDataCount > 0) {
-            localCopyInfo_.push_back(std::vector<DataSlice>{scratchSlices, usrOutSlices});
+        // 普通路径保留scratch到output的后拷贝；对称路径已经直接写入output。
+        if (!enableRemoteMemAccess_) {
+            DataSlice scratchSlices = DataSlice(
+                tempAlgParams.buffInfo.hcclBuff.addr, targetRank * scratchBufferSizePerRank_,
+                curRecvDataCount * dataTypeSize_, curRecvDataCount);
+            DataSlice usrOutSlices = DataSlice(
+                tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
+                curRecvDataCount * dataTypeSize_, curRecvDataCount);
+            localCopyInfo_.clear();
+            if (curRecvDataCount > 0) {
+                localCopyInfo_.push_back(std::vector<DataSlice>{scratchSlices, usrOutSlices});
+            }
         }
 
         if (threadNum_ > 1) {
@@ -545,6 +588,31 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(
             threads.begin() + 1 + maxPathNum_ + maxRankNumPerBoard_); // fullmesh用
     }
 
+    enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
+    if (enableRemoteMemAccess_) {
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        HCCL_INFO(
+            "[InsTempUBXAllToAllVMesh1D][InitParam] symmetric memory enabled, "
+            "inputSymWin[%p] outputSymWin[%p] inOff[%llu] outOff[%llu].",
+            inputSymWindow_, outputSymWindow_, inputOffset_, outputOffset_);
+    }
+
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempUBXAllToAllVMesh1D::GetSymmetricPeerInput(u32 peerRank, void** peerInput)
+{
+    CHK_PTR_NULL(peerInput);
+    HcclResult ret = GetSymWinRemoteMem(inputSymWindow_, inputOffset_, peerRank, peerInput);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || *peerInput == nullptr,
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][GetSymmetricPeerInput] failed, peerRank[%u] ret[%d] ptr[%p].", peerRank, ret,
+            *peerInput),
+        HcclResult::HCCL_E_INTERNAL);
     return HcclResult::HCCL_SUCCESS;
 }
 
