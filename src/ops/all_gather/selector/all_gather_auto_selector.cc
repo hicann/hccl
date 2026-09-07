@@ -315,7 +315,11 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
         bool level0AndLevel1Symetric = topoInfo->level0Symmetric && topoInfo->level1Symmetric;
         if (level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
             && topoInfo->topLevelUboe) {
-            selectAlgName = "AicpuAllGatherPipeLineMeshNHRNHR";
+            if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
+                selectAlgName = "AicpuAllGatherPipeLineMeshNHR";
+            } else {
+                selectAlgName = "AicpuAllGatherPipeLineMeshNHRNHR";
+            }
         } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
             selectAlgName = "AicpuAllGatherParallelNHRNHR";
         } else if (topoInfo->Level1Nhr) {

@@ -436,7 +436,11 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
         } else if (
             level0AndLevel1Symetric && topoInfo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8
             && topoInfo->topLevelUboe) {
-            selectAlgName = "AicpuAllReducePipeLineMeshNHRNHR";
+            if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
+                selectAlgName = "AicpuAllReducePipeLineMeshNHR";
+            } else {
+                selectAlgName = "AicpuAllReducePipeLineMeshNHRNHR";
+            }
         } else if (level0AndLevel1Symetric && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_3 && topoInfo->topLevelUboe) {
             selectAlgName = "AicpuAllReduceParallelMeshNHR";
         } else if (topoInfo->Level1Nhr) {
