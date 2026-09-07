@@ -26,6 +26,10 @@ DEFINE_WEAK_FUNC(
     HcclResult, HcclChannelGetRemoteMems, HcclComm comm, ChannelHandle channel, uint32_t* memNum, CommMem** remoteMems,
     char*** memTags);
 DEFINE_WEAK_FUNC(
+    HcclResult, HcclChannelQuery, HcclComm comm, CommEngine engine, const HcclChannelDesc* channelDescs,
+    uint32_t channelNum, ChannelHandle* channels);
+DEFINE_WEAK_FUNC(HcclResult, HcclChannelDestroy, HcclComm comm, const ChannelHandle* channels, uint32_t channelNum);
+DEFINE_WEAK_FUNC(
     HcclResult, HcclCommMemReg, HcclComm comm, const char* memTag, const CommMem* mem, HcclMemHandle* memHandle);
 DEFINE_WEAK_FUNC(HcclResult, HcclEngineCtxDestroy, HcclComm comm, const char* ctxTag, CommEngine engine);
 
@@ -46,6 +50,8 @@ void HcclResDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcclDevMemAcquire);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclThreadExportToCommEngine);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclChannelGetRemoteMems);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclChannelQuery);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclChannelDestroy);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommMemReg);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclEngineCtxDestroy);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclThreadAcquireWithConfig);

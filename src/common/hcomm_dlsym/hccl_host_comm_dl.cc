@@ -27,6 +27,9 @@ DEFINE_WEAK_FUNC(HcclResult, HcclCommRegCommStateCallback, const char* regName, 
 
 DEFINE_WEAK_FUNC(
     HcclResult, HcclCommSymWinGet, HcclComm comm, void* ptr, size_t size, HcclCommSymWindow* winHandle, size_t* offset);
+
+DEFINE_WEAK_FUNC(HcclResult, HcclCommResume, HcclComm comm);
+
 // 初始化
 void HcclCommDlInit(void* libHcommHandle)
 {
@@ -36,4 +39,5 @@ void HcclCommDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcclAicpuKernelLaunch);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommRegCommStateCallback);
     INIT_SUPPORT_FLAG(libHcommHandle, HcclCommSymWinGet);
+    INIT_SUPPORT_FLAG(libHcommHandle, HcclCommResume);
 }

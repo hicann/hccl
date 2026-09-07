@@ -59,6 +59,9 @@ DECL_WEAK_FUNC(
     HcclResult, HcclCommSymWinGet, HcclComm comm, void* ptr, size_t size, HcclCommSymWindow* winHandle, size_t* offset);
 DECL_SUPPORT_FLAG(HcclCommSymWinGet);
 
+DECL_WEAK_FUNC(HcclResult, HcclCommResume, HcclComm comm);
+DECL_SUPPORT_FLAG(HcclCommResume);
+
 void HcclCommDlInit(void* libHcommHandle);
 
 #ifdef __cplusplus

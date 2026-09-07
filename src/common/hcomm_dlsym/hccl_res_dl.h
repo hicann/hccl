@@ -93,6 +93,12 @@ DECL_WEAK_FUNC(
     HcclResult, HcclChannelGetRemoteMems, HcclComm comm, ChannelHandle channel, uint32_t* memNum, CommMem** remoteMems,
     char*** memTags);
 DECL_WEAK_FUNC(
+    HcclResult, HcclChannelQuery, HcclComm comm, CommEngine engine, const HcclChannelDesc* channelDescs,
+    uint32_t channelNum, ChannelHandle* channels);
+DECL_SUPPORT_FLAG(HcclChannelQuery);
+DECL_WEAK_FUNC(HcclResult, HcclChannelDestroy, HcclComm comm, const ChannelHandle* channels, uint32_t channelNum);
+DECL_SUPPORT_FLAG(HcclChannelDestroy);
+DECL_WEAK_FUNC(
     HcclResult, HcclCommMemReg, HcclComm comm, const char* memTag, const CommMem* mem, HcclMemHandle* memHandle);
 DECL_WEAK_FUNC(HcclResult, HcclEngineCtxDestroy, HcclComm comm, const char* ctxTag, CommEngine engine);
 

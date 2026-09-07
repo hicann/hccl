@@ -169,8 +169,9 @@ HcclResult GetMainThreadInfo(HcclComm comm, const OpParam& param, ThreadHandle& 
 HcclResult
 Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName);
 
-HcclResult
-ReSelector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName);
+HcclResult ReSelector(
+    HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
+    OpExecuteConfig executeConfig);
 
 HcclResult FallbackOp(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,

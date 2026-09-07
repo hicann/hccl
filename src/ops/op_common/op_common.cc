@@ -44,6 +44,7 @@
 #include "alg_param.h"
 #include "alg_type.h"
 #include "op_common.h"
+#include "ccu_fallback.h"
 #include "aicpu_timeout.h"
 #include "exec_timeout_manager.h"
 #include "hccl_aiv_utils.h"
@@ -74,6 +75,11 @@ constexpr u32 HOST_WAIT_AICPU_NOTIFYIDX = 0;   // host主流wait aicpu流的noti
 constexpr u32 HOST_NOTIFY_TIMEOUT_OFFSET = 27; // host等待Device通知的超时时间偏移量
 constexpr u32 KERNEL_TIMEOUT_OFFSET = 25;      // kernel启动超时时间偏移量
 constexpr u32 CPU_TS_NOTIFY_NUM = 3;           // CPU TS thread notify数量
+
+struct FallbackCtxData {
+    char algName[ALG_MAX_LENGTH];
+    OpExecuteConfig opExecuteConfig;
+};
 
 void UpdateAicpuTimeoutCtx(const OpParam& param, AlgResourceCtxSerializable& resCtx)
 {
@@ -145,6 +151,15 @@ namespace {
     } while (0)
 #endif
 
+static HcclResult checkValidAlgName(const std::string& algName)
+{
+    if (algName == "") {
+        HCCL_ERROR("[Selector] select algname fail!");
+        return HCCL_E_PTR;
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult
 Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName)
 {
@@ -176,10 +191,7 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
         std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
         CHK_RET(collAlgSelector->Run(param, topoInfo.get(), algName));
     }
-    if (algName == "") {
-        HCCL_ERROR("[Selector] select algname fail!");
-        return HCCL_E_PTR;
-    }
+    CHK_RET(checkValidAlgName(algName));
     CHK_RET(SetCommEngine(param));
     // AIV_ONLY 模式下禁止回退到非 AIV 引擎，未选中 AIV 时直接返回不支持。
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY
@@ -207,6 +219,10 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     CHK_RET(SetExecTimeout(param));
     // 获取多维度切分比例
     CHK_RET(SetMultipleDimensionSplitRatio(comm, param));
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    // CCU模式跨rank协商：各rank交换opExecuteConfig取最低公共值，若被降级则直接走ReSelector回退到该config对应的算法
+    CHK_RET(CheckCcuParamAndFallback(comm, param, topoInfo, algName));
+#endif
     HCCL_INFO("Success to execute Selector.");
     return HCCL_SUCCESS;
 }
@@ -633,27 +649,45 @@ HcclResult FallbackOp(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
     const ResPackGraphMode& resPack)
 {
+    OpExecuteConfig nextConfig;
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+        nextConfig = OpExecuteConfig::CCU_SCHED;
+    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
+        nextConfig = OpExecuteConfig::AICPU_TS;
+    } else {
+        HCCL_ERROR(
+            "[FallbackOp] already at AICPU_TS or unknown config[%u], cannot fallback further.",
+            static_cast<uint32_t>(param.opExecuteConfig));
+        return HCCL_E_NOT_SUPPORT;
+    }
+#else
+    nextConfig = OpExecuteConfig::AICPU_TS;
+#endif
+
     void* fallbackCtx = nullptr;
-    uint64_t fallbackCtxSize = ALG_MAX_LENGTH;
+    uint64_t fallbackCtxSize = sizeof(FallbackCtxData);
     CHK_RET(HcclEngineCtxCreate(comm, param.fallbackTag, CommEngine::COMM_ENGINE_CCU, fallbackCtxSize, &fallbackCtx));
-    char* newAlgName = static_cast<char*>(fallbackCtx);
-    CHK_RET(ReSelector(comm, param, topoInfo, algName));
-    auto copyRet = sprintf_s(newAlgName, fallbackCtxSize, "%s", algName.c_str());
+    auto* ctxData = static_cast<FallbackCtxData*>(fallbackCtx);
+    CHK_RET(ReSelector(comm, param, topoInfo, algName, nextConfig));
+    auto copyRet = sprintf_s(ctxData->algName, sizeof(ctxData->algName), "%s", algName.c_str());
     if (copyRet <= 0) {
-        HCCL_ERROR("[%s] failed to fill newAlgName", __func__);
+        HCCL_ERROR("[%s] failed to fill algName", __func__);
         return HCCL_E_INTERNAL;
     }
+    ctxData->opExecuteConfig = param.opExecuteConfig;
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     return HCCL_SUCCESS;
 }
 
-HcclResult
-ReSelector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName)
+HcclResult ReSelector(
+    HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
+    OpExecuteConfig executeConfig)
 {
     (void)comm;
     HCCL_INFO("Start to execute ReSelector.");
-    // 回退AICPU
-    param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    // 按传入的executeConfig回退
+    param.opExecuteConfig = executeConfig;
     // 拓扑已有，无需再计算
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
@@ -680,6 +714,11 @@ ReSelector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDe
     if ((param.engine == CommEngine::COMM_ENGINE_AICPU_TS) || (param.engine == CommEngine::COMM_ENGINE_CPU)) {
         HCCL_DEBUG("[ReSelector] is aicpu mode");
         CHK_RET(LoadAICPUKernel()); // 该函数内部有防止重复加载的逻辑
+    }
+    // 若传入的executeConfig经Select内部回退(如IsRollBackAiv命中)后最终落到AIV引擎，需注册AIV kernel
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        HCCL_DEBUG("[ReSelector] is aiv mode");
+        CHK_RET(RegisterKernel());
     }
     CHK_RET(SetOpParamAlgTag(param, algName));
     HCCL_INFO("Success to execute ReSelector.");
@@ -769,10 +808,13 @@ HcclResult HcclExecOp(
     CHK_RET(SetOpParamFallbackTag(param, algName));
     if (HcclEngineCtxGet(comm, param.fallbackTag, param.engine, &fallbackCtx, &fallbackCtxSize) == HCCL_SUCCESS) {
         HCCL_INFO("[HcclExecOp] Engine ctx exists, try to fallback.");
-        std::string newAlgName = static_cast<char*>(fallbackCtx);
-        HCCL_INFO("[HcclExecOp] Cached algo type is %s.", newAlgName.c_str());
-        param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-        param.engine = COMM_ENGINE_AICPU_TS;
+        auto* ctxData = static_cast<FallbackCtxData*>(fallbackCtx);
+        std::string newAlgName = ctxData->algName;
+        HCCL_INFO(
+            "[HcclExecOp] Cached algo[%s], config[%u].", newAlgName.c_str(),
+            static_cast<uint32_t>(ctxData->opExecuteConfig));
+        param.opExecuteConfig = ctxData->opExecuteConfig;
+        CHK_RET(SetCommEngine(param));
         CHK_RET(SetOpParamAlgTag(param, newAlgName));
         CHK_RET(HcclExecOp(comm, param, topoInfo, newAlgName, resPack));
         return HCCL_SUCCESS;
@@ -1468,6 +1510,24 @@ HcclResult AddExchangeInfo(HcclComm comm, const OpParam& param)
     return HCCL_SUCCESS;
 }
 
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+static HcclResult ReleaseCcuAcquiredChannels(HcclComm comm, AlgResourceRequest& resRequest)
+{
+    if (!HcommIsSupportHcclChannelDestroy() || resRequest.acquiredChannels.empty()) {
+        return HCCL_SUCCESS;
+    }
+    HcclResult ret = HcclChannelDestroy(comm, resRequest.acquiredChannels.data(), resRequest.acquiredChannels.size());
+    if (ret != HCCL_SUCCESS) {
+        HCCL_WARNING(
+            "[ReleaseCcuAcquiredChannels] HcclChannelDestroy failed, ret[%d], channelNum[%zu].", ret,
+            resRequest.acquiredChannels.size());
+    }
+    HCCL_INFO("[ReleaseCcuAcquiredChannels] release [%zu] channels.", resRequest.acquiredChannels.size());
+    resRequest.acquiredChannels.clear();
+    return HCCL_SUCCESS;
+}
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+
 HcclResult GetAlgResWithEngine(
     HcclComm comm, OpParam& param, AlgResourceRequest& resRequest,
     std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost, TopoInfoWithNetLayerDetails* topoInfo,
@@ -1492,13 +1552,28 @@ HcclResult GetAlgResWithEngine(
     } else if (param.engine == COMM_ENGINE_AIV) {
         CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence));
     } else if (param.engine == COMM_ENGINE_CCU) {
-        // 添加资源回退。SetCommEngine
         auto ret = GetAlgResCcu(
             comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size, resPack);
+        // 多卡CCU资源协商回退
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+        if (ret == HCCL_E_UNAVAIL || ret == HCCL_SUCCESS) {
+            bool localResAvailable = (ret == HCCL_SUCCESS);
+            auto negRet = CheckCcuResNegotiation(comm, param, localResAvailable);
+            if (negRet == HCCL_E_UNAVAIL) {
+                // 多卡协商失败，释放本端已申请的CCU通道资源
+                ReleaseCcuAcquiredChannels(comm, resRequest);
+                return HCCL_E_UNAVAIL;
+            }
+            CHK_RET(negRet);
+        } else {
+            CHK_RET(ret);
+        }
+#else
         if (ret == HCCL_E_UNAVAIL) {
             return HCCL_E_UNAVAIL;
         }
         CHK_RET(ret);
+#endif
     } else {
         HCCL_ERROR(
             "fail to get engine, invalid engine type[%s].",
@@ -2151,40 +2226,67 @@ HcclResult HcclAllocAlgResourceCcu(
 }
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+static HcclResult CcuAcquireKernelChannels(
+    HcclComm comm, const OpParam& param, u32 userRank, CcuKernelInfo& kernelInfo, AlgResourceRequest& resRequest,
+    std::vector<ChannelHandle>& kernelChannels)
+{
+    std::vector<HcclChannelDesc>& kernelChannelRequest = kernelInfo.channels;
+    u32 channelNum = kernelChannelRequest.size();
+    // 参数一致性校验信息注册到通信域，HcclChannelAcquire内部存在读清动作，每次调用前均需注册
+    CHK_RET(AddExchangeInfo(comm, param));
+    // 查询已存在的通道，existingChannels[i]非0表示通道已存在可复用，为0表示需新建
+    std::vector<ChannelHandle> existingChannels;
+    if (HcommIsSupportHcclChannelQuery()) {
+        existingChannels.assign(channelNum, 0);
+        auto queryRet
+            = HcclChannelQuery(comm, param.engine, kernelChannelRequest.data(), channelNum, existingChannels.data());
+        if (queryRet != HCCL_SUCCESS) {
+            HCCL_WARNING("[HcclChannelQuery] failed, ret[%d], treat all as new channels.", queryRet);
+        }
+    }
+
+    auto ret = HcclChannelAcquire(comm, param.engine, kernelChannelRequest.data(), channelNum, kernelChannels.data());
+    // 需要资源回退。返回资源不够
+    if (ret == HCCL_E_UNAVAIL) {
+        HCCL_WARNING("[HcclChannelAcquire] channel unavailable, channel num[%u].", channelNum);
+        // 释放当前kernel之前已申请的新增通道
+        ReleaseCcuAcquiredChannels(comm, resRequest);
+        return HCCL_E_UNAVAIL;
+    } else {
+        CHK_RET(ret);
+    }
+
+    // 记录新增通道（existingChannels为0表示该通道是本次HcclChannelAcquire新建的）
+    if (!existingChannels.empty()) {
+        for (u32 i = 0; i < channelNum; ++i) {
+            if (existingChannels[i] == 0) {
+                resRequest.acquiredChannels.push_back(kernelChannels[i]);
+            }
+        }
+    }
+    // 从首条channel获取dieId，作为kernel所属dieId保存（同一kernel的所有channel在同一die上）
+    EndpointDesc localEndpoint = kernelChannelRequest[0].localEndpoint;
+    using DieIdType = uint32_t;
+    const uint32_t dieIdTypeSize = sizeof(DieIdType);
+    DieIdType dieId = 0;
+    CHK_RET(HcclRankGraphGetEndpointInfo(
+        comm, userRank, &localEndpoint, ENDPOINT_ATTR_DIE_ID, dieIdTypeSize, static_cast<void*>(&dieId)));
+    kernelInfo.dieId = dieId;
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest)
 {
     // OpParam.userRank 并非所有算子路径都会赋值（仅 Reduce 赋值），这里直接从 comm 查询本端全局 rank
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
-
     // 以kernel为粒度申请channel
     for (CcuKernelInfo& kernelInfo : resRequest.ccuKernelInfos) {
-        std::vector<HcclChannelDesc>& kernelChannelRequest = kernelInfo.channels;
-
-        u32 channelNum = kernelChannelRequest.size();
+        u32 channelNum = kernelInfo.channels.size();
         std::vector<ChannelHandle> kernelChannels;
         kernelChannels.resize(channelNum);
-
         if (channelNum > 0) {
-            // 参数一致性校验信息注册到通信域，HcclChannelAcquire内部存在读清动作，每次调用前均需注册
-            CHK_RET(AddExchangeInfo(comm, param));
-            auto ret = HcclChannelAcquire(
-                comm, param.engine, kernelChannelRequest.data(), channelNum, kernelChannels.data());
-            // 需要资源回退。返回资源不够
-            if (ret == HCCL_E_UNAVAIL) {
-                HCCL_WARNING("[HcclChannelAcquire] channel unavailable, channel num[%u].", channelNum);
-                return HCCL_E_UNAVAIL;
-            } else {
-                CHK_RET(ret);
-            }
-            // 从首条channel获取dieId，作为kernel所属dieId保存（同一kernel的所有channel在同一die上）
-            EndpointDesc localEndpoint = kernelChannelRequest[0].localEndpoint;
-            using DieIdType = uint32_t;
-            const uint32_t dieIdTypeSize = sizeof(DieIdType);
-            DieIdType dieId = 0;
-            CHK_RET(HcclRankGraphGetEndpointInfo(
-                comm, userRank, &localEndpoint, ENDPOINT_ATTR_DIE_ID, dieIdTypeSize, static_cast<void*>(&dieId)));
-            kernelInfo.dieId = dieId;
+            CHK_RET(CcuAcquireKernelChannels(comm, param, userRank, kernelInfo, resRequest, kernelChannels));
         }
         auto* kernelArgBase = static_cast<CcuKernelArgBase*>(kernelInfo.kernelArg);
         if (!kernelArgBase) {

@@ -323,6 +323,26 @@ HcclResult HcclChannelAcquire(
         simComm->GetIdentifier(), channelTag.c_str(), engine, channelDescList, listNum, channelList);
 }
 
+HcclResult HcclChannelQuery(
+    HcclComm comm, CommEngine engine, const HcclChannelDesc* channelDescList, uint32_t listNum,
+    ChannelHandle* channelList)
+{
+    CHK_PTR_NULL(comm);
+    for (uint32_t i = 0; i < listNum; i++) {
+        channelList[i] = 0;
+    }
+    return HCCL_SUCCESS;
+}
+
+HcclResult HcclChannelDestroy(HcclComm comm, const ChannelHandle* channels, uint32_t channelNum)
+{
+    CHK_PTR_NULL(comm);
+    return HCCL_SUCCESS;
+}
+
+bool HcommIsSupportHcclChannelQuery() { return true; }
+bool HcommIsSupportHcclChannelDestroy() { return true; }
+
 HcclResult HcclEngineCtxCreate(HcclComm comm, const char* ctxTag, CommEngine engine, uint64_t size, void** ctx)
 {
     auto simComm = static_cast<HcclSim::SimCommunicator*>(comm);
@@ -838,6 +858,15 @@ HcclResult HcclCommGetStatus(const char* commId, HcclCommStatus* status)
 HcclResult HcclCommRegCommStateCallback(const char* regName, HcclCommStateCallback cb, void* args)
 {
     HCCL_WARNING("[%s] not support.", __func__);
+    return HCCL_SUCCESS;
+}
+
+bool HcommIsSupportHcclCommResume() { return true; }
+
+HcclResult HcclCommResume(HcclComm comm)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    CHK_PTR_NULL(comm);
     return HCCL_SUCCESS;
 }
 

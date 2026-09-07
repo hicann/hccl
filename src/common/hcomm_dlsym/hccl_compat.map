@@ -35,6 +35,10 @@
          * Source: hccl_res_dl.cc
          * Consumer: libhccl.so resource and thread-management paths.
          */
+        HcclChannelDestroy;
+        HcclChannelQuery;
+        HcommIsSupportHcclChannelDestroy;
+        HcommIsSupportHcclChannelQuery;
         HcommIsSupportHcclDedicatedThreadAcquire;
         HcommIsSupportHcclThreadAcquireWithConfig;
 
@@ -51,9 +55,11 @@
          * Source: hccl_host_comm_dl.cc
          * Consumer: libhccl.so host communication and status-management paths.
          */
+        HcclCommResume;
         HcommIsSupportHcclAicpuKernelLaunch;
         HcommIsSupportHcclCommGetStatus;
         HcommIsSupportHcclCommRegCommStateCallback;
+        HcommIsSupportHcclCommResume;
         HcommIsSupportHcclGroupStatusGet;
 
         /*
