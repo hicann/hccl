@@ -19,7 +19,7 @@ bash build.sh
 
 ## 对接 HCCL-VM 虚拟执行环境
 
-> 本样例需搭配 **hcomm 仓竞赛分支（`competition/campus-2026`）** 的 [HCCL-VM](../../hcomm/test/hccl_vm/README-Competition.md) 工具使用。HCCL-VM 位于 hcomm 仓 `test/hccl_vm`，是无真实昇腾硬件条件下执行/校验 HCCL 算子的虚拟环境。请先切换 hcomm 仓至 `competition/campus-2026` 分支，确保 HCCL-VM 版本与本样例匹配。
+> 本样例需搭配 **hcomm 仓竞赛分支（`competition/campus-2026`）** 的 [HCCL-VM](https://gitcode.com/cann/hcomm/tree/competition%2Fcampus-2026/test/hccl_vm) 工具使用。HCCL-VM 位于 hcomm 仓 `test/hccl_vm`，是无真实昇腾硬件条件下执行/校验 HCCL 算子的虚拟环境。请先切换 hcomm 仓至 `competition/campus-2026` 分支，确保 HCCL-VM 版本与本样例匹配。
 
 本样例采用 AICPU 展开模式，在 HCCL-VM 中的对接流程如下。
 
