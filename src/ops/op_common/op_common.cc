@@ -3964,21 +3964,26 @@ void CheckAndSetSymmetricMemory(OpParam& param)
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 
-    HcclResult ret
-        = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
-    if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {
-        HCCL_INFO(
-            "[%s] input[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.inputPtr,
-            param.inputSize, ret);
-        return;
+    if (param.inputPtr != nullptr && param.inputSize > 0) {
+        HcclResult ret
+            = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
+        if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {
+            HCCL_INFO(
+                "[%s] input[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.inputPtr,
+                param.inputSize, ret);
+            return;
+        }
     }
 
-    ret = HcclCommSymWinGet(param.hcclComm, param.outputPtr, param.outputSize, &param.outputSymWindow, &outputOffset);
-    if (ret != HCCL_SUCCESS || param.outputSymWindow == nullptr) {
-        HCCL_INFO(
-            "[%s] output[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.outputPtr,
-            param.outputSize, ret);
-        return;
+    if (param.outputPtr != nullptr && param.outputSize > 0) {
+        HcclResult ret = HcclCommSymWinGet(
+            param.hcclComm, param.outputPtr, param.outputSize, &param.outputSymWindow, &outputOffset);
+        if (ret != HCCL_SUCCESS || param.outputSymWindow == nullptr) {
+            HCCL_INFO(
+                "[%s] output[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.outputPtr,
+                param.outputSize, ret);
+            return;
+        }
     }
     param.supportSymmetricMemory = true;
     param.inputOffset = inputOffset;

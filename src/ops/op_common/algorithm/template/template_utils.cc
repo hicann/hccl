@@ -465,32 +465,38 @@ double CalcParallelDataSplitRatio(
 HcclResult FillChannelSymWinPeerAddrs(
     void* inputSymWindow, u64 inputOffset, void* outputSymWindow, u64 outputOffset, ChannelInfo& channel)
 {
-    HcclResult ret
-        = GetSymWinRemoteMem(inputSymWindow, inputOffset, channel.remoteRank, &channel.remoteInputGraphMode.addr);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS || channel.remoteInputGraphMode.addr == nullptr,
-        HCCL_ERROR(
-            "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem failed, "
-            "remoteRank[%u] inputRet[%d] in[%p]",
-            channel.remoteRank, ret, channel.remoteInputGraphMode.addr),
-        HcclResult::HCCL_E_INTERNAL);
-    HCCL_INFO(
-        "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem success, "
-        "remoteRank[%u] in[%p]",
-        channel.remoteRank, channel.remoteInputGraphMode.addr);
+    // 单侧无数据时（如AllToAllVC只收不发/只发不收）该侧window为空，跳过该侧远端地址获取
+    if (inputSymWindow != nullptr) {
+        HcclResult ret
+            = GetSymWinRemoteMem(inputSymWindow, inputOffset, channel.remoteRank, &channel.remoteInputGraphMode.addr);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS || channel.remoteInputGraphMode.addr == nullptr,
+            HCCL_ERROR(
+                "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem failed, "
+                "remoteRank[%u] inputRet[%d] in[%p]",
+                channel.remoteRank, ret, channel.remoteInputGraphMode.addr),
+            HcclResult::HCCL_E_INTERNAL);
+        HCCL_INFO(
+            "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem success, "
+            "remoteRank[%u] in[%p]",
+            channel.remoteRank, channel.remoteInputGraphMode.addr);
+    }
 
-    ret = GetSymWinRemoteMem(outputSymWindow, outputOffset, channel.remoteRank, &channel.remoteOutputGraphMode.addr);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS || channel.remoteOutputGraphMode.addr == nullptr,
-        HCCL_ERROR(
-            "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem failed, "
-            "remoteRank[%u] outputRet[%d] out[%p]",
-            channel.remoteRank, ret, channel.remoteOutputGraphMode.addr),
-        HcclResult::HCCL_E_INTERNAL);
-    HCCL_INFO(
-        "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem success, "
-        "remoteRank[%u] out[%p]",
-        channel.remoteRank, channel.remoteOutputGraphMode.addr);
+    if (outputSymWindow != nullptr) {
+        HcclResult ret = GetSymWinRemoteMem(
+            outputSymWindow, outputOffset, channel.remoteRank, &channel.remoteOutputGraphMode.addr);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS || channel.remoteOutputGraphMode.addr == nullptr,
+            HCCL_ERROR(
+                "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem failed, "
+                "remoteRank[%u] outputRet[%d] out[%p]",
+                channel.remoteRank, ret, channel.remoteOutputGraphMode.addr),
+            HcclResult::HCCL_E_INTERNAL);
+        HCCL_INFO(
+            "[InsCollAlgBase][FillChannelSymWinPeerAddrs] GetSymWinRemoteMem success, "
+            "remoteRank[%u] out[%p]",
+            channel.remoteRank, channel.remoteOutputGraphMode.addr);
+    }
 
     return HcclResult::HCCL_SUCCESS;
 }
