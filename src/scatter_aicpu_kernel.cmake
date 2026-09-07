@@ -231,6 +231,7 @@ target_compile_options(scatter_aicpu_kernel PRIVATE
     -Wno-unused-parameter
     -Wno-sign-compare
     -Wno-unused-variable
+    -Wno-unused-value
 )
 
 target_link_options(scatter_aicpu_kernel PRIVATE
