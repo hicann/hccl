@@ -375,25 +375,17 @@ REGISTER_ALG_ATTRS(
     AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel1Nhr = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        // 老条件：Uboe 3级 NHR 场景（Level0Nhr 且每框1卡）
-        bool uboeNhr = topo->topLevelUboe
-                       && !(
-                           (topo->level0Symmetric && topo->level1Symmetric)
-                           && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-                       && !(
-                           !(topo->level0Symmetric && topo->level1Symmetric)
-                           || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-                       && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
-        // UBX单层场景（含矩形）：非全连接即命中，与Parallel/PipeLine的priority同时命中，
-        // 大/小数据量由cost model竞争决定
-        bool ubxElse = false;
-        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix
-            && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            ubxElse = true;
-        }
-        return uboeNhr || ubxElse;
+        return (topo->topLevelUboe
+                && !(
+                    (topo->level0Symmetric && topo->level1Symmetric)
+                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+                && !(
+                    !(topo->level0Symmetric && topo->level1Symmetric)
+                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
     });
-;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,
     TopoMatchOneLevel, InsTempReduceScatterAicpuReduceNHR);
@@ -446,15 +438,16 @@ REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
     op.isSupportInplace = false; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (topo->level0PcieMix) {
+                return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+            }
+            bool isEqual = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            return isEqual && topo->userRankSize <= 4;
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual
-               && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
-               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+        return true;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -465,15 +458,18 @@ REGISTER_ALG_ATTRS(
     CcuMSReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
     op.isSupportInplace = false; topo.isSupportLevel0PcieMix = true;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (topo->level0PcieMix
+                && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+                return false;
+            }
+            bool isEqual = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            return (isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO)
+                   || (topo->userRankSize <= MAX_RANK_NUM_FOR_REDUCE_MS_ALGO);
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return ((!topo->level0PcieMix && topo->userRankSize <= MAX_RANK_NUM_FOR_REDUCE_MS_ALGO)
-                || (isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO))
-               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
+        return true;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

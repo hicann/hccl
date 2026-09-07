@@ -583,7 +583,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     TopoMatchConcurrentV2, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
     AicpuAllGatherConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;

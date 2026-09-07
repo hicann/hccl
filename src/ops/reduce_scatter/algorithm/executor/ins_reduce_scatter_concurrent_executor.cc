@@ -659,28 +659,19 @@ REGISTER_ALG_ATTRS(
     CcuMSReduceScatterConcurMeshNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-    // 同一组4P（mesh数等于clos数且卡数不超限）在通信域初始化时过滤，不满足时该算法不参与选择
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
-               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
-               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
-    };);
+        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+    });
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterConcurMeshNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 1; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO
-               && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
-    };);
+        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+    });
 #endif
 #endif
 } // namespace ops_hccl

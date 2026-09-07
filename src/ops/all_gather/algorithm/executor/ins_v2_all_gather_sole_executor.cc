@@ -372,9 +372,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        // UBX矩形拓扑(8/16P等)：老selector小数据量/非对称场景会选SoleNHR，需与
-        // PipeLineUBX/MultiJetty同条件命中priority，否则被ApplyTopoPriority移出候选
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             bool isEqual = false;
             bool isMultiple = false;
@@ -382,19 +380,19 @@ REGISTER_ALG_ATTRS(
             AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
             return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;
         }
-        // 该分支对应旧selector多层(topoLevelNums > 1)场景，单层时localNetInsSizeOfLayer仅1个元素，
-        // 访问[1]会越界；且单层MESH_1D旧selector不选SoleNHR，直接返回false
-        if (topo->topoLevelNums <= 1 || topo->netLayerDetails.localNetInsSizeOfLayer.size() < 2) {
-            return false;
-        }
-        return topo->topLevelUboe
-               && !(
-                   (topo->level0Symmetric && topo->level1Symmetric)
-                   && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-               && !(
-                   !(topo->level0Symmetric && topo->level1Symmetric)
-                   || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-               && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+        return true;
+    };
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return (topo->topLevelUboe
+                && !(
+                    (topo->level0Symmetric && topo->level1Symmetric)
+                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+                && !(
+                    !(topo->level0Symmetric && topo->level1Symmetric)
+                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
+                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
     });
 
 REGISTER_EXEC_V2(

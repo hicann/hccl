@@ -26,6 +26,7 @@
 #include "auto_selector_base.h"
 #include <cstring>
 namespace ops_hccl {
+constexpr u32 BROADCAST_UBX_AIV_MAX_RANK = 8;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2BroadcastSoleExecutor()
@@ -358,11 +359,11 @@ REGISTER_EXEC_V2(
 
 #ifndef AICPU_COMPILE
 REGISTER_ALG_ATTRS(
-    AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            return topo->level0PcieMix;
+            return topo->level0PcieMix || topo->userRankSize <= BROADCAST_UBX_AIV_MAX_RANK;
         }
         return true;
     };

@@ -604,13 +604,11 @@ template <
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     GetParallelDataSplit(std::vector<float>& splitDataSize) const
 {
-    float ratio = multipleDimensionSplitRatio_;
+    double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        // TODO: CalcParallelDataSplitRatio 未实现，暂用默认 0.5
-        // ratio = CalcParallelDataSplitRatio(
-        //     intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_,
-        //     ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
-        ratio = 0.5;
+        ratio = CalcParallelDataSplitRatio(
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_,
+            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
@@ -1568,7 +1566,7 @@ REGISTER_ALG_ATTRS(
     = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
        HcclDataType::HCCL_DATA_TYPE_FP64};
     op.isSupportInplace = false;
-    op.opPriorityCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         bool isMultiple = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);

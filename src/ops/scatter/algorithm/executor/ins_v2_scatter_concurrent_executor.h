@@ -39,6 +39,10 @@ public:
         TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         const AlgAttrs& algAttrs) override;
 
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+
 protected:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
@@ -58,6 +62,7 @@ protected:
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
 
 private:
+    void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
     void GenTempAlgParams(
         const u64 dataOffset, const u64 dataCountforTemp, const u64 maxCountPerLoop,
         TemplateDataParams& tempAlgParams) const;

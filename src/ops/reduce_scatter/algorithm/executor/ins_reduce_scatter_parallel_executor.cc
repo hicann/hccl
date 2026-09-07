@@ -400,13 +400,11 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     std::vector<float>& splitDataSize) const
 {
-    float ratio = multipleDimensionSplitRatio_;
+    double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        // TODO: CalcParallelDataSplitRatio 未实现，暂用默认 0.5
-        // ratio = CalcParallelDataSplitRatio(
-        //     rankSizeLevel0_, rankSizeLevel1_, intraChannelMap_, interChannelMap_,
-        //     ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
-        ratio = 0.5;
+        ratio = CalcParallelDataSplitRatio(
+            rankSizeLevel0_, rankSizeLevel1_, intraChannelMap_, interChannelMap_,
+            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);

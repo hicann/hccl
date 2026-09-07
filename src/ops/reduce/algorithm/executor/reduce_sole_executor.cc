@@ -336,9 +336,11 @@ REGISTER_ALG_ATTRS(
     op.isSupportProd = false;
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
-    // SoleNHR 是各非 Mesh 分支兜底（CLOS/3级非对称/非全互联 UBX），层内全互联时由 SoleMesh 处理，故不参与
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleNHRAicpuReduce, ReduceSoleExecutor, TopoMatchOneLevel,
@@ -346,10 +348,11 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuReduceSoleNHRAicpuReduce,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.isSupportLevel0PcieMix = true;
-    // 64bit/PROD 兜底，仅在非全互联（UBX/CLOS/pcie 非全连）时参与，层内全互联由 SoleMesh 处理
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
     });
 
 #ifndef AICPU_COMPILE
@@ -357,8 +360,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AivReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel, AivTempReduceMesh1D);
 REGISTER_ALG_ATTRS(
     AivReduceSoleMesh, topo.maxTopoLevelNum = 2;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix;
         }

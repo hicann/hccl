@@ -350,13 +350,16 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 1;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
-    topo.requireAllMeshConnected = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topo->level0PcieMix) {
+                bool isEqual = false;
+                AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+                return isEqual && topo->userRankSize <= 4;
+            }
+            return true;
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual && topo->userRankSize <= 4;
+        return true;
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
@@ -364,13 +367,16 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
-    topo.requireAllMeshConnected = true; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topo->level0PcieMix) {
+                bool isEqual = false;
+                AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+                return isEqual && topo->userRankSize <= 4;
+            }
+            return true;
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual && topo->userRankSize <= 4;
+        return true;
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
@@ -479,14 +485,16 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
        HcclDataType::HCCL_DATA_TYPE_FP64};
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (topo->level0PcieMix) {
+                return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+            }
+            bool isEqual = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            return isEqual && topo->userRankSize <= 4;
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual
-               && topo->userRankSize <= 4;
+        return true;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -523,13 +531,13 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
        HcclDataType::HCCL_DATA_TYPE_FP64};
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
-            return false;
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            bool isEqual = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            return isEqual && topo->userRankSize <= 4;
         }
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && isEqual && topo->userRankSize <= 4;
+        return true;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

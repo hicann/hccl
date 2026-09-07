@@ -637,7 +637,7 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
        HcclDataType::HCCL_DATA_TYPE_FP64};
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return isEqual && topo->userRankSize <= 4;
@@ -653,7 +653,7 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
        HcclDataType::HCCL_DATA_TYPE_FP64};
-    op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return isEqual && topo->userRankSize <= 4;

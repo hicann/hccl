@@ -526,11 +526,12 @@ AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllToAllSoleMesh);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshSingleChannel, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshSingleChannel);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshSingleChannel,
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
@@ -596,7 +597,7 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = 2; 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllMesh1D);
-REGISTER_ALG_ATTRS(AivAllToAllSoleMesh);
+REGISTER_ALG_ATTRS(AivAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh2Die, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,

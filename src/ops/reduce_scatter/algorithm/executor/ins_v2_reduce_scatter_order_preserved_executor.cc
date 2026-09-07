@@ -278,8 +278,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedMesh, InsV2ReduceScatterOrderPreservedExecutor,
     TopoMatchOneLevel, InsTempReduceScatterOrderPreservedLevel1);
 REGISTER_ALG_ATTRS(
-    AicpuReduceScatterStrictOrderedMesh, topo.isSupportLevel1Nhr = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    AicpuReduceScatterStrictOrderedMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
     op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
@@ -289,8 +289,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
     InsV2ReduceScatterOrderPreservedExecutor, TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup);
 REGISTER_ALG_ATTRS(
-    AicpuReduceScatterStrictOrderedGroupMesh, topo.isSupportLevel1Nhr = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    AicpuReduceScatterStrictOrderedGroupMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
     };
     op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);

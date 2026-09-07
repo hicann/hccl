@@ -418,7 +418,7 @@ REGISTER_ALG_ATTRS(
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         return !(isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT);
-    });
+    };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl
