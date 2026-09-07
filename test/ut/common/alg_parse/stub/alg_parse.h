@@ -105,6 +105,7 @@ enum class AlgoType : uint8_t {
     MESH_CONCURRENT,
     NHR_MULTIJETTY,
     MESH_MULTIJETTY,
+    HIER,
     UNKNOWN,
 };
 

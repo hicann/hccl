@@ -83,19 +83,13 @@ struct AlgEnvConfig {
 };
 
 const std::map<HcclAlgoType, std::string> HcclAlgoTypeMap = {
-    {HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT, "default"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_RING, "ring"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_PIPELINE, "pipeline"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH, "fullmesh"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_HDR, "H-D_R"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_PAIRWISE, "pairwise"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_NHR, "NHR"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_NHR_V1, "NHR_V1"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_AHC, "AHC"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_AHC_BROKE, "AHC_BROKE"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_NB, "NB"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_NULL, "null"},
-    {HcclAlgoType::HCCL_ALGO_TYPE_NA, "NA"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT, "default"},   {HcclAlgoType::HCCL_ALGO_TYPE_RING, "ring"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_PIPELINE, "pipeline"}, {HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH, "fullmesh"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_HDR, "H-D_R"},         {HcclAlgoType::HCCL_ALGO_TYPE_PAIRWISE, "pairwise"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_NHR, "NHR"},           {HcclAlgoType::HCCL_ALGO_TYPE_NHR_V1, "NHR_V1"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_AHC, "AHC"},           {HcclAlgoType::HCCL_ALGO_TYPE_AHC_BROKE, "AHC_BROKE"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_HIER, "Hier"},         {HcclAlgoType::HCCL_ALGO_TYPE_NB, "NB"},
+    {HcclAlgoType::HCCL_ALGO_TYPE_NULL, "null"},         {HcclAlgoType::HCCL_ALGO_TYPE_NA, "NA"},
 };
 
 HcclResult InitEnvConfig();

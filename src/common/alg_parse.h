@@ -39,6 +39,7 @@ enum class AlgoType : uint8_t {
     NHR_AICPU_REDUCE,
     MESH_SINGLE_CHANNEL,
     MESH_CONCURRENT,
+    HIER,
     NHR_MULTIJETTY,
     MESH_MULTIJETTY,
     UNKNOWN,

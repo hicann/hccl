@@ -20,6 +20,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_two_level.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_three_level.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_concurrent_v2.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/topo_match_nlevel.cc
 )
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list

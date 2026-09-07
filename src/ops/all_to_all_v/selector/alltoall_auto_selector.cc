@@ -137,14 +137,34 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[AlltoAllAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
-    (void)configAlgMap;
     if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS
-            || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            selectAlgName = "AicpuAllToAllSoleMesh";
-        } else {
-            HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match");
-            return SelectorStatus::NOT_MATCH;
+        std::vector<HcclAlgoType> algos
+            = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
+        auto it = configAlgMap.find(opParam.opType);
+        if ((it != configAlgMap.end()) && (it->second.size() > 1)) {
+            algos = it->second;
+        }
+        bool hierConfigured = false;
+        for (const auto& algo : algos) {
+            if (algo == HcclAlgoType::HCCL_ALGO_TYPE_HIER) {
+                hierConfigured = true;
+                break;
+            }
+        }
+        if (hierConfigured) {
+            if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {
+                selectAlgName = "AicpuAllToAllSoleMeshHier";
+                HCCL_INFO(
+                    "[AlltoAllAutoSelector][%s] Algo match[%s], topoLevelNums[%u]", __func__, selectAlgName.c_str(),
+                    topoInfo->topoLevelNums);
+                return SelectorStatus::MATCH;
+            } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+                selectAlgName = "AicpuAllToAllSoleMeshHier";
+                HCCL_INFO(
+                    "[AlltoAllAutoSelector][%s] Algo match[%s], topoLevelNums[%u]", __func__, selectAlgName.c_str(),
+                    topoInfo->topoLevelNums);
+                return SelectorStatus::MATCH;
+            }
         }
     }
 
