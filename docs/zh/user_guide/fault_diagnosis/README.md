@@ -13,7 +13,7 @@
     <!-- npu="A3" id3 -->
     - [rank_table字段配置错误（EI0004）](rank_table_field_config_error_EI0004.md)
     <!-- end id3 -->
-    - [rank_table文件中device_ip字段校验失败（EI0004）](rank_table_device_ip_field_validation_fail_EI0014.md)
+    - [rank_table文件中device_ip字段校验失败（EI0014）](rank_table_device_ip_field_validation_fail_EI0014.md)
   - [集群信息协商相关](_dump_cluster_info_nego.md)
     - [业务流程及定位思路](cluster_info_nego_troubleshooting.md)
     - [server节点端口绑定失败（EI0019）](server_node_port_bind_fail_EI0019.md)
@@ -28,7 +28,7 @@
     <!-- end id2 -->
 - [参数面建链阶段](_dump_param_link_stage.md)
   - [建链失败定位思路](param_link_stage_troubleshooting.md)
-  - [参数面端口绑定失败（EI0003）](param_port_bind_fail_EI0019.md)
+  - [参数面端口绑定失败（EI0019）](param_port_bind_fail_EI0019.md)
   - [QP内存资源申请相关（EI0011）](qp_mem_resource_apply_EI0011.md)
   - [建链超时（EI0006）](link_timeout_EI0006.md)
   - [参数一致性校验（EI0005）](param_consistency_check_EI0005.md)
