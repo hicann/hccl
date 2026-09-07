@@ -63,7 +63,8 @@ HcclResult InsTempAllReduceNHR::CalcRes(
     AlgResourceRequest& resourceRequest)
 {
     std::vector<HcclChannelDesc> level1Channels;
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+    bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    if (isUBX) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs));
         for (auto channel : myChannelDescs) {
@@ -75,9 +76,10 @@ HcclResult InsTempAllReduceNHR::CalcRes(
     } else {
         CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
     }
+    HCCL_DEBUG(" %s level1Channels.size() is %u ", __func__, level1Channels.size());
     resourceRequest.channels.push_back(level1Channels);
     channelsPerRank_ = CalcChannelsPerRank(level1Channels);
-    if (channelsPerRank_ > MAX_JETTY_NUM) {
+    if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {

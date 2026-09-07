@@ -33,6 +33,7 @@ typedef HcclOpExpansionMode HcclConfigTypeOpExpansionMode;
 
 // HcclConfigType兼容处理定义，后续新增字段参照此处定义
 #define HCCL_CONFIG_TYPE_HCCL_ALGO 1
+#define HCCL_CONFIG_TYPE_UB_MULTI_CHANNEL_NUM 2
 
 #ifdef __cplusplus
 extern "C" {

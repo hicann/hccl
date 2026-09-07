@@ -100,24 +100,15 @@ HcclResult InsTempScatterNHR::CalcRes(
     CHK_PTR_NULL(topoInfo);
 
     std::vector<HcclChannelDesc> level0Channels;
-    std::vector<HcclChannelDesc> myChannelDescs;
-    u64 perDataSize = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
-    u64 dataSize = param.DataDes.count * perDataSize;
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        bool isIsolation
-            = !(IsAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH) || dataSize <= SMALL_SIZE_512KB);
-        CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, isIsolation));
-        for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
-                level0Channels.push_back(channel);
-            }
-        }
+    bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    if (isUBX) {
+        CHK_RET(CalcChannelRequestNhrMultiJettyUbx(comm, param, topoInfo, subCommRanks_, level0Channels));
     } else {
         CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
     channelsPerRank_ = CalcChannelsPerRank(level0Channels);
-    if (channelsPerRank_ > MAX_JETTY_NUM) {
+    if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {

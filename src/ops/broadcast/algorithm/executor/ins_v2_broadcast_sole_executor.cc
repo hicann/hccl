@@ -181,8 +181,7 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
-    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && std::string(param.algName) == "AicpuBroadcastSoleNHRMultiLink") {
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && resCtx.topoInfo.isPod) {
         CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
     }
 

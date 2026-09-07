@@ -81,6 +81,9 @@ HcclResult GetRankFullMeshLayers(
 HcclResult CalcChannelRequestNhrMultiJetty(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels, bool isIsolation = false);
+HcclResult CalcChannelRequestNhrMultiJettyUbx(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels);
 HcclResult CalcChannelRequestMeshClosMultiJetty(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels, bool isIsolation = false,

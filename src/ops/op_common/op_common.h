@@ -193,6 +193,8 @@ HcclResult HcclGetOpExpansionMode(HcclComm comm, OpParam& param);
 
 HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode& finalMode);
 
+HcclResult GetUbMultiChannelNum(HcclComm comm, u32& multiChannelNum);
+
 HcclResult ApplyOpExpansionMode(OpParam& param, HcclOpExpansionMode finalMode);
 
 HcclResult

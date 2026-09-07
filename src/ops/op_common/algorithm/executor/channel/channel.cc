@@ -20,6 +20,8 @@
 #include "topo_host.h"
 #include "alg_env_config.h"
 #include "comm_engine_utils.h"
+#include "op_common.h"
+#include "template_utils.h"
 #if !defined(HCCL_CANN_COMPAT_850)
 #include "ccu_alg_template_base.h"
 #endif
@@ -733,6 +735,36 @@ HcclResult ProcessLinkForProtocolNhr(
         std::string("[CalcLevel1ChannelRequestNhr]"));
 }
 
+#ifndef AICPU_COMPILE
+static bool IsUbMultiChannelProtocol(CommProtocol protocol)
+{
+    if (protocol == CommProtocol::COMM_PROTOCOL_UB_CTP) {
+        return true;
+    }
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    if (protocol == CommProtocol::COMM_PROTOCOL_UB_RTP) {
+        return true;
+    }
+#endif
+    return false;
+}
+
+static void
+DuplicateUbMultiChannelDescs(std::vector<HcclChannelDesc>& channels, size_t channelCountBefore, u32 multiChannelNum)
+{
+    if (multiChannelNum <= 1) {
+        return;
+    }
+    std::vector<HcclChannelDesc> newChannels(channels.begin() + channelCountBefore, channels.end());
+    for (const auto& desc : newChannels) {
+        u32 duplicateCount = (IsUbMultiChannelProtocol(desc.channelProtocol)) ? (multiChannelNum - 1) : 0;
+        for (u32 n = 0; n < duplicateCount; ++n) {
+            channels.push_back(desc);
+        }
+    }
+}
+#endif
+
 HcclResult CalcChannelRequestNhr(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
@@ -740,6 +772,11 @@ HcclResult CalcChannelRequestNhr(
 #ifndef AICPU_COMPILE
     (void)param;
     channels.clear();
+    u32 multiChannelNum = 1;
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
+        CHK_RET(GetUbMultiChannelNum(comm, multiChannelNum));
+    }
+    HCCL_DEBUG(" %s multiChannelNum is %u ", __func__, multiChannelNum);
     std::set<u32> connectRanks;
     u32 myRank = topoInfo->userRank;
     auto it = std::find(subcommInfo[0].begin(), subcommInfo[0].end(), myRank);
@@ -801,6 +838,8 @@ HcclResult CalcChannelRequestNhr(
                 "[CalcChannelRequestNhr] Failed to create channel between myRank=%u and rank=%u, there is no link.",
                 myRank, subcommInfo[0][rankIdx]),
             HcclResult::HCCL_E_INTERNAL);
+
+        DuplicateUbMultiChannelDescs(channels, channelCountBefore, multiChannelNum);
     }
 #endif
     return HCCL_SUCCESS;
@@ -1179,6 +1218,24 @@ HcclResult CalcChannelRequestNhrMultiJetty(
             HcclResult::HCCL_E_INTERNAL);
     }
 #endif
+    return HCCL_SUCCESS;
+}
+
+HcclResult CalcChannelRequestNhrMultiJettyUbx(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)
+{
+    u64 perDataSize = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
+    u64 dataSize = param.DataDes.count * perDataSize;
+    bool isIsolation
+        = !(IsAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH) || dataSize <= SMALL_SIZE_512KB);
+    std::vector<HcclChannelDesc> myChannelDescs;
+    CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, subcommInfo, myChannelDescs, isIsolation));
+    for (auto channel : myChannelDescs) {
+        if (channel.channelProtocol == CommProtocol::COMM_PROTOCOL_UB_CTP) {
+            channels.push_back(channel);
+        }
+    }
     return HCCL_SUCCESS;
 }
 

@@ -75,7 +75,8 @@ HcclResult InsTempBroadcastNHR::CalcRes(
         HcclResult::HCCL_E_INTERNAL);
     resourceRequest.channels.push_back(level0Channels);
     channelsPerRank_ = CalcChannelsPerRank(level0Channels);
-    if (channelsPerRank_ > MAX_JETTY_NUM) {
+    bool isUBX = topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {

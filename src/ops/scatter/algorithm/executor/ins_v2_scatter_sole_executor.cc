@@ -168,6 +168,9 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && resCtx.topoInfo.isPod) {
+        CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
+    }
     // 初始化操作
     u32 templateScratchMultiplier
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);

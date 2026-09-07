@@ -3511,6 +3511,26 @@ HcclResult DecideHcclOpExpansionMode(HcclComm comm, HcclOpExpansionMode& finalMo
     return HCCL_SUCCESS;
 }
 
+HcclResult GetUbMultiChannelNum(HcclComm comm, u32& multiChannelNum)
+{
+    multiChannelNum = 1;
+    auto& hcommFunction = ops_hccl::DlHcommFunction::GetInstance();
+    if (!hcommFunction.dlHcclConfigGetInfo) {
+        HCCL_INFO("[GetUbMultiChannelNum] HcclConfigGetInfo not supported, use default.");
+        return HCCL_SUCCESS;
+    }
+    u32 cfgNum = 0;
+    uint32_t infoLen = sizeof(u32);
+    HcclResult ret = hcommFunction.dlHcclConfigGetInfo(
+        comm, static_cast<HcclConfigType>(HCCL_CONFIG_TYPE_UB_MULTI_CHANNEL_NUM), infoLen, &cfgNum);
+    if (ret != HCCL_SUCCESS) {
+        HCCL_WARNING("[GetUbMultiChannelNum] HcclConfigGetInfo failed, ret[%d], use default.", ret);
+        return HCCL_SUCCESS;
+    }
+    multiChannelNum = cfgNum;
+    return HCCL_SUCCESS;
+}
+
 HcclResult ApplyOpExpansionMode(OpParam& param, HcclOpExpansionMode finalMode)
 {
     switch (finalMode) {
