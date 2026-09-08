@@ -73,20 +73,23 @@ TopoMatchThreeLevel::TopoMatchThreeLevel() {}
 TopoMatchThreeLevel::~TopoMatchThreeLevel() {}
 
 HcclResult TopoMatchThreeLevel::MatchTopo(
-    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& profile)
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     const auto& physicalLevels = topoInfo->physicalLevels;
     u32 myRank = topoInfo->userRank;
     u32 userRankSize = topoInfo->userRankSize;
-    if (physicalLevels.empty() || userRankSize == 0 || profile.algoTypes.size() != ALGO_LEVEL_NUM_THREE) {
-        HCCL_ERROR("[TopoMatchThreeLevel] Rank [%u], invalid input.", myRank);
+    if (physicalLevels.empty() || userRankSize == 0 || algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_THREE) {
+        HCCL_ERROR(
+            "[TopoMatchThreeLevel] Rank [%u], invalid input. "
+            "physicalLevels.size[%zu], userRankSize[%u], algoTypes.size[%zu].",
+            myRank, physicalLevels.size(), userRankSize, algAttrs.algoTypes.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
 
     // 引擎过滤 + 锚点匹配 + 分段 + 最高层校验
     std::vector<u32> effIdx;
     std::vector<u32> pIndices;
-    CHK_RET(ResolveMapping(physicalLevels, profile, userRankSize, effIdx, pIndices));
+    CHK_RET(ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices));
     u32 phys0 = effIdx[pIndices[0]];
     u32 phys1 = effIdx[pIndices[1]];
 
@@ -114,7 +117,7 @@ HcclResult TopoMatchThreeLevel::MatchTopo(
 
     // 填充 physicalIdxForAlgoLevels（二级：MeshConcur 双层，普通单层）
     CHK_RET(FillPhysicalIdxForAlgoLevels(
-        physicalLevels, effIdx, pIndices, profile.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
+        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
     HCCL_INFO(
         "[TopoMatchThreeLevel] Rank [%u], d0[%u] d1[%u] d2[%u], physicalIdxForAlgoLevels: [%s].", myRank, d0, d1, d2,
         FormatPhysicalIdxForAlgoLevels(algHierarchyInfo.physicalIdxForAlgoLevels).c_str());

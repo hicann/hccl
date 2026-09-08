@@ -14,7 +14,6 @@
 #include "topo_match_base.h"
 #include "alg_parse.h"
 #include "alg_attrs.h"
-#include <set>
 #include <map>
 #include <vector>
 #include <string>
@@ -33,9 +32,6 @@ u32 CalcGcdByPair(u32 a, u32 b);
 
 // 对一组数逐对归约求最大公约数，result==1 时早停
 u32 CalcGcd(const std::vector<u32>& nums);
-
-// 从高到低找首个 hasTopoInst 的物理层序号；不存在返回 INVALID_PHYSICAL_LEVEL_IDX
-int32_t FindHighestEffectiveLevel(const std::vector<PhysicalLevelInfo>& physicalLevels);
 
 // instList 各元素是否全等（对称判定）
 bool IsInstListSymmetric(const std::vector<uint32_t>& instList);
@@ -68,7 +64,7 @@ HcclResult ResolveSegmentMapping(
 
 // 引擎过滤 + 锚点匹配 + 分段，得 effIdx 与 pIndices；校验最高层 localRanks==userRankSize
 HcclResult ResolveMapping(
-    const std::vector<PhysicalLevelInfo>& physicalLevels, const AlgAttrs& profile, u32 userRankSize,
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const AlgAttrs& algAttrs, u32 userRankSize,
     std::vector<u32>& effIdx, std::vector<u32>& pIndices);
 
 // 在 meshEffPos 之上找首个 localRanks 包含 mesh 层 localRanks 的物理层
@@ -94,7 +90,7 @@ public:
     virtual std::string Describe() const = 0;
 
     virtual HcclResult MatchTopo(
-        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& profile)
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
         = 0;
 };
 

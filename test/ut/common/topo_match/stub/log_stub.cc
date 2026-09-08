@@ -8,25 +8,14 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef TOPO_MATCH_TWO_LEVEL
-#define TOPO_MATCH_TWO_LEVEL
+#include "log.h"
 
-#include "topo_match_base_v2.h"
-
-namespace ops_hccl {
-
-class TopoMatchTwoLevel : public TopoMatchBaseV2 {
-public:
-    explicit TopoMatchTwoLevel();
-    ~TopoMatchTwoLevel() override;
-
-    std::string Describe() const override { return "Topo Match for Two Level Algorithm."; }
-
-    HcclResult MatchTopo(
-        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-        const AlgAttrs& algAttrs) override;
-};
-
-} // namespace ops_hccl
-
-#endif // !TOPO_MATCH_TWO_LEVEL
+// UT 桩：log.h 中这两个函数为全局（非 namespace）声明，matcher 日志宏依赖之。
+// HcclCheckLogLevel 返回 false 使日志体不执行。
+bool HcclCheckLogLevel(int logType, int moduleId)
+{
+    (void)logType;
+    (void)moduleId;
+    return false;
+}
+bool IsErrorToWarn() { return false; }

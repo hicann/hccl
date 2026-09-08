@@ -27,7 +27,7 @@ public:
 
     HcclResult MatchTopo(
         TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
-        const AlgAttrs& profile) override;
+        const AlgAttrs& algAttrs) override;
 };
 
 } // namespace ops_hccl
