@@ -303,7 +303,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
 
     // 对称路径直读对端input并写入本地output，不受ccl scratch和UB_MAX_DATA_SIZE限制。
     if (param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
-        && std::string(param.algName) == "AicpuAllToAllSoleMeshUBX") {
+        && std::string(param.algName) == "AicpuAllToAllSoleMeshMultiJetty") {
         maxDataCountPerLoop = maxSendOrRecvDataCount;
         maxDataSizePerLoop = maxDataCountPerLoop * dataTypeSize_;
         tempAlgParams.enableRemoteMemAccess = true;
