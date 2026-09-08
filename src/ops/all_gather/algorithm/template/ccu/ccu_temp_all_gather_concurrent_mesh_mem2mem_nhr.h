@@ -47,24 +47,28 @@ struct CcuAllGatherMesh1DMem2MemArgLayout {
 
 // 镜像 ccu_kernel_all_gather_nhr1d_mem2mem.cc 的 LoadArgs
 struct CcuAllGatherNHR1DMem2MemArgLayout {
-    static constexpr uint32_t INPUT = 0;                  // LoadArg(ctx.input)
-    static constexpr uint32_t OUTPUT = 1;                 // LoadArg(ctx.output[myRankIdx])
-    static constexpr uint32_t TOKEN = 2;                  // LoadArg(ctx.token[myRankIdx])
-    static constexpr uint32_t DIE0_SIZE = 3;              // LoadArg(ctx.die0Size)
-    static constexpr uint32_t DIE1_SIZE = 4;              // LoadArg(ctx.die1Size)
-    static constexpr uint32_t REPEAT_NUM = 5;             // LoadArg(ctx.repeatNum)
-    static constexpr uint32_t INPUT_SLICE_STRIDE = 6;     // LoadArg(ctx.inputSliceStride)
-    static constexpr uint32_t OUTPUT_SLICE_STRIDE = 7;    // LoadArg(ctx.outputSliceStride)
-    static constexpr uint32_t INPUT_REPEAT_STRIDE = 8;    // LoadArg(ctx.inputRepeatStride)
-    static constexpr uint32_t OUTPUT_REPEAT_STRIDE = 9;   // LoadArg(ctx.outputRepeatStride)
-    static constexpr uint32_t IS_INPUT_OUTPUT_EQUAL = 10; // LoadArg(ctx.isInputOutputEqual)
-    static constexpr uint32_t DIE0_LAST_SIZE = 11;        // LoadArg(ctx.die0LastSize)
-    static constexpr uint32_t DIE1_LAST_SIZE = 12;        // LoadArg(ctx.die1LastSize)
-    static constexpr uint32_t ARG_SIZE = 13;              // 实际下发给 kernel 的 arg 个数
+    static constexpr uint32_t INPUT = 0;                   // LoadArg(ctx.input)
+    static constexpr uint32_t OUTPUT = 1;                  // LoadArg(ctx.output[myRankIdx])
+    static constexpr uint32_t TOKEN = 2;                   // LoadArg(ctx.token[myRankIdx])
+    static constexpr uint32_t DIE0_SIZE = 3;               // LoadArg(ctx.die0Size)
+    static constexpr uint32_t DIE1_SIZE = 4;               // LoadArg(ctx.die1Size)
+    static constexpr uint32_t REPEAT_NUM = 5;              // LoadArg(ctx.repeatNum)
+    static constexpr uint32_t INPUT_SLICE_STRIDE = 6;      // LoadArg(ctx.inputSliceStride)
+    static constexpr uint32_t OUTPUT_SLICE_STRIDE = 7;     // LoadArg(ctx.outputSliceStride)
+    static constexpr uint32_t INPUT_REPEAT_STRIDE = 8;     // LoadArg(ctx.inputRepeatStride)
+    static constexpr uint32_t OUTPUT_REPEAT_STRIDE = 9;    // LoadArg(ctx.outputRepeatStride)
+    static constexpr uint32_t IS_INPUT_OUTPUT_EQUAL = 10;  // LoadArg(ctx.isInputOutputEqual)
+    static constexpr uint32_t DIE0_LAST_SIZE = 11;         // LoadArg(ctx.die0LastSize)
+    static constexpr uint32_t DIE1_LAST_SIZE = 12;         // LoadArg(ctx.die1LastSize)
+    static constexpr uint32_t GO_SIZE_ADDR_OFFSET = 13;    // LoadArg(ctx.goSize.addrOffset)
+    static constexpr uint32_t GO_SIZE_LOOP_PARAM = 14;     // LoadArg(ctx.goSize.loopParam)
+    static constexpr uint32_t GO_SIZE_PARALLEL_PARAM = 15; // LoadArg(ctx.goSize.parallelParam)
+    static constexpr uint32_t GO_SIZE_RESIDUAL = 16;       // LoadArg(ctx.goSize.residual)
+    static constexpr uint32_t ARG_SIZE = 17;               // 实际下发给 kernel 的 arg 个数
     // 以下三个不在 kernel LoadArgs 内,仅供 FastLaunch 回放时计算地址用,由 PrepareLaunchArgs 额外缓存
-    static constexpr uint32_t IN_BUFF_BASE_OFF = 13;  // buffInfo_.inBuffBaseOff
-    static constexpr uint32_t OUT_BUFF_BASE_OFF = 14; // buffInfo_.outBuffBaseOff
-    static constexpr uint32_t MY_SUB_COMM_RANK = 15;  // mySubCommRank_
+    static constexpr uint32_t IN_BUFF_BASE_OFF = 17;  // buffInfo_.inBuffBaseOff
+    static constexpr uint32_t OUT_BUFF_BASE_OFF = 18; // buffInfo_.outBuffBaseOff
+    static constexpr uint32_t MY_SUB_COMM_RANK = 19;  // mySubCommRank_
 };
 
 // Concurrent template: mesh 路径 + NHR(CLOS) 路径并发执行，数据按带宽比切分。
@@ -122,6 +126,7 @@ private:
     HcclResult PatchNhrArgs(const TemplateFastLaunchCtx& ctx, u32 meshKernelNum);
 
     uint32_t mySubCommRank_ = 0;
+    std::vector<uint64_t> nhrGoSize_[2];
 };
 
 } // namespace ops_hccl
