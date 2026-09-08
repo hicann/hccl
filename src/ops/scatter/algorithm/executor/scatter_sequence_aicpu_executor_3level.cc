@@ -509,12 +509,14 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         if (skipLevel2) {
             // 两级退化：level0 mesh 发 repeatNum=L1 份（每份完整 X）+ level1 NHR 发 repeatNum=L2=1 份
             // n 语义 = 该段总搬运量 / X（对齐执行侧 GenIntraTemplateParams/GenInterTemplateParams 的 repeatNum）
+            // buffer 对齐运行态 OrchestrateLoop：L0 INPUT→HCCL_BUFFER（仅 root PreCopy），
+            // L1 HCCL_BUFFER→OUTPUT（仅 PostCopy）
             auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
                 rankSizeLevel0, 1.0f * rankSizeLevel1, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT,
-                BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumClos, isPod});
+                BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumClos, isPod});
             auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-                rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
-                BufferType::HCCL_BUFFER, portNumClos, isPod});
+                rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::HCCL_BUFFER,
+                BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumClos, isPod});
             if (p0.empty() || p1.empty()) {
                 HCCL_WARNING(
                     "[ScatterSequenceAicpu3LevelExecutor] CalcCostCoeff incomplete (two level, p0=%zu p1=%zu).",
@@ -527,17 +529,20 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         }
         // 三级完整：框内 Mesh → 框间 NHR → 跨 pod NHR 逐级扇出，每级传完整 X 的 repeatNum 份
         // n = repeatNum（该段总搬运量 / X）：p0=L1·L2, p1=L2, p2=1（对齐执行侧 repeatNum 赋值）
+        // buffer 对齐运行态 OrchestrateLoop：L0 INPUT→HCCL_BUFFER（仅 root PreCopy），
+        // L1 HCCL_BUFFER→HCCL_BUFFER（scratch 中转，无 PreCopy/PostCopy），
+        // L2 HCCL_BUFFER→OUTPUT（仅 PostCopy）
         // Step1: 框内 Scatter（level0 mesh，发 L1·L2 份）
         auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
             rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2, CommTopo::COMM_TOPO_1DMESH, BufferType::INPUT,
-            BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumClos, isPod});
+            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumClos, isPod});
         // Step2: 框间 Scatter（level1 NHR，发 L2 份）
         auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
-            BufferType::HCCL_BUFFER, portNumClos, isPod});
+            rankSizeLevel1, 1.0f * rankSizeLevel2, CommTopo::COMM_TOPO_CLOS, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumClos, isPod});
         // Step3: 跨 super-pod Scatter（level2 NHR，发 1 份）
         auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel2, 1.0f, CommTopo::COMM_TOPO_CLOS, BufferType::INPUT, BufferType::OUTPUT,
+            rankSizeLevel2, 1.0f, CommTopo::COMM_TOPO_CLOS, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
             BufferType::HCCL_BUFFER, portNumClos, isPod});
         // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
         if (p0.empty() || p1.empty() || p2.empty()) {
@@ -572,11 +577,9 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     meta.netTypes.push_back(CommTopo::COMM_TOPO_CLOS);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1, 1};
-    // 对齐 CalcCostCoeff 的逐级扇出量纲(repeatNum 口径):p0 发 L1·L2 份、p1 发 L2 份、p2 发 1 份,
-    // dataRatio 归一化到全量:repeatNum/rankSize
-    meta.dataRatios
-        = {static_cast<float>(rankSizeLevel1 * rankSizeLevel2) / static_cast<float>(rankSize),
-           static_cast<float>(rankSizeLevel2) / static_cast<float>(rankSize), 1.0f / static_cast<float>(rankSize)};
+    // 对齐 CalcCostCoeff 的逐级扇出量纲(repeatNum 口径)且 dataRatio 逐段相等:
+    // p0 发 L1·L2 份、p1 发 L2 份、p2 发 1 份(退化场景 L2=1 时自动退化为两级量纲)
+    meta.dataRatios = {static_cast<float>(rankSizeLevel1 * rankSizeLevel2), static_cast<float>(rankSizeLevel2), 1.0f};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel2};
     return meta;
 }

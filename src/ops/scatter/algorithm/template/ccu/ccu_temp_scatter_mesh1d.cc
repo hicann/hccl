@@ -26,7 +26,7 @@ std::vector<CostModelParam> CcuTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // B=0：kernel 内 root 自留份 GroupCopy 与 7 份远端 Write 并发执行
     // （ccu_kernel_scatter_mesh1d.cc DoScatterOnce 注释"Write与GroupCopy并行执行"），
     // 本地 1 份搬运被远端传输掩盖，关键路径上无独立贡献

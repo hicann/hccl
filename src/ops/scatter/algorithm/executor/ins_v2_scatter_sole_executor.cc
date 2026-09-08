@@ -13,6 +13,7 @@
 #include "ins_temp_scatter_nhr.h"
 #include "alg_attrs_registry.h"
 #include "hccl_aiv_utils.h"
+#include "hccl_res.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_scatter_mesh_1D.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -67,8 +68,8 @@ AlgNetMeta InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta
     meta.netTypes.push_back(netType);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    // SoleMesh: root 数据均分 R 份,每份 1/R;SoleNHR: 每步转发等量(对齐模板 dataRatio=1.0f 的入参口径)
-    meta.dataRatios = {isNhrAlg ? 1.0f : 1.0f / static_cast<float>(rankSize)};
+    // 与 CalcCostCoeff 的 dataRatio=1.0f 逐段相等(对齐 all_gather parallel 的 meta==CC 约定)
+    meta.dataRatios = {1.0f};
     meta.rankSizes = {rankSize};
     return meta;
 }
@@ -316,7 +317,7 @@ REGISTER_EXEC_V2(
 // SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它。
 // MESH_1D_CLOS 形态由 SoleMesh(全连)/UBX/Pcie 算法处理，SoleNHR 不参与（对齐旧 selector）
 REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
@@ -324,8 +325,20 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivScatterSoleMesh, topo.maxTopoLevelNum = 2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
+    };
+    // 参照 allgather AIV 注册(AivAllGatherSoleMesh)迁移旧 selector 数据量限制
+    // (scatter_auto_selector.cc:271)：totalSize <= cclBufferSize * AIV_MAX_CCL_LOOP_NUM
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        void* bufAddr = nullptr;
+        uint64_t bufSize = 0;
+        if (HcclGetHcclBuffer(opParam.hcclComm, &bufAddr, &bufSize) != HCCL_SUCCESS) {
+            return false;
+        }
+        u64 totalSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType] * topo->userRankSize;
+        return totalSize <= bufSize * AIV_MAX_CCL_LOOP_NUM;
     });
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // ccu template
@@ -344,8 +357,19 @@ REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS);
+REGISTER_ALG_ATTRS(
+    CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true;
+    // 对齐旧 selector CCU 约束(scatter_auto_selector.cc:54)：
+    // 两级拓扑 userRankSize>64 时 CCU 整体退出(单级豁免)
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        (void)opParam;
+        if (topo->topoLevelNums <= 1) {
+            return true;
+        }
+        constexpr u32 ccuScatterMaxRankSize = 64;
+        return topo->userRankSize <= ccuScatterMaxRankSize;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #endif
