@@ -17,9 +17,6 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 512) {
-        return {};
-    }
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
     int kernelNum = 1; // 单 kernel 下发
@@ -28,7 +25,7 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // in-kernel 处理，无独立 local copy 阶段；executor 通过 buffer 组合控制（INPUT→OUTPUT 时按 1 份计）
     if (param.inputBuffer != BufferType::HCCL_BUFFER && param.outputBuffer != BufferType::HCCL_BUFFER) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);

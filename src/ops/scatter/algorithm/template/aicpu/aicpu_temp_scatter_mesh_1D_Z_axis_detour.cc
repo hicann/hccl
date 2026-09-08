@@ -37,7 +37,11 @@ std::vector<CostModelParam> AicpuTempScatterMesh1DZAxisDetour::CalcCostCoeff(Cal
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy
     }
-    int taskNum = transTaskNum + localCopyCount;
+    // thread 间前后同步 task：总线程 = (R-1)×通道数（GetThreadNum），cost 阶段通道数按端口向量推导
+    // （单元素=单链路 1，双元素=pod 双 die 双 channel 2），每从线程一对 notify = 2 条 task
+    int threadNum = remotes * ((param.portNum.size() >= 2) ? 2 : 1);
+    int syncTaskNum = threadNum > 1 ? 2 * (threadNum - 1) : 0;
+    int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A0 = 0.0f;
     float A1 = 0.0f;
     float A = 0.0f;
@@ -46,7 +50,7 @@ std::vector<CostModelParam> AicpuTempScatterMesh1DZAxisDetour::CalcCostCoeff(Cal
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
+        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, false);
     // CLOS 层不传 isPod（禁用 POD 减半）：Z 轴绕行的跨 die 数据在执行侧已按物理 channel 切分并行
     // （CalcDataSplitByPortGroupZAxisDetour 把 level1 数据均分到各 channel），带宽口径=各 channel 并行
     // 实际吞吐；POD 减半是普通 NHR"双 channel 当单逻辑口的 2:1 收敛折半"，Z 轴绕行不走该收敛

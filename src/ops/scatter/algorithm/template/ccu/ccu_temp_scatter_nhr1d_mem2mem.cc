@@ -35,7 +35,7 @@ std::vector<CostModelParam> CcuTempScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCo
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // kernel 末尾 "final local copy to output"：非 root 从 scratch 拷 1 份到 output
     // （ccu_kernel_scatter_nhr1d_mem2mem.cc 的 DoScatterNHR 收尾，串行于 NHR 步进循环后不被掩盖；
     // root 第一跳直读 input 无铺开）。B 按 buffer 判据：output==HCCL_BUFFER 时该拷贝写给下一级，跳过

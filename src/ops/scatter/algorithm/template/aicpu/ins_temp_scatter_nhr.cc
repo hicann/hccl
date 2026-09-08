@@ -46,13 +46,17 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy：每 rank 1 份
     }
-    int taskNum = transTaskNum + localCopyCount;
+    // thread 间前后同步 task：线程数 = 通道数（GetThreadNum=channelsPerRank_，SoleNHR 恒单链路=1 无从线程；
+    // Parallel/Sequence 的 NHR 段多通道=2），每从线程一对 notify = 2 条 task
+    int threadNum = isSingleChannel ? 1 : static_cast<int>(param.portNum.size());
+    int syncTaskNum = 2 * (threadNum - 1);
+    int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
     // PreCopy 在 input==HCCL_BUFFER 时跳过（root 铺开全量 α·R）；PostCopy 在 output==HCCL_BUFFER 时跳过（每 rank 1 份
     // α）

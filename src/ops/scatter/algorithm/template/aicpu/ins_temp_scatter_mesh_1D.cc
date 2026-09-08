@@ -14,12 +14,6 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // 框内 Mesh 直连有 8 卡物理上限；CLOS 链路（多级拓扑 Sole 场景由 executor 判定传入）无此限制。
-    // executor 对同一模板按场景传不同 netType：Sole 多级传 CLOS(全量 rankSize)，两级算法 level0 传 MESH(子组
-    // rankSize)。
-    if (param.netType == CommTopo::COMM_TOPO_1DMESH && param.rankSize > 8) {
-        return {};
-    }
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
     int kernelNum = 1; // 单次下发
@@ -33,13 +27,16 @@ std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy：每 rank 1 份
     }
-    int taskNum = transTaskNum + localCopyCount;
+    // thread 间前后同步 task：总线程 = R-1（GetThreadNum），从线程 = R-2，
+    // 每从线程一对 notify（main->sub + sub->main）= 2 条 task
+    int syncTaskNum = static_cast<int>(param.rankSize) > 2 ? 2 * (static_cast<int>(param.rankSize) - 2) : 0;
+    int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
     // PreCopy 在 input==HCCL_BUFFER 时跳过；PostCopy 在 output==HCCL_BUFFER 时跳过
     float preCopyB = 0.0f;
