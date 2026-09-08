@@ -7,7 +7,7 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
-#
+
 # HcclAlgoPluginMgr —— 随HCCL主库libhccl.so一同编译
 # 写法与同级 src/ops/op_common/CMakeLists.txt 保持一致：直接向父作用域已创建的 hccl 目标
 # target_sources，不新增独立的 add_library。

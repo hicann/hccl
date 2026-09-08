@@ -6,41 +6,32 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- *
- * ============================================================================================
+ */
+
+/**
  * HCCL-ALGO-Plugin 自定义算法开发 SDK
- *
  * 使用方法（以AllReduce算子为例）：
- *
  *   1) 编写 libhccl_plugin_allreduce_selector.so 的源码，#include 本头文件：
- *
  *        #include "hccl_algo_plugin_sdk.h"
- *
  *        REGISTER_HCCL_ALGO("MyRingAllReduce", "/path/to/libMyRingAlgImpl.so",
  *                            "HcclAlgoPluginMyRingAllReduce");
- *
  *        extern "C" bool Select(const HcclAlgoPluginParam* param, char* algName, size_t algNameLen)
  *        {
  *            // 根据param中的拓扑/数据量信息决策，命中时:
  *            snprintf(algName, algNameLen, "MyRingAllReduce");
  *            return true;
  *        }
- *
  *      本.so编译时须设置 -fvisibility=hidden，并只显式导出 Select 与
  *      HcclAlgoPluginQueryEntries 两个符号（见文末"导出符号"说明），
  *      以保证不同算子的选择动态库注册表互不可见。
- *
  *   2) 编写 lib{Name}Impl.so 的源码，实现并导出执行函数（签名见下方"标准算法执行函数签名"）：
- *
  *        extern "C" HcclResult HcclAlgoPluginMyRingAllReduce(void* sendBuf, void* recvBuf,
  *            uint64_t count, HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream)
  *        {
  *            // ...自定义Ring算法实现...
  *            return HCCL_SUCCESS;
  *        }
- *
  * 开发者无需手写 HcclAlgoPluginQueryEntries()、无需手写注册表管理逻辑，均由本头文件内联提供。
- * ============================================================================================
  */
 
 #ifndef HCCL_ALGO_PLUGIN_SDK_H

@@ -6,14 +6,14 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- *
+ */
+
+/**
  * 编译产物：libAllReduceCustomAlgosImpl.so
  * 部署路径：${HCCL_PLUGIN_ALG_DIR}/AllReduce/libAllReduceCustomAlgosImpl.so
- *
  * 【验证场景一：多个算法对应一个so】本文件在同一个.so中导出两个执行函数
  * （HcclAlgoPluginAllReduceSmall / HcclAlgoPluginAllReduceLarge），
  * 对应 selector/allreduce_selector.cc 中注册的两个算法条目。
- *
  * 打桩说明：本示例只为验证"PluginBroker能否根据Select()命中的算法名，
  * 正确dlopen到本so并dlsym到对应的执行函数并调用成功"，不实现真实的AllReduce计算，
  * 因此函数体仅打印日志、将sendBuf搬运到recvBuf（若地址不同）后返回HCCL_SUCCESS。

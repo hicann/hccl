@@ -20,14 +20,11 @@ repos:
           - "--style=file"
           - "--verbose"
           - "-i"
-  # OAT compliance check (Open Source Audit Tool)
-  - repo: local
+  # OAT 合规性检查 (Open Source Audit Tool)
+  - repo: https://gitcode.com/HiAgent/compliance
+    rev: v1.0.5
     hooks:
       - id: oat-check
-        name: OAT Compliance Check
-        entry: bash scripts/oat_check.sh
-        language: system
         pass_filenames: true
-        types: [file]
         stages: [pre-commit]
         verbose: true

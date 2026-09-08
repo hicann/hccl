@@ -6,8 +6,9 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- *
- *
+ */
+
+/**
  * 本头文件被三方共同引用：
  *   1) HCCL 代码仓内的 HcclAlgoPluginMgr（src/algo_plugin/）
  *   2) PluginBroker 动态库（libhccl_algo_PluginBroker.so）

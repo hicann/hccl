@@ -6,19 +6,17 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- *
- * ============================================================================================
+ */
+
+/**
  * 验证场景一：【多个算法 对应 一个实现so】
  * 本文件演示AllReduce算子下注册两个自定义算法（AllReduceAlgoSmall / AllReduceAlgoLarge），
  * 它们的 soPath 均指向同一个 libAllReduceCustomAlgosImpl.so，仅 fnSymbol 不同。
  * PluginBroker::ExecuteAlg() 命中任一算法时，都应从这同一个so里dlsym出各自不同的执行函数。
- *
  * 本示例的目的仅为验证"插件框架本身的注册/选择/派发链路是否正确"，
  * 不代表真实可用的AllReduce算法实现，因此执行函数内部只做打桩（打印日志+返回成功）。
- *
  * 编译产物：libhccl_plugin_allreduce_selector.so
  * 部署路径：${HCCL_PLUGIN_ALG_DIR}/AllReduce/libhccl_plugin_allreduce_selector.so
- * ============================================================================================
  */
 
 #include <cstdio>

@@ -6,21 +6,19 @@
  * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
  * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
  * See LICENSE in the root of the software repository for the full text of the License.
- *
- * ============================================================================================
+ */
+
+/**
  * 验证场景二：【一个算法 对应 一个实现so】
  * 本文件演示Broadcast算子下仅注册一个自定义算法（BroadcastAlgoTree），
  * 其soPath指向独立的 libBroadcastCustomAlgoImpl.so（与AllReduce示例中的so完全不同）。
- *
  * 与AllReduce示例合起来看，同时验证：
  *   - 验证场景一（多算法对应一个so）：见 ../../AllReduce/
  *   - 验证场景二（一算法对应一个so）：本文件
  *   - 验证场景三（不同算子分别正确路由到各自的selector/so，互不干扰）：
  *     PluginBroker需要根据opType=Broadcast定位到本目录而不是AllReduce目录。
- *
  * 编译产物：libhccl_plugin_broadcast_selector.so
  * 部署路径：${HCCL_PLUGIN_ALG_DIR}/Broadcast/libhccl_plugin_broadcast_selector.so
- * ============================================================================================
  */
 
 #include <cstdio>
