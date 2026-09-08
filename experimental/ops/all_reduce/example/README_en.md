@@ -14,24 +14,24 @@ Besides this algorithm itself, Section 2.5 provides the general guide on "implem
 
 ## 1. Motivation
 
-- **Verify the usability of the A5 registration approach under experimental (primary motivation)**: Main-pathway algorithms (e.g., `CcuMSAllReduceSoleMesh` in `src/ops/all_reduce/executor/ins_v2_all_reduce_sole_executor.cc`) register into `CollAlgExecRegistryV2` via the `REGISTER_EXEC_V2` macro, and are looked up at runtime by `GetAlgExec` based on the algorithm name. This directory adds an algorithm under experimental/ that also follows A5 registration, to test whether the A5 registration approach is usable.
+- **Verify the usability of the A5 registration approach under experimental (primary motivation)**: Main-pathway algorithms (e.g., `CcuMSAllReduceSoleMesh` in `src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sole_executor.cc`) register into `CollAlgExecRegistryV2` via the `REGISTER_EXEC_V2` macro, and are looked up at runtime by `GetAlgExec` based on the algorithm name. This directory adds an algorithm under experimental/ that also follows A5 registration, to test whether the A5 registration approach is usable.
 - **Verify the full pathway with a minimal sample**: Without modifying main-pathway algorithms, replicate the isomorphic executor/template/kernel three-layer structure under experimental/ as a carrier, verifying that every step from build to checker is usable.
 
 ---
 
 ## 2. Directory Structure and Design
 
-The diagram below shows the complete structure starting from the `hccl/` repository root; unrelated files/directories are uniformly marked with `...`. This directory's structure is isomorphic to the main pathway `src/ops/all_reduce/` (`executor/` + `template/ccu/kernel/`), demonstrating that the same A5 registration code works unchanged under the experimental directory; the diagram also annotates key context directly related to this directory (the registry, the main-pathway reference sample, and the parent CMakeLists).
+The diagram below shows the complete structure starting from the `hccl/` repository root; unrelated files/directories are uniformly marked with `...`. This directory's structure is isomorphic to the main pathway `src/ops/all_reduce/` (`algorithm/executor/` + `algorithm/template/ccu/kernel/`), demonstrating that the same A5 registration code works unchanged under the experimental directory; the diagram also annotates key context directly related to this directory (the registry, the main-pathway reference sample, and the parent CMakeLists).
 
 ```plaintext
 hccl/                                                      # Repository root
 ├── CMakeLists.txt                                         # Top-level: option(ENABLE_EXPERIMENTAL); conditional add_subdirectory(experimental/ops/)
 ├── build.sh                                               # Build entry: --experimental → -DENABLE_EXPERIMENTAL=ON
 ├── src/                                                   # Main pathway (commercial code, outside experimental)
-│   ├── ops/op_common/executor/registry/
+│   ├── ops/op_common/algorithm/executor/registry/
 │   │   └── coll_alg_v2_exec_registry.*                    # Executor registry: REGISTER_EXEC_V2 writes / GetAlgExec looks up
 │   ├── ops/all_reduce/
-│   │   ├── executor/ins_v2_all_reduce_sole_executor.cc    # Main-pathway reference sample (registers CcuMSAllReduceSoleMesh)
+│   │   ├── algorithm/executor/ins_v2_all_reduce_sole_executor.cc    # Main-pathway reference sample (registers CcuMSAllReduceSoleMesh)
 │   │   └── ...                                            # Other executor/template/kernel files
 │   └── ...                                                # Other src submodules
 ├── include/                                               # Public headers (hccl.h / hccl_mc2.h, etc.)
@@ -189,11 +189,11 @@ The template inherits from the engine template base class (using `CcuAlgTemplate
 | `CalcScratchMultiple` | Returns the scratch multiplier for the executor to compute the per-loop data upper bound | `inBuffType`/`outBuffType` input/output buffer types |
 | `FastLaunch` | Fast dispatch: rewrites addresses using pre-stored `submitInfos` and dispatches the kernel directly | `param`; `tempFastLaunchCtx` threads/ccuKernelSubmitInfos/buffInfo |
 
-For the full description of the `CalcCostCoeffParam` fields of the base class used by `CalcCostCoeff` (both executor and template), see the template header file comments under `src/ops/op_common/template/`.
+For the full description of the `CalcCostCoeffParam` fields of the base class used by `CalcCostCoeff` (both executor and template), see the template header file comments under `src/ops/op_common/algorithm/template/`.
 
 #### REGISTER_EXEC_V2 Macro Parameters
 
-The macro is defined in `src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h`, signature:
+The macro is defined in `src/ops/op_common/algorithm/executor/registry/coll_alg_v2_exec_registry.h`, signature:
 
 ```cpp
 REGISTER_EXEC_V2(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)
