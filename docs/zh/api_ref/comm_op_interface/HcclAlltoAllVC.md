@@ -56,11 +56,21 @@ HcclResult HcclAlltoAllVC(const void *sendBuf, const void *sendCountMatrix, Hccl
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)
+
+| 返回值 | 说明 |
+| --- | --- |
+| HCCL_SUCCESS | 接口调用成功。 |
+| HCCL_E_PTR | 传入的指针参数为空，如comm、sendBuf、recvBuf、stream、sendCountMatrix等为nullptr。 |
+| HCCL_E_PARA | 传入的参数无效，如sendBuf与recvBuf地址相同等。 |
+| HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持。 |
+| HCCL_E_INTERNAL | 内部错误。 |
 
 ## 约束说明
 
 AlltoAllVC操作的性能与NPU之间共享数据的缓存区大小有关，当通信数据量超过缓存区大小时性能将出现明显下降。若业务中AlltoAllVC通信数据量较大，建议通过配置环境变量[HCCL_BUFFSIZE](../../user_guide/hccl_env/HCCL_BUFFSIZE.md)适当增大缓存区大小以提升通信性能。
+- 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
+- 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
 ## 调用示例
 

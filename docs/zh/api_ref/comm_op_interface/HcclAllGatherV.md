@@ -65,7 +65,15 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)
+
+| 返回值 | 说明 |
+| --- | --- |
+| HCCL_SUCCESS | 接口调用成功。 |
+| HCCL_E_PTR | 传入的指针参数为空，如comm、recvCounts、recvDispls、stream等为nullptr（sendCount大于0时sendBuf、recvCounts非全0时recvBuf也不能为nullptr）。 |
+| HCCL_E_PARA | 传入的参数无效，如count超过上限等。 |
+| HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持。 |
+| HCCL_E_INTERNAL | 内部错误。 |
 
 ## 约束说明
 
@@ -79,3 +87,46 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 <!-- npu="310p" id10 -->
 - 针对Atlas 300I Duo 推理卡，仅支持单Server场景，单Server中最大支持部署2张Atlas 300I Duo 推理卡（即4个NPU）。
 <!-- end id10 -->
+- 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
+- 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
+
+## 调用示例
+
+```c
+// 申请集合通信操作的Device内存
+uint32_t rankSize = 8;
+uint64_t sendCount = 1;  // 每个rank发送的数据个数
+size_t sendSize = sendCount * sizeof(float);
+size_t recvSize = rankSize * sendCount * sizeof(float);
+
+void *sendBuf = nullptr;
+void *recvBuf = nullptr;
+aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
+aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+// 设置recvCounts和recvDispls，每个rank接收相同数量的数据
+std::vector<uint64_t> recvCounts(rankSize, sendCount);
+std::vector<uint64_t> recvDispls(rankSize);
+for (uint32_t i = 0; i < rankSize; ++i) {
+    recvDispls[i] = i * sendCount;
+}
+
+// 初始化通信域
+HcclComm hcclComm;
+HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+
+// 创建任务流
+aclrtStream stream;
+aclrtCreateStream(&stream);
+
+// 执行AllGatherV，将通信域内所有rank的sendBuf按照rank id重新排序后拼接，再将结果发送到所有rank的recvBuf
+HcclAllGatherV(sendBuf, sendCount, recvBuf, recvCounts.data(), recvDispls.data(), HCCL_DATA_TYPE_FP32, hcclComm, stream);
+// 阻塞等待任务流中的集合通信任务执行完成
+aclrtSynchronizeStream(stream);
+
+// 释放资源
+aclrtFree(sendBuf);          // 释放Device侧内存
+aclrtFree(recvBuf);          // 释放Device侧内存
+aclrtDestroyStream(stream);  // 销毁任务流
+HcclCommDestroy(hcclComm);   // 销毁通信域
+```

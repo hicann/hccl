@@ -220,12 +220,12 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 | --- | --- |
 | EI0001 | [环境变量配置异常](_dump_env_config_error_EI0001.md) |
 | EI0002 | [通信算子执行超时](task_exec_stage_troubleshooting.md#定位思路) |
-| EI0003 | 集合通信算子入参校验失败 |
+| EI0003 | 集合通信算子入参校验失败，请根据报错信息中的具体入参判断 |
 | EI0004 | [rankTable文件加载失败](_dump_rank_table_load_fail.md) |
 | EI0005 | [参数一致性校验失败](param_consistency_check_EI0005.md#参数一致性校验ei0005) |
 | EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时ei0006) |
-| EI0007 | 资源初始化失败 |
-| EI0008 | HCCL版本不一致，校验失败 |
+| EI0007 | 资源初始化失败，请根据报错信息判断具体失败原因 |
+| EI0008 | HCCL版本不一致，校验失败，请根据报错信息中的版本信息判断 |
 | EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) |
 | EI0012 | [算子执行时发生SDMA任务异常](./sdma_error_EI0012.md#sdma-errorei0012) |
 | EI0013 | [算子执行时发生ROCE CQE ERROR异常](./error_cqe_report_EI0013.md#error-cqe报错ei0013) |

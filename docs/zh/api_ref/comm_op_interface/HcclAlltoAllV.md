@@ -65,7 +65,15 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)
+
+| 返回值 | 说明 |
+| --- | --- |
+| HCCL_SUCCESS | 接口调用成功。 |
+| HCCL_E_PTR | 传入的指针参数为空，如comm、sendBuf、recvBuf、stream、sendCounts、sdispls、recvCounts、rdispls等为nullptr。 |
+| HCCL_E_PARA | 传入的参数无效，如sendBuf与recvBuf地址相同等。 |
+| HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持。 |
+| HCCL_E_INTERNAL | 内部错误。 |
 
 ## 约束说明
 
@@ -80,6 +88,8 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 <!-- npu="310p" id14 -->
 - 针对Atlas 300I Duo 推理卡，仅支持单Server场景，单Server中最大支持部署2张Atlas 300I Duo 推理卡（即4个NPU）。
 <!-- end id14 -->
+- 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
+- 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
 ## 调用示例
 

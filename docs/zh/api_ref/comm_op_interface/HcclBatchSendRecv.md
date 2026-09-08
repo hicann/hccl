@@ -54,7 +54,15 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)
+
+| 返回值 | 说明 |
+| --- | --- |
+| HCCL_SUCCESS | 接口调用成功。 |
+| HCCL_E_PTR | 传入的指针参数为空，如comm、sendRecvInfo、stream等为nullptr。 |
+| HCCL_E_PARA | 传入的参数无效，如sendRecvInfo中某项的count超过上限、remoteRank越界等。 |
+| HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持。 |
+| HCCL_E_INTERNAL | 内部错误。 |
 
 ## 约束说明
 
@@ -66,6 +74,8 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
     export HCCL_INTRA_ROCE_ENABLE=1
     export HCCL_INTRA_PCIE_ENABLE=0
     ```
+- 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
+- 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
 ## 调用示例
 

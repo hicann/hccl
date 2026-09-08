@@ -56,13 +56,23 @@ HcclResult HcclRecv(void* recvBuf, uint64_t count, HcclDataType dataType, uint32
 
 ## 返回值
 
-[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)：接口成功返回HCCL_SUCCESS，其他失败。
+[HcclResult](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/comm_mgr_c/data_type_definition/HcclResult.md)
+
+| 返回值 | 说明 |
+| --- | --- |
+| HCCL_SUCCESS | 接口调用成功。 |
+| HCCL_E_PTR | 传入的指针参数为空，如comm、recvBuf等为nullptr。 |
+| HCCL_E_PARA | 传入的参数无效，如count超过上限、srcRank越界等。 |
+| HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持、srcRank等于本rank时不支持自收自发等。 |
+| HCCL_E_INTERNAL | 内部错误。 |
 
 ## 约束说明
 
 HcclSend与HcclRecv接口采用同步调用方式，且必须配对使用。即一个进程调用HcclSend接口后，需要等到与之配对的HcclRecv接口接收数据后，才可以进行下一个接口调用，如下图所示。
 
 ![](figures/send_recv.png)
+- 多个通信域下的所有通信算子在每个Device上需要保证串行下发，不允许乱序、多线程并发下发，也不支持线程重入。
+- 在同一Device上，同一通信域内的所有通信算子的下发线程需要使用相同的Context。
 
 ## 调用示例
 
