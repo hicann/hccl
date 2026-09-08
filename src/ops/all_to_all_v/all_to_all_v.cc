@@ -762,7 +762,7 @@ HcclResult AlltoAllVExecDispatch(
     CHK_PTR_NULL(topoInfo);
     CHK_RET(Selector(comm, param, topoInfo, algName));
     const bool isSoleAlltoAllUbxSymmetric
-        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshUBX"
+        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshMultiJetty"
           && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
           && !topoInfo->level0PcieMix;
     if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
