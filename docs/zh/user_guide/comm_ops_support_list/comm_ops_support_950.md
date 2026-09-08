@@ -1205,7 +1205,9 @@
 </th>
 <th><p>确定性计算</p>
 </th>
-<th><p>框内通信</p>
+<th><p>框内通信(Ascend 950PR)</p>
+</th>
+<th><p>框内通信(Ascend 950DT)</p>
 </th>
 <th><p>POD内通信</p>
 </th>
@@ -1221,6 +1223,8 @@
 </td>
 <td><p>NA</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1234,6 +1238,8 @@
 </td>
 <td><p>NA</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1246,6 +1252,8 @@
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>√</p>
 </td>
@@ -1262,6 +1270,8 @@
 </td>
 <td><p>NA</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1275,6 +1285,8 @@
 </td>
 <td><p>NA</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1287,6 +1299,8 @@
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>√</p>
 </td>
@@ -1311,6 +1325,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1324,10 +1340,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1344,6 +1364,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1357,6 +1379,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1369,6 +1393,8 @@
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>√</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>√</p>
 </td>
@@ -1385,6 +1411,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1398,6 +1426,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1410,6 +1440,8 @@
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>√</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>√</p>
 </td>
@@ -1434,6 +1466,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1447,10 +1481,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1467,6 +1505,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1480,6 +1520,8 @@
 </td>
 <td><p>√</p>
 </td>
+<td><p>×</p>
+</td>
 <td><p>√</p>
 </td>
 <td><p>×</p>
@@ -1492,6 +1534,8 @@
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>√</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>√</p>
 </td>
@@ -1516,6 +1560,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1529,8 +1575,12 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1557,6 +1607,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1570,10 +1622,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1598,6 +1654,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1611,10 +1669,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1639,6 +1701,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1652,10 +1716,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1680,6 +1748,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1693,10 +1763,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1721,6 +1795,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1734,10 +1810,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
@@ -1762,6 +1842,8 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图模式Ascend IR</p>
 </td>
@@ -1775,10 +1857,14 @@
 </td>
 <td><p>×</p>
 </td>
+<td><p>×</p>
+</td>
 </tr>
 <tr><td><p>图捕获模式aclgraph</p>
 </td>
 <td><p>NA</p>
+</td>
+<td><p>×</p>
 </td>
 <td><p>×</p>
 </td>
