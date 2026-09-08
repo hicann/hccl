@@ -156,6 +156,67 @@ inline std::string GetReduceOpEnumStr(HcclReduceOp reduceOp)
     }
 }
 
+// default返回"unknown"而非nullptr，便于日志直接以%s打印，无需调用方判空
+inline const char* GetHcclCMDTypeStr(HcclCMDType type) noexcept
+{
+    switch (type) {
+        case HcclCMDType::HCCL_CMD_INVALID:
+            return "invalid";
+        case HcclCMDType::HCCL_CMD_BROADCAST:
+            return "broadcast";
+        case HcclCMDType::HCCL_CMD_ALLREDUCE:
+            return "allreduce";
+        case HcclCMDType::HCCL_CMD_REDUCE:
+            return "reduce";
+        case HcclCMDType::HCCL_CMD_SEND:
+            return "send";
+        case HcclCMDType::HCCL_CMD_RECEIVE:
+            return "receive";
+        case HcclCMDType::HCCL_CMD_ALLGATHER:
+            return "allgather";
+        case HcclCMDType::HCCL_CMD_ALLGATHER_V:
+            return "allgather_v";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
+            return "reduce_scatter";
+        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
+            return "reduce_scatter_v";
+        case HcclCMDType::HCCL_CMD_ALLTOALLV:
+            return "alltoallv";
+        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+            return "alltoallvc";
+        case HcclCMDType::HCCL_CMD_ALLTOALL:
+            return "alltoall";
+        case HcclCMDType::HCCL_CMD_GATHER:
+            return "gather";
+        case HcclCMDType::HCCL_CMD_SCATTER:
+            return "scatter";
+        case HcclCMDType::HCCL_CMD_BATCH_SEND_RECV:
+            return "batch_send_recv";
+        case HcclCMDType::HCCL_CMD_BATCH_PUT:
+            return "batch_put";
+        case HcclCMDType::HCCL_CMD_BATCH_GET:
+            return "batch_get";
+        case HcclCMDType::HCCL_CMD_BATCH_WRITE:
+            return "batch_write";
+        case HcclCMDType::HCCL_CMD_HALF_ALLTOALLV:
+            return "half_alltoallv";
+        case HcclCMDType::HCCL_CMD_ALL:
+            return "all";
+        case HcclCMDType::HCCL_CMD_FINALIZE:
+            return "finalize";
+        case HcclCMDType::HCCL_CMD_INTER_GROUP_SYNC:
+            return "inter_group_sync";
+        case HcclCMDType::HCCL_CMD_INIT:
+            return "init";
+        case HcclCMDType::HCCL_CMD_BARRIER:
+            return "barrier";
+        case HcclCMDType::HCCL_CMD_MAX:
+            return "max";
+        default:
+            return "unknown";
+    }
+}
+
 constexpr u32 HCCL_ALGO_LEVEL_0 = 0;     // HCCL 算法层级0
 constexpr u32 HCCL_ALGO_LEVEL_1 = 1;     // HCCL 算法层级1
 constexpr u32 HCCL_ALGO_LEVEL_2 = 2;     // HCCL 算法层级2

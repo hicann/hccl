@@ -3291,9 +3291,9 @@ HcclResult SingleRankProc(HcclComm comm, OpParam& param)
     HCCL_INFO("[SingleRankProc]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu]", beginTime);
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY) {
         HCCL_ERROR(
-            "[SingleRankProc] opType[%d] currently do not select aiv mode, aiv only not support, "
+            "[SingleRankProc] opType[%s] currently do not select aiv mode, aiv only not support, "
             "please ensure rankNum is greater than one",
-            static_cast<int>(param.opType));
+            GetHcclCMDTypeStr(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
     if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE) {
