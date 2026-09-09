@@ -94,7 +94,7 @@ jobs:
           bucket: "ascend-ci"
           access-key: ${{ secrets.AK }}
           secret-key: ${{ secrets.SK }}
-          artifact-path: "${{ steps.process_checkout.outputs.path }}/build_out/*"
+          artifact-path: "${{ steps.process_checkout.outputs.path }}/build_out/*.run"
           object-prefix: ${{ env.obs_path }}/
     if: "${{ default() }}"
     runs-on: ['self-hosted', 'arch=${{ inputs.arch }}', 'spec=xlarge']
