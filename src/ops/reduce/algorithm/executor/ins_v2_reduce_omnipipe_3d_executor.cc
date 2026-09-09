@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include "alg_attrs_registry.h"
 #include "ins_v2_reduce_omnipipe_3d_executor.h"
-#include "topo_match_3_level.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1D.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
 #include "ins_temp_reduce_scatter_omnipipe_nhr.h"
@@ -20,7 +20,6 @@
 #include <cmath>
 
 namespace ops_hccl {
-constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
 template <
@@ -53,7 +52,6 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     return HCCL_SUCCESS;
 }
 
-// 实例化实际执行以来AutoMatchMeshNhr这个类的实现
 template <
     typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
     typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
@@ -63,13 +61,23 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-
-    // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <
+    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
+    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
+HcclResult InsV2ReduceOmniPipe3DExecutor<
+    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
+    InsAgAlgTemplateZ>::
+    CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
 }
 
@@ -119,13 +127,6 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     dataCount_ = param.DataDes.count;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     algHierarchyInfo_ = algHierarchyInfo;
-
-    if (algHierarchyInfo_.infos.size() == ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        topoType_ = TopoType::THREE_LEVEL;
-    } else {
-        topoType_ = TopoType::UBX_2LEVEL;
-    }
 
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap;
     std::vector<std::vector<u32>> subCommRanks0;
@@ -193,13 +194,6 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     threads_ = resCtx.threads;
-
-    if (algHierarchyInfo_.infos.size() == ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        topoType_ = TopoType::THREE_LEVEL;
-    } else {
-        topoType_ = TopoType::UBX_2LEVEL;
-    }
 
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
@@ -507,6 +501,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo)
 {
+    (void)topoInfo;
     if (algHierarchyInfo_.infos.empty()) {
         HCCL_ERROR("[%s] algHierarchyInfo_.infos is empty.", __func__);
         return HCCL_E_PARA;
@@ -515,32 +510,26 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     subCommRanks1.clear();
     subCommRanks2.clear();
 
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        if (algHierarchyInfo_.infos[0].size() < 2) {
-            HCCL_ERROR(
-                "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2.", __func__,
-                algHierarchyInfo_.infos[0].size());
-            return HCCL_E_PARA;
-        }
-        subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
-        std::vector<u32> closRanks;
-        u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-        for (auto rank : algHierarchyInfo_.infos[0][1]) {
-            if (rank % meshSize == topoInfo->userRank % meshSize) {
-                closRanks.push_back(rank);
-            }
-        }
-        subCommRanks1 = {closRanks};
-        omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :
-                                                                                OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    } else {
+    // 统一按 infos 层级数赋值 subCommRanks（同位卡过滤已由 topoMatch 完成）
+    if (algHierarchyInfo_.infos.size() >= 1 && !algHierarchyInfo_.infos[0].empty()) {
         subCommRanks0 = algHierarchyInfo_.infos[0];
+    } else {
+        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
+    }
+    if (algHierarchyInfo_.infos.size() >= 2 && !algHierarchyInfo_.infos[1].empty()) {
         subCommRanks1 = algHierarchyInfo_.infos[1];
+    } else {
+        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
+    }
+    if (algHierarchyInfo_.infos.size() >= 3 && !algHierarchyInfo_.infos[2].empty()
+        && !algHierarchyInfo_.infos[2][0].empty()) {
+        subCommRanks2 = algHierarchyInfo_.infos[2];
+    } else {
         subCommRanks2.emplace_back(std::vector<u32>{myRank_});
     }
     HCCL_INFO(
-        "[InsV2ReduceOmniPipe3DExecutor]algHierarchyInfo_.info[%s]",
+        "[InsV2ReduceOmniPipe3DExecutor][InitSubCommRanks] build per-level sub-communicators, "
+        "hierarchy[%s].",
         ThreeDVecToStrOmni(algHierarchyInfo_.infos).c_str());
     return HCCL_SUCCESS;
 }
@@ -584,133 +573,23 @@ template <
 HcclResult InsV2ReduceOmniPipe3DExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
     InsAgAlgTemplateZ>::
-    BuildSubCommRanks(
-        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, std::vector<std::vector<u32>>& subCommRanks0,
-        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2,
-        const TopoInfoWithNetLayerDetails* topoInfo)
-{
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
-        return BuildSubCommRanksForClos(subCommRanks0, subCommRanks1, subCommRanks2, topoInfo);
-    } else if (topoType_ == TopoType::THREE_LEVEL) {
-        return BuildSubCommRanksForThreeLevel(algHierarchyInfo, subCommRanks0, subCommRanks1, subCommRanks2);
-    } else {
-        return BuildSubCommRanksForMultiLevel(subCommRanks0, subCommRanks1, subCommRanks2);
-    }
-}
-
-template <
-    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
-    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
-HcclResult InsV2ReduceOmniPipe3DExecutor<
-    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::
-    BuildSubCommRanksForClos(
-        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo)
-{
-    if (algHierarchyInfo_.infos[0].size() < 2) {
-        HCCL_ERROR(
-            "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2.", __func__, algHierarchyInfo_.infos[0].size());
-        return HCCL_E_PARA;
-    }
-    std::vector<u32> closRanks;
-    if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
-        subCommRanks0 = {algHierarchyInfo_.infos[0][0]};
-        u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-        if (!algHierarchyInfo_.infos[0][1].empty()) {
-            for (auto rank : algHierarchyInfo_.infos[0][1]) {
-                if (rank % meshSize == topoInfo->userRank % meshSize) {
-                    closRanks.push_back(rank);
-                }
-            }
-        }
-    }
-    subCommRanks1 = {closRanks};
-    omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :
-                                                                            OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
-    if (!algHierarchyInfo_.infos[1].empty()) {
-        subCommRanks2 = algHierarchyInfo_.infos[1];
-        omniNeedSetStepNum_
-            = (subCommRanks2[0].size() > 1) ? OmniNeedSetStepNum::OMNIPIPE_UBX_32P : omniNeedSetStepNum_;
-    } else {
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    }
-    HCCL_INFO("[InsV2ReduceOmniPipe3DExecutor][BuildSubCommRanksForClos] End.");
-    return HCCL_SUCCESS;
-}
-
-template <
-    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
-    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
-HcclResult InsV2ReduceOmniPipe3DExecutor<
-    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::
-    BuildSubCommRanksForThreeLevel(
-        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, std::vector<std::vector<u32>>& subCommRanks0,
-        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2)
-{
-    if (!algHierarchyInfo.infos[0].empty() && !algHierarchyInfo.infos[0][0].empty()) {
-        subCommRanks0.push_back(algHierarchyInfo.infos[0][0]);
-    } else {
-        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (!algHierarchyInfo.infos[1].empty() && !algHierarchyInfo.infos[1][0].empty()) {
-        subCommRanks1.push_back(algHierarchyInfo.infos[1][0]);
-    } else {
-        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (!algHierarchyInfo.infos[2].empty() && !algHierarchyInfo.infos[2][0].empty()) {
-        subCommRanks2.push_back(algHierarchyInfo.infos[2][0]);
-    } else {
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    }
-    return HCCL_SUCCESS;
-}
-
-template <
-    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
-    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
-HcclResult InsV2ReduceOmniPipe3DExecutor<
-    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::
-    BuildSubCommRanksForMultiLevel(
-        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2)
-{
-    if (!algHierarchyInfo_.infos[0].empty()) {
-        subCommRanks0 = algHierarchyInfo_.infos[0];
-    }
-    if (!algHierarchyInfo_.infos[1].empty()) {
-        subCommRanks1 = algHierarchyInfo_.infos[1];
-    } else {
-        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-    }
-    subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    return HCCL_SUCCESS;
-}
-
-template <
-    typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
-    typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
-HcclResult InsV2ReduceOmniPipe3DExecutor<
-    AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::
     BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         std::vector<std::vector<u32>>& subCommRanks2, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
         const TopoInfoWithNetLayerDetails* topoInfo)
 {
-    if (algHierarchyInfo_.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo_.infos is empty.", __func__);
-        return HCCL_E_PARA;
-    }
-    subCommRanks0.clear();
-    subCommRanks1.clear();
-    subCommRanks2.clear();
+    (void)algHierarchyInfo;
+    CHK_RET(InitSubCommRanks(subCommRanks0, subCommRanks1, subCommRanks2, topoInfo));
     tempMap.clear();
 
-    CHK_RET(BuildSubCommRanks(algHierarchyInfo, subCommRanks0, subCommRanks1, subCommRanks2, topoInfo));
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :
+                                                                                OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
+        if (subCommRanks2[0].size() > 1) {
+            omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_UBX_32P;
+        }
+    }
 
     if (!subCommRanks0.empty()) {
         rankSizeLevel0_ = subCommRanks0[0].size();
@@ -1114,7 +993,14 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
 }
 
 REGISTER_EXEC_V2_MULTI(
-    HcclCMDType::HCCL_CMD_REDUCE, AicpuReducePipeLineUBX, InsV2ReduceOmniPipe3DExecutor, TopoMatchUBX,
+    HcclCMDType::HCCL_CMD_REDUCE, DpuReducePipeLineMeshNHRNHR, InsV2ReduceOmniPipe3DExecutor, TopoMatchThreeLevel,
     InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dDpu,
     InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRDPU);
+REGISTER_ALG_ATTRS(
+    DpuReducePipeLineMeshNHRNHR, topo.minTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->deviceNumPerModule == 1)
+            return false;
+        return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    });
 } // namespace ops_hccl

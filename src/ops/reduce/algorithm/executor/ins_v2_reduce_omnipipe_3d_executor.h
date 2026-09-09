@@ -21,10 +21,8 @@
 #include "log.h"
 #include "sal.h"
 #include "config_log.h"
-#include "topo_match_base.h"
-#include "topo_match_multilevel.h"
-#include "topo_match_ubx.h"
-#include "topo_match_pcie_mix.h"
+#include "topo_match_base_v2.h"
+#include "topo_match_three_level.h"
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
@@ -46,6 +44,10 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
 protected:
     /* *************** 算法编排 *************** */
@@ -164,31 +166,11 @@ protected:
         OMNIPIPE_AR_LEVEL_NUM = 6
     };
 
-    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
-    TopoType topoType_ = TopoType::UBX_2LEVEL;
-
     HcclResult BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         std::vector<std::vector<u32>>& subCommRanks2, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
         const TopoInfoWithNetLayerDetails* topoInfo);
-
-    HcclResult BuildSubCommRanks(
-        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, std::vector<std::vector<u32>>& subCommRanks0,
-        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2,
-        const TopoInfoWithNetLayerDetails* topoInfo);
-
-    HcclResult BuildSubCommRanksForClos(
-        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo);
-
-    HcclResult BuildSubCommRanksForThreeLevel(
-        const AlgHierarchyInfoForAllLevel& algHierarchyInfo, std::vector<std::vector<u32>>& subCommRanks0,
-        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2);
-
-    HcclResult BuildSubCommRanksForMultiLevel(
-        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2);
 
     std::vector<std::vector<u32>> subCommRanks0_;
     std::vector<std::vector<u32>> subCommRanks1_;
