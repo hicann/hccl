@@ -359,7 +359,7 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AivReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel, AivTempReduceMesh1D);
 REGISTER_ALG_ATTRS(
-    AivReduceSoleMesh, topo.maxTopoLevelNum = 2;
+    AivReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {

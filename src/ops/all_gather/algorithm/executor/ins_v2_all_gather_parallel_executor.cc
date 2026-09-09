@@ -771,7 +771,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelNHRNHR, InsV2AllGatherParallelExecutor, TopoMatchTwoLevel,
     InsTempAllGatherNHR, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
-    AicpuAllGatherParallelNHRNHR, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
+    AicpuAllGatherParallelNHRNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->topLevelUboe
                && !(
@@ -789,7 +789,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherParallelMeshNHR, InsV2AllGatherParallelExecutor,
     TopoMatchTwoLevel, CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedAllGatherParallelMeshNHR, topo.maxTopoLevelNum = 2; topo.minTopoLevelNum = 2;
+    CcuSchedAllGatherParallelMeshNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportInplace = false;
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= CCU_MAX_SIZE;

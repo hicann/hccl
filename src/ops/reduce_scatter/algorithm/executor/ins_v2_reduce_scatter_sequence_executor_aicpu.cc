@@ -550,8 +550,9 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHR,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshNHRAicpuReduce,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1D,
@@ -566,7 +567,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempReduceScatterMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedReduceScatterSequenceMeshMesh, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+    CcuSchedReduceScatterSequenceMeshMesh, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;

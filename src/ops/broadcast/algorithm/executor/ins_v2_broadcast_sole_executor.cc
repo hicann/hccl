@@ -360,7 +360,7 @@ REGISTER_EXEC_V2(
 #ifndef AICPU_COMPILE
 REGISTER_ALG_ATTRS(
     AivBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix || topo->userRankSize <= BROADCAST_UBX_AIV_MAX_RANK;
@@ -374,7 +374,7 @@ REGISTER_EXEC_V2(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(
     CcuSchedBroadcastSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix;
@@ -402,7 +402,7 @@ REGISTER_EXEC_V2(
     CcuTempBroadcastMesh1D);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
-REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
+REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
                    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
 REGISTER_EXEC_V2(

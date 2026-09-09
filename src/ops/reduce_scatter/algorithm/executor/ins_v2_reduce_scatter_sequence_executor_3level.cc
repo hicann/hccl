@@ -537,7 +537,8 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHRNHR,
     InsV2ReduceScatterSequenceExecutor3Level, TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR, InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
-                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.isSupportProd = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 
 } // namespace ops_hccl

@@ -306,7 +306,7 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, DpuScatterSequenceMeshNHR, InsV2ScatterSequenceExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHRDPUInterNode);
-REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
-                   topo.isHostDpuOnly = true;
+REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true;
+                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isHostDpuOnly = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
 } // namespace ops_hccl

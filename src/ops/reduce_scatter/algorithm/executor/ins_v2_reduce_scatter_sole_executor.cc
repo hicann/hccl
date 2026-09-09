@@ -412,7 +412,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivReduceScatterSoleMesh,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= ops_hccl::MAX_RANK_SIZE;
     };
@@ -436,8 +436,9 @@ REGISTER_EXEC_V2(
     TopoMatchOneLevel, CcuTempReduceScatterMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-    op.isSupportInplace = false; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (topo->level0PcieMix) {
@@ -478,7 +479,7 @@ REGISTER_EXEC_V2(
     TopoMatchOneLevel, CcuTempReduceScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
     op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool dayu = topo->serverNum == 1 && topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::CLOS
@@ -495,7 +496,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleMesh2Die, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
-    topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         // MESH_1D场景：仅支持 2框16卡组网，不满足则过滤

@@ -309,21 +309,21 @@ REGISTER_EXEC_V2(
     InsTempScatterMesh1D);
 // supportLevel0Topos 对齐旧 selector 实际选入面：SoleMesh 在 MESH_1D(:191)/MESH_1D_CLOS 全连(:195)/
 // CLOS 非 PcieMix(:205) 三形态下均被选中
-REGISTER_ALG_ATTRS(AicpuScatterSoleMesh, topo.maxTopoLevelNum = 3;
+REGISTER_ALG_ATTRS(AicpuScatterSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
                    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel, InsTempScatterNHR);
 // SoleNHR 是各非 Mesh 分支兜底：3 级非对称/Level1Nhr/localNetIns==1/CLOS 均选它。
 // MESH_1D_CLOS 形态由 SoleMesh(全连)/UBX/Pcie 算法处理，SoleNHR 不参与（对齐旧 selector）
-REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = 3;
+REGISTER_ALG_ATTRS(AicpuScatterSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true);
 #ifndef AICPU_COMPILE
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     AivTempScatterMesh1D);
 REGISTER_ALG_ATTRS(
-    AivScatterSoleMesh, topo.maxTopoLevelNum = 2;
+    AivScatterSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -358,8 +358,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel1Nhr = true;
+    CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
     // 对齐旧 selector CCU 约束(scatter_auto_selector.cc:54)：
     // 两级拓扑 userRankSize>64 时 CCU 整体退出(单级豁免)
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {

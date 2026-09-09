@@ -932,7 +932,7 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherPipeLineMeshNHRNHR, InsV2AllGatherOmniPipeExecutor,
     TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHR);
 REGISTER_ALG_ATTRS(
-    AicpuAllGatherPipeLineMeshNHRNHR, topo.minTopoLevelNum = 2;
+    AicpuAllGatherPipeLineMeshNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric
                && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8;

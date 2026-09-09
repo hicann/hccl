@@ -537,8 +537,8 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, DpuBroadcastSequenceMeshNHR, InsV2BroadcastSequenceExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1DIntra, InsTempScatterNHRDPUInter, InsTempAllGatherNHRDPUInter, InsTempAllGatherMesh1DIntra);
 REGISTER_ALG_ATTRS(
-    DpuBroadcastSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 3;
-    topo.isHostDpuOnly = true;
+    DpuBroadcastSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {

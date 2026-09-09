@@ -956,7 +956,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchTwoLevel,
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
-    AicpuReduceParallelMeshNHR, topo.minTopoLevelNum = 1; topo.maxTopoLevelNum = 2;
+    AicpuReduceParallelMeshNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_1; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -979,7 +979,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceParallelNHRNHR, ReduceParallelExecutor, TopoMatchTwoLevel,
     InsTempReduceScatterNHR, InsTempReduceScatterNHR, InsTempAllGatherNHR, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
-    AicpuReduceParallelNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+    AicpuReduceParallelNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; op.isSupportProd = false;
     op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -994,9 +994,9 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchTwoLevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(CcuSchedReduceParallelMeshNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHRMultiJetty, ReduceParallelExecutor, TopoMatchTwoLevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,

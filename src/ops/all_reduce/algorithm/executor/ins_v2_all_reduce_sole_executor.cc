@@ -391,7 +391,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHRMultiLink, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceNHR);
 REGISTER_ALG_ATTRS(
-    AicpuAllReduceSoleNHRMultiLink, topo.maxTopoLevelNum = 3; topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
+    AicpuAllReduceSoleNHRMultiLink, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo == Level0Shape::CLOS;
     };
@@ -425,7 +425,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     AivTempAllReduceMesh1DOneShot);
 REGISTER_ALG_ATTRS(
-    AivAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;
+    AivAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true;
     topo.isSupportLevel1Nhr = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->userRankSize <= MAX_RANK_SIZE;
     };
@@ -444,7 +444,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     AivTempAllReduceMesh1DTwoShot);
 REGISTER_ALG_ATTRS(
-    AivAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = true;
+    AivAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -465,7 +465,7 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempAllReduceNHRMem2Mem1D);
-REGISTER_ALG_ATTRS(CcuSchedAllReduceSoleNHR, topo.maxTopoLevelNum = 2;
+REGISTER_ALG_ATTRS(CcuSchedAllReduceSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
                    topo.isSupport2DieFullMesh = true; op.isSupportProd = false;
                    op.unsupportedDataTypes
@@ -479,7 +479,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleMesh, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempAllReduceMeshMem2Mem1D);
 REGISTER_ALG_ATTRS(
-    CcuSchedAllReduceSoleMesh, topo.maxTopoLevelNum = 2;
+    CcuSchedAllReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; op.isSupportProd = false;
     op.unsupportedDataTypes

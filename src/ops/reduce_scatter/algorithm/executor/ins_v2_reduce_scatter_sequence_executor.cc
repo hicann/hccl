@@ -366,8 +366,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     DpuReduceScatterSequenceMeshMesh,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    topo.minTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true; op.isSupportProd = false;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     // MESH_1D_CLOS 非pcieMix 且每框多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
