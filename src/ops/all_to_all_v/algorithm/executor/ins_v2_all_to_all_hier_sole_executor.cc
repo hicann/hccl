@@ -11,7 +11,7 @@
 #include "ins_v2_all_to_all_hier_sole_executor.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "dev_type.h"
-#include "topo_match_nlevel.h"
+#include "topo_match_two_level.h"
 #include "alg_attrs_registry.h"
 
 namespace ops_hccl {
@@ -24,6 +24,16 @@ template <typename AlgTopoMatch>
 HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch>
+HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     devType_ = topoInfo->deviceType;
@@ -31,9 +41,9 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfo(
     totalStages_ = topoInfo->topoLevelNums;
 
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     HCCL_INFO(
-        "[InsV2AlltoAllHierSoleExecutor][CalcAlgHierarchyInfo] myRank[%u], rankSize[%u], "
+        "[InsV2AlltoAllHierSoleExecutor][CalcAlgHierarchyInfoV2] myRank[%u], rankSize[%u], "
         "totalStages[%u]",
         myRank_, rankSize_, totalStages_);
     return HCCL_SUCCESS;
@@ -274,9 +284,9 @@ std::vector<CostModelParam> InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcCos
 }
 
 REGISTER_EXECUTOR_BY_TOPO(
-    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshHier, InsV2AlltoAllHierSoleExecutor, TopoMatchNLevel);
+    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshHier, InsV2AlltoAllHierSoleExecutor, TopoMatchTwoLevel);
 
-REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshHier, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 4;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;);
+REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshHier, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 
 } // namespace ops_hccl
