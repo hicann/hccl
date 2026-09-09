@@ -798,12 +798,12 @@ HcclResult CalcChannelRequestNhr(
         uint32_t netLayerNum;
         CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
         std::vector<uint32_t> netLayersVector(netLayers, netLayers + netLayerNum);
-
+        bool hasLayerOne = std::find(netLayersVector.begin(), netLayersVector.end(), 1U) != netLayersVector.end();
         for (auto netLayer : netLayersVector) {
             // PCIE-SW场景，需要建立PCIE的clos链路
             bool isNeedLevel0NhrChannel
                 = ((topoInfo->level0Topo == Level0Shape::CLOS || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS)
-                   && topoInfo->level0PcieMix && topoInfo->serverNum == 1);
+                   && topoInfo->serverNum == 1 && !hasLayerOne);
             HCCL_INFO(
                 "[CalcChannelRequestNhr] isNeedLevel0NhrChannel[%d] Need to calc NHR channel in level0",
                 isNeedLevel0NhrChannel);
