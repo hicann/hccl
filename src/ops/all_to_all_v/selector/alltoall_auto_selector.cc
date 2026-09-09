@@ -151,14 +151,8 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
                 break;
             }
         }
-        if (hierConfigured) {
-            if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {
-                selectAlgName = "AicpuAllToAllSoleMeshHier";
-                HCCL_INFO(
-                    "[AlltoAllAutoSelector][%s] Algo match[%s], topoLevelNums[%u]", __func__, selectAlgName.c_str(),
-                    topoInfo->topoLevelNums);
-                return SelectorStatus::MATCH;
-            } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
+        if (hierConfigured && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
+            if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
                 selectAlgName = "AicpuAllToAllSoleMeshHier";
                 HCCL_INFO(
                     "[AlltoAllAutoSelector][%s] Algo match[%s], topoLevelNums[%u]", __func__, selectAlgName.c_str(),

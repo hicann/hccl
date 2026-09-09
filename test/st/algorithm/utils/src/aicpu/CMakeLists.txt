@@ -91,6 +91,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/selector
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/ccu
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aiv
 
@@ -244,8 +245,11 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/template/aicpu/ins_temp_all_gather_v_mesh_1D.cc
 
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_hier_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/alltoall_stage_template_registry.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/ins_temp_all_to_all_hier_mesh_stage.cc
 
     ${HCCL_DEV_BASE}/src/ops/send/algorithm/executor/ins_v2_send_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/send/algorithm/executor/ins_send_executor.cc
@@ -309,6 +313,7 @@ target_sources(scatter_aicpu_kernel PRIVATE
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_one_level.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_two_level.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_three_level.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_nlevel.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_squeeze_2d.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_ubx_1d.cc
 
