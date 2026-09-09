@@ -952,11 +952,7 @@ HcclResult GeReuseResource(
     // 计算AlgHierarchyInfo
     AlgHierarchyInfoForAllLevel algHierarchyInfo; // 分级通信域信息{localRankId, localRankSize}
     AlgAttrs algAttrs = executor->GetAlgoMeta(std::string(param.algName));
-    if (std::string(param.algName) == "AicpuReducePipeLineUBX") {
-        CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
-    } else {
-        CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algAttrs));
-    }
+    CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algAttrs));
     // 资源计算
     AlgResourceRequest resRequest;
     CHK_RET(executor->CalcRes(comm, param, topoInfo, algHierarchyInfo, resRequest));
@@ -1391,11 +1387,7 @@ HcclResult HcclGetAlgRes(
 
     // 计算AlgHierarchyInfo
     AlgHierarchyInfoForAllLevel algHierarchyInfo; // 分级通信域信息{localRankId, localRankSize}
-    if (std::string(param.algName) == "AicpuReducePipeLineUBX") {
-        CHK_RET(executor->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo));
-    } else {
-        CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algoMeta));
-    }
+    CHK_RET(executor->CalcAlgHierarchyInfoV2(topoInfo, algHierarchyInfo, algoMeta));
     // 资源计算
     HCCL_INFO("[HcclGetAlgRes] executor->CalcRes.");
     AlgResourceRequest resRequest;
