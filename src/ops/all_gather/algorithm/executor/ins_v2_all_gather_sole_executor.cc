@@ -480,7 +480,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuMSAllGatherSoleMesh2Die, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGather2DiesMesh1D);
 REGISTER_ALG_ATTRS(CcuMSAllGatherSoleMesh2Die, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportInplace = false);
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
@@ -488,8 +489,9 @@ REGISTER_EXEC_V2(
     CcuTempAllGather2DiesMeshMem2Mem1D);
 REGISTER_ALG_ATTRS(CcuSchedAllGatherSoleMesh2Die, topo.isSupportLevel0PcieMix = true;
                    topo.requireAllMeshConnected = true; topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportInplace = false);
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(

@@ -514,8 +514,8 @@ REGISTER_EXEC_V2(
     TopoMatchOneLevel, CcuTempReduceScatterMesh2Die);
 REGISTER_ALG_ATTRS(
     CcuMSReduceScatterSoleMesh2Die, topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.maxTopoLevelNum = 1;
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; topo.isSupport2DieFullMesh = true;
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

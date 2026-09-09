@@ -616,7 +616,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh2Die, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh2Die);
 REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportInplace = false);
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(

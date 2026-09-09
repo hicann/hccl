@@ -514,10 +514,10 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceSoleMesh2Die, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempAllreduceMesh1D2DieOneShot);
 REGISTER_ALG_ATTRS(CcuMSAllReduceSoleMesh2Die, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; op.isSupportProd = false;
-                   op.unsupportedDataTypes
-                   = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
-                      HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+                   topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
+                   op.isSupportProd = false; op.unsupportedDataTypes
+                                             = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
+                                                HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
                    op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -547,7 +547,7 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(CcuSchedAllReduceSoleMesh2Die, topo.maxTopoLevelNum = 1;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupportLevel0PcieMix = true;
-                   topo.requireAllMeshConnected = true; op.isSupportProd = false;
+                   topo.requireAllMeshConnected = true; topo.isSupport2DieFullMesh = true; op.isSupportProd = false;
                    op.unsupportedDataTypes
                    = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
                       HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};

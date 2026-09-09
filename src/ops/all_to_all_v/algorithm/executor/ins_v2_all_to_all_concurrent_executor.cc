@@ -50,7 +50,10 @@ InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>:
 {
     (void)comm;
     (void)algName;
-    (void)param;
+
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+    }
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = false;
     // 第1个模板走mesh拓扑, 第2个模板走clos拓扑
@@ -60,7 +63,6 @@ InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>:
     std::vector<u32> portNumLevel1 = {4};
     HCCL_DEBUG("[InsV2AllToAllConcurrentExecutor] CalcCostCoeff rankSize:%d", rankSize);
     // 与SplitSendRecvData同口径: 数据按mesh/clos带宽比切分, 两路并发
-    // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
@@ -89,15 +91,36 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 AlgNetMeta InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
 {
+    u32 rankSize = topoInfo->userRankSize;
+    AlgNetMeta meta;
+    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+        meta.intraGroupMode = CostAggMode::SUM;
+        meta.groupSizes = {1};
+        meta.dataRatios = {1.0f};
+        meta.rankSizes = {rankSize};
+        return meta;
+    }
+    // alltoall 两路并发: 第1个模板走mesh, 第2个模板走clos
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
     CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    AlgNetMeta meta;
+    // 与 CalcCostCoeff 同口径构造 localParam 复用 GetParallelDataSplit 得到 mesh/clos 切分比
+    OpParam localParam;
+    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
+        localParam.engine = CommEngine::COMM_ENGINE_CCU;
+    } else {
+        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+    }
+    std::vector<float> dataSplitSize;
+    GetParallelDataSplit(localParam, dataSplitSize);
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2};
+    meta.dataRatios = {dataSplitSize[0], dataSplitSize[1]};
+    meta.rankSizes = {rankSize, rankSize};
     return meta;
 }
 
