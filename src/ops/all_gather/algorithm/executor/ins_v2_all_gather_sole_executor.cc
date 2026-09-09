@@ -411,10 +411,10 @@ REGISTER_EXEC_V2(
     CcuTempAllGatherMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherSoleMesh, topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
-    topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     op.isSupportInplace = false;
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return !(topo->topoLevelNums == 2 && topo->userRankSize > CCU_MAX_SIZE);
+        return !(topo->topoLevelNums == TOPO_LEVEL_NUM_2 && topo->userRankSize > CCU_MAX_SIZE);
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
@@ -438,7 +438,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER, CcuSchedAllGatherSoleNHR, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedAllGatherSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
+    CcuSchedAllGatherSoleNHR, topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; op.isSupportInplace = false;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         // CLOS定制机型（单层/多层）命中，避免被其他算法的topoPriorityCheck提前淘汰
@@ -449,7 +449,7 @@ REGISTER_ALG_ATTRS(
                && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     };
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return !(topo->topoLevelNums == 2 && topo->userRankSize > CCU_MAX_SIZE);
+        return !(topo->topoLevelNums == TOPO_LEVEL_NUM_2 && topo->userRankSize > CCU_MAX_SIZE);
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
@@ -459,7 +459,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER, AivAllGatherSoleMesh, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
     AivTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllGatherSoleMesh, topo.maxTopoLevelNum = 2;
+    AivAllGatherSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

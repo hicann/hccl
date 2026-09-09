@@ -750,7 +750,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHR);
 REGISTER_ALG_ATTRS(
-    AicpuScatterParallelMeshNHR, topo.maxTopoLevelNum = 2;
+    AicpuScatterParallelMeshNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -774,7 +774,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterParallelMeshNHR, InsV2ScatterParallelExecutor, TopoMatchTwoLevel,
     CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedScatterParallelMeshNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+    CcuSchedScatterParallelMeshNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
     // 对齐旧 selector CCU 约束(scatter_auto_selector.cc:54)：
     // 两级拓扑 userRankSize>64 时 CCU 整体退出

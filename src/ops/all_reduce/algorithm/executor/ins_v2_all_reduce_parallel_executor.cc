@@ -1550,7 +1550,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceParallelMeshNHR, InsAllReduceParallelExecutor, TopoMatchTwoLevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedAllReduceParallelMeshNHR, topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+REGISTER_ALG_ATTRS(CcuSchedAllReduceParallelMeshNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
                    op.unsupportedDataTypes
                    = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
                       HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};

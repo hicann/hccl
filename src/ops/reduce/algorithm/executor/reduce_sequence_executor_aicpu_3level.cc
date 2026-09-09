@@ -835,14 +835,16 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshConcurNHRNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+                   op.isSupportInplace = false);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshConcurNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+                   op.isSupportInplace = false);
 
 } // namespace ops_hccl

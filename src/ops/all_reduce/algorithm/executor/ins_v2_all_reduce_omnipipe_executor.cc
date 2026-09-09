@@ -1319,7 +1319,7 @@ REGISTER_EXEC_V2_MULTI(
     InsTempReduceScatterOmniPipeMesh1D, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,
     InsTempAllGatherOmniPipeNHR);
 REGISTER_ALG_ATTRS(
-    AicpuAllReducePipeLineMeshNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+    AicpuAllReducePipeLineMeshNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->topLevelUboe && topo->level0Symmetric && topo->level1Symmetric && topo->deviceNumPerModule == 8;
     };

@@ -867,11 +867,11 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHR, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempAllGatherNHR,
     InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportProd = false;
-                   op.unsupportedDataTypes
-                   = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
-                      HcclDataType::HCCL_DATA_TYPE_FP64});
+REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   op.isSupportProd = false; op.unsupportedDataTypes
+                                             = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
+                                                HcclDataType::HCCL_DATA_TYPE_FP64});
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshNHRAicpuReduce, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterAicpuReduceNHRPcie, InsTempAllGatherNHR,
@@ -894,7 +894,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMeshMesh, InsV2AllReduceSequenceExecutorAicpu,
     TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempAllGatherMesh1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedAllReduceSequenceMeshMesh, topo.maxTopoLevelNum = 2; op.isSupportProd = false;
+REGISTER_ALG_ATTRS(CcuSchedAllReduceSequenceMeshMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
                    op.unsupportedDataTypes
                    = {HcclDataType::HCCL_DATA_TYPE_INT8, HcclDataType::HCCL_DATA_TYPE_INT64,
                       HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};

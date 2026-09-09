@@ -525,8 +525,8 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dDpuInter, InsTempGatherDpuInter,
     InsTempGatherMesh1dIntra);
 REGISTER_ALG_ATTRS(
-    DpuReduceSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 3;
-    topo.isHostDpuOnly = true;
+    DpuReduceSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     // MESH_1D_CLOS 非pcieMix 且每module多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

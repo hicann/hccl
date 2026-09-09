@@ -223,7 +223,7 @@ AlgNetMeta InsV2RecvExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* t
 
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, AivRecvSoleMesh, InsV2RecvExecutor);
 REGISTER_ALG_ATTRS(
-    AivRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    AivRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp;
     };);

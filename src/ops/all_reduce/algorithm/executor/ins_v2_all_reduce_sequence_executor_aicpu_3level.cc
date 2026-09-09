@@ -866,10 +866,10 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSequenceMeshConcurNHRNHR, InsV2AllReduceSequenceExecutorAicpu3Level,
     TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportProd = false;
-                   op.unsupportedDataTypes
-                   = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
-                      HcclDataType::HCCL_DATA_TYPE_FP64});
+REGISTER_ALG_ATTRS(AicpuAllReduceSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   op.isSupportProd = false; op.unsupportedDataTypes
+                                             = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
+                                                HcclDataType::HCCL_DATA_TYPE_FP64});
 
 } // namespace ops_hccl

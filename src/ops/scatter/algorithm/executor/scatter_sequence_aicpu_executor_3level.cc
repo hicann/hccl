@@ -587,12 +587,12 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHRNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchThreeLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
-REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
+REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchTwoLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
-REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
+REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 } // namespace ops_hccl

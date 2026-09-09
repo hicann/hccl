@@ -506,7 +506,7 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurNHRNHR, InsV2AllGatherSequenceExecutor3Level,
     TopoMatchThreeLevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherNHR, InsTempAllGatherNHR);
-REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHRNHR, topo.maxTopoLevelNum = 3; topo.minTopoLevelNum = 3;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
+REGISTER_ALG_ATTRS(AicpuAllGatherSequenceMeshConcurNHRNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
 } // namespace ops_hccl
 // 算法注册

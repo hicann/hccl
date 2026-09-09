@@ -833,8 +833,8 @@ REGISTER_EXEC_V2_MULTI(
     TopoMatchThreeLevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuReduceScatterPipeLineMeshNHRMesh, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3; op.isSupportProd = false;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    AicpuReduceScatterPipeLineMeshNHRMesh, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->topLevelUboe && (topo->level0Symmetric && topo->level1Symmetric) && topo->deviceNumPerModule == 8;
     });
@@ -844,8 +844,8 @@ REGISTER_EXEC_V2_MULTI(
     TopoMatchThreeLevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
     InsTempReduceScatterOmniPipeMesh1dDpu);
 REGISTER_ALG_ATTRS(
-    DpuReduceScatterPipeLineMeshNHRMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.minTopoLevelNum = 2;
-    topo.maxTopoLevelNum = 3; topo.isHostDpuOnly = true;
+    DpuReduceScatterPipeLineMeshNHRMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
     });

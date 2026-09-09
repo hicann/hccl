@@ -344,7 +344,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    AivAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
     };);
@@ -352,7 +352,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AivAllToAllVCSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
+    AivAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
     };);

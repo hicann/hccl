@@ -572,22 +572,22 @@ REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOP
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, DpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempDpuAlltoAllMesh);
-REGISTER_ALG_ATTRS(DpuAllToAllSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
-                   topo.maxTopoLevelNum = 3; topo.isHostDpuOnly = true;
+REGISTER_ALG_ATTRS(DpuAllToAllSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, DpuAllToAllVSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempDpuAlltoAllMesh);
-REGISTER_ALG_ATTRS(DpuAllToAllVSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
-                   topo.maxTopoLevelNum = 3; topo.isHostDpuOnly = true;
+REGISTER_ALG_ATTRS(DpuAllToAllVSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, DpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempDpuAlltoAllMesh);
-REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
-                   topo.maxTopoLevelNum = 3; topo.isHostDpuOnly = true;
+REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
@@ -602,8 +602,8 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TO
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiLink, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1D2Die);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
@@ -632,7 +632,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcur, InsV2AlltoAllVSoleExecutor, TopoMatchConcurrentV2,
     CcuTempAllToAllConcurrentMeshNHR);
 REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshConcur, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.maxTopoLevelNum = 2; topo.isSupportLevel1Nhr = true;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = true;
                    topo.supportDevTypes = {HcclDevType::DEV_TYPE_960};
                    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
