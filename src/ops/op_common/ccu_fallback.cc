@@ -11,6 +11,7 @@
 #include <cstring> // 包含strncmp函数
 #include "ccu_fallback.h"
 #include "op_common.h"
+#include "inconsistent_check.h"
 #include "log.h"
 #include "adapter_acl.h"
 #include "acl/acl_rt.h"
@@ -402,10 +403,16 @@ CompareCcuParam(const CheckParamInfo* recvInfos, u32 rankSize, const OpParam& pa
     if (!isVariableCountOp) {
         for (u32 i = 0; i < rankSize; i++) {
             if (recvInfos[i].count != param.DataDes.count) {
-                HCCL_ERROR(
-                    "[%s] count mismatch with rank[%u], local[%llu] vs rank[%u][%llu].", __func__, i,
-                    param.DataDes.count, i, recvInfos[i].count);
-                return HCCL_E_PARA;
+                OpExchangeInfo exchangeInfo{};
+                exchangeInfo.opType = param.opType;
+                exchangeInfo.count = param.DataDes.count;
+                errno_t cpyRet = strncpy_s(exchangeInfo.group, MAX_LENGTH, param.commName, COMM_INDENTIFIER_MAX_LENGTH);
+                CHK_PRT_RET(
+                    cpyRet != EOK, HCCL_ERROR("[%s] strncpy_s for group failed, ret[%d].", __func__, cpyRet),
+                    HCCL_E_MEMORY);
+                CHK_RET(ReportOpExchangeInfoCheckFailed(
+                    i, exchangeInfo, "DataCount", std::to_string(param.DataDes.count),
+                    std::to_string(recvInfos[i].count)));
             }
         }
     }
