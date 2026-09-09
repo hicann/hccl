@@ -3749,12 +3749,12 @@ HcclResult SetMultipleDimensionSplitRatio(HcclComm comm, OpParam& param)
             HCCL_WARNING(
                 "[SetMultipleDimensionSplitRatio] env ratio[%f] is out of range, use default ratio[%f]", envRatio,
                 defaultRatio);
-            envRatio = defaultRatio;
+        } else {
+            param.opConfig.multipleDimensionSplitRatio = envRatio;
+            param.opConfig.multipleDimensionSplitRatioSource = MultipleDimensionSplitRatioSource::ENV_CONFIG;
+            HCCL_INFO("[SetMultipleDimensionSplitRatio] ratioSource[ENV_CONFIG], configuredRatio[%f]", envRatio);
+            return HCCL_SUCCESS;
         }
-        param.opConfig.multipleDimensionSplitRatio = envRatio;
-        param.opConfig.multipleDimensionSplitRatioSource = MultipleDimensionSplitRatioSource::ENV_CONFIG;
-        HCCL_INFO("[SetMultipleDimensionSplitRatio] ratioSource[ENV_CONFIG], configuredRatio[%f]", envRatio);
-        return HCCL_SUCCESS;
     }
 
     param.opConfig.multipleDimensionSplitRatio = defaultRatio;
