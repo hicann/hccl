@@ -345,7 +345,7 @@ REGISTER_EXEC_V2(
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     AivAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
     };);
 REGISTER_EXEC_V2(
@@ -353,7 +353,7 @@ REGISTER_EXEC_V2(
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     AivAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = 2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
     };);
 #endif

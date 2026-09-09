@@ -1487,7 +1487,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(
     AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.minTopoLevelNum = 2; topo.isSupportLevel1Nhr = false; topo.isSupportLevel0PcieMix = true;
+    topo.minTopoLevelNum = 1; topo.isSupportLevel1Nhr = false; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix

@@ -526,7 +526,14 @@ AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
+REGISTER_ALG_ATTRS(
+    AicpuAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        if (t->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return t->level0PcieMix;
+        }
+        return true;
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshSingleChannel, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
@@ -536,9 +543,12 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+    AicpuAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return !(t->level0Topo == Level0Shape::MESH_1D_CLOS && !t->level0PcieMix);
+        if (t->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return t->level0PcieMix;
+        }
+        return true;
     };);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
@@ -555,7 +565,8 @@ REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = L
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAlltoAllVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+                   topo.isSupportLevel0PcieMix = true;);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // UBX 场景并入 Dpu 标准注册（TopoMatchOneLevel），分流由 selector 保证
 REGISTER_EXEC_V2(
@@ -597,7 +608,9 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = 2; 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllMesh1D);
-REGISTER_ALG_ATTRS(AivAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;);
+REGISTER_ALG_ATTRS(AivAllToAllSoleMesh,
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+                   topo.isSupportLevel0PcieMix = true;);
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh2Die, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
