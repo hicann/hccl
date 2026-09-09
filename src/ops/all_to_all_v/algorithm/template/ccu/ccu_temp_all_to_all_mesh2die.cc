@@ -16,6 +16,8 @@
 #include "kernel/ccu_kernel_all_to_all_mesh2die.h"
 
 namespace ops_hccl {
+constexpr u32 COSTMODEL_FACTOR = 6;
+
 CcuTempAllToAllMesh2Die::CcuTempAllToAllMesh2Die(
     const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
@@ -25,22 +27,22 @@ CcuTempAllToAllMesh2Die::~CcuTempAllToAllMesh2Die() {}
 
 std::vector<CostModelParam> CcuTempAllToAllMesh2Die::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // // 2Die全互连: 两个die kernel并发、各管一半peer, 链路全走mesh单链路
-    // int portNum = 1;
-    // // 全互连直写: 每rank向其余rankSize-1个peer各发1/rankSize数据, 每peer一次任务
-    // int taskNum = param.rankSize;
-    // float A = 0.0f;
-    // float B = 0.0f;
-    // float C = 0.0f;
+    int portNum = param.portNum[0];
+    float A = 0.0f;
+    float B = 0.0f;
+    float C = 0.0f;
+    float D = 0.0f;
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcLocalCopyParams(
+        param.dataRatio / static_cast<float>(param.rankSize), EngineType::CCU, B);
+    CostModelManager::Global()->CalcLatencyParams(COSTMODEL_FACTOR, EngineType::CCU, C);
 
-    // CostModelManager::Global()->CalcMeshParam(
-    //     param.n, param.netType, portNum, param.rankSize, EngineType::CCU, A);
-    // // 本地GroupCopy自己的1/rankSize片(withMyRank的die kernel内完成)
-    // CostModelManager::Global()->CalcLocalCopyParams(param.n / param.rankSize, EngineType::CCU, B);
-    // CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    HCCL_DEBUG(
+        "[%s] CalcCostCoeff rankSize=%u dataRatio=%f A=%f B=%f C=%f.", __func__, param.rankSize, param.dataRatio, A, B,
+        C);
+
     std::vector<CostModelParam> params;
-    params.push_back({1.0f, 1.0f, 1.0f, 1.0f});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f.", __func__, 1.0f, 1.0f, 1.0f);
+    params.push_back({A, B, C, D});
     return params;
 }
 

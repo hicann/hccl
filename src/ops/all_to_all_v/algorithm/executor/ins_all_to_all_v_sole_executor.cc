@@ -376,7 +376,8 @@ REGISTER_EXEC_V2(
     CcuTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     CcuSchedAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
+    topo.isSupport2DieFullMesh = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp;
     };);
 #endif // !HCCL_CANN_COMPAT_850
@@ -387,8 +388,8 @@ REGISTER_EXEC_V2(
     CcuTempAlltoAllVMesh2Die);
 REGISTER_ALG_ATTRS(
     CcuSchedAllToAllVSoleMesh2Die, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.maxTopoLevelNum = 1;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
+    topo.maxTopoLevelNum = 1; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp;
     };);
 #endif // !HCCL_CANN_COMPAT_850

@@ -14,8 +14,8 @@
 #include "ins_temp_allgather_nhr_dpu_inter.h"
 #include "ins_temp_allgather_mesh_1D_intra.h"
 #include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
-#include "alg_attrs_registry.h"
 namespace ops_hccl {
 
 template <
@@ -540,12 +540,13 @@ REGISTER_ALG_ATTRS(
     DpuBroadcastSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 3;
     topo.isHostDpuOnly = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    // MESH_1D_CLOS 非pcieMix 且每module多卡时DPU无对应算法，其余场景走本算法，通信域初始化时过滤
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
             return true;
         }
-        return topo->level0PcieMix || topo->deviceNumPerModule == 1;
+        return topo->level0PcieMix || topo->deviceNumPerModule == 1
+               || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)
+               || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     };);
 
 } // namespace ops_hccl

@@ -243,7 +243,8 @@ REGISTER_EXEC_V2(
     CcuTempAllGatherVMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedAllGatherVSoleMesh, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
+    topo.isSupport2DieFullMesh = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp;
     };
     op.isSupportInplace = false;);
