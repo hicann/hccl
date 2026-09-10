@@ -357,7 +357,8 @@ HcclResult ExecOp(HcclComm comm, OpParam& param)
         aclrtFuncHandle funcHandle;
         aclrtArgsHandle argsHandle;
 
-        aclError ret = aclrtBinaryGetFunction(g_binKernelHandle, kernelName.c_str(), &funcHandle);
+        aclError ret = aclrtBinaryGetFunction(
+            g_binKernelHandle.load(std::memory_order_acquire), kernelName.c_str(), &funcHandle);
         CHK_PRT_RET(
             ret != ACL_SUCCESS,
             HCCL_ERROR(

@@ -14,6 +14,7 @@
 #include "string"
 #include <array>
 #include <memory>
+#include <mutex>
 #include "hccl_types.h"
 #include "acl/acl_rt.h"
 #include "alg_param.h"
@@ -226,6 +227,9 @@ HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string& ctxTag);
 HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx** indexCtx);
 
 HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx);
+
+// Hold this mutex from cache lookup until all replay reads of the returned context finish.
+std::mutex& GetAivCacheMutex();
 
 HcclResult LookupAivCacheCtx(
     HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,

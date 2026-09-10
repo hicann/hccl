@@ -521,6 +521,8 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
     std::string cachedAlgName;
     AivInstruction* instructions = nullptr;
     u32 insCount = 0;
+    // Keep cached instruction storage alive through replay, including its non-trivial members.
+    std::unique_lock<std::mutex> cacheLock(GetAivCacheMutex());
     CHK_RET(LookupAivCacheCtx(comm, ctxTag, keyHash, cacheHit, cachedAlgName, instructions, insCount));
     if (!cacheHit) {
         return HCCL_SUCCESS;
@@ -545,6 +547,7 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
     } else {
         CHK_RET(ReplayAivInstructions(instructions, insCount, param));
     }
+    cacheLock.unlock();
 
     CHK_RET(HcclReportAivKernel(comm, beginTime));
     CHK_RET(HcclProfilingReportOp(comm, beginTime));
@@ -636,7 +639,6 @@ HcclResult ExecuteAivCacheLogic(
     if (useCache && g_recordingQueue) {
         AivCacheIndexCtx* indexCtx = nullptr;
         CHK_RET(GetOrCreateAivCacheIndexCtx(comm, &indexCtx));
-        CHK_RET(EvictAivCacheIfNeeded(comm, indexCtx));
         CHK_RET(StoreAivCacheCtx(comm, ctxTag, keyHash, algName, indexCtx));
         g_recordingQueue = nullptr;
         g_baseInputAddr = 0;
@@ -1142,7 +1144,8 @@ HcclResult AicpuKernelLaunch(HcclComm comm, OpParam& param, ThreadHandle unfoldT
     aclrtArgsHandle argsHandle;
     // 注意，目前开源HCCL加载AICPU kernel使用的是从json文件加载
     // 详见load_kernel.cc中的LoadAICPUKernel函数，且只实现了scatter的，先共用scatter的
-    aclError ret = aclrtBinaryGetFunction(g_binKernelHandle, kernelName.c_str(), &funcHandle);
+    aclError ret
+        = aclrtBinaryGetFunction(g_binKernelHandle.load(std::memory_order_acquire), kernelName.c_str(), &funcHandle);
     CHK_PRT_RET(
         ret != ACL_SUCCESS,
         HCCL_ERROR(

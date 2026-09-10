@@ -821,6 +821,12 @@ HcclResult UnRegisterAivKernel()
 }
 
 // cache工具接口
+// Engine contexts are raw storage: keep the mutex outside AivCacheIndexCtx.
+// Serialize publication, eviction and replay as well as index updates.
+static std::mutex g_aivCacheMutex;
+
+std::mutex& GetAivCacheMutex() { return g_aivCacheMutex; }
+
 void HashAppend(u64& hash, const void* data, size_t size)
 {
     const u8* bytes = static_cast<const u8*>(data);
@@ -867,6 +873,7 @@ HcclResult BuildAivCacheCtxTag(u64 keyHash, std::string& ctxTag)
 
 HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx** indexCtx)
 {
+    const std::lock_guard<std::mutex> lock(g_aivCacheMutex);
     CHK_PTR_NULL(indexCtx);
     void* ctx = nullptr;
     uint64_t ctxSize = 0;
@@ -890,7 +897,8 @@ HcclResult GetOrCreateAivCacheIndexCtx(HcclComm comm, AivCacheIndexCtx** indexCt
     }
 }
 
-HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx)
+// Caller must hold g_aivCacheMutex. Store keeps it held through the subsequent insertion.
+static HcclResult EvictAivCacheIfNeededLocked(HcclComm comm, AivCacheIndexCtx* indexCtx)
 {
     if (indexCtx->size < AIV_CACHE_INDEX_MAX_ENTRY) {
         return HCCL_SUCCESS;
@@ -911,10 +919,18 @@ HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx)
     return HCCL_SUCCESS;
 }
 
+HcclResult EvictAivCacheIfNeeded(HcclComm comm, AivCacheIndexCtx* indexCtx)
+{
+    const std::lock_guard<std::mutex> lock(g_aivCacheMutex);
+    CHK_PTR_NULL(indexCtx);
+    return EvictAivCacheIfNeededLocked(comm, indexCtx);
+}
+
 HcclResult LookupAivCacheCtx(
     HcclComm comm, const std::string& ctxTag, u64 keyHash, bool& cacheHit, std::string& algName,
     AivInstruction*& instructions, u32& insCount)
 {
+    // Caller holds GetAivCacheMutex() until replay finishes using the returned pointer.
     cacheHit = false;
     void* ctx = nullptr;
     uint64_t ctxSize = 0;
@@ -994,6 +1010,21 @@ HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCou
 HcclResult StoreAivCacheCtx(
     HcclComm comm, const std::string& ctxTag, u64 keyHash, const std::string& algName, AivCacheIndexCtx* indexCtx)
 {
+    const std::lock_guard<std::mutex> lock(g_aivCacheMutex);
+    CHK_PTR_NULL(indexCtx);
+    CHK_PTR_NULL(g_recordingQueue);
+    // Another miss may have published this key while this thread recorded it.
+    void* existingCtx = nullptr;
+    uint64_t existingSize = 0;
+    HcclResult lookupRet
+        = HcclEngineCtxGet(comm, ctxTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &existingCtx, &existingSize);
+    if (lookupRet == HCCL_SUCCESS) {
+        return HCCL_SUCCESS;
+    }
+    if (lookupRet != HCCL_E_NOT_FOUND && lookupRet != HCCL_E_PARA) {
+        return lookupRet;
+    }
+    CHK_RET(EvictAivCacheIfNeededLocked(comm, indexCtx));
     const InsQueue& queue = *g_recordingQueue;
     u32 algNameLen = static_cast<u32>(algName.size());
     uint64_t ctxSize = sizeof(AivCacheCtxHeader) + algNameLen + queue.size() * sizeof(AivInstruction);

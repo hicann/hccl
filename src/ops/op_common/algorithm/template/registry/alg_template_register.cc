@@ -48,12 +48,17 @@ std::unique_ptr<AlgTemplateBase> AlgTemplateRegistry::GetAlgTemplate(const Templ
         return nullptr;
     }
 
-    if (tempCreators_[static_cast<size_t>(type)] == nullptr) {
+    AlgTemplateCreator creator;
+    {
+        const std::lock_guard<std::mutex> lock(mu_);
+        creator = tempCreators_[static_cast<size_t>(type)];
+    }
+    if (creator == nullptr) {
         HCCL_DEBUG("[AlgTemplateRegistry]Creator for template type[%d] has not registered.", type);
         return nullptr;
     }
     HCCL_DEBUG("[AlgTemplateRegistry][GetAlgTemplate]get template by type[%d]", type);
-    return std::unique_ptr<AlgTemplateBase>(tempCreators_[static_cast<size_t>(type)]());
+    return std::unique_ptr<AlgTemplateBase>(creator());
 }
 
 } // namespace ops_hccl
