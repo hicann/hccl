@@ -80,18 +80,6 @@ create_rl_soft_link() {
     fi
 }
 
-python_dir_chmod_set() {
-    local dir="$1"
-    if [ ! -d "$dir" ]; then
-        return
-    fi
-    if [ $(id -u) -eq 0 ]; then
-        chmod 755 "$dir" > /dev/null 2>&1
-    else
-        chmod 750 "$dir" > /dev/null 2>&1
-    fi
-}
-
 python_dir_chmod_reset() {
     local dir="$1"
     if [ ! -d "$dir" ]; then
@@ -109,5 +97,3 @@ python_dir_chmod_reset "$WHL_SOFTLINK_INSTALL_DIR_PATH"
 create_softlink_if_exists "${WHL_INSTALL_DIR_PATH}" "$WHL_SOFTLINK_INSTALL_DIR_PATH" "hccl"
 create_softlink_if_exists "${WHL_INSTALL_DIR_PATH}" "$WHL_SOFTLINK_INSTALL_DIR_PATH" "hccl-*.dist-info"
 
-python_dir_chmod_set "$WHL_SOFTLINK_INSTALL_DIR_PATH"
-python_dir_chmod_set "$(dirname $WHL_SOFTLINK_INSTALL_DIR_PATH)"
