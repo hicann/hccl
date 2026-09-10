@@ -38,21 +38,24 @@ namespace {
 } // namespace
 
 HcclResult TopoMatchOneLevel::MatchTopo(
-    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& profile)
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     const auto& physicalLevels = topoInfo->physicalLevels;
     if (physicalLevels.empty() || topoInfo->userRankSize == 0) {
-        HCCL_ERROR("[TopoMatchOneLevel] Rank [%u], physicalLevels empty or userRankSize 0.", topoInfo->userRank);
+        HCCL_ERROR(
+            "[TopoMatchOneLevel] Rank [%u], physicalLevels empty or userRankSize 0. "
+            "physicalLevels.size[%zu], userRankSize[%u].",
+            topoInfo->userRank, physicalLevels.size(), topoInfo->userRankSize);
         return HcclResult::HCCL_E_INTERNAL;
     }
 
-    std::vector<u32> effIdx = CollectEffectiveIndices(physicalLevels, profile.engine);
+    std::vector<u32> effIdx = CollectEffectiveIndices(physicalLevels, algAttrs.engine);
     if (effIdx.empty()) {
         HCCL_INFO("[TopoMatchOneLevel] Rank [%u], no valid layer after engine filter.", topoInfo->userRank);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
 
-    bool requireHost = (profile.engine == OpExecuteConfig::HOSTCPU);
+    bool requireHost = (algAttrs.engine == OpExecuteConfig::HOSTCPU);
     u32 picked = PickFullLocalRanksLayer(physicalLevels, effIdx, topoInfo->userRankSize, requireHost);
     if (picked == INVALID_UINT) {
         HCCL_INFO(

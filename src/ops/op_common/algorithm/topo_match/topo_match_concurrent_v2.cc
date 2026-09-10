@@ -19,24 +19,27 @@ TopoMatchConcurrentV2::TopoMatchConcurrentV2() {}
 TopoMatchConcurrentV2::~TopoMatchConcurrentV2() {}
 
 HcclResult TopoMatchConcurrentV2::MatchTopo(
-    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& profile)
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     u32 myRank = topoInfo->userRank;
     const auto& physicalLevels = topoInfo->physicalLevels;
     if (physicalLevels.empty()) {
-        HCCL_ERROR("[TopoMatchConcurrentV2] Rank [%u], physicalLevels is empty.", myRank);
+        HCCL_ERROR(
+            "[TopoMatchConcurrentV2] Rank [%u], physicalLevels is empty. "
+            "physicalLevels.size[%zu], userRankSize[%u].",
+            myRank, physicalLevels.size(), topoInfo->userRankSize);
         return HcclResult::HCCL_E_INTERNAL;
     }
 
     // 引擎过滤后收集有效层
-    std::vector<u32> effIdx = CollectEffectiveIndices(physicalLevels, profile.engine);
+    std::vector<u32> effIdx = CollectEffectiveIndices(physicalLevels, algAttrs.engine);
     u32 effNum = effIdx.size();
     CHK_PRT_RET(
         effNum == 0 || effNum > ALGO_LEVEL_NUM_TWO,
         HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], level num[%u] not support.", myRank, effNum),
         HcclResult::HCCL_E_NOT_SUPPORT);
     CHK_PRT_RET(
-        (topoInfo->userRankSize == 0), HCCL_ERROR("[TopoMatchConcurrentV2] Rank [%d], rankSize is 0.", myRank),
+        (topoInfo->userRankSize == 0), HCCL_ERROR("[TopoMatchConcurrentV2] Rank [%u], rankSize is 0.", myRank),
         HcclResult::HCCL_E_INTERNAL);
 
     // infos 沿用原 Concurrent：两组同 rank（mesh 组 + clos 组并发），不依赖 physicalLevels 内容
@@ -52,6 +55,12 @@ HcclResult TopoMatchConcurrentV2::MatchTopo(
 
     // physicalIdx 指向最高有效层
     u32 highestIdx = effIdx.back();
+    if (physicalLevels[highestIdx].localRanks.size() != topoInfo->userRankSize) {
+        HCCL_INFO(
+            "[TopoMatchConcurrentV2] Rank [%u], highest layer localRanks[%zu] != userRankSize[%u], not support.",
+            myRank, physicalLevels[highestIdx].localRanks.size(), topoInfo->userRankSize);
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
     algHierarchyInfo.physicalIdxForAlgoLevels = {{static_cast<PhysicalLevelIndex>(highestIdx)}};
     HCCL_INFO(
         "[TopoMatchConcurrentV2] Rank [%u], rankSize[%u], physicalIdxForAlgoLevels: [%s].", myRank,

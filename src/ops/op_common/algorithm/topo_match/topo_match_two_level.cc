@@ -17,7 +17,7 @@ namespace ops_hccl {
 namespace {
     // 计算内层维度 d0：LOCAL 取 localRanks.size()；GLOBAL 对称取 localRanks.size()，非对称 GCD 打平
     HcclResult CalcLevel0Dim(
-        const PhysicalLevelInfo& level0, u32 myRank, u32& d0, bool& asymmetric, u32& gcd, const AlgAttrs& profile)
+        const PhysicalLevelInfo& level0, u32 myRank, u32& d0, bool& asymmetric, u32& gcd, const AlgAttrs& algAttrs)
     {
         if (level0.view == PhysicalLevelView::LOCAL) {
             d0 = static_cast<u32>(level0.localRanks.size());
@@ -36,7 +36,7 @@ namespace {
         asymmetric = true;
         gcd = CalcGcd(level0.instSizeListByLayer);
         HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric level0, instList GCD[%u], d0=gcd.", myRank, gcd);
-        if (gcd == 1 && profile.engine != OpExecuteConfig::HOSTCPU) {
+        if (gcd == 1 && algAttrs.engine != OpExecuteConfig::HOSTCPU) {
             HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric GCD=1, not support.", myRank);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
@@ -66,29 +66,32 @@ TopoMatchTwoLevel::TopoMatchTwoLevel() {}
 TopoMatchTwoLevel::~TopoMatchTwoLevel() {}
 
 HcclResult TopoMatchTwoLevel::MatchTopo(
-    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& profile)
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     const auto& physicalLevels = topoInfo->physicalLevels;
     u32 myRank = topoInfo->userRank;
     u32 userRankSize = topoInfo->userRankSize;
-    if (physicalLevels.empty() || userRankSize == 0 || profile.algoTypes.size() != ALGO_LEVEL_NUM_TWO) {
-        HCCL_ERROR("[TopoMatchTwoLevel] Rank [%u], invalid input.", myRank);
+    if (physicalLevels.empty() || userRankSize == 0 || algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_TWO) {
+        HCCL_ERROR(
+            "[TopoMatchTwoLevel] Rank [%u], invalid input. "
+            "physicalLevels.size[%zu], userRankSize[%u], algoTypes.size[%zu].",
+            myRank, physicalLevels.size(), userRankSize, algAttrs.algoTypes.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
 
     // 引擎过滤 + 锚点匹配 + 分段 + 最高层校验
     std::vector<u32> effIdx;
     std::vector<u32> pIndices;
-    CHK_RET(ResolveMapping(physicalLevels, profile, userRankSize, effIdx, pIndices));
+    CHK_RET(ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices));
     u32 phys0 = effIdx[pIndices[0]];
 
     // GCD 校验 p_0（TwoLevel 非对称打平），外层 d1 = userRankSize / d0
     u32 d0 = 0;
     bool asymmetric = false;
     u32 gcd = 0;
-    CHK_RET(CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd, profile));
-    if (d0 == 0 || userRankSize % d0 != 0 || (d0 == 1 && profile.engine != OpExecuteConfig::HOSTCPU)) {
-        HCCL_INFO("[TopoMatchTwoLevel] userRankSize[%u] not divisible by d0[%u].", myRank, userRankSize, d0);
+    CHK_RET(CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd, algAttrs));
+    if (d0 == 0 || userRankSize % d0 != 0 || (d0 == 1 && algAttrs.engine != OpExecuteConfig::HOSTCPU)) {
+        HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], userRankSize[%u] not divisible by d0[%u].", myRank, userRankSize, d0);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     u32 d1 = userRankSize / d0;
@@ -106,7 +109,7 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
 
     // 填充 physicalIdxForAlgoLevels（二级：MeshConcur 双层，普通单层）
     CHK_RET(FillPhysicalIdxForAlgoLevels(
-        physicalLevels, effIdx, pIndices, profile.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
+        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
     HCCL_INFO(
         "[TopoMatchTwoLevel] Rank [%u], d0[%u] d1[%u] asym[%d], physicalIdxForAlgoLevels: [%s].", myRank, d0, d1,
         static_cast<int32_t>(asymmetric),
