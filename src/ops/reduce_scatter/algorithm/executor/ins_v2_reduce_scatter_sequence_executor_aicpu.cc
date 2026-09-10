@@ -557,7 +557,17 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshNHRAicpuReduce,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1D,
     InsTempReduceScatterAicpuReduceNHRPcie);
-REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshNHRAicpuReduce);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSequenceMeshNHRAicpuReduce, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel0PcieMix = true;
+    op.supportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0PcieMix) {
+            return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return false;
+    });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #ifndef AICPU_COMPILE
