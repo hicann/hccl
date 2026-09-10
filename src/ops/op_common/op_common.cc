@@ -76,11 +76,6 @@ constexpr u32 HOST_NOTIFY_TIMEOUT_OFFSET = 27; // host等待Device通知的超�
 constexpr u32 KERNEL_TIMEOUT_OFFSET = 25;      // kernel启动超时时间偏移量
 constexpr u32 CPU_TS_NOTIFY_NUM = 3;           // CPU TS thread notify数量
 
-struct FallbackCtxData {
-    char algName[ALG_MAX_LENGTH];
-    OpExecuteConfig opExecuteConfig;
-};
-
 void UpdateAicpuTimeoutCtx(const OpParam& param, AlgResourceCtxSerializable& resCtx)
 {
     AicpuTimeout timeout = DeriveAicpuTimeout(param.opConfig.execTimeout);
