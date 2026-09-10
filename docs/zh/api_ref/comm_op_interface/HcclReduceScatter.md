@@ -92,6 +92,10 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
   - int32、float32按照4Byte地址对齐。
   - int64、uint64、float64按照8Byte地址对齐。
 
+- 当通信域注册了对称内存时，sendBuf指向的输入buffer会被作为对称窗口参与远端rank的直接读写，ReduceScatter过程中部分算法会在sendBuf上就地完成归约（read+reduce），导致sendBuf中的数据被修改（污染）。因此用户需保证：
+  - 调用HcclReduceScatter后，sendBuf中的数据不再作为原始输入使用；
+  - 如需保留原始输入数据，请在调用前自行备份sendBuf。
+
 ## 调用示例
 
 ```c
