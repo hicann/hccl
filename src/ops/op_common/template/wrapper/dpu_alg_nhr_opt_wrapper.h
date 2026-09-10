@@ -18,7 +18,7 @@ namespace ops_hccl {
 
 // 用于 step 同步的专用 notify 索引（不与 ACK(0)/DATA(1)/FIN_ACK(2) 冲突）
 constexpr u32 NOTIFY_IDX_STEP_SYNC = 0;
-constexpr u32 STEP_SYNC_TIMEOUT = 18000;
+constexpr u32 STEP_SYNC_TIMEOUT = 180000;
 
 /**
  * @brief 统一的 NHR BatchTransfer 接口，覆盖所有收发场景：
@@ -36,26 +36,27 @@ constexpr u32 STEP_SYNC_TIMEOUT = 18000;
  * @param myRank       当前 rank 的 user rank
  * @param templateRankSize 模板 rank 总数
  */
-HcclResult BatchTransferNHR(
-    const AicpuNHRStepInfo &stepInfo,
-    const std::map<u32, std::vector<ChannelInfo>> &channels,
-    const TemplateDataParams &tempAlgParam,
-    u32 repeat,
-    u32 myRank,
-    u32 templateRankSize);
+HcclResult BatchTransferNHR(const AicpuNHRStepInfo &stepInfo, const std::map<u32, std::vector<ChannelInfo>> &channels,
+    const TemplateDataParams &tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize);
 
 // ========== 三阶段批量传输 ==========
 
 struct DpuTransferCtx {
-    const ChannelInfo *txCh;   // 发送通道（nullptr 表示无发送，remoteRank 等均可从此获取）
-    const ChannelInfo *rxCh;   // 接收通道（nullptr 表示无接收，samePeer 时 == txCh）
-    std::vector<DataSlice> txSrcSlices;   // 发送源切片
-    std::vector<DataSlice> txDstSlices;   // 发送目标切片
-    std::vector<DataSlice> rxSrcSlices;   // 接收源切片
-    std::vector<DataSlice> rxDstSlices;   // 接收目标切片
+    const ChannelInfo *txCh;            // 发送通道（nullptr 表示无发送，remoteRank 等均可从此获取）
+    const ChannelInfo *rxCh;            // 接收通道（nullptr 表示无接收，samePeer 时 == txCh）
+    std::vector<DataSlice> txSrcSlices; // 发送源切片
+    std::vector<DataSlice> txDstSlices; // 发送目标切片
+    std::vector<DataSlice> rxSrcSlices; // 接收源切片
+    std::vector<DataSlice> rxDstSlices; // 接收目标切片
 
-    bool hasSend() const { return txCh != nullptr; }
-    bool hasRecv() const { return rxCh != nullptr; }
+    bool hasSend() const
+    {
+        return txCh != nullptr;
+    }
+    bool hasRecv() const
+    {
+        return rxCh != nullptr;
+    }
 };
 
 /**
@@ -65,6 +66,6 @@ struct DpuTransferCtx {
  */
 HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx> &pairs);
 
-}  // namespace ops_hccl
+} // namespace ops_hccl
 
-#endif  // DPU_ALG_NHR_OPT_WRAPPER
+#endif // DPU_ALG_NHR_OPT_WRAPPER
