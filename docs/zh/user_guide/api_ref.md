@@ -2,7 +2,7 @@
 
 HCCL提供了通信域管理接口与通信算子接口，支持框架开发者实现分布式能力。
 
-- [通信域管理接口](https://gitcode.com/cann/hcomm/blob/master/docs/zh/api_ref/README.md)：提供通信域的创建、销毁、异常处理等接口。
+- [通信域管理接口](https://gitcode.com/cann/hcomm/blob/9.2.0/docs/zh/api_ref/README.md)：提供通信域的创建、销毁、异常处理等接口。
   
   通信域管理接口支持C与Python两种语言。C语言接口用于实现单算子模式下的框架适配，实现分布式能力；Python语言的接口用于实现图模式下的框架适配，当前仅用于TensorFlow网络在NPU执行分布式优化。
 
