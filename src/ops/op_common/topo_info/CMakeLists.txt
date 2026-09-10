@@ -11,6 +11,9 @@
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/topo.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/topo_host.cc
+    # PhysicalLevel标准化: 不依赖版本宏, 因此放在无条件块
+    ${CMAKE_CURRENT_SOURCE_DIR}/physical_level_build.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/physical_level_normalize.cc
 )
 
 if(TARGET hccl)

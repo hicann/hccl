@@ -26,7 +26,7 @@ A5 注册方式时选用的载体，本身不是本目录的产出目标。
 ## 1. 动机
 
 - **验证 A5 注册方式在 experimental 下的可用性（主动机）**：主链路算法（如
-  `src/ops/all_reduce/executor/ins_v2_all_reduce_sole_executor.cc` 的 `CcuMSAllReduceSoleMesh`）通过
+  `src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sole_executor.cc` 的 `CcuMSAllReduceSoleMesh`）通过
   `REGISTER_EXEC_V2` 宏注册进 `CollAlgExecRegistryV2`，运行时由 `GetAlgExec` 按算法名查找执行器。
   本目录在experimental/ 下新增一个同样走 A5 注册的算法，以测试 A5 注册方式是否可用。
 - **以最小样例验证全链路**：不修改主链路算法，而是在experimental 下复制同构的 executor/template/kernel 三层
@@ -37,7 +37,7 @@ A5 注册方式时选用的载体，本身不是本目录的产出目标。
 ## 2. 目录结构与设计
 
 下图为以 `hccl/` 仓库根为起点的完整结构，省略的无关文件/目录统一用 `...` 标注。本目录结构与主链路
-`src/ops/all_reduce/`（`executor/` + `template/ccu/kernel/`）同构，证明相同的 A5 注册代码在
+`src/ops/all_reduce/`（`algorithm/executor/` + `algorithm/template/ccu/kernel/`）同构，证明相同的 A5 注册代码在
 experimental 目录下可以原样工作；图中同时标注了与本目录直接相关的关键上下文（注册表、主链路
 对照样例、父级 CMakeLists）。
 
@@ -46,10 +46,10 @@ hccl/                                                      # 仓库根
 ├── CMakeLists.txt                                         # 顶层：option(ENABLE_EXPERIMENTAL)；条件 add_subdirectory(experimental/ops/)
 ├── build.sh                                               # 编包入口：--experimental → -DENABLE_EXPERIMENTAL=ON
 ├── src/                                                   # 主链路（商用代码，位于 experimental 之外）
-│   ├── ops/op_common/executor/registry/
+│   ├── ops/op_common/algorithm/executor/registry/
 │   │   └── coll_alg_v2_exec_registry.*                    # 执行器注册表：REGISTER_EXEC_V2 写入 / GetAlgExec 查找
 │   ├── ops/all_reduce/
-│   │   ├── executor/ins_v2_all_reduce_sole_executor.cc    # 主链路对照样例（注册 
+│   │   ├── algorithm/executor/ins_v2_all_reduce_sole_executor.cc    # 主链路对照样例（注册 CcuMSAllReduceSoleMesh）
 │   │   └── ...                                            # 其余 executor/template/kernel 文件
 │   └── ...                                                # 其余 src 子模块
 ├── include/                                               # 对外头文件（hccl.h / hccl_mc2.h 等）
@@ -207,11 +207,11 @@ template 继承自引擎模板基类（以 `CcuAlgTemplateBase` 为例），须�
 | `CalcScratchMultiple` | 返回 scratch 倍率，供 executor 计算单 loop 数据上界 | `inBuffType`/`outBuffType` 输入输出 buffer 类型 |
 | `FastLaunch` | 快速下发：用预存 `submitInfos` 改写地址后直发内核 | `param`；`tempFastLaunchCtx` threads/ccuKernelSubmitInfos/buffInfo |
 
-`CalcCostCoeff`（executor 与 template）对应基类 `CalcCostCoeffParam` 字段的完整说明可见 `src/ops/op_common/template/` 下模板头文件注释。
+`CalcCostCoeff`（executor 与 template）对应基类 `CalcCostCoeffParam` 字段的完整说明可见 `src/ops/op_common/algorithm/template/` 下模板头文件注释。
 
 #### REGISTER_EXEC_V2 宏参数
 
-宏定义见 `src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h`，签名：
+宏定义见 `src/ops/op_common/algorithm/executor/registry/coll_alg_v2_exec_registry.h`，签名：
 
 ```cpp
 REGISTER_EXEC_V2(type, name, insCollAlgBase, AlgTopoMatch, InsAlgTemplate)
