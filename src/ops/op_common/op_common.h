@@ -32,6 +32,12 @@ extern "C" {
 #endif
 
 namespace ops_hccl {
+// 回退结果ctx缓存的数据布局：HcclExecOp回退缓存与CCU参数协商缓存共用
+struct FallbackCtxData {
+    char algName[ALG_MAX_LENGTH];
+    OpExecuteConfig opExecuteConfig;
+};
+
 HcclResult HcclExecOp(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName,
     const ResPackGraphMode& resPack = ResPackGraphMode());

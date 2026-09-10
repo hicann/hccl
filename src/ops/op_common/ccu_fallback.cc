@@ -457,6 +457,31 @@ HcclResult CheckCcuParamAndFallback(
         return HCCL_SUCCESS;
     }
 
+    // 以传入的algName与opExecuteConfig为key查询协商结果缓存，命中则跳过跨rank协商
+    std::string cacheTag
+        = algName + "_" + std::to_string(static_cast<uint32_t>(param.opExecuteConfig)) + "_ccuParamCache";
+    void* cacheCtx = nullptr;
+    uint64_t cacheCtxSize = 0;
+    HcclResult getRet = HcclEngineCtxGet(comm, cacheTag.c_str(), CommEngine::COMM_ENGINE_CCU, &cacheCtx, &cacheCtxSize);
+    if (getRet == HCCL_SUCCESS && cacheCtx != nullptr && cacheCtxSize >= sizeof(FallbackCtxData)) {
+        auto* ctxData = static_cast<FallbackCtxData*>(cacheCtx);
+        if (ctxData->opExecuteConfig == param.opExecuteConfig) {
+            HCCL_INFO(
+                "[%s] cache hit, no fallback needed, algName[%s], opExecuteConfig[%u].", __func__, ctxData->algName,
+                static_cast<uint32_t>(ctxData->opExecuteConfig));
+            return HCCL_SUCCESS;
+        }
+        // 此前该key发生过回退，直接应用缓存的回退结果
+        HCCL_INFO(
+            "[%s] cache hit, apply cached fallback, algName[%s], opExecuteConfig[%u].", __func__, ctxData->algName,
+            static_cast<uint32_t>(ctxData->opExecuteConfig));
+        param.opExecuteConfig = ctxData->opExecuteConfig;
+        CHK_RET(SetCommEngine(param));
+        algName = ctxData->algName;
+        CHK_RET(SetOpParamAlgTag(param, algName));
+        return HCCL_SUCCESS;
+    }
+
     CheckParamInfo* recvInfos = nullptr;
     CHK_RET(ExecuteParamCheckOp(comm, param, rankSize, recvInfos));
 
@@ -473,6 +498,18 @@ HcclResult CheckCcuParamAndFallback(
             "[%s] param check success, all ranks consistent, opExecuteConfig[%u].", __func__,
             static_cast<uint32_t>(lowestConfig));
     }
+
+    // 缓存协商结束后的最终algName与opExecuteConfig，后续同key调用跳过协商
+    void* newCtx = nullptr;
+    CHK_RET(HcclEngineCtxCreate(comm, cacheTag.c_str(), CommEngine::COMM_ENGINE_CCU, sizeof(FallbackCtxData), &newCtx));
+    auto* ctxData = static_cast<FallbackCtxData*>(newCtx);
+    int copyRet = sprintf_s(ctxData->algName, sizeof(ctxData->algName), "%s", algName.c_str());
+    if (copyRet <= 0) {
+        HCCL_ERROR("[%s] sprintf_s for algName failed, ret[%d].", __func__, copyRet);
+        (void)HcclEngineCtxDestroy(comm, cacheTag.c_str(), CommEngine::COMM_ENGINE_CCU);
+        return HCCL_E_INTERNAL;
+    }
+    ctxData->opExecuteConfig = param.opExecuteConfig;
     return HCCL_SUCCESS;
 }
 } // namespace ops_hccl
