@@ -1514,6 +1514,7 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     InsTempReduceScatterMesh1D, InsTempReduceScatterNHR, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(
     AicpuAllReduceParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.maxTopoLevelNum = 3; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return (
