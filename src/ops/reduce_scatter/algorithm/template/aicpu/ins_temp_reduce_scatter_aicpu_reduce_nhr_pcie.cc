@@ -58,8 +58,13 @@ HcclResult InsTempReduceScatterAicpuReduceNHRPcie::KernelRun(
     if ((tempAlgParams_.buffInfo.inBuffType == tempAlgParams_.buffInfo.hcclBuffType)
         && (tempAlgParams_.buffInfo.inBuffBaseOff == tempAlgParams_.buffInfo.hcclBuffBaseOff)) {
         // inBuff和hcclBuff地址偏移相同时，hcclBuff自行向后偏移一部分
-        u64 maxSliceSize = std::max(tempAlgParams_.sliceSize, tempAlgParams_.tailSize);
-        hcclBuffBaseOff_ = tempAlgParams_.buffInfo.hcclBuffBaseOff + templateRankSize_ * maxSliceSize;
+        if (tempAlgParams_.inputSliceStride > tempAlgParams_.sliceSize) {
+            // 输入稀疏布局时，hcclBuff偏移至数据末尾，需要与multiple*2配合使用
+            hcclBuffBaseOff_ = tempAlgParams_.inputSliceStride * templateRankSize_;
+        } else {
+            u64 maxSliceSize = std::max(tempAlgParams_.sliceSize, tempAlgParams_.tailSize);
+            hcclBuffBaseOff_ = tempAlgParams_.buffInfo.hcclBuffBaseOff + templateRankSize_ * maxSliceSize;
+        }
     } else {
         hcclBuffBaseOff_ = tempAlgParams_.buffInfo.hcclBuffBaseOff;
     }
@@ -156,7 +161,8 @@ InsTempReduceScatterAicpuReduceNHRPcie::LocalCopyToOutput(const std::vector<Thre
     for (u64 rpt = 0; rpt < rptNum; ++rpt) {
         const u64 inBaseOff = tempAlgParams_.buffInfo.inBuffBaseOff + rpt * tempAlgParams_.inputRepeatStride;
         const u64 inOff = inBaseOff + tempAlgParams_.inputSliceStride * sliceIdx;
-        const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+        const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + myAlgIdx * tempAlgParams_.outputSliceStride
+                               + rpt * tempAlgParams_.outputRepeatStride;
         // 尾块场景下使用tailSize作为数据大小
         const u64 currSize = (sliceIdx == templateRankSize_ - 1 && tempAlgParams_.tailSize > 0) ?
                                  tempAlgParams_.tailSize :
@@ -277,10 +283,12 @@ u64 InsTempReduceScatterAicpuReduceNHRPcie::CalcScratchMultiple(BufferType inBuf
 {
     (void)inBuffType;
     (void)outBuffType;
+    const u64 scratchMultiple = templateRankSize_ * 2;
     HCCL_INFO(
         "[InsTempReduceScatterAicpuReduceNHRPcie][CalcScratchMultiple] templateScratchMultiplier[%llu]",
-        templateRankSize_);
-    return templateRankSize_;
+        scratchMultiple);
+    // 需要额外的Buffer做LocalReduce
+    return scratchMultiple;
 }
 
 u32 InsTempReduceScatterAicpuReduceNHRPcie::GetRankFromMap(const u32 algRankIdx)
