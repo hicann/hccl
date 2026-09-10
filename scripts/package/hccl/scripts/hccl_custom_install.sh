@@ -335,9 +335,6 @@ install_es_whl() {
 
     hccl_install_package "${_whl_file}" "${_whl_dir}"
 
-    chmod -R 755 "${_whl_dir}"/es_hccl 2> /dev/null
-    chmod -R 755 "${_whl_dir}"/es_hccl-*.dist-info 2> /dev/null
-
     if [ -d "${common_parse_dir}/ops_hccl" ]; then
         rm -rf "${common_parse_dir}/ops_hccl"
     fi

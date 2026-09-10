@@ -61,6 +61,9 @@ endif()
 
 # 下载并编译gtest
 set(CANN_3RD_LIB_PATH ${HCCL_DEV_BASE}/third_party)
+if(NOT CANN_CXX11_ABI)
+    set(CANN_CXX11_ABI 0)
+endif()
 add_cann_third_party(gtest)
 
 add_subdirectory(testcase)
