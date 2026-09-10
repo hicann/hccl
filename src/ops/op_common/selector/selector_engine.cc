@@ -25,6 +25,7 @@
 #include "hccl_algo_dims.h"
 #include "hccl_common.h"
 #include "tuner_setup.h"
+#include "auto_selector_base.h"
 
 namespace ops_hccl {
 
@@ -254,6 +255,11 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
     HCCL_INFO(
         "[SelectorEngine] Run start, opType=%d, opExecuteConfig=%d.", static_cast<int>(param.opType),
         static_cast<int>(param.opExecuteConfig));
+
+    if (param.opExecuteConfig != OpExecuteConfig::AIV_ONLY && AutoSelectorBase::IsRollBackAiv(param, topoInfo)) {
+        HCCL_DEBUG("[SelectorEngine] Need to roll back AIV algo");
+        param.opExecuteConfig = OpExecuteConfig::AIV_ONLY;
+    }
 
     // step 0: tuner 初始化（每通信域仅一次，独立于 costModel 引擎副本）
     void* tunerCtxPtr = nullptr;

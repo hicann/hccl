@@ -67,7 +67,7 @@ AutoSelectorBase::Select(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo
     return ret;
 }
 
-bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo) const
+bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo)
 {
     // Mesh类算法场景，ATU资源受限，切换为AIV算法
     bool isAllToAllOps = opParam.opType == HcclCMDType::HCCL_CMD_ALLTOALL
