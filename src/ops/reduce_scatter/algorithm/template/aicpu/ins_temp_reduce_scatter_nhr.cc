@@ -114,8 +114,8 @@ HcclResult InsTempReduceScatterNHR::KernelRun(
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
     supportSymmetricMemAccess_ = param.supportSymmetricMemory;
 
-    bool isPcieProtocal = IsPcieProtocol(channels_); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(channels_); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                     // 是否使用Read模式
     doPreCopy_ = false;
     skipStep0TxPreCopy_ = false;
     step0TxSliceIdxs_.clear();

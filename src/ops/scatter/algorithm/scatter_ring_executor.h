@@ -35,10 +35,10 @@ private:
     HcclResult MultiRingScatter(
         HcclMem inputMem, HcclMem outputMem, const u64 count, const HcclDataType dataType,
         const std::vector<Slice>& dataSegsSlice, u32 root, const HcclCollOpInfo* opInfo, const u64 baseOffset);
-    HcclResult MutliSegSlicePrepare(
-        const std::vector<Slice>& dataSegsSlice, u32 ringNum, std::vector<std::vector<Slice>>& mutliSegsSlices) const;
+    HcclResult MultiSegSlicePrepare(
+        const std::vector<Slice>& dataSegsSlice, u32 ringNum, std::vector<std::vector<Slice>>& multiSegsSlices) const;
     HcclResult PrepareMultiRingSlice(
-        const std::vector<Slice>& dataSegsSlice, u32& ringNum, std::vector<std::vector<Slice>>& mutliRingsSlices,
+        const std::vector<Slice>& dataSegsSlice, u32& ringNum, std::vector<std::vector<Slice>>& multiRingsSlices,
         std::vector<std::vector<u32>>& rankOrders);
 
     /* *************** 算法参数 *************** */

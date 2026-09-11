@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCLV2_INS_ALL_GATHER_CONCURR_EXECUTOR_H
-#define HCCLV2_INS_ALL_GATHER_CONCURR_EXECUTOR_H
+#ifndef HCCLV2_INS_ALL_GATHER_CONCURRENT_EXECUTOR_H
+#define HCCLV2_INS_ALL_GATHER_CONCURRENT_EXECUTOR_H
 
 #include "executor_common_ops.h"
 #include "topo_match_base.h"
@@ -86,4 +86,4 @@ private:
 };
 } // namespace ops_hccl
 
-#endif // HCCLV2_INS_ALL_GATHER_CONCURR_EXECUTOR_H
+#endif // HCCLV2_INS_ALL_GATHER_CONCURRENT_EXECUTOR_H

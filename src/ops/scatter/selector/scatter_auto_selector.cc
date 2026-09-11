@@ -14,7 +14,7 @@
 
 namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_SC_DATA_SIZE = 16 * 1024 * 1024;
-constexpr u64 UBX_SC_CONCURR_DATA_SIZE = 8 * 1024 * 1024;
+constexpr u64 UBX_SC_CONCURRENT_DATA_SIZE = 8 * 1024 * 1024;
 constexpr uint32_t TOPO_LEVEL_3 = 3;
 
 SelectorStatus ScatterAutoSelector::SelectCcuMsAlgo(
@@ -117,7 +117,7 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURR_DATA_SIZE) {
+            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "CcuSchedScatterSoleMesh";
             } else { // UBX机型数据量大于等于8MB，使用Concurrent
                 selectAlgName = "CcuSchedScatterConcurMeshNHR";
@@ -201,7 +201,7 @@ SelectorStatus ScatterAutoSelector::SelectSingleLevelAicpuAlgo(
         selectAlgName = "AicpuScatterSoleMesh";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURR_DATA_SIZE) {
+            if (topoInfo->level0PcieMix || dataSize < UBX_SC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "AicpuScatterSoleMesh";
             } else { // UBX机型数据量大于等于8MB，使用Concurrent
                 selectAlgName = "AicpuScatterConcurMeshNHR";

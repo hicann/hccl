@@ -441,7 +441,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     levelThreadsRS_.resize(OMNIPIPE_LEVEL_NUM);
     levelThreadsAG_.resize(OMNIPIPE_LEVEL_NUM);
 
-    HCCL_DEBUG("[InsV2ReduceOmniPipe3DExecutor][InitTemplate] tempMap.size()[%u]", tempMap.size());
+    HCCL_DEBUG("[InsV2ReduceOmniPipe3DExecutor][InitTemplate] tempMap.size()[%zu]", tempMap.size());
     controlThread_ = threads_.at(0);
 
     for (int level = 0; level < OMNIPIPE_AR_LEVEL_NUM; level++) {
@@ -731,13 +731,16 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         std::map<u32, TemplateDataParams>& tempAlgParamMap)
 {
     u32 interPodStepNum = OmniPipeSliceInfoRS.dataSliceLevel2.size();
-    u32 intraPodStepNum = OmniPipeSliceInfoRS.dataSliceLevel0.size() / OmniPipeSliceInfoRS.dataSliceLevel2.size();
+    CHK_PRT_RET(
+        interPodStepNum == 0, HCCL_ERROR("[InsV2ReduceOmniPipe3DExecutor][ProcessRS] dataSliceLevel2 is empty."),
+        HCCL_E_INTERNAL);
+    u32 intraPodStepNum = OmniPipeSliceInfoRS.dataSliceLevel0.size() / interPodStepNum;
 
     // 4.3 RS for循环2层
     for (int stepZ = 0; stepZ < interPodStepNum; stepZ++) {
         if (rankSizeLevel2_ > 1) {
-            GenTemplateAlgParamsByDimData(
-                tempAlgParamMap[OMNIPIPE_RS_LEVEL2], OmniPipeSliceInfoRS.dataSliceLevel2[stepZ]);
+            CHK_RET(GenTemplateAlgParamsByDimData(
+                tempAlgParamMap[OMNIPIPE_RS_LEVEL2], OmniPipeSliceInfoRS.dataSliceLevel2[stepZ]));
             CHK_RET(PreSyncInterThreads(controlThread_, tempMainThreadsLevel2RS_, ntfIdxCtrlToTempLevel2RS_));
         }
 
@@ -783,7 +786,10 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         std::map<u32, TemplateDataParams>& tempAlgParamMap)
 {
     u32 interPodStepNum = OmniPipeSliceInfoAG.dataSliceLevel2.size();
-    u32 intraPodStepNum = OmniPipeSliceInfoAG.dataSliceLevel0.size() / OmniPipeSliceInfoAG.dataSliceLevel2.size();
+    CHK_PRT_RET(
+        interPodStepNum == 0, HCCL_ERROR("[InsV2ReduceOmniPipe3DExecutor][ProcessAG] dataSliceLevel2 is empty."),
+        HCCL_E_INTERNAL);
+    u32 intraPodStepNum = OmniPipeSliceInfoAG.dataSliceLevel0.size() / interPodStepNum;
 
     // 5.1 AG for循环2层
     for (int stepZ = 0; stepZ < interPodStepNum; stepZ++) {
@@ -797,16 +803,16 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
             // XY前同步
             CHK_RET(PreSyncInterThreads(controlThread_, tempMainThreadsLevel01AG_, ntfIdxCtrlToTempLevel01AG_));
             if (rankSizeLevel0_ > 1) {
-                GenTemplateAlgParamsByDimData(
+                CHK_RET(GenTemplateAlgParamsByDimData(
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL0],
-                    OmniPipeSliceInfoAG.dataSliceLevel0[stepZ * intraPodStepNum + stepXY]);
+                    OmniPipeSliceInfoAG.dataSliceLevel0[stepZ * intraPodStepNum + stepXY]));
                 CHK_RET(tempMap[OMNIPIPE_AG_LEVEL0]->KernelRun(
                     param, tempAlgParamMap[OMNIPIPE_AG_LEVEL0], tempResMap[OMNIPIPE_AG_LEVEL0]));
             }
             if (rankSizeLevel1_ > 1) {
-                GenTemplateAlgParamsByDimData(
+                CHK_RET(GenTemplateAlgParamsByDimData(
                     tempAlgParamMap[OMNIPIPE_AG_LEVEL1],
-                    OmniPipeSliceInfoAG.dataSliceLevel1[stepZ * intraPodStepNum + stepXY]);
+                    OmniPipeSliceInfoAG.dataSliceLevel1[stepZ * intraPodStepNum + stepXY]));
                 CHK_RET(tempMap[OMNIPIPE_AG_LEVEL1]->KernelRun(
                     param, tempAlgParamMap[OMNIPIPE_AG_LEVEL1], tempResMap[OMNIPIPE_AG_LEVEL1]));
             }
@@ -859,7 +865,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     maxCountPerLoop = loopInfo[0];
     loopTimes = loopInfo[1];
 
-    HCCL_DEBUG("maxCountPerLoop[%u], loopTimes[%u]", maxCountPerLoop, loopTimes);
+    HCCL_DEBUG("maxCountPerLoop[%llu], loopTimes[%llu]", maxCountPerLoop, loopTimes);
 
     // 2.4 获取每个rank，每个loop切分的数据量count
     multiLoopAllRankSplitData = OmniPipeSplitRankDataLoop(allRankSplitData, maxCountPerLoop, loopTimes, dataTypeSize_);

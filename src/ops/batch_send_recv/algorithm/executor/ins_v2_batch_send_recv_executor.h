@@ -53,8 +53,8 @@ protected:
         SendRecvSlice(void* addr, u64 size, u32 remoteRank) : addr_(addr), size_(size), remoteRank_(remoteRank) {}
     }; // 切片任务信息
 
-    std::deque<SendRecvSlice> sendDataSilces_;
-    std::deque<SendRecvSlice> recvDataSilces_;
+    std::deque<SendRecvSlice> sendDataSlices_;
+    std::deque<SendRecvSlice> recvDataSlices_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
 

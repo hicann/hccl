@@ -782,7 +782,7 @@ HcclResult HcclExecOp(
     const ResPackGraphMode& resPack)
 {
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
-    HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu]", beginTime);
+    HCCL_INFO("[HcclExecOp]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu us]", beginTime);
 
     // [HCCL-ALGO-Plugin]
     // 算法执行阶段：
@@ -3280,7 +3280,7 @@ HcclResult SetCommEngine(OpParam& param)
 HcclResult SingleRankProc(HcclComm comm, OpParam& param)
 {
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
-    HCCL_INFO("[SingleRankProc]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu]", beginTime);
+    HCCL_INFO("[SingleRankProc]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu us]", beginTime);
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY) {
         HCCL_ERROR(
             "[SingleRankProc] opType[%s] currently do not select aiv mode, aiv only not support, "

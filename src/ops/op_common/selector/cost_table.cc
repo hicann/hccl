@@ -49,6 +49,9 @@ static inline u64 CalcCostTableDataSize(const OpParam& opParam, u32 userRankSize
     switch (opParam.opType) {
         case HcclCMDType::HCCL_CMD_ALLGATHER_V:
         case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V: {
+            if (opParam.vDataDes.counts == nullptr) {
+                return 0;
+            }
             const u64* counts = reinterpret_cast<const u64*>(opParam.vDataDes.counts);
             u64 maxC = 0;
             for (u32 i = 0; i < userRankSize; ++i) {
@@ -59,6 +62,9 @@ static inline u64 CalcCostTableDataSize(const OpParam& opParam, u32 userRankSize
         case HcclCMDType::HCCL_CMD_ALLTOALL:
         case HcclCMDType::HCCL_CMD_ALLTOALLV:
         case HcclCMDType::HCCL_CMD_ALLTOALLVC: {
+            if (opParam.all2AllVDataDes.sendCounts == nullptr) {
+                return 0;
+            }
             u64 sendCount = *reinterpret_cast<const u64*>(opParam.all2AllVDataDes.sendCounts);
             return sendCount * DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
         }

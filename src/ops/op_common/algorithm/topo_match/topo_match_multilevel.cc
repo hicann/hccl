@@ -153,6 +153,9 @@ HcclResult TopoMatchMultilevel::TopoForLayer1(
 bool TopoMatchMultilevel::CheckVecElementAllSame(const uint32_t* instSizeList, uint32_t listSize) const
 {
 #ifndef AICPU_COMPILE
+    if (listSize == 0) {
+        return false;
+    }
     uint32_t firstSize = instSizeList[0];
     for (uint32_t i = 1; i < listSize; i++) {
         if (firstSize != instSizeList[i]) {
@@ -174,6 +177,9 @@ uint32_t TopoMatchMultilevel::GcdTwo(uint32_t a, uint32_t b) const
 
 uint32_t TopoMatchMultilevel::GcdOfInstSizeList(const uint32_t* instSizeList, uint32_t listSize) const
 {
+    if (listSize == 0) {
+        return 0;
+    }
     uint32_t result = instSizeList[0];
     for (uint32_t i = 1; i < listSize; i++) {
         result = GcdTwo(result, instSizeList[i]);

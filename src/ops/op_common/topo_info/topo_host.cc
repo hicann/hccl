@@ -310,8 +310,10 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
     pairLinkCounter[static_cast<u32>(CommProtocol::COMM_PROTOCOL_SIO)] = 0;
 
     // 首先获取当前rank所在服务器的信息，确定服务器的起始和结束rank
-    uint32_t currentServerStartRank = GetCurrentServerStartRank(comm, topoInfo);
-    uint32_t currentServerEndRank = GetCurrentServerEndRank(comm, topoInfo);
+    uint32_t currentServerStartRank = 0;
+    uint32_t currentServerEndRank = 0;
+    CHK_RET(GetCurrentServerStartRank(comm, topoInfo, currentServerStartRank));
+    CHK_RET(GetCurrentServerEndRank(comm, topoInfo, currentServerEndRank));
 
     for (u32 srcRank = currentServerStartRank; srcRank < currentServerEndRank; ++srcRank) {
         for (u32 dstRank = currentServerStartRank; dstRank < currentServerEndRank; ++dstRank) {
@@ -357,7 +359,7 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
 }
 
 // 获取当前服务器的startRank
-uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo)
+HcclResult GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo, uint32_t& currentServerStartRank)
 {
     uint32_t rankListNum = 0;
     uint32_t* rankSizeList = nullptr;
@@ -365,17 +367,23 @@ uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo)
     // 获取L0层级（服务器级别）的实例大小列表
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(
         comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
+    CHK_PRT_RET(
+        rankSizeList == nullptr || topoInfo->serverIdx >= rankListNum,
+        HCCL_ERROR(
+            "[GetCurrentServerStartRank] serverIdx[%u] is out of range, rankListNum[%u].", topoInfo->serverIdx,
+            rankListNum),
+        HCCL_E_INTERNAL);
 
     // 确定当前rank属于哪个服务器
-    uint32_t currentServerStartRank = 0;
+    currentServerStartRank = 0;
     for (u32 i = 0; i < topoInfo->serverIdx; ++i) {
         currentServerStartRank += rankSizeList[i];
     }
-    return currentServerStartRank;
+    return HCCL_SUCCESS;
 }
 
 // 获取当前服务器的EndRank
-uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo)
+HcclResult GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo, uint32_t& currentServerEndRank)
 {
     uint32_t rankListNum = 0;
     uint32_t* rankSizeList = nullptr;
@@ -383,6 +391,12 @@ uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo)
     // 获取L0层级（服务器级别）的实例大小列表
     CHK_RET(HcclRankGraphGetInstSizeListByLayer(
         comm, static_cast<uint32_t>(HcclNetLayer::HCCL_NetLayer_L0), &rankSizeList, &rankListNum));
+    CHK_PRT_RET(
+        rankSizeList == nullptr || topoInfo->serverIdx >= rankListNum,
+        HCCL_ERROR(
+            "[GetCurrentServerEndRank] serverIdx[%u] is out of range, rankListNum[%u].", topoInfo->serverIdx,
+            rankListNum),
+        HCCL_E_INTERNAL);
 
     // 确定当前rank属于哪个服务器
     uint32_t currentServerStartRank = 0;
@@ -390,8 +404,8 @@ uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo)
         currentServerStartRank += rankSizeList[i];
     }
     uint32_t currentServerCount = rankSizeList[topoInfo->serverIdx];
-    uint32_t currentServerEndRank = currentServerStartRank + currentServerCount;
-    return currentServerEndRank;
+    currentServerEndRank = currentServerStartRank + currentServerCount;
+    return HCCL_SUCCESS;
 }
 
 HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>>& moduleMap)

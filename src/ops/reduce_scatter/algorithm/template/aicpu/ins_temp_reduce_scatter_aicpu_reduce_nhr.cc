@@ -69,8 +69,8 @@ HcclResult InsTempReduceScatterAicpuReduceNHR::KernelRun(
     tempAlgParams_ = tempAlgParams;
     channels_ = templateResource.channels;
     dataType_ = param.DataDes.dataType;
-    bool isPcieProtocal = IsPcieProtocol(channels_); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(channels_); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                     // 是否使用Read模式
 
     for (u32 sliceIdx = 0; sliceIdx < templateRankSize_; ++sliceIdx) {
         // Step 1: 本地拷贝，将本rank的数据拷贝到自己hcclBuffer上相应的位置

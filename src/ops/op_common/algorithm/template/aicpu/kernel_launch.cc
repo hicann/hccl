@@ -374,7 +374,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
             && HcommRegOpInfo(param->commName, reinterpret_cast<void*>(&opInfo), sizeof(ScatterOpInfo))
                    != HCCL_SUCCESS) {
             HCCL_ERROR(
-                "%s HcommRegOpInfo fail, commName[%s], algTag[%s], size[%u]", __func__, param->commName, opInfo.algTag,
+                "%s HcommRegOpInfo fail, commName[%s], algTag[%s], size[%zu]", __func__, param->commName, opInfo.algTag,
                 sizeof(ScatterOpInfo));
             return 1;
         }
@@ -947,12 +947,12 @@ HcclResult ops_hccl::RestoreVarDataAlltoAllV(OpParam& param, const AlgResourceCt
 HcclResult ops_hccl::RestoreVarDataReduceScatterV(OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
-    HCCL_INFO("rankSize:%u", rankSize);
+    HCCL_INFO("rankSize:%llu", rankSize);
     CHK_PRT_RET(
         param.varMemSize != REDUCE_SCATTER_V_VECTOR_NUM * rankSize * sizeof(u64),
         HCCL_ERROR(
             "[RestoreVarDataReduceScatterV] param.varMemSize [%llu] is invalid,"
-            "REDUCE_SCATTER_V_VECTOR_NUM is [%u], rankSize is [%u], sizeof(u64) is [%u],",
+            "REDUCE_SCATTER_V_VECTOR_NUM is [%llu], rankSize is [%llu], sizeof(u64) is [%zu],",
             param.varMemSize, REDUCE_SCATTER_V_VECTOR_NUM, rankSize, sizeof(u64)),
         HCCL_E_PARA);
 
@@ -965,12 +965,12 @@ HcclResult ops_hccl::RestoreVarDataReduceScatterV(OpParam& param, const AlgResou
 HcclResult ops_hccl::RestoreVarDataAllGatherV(OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     u64 rankSize = resCtx.topoInfo.userRankSize;
-    HCCL_INFO("rankSize:%u", rankSize);
+    HCCL_INFO("rankSize:%llu", rankSize);
     CHK_PRT_RET(
         param.varMemSize != ALL_GATHER_V_VECTOR_NUM * rankSize * sizeof(u64),
         HCCL_ERROR(
             "[RestoreVarDataAllGatherV] param.varMemSize [%llu] is invalid,"
-            "ALL_GATHER_V_VECTOR_NUM is [%u], rankSize is [%u], sizeof(u64) is [%u],",
+            "ALL_GATHER_V_VECTOR_NUM is [%llu], rankSize is [%llu], sizeof(u64) is [%zu],",
             param.varMemSize, ALL_GATHER_V_VECTOR_NUM, rankSize, sizeof(u64)),
         HCCL_E_PARA);
 
@@ -1010,7 +1010,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
             && HcommRegOpInfo(param->commName, reinterpret_cast<void*>(&opInfo), sizeof(ScatterOpInfo))
                    != HCCL_SUCCESS) {
             HCCL_ERROR(
-                "%s HcommRegOpInfo fail, commName[%s], algTag[%s], size[%u]", __func__, param->commName, opInfo.algTag,
+                "%s HcommRegOpInfo fail, commName[%s], algTag[%s], size[%zu]", __func__, param->commName, opInfo.algTag,
                 sizeof(ScatterOpInfo));
             return 1;
         }

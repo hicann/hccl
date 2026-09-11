@@ -571,8 +571,8 @@ HcclResult InsTempBroadcastNHR::KernelRun(
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[dataType_];
-    bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempBroadcastNHR] Use Dma Read[%d]", isDmaRead_);
     HCCL_INFO("[InsTempBroadcastNHR] BroadcastNHR entry.");
 
