@@ -71,7 +71,7 @@
 | edge_list |  | 必选。<br>物理连接边列表。 |
 |  | net_layer | 必选。<br>当前物理链路所属的网络层次，取值范围：[0,7]。 |
 |  | link_type | 必选。<br>当前物理链路的连接类型，支持以下取值：<br>  - PEER2PEER<br>  - PEER2NET |
-|  | protocols | 必选。<br>当前链路支持的协议列表，支持以下取值：<br>  - UB_CTP<br>  - UB_TP<br>  - ROCE<br>  - HCCS<br>  - TCP<br>  - UB_MEM<br>  - UBOE |
+|  | protocols | 必选。<br>当前链路支持的协议列表，支持以下取值：<br>  - UB_CTP<br>  - UB_RTP<br>  - ROCE<br>  - HCCS<br>  - TCP<br>  - UB_MEM<br>  - UBOE |
 |  | local_a | 必选。<br>通信链路一端NPU的物理ID。<br>该ID须存在于“peer_list”中。 |
 |  | local_a_ports | 必选。<br>当前层次的通信链路在“local_a”对应的NPU中使用的端口列表，字符串类型，长度为1~32，列表中每个值的格式为：Die ID/端口ID。<br>例如："local_a_ports": ["1/0"]，代表Die1的0号端口。 |
 |  | local_b | 必选。<br>通信链路另一端NPU的物理ID。<br>该ID须存在于“peer_list”中。 |
