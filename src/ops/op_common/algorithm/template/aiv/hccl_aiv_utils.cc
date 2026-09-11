@@ -240,16 +240,11 @@ static void RegisterAivExceptionCallback()
 static HcclResult SaveAivDfxTaskInfo(const AivOpArgs& opArgs)
 {
     u32 taskId = 0;
-    int32_t streamIdSigned = 0;
-    aclError aclRet = aclrtGetThreadLastTaskId(&taskId);
+    u32 streamId = 0;
+    rtError_t rtRet = rtGetTaskIdAndStreamID(&taskId, &streamId);
     CHK_PRT_RET(
-        aclRet != ACL_SUCCESS,
-        HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] aclrtGetThreadLastTaskId failed, ret[%d].", aclRet), HCCL_E_RUNTIME);
-    aclRet = aclrtStreamGetId(opArgs.stream, &streamIdSigned);
-    CHK_PRT_RET(
-        aclRet != ACL_SUCCESS, HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] aclrtStreamGetId failed, ret[%d].", aclRet),
+        rtRet != RT_ERROR_NONE, HCCL_ERROR("[AIV][SaveAivDfxTaskInfo] rtGetTaskIdAndStreamID failed, ret[%d].", rtRet),
         HCCL_E_RUNTIME);
-    u32 streamId = static_cast<u32>(streamIdSigned);
 
     TaskParamAiv taskInfo;
     taskInfo.taskId = taskId;
