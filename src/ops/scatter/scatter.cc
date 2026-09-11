@@ -55,9 +55,7 @@ HcclResult HcclScatter(
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
     // 重执行引导到老的流程上面
-    if (deviceType == HcclDevType::DEV_TYPE_910_93
-        && (GetExternalInputIntraServerRetryEnable() || GetExternalInputInterServerRetryEnable()
-            || GetExternalInputInterSuperPodRetryEnable())) {
+    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
         return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
     }
 
