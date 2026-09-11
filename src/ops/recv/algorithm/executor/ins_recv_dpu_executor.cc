@@ -83,8 +83,9 @@ std::vector<CostModelParam> InsRecvDpuExecutor<InsAlgTemplate>::CalcCostCoeff(
 
 template <typename InsAlgTemplate>
 AlgNetMeta InsRecvDpuExecutor<InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)topoInfo;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);

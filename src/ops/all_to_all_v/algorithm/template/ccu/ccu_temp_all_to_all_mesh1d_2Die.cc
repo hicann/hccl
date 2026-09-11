@@ -34,7 +34,14 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoe
     u32 interDieRankSize = param.rankSize - intraDieRankSize; // 另一个Die的对端数
 
     int meshPortNum = 1; // MESH: portNum不参与公式
-    int closPortNum = 8; // CLOS跨Die: 8个上行vPort并行
+    // CLOS跨Die: 端口数由 executor 通过 topomatch v2 动态传入，直接聚合使用
+    int closPortNum = 0;
+    for (auto p : param.portNum) {
+        closPortNum += static_cast<int>(p);
+    }
+    if (closPortNum <= 0) {
+        closPortNum = 8; // fallback
+    }
     // CLOS公式: A = n*(groupSize-1)/(portNum*bw)，groupSize含自己，所以 +1
     u32 closGroupSize = interDieRankSize + 1;
 

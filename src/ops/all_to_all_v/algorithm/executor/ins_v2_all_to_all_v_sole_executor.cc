@@ -481,37 +481,72 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
         return {{0.0f, 0.0f, 1.0f, 0.0f}};
     }
 
-    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    const AlgAttrs* attrs = nullptr;
+#endif
+    if (attrs == nullptr) {
+        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        return {};
+    }
+    if (attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLV || attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+        if (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED) {
+            return {{0.0f, 0.0f, 1.0f, 0.0f}};
+        } else if (attrs->engine == OpExecuteConfig::AIV || attrs->engine == OpExecuteConfig::AIV_ONLY) {
+            return {{0.0f, 0.0f, 2.0f, 0.0f}};
+        } else if (attrs->engine == OpExecuteConfig::AICPU || attrs->engine == OpExecuteConfig::AICPU_TS) {
+            return {{0.0f, 0.0f, 3.0f, 0.0f}};
+        }
+    }
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet = topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs);
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
+        lastPortNum_ = {1};
+        lastIsPod_ = false;
+        lastRankSize_ = 0;
+        return {};
     }
     u32 rankSize = topoInfo->userRankSize;
-    // AllToAll: 单卡总发送/接收量 = dataSize（Σ sendCounts[i] * typeSize），所有peer链路并行
-    // 1DMESH: A = 1*dataSize/bw（满聚合带宽）；CLOS: A = 1*(R-1)*dataSize/(p*bw)（串行(R-1)步，每步满链路带宽）
-    // 板内单级拓扑用 MESH, 跨板多级拓扑用 CLOS（Concur/NHR 算法始终走 CLOS）
-    bool isNhrOrConcurrent = (algName != nullptr && strstr(algName, "Concur") != nullptr);
-    bool isMultiLevel = (topoInfo->topoLevelNums > 1);
-    lastNetType_ = (isNhrOrConcurrent || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
+    bool isPod = topoInfo->isPod;
+    u32 physIdx = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdx);
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdx);
+    if (portNumLevel0.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
 
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    std::vector<u32> portNumLevel0 = {1};
-    bool isPod = true;
-    HCCL_DEBUG(
-        "[InsV2AlltoAllVSoleExecutor] CalcCostCoeff algName=%s netType=%d multiLevel=%d rankSize=%d rankSizeLevel0=%d.",
-        algName, static_cast<int>(lastNetType_), isMultiLevel, rankSize, rankSizeLevel0);
+    // 缓存给 const GetAlgNetMeta 使用（当前分支 GetAlgNetMeta 无 algName 入参，无法重跑 topomatch）
+    lastNetType_ = netTypeLevel0;
+    lastPortNum_ = portNumLevel0;
+    lastIsPod_ = isPod;
+    lastRankSize_ = rankSize;
+
+    HCCL_INFO(
+        "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d isPod=%d netType=%d portNum=%d", algName, rankSize,
+        rankSizeLevel0, isPod, static_cast<int>(netTypeLevel0), portNumLevel0);
     // AllToAll非in-place: input=INPUT, output=OUTPUT, scratch=HCCL_BUFFER
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel0, 1.0f, lastNetType_, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
+        rankSizeLevel0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod, algName, comm, topoInfo});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
+    (void)topoInfo;
     (void)param;
     AlgNetMeta meta;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+    u32 rankSize = lastRankSize_;
     // netType 由 CalcCostCoeff 缓存到 lastNetType_
     meta.netTypes.push_back(lastNetType_);
     meta.intraGroupMode = CostAggMode::SUM;
@@ -519,7 +554,8 @@ AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
     // dataSize 为单 peer 数据量，每段传输量 = dataSize * 1，故 dataRatio=1.0f
     meta.dataRatios = {1.0f};
     meta.rankSizes = {rankSize};
-    HCCL_DEBUG("[InsV2AlltoAllVSoleExecutor] GetAlgNetMeta netType=%d.", static_cast<int>(lastNetType_));
+    HCCL_INFO(
+        "[InsV2AlltoAllVSoleExecutor] GetAlgNetMeta netType=%d rankSize=%d.", static_cast<int>(lastNetType_), rankSize);
     return meta;
 }
 
@@ -596,26 +632,29 @@ REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, topo.isSupportLevel0PcieMix = true; to
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAlltoAllMesh1D);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+                   topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
                    op.isSupportInplace = false);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiLink, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1D2Die);
 REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportInplace = false);
+                   topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllMesh1D);
-REGISTER_ALG_ATTRS(AivAllToAllSoleMesh,
+REGISTER_ALG_ATTRS(AivAllToAllSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-                   topo.isSupportLevel0PcieMix = true;);
+                   topo.maxTopoLevelNum = 2; topo.isSupportLevel0PcieMix = true;);
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh2Die, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh2Die);
 REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
+                   topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
                    op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
@@ -623,17 +662,17 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1dMultiJetty);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshConcur, InsV2AlltoAllVSoleExecutor, TopoMatchConcurrentV2,
     CcuTempAllToAllConcurrentMeshNHR);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshConcur, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = true;
-                   topo.supportDevTypes = {HcclDevType::DEV_TYPE_960};
+REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshConcur, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.isSupportLevel1Nhr = true; topo.supportDevTypes = {HcclDevType::DEV_TYPE_960};
                    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // !HCCL_CANN_COMPAT_850
 #endif

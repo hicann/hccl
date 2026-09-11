@@ -10,6 +10,7 @@
 
 #include "cost_model.h"
 
+#include <cstring>
 #include <new>
 #include <memory>
 
@@ -250,6 +251,13 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const T
         return result;
     }
 
+    if (t.maxSupportRankSize != 0 && topoInfo->userRankSize > t.maxSupportRankSize) {
+        result.matched = false;
+        result.reason = "userRankSize=" + std::to_string(topoInfo->userRankSize)
+                        + " > maxSupportRankSize=" + std::to_string(t.maxSupportRankSize);
+        return result;
+    }
+
     if (t.topoCustomCheck) {
         if (!t.topoCustomCheck(topoInfo)) {
             result.matched = false;
@@ -371,7 +379,7 @@ HcclResult CostModelManager::InitCostModel(
         }
         std::copy(params.begin(), params.end(), ownedParam);
 
-        AlgNetMetaRegistry::Global()->Register(alg.algName, exec->GetAlgNetMeta(topoInfo, param));
+        AlgNetMetaRegistry::Global()->Register(alg.algName, exec->GetAlgNetMeta(topoInfo, param, alg.algName));
 
         CostAlgoParams cap;
         cap.algName = alg.algName;

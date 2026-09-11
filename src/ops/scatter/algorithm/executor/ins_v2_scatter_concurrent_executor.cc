@@ -42,21 +42,41 @@ std::vector<CostModelParam>
 InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)algName;
     (void)comm;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
-    (void)algHierarchyInfo;
-    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+    (void)param;
+    // 拓扑事实取自 V2 topo match 的两个物理层, 替代硬编码 1DMESH/CLOS 与 {1}/{4} 打桩。
+    // Concurrent 类匹配只填单层 physicalIdx 时 level1 复用 [0][0] 兜底, 避免 vector 越界
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = false;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
-    std::vector<u32> portNumLevel0 = {1};
-    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
-    std::vector<u32> portNumLevel1 = {4};
+    bool isPod = topoInfo->isPod;
+    const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
+    u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
+    u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
+    if (portNumLevel0.empty() || portNumLevel1.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, portNumLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
         portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
@@ -88,12 +108,32 @@ InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    (void)param;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
+    const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
+    u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
+    u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     u32 rankSize = topoInfo->userRankSize;
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {

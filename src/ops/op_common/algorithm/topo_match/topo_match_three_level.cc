@@ -65,6 +65,10 @@ namespace {
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         d2 = userRankSize / d0 / d1;
+        if (d2 == 1) {
+            HCCL_INFO("[TopoMatchThreeLevel] Rank [%u], d0=%u, d1=%u, d2=1, not support three level.", myRank, d0, d1);
+            return HcclResult::HCCL_E_NOT_SUPPORT;
+        }
         return HcclResult::HCCL_SUCCESS;
     }
 } // namespace

@@ -45,7 +45,8 @@ public:
 
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
-    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
 #ifndef AICPU_COMPILE
     HcclResult
@@ -61,6 +62,9 @@ protected:
     u64 recvTypeSize_{0};
     A2ASendRecvInfo localSendRecvInfo_;
     mutable CommTopo lastNetType_{CommTopo::COMM_TOPO_1DMESH};
+    mutable std::vector<u32> lastPortNum_{1};
+    mutable bool lastIsPod_{false};
+    mutable u32 lastRankSize_{0};
 
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
 };

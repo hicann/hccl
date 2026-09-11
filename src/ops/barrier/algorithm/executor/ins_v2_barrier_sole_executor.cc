@@ -95,8 +95,9 @@ std::vector<CostModelParam> InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplat
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)param;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;

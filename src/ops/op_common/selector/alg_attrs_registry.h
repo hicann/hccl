@@ -43,26 +43,28 @@ private:
 } // namespace ops_hccl
 
 #ifndef AICPU_COMPILE
-#define REGISTER_ALG_ATTRS(algoName, ...)                                                                         \
-    static const bool s_attrs_##algoName = [] {                                                                   \
-        ::ops_hccl::AlgAttrs a;                                                                                   \
-        auto& topo = a.topo;                                                                                      \
-        auto& op = a.op;                                                                                          \
-        ::ops_hccl::AlgAttrsRegistry::ParseAlgName(#algoName, a);                                                 \
-        __VA_ARGS__;                                                                                              \
-        HCCL_INFO(                                                                                                \
-            "[DFX_REGISTER_ALG_ATTRS] name=%s, opType=%s, engine=%s, "                                            \
-            "algoTypes=%s, minTopoLevelNum=%d, maxTopoLevelNum=%d, "                                              \
-            "isSupportProd=%d, isSupportInplace=%d, "                                                             \
-            "isSupportFloatOrderPreserved=%d, hasTopoCustomCheck=%d, "                                            \
-            "hasOpCustomCheck=%d.",                                                                               \
-            a.name.c_str(), ::ops_hccl::HcclCMDTypeToString(a.opType).c_str(),                                    \
-            ::ops_hccl::OpExecuteConfigToString(a.engine).c_str(),                                                \
-            ::ops_hccl::AlgAttrsRegistry::GetAlgAttrsSummary(a).c_str(), a.topo.minTopoLevelNum,                  \
-            a.topo.maxTopoLevelNum, a.op.isSupportProd, a.op.isSupportInplace, a.op.isSupportFloatOrderPreserved, \
-            a.topo.topoCustomCheck != nullptr ? 1 : 0, a.op.opCustomCheck != nullptr ? 1 : 0);                    \
-        ::ops_hccl::AlgAttrsRegistry::Instance().Register(a);                                                     \
-        return true;                                                                                              \
+#define REGISTER_ALG_ATTRS(algoName, ...)                                                                 \
+    static const bool s_attrs_##algoName = [] {                                                           \
+        ::ops_hccl::AlgAttrs a;                                                                           \
+        auto& topo = a.topo;                                                                              \
+        auto& op = a.op;                                                                                  \
+        ::ops_hccl::AlgAttrsRegistry::ParseAlgName(#algoName, a);                                         \
+        __VA_ARGS__;                                                                                      \
+        HCCL_INFO(                                                                                        \
+            "[DFX_REGISTER_ALG_ATTRS] name=%s, opType=%s, engine=%s, "                                    \
+            "algoTypes=%s, minTopoLevelNum=%d, maxTopoLevelNum=%d, "                                      \
+            "maxSupportRankSize=%u, "                                                                     \
+            "isSupportProd=%d, isSupportInplace=%d, "                                                     \
+            "isSupportFloatOrderPreserved=%d, hasTopoCustomCheck=%d, "                                    \
+            "hasOpCustomCheck=%d.",                                                                       \
+            a.name.c_str(), ::ops_hccl::HcclCMDTypeToString(a.opType).c_str(),                            \
+            ::ops_hccl::OpExecuteConfigToString(a.engine).c_str(),                                        \
+            ::ops_hccl::AlgAttrsRegistry::GetAlgAttrsSummary(a).c_str(), a.topo.minTopoLevelNum,          \
+            a.topo.maxTopoLevelNum, a.topo.maxSupportRankSize, a.op.isSupportProd, a.op.isSupportInplace, \
+            a.op.isSupportFloatOrderPreserved, a.topo.topoCustomCheck != nullptr ? 1 : 0,                 \
+            a.op.opCustomCheck != nullptr ? 1 : 0);                                                       \
+        ::ops_hccl::AlgAttrsRegistry::Instance().Register(a);                                             \
+        return true;                                                                                      \
     }()
 
 #else // AICPU_COMPILE

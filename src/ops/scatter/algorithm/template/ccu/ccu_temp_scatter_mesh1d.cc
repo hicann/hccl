@@ -20,7 +20,7 @@ std::vector<CostModelParam> CcuTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
 {
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
-    int kernelNum = 1; // 单 kernel 下发
+    int kernelNum = 4; // 实际下发 4 份 kernel（原按单 kernel 估算，按实测校准×4）
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

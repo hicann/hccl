@@ -24,7 +24,7 @@ AivTempAllGatherMesh1D::~AivTempAllGatherMesh1D() {}
 
 std::vector<CostModelParam> AivTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = param.portNum[0];
     int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;

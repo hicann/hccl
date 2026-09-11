@@ -95,6 +95,10 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     u32 d1 = userRankSize / d0;
+    if (d1 == 1) {
+        HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], d0=%u, d1=1, not support two level.", myRank, d0);
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
 
     // 构造 infos
     std::vector<u32> group0 = BuildLevel0Group(physicalLevels[phys0], myRank, asymmetric, gcd);

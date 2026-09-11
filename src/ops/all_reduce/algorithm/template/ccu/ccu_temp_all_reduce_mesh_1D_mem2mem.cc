@@ -17,8 +17,7 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempAllReduceMeshMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    param.netType = (param.rankSize <= 8) ? CommTopo::COMM_TOPO_1DMESH : CommTopo::COMM_TOPO_CLOS;
-    int portNum = (param.rankSize <= 8) ? 1 : 8;
+    int portNum = (param.netType == CommTopo::COMM_TOPO_1DMESH) ? 1 : 6;
     int kernelNum = 1 * param.rankSize;
     // 第一步是reducescatter，
     float A = 0.0f;
@@ -26,7 +25,7 @@ std::vector<CostModelParam> CcuTempAllReduceMeshMem2Mem1D::CalcCostCoeff(CalcCos
     float C = 0.0f;
     float D = 0.0f;
 
-    if (param.rankSize <= 8) { // 全走mesh链路
+    if (param.netType == CommTopo::COMM_TOPO_1DMESH) { // 全走mesh链路
         CostModelManager::Global()->CalcMeshParam(
             2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, param.rankSize, A, param.isPod);
         CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B);

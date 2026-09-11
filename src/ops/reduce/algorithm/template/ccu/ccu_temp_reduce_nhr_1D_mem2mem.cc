@@ -18,7 +18,6 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempReduceNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    param.netType = CommTopo::COMM_TOPO_CLOS;
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : param.portNum[0];
     int kernelNum = 2 * param.rankSize + 2;
     int log2R = 0;

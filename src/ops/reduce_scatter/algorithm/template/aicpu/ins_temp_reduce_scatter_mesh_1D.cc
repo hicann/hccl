@@ -19,10 +19,12 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1D::CalcCostCoeff(CalcCostCo
     // if (param.rankSize > 8) {
     //     return {};
     // }
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     int kernelNum = 11;
-    int taskNum
-        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize)
+                  + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2 + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

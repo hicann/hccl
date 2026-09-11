@@ -186,10 +186,12 @@ template <
     typename AlgTopoMatch, typename CcuScatterAlgTemplateX, typename CcuScatterAlgTemplateY, typename CcuAgAlgTemplateX,
     typename CcuAgAlgTemplateY>
 AlgNetMeta InsV2BroadcastOmniPipe2dExecutor<
-    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX,
-    CcuAgAlgTemplateY>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    AlgTopoMatch, CcuScatterAlgTemplateX, CcuScatterAlgTemplateY, CcuAgAlgTemplateX, CcuAgAlgTemplateY>::
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)topoInfo;
+    (void)param;
+    (void)algName;
     AlgNetMeta meta;
     meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
     meta.groupSizes = {1};
@@ -852,7 +854,8 @@ REGISTER_EXEC_V2_MULTI(
     TopoMatchTwoLevel, CcuTempScatterOmniPipeMesh1DMem2Mem, CcuTempScatterOmniPipeNHR1DMem2Mem,
     CcuTempAllGatherOmniPipeMesh1DMem2Mem, CcuTempAllGatherOmniPipeNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedBroadcastPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    CcuSchedBroadcastPipeLineMeshNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     };);

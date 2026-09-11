@@ -43,9 +43,10 @@ template <
     typename InsAlgTemplate3>
 AlgNetMeta
 InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
+    (void)algName;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
     meta.intraGroupMode = CostAggMode::SUM;

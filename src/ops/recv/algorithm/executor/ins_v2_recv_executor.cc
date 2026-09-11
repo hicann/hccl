@@ -198,19 +198,14 @@ std::vector<CostModelParam> InsV2RecvExecutor::CalcCostCoeff(
     (void)topoInfo;
     (void)algName;
     (void)param;
-    float A = 0.0f;
-    u32 p2pRankSize = 2;
-    CostModelManager::Global()->CalcMeshParam(1.0f, CommTopo::COMM_TOPO_1DMESH, 1, p2pRankSize, A);
-    float B = 0.0f;
-    CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::AIV, B);
-    float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(1, EngineType::AIV, C);
-    return {{A, B, C, 0.0f}};
+    return {{0.0f, 0.0f, 2.0f, 0.0f}};
 }
 
-AlgNetMeta InsV2RecvExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+AlgNetMeta InsV2RecvExecutor::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
+    (void)algName;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);

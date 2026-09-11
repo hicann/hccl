@@ -100,8 +100,9 @@ InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)param;
     auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
     u32 rankSizeLevel0 = rs.level0;

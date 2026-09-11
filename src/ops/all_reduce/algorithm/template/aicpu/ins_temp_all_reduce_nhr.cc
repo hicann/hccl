@@ -21,9 +21,10 @@ InsTempAllReduceNHR::~InsTempAllReduceNHR() {}
 
 std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
-    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = 8;
+    CommTopo netType = param.netType;
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     int kernelNum = 10;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {

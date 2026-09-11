@@ -430,37 +430,72 @@ double CalcParallelDataSplitRatio(
     return quantizedRatio;
 }
 
-// double CalcParallelDataSplitRatio(
-//     uint64_t intraRankSize, uint64_t interRankSize, TopoInfoWithNetLayerDetails* topoInfo,
-//     ParallelDataSplitType splitType, double fallbackRatio)
-// {
-//     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
-//     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
-//     ParallelPortInfo portInfo;
-//     const char* failureReason = nullptr;
+double CalcParallelDataSplitRatio(
+    uint64_t intraRankSize, uint64_t interRankSize, const std::vector<u32>& portNum,
+    const TopoInfoWithNetLayerDetails* topoInfo, ParallelDataSplitType splitType, double fallbackRatio)
+{
+    // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
+    const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
+    ParallelPortInfo portInfo;
+    const char* failureReason = nullptr;
 
-//     portInfo.intraPortGroupSize = ;
-//     portInfo.interPortGroupSize = ;
-//     portInfo.effectiveInterPortGroupSize = ;
-//     portInfo.isPod = ;
+    // 从 portNum 提取端口和（与 PrepareParallelPortInfo 中 GetPortGroupSize 语义对齐）
+    if (portNum.empty()) {
+        return ReturnParallelDataSplitFallback(
+            "portNum is empty", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+    portInfo.intraPortGroupSize = 1;
+    portInfo.interPortGroupSize = (portNum.size() >= 2) ? portNum[0] + portNum[1] : portNum[0];
 
-//     ParallelTimeCoeff timeCoeff;
-//     if (!CalcParallelTimeCoeff(intraRankSize, interRankSize, portInfo, splitType, timeCoeff)) {
-//         return ReturnParallelDataSplitFallback(
-//             "unknown splitType", intraRankSize, interRankSize, portInfo, splitType, validFallback);
-//     }
+    // 校验端口和非零（与第一个重载对齐）
+    if (portInfo.intraPortGroupSize == 0) {
+        return ReturnParallelDataSplitFallback(
+            "intraPortGroupSize is 0", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+    if (portInfo.interPortGroupSize == 0) {
+        return ReturnParallelDataSplitFallback(
+            "interPortGroupSize is 0", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+    // 溢出检查（与第一个重载对齐）
+    if (intraRankSize - 1 > std::numeric_limits<uint64_t>::max() / portInfo.intraPortGroupSize) {
+        return ReturnParallelDataSplitFallback(
+            "intraPortGroupSize scaling overflow", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
 
-//     double ratio = 0.0;
-//     if (!CalcRawParallelDataSplitRatio(timeCoeff, ratio, failureReason)) {
-//         return ReturnParallelDataSplitFallback(
-//             failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
-//     }
+    // 缩放 + POD 修正（与第一个重载对齐）
+    portInfo.intraPortGroupSize *= intraRankSize - 1;
+    portInfo.isPod = topoInfo->isPod; // 无 channel map，只能信 topoInfo->isPod
+    portInfo.effectiveInterPortGroupSize
+        = static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? POD_PORT_GROUP_DIVISOR : 1.0);
 
-//     const double limitedRatio = LimitParallelDataSplitRatio(splitType, ratio);
-//     const double quantizedRatio = QuantizeParallelDataSplitRatio(limitedRatio);
-//     LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, limitedRatio,
-//     quantizedRatio); return quantizedRatio;
-// }
+    // 缩放后零值/有限性校验（与第一个重载对齐）
+    if (portInfo.intraPortGroupSize == 0) {
+        return ReturnParallelDataSplitFallback(
+            "scaled intraPortGroupSize is 0", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+    if (IsDoubleEqual(portInfo.effectiveInterPortGroupSize, 0.0)
+        || !std::isfinite(portInfo.effectiveInterPortGroupSize)) {
+        return ReturnParallelDataSplitFallback(
+            "effectiveInterPortGroupSize is 0 or not finite", intraRankSize, interRankSize, portInfo, splitType,
+            validFallback);
+    }
+
+    ParallelTimeCoeff timeCoeff;
+    if (!CalcParallelTimeCoeff(intraRankSize, interRankSize, portInfo, splitType, timeCoeff)) {
+        return ReturnParallelDataSplitFallback(
+            "unknown splitType", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+
+    double ratio = 0.0;
+    if (!CalcRawParallelDataSplitRatio(timeCoeff, ratio, failureReason)) {
+        return ReturnParallelDataSplitFallback(
+            failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
+    }
+
+    const double quantizedRatio = QuantizeParallelDataSplitRatio(ratio);
+    LogParallelDataSplitRatio(intraRankSize, interRankSize, portInfo, splitType, ratio, quantizedRatio);
+    return quantizedRatio;
+}
 
 HcclResult FillChannelSymWinPeerAddrs(
     void* inputSymWindow, u64 inputOffset, void* outputSymWindow, u64 outputOffset, ChannelInfo& channel)

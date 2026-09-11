@@ -365,9 +365,12 @@ template <
     typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
 AlgNetMeta InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    InsAgAlgTemplateZ>::
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)topoInfo;
+    (void)param;
+    (void)algName;
     AlgNetMeta meta;
     meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
     meta.groupSizes = {1};

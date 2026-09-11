@@ -13,7 +13,7 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempReduceScatterVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = param.portNum[0];
     int kernelNum = 14;
     int taskNum
         = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;

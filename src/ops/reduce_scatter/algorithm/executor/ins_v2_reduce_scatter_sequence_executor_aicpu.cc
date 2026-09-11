@@ -23,6 +23,7 @@
 
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "reduce_scatter_auto_selector.h"
 namespace ops_hccl {
 
 // 序列执行器需要的层级数
@@ -80,66 +81,108 @@ std::vector<CostModelParam>
 InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)algName;
-    (void)comm;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
-    (void)algHierarchyInfo;
-    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
-    std::vector<u32> portNumLevel0 = {1};
-    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
-    std::vector<u32> portNumLevel1 = {8};
+    bool isPod = topoInfo->isPod;
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                            physIdxLevel0;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    if (portNumLevel0.empty() || portNumLevel1.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d",
-        rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params
-        = [rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
-              std::vector<CostModelParam> v;
-              // Step1: 框内 RS（全量输入）
-              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-                  rankSizeLevel0, 1.0f * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
-                  BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-              // Step2: 框间 RS（从 cclBuff 读取）
-              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-                  rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
-                  BufferType::HCCL_BUFFER, portNumLevel1, isPod});
-              // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
-              if (p0.empty() || p1.empty()) {
-                  HCCL_WARNING(
-                      "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).",
-                      p0.size(), p1.size());
-                  return v;
-              }
-              v.insert(v.end(), p0.begin(), p0.end());
-              v.insert(v.end(), p1.begin(), p1.end());
-              return v;
-          }();
+        rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0.empty() ? 0 : portNumLevel0[0],
+        portNumLevel1.empty() ? 0 : portNumLevel1[0], static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
+    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0,
+                                          netTypeLevel1, isPod, algName, comm, topoInfo] {
+        std::vector<CostModelParam> v;
+        // Step1: 框内 RS（全量输入）
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, 1.0f * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo, rankSizeLevel1});
+        // Step2: 框间 RS（从 cclBuff 读取）
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
+            portNumLevel1, isPod, algName, comm, topoInfo, rankSizeLevel0});
+        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+        if (p0.empty() || p1.empty()) {
+            HCCL_WARNING(
+                "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).", p0.size(),
+                p1.size());
+            return v;
+        }
+        v.insert(v.end(), p0.begin(), p0.end());
+        v.insert(v.end(), p1.begin(), p1.end());
+
+        bool isAicpuParallel = (strcmp(algName, "AicpuReduceScatterSequenceMeshConcurNHR") == 0);
+        if (isAicpuParallel) {
+            float bConst = 0.000020f;
+            for (auto& p : v) {
+                p.C += bConst;
+            }
+        }
+        return v;
+    }();
     return params;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                            physIdxLevel0;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
@@ -550,9 +593,14 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurNHR,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour,
     InsTempReduceScatterNHR);
-REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
-                   op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        u64 totalSize = perRankSize * topo->userRankSize;
+        return totalSize > RS_AICPU_SEQUENCE_SIZE_THRESHOLD;
+    });
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshNHRAicpuReduce,
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1D,
@@ -577,8 +625,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, CcuTempReduceScatterMesh1DMem2Mem,
     CcuTempReduceScatterMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedReduceScatterSequenceMeshMesh, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
+    CcuSchedReduceScatterSequenceMeshMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;

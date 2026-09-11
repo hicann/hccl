@@ -26,7 +26,7 @@ AivTempReduceScatterMesh1D::~AivTempReduceScatterMesh1D() {}
 std::vector<CostModelParam> AivTempReduceScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : 1;
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? (param.portNum[0] + param.portNum[1]) : 1;
     int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;

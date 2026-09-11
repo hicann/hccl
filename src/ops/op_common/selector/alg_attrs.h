@@ -24,6 +24,9 @@ namespace ops_hccl {
 // AlgoType 枚举：算法模板类型（定义在 alg_parse.h，前向声明避免循环包含）
 enum class AlgoType : uint8_t;
 
+// CCU_SCHED 引擎最大支持的 rank 数
+constexpr uint32_t CCU_SCHED_MAX_RANK_SIZE = 64;
+
 // bitmask: bit position = static_cast<uint8_t>(Level0Shape)
 // Level0Shape::CLOS=0 → bit0, MESH_1D=1 → bit1, MESH_1D_CLOS=2 → bit2
 constexpr uint8_t LEVEL0_TOPO_CLOS = 0x01;         // 1 << CLOS(0)
@@ -48,6 +51,8 @@ struct TopoAttrs {
     bool isSupport2DieFullMesh = false;
     bool isSupportLevel0PcieMix = false;
     bool requireAllMeshConnected = false;
+    // 0 表示无限制，非 0 时要求 userRankSize <= maxSupportRankSize
+    uint32_t maxSupportRankSize = 0;
     // 空表示支持全部设备类型，非空时仅支持集合中的设备
     std::set<HcclDevType> supportDevTypes = {};
     bool isHostDpuOnly = false;

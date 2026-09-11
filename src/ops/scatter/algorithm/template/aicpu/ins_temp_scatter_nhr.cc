@@ -14,16 +14,15 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // 通道形态与端口数全部由 executor 通过 portNum 向量注入（模板零魔法数字），统一约定：
-    //   MESH 段：{1}；CLOS 且 isPod=true：{6,2}（双 die 双 channel）；CLOS 且 isPod=false：{8}（单 die 单链路）
-    // single channel 判定 = 算法名单通道（SoleNHR 执行侧不 SetchannelsPerRank 恒单链路——即使
-    // executor 按拓扑形态传了 {6,2} 也只走一条链路）或向量单元素；是则取 portNum[0]，
-    // 否则取 portNum 求和（多通道每通道各发一遍）。Parallel/Sequence 的 NHR 段由 executor
-    // SetchannelsPerRank 使能多通道且未传 algName → 按向量元素数判多通道
-    bool isSingleChannel
-        = (param.algName != nullptr && strcmp(param.algName, "AicpuScatterSoleNHR") == 0) || param.portNum.size() == 1;
+    // portNum 向量语义随数据源而异（对齐 PR2890 统一取数口径）：
+    //   旧打桩: MESH 段 {1}；CLOS isPod={6,2} / 非 pod={8}
+    //   V2 匹配真实 portNums: MESH 段为每链路 iface 的 [1,1,...]；CLOS 段 [8] 或 [6,2] 形态
+    // 求和仅当 isPod && netType==CLOS && 元素数>=2（pod 双 die 双 channel 并行）；
+    // 其余（含 MESH 的 [1,1,...]）取 [0]。SoleNHR 算法名单通道语义并入该判定：
+    // 其匹配段恒单链路（不 SetchannelsPerRank），单元素/非 pod/非 CLOS 均自然覆盖
+    bool isMultiChannel = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2);
     int portNum
-        = isSingleChannel ? static_cast<int>(param.portNum[0]) : static_cast<int>(param.portNum[0] + param.portNum[1]);
+        = isMultiChannel ? static_cast<int>(param.portNum[0] + param.portNum[1]) : static_cast<int>(param.portNum[0]);
     // NHR 有 ⌈log2R⌉ 步，每步一个同步点，kernelNum 按步数取
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
@@ -35,8 +34,11 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     // PreCopy root 铺开 R 份 + PostCopy 每 rank 1 份（与 B 系数份数同口径）
     // 发送侧视角（3 task/步）：每 rank 每步 tx/rx 互斥（GetStepInfo 的 deltaRoot 区间不重叠），
     // 收侧为 4 task/步（SendRead 多一条 Record）；用户定案取 1（发送视角）
-    int transTaskNum = 3 * log2R;
-    if (!isSingleChannel) {
+    // 传输 task(root 口径,取最大 rank): root 向其余 R-1 个 rank 各发一份,
+    // NHR 步进扇出只是同一批 (R-1) 份的发送顺序(每步 slice 数 4/2/1 递减,总数不变);
+    // 多通道(portNum 双元素)时每份走双 channel 翻倍
+    int transTaskNum = static_cast<int>(param.rankSize) - 1;
+    if (isMultiChannel) {
         transTaskNum *= 2;
     }
     int localCopyCount = 0;
@@ -46,10 +48,10 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy：每 rank 1 份
     }
-    // thread 间前后同步 task：线程数 = 通道数（GetThreadNum=channelsPerRank_，SoleNHR 恒单链路=1 无从线程；
-    // Parallel/Sequence 的 NHR 段多通道=2），每从线程一对 notify = 2 条 task
-    int threadNum = isSingleChannel ? 1 : static_cast<int>(param.portNum.size());
-    int syncTaskNum = 2 * (threadNum - 1);
+    // 同步 task(root 口径): stream 级每 step 前后各一对 Wait/Record(含初始等待与收尾通知),
+    // 即 2*(log2R+1);外加 thread 间 notify 对(线程数=通道数,单链路=1 无从线程)
+    int threadNum = isMultiChannel ? static_cast<int>(param.portNum.size()) : 1;
+    int syncTaskNum = 2 * (log2R + 1) + 2 * (threadNum - 1);
     int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A = 0.0f;
     float B = 0.0f;

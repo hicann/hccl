@@ -48,10 +48,12 @@ public:
         return {};
     }
 
-    virtual AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    virtual AlgNetMeta
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
     {
         (void)topoInfo;
         (void)param;
+        (void)algName;
         return {};
     }
 
@@ -62,10 +64,13 @@ public:
     virtual HcclResult CalcAlgHierarchyInfoV2(
         TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
     {
+        // 无 V2 实现时返回失败而非 SUCCESS: 调用方(topo match failed, skip)会安全跳过该算法。
+        // 若返回 SUCCESS 但不填充 algHierarchyInfo, 调用方访问 physicalIdxForAlgoLevels[0][0]
+        // 会在空 vector 上越界(实测 16P/32P/64P SIGSEGV at 0x40)。
         (void)topoInfo;
         (void)algHierarchyInfo;
         (void)algAttrs;
-        return HcclResult::HCCL_SUCCESS;
+        return HcclResult::HCCL_E_PARA;
     }
 
     virtual HcclResult CalcRes(

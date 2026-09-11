@@ -15,22 +15,35 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // NHR递归halving-doubling算法（scatter+allgather两阶段），始终走CLOS网络
-    CommTopo netType = CommTopo::COMM_TOPO_CLOS;
-    bool isMultiLink = (param.algName != nullptr && strstr(param.algName, "TwoShotMultiLink") != nullptr);
-    // TwoShotMultiLink走CLOS 8端口，普通NHR走6端口
-    int portNum = isMultiLink ? 8 : 6;
+    // NHR递归halving-doubling算法（scatter+allgather两阶段），拓扑/端口由 executor 通过 topomatch v2 传入
+    CommTopo netType = param.netType;
+    bool isMultiLink = (param.algName != nullptr && strstr(param.algName, "MultiLink") != nullptr);
+    // 物理端口数由 executor 传入；isMultiLink 决定算法是否多通道并行用完所有 port：
+    //   - MultiLink：多通道并行，使用全部物理端口
+    //   - 非 MultiLink：channel 仍占用多个 port，但算法单通道传输，实际只用部分端口（按历史经验预留2个端口）
+    int physicalPortNum = 0;
+    for (auto p : param.portNum) {
+        physicalPortNum += static_cast<int>(p);
+    }
+    int portNum = 0;
+    if (isMultiLink) {
+        portNum = physicalPortNum > 0 ? physicalPortNum : 8;
+    } else {
+        portNum = physicalPortNum > 0 ? std::max(1, physicalPortNum - 2) : 6;
+    }
     // TwoShotMultiLink多通道并行，数据拆分和同步开销略大，kernelNum增加2
     int kernelNum = isMultiLink ? 12 : 10;
-    int taskNum = 8 * (param.rankSize - 1);
+    int taskNum = 8 * (param.rankSize - 1) + (isMultiLink ? 2 : 0);
+
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
     // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
+    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * 2 / param.rankSize, netType, portNum, param.rankSize, A, param.isPod);
+        param.dataRatio * 2 / param.rankSize, netType, portNum, param.rankSize, A, false);
     if (param.inputBuffer != param.scratchBuffer) {
         // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);

@@ -25,7 +25,9 @@
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
 #include "topo_match_base_v2.h"
+#include "topo_match_one_level.h"
 #include "topo_match_two_level.h"
+#include "alg_attrs.h"
 #include <type_traits>
 
 namespace ops_hccl {
@@ -46,7 +48,8 @@ public:
     // AICPU 接口
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
-    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
     HcclResult CalcAlgHierarchyInfo(

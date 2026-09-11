@@ -57,12 +57,13 @@ HcclResult FindAnchors(
     const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx,
     const std::vector<AlgoType>& algoTypes, OpExecuteConfig engine, u32 userRankSize, std::map<u32, u32>& anchors);
 
-// 分段压缩得各算法层对应的物理层 effIdx position
+// 分段压缩得各算法层对应的物理层 effIdx position；最后一段最高层按 localRanks==userRankSize 匹配
 HcclResult ResolveSegmentMapping(
-    const std::vector<u32>& effIdx, const std::vector<AlgoType>& algoTypes, const std::map<u32, u32>& anchors,
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx,
+    const std::vector<AlgoType>& algoTypes, const std::map<u32, u32>& anchors, u32 userRankSize,
     std::vector<u32>& pIndices);
 
-// 引擎过滤 + 锚点匹配 + 分段，得 effIdx 与 pIndices；校验最高层 localRanks==userRankSize
+// 引擎过滤 + 锚点匹配 + 分段，得 effIdx 与 pIndices
 HcclResult ResolveMapping(
     const std::vector<PhysicalLevelInfo>& physicalLevels, const AlgAttrs& algAttrs, u32 userRankSize,
     std::vector<u32>& effIdx, std::vector<u32>& pIndices);

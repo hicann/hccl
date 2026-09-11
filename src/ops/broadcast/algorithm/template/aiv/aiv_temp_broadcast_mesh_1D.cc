@@ -16,8 +16,11 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // twoshot mesh：CLOS下portNum=6，MESH下portNum=1（netType由executor根据isNhr/isMultiLevel确定后传入）
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 6 : 1;
+    // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与公式
+    int portNum = static_cast<int>(param.portNum[0]);
+    if (portNum <= 0) {
+        portNum = 1;
+    }
     int kernelNum = 10;
     int taskNum = 0; // AIV的D=0
     float A = 0.0f;
@@ -26,8 +29,11 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
     float D = 0.0f;
 
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
+    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, param.isPod);
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+    // 根据实测调整A
+    A *= 0.8f;
     if (param.inputBuffer != param.scratchBuffer) {
         // 本地拷贝1份全量数据（root拷入、非root拷出，平均1份）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AIV, B);

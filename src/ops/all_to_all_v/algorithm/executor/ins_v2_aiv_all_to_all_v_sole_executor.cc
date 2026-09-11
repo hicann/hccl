@@ -322,16 +322,20 @@ std::vector<CostModelParam> InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTe
     (void)comm;
     (void)topoInfo;
     (void)algName;
-    return {{0.0f, 0.0f, 1.0f, 0.0f}};
+    // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel
+    return {{0.0f, 0.0f, 2.0f, 0.0f}};
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)param;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;
+    // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel
+    // 此处给一些默认参数值
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
@@ -344,17 +348,19 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLV, AivAllToAllVSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
+    AivAllToAllVSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE_V; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp;
     };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AivAllToAllVCSoleMesh, InsV2AivAlltoAllVSoleExecutor, TopoMatchOneLevel,
     AivTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    AivAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return !t->level2UbRtp && t->userRankSize <= MAX_RANK_SIZE_V;
+    AivAllToAllVCSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE_V; topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->level2UbRtp;
     };);
 #endif
 } // namespace ops_hccl

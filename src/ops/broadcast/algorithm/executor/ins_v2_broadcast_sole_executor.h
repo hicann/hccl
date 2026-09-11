@@ -45,7 +45,8 @@ public:
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
 
-    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
 #ifndef AICPU_COMPILE
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* fastLaunchCtx) override;
@@ -58,7 +59,11 @@ private:
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
-    mutable CommTopo lastNetType_ = CommTopo::COMM_TOPO_1DMESH; // CalcCostCoeff缓存，供GetAlgNetMeta使用
+    // CalcCostCoeff 缓存的拓扑信息，供 const GetAlgNetMeta 使用
+    mutable CommTopo lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
+    mutable std::vector<u32> lastPortNum_ = {1};
+    mutable bool lastIsPod_ = false;
+    mutable u32 lastRankSize_ = 0;
 };
 } // namespace ops_hccl
 

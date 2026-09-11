@@ -70,8 +70,9 @@ std::vector<CostModelParam> InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTem
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)topoInfo;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
@@ -306,7 +307,7 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, DpuScatterSequenceMeshNHR, InsV2ScatterSequenceExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHRDPUInterNode);
-REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true;
-                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isHostDpuOnly = true;
+REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
+                   topo.isHostDpuOnly = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
 } // namespace ops_hccl

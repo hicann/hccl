@@ -165,8 +165,9 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 AlgNetMeta InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)topoInfo;
     AlgNetMeta meta;
     meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
@@ -592,14 +593,15 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, CcuSchedReduceScatterPipeLineMeshNHR, InsV2ReduceScatterOmniPipe2dExecutor,
     TopoMatchTwoLevel, CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedReduceScatterPipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    CcuSchedReduceScatterPipeLineMeshNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         bool isMultiple = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
-        return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
+        return !topo->level2UbRtp && !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple
                && AutoSelectorBase::CalcFrameNum(topo) <= MAX_FRAME_NUM_FOR_CCU_ALGO;
     };);
 

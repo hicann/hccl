@@ -10,6 +10,7 @@
 
 // 包含本类的头文件声明
 #include "ins_v2_all_reduce_order_preserved_executor.h"
+#include "alg_attrs_registry.h"
 #include "ins_temp_reduce_scatter_order_preserved_level1.h"
 #include "ins_temp_reduce_scatter_order_preserved_group.h"
 #include "ins_temp_all_gather_mesh_1D.h"
@@ -28,17 +29,30 @@ std::vector<CostModelParam>
 InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)algName;
     (void)comm;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
-    (void)algHierarchyInfo;
-    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
-    std::vector<u32> portNumLevel0 = {1};
+    bool isPod = topoInfo->isPod;
+    CommTopo netTypeLevel0
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    std::vector<u32> portNumLevel0
+        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
         static_cast<int>(netTypeLevel0));
@@ -59,17 +73,30 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
 
 template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
 AlgNetMeta InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTemplateAG>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    (void)rankSizeLevel0;
-    (void)rankSizeLevel1;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel0
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel0);

@@ -302,64 +302,106 @@ std::vector<CostModelParam>
 InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    (void)algHierarchyInfo;
-    bool isPod = true;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    std::vector<u32> portNumLevel0 = {1};
-    std::vector<u32> portNumLevel1 = {8};
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName != nullptr ? algName : ""));
+#else
+    const AlgAttrs* attrs = nullptr;
+#endif
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        netTypeLevel0_ = CommTopo::COMM_TOPO_1DMESH;
+        netTypeLevel1_ = CommTopo::COMM_TOPO_1DMESH;
+        portNumLevel0_ = {1};
+        portNumLevel1_ = {1};
+        lastIsPod_ = false;
+        lastRankSizeLevel0_ = 0;
+        lastRankSizeLevel1_ = 0;
+        return {};
+    }
+    u32 rankSize = topoInfo->userRankSize;
+    bool isPod = topoInfo->isPod;
+    const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
+    u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
+    u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    if (portNumLevel0.empty() || portNumLevel1.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+
+    // 缓存给 const GetAlgNetMeta 使用（当前分支 GetAlgNetMeta 无 algName 入参，无法重跑 topomatch）
+    netTypeLevel0_ = netTypeLevel0;
+    netTypeLevel1_ = netTypeLevel1;
+    portNumLevel0_ = portNumLevel0;
+    portNumLevel1_ = portNumLevel1;
+    lastIsPod_ = isPod;
+    lastRankSizeLevel0_ = rankSizeLevel0;
+    lastRankSizeLevel1_ = rankSizeLevel1;
+
     float ratio = 0.5f;
     if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = param.opConfig.multipleDimensionSplitRatio;
     }
+    HCCL_INFO(
+        "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d rankSizeLevel1=%d isPod=%d netTypeLevel0=%d "
+        "netTypeLevel1=%d portNumLevel0=%d portNumLevel1=%d",
+        algName, rankSize, rankSizeLevel0, rankSizeLevel1, isPod, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1), portNumLevel0, portNumLevel1);
     std::vector<CostModelParam> params;
     // Step1: Scatter L0(MESH) part0 ‖ Scatter L1(CLOS) part1（INPUT→HCCL_BUFFER，root发送）
     // L0首次scatter part0=ratio*D，R0子组内每peer发ratio*D/R0 → n=ratio/R0
     auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
         rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+        BufferType::HCCL_BUFFER, portNumLevel0, isPod});
     params.insert(params.end(), p0.begin(), p0.end());
     // L1首次scatter part1=(1-ratio)*D，R1子组(CLOS)内每步每partner发(1-ratio)*D/R1 → n=(1-ratio)/R1
     auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
         rankSizeLevel1, (1.0f - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod});
     params.insert(params.end(), p1.begin(), p1.end());
     // Step2: Scatter L1(CLOS) part0 ‖ Scatter L0(MESH) part1（HCCL_BUFFER内转发）
     // part0跨L1 NHR转发，R1子组内每步每partner发ratio*D/R1 → n=ratio/R1
     auto p2 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel1, ratio / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+        rankSizeLevel1, ratio / rankSizeLevel1 / rankSizeLevel0, netTypeLevel1, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
     params.insert(params.end(), p2.begin(), p2.end());
     // part1在L0 mesh转发，R0子组内每peer发(1-ratio)*D/R0 → n=(1-ratio)/R0
     auto p3 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0 / rankSizeLevel1, netTypeLevel0, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
     params.insert(params.end(), p3.begin(), p3.end());
     // Step3: AllGather L1(CLOS) part0 ‖ AllGather L0(MESH) part1（HCCL_BUFFER内聚合）
     // part0在L1层NHR allgather，R1子组内每步每partner收ratio*D/R1 → n=ratio/R1
     auto p4 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel1, ratio / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+        rankSizeLevel1, ratio / rankSizeLevel1 / rankSizeLevel0, netTypeLevel1, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
     params.insert(params.end(), p4.begin(), p4.end());
     // part1在L0层mesh allgather，R0子组内每peer收(1-ratio)*D/R0 → n=(1-ratio)/R0
     auto p5 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER,
-        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+        rankSizeLevel0, (1.0f - ratio) / rankSizeLevel0 / rankSizeLevel1, netTypeLevel0, BufferType::HCCL_BUFFER,
+        BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
     params.insert(params.end(), p5.begin(), p5.end());
     // Step4: AllGather L0(MESH) part0 ‖ AllGather L1(CLOS) part1（HCCL_BUFFER→INPUT，最终写回）
     // part0在L0层mesh allgather写回，R0子组内每peer收ratio*D/R0 → n=ratio/R0
     auto p6 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
         rankSizeLevel0, ratio / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::INPUT,
-        BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo});
+        BufferType::HCCL_BUFFER, portNumLevel0, isPod});
     params.insert(params.end(), p6.begin(), p6.end());
     // part1在L1层NHR allgather写回，R1子组内每步每partner收(1-ratio)*D/R1 → n=(1-ratio)/R1
     auto p7 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
         rankSizeLevel1, (1.0f - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::INPUT,
-        BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo});
+        BufferType::HCCL_BUFFER, portNumLevel1, isPod});
     params.insert(params.end(), p7.begin(), p7.end());
     return params;
 }
@@ -369,20 +411,35 @@ template <
     typename InsAlgTemplate3>
 AlgNetMeta
 InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    (void)param;
+    (void)algName;
+    (void)topoInfo;
     AlgNetMeta meta;
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
+    CommTopo netTypeLevel0 = netTypeLevel0_;
+    CommTopo netTypeLevel1 = netTypeLevel1_;
     meta.netTypes = {netTypeLevel0, netTypeLevel1, netTypeLevel1, netTypeLevel0,
                      netTypeLevel1, netTypeLevel0, netTypeLevel0, netTypeLevel1};
     meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2, 2, 2, 2};
-    // 8 segments 对应 4 步 scatter/allgather 的 L0/L1 交替, 每段 dataRatio 默认 1.0f
-    meta.dataRatios = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    meta.rankSizes = {rankSize, rankSize, rankSize, rankSize, rankSize, rankSize, rankSize, rankSize};
+    u32 rankSizeLevel0 = lastRankSizeLevel0_;
+    u32 rankSizeLevel1 = lastRankSizeLevel1_;
+    float ratio = 0.5f;
+    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = param.opConfig.multipleDimensionSplitRatio;
+    }
+    // dataRatios 与 CalcCostCoeff 每段实际 n 值一一对应
+    meta.dataRatios
+        = {ratio / rankSizeLevel0,                        // seg0: L0 scatter part0
+           (1 - ratio) / rankSizeLevel1,                  // seg1: L1 scatter part1
+           ratio / rankSizeLevel1 / rankSizeLevel0,       // seg2: L1 scatter part0
+           (1 - ratio) / rankSizeLevel0 / rankSizeLevel1, // seg3: L0 scatter part1
+           ratio / rankSizeLevel1 / rankSizeLevel0,       // seg4: L1 allgather part0
+           (1 - ratio) / rankSizeLevel0 / rankSizeLevel1, // seg5: L0 allgather part1
+           ratio / rankSizeLevel0,                        // seg6: L0 allgather part0
+           (1 - ratio) / rankSizeLevel1};                 // seg7: L1 allgather part1
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0,
+                      rankSizeLevel1, rankSizeLevel0, rankSizeLevel0, rankSizeLevel1};
     return meta;
 }
 
@@ -1524,8 +1581,8 @@ REGISTER_ALG_ATTRS(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(
     CcuSchedBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = false; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-    op.isSupportProd = true;
+    topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.isSupportLevel1Nhr = false; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = true;
     // TODO: 算法实现有问题，暂时通过opCustomCheck禁用
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) {
         return false;
@@ -1539,8 +1596,9 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     TopoMatchTwoLevel, CcuTempScatterMesh1D, CcuTempScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedBroadcastParallelMeshNHRMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.maxTopoLevelNum = 1; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    CcuSchedBroadcastParallelMeshNHRMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

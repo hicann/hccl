@@ -22,44 +22,51 @@ InsTempAllGatherMesh1D1DZAxisDetour::~InsTempAllGatherMesh1D1DZAxisDetour() {}
 
 std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    constexpr float meshRatio = 0.5f;
-    int kernelNum = 15;
+    if (param.rankSize > 8) {
+        return {};
+    }
+    // ZAxisDetour 两级传输：level0（server 内 mesh）传一半，level1（跨 server clos）传一半
+    float level0Ratio = 0.5f;
+    float level1Ratio = 1.0f - level0Ratio;
+    float nLevel0 = param.dataRatio * level0Ratio;
+    float nLevel1 = param.dataRatio * level1Ratio;
+
+    // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
+    int portNum0 = param.portNum[0];
+    int portNum1 = 8;
+    int kernelNum = param.isPod ? 24 : 16;
     int taskNum
-        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
-    taskNum *= 2;
-
-    float meshA = 0.0f;
-    float meshB = 0.0f;
+        = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
+    taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
+    float A0 = 0.0f;
+    float A1 = 0.0f;
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_1DMESH, 1, param.rankSize, meshA, param.isPod);
+        nLevel0, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(
+        nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, param.isPod);
+    float A = std::max(A0, A1);
+
+    // B: 本地拷贝，两级各处理一半数据
+    float B = 0.0f;
     if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * meshRatio, EngineType::AICPU, meshB);
-    } else {
-        meshB = 0.0f;
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+    }
+    if (param.inputBuffer != param.outputBuffer) {
+        float B2 = 0.0f;
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B2);
+        B += B2;
     }
 
-    float closA = 0.0f;
-    float closB = 0.0f;
-    int closPortNum = 4;
-    CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * meshRatio, CommTopo::COMM_TOPO_CLOS, closPortNum, param.rankSize, closA, param.isPod);
-    if (param.inputBuffer != param.scratchBuffer) {
-        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * meshRatio, EngineType::AICPU, closB);
-    } else {
-        closB = 0.0f;
-    }
-
-    float A = std::max(meshA, closA);
-    float B = meshB + closB;
     float C = 0.0f;
     float D = 0.0f;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
-    // C = 0.000005f * taskNum; // 5us/task
 
-    HCCL_INFO("[InsTempAllGatherMesh1D1DZAxisDetour] CalcCostCoeff meshA=%f closA=%f A=%f B=%f.", meshA, closA, A, B);
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
+    HCCL_DEBUG(
+        "[%s] CalcCostCoeff A0=%f A1=%f A=%f B=%f C=%f D=%f (level0Ratio=%f).", __func__, A0, A1, A, B, C, D,
+        level0Ratio);
     return params;
 }
 
