@@ -2,25 +2,25 @@
 
 ## 功能描述
 
-启用此环境变量后，运行日志（即"$HOME/ascend/log/run"目录下的日志）将包含HCOMM特定子模块的详细运行信息。目前支持TASK或task（任务编排模块）、DATA_OP或data_op（数据面接口模块）几个配置项。
+启用此环境变量后，运行日志（即"$HOME/ascend/log/run"目录下的日志）将包含HCOMM特定子模块的详细运行信息。目前支持TASK或task（任务编排模块）、DATA_OP或data_op（数据面接口模块）、RESOURCE或resource（资源管理模块，包括资源的申请和释放操作）、CHANNEL或channel（通道模块）几个配置项。
 
 该环境变量支持如下两种形式的配置：
 
-- 正向配置：支持配置1个或多个模块，各模块间使用英文逗号分隔，其中TASK（或task）、DATA_OP（或data_op）不区分大小写。
+- 正向配置：支持配置1个或多个模块，各模块间使用英文逗号分隔，其中TASK（或task）、DATA_OP（或data_op）、RESOURCE（或resource）、CHANNEL（或channel）不区分大小写。
 
     ```bash
     # 运行日志中记录task模块的运行信息。
     export HCOMM_DEBUG_CONFIG="TASK" 
-    # 运行日志中记录task、data_op模块的运行信息。
-    export HCOMM_DEBUG_CONFIG="task,data_op" 
+    # 运行日志中记录task、data_op、resource、channel模块的运行信息。
+    export HCOMM_DEBUG_CONFIG="task,data_op,resource,channel" 
     ```
 
 - 反向配置：在第一个模块名前面加上"^"，表示除了配置的子模块外，运行日志中会记录其他模块的详细运行信息。
 
     ```bash
-    # 运行日志中记录除了data_op模块之外的其他所有模块的运行信息（代表记录task模块的运行信息）。
+    # 运行日志中记录除了data_op模块之外的其他所有模块的运行信息（代表记录task、resource、channel模块的运行信息）。
     export HCOMM_DEBUG_CONFIG="^data_op"
-    # 运行日志中记录除了task与data_op模块之外的其他所有模块的运行信息（此时无任何模块开启）。
+    # 运行日志中记录除了task与data_op模块之外的其他所有模块的运行信息（代表记录resource、channel模块的运行信息）。
     export HCOMM_DEBUG_CONFIG="^task,data_op"
     ```
 
@@ -34,7 +34,7 @@
 ## 配置示例
 
 ```bash
-export HCOMM_DEBUG_CONFIG="TASK,DATA_OP" 
+export HCOMM_DEBUG_CONFIG="TASK,DATA_OP,RESOURCE,CHANNEL" 
 ```
 
 ## 使用约束
