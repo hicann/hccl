@@ -102,6 +102,7 @@ private:
 
     std::map<u32, std::vector<ChannelInfo>> intraLinks_;
     std::map<u32, std::vector<ChannelInfo>> interLinks_;
+    ParallelChannelPortInfo parallelPortInfo_; // CCU模式下资源阶段采集的端口信息
 
     std::vector<ThreadHandle> threads_;
 

@@ -297,6 +297,12 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
             resourceRequest.ccuKernelInfos.end(), interResourceRequest.ccuKernelInfos.begin(),
             interResourceRequest.ccuKernelInfos.end());
         resourceRequest.ccuKernelNum.emplace_back(interResourceRequest.ccuKernelNum[0]);
+#ifndef AICPU_COMPILE
+        // CCU模式的资源上下文中没有ChannelInfo，此处采集端口信息，供执行阶段计算数据切分比例
+        CHK_RET(CollectParallelPortInfoFromCcuKernels(
+            comm, topoInfo->userRank, intraResourceRequest.ccuKernelInfos, interResourceRequest.ccuKernelInfos,
+            resourceRequest.parallelPortInfo));
+#endif
     }
     HCCL_DEBUG(
         "[InsV2ScatterParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
@@ -340,6 +346,8 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         intraChannelInfo_ = remoteRankToChannelInfo_[0];
         interChannelInfo_ = remoteRankToChannelInfo_[1];
     }
+    // CCU模式下executor在资源阶段采集的端口信息，执行阶段用于计算数据切分比例
+    parallelPortInfo_ = resCtx.parallelPortInfo;
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
@@ -415,8 +423,8 @@ void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0_, rankSizeLevel1_, intraChannelInfo_, interChannelInfo_, ParallelDataSplitType::SCATTER,
-            multipleDimensionSplitRatio_);
+            rankSizeLevel0_, rankSizeLevel1_, intraChannelInfo_, interChannelInfo_, parallelPortInfo_,
+            ParallelDataSplitType::SCATTER, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);

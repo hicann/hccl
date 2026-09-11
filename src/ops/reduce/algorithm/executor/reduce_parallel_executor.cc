@@ -339,6 +339,12 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
             resourceRequest.ccuKernelInfos.end(), allGatherInterTempRequest.ccuKernelInfos.begin(),
             allGatherInterTempRequest.ccuKernelInfos.end());
         resourceRequest.ccuKernelNum.emplace_back(allGatherInterTempRequest.ccuKernelNum[0]);
+#ifndef AICPU_COMPILE
+        // CCU模式的资源上下文中没有ChannelInfo，此处采集端口信息，供执行阶段计算数据切分比例
+        CHK_RET(CollectParallelPortInfoFromCcuKernels(
+            comm, topoInfo->userRank, reduceScatterIntraTempRequest.ccuKernelInfos,
+            reduceScatterInterTempRequest.ccuKernelInfos, resourceRequest.parallelPortInfo));
+#endif
     }
 
     return HCCL_SUCCESS;
@@ -402,6 +408,8 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
         intraLinks_ = remoteRankToChannelInfo.at(0);
         interLinks_ = remoteRankToChannelInfo.at(1);
     }
+    // CCU模式下executor在资源阶段采集的端口信息，执行阶段用于计算数据切分比例
+    parallelPortInfo_ = resCtx.parallelPortInfo;
     dataCount_ = param_.DataDes.count;
     dataType_ = param_.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param_.DataDes.dataType];
@@ -621,7 +629,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_,
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_,
             ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
     }
     HCCL_INFO("[ReduceParallelExecutor] meshFirstRatio[%f], closFirstRatio[%f]", ratio, 1.0 - ratio);

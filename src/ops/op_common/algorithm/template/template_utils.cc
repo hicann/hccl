@@ -205,11 +205,11 @@ static bool IsPodInterChannelGroup(const std::map<u32, std::vector<ChannelInfo>>
 }
 
 // 内置公式所需的端口信息。interPortGroupSize保存原始端口和，
-// effectiveInterPortGroupSize保存经过POD 2:1收敛修正后的有效端口规模。
+// effectiveInterPortGroupSize保存按算子模型完成POD收敛修正后的有效端口规模。
 struct ParallelPortInfo {
     uint64_t intraPortGroupSize = 0;          // 机内端口和乘以(intraRankSize - 1)后的值
     uint64_t interPortGroupSize = 0;          // Server间首个非空Channel组的原始端口和
-    double effectiveInterPortGroupSize = 0.0; // POD机型除以2后的Server间有效端口规模
+    double effectiveInterPortGroupSize = 0.0; // 按算子模型修正后的Server间有效端口规模
     bool isPod = false;                       // Server间是否为双Channel、跨Die的POD链路
 };
 
@@ -228,45 +228,50 @@ static double NormalizeParallelFallbackRatio(double fallbackRatio)
     return std::isfinite(fallbackRatio) ? std::max(0.0, std::min(fallbackRatio, 1.0)) : 0.5;
 }
 
-// 校验公式计算必须具备的Rank和Channel Map信息，返回nullptr表示校验成功。
-static const char* ValidateParallelSplitInput(
-    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>>& interChannels)
-{
-    if (intraRankSize == 0) {
-        return "intraRankSize is 0";
-    }
-    if (interRankSize == 0) {
-        return "interRankSize is 0";
-    }
-    if (intraChannels.empty()) {
-        return "intraChannels is empty";
-    }
-    if (interChannels.empty()) {
-        return "interChannels is empty";
-    }
-    return nullptr;
-}
-
-// 提取并校验端口规模，同时完成机内Rank扩展和POD 2:1收敛修正。
-// 返回false时failureReason指向静态错误描述，portInfo保留已计算出的诊断信息。
-static bool PrepareParallelPortInfo(
-    uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelPortInfo& portInfo,
+// 从执行侧的ChannelInfo Map中提取原始端口信息，供AICPU/DPU等资源上下文携带ChannelInfo的模式使用。
+// 返回false时failureReason指向静态错误描述。
+static bool ExtractParallelPortInfoFromChannels(
+    const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelChannelPortInfo& rawPortInfo,
     const char*& failureReason)
 {
-    failureReason = ValidateParallelSplitInput(intraRankSize, interRankSize, intraChannels, interChannels);
-    if (failureReason != nullptr) {
+    if (intraChannels.empty()) {
+        failureReason = "intraChannels is empty";
         return false;
     }
-    if (!GetPortGroupSize(intraChannels, portInfo.intraPortGroupSize)) {
+    if (interChannels.empty()) {
+        failureReason = "interChannels is empty";
+        return false;
+    }
+    if (!GetPortGroupSize(intraChannels, rawPortInfo.intraPortGroupSize)) {
         failureReason = "no non-empty channel group in intraChannels";
         return false;
     }
-    if (!GetPortGroupSize(interChannels, portInfo.interPortGroupSize)) {
+    if (!GetPortGroupSize(interChannels, rawPortInfo.interPortGroupSize)) {
         failureReason = "no non-empty channel group in interChannels";
         return false;
     }
+    rawPortInfo.isInterPod = IsPodInterChannelGroup(interChannels);
+    rawPortInfo.isValid = true;
+    return true;
+}
+
+// 校验原始端口信息，完成机内Rank扩展，并按算子模型应用POD收敛修正。
+// 返回false时failureReason指向静态错误描述，portInfo保留已计算出的诊断信息。
+static bool PrepareParallelPortInfo(
+    uint64_t intraRankSize, uint64_t interRankSize, const ParallelChannelPortInfo& rawPortInfo,
+    ParallelDataSplitType splitType, ParallelPortInfo& portInfo, const char*& failureReason)
+{
+    if (intraRankSize == 0) {
+        failureReason = "intraRankSize is 0";
+        return false;
+    }
+    if (interRankSize == 0) {
+        failureReason = "interRankSize is 0";
+        return false;
+    }
+    portInfo.intraPortGroupSize = rawPortInfo.intraPortGroupSize;
+    portInfo.interPortGroupSize = rawPortInfo.interPortGroupSize;
     if (portInfo.intraPortGroupSize == 0) {
         failureReason = "intraPortGroupSize is 0";
         return false;
@@ -281,9 +286,11 @@ static bool PrepareParallelPortInfo(
     }
 
     portInfo.intraPortGroupSize *= intraRankSize - 1;
-    portInfo.isPod = IsPodInterChannelGroup(interChannels);
+    portInfo.isPod = rawPortInfo.isInterPod;
+    // Scatter/Broadcast在POD机型下的机间带宽不发生2:1收敛；其他模型保留原有修正。
+    const bool needPodConvergence = portInfo.isPod && splitType != ParallelDataSplitType::SCATTER;
     portInfo.effectiveInterPortGroupSize
-        = static_cast<double>(portInfo.interPortGroupSize) / (portInfo.isPod ? POD_PORT_GROUP_DIVISOR : 1.0);
+        = static_cast<double>(portInfo.interPortGroupSize) / (needPodConvergence ? POD_PORT_GROUP_DIVISOR : 1.0);
     if (portInfo.intraPortGroupSize == 0) {
         failureReason = "scaled intraPortGroupSize is 0";
         return false;
@@ -373,17 +380,30 @@ const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType)
 
 // 统一记录公式回退原因及已提取的拓扑参数，返回规范化后的回退比例。
 static double ReturnParallelDataSplitFallback(
-    const char* failureReason, uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo,
-    ParallelDataSplitType splitType, double fallbackRatio)
+    const char* failureReason, uint64_t intraRankSize, uint64_t interRankSize,
+    const ParallelChannelPortInfo& rawPortInfo, ParallelDataSplitType splitType, double fallbackRatio)
 {
     HCCL_WARNING(
         "[CalcParallelDataSplitRatio] fallback due to: %s, "
         "intraRankSize[%llu], interRankSize[%llu], "
-        "intraPortGroupSize[%llu], interPortGroupSize[%llu], "
+        "intraPortGroupSize[%llu], interPortGroupSize[%llu], isInterPod[%d], "
         "splitType[%s], fallbackRatio[%f]",
-        failureReason, intraRankSize, interRankSize, portInfo.intraPortGroupSize, portInfo.interPortGroupSize,
-        ParallelDataSplitTypeToStr(splitType), fallbackRatio);
+        failureReason, intraRankSize, interRankSize, rawPortInfo.intraPortGroupSize, rawPortInfo.interPortGroupSize,
+        rawPortInfo.isInterPod, ParallelDataSplitTypeToStr(splitType), fallbackRatio);
     return fallbackRatio;
+}
+
+// 新TopoMatch路径直接使用已归一化的ParallelPortInfo，转换为统一的日志格式后执行回退。
+static double ReturnParallelDataSplitFallback(
+    const char* failureReason, uint64_t intraRankSize, uint64_t interRankSize, const ParallelPortInfo& portInfo,
+    ParallelDataSplitType splitType, double fallbackRatio)
+{
+    ParallelChannelPortInfo rawPortInfo;
+    rawPortInfo.intraPortGroupSize = portInfo.intraPortGroupSize;
+    rawPortInfo.interPortGroupSize = portInfo.interPortGroupSize;
+    rawPortInfo.isInterPod = portInfo.isPod;
+    return ReturnParallelDataSplitFallback(
+        failureReason, intraRankSize, interRankSize, rawPortInfo, splitType, fallbackRatio);
 }
 
 // 统一记录公式原始结果、POD修正信息及最终量化结果。
@@ -402,27 +422,36 @@ static void LogParallelDataSplitRatio(
 
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
-    const std::map<u32, std::vector<ChannelInfo>>& interChannels, ParallelDataSplitType splitType, double fallbackRatio)
+    const std::map<u32, std::vector<ChannelInfo>>& interChannels, const ParallelChannelPortInfo& resPortInfo,
+    ParallelDataSplitType splitType, double fallbackRatio)
 {
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
-    ParallelPortInfo portInfo;
+    // CCU模式下资源上下文中没有ChannelInfo，优先使用资源阶段采集的端口信息。
+    ParallelChannelPortInfo rawPortInfo = resPortInfo;
     const char* failureReason = nullptr;
-    if (!PrepareParallelPortInfo(intraRankSize, interRankSize, intraChannels, interChannels, portInfo, failureReason)) {
+    if (!rawPortInfo.isValid
+        && !ExtractParallelPortInfoFromChannels(intraChannels, interChannels, rawPortInfo, failureReason)) {
         return ReturnParallelDataSplitFallback(
-            failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
+            failureReason, intraRankSize, interRankSize, rawPortInfo, splitType, validFallback);
+    }
+
+    ParallelPortInfo portInfo;
+    if (!PrepareParallelPortInfo(intraRankSize, interRankSize, rawPortInfo, splitType, portInfo, failureReason)) {
+        return ReturnParallelDataSplitFallback(
+            failureReason, intraRankSize, interRankSize, rawPortInfo, splitType, validFallback);
     }
 
     ParallelTimeCoeff timeCoeff;
     if (!CalcParallelTimeCoeff(intraRankSize, interRankSize, portInfo, splitType, timeCoeff)) {
         return ReturnParallelDataSplitFallback(
-            "unknown splitType", intraRankSize, interRankSize, portInfo, splitType, validFallback);
+            "unknown splitType", intraRankSize, interRankSize, rawPortInfo, splitType, validFallback);
     }
 
     double ratio = 0.0;
     if (!CalcRawParallelDataSplitRatio(timeCoeff, ratio, failureReason)) {
         return ReturnParallelDataSplitFallback(
-            failureReason, intraRankSize, interRankSize, portInfo, splitType, validFallback);
+            failureReason, intraRankSize, interRankSize, rawPortInfo, splitType, validFallback);
     }
 
     const double quantizedRatio = QuantizeParallelDataSplitRatio(ratio);
@@ -535,4 +564,123 @@ HcclResult FillChannelSymWinPeerAddrs(
 
     return HcclResult::HCCL_SUCCESS;
 }
+
+#ifndef AICPU_COMPILE
+// 并行模板的各远端rank使用同构链路组，只取首个非空组可避免按rank重复累加，
+// 并与AICPU/DPU路径的GetPortGroupSize取组规则保持一致。
+static const std::vector<HcclChannelDesc>*
+GetFirstNonEmptyChannelDescGroup(const std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
+{
+    for (const auto& entry : rankIdToChannelDesc) {
+        if (!entry.second.empty()) {
+            return &entry.second;
+        }
+    }
+    return nullptr;
+}
+
+// 按对端rank聚合各kernel的建链请求。CCU下同一对端的多条链路可能分布在不同kernel（不同die）上，
+// 聚合后与AICPU侧ChannelInfo Map的分组含义保持一致。
+static void GatherCcuChannelDescByRemoteRank(
+    const std::vector<CcuKernelInfo>& kernelInfos, std::map<u32, std::vector<HcclChannelDesc>>& rankIdToChannelDesc)
+{
+    for (const auto& kernelInfo : kernelInfos) {
+        for (const auto& channelDesc : kernelInfo.channels) {
+            rankIdToChannelDesc[channelDesc.remoteRank].push_back(channelDesc);
+        }
+    }
+}
+
+// 累加Channel组内各链路的带宽系数作为端口组大小，任一链路查询失败或结果为0均视为采集失败。
+static bool SumCcuChannelGroupBwCoeff(
+    HcclComm comm, u32 userRank, const std::vector<HcclChannelDesc>& channelGroup, uint64_t& portGroupSize)
+{
+    portGroupSize = 0;
+    for (const auto& channelDesc : channelGroup) {
+        EndpointAttrBwCoeff bwCoeff = 0;
+        HcclResult ret = HcclRankGraphGetEndpointInfo(
+            comm, userRank, &channelDesc.localEndpoint, ENDPOINT_ATTR_BW_COEFF, sizeof(EndpointAttrBwCoeff),
+            static_cast<void*>(&bwCoeff));
+        if (ret != HCCL_SUCCESS) {
+            HCCL_WARNING(
+                "[CollectParallelPortInfoFromCcuKernels] failed to get bwCoeff for userRank[%u], remoteRank[%u], "
+                "ret[0x%016llx].",
+                userRank, channelDesc.remoteRank, HCCL_ERROR_CODE(ret));
+            return false;
+        }
+        portGroupSize += bwCoeff;
+    }
+    return portGroupSize > 0;
+}
+
+// 首个非空Channel组恰好包含两条跨Die链路时判定为POD机型，与IsPodInterChannelGroup的判定规则保持一致。
+// 返回值表示属性查询是否成功，POD判定通过isPod返回，避免将查询失败误判为非POD。
+static bool GetCcuInterChannelGroupPodState(
+    HcclComm comm, u32 userRank, const std::vector<HcclChannelDesc>& channelGroup, bool& isPod)
+{
+    constexpr size_t podChannelNum = 2;
+    isPod = false;
+    if (channelGroup.size() != podChannelNum) {
+        return true;
+    }
+    EndpointAttrDieId dieIds[podChannelNum] = {INVALID_VALUE_RANKID, INVALID_VALUE_RANKID};
+    for (size_t idx = 0; idx < podChannelNum; idx++) {
+        HcclResult ret = HcclRankGraphGetEndpointInfo(
+            comm, userRank, &channelGroup[idx].localEndpoint, ENDPOINT_ATTR_DIE_ID, sizeof(EndpointAttrDieId),
+            static_cast<void*>(&dieIds[idx]));
+        if (ret != HCCL_SUCCESS) {
+            HCCL_WARNING(
+                "[CollectParallelPortInfoFromCcuKernels] failed to get dieId for userRank[%u], remoteRank[%u], "
+                "ret[0x%016llx]. POD convergence adjustment will not be used.",
+                userRank, channelGroup[idx].remoteRank, HCCL_ERROR_CODE(ret));
+            return false;
+        }
+    }
+    if (dieIds[0] == INVALID_VALUE_RANKID || dieIds[1] == INVALID_VALUE_RANKID) {
+        HCCL_WARNING(
+            "[CollectParallelPortInfoFromCcuKernels] invalid dieId for userRank[%u], dieIds[%u, %u].", userRank,
+            dieIds[0], dieIds[1]);
+        return false;
+    }
+    isPod = dieIds[0] != dieIds[1];
+    return true;
+}
+
+HcclResult CollectParallelPortInfoFromCcuKernels(
+    HcclComm comm, u32 userRank, const std::vector<CcuKernelInfo>& intraKernelInfos,
+    const std::vector<CcuKernelInfo>& interKernelInfos, ParallelChannelPortInfo& portInfo)
+{
+    portInfo = ParallelChannelPortInfo();
+    std::map<u32, std::vector<HcclChannelDesc>> intraChannelDesc;
+    std::map<u32, std::vector<HcclChannelDesc>> interChannelDesc;
+    GatherCcuChannelDescByRemoteRank(intraKernelInfos, intraChannelDesc);
+    GatherCcuChannelDescByRemoteRank(interKernelInfos, interChannelDesc);
+
+    const std::vector<HcclChannelDesc>* intraGroup = GetFirstNonEmptyChannelDescGroup(intraChannelDesc);
+    const std::vector<HcclChannelDesc>* interGroup = GetFirstNonEmptyChannelDescGroup(interChannelDesc);
+    // 端口信息仅用于数据切分比例寻优，采集失败时保持isValid为false，执行侧按回退比例运行，不阻断资源申请。
+    if (intraGroup == nullptr || interGroup == nullptr) {
+        HCCL_WARNING(
+            "[CollectParallelPortInfoFromCcuKernels] userRank[%u] no non-empty channel group, "
+            "intraKernelNum[%zu], interKernelNum[%zu].",
+            userRank, intraKernelInfos.size(), interKernelInfos.size());
+        return HCCL_SUCCESS;
+    }
+    if (!SumCcuChannelGroupBwCoeff(comm, userRank, *intraGroup, portInfo.intraPortGroupSize)
+        || !SumCcuChannelGroupBwCoeff(comm, userRank, *interGroup, portInfo.interPortGroupSize)) {
+        portInfo = ParallelChannelPortInfo();
+        return HCCL_SUCCESS;
+    }
+    if (!GetCcuInterChannelGroupPodState(comm, userRank, *interGroup, portInfo.isInterPod)) {
+        portInfo = ParallelChannelPortInfo();
+        return HCCL_SUCCESS;
+    }
+    portInfo.isValid = true;
+    HCCL_INFO(
+        "[CollectParallelPortInfoFromCcuKernels] userRank[%u] intraPortGroupSize[%llu], interPortGroupSize[%llu], "
+        "isInterPod[%d]",
+        userRank, portInfo.intraPortGroupSize, portInfo.interPortGroupSize, portInfo.isInterPod);
+    return HCCL_SUCCESS;
+}
+#endif
 } // namespace ops_hccl

@@ -203,6 +203,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
             resourceRequest.ccuKernelInfos.end(), interTempRequest0.ccuKernelInfos.begin(),
             interTempRequest0.ccuKernelInfos.end());
         resourceRequest.ccuKernelNum.emplace_back(interTempRequest0.ccuKernelNum[0]);
+#ifndef AICPU_COMPILE
+        // 切分公式按Scatter阶段配平，故采集第一组Scatter模板的端口信息，而非后续AllGather模板。
+        CHK_RET(CollectParallelPortInfoFromCcuKernels(
+            comm, topoInfo->userRank, intraTempRequest.ccuKernelInfos, interTempRequest.ccuKernelInfos,
+            resourceRequest.parallelPortInfo));
+#endif
     }
 
     HCCL_DEBUG(
@@ -245,6 +251,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         intraLinks_ = remoteRankToChannelInfo_[0];
         interLinks_ = remoteRankToChannelInfo_[1];
     }
+    // CCU模式下executor在资源阶段采集的端口信息，执行阶段用于计算数据切分比例
+    parallelPortInfo_ = resCtx.parallelPortInfo;
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
@@ -452,8 +460,8 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, ParallelDataSplitType::SCATTER,
-            multipleDimensionSplitRatio_);
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_,
+            ParallelDataSplitType::SCATTER, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);

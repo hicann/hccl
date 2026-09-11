@@ -2186,6 +2186,8 @@ HcclResult HcclAllocAlgResourceCcu(
     resCtxHost->slaveThreadNum = resRequest.slaveThreadNum;
     resCtxHost->notifyNumPerThread = resRequest.notifyNumPerThread;
     resCtxHost->dieSplitRatio = resRequest.dieSplitRatio;
+    // CCU模式下不构造ChannelInfo，端口信息由executor在CalcRes阶段采集，此处透传给执行阶段
+    resCtxHost->parallelPortInfo = resRequest.parallelPortInfo;
     CHK_RET(HcclGetThread(comm, param, resRequest, resCtxHost, resPack));
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     // 资源回退

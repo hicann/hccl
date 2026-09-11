@@ -186,6 +186,7 @@ private:
     std::vector<u32> syncNotifyOnMain_;
     std::map<u32, std::vector<ChannelInfo>> intraLinks_;
     std::map<u32, std::vector<ChannelInfo>> interLinks_;
+    ParallelChannelPortInfo parallelPortInfo_; // CCU模式下资源阶段采集的端口信息
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;
