@@ -389,6 +389,9 @@ bool AutoSelectorBase::ProcessAivConfig(
     ret = SelectAivAlgo(topoInfo, opParam, configAlgMap, selectAlgName);
     if (ret == SelectorStatus::NOT_MATCH) {
         if (opParam.opExecuteConfig == OpExecuteConfig::AIV_ONLY) {
+            HCCL_WARNING(
+                "[Algo][AutoSelectorBase] opType[%d] no aiv algorithm matched, current opExecuteConfig[%d].",
+                static_cast<int>(opParam.opType), static_cast<int>(opParam.opExecuteConfig));
             return true;
         }
         opParam.opExecuteConfig = OpExecuteConfig::CCU_FAIL;

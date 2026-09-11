@@ -50,7 +50,9 @@ ExecuteSelector::Run(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, st
         }
     }
 
-    HCCL_ERROR("[Algo][Selector] No selector is matched.");
+    HCCL_ERROR(
+        "[Algo][Selector] No supported algorithm for optype[%d], opExecuteConfig[%d].",
+        static_cast<int>(opParam.opType), static_cast<int>(opParam.opExecuteConfig));
     return HcclResult::HCCL_E_NOT_SUPPORT;
 }
 
