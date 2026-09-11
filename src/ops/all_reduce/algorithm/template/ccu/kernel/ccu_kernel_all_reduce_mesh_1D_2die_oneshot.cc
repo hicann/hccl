@@ -35,6 +35,11 @@ static CcuResult ParseKernelArg(AllreduceMesh1D2DieOneShotContext& ctx)
 {
     const auto* arg = ctx.arg;
 
+    if (arg->channelCount == 0) {
+        HCCL_ERROR("[CcuKernelAllreduceMesh1D2DieOneShot] channels is empty!");
+        return CcuResult::CCU_E_INTERNAL;
+    }
+
     ctx.rankId = arg->rankId;
     ctx.rankSize = arg->rankSize;
     ctx.rmtReduceWithMyRank = arg->rmtReduceWithMyRank;

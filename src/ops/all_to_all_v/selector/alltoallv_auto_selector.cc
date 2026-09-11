@@ -194,13 +194,8 @@ SelectorStatus AlltoAllVAutoSelector::SelectDPUAlgo(
             selectAlgName = "DpuAllToAllVSoleMesh";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllToAllVSoleMesh";
-                return SelectorStatus::MATCH;
-            } else {
-                selectAlgName = "DpuAllToAllVSoleMesh";
-                return SelectorStatus::MATCH;
-            }
+            selectAlgName = "DpuAllToAllVSoleMesh";
+            return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             // seq算法兼容level0为clos的场景
             selectAlgName = "DpuAllToAllVSoleMesh";

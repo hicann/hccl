@@ -62,11 +62,6 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING(
-            "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
-            topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
     } else {
         HCCL_WARNING(
             "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
