@@ -137,30 +137,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
     HCCL_DEBUG("[AlltoAllAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
-    if (topoInfo->topoLevelNums > 1) {
-        std::vector<HcclAlgoType> algos
-            = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
-        auto it = configAlgMap.find(opParam.opType);
-        if ((it != configAlgMap.end()) && (it->second.size() > 1)) {
-            algos = it->second;
-        }
-        bool hierConfigured = false;
-        for (const auto& algo : algos) {
-            if (algo == HcclAlgoType::HCCL_ALGO_TYPE_HIER) {
-                hierConfigured = true;
-                break;
-            }
-        }
-        if (hierConfigured && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_2) {
-            if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-                selectAlgName = "AicpuAllToAllSoleMeshHier";
-                HCCL_INFO(
-                    "[AlltoAllAutoSelector][%s] Algo match[%s], topoLevelNums[%u]", __func__, selectAlgName.c_str(),
-                    topoInfo->topoLevelNums);
-                return SelectorStatus::MATCH;
-            }
-        }
-    }
+    (void)configAlgMap;
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {
         uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];

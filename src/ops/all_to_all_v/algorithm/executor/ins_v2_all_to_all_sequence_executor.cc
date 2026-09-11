@@ -8,7 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "ins_v2_all_to_all_hier_sole_executor.h"
+#include "ins_v2_all_to_all_sequence_executor.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "dev_type.h"
 #include "topo_match_two_level.h"
@@ -17,11 +17,11 @@
 namespace ops_hccl {
 
 template <typename AlgTopoMatch>
-InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::InsV2AlltoAllHierSoleExecutor()
+InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::InsV2AlltoAllSequenceExecutor()
 {}
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfo(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::CalcAlgHierarchyInfo(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
@@ -31,7 +31,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfo(
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfoV2(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::CalcAlgHierarchyInfoV2(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     myRank_ = topoInfo->userRank;
@@ -43,25 +43,25 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcAlgHierarchyInfoV2(
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     HCCL_INFO(
-        "[InsV2AlltoAllHierSoleExecutor][CalcAlgHierarchyInfoV2] myRank[%u], rankSize[%u], "
+        "[InsV2AlltoAllSequenceExecutor][CalcAlgHierarchyInfoV2] myRank[%u], rankSize[%u], "
         "totalStages[%u]",
         myRank_, rankSize_, totalStages_);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch>
-std::vector<std::string> InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::GetDefaultStageAlgos(u32 levelNum)
+std::vector<std::string> InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::GetDefaultStageAlgos(u32 levelNum)
 {
     std::vector<std::string> stageAlgos(levelNum);
     for (u32 k = 0; k < levelNum; k++) {
         stageAlgos[k] = "MeshStage";
     }
-    HCCL_INFO("[InsV2AlltoAllHierSoleExecutor][GetDefaultStageAlgos] levelNum[%u], all MeshStage", levelNum);
+    HCCL_INFO("[InsV2AlltoAllSequenceExecutor][GetDefaultStageAlgos] levelNum[%u], all MeshStage", levelNum);
     return stageAlgos;
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::BuildStageTemplates(const OpParam& param)
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::BuildStageTemplates(const OpParam& param)
 {
     stageAlgos_ = GetDefaultStageAlgos(totalStages_);
     stageTemplates_.resize(totalStages_);
@@ -74,7 +74,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::BuildStageTemplates(cons
             stageAlgos_[k], param, myRank_, subCommRanks, stageIndex);
         if (stageTemplates_[k] == nullptr) {
             HCCL_ERROR(
-                "[InsV2AlltoAllHierSoleExecutor][BuildStageTemplates] Fail to create stage "
+                "[InsV2AlltoAllSequenceExecutor][BuildStageTemplates] Fail to create stage "
                 "template[%u], algoName[%s]",
                 k, stageAlgos_[k].c_str());
             return HCCL_E_INTERNAL;
@@ -85,7 +85,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::BuildStageTemplates(cons
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcRes(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
@@ -106,7 +106,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcRes(
             stageAlgos_[k], param, myRank_, subCommRanks, stageIndex);
         if (stageTemplates_[k] == nullptr) {
             HCCL_ERROR(
-                "[InsV2AlltoAllHierSoleExecutor][CalcRes] Failed to create stage template[%u], "
+                "[InsV2AlltoAllSequenceExecutor][CalcRes] Failed to create stage template[%u], "
                 "algoName[%s]",
                 k, stageAlgos_[k].c_str());
             return HCCL_E_INTERNAL;
@@ -124,7 +124,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcRes(
         }
 
         HCCL_INFO(
-            "[InsV2AlltoAllHierSoleExecutor][CalcRes] stage[%u], stageIndex[%u], algoName[%s], "
+            "[InsV2AlltoAllSequenceExecutor][CalcRes] stage[%u], stageIndex[%u], algoName[%s], "
             "slaveThreadNum[%u], channelNum[%u]",
             k, stageIndex, stageAlgos_[k].c_str(), stageResReq.slaveThreadNum,
             static_cast<u32>(stageResReq.channels.empty() ? 0 : stageResReq.channels[0].size()));
@@ -135,16 +135,22 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcRes(
     resourceRequest.notifyNumPerThread.resize(maxSlaveThreadNum, 1);
     resourceRequest.notifyNumOnMainThread = maxNotifyNumOnMainThread;
 
+    u32 totalChannelNum = 0;
+    for (const auto& ch : resourceRequest.channels) {
+        if (!ch.empty()) {
+            totalChannelNum += static_cast<u32>(ch.size());
+        }
+    }
     HCCL_INFO(
-        "[InsV2AlltoAllHierSoleExecutor][CalcRes] totalStages[%u], slaveThreadNum[%u], "
-        "notifyNumOnMainThread[%u]",
-        totalStages_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread);
+        "[InsV2AlltoAllSequenceExecutor][CalcRes] totalStages[%u], slaveThreadNum[%u], "
+        "notifyNumOnMainThread[%u], totalChannelNum[%u]",
+        totalStages_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, totalChannelNum);
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch>
 HcclResult
-InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
+InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
@@ -164,7 +170,7 @@ InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::Orchestrate(const OpParam& param, c
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::SetStageParams(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::SetStageParams(
     TemplateDataParams& tempAlgParams, u32 stageIndex, u32 totalStages, u64 loop, u64 currDataCount,
     u64 processedDataCount, u64 maxDataCountPerLoop, u32 totalRankSize, u32 stageRankSize)
 {
@@ -193,7 +199,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::SetStageParams(
     }
 
     HCCL_DEBUG(
-        "[InsV2AlltoAllHierSoleExecutor][SetStageParams] stageIndex[%u], count[%llu], "
+        "[InsV2AlltoAllSequenceExecutor][SetStageParams] stageIndex[%u], count[%llu], "
         "sliceSize[%llu], inputSliceStride[%llu], inBuffType[%d], outBuffType[%d]",
         stageIndex, currDataCount, tempAlgParams.sliceSize, tempAlgParams.inputSliceStride,
         static_cast<int>(tempAlgParams.buffInfo.inBuffType), static_cast<int>(tempAlgParams.buffInfo.outBuffType));
@@ -201,7 +207,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::SetStageParams(
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::FillTemplateResource(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::FillTemplateResource(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateResource& templateRes, u32 stageIndex)
 {
     (void)param;
@@ -215,7 +221,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::FillTemplateResource(
 }
 
 template <typename AlgTopoMatch>
-HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::OrchestrateLoop(
+HcclResult InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::OrchestrateLoop(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     CHK_PTR_NULL(param.all2AllVDataDes.sendCounts);
@@ -226,7 +232,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::OrchestrateLoop(
     CHK_PRT_RET(
         maxDataSizePerLoop == 0,
         HCCL_ERROR(
-            "[InsV2AlltoAllHierSoleExecutor][OrchestrateLoop] maxDataSizePerLoop is 0, "
+            "[InsV2AlltoAllSequenceExecutor][OrchestrateLoop] maxDataSizePerLoop is 0, "
             "cclBuffSize[%llu], totalRankSize[%u], dataTypeSize[%llu]",
             cclBuffSize, totalRankSize_, dataTypeSize_),
         HCCL_E_INTERNAL);
@@ -236,7 +242,7 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::OrchestrateLoop(
     u64 processedDataCount = 0;
 
     HCCL_INFO(
-        "[InsV2AlltoAllHierSoleExecutor][OrchestrateLoop] totalCount[%llu], cclBuffSize[%llu], "
+        "[InsV2AlltoAllSequenceExecutor][OrchestrateLoop] totalCount[%llu], cclBuffSize[%llu], "
         "maxDataCountPerLoop[%llu], loopTimes[%llu], totalStages[%u], totalRankSize[%u]",
         totalCount, cclBuffSize, maxDataCountPerLoop, loopTimes, totalStages_, totalRankSize_);
 
@@ -266,12 +272,12 @@ HcclResult InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::OrchestrateLoop(
         processedDataCount += currDataCount;
     }
 
-    HCCL_INFO("[InsV2AlltoAllHierSoleExecutor][OrchestrateLoop] done");
+    HCCL_INFO("[InsV2AlltoAllSequenceExecutor][OrchestrateLoop] done");
     return HCCL_SUCCESS;
 }
 
 template <typename AlgTopoMatch>
-std::vector<CostModelParam> InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcCostCoeff(
+std::vector<CostModelParam> InsV2AlltoAllSequenceExecutor<AlgTopoMatch>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     (void)comm;
@@ -284,9 +290,9 @@ std::vector<CostModelParam> InsV2AlltoAllHierSoleExecutor<AlgTopoMatch>::CalcCos
 }
 
 REGISTER_EXECUTOR_BY_TOPO(
-    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMeshHier, InsV2AlltoAllHierSoleExecutor, TopoMatchTwoLevel);
+    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSequenceMeshMesh, InsV2AlltoAllSequenceExecutor, TopoMatchTwoLevel);
 
-REGISTER_ALG_ATTRS(AicpuAllToAllSoleMeshHier, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+REGISTER_ALG_ATTRS(AicpuAllToAllSequenceMeshMesh, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
 
 } // namespace ops_hccl

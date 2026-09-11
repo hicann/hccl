@@ -510,7 +510,6 @@ HcclResult ParserHcclAlgoLevel(const std::string& algoLevel, u32& level, HcclAlg
         {"NHR_V1", HcclAlgoType::HCCL_ALGO_TYPE_NHR_V1},
         {"AHC", HcclAlgoType::HCCL_ALGO_TYPE_AHC},
         {"AHC_BROKE", HcclAlgoType::HCCL_ALGO_TYPE_AHC_BROKE},
-        {"Hier", HcclAlgoType::HCCL_ALGO_TYPE_HIER},
         {"NB", HcclAlgoType::HCCL_ALGO_TYPE_NB},
         {"NA", HcclAlgoType::HCCL_ALGO_TYPE_NA},
     };
