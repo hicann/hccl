@@ -119,7 +119,15 @@ if(KERNEL_MODE)
         INPUT "aicpu_hccl_custom_allgather.tar.gz"
         CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/scripts/hccl_custom_allgather_aicpu_check_cfg.xml
         RESULT_VAR "sign_aicpu_hccl_custom_allgather_result"
+        VERSION ${VERSION_INFO}
         DEPENDS package_aicpu_hccl_custom_allgather
+    )
+
+    # 将签名后的 tar 包复制到统一路径，供 Host 侧 install 引用
+    add_custom_command(TARGET sign_aicpu_hccl_custom_allgather POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_DEVICE_DIR}/signatures
+        COMMAND ${CMAKE_COMMAND} -E copy ${sign_aicpu_hccl_custom_allgather_result}
+                ${BUILD_DEVICE_DIR}/signatures/aicpu_hccl_custom_allgather.tar.gz
     )
 
     # 设置依赖

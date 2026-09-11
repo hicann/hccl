@@ -47,6 +47,19 @@ message(STATUS "ENABLE_BUILD_DEVICE=${ENABLE_BUILD_DEVICE}")
 message(STATUS "ENABLE_BUILD_AARCH=${ENABLE_BUILD_AARCH}")
 message(STATUS "ASCENDC_DUMP=${ASCENDC_DUMP}")
 
+# 设备侧构建（KERNEL_MODE=ON）在 x86 主机上时自动启用 aarch64 交叉编译
+# 设备侧 AICPU kernel 运行在 NPU（aarch64 架构），x86 主机需交叉编译生成 aarch64 产物
+# 注：CMAKE_HOST_SYSTEM_PROCESSOR 在 project() 之前尚未初始化，需用 execute_process 检测
+if(KERNEL_MODE AND NOT ENABLE_BUILD_AARCH)
+    execute_process(COMMAND uname -m OUTPUT_VARIABLE _HCCL_HOST_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "KERNEL_MODE=ON, host processor: ${_HCCL_HOST_ARCH}")
+    if(_HCCL_HOST_ARCH MATCHES "^(x86_64|i386|i686)$")
+        set(ENABLE_BUILD_AARCH ON)
+        message(STATUS "x86 host detected with KERNEL_MODE=ON, auto-enabling aarch64 cross-compilation")
+    endif()
+    unset(_HCCL_HOST_ARCH)
+endif()
+
 set(HCCL_DIR          "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HCC_TOOLCHAIN_DIR "${ASCEND_CANN_PACKAGE_PATH}/toolkit/toolchain/hcc")
 set(HCC_CXX_COMPILER  "${HCC_TOOLCHAIN_DIR}/bin/aarch64-target-linux-gnu-g++")
