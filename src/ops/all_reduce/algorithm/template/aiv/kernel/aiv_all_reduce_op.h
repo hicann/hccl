@@ -17,21 +17,47 @@
 
 using namespace AscendC;
 
-#define AIV_ALL_REDUCE_ONESHOT_KERNEL_BATCH_DEF(type)                           \
-    extern "C" __global__ __aicore__ void aiv_allreduce_##type(KERNEL_ARGS_DEF) \
-    {                                                                           \
-        AIV_INFO_HINT;                                                          \
-        return AivAllReduceV2Mesh1DOneShot<type>(KERNEL_ARGS_CALL);             \
-    }                                                                           \
-    EXPORT_AIV_META_INFO(aiv_allreduce_##type)
+#define AIV_ALL_REDUCE_ONESHOT_KERNEL_DECL(type) \
+    extern "C" __aicore__ void aiv_allreduce_##type##_inner(KERNEL_ARGS_DEF);
 
-#define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_BATCH_DEF(type)                                    \
-    extern "C" __global__ __aicore__ void aiv_allreduce_mesh1d_twoshot_##type(KERNEL_ARGS_DEF) \
-    {                                                                                          \
-        AIV_INFO_HINT;                                                                         \
-        return AivAllReduceV2Mesh1DTwoShot<type>(KERNEL_ARGS_CALL);                            \
-    }                                                                                          \
-    EXPORT_AIV_META_INFO(aiv_allreduce_mesh1d_twoshot_##type)
+#define AIV_ALL_REDUCE_ONESHOT_KERNEL_DEF(type)                              \
+    extern "C" __aicore__ void aiv_allreduce_##type##_inner(KERNEL_ARGS_DEF) \
+    {                                                                        \
+        AIV_INFO_HINT;                                                       \
+        return AivAllReduceV2Mesh1DOneShot<type>(KERNEL_ARGS_CALL);          \
+    }
+
+#define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DECL(type) \
+    extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF);
+
+#define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DEF(type)                                       \
+    extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF) \
+    {                                                                                       \
+        AIV_INFO_HINT;                                                                      \
+        return AivAllReduceV2Mesh1DTwoShot<type>(KERNEL_ARGS_CALL);                         \
+    }
+
+#if defined(BUILD_SK_FUNC) && defined(SK_FUNC_ID)
+#define AIV_ALL_REDUCE_ONESHOT_KERNEL_BATCH_DEF(type) \
+    AIV_ALL_REDUCE_ONESHOT_KERNEL_DECL(type);         \
+    SK_BIND_FUNC_DEF(aiv_allreduce_##type, SK_FUNC_ID)
+#else
+#define AIV_ALL_REDUCE_ONESHOT_KERNEL_BATCH_DEF(type) \
+    AIV_ALL_REDUCE_ONESHOT_KERNEL_DEF(type);          \
+    GLOBAL_FUNC_DEF(aiv_allreduce_##type);            \
+    SuperKernelBind(aiv_allreduce_##type)
+#endif
+
+#if defined(BUILD_SK_FUNC) && defined(SK_FUNC_ID)
+#define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_BATCH_DEF(type) \
+    AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DECL(type);         \
+    SK_BIND_FUNC_DEF(aiv_allreduce_mesh1d_twoshot_##type, SK_FUNC_ID)
+#else
+#define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_BATCH_DEF(type) \
+    AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DEF(type);          \
+    GLOBAL_FUNC_DEF(aiv_allreduce_mesh1d_twoshot_##type);   \
+    SuperKernelBind(aiv_allreduce_mesh1d_twoshot_##type)
+#endif
 
 // 定义各算子各数据类型Kernel入口
 AIV_ATOMIC_DATA_TYPE_DEF(AIV_ALL_REDUCE_ONESHOT_KERNEL_BATCH_DEF);

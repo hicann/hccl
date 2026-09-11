@@ -228,23 +228,25 @@ public:
         ipc_reduce_flag_offset = rankSize_;
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
 
-        // scatter
-        for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-            targetRank = blockIdx_ + i * numBlocks_;
-            rankChunkSize
-                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
-                      rankChunkStride :
-                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
+        // scatter（SK空闲核跳过，避免与忙核重复写数据和flag）
+        if (!IsIdleCore()) {
+            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
+                targetRank = blockIdx_ + i * numBlocks_;
+                rankChunkSize
+                    = ((targetRank + 1) * rankChunkStride <= dataCount) ?
+                          rankChunkStride :
+                          (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
 
-            if (rankChunkSize > 0) {
-                uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
-                uint64_t outputOffset
-                    = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rank_ * rankChunkSize) * sizeof(T);
-                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
-                pipe_barrier(PIPE_ALL);
+                if (rankChunkSize > 0) {
+                    uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
+                    uint64_t outputOffset
+                        = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rank_ * rankChunkSize) * sizeof(T);
+                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
+                    pipe_barrier(PIPE_ALL);
+                }
+                // set flag
+                Record(targetRank, rank_, curTag_);
             }
-            // set flag
-            Record(targetRank, rank_, curTag_);
         }
         // reduce
         if (blockIdx_ == numBlocks_ - 1) {
@@ -273,6 +275,10 @@ public:
     __aicore__ inline void SmallCoreAllgather()
     {
         uint64_t dataCount = len_;
+        // SK空闲核跳过gather，避免与忙核重复搬运
+        if (IsIdleCore()) {
+            return;
+        }
         for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
             targetRank = blockIdx_ + i * numBlocks_;
             rankChunkSize
