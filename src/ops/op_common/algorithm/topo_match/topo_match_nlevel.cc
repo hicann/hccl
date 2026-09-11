@@ -130,7 +130,7 @@ HcclResult TopoMatchNLevel::TopoForLayerGeneric(
         }
         CommLink* links;
         uint32_t linkNum = 0;
-        HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum);
+        CHK_RET(HcclRankGraphGetLinks(comm, netLayer, myRank, rankId, &links, &linkNum));
         if (linkNum == 0) {
             continue;
         }

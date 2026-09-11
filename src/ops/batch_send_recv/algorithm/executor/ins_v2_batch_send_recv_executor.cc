@@ -241,7 +241,7 @@ HcclResult InsV2BatchSendRecvExecutor::CalcSendSlices()
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
             curInputPtr = static_cast<u8*>(sendItem->buf) + curOffset;
-            sendDataSilces_.emplace_back(static_cast<void*>(curInputPtr), transferSize, sendItem->remoteRank);
+            sendDataSlices_.emplace_back(static_cast<void*>(curInputPtr), transferSize, sendItem->remoteRank);
             HCCL_DEBUG(
                 "[InsV2BatchSendRecvExecutor][CalcSendSlices] slice curOffset[%llu], slice size[%llu] curInputPtr "
                 "[%p].",
@@ -275,7 +275,7 @@ HcclResult InsV2BatchSendRecvExecutor::CalcRecvSlices()
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
             curOutputPtr = static_cast<u8*>(recvItem->buf) + curOffset;
-            recvDataSilces_.emplace_back(static_cast<void*>(curOutputPtr), transferSize, recvItem->remoteRank);
+            recvDataSlices_.emplace_back(static_cast<void*>(curOutputPtr), transferSize, recvItem->remoteRank);
             HCCL_DEBUG(
                 "[InsV2BatchSendRecvExecutor][CalcRecvSlices] slice curOffset[%llu], slice size[%llu] curOutputPtr "
                 "[%p].",
@@ -384,14 +384,14 @@ HcclResult InsV2BatchSendRecvExecutor::RunLoopSendRecv()
     std::vector<u32> notifyIdxMainToSub = {0};
     CHK_RET(PreSyncInterThreads(threads_[0], subThreads, notifyIdxMainToSub));
 
-    while (!sendDataSilces_.empty() || !recvDataSilces_.empty()) {
-        if (!sendDataSilces_.empty()) {
-            CHK_RET(ProcessSendDataSlice(sendDataSilces_.front(), threads_[0]));
-            sendDataSilces_.pop_front();
+    while (!sendDataSlices_.empty() || !recvDataSlices_.empty()) {
+        if (!sendDataSlices_.empty()) {
+            CHK_RET(ProcessSendDataSlice(sendDataSlices_.front(), threads_[0]));
+            sendDataSlices_.pop_front();
         }
-        if (!recvDataSilces_.empty()) {
-            CHK_RET(ProcessRecvDataSlice(recvDataSilces_.front(), threads_[1]));
-            recvDataSilces_.pop_front();
+        if (!recvDataSlices_.empty()) {
+            CHK_RET(ProcessRecvDataSlice(recvDataSlices_.front(), threads_[1]));
+            recvDataSlices_.pop_front();
         }
     }
     HCCL_INFO("[InsV2BatchSendRecvExecutor][RunLoopSendRecv] Process all tasks finish.");

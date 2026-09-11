@@ -260,10 +260,10 @@ HcclResult InsTempScatterOmniPipeNHR::RunNHR(
     u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     // 片数取PrepareScatterDataSplit预计算的repeatNum_（参考ccu版RunScatterNHRDispatch）
     const u64 rptNum = repeatNum_;
-    bool isPcieProtocal = IsPcieProtocol(channels);
+    bool isPcieProtocol = IsPcieProtocol(channels);
     HCCL_DEBUG(
-        "[Scatter-OmniPipe-NHR][RunNHR] root[%u], nSteps[%u], rptNum[%llu], isPcieProtocal[%d], channelsPerRank_[%u]",
-        root_, nSteps, rptNum, isPcieProtocal, channelsPerRank_);
+        "[Scatter-OmniPipe-NHR][RunNHR] root[%u], nSteps[%u], rptNum[%llu], isPcieProtocol[%d], channelsPerRank_[%u]",
+        root_, nSteps, rptNum, isPcieProtocol, channelsPerRank_);
     for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
         for (u32 step = 0; step < nSteps; step++) {
             AicpuNHRStepInfo stepInfo;
@@ -278,24 +278,24 @@ HcclResult InsTempScatterOmniPipeNHR::RunNHR(
             // 只有Tx，使用Send指令（root分发场景）
             if (!stepInfo.txSliceIdxs.empty() && stepInfo.rxSliceIdxs.empty()) {
                 CHK_RET(ExecuteTxOnlyStep(
-                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocal, channels, threads, step));
+                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocol, channels, threads, step));
             } else if (stepInfo.txSliceIdxs.empty() && !stepInfo.rxSliceIdxs.empty()) {
                 // 只有Rx，使用Recv指令（非root接收场景）
                 CHK_RET(ExecuteRxOnlyStep(
-                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocal, channels, threads, step));
+                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocol, channels, threads, step));
             } else {
                 // 既有Tx又有Rx，使用SendRecv指令
                 CHK_RET(ExecuteTxRxStep(
-                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocal, channels, threads, step));
+                    stepInfo, channelIdx, dataTypeSize, rptNum, isPcieProtocol, channels, threads, step));
             }
         }
     }
     return HcclResult::HCCL_SUCCESS;
 }
 
-// Tx-only分支：只有发送，查toRank channel，构建tx切片，按isPcieProtocal选SendRead/SendBatchWrite
+// Tx-only分支：只有发送，查toRank channel，构建tx切片，按isPcieProtocol选SendRead/SendBatchWrite
 HcclResult InsTempScatterOmniPipeNHR::ExecuteTxOnlyStep(
-    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
     const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step)
 {
     CHK_PRT_RET(
@@ -315,7 +315,7 @@ HcclResult InsTempScatterOmniPipeNHR::ExecuteTxOnlyStep(
     }
     SlicesList txSlicesList({txSrcSlices}, {txDstSlices});
     DataInfo sendData(linkSend, txSlicesList);
-    if (isPcieProtocal) {
+    if (isPcieProtocol) {
         CHK_PRT_RET(
             static_cast<HcclResult>(SendRead(sendData, threads.at(channelIdx))),
             HCCL_ERROR("[Scatter-OmniPipe-NHR][RunNHR] BatchSend failed (step=%u)", step), HCCL_E_INTERNAL);
@@ -328,9 +328,9 @@ HcclResult InsTempScatterOmniPipeNHR::ExecuteTxOnlyStep(
     return HcclResult::HCCL_SUCCESS;
 }
 
-// Rx-only分支：只有接收，查fromRank channel，构建rx切片，按isPcieProtocal选RecvRead/RecvWrite
+// Rx-only分支：只有接收，查fromRank channel，构建rx切片，按isPcieProtocol选RecvRead/RecvWrite
 HcclResult InsTempScatterOmniPipeNHR::ExecuteRxOnlyStep(
-    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
     const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step)
 {
     CHK_PRT_RET(
@@ -350,7 +350,7 @@ HcclResult InsTempScatterOmniPipeNHR::ExecuteRxOnlyStep(
     }
     SlicesList rxSlicesList({rxSrcSlices}, {rxDstSlices});
     DataInfo recvData(linkRecv, rxSlicesList);
-    if (isPcieProtocal) {
+    if (isPcieProtocol) {
         CHK_PRT_RET(
             static_cast<HcclResult>(RecvRead(recvData, threads.at(channelIdx))),
             HCCL_ERROR("[Scatter-OmniPipe-NHR][RunNHR] BatchRecv failed (step=%u)", step), HCCL_E_INTERNAL);
@@ -363,9 +363,9 @@ HcclResult InsTempScatterOmniPipeNHR::ExecuteRxOnlyStep(
     return HcclResult::HCCL_SUCCESS;
 }
 
-// Tx+Rx分支：同时收发，查toRank/fromRank channel，构建tx/rx切片，按isPcieProtocal选SendRecvRead/SendRecvWrite
+// Tx+Rx分支：同时收发，查toRank/fromRank channel，构建tx/rx切片，按isPcieProtocol选SendRecvRead/SendRecvWrite
 HcclResult InsTempScatterOmniPipeNHR::ExecuteTxRxStep(
-    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+    const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
     const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step)
 {
     CHK_PRT_RET(
@@ -388,7 +388,7 @@ HcclResult InsTempScatterOmniPipeNHR::ExecuteTxRxStep(
         return HcclResult::HCCL_SUCCESS;
     }
     SendRecvInfo info{{linkSend, linkRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
-    if (isPcieProtocal) {
+    if (isPcieProtocol) {
         CHK_PRT_RET(
             static_cast<HcclResult>(SendRecvRead(info, threads.at(channelIdx))),
             HCCL_ERROR("[Scatter-OmniPipe-NHR][RunNHR] BatchSR failed (step=%u)", step), HCCL_E_INTERNAL);

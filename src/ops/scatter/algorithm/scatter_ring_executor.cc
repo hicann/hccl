@@ -214,16 +214,16 @@ HcclResult ScatterRingExecutor::MultiRingScatter(
 {
     HcclResult ret = HCCL_SUCCESS;
     u32 ringNum = 0;
-    std::vector<std::vector<Slice>> mutliRingsSlices;
+    std::vector<std::vector<Slice>> multiRingsSlices;
     std::vector<std::vector<u32>> rankOrders;
-    CHK_RET(PrepareMultiRingSlice(dataSegsSlice, ringNum, mutliRingsSlices, rankOrders));
+    CHK_RET(PrepareMultiRingSlice(dataSegsSlice, ringNum, multiRingsSlices, rankOrders));
     HCCL_INFO("[ScatterRingExecutor][MultiRingScatter] ringNum[%u]", ringNum);
 
     u32 rootRank = 0;
     CHK_RET(GetSubCommRankByUserRank(root, COMM_LEVEL0, algResource_->algHierarchyInfo, rootRank));
 
     for (u32 ringIndex = 0; ringIndex < ringNum; ringIndex++) {
-        std::vector<Slice> singleRingSlice = mutliRingsSlices[ringIndex];
+        std::vector<Slice> singleRingSlice = multiRingsSlices[ringIndex];
         std::vector<u32>& rankOrder = rankOrders[ringIndex];
         std::vector<ChannelInfo> ringChannels;
         ringChannels.reserve(level0CommInfo_.localRankSize);
@@ -295,8 +295,8 @@ HcclResult ScatterRingExecutor::MultiRingScatter(
     return HCCL_SUCCESS;
 }
 
-HcclResult ScatterRingExecutor::MutliSegSlicePrepare(
-    const std::vector<Slice>& dataSegsSlice, u32 ringNum, std::vector<std::vector<Slice>>& mutliSegsSlices) const
+HcclResult ScatterRingExecutor::MultiSegSlicePrepare(
+    const std::vector<Slice>& dataSegsSlice, u32 ringNum, std::vector<std::vector<Slice>>& multiSegsSlices) const
 {
     std::vector<Slice> singleSegSlices;
     singleSegSlices.reserve(ringNum);
@@ -325,14 +325,14 @@ HcclResult ScatterRingExecutor::MutliSegSlicePrepare(
             ringIndex++;
             singleSegSlices.push_back(rankSliceTemp);
         }
-        mutliSegsSlices.push_back(singleSegSlices);
+        multiSegsSlices.push_back(singleSegSlices);
         singleSegSlices.clear();
     }
     return HCCL_SUCCESS;
 }
 
 HcclResult ScatterRingExecutor::PrepareMultiRingSlice(
-    const std::vector<Slice>& dataSegsSlice, u32& ringNum, std::vector<std::vector<Slice>>& mutliRingsSlices,
+    const std::vector<Slice>& dataSegsSlice, u32& ringNum, std::vector<std::vector<Slice>>& multiRingsSlices,
     std::vector<std::vector<u32>>& rankOrders)
 {
     u32 rankSize = level0CommInfo_.localRankSize;
@@ -351,7 +351,7 @@ HcclResult ScatterRingExecutor::PrepareMultiRingSlice(
         rankOrders.push_back(rankOrder1);
     } else {
         ringNum = LEVEL0_PLANE_NUM_IN_NPRING_SINGLE;
-        mutliRingsSlices.push_back(dataSegsSlice);
+        multiRingsSlices.push_back(dataSegsSlice);
         rankOrders.push_back(rankOrder0);
         return HCCL_SUCCESS;
     }
@@ -369,19 +369,19 @@ HcclResult ScatterRingExecutor::PrepareMultiRingSlice(
     }
 
     // 将每块数据切分为ringNum份
-    std::vector<std::vector<Slice>> mutliSegsSlices;
-    mutliSegsSlices.reserve(dataSegsSlice.size());
-    CHK_RET(MutliSegSlicePrepare(dataSegsSlice, ringNum, mutliSegsSlices));
+    std::vector<std::vector<Slice>> multiSegsSlices;
+    multiSegsSlices.reserve(dataSegsSlice.size());
+    CHK_RET(MultiSegSlicePrepare(dataSegsSlice, ringNum, multiSegsSlices));
 
     std::vector<Slice> singleRingSlices;
     singleRingSlices.reserve(rankSize);
     for (u32 ringIndex = 0; ringIndex < ringNum; ringIndex++) {
         for (u32 segsIndex = 0; segsIndex < rankSize; segsIndex++) {
             u32 rankPosition = rankOrders[ringIndex][segsIndex];
-            Slice tempSlice = mutliSegsSlices[rankPosition][ringIndex];
+            Slice tempSlice = multiSegsSlices[rankPosition][ringIndex];
             singleRingSlices.push_back(tempSlice);
         }
-        mutliRingsSlices.push_back(singleRingSlices);
+        multiRingsSlices.push_back(singleRingSlices);
         singleRingSlices.clear();
     }
 

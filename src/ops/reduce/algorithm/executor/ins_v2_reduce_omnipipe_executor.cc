@@ -269,7 +269,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
         resourceReq.notifyNumPerThread.end(), // 一般是0
         resReqlevel.notifyNumPerThread.begin(), resReqlevel.notifyNumPerThread.end());
     // 资源组的值一样就一起申请，资源组的值不一样就串行申请，前一个销毁后后一个申请
-    HCCL_DEBUG("[%s] currTemplate has [%d] kernels.", __func__, resReqlevel.ccuKernelNum[0]);
+    HCCL_DEBUG("[%s] currTemplate has [%u] kernels.", __func__, resReqlevel.ccuKernelNum[0]);
     if (curLevel == OMNIPIPE_RS_LEVEL0 || curLevel == OMNIPIPE_RS_LEVEL1) {
         std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo& info) {
             info.resGroup = 0;
@@ -593,33 +593,33 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
     // 2.1 获取每个rank切分的数据量count
     auto allRankSplitData = OmniPipeSplitData(rankSize_, dataCount_, dataTypeSize_);
     for (int i = 0; i < allRankSplitData.size(); i++) {
-        HCCL_DEBUG("[%s] rankId[%d], allRankSplitData[%d]:%d", __func__, myRank_, i, allRankSplitData[i]);
+        HCCL_DEBUG("[%s] rankId[%u], allRankSplitData[%d]:%llu", __func__, myRank_, i, allRankSplitData[i]);
     }
     // 2.2 计算loop次数
     maxTmpMemSize_ = resCtx.cclMem.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scratchBoundDataSize = maxTmpMemSize_ / rankSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
     HCCL_DEBUG(
-        "[%s] myRank[%u] transportBoundDataSize[%u] scratchBoundDataSize[%u]", __func__, myRank_,
+        "[%s] myRank[%u] transportBoundDataSize[%llu] scratchBoundDataSize[%llu]", __func__, myRank_,
         transportBoundDataSize, scratchBoundDataSize);
     u64 maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;
     CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
-    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
+    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%llu]", __func__, myRank_, maxCountPerLoop);
     u32 loopTimes = allRankSplitData[0] / maxCountPerLoop + ((allRankSplitData[0] % maxCountPerLoop == 0) ? 0 : 1);
     HCCL_DEBUG("[%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
     // 2.3 获取每个rank，每个loop切分的数据量count
     auto multiLoopAllRankSplitData
         = OmniPipeSplitRankDataLoop(allRankSplitData, maxCountPerLoop, loopTimes, dataTypeSize_);
-    HCCL_DEBUG("[%s]maxCountPerLoop[%u], loopTimes[%u]", __func__, maxCountPerLoop, loopTimes);
+    HCCL_DEBUG("[%s]maxCountPerLoop[%llu], loopTimes[%u]", __func__, maxCountPerLoop, loopTimes);
     for (int i = 0; i < multiLoopAllRankSplitData.size(); i++) {
         for (int j = 0; j < multiLoopAllRankSplitData[i].size(); j++) {
             HCCL_DEBUG(
-                "rankId[%d],allRankSplitData[%d][%d]:%d multiLoopAllRankSplitData[%d][%d]:%d", myRank_, i, j,
+                "rankId[%u],allRankSplitData[%d][%d]:%llu multiLoopAllRankSplitData[%d][%d]:%llu", myRank_, i, j,
                 allRankSplitData[i], i, j, multiLoopAllRankSplitData[i][j]);
         }
     }
     for (int i = 0; i < allRankSplitData.size(); i++) {
-        HCCL_DEBUG("[%s]xx rankId[%d], allRankSplitData[%d]:%d", __func__, myRank_, i, allRankSplitData[i]);
+        HCCL_DEBUG("[%s]xx rankId[%u], allRankSplitData[%d]:%llu", __func__, myRank_, i, allRankSplitData[i]);
     }
     // 3.1 计算n-1次loop的slice信息
     u64 perLoopSize = multiLoopAllRankSplitData[0][0] * dataTypeSize_;

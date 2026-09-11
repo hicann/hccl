@@ -20,7 +20,7 @@ constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u32 BROADCAST_CCU_MAX_RANK_SIZE = 64;
 constexpr u32 BROADCAST_UBX_AIV_MAX_RANK = 8;
-constexpr u32 UBX_BC_CONCURR_DATA_SIZE = 2 * 1024 * 1024;
+constexpr u32 UBX_BC_CONCURRENT_DATA_SIZE = 2 * 1024 * 1024;
 
 SelectorStatus BroadcastAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -51,7 +51,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "CcuMSBroadcastSoleMesh";
             } else {
                 selectAlgName = "CcuMsBroadcastConcurMeshNHR";
@@ -169,7 +169,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "CcuSchedBroadcastSoleMesh";
             } else {
                 selectAlgName = "CcuSchedBroadcastConcurMeshNHR";
@@ -247,7 +247,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
         selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURR_DATA_SIZE) {
+            if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "AicpuBroadcastSoleMeshTwoShot";
             } else {
                 selectAlgName = "AicpuBroadcastConcurMeshNHR";

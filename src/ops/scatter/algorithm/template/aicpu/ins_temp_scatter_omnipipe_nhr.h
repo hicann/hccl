@@ -68,15 +68,15 @@ private:
         const TemplateResource& templateResource);
     // RunNHR 中仅有 Tx 分支（root分发场景）
     HcclResult ExecuteTxOnlyStep(
-        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
         const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step);
     // RunNHR 中仅有 Rx 分支（非root接收场景）
     HcclResult ExecuteRxOnlyStep(
-        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
         const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step);
     // RunNHR 中既有 Tx 又有 Rx 分支（中间步 SendRecv）
     HcclResult ExecuteTxRxStep(
-        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocal,
+        const AicpuNHRStepInfo& stepInfo, u32 channelIdx, u32 dataTypeSize, u64 rptNum, bool isPcieProtocol,
         const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads, u32 step);
 
     TemplateDataParams tempAlgParams_;

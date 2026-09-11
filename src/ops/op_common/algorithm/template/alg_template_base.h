@@ -27,7 +27,7 @@ constexpr u32 TWO_RANK_SIZE = 2;
 constexpr u32 DMA_REDUCE_TWO_OFFSET = 2;
 constexpr u32 DMA_REDUCE_THREE_OFFSET = 3;
 constexpr u64 HCCL_CHUNK_SIZE = 1024 * 1024 * 1024; // 1024*1024*1024的size
-constexpr u64 HCCL_MIN_PIPLINE_SLICE_ALIGN = 512;
+constexpr u64 HCCL_MIN_PIPELINE_SLICE_ALIGN = 512;
 constexpr u64 HCCL_MIN_SLICE_ALIGN_910B = 16384;
 constexpr u64 HCCL_MIN_SLICE_ALIGN_910_93 = 16384;
 constexpr u64 HCCL_MIN_SLICE_ALIGN_ONCHIP = 512;
@@ -143,9 +143,9 @@ public:
         HalvingDoublingType algorithmType = HalvingDoublingType::RECURSIVE_HALVING_DOUBLING);
 
     static HcclResult
-    PrepareSliceData(u64 dataCount, u32 unitSize, u32 sliceNum, u64 piplineOffset, std::vector<Slice>& dataSlice);
+    PrepareSliceData(u64 dataCount, u32 unitSize, u32 sliceNum, u64 pipelineOffset, std::vector<Slice>& dataSlice);
     static HcclResult PrepareSliceMeshStreams(
-        const std::vector<Slice>& rankSegsSlice, u32 streamCount, std::vector<std::vector<Slice>>& mutliStreamsSlices);
+        const std::vector<Slice>& rankSegsSlice, u32 streamCount, std::vector<std::vector<Slice>>& multiStreamsSlices);
 
     inline u64 ByteOffset(u64 countOffset) const { return countOffset * DataUnitSize(dataType_); }
     inline u64 SliceOffset(u32 sliceIndex, u64 countPerSlice) const

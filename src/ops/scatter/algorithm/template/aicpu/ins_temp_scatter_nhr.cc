@@ -236,8 +236,8 @@ HcclResult InsTempScatterNHR::KernelRun(
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
 
-    bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempScatterNHR] Use Dma Read[%d]", isDmaRead_);
     CHK_RET(PrepareDataSplitForMultiChannel(templateResource, tempAlgParams));
 

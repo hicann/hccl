@@ -75,8 +75,8 @@ HcclResult GetPairLinkCounter(HcclComm comm, TopoInfo* topoInfo, std::unordered_
 HcclResult GetModuleIdx(HcclComm comm, TopoInfo* topoInfo);
 HcclResult GetModuleIdxByRank(HcclComm comm, uint32_t rank, const TopoInfo* topoInfo, uint32_t& moduleIdx);
 HcclResult GetModuleMap(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>>& moduleMap);
-uint32_t GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo);
-uint32_t GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo);
+HcclResult GetCurrentServerStartRank(HcclComm comm, const TopoInfo* topoInfo, uint32_t& currentServerStartRank);
+HcclResult GetCurrentServerEndRank(HcclComm comm, const TopoInfo* topoInfo, uint32_t& currentServerEndRank);
 HcclResult GetDeviceNumPerModule(HcclComm comm, TopoInfo* topoInfo, std::map<u32, std::vector<u32>>& moduleMap);
 /**
  * Calculates the number of servers per superpod based on netlayer L0 and L1 rank information.

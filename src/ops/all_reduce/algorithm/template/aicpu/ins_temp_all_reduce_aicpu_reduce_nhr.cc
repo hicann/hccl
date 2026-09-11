@@ -115,8 +115,8 @@ HcclResult InsTempAllReduceAicpuReduceNHR::KernelRun(
         "[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_, channels.size(),
         channels.begin()->first);
 
-    bool isPcieProtocal = IsPcieProtocol(channels); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                    // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                    // 是否使用Read模式
     HCCL_DEBUG("[InsTempAllReduceAicpuReduceNHR] Use Dma Read[%d]", isDmaRead_);
 
     // 1. 切片

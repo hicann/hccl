@@ -279,7 +279,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcSen
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
             curInputPtr = static_cast<u8*>(sendItem->buf) + curOffset;
-            sendDataSilces_.emplace_back(static_cast<void*>(curInputPtr), transferSize, sendItem->remoteRank);
+            sendDataSlices_.emplace_back(static_cast<void*>(curInputPtr), transferSize, sendItem->remoteRank);
             HCCL_DEBUG(
                 "[InsV2BatchSendRecvSoleExecutor][CalcSendSlices] slice curOffset[%llu], slice size[%llu] "
                 "curInputPtr [%p].",
@@ -314,7 +314,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRec
             u64 transferCount = resDataCount > maxCountPerLoop ? maxCountPerLoop : resDataCount;
             u64 transferSize = transferCount * dataTypeSize_;
             curOutputPtr = static_cast<u8*>(recvItem->buf) + curOffset;
-            recvDataSilces_.emplace_back(static_cast<void*>(curOutputPtr), transferSize, recvItem->remoteRank);
+            recvDataSlices_.emplace_back(static_cast<void*>(curOutputPtr), transferSize, recvItem->remoteRank);
             HCCL_DEBUG(
                 "[InsV2BatchSendRecvSoleExecutor][CalcRecvSlices] slice curOffset[%llu], slice size[%llu] "
                 "curOutputPtr [%p].",
@@ -492,25 +492,25 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
         }
         return false;
     };
-    const bool needSliceRounds = hasRepeatedRemoteRank(sendDataSilces_) || hasRepeatedRemoteRank(recvDataSilces_);
+    const bool needSliceRounds = hasRepeatedRemoteRank(sendDataSlices_) || hasRepeatedRemoteRank(recvDataSlices_);
     if (!needSliceRounds) {
-        for (auto& slice : recvDataSilces_) {
+        for (auto& slice : recvDataSlices_) {
             // 发recv的record
             CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
         }
 
-        while (!sendDataSilces_.empty()) {
-            auto& slice = sendDataSilces_.front();
+        while (!sendDataSlices_.empty()) {
+            auto& slice = sendDataSlices_.front();
             // 发writeWithNotify，并在复用本地CCL Buffer前等待本次发送完成
             CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::SEND));
             CHK_RET(ProcessSendDataSlice(param, slice, BatchSendRecvOpType::FENCE));
-            sendDataSilces_.pop_front();
+            sendDataSlices_.pop_front();
         }
 
-        while (!recvDataSilces_.empty()) {
+        while (!recvDataSlices_.empty()) {
             // waitRecv,按recv接收数据
-            CHK_RET(ProcessRecvDataSlice(param, recvDataSilces_.front(), BatchSendRecvOpType::RECV));
-            recvDataSilces_.pop_front();
+            CHK_RET(ProcessRecvDataSlice(param, recvDataSlices_.front(), BatchSendRecvOpType::RECV));
+            recvDataSlices_.pop_front();
         }
     } else {
         auto extractOneSlicePerRank = [](std::deque<SendRecvSlice>& slices) {
@@ -529,9 +529,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
             return roundSlices;
         };
 
-        while (!sendDataSilces_.empty() || !recvDataSilces_.empty()) {
-            std::deque<SendRecvSlice> sendRoundSlices = extractOneSlicePerRank(sendDataSilces_);
-            std::deque<SendRecvSlice> recvRoundSlices = extractOneSlicePerRank(recvDataSilces_);
+        while (!sendDataSlices_.empty() || !recvDataSlices_.empty()) {
+            std::deque<SendRecvSlice> sendRoundSlices = extractOneSlicePerRank(sendDataSlices_);
+            std::deque<SendRecvSlice> recvRoundSlices = extractOneSlicePerRank(recvDataSlices_);
 
             for (auto& slice : recvRoundSlices) {
                 CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECORD));
@@ -544,7 +544,7 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::RunLoop
                 CHK_RET(ProcessRecvDataSlice(param, slice, BatchSendRecvOpType::RECV));
             }
 
-            if (!recvDataSilces_.empty()) {
+            if (!recvDataSlices_.empty()) {
                 CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
                 for (const auto& thread : threads_) {
                     CHK_RET(static_cast<HcclResult>(HcommThreadSynchronize(thread)));

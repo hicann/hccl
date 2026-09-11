@@ -170,8 +170,8 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(
     opType_ = param.opType;
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
 
-    bool isPcieProtocal = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempAlltoAllVMesh1D][KernelRun] Use Dma Read[%d]", isDmaRead_);
 
     myAlgRank_ = 0;

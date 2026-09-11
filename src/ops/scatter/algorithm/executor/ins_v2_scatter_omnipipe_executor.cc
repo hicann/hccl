@@ -78,7 +78,7 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         if (!algHierarchyInfo_.infos[0].empty() && !algHierarchyInfo_.infos[0][0].empty()) {
             subCommRanks0_.push_back(algHierarchyInfo_.infos[0][0]);
             u32 meshSize = algHierarchyInfo_.infos[0][0].size();
-            if (!algHierarchyInfo_.infos[0][1].empty()) {
+            if (algHierarchyInfo_.infos[0].size() > 1 && !algHierarchyInfo_.infos[0][1].empty()) {
                 for (auto rank : algHierarchyInfo_.infos[0][1]) {
                     if (rank % meshSize == topoInfo->userRank % meshSize) {
                         closRanks.push_back(rank);

@@ -63,8 +63,8 @@ HcclResult InsTempReduceScatterAicpuReduceNHRPcie::KernelRun(
     } else {
         hcclBuffBaseOff_ = tempAlgParams_.buffInfo.hcclBuffBaseOff;
     }
-    bool isPcieProtocal = IsPcieProtocol(channels_); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocal;                     // 是否使用Read模式
+    bool isPcieProtocol = IsPcieProtocol(channels_); // 判断是否存在pcie链路
+    isDmaRead_ = isPcieProtocol;                     // 是否使用Read模式
     u32 myAlgIdx = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgIdx));
 
