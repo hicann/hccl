@@ -17,6 +17,7 @@ constexpr uint16_t TOKEN_XN_ID = 1;
 constexpr uint16_t POST_SYNC_ID = 3;
 constexpr uint16_t STEP_PRE_SYNC_ID = 4;
 constexpr uint16_t STEP_POST_SYNC_ID = 5;
+constexpr uint16_t SCATTER_POST_SYNC_ID = 6;
 
 constexpr uint16_t CKE_IDX_0 = 0;
 constexpr uint16_t RANK_NUM_PER_CKE = 16; // 本rank给远端置位时应当写的CKE，16个对端一个CKE
@@ -199,6 +200,29 @@ static CcuResult DoScatterNHRSingleStep(BroadcastNhr1DMem2MemContext& ctx, const
         const u32& fromRankIdx = arg->rank2ChannelIdx.at(nhrStepInfo.fromRank);
         ChannelHandle recvChannel = arg->channels[fromRankIdx];
         CCU_CHK_RET(ccu::NotifyWait(recvChannel, CKE_IDX_0, 1 << STEP_PRE_SYNC_ID));
+    }
+    // Scatter最后一步：非2的幂拓扑需要全局barrier，保证所有rank完成Scatter后再进入AllGather
+    // 对称拓扑（rankSize=2^n）不需要：NHR调度保证Scatter和AllGather的通信对不重叠
+    // 不对称拓扑（rankSize!=2^n）需要：部分rank提前完成Scatter进入AllGather，可能与仍在Scatter的rank写同一目标内存
+    const uint32_t NHR_NUM = 2;
+    if ((nhrStepInfo.step + 1) == (arg->stepInfoVector.size() / NHR_NUM)) {
+        u32 rankSize = arg->dimSize;
+        bool isPowerOfTwo = (rankSize & (rankSize - 1)) == 0;
+        HCCL_INFO(
+            "[CcuKernelBroadcastNhr1DMem2Mem] ScatterBarrier check: rankSize[%u], isPowerOfTwo[%d], "
+            "step[%u], scatterSteps[%llu]",
+            rankSize, isPowerOfTwo ? 1 : 0, nhrStepInfo.step, (arg->stepInfoVector.size() / NHR_NUM));
+        if (!isPowerOfTwo) {
+            HCCL_INFO(
+                "[CcuKernelBroadcastNhr1DMem2Mem] ScatterBarrier: enabled, rank[%u], channelCount[%u]", arg->rankId,
+                arg->channelCount);
+            for (uint32_t i = 0; i < arg->channelCount; i++) {
+                CCU_CHK_RET(ccu::NotifyRecord(arg->channels[i], CKE_IDX_0, 1 << SCATTER_POST_SYNC_ID));
+            }
+            for (uint32_t i = 0; i < arg->channelCount; i++) {
+                CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], CKE_IDX_0, 1 << SCATTER_POST_SYNC_ID));
+            }
+        }
     }
     return CCU_SUCCESS;
 }
