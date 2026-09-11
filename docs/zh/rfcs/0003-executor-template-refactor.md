@@ -8,9 +8,9 @@
 
 ## 概要
 
-本RFC提出一套以 `AlgoDesc` 为静态算法描述、以 `OpsExecutor` 为通用解释器、以 Template 为单层执行单元、以 CommPlanner 为通信计划生成器的 HCCL 重构方案。方案通过递归算法树描述 Sequence、Parallel 和 OmniPipe 等组合，通过 `ranksForInputData`/`ranksForOutputData` 传递逻辑数据归属，并建立 `Input → CCL Buffer → ... → CCL Buffer → Output` 的统一内存与数据流模型。
+本RFC提出一套以 `HcclAlgorithm` 为静态算法描述、以 `OpsExecutor` 为通用解释器、以 Template 为单层执行单元、以 CommPlanner 为通信计划生成器的 HCCL 重构方案。方案通过递归算法树描述 Sequence、Parallel 和 OmniPipe 等组合，通过 `ranksForInputData`/`ranksForOutputData` 传递逻辑数据归属，并建立 `Input → CCL Buffer → ... → CCL Buffer → Output` 的统一内存与数据流模型。
 
-本重构以 `experimental/ops/op_common/recursive_executor/` 为落地目录，采用**插件式零侵入接入**方式对接到 src 原流程：recursive\_executor 代码以 OBJECT 库形式编入 `libhccl.so`，通过 `REGISTER_ADAPTOR_EXECUTOR` 把 `AdaptorExecutor`（继承 src 的 `InsCollAlgBase`）注册进 src 的 `CollAlgExecRegistryV2`；src 的 Selector 对 4 级拓扑选择 recursive\_executor 算法名后，原流程 `Selector → HcclExecOp → GetAlgExec → CalcAlgHierarchyInfo/CalcRes → Orchestrate` 自然调度到 recursive\_executor 执行器，src 侧除 Selector 的 4 级拓扑分支外零改动。
+本重构以 `experimental/ops/op_common/recursive_executor/` 为落地目录，采用**插件式零侵入接入**方式对接到 src 原流程：recursive\_executor 代码以 OBJECT 库形式编入 `libhccl.so`，通过 `REGISTER_ALG` 把 `AdaptorExecutor`（继承 src 的 `InsCollAlgBase`）注册进 src 的 `CollAlgExecRegistryV2`；src 的 Selector 对 4 级拓扑选择 recursive\_executor 算法名后，原流程 `Selector → HcclExecOp → GetAlgExec → CalcAlgHierarchyInfo/CalcRes → Orchestrate` 自然调度到 recursive\_executor 执行器，src 侧除 Selector 的 4 级拓扑分支外零改动。
 
 ## 背景与动机
 
@@ -66,7 +66,7 @@ flowchart LR
 
 **目标**：
 
-1. 用 `AlgoDesc + AlgoExecDesc + TemplateExecDesc` 描述算法结构。
+1. 用 `HcclAlgorithm + AlgoExecDesc + TemplateExecDesc` 描述算法结构。
 2. 用通用 Executor 解释 Sequence、Parallel 和嵌套组合，替代 50+ 个特化执行器。
 3. 用显式 Rank 归属表连接前后执行阶段。
 4. 把可复用的 Mesh/NHR 通信计划从 Template 抽取为 CommPlanner。
@@ -83,11 +83,11 @@ flowchart LR
 
 | 术语                                     | 含义                                                                                                                                      |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| AlgoDesc                               | 算法描述结构，包含算法树、拓扑匹配器和算法名，是注册进算法表的最小单元                                                                                                     |
+| HcclAlgorithm                               | 算法描述结构，包含算法树、拓扑匹配器和算法名，是注册进算法表的最小单元                                                                                                     |
 | OpsExecutor                            | 通用执行器，递归解释算法树，替代 50+ 个特化执行器                                                                                                             |
 | Template                               | 单层执行单元，负责数据准备、通信执行和结果整理                                                                                                                 |
 | CommPlanner                            | 通信计划生成器，计算通信对端、数据切片和归属，不执行通信                                                                                                            |
-| AlgSelector                            | 算法注册表，按算法名查询 AlgoDesc，实现 Selector/Executor/Template 解耦                                                                                  |
+| AlgSelector                            | 算法注册表，按算法名查询 HcclAlgorithm，实现 Selector/Executor/Template 解耦                                                                                  |
 | AdaptorExecutor                        | 桥接层，继承 src 的 InsCollAlgBase，把三个接口转发给 OpsExecutor                                                                                        |
 | InsCollAlgBase                         | src 所有 V2 执行器的统一抽象基类                                                                                                                    |
 | CollAlgExecRegistryV2                  | src 执行器注册表，按算子类型和算法名查找执行器                                                                                                               |
@@ -103,7 +103,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Algo["AlgoDesc<br/>算法结构定义"]
+    Algo["HcclAlgorithm<br/>算法结构定义"]
     Executor["OpsExecutor<br/>算法执行"]
     Template["Template<br/>算法模板"]
     CommPlanner["CommPlanner<br/>生成通信计划"]
@@ -120,12 +120,12 @@ flowchart LR
 
 | 层次            | 核心问题                        |
 | ------------- | --------------------------- |
-| `AlgoDesc`    | 算法由哪些算法模板组成，按什么策略组合         |
+| `HcclAlgorithm`    | 算法由哪些算法模板组成，按什么策略组合         |
 | `OpsExecutor` | 数据如何切分，算法模板按什么顺序执行，数据如何传递   |
 | Template      | 一个算法模板如何准备数据、执行通信、整理结果      |
 | CommPlanner   | 对当前 Rank 和子通信域，应与谁通信，搬运哪些切片 |
 
-核心设计思想是把**静态算法结构**和**动态数据状态**分离：`AlgoDesc` 在算法选择完成后保持不变；`AlgoExecDataDesc` 随 Loop、Sequence 阶段和 Parallel 子片动态变化。Executor 递归解释算法树时不修改 `AlgoDesc`，只为每个 Child 派生一份 `AlgoExecDataDesc`。
+核心设计思想是把**静态算法结构**和**动态数据状态**分离：`HcclAlgorithm` 在算法选择完成后保持不变；`AlgoExecDataDesc` 随 Loop、Sequence 阶段和 Parallel 子片动态变化。Executor 递归解释算法树时不修改 `HcclAlgorithm`，只为每个 Child 派生一份 `AlgoExecDataDesc`。
 
 ### 对外接口
 
@@ -134,7 +134,7 @@ flowchart LR
 #### 1. REGISTER_ALG — 算法与执行器一步注册
 
 ```cpp
-#define REGISTER_ALG(cmdType, algName, algoDesc)
+#define REGISTER_ALG(cmdType, algName, hcclAlgorithm)
 ```
 
 一步完成算法入 `AlgSelector` 和执行器入 `CollAlgExecRegistryV2`，两表以同一算法名关联。
@@ -143,9 +143,9 @@ flowchart LR
 | ---------- | ------------- | --------------------------------------------------------------------------- |
 | `cmdType`  | `HcclCMDType` | 算子类型（如 `HCCL_CMD_ALLGATHER`），决定执行器在 src 注册表中的分类槽位                           |
 | `algName`  | `std::string` | 算法唯一标识（如 `"AicpuAllGatherSequenceXxxMesh"`），Selector 返回此名称，Executor 据此查找算法树 |
-| `algoDesc` | `AlgoDesc`    | 预构造的算法树，含拓扑匹配器、执行策略、子节点列表和引擎类型（组装方式见 1.1 节）                                 |
+| `hcclAlgorithm` | `HcclAlgorithm`    | 预构造的算法树，含拓扑匹配器、执行策略、子节点列表和引擎类型（组装方式见 1.1 节）                                 |
 
-#### 2. AlgoDesc / AlgoExecDesc / TemplateExecDesc — 算法树描述结构
+#### 2. HcclAlgorithm / AlgoExecDesc / TemplateExecDesc — 算法树描述结构
 
 ```cpp
 struct TemplateExecDesc {
@@ -160,7 +160,7 @@ struct AlgoExecDesc {
     std::vector<u32> dataSplitRatio;       // 并行数据切分比例，元素个数须与 children 一致
 };
 
-// AlgoDesc 即 HcclAlgorithm，描述完整算法入口
+// HcclAlgorithm 描述完整算法入口
 class HcclAlgorithm {
     HcclCMDType hcclCmdType;                       // 算子类型
     HcclAlgEngineType engineType;                  // 引擎类型
@@ -170,7 +170,7 @@ class HcclAlgorithm {
 };
 ```
 
-开发者用这三层数据结构组装算法树：`TemplateExecDesc` 描述单层 Template，`AlgoExecDesc` 描述执行策略与子节点列表，`AlgoDesc` 描述完整算法入口。
+开发者用这三层数据结构组装算法树：`TemplateExecDesc` 描述单层 Template，`AlgoExecDesc` 描述执行策略与子节点列表，`HcclAlgorithm` 描述完整算法入口。
 
 #### 3. AicpuBaseTemplate — Template 基类
 
@@ -188,6 +188,8 @@ virtual HcclResult RunAlgorithm(std::vector<TxRxSlicesList> &txRxSlicesLists,
 |------|------|------|
 | `txRxSlicesLists` | 输出 | 收发描述列表，基类据此调 `SendAll` 执行通信 |
 | `ranksForOutputData` | 输出 | 通信后本 rank 持有的数据归属 rank 列表 |
+
+> **`DataSlicesList`** 是 `recursive_executor` 扩展类型，基于 `src` 的 `TxRxSlicesList` 结构，增加 `srcRankId_` 和 `dstRankId_` 字段以支持 mesh/nhr 通信中 rank 标识。上述 `RunAlgorithm`/`SendAll` 等接口中的 `TxRxSlicesList` 在实际实现中均使用 `DataSlicesList`。
 
 ##### 按需重写
 
@@ -234,7 +236,7 @@ virtual HcclResult GetRes(AlgResourceRequest &res) const;
 
 | 依赖项 | 来源 | 用途 |
 |--------|------|------|
-| `InsCollAlgBase` | `src/ops/op_common/executor/executor_v2_base.h` | `AdaptorExecutor` 继承此类，实现三个纯虚接口（`Prepare`/`GetRes`/`KernelRun`），桥接 src 执行框架 |
+| `InsCollAlgBase` | `src/ops/op_common/algorithm/executor/executor_v2_base.h` | `AdaptorExecutor` 继承此类，实现三个纯虚接口（`CalcAlgHierarchyInfo`/`CalcRes`/`Orchestrate`），桥接 src 执行框架 |
 | `OpParam` / `AlgResourceRequest` / `AlgResourceCtxSerializable` | `src/ops/op_common/...` | recursive_executor 与 src 共享同一套类型，天然类型一致，无需包装层 |
 | `CollAlgExecRegistryV2` | `src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h` | 执行器注册表，`REGISTER_ALG` 通过此表将 `AdaptorExecutor` 注册到 src |
 | `hcomm_dlsym` 符号表 | `src/common/hcomm_dlsym/` | 跨仓调用 HCOMM 走 dlsym，不引入对 `cann/hcomm` 的编译期硬依赖 |
@@ -250,7 +252,7 @@ virtual HcclResult GetRes(AlgResourceRequest &res) const;
 
 ## 兼容性考虑
 
-本次重构不改变算法选择策略、不改变公开 API，也不改变 src 执行框架。迁移只发生在算法被选中之后：已选算法名 → `GetAlgExec` 返回 recursive\_executor 执行器 → `AlgoDesc` 树 → 通用 Executor 解释 → 新 Template/CommPlanner 执行。
+本次重构不改变算法选择策略、不改变公开 API，也不改变 src 执行框架。迁移只发生在算法被选中之后：已选算法名 → `GetAlgExec` 返回 recursive\_executor 执行器 → `HcclAlgorithm` 树 → 通用 Executor 解释 → 新 Template/CommPlanner 执行。
 
 ### 1. 代码合入路径：experimental/ops/op\_common/recursive\_executor/
 
@@ -270,15 +272,15 @@ virtual HcclResult GetRes(AlgResourceRequest &res) const;
 
 ### 1. 数据结构
 
-#### 1.1 AlgoDesc 三层描述结构
+#### 1.1 HcclAlgorithm 三层描述结构
 
-`AlgoDesc` 由三个层次组成：
+`HcclAlgorithm` 由三个层次组成：
 
 ```mermaid
 classDiagram
-    class AlgoDesc {
+    class HcclAlgorithm {
         HcclCMDType hcclCmdType
-        CommEngine engineType
+        HcclAlgEngineType engineType
         shared_ptr~TopoMatchBaseV2~ topoMatch
         AlgAttrs algAttrs
         AlgoExecDesc algoExecDesc
@@ -290,7 +292,7 @@ classDiagram
         + MatchTopo(topoInfo, algHierarchyInfo, algAttrs)
     }
     class AlgoExecDesc {
-        AlgExecPolicy execPolicy
+        HcclAlgExecPolicy execPolicy
         vector~VariantType~ children
         vector~u32~ dataSplitRatio
     }
@@ -303,14 +305,14 @@ classDiagram
         HcclCMDType hcclCmdType
         HcclAlgoType algType
     }
-    AlgoDesc *-- AlgoExecDesc
-    AlgoDesc o-- TopoMatchBaseV2
+    HcclAlgorithm *-- AlgoExecDesc
+    HcclAlgorithm o-- TopoMatchBaseV2
     AlgoExecDesc *-- AlgoExecDesc
     AlgoExecDesc *-- TemplateExecDesc
     TemplateExecDesc *-- TemplateDesc
 ```
 
-- `AlgoDesc`：描述一个完整集合通信算法，携带 `topoMatch`（拓扑匹配器）和算法树，通过 `GetExecutor()` 创建通用执行器。**这是注册进算法表的最小单元**。
+- `HcclAlgorithm`：描述一个完整集合通信算法，携带 `topoMatch`（拓扑匹配器）和算法树，通过 `GetExecutor()` 创建通用执行器。**这是注册进算法表的最小单元**。
 - `TopoMatchBaseV2`：拓扑匹配器，负责把通信域拓扑拆成逐层子通信域（`AlgHierarchyInfoForAllLevel`），供 Selector/Executor 共用。
 - `AlgoExecDesc`：组合节点，描述 Children 采用何种执行策略（SEQUENCE/PARALLEL/OMNIPIPE）。
 - `TemplateExecDesc`：算法模板，描述在哪个子通信域（`subCommIndex`）上执行哪种 Template，`netLayer` 用于跨层模板（默认 -1）。
@@ -319,7 +321,7 @@ classDiagram
 对应代码（`experimental/ops/op_common/recursive_executor/inc/algo_desc.h`）：
 
 ```cpp
-enum class AlgExecPolicy { SEQUENCE, PARALLEL, OMNIPIPE };
+enum class HcclAlgExecPolicy { SEQUENCE, PARALLEL, OMNIPIPE };
 
 struct TemplateDesc {
     HcclCMDType hcclCmdType;
@@ -341,17 +343,17 @@ struct TemplateExecDesc {
 struct AlgoExecDesc;
 using VariantType = std::variant<TemplateExecDesc, std::shared_ptr<AlgoExecDesc>>;
 struct AlgoExecDesc {
-    AlgExecPolicy execPolicy = AlgExecPolicy::SEQUENCE;
+    HcclAlgExecPolicy execPolicy = HcclAlgExecPolicy::SEQUENCE;
     std::vector<VariantType> children;
     std::vector<u32> dataSplitRatio;
 };
 
-class AlgoDesc {
+class HcclAlgorithm {
 public:
     std::unique_ptr<OpsExecutor> GetExecutor(OpParam& param);
     void Dump();
     HcclCMDType hcclCmdType;
-    CommEngine engineType;
+    HcclAlgEngineType engineType;
     std::shared_ptr<TopoMatchBaseV2> topoMatch;
     AlgAttrs algAttrs;
     AlgoExecDesc algoExecDesc;
@@ -405,7 +407,7 @@ public:
 
 ##### 设计动机
 
-算法注册表的核心思想是**算法即数据**：每个算法用一棵 `AlgoDesc` 树完整描述，预构造后注册进全局表。Selector 只负责返回算法名，Executor 只负责解释执行，两者都不包含算法定义本身。新增算法只需在算法文件里追加一个 `REGISTER_ALG` 宏。不修改 src Selector，默认 selector 流程不会选到 4 级算法。当前接入部分（算法注册机制落地）尚有遗留，等selector重构完善后接入，用户可通过 `HCCL_ALGO` 环境变量显式配置 4 级算法名后调用。待算法稳定后再讨论将 4 级算法合入默认 selector 流程。
+算法注册表的核心思想是**算法即数据**：每个算法用一棵 `HcclAlgorithm` 树完整描述，预构造后注册进全局表。Selector 只负责返回算法名，Executor 只负责解释执行，两者都不包含算法定义本身。新增算法只需在算法文件里追加一个 `REGISTER_ALG` 宏。不修改 src Selector，默认 selector 流程不会选到 4 级算法。当前接入部分（算法注册机制落地）尚有遗留，等selector重构完善后接入，用户可通过 `HCCL_ALGO` 环境变量显式配置 4 级算法名后调用。待算法稳定后再讨论将 4 级算法合入默认 selector 流程。
 
 ##### 数据结构
 
@@ -413,21 +415,16 @@ public:
 class AlgSelector {
 public:
     static AlgSelector& Instance();
-    HcclResult Register(const std::string& algName, AlgoDesc algo);
-    bool GetAlgorithm(const std::string& algName, AlgoDesc& algo) const;
+    HcclResult Register(const std::string& algName, HcclAlgorithm algo);
+    bool GetAlgorithm(const std::string& algName, HcclAlgorithm& algo) const;
 private:
     AlgSelector() = default;
-    std::map<std::string, AlgoDesc> algMap_;
+    std::map<std::string, HcclAlgorithm> algMap_;
     mutable std::mutex mu_;
 };
-
-// 注册宏：静态初始化期把算法对象登记进注册表
-#define REGISTER_ALGORITHM(algName, algo) \
-    static bool g_reg_##algName = \
-        AlgSelector::Instance().Register(#algName, algo)
 ```
 
-`GetAlgorithm` 按名字返回 `AlgoDesc` 的拷贝（`topoMatch` 为 `shared_ptr`，共享同一匹配器）。注册表在 Host 库和 Device 内核中各自静态初始化，双端都可通过算法名重建算法定义，**无需序列化算法树**。
+`GetAlgorithm` 按名字返回 `HcclAlgorithm` 的拷贝（`topoMatch` 为 `shared_ptr`，共享同一匹配器）。注册表在 Host 库和 Device 内核中各自静态初始化，双端都可通过算法名重建算法定义，**无需序列化算法树**。
 
 ##### 算法注册示例（4 级 AllGather）
 
@@ -440,7 +437,7 @@ static AlgoExecDesc MakeAllGather4LevelAlgoExecDesc()
     TemplateDesc meshDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH};
     TemplateDesc nhrDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_NHR};
     AlgoExecDesc desc;
-    desc.execPolicy = AlgExecPolicy::SEQUENCE;
+    desc.execPolicy = HcclAlgExecPolicy::SEQUENCE;
     desc.children = {
         TemplateExecDesc{meshDesc, SUB_COMM_INDEX_3},
         TemplateExecDesc{nhrDesc,  SUB_COMM_INDEX_2},
@@ -451,11 +448,11 @@ static AlgoExecDesc MakeAllGather4LevelAlgoExecDesc()
     return desc;
 }
 
-static AlgoDesc MakeAllGather4LevelAlgo()
+static HcclAlgorithm MakeAllGather4LevelAlgo()
 {
-    AlgoDesc algo;
+    HcclAlgorithm algo;
     algo.hcclCmdType = HcclCMDType::HCCL_CMD_ALLGATHER;
-    algo.engineType  = CommEngine::COMM_ENGINE_AICPU;
+    algo.engineType  = HcclAlgEngineType::COMM_ENGINE_AICPU;
     algo.topoMatch   = std::make_shared<TopoMatchFourLevel>();
     algo.algoExecDesc = MakeAllGather4LevelAlgoExecDesc();
     algo.algName     = "AicpuAllGatherSequenceMeshNHRNHRMesh";
@@ -585,7 +582,7 @@ flowchart TB
     Loop -->|"否"| Done
 ```
 
-`OpsExecutor` 是 `AlgoDesc::GetExecutor()` 创建的通用执行器，构造时从 `OpParam` 采集 input/output/root/dataType 等运行时信息。
+`OpsExecutor` 是 `HcclAlgorithm::GetExecutor()` 创建的通用执行器，构造时从 `OpParam` 采集 input/output/root/dataType 等运行时信息。
 
 ##### 静态结构与动态状态
 
@@ -593,7 +590,7 @@ Executor 同时持有两类信息：
 
 | 类型                 | 生命周期          | 内容                                    |
 | ------------------ | ------------- | ------------------------------------- |
-| `AlgoDesc`         | 整次算子执行不变      | 算法树、算法模板类型、子通信域层级、拓扑匹配器               |
+| `HcclAlgorithm`         | 整次算子执行不变      | 算法树、算法模板类型、子通信域层级、拓扑匹配器               |
 | `AlgoExecDataDesc` | 随 Loop 和树节点变化 | Buffer 类型、Offset、Count、Stride、Rank 归属 |
 
 `AlgoExecDataDesc` 是"数据在算法树某个节点入口处的状态快照"，核心字段包括：`inputBufferType`/`outputBufferType`/`cclBufferType`（本阶段输入/输出/CCL Buffer 来源）、`dataOffset`（Loop 在用户内存中的起始偏移）、`sliceOffset`/`sliceCount`（Parallel 子片偏移与数量）、`dataStride`/`scratchStride`（用户内存/CCL Buffer 相邻 Slot 间距）、`ranksForInputDataGroup`/`ranksForOutputDataGroup`（当前 Buffer 中各 Slot 的 Owner）。
@@ -679,7 +676,7 @@ Parallel 切分改变的是 Slot 内部 Offset 和 Count，**不改变** **`stri
 
 ##### OmniPipe 编排（OrchestrateOmniPipeLoop）
 
-OmniPipe（跨层流水）是 2D 网格上"慢轴/快轴按 Step 交替通信以重叠传输时间"的编排方式。旧架构为每个算子维护一个专用执行器（如 `InsV2AllGatherOmniPipeExecutor`/`InsV2AllGatherOmniPipe2dExecutor`），内部硬编码 3 层拓扑、逐轴切片与多线程调度。在重构架构中，**OmniPipe 不再需要专用执行器**：它只是 `AlgoExecDesc` 的一种 `execPolicy`（`AlgExecPolicy::OMNIPIPE`），由通用 `OpsExecutor` 解释，两个轴对应算法树的 2 个 Child，复用同一套 Template/CommPlanner 与同步原语。
+OmniPipe（跨层流水）是 2D 网格上"慢轴/快轴按 Step 交替通信以重叠传输时间"的编排方式。旧架构为每个算子维护一个专用执行器（如 `InsV2AllGatherOmniPipeExecutor`/`InsV2AllGatherOmniPipe2dExecutor`），内部硬编码 3 层拓扑、逐轴切片与多线程调度。在重构架构中，**OmniPipe 不再需要专用执行器**：它只是 `AlgoExecDesc` 的一种 `execPolicy`（`HcclAlgExecPolicy::OMNIPIPE`），由通用 `OpsExecutor` 解释，两个轴对应算法树的 2 个 Child，复用同一套 Template/CommPlanner 与同步原语。
 
 ###### OmniPipe 算法表达
 
@@ -860,19 +857,19 @@ flowchart LR
 
 接入点在三个层面：**编译期**（OBJECT 库并入）、**选择期**（Selector 返回 recursive\_executor 算法名）、**执行期**（`AdaptorExecutor` 桥接 `InsCollAlgBase` → `OpsExecutor`）。
 
-#### 3.1 编译期接入：hccl\_oxc OBJECT 库
+#### 3.1 编译期接入：RecursiveExecutor OBJECT 库
 
-`experimental/ops/op_common/recursive_executor/CMakeLists.txt` 将 recursive\_executor 编译为 OBJECT 库 `hccl_oxc`，链接进 `libhccl.so`：
+`experimental/ops/op_common/recursive_executor/CMakeLists.txt` 将 recursive\_executor 编译为 OBJECT 库 `RecursiveExecutor`，链接进 `libhccl.so`：
 
 ```cmake
-add_library(hccl_oxc OBJECT ${RE_CORE_SRC})
-set_target_properties(hccl_oxc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_definitions(hccl_oxc PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
-target_include_directories(hccl_oxc PUBLIC ${RE_INCLUDE_LIST})
-target_link_libraries(hccl_oxc PUBLIC hccl_compat)
+add_library(RecursiveExecutor OBJECT ${RE_CORE_SRC})
+set_target_properties(RecursiveExecutor PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(RecursiveExecutor PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
+target_include_directories(RecursiveExecutor PUBLIC ${RE_INCLUDE_LIST})
+target_link_libraries(RecursiveExecutor PUBLIC hccl_compat)
 
 if(TARGET hccl)
-    target_link_libraries(hccl PRIVATE hccl_oxc)
+    target_link_libraries(hccl PRIVATE RecursiveExecutor)
 endif()
 ```
 
@@ -952,7 +949,7 @@ public:
 // 1. 拓扑匹配：从 AlgSelector 取算法对象的 topoMatch 完成匹配（传 algAttrs）
 HcclResult AdaptorExecutorBase::CalcAlgHierarchyInfo(...)
 {
-    AlgoDesc alg;
+    HcclAlgorithm alg;
     if (!AlgSelector::Instance().GetAlgorithm(algName_, alg)) { ... }
     return alg.topoMatch->MatchTopo(topoInfo, algHierarchyInfo, alg.algAttrs);
 }
@@ -961,11 +958,11 @@ HcclResult AdaptorExecutorBase::CalcAlgHierarchyInfo(...)
 HcclResult AdaptorExecutorBase::CalcRes(HcclComm comm, const OpParam& param, ...)
 {
     if (!executor_) {
-        AlgoDesc alg;
+        HcclAlgorithm alg;
         AlgSelector::Instance().GetAlgorithm(param.algName, alg);
         OpParam& mutableParam = const_cast<OpParam&>(param);
         executor_ = alg.GetExecutor(mutableParam);              // new OpsExecutor
-        executor_->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+        executor_->InitAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     }
     return executor_->CalcRes(comm, resourceRequest);
 }
@@ -974,7 +971,7 @@ HcclResult AdaptorExecutorBase::CalcRes(HcclComm comm, const OpParam& param, ...
 HcclResult AdaptorExecutorBase::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     if (!executor_) {
-        AlgoDesc algo;
+        HcclAlgorithm algo;
         AlgSelector::Instance().GetAlgorithm(param.algName, algo);
         executor_ = algo.GetExecutor(const_cast<OpParam&>(param));
     }
@@ -989,29 +986,16 @@ HcclResult AdaptorExecutorBase::Orchestrate(const OpParam& param, const AlgResou
 
 #### 3.4 注册宏：把 recursive\_executor 执行器挂进 src 注册表
 
-`experimental/ops/op_common/recursive_executor/executor/adaptor_executor.h` 提供两个注册宏：
+`experimental/ops/op_common/recursive_executor/executor/adaptor_executor.h` 提供注册宏 `REGISTER_ALG`：
 
 ```cpp
-// 注册宏 A：定义外部链接的算法名变量 + 把 AdaptorExecutorImpl 注册进 src 的 CollAlgExecRegistryV2
-#define REGISTER_ADAPTOR_EXECUTOR(type, ALG_NAME, EXEC_NAME) \
-    namespace ops_hccl { const char g_alg_##EXEC_NAME[] = #ALG_NAME; } \
-    namespace ops_hccl { \
-    static HcclResult g_oxc_exec_##EXEC_NAME = \
-        CollAlgExecRegistryV2::Instance().Register(type, \
-            std::string(#ALG_NAME), \
-            DefaultExecCreatorV2<AdaptorExecutorImpl<g_alg_##EXEC_NAME>>); \
-    }
-
-// 注册宏 B：算法注册 + 执行器注册一步完成
-#define REGISTER_ALG(cmdType, algName, algo) \
-    REGISTER_ALGORITHM(algName, algo); \
-    REGISTER_ADAPTOR_EXECUTOR(cmdType, algName, algName)
+// REGISTER_ALG 宏统一定义见 3.5 节（守卫 lambda 版本），此处不再重复
 ```
 
 说明：
 
 - `CollAlgExecRegistryV2`（`src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h`）是 src 所有 V2 执行器的注册表，`DefaultExecCreatorV2<AdaptorExecutorImpl<...>>` 返回 `InsCollAlgBase*`，与 src 既有 `REGISTER_EXECUTOR_IMPL` 等宏走同一 `Register(type, tag, creator)` 通道。
-- 由于 `const char*` 模板参数要求变量有外部链接，`REGISTER_ADAPTOR_EXECUTOR` 先定义一个 `extern` 链接的 `g_alg_##EXEC_NAME[]` 字符串，再以它实例化 `AdaptorExecutorImpl`，使模板在编译期绑定算法名。
+- 由于 `const char*` 模板参数要求变量有外部链接，`REGISTER_ALG` 先定义一个 `static const char` 的 `g_alg_##algName[]` 字符串（编译器扩展，见 3.5 节说明），再以它实例化 `AdaptorExecutorImpl`，使模板在编译期绑定算法名。
 - `REGISTER_ALG` 一次完成"算法入 `AlgSelector`"与"执行器入 `CollAlgExecRegistryV2`"，两表以同一算法名关联，是 3.2 中 Selector 返回名字能被路由到 recursive\_executor 执行器的前提。
 
 #### 3.5 运行期开关
@@ -1042,7 +1026,7 @@ bool IsRecursiveExecutorEnabled()
 ```cpp
 #define REGISTER_ALG(cmdType, algName, algo)                                    \
     namespace ops_hccl {                                                        \
-        const char g_alg_##algName[] = #algName;                                \
+        static const char g_alg_##algName[] = #algName;                             \
         static bool g_reg_##algName = []() {                                    \
             if (!IsRecursiveExecutorEnabled()) {                                \
                 return false;                                                   \
@@ -1057,6 +1041,8 @@ bool IsRecursiveExecutorEnabled()
 ```
 
 开关关闭时（当前默认），`REGISTER_ALG` 静态初始化 lambda 直接 `return false`，算法不入 `AlgSelector`、执行器不入 `CollAlgExecRegistryV2`。
+
+> `g_alg_##algName` 声明为 `static const char[]`（内部链接）。C++14 标准要求非类型模板参数（`const char*`）具备外部链接，`static const char[]` 作为模板实参属于编译器扩展；如目标编译器不支持此扩展，则需将 `static` 去除以恢复外部链接。
 
 #### 3.6 完整调用链时序
 
@@ -1085,7 +1071,7 @@ sequenceDiagram
     Ada-->>Op: algHierarchyInfo
     Op->>Ada: CalcRes(comm, param, topoInfo, algHierarchyInfo, resRequest)
     Ada->>Exec: algo.GetExecutor(param) -> OpsExecutor
-    Ada->>Exec: CalcAlgHierarchyInfo + CalcRes(comm, resRequest)
+    Ada->>Exec: InitAlgHierarchyInfo + CalcRes(comm, resRequest)
     Ada-->>Op: AlgResourceRequest (thread/notify/channel/scratch)
     Op->>Op: GetAlgResWithEngine: 分配资源、序列化 AlgResourceCtxSerializable
     Op->>Ada: Orchestrate(param, resCtxHost)
@@ -1127,7 +1113,7 @@ sequenceDiagram
 
 文件：`experimental/ops/op_common/recursive_executor/template/aicpu/xxx_template.h` + `.cc`
 
-继承 `AicpuBaseTemplate`，实现 `RunAlgorithm()` 调用通信计划器生成 `TxRxSlicesList`，按需重写 `SendAll()`/`PostCopy()`/`GetRes()`。Template 的执行骨架（`PreCopy → RunAlgorithm → SendAll → PostCopy`）见 2.4 节。若已有 CommPlanner（如 `RunMeshAllGather`/`RunNhrAllGather` 等）不满足需求，需配套新增对应 CommPlanner 函数（文件置于 `template/comm_planners/xxx_comm_planners.h` + `.cc`），负责计算通信对端、数据切片和传输方向，输出 `TxRxSlicesList`，不执行通信、不管理资源（分工见 2.4 节）。
+继承 `AicpuBaseTemplate`，实现 `RunAlgorithm()` 调用通信计划器生成 `TxRxSlicesList`，按需重写 `SendAll()`/`PostCopy()`/`GetRes()`。Template 的执行骨架（`PreCopy → RunAlgorithm → SendAll → PostCopy`）见 2.4 节。若已有 CommPlanner（如 `RunMeshAllGather`/`RunNhrAllGather` 等）不满足需求，需配套新增对应 CommPlanner 函数（文件置于 `template/comm_planners/xxx_comm_planner.h` + `.cc`），负责计算通信对端、数据切片和传输方向，输出 `TxRxSlicesList`，不执行通信、不管理资源（分工见 2.4 节）。
 
 ```cpp
 // xxx_template.h
@@ -1168,25 +1154,25 @@ REGISTER_TEMPLATE(HCCL_CMD_ALLGATHER, HCCL_ALGO_TYPE_XXX, XxxTemplate);
 
 文件：`experimental/ops/op_common/recursive_executor/algorithm/<op>.cc`（如 `all_gather.cc`）
 
-按 1.1 节的 `AlgoDesc` 三层描述结构和 2.1 节的组装方式编写工厂函数，再用 `REGISTER_ALG` 一步完成算法入 `AlgSelector` 和执行器入 `CollAlgExecRegistryV2`（注册机制见 1.3 节与 3.4 节）：
+按 1.1 节的 `HcclAlgorithm` 三层描述结构和 2.1 节的组装方式编写工厂函数，再用 `REGISTER_ALG` 一步完成算法入 `AlgSelector` 和执行器入 `CollAlgExecRegistryV2`（注册机制见 1.3 节与 3.4 节）：
 
 ```cpp
-static AlgoDesc MakeAicpuAllGatherSequenceXxxMesh()
+static HcclAlgorithm MakeAicpuAllGatherSequenceXxxMesh()
 {
     TemplateDesc xxxDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_XXX};
     TemplateDesc meshDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH};
 
     AlgoExecDesc desc;
-    desc.execPolicy = AlgExecPolicy::SEQUENCE;
+    desc.execPolicy = HcclAlgExecPolicy::SEQUENCE;
     desc.children = {
         TemplateExecDesc{xxxDesc, SUB_COMM_INDEX_1},
         TemplateExecDesc{meshDesc, SUB_COMM_INDEX_0},
     };
     desc.dataSplitRatio = {1, 1};
 
-    AlgoDesc algo;
+    HcclAlgorithm algo;
     algo.hcclCmdType  = HcclCMDType::HCCL_CMD_ALLGATHER;
-    algo.engineType   = CommEngine::COMM_ENGINE_AICPU;
+    algo.engineType   = HcclAlgEngineType::COMM_ENGINE_AICPU;
     algo.topoMatch    = std::make_shared<TopoMatchFourLevel>();
     algo.algoExecDesc = desc;
     algo.algName      = "AicpuAllGatherSequenceXxxMesh";
@@ -1208,7 +1194,7 @@ REGISTER_ALG(
 set(RE_CORE_SRC
     # ... 已有文件 ...
     template/aicpu/xxx_template.cc
-    template/comm_planners/xxx_comm_planners.cc
+    template/comm_planners/xxx_comm_planner.cc
 )
 ```
 
@@ -1229,7 +1215,7 @@ set(RE_CORE_SRC
 
 | 步骤             | 场景 A | 场景 B | 交付件                                                   |
 | -------------- | ---- | ---- | ----------------------------------------------------- |
-| 新增 CommPlanner | —    | 按需   | `template/comm_planners/xxx_comm_planners.h` + `.cc`  |
+| 新增 CommPlanner | —    | 按需   | `template/comm_planners/xxx_comm_planner.h` + `.cc`  |
 | 新增 Template    | —    | 是    | `template/aicpu/xxx_template.h` + `.cc`               |
 | Template 工厂注册  | —    | 是    | `template/template_factory.h` 中新增分支                   |
 | 算法树组装与注册       | 是    | 是    | `algorithm/<op>.cc` 中新增工厂函数 + `REGISTER_ALG`          |
@@ -1251,7 +1237,7 @@ set(RE_CORE_SRC
 - **AllReduce TwoShot**：`RS → AG` 组合，多层 AllReduce。
 - **数据量覆盖**：Count 整除和不整除 Rank 数，单 Loop 和多 Loop。
 - **拓扑覆盖**：连续 Rank 和 Stride 型子通信域 Rank。
-- **src 回归**：`bash build.sh -u` 跑 UT，确保 src 既有用例不受影响。recursive\_executor 自身 UT 覆盖 `omnipipe_utils`、`data_ops`、`comm_planners`、`algo_desc` 四组（`test/ut/recursive_executor/`）。
+- **src 回归**：`bash build.sh -u` 跑 UT，确保 src 既有用例不受影响。recursive\_executor 自身 UT 覆盖 `omnipipe_utils`、`data_ops`、`comm_planner`、`algo_desc` 四组（`test/ut/recursive_executor/`）。
 
 ## 风险评估
 

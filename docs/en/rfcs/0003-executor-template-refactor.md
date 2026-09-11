@@ -8,9 +8,9 @@
 
 ## Summary
 
-This RFC proposes an HCCL refactoring scheme with `AlgoDesc` as the static algorithm description, `OpsExecutor` as the universal interpreter, Template as the single-layer execution unit, and CommPlanner as the communication plan generator. The scheme describes combinations such as Sequence, Parallel, and OmniPipe through a recursive algorithm tree, passes logical data ownership via `ranksForInputData`/`ranksForOutputData`, and establishes a unified memory and data flow model of `Input → CCL Buffer → ... → CCL Buffer → Output`.
+This RFC proposes an HCCL refactoring scheme with `HcclAlgorithm` as the static algorithm description, `OpsExecutor` as the universal interpreter, Template as the single-layer execution unit, and CommPlanner as the communication plan generator. The scheme describes combinations such as Sequence, Parallel, and OmniPipe through a recursive algorithm tree, passes logical data ownership via `ranksForInputData`/`ranksForOutputData`, and establishes a unified memory and data flow model of `Input → CCL Buffer → ... → CCL Buffer → Output`.
 
-This refactoring lands in `experimental/ops/op_common/recursive_executor/` and adopts a **plug-in zero-intrusion integration** approach to connect to the existing src workflow: the recursive_executor code is compiled into `libhccl.so` as an OBJECT library, and `AdaptorExecutor` (inheriting src's `InsCollAlgBase`) is registered into src's `CollAlgExecRegistryV2` via `REGISTER_ADAPTOR_EXECUTOR`; after src's Selector selects the recursive_executor algorithm name for 4-level topology, the existing workflow `Selector → HcclExecOp → GetAlgExec → CalcAlgHierarchyInfo/CalcRes → Orchestrate` naturally dispatches to the recursive_executor executor, with zero changes to src except for the Selector's 4-level topology branch.
+This refactoring lands in `experimental/ops/op_common/recursive_executor/` and adopts a **plug-in zero-intrusion integration** approach to connect to the existing src workflow: the recursive_executor code is compiled into `libhccl.so` as an OBJECT library, and `AdaptorExecutor` (inheriting src's `InsCollAlgBase`) is registered into src's `CollAlgExecRegistryV2` via `REGISTER_ALG`; after src's Selector selects the recursive_executor algorithm name for 4-level topology, the existing workflow `Selector → HcclExecOp → GetAlgExec → CalcAlgHierarchyInfo/CalcRes → Orchestrate` naturally dispatches to the recursive_executor executor, with zero changes to src except for the Selector's 4-level topology branch.
 
 ## Background and Motivation
 
@@ -66,7 +66,7 @@ The current Executor has 6 command types (AllGather, AllReduce, Broadcast, Reduc
 
 **Goals**:
 
-1. Describe algorithm structure using `AlgoDesc + AlgoExecDesc + TemplateExecDesc`.
+1. Describe algorithm structure using `HcclAlgorithm + AlgoExecDesc + TemplateExecDesc`.
 2. Use a universal Executor to interpret Sequence, Parallel, and nested combinations, replacing 50+ specialized executors.
 3. Connect preceding and succeeding execution stages with an explicit Rank ownership table.
 4. Extract reusable Mesh/NHR communication plans from Template into CommPlanner.
@@ -83,11 +83,11 @@ The current Executor has 6 command types (AllGather, AllReduce, Broadcast, Reduc
 
 | Term | Meaning |
 | --- | --- |
-| AlgoDesc | Algorithm description structure, containing the algorithm tree, topology matcher, and algorithm name; the minimal unit registered into the algorithm table |
+| HcclAlgorithm | Algorithm description structure, containing the algorithm tree, topology matcher, and algorithm name; the minimal unit registered into the algorithm table |
 | OpsExecutor | Universal executor, recursively interprets the algorithm tree, replacing 50+ specialized executors |
 | Template | Single-layer execution unit, responsible for data preparation, communication execution, and result assembly |
 | CommPlanner | Communication plan generator, computes communication peers, data slices, and ownership; does not execute communication |
-| AlgSelector | Algorithm registry, queries AlgoDesc by algorithm name, achieving Selector/Executor/Template decoupling |
+| AlgSelector | Algorithm registry, queries HcclAlgorithm by algorithm name, achieving Selector/Executor/Template decoupling |
 | AdaptorExecutor | Bridge layer, inherits src's InsCollAlgBase, forwards three interfaces to OpsExecutor |
 | InsCollAlgBase | Unified abstract base class for all V2 executors in src |
 | CollAlgExecRegistryV2 | src executor registry, looks up executors by operator type and algorithm name |
@@ -103,7 +103,7 @@ The refactored core pipeline has only four layers:
 
 ```mermaid
 flowchart LR
-    Algo["AlgoDesc<br/>Algorithm structure definition"]
+    Algo["HcclAlgorithm<br/>Algorithm structure definition"]
     Executor["OpsExecutor<br/>Algorithm execution"]
     Template["Template<br/>Algorithm template"]
     CommPlanner["CommPlanner<br/>Generate communication plan"]
@@ -120,12 +120,12 @@ The four layers answer different questions:
 
 | Layer | Core Question |
 | --- | --- |
-| `AlgoDesc` | Which algorithm templates make up the algorithm, and how are they combined |
+| `HcclAlgorithm` | Which algorithm templates make up the algorithm, and how are they combined |
 | `OpsExecutor` | How data is sliced, in what order templates execute, and how data is passed |
 | Template | How a single algorithm template prepares data, executes communication, and assembles results |
 | CommPlanner | For the current Rank and sub-communicator, whom to communicate with and which slices to transfer |
 
-The core design philosophy is the separation of **static algorithm structure** and **dynamic data state**: `AlgoDesc` remains unchanged after algorithm selection; `AlgoExecDataDesc` changes dynamically with Loop, Sequence stage, and Parallel sub-slice. When the Executor recursively interprets the algorithm tree, it does not modify `AlgoDesc`; it only derives a `AlgoExecDataDesc` for each Child.
+The core design philosophy is the separation of **static algorithm structure** and **dynamic data state**: `HcclAlgorithm` remains unchanged after algorithm selection; `AlgoExecDataDesc` changes dynamically with Loop, Sequence stage, and Parallel sub-slice. When the Executor recursively interprets the algorithm tree, it does not modify `HcclAlgorithm`; it only derives a `AlgoExecDataDesc` for each Child.
 
 ### Public Interfaces
 
@@ -134,7 +134,7 @@ This refactoring provides the following interfaces for **operator developers**. 
 #### 1. REGISTER_ALG — One-Step Algorithm and Executor Registration
 
 ```cpp
-#define REGISTER_ALG(cmdType, algName, algoDesc)
+#define REGISTER_ALG(cmdType, algName, hcclAlgorithm)
 ```
 
 Completes algorithm registration into `AlgSelector` and executor registration into `CollAlgExecRegistryV2` in one step; the two tables are associated by the same algorithm name.
@@ -143,9 +143,9 @@ Completes algorithm registration into `AlgSelector` and executor registration in
 | --- | --- | --- |
 | `cmdType` | `HcclCMDType` | Operator type (e.g., `HCCL_CMD_ALLGATHER`), determines the classification slot of the executor in the src registry |
 | `algName` | `std::string` | Algorithm unique identifier (e.g., `"AicpuAllGatherSequenceXxxMesh"`), Selector returns this name, Executor looks up the algorithm tree by it |
-| `algoDesc` | `AlgoDesc` | Pre-constructed algorithm tree, containing topology matcher, execution policy, child node list, and engine type (assembly method in Section 1.1) |
+| `hcclAlgorithm` | `HcclAlgorithm` | Pre-constructed algorithm tree, containing topology matcher, execution policy, child node list, and engine type (assembly method in Section 1.1) |
 
-#### 2. AlgoDesc / AlgoExecDesc / TemplateExecDesc — Algorithm Tree Description Structures
+#### 2. HcclAlgorithm / AlgoExecDesc / TemplateExecDesc — Algorithm Tree Description Structures
 
 ```cpp
 struct TemplateExecDesc {
@@ -160,7 +160,7 @@ struct AlgoExecDesc {
     std::vector<u32> dataSplitRatio;       // Parallel data split ratio, element count must match children
 };
 
-// AlgoDesc is HcclAlgorithm, describing the complete algorithm entry
+// HcclAlgorithm describes the complete algorithm entry
 class HcclAlgorithm {
     HcclCMDType hcclCmdType;                       // Operator type
     HcclAlgEngineType engineType;                  // Engine type
@@ -170,7 +170,7 @@ class HcclAlgorithm {
 };
 ```
 
-Developers use these three layers of data structures to assemble the algorithm tree: `TemplateExecDesc` describes a single-layer Template, `AlgoExecDesc` describes the execution policy and child node list, and `AlgoDesc` describes the complete algorithm entry.
+Developers use these three layers of data structures to assemble the algorithm tree: `TemplateExecDesc` describes a single-layer Template, `AlgoExecDesc` describes the execution policy and child node list, and `HcclAlgorithm` describes the complete algorithm entry.
 
 #### 3. AicpuBaseTemplate — Template Base Class
 
@@ -188,6 +188,8 @@ virtual HcclResult RunAlgorithm(std::vector<TxRxSlicesList> &txRxSlicesLists,
 | --- | --- | --- |
 | `txRxSlicesLists` | Output | Send/receive description list; the base class calls `SendAll` to execute communication based on this |
 | `ranksForOutputData` | Output | Data ownership rank list held by this rank after communication |
+
+> **`DataSlicesList`** is an extended type in `recursive_executor`, based on `src`'s `TxRxSlicesList` struct, with additional `srcRankId_` and `dstRankId_` fields to support rank identification in mesh/nhr communication. The `TxRxSlicesList` used in the above `RunAlgorithm`/`SendAll` and other interfaces is actually `DataSlicesList` in the implementation.
 
 ##### Override as Needed
 
@@ -234,7 +236,7 @@ This refactoring depends on the following src / HCOMM interfaces and introduces 
 
 | Dependency | Source | Usage |
 | --- | --- | --- |
-| `InsCollAlgBase` | `src/ops/op_common/executor/executor_v2_base.h` | `AdaptorExecutor` inherits this class, implements three pure virtual interfaces (`Prepare`/`GetRes`/`KernelRun`), bridging the src execution framework |
+| `InsCollAlgBase` | `src/ops/op_common/algorithm/executor/executor_v2_base.h` | `AdaptorExecutor` inherits this class, implements three pure virtual interfaces (`CalcAlgHierarchyInfo`/`CalcRes`/`Orchestrate`), bridging the src execution framework |
 | `OpParam` / `AlgResourceRequest` / `AlgResourceCtxSerializable` | `src/ops/op_common/...` | recursive_executor and src share the same set of types, naturally type-consistent, no wrapper layer needed |
 | `CollAlgExecRegistryV2` | `src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h` | Executor registry; `REGISTER_ALG` registers `AdaptorExecutor` into src through this table |
 | `hcomm_dlsym` symbol table | `src/common/hcomm_dlsym/` | Cross-repository calls to HCOMM go through dlsym, introducing no compile-time hard dependency on `cann/hcomm` |
@@ -250,7 +252,7 @@ This refactoring depends on the following src / HCOMM interfaces and introduces 
 
 ## Compatibility Considerations
 
-This refactoring does not change the algorithm selection strategy, does not change the public API, and does not change the src execution framework. Migration only occurs after an algorithm is selected: selected algorithm name → `GetAlgExec` returns the recursive_executor executor → `AlgoDesc` tree → universal Executor interprets → new Template/CommPlanner executes.
+This refactoring does not change the algorithm selection strategy, does not change the public API, and does not change the src execution framework. Migration only occurs after an algorithm is selected: selected algorithm name → `GetAlgExec` returns the recursive_executor executor → `HcclAlgorithm` tree → universal Executor interprets → new Template/CommPlanner executes.
 
 ### 1. Code Landing Path: experimental/ops/op_common/recursive_executor/
 
@@ -270,15 +272,15 @@ Gradual integration is divided into three phases:
 
 ### 1. Data Structures
 
-#### 1.1 AlgoDesc Three-Layer Description Structure
+#### 1.1 HcclAlgorithm Three-Layer Description Structure
 
-`AlgoDesc` consists of three layers:
+`HcclAlgorithm` consists of three layers:
 
 ```mermaid
 classDiagram
-    class AlgoDesc {
+    class HcclAlgorithm {
         HcclCMDType hcclCmdType
-        CommEngine engineType
+        HcclAlgEngineType engineType
         shared_ptr~TopoMatchBaseV2~ topoMatch
         AlgAttr algAttrs
         AlgoExecDesc algoExecDesc
@@ -290,7 +292,7 @@ classDiagram
         +MatchTopo(topoInfo, algHierarchyInfo, algAttrs)
     }
     class AlgoExecDesc {
-        AlgExecPolicy execPolicy
+        HcclAlgExecPolicy execPolicy
         vector~VariantType~ children
         vector~u32~ dataSplitRatio
     }
@@ -303,14 +305,14 @@ classDiagram
         HcclCMDType hcclCmdType
         HcclAlgoType algType
     }
-    AlgoDesc *-- AlgoExecDesc
-    AlgoDesc o-- TopoMatchBaseV2
+    HcclAlgorithm *-- AlgoExecDesc
+    HcclAlgorithm o-- TopoMatchBaseV2
     AlgoExecDesc *-- AlgoExecDesc
     AlgoExecDesc *-- TemplateExecDesc
     TemplateExecDesc *-- TemplateDesc
 ```
 
-- `AlgoDesc`: Describes a complete collective communication algorithm, carrying `topoMatch` (topology matcher) and the algorithm tree, creating the universal executor via `GetExecutor()`. **This is the minimal unit registered into the algorithm table**.
+- `HcclAlgorithm`: Describes a complete collective communication algorithm, carrying `topoMatch` (topology matcher) and the algorithm tree, creating the universal executor via `GetExecutor()`. **This is the minimal unit registered into the algorithm table**.
 - `TopoMatchBaseV2`: Topology matcher, responsible for splitting the communicator topology into per-level sub-communicators (`AlgHierarchyInfoForAllLevel`), shared by Selector/Executor.
 - `AlgoExecDesc`: Composition node, describing which execution policy (SEQUENCE/PARALLEL/OMNIPIPE) the Children use.
 - `TemplateExecDesc`: Algorithm template, describing which Template to execute on which sub-communicator (`subCommIndex`); `netLayer` is used for cross-layer templates (default -1).
@@ -319,7 +321,7 @@ classDiagram
 Corresponding code (`experimental/ops/op_common/recursive_executor/inc/algo_desc.h`):
 
 ```cpp
-enum class AlgExecPolicy { SEQUENCE, PARALLEL, OMNIPIPE };
+enum class HcclAlgExecPolicy { SEQUENCE, PARALLEL, OMNIPIPE };
 
 struct TemplateDesc {
     HcclCMDType hcclCmdType;
@@ -341,17 +343,17 @@ struct TemplateExecDesc {
 struct AlgoExecDesc;
 using VariantType = std::variant<TemplateExecDesc, std::shared_ptr<AlgoExecDesc>>;
 struct AlgoExecDesc {
-    AlgExecPolicy execPolicy = AlgExecPolicy::SEQUENCE;
+    HcclAlgExecPolicy execPolicy = HcclAlgExecPolicy::SEQUENCE;
     std::vector<VariantType> children;
     std::vector<u32> dataSplitRatio;
 };
 
-class AlgoDesc {
+class HcclAlgorithm {
 public:
     std::unique_ptr<OpsExecutor> GetExecutor(OpParam& param);
     void Dump();
     HcclCMDType hcclCmdType;
-    CommEngine engineType;
+    HcclAlgEngineType engineType;
     std::shared_ptr<TopoMatchBaseV2> topoMatch;
     AlgAttrs algAttrs;
     AlgoExecDesc algoExecDesc;
@@ -405,7 +407,7 @@ The algorithm registry is the core hub of the refactored architecture—it trans
 
 ##### Design Motivation
 
-The core idea of the algorithm registry is **algorithm as data**: each algorithm is fully described by an `AlgoDesc` tree, pre-constructed, and registered into the global table. The Selector only returns the algorithm name, the Executor only interprets and executes, and neither contains the algorithm definition itself. Adding a new algorithm only requires appending one `REGISTER_ALG` macro in the algorithm file. The src Selector is not modified; the default selector flow will not select 4-level algorithms. The currently integrated portion (algorithm registration mechanism) still has legacy work; after the selector refactoring is complete, users can explicitly configure a 4-level algorithm name via the `HCCL_ALGO` environment variable. Incorporating 4-level algorithms into the default selector flow will be discussed after the algorithms stabilize.
+The core idea of the algorithm registry is **algorithm as data**: each algorithm is fully described by an `HcclAlgorithm` tree, pre-constructed, and registered into the global table. The Selector only returns the algorithm name, the Executor only interprets and executes, and neither contains the algorithm definition itself. Adding a new algorithm only requires appending one `REGISTER_ALG` macro in the algorithm file. The src Selector is not modified; the default selector flow will not select 4-level algorithms. The currently integrated portion (algorithm registration mechanism) still has legacy work; after the selector refactoring is complete, users can explicitly configure a 4-level algorithm name via the `HCCL_ALGO` environment variable. Incorporating 4-level algorithms into the default selector flow will be discussed after the algorithms stabilize.
 
 ##### Data Structure
 
@@ -413,21 +415,16 @@ The core idea of the algorithm registry is **algorithm as data**: each algorithm
 class AlgSelector {
 public:
     static AlgSelector& Instance();
-    HcclResult Register(const std::string& algName, AlgoDesc algo);
-    bool GetAlgorithm(const std::string& algName, AlgoDesc& algo) const;
+    HcclResult Register(const std::string& algName, HcclAlgorithm algo);
+    bool GetAlgorithm(const std::string& algName, HcclAlgorithm& algo) const;
 private:
     AlgSelector() = default;
-    std::map<std::string, AlgoDesc> algMap_;
+    std::map<std::string, HcclAlgorithm> algMap_;
     mutable std::mutex mu_;
 };
-
-// Registration macro: register algorithm object into registry during static initialization
-#define REGISTER_ALGORITHM(algName, algo) \
-    static bool g_reg_##algName = \
-        AlgSelector::Instance().Register(#algName, algo)
 ```
 
-`GetAlgorithm` returns a copy of `AlgoDesc` by name (`topoMatch` is a `shared_ptr`, sharing the same matcher). The registry is statically initialized in both the Host library and the Device kernel; both ends can reconstruct the algorithm definition by algorithm name, **without serializing the algorithm tree**.
+`GetAlgorithm` returns a copy of `HcclAlgorithm` by name (`topoMatch` is a `shared_ptr`, sharing the same matcher). The registry is statically initialized in both the Host library and the Device kernel; both ends can reconstruct the algorithm definition by algorithm name, **without serializing the algorithm tree**.
 
 ##### Algorithm Registration Example (4-Level AllGather)
 
@@ -440,7 +437,7 @@ static AlgoExecDesc MakeAllGather4LevelAlgoExecDesc()
     TemplateDesc meshDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH};
     TemplateDesc nhrDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_NHR};
     AlgoExecDesc desc;
-    desc.execPolicy = AlgExecPolicy::SEQUENCE;
+    desc.execPolicy = HcclAlgExecPolicy::SEQUENCE;
     desc.children = {
         TemplateExecDesc{meshDesc, SUB_COMM_INDEX_3},
         TemplateExecDesc{nhrDesc,  SUB_COMM_INDEX_2},
@@ -451,11 +448,11 @@ static AlgoExecDesc MakeAllGather4LevelAlgoExecDesc()
     return desc;
 }
 
-static AlgoDesc MakeAllGather4LevelAlgo()
+static HcclAlgorithm MakeAllGather4LevelAlgo()
 {
-    AlgoDesc algo;
+    HcclAlgorithm algo;
     algo.hcclCmdType = HcclCMDType::HCCL_CMD_ALLGATHER;
-    algo.engineType  = CommEngine::COMM_ENGINE_AICPU;
+    algo.engineType  = HcclAlgEngineType::COMM_ENGINE_AICPU;
     algo.topoMatch   = std::make_shared<TopoMatchFourLevel>();
     algo.algoExecDesc = MakeAllGather4LevelAlgoExecDesc();
     algo.algName     = "AicpuAllGatherSequenceMeshNHRNHRMesh";
@@ -585,7 +582,7 @@ flowchart TB
     Loop -->|"no"| Done
 ```
 
-`OpsExecutor` is the universal executor created by `AlgoDesc::GetExecutor()`, collecting runtime information such as input/output/root/dataType from `OpParam` during construction.
+`OpsExecutor` is the universal executor created by `HcclAlgorithm::GetExecutor()`, collecting runtime information such as input/output/root/dataType from `OpParam` during construction.
 
 ##### Static Structure and Dynamic State
 
@@ -593,7 +590,7 @@ The Executor holds two types of information:
 
 | Type | Lifecycle | Content |
 | --- | --- | --- |
-| `AlgoDesc` | Unchanged for the entire operator execution | Algorithm tree, template types, sub-communicator levels, topology matcher |
+| `HcclAlgorithm` | Unchanged for the entire operator execution | Algorithm tree, template types, sub-communicator levels, topology matcher |
 | `AlgoExecDataDesc` | Changes with Loop and tree node | Buffer type, Offset, Count, Stride, Rank ownership |
 
 `AlgoExecDataDesc` is a "state snapshot of data at the entry of a node in the algorithm tree"; core fields include: `inputBufferType`/`outputBufferType`/`cclBufferType` (input/output/CCL Buffer source for this stage), `dataOffset` (starting offset of the Loop in user memory), `sliceOffset`/`sliceCount` (Parallel sub-slice offset and count), `dataStride`/`scratchStride` (adjacent Slot spacing in user memory/CCL Buffer), `ranksForInputDataGroup`/`ranksForOutputDataGroup` (Owner of each Slot in the current Buffer).
@@ -679,7 +676,7 @@ Ownership propagation rules: when the Parent has only one group of input ownersh
 
 ##### OmniPipe Orchestration (OrchestrateOmniPipeLoop)
 
-OmniPipe (cross-layer pipeline) is an orchestration mode on a 2D grid where "the slow axis/fast axis alternate communication by Step to overlap transfer time". The old architecture maintained a specialized executor for each operator (e.g., `InsV2AllGatherOmniPipeExecutor`/`InsV2AllGatherOmniPipe2dExecutor`), with hardcoded 3-level topology, per-axis slicing, and multi-thread scheduling. In the refactored architecture, **OmniPipe no longer requires a specialized executor**: it is simply an `execPolicy` (`AlgExecPolicy::OMNIPIPE`) of `AlgoExecDesc`, interpreted by the universal `OpsExecutor`; the two axes correspond to the 2 Children of the algorithm tree, reusing the same set of Template/CommPlanner and synchronization primitives.
+OmniPipe (cross-layer pipeline) is an orchestration mode on a 2D grid where "the slow axis/fast axis alternate communication by Step to overlap transfer time". The old architecture maintained a specialized executor for each operator (e.g., `InsV2AllGatherOmniPipeExecutor`/`InsV2AllGatherOmniPipe2dExecutor`), with hardcoded 3-level topology, per-axis slicing, and multi-thread scheduling. In the refactored architecture, **OmniPipe no longer requires a specialized executor**: it is simply an `execPolicy` (`HcclAlgExecPolicy::OMNIPIPE`) of `AlgoExecDesc`, interpreted by the universal `OpsExecutor`; the two axes correspond to the 2 Children of the algorithm tree, reusing the same set of Template/CommPlanner and synchronization primitives.
 
 ###### OmniPipe Algorithm Expression
 
@@ -860,19 +857,19 @@ This refactoring **does not modify or replace** src's execution framework, but p
 
 Integration points are at three levels: **compile time** (OBJECT library inclusion), **selection time** (Selector returns recursive_executor algorithm name), **execution time** (`AdaptorExecutor` bridges `InsCollAlgBase` → `OpsExecutor`).
 
-#### 3.1 Compile-Time Integration: hccl_oxc OBJECT Library
+#### 3.1 Compile-Time Integration: RecursiveExecutor OBJECT Library
 
-`experimental/ops/op_common/recursive_executor/CMakeLists.txt` compiles recursive_executor as an OBJECT library `hccl_oxc`, linked into `libhccl.so`:
+`experimental/ops/op_common/recursive_executor/CMakeLists.txt` compiles recursive_executor as an OBJECT library `RecursiveExecutor`, linked into `libhccl.so`:
 
 ```cmake
-add_library(hccl_oxc OBJECT ${RE_CORE_SRC})
-set_target_properties(hccl_oxc PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_compile_definitions(hccl_oxc PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
-target_include_directories(hccl_oxc PUBLIC ${RE_INCLUDE_LIST})
-target_link_libraries(hccl_oxc PUBLIC hccl_compat)
+add_library(RecursiveExecutor OBJECT ${RE_CORE_SRC})
+set_target_properties(RecursiveExecutor PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(RecursiveExecutor PRIVATE _GLIBCXX_USE_CXX11_ABI=0)
+target_include_directories(RecursiveExecutor PUBLIC ${RE_INCLUDE_LIST})
+target_link_libraries(RecursiveExecutor PUBLIC hccl_compat)
 
 if(TARGET hccl)
-    target_link_libraries(hccl PRIVATE hccl_oxc)
+    target_link_libraries(hccl PRIVATE RecursiveExecutor)
 endif()
 ```
 
@@ -903,7 +900,7 @@ if (topoInfo->topoLevelNums > 1) {
 
 #### 3.3 Execution Time: AdaptorExecutor Bridge Layer
 
-`InsCollAlgBase` (`src/ops/op_common/executor/executor_v2_base.h`) is the unified abstraction for all V2 executors in src; src drives executors through only three pure virtual interfaces:
+`InsCollAlgBase` (`src/ops/op_common/algorithm/executor/executor_v2_base.h`) is the unified abstraction for all V2 executors in src; src drives executors through only three pure virtual interfaces:
 
 ```cpp
 class InsCollAlgBase {
@@ -952,7 +949,7 @@ The forwarding implementation of the three interfaces (`experimental/ops/op_comm
 // 1. Topology matching: get topology matcher from AlgSelector to complete matching (pass algAttrs)
 HcclResult AdaptorExecutorBase::CalcAlgHierarchyInfo(...)
 {
-    AlgoDesc alg;
+    HcclAlgorithm alg;
     if (!AlgSelector::Instance().GetAlgorithm(algName_, alg)) { ... }
     return alg.topoMatch->MatchTopo(topoInfo, algHierarchyInfo, alg.algAttrs);
 }
@@ -961,11 +958,11 @@ HcclResult AdaptorExecutorBase::CalcAlgHierarchyInfo(...)
 HcclResult AdaptorExecutorBase::CalcRes(HcclComm comm, const OpParam& param, ...)
 {
     if (!executor_) {
-        AlgoDesc alg;
+        HcclAlgorithm alg;
         AlgSelector::Instance().GetAlgorithm(param.algName, alg);
         OpParam& mutableParam = const_cast<OpParam&>(param);
         executor_ = alg.GetExecutor(mutableParam);              // new OpsExecutor
-        executor_->CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+        executor_->InitAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
     }
     return executor_->CalcRes(comm, resourceRequest);
 }
@@ -974,7 +971,7 @@ HcclResult AdaptorExecutorBase::CalcRes(HcclComm comm, const OpParam& param, ...
 HcclResult AdaptorExecutorBase::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     if (!executor_) {
-        AlgoDesc algo;
+        HcclAlgorithm algo;
         AlgSelector::Instance().GetAlgorithm(param.algName, algo);
         executor_ = algo.GetExecutor(const_cast<OpParam&>(param));
     }
@@ -989,29 +986,16 @@ Key points:
 
 #### 3.4 Registration Macros: Hooking recursive_executor Executor into src Registry
 
-`experimental/ops/op_common/recursive_executor/executor/adaptor_executor.h` provides two registration macros:
+`experimental/ops/op_common/recursive_executor/executor/adaptor_executor.h` provides the registration macro `REGISTER_ALG`:
 
 ```cpp
-// Registration macro A: define externally-linked algorithm name variable + register AdaptorExecutorImpl into src's CollAlgExecRegistryV2
-#define REGISTER_ADAPTOR_EXECUTOR(type, ALG_NAME, EXEC_NAME) \
-    namespace ops_hccl { const char g_alg_##EXEC_NAME[] = #ALG_NAME; } \
-    namespace ops_hccl { \
-    static HcclResult g_oxc_exec_##EXEC_NAME = \
-        CollAlgExecRegistryV2::Instance().Register(type, \
-            std::string(#ALG_NAME), \
-            DefaultExecCreatorV2<AdaptorExecutorImpl<g_alg_##EXEC_NAME>>); \
-    }
-
-// Registration macro B: algorithm registration + executor registration in one step
-#define REGISTER_ALG(cmdType, algName, algo) \
-    REGISTER_ALGORITHM(algName, algo); \
-    REGISTER_ADAPTOR_EXECUTOR(cmdType, algName, algName)
+// REGISTER_ALG macro unified definition in Section 3.5 (guarded lambda version), not repeated here
 ```
 
 Notes:
 
 - `CollAlgExecRegistryV2` (`src/ops/op_common/executor/registry/coll_alg_v2_exec_registry.h`) is the registry for all V2 executors in src; `DefaultExecCreatorV2<AdaptorExecutorImpl<...>>` returns `InsCollAlgBase*`, going through the same `Register(type, tag, creator)` channel as src's existing macros like `REGISTER_EXECUTOR_IMPL`.
-- Since `const char*` template parameters require variables with external linkage, `REGISTER_ADAPTOR_EXECUTOR` first defines an `extern`-linked `g_alg_##EXEC_NAME[]` string, then instantiates `AdaptorExecutorImpl` with it, binding the algorithm name at compile time.
+- Since `const char*` template parameters require variables with external linkage, `REGISTER_ALG` first defines a `static const char` `g_alg_##algName[]` string (compiler extension, see Section 3.5 notes), then instantiates `AdaptorExecutorImpl` with it, binding the algorithm name at compile time.
 - `REGISTER_ALG` completes "algorithm registration into `AlgSelector`" and "executor registration into `CollAlgExecRegistryV2`" in one step; the two tables are associated by the same algorithm name, which is the prerequisite for the Selector-returned name in Section 3.2 to be routed to the recursive_executor executor.
 
 #### 3.5 Runtime Switch
@@ -1042,7 +1026,7 @@ bool IsRecursiveExecutorEnabled()
 ```cpp
 #define REGISTER_ALG(cmdType, algName, algo)                                    \
     namespace ops_hccl {                                                        \
-        const char g_alg_##algName[] = #algName;                                \
+        static const char g_alg_##algName[] = #algName;                             \
         static bool g_reg_##algName = []() {                                    \
             if (!IsRecursiveExecutorEnabled()) {                                \
                 return false;                                                   \
@@ -1057,6 +1041,8 @@ bool IsRecursiveExecutorEnabled()
 ```
 
 When the switch is off (currently the default), the `REGISTER_ALG` static initialization lambda directly `return false`; the algorithm is not registered into `AlgSelector` and the executor is not registered into `CollAlgExecRegistryV2`.
+
+> `g_alg_##algName` is declared as `static const char[]` (internal linkage). The C++14 standard requires non-type template parameters (`const char*`) to have external linkage; using `static const char[]` as a template argument is a compiler extension; if the target compiler does not support this extension, the `static` must be removed to restore external linkage.
 
 #### 3.6 Complete Call Chain Sequence
 
@@ -1085,7 +1071,7 @@ sequenceDiagram
     Ada-->>Op: algHierarchyInfo
     Op->>Ada: CalcRes(comm, param, topoInfo, algHierarchyInfo, resRequest)
     Ada->>Exec: algo.GetExecutor(param) -> OpsExecutor
-    Ada->>Exec: CalcAlgHierarchyInfo + CalcRes(comm, resRequest)
+    Ada->>Exec: InitAlgHierarchyInfo + CalcRes(comm, resRequest)
     Ada-->>Op: AlgResourceRequest (thread/notify/channel/scratch)
     Op->>Op: GetAlgResWithEngine: Allocate resources, serialize AlgResourceCtxSerializable
     Op->>Ada: Orchestrate(param, resCtxHost)
@@ -1127,7 +1113,7 @@ Scenario A requires no additional development; proceed directly to [Unified Work
 
 File: `experimental/ops/op_common/recursive_executor/template/aicpu/xxx_template.h` + `.cc`
 
-Inherit `AicpuBaseTemplate`, implement `RunAlgorithm()` to call the communication planner to generate `TxRxSlicesList`, and override `SendAll()`/`PostCopy()`/`GetRes()` as needed. Template's execution skeleton (`PreCopy → RunAlgorithm → SendAll → PostCopy`) is described in Section 2.4. If existing CommPlanners (such as `RunMeshAllGather`/`RunNhrAllGather` etc.) do not meet the requirements, a corresponding new CommPlanner function must be added (file placed at `template/comm_planners/xxx_comm_planners.h` + `.cc`), responsible for computing communication peers, data slices, and transfer directions, outputting `TxRxSlicesList`; it does not execute communication or manage resources (division of labor in Section 2.4).
+Inherit `AicpuBaseTemplate`, implement `RunAlgorithm()` to call the communication planner to generate `TxRxSlicesList`, and override `SendAll()`/`PostCopy()`/`GetRes()` as needed. Template's execution skeleton (`PreCopy → RunAlgorithm → SendAll → PostCopy`) is described in Section 2.4. If existing CommPlanners (such as `RunMeshAllGather`/`RunNhrAllGather` etc.) do not meet the requirements, a corresponding new CommPlanner function must be added (file placed at `template/comm_planners/xxx_comm_planner.h` + `.cc`), responsible for computing communication peers, data slices, and transfer directions, outputting `TxRxSlicesList`; it does not execute communication or manage resources (division of labor in Section 2.4).
 
 ```cpp
 // xxx_template.h
@@ -1168,25 +1154,25 @@ Regardless of whether a new Template is added, the following steps must be execu
 
 File: `experimental/ops/op_common/recursive_executor/algorithm/<op>.cc` (e.g., `all_gather.cc`)
 
-Write a factory function following the `AlgoDesc` three-layer description structure in Section 1.1 and the assembly method in Section 2.1, then use `REGISTER_ALG` to complete algorithm registration into `AlgSelector` and executor registration into `CollAlgExecRegistryV2` in one step (registration mechanism in Sections 1.3 and 3.4):
+Write a factory function following the `HcclAlgorithm` three-layer description structure in Section 1.1 and the assembly method in Section 2.1, then use `REGISTER_ALG` to complete algorithm registration into `AlgSelector` and executor registration into `CollAlgExecRegistryV2` in one step (registration mechanism in Sections 1.3 and 3.4):
 
 ```cpp
-static AlgoDesc MakeAicpuAllGatherSequenceXxxMesh()
+static HcclAlgorithm MakeAicpuAllGatherSequenceXxxMesh()
 {
     TemplateDesc xxxDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_XXX};
     TemplateDesc meshDesc{HcclCMDType::HCCL_CMD_ALLGATHER, HcclAlgoType::HCCL_ALGO_TYPE_FULLMESH};
 
     AlgoExecDesc desc;
-    desc.execPolicy = AlgExecPolicy::SEQUENCE;
+    desc.execPolicy = HcclAlgExecPolicy::SEQUENCE;
     desc.children = {
         TemplateExecDesc{xxxDesc, SUB_COMM_INDEX_1},
         TemplateExecDesc{meshDesc, SUB_COMM_INDEX_0},
     };
     desc.dataSplitRatio = {1, 1};
 
-    AlgoDesc algo;
+    HcclAlgorithm algo;
     algo.hcclCmdType  = HcclCMDType::HCCL_CMD_ALLGATHER;
-    algo.engineType   = CommEngine::COMM_ENGINE_AICPU;
+    algo.engineType   = HcclAlgEngineType::COMM_ENGINE_AICPU;
     algo.topoMatch    = std::make_shared<TopoMatchFourLevel>();
     algo.algoExecDesc = desc;
     algo.algName      = "AicpuAllGatherSequenceXxxMesh";
@@ -1208,7 +1194,7 @@ File: `experimental/ops/op_common/recursive_executor/CMakeLists.txt`
 set(RE_CORE_SRC
     # ... existing files ...
     template/aicpu/xxx_template.cc
-    template/comm_planners/xxx_comm_planners.cc
+    template/comm_planners/xxx_comm_planner.cc
 )
 ```
 
@@ -1229,7 +1215,7 @@ Add a new algorithm selection branch (integration mechanism in Section 3.2):
 
 | Step | Scenario A | Scenario B | Deliverables |
 | --- | --- | --- | --- |
-| New CommPlanner | — | As needed | `template/comm_planners/xxx_comm_planners.h` + `.cc` |
+| New CommPlanner | — | As needed | `template/comm_planners/xxx_comm_planner.h` + `.cc` |
 | New Template | — | Yes | `template/aicpu/xxx_template.h` + `.cc` |
 | Template factory registration | — | Yes | New branch in `template/template_factory.h` |
 | Algorithm tree assembly and registration | Yes | Yes | New factory function + `REGISTER_ALG` in `algorithm/<op>.cc` |
@@ -1251,7 +1237,7 @@ End-to-end algorithm testing covers the following scenarios:
 - **AllReduce TwoShot**: `RS → AG` combination, multi-layer AllReduce.
 - **Data volume coverage**: Count divisible and non-divisible by Rank count, single Loop and multi-Loop.
 - **Topology coverage**: Contiguous Rank and Stride-type sub-communicator Ranks.
-- **src regression**: `bash build.sh -u` runs UT to ensure existing src test cases are unaffected. recursive_executor's own UT covers four groups: `omnipipe_utils`, `data_ops`, `comm_planners`, `algo_desc` (`test/ut/recursive_executor/`).
+- **src regression**: `bash build.sh -u` runs UT to ensure existing src test cases are unaffected. recursive_executor's own UT covers four groups: `omnipipe_utils`, `data_ops`, `comm_planner`, `algo_desc` (`test/ut/recursive_executor/`). Currently only the `algo_desc` UT group is delivered; the `omnipipe_utils`/`data_ops`/`comm_planner` three groups are to be completed.
 
 ## Risk Assessment
 
