@@ -79,10 +79,10 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::FastLaunchNhrKernel(
     constexpr u32 outputIdx = 1;
     constexpr u32 currentRankSliceOutputOffsetIdx = 8;
     constexpr u32 isInputOutputEqualIdx = 12;
-    constexpr u32 inputOffsetIdx = 13;
-    constexpr u32 outputOffsetIdx = 14;
-    constexpr u32 currentRankSliceInputOffsetIdx = 15;
-    constexpr u64 argSize = 13;
+    constexpr u32 inputOffsetIdx = 21;
+    constexpr u32 outputOffsetIdx = 22;
+    constexpr u32 currentRankSliceInputOffsetIdx = 23;
+    constexpr u64 argSize = 21;
     uint64_t inputAddr = PointerToAddr(buffInfo.inputPtr) + args[inputOffsetIdx];
     uint64_t outputAddr = PointerToAddr(buffInfo.outputPtr) + args[outputOffsetIdx];
     uint64_t currentRankSliceInputOffset = args[currentRankSliceInputOffsetIdx];
@@ -376,11 +376,19 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::LaunchNhrKernel(
     u64 repeatNumVar = UINT64_MAX - nhrParams.repeatNum;
     u64 isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
     u64 currentRankSliceInputOffset = inputSliceStride * myNhrRank_;
-    std::vector<uint64_t> taskArgs = {inputAddr,         outputAddr,         token,
-                                      die0Size,          die1Size,           die0LastSliceSize,
-                                      die1LastSliceSize, inputSliceStride,   currentRankSliceOutputOffset,
-                                      inputRepeatStride, outputRepeatStride, repeatNumVar,
-                                      isInputOutputEqual};
+    LoopGroupConfig nhrConfig{};
+    nhrConfig.msInterleave = CCU_MS_INTERLEAVE;
+    nhrConfig.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    nhrConfig.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
+    auto goSizeNormal = CalGoSize(die0Size, nhrConfig, GetCcuVersion());
+    auto goSizeLast = CalGoSize(die0LastSliceSize, nhrConfig, GetCcuVersion());
+    std::vector<uint64_t> taskArgs = {inputAddr,          outputAddr,         token,
+                                      die0Size,           die1Size,           die0LastSliceSize,
+                                      die1LastSliceSize,  inputSliceStride,   currentRankSliceOutputOffset,
+                                      inputRepeatStride,  outputRepeatStride, repeatNumVar,
+                                      isInputOutputEqual, goSizeNormal[0],    goSizeNormal[1],
+                                      goSizeNormal[2],    goSizeNormal[3],    goSizeLast[0],
+                                      goSizeLast[1],      goSizeLast[2],      goSizeLast[3]};
     CcuResult launchRet = HcommCcuKernelLaunch(
         templateResource.threads[MESH_THREAD_NUM], templateResource.ccuKernels[1], taskArgs.data(), taskArgs.size());
     CHK_PRT_RET(
@@ -392,8 +400,9 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::LaunchNhrKernel(
     CHK_RET(FillCachedArgs(
         nhrSubmit, inputAddr, outputAddr, token, die0Size, die1Size, die0LastSliceSize, die1LastSliceSize,
         inputSliceStride, currentRankSliceOutputOffset, inputRepeatStride, outputRepeatStride, repeatNumVar,
-        isInputOutputEqual, nhrParams.buffInfo.inBuffBaseOff, nhrParams.buffInfo.outBuffBaseOff,
-        currentRankSliceInputOffset));
+        isInputOutputEqual, goSizeNormal[0], goSizeNormal[1], goSizeNormal[2], goSizeNormal[3], goSizeLast[0],
+        goSizeLast[1], goSizeLast[2], goSizeLast[3], nhrParams.buffInfo.inBuffBaseOff,
+        nhrParams.buffInfo.outBuffBaseOff, currentRankSliceInputOffset));
     templateResource.submitInfos.push_back(nhrSubmit);
     return HCCL_SUCCESS;
 }

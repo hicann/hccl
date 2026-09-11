@@ -271,11 +271,21 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::BuildNhrTaskArgs(
     bool inputOutputEqual
         = (inputAddr + inputSliceStride * mySubCommRank_ == outputAddr + outputSliceStride * mySubCommRank_);
     uint64_t isInputOutputEqual = static_cast<uint64_t>(inputOutputEqual);
+    bool isLastRank = (mySubCommRank_ + 1 == templateRankSize_);
+    u64 die0SliceSize = isLastRank ? nhrDie0LastSize : nhrDie0Size;
+    u64 die1SliceSize = isLastRank ? nhrDie1LastSize : nhrDie1Size;
+    LoopGroupConfig config{};
+    config.msInterleave = CCU_MS_INTERLEAVE;
+    config.loopCount = CCU_MS_LOCAL_COPY_LOOP_COUNT;
+    config.memSlice = CCU_MS_SIZE * LOCAL_COPY_MS_PER_LOOP;
+    nhrGoSize_[0] = CalGoSize(die0SliceSize, config, GetCcuVersion());
+    nhrGoSize_[1] = CalGoSize(die1SliceSize, config, GetCcuVersion());
     nhrTaskArgs = {inputAddr,          outputAddr,         token,
                    nhrDie0Size,        nhrDie1Size,        repeatNum,
                    inputSliceStride,   outputSliceStride,  inputRepeatStride,
                    outputRepeatStride, isInputOutputEqual, nhrDie0LastSize,
-                   nhrDie1LastSize};
+                   nhrDie1LastSize,    nhrGoSize_[0][0],   nhrGoSize_[0][1],
+                   nhrGoSize_[0][2],   nhrGoSize_[0][3]};
     return HCCL_SUCCESS;
 }
 
@@ -306,9 +316,13 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::LaunchNhrKernels(
         HCCL_ERROR("[CcuTempAllGatherConcurrentMeshMem2MemNHR] nhr kernel0 launch failed, ccuRet -> %d", launchRet),
         ConvertCcuToHccl(launchRet));
     if (nhrKernelNum > 1 && templateResource.threads.size() >= 3) {
+        std::vector<uint64_t> die1Args = nhrTaskArgs;
+        for (u32 j = 0; j < 4; j++) {
+            die1Args[CcuAllGatherNHR1DMem2MemArgLayout::GO_SIZE_ADDR_OFFSET + j] = nhrGoSize_[1][j];
+        }
         launchRet = HcommCcuKernelLaunch(
-            templateResource.threads[2], templateResource.ccuKernels[meshKernelNum + 1],
-            const_cast<uint64_t*>(nhrTaskArgs.data()), CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
+            templateResource.threads[2], templateResource.ccuKernels[meshKernelNum + 1], die1Args.data(),
+            CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
         CHK_PRT_RET(
             launchRet != CCU_SUCCESS,
             HCCL_ERROR("[CcuTempAllGatherConcurrentMeshMem2MemNHR] nhr kernel1 launch failed, ccuRet -> %d", launchRet),
@@ -368,29 +382,27 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::SaveSubmitInfos(
         templateResource.submitInfos.push_back(meshSubmit);
     }
     if (hasNhr) {
-        CcuKernelSubmitInfo nhrSubmit;
-        nhrSubmit.kernelHandle = templateResource.ccuKernels[meshKernelNum];
-        CHK_RET(FillCachedArgs(
-            nhrSubmit, nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::TOKEN],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE0_SIZE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE1_SIZE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::REPEAT_NUM],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT_SLICE_STRIDE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT_SLICE_STRIDE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT_REPEAT_STRIDE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT_REPEAT_STRIDE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::IS_INPUT_OUTPUT_EQUAL],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE0_LAST_SIZE],
-            nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE1_LAST_SIZE],
-            templateDataParams.buffInfo.inBuffBaseOff + meshSize, templateDataParams.buffInfo.outBuffBaseOff + meshSize,
-            mySubCommRank_));
-        templateResource.submitInfos.push_back(nhrSubmit);
-        if (nhrKernelNum > 1) {
-            CcuKernelSubmitInfo nhrSubmit1 = nhrSubmit;
-            nhrSubmit1.kernelHandle = templateResource.ccuKernels[meshKernelNum + 1];
-            templateResource.submitInfos.push_back(nhrSubmit1);
+        for (u32 dieIdx = 0; dieIdx < nhrKernelNum; dieIdx++) {
+            CcuKernelSubmitInfo nhrSubmit;
+            nhrSubmit.kernelHandle = templateResource.ccuKernels[meshKernelNum + dieIdx];
+            CHK_RET(FillCachedArgs(
+                nhrSubmit, nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::TOKEN],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE0_SIZE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE1_SIZE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::REPEAT_NUM],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT_SLICE_STRIDE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT_SLICE_STRIDE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::INPUT_REPEAT_STRIDE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::OUTPUT_REPEAT_STRIDE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::IS_INPUT_OUTPUT_EQUAL],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE0_LAST_SIZE],
+                nhrTaskArgs[CcuAllGatherNHR1DMem2MemArgLayout::DIE1_LAST_SIZE], nhrGoSize_[dieIdx][0],
+                nhrGoSize_[dieIdx][1], nhrGoSize_[dieIdx][2], nhrGoSize_[dieIdx][3],
+                templateDataParams.buffInfo.inBuffBaseOff + meshSize,
+                templateDataParams.buffInfo.outBuffBaseOff + meshSize, mySubCommRank_));
+            templateResource.submitInfos.push_back(nhrSubmit);
         }
     }
     return HCCL_SUCCESS;
@@ -512,8 +524,17 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch(
         meshArgs.assign(si.cachedArgs, si.cachedArgs + CcuAllGatherMesh1DMem2MemArgLayout::ARG_SIZE);
     }
     if (hasNhr) {
-        const auto& si = tempFastLaunchCtx.ccuKernelSubmitInfos[meshKernelNum];
-        nhrArgs.assign(si.cachedArgs, si.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
+        const auto& si0 = tempFastLaunchCtx.ccuKernelSubmitInfos[meshKernelNum];
+        nhrArgs.assign(si0.cachedArgs, si0.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
+        nhrGoSize_[0].assign(
+            si0.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::GO_SIZE_ADDR_OFFSET,
+            si0.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
+        if (nhrKernelNum > 1) {
+            const auto& si1 = tempFastLaunchCtx.ccuKernelSubmitInfos[meshKernelNum + 1];
+            nhrGoSize_[1].assign(
+                si1.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::GO_SIZE_ADDR_OFFSET,
+                si1.cachedArgs + CcuAllGatherNHR1DMem2MemArgLayout::ARG_SIZE);
+        }
     }
 
     TemplateResource tmpRes;
