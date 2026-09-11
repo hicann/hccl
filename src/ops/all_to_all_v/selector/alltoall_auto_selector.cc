@@ -117,10 +117,6 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
                     selectAlgName = "CcuSchedAllToAllSoleMeshMultiJetty";
                 }
             }
-        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            HCCL_DEBUG(
-                "[Algo][AlltoAllAutoSelector] algo is not supported yet for ccu_schedule mode, reset to default.");
-            return SelectorStatus::NOT_MATCH;
         } else {
             HCCL_DEBUG(
                 "[Algo][AlltoAllAutoSelector] algo is not supported yet for ccu_schedule mode, reset to default.");
@@ -263,13 +259,8 @@ SelectorStatus AlltoAllAutoSelector::SelectDPUAlgo(
             selectAlgName = "DpuAllToAllSoleMesh";
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topoInfo->level0PcieMix) {
-                selectAlgName = "DpuAllToAllSoleMesh";
-                return SelectorStatus::MATCH;
-            } else {
-                selectAlgName = "DpuAllToAllSoleMesh";
-                return SelectorStatus::MATCH;
-            }
+            selectAlgName = "DpuAllToAllSoleMesh";
+            return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             // seq算法兼容level0为clos的场景
             selectAlgName = "DpuAllToAllSoleMesh";

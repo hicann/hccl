@@ -96,9 +96,6 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcums(
                 HCCL_INFO("[ReduceAutoSelector] selectAlgName is CcuMSReducePipeLineMeshNHR");
             }
         }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        HCCL_WARNING("[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.", topoInfo->level0Topo);
-        return SelectorStatus::NOT_MATCH;
     } else {
         HCCL_WARNING("[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.", topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;

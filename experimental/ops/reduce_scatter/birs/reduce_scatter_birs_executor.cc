@@ -98,7 +98,8 @@ HcclResult ReduceScatterBIRSExecutor::KernelRunLevel0(const OpParam& param, Exec
     HcclMem UsrInputMem{HCCL_MEM_TYPE_DEVICE, execMem.inputPtr, execMem.count * unitSize_};
     HcclMem UsrOutputMem{HCCL_MEM_TYPE_DEVICE, execMem.outputPtr, execMem.count * unitSize_};
 
-    if (auto exp = dynamic_cast<AlgTemplateBaseExperimental*>(level0TempAlg.get())) {
+    auto exp = dynamic_cast<AlgTemplateBaseExperimental*>(level0TempAlg.get());
+    if (exp) {
         CHK_RET(exp->Prepare(
             UsrInputMem, UsrOutputMem, execMem.inputMem, execMem.count, param.DataDes.dataType, thread_, slaveThreads_,
             param.reduceType, 0, dataSegsSlice, 0, false));

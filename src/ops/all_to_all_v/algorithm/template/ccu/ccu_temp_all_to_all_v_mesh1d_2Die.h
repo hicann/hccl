@@ -86,13 +86,13 @@ struct Mesh2DieCacheCtx {
             if (ret != EOK) {
                 return ret;
             }
-            v.resize(sz);
             if (sz == 0) {
                 return EOK;
             }
             if (off + sz * sizeof(RankId) > len) {
                 return ERANGE;
             }
+            v.resize(sz);
             ret = memcpy_s(v.data(), sz * sizeof(RankId), buf + off, sz * sizeof(RankId));
             off += sz * sizeof(RankId);
             return ret;

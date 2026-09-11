@@ -777,15 +777,11 @@ std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam& omniPipeScratchPa
                 HCCL_INFO("[CalcOmniPipeScratchInfo] innerStepNum=[%llu]", innerStepNum);
             }
         }
-        if (zB > xyB) {
-            scratchSize = CalScratchSize(
-                reinterpret_cast<u64*>(xRSDataSize), reinterpret_cast<u64*>(yRSDataSize), zRSDataSize, levelRankSize,
-                zConnerStep, outerStepNum, innerStepNum, maxStepNum, levelAlgType, engine, xB, yB);
-        } else {
-            scratchSize = CalScratchSize(
-                reinterpret_cast<u64*>(xRSDataSize), reinterpret_cast<u64*>(yRSDataSize), zRSDataSize, levelRankSize,
-                zConnerStep, outerStepNum, innerStepNum, maxStepNum, levelAlgType, engine, xB, yB);
-        }
+
+        scratchSize = CalScratchSize(
+            reinterpret_cast<u64*>(xRSDataSize), reinterpret_cast<u64*>(yRSDataSize), zRSDataSize, levelRankSize,
+            zConnerStep, outerStepNum, innerStepNum, maxStepNum, levelAlgType, engine, xB, yB);
+
         allCclBufferSize = 0;
         if ((engine == CommEngine::COMM_ENGINE_AICPU_TS || engine == CommEngine::COMM_ENGINE_CPU)) {
             allCclBufferSize = maxDataSizePerLoop * xRankSize * yRankSize * zRankSize;
@@ -925,13 +921,8 @@ std::vector<std::vector<u64>> CalRSDataSizeStep(
             }
         }
         for (int isn = xInCornerStep; isn < innerStepNum; isn++) {
-            if (yRankSize > 1) {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(
-                    xRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
-            } else {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(
-                    xRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
-            }
+            rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(
+                xRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
         }
     }
     for (int osn = xyConnerStep; osn < outerStepNum; osn++) {
@@ -944,11 +935,7 @@ std::vector<std::vector<u64>> CalRSDataSizeStep(
             }
         }
         for (int isn = xInCornerStep; isn < innerStepNum; isn++) {
-            if (yRankSize > 1) {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(xRSDataSize[osn * maxStepNum + isn]);
-            } else {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(xRSDataSize[osn * maxStepNum + isn]);
-            }
+            rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL0].push_back(xRSDataSize[osn * maxStepNum + isn]);
         }
     }
 
@@ -964,13 +951,8 @@ std::vector<std::vector<u64>> CalRSDataSizeStep(
             }
         }
         for (int isn = yInCornerStep; isn < innerStepNum; isn++) {
-            if (xRankSize > 1) {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(
-                    yRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
-            } else {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(
-                    yRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
-            }
+            rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(
+                yRSDataSize[osn * maxStepNum + isn] * (zRankSize - 1));
         }
     }
     for (int osn = xyConnerStep; osn < outerStepNum; osn++) {
@@ -983,11 +965,7 @@ std::vector<std::vector<u64>> CalRSDataSizeStep(
             }
         }
         for (int isn = yInCornerStep; isn < innerStepNum; isn++) {
-            if (xRankSize > 1) {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(yRSDataSize[osn * maxStepNum + isn]);
-            } else {
-                rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(yRSDataSize[osn * maxStepNum + isn]);
-            }
+            rsStepDataSize[OmniPipeLevel::OMNIPIPE_LEVEL1].push_back(yRSDataSize[osn * maxStepNum + isn]);
         }
     }
 
