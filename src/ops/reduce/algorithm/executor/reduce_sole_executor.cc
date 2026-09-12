@@ -10,6 +10,7 @@
 
 #include "reduce_sole_executor.h"
 #include "alg_attrs_registry.h"
+#include "hccl_aiv_utils.h"
 #include "../template/aicpu/reduce_mesh_1D.h"
 #include "../template/aicpu/reduce_mesh_1D_two_shot.h"
 #include "../template/aicpu/reduce_nhr.h"
@@ -39,19 +40,37 @@ template <typename AlgTopoMatch, typename AlgTemplate>
 std::vector<CostModelParam> ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)algName;
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    (void)algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    std::vector<u32> portNumLevel0 = {1};
+    bool isPod = topoInfo->isPod;
+    CommTopo netTypeLevel0
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    std::vector<u32> portNumLevel0
+        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    if (portNumLevel0.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
-        portNumLevel0, static_cast<int>(netTypeLevel0));
+        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
+        static_cast<int>(netTypeLevel0));
     return AlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod});
@@ -59,16 +78,30 @@ std::vector<CostModelParam> ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::CalcC
 
 template <typename AlgTopoMatch, typename AlgTemplate>
 AlgNetMeta ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    (void)rankSizeLevel0;
-    (void)rankSizeLevel1;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netTypeLevel0
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
@@ -333,7 +366,7 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleNHR, ReduceSoleExecutor, TopoMatchOneLevel, ReduceNHR);
 REGISTER_ALG_ATTRS(
     AicpuReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    op.isSupportProd = false;
+    topo.isSupportLevel1Nhr = true; op.isSupportProd = false;
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -348,7 +381,8 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuReduceSoleNHRAicpuReduce,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.isSupportLevel1Nhr = true; topo.isSupportLevel0PcieMix = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
@@ -359,7 +393,7 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AivReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel, AivTempReduceMesh1D);
 REGISTER_ALG_ATTRS(
-    AivReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    AivReduceSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -373,7 +407,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedReduceSoleMesh, topo.maxTopoLevelNum = 1;
+    CcuSchedReduceSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.maxTopoLevelNum = 1;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -401,17 +435,18 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleNHR, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+REGISTER_ALG_ATTRS(CcuSchedReduceSoleNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
                    op.isSupportInplace = __bool_true_false_are_defined);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleMeshTwoShot, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceMesh1DTwoShotMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(CcuSchedReduceSoleMeshTwoShot, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 } // namespace ops_hccl

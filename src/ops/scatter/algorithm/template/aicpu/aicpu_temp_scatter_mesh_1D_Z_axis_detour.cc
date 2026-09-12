@@ -15,20 +15,22 @@ namespace ops_hccl {
 std::vector<CostModelParam> AicpuTempScatterMesh1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // Z 轴绕行双层并发取 max（design.md §2.3 目标公式，对齐 RS 同族模板）：
-    // 层0（server 内 MESH）传一半数据，读 executor 注入的 portNum[0]（MESH 段为 {R-1}）；
-    // 层1（跨 server CLOS）传另一半，portNum 按多通道语义（单元素取 [0]，两元素 multichannel 使能时求和）
+    // 层0（server 内 MESH）传一半数据，读 executor 注入的 portNum[0]（MESH 分支 A=n/bw，值不参与公式）；
+    // 层1（跨 server CLOS）传另一半。portNum 向量为 CLOS 段（level1）注入的真实 portNums
+    // CLOS 分量多通道判定对齐 PR2890 取数口径：isPod && netType==CLOS && 元素数>=2 才求和
+    // （pod 双 die 双 channel 并行）；MESH 层的逐链 [1,1,...] 不构成多通道，一律取 [0]。
+    // netType 为 executor 注入的 CLOS 段（level1）真实类型（A 系数计算内部硬编码两层类型，不受影响）
     constexpr float meshRatio = 0.5f;
-    // 层0 MESH：取 portNum[0]（MESH 分支 A=n/bw，值不参与计算）；
-    // 层1 CLOS：Z 轴绕行使能多 channel，portNum 求和（{6,2} → 8；框架内不做 POD 减半）
+    bool isClosMultiChannel = param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2;
     int portNum0 = (param.portNum.size() >= 1) ? static_cast<int>(param.portNum[0]) : 1;
-    int portNum1 = (param.portNum.size() == 1) ? static_cast<int>(param.portNum[0]) :
-                                                 static_cast<int>(param.portNum[0] + param.portNum[1]);
-    int kernelNum = 1; // 单次下发
+    int portNum1 = isClosMultiChannel ? static_cast<int>(param.portNum[0] + param.portNum[1]) :
+                                        static_cast<int>(param.portNum[0]);
+    int remoteSyncNum = 4; // 单次下发
     // taskNum（B 方案定案）：传输 task = 3/次（send 单边通信），两层分开计：
-    //   MESH 分量：3 × (R-1)；CLOS 分量：3 × (R-1) × closMultiplier（双元素=pod 双 die → 3，单元素 → 2）
+    //   MESH 分量：3 × (R-1)；CLOS 分量：3 × (R-1) × closMultiplier（多通道=pod 双 die → 3，单通道 → 2）
     // local copy task = 1/份（PreCopy 1 份 + PostCopy 1 份，与 B 系数份数同口径）
     int remotes = static_cast<int>(param.rankSize - 1);
-    int closMultiplier = (param.portNum.size() >= 2) ? 3 : 2;
+    int closMultiplier = isClosMultiChannel ? 3 : 2;
     int transTaskNum = 3 * remotes * (1 + closMultiplier);
     int localCopyCount = 0;
     if (param.inputBuffer != BufferType::HCCL_BUFFER) {
@@ -37,9 +39,9 @@ std::vector<CostModelParam> AicpuTempScatterMesh1DZAxisDetour::CalcCostCoeff(Cal
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy
     }
-    // thread 间前后同步 task：总线程 = (R-1)×通道数（GetThreadNum），cost 阶段通道数按端口向量推导
-    // （单元素=单链路 1，双元素=pod 双 die 双 channel 2），每从线程一对 notify = 2 条 task
-    int threadNum = remotes * ((param.portNum.size() >= 2) ? 2 : 1);
+    // thread 间前后同步 task：总线程 = (R-1)×通道数（GetThreadNum），多通道=pod 双 die 双 channel 2，
+    // 单通道 1；每从线程一对 notify = 2 条 task
+    int threadNum = remotes * (isClosMultiChannel ? 2 : 1);
     int syncTaskNum = threadNum > 1 ? 2 * (threadNum - 1) : 0;
     int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A0 = 0.0f;
@@ -67,7 +69,7 @@ std::vector<CostModelParam> AicpuTempScatterMesh1DZAxisDetour::CalcCostCoeff(Cal
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, postCopyB);
     }
     B = preCopyB + postCopyB;
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLatencyParams(remoteSyncNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
 
     std::vector<CostModelParam> params;

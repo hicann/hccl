@@ -17,9 +17,12 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // oneshot算法，硬编码netType=MESH（CcuMSBroadcastSoleMesh maxTopoLevelNum=1，仅单级场景入选）
-    param.netType = CommTopo::COMM_TOPO_1DMESH;
-    int portNum = 1;
+    // oneshot算法，仅单级 MESH 场景入选（CcuMSBroadcastSoleMesh maxTopoLevelNum=1）；
+    // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与公式
+    int portNum = static_cast<int>(param.portNum[0]);
+    if (portNum <= 0) {
+        portNum = 1;
+    }
     int kernelNum = 3; // oneshot算法固定3个kernel
     int taskNum = 0;
     float A = 0.0f;
@@ -28,7 +31,8 @@ std::vector<CostModelParam> CcuTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
     float D = 0.0f;
 
     // oneshot: n=dataRatio（不除以R，root直接全量发给所有peer）
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
+    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
     std::vector<CostModelParam> params;

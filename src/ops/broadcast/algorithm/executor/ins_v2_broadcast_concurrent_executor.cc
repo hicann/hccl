@@ -66,7 +66,7 @@ InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMs") != std::string::npos) ?
+        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
                                          OpExecuteConfig::CCU_MS :
                                          OpExecuteConfig::CCU_SCHED;
     } else {
@@ -92,8 +92,9 @@ InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
@@ -569,7 +570,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastConcurMeshNHR, InsV2BroadcastConcurrentExecutor,
     TopoMatchConcurrentV2, CcuTempBroadcastMesh1DMem2Mem, CcuTempBroadcastNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedBroadcastConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    CcuSchedBroadcastConcurMeshNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.maxTopoLevelNum = 1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);

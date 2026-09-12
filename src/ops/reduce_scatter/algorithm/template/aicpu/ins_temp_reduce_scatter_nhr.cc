@@ -17,12 +17,13 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     CommTopo netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleNHR") == 0));
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = isSingleChannelNHR ? 6 : 8;
-    portNum = param.isPod ? portNum : 8;
+    int portNum = isSingleChannelNHR ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    portNum = param.isPod ? portNum : param.portNum[0];
     int kernelNum = 15;
-    int taskNum
-        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    int taskNum = CostModelManager::CalcTransTaskNum((log2(param.rankSize) + 1)) * 1.5
+                  + CostModelManager::CalcSyncTaskNum((log2(param.rankSize) + 1)) * 2;
     taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
+    taskNum = taskNum + 8;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -39,9 +40,9 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     }
     B = B1 * (param.rankSize / 2) + B2;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    // CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
     // nhr实测和理论估计相差较大，先用经验值
-    // D = 1e-6 * taskNum;
+    D = 1e-6 * taskNum;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

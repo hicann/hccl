@@ -16,20 +16,22 @@ std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
 {
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
-    int kernelNum = 1; // 单次下发
-    // taskNum（B 方案定案）：传输 task = 3/次（send 单边通信）× (R-1) 个远端；
-    // local copy task = 1/份（1 条 HcommLocalCopyOnThread = 1 task），PreCopy 1 份 + PostCopy 1 份
-    int transTaskNum = 3 * static_cast<int>(param.rankSize - 1);
+    int remoteSyncNum = 4;
+    // taskNum 按 root 关键路径指令流物理组成(8P checker LogGraphV3Sqe 标定):
+    // threadNum = rankSize - 1 (每对端一线程; R=1 时为 0, 自然退化)
+    // [trans] 3×threadNum: 每对端 3 task(Send + 就绪W + 通知R)
+    // [sync]  4×threadNum: 前后两次同步(PreSync+PostSync), 每次 threadNum 对 W+R
+    // [copy]  PreCopy 1(root 自留份, input≠CCL 时); PostCopy 在非root, 不占 root 关键路径
+    // 总式 7R-6; 8P 实测48(差2: r1 在主线程内, 其起步/收尾与主线程同步重叠一对)
+    int rankSize = static_cast<int>(param.rankSize);
+    int threadNum = rankSize - 1;
+    int transTaskNum = 3 * threadNum;
     int localCopyCount = 0;
-    if (param.inputBuffer != BufferType::HCCL_BUFFER) {
-        localCopyCount += 1; // PreCopy：每 rank 1 份
+    // PreCopy 执行条件: in/out 不全为 HCCL（对齐运行态: in==HCCL && out==HCCL 才跳过）
+    if (param.inputBuffer != BufferType::HCCL_BUFFER || param.outputBuffer != BufferType::HCCL_BUFFER) {
+        localCopyCount += 1; // PreCopy：root 自留份
     }
-    if (param.outputBuffer != BufferType::HCCL_BUFFER) {
-        localCopyCount += 1; // PostCopy：每 rank 1 份
-    }
-    // thread 间前后同步 task：总线程 = R-1（GetThreadNum），从线程 = R-2，
-    // 每从线程一对 notify（main->sub + sub->main）= 2 条 task
-    int syncTaskNum = static_cast<int>(param.rankSize) > 2 ? 2 * (static_cast<int>(param.rankSize) - 2) : 0;
+    int syncTaskNum = 4 * threadNum;
     int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A = 0.0f;
     float B = 0.0f;
@@ -38,17 +40,18 @@ std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
-    // PreCopy 在 input==HCCL_BUFFER 时跳过；PostCopy 在 output==HCCL_BUFFER 时跳过
+    // PreCopy: in/out 均为 HCCL_BUFFER 时跳过（即 in!=HCCL || out!=HCCL 才执行）
+    // PostCopy: output==HCCL_BUFFER 时跳过
     float preCopyB = 0.0f;
     float postCopyB = 0.0f;
-    if (param.inputBuffer != BufferType::HCCL_BUFFER) {
+    if (param.inputBuffer != BufferType::HCCL_BUFFER || param.outputBuffer != BufferType::HCCL_BUFFER) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, preCopyB);
     }
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, postCopyB);
     }
     B = preCopyB + postCopyB;
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    CostModelManager::Global()->CalcLatencyParams(remoteSyncNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
     return {{A, B, C, D}};
 }

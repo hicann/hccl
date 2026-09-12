@@ -38,8 +38,8 @@ static const std::map<std::string, std::string> OP_TYPES
        {"send", "Send"},
        {"recv", "Recv"}};
 static const std::map<std::string, std::string> EXECUTOR_TYPES
-    = {{"sole", "Sole"},         {"sequence", "Sequence"}, {"parallel", "Parallel"},
-       {"pipeline", "PipeLine"}, {"concur", "Concur"},     {"strictordered", "StrictOrdered"}};
+    = {{"sole", "Sole"},     {"sequence", "Sequence"},           {"parallel", "Parallel"}, {"pipeline", "PipeLine"},
+       {"concur", "Concur"}, {"strictordered", "StrictOrdered"}, {"omnipipe", "OmniPipe"}};
 static const std::map<std::string, std::string> ALGO_TYPES
     = {{"mesh", "Mesh"},
        {"mesh2die", "Mesh2Die"},

@@ -18,8 +18,14 @@ namespace ops_hccl {
 std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // AllToAll: AIV直接使用input/output，无本地拷贝，单kernel启动
-    // 板内MESH组网portNum不参与计算(MESH公式无portNum因子), 跨板CLOS组网portNum=8
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : param.portNum[0];
+    // 端口数由 executor 通过 topomatch v2 动态传入，直接聚合使用
+    int portNum = 0;
+    for (auto p : param.portNum) {
+        portNum += static_cast<int>(p);
+    }
+    if (portNum <= 0) {
+        portNum = 8;
+    }
     int kernelNum = 1; // AIV单kernel启动
     int taskNum = 0;   // AIV的D=0
     float A = 0.0f;
@@ -28,6 +34,8 @@ std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffPa
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // 根据实测调整A
+    A *= 0.8f;
     // AIV模板直接使用input/output，无本地拷贝，B=0
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);

@@ -43,8 +43,16 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 {
     (void)comm;
     (void)topoInfo;
-    (void)algName;
-    if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    const AlgAttrs* attrs = nullptr;
+#endif
+    if (attrs == nullptr) {
+        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        return {};
+    }
+    if (attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLV || attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
         return {{0.0f, 0.0f, 1.0f, 0.0f}};
     }
     return {};
@@ -52,8 +60,9 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)param;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;
@@ -544,7 +553,8 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLTOALLV, CcuSchedAllToAllVSoleMeshConcurrent, InsV2AllToAllVConcurrentExecutor,
     TopoMatchConcurrentV2, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
 REGISTER_ALG_ATTRS(
-    CcuSchedAllToAllVSoleMeshConcurrent, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    CcuSchedAllToAllVSoleMeshConcurrent, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;

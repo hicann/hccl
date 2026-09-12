@@ -445,82 +445,122 @@ std::vector<CostModelParam>
 InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::
     CalcCostCoeff(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)algName;
-    (void)comm;
-    AlgHierarchyInfoForAllLevel algHierarchyInfo; // TODO: unused for now, costmodel fallback
-    (void)algHierarchyInfo;
-    // TODO: CalcAlgHierarchyInfo(comm, topoInfo, algHierarchyInfo);
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = true;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    u32 rankSizeLevel2 = rs.level2;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    // TODO: CommTopo netTypeLevel2 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[2]);
-    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
-    // TODO: std::vector<u32> portNumLevel0 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[0]);
-    std::vector<u32> portNumLevel0 = {1};
-    // TODO: std::vector<u32> portNumLevel1 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[1]);
-    std::vector<u32> portNumLevel1 = {8};
-    // TODO: std::vector<u32> portNumLevel2 = GetPortNumLevel(topoInfo, algHierarchyInfo.index[2]);
-    std::vector<u32> portNumLevel2 = {8};
+    bool isPod = topoInfo->isPod;
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+    u32 rankSizeLevel2 = (algHierarchyInfo.infos.size() > 2) ? algHierarchyInfo.infos[2][0].size() : 1;
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                            physIdxLevel0;
+    u32 physIdxLevel2 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 2) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[2][0]) :
+                            physIdxLevel1;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    CommTopo netTypeLevel2 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel2);
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    std::vector<u32> portNumLevel2 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel2);
+    if (portNumLevel0.empty() || portNumLevel1.empty() || portNumLevel2.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, rankSizeLevel2=%d, "
         "portNumLevel0=%d, portNumLevel1=%d, portNumLevel2=%d, netTypeLevel0=%d, netTypeLevel1=%d, netTypeLevel2=%d",
-        rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
+        rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0.empty() ? 0 : portNumLevel0[0],
+        portNumLevel1.empty() ? 0 : portNumLevel1[0], portNumLevel2.empty() ? 0 : portNumLevel2[0],
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2));
-    std::vector<CostModelParam> params
-        = [rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize, portNumLevel0, portNumLevel1, portNumLevel2,
-           netTypeLevel0, netTypeLevel1, netTypeLevel2, isPod] {
-              std::vector<CostModelParam> v;
-              // Step1: 框内 RS（level0 mesh，全量输入的 1/rankSizeLevel0）
-              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-                  rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0, BufferType::INPUT,
-                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-              // Step2: 框间 RS（level1 NHR，level0 归约后的 1/level0 份）
-              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-                  rankSizeLevel1, 1.0f * rankSizeLevel2 / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER,
-                  BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
-              // Step3: 跨 super-pod RS（level2 NHR，level1 归约后的 1/(level0*level1) 份）
-              auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-                  rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
-                  BufferType::HCCL_BUFFER, portNumLevel2, isPod});
-              // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
-              if (p0.empty() || p1.empty() || p2.empty()) {
-                  HCCL_WARNING(
-                      "[InsV2ReduceScatterSequenceExecutor3Level] CalcCostCoeff incomplete, skip "
-                      "(p0=%zu p1=%zu p2=%zu).",
-                      p0.size(), p1.size(), p2.size());
-                  return v;
-              }
-              v.insert(v.end(), p0.begin(), p0.end());
-              v.insert(v.end(), p1.begin(), p1.end());
-              v.insert(v.end(), p2.begin(), p2.end());
-              return v;
-          }();
+    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, rankSize, portNumLevel0,
+                                          portNumLevel1, portNumLevel2, netTypeLevel0, netTypeLevel1, netTypeLevel2,
+                                          isPod, algName, comm, topoInfo] {
+        std::vector<CostModelParam> v;
+        // Step1: 框内 RS（level0 mesh，全量输入的 1/rankSizeLevel0）
+        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0, BufferType::INPUT,
+            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo,
+            rankSizeLevel1 * rankSizeLevel2});
+        // Step2: 框间 RS（level1 NHR，level0 归约后的 1/level0 份）
+        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel1, 1.0f * rankSizeLevel2 / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo,
+            rankSizeLevel0 * rankSizeLevel2});
+        // Step3: 跨 super-pod RS（level2 NHR，level1 归约后的 1/(level0*level1) 份）
+        auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+            rankSizeLevel2, 1.0f / rankSize, netTypeLevel2, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel2, isPod, algName, comm, topoInfo, rankSizeLevel0 * rankSizeLevel1});
+        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+        if (p0.empty() || p1.empty() || p2.empty()) {
+            HCCL_WARNING(
+                "[InsV2ReduceScatterSequenceExecutor3Level] CalcCostCoeff incomplete, skip "
+                "(p0=%zu p1=%zu p2=%zu).",
+                p0.size(), p1.size(), p2.size());
+            return v;
+        }
+        v.insert(v.end(), p0.begin(), p0.end());
+        v.insert(v.end(), p1.begin(), p1.end());
+        v.insert(v.end(), p2.begin(), p2.end());
+        return v;
+    }();
     return params;
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
 AlgNetMeta InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
-    auto rs = CostModelManager::Global()->CalcRankSizeByTopo(topoInfo);
-    u32 rankSizeLevel0 = rs.level0;
-    u32 rankSizeLevel1 = rs.level1;
-    u32 rankSizeLevel2 = rs.level2;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+    u32 rankSizeLevel2 = (algHierarchyInfo.infos.size() > 2) ? algHierarchyInfo.infos[2][0].size() : 1;
     u32 rankSize = topoInfo->userRankSize;
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    // TODO: CommTopo netTypeLevel2 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[2]);
-    CommTopo netTypeLevel2 = CommTopo::COMM_TOPO_CLOS;
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                            physIdxLevel0;
+    u32 physIdxLevel2 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 2) ?
+                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[2][0]) :
+                            physIdxLevel1;
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    CommTopo netTypeLevel2 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel2);
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);

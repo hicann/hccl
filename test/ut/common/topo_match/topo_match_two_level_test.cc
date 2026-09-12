@@ -59,9 +59,10 @@ TEST_F(TopoMatchTwoLevelTest, RedundantLayerCompression)
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     ASSERT_EQ(info.infos[0][0], Range(8));
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3, 11}));
-    // pIndices 压缩：phys0=effIdx[0]=0, phys1=effIdx[2]=2
+    // 尾段最高层不直接取 physHigh，而是从 physLow+algoCount-1 向上找首个 localRanks==userRankSize：
+    // phys1 localRanks=Range(16).size()==16 已满足 → phys1=effIdx[1]=1
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
 }
 
 // T3: MeshConcur CLOS 双层（physicalIdx[0] = {Mesh层, CLOS层}）
@@ -284,9 +285,9 @@ TEST_F(TopoMatchTwoLevelTest, ThreeLayersAsymmetricGcd)
     // d0=GCD(16,8)=8; 24%8=0, d1=3; group0={0..7}; group1={2,10,18}
     ASSERT_EQ(info.infos[0][0], (std::vector<u32>{0, 1, 2, 3, 4, 5, 6, 7}));
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{2, 10, 18}));
-    // 3 effIdx>2 分段压缩：phys0=effIdx[0]=0, phys1=effIdx[2]=2
+    // 尾段最高层从 physLow+algoCount-1 向上找首个 localRanks==userRankSize：phys1 已满足 → phys1=effIdx[1]=1
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
 }
 
 // T17: LOCAL level0 + GLOBAL 非对称 level1（level1 非对称不影响 d0，TwoLevel 只 GCD level0）
@@ -399,7 +400,7 @@ TEST_F(TopoMatchTwoLevelTest, HostdpuTopDeviceLowerHost)
     ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
 }
 
-// T23: 两层 localRanks 完全相同（均为全集），映射成 TwoLevel
+// T23: 两层 localRanks 完全相同（均为全集）→ d0=userRankSize，d1=1，不支持
 TEST_F(TopoMatchTwoLevelTest, TwoIdenticalFullLocalRanksLayers)
 {
     auto topo = MakeTopoInfo(
@@ -410,12 +411,7 @@ TEST_F(TopoMatchTwoLevelTest, TwoIdenticalFullLocalRanksLayers)
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::NHR});
     AlgHierarchyInfoForAllLevel info;
-    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    // d0=16, d1=1; group0={0..15}; group1=BuildRepresentativeGroup(16,1,3)={3}
-    ASSERT_EQ(info.infos[0][0], Range(16));
-    ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3}));
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
 }
 
 // T24: P3 场景适配 — [Mesh, Mesh] 两层算法，仅一个 1DMESH 层
@@ -434,9 +430,9 @@ TEST_F(TopoMatchTwoLevelTest, P3SingleMeshAnchorCandidateLowGuards)
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     // algo0→phys0(1DMESH), candidateLow=1 for algo1; phys1/phys2 均非 1DMESH → algo1 不锚定
-    // 尾段: MatchLayerIdxBySegment(1,1,1,2) → pIndices[1]=2
+    // 尾段: MatchLastSegment(1,1,1,2) 从 physLow+algoCount-1=1 向上找 localRanks==16 → phys1 已满足
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
     ASSERT_EQ(info.infos[0][0], Range(8));
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3, 11}));
 }

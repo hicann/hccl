@@ -67,8 +67,9 @@ InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 AlgNetMeta InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
@@ -375,6 +376,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSequenceMesh2Die, InsV2AllReduceSequence2DieExecutor,
     TopoMatchOneLevel, CcuTempReduceScatterMeshMem2Mem1D2Die, CcuTempAllGather2DiesMeshMem2Mem1D);
 REGISTER_ALG_ATTRS(CcuSchedAllReduceSequenceMesh2Die, topo.maxTopoLevelNum = 1;
+                   topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.supportLevel0MeshTypes = MESH_TYPE_TWO_DIE_REGULAR; topo.isSupport2DieFullMesh = true;
                    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true; op.isSupportProd = false;

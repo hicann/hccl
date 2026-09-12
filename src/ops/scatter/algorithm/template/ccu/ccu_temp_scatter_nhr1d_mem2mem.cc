@@ -20,16 +20,17 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // CCU 执行侧每 die 只建 1 条 channel（channelsPerDie 限制），无跨 die 聚合形态：
-    // portNum 取主链路 [0] 不求和（与 AICPU NHR 的多 channel 求和口径不同；isPod 时框架内减半仍作用）
+    // CCU 执行侧单通道口径：每 rank 走一条链路，portNum 取 [0]
+    // （isPod={6,2} 时取 6；与 AICPU SoleNHR 的单链路口径一致）
     int portNum = static_cast<int>(param.portNum[0]);
-    // C 为同步时延：PreSync + PostSync + 每步 NHR 一个同步点（⌈log2R⌉ 步烘焙进 kernel arg，但同步时延真实发生）
-    // 对齐 AICPU 侧 NHR（kernelNum=log2R）与 RS 同族 CCU NHR 的口径
+    // C 为同步时延(kernelNum 口径)：线性主项 + log2R 步进同步项, RS 同族混合结构。
+    // 按真机实测锚定(小数据量 C 主导): 8P=25~30µs, 16P=59~65µs, 32P=110~115µs:
+    // kernelNum = 7R/4 + log2R/2 → 8P=30µs, 16P=60µs, 32P=116µs(均落实测区间)
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int kernelNum = 2 + log2R;
+    int kernelNum = (7 * static_cast<int>(param.rankSize)) / 4 + log2R / 2;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

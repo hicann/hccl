@@ -375,24 +375,21 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
         return HCCL_E_NOT_SUPPORT;
     }
 
-    // 遍历找最小 cost 并打印 costTable 明细, 格式: | idx | algName | engine | cost | status |
+    // 遍历找最小 cost 并打印 costTable 明细, 格式: | idx | algName | cost |
     HCCL_INFO(
         "[SelectorEngine] SelectMinCost: costTable count=%d, opType=%d, dataSize=%llu.", ct.count,
         static_cast<int>(param.opType), param.inputSize);
     HCCL_INFO("[SelectorEngine] "
-              "+-----+--------------------------------------------------+----------+--------------+----------+");
-    HCCL_INFO("[SelectorEngine] | idx | algName                                          | engine   | cost         | "
-              "status   |");
+              "+-----+--------------------------------------------------+--------------+");
+    HCCL_INFO("[SelectorEngine] | idx | algName                                          | cost         |");
     HCCL_INFO("[SelectorEngine] "
-              "+-----+--------------------------------------------------+----------+--------------+----------+");
+              "+-----+--------------------------------------------------+--------------+");
     int minIdx = -1;
     float minCost = 0.0f;
     std::vector<std::string> tiedAlgos;
     for (int i = 0; i < ct.count; ++i) {
         const char* name = ct.costs[i].algName;
         float cost = ct.costs[i].cost;
-        std::string status = (name == nullptr || cost < 0.0f) ? "filtered" : "valid";
-        std::string engineStr = name == nullptr ? "-" : ENGINE_STR_MAP.at(GetEngineByAlgName(name));
         std::string nameStr = name != nullptr ? name : "-";
         char costBuf[32];
         const char* fmt = (cost >= 0.0f && cost < 1.0f) ? "%.6f" : "%.2f";
@@ -401,9 +398,7 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
             HCCL_ERROR("[SelectorEngine] SelectMinCost: sprintf_s failed.");
             return HCCL_E_INTERNAL;
         }
-        HCCL_INFO(
-            "[SelectorEngine] | %3d | %-48s | %-8s | %12s | %-8s |", i, nameStr.substr(0, 48).c_str(),
-            engineStr.substr(0, 8).c_str(), costBuf, status.c_str());
+        HCCL_INFO("[SelectorEngine] | %3d | %-48s | %12s |", i, nameStr.substr(0, 48).c_str(), costBuf);
 
         if (name == nullptr || cost < 0.0f) {
             continue;

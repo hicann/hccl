@@ -18,12 +18,11 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
-        return {};
-    }
     // 和twoshot相同
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int kernelNum = 20;
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
+    int kernelNum = 5;
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;

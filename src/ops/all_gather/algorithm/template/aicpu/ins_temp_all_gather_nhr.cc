@@ -15,21 +15,24 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // u32 portNum = (param.netType != CommTopo::COMM_TOPO_CLOS) ? param.portNum[0] : param.portNum[0] +
-    // param.portNum[1];
     param.netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuAllGatherSoleNHR") == 0));
-    int portNum = isSingleChannelNHR ? 6 : 8;
-    portNum = param.isPod ? portNum : 8;
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2
+                   && !isSingleChannelNHR) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    // AllGather NHR: 4*log2(R)+1, 5us/task
-    int kernelNum = log2R;
-    int taskNum
-        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
-    taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
+    // NHR: kernelNum 按 log2(R) 计算（costmodel_9 新公式，127d7612 的 *2→+5 修正已被新公式覆盖）
+    int kernelNum = 8 * log2R - 7;
+    kernelNum = std::max(kernelNum, 1);
+    // D 用 rEff 替代 rankSize
+    u32 rEff = static_cast<u32>(5 * log2R / 3);
+    rEff = std::max(rEff, 2u);
+    int taskNum = CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2;
+    taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum + 5;
 
     float A = 0.0f;
     float B = 0.0f;
@@ -40,8 +43,8 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
 
-    C = 0.000005f * kernelNum;
-    D = 1e-6 * taskNum;
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    D = 1e-6f * taskNum;
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
     return params;

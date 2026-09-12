@@ -18,7 +18,9 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempAllGather2DiesMeshMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     int kernelNum = std::max(static_cast<int>(0.4f * param.rankSize), 2);
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;

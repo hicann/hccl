@@ -102,7 +102,8 @@ static bool HasUbgLink(const std::vector<CommProtocol>& protocols)
 std::vector<u32> CollectEffectiveIndices(const std::vector<PhysicalLevelInfo>& physicalLevels, OpExecuteConfig engine)
 {
     bool isHostdpu = (engine == OpExecuteConfig::HOSTCPU);
-    bool isAiv = (engine == OpExecuteConfig::AIV);
+    bool isAivOrCcu
+        = (engine == OpExecuteConfig::AIV || engine == OpExecuteConfig::CCU_MS || engine == OpExecuteConfig::CCU_SCHED);
     std::vector<u32> effIdx;
     for (u32 i = 0; i < physicalLevels.size(); i++) {
         if (!physicalLevels[i].hasTopoInst) {
@@ -113,7 +114,7 @@ std::vector<u32> CollectEffectiveIndices(const std::vector<PhysicalLevelInfo>& p
             HCCL_INFO("[CollectEffectiveIndices] skip level[%u]: HOST locType (non-hostdpu excludes HOST).", i);
             continue;
         }
-        if (isAiv && HasUbgLink(physicalLevels[i].protocols)) {
+        if (isAivOrCcu && HasUbgLink(physicalLevels[i].protocols)) {
             HCCL_INFO("[CollectEffectiveIndices] skip level[%u]: UBG protocol (AIV excludes UBG).", i);
             continue;
         }
@@ -230,9 +231,40 @@ HcclResult FindAnchors(
     return HcclResult::HCCL_SUCCESS;
 }
 
-// 分段压缩：按锚点将算法层与物理层分段，每段低层一一 + 最高层压缩多余物理层
+// 最后一段匹配：低层一一 + 最高层从 physLow+algoCount-1 起向上找首个 localRanks.size()==userRankSize 的物理层
+static HcclResult MatchLastSegment(
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx, u32 userRankSize, u32 algoLow,
+    u32 algoHigh, u32 physLow, u32 physHigh, std::vector<u32>& pIndices)
+{
+    if (algoLow > algoHigh) {
+        return HcclResult::HCCL_SUCCESS;
+    }
+    u32 algoCount = algoHigh - algoLow + 1;
+    for (u32 k = 0; k + 1 < algoCount; k++) {
+        pIndices[algoLow + k] = physLow + k;
+    }
+    u32 searchStart = physLow + algoCount - 1;
+    bool found = false;
+    for (u32 k = searchStart; k <= physHigh; k++) {
+        if (physicalLevels[effIdx[k]].localRanks.size() == userRankSize) {
+            pIndices[algoHigh] = k;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        HCCL_INFO(
+            "[MatchLastSegment] no physical level with localRanks==userRankSize[%u] in range [%u, %u], not support.",
+            userRankSize, searchStart, physHigh);
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+// 分段压缩：按锚点将算法层与物理层分段，每段低层一一 + 最后一段最高层按 localRanks==userRankSize 匹配
 HcclResult ResolveSegmentMapping(
-    const std::vector<u32>& effIdx, const std::vector<AlgoType>& algoTypes, const std::map<u32, u32>& anchors,
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx,
+    const std::vector<AlgoType>& algoTypes, const std::map<u32, u32>& anchors, u32 userRankSize,
     std::vector<u32>& pIndices)
 {
     pIndices.resize(algoTypes.size(), INVALID_UINT);
@@ -247,7 +279,8 @@ HcclResult ResolveSegmentMapping(
         algoStart = anchorAlgo + 1;
         physStart = anchorPhys + 1;
     }
-    MatchLayerIdxBySegment(algoStart, algoTypes.size() - 1, physStart, effIdx.size() - 1, pIndices);
+    CHK_RET(MatchLastSegment(
+        physicalLevels, effIdx, userRankSize, algoStart, algoTypes.size() - 1, physStart, effIdx.size() - 1, pIndices));
     // 兜底校验：所有算法层都应已映射到有效的 effIdx position
     for (size_t i = 0; i < pIndices.size(); i++) {
         if (pIndices[i] >= effIdx.size()) {
@@ -273,7 +306,7 @@ int32_t FindUpperEncompassingLevel(
     return INVALID_PHYSICAL_LEVEL_IDX;
 }
 
-// 引擎过滤 + 锚点匹配 + 分段，得 effIdx 与 pIndices；校验最高层 localRanks==userRankSize
+// 引擎过滤 + 锚点匹配 + 分段，得 effIdx 与 pIndices
 HcclResult ResolveMapping(
     const std::vector<PhysicalLevelInfo>& physicalLevels, const AlgAttrs& algAttrs, u32 userRankSize,
     std::vector<u32>& effIdx, std::vector<u32>& pIndices)
@@ -287,15 +320,7 @@ HcclResult ResolveMapping(
     std::map<u32, u32> anchors;
     // 锚点匹配：含 MeshConcur 的 1DMESH 校验与 hostdpu 强约束，须无条件执行（1:1 时也需校验底层 1DMESH）
     CHK_RET(FindAnchors(physicalLevels, effIdx, algAttrs.algoTypes, algAttrs.engine, userRankSize, anchors));
-    CHK_RET(ResolveSegmentMapping(effIdx, algAttrs.algoTypes, anchors, pIndices));
-    // 最高算法层 localRanks 必须等于 userRankSize
-    u32 topPhys = effIdx[pIndices[algoLevelNum - 1]];
-    if (physicalLevels[topPhys].localRanks.size() != userRankSize) {
-        HCCL_INFO(
-            "[ResolveMapping] top layer localRanks[%zu] != userRankSize[%u].",
-            physicalLevels[topPhys].localRanks.size(), userRankSize);
-        return HcclResult::HCCL_E_NOT_SUPPORT;
-    }
+    CHK_RET(ResolveSegmentMapping(physicalLevels, effIdx, algAttrs.algoTypes, anchors, userRankSize, pIndices));
     return HcclResult::HCCL_SUCCESS;
 }
 

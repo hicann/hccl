@@ -16,22 +16,11 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> InsTempReduceScatterOrderPreservedLevel1::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = 0;
-    if (param.portNum.size() == 1) {
-        portNum = param.portNum[0];
-    } else if (param.portNum.size() >= 2) {
-        portNum = param.portNum[0] + param.portNum[1];
-    }
-    int kernelNum = 1;
-    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A);
-    CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B);
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::AICPU, C);
     A = 1000;
     C = 1000;
 

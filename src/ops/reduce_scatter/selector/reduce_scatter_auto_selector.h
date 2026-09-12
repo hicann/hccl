@@ -22,6 +22,10 @@ constexpr u32 RS_CCU_2DIE_FRAME_NUM = 2;
 constexpr u64 RS_CCU_2DIE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 RS_CCU_2DIE_MAX_DATA_SIZE = 16 * 1024 * 1024;
 
+// Sequence 算法总量阈值，供 AutoSelector 与 sequence executor 共享
+// 对齐 SelectAicpuAlgo 中 Sequence/Parallel 的总量分界
+constexpr u64 RS_AICPU_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
+
 class ReduceScatterAutoSelector : public AutoSelectorBase {
 private:
     SelectorStatus SelectCcuMsAlgo(

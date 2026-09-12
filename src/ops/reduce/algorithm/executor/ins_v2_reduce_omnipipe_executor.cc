@@ -199,9 +199,11 @@ template <
     typename CcuGAlgTemplateY>
 AlgNetMeta
 InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, CcuGAlgTemplateX, CcuGAlgTemplateY>::
-    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)topoInfo;
+    (void)param;
+    (void)algName;
     AlgNetMeta meta;
     meta.netTypes = {CommTopo::COMM_TOPO_1DMESH};
     meta.groupSizes = {1};
@@ -868,8 +870,9 @@ REGISTER_EXEC_V2_MULTI(
     CcuTempReduceScatterOmniPipeMesh1DMem2Mem, CcuTempReduceScatterOmniPipeNHR1DMem2Mem,
     CcuTempGatherOmniPipeMesh1DMem2Mem, CcuTempGatherOmniPipeNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
-    CcuSchedReducePipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+    CcuSchedReducePipeLineMeshNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1; op.isSupportProd = false;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     };);

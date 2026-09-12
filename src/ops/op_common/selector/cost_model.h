@@ -161,6 +161,7 @@ struct CalcCostCoeffParam {
     const char* algName = nullptr;
     HcclComm comm = nullptr;
     const TopoInfoWithNetLayerDetails* topoInfo = nullptr;
+    u32 repeatednum = 1;
 };
 
 struct AlgNetMeta {

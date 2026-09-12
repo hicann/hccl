@@ -21,9 +21,11 @@ std::vector<CostModelParam> CcuTempReduceScatterNHR1DMem2Mem::CalcCostCoeff(Calc
 {
     // param.netType = CommTopo::COMM_TOPO_CLOS;
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : param.portNum[0];
-    int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
-    int kernelNum = (0.6 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2) / 2;
+    int portNum
+        = (param.netType == CommTopo::COMM_TOPO_CLOS) ? (param.portNum[0] + param.portNum[1]) : param.portNum[0];
+    // int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
+    int RTT1 = 2;
+    int kernelNum = (0.6 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2 + 2) / 2;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;

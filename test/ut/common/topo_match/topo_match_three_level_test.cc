@@ -79,7 +79,7 @@ TEST_F(TopoMatchThreeLevelTest, SymmetricD2Ge2Instance0)
     ASSERT_EQ(info.physicalIdxForAlgoLevels[2][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
 }
 
-// H3: 对称 3 层 d2=1 单 instance
+// H3: 对称 3 层 d2=1 → 最上层 size 为 1，不支持
 // phys0={0..7},{8,8}; phys1={0..15},{16}; phys2={0..15},{16}; d0=8,d1=2,d2=1
 TEST_F(TopoMatchThreeLevelTest, SymmetricD2Eq1SingleInstance)
 {
@@ -92,16 +92,7 @@ TEST_F(TopoMatchThreeLevelTest, SymmetricD2Eq1SingleInstance)
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::NHR, AlgoType::NHR});
     AlgHierarchyInfoForAllLevel info;
-    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    ASSERT_EQ(info.infos.size(), 3u);
-    ASSERT_EQ(info.infos[0][0], Range(8));
-    // d0=8,d1=2,d2=1; group1={3,11}; group2={3}
-    ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3, 11}));
-    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{3}));
-    ASSERT_EQ(info.physicalIdxForAlgoLevels.size(), 3u);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[2][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
 }
 
 // H4: 非对称 level0 → NOT_SUPPORT
@@ -179,24 +170,24 @@ TEST_F(TopoMatchThreeLevelTest, EffectiveLayersLessThanThree)
 }
 
 // H9: MeshConcur + 上层超集双层
-// phys0=1DMESH{0..7},{8,8}; phys1=CLOS{0..15},{16}; phys2=CLOS{0..15},{16}; d0=8,d1=2,d2=1
+// phys0=1DMESH{0..7},{8,8,8,8}; phys1=CLOS{0..15},{16,16}; phys2=CLOS{0..31},{32}; d0=8,d1=2,d2=2
 TEST_F(TopoMatchThreeLevelTest, MeshConcurDualLayerClos)
 {
     auto topo = MakeTopoInfo(
-        3, 16,
+        3, 32,
         {
-            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8, 8}, true, COMM_TOPO_1DMESH),
-            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16}, true, COMM_TOPO_CLOS),
-            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8, 8, 8, 8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {32}, true, COMM_TOPO_CLOS),
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCUR, AlgoType::NHR, AlgoType::NHR});
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     ASSERT_EQ(info.infos.size(), 3u);
     ASSERT_EQ(info.infos[0][0], Range(8));
-    // d0=8, d1=2, d2=1; group1={3,11}; group2={3}
+    // d0=8, d1=2, d2=2; group1={3,11}; group2={3,19}
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3, 11}));
-    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{3}));
+    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{3, 19}));
     // MeshConcur → {idx0(1DMESH), idx1(上层超集)}
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0].size(), 2u);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
@@ -368,26 +359,26 @@ TEST_F(TopoMatchThreeLevelTest, AsymmetricLayerNotPhys0Or1)
 TEST_F(TopoMatchThreeLevelTest, P3AdjacentMeshAnchorsNoInvalidUint)
 {
     auto topo = MakeTopoInfo(
-        30, 64,
+        30, 128,
         {
             MakeLevel(RangeFrom(24, 8), PhysicalLevelView::GLOBAL, {8, 8, 8, 8, 8, 8, 8, 8}, true, COMM_TOPO_CLOS),
             MakeLevel(RangeFrom(16, 16), PhysicalLevelView::GLOBAL, {16, 16, 16, 16}, true, COMM_TOPO_CLOS),
-            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {32, 32}, true, COMM_TOPO_1DMESH),
-            MakeLevel(Range(64), PhysicalLevelView::GLOBAL, {64}, true, COMM_TOPO_1DMESH),
-            MakeLevel(Range(64), PhysicalLevelView::GLOBAL, {64}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {32, 32, 32, 32}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(64), PhysicalLevelView::GLOBAL, {64, 64}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(128), PhysicalLevelView::GLOBAL, {128}, true, COMM_TOPO_CLOS),
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::NHR, AlgoType::MESH});
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     // algo0(Mesh) 锚 phys2(1DMESH); candidateLow for algo2 = 2+(2-0)=4, phys4 非 1DMESH → 不锚定
     // 尾段: MatchLayerIdxBySegment(1,2,3,4) → pIndices=[2,3,4]
-    // d0=32(phys2), d1=64/32=2(phys3), d2=64/32/2=1(phys4)
+    // d0=32(phys2), d1=64/32=2(phys3), d2=128/32/2=2(phys4)
     ASSERT_EQ(info.infos.size(), 3u);
     ASSERT_EQ(info.infos[0][0], Range(32));
     // level1Base=0, group1=BuildRepresentativeGroup(32, 2, 30)={30,62}
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{30, 62}));
-    // group2=BuildRepresentativeGroup(64, 1, 30)={30}
-    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{30}));
+    // group2=BuildRepresentativeGroup(64, 2, 30)={30,94}
+    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{30, 94}));
     ASSERT_EQ(info.physicalIdxForAlgoLevels.size(), 3u);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_3);

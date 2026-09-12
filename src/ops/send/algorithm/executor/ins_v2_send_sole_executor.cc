@@ -93,8 +93,9 @@ std::vector<CostModelParam> InsV2SendSoleExecutor<InsAlgTemplate>::CalcCostCoeff
 
 template <typename InsAlgTemplate>
 AlgNetMeta InsV2SendSoleExecutor<InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)topoInfo;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);

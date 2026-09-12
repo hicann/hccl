@@ -34,21 +34,38 @@ std::vector<CostModelParam> InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplat
 {
     (void)comm;
     (void)param;
-    u32 rankSize = topoInfo->userRankSize;
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    CommTopo netType = (InsAlgTemplate::props.algoType == AlgoType::NHR || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS :
-                                                                                           CommTopo::COMM_TOPO_1DMESH;
-    bool isPod = topoInfo->isPod;
-    // portNum 向量即通道形态（统一约定，打桩只在本层）：
-    //   MESH 段：{1}（MESH 分支 A=n/bw，端口数不参与公式）
-    //   CLOS 段：isPod=true 传 {6,2}（双 die 双 channel）；isPod=false 传 {8}（单 die 单链路 8 端口）
-    // sole 场景（SoleNHR 单通道）由 isPod=false 路径自然覆盖；isPod=true 时模板按单/多通道规则取值
-    std::vector<u32> portNum;
-    if (netType == CommTopo::COMM_TOPO_1DMESH) {
-        portNum = {1};
-    } else {
-        portNum = isPod ? std::vector<u32>{6, 2} : std::vector<u32>{8};
+    // 拓扑事实(netType/portNum)取自 V2 topo match 选中的物理层(覆盖全通信域的最低有效层),
+    // 替代原按 algoType/topoLevelNums 的推断与 {1}/{6,2}/{8} 打桩
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        return {};
     }
+    u32 rankSize = topoInfo->userRankSize;
+    bool isPod = topoInfo->isPod;
+    u32 physIdx = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    CommTopo netType = GetPhysicalLevelTopoType(topoInfo, physIdx);
+    std::vector<u32> portNum = GetPhysicalLevelPortNums(topoInfo, physIdx);
+    // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
+    if (portNum.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
+    HCCL_INFO(
+        "[CalcCostCoeff] algName=%s rankSize=%d, physIdx=%u, portNum(size=%zu, first=%u), netType=%d", algName,
+        rankSize, physIdx, portNum.size(), portNum[0], static_cast<int>(netType));
     std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netType, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNum, isPod,
         algName, comm, topoInfo});
@@ -57,14 +74,33 @@ std::vector<CostModelParam> InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplat
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
+    (void)algName;
     (void)param;
-    AlgNetMeta meta;
+    // netType 与 CalcCostCoeff 同源: V2 匹配层的真实 topoType
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    bool isMultiLevel = (topoInfo != nullptr && topoInfo->topoLevelNums > 1);
-    bool isNhrAlg = InsAlgTemplate::props.algoType == AlgoType::NHR;
-    CommTopo netType = (isNhrAlg || isMultiLevel) ? CommTopo::COMM_TOPO_CLOS : CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netType
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    AlgNetMeta meta;
     meta.netTypes.push_back(netType);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
@@ -324,12 +360,9 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AivScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     AivTempScatterMesh1D);
 REGISTER_ALG_ATTRS(
-    AivScatterSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    AivScatterSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->userRankSize <= MAX_RANK_SIZE;
-    };
     // 参照 allgather AIV 注册(AivAllGatherSoleMesh)迁移旧 selector 数据量限制
     // (scatter_auto_selector.cc:271)：totalSize <= cclBufferSize * AIV_MAX_CCL_LOOP_NUM
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
@@ -349,7 +382,7 @@ REGISTER_EXEC_V2(
     CcuTempScatterMesh1D);
 // inplace 排除对齐旧 selector：仅单级 MESH_1D 分支查 inplace（scatter_auto_selector.cc:108），
 // 同算法的 MESH_1D_CLOS 全连分支不查；其余 scatter 算法执行侧均支持 inplace（kernel isInputOutputEqual 等）
-REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
+REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.maxTopoLevelNum = 1;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
                    op.isSupportInplace = false;);
@@ -358,19 +391,9 @@ REGISTER_ALG_ATTRS(CcuSchedScatterSoleMesh, topo.maxTopoLevelNum = 1;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, CcuSchedScatterSoleNHR, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     CcuTempScatterNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(
-    CcuSchedScatterSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
-    // 对齐旧 selector CCU 约束(scatter_auto_selector.cc:54)：
-    // 两级拓扑 userRankSize>64 时 CCU 整体退出(单级豁免)
-    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        (void)opParam;
-        if (topo->topoLevelNums <= 1) {
-            return true;
-        }
-        constexpr u32 ccuScatterMaxRankSize = 64;
-        return topo->userRankSize <= ccuScatterMaxRankSize;
-    });
+REGISTER_ALG_ATTRS(CcuSchedScatterSoleNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif
 #endif

@@ -36,7 +36,9 @@ CcuTempAllGatherNHR1DMultiJettyMem2Mem::~CcuTempAllGatherNHR1DMultiJettyMem2Mem(
 
 std::vector<CostModelParam> CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     param.netType = CommTopo::COMM_TOPO_CLOS;
     int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
     int kernelNum = (0.4 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2) / 2;

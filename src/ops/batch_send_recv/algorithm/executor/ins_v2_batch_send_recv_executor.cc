@@ -449,10 +449,11 @@ std::vector<CostModelParam> InsV2BatchSendRecvExecutor::CalcCostCoeff(
     return {{0.0f, 0.0f, 1.0f, 0.0f}};
 }
 
-AlgNetMeta
-InsV2BatchSendRecvExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+AlgNetMeta InsV2BatchSendRecvExecutor::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
+    (void)algName;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);

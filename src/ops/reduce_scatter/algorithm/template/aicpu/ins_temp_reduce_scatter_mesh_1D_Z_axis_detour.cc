@@ -35,8 +35,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     // level0: server 内 mesh 组网，level1: 跨 server clos 组网
     int portNum0 = param.portNum[0];
-    // int portNum1 = (param.portNum.size() > 1) ? param.portNum[1] : 0;
-    int portNum1 = 8;
+    int portNum1 = (param.portNum.size() > 1) ? (param.portNum[0] + param.portNum[1]) : param.portNum[0];
     int kernelNum = 15;
     // pod 先乘3,后续需要考虑server
     int taskNum

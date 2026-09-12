@@ -19,8 +19,15 @@ namespace ops_hccl {
 std::vector<CostModelParam> CcuTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // AllToAll: CCU mesh1D，mem2mem模式，无本地拷贝
+    // 端口数由 executor 通过 topomatch v2 动态传入，直接聚合使用
+    int portNum = 0;
+    for (auto p : param.portNum) {
+        portNum += static_cast<int>(p);
+    }
+    if (portNum <= 0) {
+        portNum = 6;
+    }
     // MESH场景固定5，CLOS跨框场景固定10(跨框同步开销更大)
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 6 : param.portNum[0];
     int kernelNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 10 : 5;
     int taskNum = 0; // CCU的D=0
     float A = 0.0f;

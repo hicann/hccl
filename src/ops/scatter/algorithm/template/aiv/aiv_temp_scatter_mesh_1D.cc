@@ -19,18 +19,45 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
 {
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
-    int kernelNum = 1; // 单 kernel 下发
+    int remoteSyncNum = 1; // 单 kernel 下发
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
+    // 跨框(匹配层为 CLOS)时执行侧按目标路由：框内目标走框内 mesh 直连（每对端独享链路，
+    // 并发时间=单份），跨框目标共享 CLOS 端口。从匹配层往下找框内 mesh 层，
+    // 找到才启用双平面并发取 max 的口径；找不到（每框单卡无 mesh 层）或匹配层
+    // 本身即 mesh（单级）时维持单平面公式
+    u32 meshRankNum = 0;
+    if (param.netType == CommTopo::COMM_TOPO_CLOS && param.topoInfo != nullptr) {
+        for (const auto& level : param.topoInfo->physicalLevels) {
+            if (level.topoType == CommTopo::COMM_TOPO_1DMESH && level.localRanks.size() >= 2
+                && level.localRanks.size() < param.rankSize) {
+                meshRankNum = std::max(meshRankNum, static_cast<u32>(level.localRanks.size()));
+            }
+        }
+    }
+    if (meshRankNum >= 2) {
+        u32 meshTargetNum = meshRankNum - 1;              // 框内目标份数
+        u32 closTargetNum = param.rankSize - meshRankNum; // 跨框目标份数
+        float aMesh = 0.0f;
+        float aClos = 0.0f;
+        // 框内平面：mesh 直连每对端独享带宽，nMesh 份并发，时间=单份
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, meshRankNum, aMesh, false);
+        // 跨框平面：closTargetNum 份共享 CLOS 端口
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, closTargetNum + 1, aClos, false);
+        A = std::max(aMesh, aClos);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
+    }
     // in-kernel 处理，无独立 local copy 阶段；executor 通过 buffer 组合控制（INPUT→OUTPUT 时按 1 份计）
     if (param.inputBuffer != BufferType::HCCL_BUFFER && param.outputBuffer != BufferType::HCCL_BUFFER) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
+    CostModelManager::Global()->CalcLatencyParams(remoteSyncNum, EngineType::AIV, C);
     CostModelManager::Global()->CalcLaunchParams(
         CostModelManager::CalcTransTaskNum(param.rankSize), EngineType::AIV,
         D); // AIV 的 D 恒为 0（kernel launch 无展开）

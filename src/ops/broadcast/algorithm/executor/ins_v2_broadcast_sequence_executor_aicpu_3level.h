@@ -48,7 +48,8 @@ public:
 
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
-    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const override;
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
 protected:
     /* *************** 算法编排 *************** */
@@ -98,6 +99,18 @@ protected:
 
     bool skipLevel1_{false};
     bool skipLevel2_{false};
+
+    // CalcCostCoeff 缓存的拓扑信息，供 const GetAlgNetMeta 使用
+    mutable CommTopo netTypeLevel0_ = CommTopo::COMM_TOPO_1DMESH;
+    mutable CommTopo netTypeLevel1_ = CommTopo::COMM_TOPO_CLOS;
+    mutable CommTopo netTypeLevel2_ = CommTopo::COMM_TOPO_CLOS;
+    mutable std::vector<u32> portNumLevel0_ = {1};
+    mutable std::vector<u32> portNumLevel1_ = {8};
+    mutable std::vector<u32> portNumLevel2_ = {8};
+    mutable bool lastIsPod_ = true;
+    mutable u32 lastRankSizeLevel0_ = 0;
+    mutable u32 lastRankSizeLevel1_ = 0;
+    mutable u32 lastRankSizeLevel2_ = 0;
 };
 } // namespace ops_hccl
 

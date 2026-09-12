@@ -23,8 +23,8 @@ std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
-    int portNum0 = 7;
-    int portNum1 = 6;
+    int portNum0 = 1;
+    int portNum1 = param.portNum[0];
     float level0Ratio = 0.5f;
     float level1Ratio = 1.0f - level0Ratio;
     float nLevel0 = param.dataRatio * level0Ratio;

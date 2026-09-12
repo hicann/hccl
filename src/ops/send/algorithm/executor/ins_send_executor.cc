@@ -17,6 +17,7 @@
 
 namespace ops_hccl {
 constexpr u32 P2P_CHANNEL_REPEAT_NUM = 2;
+
 std::string InsSendExecutor::Describe() const { return "Instruction based Send Executor."; }
 
 HcclResult
@@ -277,21 +278,14 @@ std::vector<CostModelParam> InsSendExecutor::CalcCostCoeff(
     (void)topoInfo;
     (void)algName;
     (void)param;
-    float A = 0.0f;
-    u32 p2pRankSize = 2;
-    CostModelManager::Global()->CalcMeshParam(1.0f, CommTopo::COMM_TOPO_1DMESH, 1, p2pRankSize, A);
-    float B = 0.0f;
-    CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::AICPU, B);
-    float C = 0.0f;
-    CostModelManager::Global()->CalcLatencyParams(1, EngineType::AICPU, C);
-    float D = 0.0f;
-    CostModelManager::Global()->CalcLaunchParams(CostModelManager::CalcTransTaskNum(1), EngineType::AICPU, D);
-    return {{A, B, C, D}};
+    return {{0.0f, 0.0f, 3.0f, 0.0f}};
 }
 
-AlgNetMeta InsSendExecutor::GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param) const
+AlgNetMeta InsSendExecutor::GetAlgNetMeta(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     (void)param;
+    (void)algName;
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
     AlgNetMeta meta;
     meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
