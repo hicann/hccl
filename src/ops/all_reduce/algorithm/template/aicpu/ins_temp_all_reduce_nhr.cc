@@ -151,6 +151,11 @@ HcclResult InsTempAllReduceNHR::KernelRun(
 {
     HCCL_INFO("[InsTempAllReduceNHR] KernelRun Start.");
 
+    if (tempAlgParams.sliceSize == 0 && tempAlgParams.tailSize == 0) {
+        HCCL_INFO("[InsTempAllReduceNHR] Rank [%u], get slicesize zero.", myRank_);
+        return HCCL_SUCCESS;
+    }
+
     CHK_PRT_RET(
         subCommRanks_.size() == 0, HCCL_ERROR("[InsTempAllReduceNHR][KernelRun] subCommRanks is empty."),
         HcclResult::HCCL_E_INTERNAL);
@@ -171,9 +176,25 @@ HcclResult InsTempAllReduceNHR::KernelRun(
     tempAlgParams_ = tempAlgParams;
     supportSymmetricMemAccess_ = param.supportSymmetricMemory;
 
+    // 防御性校验：sliceSize 应为 count * dataTypeSize，不一致时返回错误防止上游语义漂移被静默吞掉
+    CHK_PRT_RET(
+        processSize_ != count_ * dataTypeSize_,
+        HCCL_ERROR(
+            "[InsTempAllReduceNHR][KernelRun] processSize_[%llu] != count_[%llu] * dataTypeSize_[%llu], "
+            "upstream sliceSize is inconsistent.",
+            processSize_, count_, dataTypeSize_),
+        HcclResult::HCCL_E_INTERNAL);
+
     bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
     HCCL_DEBUG("[InsTempAllReduceNHR] Use Dma Read[%d]", isDmaRead_);
+
+    // 仅在非 DMA Read、非对称内存、rank 数大于 1 时启用首步 tx 跳过 PreCopy 优化
+    skipStep0TxPreCopy_ = (!supportSymmetricMemAccess_) && (!isDmaRead_) && (templateRankSize_ > 1);
+    step0TxSliceIdxs_.clear();
+    if (skipStep0TxPreCopy_) {
+        HCCL_INFO("[InsTempAllReduceNHR] Skip step0 tx pre-copy enabled");
+    }
 
     if (count_ == 0) {
         HCCL_WARNING("[InsTempAllReduceNHR][KernelRun] data count is 0.");
@@ -193,15 +214,44 @@ HcclResult InsTempAllReduceNHR::KernelRun(
             templateResource.threads.size()),
         HcclResult::HCCL_E_INTERNAL);
 
-    // 将数据从input拷贝到hcclBuffer上（对称内存路径跳过）
-    if (!supportSymmetricMemAccess_) {
-        CHK_RET(PreCopy(tempAlgParams, templateResource.threads));
+    // 预计算 ReduceScatter 和 AllGather 步骤信息，供后续复用
+    CHK_RET(GetReduceScatterStepInfoList(reduceScatterSteps_));
+    CHK_RET(GetAllGatherStepInfoList(allGatherSteps_));
+    // 收集首步 tx slice 编号，供 PreCopy 跳过和 RunReduceScatter 直发 input 使用
+    if (skipStep0TxPreCopy_ && !reduceScatterSteps_.empty()) {
+        for (u32 txIdx : reduceScatterSteps_.front().txSliceIdxs) {
+            step0TxSliceIdxs_.insert(txIdx);
+        }
     }
+    // AllGather 最后一步可优化为 Read 模式，远端数据直接读入 output buffer（对称内存路径不支持）
+    readLastStepToOutput_ = (!supportSymmetricMemAccess_) && CanReadLastStepToOutput();
+    HCCL_DEBUG("[InsTempAllReduceNHR] Read last step to output[%d]", readLastStepToOutput_);
+
+    // 前同步：通知子线程开始 PreCopy
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(
             templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
         GetNotifyIdxMainToSub(notifyIdxMainToSub_);
         CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub_));
+    }
+    // 将数据从input拷贝到hcclBuffer上，多 channel 并发（对称内存路径跳过）
+    if (!supportSymmetricMemAccess_) {
+        for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
+            CHK_RET(PreCopy(tempAlgParams, templateResource.threads, channelIdx));
+        }
+    }
+    // 单 rank：all-reduce 退化为 input→output 的直接拷贝，跳过通信步骤
+    if (templateRankSize_ <= 1) {
+        for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
+            CHK_RET(PostCopy(tempAlgParams, templateResource.threads, channelIdx));
+        }
+        if (threadNum_ > 1) {
+            std::vector<ThreadHandle> subThreads(
+                templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
+            GetNotifyIdxSubToMain(notifyIdxSubToMain_);
+            CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
+        }
+        return HcclResult::HCCL_SUCCESS;
     }
     for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
         // TwoShot算法，第一步ReduceScatter
@@ -223,15 +273,18 @@ HcclResult InsTempAllReduceNHR::KernelRun(
         // TwoShot算法，第二步AllGather
         CHK_RET(RunAllGather(tempAlgParams, templateResource.channels, templateResource.threads, channelIdx));
     }
+    // 将数据从hcclBuffer上拷贝到output上，多 channel 并发（对称内存路径跳过）
+    if (!supportSymmetricMemAccess_) {
+        for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
+            CHK_RET(PostCopy(tempAlgParams, templateResource.threads, channelIdx));
+        }
+    }
+    // 后同步：等待所有 channel 的 PreCopy/通信/PostCopy 完成后通知主线程
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(
             templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
         GetNotifyIdxSubToMain(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
-    }
-    if (!supportSymmetricMemAccess_) {
-        // 将数据从hcclBuffer上拷贝到output上
-        CHK_RET(PostCopy(tempAlgParams, templateResource.threads));
     }
 
     HCCL_INFO("[InsTempAllReduceNHR] KernelRun finished.");
@@ -239,20 +292,43 @@ HcclResult InsTempAllReduceNHR::KernelRun(
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult
-InsTempAllReduceNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
+HcclResult InsTempAllReduceNHR::PreCopy(
+    const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads, u32 channelIdx) const
 {
-    HCCL_INFO("[InsTempAllReduceNHR] PreCopy data from input to hccl buffer");
+    HCCL_INFO("[InsTempAllReduceNHR] PreCopy data from input to hccl buffer, channelIdx[%u]", channelIdx);
 
     void* localInBuffPtr = tempAlgParams.buffInfo.inputPtr;
     void* localHcclBuffPtr = tempAlgParams.buffInfo.hcclBuff.addr;
     u64 inBuffBaseOffset = tempAlgParams.buffInfo.inBuffBaseOff;
     u64 hcclBuffBaseOffset = tempAlgParams.buffInfo.hcclBuffBaseOff;
 
-    DataSlice copySrcSlice(localInBuffPtr, inBuffBaseOffset, processSize_, count_);
-    DataSlice copyDstSlice(localHcclBuffPtr, hcclBuffBaseOffset, processSize_, count_);
+    // templateRankSize_ == 1 时无 ReduceScatter 步骤，跳过 PreCopy，
+    // PostCopy 直接从 input 拷贝到 output，避免 input→cclBuff→output 的冗余搬运
+    if (reduceScatterSteps_.empty()) {
+        return HcclResult::HCCL_SUCCESS;
+    }
 
-    CHK_RET(LocalCopy(threads.at(0), copySrcSlice, copyDstSlice));
+    // 如果 input 与 cclBuff 基地址相同且 base 偏移相同（物理同一块内存），跳过整个 PreCopy
+    if (localInBuffPtr == localHcclBuffPtr && inBuffBaseOffset == hcclBuffBaseOffset) {
+        HCCL_INFO("[InsTempAllReduceNHR] PreCopy skip because input is scratch");
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    // ReduceScatter 第一步 txSliceIdxs 中的 slice 将通过 WriteReduce 直接从 input 写入远端 cclBuff，
+    // 无需 pre-copy 到本地 cclBuff；其余 slice 需要拷贝到本地 cclBuff，供后续步骤使用
+    // 仅在 skipStep0TxPreCopy_ 启用时跳过（DMA Read 路径下远端从 cclBuff 读取，必须 pre-copy）
+    for (u32 rankIdx = 0; rankIdx < templateRankSize_; ++rankIdx) {
+        if (skipStep0TxPreCopy_ && step0TxSliceIdxs_.count(rankIdx) > 0) {
+            continue;
+        }
+        u64 txSz = (rankIdx == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
+        u64 txOff = (rankIdx == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
+        u64 inOff = inBuffBaseOffset + rankIdx * sliceSize_ + txOff;
+        u64 scOff = hcclBuffBaseOffset + rankIdx * sliceSize_ + txOff;
+        DataSlice copySrcSlice(localInBuffPtr, inOff, txSz, txSz / dataTypeSize_);
+        DataSlice copyDstSlice(localHcclBuffPtr, scOff, txSz, txSz / dataTypeSize_);
+        CHK_RET(LocalCopy(threads.at(channelIdx), copySrcSlice, copyDstSlice));
+    }
 
     return HcclResult::HCCL_SUCCESS;
 }
@@ -263,13 +339,15 @@ HcclResult InsTempAllReduceNHR::RunReduceScatter(
 {
     void* localHcclBuffPtr
         = supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr;
+    void* localInBuffPtr = tempAlgParams.buffInfo.inputPtr;
     u64 hcclBuffBaseOffset
         = supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inBuffBaseOff : tempAlgParams.buffInfo.hcclBuffBaseOff;
+    u64 inBuffBaseOffset = tempAlgParams.buffInfo.inBuffBaseOff;
 
-    std::vector<NHRStepInfo> stepInfoList;
-    CHK_RET(GetReduceScatterStepInfoList(stepInfoList));
+    for (u32 stepIdx = 0; stepIdx < reduceScatterSteps_.size(); ++stepIdx) {
+        auto& stepInfo = reduceScatterSteps_[stepIdx];
+        const bool isFirstStep = (stepIdx == 0);
 
-    for (auto& stepInfo : stepInfoList) {
         CHK_PRT_RET(
             channels.count(rankList_.at(stepInfo.fromRank)) == 0,
             HCCL_ERROR(
@@ -294,6 +372,11 @@ HcclResult InsTempAllReduceNHR::RunReduceScatter(
             = supportSymmetricMemAccess_ ? sendChannel.remoteInputGraphMode.addr : sendChannel.remoteCclMem.addr;
         void* recvRemoteHcclBuffPtr
             = supportSymmetricMemAccess_ ? recvChannel.remoteInputGraphMode.addr : recvChannel.remoteCclMem.addr;
+        // 第一步 tx 从 input 直接 WriteReduce 到远端 cclBuff；后续步骤从本地 cclBuff 发送
+        // 对称内存路径下 localHcclBuffPtr 已指向 input，无需区分首步
+        // DMA Read 路径下 skipStep0TxPreCopy_ 为 false，首步从 cclBuff 发送
+        void* sendSrcPtr = (skipStep0TxPreCopy_ && isFirstStep) ? localInBuffPtr : localHcclBuffPtr;
+        u64 sendSrcBaseOffset = (skipStep0TxPreCopy_ && isFirstStep) ? inBuffBaseOffset : hcclBuffBaseOffset;
 
         // 在 nhrInBuffType_ 上进行 ReduceScatter 操作
         for (u32 idx = 0; idx < stepInfo.nSlices; ++idx) {
@@ -304,7 +387,7 @@ HcclResult InsTempAllReduceNHR::RunReduceScatter(
             u64 rxOff = (rxIdx == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
             u64 rxSz = (rxIdx == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
             sendSrcSlicesList.emplace_back(
-                localHcclBuffPtr, hcclBuffBaseOffset + txIdx * sliceSize_ + txOff, txSz, txSz / dataTypeSize_);
+                sendSrcPtr, sendSrcBaseOffset + txIdx * sliceSize_ + txOff, txSz, txSz / dataTypeSize_);
             sendDstSlicesList.emplace_back(
                 sendRemoteHcclBuffPtr, hcclBuffBaseOffset + txIdx * sliceSize_ + txOff, txSz, txSz / dataTypeSize_);
             recvSrcSlicesList.emplace_back(
@@ -348,10 +431,18 @@ HcclResult InsTempAllReduceNHR::RunAllGather(
     u64 hcclBuffBaseOffset
         = supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.outBuffBaseOff : tempAlgParams.buffInfo.hcclBuffBaseOff;
 
-    std::vector<NHRStepInfo> stepInfoList;
-    CHK_RET(GetAllGatherStepInfoList(stepInfoList));
+    lastStepReadSliceIdxs_.clear();
 
-    for (auto& stepInfo : stepInfoList) {
+    for (u32 stepIdx = 0; stepIdx < allGatherSteps_.size(); ++stepIdx) {
+        auto& stepInfo = allGatherSteps_[stepIdx];
+        const bool isLastStep = (stepIdx == allGatherSteps_.size() - 1);
+
+        // Read 优化：AllGather 最后一步远端数据直接读入 output buffer，跳过中间 cclBuff 中转
+        if (readLastStepToOutput_ && isLastStep) {
+            CHK_RET(RunLastStepReadToOutput(tempAlgParams, channels, threads, channelIdx));
+            return HcclResult::HCCL_SUCCESS;
+        }
+
         CHK_PRT_RET(
             channels.count(rankList_.at(stepInfo.fromRank)) == 0,
             HCCL_ERROR(
@@ -415,21 +506,122 @@ HcclResult InsTempAllReduceNHR::RunAllGather(
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult
-InsTempAllReduceNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const
+bool InsTempAllReduceNHR::CanReadLastStepToOutput() const
 {
-    HCCL_INFO("[InsTempAllReduceNHR][PostCopy] Opbase copy from scratchBuffer to userOut");
+    // 仅在非 DMA Read 路径、output 与 cclBuff 不物理重叠时才能启用 Read 优化
+    bool outputIsScratch = tempAlgParams_.buffInfo.outputPtr == tempAlgParams_.buffInfo.hcclBuff.addr
+                           && tempAlgParams_.buffInfo.outBuffBaseOff == tempAlgParams_.buffInfo.hcclBuffBaseOff;
+    return !isDmaRead_ && tempAlgParams_.buffInfo.outBuffType == BufferType::OUTPUT && !outputIsScratch;
+}
 
-    void* localHcclBuffPtr = tempAlgParams.buffInfo.hcclBuff.addr;
+bool InsTempAllReduceNHR::IsLastStepReadSlice(u32 algRank) const { return lastStepReadSliceIdxs_.count(algRank) > 0; }
+
+HcclResult InsTempAllReduceNHR::RunLastStepReadToOutput(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const std::vector<ThreadHandle>& threads, u32 channelIdx)
+{
     void* localOutBuffPtr = tempAlgParams.buffInfo.outputPtr;
     u64 hcclBuffBaseOffset = tempAlgParams.buffInfo.hcclBuffBaseOff;
     u64 outBuffBaseOffset = tempAlgParams.buffInfo.outBuffBaseOff;
 
-    DataSlice copySrcSlice(localHcclBuffPtr, hcclBuffBaseOffset, tempAlgParams.sliceSize, tempAlgParams.count);
-    DataSlice copyDstSlice(localOutBuffPtr, outBuffBaseOffset, tempAlgParams.sliceSize, tempAlgParams.count);
+    auto& lastStepInfo = allGatherSteps_.back();
 
-    CHK_RET(LocalCopy(threads.at(0), copySrcSlice, copyDstSlice));
+    CHK_PRT_RET(
+        channels.count(rankList_.at(lastStepInfo.fromRank)) == 0,
+        HCCL_ERROR(
+            "[InsTempAllReduceNHR][RunLastStepReadToOutput] remoteRank[%u] is not in channels.",
+            rankList_.at(lastStepInfo.fromRank)),
+        HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        channels.count(rankList_.at(lastStepInfo.toRank)) == 0,
+        HCCL_ERROR(
+            "[InsTempAllReduceNHR][RunLastStepReadToOutput] remoteRank[%u] is not in channels.",
+            rankList_.at(lastStepInfo.toRank)),
+        HcclResult::HCCL_E_INTERNAL);
 
+    const ChannelInfo& recvChannel = channels.at(rankList_.at(lastStepInfo.fromRank)).at(channelIdx);
+    const ChannelInfo& sendChannel = channels.at(rankList_.at(lastStepInfo.toRank)).at(channelIdx);
+
+    // 对端在其自身的最后一步通过 Read 直接从本 rank 的 cclBuff 拉取这些切片，本 rank 无需发送；
+    // sendChannel 仅用于 ACK/DATA_SIGNAL 同步
+    std::vector<DataSlice> rxSrcSlicesList;
+    std::vector<DataSlice> rxDstSlicesList;
+    void* recvRemoteHcclBuffPtr = recvChannel.remoteCclMem.addr;
+
+    for (u32 idx = 0; idx < lastStepInfo.nSlices; ++idx) {
+        u32 rxIdx = lastStepInfo.rxSliceIdxs.at(idx);
+        u64 rxOff = (rxIdx == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
+        u64 rxSz = (rxIdx == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
+        u64 rxScratchOff = hcclBuffBaseOffset + rxIdx * sliceSize_ + rxOff;
+        u64 rxOutputOff = outBuffBaseOffset + rxIdx * sliceSize_ + rxOff;
+
+        rxSrcSlicesList.emplace_back(recvRemoteHcclBuffPtr, rxScratchOff, rxSz, rxSz / dataTypeSize_);
+        rxDstSlicesList.emplace_back(localOutBuffPtr, rxOutputOff, rxSz, rxSz / dataTypeSize_);
+        lastStepReadSliceIdxs_.insert(rxIdx);
+    }
+
+    // 最后一步使用 Read 模式：远端数据直接读入 output buffer，本 rank 无需发送数据
+    const std::vector<DataSlice> emptySlices;
+    TxRxSlicesList readSlicesList({emptySlices, emptySlices}, {rxSrcSlicesList, rxDstSlicesList});
+    TxRxChannels sendRecvChannels(sendChannel, recvChannel);
+    SendRecvInfo readInfo(sendRecvChannels, readSlicesList);
+
+    CHK_PRT_RET(
+        SendRecvBatchRead(readInfo, threads.at(channelIdx)),
+        HCCL_ERROR("[InsTempAllReduceNHR] RunLastStepReadToOutput SendRecvBatchRead failed"),
+        HcclResult::HCCL_E_INTERNAL);
+
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempAllReduceNHR::PostCopy(
+    const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads, u32 channelIdx) const
+{
+    HCCL_INFO("[InsTempAllReduceNHR][PostCopy] Opbase copy from scratchBuffer to userOut, channelIdx[%u]", channelIdx);
+
+    void* localHcclBuffPtr = tempAlgParams.buffInfo.hcclBuff.addr;
+    void* localOutBuffPtr = tempAlgParams.buffInfo.outputPtr;
+    void* localInBuffPtr = tempAlgParams.buffInfo.inputPtr;
+    u64 hcclBuffBaseOffset = tempAlgParams.buffInfo.hcclBuffBaseOff;
+    u64 outBuffBaseOffset = tempAlgParams.buffInfo.outBuffBaseOff;
+    u64 inBuffBaseOffset = tempAlgParams.buffInfo.inBuffBaseOff;
+
+    // templateRankSize_ == 1 时无通信步骤，PreCopy 已跳过，直接从 input 拷贝到 output
+    // 数据未分片，只需 channelIdx==0 拷贝一次
+    // 注意：此分支必须在 output==cclBuff 跳过判断之前，因为单 rank 场景下数据在 input 而非 cclBuff
+    if (reduceScatterSteps_.empty()) {
+        if (channelIdx != 0) {
+            return HcclResult::HCCL_SUCCESS;
+        }
+        DataSlice copySrcSlice(localInBuffPtr, inBuffBaseOffset, processSize_, count_);
+        DataSlice copyDstSlice(localOutBuffPtr, outBuffBaseOffset, processSize_, count_);
+        CHK_RET(LocalCopy(threads.at(channelIdx), copySrcSlice, copyDstSlice));
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    // output 与 cclBuff 基地址相同且 base 偏移相同（物理同一块内存的同一区域）时无需拷贝
+    // 仅判地址不够：parallel executor 中 outputPtr==cclMem.addr 但 outBuffBaseOff != hcclBuffBaseOff
+    // 仅多 rank 路径生效：单 rank 路径数据在 input，必须走 input→output 拷贝
+    if (localOutBuffPtr == localHcclBuffPtr && outBuffBaseOffset == hcclBuffBaseOffset) {
+        HCCL_INFO("[InsTempAllReduceNHR] PostCopy skip because output is scratch");
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    // 按 channel 分片将 cclBuff → output
+    // readLastStepToOutput_ 启用时，最后一步已直接读入 output 的切片跳过拷贝
+    // lastStepReadSliceIdxs_ 为 std::set，IsLastStepReadSlice 为 O(logN) 查找
+    for (u32 algRank = 0; algRank < templateRankSize_; ++algRank) {
+        if (readLastStepToOutput_ && IsLastStepReadSlice(algRank)) {
+            continue;
+        }
+        u64 rxSz = (algRank == templateRankSize_ - 1) ? dataSplitTail_[channelIdx] : dataSplit_[channelIdx];
+        u64 rxOff = (algRank == templateRankSize_ - 1) ? dataOffsetTail_[channelIdx] : dataOffset_[channelIdx];
+        u64 scratchOff = hcclBuffBaseOffset + algRank * sliceSize_ + rxOff;
+        u64 outOff = outBuffBaseOffset + algRank * sliceSize_ + rxOff;
+        DataSlice srcSlice(localHcclBuffPtr, scratchOff, rxSz, rxSz / dataTypeSize_);
+        DataSlice dstSlice(localOutBuffPtr, outOff, rxSz, rxSz / dataTypeSize_);
+        CHK_RET(LocalCopy(threads.at(channelIdx), srcSlice, dstSlice));
+    }
     return HcclResult::HCCL_SUCCESS;
 }
 
