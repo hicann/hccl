@@ -30,6 +30,7 @@ static constexpr uint32_t commConfigOpExpansionAicpu = 2;
 struct CheckParamInfo {
     uint64_t count;
     uint32_t opExecuteConfig;
+    uint32_t dataType;
 };
 constexpr uint64_t SEND_BUF_SIZE = sizeof(CheckParamInfo);
 
@@ -357,9 +358,10 @@ static HcclResult ExecuteParamCheckOp(HcclComm comm, const OpParam& param, u32 r
     CheckParamInfo localInfo{};
     localInfo.count = param.DataDes.count;
     localInfo.opExecuteConfig = static_cast<uint32_t>(param.opExecuteConfig);
+    localInfo.dataType = static_cast<uint32_t>(param.DataDes.dataType);
     HCCL_INFO(
-        "[%s] param negotiation, tag[%s], count[%llu], config[%u].", __func__, param.tag, localInfo.count,
-        localInfo.opExecuteConfig);
+        "[%s] param negotiation, tag[%s], count[%llu], config[%u], dataType[%u].", __func__, param.tag, localInfo.count,
+        localInfo.opExecuteConfig, localInfo.dataType);
 
     errno_t memRet = memcpy_s(negCtx->hostSendBuf, SEND_BUF_SIZE, &localInfo, sizeof(CheckParamInfo));
     CHK_PRT_RET(
@@ -406,13 +408,20 @@ CompareCcuParam(const CheckParamInfo* recvInfos, u32 rankSize, const OpParam& pa
                 OpExchangeInfo exchangeInfo{};
                 exchangeInfo.opType = param.opType;
                 exchangeInfo.count = param.DataDes.count;
+                exchangeInfo.dataType = param.DataDes.dataType;
                 errno_t cpyRet = strncpy_s(exchangeInfo.group, MAX_LENGTH, param.commName, COMM_INDENTIFIER_MAX_LENGTH);
                 CHK_PRT_RET(
                     cpyRet != EOK, HCCL_ERROR("[%s] strncpy_s for group failed, ret[%d].", __func__, cpyRet),
                     HCCL_E_MEMORY);
-                CHK_RET(ReportOpExchangeInfoCheckFailed(
-                    i, exchangeInfo, "DataCount", std::to_string(param.DataDes.count),
-                    std::to_string(recvInfos[i].count)));
+                if (recvInfos[i].dataType != static_cast<uint32_t>(param.DataDes.dataType)) {
+                    CHK_RET(ReportOpExchangeInfoCheckFailed(
+                        i, exchangeInfo, "HcclDataType", static_cast<uint32_t>(param.DataDes.dataType),
+                        recvInfos[i].dataType));
+                } else {
+                    CHK_RET(ReportOpExchangeInfoCheckFailed(
+                        i, exchangeInfo, "DataCount", std::to_string(param.DataDes.count),
+                        std::to_string(recvInfos[i].count)));
+                }
             }
         }
     }
