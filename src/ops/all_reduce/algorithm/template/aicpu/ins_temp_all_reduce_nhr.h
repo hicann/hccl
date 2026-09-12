@@ -14,6 +14,7 @@
 #include "alg_v2_template_base.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
+#include <set>
 
 namespace ops_hccl {
 
@@ -73,20 +74,30 @@ public:
 private:
     HcclResult PrepareDataSplitForMultiChannel(const TemplateResource& templateResource);
 
-    HcclResult PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult
+    PreCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads, u32 channelIdx) const;
     HcclResult RunReduceScatter(
         const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads, u32 channelIdx);
     HcclResult RunAllGather(
         const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads, u32 channelIdx);
-    HcclResult PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads) const;
+    HcclResult RunLastStepReadToOutput(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        const std::vector<ThreadHandle>& threads, u32 channelIdx);
+    HcclResult
+    PostCopy(const TemplateDataParams& tempAlgParams, const std::vector<ThreadHandle>& threads, u32 channelIdx) const;
+
+    bool CanReadLastStepToOutput() const;
+    bool IsLastStepReadSlice(u32 algRank) const;
 
     HcclResult GetReduceScatterStepInfoList(std::vector<NHRStepInfo>& stepInfoList) const;
     HcclResult GetAllGatherStepInfoList(std::vector<NHRStepInfo>& stepInfoList) const;
     u32 GetNHRStepNum() const;
 
     TemplateDataParams tempAlgParams_;
+    std::vector<NHRStepInfo> reduceScatterSteps_;
+    std::vector<NHRStepInfo> allGatherSteps_;
     u32 dataTypeSize_{0};
     u64 count_{0};
     u64 processSize_{0};
@@ -97,6 +108,10 @@ private:
     std::vector<u32> rankList_;
 
     bool isDmaRead_{false};
+    bool readLastStepToOutput_{false};
+    std::set<u32> lastStepReadSliceIdxs_;
+    bool skipStep0TxPreCopy_{false};
+    std::set<u32> step0TxSliceIdxs_;
     std::vector<u64> dataSplit_;
     std::vector<u64> dataOffset_;
     std::vector<u64> dataSplitTail_;
