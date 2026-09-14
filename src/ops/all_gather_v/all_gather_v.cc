@@ -37,7 +37,7 @@ HcclResult HcclAllGatherV(
     // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
     CHK_RET(InitEnvConfig());
     // 参数校验等工作
-    CHK_RET(CheckAllGatherVInputPara(comm, recvCounts, recvDispls, stream, sendBuf, sendCount));
+    CHK_RET(CheckAllGatherVInputPara(comm, recvCounts, recvDispls, stream, sendBuf, sendCount, recvBuf));
     u32 rankSize = INVALID_VALUE_RANKSIZE;
     u32 userRank = INVALID_VALUE_RANKID;
     bool allRecvCountsZero = false;
@@ -81,7 +81,7 @@ HcclResult HcclAllGatherVGraphMode(
     // 入口的地方先解析环境变量，在初始化环境变量的时候需要设置为AICPU展开
     CHK_RET(InitEnvConfig());
     // 检查入参指针有效性
-    CHK_RET(CheckAllGatherVInputPara(comm, recvCounts, recvDispls, stream, sendBuf, sendCount));
+    CHK_RET(CheckAllGatherVInputPara(comm, recvCounts, recvDispls, stream, sendBuf, sendCount, recvBuf));
     // tag有效性,是否过长
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
     CHK_RET(HcclGetCommName(comm, commName));
@@ -135,7 +135,7 @@ HcclResult HcclAllGatherVGraphMode(
 namespace ops_hccl {
 HcclResult CheckAllGatherVInputPara(
     const HcclComm comm, const void* recvCounts, const void* recvDispls, const aclrtStream stream, void* sendBuf,
-    uint64_t sendCount)
+    uint64_t sendCount, void* recvBuf)
 {
     // 入参合法性校验
     RPT_INPUT_ERR(
@@ -160,6 +160,11 @@ HcclResult CheckAllGatherVInputPara(
             std::vector<std::string>({"HcclAllGatherV", "nullptr", "sendBuf", "non-null pointer"}));
         CHK_PTR_NULL(sendBuf);
     }
+    CHK_PRT_RET(
+        sendBuf != nullptr && recvBuf != nullptr && sendBuf == recvBuf,
+        HCCL_ERROR(
+            "[HcclAllGatherV] sendBuf and recvBuf cannot be the same, AllGatherV does not support in-place operation."),
+        HCCL_E_PARA);
     return HCCL_SUCCESS;
 }
 

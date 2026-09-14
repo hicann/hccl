@@ -53,7 +53,7 @@ HcclResult AllGatherVOutPlaceGraphMode(
 
 HcclResult CheckAllGatherVInputPara(
     const HcclComm comm, const void* recvCounts, const void* recvDispls, const aclrtStream stream, void* sendBuf,
-    uint64_t sendCount);
+    uint64_t sendCount, void* recvBuf);
 
 HcclResult CheckAllGatherVRecvAndGetRank(
     const HcclComm comm, const void* recvBuf, const void* recvCounts, u32& rankSize, u32& userRank,
