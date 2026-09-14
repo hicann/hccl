@@ -193,6 +193,9 @@ HcclResult InitEnvConfig()
         return HCCL_SUCCESS;
     }
 
+    HcclDevType deviceType;
+    CHK_RET(HcclGetDeviceType(deviceType));
+
     // 解析hcclDeterministic,是否为确定性计算
     ret = ParseDeterministic();
     RPT_ENV_ERR(
@@ -207,21 +210,23 @@ HcclResult InitEnvConfig()
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
-    // 解析server内通信方式
-    ret = ParseIntraLinkType();
-    RPT_ENV_ERR(
-        ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>(
-            {"PCIE enable: " + std::string(GetEnv("HCCL_INTRA_PCIE_ENABLE"))
-                 + " or ROCE enable: " + std::string(GetEnv("HCCL_INTRA_ROCE_ENABLE")),
-             "HCCL_INTRA_PCIE_ENABLE or HCCL_INTRA_ROCE_ENABLE", "0 or 1 (but not both 1)"}));
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR(
-            "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse intra "
-            "comm type failed. errorno[%d]",
-            HCCL_ERROR_CODE(ret), ret),
-        ret);
+    // 解析server内通信方式, A5不支持HCCL_INTRA_PCIE_ENABLE/HCCL_INTRA_ROCE_ENABLE，不解析不打印
+    if (!shouldGoOutPlace(deviceType)) {
+        ret = ParseIntraLinkType();
+        RPT_ENV_ERR(
+            ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
+            std::vector<std::string>(
+                {"PCIE enable: " + std::string(GetEnv("HCCL_INTRA_PCIE_ENABLE"))
+                     + " or ROCE enable: " + std::string(GetEnv("HCCL_INTRA_ROCE_ENABLE")),
+                 "HCCL_INTRA_PCIE_ENABLE or HCCL_INTRA_ROCE_ENABLE", "0 or 1 (but not both 1)"}));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse intra "
+                "comm type failed. errorno[%d]",
+                HCCL_ERROR_CODE(ret), ret),
+            ret);
+    }
 
     // 解析Entry日志开关
     ret = ParseEntryLogEnable();
@@ -249,32 +254,36 @@ HcclResult InitEnvConfig()
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
-    // 解析超节点内节点间链路选择开关
-    ret = ParseInterLinkType();
-    RPT_ENV_ERR(
-        ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>(
-            {GetEnv("HCCL_INTER_HCCS_DISABLE"), "HCCL_INTER_HCCS_DISABLE", "should be true or false"}));
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR(
-            "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-            "HCCL_INTER_HCCS_DISABLE failed. errorno[%d]",
-            HCCL_ERROR_CODE(ret), ret),
-        ret);
+    // 解析超节点内节点间链路选择开关（仅A3设备）, A5不支持HCCL_INTER_HCCS_DISABLE，不解析不打印
+    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
+        ret = ParseInterLinkType();
+        RPT_ENV_ERR(
+            ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
+            std::vector<std::string>(
+                {GetEnv("HCCL_INTER_HCCS_DISABLE"), "HCCL_INTER_HCCS_DISABLE", "should be true or false"}));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
+                "HCCL_INTER_HCCS_DISABLE failed. errorno[%d]",
+                HCCL_ERROR_CODE(ret), ret),
+            ret);
+    }
 
-    // 解析重执行设置
-    ret = ParseRetryEnable();
-    RPT_ENV_ERR(
-        ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
-        std::vector<std::string>({GetEnv("HCCL_OP_RETRY_ENABLE"), "HCCL_OP_RETRY_ENABLE", "should be 0 or 1"}));
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS,
-        HCCL_ERROR(
-            "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_OP_RETRY_ENABLE failed. "
-            "errorno[%d]",
-            HCCL_ERROR_CODE(ret), ret),
-        ret);
+    // 解析重执行设置（仅A3设备）, A5不支持HCCL_OP_RETRY_ENABLE，不解析不打印
+    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
+        ret = ParseRetryEnable();
+        RPT_ENV_ERR(
+            ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
+            std::vector<std::string>({GetEnv("HCCL_OP_RETRY_ENABLE"), "HCCL_OP_RETRY_ENABLE", "should be 0 or 1"}));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_OP_RETRY_ENABLE failed. "
+                "errorno[%d]",
+                HCCL_ERROR_CODE(ret), ret),
+            ret);
+    }
 
     // 解析执行超时
     ret = ParseExecTimeout();
@@ -309,8 +318,6 @@ HcclResult InitEnvConfig()
         ret);
 
     // 解析算法配置（仅A3设备）, A5走costmodel新流程
-    HcclDevType deviceType;
-    CHK_RET(HcclGetDeviceType(deviceType));
     if (deviceType == HcclDevType::DEV_TYPE_910_93) {
         ret = ParseHcclAlgo();
         RPT_ENV_ERR(
@@ -331,6 +338,7 @@ HcclResult InitEnvConfig()
             static_cast<uint32_t>(deviceType));
     }
 
+    // 解析debug配置
     ret = InitDebugConfigByEnv();
     char* env = std::getenv("HCCL_DEBUG_CONFIG");
     std::string envValue = (env != nullptr) ? std::string(env) : "null";
