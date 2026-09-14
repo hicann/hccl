@@ -194,7 +194,16 @@ CreateNegotiationSubCommAndRegCb(HcclComm comm, const std::string& negTag, u32 r
     HcclCommConfigInit(&subCommConfig);
     subCommConfig.hcclBufferSize = NEGOTIATION_CCL_BUFFER_SIZE;
     subCommConfig.hcclOpExpansionMode = commConfigOpExpansionAicpu;
-    auto nameRet = sprintf_s(subCommConfig.hcclCommName, sizeof(subCommConfig.hcclCommName), "%s", negTag.c_str());
+    // negTag超长时按尾部截断至hcclCommName上限，保留"_negotiation"后缀区分父子通信域名
+    std::string subCommName = negTag;
+    const uint32_t subCommNameMaxLen = sizeof(subCommConfig.hcclCommName) - 1; // 127字节
+    if (subCommName.size() > subCommNameMaxLen) {
+        subCommName = subCommName.substr(subCommName.size() - subCommNameMaxLen);
+        HCCL_WARNING(
+            "[%s] negTag exceeds max length, truncated, negTag[%s], subCommName[%s].", __func__, negTag.c_str(),
+            subCommName.c_str());
+    }
+    auto nameRet = sprintf_s(subCommConfig.hcclCommName, sizeof(subCommConfig.hcclCommName), "%s", subCommName.c_str());
     CHK_PRT_RET(nameRet <= 0, HCCL_ERROR("[%s] sprintf_s for hcclCommName failed.", __func__), HCCL_E_INTERNAL);
 
     HcclResult subRet
