@@ -92,6 +92,7 @@ protected:
     std::vector<ThreadHandle> interThreads_;
     std::map<u32, std::vector<ChannelInfo>> intraLinkMap_;
     std::map<u32, std::vector<ChannelInfo>> interLinkMap_;
+    ParallelChannelPortInfo parallelPortInfo_; // CCU模式下资源阶段采集的端口信息
     std::vector<ThreadHandle> threads_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<std::vector<u32>> intraHierarchyInfo_;

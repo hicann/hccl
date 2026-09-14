@@ -101,6 +101,7 @@ private:
     std::vector<ThreadHandle> interThreads_;
     std::map<u32, std::vector<ChannelInfo>> intraChannelMap_;
     std::map<u32, std::vector<ChannelInfo>> interChannelMap_;
+    ParallelChannelPortInfo parallelPortInfo_; // CCU模式下资源阶段采集的端口信息
     std::vector<ThreadHandle> threads_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     double multipleDimensionSplitRatio_{0.5};

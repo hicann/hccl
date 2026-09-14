@@ -438,9 +438,24 @@ struct CcuFastLaunchCtx {
     }
 };
 
+// 并行执行器数据切分公式所需的链路端口信息。
+// AICPU/DPU模式下执行时可直接从ChannelInfo提取，CCU模式下资源上下文中没有ChannelInfo，
+// 由各executor在CalcRes阶段从建链请求中采集，随资源上下文透传到执行阶段。
+struct ParallelChannelPortInfo {
+    bool isValid = false;            // 端口信息是否采集成功，无效时执行侧回退到从ChannelInfo提取
+    bool isInterPod = false;         // Server间是否为双Channel、跨Die的POD链路
+    uint64_t intraPortGroupSize = 0; // 机内首个非空Channel组的原始端口和
+    uint64_t interPortGroupSize = 0; // 机间首个非空Channel组的原始端口和
+};
+
+static_assert(
+    std::is_trivially_copyable<ParallelChannelPortInfo>::value,
+    "ParallelChannelPortInfo must be trivially copyable for serialization");
+
 // A5用了cntNotify
 struct AlgResourceRequest {
     double dieSplitRatio = 0.0;
+    ParallelChannelPortInfo parallelPortInfo;
     u32 notifyNumOnMainThread = 0;
     u32 slaveThreadNum = 0;
     std::vector<u32> notifyNumPerThread;
@@ -539,9 +554,11 @@ struct AlgResourceCtxSerializable {
     // ccu的
     std::vector<u32> ccuKernelNum;
     std::vector<CcuKernelHandle> ccuKernels;
+    ParallelChannelPortInfo parallelPortInfo; // CCU模式下资源阶段采集的端口信息
     u32 topoInfoSeqSize = 0;
     TopoInfoWithNetLayerDetails topoInfo; // 提取的拓扑信息
 
+    // 该上下文只在同一套HCCL host/device组件内生成、缓存和消费，不作为跨版本持久化协议。
     std::vector<char> Serialize()
     {
         BinaryStream binaryStream;
@@ -568,6 +585,7 @@ struct AlgResourceCtxSerializable {
         binaryStream << ccuKernelNum;
         binaryStream << ccuKernels;
         binaryStream << dieSplitRatio;
+        binaryStream << parallelPortInfo;
         std::vector<char> seq = topoInfo.Serialize();
         topoInfoSeqSize = seq.size();
         binaryStream << topoInfoSeqSize;
@@ -604,6 +622,7 @@ struct AlgResourceCtxSerializable {
         binaryStream >> ccuKernelNum;
         binaryStream >> ccuKernels;
         binaryStream >> dieSplitRatio;
+        binaryStream >> parallelPortInfo;
         binaryStream >> topoInfoSeqSize;
         size_t startPos = data.size() - topoInfoSeqSize;
         std::vector<char> tailData(data.begin() + startPos, data.end());
