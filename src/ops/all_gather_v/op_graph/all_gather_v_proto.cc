@@ -60,6 +60,21 @@ static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* conte
         tempSum += recvCounts[i];
     }
 
+    int64_t otherDims = 1;
+    for (size_t i = 1; i < inputShape->GetDimNum(); i++) {
+        if (inputShape->GetDim(i) == ge::UNKNOWN_DIM) {
+            *outputShape = *inputShape;
+            outputShape->SetDim(0, ge::UNKNOWN_DIM);
+            OP_LOGI(opName, "the op infershape end, shape first dim is unknown.");
+            return GRAPH_SUCCESS;
+        }
+        otherDims *= inputShape->GetDim(i);
+    }
+    if (otherDims == 0) {
+        CUBE_INNER_ERR_REPORT(opName, "otherDims is 0, input shape may contain zero dim.");
+        return GRAPH_FAILED;
+    }
+
     // 计算outDim = max(recvDisp[i] + recvCounts[i]) / otherDims
     int64_t outDim = 0;
     for (size_t i = 0; i < recvCounts.size(); i++) {
@@ -68,9 +83,7 @@ static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* conte
             outDim = tempRecvSum;
         }
     }
-    for (size_t i = 1; i < inputShape->GetDimNum(); i++) {
-        outDim = outDim / inputShape->GetDim(i);
-    }
+    outDim = outDim / otherDims;
 
     *outputShape = *inputShape;
     outputShape->SetDim(0, outDim);
