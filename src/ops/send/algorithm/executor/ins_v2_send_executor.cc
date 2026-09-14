@@ -10,6 +10,7 @@
 
 #include "ins_v2_send_executor.h"
 #include "alg_data_trans_wrapper.h"
+#include "config_log.h"
 #include "hccl_aiv_utils.h"
 #include "cost_model.h"
 #include "alg_attrs_registry.h"
@@ -94,7 +95,7 @@ HcclResult InsV2SendExecutor::CalNumBlocks(u32& numBlocks, u64 dataSize, u32 num
     }
 
     numBlocks = numBlocksLimit;
-    HCCL_INFO("[InsV2SendExecutor] Actually use core num[%u]", numBlocks);
+    HCCL_CONFIG_INFO(HCCL_ALG, "[InsV2SendExecutor] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
 
     return HcclResult::HCCL_SUCCESS;
 }
