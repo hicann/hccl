@@ -41,12 +41,11 @@ std::vector<CostModelParam> CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcCostCoef
                       param.portNum[0];
     param.netType = CommTopo::COMM_TOPO_CLOS;
     int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
-    int kernelNum = (0.4 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2) / 2;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    // int kernelNum = 4 * log2R + 1;
+    int kernelNum = (8 * static_cast<int>(param.rankSize) + RTT1 * log2R) / 5;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

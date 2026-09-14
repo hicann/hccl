@@ -49,25 +49,55 @@ InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>:
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     (void)comm;
-    (void)algName;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    const AlgAttrs* attrs = nullptr;
+#endif
+    if (attrs == nullptr) {
+        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        return {};
+    }
 
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+        if (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED) {
+            return {{0.0f, 0.0f, 1.0f, 0.0f}};
+        } else if (attrs->engine == OpExecuteConfig::AICPU || attrs->engine == OpExecuteConfig::AICPU_TS) {
+            return {{0.0f, 0.0f, 3.0f, 0.0f}};
+        }
     }
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
+
     u32 rankSize = topoInfo->userRankSize;
-    bool isPod = false;
-    // 第1个模板走mesh拓扑, 第2个模板走clos拓扑
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    std::vector<u32> portNumLevel0 = {1};
-    std::vector<u32> portNumLevel1 = {4};
-    HCCL_DEBUG("[InsV2AllToAllConcurrentExecutor] CalcCostCoeff rankSize:%d", rankSize);
-    // 与SplitSendRecvData同口径: 数据按mesh/clos带宽比切分, 两路并发
+    bool isPod = topoInfo->isPod;
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][1]);
+
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+
+    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+
+    HCCL_INFO(
+        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1));
+
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
     } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+        localParam.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     }
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
@@ -91,7 +121,25 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 AlgNetMeta InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetAlgNetMeta(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    (void)algName;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        return {};
+    }
+
     u32 rankSize = topoInfo->userRankSize;
     AlgNetMeta meta;
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
@@ -102,17 +150,17 @@ AlgNetMeta InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
         meta.rankSizes = {rankSize};
         return meta;
     }
-    // alltoall 两路并发: 第1个模板走mesh, 第2个模板走clos
-    // TODO: CommTopo netTypeLevel0 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[0]);
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    // TODO: CommTopo netTypeLevel1 = GetNetTypeLevel(topoInfo, algHierarchyInfo.index[1]);
-    CommTopo netTypeLevel1 = CommTopo::COMM_TOPO_CLOS;
-    // 与 CalcCostCoeff 同口径构造 localParam 复用 GetParallelDataSplit 得到 mesh/clos 切分比
+    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    u32 physIdxLevel1 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][1]);
+
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
+    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
     } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+        localParam.engine = CommEngine::COMM_ENGINE_AICPU_TS;
     }
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
@@ -414,13 +462,13 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 void InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
     const OpParam& param, std::vector<float>& splitDataSize) const
 {
-    // 与SplitSendRecvData同口径: 按mesh/clos带宽比切分, CCU用MESH_BW/CLOS_BW, AICPU用MESH_BW_AICPU/CLOS_BW_AICPU
+    // 与SplitSendRecvData同口径: 按mesh/clos带宽比切分, CCU用MESH_BW/CLOS_BW, AICPU_TS用MESH_BW_AICPU/CLOS_BW_AICPU
     u32 factorMesh;
     u32 factorClos;
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         factorMesh = MESH_BW;
         factorClos = CLOS_BW;
-    } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
+    } else if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
         factorMesh = MESH_BW_AICPU;
         factorClos = CLOS_BW_AICPU;
     } else {

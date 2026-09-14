@@ -53,7 +53,11 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
         return {};
     }
     if (attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLV || attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
-        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+        if (attrs->engine == OpExecuteConfig::CCU_MS || attrs->engine == OpExecuteConfig::CCU_SCHED) {
+            return {{0.0f, 0.0f, 1.0f, 0.0f}};
+        } else if (attrs->engine == OpExecuteConfig::AICPU || attrs->engine == OpExecuteConfig::AICPU_TS) {
+            return {{0.0f, 0.0f, 3.0f, 0.0f}};
+        }
     }
     return {};
 }

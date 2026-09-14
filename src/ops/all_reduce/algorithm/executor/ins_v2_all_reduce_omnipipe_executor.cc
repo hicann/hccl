@@ -338,7 +338,7 @@ std::vector<CostModelParam> InsV2AllReduceOmniPipeExecutor<
     CostModelParam costParam{};
     costParam.A = static_cast<float>(
         (rsCost.transferCoeff + agCost.transferCoeff) / topoInfo->userRankSize / GBPS_TO_BYTES_PER_SECOND);
-    const bool symmetricMemory = std::string(algName) == "AicpuAllReducePipeLine";
+    const bool symmetricMemory = param.supportSymmetricMemory;
     const float copyRatio = symmetricMemory ? 1.0f / topoInfo->userRankSize : 2.0f;
     CostModelManager::Global()->CalcLocalCopyParams(copyRatio, EngineType::AICPU, costParam.B);
     costParam.C = rsCost.syncCost + agCost.syncCost;

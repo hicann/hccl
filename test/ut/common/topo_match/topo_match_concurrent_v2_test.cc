@@ -23,35 +23,32 @@ protected:
     TopoMatchConcurrentV2 matcher_;
 };
 
-// C1: 1 层 effIdx，两组同 rank
-TEST_F(TopoMatchConcurrentV2Test, SingleLayer)
+// C1: 1 层 mesh（满 rank）但无上层超集层 → NOT_SUPPORT
+TEST_F(TopoMatchConcurrentV2Test, SingleMeshLayerNoUpper)
 {
-    auto topo = MakeTopoInfo(3, 8, {MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8})});
+    auto topo = MakeTopoInfo(3, 8, {MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH)});
     AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT});
     AlgHierarchyInfoForAllLevel info;
-    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    ASSERT_EQ(info.infos.size(), 1u);
-    ASSERT_EQ(info.infos[0].size(), 2u);
-    ASSERT_EQ(info.infos[0][0], Range(8));
-    ASSERT_EQ(info.infos[0][1], Range(8));
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
 }
 
-// C2: 2 层 effIdx，physIdx 指向最高有效层
-TEST_F(TopoMatchConcurrentV2Test, TwoLayers)
+// C2: 2 层 effIdx，下层 mesh + 上层 clos（均满 rank），physIdx={mesh, clos}
+TEST_F(TopoMatchConcurrentV2Test, TwoLayersMeshAndClos)
 {
     auto topo = MakeTopoInfo(
-        3, 16,
+        3, 8,
         {
-            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}),
-            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16}),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS),
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT});
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    ASSERT_EQ(info.infos[0][0], Range(16));
-    ASSERT_EQ(info.infos[0][1], Range(16));
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    ASSERT_EQ(info.infos[0][0], Range(8));
+    ASSERT_EQ(info.infos[0][1], Range(8));
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0].size(), 2u);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][1], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
 }
 
 // C3: 有效层 > 2 → NOT_SUPPORT
@@ -96,34 +93,95 @@ TEST_F(TopoMatchConcurrentV2Test, ZeroUserRankSize)
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_INTERNAL);
 }
 
-// C7: 引擎过滤排除 HOST 层（非 hostdpu）
+// C7: 引擎过滤排除 HOST 层（非 hostdpu），mesh + clos 均在 device 层
 TEST_F(TopoMatchConcurrentV2Test, EngineExcludesHostLayer)
 {
     auto topo = MakeTopoInfo(
         3, 8,
         {
             MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_HOST),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH, ENDPOINT_LOC_TYPE_DEVICE),
             MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_DEVICE),
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT}, OpExecuteConfig::AICPU_TS);
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    // HOST 层被排除，effIdx={1}，physIdx={1}
+    // HOST 层被排除，effIdx={1,2}，physIdx={mesh=1, clos=2}
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0].size(), 2u);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][1], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
 }
 
-// C8: hostdpu 保留 HOST 层
+// C8: hostdpu 保留 HOST 层，mesh 落在 HOST 层
 TEST_F(TopoMatchConcurrentV2Test, HostdpuKeepsHostLayer)
 {
     auto topo = MakeTopoInfo(
         3, 8,
         {
-            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_HOST),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH, ENDPOINT_LOC_TYPE_HOST),
             MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_DEVICE),
         });
     AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT}, OpExecuteConfig::HOSTCPU);
     AlgHierarchyInfoForAllLevel info;
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
-    // HOST 层保留，effIdx={0,1}，physIdx=effIdx.back()={1}
-    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    // HOST 层保留，effIdx={0,1}，physIdx={mesh=0, clos=1}
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0].size(), 2u);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][1], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+}
+
+// C9: algoTypes[0] 非 Mesh 类 → NOT_SUPPORT
+TEST_F(TopoMatchConcurrentV2Test, NonMeshAlgoNotSupport)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::NHR});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
+}
+
+// C10: algoTypes 为空 → NOT_SUPPORT
+TEST_F(TopoMatchConcurrentV2Test, EmptyAlgoTypesNotSupport)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS),
+        });
+    AlgAttrs profile = MakeProfile({});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
+}
+
+// C11: mesh 层 localRanks 不足 userRankSize → 不命中 → NOT_SUPPORT
+TEST_F(TopoMatchConcurrentV2Test, MeshLayerNotFullRankSize)
+{
+    auto topo = MakeTopoInfo(
+        3, 16,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8, 8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16}, true, COMM_TOPO_CLOS),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
+}
+
+// C12: mesh 层在最高有效层，其上无超集层 → NOT_SUPPORT
+TEST_F(TopoMatchConcurrentV2Test, MeshAtTopNoUpper)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCURRENT});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
 }

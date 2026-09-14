@@ -309,7 +309,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     }
     costParam.A = static_cast<float>(transferCoeff / GBPS_TO_BYTES_PER_SECOND);
 
-    const bool symmetricMemory = std::string(algName) == "AicpuAllGatherPipeLine";
+    const bool symmetricMemory = param.supportSymmetricMemory;
     const float copyRatio = symmetricMemory ? 1.0f : static_cast<float>(topoInfo->userRankSize + 1);
     CostModelManager::Global()->CalcLocalCopyParams(copyRatio, EngineType::AICPU, costParam.B);
 

@@ -15,6 +15,7 @@
 #include "topo_match_base.h"
 #include "topo_match_1d.h"
 #include "topo_match_ubx.h"
+#include "topo_match_concurrent_v2.h"
 
 namespace ops_hccl {
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>

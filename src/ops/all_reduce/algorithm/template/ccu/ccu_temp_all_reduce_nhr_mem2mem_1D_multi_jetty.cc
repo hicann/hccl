@@ -22,9 +22,9 @@ constexpr u32 PORT_NUM = 1;
 std::vector<CostModelParam> CcuTempAllReduceNhrMem2Mem1DMultiJetty::CalcCostCoeff(CalcCostCoeffParam param)
 {
     HCCL_DEBUG("[CcuTempAllReduceNHRMem2Mem1D] CalcCostCoeff.");
-    param.netType = CommTopo::COMM_TOPO_CLOS;
-    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = 8;
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
     int kernelNum = 2 * param.rankSize;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {

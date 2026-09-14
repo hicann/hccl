@@ -22,7 +22,7 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1dMultiJetty::CalcCostCoeff(CalcC
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int taskNum = param.rankSize;
+    int kernelNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 10 : 5;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -33,7 +33,7 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1dMultiJetty::CalcCostCoeff(CalcC
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, C);
+    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
     HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);

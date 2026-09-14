@@ -54,7 +54,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
             if (topoInfo->level0PcieMix || dataSize < UBX_BC_CONCURRENT_DATA_SIZE) {
                 selectAlgName = "CcuMSBroadcastSoleMesh";
             } else {
-                selectAlgName = "CcuMsBroadcastConcurMeshNHR";
+                selectAlgName = "CcuMSBroadcastConcurMeshNHR";
             }
         } else { // MS 不支持
             HCCL_WARNING(

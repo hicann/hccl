@@ -477,7 +477,7 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     // DPU算法不做cost建模，直接返回固定系数
-    if (algName != nullptr && strstr(algName, "Dpu") != nullptr) {
+    if (algName != nullptr && std::string(algName).find("Dpu") != std::string::npos) {
         return {{0.0f, 0.0f, 1.0f, 0.0f}};
     }
 
@@ -632,10 +632,16 @@ REGISTER_ALG_ATTRS(DpuAllToAllVCSoleMesh, topo.isSupportLevel0PcieMix = true; to
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAlltoAllMesh1D);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-                   topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        if (t->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return t->level0PcieMix && AutoSelectorBase::IsLayerAllConnetedWithTopo(t, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiLink, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1D2Die);

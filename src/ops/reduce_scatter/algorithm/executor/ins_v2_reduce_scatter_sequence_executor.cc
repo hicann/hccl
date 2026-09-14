@@ -155,11 +155,15 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
                             physIdxLevel0;
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
+    u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1, 1};
+    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
     return meta;
 }
 
@@ -404,7 +408,6 @@ REGISTER_ALG_ATTRS(
     DpuReduceScatterSequenceMeshMesh,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
-    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     // MESH_1D_CLOS 非pcieMix 且每框多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {

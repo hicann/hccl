@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_reduce_concurrent_executor.h"
+#include "alg_attrs_registry.h"
 #include "reduce_mesh_1D.h"
 #include "reduce_mesh_1D_two_shot.h"
 #include "reduce_nhr.h"
@@ -428,6 +429,12 @@ HcclResult InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceConcurMeshNHR, InsV2ReduceConcurrentExecutor, TopoMatchUBX,
     ReduceMesh1DTwoShot, ReduceNHR);
+REGISTER_ALG_ATTRS(
+    AicpuReduceConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+    });
 #endif
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

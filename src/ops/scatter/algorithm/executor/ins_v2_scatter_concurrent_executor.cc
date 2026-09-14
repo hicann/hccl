@@ -67,7 +67,7 @@ InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
     bool isPod = topoInfo->isPod;
     const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
     u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
-    u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
+    u32 physIdxLevel1 = static_cast<u32>(physIdx[0][1]);
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
@@ -78,13 +78,15 @@ InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, portNumLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
-        portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
-    // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
+        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1));
+
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
+        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
+                                         OpExecuteConfig::CCU_MS :
+                                         OpExecuteConfig::CCU_SCHED;
     } else {
         localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }
@@ -131,14 +133,16 @@ AlgNetMeta InsV2ScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     }
     const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
     u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
-    u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
+    u32 physIdxLevel1 = static_cast<u32>(physIdx[0][1]);
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     u32 rankSize = topoInfo->userRankSize;
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
+        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
+                                         OpExecuteConfig::CCU_MS :
+                                         OpExecuteConfig::CCU_SCHED;
     } else {
         localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }
@@ -583,9 +587,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     AicpuScatterConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+        return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 #endif
 #ifndef AICPU_COMPILE
@@ -596,9 +598,7 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
 REGISTER_ALG_ATTRS(
     CcuSchedScatterConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
-        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-        return isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO;
+        return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 #endif
 #endif

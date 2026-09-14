@@ -17,8 +17,10 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     CommTopo netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleNHR") == 0));
     // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int portNum = isSingleChannelNHR ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    portNum = param.isPod ? portNum : param.portNum[0];
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && !isSingleChannelNHR) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
+
     int kernelNum = 15;
     int taskNum = CostModelManager::CalcTransTaskNum((log2(param.rankSize) + 1)) * 1.5
                   + CostModelManager::CalcSyncTaskNum((log2(param.rankSize) + 1)) * 2;

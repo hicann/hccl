@@ -67,28 +67,27 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     }
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = topoInfo->isPod;
-    // Concurrent 类匹配只填单层 physicalIdx, 层数不足时 level1 复用 [0][0] 兜底
     u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
-    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
-                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
-                            physIdxLevel0;
+    u32 physIdxLevel1 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][1]);
+
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
         HCCL_WARNING("[CalcCostCoeff] portNum is empty");
         return {};
     }
+
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, portNumLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
-        portNumLevel0.empty() ? 0 : portNumLevel0[0], portNumLevel1.empty() ? 0 : portNumLevel1[0],
-        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
-    // 编译期判断引擎类型,构造 param 复用 GetParallelDataSplit
+        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
+        static_cast<int>(netTypeLevel1));
+
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName) == "CcuMSReduceScatterConcurMeshNHRMultiLink") ?
+        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
                                          OpExecuteConfig::CCU_MS :
                                          OpExecuteConfig::CCU_SCHED;
     } else {
@@ -135,18 +134,19 @@ AlgNetMeta InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
         return {};
     }
-    // Concurrent 类匹配只填单层 physicalIdx, 层数不足时 level1 复用 [0][0] 兜底
+
     u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
-    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
-                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
-                            physIdxLevel0;
+    u32 physIdxLevel1 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][1]);
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     u32 rankSize = topoInfo->userRankSize;
+
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = OpExecuteConfig::CCU_SCHED;
+        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
+                                         OpExecuteConfig::CCU_MS :
+                                         OpExecuteConfig::CCU_SCHED;
     } else {
         localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }

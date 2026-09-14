@@ -17,8 +17,7 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
 {
     param.netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuAllGatherSoleNHR") == 0));
-    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2
-                   && !isSingleChannelNHR) ?
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && !isSingleChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
     int log2R = 0;

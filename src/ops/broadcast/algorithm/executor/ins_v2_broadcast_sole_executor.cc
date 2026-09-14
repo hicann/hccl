@@ -376,9 +376,15 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
-REGISTER_ALG_ATTRS(AicpuBroadcastSoleNHRMultiLink,
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2);
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
+            return false;
+        }
+        return true;
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHRMultiLink, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
@@ -404,7 +410,7 @@ REGISTER_ALG_ATTRS(
     topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            return topo->level0PcieMix;
+            return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
         return true;
     };
@@ -419,7 +425,7 @@ REGISTER_ALG_ATTRS(
     topo.maxTopoLevelNum = 1; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            return topo->level0PcieMix;
+            return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
         return true;
     };

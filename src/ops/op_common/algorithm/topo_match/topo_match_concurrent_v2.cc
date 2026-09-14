@@ -18,6 +18,43 @@ TopoMatchConcurrentV2::TopoMatchConcurrentV2() {}
 
 TopoMatchConcurrentV2::~TopoMatchConcurrentV2() {}
 
+// ConcurrentV2 专用：Mesh 类算法取最低覆盖全 rank 的 Mesh 物理层 + 其上层超集层；非 Mesh 或无上层则 not support
+static HcclResult ResolveConcurrentPhysicalIdx(
+    const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx, const AlgAttrs& algAttrs,
+    u32 userRankSize, u32 myRank, std::vector<std::vector<PhysicalLevelIndex>>& physicalIdxForAlgoLevels)
+{
+    if (algAttrs.algoTypes.empty()) {
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], algAttrs.algoTypes is empty.", myRank);
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
+    if (!IsMeshAlgo(algAttrs.algoTypes[0])) {
+        HCCL_INFO(
+            "[TopoMatchConcurrentV2] Rank [%u], algAttrs.algoTypes[0] is [%u], not mesh.", myRank,
+            static_cast<u32>(algAttrs.algoTypes[0]));
+        return HcclResult::HCCL_E_NOT_SUPPORT;
+    }
+    int32_t meshPos = INVALID_PHYSICAL_LEVEL_IDX;
+    for (u32 k = 0; k < effIdx.size(); k++) {
+        if (physicalLevels[effIdx[k]].topoType == COMM_TOPO_1DMESH
+            && physicalLevels[effIdx[k]].localRanks.size() == userRankSize) {
+            meshPos = static_cast<int32_t>(k);
+            break;
+        }
+    }
+    CHK_PRT_RET(
+        meshPos == INVALID_PHYSICAL_LEVEL_IDX,
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], Mesh algo but no mesh topo layer, not support.", myRank),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    int32_t upperPos = FindUpperEncompassingLevel(physicalLevels, effIdx, static_cast<u32>(meshPos));
+    CHK_PRT_RET(
+        upperPos == INVALID_PHYSICAL_LEVEL_IDX,
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], mesh layer no upper encompassing layer, not support.", myRank),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    physicalIdxForAlgoLevels
+        = {{static_cast<PhysicalLevelIndex>(effIdx[meshPos]), static_cast<PhysicalLevelIndex>(effIdx[upperPos])}};
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult TopoMatchConcurrentV2::MatchTopo(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
@@ -53,15 +90,14 @@ HcclResult TopoMatchConcurrentV2::MatchTopo(
     algHierarchyInfo.infos[0][0] = rankIds;
     algHierarchyInfo.infos[0][1] = rankIds;
 
-    // physicalIdx 指向最高有效层
-    u32 highestIdx = effIdx.back();
-    if (physicalLevels[highestIdx].localRanks.size() != topoInfo->userRankSize) {
-        HCCL_INFO(
-            "[TopoMatchConcurrentV2] Rank [%u], highest layer localRanks[%zu] != userRankSize[%u], not support.",
-            myRank, physicalLevels[highestIdx].localRanks.size(), topoInfo->userRankSize);
+    // Mesh 类算法：取最低覆盖全 rank 的 Mesh 物理层 + 其上层超集层；否则 not support
+    if (ResolveConcurrentPhysicalIdx(
+            physicalLevels, effIdx, algAttrs, topoInfo->userRankSize, myRank, algHierarchyInfo.physicalIdxForAlgoLevels)
+        != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], get physical index failed.", myRank);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
-    algHierarchyInfo.physicalIdxForAlgoLevels = {{static_cast<PhysicalLevelIndex>(highestIdx)}};
+
     HCCL_INFO(
         "[TopoMatchConcurrentV2] Rank [%u], rankSize[%u], physicalIdxForAlgoLevels: [%s].", myRank,
         topoInfo->userRankSize, FormatPhysicalIdxForAlgoLevels(algHierarchyInfo.physicalIdxForAlgoLevels).c_str());
