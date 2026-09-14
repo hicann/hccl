@@ -759,6 +759,10 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
+
+    // AICPU 按序下发
+    CHK_RET(HcclOrderLaunchNotifyRecord(param));
+
     std::string algName = std::string(param->algName);
     // 根据算法名字获取executor
     if (ops_hccl::IsOpsV2(param->algName, param->deviceType)) {

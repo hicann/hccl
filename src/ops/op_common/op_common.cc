@@ -1071,7 +1071,27 @@ HcclResult HcclAicpuKernelEntranceLaunch(
                   ToKernelLaunchTimeout(AddAicpuTimeoutOffset(param.opConfig.execTimeout, KERNEL_TIMEOUT_OFFSET));
         kernelLaunchCfg.timeOut = kernelLaunchTimeout;
 
+        // OrderLaunch第一阶段
+        HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P add Order Launch");
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        OrderLaunchMode launchMode = param.isCapture ?
+                                         OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH :
+                                         (param.opMode == OpMode::OFFLOAD ? OrderLaunchMode::ORDER_LAUNCH_GE :
+                                                                            OrderLaunchMode::ORDER_LAUNCH_OPBASE);
+        HcclRtEventGuard event0Guard;
+        HcclRtEventGuard event1Guard;
+        if (launchMode == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
+            CHK_RET(event0Guard.Create());
+            CHK_RET(event1Guard.Create());
+        }
+        CHK_RET(HcclOrderLaunchToOrderStream(
+            comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX, execTimeout, launchMode, event0Guard.Get()));
+
         CHK_RET(HcclAicpuKernelLaunch(comm, &opInfo, &funcInfo, aicpuThreadHandle, param.stream, &kernelLaunchCfg));
+
+        // OrderLaunch第二阶段
+        CHK_RET(HcclOrderLaunchToKernelStream(
+            comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX, execTimeout, launchMode, event1Guard.Get()));
 
         HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P launch success, algTag[%s]", param.algTag);
         return HCCL_SUCCESS;
