@@ -25,6 +25,7 @@
     do {                                                                                       \
         if (ret != ACL_SUCCESS) {                                                              \
             printf("acl interface return err %s:%d, retcode: %d \n", __FILE__, __LINE__, ret); \
+            g_errCode.store(ret);                                                              \
             return ret;                                                                        \
         }                                                                                      \
     } while (0)
@@ -33,6 +34,7 @@
     do {                                                                                        \
         if (ret != HCCL_SUCCESS) {                                                              \
             printf("hccl interface return err %s:%d, retcode: %d \n", __FILE__, __LINE__, ret); \
+            g_errCode.store(ret);                                                               \
             return ret;                                                                         \
         }                                                                                       \
     } while (0)
@@ -42,6 +44,8 @@ struct ThreadContext {
     uint32_t device;
     uint32_t devCount;
 };
+
+static std::atomic<int> g_errCode{0};
 
 int Sample(void* arg)
 {
@@ -150,5 +154,10 @@ int main()
     // 释放资源
     ACLCHECK(aclrtFreeHost(rootInfoBuf)); // 释放 Host 内存
     ACLCHECK(aclFinalize());              // 设备去初始化
+    if (g_errCode.load() != 0) {
+        std::cout << "P2PCustom test failed, retcode: " << g_errCode.load() << std::endl;
+        return g_errCode.load();
+    }
+    std::cout << "P2PCustom test completed successfully" << std::endl;
     return 0;
 }

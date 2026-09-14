@@ -30,10 +30,16 @@ target_link_directories(${PROJECT_NAME} PRIVATE
     ${ASCEND_CANN_PACKAGE_PATH}/lib64
 )
 
+if(ENGINE_TYPE STREQUAL "aicpu")
+    set(CUSTOM_OP_LIB hccl_custom_${OP_NAME}_${ENGINE_TYPE})
+else()
+    set(CUSTOM_OP_LIB hccl_custom_${OP_NAME})
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ascendcl
     hccl
-    hccl_custom_${OP_NAME}
+    ${CUSTOM_OP_LIB}
     ${MPI_LIB}
 )
 
