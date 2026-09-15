@@ -95,6 +95,7 @@ public:
             // 把所有数据放到cclBuffer之后，开始本地做reduce
             // 前面做过数据搬运的core现在是空闲状态，顺路帮忙做一下reduce
             if (targetRank == 0) {
+                WaitFlag(rank_, coreIndex, curTag);
                 uint64_t usrOutOffset = output_ + innerDispls * sizeof(T);
                 for (int index = 0; index < rankSize_; index++) {
                     // 按照顺序把数据reduce 到 output
