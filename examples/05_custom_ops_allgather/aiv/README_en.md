@@ -63,6 +63,9 @@ This sample provides a CMake-based build process.
 Run the following commands in the sample root directory:
 
 ```bash
+// A2/A3
+bash build.sh --aiv_arch=220 --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
+// A5
 bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
 ```
 

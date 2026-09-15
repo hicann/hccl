@@ -13,7 +13,8 @@
 
 #include <cstdint>
 
-constexpr uint32_t MAX_RANK_SIZE = 8;
+constexpr uint32_t MAX_RANK_SIZE = 16;
+constexpr uint32_t MAX_RANK_SIZE_A3 = 768; // 超节点内最大卡数（A3），GM_IN/GM_OUT 数组大小
 
 struct ExtraArgs {
     uint64_t sendCounts[MAX_RANK_SIZE] = {};

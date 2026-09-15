@@ -126,7 +126,7 @@ int Sample(void* arg)
 
     // 初始化集合通信域
     HcclComm hcclComm;
-    HCCLCHECK(HcclCommInitRootInfo(rankSize, ctx->rootInfo, device, &hcclComm));
+    HCCLCHECK(HcclCommInitRootInfo(rankSize, ctx->rootInfo, rank, &hcclComm));
     Log(rank, "HCCL Comm Initialized");
 
     uint64_t dataLen = ctx->dataLen;

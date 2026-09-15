@@ -53,6 +53,7 @@ ENABLE_CUSTOM="off"
 CUSTOM_OPS_NAME=""
 CUSTOM_OPS_PATH=""
 CUSTOM_OPS_VENDOR=""
+AIV_CCE_ARCH=""
 
 if [ "${USER_ID}" != "0" ]; then
     DEFAULT_TOOLKIT_INSTALL_DIR="${HOME}/Ascend/ascend-toolkit/latest"
@@ -719,6 +720,9 @@ function usage() {
   echo "                   Set custom ops name to <OPS>"
   echo "    --vendor=<VENDOR>"
   echo "                   Set custom ops vendor to <VENDOR>"
+  echo "    --aiv_arch=<ARCH>"
+  echo "                   Set AIV kernel ccec arch (220/dav-c220-vec for A2/A3,"
+  echo "                   310/dav-c310-vec for 950PR/950DT)"
   echo "    --experimental"
   echo "                   Enable experimental features"
   echo "    --static"
@@ -921,6 +925,20 @@ while [[ $# -gt 0 ]]; do
         ENABLE_CUSTOM="on"
         shift
         ;;
+    --aiv_arch=*)
+        OPTARG=$1
+        AIV_CCE_ARCH="${OPTARG#*=}"
+        case "${AIV_CCE_ARCH}" in
+            220) AIV_CCE_ARCH="dav-c220-vec" ;;
+            310) AIV_CCE_ARCH="dav-c310-vec" ;;
+            dav-c220-vec|dav-c310-vec) ;;
+            *)
+            log "Error: --aiv_arch only supports 220/310/dav-c220-vec/dav-c310-vec"
+            exit 1
+            ;;
+        esac
+        shift
+        ;;
     *)
         log "Error: Undefined option: $1"
         usage
@@ -958,6 +976,10 @@ fi
 
 if [[ -n "${RULE_LAUNCH_ARG}" ]]; then
     CUSTOM_OPTION="${CUSTOM_OPTION} -DRULE_LAUNCH=${RULE_LAUNCH_ARG}"
+fi
+
+if [[ -n "${AIV_CCE_ARCH}" ]]; then
+    CUSTOM_OPTION="${CUSTOM_OPTION} -DAIV_CCE_ARCH=${AIV_CCE_ARCH}"
 fi
 
 if [ -n "${ascend_package_path}" ];then

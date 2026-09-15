@@ -65,6 +65,10 @@ source /usr/local/Ascend/cann/set_env.sh
 在根目录下执行以下命令：
 
 ```bash
+// A2/A3
+bash build.sh --aiv_arch=220 --vendor=cust --ops=reduce_scatter_aiv --custom_ops_path=./examples/06_custom_ops_reduce_scatter/aiv
+
+// A5
 bash build.sh --vendor=cust --ops=reduce_scatter_aiv --custom_ops_path=./examples/06_custom_ops_reduce_scatter/aiv
 ```
 > 其中：
