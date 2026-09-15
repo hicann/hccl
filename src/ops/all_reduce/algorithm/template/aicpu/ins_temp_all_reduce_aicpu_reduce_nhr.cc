@@ -107,13 +107,13 @@ HcclResult InsTempAllReduceAicpuReduceNHR::KernelRun(
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     HCCL_INFO(
-        "[KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize, count_,
-        DATATYPE_SIZE_TABLE[dataType_]);
+        "[InsTempAllReduceAicpuReduceNHR][KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize,
+        count_, DATATYPE_SIZE_TABLE[dataType_]);
 
     const std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     HCCL_DEBUG(
-        "[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_, channels.size(),
-        channels.begin()->first);
+        "[InsTempAllReduceAicpuReduceNHR][Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_,
+        channels.size(), channels.begin()->first);
 
     bool isPcieProtocol = IsPcieProtocol(channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                    // 是否使用Read模式

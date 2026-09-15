@@ -221,7 +221,7 @@ std::vector<CostModelParam> InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemp
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2AllGatherVSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -229,7 +229,7 @@ std::vector<CostModelParam> InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemp
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     if (portNumLevel0.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllGatherVSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
@@ -257,7 +257,8 @@ AlgNetMeta InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetM
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2AllGatherVSoleExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
         return {};
     }
     u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;

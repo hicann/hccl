@@ -118,8 +118,8 @@ InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1));
+        "[InsV2AllGatherConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {

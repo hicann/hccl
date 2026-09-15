@@ -64,7 +64,7 @@ std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTempl
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2AllReduceSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -74,12 +74,12 @@ std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTempl
     std::vector<u32> portNumLevel0
         = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     if (portNumLevel0.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllReduceSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
-        static_cast<int>(netTypeLevel0));
+        "[InsV2AllReduceSoleExecutor][CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize,
+        portNumLevel0, static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod});
@@ -105,7 +105,8 @@ AlgNetMeta InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2AllReduceSoleExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;

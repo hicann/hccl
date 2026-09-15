@@ -312,7 +312,9 @@ HcclResult InsTempReduceScatterAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps,
         stepInfo.txSliceIdxs.push_back(txSliceIdx);
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
-        HCCL_DEBUG("[ReduceScatterAicpu][GetStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
+        HCCL_DEBUG(
+            "[InsTempReduceScatterAicpuReduceNHR][ReduceScatterAicpu][GetStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]",
+            i, txSliceIdx, rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;

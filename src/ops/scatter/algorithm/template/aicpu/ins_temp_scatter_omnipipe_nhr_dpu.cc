@@ -76,7 +76,7 @@ HcclResult InsTempScatterOmniPipeNHRDpu::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     if (templateRankSize_ == 1) {
-        HCCL_DEBUG("templateRankSize_ ==1");
+        HCCL_DEBUG("[InsTempScatterOmniPipeNHRDpu] templateRankSize_ ==1");
         return HcclResult::HCCL_SUCCESS;
     }
     if (!doTask_.load(std::memory_order_relaxed)) {

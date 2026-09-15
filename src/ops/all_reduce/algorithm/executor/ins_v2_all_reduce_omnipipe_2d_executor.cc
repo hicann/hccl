@@ -180,13 +180,15 @@ std::vector<CostModelParam> InsV2AllReduceOmniPipe2dExecutor<
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2AllReduceOmniPipe2dExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
     u64 meshRankSize = 1;
     u64 closRankSize = 1;
     if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2AllReduceOmniPipe2dExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
+            algName);
         return {};
     }
 
@@ -262,18 +264,20 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     dataSize_ = dataCount_ * dataTypeSize_;
 
     if (algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2AllReduceOmniPipe2dExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[InitCommInfo] rankSizeLevel0 is 0, should be greater than 0");
+        HCCL_ERROR("[InsV2AllReduceOmniPipe2dExecutor][InitCommInfo] rankSizeLevel0 is 0, should be greater than 0");
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[InitCommInfo] rankSizeLevel1 is 0, should be greater than 0");
+        HCCL_ERROR("[InsV2AllReduceOmniPipe2dExecutor][InitCommInfo] rankSizeLevel1 is 0, should be greater than 0");
         return HcclResult::HCCL_E_PARA;
     }
 
@@ -306,7 +310,8 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
         resourceReq.notifyNumPerThread.end(), resReqlevel.notifyNumPerThread.begin(),
         resReqlevel.notifyNumPerThread.end());
 
-    HCCL_DEBUG("[%s] currTemplate has [%d] kernels.", __func__, resReqlevel.ccuKernelNum[0]);
+    HCCL_DEBUG(
+        "[InsV2AllReduceOmniPipe2dExecutor][%s] currTemplate has [%d] kernels.", __func__, resReqlevel.ccuKernelNum[0]);
     if (curLevel == OMNIPIPE_RS_LEVEL0 || curLevel == OMNIPIPE_RS_LEVEL1) {
         std::for_each(resReqlevel.ccuKernelInfos.begin(), resReqlevel.ccuKernelInfos.end(), [](CcuKernelInfo& info) {
             info.resGroup = 0;
@@ -388,12 +393,14 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     dataSize_ = dataCount_ * dataTypeSize_;
     maxTmpMemSize_ = resCtx.cclMem.size;
     if (resCtx.algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2AllReduceOmniPipe2dExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[Orchestrate] rankSizeLevel0 is 0");
+        HCCL_ERROR("[InsV2AllReduceOmniPipe2dExecutor][Orchestrate] rankSizeLevel0 is 0");
         return HcclResult::HCCL_E_PARA;
     }
 
@@ -674,15 +681,22 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
 
         // 4.2 RS的通信步数
         auto level0StepCountRS = omniPipeSliceInfoRS.dataSliceLevel0.size();
-        HCCL_DEBUG("[%s] myRank[%u] level0StepCountRS[%u]", __func__, myRank_, level0StepCountRS);
+        HCCL_DEBUG(
+            "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] level0StepCountRS[%u]", __func__, myRank_,
+            level0StepCountRS);
 
         if (omniPipeSliceInfoRS.isEmpty()) {
-            HCCL_DEBUG("[%s] myRank[%u] omniPipeSliceInfo is Empty!", __func__, myRank_);
+            HCCL_DEBUG(
+                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] omniPipeSliceInfo is Empty!", __func__, myRank_);
         } else {
             auto l0StepNum = omniPipeSliceInfoRS.dataSliceLevel0;
             auto l1StepNum = omniPipeSliceInfoRS.dataSliceLevel1;
-            HCCL_DEBUG("[%s] myRank[%u] L0 stepNum[%u]", __func__, myRank_, l0StepNum.size());
-            HCCL_DEBUG("[%s] myRank[%u] L1 stepNum[%u]", __func__, myRank_, l1StepNum.size());
+            HCCL_DEBUG(
+                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L0 stepNum[%u]", __func__, myRank_,
+                l0StepNum.size());
+            HCCL_DEBUG(
+                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L1 stepNum[%u]", __func__, myRank_,
+                l1StepNum.size());
         }
 
         // template间同步所需信息计算

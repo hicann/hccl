@@ -54,7 +54,7 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     CHK_PTR_NULL(topoInfo);
     std::vector<std::vector<u32>> tempAlgHierachyInfo;
     if (algHierarchyInfo.infos.size() == 0) {
-        HCCL_ERROR("algHierarchyInfo level num is zero!");
+        HCCL_ERROR("[InsV2AivAlltoAllVSoleExecutor] algHierarchyInfo level num is zero!");
         return HCCL_E_PARA;
     }
 

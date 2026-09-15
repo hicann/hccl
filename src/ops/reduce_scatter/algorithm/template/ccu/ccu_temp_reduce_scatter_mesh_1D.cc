@@ -62,7 +62,8 @@ HcclResult CcuTempReduceScatterMesh1D::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempReduceScatterMesh1D::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempReduceScatterMesh1D::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
@@ -167,7 +168,8 @@ HcclResult CcuTempReduceScatterMesh1D::KernelRun(
     uint64_t argSize = 8;
 
     HCCL_INFO(
-        "[CcuTempReduceScatterMesh1D::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], "
+        "[CcuTempReduceScatterMesh1D::KernelRun] TaskArgs: inputAddr[%llu], "
+        "outputAddr[%llu], "
         "offset[%llu], sliceSize[%llu]",
         inputAddr, outputAddr, offset, sliceSize);
     CcuResult launchRet

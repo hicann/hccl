@@ -72,7 +72,8 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
@@ -93,7 +94,8 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::CalcRes(
                 channelDescs.push_back(channel);
             }
         }
-        HCCL_DEBUG("[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] Get Mesh Channel Success!");
+        HCCL_DEBUG("[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] Get Mesh Channel "
+                   "Success!");
     }
 
     auto kernelArg = std::make_shared<CcuKernelArgReduceScatterMesh1DMem2Mem>();
@@ -106,7 +108,8 @@ HcclResult CcuTempReduceScatterMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "[CcuTempReduceScatterMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, "
+        "dimsize=%llu, "
         "ccuKernelInfos.size()=%llu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
@@ -118,7 +121,8 @@ CcuTempReduceScatterMesh1DMem2Mem::FastLaunch(const OpParam& param, const Templa
 {
     (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
-        HCCL_INFO("[CcuTempReduceScatterMesh1DMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
+        HCCL_INFO("[CcuTempReduceScatterMesh1DMem2Mem::FastLaunch] ccu kernel num "
+                  "is 0, just success.");
         return HCCL_SUCCESS;
     }
     HCCL_DEBUG("[CcuTempReduceScatterMesh1DMem2Mem::FastLaunch] start");
@@ -140,7 +144,10 @@ CcuTempReduceScatterMesh1DMem2Mem::FastLaunch(const OpParam& param, const Templa
     CcuResult launchRet = HcommCcuKernelLaunch(
         tempFastLaunchCtx.threads[0], tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle, taskArgs, argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempReduceScatterMesh1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR(
+            "[CcuTempReduceScatterMesh1DMem2Mem::FastLaunch] kernel launch failed, "
+            "ccuRet -> %d",
+            launchRet);
         return ConvertCcuToHccl(launchRet);
     }
 

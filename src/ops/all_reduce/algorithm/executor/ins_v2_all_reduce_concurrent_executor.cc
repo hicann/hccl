@@ -69,8 +69,8 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1));
+        "[InsV2AllReduceConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         localParam.engine = CommEngine::COMM_ENGINE_CCU;
@@ -170,7 +170,7 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     algHierarchyInfo_ = algHierarchyInfo;
 
     HCCL_INFO(
-        "[%s][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], redOp [%u], "
+        "[InsV2AllReduceConcurrentExecutor][%s][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], redOp [%u], "
         "dataType [%u] dataTypeSize [%u]",
         __func__, myRank_, rankSize_, devType_, reduceOp_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;

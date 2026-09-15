@@ -163,13 +163,15 @@ std::vector<CostModelParam> InsV2BroadcastOmniPipe2dExecutor<
     (void)comm;
     (void)param;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2BroadcastOmniPipe2dExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
     u64 meshRankSize = 1;
     u64 closRankSize = 1;
     if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2BroadcastOmniPipe2dExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
+            algName);
         return {};
     }
 
@@ -401,13 +403,13 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
     maxTmpMemSize_ = resCtx.cclMem.size;
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[%s] broadcast rankSizeLevel0 is 0", __func__);
+        HCCL_ERROR("[InsV2BroadcastOmniPipe2dExecutor][%s] broadcast rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] broadcast rankSizeLevel1 is 0", __func__);
+        HCCL_ERROR("[InsV2BroadcastOmniPipe2dExecutor][%s] broadcast rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
@@ -418,8 +420,9 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
     isSameYAxisAsRoot = (rankIdxLevel0_ == rootx) && !isRoot;
     isSameXAxisAsRoot = (rankIdxLevel1_ == rooty) && !isRoot;
     HCCL_DEBUG(
-        "[%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__, myRank_,
-        rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
+        "[InsV2BroadcastOmniPipe2dExecutor][%s]myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
+        "rankIdxLevel1[%u]",
+        __func__, myRank_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);

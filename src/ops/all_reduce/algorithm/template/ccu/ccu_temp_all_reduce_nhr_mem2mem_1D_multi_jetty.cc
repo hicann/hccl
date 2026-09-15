@@ -313,7 +313,9 @@ HcclResult CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetReduceScatterStepInfo(u32 
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
         HCCL_DEBUG(
-            "[AllReduceNHR][GetReduceScatterStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
+            "[CcuTempAllReduceNhrMem2Mem1DMultiJetty][AllReduceNHR][GetReduceScatterStepInfo] i[%u] txSliceIdx[%u] "
+            "rxSliceIdx[%u]",
+            i, txSliceIdx, rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
@@ -353,7 +355,9 @@ CcuTempAllReduceNhrMem2Mem1DMultiJetty::GetAllGatherStepInfo(u32 step, u32 nStep
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
         HCCL_DEBUG(
-            "[AllReduceNHR][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
+            "[CcuTempAllReduceNhrMem2Mem1DMultiJetty][AllReduceNHR][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] "
+            "rxSliceIdx[%u]",
+            i, txSliceIdx, rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;

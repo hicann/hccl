@@ -75,8 +75,8 @@ InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1));
+        "[InsV2BroadcastConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
@@ -255,7 +255,10 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         }
     }
     CHK_PRT_RET(
-        channelDescs0.empty(), HCCL_ERROR("[%s] channelDescs0.size()[%zu] is zero.", __func__, channelDescs0.size()),
+        channelDescs0.empty(),
+        HCCL_ERROR(
+            "[InsV2BroadcastConcurrentExecutor][%s] channelDescs0.size()[%zu] is zero.", __func__,
+            channelDescs0.size()),
         HcclResult::HCCL_E_INTERNAL);
 
     std::vector<HcclChannelDesc> channelDescs1;
@@ -267,15 +270,19 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         }
     }
     CHK_PRT_RET(
-        channelDescs1.empty(), HCCL_ERROR("[%s] channelDescs1.size()[%zu] is zero.", __func__, channelDescs1.size()),
+        channelDescs1.empty(),
+        HCCL_ERROR(
+            "[InsV2BroadcastConcurrentExecutor][%s] channelDescs1.size()[%zu] is zero.", __func__,
+            channelDescs1.size()),
         HcclResult::HCCL_E_INTERNAL);
 
     // 两者数量应相等
     CHK_PRT_RET(
         channelDescs0.size() != channelDescs1.size(),
         HCCL_ERROR(
-            "[%s] channelDescs0.size()[%zu] is not equal to channelDescs1.size()[%zu]", __func__, channelDescs0.size(),
-            channelDescs1.size()),
+            "[InsV2BroadcastConcurrentExecutor][%s] channelDescs0.size()[%zu] is not equal to "
+            "channelDescs1.size()[%zu]",
+            __func__, channelDescs0.size(), channelDescs1.size()),
         HcclResult::HCCL_E_INTERNAL);
 
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -346,7 +353,9 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     HCCL_INFO("[InsV2BroadcastConcurrentExecutor][OrchestrateLoop] Start");
     if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < 2) {
-        HCCL_ERROR("[%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2BroadcastConcurrentExecutor][%s] algHierarchyInfo_.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HCCL_E_PARA;
     }
     std::vector<std::vector<u32>> temp0HierarchyInfo{algHierarchyInfo_.infos[0][0]};
@@ -465,14 +474,16 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CHK_PRT_RET(
         maxCountPerLoopforTemp0 == 0 || maxCountPerLoopforTemp1 == 0,
         HCCL_ERROR(
-            "[%s] maxCountPerLoopforTemp is 0, maxCount0[%llu], maxCount1[%llu], dataTypeSize_[%llu].", __func__,
-            maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataTypeSize_),
+            "[InsV2BroadcastConcurrentExecutor][%s] maxCountPerLoopforTemp is 0, maxCount0[%llu], maxCount1[%llu], "
+            "dataTypeSize_[%llu].",
+            __func__, maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataTypeSize_),
         HCCL_E_INTERNAL);
     u32 loopTimesforTemp0 = (dataCountforTemp0 + maxCountPerLoopforTemp0 - 1) / maxCountPerLoopforTemp0; // 向上取整
     u32 loopTimesforTemp1 = (dataCountforTemp1 + maxCountPerLoopforTemp1 - 1) / maxCountPerLoopforTemp1;
 
     HCCL_INFO(
-        "[%s] portNum0[%llu], portNum1[%llu], dataCount[%llu], maxCountPerLoopforTemp0[%llu], "
+        "[InsV2BroadcastConcurrentExecutor][%s] portNum0[%llu], portNum1[%llu], dataCount[%llu], "
+        "maxCountPerLoopforTemp0[%llu], "
         "maxCountPerLoopforTemp1[%llu], dataCountforTemp0[%llu], dataCountforTemp1[%llu]",
         __func__, portNum0, portNum, dataCount_, maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataCountforTemp0,
         dataCountforTemp1);
@@ -507,8 +518,8 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 循环处理每个template
     for (u32 loopIndex = 0; loopIndex < loopTimesforTemp0 || loopIndex < loopTimesforTemp1; loopIndex++) {
         HCCL_INFO(
-            "[%s] loopIndex[%u], loopTimesforTemp0[%u], loopTimesforTemp1[%u]", __func__, loopIndex, loopTimesforTemp0,
-            loopTimesforTemp1);
+            "[InsV2BroadcastConcurrentExecutor][%s] loopIndex[%u], loopTimesforTemp0[%u], loopTimesforTemp1[%u]",
+            __func__, loopIndex, loopTimesforTemp0, loopTimesforTemp1);
         if (loopIndex < loopTimesforTemp0) {
             u64 currCount = (loopIndex == loopTimesforTemp0 - 1) ?
                                 (dataCountforTemp0 - loopIndex * maxCountPerLoopforTemp0) :

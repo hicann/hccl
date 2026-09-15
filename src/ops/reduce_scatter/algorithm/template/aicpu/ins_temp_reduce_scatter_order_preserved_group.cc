@@ -208,7 +208,8 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::PreLocalCopy(
     // 获取本rank对应的数据块大小
     u64 sliceSize = memBlockInfo.size[myAlgRank];
     if (sliceSize == 0) {
-        HCCL_DEBUG("[PreLocalCopy] myAlgRank[%u] sliceSize is 0, skip.", myAlgRank);
+        HCCL_DEBUG(
+            "[InsTempReduceScatterOrderPreservedGroup][PreLocalCopy] myAlgRank[%u] sliceSize is 0, skip.", myAlgRank);
         return HCCL_SUCCESS;
     }
 
@@ -220,8 +221,9 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::PreLocalCopy(
     u64 dstOffset = memBlockInfo.outputOffsets[outputIndex];
 
     HCCL_INFO(
-        "[PreLocalCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu], outputIndex[%u]", myAlgRank,
-        sliceSize, srcOffset, dstOffset, outputIndex);
+        "[InsTempReduceScatterOrderPreservedGroup][PreLocalCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], "
+        "dstOffset[%llu], outputIndex[%u]",
+        myAlgRank, sliceSize, srcOffset, dstOffset, outputIndex);
 
     DataSlice srcSlice(tempAlgParams.buffInfo.inputPtr, srcOffset, sliceSize);
     DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, dstOffset, sliceSize);
@@ -296,7 +298,7 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunAllToAll(
         }
     }
 
-    HCCL_INFO("[RunAllToAll] End");
+    HCCL_INFO("[InsTempReduceScatterOrderPreservedGroup][RunAllToAll] End");
     return HCCL_SUCCESS;
 }
 
@@ -323,11 +325,12 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunLocalReduce(
     const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams)
 {
     HCCL_INFO(
-        "[RunLocalReduce] Start, deterministicStrict[%d], templateRankSize[%u]", deterministicStrict_,
-        templateRankSize_);
+        "[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] Start, deterministicStrict[%d], "
+        "templateRankSize[%u]",
+        deterministicStrict_, templateRankSize_);
 
     if (templateRankSize_ <= 1) {
-        HCCL_INFO("[RunLocalReduce] Skip for single rank");
+        HCCL_INFO("[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] Skip for single rank");
         return HCCL_SUCCESS;
     }
 
@@ -337,7 +340,7 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunLocalReduce(
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
-    HCCL_INFO("[RunLocalReduce] myAlgRank[%u]", myAlgRank);
+    HCCL_INFO("[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] myAlgRank[%u]", myAlgRank);
 
     u64 sliceSize = memBlockInfo.size[myAlgRank];
     u64 count = sliceSize / DATATYPE_SIZE_TABLE[dataType_];
@@ -353,7 +356,9 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunLocalReduce(
             break;
         }
 
-        HCCL_INFO("[RunLocalReduce] Step[%u]: remainingBlocks[%u], M[%u]", step, remainingBlocks, M);
+        HCCL_INFO(
+            "[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] Step[%u]: remainingBlocks[%u], M[%u]", step,
+            remainingBlocks, M);
 
         // 先规约不对齐的数据块
         for (u32 srcVirtualIdx = M; srcVirtualIdx < remainingBlocks; srcVirtualIdx++) {
@@ -382,7 +387,8 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunLocalReduce(
             DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, dstOffset, sliceSize, count);
 
             HCCL_INFO(
-                "[RunLocalReduce] Step[%u]: virtualIdx[%u]->[%u], peerRank[%u]->[%u], "
+                "[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] Step[%u]: virtualIdx[%u]->[%u], "
+                "peerRank[%u]->[%u], "
                 "offset[%llu]->[%llu]",
                 step, srcVirtualIdx, dstVirtualIdx, srcPeerRank, dstPeerRank, srcOffset, dstOffset);
 
@@ -395,7 +401,10 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::RunLocalReduce(
         step++;
     }
 
-    HCCL_INFO("[RunLocalReduce] End, total steps[%u], final data at virtualIdx[0] (myAlgRank[%u])", step, myAlgRank);
+    HCCL_INFO(
+        "[InsTempReduceScatterOrderPreservedGroup][RunLocalReduce] End, total steps[%u], final data at virtualIdx[0] "
+        "(myAlgRank[%u])",
+        step, myAlgRank);
     return HCCL_SUCCESS;
 }
 
@@ -409,7 +418,8 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::PostCopy(
 
     u64 sliceSize = memBlockInfo.size[myAlgRank];
     if (sliceSize == 0) {
-        HCCL_DEBUG("[PostCopy] myAlgRank[%u] sliceSize is 0, skip.", myAlgRank);
+        HCCL_DEBUG(
+            "[InsTempReduceScatterOrderPreservedGroup][PostCopy] myAlgRank[%u] sliceSize is 0, skip.", myAlgRank);
         return HCCL_SUCCESS;
     }
     // 保序规约后，结果落在peerRank=0的位置（dstVirtualIdx始终为0）
@@ -420,8 +430,9 @@ HcclResult InsTempReduceScatterOrderPreservedGroup::PostCopy(
     u64 dstOffset = tempAlgParams.buffInfo.outBuffBaseOff;
 
     HCCL_INFO(
-        "[PostCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], dstOffset[%llu]", myAlgRank, sliceSize, srcOffset,
-        dstOffset);
+        "[InsTempReduceScatterOrderPreservedGroup][PostCopy] myAlgRank[%u], sliceSize[%llu], srcOffset[%llu], "
+        "dstOffset[%llu]",
+        myAlgRank, sliceSize, srcOffset, dstOffset);
 
     DataSlice srcSlice(tempAlgParams.buffInfo.hcclBuff.addr, srcOffset, sliceSize);
     DataSlice dstSlice(tempAlgParams.buffInfo.outputPtr, dstOffset, sliceSize);

@@ -68,8 +68,8 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
-        resourceRequest.slaveThreadNum);
+        "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem][%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__,
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
@@ -184,14 +184,15 @@ HcclResult CcuTempReduceScatterOmniPipeMesh1DMem2Mem::KernelRun(
         DataSlice dstSlice(
             buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
         HCCL_DEBUG(
-            "[%s] myRank[%u] TempLocalCopy inputAddrBase[%llu] inputAddrOffset[%llu] outputAddrBase[%llu]"
+            "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem][%s] myRank[%u] TempLocalCopy inputAddrBase[%llu] "
+            "inputAddrOffset[%llu] outputAddrBase[%llu]"
             "outputAddrOffset[%llu] sliceSize[%llu]",
             __func__, myRank_, inputAddrBase, buffInfo_.inBuffBaseOff, outputAddrBase, buffInfo_.outBuffBaseOff,
             templateDataParams.sliceSize);
         CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
     }
 
-    HCCL_DEBUG("[%s] run success", __func__);
+    HCCL_DEBUG("[CcuTempReduceScatterOmniPipeMesh1DMem2Mem][%s] run success", __func__);
     return HcclResult::HCCL_SUCCESS;
 }
 

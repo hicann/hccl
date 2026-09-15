@@ -50,8 +50,8 @@ void CcuTempGatherOmniPipeNHR1DMem2Mem::SetRoot(u32 root)
         subCommRootId_ = std::distance(ranks.begin(), itRoot);
     }
     HCCL_DEBUG(
-        "[%s] myRank[%u] mySubCommRank[%u] subCommRanks[%s] subCommRootId_[%d]", __func__, myRank_, mySubCommRank_,
-        ranksStr.c_str(), subCommRootId_);
+        "[CcuTempGatherOmniPipeNHR1DMem2Mem][%s] myRank[%u] mySubCommRank[%u] subCommRanks[%s] subCommRootId_[%d]",
+        __func__, myRank_, mySubCommRank_, ranksStr.c_str(), subCommRootId_);
 }
 
 void CcuTempGatherOmniPipeNHR1DMem2Mem::UnsetRoot(u32 rank)
@@ -82,7 +82,8 @@ HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempGatherOmniPipeNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempGatherOmniPipeNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
@@ -217,13 +218,13 @@ HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::LaunchGatherKernel(
 HcclResult CcuTempGatherOmniPipeNHR1DMem2Mem::RunLocalCopy(
     const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
-    HCCL_DEBUG("[%s] myRank[%u] TempLocalCopy NHR start", __func__, myRank_);
+    HCCL_DEBUG("[CcuTempGatherOmniPipeNHR1DMem2Mem][%s] myRank[%u] TempLocalCopy NHR start", __func__, myRank_);
     DataSlice srcSlice(
         buffInfo_.inputPtr, buffInfo_.inBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
     DataSlice dstSlice(
         buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
     CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
-    HCCL_DEBUG("[%s] myRank[%u] TempLocalCopy NHR end", __func__, myRank_);
+    HCCL_DEBUG("[CcuTempGatherOmniPipeNHR1DMem2Mem][%s] myRank[%u] TempLocalCopy NHR end", __func__, myRank_);
     return HcclResult::HCCL_SUCCESS;
 }
 

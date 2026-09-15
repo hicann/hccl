@@ -56,7 +56,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::CalcRes(
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
-    HCCL_INFO("channelDescs size[%u]", channelDescs.size());
+    HCCL_INFO("[CcuTempAlltoAllVMesh1D2Die] channelDescs size[%u]", channelDescs.size());
 
     CHK_RET(PartitionChannels(comm, channelDescs, rankIdToChannelDesc_));
 
@@ -72,7 +72,7 @@ HcclResult CcuTempAlltoAllVMesh1D2Die::CalcRes(
     resourceRequest.notifyNumPerThread.assign(slaveThreadNum, 1);
 
     resourceRequest.channels.emplace_back(channelDescs);
-    HCCL_INFO("resourceRequest.channels[%d]", resourceRequest.channels.size());
+    HCCL_INFO("[CcuTempAlltoAllVMesh1D2Die] resourceRequest.channels[%d]", resourceRequest.channels.size());
 
     resourceRequest.ccuKernelNum.push_back(kernelCount_);
 

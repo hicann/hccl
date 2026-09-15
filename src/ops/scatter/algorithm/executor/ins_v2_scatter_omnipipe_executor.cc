@@ -488,17 +488,19 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scatterDataSize = maxTmpMemSize / rankSize_;
     HCCL_DEBUG(
-        "[%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__, myRank_, maxTmpMemSize,
-        transportBoundDataSize);
+        "[InsV2ScatterOmniPipeExecutor][%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__, myRank_,
+        maxTmpMemSize, transportBoundDataSize);
     u64 maxCountPerLoop = std::min(scatterDataSize, transportBoundDataSize) / HCCL_MIN_SLICE_ALIGN
                           * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
-    CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
-    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
+    CHK_PRT_RET(
+        maxCountPerLoop == 0, HCCL_ERROR("[InsV2ScatterOmniPipeExecutor][%s] maxCountPerLoop is 0", __func__),
+        HCCL_E_INTERNAL);
+    HCCL_DEBUG("[InsV2ScatterOmniPipeExecutor][%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
     u32 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
-    HCCL_DEBUG("[%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
+    HCCL_DEBUG("[InsV2ScatterOmniPipeExecutor][%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;
-    HCCL_DEBUG("[%s] perLoopSize[%u]", __func__, perLoopSize);
+    HCCL_DEBUG("[InsV2ScatterOmniPipeExecutor][%s] perLoopSize[%u]", __func__, perLoopSize);
 
     // 3、计算n-1次loop的slice信息
     OmniPipeSliceParam sliceParam;
@@ -520,7 +522,9 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     sliceParam.engine = param.engine;
     sliceParam.needSetStepNum = omniNeedSetStepNum_;
     OmniPipeSliceInfo alignSliceInfo = CalcScatterOmniPipeSliceInfo(sliceParam, param.root);
-    CHK_PRT_RET(alignSliceInfo.isEmpty(), HCCL_ERROR("[%s] alignSliceInfo is empty", __func__), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        alignSliceInfo.isEmpty(), HCCL_ERROR("[InsV2ScatterOmniPipeExecutor][%s] alignSliceInfo is empty", __func__),
+        HCCL_E_INTERNAL);
 
     // 4、计算第n次的loop的slice信息
     OmniPipeSliceInfo tailSliceInfo;
@@ -528,11 +532,13 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     if (dataCount_ > maxCountPerLoop && dataCount_ % maxCountPerLoop != 0) {
         u64 tailCount = dataCount_ % maxCountPerLoop;
         tailLoopSize = tailCount * dataTypeSize_;
-        HCCL_DEBUG("[%s] myRank[%u] tailLoopSize[%u]", __func__, myRank_, tailLoopSize);
+        HCCL_DEBUG("[InsV2ScatterOmniPipeExecutor][%s] myRank[%u] tailLoopSize[%u]", __func__, myRank_, tailLoopSize);
         std::vector<u64> tailPerLoop(rankSize_, tailLoopSize);
         sliceParam.dataSizePerLoop = tailPerLoop;
         tailSliceInfo = CalcScatterOmniPipeSliceInfo(sliceParam, param.root);
-        CHK_PRT_RET(tailSliceInfo.isEmpty(), HCCL_ERROR("[%s] tailSliceInfo is empty", __func__), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            tailSliceInfo.isEmpty(), HCCL_ERROR("[InsV2ScatterOmniPipeExecutor][%s] tailSliceInfo is empty", __func__),
+            HCCL_E_INTERNAL);
     }
 
     u64 processedDataCount = 0;
@@ -696,9 +702,10 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         }
 
         HCCL_DEBUG(
-            "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu]", __func__, myRank_,
-            tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff, tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff,
-            tempAlgParamsLocalCopy.sliceSize);
+            "[InsV2ScatterOmniPipeExecutor][%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] "
+            "sliceSize[%lu]",
+            __func__, myRank_, tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff,
+            tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamsLocalCopy.sliceSize);
         if (rankSizeLevel0_ > 1) {
             CHK_RET(tempLevel0_->DoLocalCopy(tempAlgParamsLocalCopy, tempResMap[OMNIPIPE_LEVEL0].threads));
         } else if (rankSizeLevel1_ > 1) {

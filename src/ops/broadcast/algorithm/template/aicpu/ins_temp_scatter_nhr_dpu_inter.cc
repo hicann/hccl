@@ -285,7 +285,7 @@ HcclResult InsTempScatterNHRDPUInter::RunNHR(
     // nhr主体部分
     SetRoot(tempAlgParams.root);
     u32 nSteps = GetNHRStepNum(templateRankSize_);
-    HCCL_INFO("[RunNHR] root_ at RunNHR [%u] ", root_);
+    HCCL_INFO("[InsTempScatterNHRDPUInter][RunNHR] root_ at RunNHR [%u] ", root_);
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         for (u32 step = 0; step < nSteps; step++) {
             AicpuNHRStepInfo stepInfo;

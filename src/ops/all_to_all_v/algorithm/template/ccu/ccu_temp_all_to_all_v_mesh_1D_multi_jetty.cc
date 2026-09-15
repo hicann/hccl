@@ -39,7 +39,8 @@ HcclResult CcuTempAllToAllVMesh1DMultiJetty::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempAllToAllVMesh1DMultiJetty::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos

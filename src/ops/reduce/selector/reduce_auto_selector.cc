@@ -186,7 +186,8 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
             selectAlgName = "CcuSchedReduceSoleNHR";
         } else {
             HCCL_WARNING(
-                "[SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
+                "[ReduceAutoSelector][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule "
+                "mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
@@ -456,12 +457,12 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
         algos = it->second;
     }
     HCCL_INFO(
-        "hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType, algos[0],
-        algos[1], algos[2], algos[3]);
+        "[ReduceAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
+        opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuReduceSequenceMeshNHR";
-            HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+            HCCL_INFO("[ReduceAutoSelector] selectAlgName is DpuReduceSequenceMeshNHR");
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (topoInfo->level0PcieMix) {

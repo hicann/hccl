@@ -298,7 +298,8 @@ CcuTempAllToAllConcurrentMeshNHR::FastLaunch(const OpParam& param, const Templat
     (void)param;
     u32 totalKernelNum = static_cast<u32>(tempFastLaunchCtx.ccuKernelSubmitInfos.size());
     if (totalKernelNum == 0) {
-        HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR::FastLaunch] ccu kernel num is 0, just success.");
+        HCCL_INFO("[CcuTempAllToAllConcurrentMeshNHR::FastLaunch] ccu kernel num is "
+                  "0, just success.");
         return HCCL_SUCCESS;
     }
     if (tempFastLaunchCtx.threads.size() < 1) {

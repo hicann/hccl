@@ -62,7 +62,8 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO(
+            "[InsReduceScatterConcurrentExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -76,13 +77,13 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsReduceScatterConcurrentExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1));
+        "[InsReduceScatterConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
+        static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
     OpParam localParam;
     if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
@@ -131,7 +132,9 @@ AlgNetMeta InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsReduceScatterConcurrentExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
         return {};
     }
 
@@ -247,14 +250,18 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     }
 
     CHK_PRT_RET(
-        channelDescs1.empty(), HCCL_ERROR("[%s] channelDescs1.size()[%zu] is zero.", __func__, channelDescs1.size()),
+        channelDescs1.empty(),
+        HCCL_ERROR(
+            "[InsReduceScatterConcurrentExecutor][%s] channelDescs1.size()[%zu] is zero.", __func__,
+            channelDescs1.size()),
         HcclResult::HCCL_E_INTERNAL);
     // 两者数量应相等
     CHK_PRT_RET(
         channelDescs0.size() != channelDescs1.size(),
         HCCL_ERROR(
-            "[%s] channelDescs0.size()[%zu] is not equal to channelDescs1.size()[%zu]", __func__, channelDescs0.size(),
-            channelDescs1.size()),
+            "[InsReduceScatterConcurrentExecutor][%s] channelDescs0.size()[%zu] is not equal to "
+            "channelDescs1.size()[%zu]",
+            __func__, channelDescs0.size(), channelDescs1.size()),
         HcclResult::HCCL_E_INTERNAL);
 
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -418,14 +425,16 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     CHK_PRT_RET(
         maxCountPerLoopforTemp0 == 0 || maxCountPerLoopforTemp1 == 0,
         HCCL_ERROR(
-            "[%s] maxCountPerLoopforTemp is 0, maxCount0[%llu], maxCount1[%llu], dataTypeSize_[%llu].", __func__,
-            maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataTypeSize_),
+            "[InsReduceScatterConcurrentExecutor][%s] maxCountPerLoopforTemp is 0, maxCount0[%llu], maxCount1[%llu], "
+            "dataTypeSize_[%llu].",
+            __func__, maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataTypeSize_),
         HCCL_E_INTERNAL);
     u32 loopTimesforTemp0 = (dataCountforTemp0 + maxCountPerLoopforTemp0 - 1) / maxCountPerLoopforTemp0;
     u32 loopTimesforTemp1 = (dataCountforTemp1 + maxCountPerLoopforTemp1 - 1) / maxCountPerLoopforTemp1;
 
     HCCL_INFO(
-        "[%s]portNum0[%u], portNum1[%u], dataCount[%llu], maxCountPerLoopforTemp0[%llu], "
+        "[InsReduceScatterConcurrentExecutor][%s]portNum0[%u], portNum1[%u], dataCount[%llu], "
+        "maxCountPerLoopforTemp0[%llu], "
         "maxCountPerLoopforTemp1[%llu], dataCountforTemp0[%llu], dataCountforTemp1[%llu]",
         __func__, portNum0, portNum, dataCount_, maxCountPerLoopforTemp0, maxCountPerLoopforTemp1, dataCountforTemp0,
         dataCountforTemp1);
@@ -455,8 +464,8 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     // 循环处理每个template
     for (u32 loopIndex = 0; loopIndex < loopTimesforTemp0 || loopIndex < loopTimesforTemp1; loopIndex++) {
         HCCL_INFO(
-            "[%s]loopIndex[%u], loopTimesforTemp0[%u], loopTimesforTemp1[%u]", __func__, loopIndex, loopTimesforTemp0,
-            loopTimesforTemp1);
+            "[InsReduceScatterConcurrentExecutor][%s]loopIndex[%u], loopTimesforTemp0[%u], loopTimesforTemp1[%u]",
+            __func__, loopIndex, loopTimesforTemp0, loopTimesforTemp1);
         if (loopIndex < loopTimesforTemp0) {
             u64 currCount = (loopIndex == loopTimesforTemp0 - 1) ?
                                 (dataCountforTemp0 - loopIndex * maxCountPerLoopforTemp0) :

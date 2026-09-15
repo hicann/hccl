@@ -69,7 +69,7 @@ std::vector<CostModelParam> InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTempl
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2BroadcastSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
         lastPortNum_ = {1};
         lastIsPod_ = false;
@@ -82,7 +82,7 @@ std::vector<CostModelParam> InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTempl
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdx);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdx);
     if (portNumLevel0.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2BroadcastSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 

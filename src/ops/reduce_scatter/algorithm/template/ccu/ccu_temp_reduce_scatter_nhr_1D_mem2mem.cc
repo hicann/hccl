@@ -133,7 +133,8 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelNum.push_back(kernelNum);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG(
-        "[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 2.将channelDescs分到2个die
@@ -234,7 +235,10 @@ CcuTempReduceScatterNHR1DMem2Mem::FastLaunch(const OpParam& param, const Templat
             tempFastLaunchCtx.threads[kernelIdx], tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle,
             taskArgs, argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempReduceScatterNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempReduceScatterNHR1DMem2Mem::FastLaunch] kernel launch "
+                "failed, ccuRet -> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }
@@ -364,7 +368,10 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::KernelRun(
         CcuResult launchRet = HcommCcuKernelLaunch(
             templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempReduceScatterNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempReduceScatterNHR1DMem2Mem::KernelRun] kernel launch failed, "
+                "ccuRet -> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }

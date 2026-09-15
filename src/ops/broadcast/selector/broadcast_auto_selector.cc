@@ -58,13 +58,15 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
             }
         } else { // MS 不支持
             HCCL_WARNING(
-                "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
+                "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms "
+                "mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
     } else {
         HCCL_WARNING(
-            "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms mode.",
+            "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu_ms "
+            "mode.",
             topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
@@ -140,7 +142,8 @@ SelectorStatus BroadcastAutoSelector::SelectCcuScheduleAlgo(
             selectAlgName = "CcuSchedBroadcastSoleNHR";
         } else {
             HCCL_WARNING(
-                "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu schedule mode.",
+                "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu "
+                "schedule mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
@@ -192,7 +195,8 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuSchedule(
         selectAlgName = "CcuSchedBroadcastSoleNHR";
     } else {
         HCCL_WARNING(
-            "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu schedule mode.",
+            "[Algo][BroadcastAutoSelector] level0Shape[%d] is not supported yet for ccu "
+            "schedule mode.",
             topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
@@ -341,8 +345,8 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
     }
 
     HCCL_INFO(
-        "hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType, algos[0],
-        algos[1], algos[2], algos[3]);
+        "[BroadcastAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
+        opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuBroadcastSequenceMeshNHR";

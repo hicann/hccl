@@ -497,11 +497,13 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch(
     (void)param;
     u32 totalKernelNum = static_cast<u32>(tempFastLaunchCtx.ccuKernelSubmitInfos.size());
     if (totalKernelNum == 0) {
-        HCCL_INFO("[CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch] ccu kernel num is 0, just success.");
+        HCCL_INFO("[CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch] "
+                  "ccu kernel num is 0, just success.");
         return HCCL_SUCCESS;
     }
     if (tempFastLaunchCtx.threads.size() < 1) {
-        HCCL_ERROR("[CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch] thread num is 0.");
+        HCCL_ERROR("[CcuTempAllGatherConcurrentMeshMem2MemNHR::FastLaunch] "
+                   "thread num is 0.");
         return HCCL_E_INTERNAL;
     }
 

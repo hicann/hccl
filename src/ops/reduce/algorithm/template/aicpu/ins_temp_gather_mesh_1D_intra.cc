@@ -233,11 +233,13 @@ HcclResult InsTempGatherMesh1dIntra::LocalDataCopy(const std::vector<ThreadHandl
         DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOff, sliceSize, sliceCount);
 
         HCCL_DEBUG(
-            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] srcSlice: inBaseOff[%d] inOff[%d] "
+            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] srcSlice: "
+            "inBaseOff[%d] inOff[%d] "
             "sliceSize[%d] count[%d].",
             myRank_, myAlgRank, inBaseOff, inOff, sliceSize, sliceCount);
         HCCL_DEBUG(
-            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] dstSlice: outBaseoff[%d] "
+            "[InsTempGatherMesh1D][LocalDataCopy] RankID [%d] AlgRank [%d] dstSlice: "
+            "outBaseoff[%d] "
             "outOff[%d] sliceSize[%d] count[%d].",
             myRank_, myAlgRank, outBaseOff, outOff, sliceSize, sliceCount);
 
@@ -277,7 +279,8 @@ HcclResult InsTempGatherMesh1dIntra::PostLocalCopy(const std::vector<ThreadHandl
             DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
             DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
             HCCL_DEBUG(
-                "[InsTempGatherMesh1D][PostLocalCopy] LocalDataCopy RankID [%d] dataRank [%d] dataAlgRank[%d] "
+                "[InsTempGatherMesh1D][PostLocalCopy] LocalDataCopy RankID [%d] dataRank "
+                "[%d] dataAlgRank[%d] "
                 "scratchBase[%d] outBaseOff[%d] scratchOffset[%d] outOffset[%d].",
                 myRank_, rank, algRank, scratchBase, outBaseOff, scratchOffset, outOffset);
             CHK_RET(LocalCopy(threads[0], srcSlice, dstSlice));

@@ -102,7 +102,9 @@ HcclResult InsTempAllReduceMesh1DTwoShotMeshChunk::CalcSliceInfoVec(const u64& d
     CHK_PRT_RET(
         (sliceInfoVec[templateRankSize_ - 1][0].offset + sliceInfoVec[templateRankSize_ - 1][0].size != dataSize),
         HCCL_ERROR(
-            "[InsAllReduceCombExecutor] chunkSize:[%llu], Rank:[%d], SliceInfo calculation error!", chunkSize, myRank_),
+            "[InsAllReduceCombExecutor] chunkSize:[%llu], Rank:[%d], SliceInfo "
+            "calculation error!",
+            chunkSize, myRank_),
         HcclResult::HCCL_E_INTERNAL);
 
     return HcclResult::HCCL_SUCCESS;

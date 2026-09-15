@@ -150,7 +150,7 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo_.infos[0].empty()
         || algHierarchyInfo_.infos[1].empty() || algHierarchyInfo_.infos[0][0].empty()
         || algHierarchyInfo_.infos[1][0].empty()) {
-        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        HCCL_ERROR("[InsV2ScatterSequenceExecutor][%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
     rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();

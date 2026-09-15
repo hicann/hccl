@@ -64,7 +64,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[ReduceParallelExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -80,7 +80,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[ReduceParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     float ratio = 0.5;
@@ -163,7 +163,7 @@ AlgNetMeta ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO("[ReduceParallelExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -231,13 +231,14 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     std::vector<std::vector<u32>> temp0HierarchyInfo;
     std::vector<std::vector<u32>> temp1HierarchyInfo;
     if (algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        HCCL_ERROR("[ReduceParallelExecutor][%s] algHierarchyInfo.infos is empty.", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     CHK_PRT_RET(
         algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
             || algHierarchyInfo.infos[1].empty(),
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+        HCCL_ERROR("[ReduceParallelExecutor][%s] algHierarchyInfo.infos is invalid.", __func__),
+        HcclResult::HCCL_E_PARA);
     temp0HierarchyInfo = algHierarchyInfo.infos[0];
     temp1HierarchyInfo = algHierarchyInfo.infos[1];
 
@@ -418,13 +419,14 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     vTopo_ = resCtx.algHierarchyInfo.infos; // 本通信域内的通信平面
 
     if (resCtx.algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is empty.", __func__);
+        HCCL_ERROR("[ReduceParallelExecutor][%s] algHierarchyInfo.infos is empty.", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     CHK_PRT_RET(
         resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || resCtx.algHierarchyInfo.infos[0].empty()
             || resCtx.algHierarchyInfo.infos[1].empty(),
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+        HCCL_ERROR("[ReduceParallelExecutor][%s] algHierarchyInfo.infos is invalid.", __func__),
+        HcclResult::HCCL_E_PARA);
     temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
     temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
     vTopo_ = {temp0HierarchyInfo_, temp1HierarchyInfo_};

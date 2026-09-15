@@ -67,7 +67,8 @@ InsTempRecvHostNicDpu::KernelRun(const OpParam& param, const TemplateDataParams&
 
     // 转换成eager-mode，保障AICPU指令下发执行完成
     if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("InsTempRecvHostNicDpu::KernelRun failed set eager mode, tag is %s.", param.algTag);
+        HCCL_ERROR(
+            "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu::KernelRun failed set eager mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
 
@@ -99,19 +100,21 @@ InsTempRecvHostNicDpu::KernelRun(const OpParam& param, const TemplateDataParams&
     void* recvData = nullptr;
     u32 recvMsgId = 0;
     if (HcommWaitResponse(reinterpret_cast<uint64_t>(res.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("InsTempRecvHostNicDpu HcommWaitResponse failed");
+        HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse failed");
         return HCCL_E_INTERNAL;
     }
 
     // 将执行模式转换回到batch
     if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("InsTempRecvHostNicDpu failed set eager mode, tag is %s.", param.algTag);
+        HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu failed set eager mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
-    HCCL_INFO("InsTempRecvHostNicDpu HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+    HCCL_INFO("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
     if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("InsTempRecvHostNicDpu recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+        HCCL_ERROR(
+            "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId,
+            sendMsgId);
         return HCCL_E_INTERNAL;
     }
 

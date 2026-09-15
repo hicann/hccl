@@ -53,7 +53,7 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2ScatterParallelExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -77,7 +77,7 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2ScatterParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     // 数据按 ratio 分成 part0 + part1: 与运行态 GetParallelDataSplit 同源,
@@ -152,7 +152,8 @@ AlgNetMeta InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2ScatterParallelExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
         return {};
     }
     AlgNetMeta meta;

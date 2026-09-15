@@ -82,7 +82,7 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2ReduceScatterSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -123,7 +123,9 @@ AlgNetMeta InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgN
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2ReduceScatterSoleExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;

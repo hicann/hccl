@@ -77,13 +77,14 @@ SelectorStatus ScatterAutoSelector::SelectCcuScheduleAlgo(
             }
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
-                HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
+                HCCL_WARNING("[ScatterAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
                 return SelectorStatus::NOT_MATCH;
             }
             selectAlgName = "CcuSchedScatterSoleNHR";
         } else {
             HCCL_WARNING(
-                "[Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
+                "[ScatterAutoSelector][Algo][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu "
+                "schedule mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
@@ -134,13 +135,14 @@ SelectorStatus ScatterAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
-            HCCL_WARNING("pcie mixed topo is not supported yet for ccu schedule mode.");
+            HCCL_WARNING("[ScatterAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
         selectAlgName = "CcuSchedScatterSoleNHR";
     } else {
         HCCL_WARNING(
-            "[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule mode.",
+            "[Algo][ScatterAutoSelector] level0Topo[%d] is not supported yet for ccu_schedule "
+            "mode.",
             topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }

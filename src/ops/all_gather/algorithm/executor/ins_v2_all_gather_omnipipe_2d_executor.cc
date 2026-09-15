@@ -99,13 +99,15 @@ InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipe2DExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
     u64 meshRankSize = 1;
     u64 closRankSize = 1;
     if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2AllGatherOmniPipe2DExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
+            algName);
         return {};
     }
 
@@ -149,7 +151,7 @@ InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel
     costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
 
     HCCL_INFO(
-        "[%s] algName[%s] axes[%llu,%llu] step[%llu] maxStep[%d] sched2dCost[%d] "
+        "[InsV2AllGatherOmniPipe2DExecutor][%s] algName[%s] axes[%llu,%llu] step[%llu] maxStep[%d] sched2dCost[%d] "
         "planBandwidth[%f,%f] Bxy[%f] transferCoeff[%e] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, meshRankSize, closRankSize, stepNum, stepNum == maxStepNum, useSched2dCost,
         meshBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, closPlanBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION,
@@ -185,18 +187,20 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, InsA
     dataSize_ = dataCount_ * dataTypeSize_;
 
     if (algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2AllGatherOmniPipe2DExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipe2DExecutor][%s] rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipe2DExecutor][%s] rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
@@ -294,26 +298,29 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     if (resCtx.algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2AllGatherOmniPipe2DExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipe2DExecutor][%s] rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipe2DExecutor][%s] rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
 
     HCCL_DEBUG(
-        "[%s] myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] rankIdxLevel1[%u]", __func__, myRank_,
-        rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
+        "[InsV2AllGatherOmniPipe2DExecutor][%s] myRank[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
+        "rankIdxLevel1[%u]",
+        __func__, myRank_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_);
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -402,7 +409,8 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
             || resCtx.ccuKernelNum.size() < OMNIPIPE_2D_MIN_CCU_KERNEL_NUM
             || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
         HCCL_ERROR(
-            "[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+            "[InsV2AllGatherOmniPipe2DExecutor][%s] resCtx resource not enough. threads.size[%zu], "
+            "ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
             __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
         HcclResult::HCCL_E_INTERNAL);
     templateResourceLevel0.threads.push_back(resCtx.threads[1]);

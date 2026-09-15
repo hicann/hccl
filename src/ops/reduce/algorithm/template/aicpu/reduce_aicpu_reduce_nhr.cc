@@ -53,7 +53,8 @@ HcclResult ReduceAicpuReduceNHR::CalcRes(
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
-        "[ReduceMeshNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
+        "[ReduceAicpuReduceNHR][ReduceMeshNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] "
+        "notifyNumOnMainThread[%u]"
         " level1Channels[%u] .",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
         resourceRequest.notifyNumOnMainThread, level1Channels.size());
@@ -99,13 +100,13 @@ HcclResult ReduceAicpuReduceNHR::KernelRun(
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     HCCL_INFO(
-        "[KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize, count_,
+        "[ReduceAicpuReduceNHR][KernelRun] sliceSize: %u, count_: %u, typeSize: %u", tempAlgParams.sliceSize, count_,
         DATATYPE_SIZE_TABLE[dataType_]);
 
     const std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     HCCL_DEBUG(
-        "[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_, channels.size(),
-        channels.begin()->first);
+        "[ReduceAicpuReduceNHR][Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_,
+        channels.size(), channels.begin()->first);
 
     // 1. 切片
     CHK_RET(CalcSlice(tempAlgParams.sliceSize));

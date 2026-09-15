@@ -503,7 +503,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
 {
     (void)topoInfo;
     if (algHierarchyInfo_.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo_.infos is empty.", __func__);
+        HCCL_ERROR("[InsV2ReduceOmniPipe3DExecutor][%s] algHierarchyInfo_.infos is empty.", __func__);
         return HCCL_E_PARA;
     }
     subCommRanks0.clear();
@@ -561,7 +561,8 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     }
     bdvec = {bw_ag_l0, bw_ag_l1, bw_ag_l2, bw_rs_l0, bw_rs_l1, bw_rs_l2};
     HCCL_INFO(
-        "[ClacOmniBandwidthInSever]{bw_ag_l0[%f], bw_ag_l1[%f], bw_ag_l2[%f], bw_rs_l0[%f], bw_rs_l1[%f], "
+        "[InsV2ReduceOmniPipe3DExecutor][ClacOmniBandwidthInSever]{bw_ag_l0[%f], bw_ag_l1[%f], bw_ag_l2[%f], "
+        "bw_rs_l0[%f], bw_rs_l1[%f], "
         "bw_rs_l2[%f]}",
         bw_ag_l0, bw_ag_l1, bw_ag_l2, bw_rs_l0, bw_rs_l1, bw_rs_l2);
     return HCCL_SUCCESS;
@@ -601,7 +602,9 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         rankSizeLevel2_ = subCommRanks2[0].size();
     }
     if (rankSizeLevel0_ == 0 || rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__, rankSizeLevel0_, rankSizeLevel1_);
+        HCCL_ERROR(
+            "[InsV2ReduceOmniPipe3DExecutor][%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__,
+            rankSizeLevel0_, rankSizeLevel1_);
         return HCCL_E_PARA;
     }
 

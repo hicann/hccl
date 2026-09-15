@@ -79,7 +79,8 @@ HcclResult CcuTempReduceMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempReduceMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempReduceMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
@@ -230,7 +231,8 @@ HcclResult CcuTempReduceMesh1DMem2Mem::SubmitKernelInfo(
     size_t argNum = taskArgs.size() + 3;
     if (UNLIKELY(argNum > CCU_MAX_TASK_ARG_NUM)) {
         HCCL_ERROR(
-            "[CcuTempReduceMesh1DMem2Mem::KernelRun] argNum is bigger than CCU_MAX_TASK_ARG_NUM[%d]",
+            "[CcuTempReduceMesh1DMem2Mem::KernelRun] argNum is bigger than "
+            "CCU_MAX_TASK_ARG_NUM[%d]",
             CCU_MAX_TASK_ARG_NUM);
         return HcclResult::HCCL_E_INTERNAL;
     }

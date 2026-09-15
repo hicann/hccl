@@ -68,7 +68,8 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::CalcRes(
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempAllToAllMesh1dMultiJetty::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempAllToAllMesh1dMultiJetty::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
@@ -119,7 +120,10 @@ CcuTempAllToAllMesh1dMultiJetty::FastLaunch(const OpParam& param, const Template
     CcuResult launchRet = HcommCcuKernelLaunch(
         tempFastLaunchCtx.threads[0], tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle, taskArgs, argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempAllToAllMesh1dMultiJetty::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR(
+            "[CcuTempAllToAllMesh1dMultiJetty::FastLaunch] kernel launch failed, "
+            "ccuRet -> %d",
+            launchRet);
         return ConvertCcuToHccl(launchRet);
     }
 

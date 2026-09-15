@@ -120,7 +120,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(
             return SelectorStatus::NOT_MATCH;
         } else {
             HCCL_WARNING(
-                "[SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
+                "[ReduceScatterVAutoSelector][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu "
+                "schedule mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }

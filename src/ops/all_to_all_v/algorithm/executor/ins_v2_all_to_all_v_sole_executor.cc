@@ -72,7 +72,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     CHK_PTR_NULL(topoInfo);
     std::vector<std::vector<u32>> tempAlgHierachyInfo;
     if (algHierarchyInfo.infos.size() == 0) {
-        HCCL_ERROR("algHierarchyInfo level num is zero!");
+        HCCL_ERROR("[InsV2AlltoAllVSoleExecutor] algHierarchyInfo level num is zero!");
         return HCCL_E_PARA;
     }
     // UBX场景判断
@@ -414,7 +414,9 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchS
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsAlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], ccuKernelNum[%llu]", threadNum, ccuKernelNum);
+        "[InsAlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], "
+        "ccuKernelNum[%llu]",
+        threadNum, ccuKernelNum);
 
     u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
     // 申请ctx
@@ -505,7 +507,7 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     AlgTopoMatch topoMatch;
     HcclResult matchRet = topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs);
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2AlltoAllVSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
         lastPortNum_ = {1};
         lastIsPod_ = false;
@@ -518,7 +520,7 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdx);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdx);
     if (portNumLevel0.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AlltoAllVSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();

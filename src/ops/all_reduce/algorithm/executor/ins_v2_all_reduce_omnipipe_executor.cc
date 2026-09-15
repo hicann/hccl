@@ -280,13 +280,14 @@ std::vector<CostModelParam> InsV2AllReduceOmniPipeExecutor<
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2AllReduceOmniPipeExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
 
     OmniPipeCostAxes axes;
     if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2AllReduceOmniPipeExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
         return {};
     }
 
@@ -801,7 +802,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 {
     (void)topoInfo;
     if (algHierarchyInfo_.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo_.infos is empty.", __func__);
+        HCCL_ERROR("[InsV2AllReduceOmniPipeExecutor][%s] algHierarchyInfo_.infos is empty.", __func__);
         return HCCL_E_PARA;
     }
     subCommRanks0.clear();
@@ -913,7 +914,9 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     rankSizeLevel1_ = subCommRanks1[0].size();
     rankSizeLevel2_ = subCommRanks2[0].size();
     if (rankSizeLevel0_ == 0 || rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__, rankSizeLevel0_, rankSizeLevel1_);
+        HCCL_ERROR(
+            "[InsV2AllReduceOmniPipeExecutor][%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__,
+            rankSizeLevel0_, rankSizeLevel1_);
         return HCCL_E_PARA;
     }
 

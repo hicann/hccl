@@ -77,7 +77,7 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO("[InsV2AllGatherParallelExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -93,7 +93,7 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
     std::vector<u32> portNumLevel1
         = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]));
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllGatherParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 
@@ -166,7 +166,9 @@ AlgNetMeta InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2AllGatherParallelExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();

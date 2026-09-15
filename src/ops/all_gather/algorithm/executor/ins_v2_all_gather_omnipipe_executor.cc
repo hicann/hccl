@@ -216,13 +216,14 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2AllGatherOmniPipeExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
 
     OmniPipeCostAxes axes;
     if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2AllGatherOmniPipeExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
         return {};
     }
 
@@ -325,7 +326,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
                   + static_cast<float>(thirdStepNum) * thirdLatency;
 
     HCCL_INFO(
-        "[%s] algName[%s] axes[%llu,%llu,%llu] steps[%llu,%llu] planBandwidth[%f,%f] "
+        "[InsV2AllGatherOmniPipeExecutor][%s] algName[%s] axes[%llu,%llu,%llu] steps[%llu,%llu] planBandwidth[%f,%f] "
         "costBandwidth[%f,%f] xyBandwidth[%f] thirdPlanBandwidth[%f] "
         "innerMax[%d] outerMax[%d] thirdIsOuterSlow[%d] transferCoeff[%f] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, axes.mesh, axes.clos, axes.third, xyStepNum, thirdStepNum, meshBandwidth, closBandwidth,

@@ -322,7 +322,7 @@ std::vector<CostModelParam> InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplat
     const AlgAttrs* attrs = nullptr;
 #endif
     if (attrs == nullptr) {
-        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        HCCL_WARNING("[InsAlltoAllVSoleExecutor][CalcCostCoeff] algName=%s attrs not found, skip.", algName);
         return {};
     }
     // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel

@@ -161,13 +161,15 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2ReduceScatterOmniPipeExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
 
     OmniPipeCostAxes axes;
     if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2ReduceScatterOmniPipeExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
+            algName);
         return {};
     }
 
@@ -272,7 +274,8 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
                   + static_cast<float>(thirdStepNum) * thirdLatency;
 
     HCCL_INFO(
-        "[%s] algName[%s] axes[%llu,%llu,%llu] steps[%llu,%llu] planBandwidth[%f,%f] "
+        "[InsV2ReduceScatterOmniPipeExecutor][%s] algName[%s] axes[%llu,%llu,%llu] steps[%llu,%llu] "
+        "planBandwidth[%f,%f] "
         "costBandwidth[%f,%f] xyBandwidth[%f] thirdPlanBandwidth[%f] "
         "innerMax[%d] outerMax[%d] thirdIsOuterSlow[%d] transferCoeff[%f] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, axes.mesh, axes.clos, axes.third, xyStepNum, thirdStepNum, meshBandwidth, closBandwidth,
@@ -343,7 +346,9 @@ HcclResult InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     rankSizeLevel1_ = subCommRanks1[0].size();
     rankSizeLevel2_ = subCommRanks2[0].size();
     if (rankSizeLevel0_ == 0 || rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__, rankSizeLevel0_, rankSizeLevel1_);
+        HCCL_ERROR(
+            "[InsV2ReduceScatterOmniPipeExecutor][%s] rankSizeLevel0_[%u] or rankSizeLevel1_[%u] is 0.", __func__,
+            rankSizeLevel0_, rankSizeLevel1_);
         return HCCL_E_PARA;
     }
 

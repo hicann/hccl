@@ -265,7 +265,10 @@ HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::KernelRun(
     CcuResult launchRet
         = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempAllGatherNHR1DMultiJettyMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR(
+            "[CcuTempAllGatherNHR1DMultiJettyMem2Mem::KernelRun] kernel launch "
+            "failed, ccuRet -> %d",
+            launchRet);
         return ConvertCcuToHccl(launchRet);
     }
 

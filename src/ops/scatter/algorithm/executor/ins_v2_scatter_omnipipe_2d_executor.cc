@@ -99,13 +99,14 @@ InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>
     (void)comm;
     (void)param;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
     u64 meshRankSize = 1;
     u64 closRankSize = 1;
     if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2ScatterOmniPipe2DExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
         return {};
     }
 
@@ -182,18 +183,19 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     devType_ = topoInfo->deviceType;
 
     if (algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2ScatterOmniPipe2DExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
+        HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);
+        HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
@@ -294,18 +296,19 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         dataCount_); // 3 main+x+y
 
     if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2ScatterOmniPipe2DExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel0 is 0", __func__);
+        HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] rankSizeLevel0 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = resCtx.algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[%s] rankSizeLevel1 is 0", __func__);
+        HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] rankSizeLevel1 is 0", __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
@@ -535,17 +538,20 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scatterDataSize = maxTmpMemSize / rankSize_;
     HCCL_DEBUG(
-        "[%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__, myRank_, maxTmpMemSize,
-        transportBoundDataSize);
+        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__,
+        myRank_, maxTmpMemSize, transportBoundDataSize);
     u64 maxCountPerLoop = std::min(scatterDataSize, transportBoundDataSize) / HCCL_MIN_SLICE_ALIGN
                           * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
-    CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
-    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
+    CHK_PRT_RET(
+        maxCountPerLoop == 0, HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] maxCountPerLoop is 0", __func__),
+        HCCL_E_INTERNAL);
+    HCCL_DEBUG(
+        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
     u32 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
-    HCCL_DEBUG("[%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
+    HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;
-    HCCL_DEBUG("[%s] perLoopSize[%u]", __func__, perLoopSize);
+    HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] perLoopSize[%u]", __func__, perLoopSize);
 
     // 3.计算对齐数据的切片信息
     OmniPipeSliceInfo alignSliceInfo;
@@ -566,7 +572,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     sliceParam.dataTypeSize = dataTypeSize_;
 
     alignSliceInfo = CalcScatterOmniPipeSliceInfo(sliceParam, param.root);
-    CHK_PRT_RET(alignSliceInfo.isEmpty(), HCCL_ERROR("[%s] alignSliceInfo is empty", __func__), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        alignSliceInfo.isEmpty(), HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] alignSliceInfo is empty", __func__),
+        HCCL_E_INTERNAL);
 
     // 4.计算尾数据的切片信息
     OmniPipeSliceInfo tailSliceInfo;
@@ -574,11 +582,13 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     if (dataCount_ > maxCountPerLoop && dataCount_ % maxCountPerLoop != 0) {
         u64 tailCount = dataCount_ % maxCountPerLoop;
         tailLoopSize = tailCount * dataTypeSize_;
-        HCCL_DEBUG("[%s] myRank[%u] tailLoopSize[%u]", __func__, myRank_, tailLoopSize);
+        HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] tailLoopSize[%u]", __func__, myRank_, tailLoopSize);
         std::vector<u64> tailPerLoop(rankSize_, tailLoopSize);
         sliceParam.dataSizePerLoop = tailPerLoop;
         tailSliceInfo = CalcScatterOmniPipeSliceInfo(sliceParam, param.root);
-        CHK_PRT_RET(tailSliceInfo.isEmpty(), HCCL_ERROR("[%s] tailSliceInfo is empty", __func__), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            tailSliceInfo.isEmpty(),
+            HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] tailSliceInfo is empty", __func__), HCCL_E_INTERNAL);
     }
 
     // 5.以下是处理所有loop
@@ -721,7 +731,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         }
 
         HCCL_DEBUG(
-            "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] outputSize[%u] "
+            "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] "
+            "sliceSize[%lu] outputSize[%u] "
             "inputSize[%u]",
             __func__, myRank_, tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff,
             tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamsLocalCopy.sliceSize,

@@ -272,7 +272,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(
             return SelectorStatus::MATCH;
         } else {
             HCCL_WARNING(
-                "[SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu schedule mode.",
+                "[ReduceScatterAutoSelector][SelectCcuScheduleAlgo] layer0Shape[%d] is not supported yet for ccu "
+                "schedule mode.",
                 topoInfo->level0Topo);
             return SelectorStatus::NOT_MATCH;
         }
@@ -634,16 +635,16 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
                 selectAlgName = "DpuReduceScatterPipeLineMeshNHRMesh";
-                HCCL_INFO("Using algo DpuReduceScatterPipeLineMeshNHRMesh");
+                HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterPipeLineMeshNHRMesh");
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-                HCCL_INFO("Using algo DpuReduceScatterSequenceMeshMesh");
+                HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterSequenceMeshMesh");
                 return SelectorStatus::MATCH;
             }
         } else {
             selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-            HCCL_INFO("Using algo DpuReduceScatterSequenceMeshMesh");
+            HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterSequenceMeshMesh");
             return SelectorStatus::MATCH;
         }
     }
@@ -688,7 +689,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
     } else {
         selectAlgName = "AicpuReduceScatterSoleNHR";
     }
-    HCCL_DEBUG("[%s] Algo match [%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[ReduceScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 

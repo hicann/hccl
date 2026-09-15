@@ -103,13 +103,15 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
 {
     (void)comm;
     if (topoInfo == nullptr || algName == nullptr) {
-        HCCL_ERROR("[%s] topoInfo or algName is null.", __func__);
+        HCCL_ERROR("[InsV2ReduceScatterOmniPipe2dExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
     u64 meshRankSize = 1;
     u64 closRankSize = 1;
     if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
-        HCCL_WARNING("[%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+        HCCL_WARNING(
+            "[InsV2ReduceScatterOmniPipe2dExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
+            algName);
         return {};
     }
 
@@ -155,7 +157,7 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
     costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
 
     HCCL_INFO(
-        "[%s] algName[%s] axes[%llu,%llu] step[%llu] maxStep[%d] sched2dCost[%d] "
+        "[InsV2ReduceScatterOmniPipe2dExecutor][%s] algName[%s] axes[%llu,%llu] step[%llu] maxStep[%d] sched2dCost[%d] "
         "dataRatio[%f,%f] planBandwidth[%f,%f] transferCoeff[%e] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, meshRankSize, closRankSize, stepNum, stepNum == maxStepNum, useSched2dCost, meshDataRatio,
         closDataRatio, meshBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, closPlanBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION,
@@ -190,18 +192,20 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     reduceOp_ = param.reduceType;
 
     if (algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2ReduceScatterOmniPipe2dExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[InitCommInfo] rankSizeLevel0 is 0");
+        HCCL_ERROR("[InsV2ReduceScatterOmniPipe2dExecutor][InitCommInfo] rankSizeLevel0 is 0");
         return HcclResult::HCCL_E_PARA;
     }
 
     rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     if (rankSizeLevel1_ == 0) {
-        HCCL_ERROR("[InitCommInfo] rankSizeLevel1 is 0");
+        HCCL_ERROR("[InsV2ReduceScatterOmniPipe2dExecutor][InitCommInfo] rankSizeLevel1 is 0");
         return HcclResult::HCCL_E_PARA;
     }
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
@@ -285,12 +289,15 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     rankSize_ = resCtx.topoInfo.userRankSize;
     maxTmpMemSize_ = resCtx.cclMem.size;
     if (resCtx.algHierarchyInfo.infos.empty()) {
-        HCCL_ERROR("[%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
+        HCCL_ERROR(
+            "[InsV2ReduceScatterOmniPipe2dExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).",
+            __func__);
         return HcclResult::HCCL_E_PARA;
     }
     rankSizeLevel0_ = resCtx.algHierarchyInfo.infos[0][0].size();
     if (rankSizeLevel0_ == 0) {
-        HCCL_ERROR("[Orchestrate] rankSizeLevel0 is 0, expected to be greater than 0");
+        HCCL_ERROR(
+            "[InsV2ReduceScatterOmniPipe2dExecutor][Orchestrate] rankSizeLevel0 is 0, expected to be greater than 0");
         return HcclResult::HCCL_E_PARA;
     }
 
@@ -426,7 +433,8 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
             || resCtx.ccuKernelNum.size() < OMNIPIPE_2D_MIN_CCU_KERNEL_NUM
             || resCtx.ccuKernels.size() < static_cast<size_t>(resCtx.ccuKernelNum[0]) + resCtx.ccuKernelNum[1],
         HCCL_ERROR(
-            "[%s] resCtx resource not enough. threads.size[%zu], ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
+            "[InsV2ReduceScatterOmniPipe2dExecutor][%s] resCtx resource not enough. threads.size[%zu], "
+            "ccuKernelNum.size[%zu], ccuKernels.size[%zu].",
             __func__, resCtx.threads.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size()),
         HcclResult::HCCL_E_INTERNAL);
     templateResourceLevel0.threads.push_back(resCtx.threads[1]);

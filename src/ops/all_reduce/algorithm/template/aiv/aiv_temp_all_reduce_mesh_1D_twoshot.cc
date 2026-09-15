@@ -88,7 +88,7 @@ HcclResult AivTempAllReduceMesh1DTwoShot::CalcRes(
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
-    HCCL_WARNING("Resource calculation is temporarily not performed in the template.");
+    HCCL_WARNING("[AivTempAllReduceMesh1DTwoShot] Resource calculation is temporarily not performed in the template.");
     return HCCL_SUCCESS;
 }
 

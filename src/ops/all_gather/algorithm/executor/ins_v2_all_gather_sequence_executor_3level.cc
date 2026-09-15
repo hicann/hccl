@@ -66,7 +66,8 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO(
+            "[InsV2AllGatherSequenceExecutor3Level][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -136,7 +137,9 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2AllGatherSequenceExecutor3Level][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();

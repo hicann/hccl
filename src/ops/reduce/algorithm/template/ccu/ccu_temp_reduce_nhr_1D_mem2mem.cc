@@ -332,7 +332,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::CalcSliceInfoAllReduce(const u64 dataSize,
     CHK_PRT_RET(
         (sliceInfoVec[templateRankSize_ - 1][0].offset + sliceInfoVec[templateRankSize_ - 1][0].size != dataSize),
         HCCL_ERROR(
-            "[CalcSliceInfoAllReduce] SliceInfo calculation error! DataSize[%llu], "
+            "[CcuTempReduceNHR1DMem2Mem][CalcSliceInfoAllReduce] SliceInfo calculation error! DataSize[%llu], "
             "lastoffset[%llu], lastsize[%llu]",
             dataSize, sliceInfoVec[templateRankSize_ - 1][0].offset, sliceInfoVec[templateRankSize_ - 1][0].size),
         HcclResult::HCCL_E_INTERNAL);
@@ -562,7 +562,8 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetAllGatherStepInfo(u32 step, u32 nSteps,
         stepInfo.rxSliceIdxs.push_back(rxSliceIdx);
 
         HCCL_DEBUG(
-            "[ReduceNHR1D][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i, txSliceIdx, rxSliceIdx);
+            "[CcuTempReduceNHR1DMem2Mem][ReduceNHR1D][GetAllGatherStepInfo] i[%u] txSliceIdx[%u] rxSliceIdx[%u]", i,
+            txSliceIdx, rxSliceIdx);
 
         txSliceIdx = (txSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;
         rxSliceIdx = (rxSliceIdx + templateRankSize_ - deltaSliceIndex) % templateRankSize_;

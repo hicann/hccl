@@ -49,7 +49,7 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     const AlgAttrs* attrs = nullptr;
 #endif
     if (attrs == nullptr) {
-        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        HCCL_WARNING("[InsV2AllToAllVConcurrentExecutor][CalcCostCoeff] algName=%s attrs not found, skip.", algName);
         return {};
     }
     if (attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLV || attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {

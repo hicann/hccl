@@ -58,7 +58,8 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
@@ -91,7 +92,8 @@ HcclResult CcuTempAllGatherVMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "[CcuTempAllGatherVMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, "
+        "dimsize=%llu, "
         "ccuKernelInfos.size()=%llu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 

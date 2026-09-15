@@ -135,7 +135,8 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelNum.push_back(kernelNum);
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     HCCL_DEBUG(
-        "[CcuTempAllGatherNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u], kernelNum[%u]",
+        "[CcuTempAllGatherNHR1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u], kernelNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum, kernelNum);
 
     // 2.将channelDescs分到2个die
@@ -296,7 +297,10 @@ HcclResult CcuTempAllGatherNHR1DMem2Mem::LaunchKernels(
         CcuResult launchRet = HcommCcuKernelLaunch(
             templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempAllGatherNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempAllGatherNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet "
+                "-> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }
@@ -402,7 +406,10 @@ CcuTempAllGatherNHR1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFas
             tempFastLaunchCtx.threads[kernelIdx], tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle,
             taskArgs, argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempAllGatherNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempAllGatherNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet "
+                "-> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }

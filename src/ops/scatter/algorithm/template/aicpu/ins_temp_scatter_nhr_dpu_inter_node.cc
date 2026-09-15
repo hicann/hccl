@@ -150,12 +150,12 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(
 
     // 转换成eager-mode，保障AICPU指令下发执行完成
     if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed set eager mode, tag is %s.", param.algTag);
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] failed set eager mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
 
     if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
-        HCCL_ERROR("HcommThreadSynchronize failed");
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] HcommThreadSynchronize failed");
         return HCCL_E_INTERNAL;
     }
 
@@ -173,28 +173,28 @@ HcclResult InsTempScatterNHRDPUInterNode::KernelRun(
             reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
             static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
         != 0) {
-        HCCL_ERROR("HcommSendRequest failed");
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
-    HCCL_INFO("HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+    HCCL_INFO("[InsTempScatterNHRDPUInterNode] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
 
     // 等待DPU数据传输，然后回写结果回来
     void* recvData = nullptr;
     u32 recvMsgId = 0;
     if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("HcommWaitResponse failed");
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] HcommWaitResponse failed");
         return HCCL_E_INTERNAL;
     }
-    HCCL_INFO("HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+    HCCL_INFO("[InsTempScatterNHRDPUInterNode] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
     if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
         return HCCL_E_INTERNAL;
     }
 
     // 将执行模式转换回到batch
     if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed set batch mode, tag is %s.", param.algTag);
+        HCCL_ERROR("[InsTempScatterNHRDPUInterNode] failed set batch mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
 
@@ -245,7 +245,7 @@ HcclResult InsTempScatterNHRDPUInterNode::RunNHR(
     // nhr主体部分
     SetRoot(tempAlgParams.root);
     u32 nSteps = GetNHRStepNum(templateRankSize_);
-    HCCL_INFO("[RunNHR] root_ at RunNHR [%u] ", root_);
+    HCCL_INFO("[InsTempScatterNHRDPUInterNode][RunNHR] root_ at RunNHR [%u] ", root_);
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         for (u32 step = 0; step < nSteps; step++) {
             AicpuNHRStepInfo stepInfo;

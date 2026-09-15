@@ -80,7 +80,8 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes(
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
@@ -100,7 +101,8 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes(
                 channelDescs.push_back(channel);
             }
         }
-        HCCL_DEBUG("[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] Get Mesh Channel Success!");
+        HCCL_DEBUG("[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] Get Mesh Channel "
+                   "Success!");
     }
 
     auto kernelArg = std::make_shared<CcuKernelArgReduceMesh1DTwoShotMem2Mem>();
@@ -114,7 +116,8 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "[CcuTempReduceMesh1DTwoShotMem2Mem::CalcRes] channelDescs.size()=%llu, "
+        "dimsize=%llu, "
         "ccuKernelInfos.size()=%llu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
@@ -126,7 +129,8 @@ CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch(const OpParam& param, const Templa
 {
     (void)param;
     if (tempFastLaunchCtx.ccuKernelSubmitInfos.size() == 0) {
-        HCCL_INFO("[CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch] ccu kernel num is 0, just success.");
+        HCCL_INFO("[CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch] ccu kernel num "
+                  "is 0, just success.");
         return HCCL_SUCCESS;
     }
     HCCL_DEBUG("[CcuTempReduceMesh1DTwoShotMem2Mem::FastLaunch] start");
@@ -221,7 +225,8 @@ HcclResult CcuTempReduceMesh1DTwoShotMem2Mem::SubmitKernelInfo(
     size_t argNum = taskArgs.size() + 4;
     if (UNLIKELY(argNum > CCU_MAX_TASK_ARG_NUM)) {
         HCCL_ERROR(
-            "[CcuTempReduceMesh1DTwoShotMem2Mem::KernelRun] argNum is bigger than CCU_MAX_TASK_ARG_NUM[%d]",
+            "[CcuTempReduceMesh1DTwoShotMem2Mem::KernelRun] argNum is bigger than "
+            "CCU_MAX_TASK_ARG_NUM[%d]",
             CCU_MAX_TASK_ARG_NUM);
         return HcclResult::HCCL_E_INTERNAL;
     }

@@ -123,7 +123,9 @@ HcclResult InsTempReduceScatterMesh1DZAxisDetour::CalcDataSplitByPortGroup(
 HcclResult
 InsTempReduceScatterMesh1DZAxisDetour::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
 {
-    CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        channels.empty(), HCCL_ERROR("[InsTempReduceScatterMesh1DZAxisDetour][SetchannelsPerRank] channels is empty."),
+        HCCL_E_INTERNAL);
     channelsPerRank_ = CalcChannelsPerRank(channels);
     if (channelsPerRank_ > 1) {
         level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;

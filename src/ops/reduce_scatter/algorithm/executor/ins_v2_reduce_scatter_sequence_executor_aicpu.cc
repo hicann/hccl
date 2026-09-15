@@ -95,7 +95,9 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutorAicpu][CalcCostCoeff] algName=%s topo match not support, skip.",
+            algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -111,11 +113,12 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2ReduceScatterSequenceExecutorAicpu][CalcCostCoeff] portNum is empty");
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "[InsV2ReduceScatterSequenceExecutorAicpu][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, "
+        "portNumLevel0=%d, portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0.empty() ? 0 : portNumLevel0[0],
         portNumLevel1.empty() ? 0 : portNumLevel1[0], static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
@@ -172,7 +175,9 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2ReduceScatterSequenceExecutorAicpu][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -532,12 +537,14 @@ HcclResult InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
     u32 threadNum = threads_.size();
     u32 ccuKernelNum = templateAlgRes1.submitInfos.size() + templateAlgRes0.submitInfos.size();
     if (ccuKernelNum < 1) {
-        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] ccu kernel num is 0, no need to save.");
+        HCCL_INFO("[InsV2ReduceScatterSequenceExecutor] ccu kernel num is 0, "
+                  "no need to save.");
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsV2ReduceScatterSequenceExecutor][HcclEngineCtxCreate] threadNum[%llu], ccuKernelNum[%llu]", threadNum,
-        ccuKernelNum);
+        "[InsV2ReduceScatterSequenceExecutor][HcclEngineCtxCreate] "
+        "threadNum[%llu], ccuKernelNum[%llu]",
+        threadNum, ccuKernelNum);
 
     std::vector<u32> ccuKernelNumList
         = {static_cast<u32>(templateAlgRes0.submitInfos.size()), static_cast<u32>(templateAlgRes1.submitInfos.size())};

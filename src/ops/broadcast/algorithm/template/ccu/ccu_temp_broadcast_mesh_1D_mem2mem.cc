@@ -73,7 +73,8 @@ HcclResult CcuTempBroadcastMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的kernelArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
@@ -108,7 +109,8 @@ HcclResult CcuTempBroadcastMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, "
+        "dimsize=%llu, "
         "ccuKernelInfos.size()=%llu, mySubCommRank_=%u, subCommRootId_=%u root=%u",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size(), mySubCommRank_,
         subCommRootId_, param.root);
@@ -139,7 +141,10 @@ CcuTempBroadcastMesh1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFa
     CcuResult launchRet = HcommCcuKernelLaunch(
         tempFastLaunchCtx.threads[0], tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle, taskArgs, argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempBroadcastMesh1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR(
+            "[CcuTempBroadcastMesh1DMem2Mem::FastLaunch] kernel launch failed, ccuRet "
+            "-> %d",
+            launchRet);
         return ConvertCcuToHccl(launchRet);
     }
 

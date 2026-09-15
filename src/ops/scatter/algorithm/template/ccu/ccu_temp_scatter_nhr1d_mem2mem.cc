@@ -309,7 +309,10 @@ HcclResult CcuTempScatterNHR1DMem2Mem::FastLaunch(const OpParam& param, const Te
             tempFastLaunchCtx.threads[kernelIdx], tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle,
             taskArgs, argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempScatterNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempScatterNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> "
+                "%d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }

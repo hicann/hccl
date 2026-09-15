@@ -291,7 +291,10 @@ CcuTempBroadcastNHR1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFas
             tempFastLaunchCtx.threads[kernelIdx], tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].kernelHandle,
             taskArgs, argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempBroadcastNHR1DMem2Mem::FastLaunch] kernel launch failed, ccuRet "
+                "-> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }
@@ -381,7 +384,10 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::KernelRun(
         CcuResult launchRet = HcommCcuKernelLaunch(
             templateResource.threads[axisId], templateResource.ccuKernels[axisId], taskArgs.data(), argSize);
         if (launchRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CcuTempBroadcastNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+            HCCL_ERROR(
+                "[CcuTempBroadcastNHR1DMem2Mem::KernelRun] kernel launch failed, ccuRet "
+                "-> %d",
+                launchRet);
             return ConvertCcuToHccl(launchRet);
         }
     }

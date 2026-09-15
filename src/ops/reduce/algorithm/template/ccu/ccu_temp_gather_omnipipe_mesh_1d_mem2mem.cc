@@ -51,8 +51,8 @@ void CcuTempGatherOmniPipeMesh1DMem2Mem::SetRoot(u32 root)
         ranksStr += std::to_string(r) + ", ";
     }
     HCCL_DEBUG(
-        "[%s] myRank[%u] mySubCommRank[%u] subCommRanks[%s] subCommRootId_[%d]", __func__, myRank_, mySubCommRank_,
-        ranksStr.c_str(), subCommRootId_);
+        "[CcuTempGatherOmniPipeMesh1DMem2Mem][%s] myRank[%u] mySubCommRank[%u] subCommRanks[%s] subCommRootId_[%d]",
+        __func__, myRank_, mySubCommRank_, ranksStr.c_str(), subCommRootId_);
 }
 
 void CcuTempGatherOmniPipeMesh1DMem2Mem::UnsetRoot(u32 rank)
@@ -93,8 +93,8 @@ HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelNum.push_back(1);
 
     HCCL_DEBUG(
-        "[%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
-        resourceRequest.slaveThreadNum);
+        "[CcuTempGatherOmniPipeMesh1DMem2Mem][%s]notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__,
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     CcuKernelInfo kernelInfo;
     CHK_SAFETY_FUNC_RET(
@@ -203,13 +203,13 @@ HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::LaunchGatherKernel(
 HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::RunLocalCopy(
     const TemplateDataParams& templateDataParams, TemplateResource& templateResource)
 {
-    HCCL_DEBUG("[%s] myRank[%u] TempLocalCopy start", __func__, myRank_);
+    HCCL_DEBUG("[CcuTempGatherOmniPipeMesh1DMem2Mem][%s] myRank[%u] TempLocalCopy start", __func__, myRank_);
     DataSlice srcSlice(
         buffInfo_.inputPtr, buffInfo_.inBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
     DataSlice dstSlice(
         buffInfo_.outputPtr, buffInfo_.outBuffBaseOff, templateDataParams.sliceSize, templateDataParams.count);
     CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, dstSlice));
-    HCCL_DEBUG("[%s] myRank[%u] TempLocalCopy end", __func__, myRank_);
+    HCCL_DEBUG("[CcuTempGatherOmniPipeMesh1DMem2Mem][%s] myRank[%u] TempLocalCopy end", __func__, myRank_);
     return HcclResult::HCCL_SUCCESS;
 }
 

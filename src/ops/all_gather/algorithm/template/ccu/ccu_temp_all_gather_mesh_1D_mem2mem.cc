@@ -58,7 +58,8 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::CalcRes(
     // 多少个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[CcuTempAllGatherMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] slaveThreadNum[%u]",
+        "[CcuTempAllGatherMesh1DMem2Mem::CalcRes] notifyNumOnMainThread[%u] "
+        "slaveThreadNum[%u]",
         resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
 
     // 创建每个kernel的KernelArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
@@ -92,7 +93,8 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempAllGatherMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
+        "[CcuTempAllGatherMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, "
+        "dimsize=%llu, "
         "ccuKernelInfos.size()=%llu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
@@ -230,7 +232,10 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::KernelRun(
     CcuResult launchRet
         = HcommCcuKernelLaunch(templateResource.threads[0], templateResource.ccuKernels[0], taskArgs.data(), argSize);
     if (launchRet != CCU_SUCCESS) {
-        HCCL_ERROR("[CcuTempAllGatherMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> %d", launchRet);
+        HCCL_ERROR(
+            "[CcuTempAllGatherMesh1DMem2Mem::KernelRun] kernel launch failed, ccuRet -> "
+            "%d",
+            launchRet);
         return ConvertCcuToHccl(launchRet);
     }
 

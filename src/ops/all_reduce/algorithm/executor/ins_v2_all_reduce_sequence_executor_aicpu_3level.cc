@@ -47,7 +47,9 @@ std::vector<CostModelParam> InsV2AllReduceSequenceExecutorAicpu3Level<
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO(
+            "[InsV2AllReduceSequenceExecutorAicpu3Level][CalcCostCoeff] algName=%s topo match not support, skip.",
+            algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -67,11 +69,12 @@ std::vector<CostModelParam> InsV2AllReduceSequenceExecutorAicpu3Level<
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel2 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel2);
     if (portNumLevel0.empty() || portNumLevel1.empty() || portNumLevel2.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllReduceSequenceExecutorAicpu3Level][CalcCostCoeff] portNum is empty");
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, rankSizeLevel2=%d, "
+        "[InsV2AllReduceSequenceExecutorAicpu3Level][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, "
+        "rankSizeLevel2=%d, "
         "portNumLevel0=%d, portNumLevel1=%d, portNumLevel2=%d, netTypeLevel0=%d, netTypeLevel1=%d, netTypeLevel2=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2));
@@ -132,7 +135,10 @@ AlgNetMeta InsV2AllReduceSequenceExecutorAicpu3Level<
               topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+        HCCL_INFO(
+            "[InsV2AllReduceSequenceExecutorAicpu3Level][GetAlgNetMeta] algName=%s topo match not support, return "
+            "empty.",
+            algName);
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -357,7 +363,7 @@ HcclResult InsV2AllReduceSequenceExecutorAicpu3Level<
 
     if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_3 || algHierarchyInfo_.infos[0][0].empty()
         || algHierarchyInfo_.infos[1][0].empty() || algHierarchyInfo_.infos[2][0].empty()) {
-        HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
+        HCCL_ERROR("[InsV2AllReduceSequenceExecutorAicpu3Level][%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
     rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();

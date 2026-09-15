@@ -43,8 +43,8 @@ HcclResult CcuTempAllGatherOmniPipeMesh1DMem2Mem::CalcRes(
     // 需要1个kernel
     resourceRequest.ccuKernelNum.push_back(1);
     HCCL_DEBUG(
-        "[%s] notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__, resourceRequest.notifyNumOnMainThread,
-        resourceRequest.slaveThreadNum);
+        "[CcuTempAllGatherOmniPipeMesh1DMem2Mem][%s] notifyNumOnMainThread[%u] slaveThreadNum[%u]", __func__,
+        resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum);
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
     CHK_SAFETY_FUNC_RET(strcpy_s(
