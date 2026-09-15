@@ -144,6 +144,21 @@ aclError aclrtGetDevice(int32_t* device)
     return ACL_SUCCESS;
 }
 
+// SimWorld无真实context概念，置空ctx使调用方走"ctx为null则跳过SetCurrent"的降级路径
+aclError aclrtGetCurrentContext(aclrtContext* context)
+{
+    if (context != nullptr) {
+        *context = nullptr;
+    }
+    return ACL_SUCCESS;
+}
+
+aclError aclrtSetCurrentContext(aclrtContext context)
+{
+    HCCL_WARNING("[%s] not support.", __func__);
+    return ACL_SUCCESS;
+}
+
 aclError aclrtGetDevicesTopo(uint32_t devId, uint32_t otherDevId, uint64_t* value)
 {
     HCCL_WARNING("[%s] not support.", __func__);

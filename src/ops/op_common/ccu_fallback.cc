@@ -9,7 +9,9 @@
  */
 
 #include <cstring> // 包含strncmp函数
+#include <functional>
 #include "ccu_fallback.h"
+#include "comm_worker_mgr.h"
 #include "op_common.h"
 #include "inconsistent_check.h"
 #include "log.h"
@@ -95,6 +97,11 @@ HcclResult NegotiationCleanupCb(HcclComm comm, HcclCommStatePhase state, void* a
     HcclComm ownerComm = reinterpret_cast<HcclComm>(args);
     if (ownerComm != comm) {
         return HCCL_SUCCESS;
+    }
+    if (state == HcclCommStatePhase::HCCL_COMM_STATE_PHASE_DESTROY_PRE) {
+        // 先回收常驻worker（等待在途任务收尾并join），再清理其正在使用的stream/subComm；
+        // 必须在获取ctx之前执行：ctx可能已被失败路径清理，而worker仍存活
+        CommWorkerMgr::GetInstance().Remove(comm);
     }
     // 通过comm动态获取negCtx，避免持有EngineCtx内存指针导致野指针
     char commName[COMM_INDENTIFIER_MAX_LENGTH] = {0};
@@ -263,6 +270,11 @@ static HcclResult GetNegotiationCtx(HcclComm comm, const OpParam& param, u32 ran
     return HCCL_SUCCESS;
 }
 
+static HcclResult RunInCommWorker(HcclComm comm, const std::function<HcclResult()>& task)
+{
+    return CommWorkerMgr::GetInstance().Submit(comm, task);
+}
+
 static HcclResult
 ExecuteNegotiationOp(HcclComm comm, const OpParam& param, u32 rankSize, bool localResOk, int32_t& result)
 {
@@ -272,33 +284,42 @@ ExecuteNegotiationOp(HcclComm comm, const OpParam& param, u32 rankSize, bool loc
     int32_t localVal = localResOk ? NEGOTIATION_SUCCESS_VAL : NEGOTIATION_FAIL_VAL;
     HCCL_INFO("[%s] localVal[0x%x].", __func__, localVal);
 
-    errno_t memRet = memcpy_s(negCtx->hostSendBuf, sizeof(int32_t), &localVal, sizeof(int32_t));
-    CHK_PRT_RET(
-        memRet != EOK, HCCL_ERROR("[%s] memcpy_s for hostSendBuf failed, ret[%d].", __func__, memRet), HCCL_E_MEMORY);
+    HcclResult threadRet = RunInCommWorker(comm, [&]() -> HcclResult {
+        errno_t memRet = memcpy_s(negCtx->hostSendBuf, sizeof(int32_t), &localVal, sizeof(int32_t));
+        CHK_PRT_RET(
+            memRet != EOK, HCCL_ERROR("[ExecuteNegotiationOp] memcpy_s for hostSendBuf failed, ret[%d].", memRet),
+            HCCL_E_MEMORY);
 
-    HcclResult cpyRet = haclrtMemcpy(
-        negCtx->deviceSendBuf, sizeof(int32_t), negCtx->hostSendBuf, sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
-    CHK_PRT_RET(
-        cpyRet != HCCL_SUCCESS, HCCL_ERROR("[%s] haclrtMemcpy H2D failed, ret[%d].", __func__, cpyRet), HCCL_E_RUNTIME);
+        HcclResult cpyRet = haclrtMemcpy(
+            negCtx->deviceSendBuf, sizeof(int32_t), negCtx->hostSendBuf, sizeof(int32_t), ACL_MEMCPY_HOST_TO_DEVICE);
+        CHK_PRT_RET(
+            cpyRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteNegotiationOp] haclrtMemcpy H2D failed, ret[%d].", cpyRet),
+            HCCL_E_RUNTIME);
 
-    HcclResult arRet = HcclAllReduce(
-        negCtx->deviceSendBuf, negCtx->deviceRecvBuf, NEGOTIATION_DATA_COUNT, HCCL_DATA_TYPE_INT32, HCCL_REDUCE_MIN,
-        negCtx->subComm, negCtx->stream);
-    CHK_PRT_RET(arRet != HCCL_SUCCESS, HCCL_ERROR("[%s] HcclAllReduce failed, ret[%d].", __func__, arRet), arRet);
+        HcclResult arRet = HcclAllReduce(
+            negCtx->deviceSendBuf, negCtx->deviceRecvBuf, NEGOTIATION_DATA_COUNT, HCCL_DATA_TYPE_INT32, HCCL_REDUCE_MIN,
+            negCtx->subComm, negCtx->stream);
+        CHK_PRT_RET(
+            arRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteNegotiationOp] HcclAllReduce failed, ret[%d].", arRet), arRet);
 
-    aclError aclRet = aclrtSynchronizeStream(negCtx->stream);
-    CHK_PRT_RET(
-        aclRet != ACL_SUCCESS, HCCL_ERROR("[%s] aclrtSynchronizeStream failed, ret[%d].", __func__, aclRet),
-        HCCL_E_RUNTIME);
+        aclError aclRet = aclrtSynchronizeStream(negCtx->stream);
+        CHK_PRT_RET(
+            aclRet != ACL_SUCCESS, HCCL_ERROR("[ExecuteNegotiationOp] aclrtSynchronizeStream failed, ret[%d].", aclRet),
+            HCCL_E_RUNTIME);
 
-    cpyRet = haclrtMemcpy(
-        negCtx->hostRecvBuf, sizeof(int32_t), negCtx->deviceRecvBuf, sizeof(int32_t), ACL_MEMCPY_DEVICE_TO_HOST);
-    CHK_PRT_RET(
-        cpyRet != HCCL_SUCCESS, HCCL_ERROR("[%s] haclrtMemcpy D2H failed, ret[%d].", __func__, cpyRet), HCCL_E_RUNTIME);
+        cpyRet = haclrtMemcpy(
+            negCtx->hostRecvBuf, sizeof(int32_t), negCtx->deviceRecvBuf, sizeof(int32_t), ACL_MEMCPY_DEVICE_TO_HOST);
+        CHK_PRT_RET(
+            cpyRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteNegotiationOp] haclrtMemcpy D2H failed, ret[%d].", cpyRet),
+            HCCL_E_RUNTIME);
 
-    memRet = memcpy_s(&result, sizeof(int32_t), negCtx->hostRecvBuf, sizeof(int32_t));
-    CHK_PRT_RET(
-        memRet != EOK, HCCL_ERROR("[%s] memcpy_s for result failed, ret[%d].", __func__, memRet), HCCL_E_MEMORY);
+        memRet = memcpy_s(&result, sizeof(int32_t), negCtx->hostRecvBuf, sizeof(int32_t));
+        CHK_PRT_RET(
+            memRet != EOK, HCCL_ERROR("[ExecuteNegotiationOp] memcpy_s for result failed, ret[%d].", memRet),
+            HCCL_E_MEMORY);
+        return HCCL_SUCCESS;
+    });
+    CHK_RET(threadRet);
 
     HCCL_INFO("[%s] negotiation result[0x%x].", __func__, result);
     return HCCL_SUCCESS;
@@ -372,30 +393,39 @@ static HcclResult ExecuteParamCheckOp(HcclComm comm, const OpParam& param, u32 r
         "[%s] param negotiation, tag[%s], count[%llu], config[%u], dataType[%u].", __func__, param.tag, localInfo.count,
         localInfo.opExecuteConfig, localInfo.dataType);
 
-    errno_t memRet = memcpy_s(negCtx->hostSendBuf, SEND_BUF_SIZE, &localInfo, sizeof(CheckParamInfo));
-    CHK_PRT_RET(
-        memRet != EOK, HCCL_ERROR("[%s] memcpy_s for hostSendBuf failed, ret[%d].", __func__, memRet), HCCL_E_MEMORY);
+    HcclResult threadRet = RunInCommWorker(comm, [&]() -> HcclResult {
+        errno_t memRet = memcpy_s(negCtx->hostSendBuf, SEND_BUF_SIZE, &localInfo, sizeof(CheckParamInfo));
+        CHK_PRT_RET(
+            memRet != EOK, HCCL_ERROR("[ExecuteParamCheckOp] memcpy_s for hostSendBuf failed, ret[%d].", memRet),
+            HCCL_E_MEMORY);
 
-    HcclResult cpyRet = haclrtMemcpy(
-        negCtx->deviceSendBuf, SEND_BUF_SIZE, negCtx->hostSendBuf, sizeof(CheckParamInfo), ACL_MEMCPY_HOST_TO_DEVICE);
-    CHK_PRT_RET(
-        cpyRet != HCCL_SUCCESS, HCCL_ERROR("[%s] haclrtMemcpy H2D failed, ret[%d].", __func__, cpyRet), HCCL_E_RUNTIME);
+        HcclResult cpyRet = haclrtMemcpy(
+            negCtx->deviceSendBuf, SEND_BUF_SIZE, negCtx->hostSendBuf, sizeof(CheckParamInfo),
+            ACL_MEMCPY_HOST_TO_DEVICE);
+        CHK_PRT_RET(
+            cpyRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteParamCheckOp] haclrtMemcpy H2D failed, ret[%d].", cpyRet),
+            HCCL_E_RUNTIME);
 
-    HcclResult agRet = HcclAllGather(
-        negCtx->deviceSendBuf, negCtx->deviceRecvBuf, sizeof(CheckParamInfo), HCCL_DATA_TYPE_UINT8, negCtx->subComm,
-        negCtx->stream);
-    CHK_PRT_RET(agRet != HCCL_SUCCESS, HCCL_ERROR("[%s] HcclAllGather failed, ret[%d].", __func__, agRet), agRet);
+        HcclResult agRet = HcclAllGather(
+            negCtx->deviceSendBuf, negCtx->deviceRecvBuf, sizeof(CheckParamInfo), HCCL_DATA_TYPE_UINT8, negCtx->subComm,
+            negCtx->stream);
+        CHK_PRT_RET(
+            agRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteParamCheckOp] HcclAllGather failed, ret[%d].", agRet), agRet);
 
-    aclError aclRet = aclrtSynchronizeStream(negCtx->stream);
-    CHK_PRT_RET(
-        aclRet != ACL_SUCCESS, HCCL_ERROR("[%s] aclrtSynchronizeStream failed, ret[%d].", __func__, aclRet),
-        HCCL_E_RUNTIME);
+        aclError aclRet = aclrtSynchronizeStream(negCtx->stream);
+        CHK_PRT_RET(
+            aclRet != ACL_SUCCESS, HCCL_ERROR("[ExecuteParamCheckOp] aclrtSynchronizeStream failed, ret[%d].", aclRet),
+            HCCL_E_RUNTIME);
 
-    uint64_t recvBufSize = static_cast<uint64_t>(rankSize) * sizeof(CheckParamInfo);
-    cpyRet
-        = haclrtMemcpy(negCtx->hostRecvBuf, recvBufSize, negCtx->deviceRecvBuf, recvBufSize, ACL_MEMCPY_DEVICE_TO_HOST);
-    CHK_PRT_RET(
-        cpyRet != HCCL_SUCCESS, HCCL_ERROR("[%s] haclrtMemcpy D2H failed, ret[%d].", __func__, cpyRet), HCCL_E_RUNTIME);
+        uint64_t recvBufSize = static_cast<uint64_t>(rankSize) * sizeof(CheckParamInfo);
+        cpyRet = haclrtMemcpy(
+            negCtx->hostRecvBuf, recvBufSize, negCtx->deviceRecvBuf, recvBufSize, ACL_MEMCPY_DEVICE_TO_HOST);
+        CHK_PRT_RET(
+            cpyRet != HCCL_SUCCESS, HCCL_ERROR("[ExecuteParamCheckOp] haclrtMemcpy D2H failed, ret[%d].", cpyRet),
+            HCCL_E_RUNTIME);
+        return HCCL_SUCCESS;
+    });
+    CHK_RET(threadRet);
 
     recvInfos = static_cast<CheckParamInfo*>(negCtx->hostRecvBuf);
     return HCCL_SUCCESS;
