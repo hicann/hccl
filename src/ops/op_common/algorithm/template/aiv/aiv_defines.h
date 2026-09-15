@@ -65,6 +65,11 @@ constexpr uint32_t GM_OUT_PING_OFFSET = 18 * 1024 * 1024;
 constexpr uint32_t GM_OUT_PONG_OFFSET = 34 * 1024 * 1024;
 constexpr uint64_t PINGPONG_TOTAL_DATA_LIMIT = (GM_OUT_PONG_OFFSET - GM_OUT_PING_OFFSET) / PING_PONG;
 
+#if defined(HCCL_AIV_ACLGRAPH_SK)
+// SK_BIND cap 掩码：blockdim_scale_up，表示算子已自行支持核数向上扩展
+constexpr uint64_t SK_CAP_BLOCKDIM_SCALE_UP = 16;
+#endif
+
 /**
  * ccl buffers        GM_OUT               Tag(大小4)             flag1         flag2             BarrierBase Clear
  * data1              data2 0       |         16K          |         512K          |      1M      |       5M      | 9M

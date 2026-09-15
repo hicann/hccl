@@ -83,6 +83,12 @@ private:
 
     __aicore__ inline void SplitLogicalRange(uint32_t total, uint32_t& begin, uint32_t& end)
     {
+        // SK空闲核不参与逻辑区间切分：其begin会越过total，导致Publish/Fetch循环按越界rank访问GM
+        if (IsIdleCore()) {
+            begin = total;
+            end = total;
+            return;
+        }
         const uint32_t baseCnt = total / numBlocks_;
         const uint32_t extra = total % numBlocks_;
         const uint32_t myCnt = baseCnt + (blockIdx_ < extra ? 1u : 0u);
@@ -159,6 +165,10 @@ private:
 
     __aicore__ inline void LocalTreeReduceCoreCtrl()
     {
+        // SK空闲核跳过reduce：空闲核的offset会与忙核重叠，导致同一份数据被atomic累加两次（结果错误）
+        if (IsIdleCore()) {
+            return;
+        }
         uint32_t curBlocks = rankSizeU32_;
         const uint32_t totalRounds = CeilLog2(rankSizeU32_);
         for (uint32_t round = 0; round < totalRounds; ++round) {

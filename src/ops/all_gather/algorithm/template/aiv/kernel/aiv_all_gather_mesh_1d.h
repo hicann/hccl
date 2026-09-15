@@ -144,40 +144,42 @@ public:
         if (curNumBlocks > rankSize_) {
             curNumBlocks = rankSize_;
         }
-        if (blockIdx_ >= curNumBlocks) {
-            SyncAll<true>();
-            return;
-        }
+        // SK满核启动时，超出curNumBlocks的核不搬数据，只执行相同次数的SyncAll
+        bool coreIdle = blockIdx_ >= static_cast<uint32_t>(curNumBlocks);
         // 分核把数据从input搬到gm
-        auto input = reinterpret_cast<__gm__ T*>(input_);
-        uint64_t dataTypeSize = sizeof(T);
-        uint64_t countPerCore = count / curNumBlocks;
-        uint64_t curCountCore
-            = blockIdx_ == curNumBlocks - 1 ? count - countPerCore * (curNumBlocks - 1) : countPerCore;
-        auto gmIn = reinterpret_cast<__gm__ T*>(
-            reinterpret_cast<uint64_t>(myGmIn_) + blockIdx_ * countPerCore * dataTypeSize);
-        CpGM2GM(gmIn, input + blockIdx_ * countPerCore, curCountCore);
+        if (!coreIdle) {
+            auto input = reinterpret_cast<__gm__ T*>(input_);
+            uint64_t dataTypeSize = sizeof(T);
+            uint64_t countPerCore = count / curNumBlocks;
+            uint64_t curCountCore
+                = blockIdx_ == curNumBlocks - 1 ? count - countPerCore * (curNumBlocks - 1) : countPerCore;
+            auto gmIn = reinterpret_cast<__gm__ T*>(
+                reinterpret_cast<uint64_t>(myGmIn_) + blockIdx_ * countPerCore * dataTypeSize);
+            CpGM2GM(gmIn, input + blockIdx_ * countPerCore, curCountCore);
+        }
         SyncAll<true>();
 
         // 每个核分配多个rank搬运数据从gm到对端output
-        uint32_t perCoreRankNum = rankSize_ / curNumBlocks;
-        uint32_t remainRankNum = rankSize_ % curNumBlocks;
-        uint32_t curCoreRankNum = blockIdx_ < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
-        uint32_t startRank
-            = blockIdx_ < remainRankNum ? (perCoreRankNum + 1) * blockIdx_ : perCoreRankNum * blockIdx_ + remainRankNum;
-        for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            Record(rank, rank_, curTag_);
-        }
-        for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GetGmIn(rank)));
-            auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
-            WaitFlag(rank_, rank, curTag_);
-            CpGM2GM(output, gmOthers, count);
-            PipeBarrier<PIPE_ALL>();
-            Record(rank, rank_ + rankSize_, curTag_);
-        }
-        for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
-            WaitFlag(rank_, rank + rankSize_, curTag_);
+        if (!coreIdle) {
+            uint32_t perCoreRankNum = rankSize_ / curNumBlocks;
+            uint32_t remainRankNum = rankSize_ % curNumBlocks;
+            uint32_t curCoreRankNum = blockIdx_ < remainRankNum ? perCoreRankNum + 1 : perCoreRankNum;
+            uint32_t startRank = blockIdx_ < remainRankNum ? (perCoreRankNum + 1) * blockIdx_ :
+                                                             perCoreRankNum * blockIdx_ + remainRankNum;
+            for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
+                Record(rank, rank_, curTag_);
+            }
+            for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
+                auto gmOthers = reinterpret_cast<__gm__ T*>(reinterpret_cast<uint64_t>(GetGmIn(rank)));
+                auto output = reinterpret_cast<__gm__ T*>(output_ + rank * stride);
+                WaitFlag(rank_, rank, curTag_);
+                CpGM2GM(output, gmOthers, count);
+                PipeBarrier<PIPE_ALL>();
+                Record(rank, rank_ + rankSize_, curTag_);
+            }
+            for (uint32_t rank = startRank; rank < startRank + curCoreRankNum; rank++) {
+                WaitFlag(rank_, rank + rankSize_, curTag_);
+            }
         }
     }
 

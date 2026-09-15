@@ -43,6 +43,10 @@ public:
 private:
     __aicore__ inline void ProcessMultiCore()
     {
+        // 本路径无SyncAll，空闲核直接跳过不影响同步结构
+        if (IsIdleCore()) {
+            return;
+        }
         // 下发核数由上层框架保证符合控核公式，算子内不校验
         uint32_t coreNumPerDstRank = coreNum_ / rankSize_;
         uint32_t dstRank = coreIdx_ / coreNumPerDstRank;

@@ -80,11 +80,14 @@ public:
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         this->curCount = curCount;
 
-        for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-            targetRank = blockIdx_ + i * numBlocks_;
-            uint64_t outerOffset = rank_ * this->curCount * sizeof(T);
-            outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + outerOffset;
-            Producer();
+        // SK空闲核（blockIdx >= numBlocks_）跳过生产者搬运，避免与忙核重复写数据和flag
+        if (!IsIdleCore()) {
+            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
+                targetRank = blockIdx_ + i * numBlocks_;
+                uint64_t outerOffset = rank_ * this->curCount * sizeof(T);
+                outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + outerOffset;
+                Producer();
+            }
         }
         SyncAll<true>();
         if (blockIdx_ == numBlocks_ - 1) {
