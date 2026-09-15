@@ -624,6 +624,7 @@ static CcuResult ReduceRmtToLoc(
 
 static CcuResult DoRepeatAllReduce(AllReduceMeshMem2Mem1DContext& ctx)
 {
+    // 向下取整切分后，非末rank==normalSliceSize，末rank==lastSliceSize，二选一正确
     const auto* arg = ctx.arg;
     if (arg->rankId != arg->rankSize - 1) {
         ctx.sliceSize = ctx.normalSliceSize;

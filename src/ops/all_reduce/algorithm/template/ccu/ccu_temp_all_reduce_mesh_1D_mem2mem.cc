@@ -71,20 +71,25 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::CalcSlice(const u64 dataSize, RankSlic
     sliceInfoVec.resize(templateRankSize_, tmp);
 
     u64 unitAllignSize = DataTypeSizeGet(dataType_);
-    u64 chunkSize = RoundUp(dataSize, (templateRankSize_ * unitAllignSize)) * unitAllignSize;
+    // 向下取整：保证非末rank分片一致，末rank吸收剩余数据（可能更大）
+    u64 chunkSize = (dataSize / (templateRankSize_ * unitAllignSize)) * unitAllignSize;
+    if (chunkSize == 0) {
+        chunkSize = unitAllignSize;
+    }
     HCCL_INFO(
         "[CcuTempAllReduceMeshMem2Mem1D] chunkSize[%llu], dataSize[%llu], templateRankSize_[%u], unitAllignSize[%llu]",
         chunkSize, dataSize, templateRankSize_, unitAllignSize);
     u64 accumOff = 0;
     for (u32 rankIdx = 0; rankIdx < templateRankSize_; rankIdx++) {
-        u64 currChunkSize = ((dataSize - accumOff) > chunkSize) ? chunkSize : (dataSize - accumOff);
+        // 末rank取剩余全部数据，其余rank取chunkSize
+        u64 currChunkSize = (rankIdx == templateRankSize_ - 1) ? (dataSize - accumOff) : chunkSize;
         SliceInfo slice = {accumOff, currChunkSize};
         sliceInfoVec[rankIdx][0] = slice;
         accumOff += currChunkSize;
     }
 
     CHK_PRT_RET(
-        (sliceInfoVec[templateRankSize_ - 1][0].offset + sliceInfoVec[templateRankSize_ - 1][0].size != dataSize),
+        (accumOff != dataSize),
         HCCL_ERROR(
             "[CcuTempAllReduceMeshMem2Mem1D] chunkSize:[%llu], Rank:[%d], SliceInfo calculation error!", chunkSize,
             myRank_),
@@ -259,6 +264,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::KernelRun(
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
     config.memSlice = CCU_MS_SIZE;
+    // 向下取整后，非末rank分片==normalSliceSize，末rank分片==lastSliceSize(>=normal)，二选一正确
     const std::vector<uint64_t> goSize = (myRank_ != templateRankSize_ - 1) ?
                                              CalGoSize(normalSliceSize, config, GetCcuVersion()) :
                                              CalGoSize(lastSliceSize, config, GetCcuVersion());
