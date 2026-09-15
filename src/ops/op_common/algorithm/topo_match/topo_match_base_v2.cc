@@ -74,13 +74,13 @@ std::vector<u32> BuildRepresentativeGroup(u32 step, u32 count, u32 offset)
 HcclResult ValidateGroup(const std::vector<u32>& group, u32 dim, u32 myRank, const std::string& levelName)
 {
     if (group.size() != dim) {
-        HCCL_ERROR(
+        HCCL_WARNING(
             "[TopoMatchBase] Rank [%u], %s group size[%zu] != dim[%u].", myRank, levelName.c_str(), group.size(), dim);
-        return HcclResult::HCCL_E_INTERNAL;
+        return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     if (std::find(group.begin(), group.end(), myRank) == group.end()) {
-        HCCL_ERROR("[TopoMatchBase] Rank [%u], %s group does not contain myRank.", myRank, levelName.c_str());
-        return HcclResult::HCCL_E_INTERNAL;
+        HCCL_WARNING("[TopoMatchBase] Rank [%u], %s group does not contain myRank.", myRank, levelName.c_str());
+        return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -224,10 +224,17 @@ HcclResult FindAnchors(
     u32 topAlgo = static_cast<u32>(algoTypes.size()) - 1;
     // 最高算法层对应的物理 effIdx 位置：非 hostdpu 由尾段取 effIdx.back()；hostdpu 取 HOST 锚点
     u32 topPhysPos = static_cast<u32>(effIdx.size()) - 1;
+    HcclResult ret = HCCL_SUCCESS;
     if (engine == OpExecuteConfig::HOSTCPU) {
-        CHK_RET(AnchorHostDpu(physicalLevels, effIdx, userRankSize, topAlgo, topPhysPos, anchors));
+        ret = AnchorHostDpu(physicalLevels, effIdx, userRankSize, topAlgo, topPhysPos, anchors);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS, HCCL_INFO("[FindAnchors] AnchorHostDpu failed: hcclRet -> %d", ret),
+            HcclResult::HCCL_E_NOT_SUPPORT);
     }
-    CHK_RET(AnchorMeshLevels(physicalLevels, effIdx, algoTypes, topAlgo, topPhysPos, anchors));
+    ret = AnchorMeshLevels(physicalLevels, effIdx, algoTypes, topAlgo, topPhysPos, anchors);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[FindAnchors] AnchorMeshLevels failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -279,8 +286,11 @@ HcclResult ResolveSegmentMapping(
         algoStart = anchorAlgo + 1;
         physStart = anchorPhys + 1;
     }
-    CHK_RET(MatchLastSegment(
-        physicalLevels, effIdx, userRankSize, algoStart, algoTypes.size() - 1, physStart, effIdx.size() - 1, pIndices));
+    HcclResult ret = MatchLastSegment(
+        physicalLevels, effIdx, userRankSize, algoStart, algoTypes.size() - 1, physStart, effIdx.size() - 1, pIndices);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[ResolveSegmentMapping] MatchLastSegment failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     // 兜底校验：所有算法层都应已映射到有效的 effIdx position
     for (size_t i = 0; i < pIndices.size(); i++) {
         if (pIndices[i] >= effIdx.size()) {
@@ -319,8 +329,15 @@ HcclResult ResolveMapping(
     }
     std::map<u32, u32> anchors;
     // 锚点匹配：含 MeshConcur 的 1DMESH 校验与 hostdpu 强约束，须无条件执行（1:1 时也需校验底层 1DMESH）
-    CHK_RET(FindAnchors(physicalLevels, effIdx, algAttrs.algoTypes, algAttrs.engine, userRankSize, anchors));
-    CHK_RET(ResolveSegmentMapping(physicalLevels, effIdx, algAttrs.algoTypes, anchors, userRankSize, pIndices));
+    HcclResult ret = HCCL_SUCCESS;
+    ret = FindAnchors(physicalLevels, effIdx, algAttrs.algoTypes, algAttrs.engine, userRankSize, anchors);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[ResolveMapping] FindAnchors failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    ret = ResolveSegmentMapping(physicalLevels, effIdx, algAttrs.algoTypes, anchors, userRankSize, pIndices);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[ResolveMapping] ResolveSegmentMapping failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     return HcclResult::HCCL_SUCCESS;
 }
 

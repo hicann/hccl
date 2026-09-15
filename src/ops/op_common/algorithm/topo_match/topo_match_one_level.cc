@@ -42,7 +42,7 @@ HcclResult TopoMatchOneLevel::MatchTopo(
 {
     const auto& physicalLevels = topoInfo->physicalLevels;
     if (physicalLevels.empty() || topoInfo->userRankSize == 0) {
-        HCCL_ERROR(
+        HCCL_WARNING(
             "[TopoMatchOneLevel] Rank [%u], physicalLevels empty or userRankSize 0. "
             "physicalLevels.size[%zu], userRankSize[%u].",
             topoInfo->userRank, physicalLevels.size(), topoInfo->userRankSize);

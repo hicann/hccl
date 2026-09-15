@@ -62,14 +62,14 @@ HcclResult GetAlgResReduceScatterV(
     HcclComm comm, OpParam& param, std::shared_ptr<InsCollAlgBase>& executor, TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceCtx** resCtx, aclrtNotify* notifies);
 
-HcclResult CheckDataTypeRSV(const HcclDataType dataType, bool needReduce);
+HcclResult CheckDataTypeRSV(const HcclDataType dataType);
 
 HcclResult ReduceScatterVOutPlaceCommon(
     void* sendBuf, const void* sendDispls, const void* sendCounts, void* recvBuf, uint64_t recvCount,
     HcclDataType dataType, HcclReduceOp op, HcclComm comm, aclrtStream stream, const std::string& tag, OpMode opMode,
     const ResPackGraphMode& resPack);
 
-std::string GetSupportDataTypeRSV(bool needReduce);
+std::string GetSupportDataTypeRSV();
 
 HcclResult ReduceScatterVEntryLog(
     void* sendBuf, const void* sendCounts, const void* sendDispls, void* recvBuf, uint64_t recvCount,

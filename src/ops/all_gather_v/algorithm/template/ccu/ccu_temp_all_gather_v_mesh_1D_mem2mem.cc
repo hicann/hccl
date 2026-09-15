@@ -18,7 +18,7 @@ namespace ops_hccl {
 std::vector<CostModelParam> CcuTempAllGatherVMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = param.portNum[0];
-    int kernelNum = 5;
+    int kernelNum = 1;
     int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize);
     float A = 0.0f;
     float B = 0.0f;

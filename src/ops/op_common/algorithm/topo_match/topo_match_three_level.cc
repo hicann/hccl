@@ -43,8 +43,17 @@ namespace {
         u32 level1TotalSize = 0;
         bool sym0 = false;
         bool sym1 = false;
-        CHK_RET(ValidateLevelAndCalcDim(phys0, physicalLevels, sym0, d0));
-        CHK_RET(ValidateLevelAndCalcDim(phys1, physicalLevels, sym1, level1TotalSize));
+        HcclResult ret = HCCL_SUCCESS;
+        ret = ValidateLevelAndCalcDim(phys0, physicalLevels, sym0, d0);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_INFO("[TopoMatchThreeLevel] ValidateLevelAndCalcDim level0 failed: hcclRet -> %d", ret),
+            HcclResult::HCCL_E_NOT_SUPPORT);
+        ret = ValidateLevelAndCalcDim(phys1, physicalLevels, sym1, level1TotalSize);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_INFO("[TopoMatchThreeLevel] ValidateLevelAndCalcDim level1 failed: hcclRet -> %d", ret),
+            HcclResult::HCCL_E_NOT_SUPPORT);
         if (!sym0 || !sym1) {
             HCCL_INFO(
                 "[TopoMatchThreeLevel] Rank [%u], asymmetric detected (sym0[%d] sym1[%d]), not support.", myRank,
@@ -83,17 +92,21 @@ HcclResult TopoMatchThreeLevel::MatchTopo(
     u32 myRank = topoInfo->userRank;
     u32 userRankSize = topoInfo->userRankSize;
     if (physicalLevels.empty() || userRankSize == 0 || algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_THREE) {
-        HCCL_ERROR(
+        HCCL_WARNING(
             "[TopoMatchThreeLevel] Rank [%u], invalid input. "
             "physicalLevels.size[%zu], userRankSize[%u], algoTypes.size[%zu].",
             myRank, physicalLevels.size(), userRankSize, algAttrs.algoTypes.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
 
+    HcclResult ret = HCCL_SUCCESS;
     // 引擎过滤 + 锚点匹配 + 分段 + 最高层校验
     std::vector<u32> effIdx;
     std::vector<u32> pIndices;
-    CHK_RET(ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices));
+    ret = ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchThreeLevel] ResolveMapping failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     u32 phys0 = effIdx[pIndices[0]];
     u32 phys1 = effIdx[pIndices[1]];
 
@@ -101,16 +114,28 @@ HcclResult TopoMatchThreeLevel::MatchTopo(
     u32 d0 = 0;
     u32 d1 = 0;
     u32 d2 = 0;
-    CHK_RET(CalcDimsAndCheckSymmetry(physicalLevels, phys0, phys1, userRankSize, myRank, d0, d1, d2));
+    ret = CalcDimsAndCheckSymmetry(physicalLevels, phys0, phys1, userRankSize, myRank, d0, d1, d2);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchThreeLevel] CalcDimsAndCheckSymmetry failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
 
     // 构造 infos；level1 代表环须落在 myRank 所在 level1 instance 内，故 offset 取 instance 基址 + 层内偏移
     std::vector<u32> group0 = physicalLevels[phys0].localRanks;
     u32 level1Base = (myRank / (d0 * d1)) * (d0 * d1);
     std::vector<u32> group1 = BuildRepresentativeGroup(d0, d1, level1Base + myRank % d0);
     std::vector<u32> group2 = BuildRepresentativeGroup(d0 * d1, d2, myRank % (d0 * d1));
-    CHK_RET(ValidateGroup(group0, d0, myRank, "level0"));
-    CHK_RET(ValidateGroup(group1, d1, myRank, "level1"));
-    CHK_RET(ValidateGroup(group2, d2, myRank, "level2"));
+    ret = ValidateGroup(group0, d0, myRank, "level0");
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_WARNING("[TopoMatchThreeLevel] ValidateGroup level0 failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    ret = ValidateGroup(group1, d1, myRank, "level1");
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_WARNING("[TopoMatchThreeLevel] ValidateGroup level1 failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    ret = ValidateGroup(group2, d2, myRank, "level2");
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_WARNING("[TopoMatchThreeLevel] ValidateGroup level2 failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     algHierarchyInfo.infos.resize(ALGO_LEVEL_NUM_THREE);
     for (u32 i = 0; i < ALGO_LEVEL_NUM_THREE; i++) {
         algHierarchyInfo.infos[i].resize(1);
@@ -120,8 +145,11 @@ HcclResult TopoMatchThreeLevel::MatchTopo(
     algHierarchyInfo.infos[ALGO_LEVEL_NUM_TWO][0] = std::move(group2);
 
     // 填充 physicalIdxForAlgoLevels（二级：MeshConcur 双层，普通单层）
-    CHK_RET(FillPhysicalIdxForAlgoLevels(
-        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
+    ret = FillPhysicalIdxForAlgoLevels(
+        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchThreeLevel] FillPhysicalIdxForAlgoLevels failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     HCCL_INFO(
         "[TopoMatchThreeLevel] Rank [%u], d0[%u] d1[%u] d2[%u], physicalIdxForAlgoLevels: [%s].", myRank, d0, d1, d2,
         FormatPhysicalIdxForAlgoLevels(algHierarchyInfo.physicalIdxForAlgoLevels).c_str());

@@ -406,16 +406,14 @@ REGISTER_ALG_ATTRS(
     AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel1Nhr = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return (topo->topLevelUboe
-                && !(
-                    (topo->level0Symmetric && topo->level1Symmetric)
-                    && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
-                && !(
-                    !(topo->level0Symmetric && topo->level1Symmetric)
-                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
-                && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
-               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
+        return (
+            topo->topLevelUboe
+            && !(
+                (topo->level0Symmetric && topo->level1Symmetric) && topo->deviceNumPerModule == DEVICE_NUM_PER_MODULE_8)
+            && !(
+                !(topo->level0Symmetric && topo->level1Symmetric)
+                || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1)
+            && topo->Level0Nhr && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
     });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRAicpuReduce, InsV2ReduceScatterSoleExecutor,
@@ -531,9 +529,7 @@ REGISTER_ALG_ATTRS(
     op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool dayu = topo->serverNum == 1 && topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::CLOS
                     && !topo->level0PcieMix;
-        return dayu || AutoSelectorBase::CalcFrameNum(topo) > MAX_FRAME_NUM_FOR_CCU_ALGO
-               || (!topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-                   && topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1);
+        return dayu || AutoSelectorBase::CalcFrameNum(topo) > MAX_FRAME_NUM_FOR_CCU_ALGO;
     });
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

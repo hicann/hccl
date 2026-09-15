@@ -63,7 +63,7 @@ HcclResult HcclReduceScatterV(
     CHK_RET(HcclCheckTag(tag.c_str()));
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), tag.c_str());
     CHK_RET(CheckCount(recvCount));
-    CHK_RET(CheckDataType(dataType, true));
+    CHK_RET(CheckDataTypeRSV(dataType));
     CHK_RET(CheckReduceOp(dataType, op));
 
     /* 接口交互信息日志 */
@@ -118,7 +118,7 @@ HcclResult HcclReduceScatterVGraphMode(
     CHK_RET(HcclCheckTag(tag));
     CHK_RET_AND_PRINT_IDE(HcomCheckUserRank(rankSize, userRank), opTag.c_str());
     CHK_RET(CheckCount(recvCount));
-    CHK_RET(CheckDataType(dataType, true));
+    CHK_RET(CheckDataTypeRSV(dataType));
     CHK_RET(CheckReduceOp(dataType, op));
 
     // 拼装ResPackGraphMode
@@ -185,6 +185,45 @@ HcclResult CheckReduceScatterVInputParam(
         CHK_PTR_NULL(recvBuf);
     }
 
+    return HCCL_SUCCESS;
+}
+
+std::string GetSupportDataTypeRSV()
+{
+    // reduce scatterv算子支持的数据类型（比通用reduce场景少了UINT64和FP64）
+    std::vector<HcclDataType> supportList
+        = {HCCL_DATA_TYPE_INT8, HCCL_DATA_TYPE_INT16, HCCL_DATA_TYPE_INT32, HCCL_DATA_TYPE_INT64,
+           HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_FP32,  HCCL_DATA_TYPE_BFP16};
+    std::string supportInfo = "";
+    for (u32 i = 0; i < supportList.size(); i++) {
+        if (i != 0) {
+            supportInfo += ", ";
+        }
+        supportInfo += GetDataTypeEnumStr(supportList[i]);
+    }
+    return supportInfo;
+}
+
+HcclResult CheckDataTypeRSV(const HcclDataType dataType)
+{
+    const std::vector<std::string> infoTitle({"ccl_op", "value", "parameter", "expect"});
+    // 查询是否为合法的HcclDataType枚举值
+    bool notValid = VALID_HCCL_DATA_TYPES.find(dataType) == VALID_HCCL_DATA_TYPES.end();
+    // reduce scatterv算子不支持的数据类型
+    static const std::set<HcclDataType> REDUCE_SCATTER_V_UNSUPPORTED
+        = {HCCL_DATA_TYPE_UINT8,  HCCL_DATA_TYPE_UINT16,  HCCL_DATA_TYPE_UINT32,  HCCL_DATA_TYPE_INT128,
+           HCCL_DATA_TYPE_HIF8,   HCCL_DATA_TYPE_FP8E4M3, HCCL_DATA_TYPE_FP8E5M2, HCCL_DATA_TYPE_FP8E8M0,
+           HCCL_DATA_TYPE_UINT64, HCCL_DATA_TYPE_FP64};
+    if (notValid || REDUCE_SCATTER_V_UNSUPPORTED.find(dataType) != REDUCE_SCATTER_V_UNSUPPORTED.end()) {
+        RPT_INPUT_ERR(
+            true, "EI0003", infoTitle,
+            std::vector<std::string>(
+                {"CheckDataType", GetDataTypeEnumStr(dataType), "dataType", GetSupportDataTypeRSV()}));
+        HCCL_ERROR(
+            "[Check][DataType]errNo[0x%016llx] data type[%s] not supported, support range=[%s]",
+            HCCL_ERROR_CODE(HCCL_E_NOT_SUPPORT), GetDataTypeEnumStr(dataType).c_str(), GetSupportDataTypeRSV().c_str());
+        return HCCL_E_NOT_SUPPORT;
+    }
     return HCCL_SUCCESS;
 }
 

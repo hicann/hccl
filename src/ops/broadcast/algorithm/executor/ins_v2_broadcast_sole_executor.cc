@@ -357,15 +357,13 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo != Level0Shape::MESH_1D_CLOS
                || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
-    };
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleMeshTwoShot, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastMesh1DTwoShot);
 REGISTER_ALG_ATTRS(
     AicpuBroadcastSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
             return true;
@@ -413,8 +411,7 @@ REGISTER_ALG_ATTRS(
             return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
         return true;
-    };
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastMesh1DMem2Mem);
@@ -428,8 +425,7 @@ REGISTER_ALG_ATTRS(
             return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
         return true;
-    };
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;);
+    };);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuMSBroadcastSoleMesh, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastMesh1D);
@@ -437,8 +433,7 @@ REGISTER_EXEC_V2(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(CcuSchedBroadcastSoleNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
                    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT);
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, CcuSchedBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     CcuTempBroadcastNHR1DMem2Mem);

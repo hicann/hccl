@@ -24,8 +24,8 @@ namespace {
             return HcclResult::HCCL_SUCCESS;
         }
         if (level0.instSizeListByLayer.empty()) {
-            HCCL_ERROR("[TopoMatchTwoLevel] netLayer [ref = %u] instSizeListByLayer is empty.", level0.ref.netLayer);
-            return HcclResult::HCCL_E_INTERNAL;
+            HCCL_INFO("[TopoMatchTwoLevel] netLayer [ref = %u] instSizeListByLayer is empty.", level0.ref.netLayer);
+            return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         if (IsInstListSymmetric(level0.instSizeListByLayer)) {
             d0 = static_cast<u32>(level0.localRanks.size());
@@ -72,24 +72,31 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
     u32 myRank = topoInfo->userRank;
     u32 userRankSize = topoInfo->userRankSize;
     if (physicalLevels.empty() || userRankSize == 0 || algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_TWO) {
-        HCCL_ERROR(
+        HCCL_WARNING(
             "[TopoMatchTwoLevel] Rank [%u], invalid input. "
             "physicalLevels.size[%zu], userRankSize[%u], algoTypes.size[%zu].",
             myRank, physicalLevels.size(), userRankSize, algAttrs.algoTypes.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
 
+    HcclResult ret = HCCL_SUCCESS;
     // 引擎过滤 + 锚点匹配 + 分段 + 最高层校验
     std::vector<u32> effIdx;
     std::vector<u32> pIndices;
-    CHK_RET(ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices));
+    ret = ResolveMapping(physicalLevels, algAttrs, userRankSize, effIdx, pIndices);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchTwoLevel] ResolveMapping failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     u32 phys0 = effIdx[pIndices[0]];
 
     // GCD 校验 p_0（TwoLevel 非对称打平），外层 d1 = userRankSize / d0
     u32 d0 = 0;
     bool asymmetric = false;
     u32 gcd = 0;
-    CHK_RET(CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd, algAttrs));
+    ret = CalcLevel0Dim(physicalLevels[phys0], myRank, d0, asymmetric, gcd, algAttrs);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchTwoLevel] CalcLevel0Dim failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     if (d0 == 0 || userRankSize % d0 != 0 || (d0 == 1 && algAttrs.engine != OpExecuteConfig::HOSTCPU)) {
         HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], userRankSize[%u] not divisible by d0[%u].", myRank, userRankSize, d0);
         return HcclResult::HCCL_E_NOT_SUPPORT;
@@ -103,8 +110,14 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
     // 构造 infos
     std::vector<u32> group0 = BuildLevel0Group(physicalLevels[phys0], myRank, asymmetric, gcd);
     std::vector<u32> group1 = BuildRepresentativeGroup(d0, d1, myRank % d0);
-    CHK_RET(ValidateGroup(group0, d0, myRank, "level0"));
-    CHK_RET(ValidateGroup(group1, d1, myRank, "level1"));
+    ret = ValidateGroup(group0, d0, myRank, "level0");
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_WARNING("[TopoMatchTwoLevel] ValidateGroup level0 failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
+    ret = ValidateGroup(group1, d1, myRank, "level1");
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_WARNING("[TopoMatchTwoLevel] ValidateGroup level1 failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     algHierarchyInfo.infos.resize(ALGO_LEVEL_NUM_TWO);
     algHierarchyInfo.infos[0].resize(1);
     algHierarchyInfo.infos[1].resize(1);
@@ -112,8 +125,11 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
     algHierarchyInfo.infos[1][0] = std::move(group1);
 
     // 填充 physicalIdxForAlgoLevels（二级：MeshConcur 双层，普通单层）
-    CHK_RET(FillPhysicalIdxForAlgoLevels(
-        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels));
+    ret = FillPhysicalIdxForAlgoLevels(
+        physicalLevels, effIdx, pIndices, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchTwoLevel] FillPhysicalIdxForAlgoLevels failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     HCCL_INFO(
         "[TopoMatchTwoLevel] Rank [%u], d0[%u] d1[%u] asym[%d], physicalIdxForAlgoLevels: [%s].", myRank, d0, d1,
         static_cast<int32_t>(asymmetric),

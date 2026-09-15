@@ -13,6 +13,7 @@
 #include <cstring>
 #include <new>
 #include <memory>
+#include <set>
 
 #include "coll_alg_v2_exec_registry.h"
 #include "alg_attrs_registry.h"
@@ -20,6 +21,12 @@
 #include "auto_selector_base.h"
 
 namespace ops_hccl {
+
+// Level1Nhr 拓扑检查跳过的算子集合
+static const std::set<HcclCMDType> NO_L1NHR_CHECK_OPS
+    = {HcclCMDType::HCCL_CMD_ALLTOALL, HcclCMDType::HCCL_CMD_ALLTOALLV,   HcclCMDType::HCCL_CMD_ALLTOALLVC,
+       HcclCMDType::HCCL_CMD_SEND,     HcclCMDType::HCCL_CMD_RECEIVE,     HcclCMDType::HCCL_CMD_BATCH_SEND_RECV,
+       HcclCMDType::HCCL_CMD_BARRIER,  HcclCMDType::HCCL_CMD_ALLGATHER_V, HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V};
 
 AllAlgos* GetAllAlgos()
 {
@@ -211,7 +218,8 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const T
         }
     }
 
-    if (topoInfo->Level1Nhr && !t.isSupportLevel1Nhr) {
+    if (NO_L1NHR_CHECK_OPS.find(attrs->opType) == NO_L1NHR_CHECK_OPS.end() && topoInfo->Level1Nhr
+        && !t.isSupportLevel1Nhr) {
         result.matched = false;
         result.reason = "Level1Nhr=true, isSupportLevel1Nhr=false";
         return result;

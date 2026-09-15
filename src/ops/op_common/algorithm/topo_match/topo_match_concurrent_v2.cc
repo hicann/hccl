@@ -61,7 +61,7 @@ HcclResult TopoMatchConcurrentV2::MatchTopo(
     u32 myRank = topoInfo->userRank;
     const auto& physicalLevels = topoInfo->physicalLevels;
     if (physicalLevels.empty()) {
-        HCCL_ERROR(
+        HCCL_WARNING(
             "[TopoMatchConcurrentV2] Rank [%u], physicalLevels is empty. "
             "physicalLevels.size[%zu], userRankSize[%u].",
             myRank, physicalLevels.size(), topoInfo->userRankSize);
@@ -76,7 +76,7 @@ HcclResult TopoMatchConcurrentV2::MatchTopo(
         HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], level num[%u] not support.", myRank, effNum),
         HcclResult::HCCL_E_NOT_SUPPORT);
     CHK_PRT_RET(
-        (topoInfo->userRankSize == 0), HCCL_ERROR("[TopoMatchConcurrentV2] Rank [%u], rankSize is 0.", myRank),
+        (topoInfo->userRankSize == 0), HCCL_WARNING("[TopoMatchConcurrentV2] Rank [%u], rankSize is 0.", myRank),
         HcclResult::HCCL_E_INTERNAL);
 
     // infos 沿用原 Concurrent：两组同 rank（mesh 组 + clos 组并发），不依赖 physicalLevels 内容
