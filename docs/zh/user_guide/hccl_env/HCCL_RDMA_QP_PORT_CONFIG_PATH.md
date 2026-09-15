@@ -45,6 +45,7 @@ export HCCL_RDMA_QP_PORT_CONFIG_PATH=/home/tmp
 
 - 该环境变量仅支持单算子调用方式，不支持静态图模式。
 - 该环境变量的优先级高于环境变量[HCCL_RDMA_QPS_PER_CONNECTION](HCCL_RDMA_QPS_PER_CONNECTION.md)，此环境变量配置后，两个rank间通信时使用的QP个数以“MultiQpSrcPort.cfg”文件中配置的源端口号个数为准。
+- 该环境变量读取的配置文件MultiQpSrcPort.cfg，不可使用非Linux的转义符。
 - QP相关配置的优先级如下：
 
     管理面多QP配置（通过hccn_tool工具的“-s multi_qp”参数配置） \> NSLB的QP配置（通过hccn_tool工具的"-t nslb-dp"参数配置）\> 环境变量HCCL_RDMA_QP_PORT_CONFIG_PATH \>  环境变量HCCL_RDMA_QPS_PER_CONNECTION。
