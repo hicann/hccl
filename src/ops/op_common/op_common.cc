@@ -2295,7 +2295,14 @@ HcclResult HcclGetChannelForCcu(HcclComm comm, const OpParam& param, AlgResource
         std::vector<ChannelHandle> kernelChannels;
         kernelChannels.resize(channelNum);
         if (channelNum > 0) {
-            CHK_RET(CcuAcquireKernelChannels(comm, param, userRank, kernelInfo, resRequest, kernelChannels));
+            auto ret = CcuAcquireKernelChannels(comm, param, userRank, kernelInfo, resRequest, kernelChannels);
+            if (ret == HCCL_E_UNAVAIL) {
+                HCCL_WARNING(
+                    "[HcclGetChannelForCcu] CcuAcquireKernelChannels unavailable, channel num[%u].", channelNum);
+                return HCCL_E_UNAVAIL;
+            } else {
+                CHK_RET(ret);
+            }
         }
         auto* kernelArgBase = static_cast<CcuKernelArgBase*>(kernelInfo.kernelArg);
         if (!kernelArgBase) {
