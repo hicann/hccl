@@ -774,6 +774,15 @@ HcclResult AlltoAllVExecDispatch(
         param.outputOffset = probeParam.outputOffset;
     }
 
+    // 经过Selector后，算法可能从aicpu回退到aiv模型，需要检查aiv缓存
+    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        bool aivCacheHit = false;
+        CHK_RET(HcclAivCacheCheckAndReplay(comm, param, aivCacheHit));
+        if (aivCacheHit) {
+            return HCCL_SUCCESS;
+        }
+    }
+
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));
     return HCCL_SUCCESS;
 }
