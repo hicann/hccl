@@ -112,6 +112,6 @@ AlgNetMeta InsV2BarrierSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BARRIER, AicpuBarrierSoleNHR, InsV2BarrierSoleExecutor, TopoMatchOneLevel,
     InsTempBarrierNhrAicpu);
-REGISTER_ALG_ATTRS(AicpuBarrierSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuBarrierSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;);
 
 } // namespace ops_hccl

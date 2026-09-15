@@ -297,5 +297,5 @@ AlgNetMeta InsSendExecutor::GetAlgNetMeta(
 }
 
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, AicpuSendSoleMesh, InsSendExecutor);
-REGISTER_ALG_ATTRS(AicpuSendSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuSendSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;);
 } // namespace ops_hccl

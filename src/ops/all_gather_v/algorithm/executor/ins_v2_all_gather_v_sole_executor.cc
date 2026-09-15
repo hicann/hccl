@@ -276,7 +276,8 @@ AlgNetMeta InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetM
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER_V, AicpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+                   topo.isSupportLevel0PcieMix = true;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

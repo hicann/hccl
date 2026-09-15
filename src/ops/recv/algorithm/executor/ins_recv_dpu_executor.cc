@@ -186,7 +186,7 @@ HcclResult InsRecvDpuExecutor<InsAlgTemplate>::OrchestrateWithThread(
 REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
     HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSoleHost, InsRecvDpuExecutor, InsTempRecvHostNicDpu);
 REGISTER_ALG_ATTRS(
-    DpuRecvSoleHost, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    DpuRecvSoleHost, topo.isHostDpuOnly = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return IsHostNicToDeviceNicLink(opParam, topo);

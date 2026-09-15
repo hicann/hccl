@@ -267,7 +267,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
     TopoMatchOneLevel, InsTempReduceScatterVMesh1D);
 REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
-                   op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
+                   topo.isSupportLevel0PcieMix = true; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
@@ -275,7 +275,7 @@ REGISTER_EXEC_V2(
     TopoMatchOneLevel, CcuTempReduceScatterVMesh1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterVSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.maxTopoLevelNum = 1;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         if (t->level2UbRtp) {
             return false;

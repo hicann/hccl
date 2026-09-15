@@ -465,5 +465,6 @@ AlgNetMeta InsV2BatchSendRecvExecutor::GetAlgNetMeta(
 }
 
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, AicpuBatchSendRecvSoleMesh, InsV2BatchSendRecvExecutor);
-REGISTER_ALG_ATTRS(AicpuBatchSendRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;);
+REGISTER_ALG_ATTRS(AicpuBatchSendRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+                   topo.isSupportLevel0PcieMix = true;);
 } // namespace ops_hccl

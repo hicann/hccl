@@ -219,7 +219,7 @@ AlgNetMeta InsV2SendExecutor::GetAlgNetMeta(
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_SEND, AivSendSoleMesh, InsV2SendExecutor);
 REGISTER_ALG_ATTRS(
     AivSendSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return !t->level2UbRtp;
     };);
 
