@@ -30,11 +30,13 @@ namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_BR_DATA_SIZE = 16 * 1024 * 1024; // UBX机型ccu并行/流水算法数据量分界，与selector保持一致
 namespace {
     constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
+    constexpr double BROADCAST_AG_COST_BANDWIDTH_RATIO = 0.9;
     constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
 
     struct OmniPipeStageCost {
         double transferCoeff = 0.0;
         float syncCost = 0.0f;
+        double equivalentBandwidth = 0.0;
         u64 stepNum = 0;
         bool reachesMaxStep = false;
     };
@@ -72,28 +74,41 @@ namespace {
         return latency;
     }
 
-    OmniPipeStageCost
-    CalcStageCost(u64 meshRankSize, u64 closRankSize, u64 totalRankSize, double meshBandwidth, double closBandwidth)
+    OmniPipeStageCost CalcStageCost(
+        u64 meshRankSize, u64 closRankSize, u64 totalRankSize, double meshPlanBandwidth, double closPlanBandwidth,
+        double meshCostBandwidth, double closCostBandwidth, u64 maxStepNum, bool useSched2dCost)
     {
         OmniPipeStageCost stage;
-        const double closPlanBandwidth = closRankSize > 1 ? closBandwidth / (closRankSize - 1) : closBandwidth;
-        const u64 maxStepNum = MAX_STEP_NUM;
-        stage.stepNum = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum);
+        const double closPlanBandwidthPerRank
+            = closRankSize > 1 ? closPlanBandwidth / (closRankSize - 1) : closPlanBandwidth;
+        const double closCostBandwidthPerRank
+            = closRankSize > 1 ? closCostBandwidth / (closRankSize - 1) : closCostBandwidth;
+        stage.stepNum
+            = CalcStepNumByAxes(meshPlanBandwidth, closPlanBandwidthPerRank, meshRankSize, closRankSize, maxStepNum);
         stage.reachesMaxStep = stage.stepNum == maxStepNum;
 
         const bool meshActive = meshRankSize > 1;
         const bool closActive = closRankSize > 1;
-        if (meshActive && closActive) {
+        if (useSched2dCost) {
+            stage.equivalentBandwidth
+                = meshCostBandwidth <= closCostBandwidthPerRank ?
+                      CalcBandwidth2D(
+                          meshCostBandwidth, closCostBandwidthPerRank, meshRankSize, closRankSize, maxStepNum) :
+                      CalcBandwidth2D(
+                          closCostBandwidthPerRank, meshCostBandwidth, closRankSize, meshRankSize, maxStepNum);
+            stage.transferCoeff = 1.0 / stage.equivalentBandwidth;
+        } else if (meshActive && closActive) {
             if (stage.reachesMaxStep) {
-                stage.transferCoeff = meshBandwidth <= closPlanBandwidth ? (meshRankSize - 1) / meshBandwidth :
-                                                                           (closRankSize - 1) / closBandwidth;
+                stage.transferCoeff = meshPlanBandwidth <= closPlanBandwidthPerRank ?
+                                          (meshRankSize - 1) / meshPlanBandwidth :
+                                          (closRankSize - 1) / closPlanBandwidth;
             } else {
-                stage.transferCoeff = (totalRankSize - 1) / (meshBandwidth + closBandwidth);
+                stage.transferCoeff = (totalRankSize - 1) / (meshPlanBandwidth + closPlanBandwidth);
             }
         } else if (meshActive) {
-            stage.transferCoeff = (meshRankSize - 1) / meshBandwidth;
+            stage.transferCoeff = (meshRankSize - 1) / meshPlanBandwidth;
         } else if (closActive) {
-            stage.transferCoeff = (closRankSize - 1) / closBandwidth;
+            stage.transferCoeff = (closRankSize - 1) / closPlanBandwidth;
         }
 
         const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
@@ -158,27 +173,45 @@ std::vector<CostModelParam> InsV2BroadcastOmniPipe2dExecutor<
         return {};
     }
 
-    const double scatterMeshBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
-    const double scatterClosBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
-    const double agMeshBandwidth = BW_OMNI_UBX_CCU_SCHED_AG_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
-    const double agClosBandwidth = BW_OMNI_UBX_CCU_SCHED_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double scatterMeshPlanBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double scatterClosPlanBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double scatterMeshCostBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_COST_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double scatterClosCostBandwidth = BW_OMNI_UBX_CCU_SCHED_SC_COST_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double agMeshPlanBandwidth = BW_OMNI_UBX_CCU_SCHED_AG_MESH / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double agClosPlanBandwidth = BW_OMNI_UBX_CCU_SCHED_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double agMeshCostBandwidth
+        = BW_OMNI_UBX_CCU_SCHED_AG_MESH * BROADCAST_AG_COST_BANDWIDTH_RATIO / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const double agClosCostBandwidth
+        = BW_OMNI_UBX_CCU_SCHED_AG_CLOS * BROADCAST_AG_COST_BANDWIDTH_RATIO / OMNIPIPE_FIXED_UB_UTILIZATION;
+    const bool useSched2dCost = meshRankSize > 1 && closRankSize > 1;
 
-    const OmniPipeStageCost scatterCost
-        = CalcStageCost(meshRankSize, closRankSize, topoInfo->userRankSize, scatterMeshBandwidth, scatterClosBandwidth);
-    const OmniPipeStageCost agCost
-        = CalcStageCost(meshRankSize, closRankSize, topoInfo->userRankSize, agMeshBandwidth, agClosBandwidth);
+    const OmniPipeStageCost scatterCost = CalcStageCost(
+        meshRankSize, closRankSize, topoInfo->userRankSize, scatterMeshPlanBandwidth, scatterClosPlanBandwidth,
+        scatterMeshCostBandwidth, scatterClosCostBandwidth, useSched2dCost ? MAX_STEP_NUM_SC : MAX_STEP_NUM,
+        useSched2dCost);
+    const OmniPipeStageCost agCost = CalcStageCost(
+        meshRankSize, closRankSize, topoInfo->userRankSize, agMeshPlanBandwidth, agClosPlanBandwidth,
+        agMeshCostBandwidth, agClosCostBandwidth, MAX_STEP_NUM, useSched2dCost);
 
     CostModelParam costParam{};
     costParam.A = static_cast<float>(
         (scatterCost.transferCoeff + agCost.transferCoeff) / topoInfo->userRankSize / GBPS_TO_BYTES_PER_SECOND);
-    CostModelManager::Global()->CalcLocalCopyParams(1.0f / topoInfo->userRankSize, EngineType::CCU, costParam.B);
+    CostModelManager::Global()->CalcLocalCopyParams(
+        (useSched2dCost ? 0.5f : 1.0f) / topoInfo->userRankSize, EngineType::CCU, costParam.B);
     costParam.C = scatterCost.syncCost + agCost.syncCost;
 
     HCCL_INFO(
         "[%s] algName[%s] axes[%llu,%llu] scatterStep[%llu] scatterMaxStep[%d] agStep[%llu] agMaxStep[%d] "
-        "Ufixed[%f] A[%e] B[%e] C[%e].",
+        "sched2dCost[%d] scatterPlanBandwidth[%f,%f] scatterCostBandwidth[%f,%f] scatterBxy[%f] "
+        "agPlanBandwidth[%f,%f] agCostBandwidth[%f,%f] agBxy[%f] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, meshRankSize, closRankSize, scatterCost.stepNum, scatterCost.reachesMaxStep, agCost.stepNum,
-        agCost.reachesMaxStep, OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A, costParam.B, costParam.C);
+        agCost.reachesMaxStep, useSched2dCost, BW_OMNI_UBX_CCU_SCHED_SC_MESH, BW_OMNI_UBX_CCU_SCHED_SC_CLOS,
+        BW_OMNI_UBX_CCU_SCHED_SC_COST_MESH, BW_OMNI_UBX_CCU_SCHED_SC_COST_CLOS,
+        scatterCost.equivalentBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, BW_OMNI_UBX_CCU_SCHED_AG_MESH,
+        BW_OMNI_UBX_CCU_SCHED_AG_CLOS, BW_OMNI_UBX_CCU_SCHED_AG_MESH * BROADCAST_AG_COST_BANDWIDTH_RATIO,
+        BW_OMNI_UBX_CCU_SCHED_AG_CLOS * BROADCAST_AG_COST_BANDWIDTH_RATIO,
+        agCost.equivalentBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A,
+        costParam.B, costParam.C);
     return {costParam};
 }
 

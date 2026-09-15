@@ -37,6 +37,9 @@ namespace {
 
     struct OmniPipeStageCost {
         double transferCoeff = 0.0;
+        double meshDataRatio = 0.0;
+        double closDataRatio = 0.0;
+        double equivalentBandwidth = 0.0;
         float syncCost = 0.0f;
         u64 stepNum = 0;
         bool reachesMaxStep = false;
@@ -82,7 +85,7 @@ namespace {
 
     OmniPipeStageCost CalcStageCost(
         u64 meshRankSize, u64 closRankSize, u64 totalRankSize, double meshBandwidth, double closBandwidth,
-        bool isReduceScatter)
+        bool isReduceScatter, bool useSched2dCost)
     {
         OmniPipeStageCost stage;
         const double closPlanBandwidth = closRankSize > 1 ? closBandwidth / (closRankSize - 1) : closBandwidth;
@@ -96,7 +99,17 @@ namespace {
         const bool meshActive = meshRankSize > 1;
         const bool closActive = closRankSize > 1;
         if (meshActive && closActive) {
-            if (stage.reachesMaxStep) {
+            if (useSched2dCost && isReduceScatter) {
+                stage.transferCoeff = CalcReducescatterTransferCoeff2D(
+                    meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum, stage.meshDataRatio,
+                    stage.closDataRatio);
+            } else if (useSched2dCost) {
+                stage.equivalentBandwidth
+                    = meshBandwidth <= closPlanBandwidth ?
+                          CalcBandwidth2D(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum) :
+                          CalcBandwidth2D(closPlanBandwidth, meshBandwidth, closRankSize, meshRankSize, maxStepNum);
+                stage.transferCoeff = 1.0 / stage.equivalentBandwidth;
+            } else if (stage.reachesMaxStep) {
                 stage.transferCoeff = meshBandwidth <= closPlanBandwidth ? (meshRankSize - 1) / meshBandwidth :
                                                                            (closRankSize - 1) / closBandwidth;
             } else {
@@ -166,6 +179,8 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
     }
 
     const bool isCcuMs = std::string(algName) == "CcuMSReducePipeLineMeshNHR";
+    const bool useSched2dCost
+        = meshRankSize > 1 && closRankSize > 1 && std::string(algName) == "CcuSchedReducePipeLineMeshNHR";
     const double rsMeshBandwidth
         = (isCcuMs ? BW_OMNI_UBX_CCU_MS_RS_MESH : BW_OMNI_UBX_CCU_SCHED_RS_MESH) / OMNIPIPE_FIXED_UB_UTILIZATION;
     const double rsClosBandwidth
@@ -175,22 +190,28 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
     const double gatherClosBandwidth
         = (isCcuMs ? BW_OMNI_UBX_CCU_MS_SCHED_G_CLOS : BW_OMNI_UBX_CCU_SCHED_G_CLOS) / OMNIPIPE_FIXED_UB_UTILIZATION;
 
-    const OmniPipeStageCost rsCost
-        = CalcStageCost(meshRankSize, closRankSize, topoInfo->userRankSize, rsMeshBandwidth, rsClosBandwidth, true);
+    const OmniPipeStageCost rsCost = CalcStageCost(
+        meshRankSize, closRankSize, topoInfo->userRankSize, rsMeshBandwidth, rsClosBandwidth, true, useSched2dCost);
     const OmniPipeStageCost gatherCost = CalcStageCost(
-        meshRankSize, closRankSize, topoInfo->userRankSize, gatherMeshBandwidth, gatherClosBandwidth, false);
+        meshRankSize, closRankSize, topoInfo->userRankSize, gatherMeshBandwidth, gatherClosBandwidth, false,
+        useSched2dCost);
 
     CostModelParam costParam{};
     costParam.A = static_cast<float>(
         (rsCost.transferCoeff + gatherCost.transferCoeff) / topoInfo->userRankSize / GBPS_TO_BYTES_PER_SECOND);
-    CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::CCU, costParam.B);
+    CostModelManager::Global()->CalcLocalCopyParams(useSched2dCost ? 0.5f : 1.0f, EngineType::CCU, costParam.B);
     costParam.C = rsCost.syncCost + gatherCost.syncCost;
 
     HCCL_INFO(
         "[%s] algName[%s] axes[%llu,%llu] rsStep[%llu] rsMaxStep[%d] gatherStep[%llu] gatherMaxStep[%d] "
-        "Ufixed[%f] A[%e] B[%e] C[%e].",
+        "sched2dCost[%d] rsDataRatio[%f,%f] rsPlanBandwidth[%f,%f] gatherPlanBandwidth[%f,%f] gatherBxy[%f] "
+        "transferCoeff[%e,%e] Ufixed[%f] A[%e] B[%e] C[%e].",
         __func__, algName, meshRankSize, closRankSize, rsCost.stepNum, rsCost.reachesMaxStep, gatherCost.stepNum,
-        gatherCost.reachesMaxStep, OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A, costParam.B, costParam.C);
+        gatherCost.reachesMaxStep, useSched2dCost, rsCost.meshDataRatio, rsCost.closDataRatio,
+        rsMeshBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, rsClosBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION,
+        gatherMeshBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, gatherClosBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION,
+        gatherCost.equivalentBandwidth * OMNIPIPE_FIXED_UB_UTILIZATION, rsCost.transferCoeff, gatherCost.transferCoeff,
+        OMNIPIPE_FIXED_UB_UTILIZATION, costParam.A, costParam.B, costParam.C);
     return {costParam};
 }
 

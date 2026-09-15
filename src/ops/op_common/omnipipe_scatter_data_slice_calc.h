@@ -22,6 +22,8 @@
 namespace ops_hccl {
 constexpr double BW_OMNI_UBX_CCU_SCHED_SC_MESH = 47;
 constexpr double BW_OMNI_UBX_CCU_SCHED_SC_CLOS = 175;
+constexpr double BW_OMNI_UBX_CCU_SCHED_SC_COST_MESH = 52.9;
+constexpr double BW_OMNI_UBX_CCU_SCHED_SC_COST_CLOS = 158.7;
 constexpr double BW_OMNI_UBX_AICPU_SC_CLOS = 256;
 constexpr u64 MAX_RANK_SIZE = 2048;
 constexpr u64 MAX_STEP_NUM_SC = 3;
