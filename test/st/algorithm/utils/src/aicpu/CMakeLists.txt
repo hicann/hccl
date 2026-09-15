@@ -245,7 +245,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/template/aicpu/ins_temp_all_gather_v_mesh_1D.cc
 
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_sole_executor.cc
-    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_hier_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_sequence_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/alltoall_stage_template_registry.cc

@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef INS_V2_ALL_TO_ALL_HIER_SOLE_EXECUTOR_H
-#define INS_V2_ALL_TO_ALL_HIER_SOLE_EXECUTOR_H
+#ifndef INS_V2_ALL_TO_ALL_SEQUENCE_EXECUTOR_H
+#define INS_V2_ALL_TO_ALL_SEQUENCE_EXECUTOR_H
 
 #include "executor_common_ops.h"
 #include "topo_match_base.h"
@@ -21,10 +21,10 @@ namespace ops_hccl {
 constexpr u32 FULLMESH_THRESHOLD = 16;
 
 template <typename AlgTopoMatch>
-class InsV2AlltoAllHierSoleExecutor : public InsCollAlgBase {
+class InsV2AlltoAllSequenceExecutor : public InsCollAlgBase {
 public:
-    explicit InsV2AlltoAllHierSoleExecutor();
-    ~InsV2AlltoAllHierSoleExecutor() override = default;
+    explicit InsV2AlltoAllSequenceExecutor();
+    ~InsV2AlltoAllSequenceExecutor() override = default;
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
@@ -62,4 +62,4 @@ private:
 
 } // namespace ops_hccl
 
-#endif // !INS_V2_ALL_TO_ALL_HIER_SOLE_EXECUTOR_H
+#endif // !INS_V2_ALL_TO_ALL_HIER_SEQUENCE_EXECUTOR_H
