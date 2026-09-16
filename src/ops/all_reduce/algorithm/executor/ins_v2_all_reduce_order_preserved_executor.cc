@@ -299,6 +299,7 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
         = std::make_shared<InsAlgTemplateAG>(param, myRank_, resCtx.algHierarchyInfo.infos[0]);
     // 设置AllGather模板的通道映射
     agTempAlg->SetchannelsPerRank(remoteRankToChannelInfo_[0]);
+    agTempAlg->ForceSetChannelsPerRank(1);
 
     TemplateResource rsTemplateAlgRes;
     CHK_RET(GenTempResource(resCtx, 0, rsTempAlg, rsTemplateAlgRes));

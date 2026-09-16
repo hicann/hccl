@@ -61,6 +61,9 @@ public:
         return HCCL_SUCCESS;
     }
 
+    // 强制设置每rank通道数，绕过按拓扑计算的结果（用于DETERMINISTIC_STRICT等确定性场景）
+    void ForceSetChannelsPerRank(u32 channelsPerRank) { channelsPerRank_ = channelsPerRank; }
+
 protected:
     u32 channelsPerRank_ = 1;
 };
