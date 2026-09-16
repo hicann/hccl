@@ -77,9 +77,6 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::CalcSlice(const u64 dataSize, RankSlic
     u64 unitAllignSize = DataTypeSizeGet(dataType_);
     // 向下取整：保证非末rank分片一致，末rank吸收剩余数据（可能更大）
     u64 chunkSize = (dataSize / (templateRankSize_ * unitAllignSize)) * unitAllignSize;
-    if (chunkSize == 0) {
-        chunkSize = unitAllignSize;
-    }
     HCCL_INFO(
         "[CcuTempAllReduceMeshMem2Mem1D] chunkSize[%llu], dataSize[%llu], templateRankSize_[%u], unitAllignSize[%llu]",
         chunkSize, dataSize, templateRankSize_, unitAllignSize);
