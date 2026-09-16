@@ -64,7 +64,7 @@ private:
     HcclResult OrchestrateLoop(u32 loopTimes, u64 maxCountPerLoop);
     HcclResult OrchestrateStep(u32 stageIdx, u32 stepIdx);
     HcclResult RunTemplate(u32 dataSliceIdx, u32 stageIdx, u32 stepIdx, bool isInter);
-    double GetParallelDataSplit() const;
+    double GetParallelDataSplit(Level0Shape level0Topo) const;
 
 #ifndef AICPU_COMPILE
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* ctx) override;

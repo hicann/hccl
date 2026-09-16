@@ -426,10 +426,14 @@ static void LogParallelDataSplitRatio(
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
     const std::map<u32, std::vector<ChannelInfo>>& interChannels, const ParallelChannelPortInfo& resPortInfo,
-    ParallelDataSplitType splitType, double fallbackRatio)
+    Level0Shape level0Topo, ParallelDataSplitType splitType, double fallbackRatio)
 {
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
+    if (level0Topo == Level0Shape::MESH_1D_CLOS) {
+        HCCL_INFO("[CalcParallelDataSplitRatio] MESH_1D_CLOS uses fixed ratio[%f]", validFallback);
+        return validFallback;
+    }
     // CCU模式下资源上下文中没有ChannelInfo，优先使用资源阶段采集的端口信息。
     ParallelChannelPortInfo rawPortInfo = resPortInfo;
     const char* failureReason = nullptr;
@@ -468,6 +472,10 @@ double CalcParallelDataSplitRatio(
 {
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
+    if (topoInfo != nullptr && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        HCCL_INFO("[CalcParallelDataSplitRatio] MESH_1D_CLOS uses fixed ratio[%f]", validFallback);
+        return validFallback;
+    }
     ParallelPortInfo portInfo;
     const char* failureReason = nullptr;
 

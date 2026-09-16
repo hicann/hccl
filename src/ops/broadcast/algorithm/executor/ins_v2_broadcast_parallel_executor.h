@@ -53,7 +53,7 @@ public:
 #endif
 
 private:
-    void GetParallelDataSplit(std::vector<float>& splitDataSize) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const;
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo) const;
     HcclResult CalcLocalRoot();
     // Aicpu

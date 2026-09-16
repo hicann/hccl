@@ -664,12 +664,12 @@ template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
 void InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetParallelDataSplit(std::vector<float>& splitDataSize) const
+    GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_,
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, level0Topo,
             ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
@@ -1077,7 +1077,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize);
+    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo);
 
     u32 multipleIntra = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 multipleInter = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);

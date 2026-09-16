@@ -432,12 +432,12 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
-    std::vector<double>& splitDataSize) const
+    std::vector<double>& splitDataSize, Level0Shape level0Topo) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0_, rankSizeLevel1_, intraChannelInfo_, interChannelInfo_, parallelPortInfo_,
+            rankSizeLevel0_, rankSizeLevel1_, intraChannelInfo_, interChannelInfo_, parallelPortInfo_, level0Topo,
             ParallelDataSplitType::SCATTER, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
@@ -477,7 +477,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<double> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize); // <ratio, 1.0 - ratio>
+    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo); // <ratio, 1.0 - ratio>
     double hcclBuffMultipleIntra = std::max(
         dataSplitSize.at(0) * rankSizeLevel1_,
         dataSplitSize.at(1) * rankSizeLevel0_); // intra都是mesh // x/y方向最大rank数 * y/x方向的dataSplitSize

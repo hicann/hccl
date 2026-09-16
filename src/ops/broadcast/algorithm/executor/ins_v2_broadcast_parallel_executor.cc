@@ -466,12 +466,12 @@ template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
 void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetParallelDataSplit(std::vector<float>& splitDataSize) const
+    GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_,
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, level0Topo,
             ParallelDataSplitType::SCATTER, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
@@ -827,7 +827,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize);
+    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo);
 
     u32 multipleIntra = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 multipleInter = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
@@ -1135,13 +1135,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
     CcuKernelSubmitInfo* ccuKernelSubmitInfos = ctx->GetCcuKernelSubmitInfoPtr();
 
-    multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
-    multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
-    std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize);
-    dataCount_ = param.DataDes.count;
-    u64 SliceCountPart0 = static_cast<u64>(float(dataCount_) * dataSplitSize.at(0));
-    u64 SliceCountPart1 = dataCount_ - SliceCountPart0;
+    // 快速下发复用首次展开的切片参数，无需重新计算切分比例。
 
     // 第一步开始前同步
     HCCL_INFO("[InsBroadcastParallelExecutor][FastLaunch] Intra0 ccuKernelNum[%llu]", ctx->ccuKernelNum[0]);
