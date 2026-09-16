@@ -24,6 +24,8 @@ constexpr uint32_t NEGOTIATION_DATA_COUNT = 1;
 constexpr uint32_t NEGOTIATION_CCL_BUFFER_SIZE = 1; // 单位MB
 constexpr int32_t NEGOTIATION_SUCCESS_VAL = 0x5a5a5a5a;
 constexpr int32_t NEGOTIATION_FAIL_VAL = 0x00000000;
+// 通信域状态回调统一注册名：同名覆盖幂等（cb与args恒定），回调按comm动态查询协商tag判定归属
+constexpr char CCU_NEGO_RESOURCE_CALLBACK[] = "ccu_nego_resource_callback";
 static constexpr uint32_t opExpansionModeCcuMs = 4;
 static constexpr uint32_t opExpansionModeCcuSched = 5;
 // HcclCommConfig.hcclOpExpansionMode取值: 0:默认 1:host 2:aicpu 3:aiv，与HcclOpExpansionMode枚举值空间不同
@@ -54,7 +56,6 @@ static uint32_t GetOpExecuteConfigLevel(OpExecuteConfig config)
 }
 
 struct NegotiationResCtx {
-    HcclComm ownerComm = nullptr;
     aclrtStream stream = nullptr;
     void* hostSendBuf = nullptr;
     void* hostRecvBuf = nullptr;
@@ -93,38 +94,26 @@ static void CleanupNegotiationRes(NegotiationResCtx* ctx)
 
 HcclResult NegotiationCleanupCb(HcclComm comm, HcclCommStatePhase state, void* args)
 {
+    (void)args; // 注册时不携带ownerComm，回调按comm动态查询协商tag判定归属
     if (state != HcclCommStatePhase::HCCL_COMM_STATE_PHASE_DESTROY_PRE
         && state != HcclCommStatePhase::HCCL_COMM_STATE_PHASE_RESUME_POST) {
         return HCCL_SUCCESS;
     }
-    HcclComm ownerComm = reinterpret_cast<HcclComm>(args);
-    if (ownerComm != comm) {
-        return HCCL_SUCCESS;
-    }
-    if (state == HcclCommStatePhase::HCCL_COMM_STATE_PHASE_DESTROY_PRE) {
-        // 先回收常驻worker（等待在途任务收尾并join），再清理其正在使用的stream/subComm；
-        // 必须在获取ctx之前执行：ctx可能已被失败路径清理，而worker仍存活
-        CommWorkerMgr::GetInstance().Remove(comm);
-    }
-    // 通过comm动态获取negCtx，避免持有EngineCtx内存指针导致野指针
+    // 通过comm动态获取negCtx，避免持有EngineCtx内存指针导致野指针；存在协商tag才执行处理
     char commName[COMM_INDENTIFIER_MAX_LENGTH] = {0};
     CHK_RET(HcclGetCommName(comm, commName));
     std::string negTag = std::string(commName) + "_negotiation";
     void* ctxPtr = nullptr;
     uint64_t ctxSize = 0;
     HcclResult getRet = HcclEngineCtxGet(comm, negTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &ctxPtr, &ctxSize);
-    if (getRet == HCCL_E_NOT_FOUND) {
-        HCCL_INFO("[%s] EngineCtx not found, already cleaned.", __func__);
+    if (getRet == HCCL_E_NOT_FOUND || (getRet == HCCL_SUCCESS && ctxPtr == nullptr)) {
+        HCCL_INFO("[%s] negotiation tag not found, skip.", __func__);
         return HCCL_SUCCESS;
     }
     CHK_PRT_RET(getRet != HCCL_SUCCESS, HCCL_ERROR("[%s] HcclEngineCtxGet failed, ret[%d].", __func__, getRet), getRet);
-    if (ctxPtr == nullptr) {
-        HCCL_INFO("[%s] EngineCtx is null, already cleaned.", __func__);
-        return HCCL_SUCCESS;
-    }
     NegotiationResCtx* ctx = static_cast<NegotiationResCtx*>(ctxPtr);
     // 快恢场景：task abort时子通信域已被Suspend+Clean，owner恢复完成后级联恢复协商子通信域，
-    // 复用stream/buffer等进程级资源；失败或不支持时降级走下方清理路径，下次协商懒重建
+    // 复用stream/buffer/worker等进程级资源；失败或不支持时降级走下方清理路径，下次协商懒重建
     if (state == HcclCommStatePhase::HCCL_COMM_STATE_PHASE_RESUME_POST && ctx->subComm != nullptr
         && HcommIsSupportHcclCommResume()) {
         HcclResult resumeRet = HcclCommResume(ctx->subComm);
@@ -134,6 +123,9 @@ HcclResult NegotiationCleanupCb(HcclComm comm, HcclCommStatePhase state, void* a
         }
         HCCL_ERROR("[%s] resume subComm failed, ret[%d], fallback to rebuild.", __func__, resumeRet);
     }
+    // 先回收常驻worker（等待在途任务收尾并join），再清理其正在使用的stream/subComm；
+    // 所有ctx销毁路径均同步回收worker，维持tag不存在即worker已回收的不变式
+    CommWorkerMgr::GetInstance().Remove(comm);
     CleanupNegotiationRes(ctx);
     (void)HcclEngineCtxDestroy(comm, negTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS);
     HCCL_INFO("[%s] negotiation resources released.", __func__);
@@ -223,10 +215,10 @@ CreateNegotiationSubCommAndRegCb(HcclComm comm, const std::string& negTag, u32 r
         HCCL_E_UNAVAIL);
 
     // 一次注册覆盖通信域全部阶段：销毁前(DESTROY_PRE)清理协商资源，快恢后(RESUME_POST)级联恢复协商子通信域；
-    // 资源重建时会以同名negTag重复注册，HcclCommRegCommStateCallback内部同名覆盖，天然幂等
+    // 统一注册名+同名覆盖：各comm创建协商资源时重复注册均覆盖同一注册项（cb与args恒定，幂等），
+    // 注册项不随comm数量累积；回调按comm动态查询协商tag判定归属，tag不存在即跳过
     if (HcommIsSupportHcclCommRegCommStateCallback()) {
-        HcclResult regRet
-            = HcclCommRegCommStateCallback(negTag.c_str(), NegotiationCleanupCb, reinterpret_cast<void*>(comm));
+        HcclResult regRet = HcclCommRegCommStateCallback(CCU_NEGO_RESOURCE_CALLBACK, NegotiationCleanupCb, nullptr);
         CHK_PRT_RET(
             regRet != HCCL_SUCCESS, HCCL_ERROR("[%s] HcclCommRegCommStateCallback failed, ret[%d].", __func__, regRet),
             regRet);
@@ -248,7 +240,6 @@ static HcclResult GetNegotiationCtx(HcclComm comm, const OpParam& param, u32 ran
         negCtx = static_cast<NegotiationResCtx*>(ctxPtr);
         errno_t memsetRet = memset_s(negCtx, sizeof(NegotiationResCtx), 0, sizeof(NegotiationResCtx));
         CHK_PRT_RET(memsetRet != EOK, HCCL_ERROR("[%s] memset_s failed, ret[%d].", __func__, memsetRet), HCCL_E_MEMORY);
-        negCtx->ownerComm = comm;
     } else {
         negCtx = static_cast<NegotiationResCtx*>(ctxPtr);
     }
@@ -256,12 +247,15 @@ static HcclResult GetNegotiationCtx(HcclComm comm, const OpParam& param, u32 ran
     if (needCreate) {
         HcclResult ret = AllocNegotiationStreamAndBuf(negCtx, rankSize);
         if (ret != HCCL_SUCCESS) {
+            // ctx销毁与worker回收同步，维持tag不存在即worker已回收的不变式（防御懒重建失败时worker存活）
+            CommWorkerMgr::GetInstance().Remove(comm);
             CleanupNegotiationRes(negCtx);
             (void)HcclEngineCtxDestroy(comm, negTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS);
             return ret;
         }
         ret = CreateNegotiationSubCommAndRegCb(comm, negTag, rankSize, negCtx);
         if (ret != HCCL_SUCCESS) {
+            CommWorkerMgr::GetInstance().Remove(comm);
             CleanupNegotiationRes(negCtx);
             (void)HcclEngineCtxDestroy(comm, negTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS);
             return ret;
