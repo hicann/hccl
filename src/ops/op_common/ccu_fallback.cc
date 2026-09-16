@@ -33,6 +33,7 @@ struct CheckParamInfo {
     uint64_t count;
     uint32_t opExecuteConfig;
     uint32_t dataType;
+    uint32_t opType;
 };
 constexpr uint64_t SEND_BUF_SIZE = sizeof(CheckParamInfo);
 
@@ -389,9 +390,10 @@ static HcclResult ExecuteParamCheckOp(HcclComm comm, const OpParam& param, u32 r
     localInfo.count = param.DataDes.count;
     localInfo.opExecuteConfig = static_cast<uint32_t>(param.opExecuteConfig);
     localInfo.dataType = static_cast<uint32_t>(param.DataDes.dataType);
+    localInfo.opType = static_cast<uint32_t>(param.opType);
     HCCL_INFO(
-        "[%s] param negotiation, tag[%s], count[%llu], config[%u], dataType[%u].", __func__, param.tag, localInfo.count,
-        localInfo.opExecuteConfig, localInfo.dataType);
+        "[%s] param negotiation, tag[%s], count[%llu], config[%u], dataType[%u], opType[%u].", __func__, param.tag,
+        localInfo.count, localInfo.opExecuteConfig, localInfo.dataType, localInfo.opType);
 
     HcclResult threadRet = RunInCommWorker(comm, [&]() -> HcclResult {
         errno_t memRet = memcpy_s(negCtx->hostSendBuf, SEND_BUF_SIZE, &localInfo, sizeof(CheckParamInfo));
@@ -452,6 +454,8 @@ CompareCcuParam(const CheckParamInfo* recvInfos, u32 rankSize, const OpParam& pa
                 CHK_PRT_RET(
                     cpyRet != EOK, HCCL_ERROR("[%s] strncpy_s for group failed, ret[%d].", __func__, cpyRet),
                     HCCL_E_MEMORY);
+                // opType、dataType、datacount均会导致数据量不一致，参照一致性校验进行规范格式报错
+                CHK_RET(InconsistentCheckOpType(i, exchangeInfo, static_cast<HcclCMDType>(recvInfos[i].opType)));
                 if (recvInfos[i].dataType != static_cast<uint32_t>(param.DataDes.dataType)) {
                     CHK_RET(ReportOpExchangeInfoCheckFailed(
                         i, exchangeInfo, "HcclDataType", static_cast<uint32_t>(param.DataDes.dataType),
