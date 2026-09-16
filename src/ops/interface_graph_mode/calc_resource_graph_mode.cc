@@ -14,6 +14,7 @@
 #include <cstring>
 #include "hcom.h"
 #include "op_common.h"
+#include "param_check.h"
 #include "alg_env_config.h"
 #include "adapter_acl.h"
 #include "executor_v2_base.h"
@@ -153,7 +154,7 @@ HcclCalcOpResOnlineGraphMode(OpParamGraphMode* opParam, u64* opMemSize, u32* str
     ops_hccl::HcclCalcAicpuResOffline(&resResponse);
 
     // ccu引擎计算资源
-    ops_hccl::HcclCalcCcuResOffline(opParam, &resResponse);
+    CHK_RET(ops_hccl::HcclCalcCcuResOffline(opParam, &resResponse));
 
     // aiv引擎计算资源
     ops_hccl::HcclCalcAivResOffline(&resResponse, paramPtr);
@@ -184,7 +185,7 @@ HcclCalcOpResOfflineGraphMode(OpParamGraphMode* opParam, u64* opMemSize, u32* st
     ops_hccl::HcclCalcAicpuResOffline(&resResponse);
 
     // ccu引擎计算资源
-    ops_hccl::HcclCalcCcuResOffline(opParam, &resResponse);
+    CHK_RET(ops_hccl::HcclCalcCcuResOffline(opParam, &resResponse));
 
     // 其他引擎补充在下面
     // aiv引擎计算资源
@@ -232,6 +233,8 @@ HcclResult HcclSelectAlgGraphMode(
         HCCL_INFO("[HcclSelectAlgGraphMode] Unsupported aiv op.");
         return HCCL_SUCCESS;
     }
+
+    CHK_RET(HcomCheckDataType(dataType));
 
     s32 deviceId = 0;
     CHK_PRT_RET(
@@ -455,6 +458,8 @@ HcclResult HcclCalcAivCoreNumGraphMode(
     }
     *numBlocks = 0;
 
+    CHK_RET(HcomCheckDataType(dataType));
+
     char tag[TAG_LENGTH];
     int ret = sprintf_s(tag, sizeof(tag), "CalcAivCoreNum_%d", static_cast<int>(opType));
     CHK_PRT_RET(ret <= 0, HCCL_ERROR("[HcclCalcAivCoreNumGraphMode] failed to fill tag"), HCCL_E_INTERNAL);
@@ -485,6 +490,8 @@ HcclResult HcclGetAlgExecParamGraphMode(
     CHK_PTR_NULL(len);
     *commContext = nullptr;
     *len = 0;
+
+    CHK_RET(HcomCheckDataType(dataType));
 
     ops_hccl::AivOpArgs aivOpArgs;
     u64 cclBufferSize = 0;
@@ -605,7 +612,7 @@ HcclResult HcclCalcCcuResOffline(OpParamGraphMode* opParam, ResResponseGraphMode
     u32 ccuStreamNum = 6;
     u32 ccuTaskNum = 0;
 
-    CHK_PRT(CalcTaskNum(opParam, ccuTaskNum));
+    CHK_RET(CalcTaskNum(opParam, ccuTaskNum));
 
     resResponse->opMemSize = std::max(resResponse->opMemSize, ccuOpMemSize);
     resResponse->streamNum = std::max(resResponse->streamNum, ccuStreamNum);
@@ -623,6 +630,7 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
         ccuTaskNum = GE_PARALLEL;
         return HCCL_SUCCESS;
     }
+    CHK_RET(HcomCheckDataType(opParam->dataType));
 
     u64 dataCount = opParam->dataCount;
     u64 rankSize = opParam->rankSize;

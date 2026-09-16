@@ -340,6 +340,32 @@ static HcclResult HcclOrderLaunchNotifyRecord(const OpParam* param)
     return HCCL_SUCCESS;
 }
 
+namespace {
+class CommRefGuard {
+public:
+    explicit CommRefGuard(const char* commName) : commName_(commName) {}
+
+    CommRefGuard(const CommRefGuard&) = delete;
+    CommRefGuard& operator=(const CommRefGuard&) = delete;
+
+    ~CommRefGuard()
+    {
+        if (released_) {
+            return;
+        }
+        if (HcommReleaseComm(commName_) != HCCL_SUCCESS) {
+            HCCL_ERROR("[CommRefGuard] HcommReleaseComm fail, commName[%s]", commName_);
+        }
+    }
+
+    void MarkReleased() { released_ = true; }
+
+private:
+    const char* commName_;
+    bool released_ = false;
+};
+} // namespace
+
 extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
 {
     // 修改当前进程的调度策略和优先级
@@ -358,6 +384,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
+    CommRefGuard commGuard(param->commName);
 
     // AICPU 按序下发
     CHK_RET(HcclOrderLaunchNotifyRecord(param));
@@ -403,6 +430,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
                     HCCL_ERROR(
                         "%s commStatus is suspending, HcommReleaseComm fail, commName[%s]", __func__, param->commName);
                 }
+                commGuard.MarkReleased();
                 return 301U; /* 301U: AICPUSUSPENDING_ERROR */
             }
             if (commStatus != HCCL_COMM_STATUS_READY) {
@@ -722,6 +750,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         }
     }
 
+    commGuard.MarkReleased();
     if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
         return 1;
@@ -759,6 +788,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
+    CommRefGuard commGuard(param->commName);
 
     // AICPU 按序下发
     CHK_RET(HcclOrderLaunchNotifyRecord(param));
@@ -781,6 +811,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
                     HCCL_ERROR(
                         "%s commStatus is suspending, HcommReleaseComm fail, commName[%s]", __func__, param->commName);
                 }
+                commGuard.MarkReleased();
                 return 301U; /* 301U: AICPUSUSPENDING_ERROR */
             }
             if (commStatus != HCCL_COMM_STATUS_READY) {
@@ -855,6 +886,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         if (executor.get() == nullptr) {
             HCCL_ERROR(
                 "Fail to find executor for algName[%s], opType[%d]", algName.c_str(), static_cast<int>(param->opType));
+            commGuard.MarkReleased();
             HcommReleaseComm(param->commName);
             return 1;
         }
@@ -864,6 +896,7 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         ret = executor->OrchestrateWithThread(*param, *resCtxPtr, sendRecvThread);
         if (ret != HCCL_SUCCESS) {
             HCCL_ERROR("orchestrate failed for alg:%s, opType[%d]", param->algName, static_cast<int>(param->opType));
+            commGuard.MarkReleased();
             HcommReleaseComm(param->commName);
             return 1;
         }
@@ -886,10 +919,12 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         HCCL_ERROR(
             "%s P2P only support OpsV2, algName[%s], deviceType[%d]", __func__, param->algName,
             static_cast<int>(param->deviceType));
+        commGuard.MarkReleased();
         HcommReleaseComm(param->commName);
         return 1;
     }
 
+    commGuard.MarkReleased();
     if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
         return 1;
@@ -1001,6 +1036,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
+    CommRefGuard commGuard(param->commName);
 
     std::string algName = std::string(param->algName);
     if (!ops_hccl::IsOpsV2(param->algName, param->deviceType)) {
@@ -1044,6 +1080,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
                     HCCL_ERROR(
                         "%s commStatus is suspending, HcommReleaseComm fail, commName[%s]", __func__, param->commName);
                 }
+                commGuard.MarkReleased();
                 return 301U; /* 301U: AICPUSUSPENDING_ERROR */
             }
             if (commStatus != HCCL_COMM_STATUS_READY) {
@@ -1290,6 +1327,7 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
         }
     }
 
+    commGuard.MarkReleased();
     if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
         return 1;
