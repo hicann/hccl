@@ -33,11 +33,29 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DOneShot::CalcCostCoeff(CalcCos
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
-
     // 同时有localreduce和localcopy，所以需要调用两个接口获取两个步骤的B并相加
     float B1 = 0.0f;
     float B2 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(1, param.netType, portNum, param.rankSize, A, param.isPod);
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A0 = 0.0f;
+        float A1 = 0.0f;
+        int level0Port = 1;
+        int level1Port = portNum;
+        CostModelManager::Global()->CalcMeshParam(
+            1, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, param.isPod);
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            1, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+        A = std::max(A0, A1);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(1, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
+
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(1, EngineType::AICPU, B1);
     } else {
@@ -46,7 +64,6 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DOneShot::CalcCostCoeff(CalcCos
     CostModelManager::Global()->CalcLocalReduceParams(param.rankSize - 1, EngineType::AICPU, B2);
     B = B1 + B2;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

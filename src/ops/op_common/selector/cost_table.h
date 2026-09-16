@@ -22,6 +22,7 @@
 #include "hccl_tuner_plugin.h"
 #include "log.h"
 #include "alg_attrs.h"
+#include "alg_parse.h"
 
 namespace ops_hccl {
 
@@ -55,7 +56,7 @@ public:
     CostTableGen(CostModel& cm, CostTable& ct, const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam);
     HcclResult QueryUbUtil(
         CommTopo netType, u64 dataSize, OpExecuteConfig engine, float& utilization,
-        HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID) const;
+        HcclCMDType opType = HcclCMDType::HCCL_CMD_INVALID, AlgoType algoType = AlgoType::UNKNOWN) const;
 
 private:
     CostTableManager() = default;
@@ -71,6 +72,7 @@ private:
     CostTable costTable_{nullptr, 0};
     static const std::vector<UbUtilEntry> closUbUtilTable_;
     static const std::vector<UbUtilEntry> meshUbUtilTable_;
+    static const std::vector<UbUtilEntry> closOneJettyOnePortUbUtilTable_;
     mutable std::mutex mu_;
 };
 

@@ -11,6 +11,7 @@
 #include <cmath>
 #include "reduce_parallel_executor.h"
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "alg_attrs_registry.h"
 #include "ins_temp_all_gather_mesh_1D.h"
@@ -133,9 +134,10 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         v.insert(v.end(), p6.begin(), p6.end());
         v.insert(v.end(), p7.begin(), p7.end());
         // parallel 固定开销
-        float bConst = 0.000025f;
+        float bConst = 0.000005f;
         for (auto& p : v) {
             p.C += bConst;
+            p.D /= 2;
         }
         return v;
     }();
@@ -190,6 +192,11 @@ AlgNetMeta ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
                        ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1,
                       rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
+// costmodel 为8段 [RS阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR; AG阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR],
+// 按名解析的层级类型逐段展开, 防止 seg2+ 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 0, 1, 0, 1, 0, 1});
+#endif
     return meta;
 }
 
@@ -1047,10 +1054,9 @@ REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHR, ReduceParallelExecutor, TopoMatchTwoLevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,
     CcuTempAllGatherNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceParallelMeshNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(CcuSchedReduceParallelMeshNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false;
+                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 REGISTER_EXECUTOR_BY_FOUR_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceParallelMeshNHRMultiJetty, ReduceParallelExecutor, TopoMatchTwoLevel,
     CcuTempReduceScatterMesh1DMem2Mem, CcuTempReduceScatterNHR1DMem2Mem, CcuTempAllGatherMesh1DMem2Mem,

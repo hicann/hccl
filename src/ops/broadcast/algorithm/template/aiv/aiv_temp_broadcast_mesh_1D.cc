@@ -30,11 +30,32 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
     float D = 0.0f;
 
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
-    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
-    CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
-    // 根据实测调整A
-    A *= 0.8f;
+    // pod上下行收敛比2：<=64p实测带宽未收敛，不折半端口；>64p（如128p）实测带宽已收敛，按真实isPod折半
+    bool isPodForCost = param.rankSize > 64 && param.isPod;
+    // 二级拓扑（板内mesh+跨板clos）：板内走mesh直连、跨板走clos，两条链路带宽分开算取max
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A_mesh = 0.0f;
+        float A_clos = 0.0f;
+        // 板内MESH直连
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio * 2 / param.rankSize, CommTopo::COMM_TOPO_1DMESH, 1, level0RankSize, A_mesh, isPodForCost);
+        // 跨板CLOS：level1RankSize个对端共享portNum端口
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio * 2 / param.rankSize, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize, A_clos,
+            isPodForCost);
+        A = std::max(A_mesh, A_clos);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, isPodForCost);
+    }
+    A *= 0.8;
+
     if (param.inputBuffer != param.scratchBuffer) {
         // 本地拷贝1份全量数据（root拷入、非root拷出，平均1份）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AIV, B);

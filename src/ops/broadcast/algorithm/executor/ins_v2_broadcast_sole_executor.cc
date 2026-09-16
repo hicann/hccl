@@ -375,9 +375,8 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSoleNHR, InsV2BroadcastSoleExecutor, TopoMatchOneLevel,
     InsTempBroadcastNHR);
 REGISTER_ALG_ATTRS(
-    AicpuBroadcastSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel1Nhr = true; topo.maxTopoLevelNum = 2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    AicpuBroadcastSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
+    topo.maxTopoLevelNum = 2; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
             return false;
         }

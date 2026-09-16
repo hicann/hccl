@@ -23,12 +23,13 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     bool isMultiChannel = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2);
     int portNum
         = isMultiChannel ? static_cast<int>(param.portNum[0] + param.portNum[1]) : static_cast<int>(param.portNum[0]);
-    // NHR 有 ⌈log2R⌉ 步，每步一个同步点，kernelNum 按步数取
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int kernelNum = log2R;
+    // C 为同步时延(kernelNum 口径)，与 CCU NHR 同公式(真机实测锚定):
+    // kernelNum = 7R/4 + log2R/2 → 8P=15(30us), 16P=30(60us), 32P=58(116us)
+    int kernelNum = (7 * static_cast<int>(param.rankSize)) / 4 + log2R / 2;
     // taskNum（B 方案定案）：传输 task = 3/次（send 单边通信）× log2R 步（NHR 步进扇出，非 Mesh 的 R-1 线性）；
     // 多通道（executor 注入的向量双元素）翻倍。local copy task = 1/份：
     // PreCopy root 铺开 R 份 + PostCopy 每 rank 1 份（与 B 系数份数同口径）
@@ -73,6 +74,9 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     B = preCopyB + postCopyB;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    // D 叠加框架侧固定开销 20us(真机实测锚定): taskNum 口径只覆盖 kernel 内 task 提交,
+    // 未覆盖 executor/host 侧的框架固定开销
+    D += 0.000020f;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

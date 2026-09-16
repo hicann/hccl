@@ -22,24 +22,23 @@ std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffPara
 {
     // NHR递归halving-doubling算法（scatter+allgather两阶段），拓扑/端口由 executor 通过 topomatch v2 传入
     CommTopo netType = param.netType;
-    bool isMultiLink = (param.algName != nullptr && strstr(param.algName, "MultiLink") != nullptr);
-    // 物理端口数由 executor 传入；isMultiLink 决定算法是否多通道并行用完所有 port：
-    //   - MultiLink：多通道并行，使用全部物理端口
-    //   - 非 MultiLink：channel 仍占用多个 port，但算法单通道传输，实际只用部分端口（按历史经验预留2个端口）
-    int physicalPortNum = 0;
-    for (auto p : param.portNum) {
-        physicalPortNum += static_cast<int>(p);
-    }
+    // 物理端口数由 executor 传入，多通道并行使用全部物理端口
     int portNum = 0;
-    if (isMultiLink) {
-        portNum = physicalPortNum > 0 ? physicalPortNum : DEFAULT_PHYSICAL_PORT_NUM;
-    } else {
-        portNum = physicalPortNum > 0 ? std::max(1, physicalPortNum - RESERVED_PORT_NUM_FOR_SINGLE_CHANNEL) :
-                                        DEFAULT_SINGLE_CHANNEL_PORT_NUM;
+    for (auto p : param.portNum) {
+        portNum += static_cast<int>(p);
     }
-    // TwoShotMultiLink多通道并行，数据拆分和同步开销略大，kernelNum增加2
-    int kernelNum = isMultiLink ? 12 : 10;
-    int taskNum = 8 * (param.rankSize - 1) + (isMultiLink ? 2 : 0);
+    if (portNum <= 0) {
+        portNum = 8;
+    }
+    // NHR递归halving-doubling每轮通信对象按2的幂折叠，通信轮次与log2(rankSize)相关而非线性，
+    // D 用 rEff 替代 rankSize（与 all_gather NHR 一致）
+    int log2R = 0;
+    for (u32 r = param.rankSize; r > 1; r >>= 1) {
+        log2R++;
+    }
+    u32 rEff = std::max(static_cast<u32>(5 * log2R / 3), 2u);
+    int kernelNum = 8 + 3 * log2R;
+    int taskNum = CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2 + 30;
 
     float A = 0.0f;
     float B = 0.0f;
@@ -47,15 +46,16 @@ std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffPara
     float D = 0.0f;
 
     // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
-    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
+    // pod上下行收敛比2：<=64p实测带宽未收敛，不折半端口；>64p（如128p）实测带宽已收敛，按真实isPod折半
+    bool isPodForCost = param.rankSize > 64 && param.isPod;
     CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, netType, portNum, param.rankSize, A, false);
+        param.dataRatio * 2 / param.rankSize, netType, portNum, param.rankSize, A, isPodForCost);
     if (param.inputBuffer != param.scratchBuffer) {
         // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
     }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    // nhr实测和理论估计相差较大，先用经验值（和all_reduce NHR一致）
+    // nhr实测和理论估计相差较大，先用经验值
     D = 1e-6 * taskNum;
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

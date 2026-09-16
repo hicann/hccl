@@ -33,6 +33,10 @@ public:
 
     static void ParseAlgName(const std::string& algoName, AlgAttrs& a);
     static std::string GetAlgAttrsSummary(const AlgAttrs& a);
+    // 按算法名解析的层级类型, 填充逐段 algoTypes (Parallel 等多段算法的 GetAlgNetMeta 用):
+    // segLevelIdx 为每段所属拓扑层(与 costmodel 中 p0..pN 段序一致)。名解析类型数=拓扑层级数,
+    // 多段算法按段所属层展开; 名字未识别/无 attrs 时返回空, cost_table 回退按名解析值(旧行为)
+    static std::vector<AlgoType> BuildSegAlgoTypes(const char* algName, const std::vector<uint32_t>& segLevelIdx);
 
 private:
     AlgAttrsRegistry() = default;

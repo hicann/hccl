@@ -13,7 +13,9 @@
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "template_utils.h"
+#include <cstring>
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_scatter_mesh1d.h"
@@ -129,6 +131,12 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
         v.insert(v.end(), p3.begin(), p3.end());
         return v;
     }();
+    // CCU parallel 大数据量端带宽项偏低, A 乘 2 修正
+    if (strncmp(algName, "Ccu", 3) == 0) {
+        for (auto& p : params) {
+            p.A *= 2.0f;
+        }
+    }
     return params;
 }
 
@@ -187,6 +195,11 @@ AlgNetMeta InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     meta.groupSizes = {2, 2};
     meta.dataRatios = {ratio * rankSizeLevel1, (1.0f - ratio) * rankSizeLevel0, ratio, 1.0f - ratio};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0};
+// costmodel 为4段 [L0-mesh, L1-NHR, L1-NHR, L0-mesh], 按名解析的层级类型逐段展开,
+// 防止 seg2/seg3 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 1, 0});
+#endif
     return meta;
 }
 

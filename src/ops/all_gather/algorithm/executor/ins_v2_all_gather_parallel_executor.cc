@@ -24,6 +24,7 @@
 #include "alg_data_trans_wrapper.h"
 
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "auto_selector_base.h"
 
 namespace ops_hccl {
@@ -97,20 +98,22 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
         return {};
     }
 
-    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    // 与执行路径 GetParallelDataSplit 保持一致: 配置值表示数据片1(先Clos后Mesh)的比例;
+    // ALL_GATHER 公式返回"先Mesh后Clos"的比例, 故取反后即为数据片1的比例, 回退值也需按公式语义传入。
+    float closFirstRatio = param.opConfig.multipleDimensionSplitRatio;
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo,
-            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, param.opConfig.multipleDimensionSplitRatio);
+        closFirstRatio = 1.0f
+                         - CalcParallelDataSplitRatio(
+                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::ALL_GATHER,
+                             1.0f - param.opConfig.multipleDimensionSplitRatio);
     }
-    float meshFirstRatio = 1.0f - ratio;
-    float closFirstRatio = ratio;
+    float meshFirstRatio = 1.0f - closFirstRatio;
 
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
-        "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
+        "netTypeLevel0=%d, netTypeLevel1=%d, meshFirstRatio=%f",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
-        static_cast<int>(netTypeLevel1), ratio);
+        static_cast<int>(netTypeLevel1), meshFirstRatio);
     std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, meshFirstRatio, closFirstRatio,
                                           portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
         std::vector<CostModelParam> v;
@@ -130,13 +133,11 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
             rankSizeLevel1, meshFirstRatio * rankSizeLevel0, netTypeLevel1, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p3.begin(), p3.end());
-        // Parallel 固定开销
-        float bConst = 0.000040f;
+        float bConst = 0.000038f;
         for (auto& p : v) {
             p.C += bConst;
         }
-        // AICPU: D 额外附加
-        float dAdd = 1e-6f * static_cast<float>(9 * rankSize + 32) / 32.0f;
+        float dAdd = 1.5e-6f * static_cast<float>(9 * rankSize + 32) / 32.0f;
         for (auto& p : v) {
             if (p.D > 0) {
                 p.D += dAdd;
@@ -176,14 +177,15 @@ AlgNetMeta InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     std::vector<u32> portNumLevel1
         = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]));
 
-    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    // 与 CalcCostCoeff/GetParallelDataSplit 保持一致的 ALL_GATHER 语义
+    float closFirstRatio = param.opConfig.multipleDimensionSplitRatio;
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo,
-            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, param.opConfig.multipleDimensionSplitRatio);
+        closFirstRatio = 1.0f
+                         - CalcParallelDataSplitRatio(
+                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::ALL_GATHER,
+                             1.0f - param.opConfig.multipleDimensionSplitRatio);
     }
-    float meshFirstRatio = 1.0f - ratio;
-    float closFirstRatio = ratio;
+    float meshFirstRatio = 1.0f - closFirstRatio;
 
     CommTopo netTypeLevel0
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
@@ -199,6 +201,11 @@ AlgNetMeta InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     meta.dataRatios
         = {meshFirstRatio, closFirstRatio, closFirstRatio * rankSizeLevel1, meshFirstRatio * rankSizeLevel0};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
+// costmodel 为4段 [L0-mesh, L1-NHR, L0-mesh, L1-NHR], 按名解析的层级类型逐段展开,
+// 防止 seg2/seg3 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 0, 1});
+#endif
     return meta;
 }
 

@@ -25,7 +25,7 @@ std::vector<CostModelParam> CcuTempReduceScatterMesh1DMem2Mem::CalcCostCoeff(Cal
     int RTT1 = 2;
     int rankSizeC = 0.6 * param.rankSize;
     rankSizeC = (param.netType == CommTopo::COMM_TOPO_CLOS) ? rankSizeC : rankSizeC * param.repeatednum;
-    int kernelNum = (rankSizeC + 3 * RTT1 + log2(param.rankSize) * 2 - 2) / 2;
+    int kernelNum = (rankSizeC + 3 * RTT1 + log2(param.rankSize) * 2) / 2;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

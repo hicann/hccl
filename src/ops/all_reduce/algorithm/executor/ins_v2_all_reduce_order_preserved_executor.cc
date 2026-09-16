@@ -54,9 +54,14 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     std::vector<u32> portNumLevel0
         = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
+    if (portNumLevel0.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
-        static_cast<int>(netTypeLevel0));
+        "[CalcCostCoeff] rankSize=%d, portNumLevel0(size=%zu, first=%u), netTypeLevel0=%d", rankSize,
+        portNumLevel0.size(), portNumLevel0[0], static_cast<int>(netTypeLevel0));
     std::vector<CostModelParam> params = [rankSize, portNumLevel0, netTypeLevel0, isPod] {
         std::vector<CostModelParam> v;
         auto p0 = InsAlgTemplateRS::CalcCostCoeff(CalcCostCoeffParam{

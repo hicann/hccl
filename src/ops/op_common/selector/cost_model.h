@@ -23,6 +23,9 @@
 
 namespace ops_hccl {
 
+// 前向声明: AlgoType 定义在 alg_parse.h, 而 alg_parse.h 包含本头文件, 不能反向 include
+enum class AlgoType : uint8_t;
+
 typedef struct {
     const char* algName;
     const char* executorName;
@@ -105,8 +108,9 @@ public:
     // A: 出参，接收计算得到的A值
     // 计算Mesh算法的A参数
     void CalcMeshParam(float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod = false);
-    // 计算NHR算法的A参数
-    void CalcNHRParams(float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod = false);
+    // 计算NHR算法的A参数; halvePodPort=false 时不做 isPod CLOS 端口减半(单server pod内CLOS无跨pod端口预留)
+    void CalcNHRParams(
+        float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod = false, bool halvePodPort = true);
     // n: 输入数据占总数据量DataSize的比例
     // B: 出参，接收计算得到的B值
     // 计算本地拷贝的B参数
@@ -171,6 +175,9 @@ struct AlgNetMeta {
     CostAggMode intraGroupMode = CostAggMode::SUM; // 组内聚合方式
     CostAggMode interGroupMode = CostAggMode::SUM; // 组间聚合方式，默认为SUM
     std::vector<u32> groupSizes;                   // 每组 template 数量，为空时按每组1个兜底
+    // 逐段算法类型(如 Parallel 的4段 [MESH,NHR,NHR,MESH]); 为空时 cost_table 回退用 AlgAttrs 按算法名
+    // 解析的 algoTypes(该值同时是 topo_match 的层级数依据, 只能保留层级个条目, 不能扩展成段数)
+    std::vector<AlgoType> algoTypes;
 };
 
 class AlgNetMetaRegistry {

@@ -85,8 +85,6 @@ std::vector<CostModelParam> InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTempl
     }
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = topoInfo->isPod;
-    // SoleMesh 操作在整个 rankSize 上，多级拓扑时走 CLOS 互联，netType 和 portNum 都取 CLOS 层
-    // TopoMatchOneLevel 的 physicalIdxForAlgoLevels 只有 1 个元素，需检查 size 避免越界
     u32 physLevelIdx = (topoInfo->topoLevelNums > 1 && algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
@@ -101,7 +99,7 @@ std::vector<CostModelParam> InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTempl
         static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-        portNumLevel0, isPod});
+        portNumLevel0, isPod, algName, nullptr, topoInfo});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>

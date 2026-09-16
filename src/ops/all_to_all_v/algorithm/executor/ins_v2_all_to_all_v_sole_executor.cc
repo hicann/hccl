@@ -553,8 +553,8 @@ AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
     meta.netTypes.push_back(lastNetType_);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    // dataSize 为单 peer 数据量，每段传输量 = dataSize * 1，故 dataRatio=1.0f
-    meta.dataRatios = {1.0f};
+    // dataSize 为单 peer 数据量(D/R)，util表按单卡总数据量D标定，故 dataRatio=rankSize
+    meta.dataRatios = {static_cast<float>(rankSize)};
     meta.rankSizes = {rankSize};
     HCCL_INFO(
         "[InsV2AlltoAllVSoleExecutor] GetAlgNetMeta netType=%d rankSize=%d.", static_cast<int>(lastNetType_), rankSize);

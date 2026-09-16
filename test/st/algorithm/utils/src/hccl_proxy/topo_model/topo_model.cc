@@ -335,13 +335,7 @@ void TopoModel::GetEndpointNum(uint32_t curRank, uint32_t layer, uint32_t topoIn
 {
     auto serverId = rankId2ServerId_[curRank];
     auto podId = rankId2PodId_[curRank];
-    if (layer == NetLayerL0) {
-        *num = serverId2RankList_[serverId].size();
-    } else if (layer == NetLayerL1) {
-        *num = podId2RankList_[podId].size();
-    } else {
-        *num = allRankList_.size();
-    }
+    *num = serverId2RankList_[serverId].size();
 }
 
 void TopoModel::GetEndpointDesc(

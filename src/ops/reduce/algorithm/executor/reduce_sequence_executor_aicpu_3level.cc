@@ -891,8 +891,12 @@ REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshConcurNHR, ReduceSequenceExecutorAicpu3Level,
     TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterNHR, InsTempReduceScatterNHR,
     InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-                   op.isSupportInplace = false);
-
+REGISTER_ALG_ATTRS(
+    AicpuReduceSequenceMeshConcurNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false; op.isSupportProd = false;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        u64 totalSize = perRankSize * topo->userRankSize;
+        return totalSize > 4ULL * 1024 * 1024 * 1024;
+    });
 } // namespace ops_hccl

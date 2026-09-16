@@ -126,12 +126,11 @@ InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
             rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
             portNumLevel1, isPod, algName});
         v.insert(v.end(), p1.begin(), p1.end());
-        constexpr float seqBConst = 6e-6f;
+        constexpr float seqBConst = 2e-6f;
         for (auto& p : v) {
             p.C += seqBConst;
         }
-        // AICPU: D 额外附加
-        float dAdd = 1e-6f * static_cast<float>(std::max(static_cast<int>(rankSize) - 16, 0) / 2);
+        float dAdd = 3e-6f * static_cast<float>(std::max(static_cast<int>(rankSize) - 8, 0) / 2);
         for (auto& p : v) {
             if (p.D > 0) {
                 p.D += dAdd;

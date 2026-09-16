@@ -17,16 +17,22 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
 {
     CommTopo netType = CommTopo::COMM_TOPO_CLOS;
     bool isSingleChannelNHR = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleNHR") == 0));
-    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && !isSingleChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
 
-    int kernelNum = 15;
+    int kernelNum = 17;
     int taskNum = CostModelManager::CalcTransTaskNum((log2(param.rankSize) + 1)) * 1.5
                   + CostModelManager::CalcSyncTaskNum((log2(param.rankSize) + 1)) * 2;
     taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
-    taskNum = taskNum + TASK_NUM_EXTRA_OVERHEAD;
+    taskNum = taskNum + 8;
+    // 单通道SoleNHR的展开/同步开销随NHR步数(log2(N))增长: 按64P(6步,小数据量实测平台~117-179us)/
+    // 32P(5步,~119us)标定 taskNum=30*log2(N)-20, 且需满足选择约束: 64P D>=160>CCU算法143(8M),
+    // 32P D>=130>CCU算法123(8M), 防止小数据量被错选; 多通道(Parallel两段)不变
+    if (isSingleChannelNHR) {
+        int floorTaskNum = static_cast<int>(30.0 * log2(static_cast<double>(param.rankSize))) - 20;
+        taskNum = (floorTaskNum > taskNum) ? floorTaskNum : taskNum;
+    }
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -34,7 +40,8 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
 
     float B1 = 0.0f;
     float B2 = 0.0f;
-    CostModelManager::Global()->CalcNHRParams(param.dataRatio, netType, portNum, param.rankSize, A, param.isPod);
+    // RS NHR: 1dpod64单server pod内CLOS无跨pod端口预留, 不做isPod端口减半(减半使A斜率高估~1.74x)
+    CostModelManager::Global()->CalcNHRParams(param.dataRatio, netType, portNum, param.rankSize, A, param.isPod, false);
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     }

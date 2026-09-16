@@ -38,7 +38,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
     }
     B = B1 + B2;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    D = 0.6e-6f * taskNum;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

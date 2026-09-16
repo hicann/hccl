@@ -283,7 +283,10 @@ float CostTableManager::CalcAlgCost(
         for (u32 k = 0; k < groups[g] && idx < static_cast<u32>(algoParams.count); ++k, ++idx) {
             CommTopo nt = (idx < meta.netTypes.size()) ? meta.netTypes[idx] : CommTopo::COMM_TOPO_1DMESH;
             float dr = (idx < meta.dataRatios.size() && meta.dataRatios[idx] > 0.0f) ? meta.dataRatios[idx] : 1.0f;
-            AlgoType at = (idx < algoTypes.size()) ? algoTypes[idx] : AlgoType::UNKNOWN;
+            // 优先取 AlgNetMeta 的逐段类型(Parallel 算法4段), 空则回退 AlgAttrs 按名解析值(仅层级数个)
+            AlgoType at = (idx < meta.algoTypes.size()) ?
+                              meta.algoTypes[idx] :
+                              ((idx < algoTypes.size()) ? algoTypes[idx] : AlgoType::UNKNOWN);
             if (at == AlgoType::NHR || at == AlgoType::NHR_MULTILINK) {
                 u32 rs = (idx < meta.rankSizes.size()) ? meta.rankSizes[idx] : 1;
                 dr *= static_cast<float>(rs) / 2.0f;
@@ -293,7 +296,7 @@ float CostTableManager::CalcAlgCost(
                 perTransferSize = dataSize;
             }
             float util = 1.0f;
-            if (QueryUbUtil(nt, perTransferSize, engine, util, opType) != HcclResult::HCCL_SUCCESS) {
+            if (QueryUbUtil(nt, perTransferSize, engine, util, opType, at) != HcclResult::HCCL_SUCCESS) {
                 util = 1.0f;
             }
             utils[idx] = util;
@@ -341,7 +344,7 @@ HcclResult CostTableManager::CostTableGen(
     }
     return ret;
 }
-
+// 对于{m,n}来说，小于m的数据量取利用率n
 const std::vector<UbUtilEntry> CostTableManager::closUbUtilTable_
     = {{0.125 * 1024 * 1024ULL, 0.10388f}, {0.25 * 1024 * 1024ULL, 0.10388f}, {0.5 * 1024 * 1024ULL, 0.10388f},
        {1 * 1024 * 1024ULL, 0.1855f},      {2 * 1024 * 1024ULL, 0.3f},        {4 * 1024 * 1024ULL, 0.4288f},
@@ -353,12 +356,24 @@ const std::vector<UbUtilEntry> CostTableManager::meshUbUtilTable_
        {8 * 1024 * 1024ULL, 0.8301f},  {16 * 1024 * 1024ULL, 0.84f},    {32 * 1024 * 1024ULL, 0.8449f},
        {64 * 1024 * 1024ULL, 0.8475f}, {128 * 1024 * 1024ULL, 0.8487f}, {256 * 1024 * 1024ULL, 0.8494f}};
 
+const std::vector<UbUtilEntry> CostTableManager::closOneJettyOnePortUbUtilTable_
+    = {{1 * 1024 * 1024ULL, 0.217f},   {2 * 1024 * 1024ULL, 0.3453f},   {4 * 1024 * 1024ULL, 0.4904f},
+       {8 * 1024 * 1024ULL, 0.6207f},  {16 * 1024 * 1024ULL, 0.7159f},  {32 * 1024 * 1024ULL, 0.7753f},
+       {64 * 1024 * 1024ULL, 0.8089f}, {128 * 1024 * 1024ULL, 0.8268f}, {256 * 1024 * 1024ULL, 0.8361f}};
+
 CostTableManager::~CostTableManager() {}
 
 HcclResult CostTableManager::QueryUbUtil(
-    CommTopo netType, u64 dataSize, OpExecuteConfig engine, float& utilization, HcclCMDType opType) const
+    CommTopo netType, u64 dataSize, OpExecuteConfig engine, float& utilization, HcclCMDType opType,
+    AlgoType algoType) const
 {
-    const std::vector<UbUtilEntry>& table = (netType == CommTopo::COMM_TOPO_CLOS) ? closUbUtilTable_ : meshUbUtilTable_;
+    bool useOneJettyTable
+        = (algoType == AlgoType::MESH || algoType == AlgoType::MESH_MULTILINK
+           || algoType == AlgoType::MESH_SINGLE_CHANNEL);
+    const std::vector<UbUtilEntry>& table = (netType == CommTopo::COMM_TOPO_CLOS && useOneJettyTable) ?
+                                                closOneJettyOnePortUbUtilTable_ :
+                                            (netType == CommTopo::COMM_TOPO_CLOS) ? closUbUtilTable_ :
+                                                                                    meshUbUtilTable_;
     if (table.empty()) {
         HCCL_WARNING(
             "[CostTableManager] ub util table empty, netType=%d dataSize=%llu.", static_cast<int>(netType), dataSize);
@@ -371,7 +386,7 @@ HcclResult CostTableManager::QueryUbUtil(
         dataSize = AG_CLOS_MIN_UB_UTIL_DATA_SIZE;
     }
     auto it = std::lower_bound(table.begin(), table.end(), dataSize, [](const UbUtilEntry& e, u64 ds) {
-        return e.upperBound < ds;
+        return e.upperBound <= ds;
     });
     if (it == table.end()) {
         utilization = table.back().utilization;

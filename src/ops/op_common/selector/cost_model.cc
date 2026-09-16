@@ -108,8 +108,8 @@ void CostModelManager::InitBandwidth()
 {
 #ifndef AICPU_COMPILE
     HCCL_DEBUG("[CostModelManager] InitBandwidth.");
-    localCopyBw_ = 750.0f * 1000 * 1000 * 1000;
-    localReduceBw_ = 483.0f * 1000 * 1000 * 1000;
+    localCopyBw_ = 1400.0f * 1000 * 1000 * 1000;
+    localReduceBw_ = 900.0f * 1000 * 1000 * 1000;
     crossChipBw_ = 56.0f * 1000 * 1000 * 1000;
     crossChipReduceBw_ = 56.0f * 1000 * 1000 * 1000;
     ccuLocalCopyBw_ = 200.0f * 1000 * 1000 * 1000;
@@ -435,12 +435,13 @@ void CostModelManager::CalcMeshParam(float n, CommTopo netType, int portNum, u32
     return;
 }
 
-void CostModelManager::CalcNHRParams(float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod)
+void CostModelManager::CalcNHRParams(
+    float n, CommTopo netType, int portNum, u32 rankSize, float& A, bool isPod, bool halvePodPort)
 {
     // n用来表示传输数据和总数据量之间的关系
     // rankSize是指总共通信的rankSize
     A = 0.0f;
-    if (isPod && netType == CommTopo::COMM_TOPO_CLOS) {
+    if (isPod && netType == CommTopo::COMM_TOPO_CLOS && halvePodPort) {
         portNum = portNum / 2;
     }
     float data = n * (rankSize - 1);

@@ -18,6 +18,7 @@
 #include "topo_match_pcie_mix.h"
 #include "topo_match_squeeze_2d.h"
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "topo_match_two_level.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
@@ -411,6 +412,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         rankSizeLevel1, (1.0f - ratio) / rankSizeLevel1, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::INPUT,
         BufferType::HCCL_BUFFER, portNumLevel1, isPod});
     params.insert(params.end(), p7.begin(), p7.end());
+    // parallel 场景 4 级串行 stage 共享 executor/host 框架开销，
+    // 各模板 D 含单算子场景的框架固定开销（如 ScatterNHR +20us），parallel 下重复累加导致 D 偏大
+    // 每段减 15us → 4 组 MAX 各减 15us → 总 D 减 60us
+    for (auto& p : params) {
+        p.D = std::max(0.0f, p.D - 0.000025f);
+    }
     return params;
 }
 
@@ -421,7 +428,6 @@ AlgNetMeta
 InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    (void)algName;
     (void)topoInfo;
     AlgNetMeta meta;
     CommTopo netTypeLevel0 = netTypeLevel0_;
@@ -448,6 +454,11 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
            (1 - ratio) / rankSizeLevel1};                 // seg7: L1 allgather part1
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0,
                       rankSizeLevel1, rankSizeLevel0, rankSizeLevel0, rankSizeLevel1};
+// costmodel 为8段 [scatter: L0-mesh, L1-NHR, L1-NHR, L0-mesh; allgather: L1-NHR, L0-mesh, L0-mesh, L1-NHR],
+// 按名解析的层级类型逐段展开, 防止 seg2+ 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 1, 0, 1, 0, 0, 1});
+#endif
     return meta;
 }
 
@@ -1552,8 +1563,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_ALG_ATTRS(
     AicpuBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.minTopoLevelNum = TOPO_LEVEL_NUM_1; topo.isSupportLevel1Nhr = false; topo.isSupportLevel0PcieMix = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_1; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = false;
+    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix
                    && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);

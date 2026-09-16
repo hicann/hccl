@@ -73,7 +73,7 @@ std::vector<CostModelParam> ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::CalcC
         static_cast<int>(netTypeLevel0));
     return AlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
-        portNumLevel0, isPod});
+        portNumLevel0, isPod, algName, comm, topoInfo});
 }
 
 template <typename AlgTopoMatch, typename AlgTemplate>
@@ -343,7 +343,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel, ReduceMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuReduceSoleMesh, topo.maxTopoLevelNum = 1;
+    AicpuReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -396,7 +396,8 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivReduceSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return topo->level0PcieMix;
         }
@@ -416,7 +417,7 @@ REGISTER_ALG_ATTRS(
         }
         return true;
     };
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;);
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false; op.isSupportProd = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
@@ -430,23 +431,22 @@ REGISTER_ALG_ATTRS(
         }
         return true;
     };
-    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;);
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false; op.isSupportProd = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleNHR, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceSoleNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = __bool_true_false_are_defined);
+REGISTER_ALG_ATTRS(CcuSchedReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+                   topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+                   op.isSupportInplace = __bool_true_false_are_defined; op.isSupportProd = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleMeshTwoShot, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceMesh1DTwoShotMem2Mem);
 REGISTER_ALG_ATTRS(CcuSchedReduceSoleMeshTwoShot, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+                   topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; op.isSupportProd = false;
                    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #endif

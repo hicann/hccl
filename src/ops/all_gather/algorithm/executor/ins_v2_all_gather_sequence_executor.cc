@@ -88,6 +88,11 @@ InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
 
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
+    if (portNumLevel0.empty() || portNumLevel1.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
 
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = algHierarchyInfo.infos[1][0].size();

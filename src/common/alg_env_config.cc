@@ -826,6 +826,7 @@ HcclResult ParseNewSelector()
 {
     std::string useNewSelectorEnv = GetEnv("HCCL_USE_NEW_SELECTOR");
     if (useNewSelectorEnv == "EmptyString") {
+        g_algEnvConfig.useNewSelector = true;
         HCCL_INFO("HCCL_USE_NEW_SELECTOR set by default to [0]");
         return HCCL_SUCCESS;
     }
@@ -836,9 +837,9 @@ HcclResult ParseNewSelector()
             useNewSelectorEnv.c_str());
         return HCCL_E_PARA;
     }
-    g_algEnvConfig.useNewSelector = false;
-    if (useNewSelectorEnv == "1") {
-        g_algEnvConfig.useNewSelector = true;
+    g_algEnvConfig.useNewSelector = true;
+    if (useNewSelectorEnv == "0") {
+        g_algEnvConfig.useNewSelector = false;
     }
     HCCL_INFO("HCCL_USE_NEW_SELECTOR set by environment to [%u]", g_algEnvConfig.useNewSelector);
     return HCCL_SUCCESS;

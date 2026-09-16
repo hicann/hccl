@@ -19,16 +19,21 @@ constexpr int DEFAULT_SINGLE_CHANNEL_PORT_NUM = 6;
 
 std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // 端口数由 executor 通过 topomatch v2 动态传入，直接聚合使用
+    // 端口数由 executor 通过 topomatch v2 动态传入
+    // SingleChannel 单通道只取 portNum[0]；多通道取全部端口求和
     bool isSingleChannel = (param.algName != nullptr && strstr(param.algName, "SingleChannel") != nullptr);
     int portNum = 0;
-    for (auto p : param.portNum) {
-        portNum += static_cast<int>(p);
+    if (isSingleChannel) {
+        portNum = static_cast<int>(param.portNum[0]);
+    } else {
+        for (auto p : param.portNum) {
+            portNum += static_cast<int>(p);
+        }
     }
     if (portNum <= 0) {
         portNum = isSingleChannel ? DEFAULT_SINGLE_CHANNEL_PORT_NUM : DEFAULT_PORT_NUM;
     }
-    int kernelNum = 10;
+    int kernelNum = 12;
     // SingleChannel单通道每peer 5个trans + 4个sync = 9；多通道(channelsPerRank=2)每个通道对应一组trans/sync
     int channelsPerRank = isSingleChannel ? 1 : 2;
     int taskNum
@@ -39,7 +44,25 @@ std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffP
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    // 跨板场景板内/板间链路均为CLOS，分开算取max；板内不折半（无pod上下行收敛）
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A_intra = 0.0f;
+        float A_inter = 0.0f;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, 1, level0RankSize, A_intra, false);
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize, A_inter, param.isPod);
+        A = std::max(A_intra, A_inter);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
     // AICPU模板使用hcclBuff做中转，input->hcclBuff(PreCopy)和hcclBuff->output(PostCopy)都需要local copy
     // 但inputBuffer(INPUT) != scratchBuffer(HCCL_BUFFER)，且outputBuffer(OUTPUT) != scratchBuffer(HCCL_BUFFER)
     if (param.inputBuffer != param.scratchBuffer) {

@@ -8,9 +8,12 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
+
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_gather_mesh_1D.h"
 #include "config_log.h"
+#include "cost_model.h"
 
 namespace ops_hccl {
 
@@ -26,24 +29,44 @@ std::vector<CostModelParam> AivTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
 {
     int portNum = param.portNum[0];
     int kernelNum = 1;
-    int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+
+    if (isMultiNode) {
+        float A0 = 0.0f;
+        float A1 = 0.0f;
+        int level0Port = 1;
+        int level1Port = portNum;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, param.isPod);
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+        A = std::max(A0, A1);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
+
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AIV, B);
-    } else {
-        B = 0.0f;
     }
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
+    C = 0.00001f * kernelNum;
+    D = 0.4e-6f * param.rankSize;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    HCCL_DEBUG(
+        "[%s] CalcCostCoeff A=%f B=%f C=%f D=%f portNum=%d level0RankSize=%u multiNode=%d.", __func__, A, B, C, D,
+        portNum, level0RankSize, static_cast<int>(isMultiNode));
     return params;
 }
 

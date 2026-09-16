@@ -24,7 +24,7 @@ std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff
     float B = 0.0f;
     float C = 0.0f;
     int portNum0 = 1;
-    int portNum1 = param.portNum[0];
+    int portNum1 = 6;
     float level0Ratio = 0.5f;
     float level1Ratio = 1.0f - level0Ratio;
     float nLevel0 = param.dataRatio * level0Ratio;
@@ -47,8 +47,6 @@ std::vector<CostModelParam> CcuTempReduceScatterMeshMem2Mem1D2Die::CalcCostCoeff
     // ms reduce 一次做8张卡，所以一次reduce
     CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B0);
     CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::AICPU, B1);
-    // 跟实际标定，后面再改
-    // B0 = B0 * 4.7;
     B = B0 + B1;
 
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);

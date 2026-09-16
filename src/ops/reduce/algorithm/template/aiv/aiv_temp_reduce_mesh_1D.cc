@@ -28,9 +28,26 @@ std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffPara
 
     float B1 = 0.0f;
     float B2 = 0.0f;
-
-    CostModelManager::Global()->CalcMeshParam(
-        SEND_RECV_DATA_FACTOR * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A0 = 0.0f;
+        float A1 = 0.0f;
+        int level0Port = 1;
+        int level1Port = portNum;
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, param.isPod);
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+        A = std::max(A0, A1);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     } else {

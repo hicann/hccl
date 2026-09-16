@@ -26,10 +26,8 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    // NHR: kernelNum 按 log2(R) 计算（costmodel_9 新公式，127d7612 的 *2→+5 修正已被新公式覆盖）
     int kernelNum = 8 * log2R - 7;
     kernelNum = std::max(kernelNum, 1);
-    // D 用 rEff 替代 rankSize
     u32 rEff = static_cast<u32>(5 * log2R / 3);
     rEff = std::max(rEff, 2u);
     int taskNum = CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2;
@@ -45,7 +43,7 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     }
 
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    D = 1e-6f * taskNum;
+    D = 1.2e-6f * taskNum;
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
     return params;

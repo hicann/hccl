@@ -17,12 +17,13 @@ std::vector<CostModelParam> ReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = 10;
+    int kernelNum = param.rankSize;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int taskNum = 8 * (param.rankSize - 1);
+    int taskNum
+        = CostModelManager::CalcTransTaskNum((log2R + 1)) * 4 + CostModelManager::CalcSyncTaskNum((log2R + 1)) * 6;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

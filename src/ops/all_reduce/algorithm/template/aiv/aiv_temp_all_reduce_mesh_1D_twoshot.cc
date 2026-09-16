@@ -27,8 +27,7 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = 15;
-    int taskNum = 5 * (param.rankSize - 1);
+    int kernelNum = 16;
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
@@ -37,8 +36,28 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
 
     float B1 = 0.0f;
     float B2 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(
-        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A0 = 0.0f;
+        float A1 = 0.0f;
+        int level0Port = 1;
+        int level1Port = portNum;
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, param.isPod);
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+        A = std::max(A0, A1);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
+
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     } else {
@@ -47,7 +66,6 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
     CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio * (param.rankSize - 1), EngineType::AICPU, B2);
     B = B1 + B2;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

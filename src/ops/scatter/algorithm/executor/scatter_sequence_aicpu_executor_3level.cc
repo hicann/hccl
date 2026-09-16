@@ -19,6 +19,8 @@
 namespace ops_hccl {
 
 constexpr u32 SEQUENCE_EXECUTOR_LEVEL_NUM = 3;
+// 两级 sequence 仅在大数据量使能(对齐运行态语义): totalSize > 4GB
+constexpr u64 SCATTER_SEQUENCE_SIZE_THRESHOLD = 4ULL * 1024 * 1024 * 1024;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2>
 ScatterSequenceAicpu3LevelExecutor<
@@ -642,6 +644,12 @@ REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = 
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurNHR, ScatterSequenceAicpu3LevelExecutor,
     TopoMatchTwoLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterNHR, InsTempScatterNHR);
-REGISTER_ALG_ATTRS(AicpuScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;);
+REGISTER_ALG_ATTRS(
+    AicpuScatterSequenceMeshConcurNHR, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        u64 totalSize = perRankSize * topo->userRankSize;
+        return totalSize > SCATTER_SEQUENCE_SIZE_THRESHOLD;
+    });
 } // namespace ops_hccl

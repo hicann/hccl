@@ -180,7 +180,8 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
 #endif
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
-    if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {
+    if (IsNewSelectorEnabled()
+        && ((topoInfo->level0Topo == Level0Shape::MESH_1D) || AutoSelectorBase::IsDevType960())) {
         CHK_RET(SelectorEngine::Global()->Run(comm, param, topoInfo.get(), algName));
     } else {
         std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
@@ -686,7 +687,8 @@ HcclResult ReSelector(
     // 拓扑已有，无需再计算
 
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
-    if (IsNewSelectorEnabled() && SelectorEngine::IsOpSupported(param.opType)) {
+    if (IsNewSelectorEnabled()
+        && ((topoInfo->level0Topo == Level0Shape::MESH_1D) || AutoSelectorBase::IsDevType960())) {
         CHK_RET(SelectorEngine::Global()->Run(comm, param, topoInfo.get(), algName));
     } else {
         std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());

@@ -82,7 +82,7 @@ std::vector<CostModelParam> InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTempl
         portNumLevel0, static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
-        portNumLevel0, isPod});
+        portNumLevel0, isPod, algName, comm, topoInfo});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>

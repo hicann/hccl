@@ -33,7 +33,17 @@ std::vector<CostModelParam> CcuTempBroadcastMesh1DMem2Mem::CalcCostCoeff(CalcCos
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
     // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+    // CLOS 链路框间带宽争用修正：框间 rank 越多，实际带宽争用越严重，预估偏低越多
+    // 线性拟合修正系数（x = 框间 rank 数 = rankSize - 板内卡数）
+    //   16p(x=8):  coeff=1.10  32p(x=24): coeff=1.29  64p(x=56): coeff=1.67
+    if (param.netType == CommTopo::COMM_TOPO_CLOS && param.topoInfo != nullptr) {
+        u32 boardSize = param.topoInfo->deviceNumPerModule;
+        if (boardSize > 0 && boardSize < param.rankSize) {
+            float x = static_cast<float>(param.rankSize - boardSize); // 框间rank数
+            A *= 1.0f + 0.012f * x;
+        }
+    }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 

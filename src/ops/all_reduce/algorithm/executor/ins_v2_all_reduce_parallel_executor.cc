@@ -20,6 +20,7 @@
 #include "topo_match_one_level.h"
 #include "topo_match_two_level.h"
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include <cmath>
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -202,6 +203,11 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
                        ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1,
                       rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
+// costmodel 为8段 [RS阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR; AG阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR],
+// 按名解析的层级类型逐段展开, 防止 seg2+ 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 0, 1, 0, 1, 0, 1});
+#endif
     return meta;
 }
 

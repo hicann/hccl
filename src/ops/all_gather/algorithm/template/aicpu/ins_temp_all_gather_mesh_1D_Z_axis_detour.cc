@@ -35,13 +35,12 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float nLevel0 = param.dataRatio * level0Ratio;
     float nLevel1 = param.dataRatio * level1Ratio;
 
-    // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     int portNum0 = param.portNum[0];
-    int portNum1 = 8;
-    int kernelNum = param.isPod ? 24 : 16;
+    int portNum1 = 4;
+    int kernelNum = (param.isPod ? 48 : 32);
     int taskNum
-        = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
-    taskNum = param.isPod ? taskNum * POD_TASK_NUM_MULTIPLE : taskNum * TASK_NUM_MULTIPLE;
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
+    taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
     float A0 = 0.0f;
     float A1 = 0.0f;
     CostModelManager::Global()->CalcMeshParam(
@@ -64,7 +63,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float C = 0.0f;
     float D = 0.0f;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
+    D = std::max(100e-6f, 0.6e-6f * taskNum);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

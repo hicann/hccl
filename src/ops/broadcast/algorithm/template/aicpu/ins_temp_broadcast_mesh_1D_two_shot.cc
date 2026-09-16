@@ -29,9 +29,10 @@ std::vector<CostModelParam> InsTempBroadcastMesh1DTwoShot::CalcCostCoeff(CalcCos
     float D = 0.0f;
 
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
-    // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
+    // pod上下行收敛比2：<=64p实测带宽未收敛，不折半端口；>64p（如128p）实测带宽已收敛，按真实isPod折半
+    bool isPodForCost = param.rankSize > 64 && param.isPod;
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, isPodForCost);
     if (param.inputBuffer != param.scratchBuffer) {
         // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);

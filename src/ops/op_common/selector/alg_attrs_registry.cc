@@ -162,4 +162,21 @@ const AlgAttrs* AlgAttrsRegistry::Get(const std::string& name) const
 
 const std::vector<AlgAttrs>& AlgAttrsRegistry::GetAll() const { return attrs_; }
 
+std::vector<AlgoType> AlgAttrsRegistry::BuildSegAlgoTypes(const char* algName, const std::vector<uint32_t>& segLevelIdx)
+{
+    std::vector<AlgoType> segTypes;
+    if (algName == nullptr) {
+        return segTypes;
+    }
+    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
+    if (attrs == nullptr || attrs->algoTypes.empty()) {
+        return segTypes;
+    }
+    segTypes.reserve(segLevelIdx.size());
+    for (uint32_t lvl : segLevelIdx) {
+        segTypes.push_back(lvl < attrs->algoTypes.size() ? attrs->algoTypes[lvl] : AlgoType::UNKNOWN);
+    }
+    return segTypes;
+}
+
 } // namespace ops_hccl

@@ -18,7 +18,15 @@ namespace ops_hccl {
 std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = param.portNum[0];
-    int kernelNum = std::max(static_cast<int>(0.4f * param.rankSize), 2);
+    // mesh 模板 kernelNum 不含 logn: 单机fullmesh(1DMESH)取常数5;
+    // 跨机(CLOS)按 pod 数线性增长并设下限
+    int kernelNum = 0;
+    if (param.netType == CommTopo::COMM_TOPO_1DMESH) {
+        kernelNum = 5;
+    } else {
+        u32 pods = param.rankSize / 8;
+        kernelNum = std::max(static_cast<int>(2.5f * pods), 8);
+    }
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;

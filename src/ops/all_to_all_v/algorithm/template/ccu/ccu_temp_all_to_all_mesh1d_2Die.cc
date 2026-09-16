@@ -44,7 +44,7 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoe
         closPortNum = DEFAULT_PORT_NUM; // fallback
     }
     // CLOS公式: A = n*(groupSize-1)/(portNum*bw)，groupSize含自己，所以 +1
-    u32 closGroupSize = interDieRankSize + 1;
+    u32 closGroupSize = interDieRankSize;
 
     float A_mesh = 0.0f;
     float A_clos = 0.0f;
@@ -61,8 +61,11 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoe
 
     // 两条路径并行，A取max
     float A = std::max(A_mesh, A_clos);
+    if (param.isPod) { // pod场景ccu带宽更高
+        A *= 0.8;
+    }
     // 2Die场景: 多个kernel并行+跨Die同步，kernelNum固定12
-    int kernelNum = 12;
+    int kernelNum = 8;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(0, EngineType::CCU, D);
 

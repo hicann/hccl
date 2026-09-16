@@ -27,9 +27,7 @@ std::vector<CostModelParam> CcuTempAllGatherNHR1DMem2Mem::CalcCostCoeff(CalcCost
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    // kernelNum = (8*R + RTT1*log2(R)) / 5
     int kernelNum = (8 * static_cast<int>(param.rankSize) + RTT1 * log2R) / 5;
-    // int kernelNum = 4 * log2R + 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

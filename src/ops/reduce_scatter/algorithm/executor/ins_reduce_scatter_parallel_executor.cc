@@ -24,6 +24,7 @@
 #endif
 
 #include "alg_attrs_registry.h"
+#include "alg_parse.h"
 #include "auto_selector_base.h"
 namespace ops_hccl {
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
@@ -180,6 +181,12 @@ AlgNetMeta InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     meta.groupSizes = {2, 2};
     meta.dataRatios = {ratio0 * rankSizeLevel1, ratio1 * rankSizeLevel0, ratio0, ratio1};
     meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel1, rankSizeLevel0};
+// costmodel 实际为4段 [mesh(step1), NHR(step1), NHR(step2), mesh(step2)], 按名解析的层级类型逐段展开:
+// seg2(NHR)若按 AlgAttrs 按名解析(仅2条目)越界回退 UNKNOWN, 会丢 perTransfer 的 NHR 放大,
+// util 落入 CLOS 最低档(0.10388), 该段 cost 虚高约3倍 (64P 32M~64M 实测高估来源之一)
+#ifndef AICPU_COMPILE
+    meta.algoTypes = AlgAttrsRegistry::BuildSegAlgoTypes(algName, {0, 1, 1, 0});
+#endif
     return meta;
 }
 

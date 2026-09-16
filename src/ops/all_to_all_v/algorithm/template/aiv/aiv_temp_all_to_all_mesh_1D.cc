@@ -19,13 +19,10 @@ constexpr int DEFAULT_PORT_NUM = 8;
 std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     // AllToAll: AIV直接使用input/output，无本地拷贝，单kernel启动
-    // 端口数由 executor 通过 topomatch v2 动态传入，直接聚合使用
-    int portNum = 0;
-    for (auto p : param.portNum) {
-        portNum += static_cast<int>(p);
-    }
+    // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与公式
+    int portNum = static_cast<int>(param.portNum[0]);
     if (portNum <= 0) {
-        portNum = DEFAULT_PORT_NUM;
+        portNum = 1;
     }
     int kernelNum = 1; // AIV单kernel启动
     int taskNum = 0;   // AIV的D=0
@@ -34,9 +31,30 @@ std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffPa
     float C = 0.0f;
     float D = 0.0f;
 
-    CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
-    // 根据实测调整A
-    A *= 0.8f;
+    // pod上下行收敛比2：<=64p实测带宽未收敛，不折半端口；>64p（如128p）实测带宽已收敛，按真实isPod折半
+    bool isPodForCost = param.rankSize > 64 && param.isPod;
+    // 二级拓扑（板内mesh+跨板clos）：板内走mesh直连、跨板走clos，两条链路带宽分开算取max
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
+    }
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+    if (isMultiNode) {
+        float A_mesh = 0.0f;
+        float A_clos = 0.0f;
+        // 板内MESH直连
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, 1, level0RankSize, A_mesh, param.isPod);
+        // 跨板CLOS：level1RankSize个对端共享portNum端口
+        u32 level1RankSize = param.rankSize - level0RankSize;
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize, A_clos, param.isPod);
+        A_clos *= 0.8;
+        A = std::max(A_mesh, A_clos);
+    } else {
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    }
     // AIV模板直接使用input/output，无本地拷贝，B=0
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AIV, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AIV, D);
