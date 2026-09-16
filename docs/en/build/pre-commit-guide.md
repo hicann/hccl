@@ -4,10 +4,10 @@
 
 `pre-commit` is a Git hooks framework that automatically runs code check and formatting tools during `git commit`. The following checks have been configured for this project.
 
- | Hook             | Function            | Description                            |
-| ---------------- | ---------------- | -------------------------------- |
-| **clang-format** | C/C++ code formatting| Automatically formats code to maintain consistent style.    |
-| **OAT Check**    | Open-source compliance check    | Checks license headers and prohibits binary file commits.|
+| Hook | Function | Description |
+| --- | --- | --- |
+| **clang-format** | C/C++ code formatting | Automatically formats code to maintain consistent style. |
+| **OAT Check** | Open-source compliance check | Checks license headers and file types according to the configuration. |
 
 ## Environment Requirements
 

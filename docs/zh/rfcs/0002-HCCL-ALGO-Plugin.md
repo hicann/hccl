@@ -119,9 +119,10 @@
 #### 4.1.1 Plugin系统组成
 
 　　HCCL-ALGO-Plugin的总体架构如图1所示：
+
 <div style="text-align: center;">
-  <img src="./总体架构图.png" alt="总体架构图">
-  <p><b>图1 总体架构图</b></p>
+  <img src="./总体架构图.png" alt="HCCL-ALGO-Plugin总体架构图">
+  <p><b>图1 HCCL-ALGO-Plugin总体架构</b></p>
 </div>
 
 　　HCCL-ALGO-Plugin系统由三部分组成：

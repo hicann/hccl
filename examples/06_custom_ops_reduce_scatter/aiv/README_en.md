@@ -2,9 +2,9 @@
 
 ## Sample Description
 
-This sample demonstrates how to develop an ReduceScatter custom communication operator based on the HCCL AIV communication programming interface. Key features:
+This sample demonstrates how to develop a ReduceScatter custom communication operator based on the HCCL AIV communication programming interface. Key features:
 
-1. Implement an ReduceScatter collective communication operator based on the AIV (AI Vector) communication engine.
+1. Implement a ReduceScatter collective communication operator based on the AIV (AI Vector) communication engine.
 2. Contains both Host-side operator logic and Device-side Kernel implementation.
 3. Provides a complete compilation, build, and test verification process.
 
@@ -13,25 +13,21 @@ This sample demonstrates how to develop an ReduceScatter custom communication op
 ```text
 ├── CMakeLists.txt                      # Root directory compilation and build configuration file
 ├── op_host/
-|   ├── CMakeLists.txt
-|   ├── reduce_scatter.cc               # HcclReduceScatterCustom operator Host-side implementation
-|   ├── launch_kernel.cc                # Kernel submission logic implementation
-|   └── launch_kernel.h                 # Kernel submission interface definition
+│   ├── CMakeLists.txt
+│   ├── reduce_scatter.cc               # HcclReduceScatterCustom operator Host-side implementation
+│   ├── launch_kernel.cc                # Kernel submission logic implementation
+│   └── launch_kernel.h                 # Kernel submission interface definition
 ├── op_kernel/
-|   ├── CMakeLists.txt
-|   └── launch_kernel_asc.asc           # Operator Kernel-side implementation (Ascend C)
-├── inc/
-|   ├── hccl_custom_reduce_scatter.h    # Custom operator external interface header file
-|   ├── common.h                        # Common type definitions and macros
-|   ├── aiv_reduce_scatter_mesh_1d.h    # AIV ReduceScatter core algorithm implementation
-|   ├── aiv_communication_base_v2.h     # AIV communication base class
-|   ├── log.h                           # Logging utility
-|   ├── extra_args.h                    # Additional parameter definitions
-|   └── sync_interface.h                # Synchronization interface definition
-└── testcase/
-    ├── CMakeLists.txt                  # Test case CMake configuration file
-    ├── Makefile                        # Test case Makefile (for compilation and running)
-    └── main.cc                         # Test case main program
+│   ├── CMakeLists.txt
+│   └── launch_kernel_asc.asc           # Operator Kernel-side implementation (Ascend C)
+└── inc/
+    ├── hccl_custom_reduce_scatter.h    # Custom operator external interface header file
+    ├── common.h                        # Common type definitions and macros
+    ├── aiv_reduce_scatter_mesh_1d.h    # AIV ReduceScatter core algorithm implementation
+    ├── aiv_communication_base_v2.h     # AIV communication base class
+    ├── log.h                           # Logging utility
+    ├── extra_args.h                    # Additional parameter definitions
+    └── sync_interface.h                # Synchronization interface definition
 ```
 
 ## 1. Environment Preparation
@@ -100,18 +96,21 @@ The custom operator package installation information is as follows:
 
 ### 2.3 Run Test Cases
 
-Test Sample has generated at `2.1 Compile the Custom Operator Library`, the binary file path is:
-`./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`
+The test source code is in `examples/06_custom_ops_reduce_scatter/testcase`. The sample was compiled in Section 2.1, "Compile the Custom Operator Library".
+The test binary path is `./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`.
+
+Run the following commands starting from the repository root:
 
 ```bash
-# run the sample binary directly
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 cd build/examples/06_custom_ops_reduce_scatter/testcase/
 mpirun -n rank_size ./custom_reduce_scatter_test data_len
-Parameter Description:
-rank_size: used rank number
-data_len: date length
 ```
+
+Parameter descriptions:
+
+- `rank_size`: Number of cards to use.
+- `data_len`: Data length.
 
 ### 2.4 Expected Results
 

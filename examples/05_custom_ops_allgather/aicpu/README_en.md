@@ -12,22 +12,22 @@ This sample demonstrates how to develop an AllGather communication operator base
 ```text
 ├── CMakeLists.txt                      # Compilation and build configuration file
 ├── op_host/
-|   ├── allgather.cc                    # HcclAllGatherCustom operator implementation source file
-|   ├── load_kernel.cc                  # AICPU Kernel loading logic on the Host side
-|   ├── launch_kernel.cc                # AICPU Kernel submission logic on the Host side
-|   ├── launch_kernel_asc.asc           # ASC syntax Kernel submission wrapper
-|   └── utils.cc                        # Utility module
+│   ├── allgather.cc                    # HcclAllGatherCustom operator implementation source file
+│   ├── load_kernel.cc                  # AICPU Kernel loading logic on the Host side
+│   ├── launch_kernel.cc                # AICPU Kernel submission logic on the Host side
+│   ├── launch_kernel_asc.asc           # ASC syntax Kernel submission wrapper
+│   └── utils.cc                        # Utility module
 ├── op_kernel_aicpu/
-|   ├── libcustom_allgather_aicpu_kernel.json  # AICPU Kernel operator description file
-|   ├── aicpu_kernel.cc                 # AICPU Kernel implementation logic (C++ mode)
-|   ├── aicpu_kernel_asc.aicpu          # AICPU Kernel implementation logic (ASC mode)
-|   └── exec_op.cc                      # AICPU operator orchestration logic
+│   ├── libcustom_allgather_aicpu_kernel.json  # AICPU Kernel operator description file
+│   ├── aicpu_kernel.cc                 # AICPU Kernel implementation logic (C++ mode)
+│   ├── aicpu_kernel_asc.aicpu          # AICPU Kernel implementation logic (ASC mode)
+│   └── exec_op.cc                      # AICPU operator orchestration logic
 ├── inc/
-|   ├── hccl_custom_allgather.h         # Custom AllGather operator interface header file
-|   ├── common.h                        # Common type header file
-|   └── log.h                           # Log macro definitions
+│   ├── hccl_custom_allgather.h         # Custom AllGather operator interface header file
+│   ├── common.h                        # Common type header file
+│   └── log.h                           # Log macro definitions
 ├── scripts/
-|   └── hccl_custom_allgather_aicpu_check_cfg.xml  # Signature configuration file
+│   └── hccl_custom_allgather_aicpu_check_cfg.xml  # Signature configuration file
 └── testcase/
     ├── main.cc                         # Sample implementation source file
     └── Makefile                        # Compilation and build configuration file
@@ -74,11 +74,11 @@ The HCCL repository provides a custom operator compilation and packaging project
 ├── build.sh                        # Compilation entry in the hccl repository root directory
 ├── CMakeLists.txt                  # Compilation and build configuration file in the hccl repository root directory
 ├── cmake/
-|   ├── config.cmake                # CMake variable definitions
-|   ├── func.cmake                  # CMake function definitions
-|   ├── package.cmake               # Signature and packaging function definitions
-|   ├── makeself_custom.cmake       # MakeSelf packaging logic
-├── scripts/
+│   ├── config.cmake                # CMake variable definitions
+│   ├── func.cmake                  # CMake function definitions
+│   ├── package.cmake               # Signature and packaging function definitions
+│   └── makeself_custom.cmake       # MakeSelf packaging logic
+└── scripts/
     ├── custom/install.sh           # Custom operator package installation script
     └── sign/add_header_sign.py     # AICPU operator package signing script
 ```

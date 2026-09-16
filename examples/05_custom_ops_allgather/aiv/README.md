@@ -86,20 +86,30 @@ bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_
 > - `<arch>` 是当前编译环境的系统架构
 > - `<ascend_cann_path>` 是可选参数，表示 CANN 软件包安装目录。默认为 `ASCEND_CUSTOM_OPP_PATH` 或 `ASCEND_OPP_PATH` 环境变量所在的CANN软件包路径
 
+自定义算子包安装信息如下：
+
+- 头文件：`${ASCEND_HOME_PATH}/opp/vendors/cust/include/hccl_custom_allgather.h`
+- 动态库：`${ASCEND_HOME_PATH}/opp/vendors/cust/lib64/libhccl_custom_allgather.so`
+
+> `${ASCEND_HOME_PATH}`为CANN-Toolkit安装路径。
+
 ### 3. 运行测试用例
 
-测试代码在 `examples/05_custom_ops_allgather/testcase`,在前节`1. 编译自定义算子库`已经编译好测试样例
-测试样例二进制文件路径`build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
+测试代码位于`examples/05_custom_ops_allgather/testcase`，已在前节“1. 编译自定义算子库”中编译。
+测试样例二进制文件路径为`./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`。
 
-在根目录使用mpirun执行命令
+从仓库根目录开始执行以下命令：
+
 ```bash
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 cd build/examples/05_custom_ops_allgather/testcase
 mpirun -n rank_size ./custom_allgather_test data_len
-参数说明:
-rank_size: 使用的卡数
-data_len: 数据长度
 ```
+
+参数说明：
+
+- `rank_size`：使用的卡数。
+- `data_len`：数据长度。
 
 ### 4. 预期结果
 

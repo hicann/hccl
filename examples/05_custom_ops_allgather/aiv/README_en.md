@@ -13,13 +13,13 @@ This sample demonstrates how to develop an AllGather custom communication operat
 ```text
 ├── CMakeLists.txt                      # Root directory compilation and build configuration file
 ├── op_host/
-|   ├── CMakeLists.txt
-|   ├── all_gather.cc                   # HcclAllGatherCustom operator Host-side implementation
-|   ├── launch_kernel.cc                # Kernel submission logic implementation
-|   └── launch_kernel.h                 # Kernel submission interface definition
+│   ├── CMakeLists.txt
+│   ├── all_gather.cc                   # HcclAllGatherCustom operator Host-side implementation
+│   ├── launch_kernel.cc                # Kernel submission logic implementation
+│   └── launch_kernel.h                 # Kernel submission interface definition
 ├── op_kernel/
-|   ├── CMakeLists.txt
-|   └── launch_kernel_asc.asc           # Operator Kernel-side implementation (Ascend C)
+│   ├── CMakeLists.txt
+│   └── launch_kernel_asc.asc           # Operator Kernel-side implementation (Ascend C)
 ├── inc/
     ├── hccl_custom_allgather.h         # Custom operator external interface header file
     ├── common.h                        # Common type definitions and macros
@@ -97,18 +97,21 @@ The custom operator package installation information is as follows:
 
 ### 2.3 Run Test Cases
 
-Test Sample has generated at `2.1 Compile the Custom Operator Library`, the binary file path is:
-`build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
+The test source code is in `examples/05_custom_ops_allgather/testcase`. The sample was compiled in Section 2.1, "Compile the Custom Operator Library".
+The test binary path is `./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`.
+
+Run the following commands starting from the repository root:
 
 ```bash
-# run the sample binary directly
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 cd build/examples/05_custom_ops_allgather/testcase
 mpirun -n rank_size ./custom_allgather_test data_len
-Parameter Description:
-rank_size: used rank number
-data_len: date length
 ```
+
+Parameter descriptions:
+
+- `rank_size`: Number of cards to use.
+- `data_len`: Data length.
 
 ### 2.4 Expected Results
 

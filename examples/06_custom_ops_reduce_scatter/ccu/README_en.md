@@ -2,9 +2,9 @@
 
 ## Sample Description
 
-This sample demonstrates how to develop an ReduceScatter communication operator based on the HCCL communication programming interface. It covers the following features:
+This sample demonstrates how to develop a ReduceScatter communication operator based on the HCCL communication programming interface. It covers the following features:
 
-1. Implement an ReduceScatter collective communication operator based on the CCU_SCHED communication engine.
+1. Implement a ReduceScatter collective communication operator based on the CCU_SCHED communication engine.
 2. Support independent building and deployment of custom operator packages.
 
 ## Directory Structure
@@ -12,21 +12,18 @@ This sample demonstrates how to develop an ReduceScatter communication operator 
 ```text
 ├── CMakeLists.txt                      # Compilation and build configuration file
 ├── op_host/
-|   ├── reduce_scatter.cc               # HcclReduceScatterCustom operator implementation source file
-|   ├── utils.cc                        # Utility module (channel acquisition, thread acquisition, Kernel registration)
-|   └── utils.h                         # Utility module header file
+│   ├── reduce_scatter.cc               # HcclReduceScatterCustom operator implementation source file
+│   ├── utils.cc                        # Utility module (channel acquisition, thread acquisition, Kernel registration)
+│   └── utils.h                         # Utility module header file
 ├── op_kernel_ccu/
-|   ├── ccu_kernel.cc                   # CCU Kernel implementation logic
-|   ├── ccu_kernel.h                    # CCU Kernel header file
-|   ├── exec_op.cc                      # CCU operator orchestration logic
-|   └── exec_op.h                       # CCU operator orchestration header file
-├── inc/
-|   ├── hccl_custom_reduce_scatter.h    # Custom ReduceScatter operator interface header file
-|   ├── common.h                        # Common type header file
-|   └── log.h                           # Log macro definitions
-└── testcase/
-    ├── main.cc                         # Sample implementation source file
-    └── Makefile                        # Compilation and build configuration file
+│   ├── ccu_kernel.cc                   # CCU Kernel implementation logic
+│   ├── ccu_kernel.h                    # CCU Kernel header file
+│   ├── exec_op.cc                      # CCU operator orchestration logic
+│   └── exec_op.h                       # CCU operator orchestration header file
+└── inc/
+    ├── hccl_custom_reduce_scatter.h    # Custom ReduceScatter operator interface header file
+    ├── common.h                        # Common type header file
+    └── log.h                           # Log macro definitions
 ```
 
 > The custom operator compilation project depends on the [cmake](../../../cmake) configuration and the [build.sh](../../../build.sh) compilation script in the HCCL repository.
@@ -86,10 +83,10 @@ The HCCL repository provides a custom operator compilation and packaging project
 ├── build.sh                        # Compilation entry in the hccl repository root directory
 ├── CMakeLists.txt                  # Compilation and build configuration file in the hccl repository root directory
 ├── cmake/
-|   ├── config.cmake                # CMake variable definitions
-|   ├── func.cmake                  # CMake function definitions
-|   ├── package.cmake               # Signature and packaging function definitions
-|   └── makeself_custom.cmake       # MakeSelf packaging logic
+│   ├── config.cmake                # CMake variable definitions
+│   ├── func.cmake                  # CMake function definitions
+│   ├── package.cmake               # Signature and packaging function definitions
+│   └── makeself_custom.cmake       # MakeSelf packaging logic
 └── scripts/
     ├── custom/install.sh           # Custom operator package installation script
     └── sign/add_header_sign.py     # Operator package signing script
@@ -136,10 +133,12 @@ The custom operator package installation information is as follows:
 
 ### 4.1 Compile the Test Sample
 
-Test Sample has generated at `2. Compiling the Custom Operator Package`, the binary file path is:
-`./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`
+The test source code is in `examples/06_custom_ops_reduce_scatter/testcase`. The sample was compiled in Section 2, "Compiling the Custom Operator Package".
+The test binary path is `./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`.
 
 ### 4.2 Run the Test Sample
+
+Run the following commands from the repository root:
 
 ```bash
 # Set the environment variable: HCCL_OP_EXPANSION_MODE specifies the expansion mode of communication operators. CCU_SCHED enables CCU scheduling.
@@ -148,10 +147,12 @@ export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
 # run the sample binary directly
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 ./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test rank_size data_len
-Parameter Description:
-rank_size: used rank number
-data_len: date length
 ```
+
+Parameter descriptions:
+
+- `rank_size`: Number of cards to use.
+- `data_len`: Data length.
 
 ### 4.3 Sample Output
 

@@ -20,18 +20,14 @@
 ├── op_kernel/
 │   ├── CMakeLists.txt
 │   └── launch_kernel_asc.asc           # 算子 Kernel 侧实现 (Ascend C)
-├── inc/
-│   ├── hccl_custom_reduce_scatter.h    # 自定义算子对外接口头文件
-│   ├── common.h                        # 公共类型定义与宏
-│   ├── aiv_reduce_scatter_mesh_1d.h    # AIV ReduceScatter 核心算法实现
-│   ├── aiv_communication_base_v2.h     # AIV 通信基类
-│   ├── log.h                           # 日志工具
-│   ├── extra_args.h                    # 额外参数定义
-│   └── sync_interface.h                # 同步接口定义
-└── testcase/
-    ├── CMakeLists.txt                  # 测试用例 CMake 配置文件
-    ├── Makefile                        # 测试用例 Makefile (用于编译运行)
-    └── main.cc                         # 测试用例主程序
+└── inc/
+    ├── hccl_custom_reduce_scatter.h    # 自定义算子对外接口头文件
+    ├── common.h                        # 公共类型定义与宏
+    ├── aiv_reduce_scatter_mesh_1d.h    # AIV ReduceScatter 核心算法实现
+    ├── aiv_communication_base_v2.h     # AIV 通信基类
+    ├── log.h                           # 日志工具
+    ├── extra_args.h                    # 额外参数定义
+    └── sync_interface.h                # 同步接口定义
 ```
 
 ## 一、环境准备
@@ -89,20 +85,30 @@ bash build.sh --vendor=cust --ops=reduce_scatter_aiv --custom_ops_path=./example
 > - `<arch>` 是当前编译环境的系统架构
 > - `<ascend_cann_path>` 是可选参数，表示 CANN 软件包安装目录。默认为 `ASCEND_CUSTOM_OPP_PATH` 或 `ASCEND_OPP_PATH` 环境变量所在的CANN软件包路径
 
+自定义算子包安装信息如下：
+
+- 头文件：`${ASCEND_HOME_PATH}/opp/vendors/cust/include/hccl_custom_reduce_scatter.h`
+- 动态库：`${ASCEND_HOME_PATH}/opp/vendors/cust/lib64/libhccl_custom_reduce_scatter.so`
+
+> `${ASCEND_HOME_PATH}`为CANN-Toolkit安装路径。
+
 ### 3. 运行测试用例
 
-测试代码在 `examples/05_custom_ops_reduce_scatter/testcase`,在前节`1. 编译自定义算子库`已经编译好测试样例
-测试样例二进制文件路径`./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`
+测试代码位于`examples/06_custom_ops_reduce_scatter/testcase`，已在前节“1. 编译自定义算子库”中编译。
+测试样例二进制文件路径为`./build/examples/06_custom_ops_reduce_scatter/testcase/custom_reduce_scatter_test`。
 
-在根目录使用mpirun执行命令
-```
+从仓库根目录开始执行以下命令：
+
+```bash
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 cd build/examples/06_custom_ops_reduce_scatter/testcase/
 mpirun -n rank_size ./custom_reduce_scatter_test data_len
-参数说明:
-rank_size: 使用的卡数
-data_len: 数据长度
 ```
+
+参数说明：
+
+- `rank_size`：使用的卡数。
+- `data_len`：数据长度。
 
 ### 4. 预期结果
 

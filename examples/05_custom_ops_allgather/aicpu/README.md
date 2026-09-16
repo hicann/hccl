@@ -131,20 +131,20 @@ bash build.sh --vendor=cust --ops=allgather_aicpu --custom_ops_path=./examples/0
 
 **关闭验签方式：**
 
-    配套使用Ascend HDK 25.5.T2.B001及以上版本，并通过该Ascend HDK自带的npu-smi工具关闭验签。以下为参考命令，需要以root用户在物理机上执行（以device 0为例）。
+配套使用Ascend HDK 25.5.T2.B001及以上版本，并通过该Ascend HDK自带的npu-smi工具关闭验签。以下为参考命令，需要以root用户在物理机上执行（以device 0为例）。
 
-    ```shell
-    npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 开启验签配置
-    npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 关闭用户自定义验签
-    ```
+```shell
+npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 开启验签配置
+npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 关闭用户自定义验签
+```
 
-    其中：
+其中：
 
-    - `-i` 用于指定设备ID，即通过"npu-smi info -l"命令查出的NPU ID
-    - `-d` 用于指定对应配置项的属性值
+- `-i` 用于指定设备ID，即通过"npu-smi info -l"命令查出的NPU ID
+- `-d` 用于指定对应配置项的属性值
 
-    > 注意：
-    > 关闭驱动安全验签机制存在一定的安全风险，需要用户自行确保自定义通信算子的安全可靠，防止恶意攻击行为。
+> 注意：
+> 关闭驱动安全验签机制存在一定的安全风险，需要用户自行确保自定义通信算子的安全可靠，防止恶意攻击行为。
 
 ### 2. 修改 AICPU 白名单
 
@@ -201,7 +201,7 @@ export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_P
 
 ```text
 Found 2 NPU device(s) available
-rankId：1, input: [1 1]
+rankId: 1, input: [1 1]
 rankId: 0, input: [0 0]
 rankId: 0, output: [ 0 0 1 1 ]
 rankId: 1, output: [ 0 0 1 1 ]

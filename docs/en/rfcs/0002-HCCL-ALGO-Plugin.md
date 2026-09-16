@@ -128,9 +128,10 @@ Execute remote reads, remote writes, local thread synchronization, local data co
 #### 4.1.1 Plugin System Components
 
 The overall architecture of HCCL-ALGO-Plugin is shown in Figure 1:
+
 <div style="text-align: center;">
-  <img src="../../zh/rfcs/总体架构图.png" alt="Overall Architecture">
-  <p><b>Figure 1 Overall Architecture</b></p>
+  <img src="./overall_architecture.png" alt="HCCL-ALGO-Plugin Overall Architecture">
+  <p><b>Figure 1 HCCL-ALGO-Plugin Overall Architecture</b></p>
 </div>
 
 The HCCL-ALGO-Plugin system consists of three parts:

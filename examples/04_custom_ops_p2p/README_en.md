@@ -12,21 +12,21 @@ This sample demonstrates how to develop Send and Recv point-to-point communicati
 ```text
 ├── CMakeLists.txt                      # Compilation and build configuration file
 ├── op_host/
-|   ├── send.cc                         # HcclSendCustom operator implementation source file
-|   ├── recv.cc                         # HcclRecvCustom operator implementation source file
-|   ├── load_kernel.cc                  # AICPU Kernel loading logic on the Host side
-|   ├── launch_kernel.cc                # AICPU Kernel submission logic on the Host side
-|   └── utils.cc                        # Utility module
+│   ├── send.cc                         # HcclSendCustom operator implementation source file
+│   ├── recv.cc                         # HcclRecvCustom operator implementation source file
+│   ├── load_kernel.cc                  # AICPU Kernel loading logic on the Host side
+│   ├── launch_kernel.cc                # AICPU Kernel submission logic on the Host side
+│   └── utils.cc                        # Utility module
 ├── op_kernel_aicpu/
-|   ├── libp2p_aicpu_kernel.json        # AICPU Kernel operator description file
-|   ├── aicpu_kernel.cc                 # AICPU Kernel implementation logic
-|   └── exec_op.cc                      # AICPU operator orchestration logic
+│   ├── libp2p_aicpu_kernel.json        # AICPU Kernel operator description file
+│   ├── aicpu_kernel.cc                 # AICPU Kernel implementation logic
+│   └── exec_op.cc                      # AICPU operator orchestration logic
 ├── inc/
-|   ├── hccl_custom_p2p.h               # Custom Send and Recv operator interface header file
-|   ├── common.h                        # Common type header file
-|   └── log.h                           # Log macro definitions
+│   ├── hccl_custom_p2p.h               # Custom Send and Recv operator interface header file
+│   ├── common.h                        # Common type header file
+│   └── log.h                           # Log macro definitions
 ├── scripts/
-|   └── hccl_custom_p2p_check_cfg.xml   # Signature configuration file
+│   └── hccl_custom_p2p_check_cfg.xml   # Signature configuration file
 └── testcase/
     ├── main.cc                         # Sample implementation source file
     └── Makefile                        # Compilation and build configuration file
@@ -74,11 +74,11 @@ The HCCL repository provides a custom operator compilation and packaging project
 ├── build.sh                        # Compilation entry in the hccl repository root directory
 ├── CMakeLists.txt                  # Compilation and build configuration file in the hccl repository root directory
 ├── cmake/
-|   ├── config.cmake                # CMake variable definitions
-|   ├── func.cmake                  # CMake function definitions
-|   ├── package.cmake               # Signature and packaging function definitions
-|   └── makeself_custom.cmake       # MakeSelf packaging logic
-├── scripts/
+│   ├── config.cmake                # CMake variable definitions
+│   ├── func.cmake                  # CMake function definitions
+│   ├── package.cmake               # Signature and packaging function definitions
+│   └── makeself_custom.cmake       # MakeSelf packaging logic
+└── scripts/
     ├── custom/install.sh           # Custom operator package installation script
     └── sign/add_header_sign.py     # AICPU operator package signing script
 ```

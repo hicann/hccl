@@ -20,7 +20,7 @@
 │   ├── ccu_kernel.h                    # CCU Kernel 头文件
 │   ├── exec_op.cc                      # CCU 算子编排逻辑
 │   └── exec_op.h                       # CCU 算子编排头文件
-├── inc/
+└── inc/
     ├── hccl_custom_allgather.h         # 自定义 allgather 算子接口头文件
     ├── common.h                        # 公共类型头文件
     └── log.h                           # 日志宏定义
@@ -133,13 +133,13 @@ bash build.sh --vendor=cust --ops=allgather_ccu --custom_ops_path=./examples/05_
 
 ### 1. 编译测试样例
 
-测试代码路径: `examples/05_custom_ops_allgather/testcase`,
-在前节 `二、编译自定义算子包` 已经编译好测试样例，测试样例二进制文件路径: 
-`./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`
+测试代码位于`examples/05_custom_ops_allgather/testcase`，已在前节“二、编译自定义算子包”中编译。
+测试样例二进制文件路径为`./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test`。
 
 ### 2. 执行测试样例
 
- 	 
+从仓库根目录执行以下命令：
+
 ```bash
 # 设置环境变量：HCCL_OP_EXPANSION_MODE 用于指定通信算子的展开模式，取值 CCU_SCHED 表示启用 CCU 调度模式
 export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
@@ -147,10 +147,12 @@ export HCCL_OP_EXPANSION_MODE="CCU_SCHED"
 # 执行样例二进制
 export LD_LIBRARY_PATH=${ASCEND_HOME_PATH}/opp/vendors/cust/lib64:${LD_LIBRARY_PATH}
 ./build/examples/05_custom_ops_allgather/testcase/custom_allgather_test rank_size data_len
-参数说明:
-rank_size: 使用的卡数
-data_len: 数据长度
 ```
+
+参数说明：
+
+- `rank_size`：使用的卡数。
+- `data_len`：数据长度。
 
 ### 3. 样例结果示例
 
