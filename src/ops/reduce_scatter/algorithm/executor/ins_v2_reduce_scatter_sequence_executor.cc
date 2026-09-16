@@ -412,12 +412,13 @@ REGISTER_ALG_ATTRS(
     DpuReduceScatterSequenceMeshMesh,
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
-    // MESH_1D_CLOS 非pcieMix 且每框多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+    topo.isSupportLevel1Nhr = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS || topo->level0PcieMix
+            || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
             return true;
         }
-        return topo->level0PcieMix || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+        // UBX
+        return topo->Level1Nhr;
     };);
 
 } // namespace ops_hccl

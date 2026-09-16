@@ -374,15 +374,15 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     InsTempAllGatherMesh1D, InsTempAllGatherNHRDPU);
 REGISTER_ALG_ATTRS(
     DpuAllGatherSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    // MESH_1D_CLOS 非pcieMix 且每框多卡时走 PipeLineUBX，其余场景走本算法，通信域初始化时过滤
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS) {
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1
+            || topo->level0PcieMix) {
             return true;
         }
-        return topo->level0PcieMix || topo->netLayerDetails.localNetInsSizeOfLayer.empty()
-               || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+        // UBX非对称
+        return topo->Level1Nhr;
     };);
 
 } // namespace ops_hccl

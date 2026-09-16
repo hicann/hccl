@@ -135,5 +135,6 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_BARRIER, DpuBarrierSequenceMeshNHR, InsV2BarrierSequenceExecutor, TopoMatchTwoLevel,
     InsTempBarrierMesh1D, InsTempBarrierNHRDPU);
 REGISTER_ALG_ATTRS(DpuBarrierSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+                   topo.isSupportLevel1Nhr = true;);
 } // namespace ops_hccl

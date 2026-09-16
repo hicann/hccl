@@ -307,7 +307,16 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_SCATTER, DpuScatterSequenceMeshNHR, InsV2ScatterSequenceExecutor, TopoMatchTwoLevel,
     InsTempScatterMesh1D, InsTempScatterNHRDPUInterNode);
-REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2;
-                   topo.isHostDpuOnly = true;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS);
+REGISTER_ALG_ATTRS(
+    DpuScatterSequenceMeshNHR, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = 2; topo.isHostDpuOnly = true;
+    topo.isSupportLevel1Nhr = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS || topo->level0PcieMix) {
+            return true;
+        }
+        // UBX
+        return topo->Level1Nhr || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)
+               || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
+    };);
 } // namespace ops_hccl
