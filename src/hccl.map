@@ -47,6 +47,19 @@
         HcclCreateOpResCtx;
 
         /*
+         * C-compatible CCU fallback wrappers declared in
+         * ops/op_common/inc/ccu_fallback_c.h.
+         *
+         * Weak symbols: default implementations live in
+         * ops/op_common/ccu_fallback.cc and call the real
+         * C++ functions in namespace ops_hccl. The simulator
+         * may override them with strong symbols of the same
+         * name to skip real negotiation logic.
+         */
+        CheckCcuResNegotiationC;
+        CheckCcuParamAndFallbackC;
+
+        /*
          * Package interfaces defined in
          * ops/interface_graph_mode/calc_resource_graph_mode.cc.
          */

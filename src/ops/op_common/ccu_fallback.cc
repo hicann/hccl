@@ -11,6 +11,7 @@
 #include <cstring> // 包含strncmp函数
 #include <functional>
 #include "ccu_fallback.h"
+#include "ccu_fallback_c.h"
 #include "comm_worker_mgr.h"
 #include "op_common.h"
 #include "inconsistent_check.h"
@@ -561,3 +562,35 @@ HcclResult CheckCcuParamAndFallback(
     return HCCL_SUCCESS;
 }
 } // namespace ops_hccl
+
+__attribute__((weak)) HcclResult CheckCcuResNegotiationC(HcclComm comm, const void* param, bool localResAvailable)
+{
+    if (param == nullptr) {
+        HCCL_ERROR("[%s] param is null.", __func__);
+        return HCCL_E_PARA;
+    }
+    const auto& opParam = *static_cast<const ops_hccl::OpParam*>(param);
+    return ops_hccl::CheckCcuResNegotiation(comm, opParam, localResAvailable);
+}
+
+__attribute__((weak)) HcclResult
+CheckCcuParamAndFallbackC(HcclComm comm, void* param, void** topoInfo, char* algNameBuf, uint32_t algNameBufLen)
+{
+    if (param == nullptr || topoInfo == nullptr || algNameBuf == nullptr) {
+        HCCL_ERROR("[%s] invalid param.", __func__);
+        return HCCL_E_PARA;
+    }
+    auto& opParam = *static_cast<ops_hccl::OpParam*>(param);
+    auto& topoInfoPtr = *static_cast<std::unique_ptr<ops_hccl::TopoInfoWithNetLayerDetails>*>(*topoInfo);
+    std::string algName(algNameBuf);
+    HcclResult ret = ops_hccl::CheckCcuParamAndFallback(comm, opParam, topoInfoPtr, algName);
+    if (ret != HCCL_SUCCESS) {
+        return ret;
+    }
+    errno_t copyRet = strncpy_s(algNameBuf, algNameBufLen, algName.c_str(), algName.size());
+    if (copyRet != EOK) {
+        HCCL_ERROR("[%s] strncpy_s for algName failed.", __func__);
+        return HCCL_E_MEMORY;
+    }
+    return HCCL_SUCCESS;
+}

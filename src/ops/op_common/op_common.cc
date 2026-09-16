@@ -45,6 +45,7 @@
 #include "alg_type.h"
 #include "op_common.h"
 #include "ccu_fallback.h"
+#include "ccu_fallback_c.h"
 #include "aicpu_timeout.h"
 #include "exec_timeout_manager.h"
 #include "hccl_aiv_utils.h"
@@ -217,7 +218,12 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     CHK_RET(SetMultipleDimensionSplitRatio(comm, param));
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
     // CCU模式跨rank协商：各rank交换opExecuteConfig取最低公共值，若被降级则直接走ReSelector回退到该config对应的算法
-    CHK_RET(CheckCcuParamAndFallback(comm, param, topoInfo, algName));
+    char algNameBuf[ALG_MAX_LENGTH];
+    errno_t algCopyRet = strncpy_s(algNameBuf, ALG_MAX_LENGTH, algName.c_str(), algName.size());
+    CHK_PRT_RET(algCopyRet != EOK, HCCL_ERROR("[%s] strncpy_s for algName failed.", __func__), HCCL_E_MEMORY);
+    void* topoInfoVoidPtr = static_cast<void*>(&topoInfo);
+    CHK_RET(CheckCcuParamAndFallbackC(comm, static_cast<void*>(&param), &topoInfoVoidPtr, algNameBuf, ALG_MAX_LENGTH));
+    algName = algNameBuf;
 #endif
     HCCL_INFO("Success to execute Selector.");
     return HCCL_SUCCESS;
@@ -1566,7 +1572,7 @@ HcclResult GetAlgResWithEngine(
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
         if (ret == HCCL_E_UNAVAIL || ret == HCCL_SUCCESS) {
             bool localResAvailable = (ret == HCCL_SUCCESS);
-            auto negRet = CheckCcuResNegotiation(comm, param, localResAvailable);
+            auto negRet = CheckCcuResNegotiationC(comm, static_cast<const void*>(&param), localResAvailable);
             if (negRet == HCCL_E_UNAVAIL) {
                 // 多卡协商失败，释放本端已申请的CCU通道资源
                 ReleaseCcuAcquiredChannels(comm, resRequest);
