@@ -25,7 +25,9 @@
 #include "auto_selector_base.h"
 
 namespace ops_hccl {
+constexpr u32 ALG_HIERARCHY_NUM2 = 2;
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
+constexpr u32 MIN_NET_LAYER_NUM = 2;
 constexpr u32 RANK_LEVEL_2 = 2;
 constexpr u32 RANK_LEVEL_4 = 4;
 namespace {
@@ -64,7 +66,8 @@ namespace {
             }
             axes.mesh = localSizes[0];
             if (topoInfo->topoLevelNums > 1) {
-                if (localSizes.size() < 2 || localSizes[1] < axes.mesh || localSizes[1] % axes.mesh != 0) {
+                if (localSizes.size() < MIN_NET_LAYER_NUM || localSizes[1] < axes.mesh
+                    || localSizes[1] % axes.mesh != 0) {
                     return false;
                 }
                 axes.clos = localSizes[1] / axes.mesh;
@@ -151,12 +154,12 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     } else {
         subCommRanks0.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 2 && !algHierarchyInfo_.infos[1].empty()) {
+    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM2 && !algHierarchyInfo_.infos[1].empty()) {
         subCommRanks1 = algHierarchyInfo_.infos[1];
     } else {
         subCommRanks1.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 3 && !algHierarchyInfo_.infos[2].empty()
+    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
         && !algHierarchyInfo_.infos[2][0].empty()) {
         subCommRanks2 = algHierarchyInfo_.infos[2];
     } else {

@@ -11,6 +11,7 @@
 #include "ins_temp_reduce_scatter_nhr.h"
 
 namespace ops_hccl {
+constexpr int TASK_NUM_EXTRA_OVERHEAD = 8;
 
 std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -25,7 +26,7 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     int taskNum = CostModelManager::CalcTransTaskNum((log2(param.rankSize) + 1)) * 1.5
                   + CostModelManager::CalcSyncTaskNum((log2(param.rankSize) + 1)) * 2;
     taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
-    taskNum = taskNum + 8;
+    taskNum = taskNum + TASK_NUM_EXTRA_OVERHEAD;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

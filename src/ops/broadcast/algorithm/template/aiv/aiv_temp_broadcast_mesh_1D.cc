@@ -13,6 +13,7 @@
 #include "config_log.h"
 
 namespace ops_hccl {
+constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
 
 std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -31,7 +32,7 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
     // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
     // 根据实测调整A
     A *= 0.8f;
     if (param.inputBuffer != param.scratchBuffer) {

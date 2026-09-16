@@ -20,6 +20,8 @@
 #include <cmath>
 
 namespace ops_hccl {
+constexpr u32 ALG_HIERARCHY_NUM2 = 2;
+constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
 template <
@@ -516,12 +518,12 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     } else {
         subCommRanks0.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 2 && !algHierarchyInfo_.infos[1].empty()) {
+    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM2 && !algHierarchyInfo_.infos[1].empty()) {
         subCommRanks1 = algHierarchyInfo_.infos[1];
     } else {
         subCommRanks1.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 3 && !algHierarchyInfo_.infos[2].empty()
+    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
         && !algHierarchyInfo_.infos[2][0].empty()) {
         subCommRanks2 = algHierarchyInfo_.infos[2];
     } else {

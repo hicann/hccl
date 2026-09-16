@@ -14,6 +14,7 @@
 #include "config_log.h"
 
 namespace ops_hccl {
+constexpr int DEFAULT_PORT_NUM = 8;
 
 std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -24,7 +25,7 @@ std::vector<CostModelParam> AivTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffPa
         portNum += static_cast<int>(p);
     }
     if (portNum <= 0) {
-        portNum = 8;
+        portNum = DEFAULT_PORT_NUM;
     }
     int kernelNum = 1; // AIV单kernel启动
     int taskNum = 0;   // AIV的D=0

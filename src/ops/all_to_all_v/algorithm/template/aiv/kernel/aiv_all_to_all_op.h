@@ -16,7 +16,7 @@
 using namespace AscendC;
 
 #if defined(HCCL_AIV_ACLGRAPH_SK)
-#define AIV_ALL_TO_ALL_KERNEL_DECL(type) extern "C" __aicore__ void aiv_alltoall_##type##_inner(KERNEL_ARGS_DEF);
+#define AIV_ALL_TO_ALL_KERNEL_DECL(type) extern "C" __aicore__ void aiv_alltoall_##type##_inner(KERNEL_ARGS_DEF)
 
 #define AIV_ALL_TO_ALL_KERNEL_DEF(type)                                     \
     extern "C" __aicore__ void aiv_alltoall_##type##_inner(KERNEL_ARGS_DEF) \

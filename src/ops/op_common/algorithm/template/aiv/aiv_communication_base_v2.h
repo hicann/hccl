@@ -19,6 +19,7 @@
 
 // __sk__函数参数
 
+constexpr uint32_t SK_ARGS_BOOL_ALIGN_SIZE = 4;
 struct SkArgsStruct {
     GM_ADDR buffersIn; // 注册的CCLIN地址，所有卡可访问
     uint64_t input;
@@ -37,12 +38,12 @@ struct SkArgsStruct {
     uint64_t inputRepeatStride;
     uint64_t outputRepeatStride;
     uint32_t numBlocks;
-    alignas(4) bool isOpBase;
+    alignas(SK_ARGS_BOOL_ALIGN_SIZE) bool isOpBase;
     GM_ADDR headCountMem;
     GM_ADDR tailCountMem;
     GM_ADDR addOneMem;
     uint32_t counterMemSize;
-    alignas(4) bool isEnableCounter;
+    alignas(SK_ARGS_BOOL_ALIGN_SIZE) bool isEnableCounter;
 };
 
 // __sk__定义的函数参数

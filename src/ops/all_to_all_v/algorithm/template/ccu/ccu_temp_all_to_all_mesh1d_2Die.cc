@@ -22,6 +22,7 @@
 #include "template_utils.h"
 
 namespace ops_hccl {
+constexpr int DEFAULT_PORT_NUM = 8;
 
 std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -40,7 +41,7 @@ std::vector<CostModelParam> CcuTempAllToAllMesh1D2Die::CalcCostCoeff(CalcCostCoe
         closPortNum += static_cast<int>(p);
     }
     if (closPortNum <= 0) {
-        closPortNum = 8; // fallback
+        closPortNum = DEFAULT_PORT_NUM; // fallback
     }
     // CLOS公式: A = n*(groupSize-1)/(portNum*bw)，groupSize含自己，所以 +1
     u32 closGroupSize = interDieRankSize + 1;

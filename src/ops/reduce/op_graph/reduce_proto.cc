@@ -26,8 +26,8 @@ namespace ops {
 
 static ge::graphStatus HcomReduceInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     auto attrs = context->GetAttrs();
     constexpr size_t reduceReductionIndex = 1;

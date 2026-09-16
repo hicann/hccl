@@ -13,6 +13,8 @@
 #include "template_utils.h"
 
 namespace ops_hccl {
+constexpr int POD_TASK_NUM_OVERHEAD = 5;
+
 std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
     param.netType = CommTopo::COMM_TOPO_CLOS;
@@ -31,7 +33,7 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
     u32 rEff = static_cast<u32>(5 * log2R / 3);
     rEff = std::max(rEff, 2u);
     int taskNum = CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2;
-    taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum + 5;
+    taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum + POD_TASK_NUM_OVERHEAD;
 
     float A = 0.0f;
     float B = 0.0f;

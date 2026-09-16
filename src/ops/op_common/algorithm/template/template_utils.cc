@@ -16,6 +16,7 @@ constexpr u32 DIE_NUM_1 = 1;
 constexpr u32 DIE_NUM_2 = 2;
 namespace ops_hccl {
 constexpr double POD_PORT_GROUP_DIVISOR = 2.0; // Pod场景下端口组对半分
+constexpr u32 MIN_PORT_NUM_LAYERS = 2;
 
 HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& algRank)
 {
@@ -476,7 +477,7 @@ double CalcParallelDataSplitRatio(
             "portNum is empty", intraRankSize, interRankSize, portInfo, splitType, validFallback);
     }
     portInfo.intraPortGroupSize = 1;
-    portInfo.interPortGroupSize = (portNum.size() >= 2) ? portNum[0] + portNum[1] : portNum[0];
+    portInfo.interPortGroupSize = (portNum.size() >= MIN_PORT_NUM_LAYERS) ? portNum[0] + portNum[1] : portNum[0];
 
     // 校验端口和非零（与第一个重载对齐）
     if (portInfo.intraPortGroupSize == 0) {

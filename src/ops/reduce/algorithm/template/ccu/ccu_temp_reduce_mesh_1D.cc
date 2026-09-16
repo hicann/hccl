@@ -14,10 +14,11 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
+constexpr u32 MAX_RANK_SIZE_FOR_MESH_1D = 8;
 
 std::vector<CostModelParam> CcuTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
+    if (param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
         return {};
     }
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?

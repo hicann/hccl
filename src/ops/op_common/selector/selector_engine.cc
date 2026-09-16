@@ -31,6 +31,7 @@ namespace ops_hccl {
 
 static constexpr const char* COST_MODEL_TAG = "costmodel";
 static constexpr const char* TUNER_INIT_TAG = "tuner_init";
+static constexpr u32 ALGO_NAME_COL_WIDTH = 48;
 
 SelectorEngine* SelectorEngine::Global()
 {
@@ -398,7 +399,8 @@ HcclResult SelectorEngine::SelectMinCost(const CostTable& ct, OpParam& param, st
             HCCL_ERROR("[SelectorEngine] SelectMinCost: sprintf_s failed.");
             return HCCL_E_INTERNAL;
         }
-        HCCL_INFO("[SelectorEngine] | %3d | %-48s | %12s |", i, nameStr.substr(0, 48).c_str(), costBuf);
+        HCCL_INFO(
+            "[SelectorEngine] | %3d | %-48s | %12s |", i, nameStr.substr(0, ALGO_NAME_COL_WIDTH).c_str(), costBuf);
 
         if (name == nullptr || cost < 0.0f) {
             continue;

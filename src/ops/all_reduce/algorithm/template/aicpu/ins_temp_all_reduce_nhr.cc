@@ -160,7 +160,6 @@ HcclResult InsTempAllReduceNHR::KernelRun(
         subCommRanks_.size() == 0, HCCL_ERROR("[InsTempAllReduceNHR][KernelRun] subCommRanks is empty."),
         HcclResult::HCCL_E_INTERNAL);
     rankList_ = subCommRanks_.at(0);
-
     CHK_PRT_RET(
         rankList_.size() != templateRankSize_,
         HCCL_ERROR("[InsTempAllReduceNHR][KernelRun] rank count is invalid in rank list.", myRank_),
@@ -436,7 +435,6 @@ HcclResult InsTempAllReduceNHR::RunAllGather(
     for (u32 stepIdx = 0; stepIdx < allGatherSteps_.size(); ++stepIdx) {
         auto& stepInfo = allGatherSteps_[stepIdx];
         const bool isLastStep = (stepIdx == allGatherSteps_.size() - 1);
-
         // Read 优化：AllGather 最后一步远端数据直接读入 output buffer，跳过中间 cclBuff 中转
         if (readLastStepToOutput_ && isLastStep) {
             CHK_RET(RunLastStepReadToOutput(tempAlgParams, channels, threads, channelIdx));
@@ -525,7 +523,6 @@ HcclResult InsTempAllReduceNHR::RunLastStepReadToOutput(
     u64 outBuffBaseOffset = tempAlgParams.buffInfo.outBuffBaseOff;
 
     auto& lastStepInfo = allGatherSteps_.back();
-
     CHK_PRT_RET(
         channels.count(rankList_.at(lastStepInfo.fromRank)) == 0,
         HCCL_ERROR(

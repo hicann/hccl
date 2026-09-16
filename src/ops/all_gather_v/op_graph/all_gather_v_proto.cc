@@ -26,8 +26,8 @@ namespace ops {
 
 static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     const auto inputShape = context->GetInputShape(0);
     OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
@@ -51,6 +51,10 @@ static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* conte
 
     vector<int64_t> recvCounts;
     HcomGetConstValue(opName, recvCountsTensor, recvCountsTensor->GetDataType(), recvCounts);
+    if (recvCounts.empty()) {
+        CUBE_INNER_ERR_REPORT(opName, "recv_counts is empty or dtype is not supported.");
+        return GRAPH_FAILED;
+    }
 
     // 计算recvDisp
     vector<int64_t> recvDisp;

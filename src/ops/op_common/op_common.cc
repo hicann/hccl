@@ -747,7 +747,6 @@ ExecutePluginAlgorithm(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetail
 
     int execRet
         = plugin->ExecuteAlg(pluginCtx, algName.c_str(), pluginParam.opName, &pluginParam, static_cast<void*>(comm));
-
     if (execRet != HCCL_SUCCESS) {
         HCCL_ERROR(
             "[HcclExecOp] plugin ExecuteAlg failed, algName=[%s], opType=[%d], ret=[%d]", algName.c_str(),

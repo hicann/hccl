@@ -36,14 +36,16 @@ struct CheckParamInfo {
     uint32_t opType;
 };
 constexpr uint64_t SEND_BUF_SIZE = sizeof(CheckParamInfo);
+static constexpr uint32_t EXEC_CONFIG_LEVEL_CCU_MS = 3;
+static constexpr uint32_t EXEC_CONFIG_LEVEL_CCU_SCHED = 2;
 
 static uint32_t GetOpExecuteConfigLevel(OpExecuteConfig config)
 {
     switch (config) {
         case OpExecuteConfig::CCU_MS:
-            return 3;
+            return EXEC_CONFIG_LEVEL_CCU_MS;
         case OpExecuteConfig::CCU_SCHED:
-            return 2;
+            return EXEC_CONFIG_LEVEL_CCU_SCHED;
         case OpExecuteConfig::AICPU_TS:
             return 1;
         default:

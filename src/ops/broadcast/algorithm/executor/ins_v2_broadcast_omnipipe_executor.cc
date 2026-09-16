@@ -21,6 +21,7 @@
 
 namespace ops_hccl {
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
+constexpr u32 UBX_PLANE_NUM = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
 
@@ -129,7 +130,7 @@ HcclResult InsV2BroadcastOmniPipeExecutor<
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo)
 {
-    if (algHierarchyInfo_.infos[0].size() < 2 || algHierarchyInfo_.infos[0][0].empty()) {
+    if (algHierarchyInfo_.infos[0].size() < UBX_PLANE_NUM || algHierarchyInfo_.infos[0][0].empty()) {
         HCCL_ERROR(
             "[%s] algHierarchyInfo_.infos[0] size[%zu] is less than 2 or infos[0][0] empty.", __func__,
             algHierarchyInfo_.infos[0].size());

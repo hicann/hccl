@@ -14,6 +14,9 @@
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
+constexpr int DEFAULT_PORT_NUM = 8;
+constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
+constexpr double A_CALIBRATION_FACTOR = 1.05;
 
 std::vector<CostModelParam> CcuTempBroadcastNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -23,7 +26,7 @@ std::vector<CostModelParam> CcuTempBroadcastNHR1DMem2Mem::CalcCostCoeff(CalcCost
         portNum += static_cast<int>(p);
     }
     if (portNum <= 0) {
-        portNum = 8;
+        portNum = DEFAULT_PORT_NUM;
     }
     // NHR步数=2*ceil(log2(rankSize))(Scatter+AllGather两轮)，加5是固定开销
     int nhrSteps = 0;
@@ -39,9 +42,9 @@ std::vector<CostModelParam> CcuTempBroadcastNHR1DMem2Mem::CalcCostCoeff(CalcCost
     // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
     // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
     // 根据实测修正A
-    A *= 1.05;
+    A *= A_CALIBRATION_FACTOR;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 

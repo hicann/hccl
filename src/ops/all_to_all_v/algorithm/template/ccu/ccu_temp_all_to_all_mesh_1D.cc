@@ -15,6 +15,7 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
+constexpr int DEFAULT_PORT_NUM = 6;
 
 std::vector<CostModelParam> CcuTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -25,7 +26,7 @@ std::vector<CostModelParam> CcuTempAlltoAllMesh1D::CalcCostCoeff(CalcCostCoeffPa
         portNum += static_cast<int>(p);
     }
     if (portNum <= 0) {
-        portNum = 6;
+        portNum = DEFAULT_PORT_NUM;
     }
     // MESH场景固定5，CLOS跨框场景固定10(跨框同步开销更大)
     int kernelNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 10 : 5;

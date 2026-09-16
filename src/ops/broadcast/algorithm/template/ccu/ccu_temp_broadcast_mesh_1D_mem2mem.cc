@@ -14,6 +14,7 @@
 #include "ccu/ccu_temp_broadcast_mesh_1D_mem2mem.h"
 
 namespace ops_hccl {
+constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
 
 std::vector<CostModelParam> CcuTempBroadcastMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -32,7 +33,7 @@ std::vector<CostModelParam> CcuTempBroadcastMesh1DMem2Mem::CalcCostCoeff(CalcCos
     // twoshot: n = dataRatio / rankSize * 2（scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R）
     // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcMeshParam(
-        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 

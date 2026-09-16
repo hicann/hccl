@@ -14,6 +14,7 @@
 #include "config_log.h"
 
 namespace ops_hccl {
+constexpr u32 MIN_MESH_RANK_NUM = 2;
 
 std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -32,13 +33,13 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     u32 meshRankNum = 0;
     if (param.netType == CommTopo::COMM_TOPO_CLOS && param.topoInfo != nullptr) {
         for (const auto& level : param.topoInfo->physicalLevels) {
-            if (level.topoType == CommTopo::COMM_TOPO_1DMESH && level.localRanks.size() >= 2
+            if (level.topoType == CommTopo::COMM_TOPO_1DMESH && level.localRanks.size() >= MIN_MESH_RANK_NUM
                 && level.localRanks.size() < param.rankSize) {
                 meshRankNum = std::max(meshRankNum, static_cast<u32>(level.localRanks.size()));
             }
         }
     }
-    if (meshRankNum >= 2) {
+    if (meshRankNum >= MIN_MESH_RANK_NUM) {
         u32 meshTargetNum = meshRankNum - 1;              // 框内目标份数
         u32 closTargetNum = param.rankSize - meshRankNum; // 跨框目标份数
         float aMesh = 0.0f;

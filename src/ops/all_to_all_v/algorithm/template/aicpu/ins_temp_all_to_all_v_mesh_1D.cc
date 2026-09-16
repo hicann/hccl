@@ -14,6 +14,8 @@
 #define NET_NUM 2
 
 namespace ops_hccl {
+constexpr int DEFAULT_PORT_NUM = 8;
+constexpr int DEFAULT_SINGLE_CHANNEL_PORT_NUM = 6;
 
 std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -24,7 +26,7 @@ std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffP
         portNum += static_cast<int>(p);
     }
     if (portNum <= 0) {
-        portNum = isSingleChannel ? 6 : 8;
+        portNum = isSingleChannel ? DEFAULT_SINGLE_CHANNEL_PORT_NUM : DEFAULT_PORT_NUM;
     }
     int kernelNum = 10;
     // SingleChannel单通道每peer 5个trans + 4个sync = 9；多通道(channelsPerRank=2)每个通道对应一组trans/sync

@@ -40,8 +40,8 @@ static bool HcomAllToAllShapeFullDefined(const gert::Shape* shape)
 
 static ge::graphStatus HcomAllToAllInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     const auto inputShape = context->GetInputShape(0);
     OP_CHECK(inputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "input shape is null"), return GRAPH_FAILED);
@@ -78,8 +78,8 @@ static ge::graphStatus HcomAllToAllInferDataTypeV2(gert::InferDataTypeContext* c
 
 static ge::graphStatus HcomAllToAllVInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     auto outputShape = context->GetOutputShape(0);
     OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
@@ -136,8 +136,8 @@ static ge::graphStatus HcomAllToAllVInferDataTypeV2(gert::InferDataTypeContext* 
 
 static ge::graphStatus HcomAllToAllVCInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     // Get RuntimeAttrs
     auto attrs = context->GetAttrs();

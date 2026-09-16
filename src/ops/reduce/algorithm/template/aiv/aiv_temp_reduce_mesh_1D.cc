@@ -14,6 +14,7 @@
 #include "config_log.h"
 
 namespace ops_hccl {
+constexpr u32 SEND_RECV_DATA_FACTOR = 2;
 
 std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -29,7 +30,7 @@ std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffPara
     float B2 = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(
-        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+        SEND_RECV_DATA_FACTOR * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B1);
     } else {

@@ -26,8 +26,8 @@ namespace ops {
 
 static ge::graphStatus HcomReceiveInferShapeV2(gert::InferShapeContext* context)
 {
-    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", context->GetNodeName());
     OP_INFER_SHAPE_START;
+    AlogRecord(SLOG, DLOG_TYPE_DEBUG, DLOG_DEBUG, "[HCCL_PROTO] %s enter.", opName);
 
     auto attrs = context->GetAttrs();
     OP_CHECK(attrs == nullptr, CUBE_INNER_ERR_REPORT(opName, "attrs is null"), return GRAPH_FAILED);

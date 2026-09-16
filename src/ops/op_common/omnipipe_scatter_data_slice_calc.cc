@@ -13,6 +13,7 @@
 #include "utils.h"
 
 namespace ops_hccl {
+constexpr u64 SPECIAL_TWO_STEP_NUM = 2;
 // 2D scatter发送数据片偏移计算,y轴快
 // 参数,xSOffset x轴偏移，ySOffset y轴偏移，stepNum步数，xRankSize x轴大小，yRankSize y轴大小
 // x轴每步每一片数据大小，y轴每步每一片数据大小 scatter不需要最后一步拆成两步
@@ -1169,7 +1170,7 @@ static void CalcScatterYOverSameAxisPieceOffset(
     u64& inputPieceIdOffset, u64& outputPieceIdOffset)
 {
     u64 xyBaseOff = xySOffset[root][osn];
-    if (innerStepNum == 2) {
+    if (innerStepNum == SPECIAL_TWO_STEP_NUM) {
         inputPieceIdOffset
             = sliceOffsetCut(xyBaseOff + xSOffset[root][osn][isn - 1], perLoop[pieceId].size) + perLoop[pieceId].offset;
         outputPieceIdOffset
@@ -1836,9 +1837,9 @@ void CalcScatterOuterCornerStep(const ScatterTopoInfo& topo, ScatterStepState& s
     if (state.outerStepNum > 1) {
         if (state.isZSlowAxis) {
             state.zCornerStep = 1;
-            state.xyCornerStep = (state.outerStepNum == 2 ? 1 : state.outerStepNum - finStepMark);
+            state.xyCornerStep = (state.outerStepNum == SPECIAL_TWO_STEP_NUM ? 1 : state.outerStepNum - finStepMark);
         } else {
-            state.zCornerStep = (state.outerStepNum == 2 ? 1 : state.outerStepNum - finStepMark);
+            state.zCornerStep = (state.outerStepNum == SPECIAL_TWO_STEP_NUM ? 1 : state.outerStepNum - finStepMark);
             state.xyCornerStep = 1;
         }
     }

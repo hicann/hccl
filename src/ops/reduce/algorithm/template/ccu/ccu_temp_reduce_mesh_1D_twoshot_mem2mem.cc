@@ -16,10 +16,12 @@
 namespace ops_hccl {
 
 constexpr uint32_t REDUCE_LOOP_COUNT = 16;
+constexpr uint32_t MAX_RANK_SIZE_FOR_MESH_1D = 8;
+constexpr uint32_t SEND_RECV_DATA_FACTOR = 2;
 
 std::vector<CostModelParam> CcuTempReduceMesh1DTwoShotMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
+    if (param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
         return {};
     }
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
@@ -32,7 +34,7 @@ std::vector<CostModelParam> CcuTempReduceMesh1DTwoShotMem2Mem::CalcCostCoeff(Cal
     float D = 0.0f;
     float B1, B2;
     CostModelManager::Global()->CalcMeshParam(
-        2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+        SEND_RECV_DATA_FACTOR * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B1);
     CostModelManager::Global()->CalcLocalReduceParams(param.dataRatio, EngineType::CCU, B2);
     B = B1 + B2;

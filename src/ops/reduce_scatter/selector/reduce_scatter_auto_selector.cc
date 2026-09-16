@@ -444,7 +444,6 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
                 } else {
                     selectAlgName = "AicpuReduceScatterSoleNHR";
                 }
-
             } else if (
                 dataSize * topoInfo->userRankSize >= AICPU_2LEVEL_MAX_TOTAL_DATA_SIZE
                 && topoInfo->userRankSize >= AICPU_MAX_RANKSIZE) {

@@ -25,7 +25,9 @@
 #include "auto_selector_base.h"
 namespace ops_hccl {
 constexpr u64 OMNI_PCIE_RS_DATA_SIZE = 4 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
+constexpr uint32_t HIERARCHY_SIZE_2 = 2;
 constexpr uint32_t HIERARCHY_SIZE_3 = 3;
+constexpr uint32_t MIN_NET_LAYER_NUM = 2;
 constexpr uint64_t RANK_SIZE_LEVEL_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL_4 = 4;
 namespace {
@@ -64,7 +66,8 @@ namespace {
             }
             axes.mesh = localSizes[0];
             if (topoInfo->topoLevelNums > 1) {
-                if (localSizes.size() < 2 || localSizes[1] < axes.mesh || localSizes[1] % axes.mesh != 0) {
+                if (localSizes.size() < MIN_NET_LAYER_NUM || localSizes[1] < axes.mesh
+                    || localSizes[1] % axes.mesh != 0) {
                     return false;
                 }
                 axes.clos = localSizes[1] / axes.mesh;
@@ -323,12 +326,12 @@ HcclResult InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     } else {
         subCommRanks0.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 2 && !algHierarchyInfo_.infos[1].empty()) {
+    if (algHierarchyInfo_.infos.size() >= HIERARCHY_SIZE_2 && !algHierarchyInfo_.infos[1].empty()) {
         subCommRanks1 = algHierarchyInfo_.infos[1];
     } else {
         subCommRanks1.emplace_back(std::vector<u32>{myRank_});
     }
-    if (algHierarchyInfo_.infos.size() >= 3 && !algHierarchyInfo_.infos[2].empty()
+    if (algHierarchyInfo_.infos.size() >= HIERARCHY_SIZE_3 && !algHierarchyInfo_.infos[2].empty()
         && !algHierarchyInfo_.infos[2][0].empty()) {
         subCommRanks2 = algHierarchyInfo_.infos[2];
     } else {

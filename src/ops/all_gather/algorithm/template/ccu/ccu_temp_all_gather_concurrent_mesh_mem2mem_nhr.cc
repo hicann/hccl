@@ -30,6 +30,7 @@ constexpr u32 CONCURRENT_TOTAL_THREAD_NUM = 3; // mesh主流(1) + NHR主流(1) +
 // threads[1](NHR 主流/从流): notifyNumPerThread=2, 索引 0 用于 NHR 内部, 索引 1 用于 PreSync
 constexpr u32 NOTIFY_IDX_PRE_SYNC = 1;  // PreSync: mainThread 向 NHR 主流发 record
 constexpr u32 NOTIFY_IDX_POST_SYNC = 0; // PostSync: NHR 主流向 mainThread 发 record
+constexpr u32 GO_SIZE_ARG_NUM = 4;
 
 CcuTempAllGatherConcurrentMeshMem2MemNHR::CcuTempAllGatherConcurrentMeshMem2MemNHR(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
@@ -317,7 +318,7 @@ HcclResult CcuTempAllGatherConcurrentMeshMem2MemNHR::LaunchNhrKernels(
         ConvertCcuToHccl(launchRet));
     if (nhrKernelNum > 1 && templateResource.threads.size() >= 3) {
         std::vector<uint64_t> die1Args = nhrTaskArgs;
-        for (u32 j = 0; j < 4; j++) {
+        for (u32 j = 0; j < GO_SIZE_ARG_NUM; j++) {
             die1Args[CcuAllGatherNHR1DMem2MemArgLayout::GO_SIZE_ADDR_OFFSET + j] = nhrGoSize_[1][j];
         }
         launchRet = HcommCcuKernelLaunch(

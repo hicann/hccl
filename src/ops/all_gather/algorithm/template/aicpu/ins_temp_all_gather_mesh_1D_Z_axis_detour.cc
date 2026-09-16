@@ -14,6 +14,10 @@
 #include "cost_model.h"
 
 namespace ops_hccl {
+constexpr u32 MAX_RANK_SIZE_FOR_MESH_1D = 8;
+constexpr int POD_TASK_NUM_MULTIPLE = 3;
+constexpr int TASK_NUM_MULTIPLE = 2;
+
 InsTempAllGatherMesh1D1DZAxisDetour::InsTempAllGatherMesh1D1DZAxisDetour(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : InsTempAllGatherMesh1D(param, rankId, subCommRanks)
@@ -22,7 +26,7 @@ InsTempAllGatherMesh1D1DZAxisDetour::~InsTempAllGatherMesh1D1DZAxisDetour() {}
 
 std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
+    if (param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
         return {};
     }
     // ZAxisDetour 两级传输：level0（server 内 mesh）传一半，level1（跨 server clos）传一半
@@ -37,7 +41,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     int kernelNum = param.isPod ? 24 : 16;
     int taskNum
         = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
-    taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
+    taskNum = param.isPod ? taskNum * POD_TASK_NUM_MULTIPLE : taskNum * TASK_NUM_MULTIPLE;
     float A0 = 0.0f;
     float A1 = 0.0f;
     CostModelManager::Global()->CalcMeshParam(
