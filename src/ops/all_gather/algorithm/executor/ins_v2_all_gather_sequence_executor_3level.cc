@@ -256,8 +256,8 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
     InsAlgTemplate1 Level1TempAlg(param, resCtx.topoInfo.userRank, levels_[1].hierarchyInfo);
     InsAlgTemplate2 Level2TempAlg(param, resCtx.topoInfo.userRank, levels_[2].hierarchyInfo);
 
-    rankIdxLevel0_ = myRank_ % levels_[0].rankSize;                         // level0 组内偏移
-    rankIdxLevel1_ = myRank_ % (levels_[0].rankSize * levels_[1].rankSize); // level1 组编号
+    rankIdxLevel0_ = myRank_ % levels_[0].rankSize; // level0 组内偏移
+    rankIdxLevel1_ = (myRank_ % (levels_[0].rankSize * levels_[1].rankSize)) / levels_[0].rankSize; // level1 组编号
     skipLevel1_ = (levels_[1].rankSize == 1);
     if (skipLevel1_) {
         HCCL_INFO("[InsV2AllGatherSequenceExecutor3Level][Orchestrate] level1 rankSize is 1, skip level1");
@@ -331,29 +331,26 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
     HCCL_INFO("[InsV2AllGatherParallelExecutor] AlgTemplate Level1 server is [%s]", tempAlgLevel1.Describe().c_str());
     HCCL_INFO("[InsV2AllGatherParallelExecutor] AlgTemplate Level2 server is [%s]", tempAlgLevel2.Describe().c_str());
 
-    u32 templateScratchMultiplierLevel0
-        = tempAlgLevel0.CalcScratchMultiple(BufferType::HCCL_BUFFER, BufferType::OUTPUT);
     u32 templateScratchMultiplierLevel1
         = tempAlgLevel1.CalcScratchMultiple(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER);
     u32 templateScratchMultiplierLevel2 = tempAlgLevel2.CalcScratchMultiple(BufferType::INPUT, BufferType::HCCL_BUFFER);
-    u32 totalScratchMultiple
-        = templateScratchMultiplierLevel0 * templateScratchMultiplierLevel1 * templateScratchMultiplierLevel2;
+    u32 totalScratchMultiple = templateScratchMultiplierLevel1 * templateScratchMultiplierLevel2;
 
     u64 scratchMemBlockSize = maxTmpMemSize_;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     if (totalScratchMultiple > 0) {
-        scratchMemBlockSize = (maxTmpMemSize_ / HCCL_MIN_SLICE_ALIGN / totalScratchMultiple) * HCCL_MIN_SLICE_ALIGN;
+        scratchMemBlockSize = (maxTmpMemSize_ / AICPU_ALIGN_SIZE / totalScratchMultiple) * AICPU_ALIGN_SIZE;
         scratchMemBlockSize = std::min(scratchMemBlockSize, transportBoundDataSize);
     }
+    u64 maxCountPerLoop = std::min(static_cast<u64>(scratchMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE))
+                          / AICPU_ALIGN_SIZE * AICPU_ALIGN_SIZE / dataTypeSize_;
 
-    u64 maxCountPerLoop
-        = (std::min(static_cast<u64>(scratchMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE)) / dataTypeSize_ / 10)
-          * 10;
     if (param.supportSymmetricMemory) {
         maxCountPerLoop = dataCount_;
         HCCL_INFO(
             "[InsV2AllGatherSequenceExecutor3Level][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
     }
+
     if (maxCountPerLoop == 0) {
         HCCL_ERROR(
             "[InsV2AllGatherParallelExecutor] myRank[%u] maxCountPerLoop is 0, "
@@ -398,37 +395,35 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         TemplateDataParams& tempAlgParamsLevel2) const
 {
     tempAlgParamsLevel2.buffInfo.inputPtr = param.inputPtr;
-    if (param.supportSymmetricMemory) {
+    tempAlgParamsLevel2.enableRemoteMemAccess = param.supportSymmetricMemory;
+    if (tempAlgParamsLevel2.enableRemoteMemAccess) {
         tempAlgParamsLevel2.buffInfo.outputPtr = param.outputPtr;
         tempAlgParamsLevel2.buffInfo.outBuffType = BufferType::OUTPUT;
+        tempAlgParamsLevel2.buffInfo.outBuffBaseOff = rankIdxLevel1_ * dataSize_;
+        tempAlgParamsLevel2.outputSliceStride = levels_[0].rankSize * levels_[1].rankSize * dataSize_;
+        ;
     } else {
         tempAlgParamsLevel2.buffInfo.outputPtr = resCtx.cclMem.addr;
         tempAlgParamsLevel2.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsLevel2.buffInfo.outBuffBaseOff = rankIdxLevel1_ * curCount * dataTypeSize_;
+        tempAlgParamsLevel2.outputSliceStride = curCount * dataTypeSize_ * levels_[1].rankSize;
     }
     tempAlgParamsLevel2.buffInfo.hcclBuff = resCtx.cclMem;
     tempAlgParamsLevel2.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsLevel2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParamsLevel2.buffInfo.inputSize = param.inputSize;
     tempAlgParamsLevel2.buffInfo.outputSize = param.outputSize;
-
     tempAlgParamsLevel2.buffInfo.inBuffBaseOff = dataOffset;
-    tempAlgParamsLevel2.buffInfo.outBuffBaseOff = 0;
-    tempAlgParamsLevel2.buffInfo.hcclBuffBaseOff
-        = skipLevel1_ ? 0 : (levels_[2].rankSize * levels_[1].rankSize * curCount * dataTypeSize_);
+    tempAlgParamsLevel2.buffInfo.hcclBuffBaseOff = rankIdxLevel1_ * curCount * dataTypeSize_;
+
     tempAlgParamsLevel2.sliceSize = curCount * dataTypeSize_;
     tempAlgParamsLevel2.count = curCount;
     tempAlgParamsLevel2.tailSize = tempAlgParamsLevel2.sliceSize;
-
     tempAlgParamsLevel2.inputSliceStride = 0;
-    tempAlgParamsLevel2.outputSliceStride = 0;
     tempAlgParamsLevel2.repeatNum = 1;
     tempAlgParamsLevel2.inputRepeatStride = 0;
     tempAlgParamsLevel2.outputRepeatStride = 0;
-    if (param.supportSymmetricMemory) {
-        tempAlgParamsLevel2.buffInfo.outBuffBaseOff = rankIdxLevel1_ * dataSize_;
-        tempAlgParamsLevel2.outputSliceStride = levels_[0].rankSize * levels_[1].rankSize * dataSize_;
-    }
-    tempAlgParamsLevel2.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
+
     HCCL_DEBUG(
         "[InsV2AllGatherSequenceExecutor3Level][GenTemplateAlgParamsLevel2] rank[%u] inBuffBaseOff[%llu] "
         "outBuffBaseOff[%llu] scratchBuffBaseOff[%llu] sliceSize[%llu] outputSliceStride[%llu]",
@@ -444,43 +439,40 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 curCount, const u64 dataOffset,
         TemplateDataParams& tempAlgParamsLevel1) const
 {
-    if (param.supportSymmetricMemory) {
+    tempAlgParamsLevel1.enableRemoteMemAccess = param.supportSymmetricMemory;
+    if (tempAlgParamsLevel1.enableRemoteMemAccess) {
         tempAlgParamsLevel1.buffInfo.inputPtr = param.outputPtr;
         tempAlgParamsLevel1.buffInfo.outputPtr = param.outputPtr;
         tempAlgParamsLevel1.buffInfo.inBuffType = BufferType::OUTPUT;
         tempAlgParamsLevel1.buffInfo.outBuffType = BufferType::OUTPUT;
-    } else {
-        tempAlgParamsLevel1.buffInfo.inputPtr = resCtx.cclMem.addr;
-        tempAlgParamsLevel1.buffInfo.outputPtr = resCtx.cclMem.addr;
-        tempAlgParamsLevel1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-        tempAlgParamsLevel1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    }
-    tempAlgParamsLevel1.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParamsLevel1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsLevel1.buffInfo.inputSize = param.inputSize;
-    tempAlgParamsLevel1.buffInfo.outputSize = param.outputSize;
-
-    tempAlgParamsLevel1.buffInfo.inBuffBaseOff = levels_[2].rankSize * levels_[1].rankSize * curCount * dataTypeSize_;
-    tempAlgParamsLevel1.buffInfo.outBuffBaseOff = 0;
-    tempAlgParamsLevel1.buffInfo.hcclBuffBaseOff = 0;
-    tempAlgParamsLevel1.sliceSize = curCount * dataTypeSize_;
-    tempAlgParamsLevel1.count = curCount;
-    tempAlgParamsLevel1.tailSize = tempAlgParamsLevel1.sliceSize;
-
-    tempAlgParamsLevel1.inputSliceStride = 0;
-    tempAlgParamsLevel1.outputSliceStride = 0;
-    tempAlgParamsLevel1.repeatNum = levels_[2].rankSize;
-    tempAlgParamsLevel1.inputRepeatStride = curCount * dataTypeSize_;
-    tempAlgParamsLevel1.outputRepeatStride = 0;
-    if (param.supportSymmetricMemory) {
         tempAlgParamsLevel1.buffInfo.inBuffBaseOff = rankIdxLevel0_ * dataSize_;
         tempAlgParamsLevel1.buffInfo.outBuffBaseOff = rankIdxLevel0_ * dataSize_;
         tempAlgParamsLevel1.inputSliceStride = levels_[0].rankSize * dataSize_;
         tempAlgParamsLevel1.outputSliceStride = levels_[0].rankSize * dataSize_;
         tempAlgParamsLevel1.inputRepeatStride = levels_[0].rankSize * levels_[1].rankSize * dataSize_;
         tempAlgParamsLevel1.outputRepeatStride = levels_[0].rankSize * levels_[1].rankSize * dataSize_;
+    } else {
+        tempAlgParamsLevel1.buffInfo.inputPtr = resCtx.cclMem.addr;
+        tempAlgParamsLevel1.buffInfo.outputPtr = resCtx.cclMem.addr;
+        tempAlgParamsLevel1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsLevel1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsLevel1.buffInfo.inBuffBaseOff = 0;
+        tempAlgParamsLevel1.buffInfo.outBuffBaseOff = 0;
+        tempAlgParamsLevel1.inputSliceStride = curCount * dataTypeSize_;
+        tempAlgParamsLevel1.outputSliceStride = curCount * dataTypeSize_;
+        tempAlgParamsLevel1.inputRepeatStride = curCount * dataTypeSize_ * levels_[1].rankSize;
+        tempAlgParamsLevel1.outputRepeatStride = curCount * dataTypeSize_ * levels_[1].rankSize;
     }
-    tempAlgParamsLevel1.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
+    tempAlgParamsLevel1.buffInfo.hcclBuff = resCtx.cclMem;
+    tempAlgParamsLevel1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsLevel1.buffInfo.inputSize = param.inputSize;
+    tempAlgParamsLevel1.buffInfo.outputSize = param.outputSize;
+    tempAlgParamsLevel1.buffInfo.hcclBuffBaseOff = 0;
+    tempAlgParamsLevel1.count = curCount;
+    tempAlgParamsLevel1.sliceSize = curCount * dataTypeSize_;
+    tempAlgParamsLevel1.tailSize = tempAlgParamsLevel1.sliceSize;
+    tempAlgParamsLevel1.repeatNum = levels_[2].rankSize;
+
     HCCL_DEBUG(
         "[InsV2AllGatherSequenceExecutor3Level][GenTemplateAlgParamsLevel10] rank[%u] inBuffBaseOff[%llu] "
         "outBuffBaseOff[%llu] scratchBuffBaseOff[%llu] sliceSize[%llu] outputSliceStride[%llu] "
@@ -497,12 +489,15 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 curCount, const u64 dataOffset,
         TemplateDataParams& tempAlgParamsLevel0) const
 {
-    if (param.supportSymmetricMemory) {
+    tempAlgParamsLevel0.enableRemoteMemAccess = param.supportSymmetricMemory;
+    if (tempAlgParamsLevel0.enableRemoteMemAccess) {
         tempAlgParamsLevel0.buffInfo.inputPtr = param.outputPtr;
         tempAlgParamsLevel0.buffInfo.inBuffType = BufferType::OUTPUT;
+        tempAlgParamsLevel0.buffInfo.inBuffBaseOff = dataOffset;
     } else {
         tempAlgParamsLevel0.buffInfo.inputPtr = resCtx.cclMem.addr;
         tempAlgParamsLevel0.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
+        tempAlgParamsLevel0.buffInfo.inBuffBaseOff = 0;
     }
     tempAlgParamsLevel0.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsLevel0.buffInfo.hcclBuff = resCtx.cclMem;
@@ -511,11 +506,10 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     tempAlgParamsLevel0.buffInfo.inputSize = param.inputSize;
     tempAlgParamsLevel0.buffInfo.outputSize = param.outputSize;
 
-    tempAlgParamsLevel0.buffInfo.inBuffBaseOff = 0;
     tempAlgParamsLevel0.buffInfo.outBuffBaseOff = dataOffset;
     tempAlgParamsLevel0.buffInfo.hcclBuffBaseOff = 0;
-    tempAlgParamsLevel0.sliceSize = curCount * dataTypeSize_;
     tempAlgParamsLevel0.count = curCount;
+    tempAlgParamsLevel0.sliceSize = curCount * dataTypeSize_;
     tempAlgParamsLevel0.tailSize = tempAlgParamsLevel0.sliceSize;
 
     tempAlgParamsLevel0.inputSliceStride = 0;
@@ -523,11 +517,10 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     tempAlgParamsLevel0.repeatNum = levels_[1].rankSize * levels_[2].rankSize;
     tempAlgParamsLevel0.inputRepeatStride = curCount * dataTypeSize_;
     tempAlgParamsLevel0.outputRepeatStride = levels_[0].rankSize * dataSize_;
-    if (param.supportSymmetricMemory) {
+    if (tempAlgParamsLevel0.enableRemoteMemAccess) {
         tempAlgParamsLevel0.inputSliceStride = dataSize_;
         tempAlgParamsLevel0.inputRepeatStride = levels_[0].rankSize * dataSize_;
     }
-    tempAlgParamsLevel0.enableRemoteMemAccess = (param.opMode == OpMode::OFFLOAD) || param.supportSymmetricMemory;
 
     HCCL_DEBUG(
         "[InsV2AllGatherSequenceExecutor3Level][GenTemplateAlgParamsLevel0] rank[%d] inBuffBaseOff[%llu] "

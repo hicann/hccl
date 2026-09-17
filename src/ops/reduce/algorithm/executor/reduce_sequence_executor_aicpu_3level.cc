@@ -594,7 +594,7 @@ void ReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL2.tailSize = tailSizeRSL2;
 
     tempAlgParamsAGL2.inputSliceStride = tempAlgParamsAGL2.sliceSize;
-    tempAlgParamsAGL2.outputSliceStride = sliceSizeRSL1;
+    tempAlgParamsAGL2.outputSliceStride = tempAlgParamsAGL2.sliceSize;
 
     HCCL_INFO(
         "[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL2.inputSliceStride [%llu], "
@@ -628,7 +628,7 @@ void ReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL1.tailSize = tailSize;
 
     tempAlgParamsAGL1.inputSliceStride = tempAlgParamsAGL1.sliceSize;
-    tempAlgParamsAGL1.outputSliceStride = 0;
+    tempAlgParamsAGL1.outputSliceStride = tempAlgParamsAGL1.sliceSize;
 
     HCCL_INFO(
         "[ReduceSequenceExecutorAicpu3Level] loop [%llu] AGL1.inputSliceStride [%llu], "

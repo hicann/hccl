@@ -108,6 +108,7 @@ private:
         const AicpuNHRStepInfo& stepInfo, const u32& channelIdx, u32 step, bool& postLocalCopyLaunched);
     bool readLastStepToOutput_{false};
     bool skipOwnSliceCopy_{false};
+    bool isOutputCclBuff_{false};
     std::vector<u32> lastStepReadSliceIdxs_;
     u64 dataTypeSize_{0};
     u32 maxChannelsPerRank_ = 1;

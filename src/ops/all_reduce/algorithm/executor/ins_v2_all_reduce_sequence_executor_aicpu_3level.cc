@@ -590,7 +590,7 @@ void InsV2AllReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL2.tailSize = tailSizeRSL2;
 
     tempAlgParamsAGL2.inputSliceStride = tempAlgParamsAGL2.sliceSize;
-    tempAlgParamsAGL2.outputSliceStride = supportSymmetricMemory_ ? tempAlgParamsAGL2.sliceSize : sliceSizeRSL1;
+    tempAlgParamsAGL2.outputSliceStride = tempAlgParamsAGL2.sliceSize;
 
     HCCL_INFO(
         "[InsV2AllReduceSequenceExecutorAicpu3Level] loop [%u] AGL2.inputSliceStride [%u], "
@@ -626,7 +626,7 @@ void InsV2AllReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL1.tailSize = tailSize;
 
     tempAlgParamsAGL1.inputSliceStride = tempAlgParamsAGL1.sliceSize;
-    tempAlgParamsAGL1.outputSliceStride = supportSymmetricMemory_ ? tempAlgParamsAGL1.sliceSize : 0;
+    tempAlgParamsAGL1.outputSliceStride = tempAlgParamsAGL1.sliceSize;
 
     HCCL_INFO(
         "[InsV2AllReduceSequenceExecutorAicpu3Level] loop [%u] AGL1.inputSliceStride [%u], "

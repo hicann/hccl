@@ -161,6 +161,7 @@ HcclResult InsTempAllGatherNHR::KernelRun(
     tempAlgParams_ = tempAlgParams;
     dataType_ = param.DataDes.dataType;
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
+    isOutputCclBuff_ = (tempAlgParams.buffInfo.outBuffType == BufferType::HCCL_BUFFER);
 
     bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
     isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
@@ -239,10 +240,16 @@ InsTempAllGatherNHR::CalcSliceInfo(const AicpuNHRStepInfo& stepInfo, u32 rpt, u3
     info.rxPartialOffset = (info.rxIdx == templateRankSize_ - 1 && tempAlgParams_.tailSize != 0) ?
                                dataOffsetTail_[channelIdx] :
                                dataOffset_[channelIdx];
-    const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
-    info.scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
-    info.txScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.txIdx + info.txPartialOffset;
-    info.rxScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.rxIdx + info.rxPartialOffset;
+    if (isOutputCclBuff_) {
+        info.scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+        info.txScratchOff = info.scratchBase + tempAlgParams_.outputSliceStride * info.txIdx + info.txPartialOffset;
+        info.rxScratchOff = info.scratchBase + tempAlgParams_.outputSliceStride * info.rxIdx + info.rxPartialOffset;
+    } else {
+        const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
+        info.scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
+        info.txScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.txIdx + info.txPartialOffset;
+        info.rxScratchOff = info.scratchBase + tempAlgParams_.sliceSize * info.rxIdx + info.rxPartialOffset;
+    }
     info.outBase = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
     info.txOutOff = info.outBase + tempAlgParams_.outputSliceStride * info.txIdx + info.txPartialOffset;
     info.rxOutOff = info.outBase + tempAlgParams_.outputSliceStride * info.rxIdx + info.rxPartialOffset;
@@ -470,9 +477,16 @@ HcclResult InsTempAllGatherNHR::LocalDataCopy(const std::vector<ThreadHandle>& t
             DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOff, partialSliceSize, sliceCount);
             CHK_RET(LocalCopy(threads[channelIdx], srcSlice, dstSlice));
         } else {
-            const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
-            const u64 scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
-            const u64 scOff = tempAlgParams_.sliceSize * myAlgRank + scratchBaseoff + partialOffset;
+            u64 scratchBaseoff;
+            u64 scOff;
+            if (isOutputCclBuff_) {
+                scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
+                scOff = tempAlgParams_.outputSliceStride * myAlgRank + scratchBaseoff + partialOffset;
+            } else {
+                const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
+                scratchBaseoff = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
+                scOff = tempAlgParams_.sliceSize * myAlgRank + scratchBaseoff + partialOffset;
+            }
             if (tempAlgParams_.buffInfo.inputPtr == tempAlgParams_.buffInfo.hcclBuff.addr && inOff == scOff) {
                 continue;
             }
@@ -490,7 +504,7 @@ HcclResult InsTempAllGatherNHR::PostLocalCopy(const ThreadHandle& thread, const 
         HCCL_INFO("[InsTempAllGatherNHR] PostLocalCopy skip because remote memory access enabled");
         return HcclResult::HCCL_SUCCESS;
     }
-    if (tempAlgParams_.buffInfo.outputPtr == tempAlgParams_.buffInfo.hcclBuff.addr) {
+    if (tempAlgParams_.buffInfo.outBuffType == BufferType::HCCL_BUFFER) {
         HCCL_INFO("[InsTempAllGatherNHR] PostLocalCopy skip because output is scratch");
         return HcclResult::HCCL_SUCCESS;
     }
@@ -500,8 +514,8 @@ HcclResult InsTempAllGatherNHR::PostLocalCopy(const ThreadHandle& thread, const 
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
-        const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
         const u64 scratchRepeatStride = tempAlgParams_.sliceSize * templateRankSize_;
+        const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
         const u64 scratchBase = tempAlgParams_.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
 
         for (auto rank : subCommRanks_[0]) {

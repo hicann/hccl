@@ -314,7 +314,7 @@ void InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     interTempDataParams.tailSize = interTempDataParams.sliceSize;
 
     interTempDataParams.inputSliceStride = 0;
-    interTempDataParams.outputSliceStride = 0; // 第一阶段不做后拷贝
+    interTempDataParams.outputSliceStride = interTempDataParams.sliceSize;
     interTempDataParams.repeatNum = 1;
     interTempDataParams.inputRepeatStride = 0;
     interTempDataParams.outputRepeatStride = 0;
