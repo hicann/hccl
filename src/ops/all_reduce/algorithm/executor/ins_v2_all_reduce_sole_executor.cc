@@ -468,6 +468,9 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AivAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true;
     topo.maxSupportRankSize = MAX_RANK_SIZE; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->topLevelUboe;
+    };
 
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
@@ -487,6 +490,9 @@ REGISTER_ALG_ATTRS(
     topo.maxSupportRankSize = MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->topLevelUboe;
+    };
 
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {

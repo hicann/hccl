@@ -298,7 +298,7 @@ __attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, cons
         const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
         if (attrs != nullptr && attrs->topo.topoPriorityCheck && attrs->topo.topoPriorityCheck(topoInfo)) {
             priorityByKey[{attrs->opType, attrs->engine}].push_back(i);
-            HCCL_INFO("[CostModelManager] topoPriority matched algName=%s.", costModel.costAlgoParams[i].algName);
+            HCCL_INFO("[CostModelManager] algName=%s matched: topoPriority.", costModel.costAlgoParams[i].algName);
         }
     }
 
@@ -317,6 +317,12 @@ __attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, cons
 
     if (toRemove.empty()) {
         return;
+    }
+
+    if (UNLIKELY(HcclCheckLogLevel(DLOG_INFO))) {
+        for (int idx : toRemove) {
+            HCCL_INFO("[CostModelManager] algName=%s filtered: topoPriority.", costModel.costAlgoParams[idx].algName);
+        }
     }
 
     int newCount = costModel.count - static_cast<int>(toRemove.size());

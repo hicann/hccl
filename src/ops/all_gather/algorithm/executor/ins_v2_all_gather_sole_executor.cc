@@ -492,6 +492,9 @@ REGISTER_ALG_ATTRS(
     AivAllGatherSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxSupportRankSize = MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->topLevelUboe;
+    };
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         void* bufAddr = nullptr;
         uint64_t bufSize = 0;

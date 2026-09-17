@@ -221,7 +221,7 @@ REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_RECEIVE, AivRecvSoleMesh, InsV2Recv
 REGISTER_ALG_ATTRS(
     AivRecvSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return !t->level2UbRtp;
+        return !t->level2UbRtp && !t->topLevelUboe;
     };);
 
 } // namespace ops_hccl

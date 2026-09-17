@@ -172,7 +172,7 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     param.hcclComm = comm;
     // 获取基础拓扑
     CHK_RET(HcclCalcTopoInfo(comm, param, topoInfo));
-    if (topoInfo->topLevelUboe) {
+    if (topoInfo->topLevelUboe && param.commOpExpansionMode != HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY) {
         param.opExecuteConfig = OpExecuteConfig::AICPU_TS;
     }
 

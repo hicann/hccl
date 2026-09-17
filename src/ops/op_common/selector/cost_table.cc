@@ -206,7 +206,7 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         std::string name = (algName != nullptr) ? algName : "";
         const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(name);
         if (attrs == nullptr) {
-            HCCL_DEBUG("[InitAndFilterByAttrs] algName=%s filtered: no attrs.", name.c_str());
+            HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: no attrs.", name.c_str());
             continue;
         }
         if (attrs->opType != opParam.opType) {
@@ -235,10 +235,19 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
             const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(ct.costs[i].algName);
             if (attrs != nullptr && attrs->op.opPriorityCheck && attrs->op.opPriorityCheck(opParam, topoInfo)) {
                 priorityIndices.push_back(i);
-                HCCL_INFO("[InitAndFilterByAttrs] opPriority matched algName=%s.", ct.costs[i].algName);
+                HCCL_INFO("[InitAndFilterByAttrs] algName=%s matched: opPriority.", ct.costs[i].algName);
             }
         }
         if (!priorityIndices.empty() && static_cast<int>(priorityIndices.size()) < ct.count) {
+            if (UNLIKELY(HcclCheckLogLevel(DLOG_INFO))) {
+                for (int i = 0; i < ct.count; ++i) {
+                    bool isPriority
+                        = std::find(priorityIndices.begin(), priorityIndices.end(), i) != priorityIndices.end();
+                    if (!isPriority) {
+                        HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: opPriority.", ct.costs[i].algName);
+                    }
+                }
+            }
             AlgoCost* newCosts = new (std::nothrow) AlgoCost[ct.count]();
             if (newCosts == nullptr) {
                 HCCL_ERROR("[InitAndFilterByAttrs] alloc newCosts for opPriority failed.");

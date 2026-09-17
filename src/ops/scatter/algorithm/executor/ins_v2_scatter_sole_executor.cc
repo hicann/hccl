@@ -369,6 +369,9 @@ REGISTER_ALG_ATTRS(
     AivScatterSoleMesh, topo.maxSupportRankSize = MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->topLevelUboe;
+    };
     // 参照 allgather AIV 注册(AivAllGatherSoleMesh)迁移旧 selector 数据量限制
     // (scatter_auto_selector.cc:271)：totalSize <= cclBufferSize * AIV_MAX_CCL_LOOP_NUM
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
