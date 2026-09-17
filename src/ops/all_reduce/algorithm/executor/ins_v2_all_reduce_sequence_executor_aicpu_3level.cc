@@ -581,7 +581,7 @@ void InsV2AllReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL2.count = currDataCount;
     u64 inBaseOff
         = supportSymmetricMemory_ ? symMemBaseOffRSL1 + rankIdxLevel1_ * sliceSizeRSL1 : rankIdxLevel1_ * sliceSizeRSL1;
-    u64 outBaseOff = supportSymmetricMemory_ ? symMemBaseOffRSL1 : 0;
+    u64 outBaseOff = supportSymmetricMemory_ ? symMemBaseOffRSL1 + rankIdxLevel1_ * sliceSizeRSL1 : 0;
     tempAlgParamsAGL2.buffInfo.inBuffBaseOff = inBaseOff;
     tempAlgParamsAGL2.buffInfo.outBuffBaseOff = outBaseOff;
     tempAlgParamsAGL2.buffInfo.hcclBuffBaseOff = supportSymmetricMemory_ ? 0 : rankIdxLevel1_ * sliceSizeRSL1;
@@ -590,7 +590,7 @@ void InsV2AllReduceSequenceExecutorAicpu3Level<
     tempAlgParamsAGL2.tailSize = tailSizeRSL2;
 
     tempAlgParamsAGL2.inputSliceStride = tempAlgParamsAGL2.sliceSize;
-    tempAlgParamsAGL2.outputSliceStride = sliceSizeRSL1;
+    tempAlgParamsAGL2.outputSliceStride = supportSymmetricMemory_ ? tempAlgParamsAGL2.sliceSize : sliceSizeRSL1;
 
     HCCL_INFO(
         "[InsV2AllReduceSequenceExecutorAicpu3Level] loop [%u] AGL2.inputSliceStride [%u], "

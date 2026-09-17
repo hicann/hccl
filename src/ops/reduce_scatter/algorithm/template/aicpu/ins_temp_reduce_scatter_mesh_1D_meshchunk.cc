@@ -257,12 +257,13 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::DoMeshChunk(
             for (u32 repeatIdx = 0; repeatIdx < repeatNum; repeatIdx++) {
                 u64 inputBaseOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
                                    + myAlgRank * tempAlgParams.inputSliceStride;
+                u64 sliceExchOffset = supportSymmetricMemAccess_ ? sliceSendOffset_ : sliceRecvOffset_;
                 DataSlice rxSrcSlice = DataSlice(
                     supportSymmetricMemAccess_ ? remoteBuffAddr : tempAlgParams.buffInfo.inputPtr,
-                    inputBaseOff + sliceRecvOffset_, sliceSize[i], sliceSize[i] / dataTypeSize_); // 接收源
+                    inputBaseOff + sliceExchOffset, sliceSize[i], sliceSize[i] / dataTypeSize_); // 接收源
                 DataSlice rxDstSlice = DataSlice(
                     supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr,
-                    supportSymmetricMemAccess_ ? (inputBaseOff + sliceRecvOffset_) :
+                    supportSymmetricMemAccess_ ? (inputBaseOff + sliceExchOffset) :
                                                  (remoteBuffBaseOff + sliceRecvOffset_),
                     sliceSize[i], sliceSize[i] / dataTypeSize_); // 接收目标
                 DataSlice txSrcSlice = DataSlice(

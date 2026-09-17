@@ -265,6 +265,15 @@ HcclResult InsTempReduceScatterMesh1D::RunReduceScatter(
             sliceCount = tempAlgParam.tailSize / DATATYPE_SIZE_TABLE[dataType_];
             outputSliceStride = tempAlgParam.tailSize;
         }
+        if (supportSymmetricMemAccess_) {
+            // 对称路径收发区域固定为本 rank 自己的 slice，交换大小取决于本 rank 是否为尾块，与对端无关
+            sliceSize = tempAlgParam.sliceSize;
+            sliceCount = tempAlgParam.sliceSize / DATATYPE_SIZE_TABLE[dataType_];
+            if ((myAlgRank == templateRankSize_ - 1) && (tempAlgParam.tailSize > 0)) {
+                sliceSize = tempAlgParam.tailSize;
+                sliceCount = tempAlgParam.tailSize / DATATYPE_SIZE_TABLE[dataType_];
+            }
+        }
         u32 remoteRank = subCommRanks_[0][nextRank];
         HCCL_DEBUG(
             "[InsTempReduceScatterMesh1D][RunReduceScatter] myRank[%d], toRank[%d], fromRank[%d]", myRank_, remoteRank,

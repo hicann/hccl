@@ -1230,14 +1230,18 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         // 对称内存路径：RS 完成后 input[mySlice] 已是归约结果，拷贝到 output[mySlice] 供 AG 阶段使用
         if (supportSymmetricMemory_ && currCountPart0 + currCountPart1 > 0) {
             if (currCountPart0 > 0) {
-                u64 mySliceOffset = rankBaseOffInterAGMap_.at(myRank_) + dataOffset0;
+                // Step2 RS NHR 结果位于本 rank 的 intra slice 内 serverIdx*halfStride 处
+                u64 mySliceOffset = rankBaseOffInterAGMap_.at(myRank_) + dataOffset0
+                                    + tempVirtRankMapIntra_.at(myRank_) * meshPartDataMap_.at(myRank_).first;
                 u64 mySliceSize = meshPartDataMap_.at(myRank_).second;
                 DataSlice copySrcSlice(param.inputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
                 DataSlice copyDstSlice(param.outputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
                 CHK_RET(LocalCopy(threads_[0], copySrcSlice, copyDstSlice));
             }
             if (currCountPart1 > 0) {
-                u64 mySliceOffset = rankBaseOffIntraAGMap_.at(myRank_) + dataOffset1;
+                // Step2 RS Mesh 结果位于本 rank 的 server half 内 intraPos*sliceStride 处
+                u64 mySliceOffset = rankBaseOffIntraAGMap_.at(myRank_) + dataOffset1
+                                    + tempVirtRankMapInter_.at(myRank_) * nhrPartDataMap_.at(myRank_).first;
                 u64 mySliceSize = nhrPartDataMap_.at(myRank_).second;
                 DataSlice copySrcSlice(param.inputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);
                 DataSlice copyDstSlice(param.outputPtr, mySliceOffset, mySliceSize, mySliceSize / dataTypeSize_);

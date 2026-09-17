@@ -257,7 +257,13 @@ HcclResult InsTempAllReduceNHR::KernelRun(
         // TwoShot算法，第一步ReduceScatter
         CHK_RET(RunReduceScatter(tempAlgParams, templateResource.channels, templateResource.threads, channelIdx));
     }
-    // 对称内存路径：RS 完成后 input[mySlice] 已是归约结果，拷贝到 output[mySlice] 供 AG 阶段使用
+    // 对称内存路径：RS 完成后需等待所有线程完成归约，再拷贝 input[mySlice] 到 output[mySlice]
+    if (supportSymmetricMemAccess_ && threadNum_ > 1) {
+        std::vector<ThreadHandle> subThreads(
+            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
+        GetNotifyIdxSubToMain(notifyIdxSubToMain_);
+        CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
+    }
     if (supportSymmetricMemAccess_) {
         u64 mySliceSize = (myRankIdx_ == templateRankSize_ - 1) ? tailSize_ : sliceSize_;
         u64 mySliceOffset = myRankIdx_ * sliceSize_;
@@ -268,6 +274,12 @@ HcclResult InsTempAllReduceNHR::KernelRun(
             tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff + mySliceOffset, mySliceSize,
             mySliceSize / dataTypeSize_);
         CHK_RET(LocalCopy(templateResource.threads[0], copySrcSlice, copyDstSlice));
+    }
+    if (supportSymmetricMemAccess_ && threadNum_ > 1) {
+        std::vector<ThreadHandle> subThreads(
+            templateResource.threads.begin() + 1, templateResource.threads.begin() + threadNum_);
+        GetNotifyIdxMainToSub(notifyIdxMainToSub_);
+        CHK_RET(PreSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxMainToSub_));
     }
     for (u32 channelIdx = 0; channelIdx < channelsPerRank_; channelIdx++) {
         // TwoShot算法，第二步AllGather
