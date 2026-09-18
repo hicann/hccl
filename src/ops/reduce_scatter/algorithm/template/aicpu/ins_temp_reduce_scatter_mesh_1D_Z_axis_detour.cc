@@ -22,12 +22,14 @@ InsTempReduceScatterMesh1DZAxisDetour::~InsTempReduceScatterMesh1DZAxisDetour() 
 
 std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
+    if (param.rankSize <= 1 || param.rankSize > 8) {
         return {};
     }
-    // ZAxisDetour 两级传输：level0（server 内 mesh）传一半，level1（跨 server）传一半
-    // level0DataRatio_ = 0.5f（SetchannelsPerRank 中设置）
-    float level0Ratio = 0.5f;
+    // Supported level1 layouts have total bandwidth weight 8 (one 8-port channel or two 6+2 channels).
+    constexpr u32 LEVEL1_BANDWIDTH = 8;
+    // rankSize is the local mesh group size, including self, even for multi-server executors.
+    const u32 level0Bandwidth = param.rankSize - 1;
+    float level0Ratio = static_cast<float>(level0Bandwidth) / (level0Bandwidth + LEVEL1_BANDWIDTH);
     float level1Ratio = 1.0f - level0Ratio;
     float nLevel0 = param.dataRatio * level0Ratio;
     float nLevel1 = param.dataRatio * level1Ratio;
@@ -49,7 +51,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     CostModelManager::Global()->CalcMeshParam(nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, false);
     float A = std::max(A0, A1);
 
-    // B: 本地操作，两级各处理一半数据，reduce (rankSize-1) 份
+    // B: 本地操作，两级合计处理完整数据，reduce (rankSize-1) 份
     float B1 = 0.0f;
     float B2 = 0.0f;
     if (param.inputBuffer != param.scratchBuffer) {
@@ -95,8 +97,8 @@ HcclResult InsTempReduceScatterMesh1DZAxisDetour::CalcRes(
         resourceRequest.slaveThreadNum);
     HCCL_INFO(
         "[InsTempReduceScatterMesh1DZAxisDetour][CalcRes]myRank[%u], channelsPerRank_[%u], "
-        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
-        myRank_, channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], templateRankSize_[%u]",
+        myRank_, channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, templateRankSize_);
     return HCCL_SUCCESS;
 }
 
@@ -115,9 +117,9 @@ HcclResult InsTempReduceScatterMesh1DZAxisDetour::CalcDataSplitByPortGroup(
     std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset)
 {
     HCCL_INFO("[InsTempReduceScatterMesh1DZAxisDetour][CalcDataSplitByPortGroup] Run Start");
-    return CalcDataSplitByPortGroupZAxisDetour(
+    return CalcDataSplitByBandwidthZAxisDetour(
         totalDataCount, dataTypeSize, channels, elemCountOut, sizeOut, elemOffset, level0ChannelNumPerRank_,
-        level1ChannelNumPerRank_, level0DataRatio_);
+        level1ChannelNumPerRank_, templateRankSize_);
 }
 
 HcclResult
@@ -127,15 +129,12 @@ InsTempReduceScatterMesh1DZAxisDetour::SetchannelsPerRank(const std::map<u32, st
         channels.empty(), HCCL_ERROR("[InsTempReduceScatterMesh1DZAxisDetour][SetchannelsPerRank] channels is empty."),
         HCCL_E_INTERNAL);
     channelsPerRank_ = CalcChannelsPerRank(channels);
-    if (channelsPerRank_ > 1) {
-        level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;
-        level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
-        level0DataRatio_ = (templateRankSize_ == 2) ? 0.25f : 0.5f;
-    }
+    level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;
+    level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
     HCCL_INFO(
         "[InsTempReduceScatterMesh1DZAxisDetour][SetchannelsPerRank], channelsPerRank_[%u], "
-        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
-        channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], templateRankSize_[%u]",
+        channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, templateRankSize_);
     return HCCL_SUCCESS;
 }
 

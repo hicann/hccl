@@ -26,11 +26,14 @@ InsTempAllGatherMesh1D1DZAxisDetour::~InsTempAllGatherMesh1D1DZAxisDetour() {}
 
 std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
+    if (param.rankSize <= 1 || param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
         return {};
     }
-    // ZAxisDetour 两级传输：level0（server 内 mesh）传一半，level1（跨 server clos）传一半
-    float level0Ratio = 0.5f;
+    // Supported level1 layouts have total bandwidth weight 8 (one 8-port channel or two 6+2 channels).
+    constexpr u32 LEVEL1_BANDWIDTH = 8;
+    // rankSize is the local mesh group size, including self, even for multi-server executors.
+    const u32 level0Bandwidth = param.rankSize - 1;
+    float level0Ratio = static_cast<float>(level0Bandwidth) / (level0Bandwidth + LEVEL1_BANDWIDTH);
     float level1Ratio = 1.0f - level0Ratio;
     float nLevel0 = param.dataRatio * level0Ratio;
     float nLevel1 = param.dataRatio * level1Ratio;
@@ -49,7 +52,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
         nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, param.isPod);
     float A = std::max(A0, A1);
 
-    // B: 本地拷贝，两级各处理一半数据
+    // B: 本地拷贝，两级合计处理完整数据
     float B = 0.0f;
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
@@ -119,11 +122,14 @@ HcclResult InsTempAllGatherMesh1D1DZAxisDetour::CalcDataSplitByPortGroup(
     std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset)
 {
     HCCL_INFO(
-        "[InsTempAllGatherMesh1D1DZAxisDetour][CalcDataSplitByPortGroup] Run Start[%u][%u][%f]\n",
-        level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
-    return CalcDataSplitByPortGroupZAxisDetour(
+        "[InsTempAllGatherMesh1D1DZAxisDetour][CalcDataSplitByPortGroup] Run Start[%u][%u][%u]\n",
+        level0ChannelNumPerRank_, level1ChannelNumPerRank_, templateRankSize_);
+    // Thread resources use the maximum channel count; split data by this peer's actual channels.
+    const u32 level1ChannelNum
+        = channels.size() > level0ChannelNumPerRank_ ? static_cast<u32>(channels.size()) - level0ChannelNumPerRank_ : 0;
+    return CalcDataSplitByBandwidthZAxisDetour(
         totalDataCount, dataTypeSize, channels, elemCountOut, sizeOut, elemOffset, level0ChannelNumPerRank_,
-        level1ChannelNumPerRank_, level0DataRatio_);
+        level1ChannelNum, templateRankSize_);
 }
 
 HcclResult
@@ -131,15 +137,12 @@ InsTempAllGatherMesh1D1DZAxisDetour::SetchannelsPerRank(const std::map<u32, std:
 {
     CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
     channelsPerRank_ = CalcChannelsPerRank(channels);
-    if (channelsPerRank_ > 1) {
-        level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;
-        level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
-        level0DataRatio_ = (templateRankSize_ == 2) ? 0.25f : 0.5f;
-    }
+    level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;
+    level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
     HCCL_INFO(
         "[InsTempAllGatherMesh1D1DZAxisDetour][SetchannelsPerRank], channelsPerRank_[%u], "
-        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], level0DataRatio_[%.2f]",
-        channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, level0DataRatio_);
+        "level0ChannelNumPerRank_[%u], level1ChannelNumPerRank_[%u], templateRankSize_[%u]",
+        channelsPerRank_, level0ChannelNumPerRank_, level1ChannelNumPerRank_, templateRankSize_);
     return HCCL_SUCCESS;
 }
 

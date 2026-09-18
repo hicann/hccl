@@ -141,6 +141,85 @@ HcclResult CalcDataSplitByPortGroupZAxisDetour(
 
     return HcclResult::HCCL_SUCCESS;
 }
+
+// The weights fit in u32, so splitting the quotient and remainder avoids count * weight overflow.
+static u64 CalcDetourSplitCount(u64 count, u64 dataTypeSize, u32 weight, u32 totalWeight)
+{
+    u64 splitCount = count / totalWeight * weight + count % totalWeight * weight / totalWeight;
+    if (AICPU_ALIGN_SIZE % dataTypeSize == 0) {
+        const u64 alignCount = AICPU_ALIGN_SIZE / dataTypeSize;
+        const u64 alignedCount = splitCount / alignCount * alignCount;
+        // Preserve small nonempty slices when rounding down would remove their data entirely.
+        if (alignedCount != 0) {
+            splitCount = alignedCount;
+        }
+    }
+    return splitCount;
+}
+
+HcclResult CalcDataSplitByBandwidthZAxisDetour(
+    const u64 totalDataCount, const u64 dataTypeSize, const std::vector<ChannelInfo>& channels,
+    std::vector<u64>& elemCountOut, std::vector<u64>& sizeOut, std::vector<u64>& elemOffset,
+    const u32 level0ChannelNumPerRank, const u32 level1ChannelNumPerRank, const u32 serverRankSize)
+{
+    elemCountOut.clear();
+    sizeOut.clear();
+    elemOffset.clear();
+
+    CHK_PRT_RET(
+        dataTypeSize == 0 || totalDataCount > std::numeric_limits<u64>::max() / dataTypeSize || serverRankSize == 0,
+        HCCL_ERROR("[CalcDataSplitByBandwidthZAxisDetour] Invalid count, data type size or server rank size."),
+        HCCL_E_PARA);
+    // Detour channels are ordered as one intra-server channel followed by the inter-server channels.
+    CHK_PRT_RET(
+        level0ChannelNumPerRank != MESH_CHANNELS_NUM
+            || static_cast<u64>(level0ChannelNumPerRank) + level1ChannelNumPerRank != channels.size(),
+        HCCL_ERROR("[CalcDataSplitByBandwidthZAxisDetour] Invalid channel layout."), HCCL_E_PARA);
+
+    // Only remote ranks in the local server contribute level0 bandwidth.
+    const u32 level0Weight = serverRankSize - 1;
+    u64 level1Bandwidth = 0;
+    for (u32 channelIdx = level0ChannelNumPerRank; channelIdx < channels.size(); ++channelIdx) {
+        const u32 ports = channels[channelIdx].portGroupSize;
+        CHK_PRT_RET(
+            ports == 0 || level1Bandwidth + ports > std::numeric_limits<u32>::max() - level0Weight,
+            HCCL_ERROR("[CalcDataSplitByBandwidthZAxisDetour] Invalid level1 port weight."), HCCL_E_PARA);
+        level1Bandwidth += ports;
+    }
+
+    u64 level0DataCount = totalDataCount;
+    if (level1ChannelNumPerRank != 0) {
+        const u32 totalWeight = level0Weight + static_cast<u32>(level1Bandwidth);
+        level0DataCount = CalcDetourSplitCount(totalDataCount, dataTypeSize, level0Weight, totalWeight);
+    }
+    elemCountOut.push_back(level0DataCount);
+
+    const u64 level1DataCount = totalDataCount - level0DataCount;
+    u64 remainingCount = level1DataCount;
+    for (u32 channelIdx = level0ChannelNumPerRank; channelIdx < channels.size(); ++channelIdx) {
+        const u64 count = channelIdx == channels.size() - 1 ?
+                              remainingCount :
+                              CalcDetourSplitCount(
+                                  level1DataCount, dataTypeSize, channels[channelIdx].portGroupSize,
+                                  static_cast<u32>(level1Bandwidth));
+        elemCountOut.push_back(count);
+        remainingCount -= count;
+    }
+
+    u64 offset = 0;
+    for (const u64 count : elemCountOut) {
+        const u64 size = count * dataTypeSize;
+        sizeOut.push_back(size);
+        elemOffset.push_back(offset);
+        offset += size;
+    }
+    HCCL_INFO(
+        "[CalcDataSplitByBandwidthZAxisDetour] totalDataCount[%llu], level0DataCount[%llu], "
+        "level1DataCount[%llu], serverRankSize[%u], level1Bandwidth[%llu]",
+        totalDataCount, level0DataCount, level1DataCount, serverRankSize, level1Bandwidth);
+    return HCCL_SUCCESS;
+}
+
 bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails* topoInfo, const u32 netLayer, const CommTopo topoType)
 {
     CHK_PRT_RET(
