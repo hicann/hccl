@@ -598,11 +598,11 @@ HcclResult CheckBufNullptr(
 
 HcclResult CalcInputOutputSize(
     const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData, const u64* rdisplsData,
-    const u32 userRankSize, u64& inputSize, u64& outputSize)
+    const u32 userRankSize, const HcclDataType dataType, u64& inputSize, u64& outputSize)
 {
     for (u64 i = 0; i < userRankSize; i++) {
-        u64 tmpInputSize = sdisplsData[i] + sendCountsData[i];
-        u64 tmpOutputSize = rdisplsData[i] + recvCountsData[i];
+        u64 tmpInputSize = (sdisplsData[i] + sendCountsData[i]) * HCCL_SIZE_TABLE[dataType];
+        u64 tmpOutputSize = (rdisplsData[i] + recvCountsData[i]) * HCCL_SIZE_TABLE[dataType];
         if (tmpInputSize > inputSize) {
             inputSize = tmpInputSize;
         }
@@ -673,8 +673,8 @@ HcclResult AlltoAllVConstructOpParam(
     // 计算整片数据包含中间间隔的大小，防止图模式注册内存踩踏
     u64 inputSize = 0;
     u64 outputSize = 0;
-    CHK_RET(
-        CalcInputOutputSize(sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, inputSize, outputSize));
+    CHK_RET(CalcInputOutputSize(
+        sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, dataType, inputSize, outputSize));
     param.inputSize = inputSize;
     param.outputSize = outputSize;
 
@@ -707,7 +707,8 @@ HcclResult AlltoAllVConstructOpParam(
 
 HcclResult PreCheckSymmetricMemory(
     OpParam& probeParam, HcclComm comm, OpMode opMode, HcclCMDType opType, const void* sendBuf, const void* sendCounts,
-    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize)
+    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize,
+    const HcclDataType dataType)
 {
     const u64* sendCountsData = static_cast<const u64*>(sendCounts);
     const u64* recvCountsData = static_cast<const u64*>(recvCounts);
@@ -715,8 +716,8 @@ HcclResult PreCheckSymmetricMemory(
     const u64* rdisplsData = static_cast<const u64*>(rdispls);
     u64 inputSize = 0;
     u64 outputSize = 0;
-    CHK_RET(
-        CalcInputOutputSize(sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, inputSize, outputSize));
+    CHK_RET(CalcInputOutputSize(
+        sendCountsData, recvCountsData, sdisplsData, rdisplsData, rankSize, dataType, inputSize, outputSize));
 
     probeParam.hcclComm = comm;
     probeParam.inputPtr = const_cast<void*>(sendBuf);
@@ -798,7 +799,8 @@ HcclResult AlltoAllVOutPlaceCommon(
 {
     OpParam probeParam;
     CHK_RET(PreCheckSymmetricMemory(
-        probeParam, comm, opMode, opType, sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, rankSize));
+        probeParam, comm, opMode, opType, sendBuf, sendCounts, sdispls, recvBuf, recvCounts, rdispls, rankSize,
+        dataType));
 
     bool needPeerRdisplsSlot = (opType == HcclCMDType::HCCL_CMD_ALLTOALLVC && probeParam.supportSymmetricMemory);
     u64 vectorNum = needPeerRdisplsSlot ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;

@@ -68,7 +68,7 @@ HcclResult GenResPack(
     ResPackGraphMode& resPack);
 HcclResult CalcInputOutputSize(
     const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData, const u64* rdisplsData,
-    const u32 userRankSize, u64& inputSize, u64& outputSize);
+    const u32 userRankSize, const HcclDataType dataType, u64& inputSize, u64& outputSize);
 HcclResult ConstructVarData(
     const u64* sendCountsData, const u64* recvCountsData, const u64* sdisplsData, const u64* rdisplsData,
     const u32 userRankSize, const u32 rankSize, OpParam& param);
@@ -91,7 +91,8 @@ HcclResult AlltoAllVConstructOpParam(
     bool hasPeerRdisplsSlot = false);
 HcclResult PreCheckSymmetricMemory(
     OpParam& probeParam, HcclComm comm, OpMode opMode, HcclCMDType opType, const void* sendBuf, const void* sendCounts,
-    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize);
+    const void* sdispls, const void* recvBuf, const void* recvCounts, const void* rdispls, u32 rankSize,
+    const HcclDataType dataType);
 HcclResult AlltoAllVExecDispatch(
     HcclComm comm, OpParam& param, const OpParam& probeParam, OpMode opMode, u32 rankSize, bool& useInnerOp,
     const ResPackGraphMode& resPack);
