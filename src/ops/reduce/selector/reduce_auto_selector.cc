@@ -474,8 +474,16 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
                     selectAlgName = "DpuReducePipeLineMeshNHRNHR";
                     HCCL_INFO("selectAlgName is DpuReducePipeLineMeshNHRNHR");
                     return SelectorStatus::MATCH;
+                } else {
+                    selectAlgName = "DpuReduceSequenceMeshNHR";
+                    HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+                    return SelectorStatus::MATCH;
                 }
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            selectAlgName = "DpuReduceSequenceMeshNHR";
+            HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+            return SelectorStatus::MATCH;
         }
     }
     return SelectorStatus::NOT_MATCH;
