@@ -6,7 +6,7 @@ The sample algorithm is the mesh-1D CCU implementation of AllReduce, with algori
 
 Besides this algorithm itself, Section 2.5 provides the general guide on "implementing custom algorithms" from `experimental/README.md` (module relationships, minimum scope of changes, core functions to inherit, and the `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` macro parameters), as background reference when reading this directory's design.
 
-> In the current repository, `CcuMSAllReduceExperimentalSoleMesh` is preferentially selected by `opPriorityCheck` only when the two switches are satisfied simultaneously (compile switch `ENABLE_EXPERIMENTAL=ON`, new selector switch `HCCL_USE_NEW_SELECTOR=1`; see Section 4) and the topology is single-machine two-card (`userRankSize == 2`); when any one of the two switches is not enabled, it will not be selected inadvertently by any selector branch.
+> In the current repository, `CcuMSAllReduceExperimentalSoleMesh` is preferentially selected by `opPriorityCheck` when the compile switch `ENABLE_EXPERIMENTAL=ON` (see Section 4) is enabled and the topology is single-machine two-card (`userRankSize == 2`); when the compile switch is not enabled, it will not be selected inadvertently by any selector branch.
 >
 > Positioning note: Code in the `experimental/` directory is prototype-level, does not guarantee API/ABI stability, and is not compiled into the commercial version. This README covers five aspects — motivation, design, usage, current status, and limitations — consistent with the contribution template requirements in `experimental/README.md`.
 
@@ -88,13 +88,12 @@ hccl/                                                      # Repository root
     `op.unsupportedDataTypes = {INT8, INT64, UINT64, FP64}`;
   - In-place: in place not supported (`op.isSupportInplace = false`);
   - Priority: the `op.opPriorityCheck` callback preferentially selects this algorithm when `userRankSize == 2`
-    (single-machine two-card) and the two switches in Section 4 are satisfied (compile + new selector)
+    (single-machine two-card) and the compile switch in Section 4 is satisfied
     (see Section 4).
 - **Runtime lookup**: At execution time, the executor is retrieved by calling `CollAlgExecRegistryV2::GetAlgExec` with the algorithm name selected by the selector;
   if registration succeeds, a non-null executor is returned; if registration is missing, `nullptr` is returned.
-- **Selection method**: When compiled into the package (`ENABLE_EXPERIMENTAL=ON`) and using the new selector
-  (`HCCL_USE_NEW_SELECTOR=1`), this algorithm is preferentially selected under the single-machine two-card
-  scenario (see Section 4).
+- **Selection method**: When compiled into the package (`ENABLE_EXPERIMENTAL=ON`), this algorithm is preferentially
+  selected under the single-machine two-card scenario (see Section 4).
 
 ### 2.3 Build Integration
 
@@ -265,15 +264,10 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 ## 4. Usage
 
-This algorithm involves two switches, and participates in algorithm selection only when all of them are satisfied:
+This algorithm can only be selected after being compiled into the package:
 
 **① Compile switch `--experimental`** (corresponding to `ENABLE_EXPERIMENTAL=ON`, uniformly controls whether the
 `experimental/` folder is compiled; when disabled, this directory is not compiled and the algorithm is not registered).
-
-**② New selector switch `HCCL_USE_NEW_SELECTOR=1`**: The current repository is in a coexistence state of the new
-selector and the old selector. With `HCCL_USE_NEW_SELECTOR=0` (default), the old selector path is used and this
-algorithm will not be selected; it must be set to `1` to take the new selector test path, where
-`REGISTER_ALG_ATTRS`/`opPriorityCheck` take effect and the algorithm can be used.
 
 When participating in algorithm selection, under the single-machine two-card (`userRankSize == 2`) topology, the
 `opPriorityCheck` configured for `CcuMSAllReduceExperimentalSoleMesh` in `REGISTER_ALG_ATTRS` preferentially selects
@@ -296,7 +290,7 @@ this algorithm, so no extra modification is needed and it can be tested directly
 
 ## 6. Limitations
 
-1. **Affects the selection of all `experimental/` algorithms (important warning)**: This algorithm is registered via `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` into the same registry and selector as the main pathway. Under `ENABLE_EXPERIMENTAL=ON` + `HCCL_USE_NEW_SELECTOR=1`, the `opPriorityCheck` declared in its `REGISTER_ALG_ATTRS` takes effect **globally** while the selector scans algorithms, and preferentially selects this algorithm under the single-machine dual-card scenario, potentially preempting or perturbing the selection results of all other `experimental/` algorithms and encroaching on their verification space. When verifying other `experimental/` algorithms, you must set `HCCL_USE_NEW_SELECTOR=0` (or trim out this directory's compilation/registration) to ensure this algorithm is not selected.
+1. **Affects the selection of all `experimental/` algorithms (important warning)**: This algorithm is registered via `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` into the same registry and selector as the main pathway. Under `ENABLE_EXPERIMENTAL=ON`, the `opPriorityCheck` declared in its `REGISTER_ALG_ATTRS` takes effect **globally** while the selector scans algorithms, and preferentially selects this algorithm under the single-machine dual-card scenario, potentially preempting or perturbing the selection results of all other `experimental/` algorithms and encroaching on their verification space. When verifying other `experimental/` algorithms, you must trim out this directory's compilation/registration to ensure this algorithm is not selected.
 2. **Not for production**: This algorithm is intended to test the usability of the latest algorithm registration and selection approaches under the experimental folder, and should not be used as a production algorithm.
 3. **Type/topology constraints**: Does not support in place, ordering (DETERMINISTIC_STRICT), int8, PROD, INT64/UINT64/FP64
    (falls back via `SelectCcuMsAlgo`/`SelectMeshAlgo` pre-checks); template depends on `TopoMatch1D` and the mesh-1D full-mesh

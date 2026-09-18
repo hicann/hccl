@@ -13,10 +13,9 @@ A5 注册方式时选用的载体，本身不是本目录的产出目标。
 最小改动范围、需继承的核心函数、`REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 宏参数），作为阅读本目录
 设计时的背景参考。
 
-> 在当前仓库下，本算法同时满足两个开关（编译开关 `ENABLE_EXPERIMENTAL=ON`、新 selector 开关
-> `HCCL_USE_NEW_SELECTOR=1`，见第 4 节）且拓扑为单机两卡（`userRankSize == 2`）时，
-> `CcuMSAllReduceExperimentalSoleMesh` 会被 `opPriorityCheck` 优先选中；
-> 不开启两个开关中任意一个时，不会被任何 selector 选择分支意外选中。
+> 在当前仓库下，本算法在编译开关 `ENABLE_EXPERIMENTAL=ON`（见第 4 节）且拓扑为单机两卡
+> （`userRankSize == 2`）时，`CcuMSAllReduceExperimentalSoleMesh` 会被 `opPriorityCheck` 优先选中；
+> 未开启编译开关时，不会被任何 selector 选择分支意外选中。
 >
 > 定位说明：`experimental/` 目录代码为原型级，不保证 API/ABI 稳定，不编入商用版本。本 README 覆盖
 > 动机、设计、用法、现状、限制五个方面，与 `experimental/README.md` 的贡献模板要求一致。
@@ -105,12 +104,11 @@ hccl/                                                      # 仓库根
   - 数据类型：不支持 PROD（`op.isSupportProd = false`），
     `op.unsupportedDataTypes = {INT8, INT64, UINT64, FP64}`；
   - 就地运算：不支持 in place（`op.isSupportInplace = false`）；
-  - 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节两个开关（编译 + 新 selector）
-    时优先选中本算法（详见第 4 节）。
+  - 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节编译开关时
+    优先选中本算法（详见第 4 节）。
 - **运行时查找**：执行时按 selector 选出的算法名调用 `CollAlgExecRegistryV2::GetAlgExec` 取执行器；
   注册成功则返回非空执行器，注册缺失则返回 `nullptr`。
-- **选择方式**：编译进包（`ENABLE_EXPERIMENTAL=ON`）、走新 selector（`HCCL_USE_NEW_SELECTOR=1`）时，
-  本算法在单机两卡场景下会被优先选择（详见第 4 节）。
+- **选择方式**：编译进包（`ENABLE_EXPERIMENTAL=ON`）时，本算法在单机两卡场景下会被优先选择（详见第 4 节）。
 
 ### 2.3 构建集成
 
@@ -284,14 +282,10 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 ## 4. 用法
 
-本算法涉及两个开关，全部满足后才会参与算法选择：
+本算法在编译进包后才可能被选中：
 
 **① 编译开关 `--experimental`**（对应 `ENABLE_EXPERIMENTAL=ON`，统一控制 `experimental/` 文件夹是否参与
 编译；关闭时本目录不被编译、算法不注册）。
-
-**② 新 selector 开关 `HCCL_USE_NEW_SELECTOR=1`**：当前处于新 selector 与旧 selector 共存态，
-`HCCL_USE_NEW_SELECTOR=0`（默认）走旧 selector 路径，本算法不会被选中；需置为 `1` 走新 selector
-测试路径、`REGISTER_ALG_ATTRS`/`opPriorityCheck` 才会生效，从而用到该算法。
 
 参与算法选择时，单机两卡（`userRankSize == 2`）拓扑下，`REGISTER_ALG_ATTRS` 中为 `CcuMSAllReduceExperimentalSoleMesh`
 配置的 `opPriorityCheck` 会优先选中本算法，无需额外改动，直接可测。
@@ -313,7 +307,7 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 ## 6. 限制
 
-1. **影响所有 `experimental/` 算法的选择（重要警告）**：本算法经 `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 接入与主链路相同的注册表与选择器。在 `ENABLE_EXPERIMENTAL=ON` + `HCCL_USE_NEW_SELECTOR=1` 下，其 `REGISTER_ALG_ATTRS` 声明的 `opPriorityCheck` 会在选择器扫描算法时**全局生效**，单机两卡场景优先选中本算法，从而可抢占/扰动 `experimental/` 下所有其他实验算法的选择结果、挤占其验证空间。验证其他 `experimental/` 算法时，必须置 `HCCL_USE_NEW_SELECTOR=0`（或裁剪本目录的编译/注册）以确保本算法不被选中。
+1. **影响所有 `experimental/` 算法的选择（重要警告）**：本算法经 `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 接入与主链路相同的注册表与选择器。在 `ENABLE_EXPERIMENTAL=ON` 下，其 `REGISTER_ALG_ATTRS` 声明的 `opPriorityCheck` 会在选择器扫描算法时**全局生效**，单机两卡场景优先选中本算法，从而可抢占/扰动 `experimental/` 下所有其他实验算法的选择结果、挤占其验证空间。验证其他 `experimental/` 算法时，必须裁剪本目录的编译/注册以确保本算法不被选中。
 2. **不可上线**：本算法目的为测试当前最新算法注册方式及选择方式在experimental文件夹的可用性。不应作为线上算法 使用。
 3. **类型/拓扑约束**：不支持 in place、保序（DETERMINISTIC_STRICT）、int8、PROD、INT64/UINT64/FP64
    （由 `SelectCcuMsAlgo`/`SelectMeshAlgo` 前置判断回退）；模板依赖 `TopoMatch1D` 与 mesh-1D 全互联
