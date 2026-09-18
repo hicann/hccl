@@ -20,7 +20,9 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     // 求和仅当 isPod && netType==CLOS && 元素数>=2（pod 双 die 双 channel 并行）；
     // 其余（含 MESH 的 [1,1,...]）取 [0]。SoleNHR 算法名单通道语义并入该判定：
     // 其匹配段恒单链路（不 SetchannelsPerRank），单元素/非 pod/非 CLOS 均自然覆盖
-    bool isMultiChannel = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2);
+    // pod 机型建链恒为 CLOS 双通道(跨 die 交换机), 匹配层 netType 不反映真实建链;
+    // 但匹配层 portNums 可能只有单元素(如 CLOS [8] 形态), 需防御性检查
+    bool isMultiChannel = param.isPod && param.portNum.size() >= 2;
     int portNum
         = isMultiChannel ? static_cast<int>(param.portNum[0] + param.portNum[1]) : static_cast<int>(param.portNum[0]);
     int log2R = 0;
@@ -51,7 +53,7 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     }
     // 同步 task(root 口径): stream 级每 step 前后各一对 Wait/Record(含初始等待与收尾通知),
     // 即 2*(log2R+1);外加 thread 间 notify 对(线程数=通道数,单链路=1 无从线程)
-    int threadNum = isMultiChannel ? static_cast<int>(param.portNum.size()) : 1;
+    int threadNum = isMultiChannel ? 2 : 1;
     int syncTaskNum = 2 * (log2R + 1) + 2 * (threadNum - 1);
     int taskNum = transTaskNum + syncTaskNum + localCopyCount;
     float A = 0.0f;
@@ -74,9 +76,6 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     B = preCopyB + postCopyB;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::AICPU, D);
-    // D 叠加框架侧固定开销 20us(真机实测锚定): taskNum 口径只覆盖 kernel 内 task 提交,
-    // 未覆盖 executor/host 侧的框架固定开销
-    D += 0.000020f;
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

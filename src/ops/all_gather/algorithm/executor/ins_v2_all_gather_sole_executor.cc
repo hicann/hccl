@@ -410,6 +410,11 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuAllGatherSoleNHR, topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 totalSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType] * topo->userRankSize;
+        return !(
+            topo->userRankSize == 16 && totalSize == 32ULL * 1024 * 1024 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             bool isEqual = false;

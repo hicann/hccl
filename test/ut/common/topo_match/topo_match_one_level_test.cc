@@ -175,3 +175,53 @@ TEST_F(TopoMatchOneLevelTest, AivExcludesUbgLayerReversed)
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
 }
+
+// O12: MeshConcur 两层物理，选中 1DMESH 层，上层超集填充双层
+// phys0=1DMESH{0..7}; phys1=CLOS{0..15}(超集); userRankSize=8
+TEST_F(TopoMatchOneLevelTest, MeshConcurTwoLevelsPickMeshWithUpper)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+            MakeLevel(Range(16), PhysicalLevelView::GLOBAL, {16}, true, COMM_TOPO_CLOS),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCUR});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
+    ASSERT_EQ(info.infos.size(), 1u);
+    ASSERT_EQ(info.infos[0][0], Range(8));
+    // MeshConcur → {idx0(1DMESH), idx1(上层超集)}
+    ASSERT_EQ(info.physicalIdxForAlgoLevels.size(), 1u);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0].size(), 2u);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][1], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+}
+
+// O13: MeshConcur 仅一层 mesh，无更高超集层 → NOT_SUPPORT
+// phys0=1DMESH{0..7}; userRankSize=8; 选中 mesh 后无上层可配对
+TEST_F(TopoMatchOneLevelTest, MeshConcurSingleMeshNoUpperLevel)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_1DMESH),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCUR});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
+}
+
+// O14: MeshConcur 物理上无 mesh 层 → NOT_SUPPORT
+// phys0=CLOS{0..7}; userRankSize=8; MeshConcur 仅接受 1DMESH 层
+TEST_F(TopoMatchOneLevelTest, MeshConcurNoMeshLayer)
+{
+    auto topo = MakeTopoInfo(
+        3, 8,
+        {
+            MakeLevel(Range(8), PhysicalLevelView::GLOBAL, {8}, true, COMM_TOPO_CLOS),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH_CONCUR});
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_E_NOT_SUPPORT);
+}

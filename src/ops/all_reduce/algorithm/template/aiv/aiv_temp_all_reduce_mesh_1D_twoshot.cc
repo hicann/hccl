@@ -25,10 +25,8 @@ AivTempAllReduceMesh1DTwoShot::~AivTempAllReduceMesh1DTwoShot() {}
 
 std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
-                      (param.portNum[0] + param.portNum[1]) :
-                      param.portNum[0];
-    int kernelNum = 16;
+    int portNum = param.portNum[0]; // 没有2+6
+    int kernelNum = 2;
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
@@ -49,12 +47,10 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
         int level0Port = 1;
         int level1Port = portNum;
         CostModelManager::Global()->CalcMeshParam(
-            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0,
-            param.isPod);
+            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1,
-            param.isPod);
+            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, false);
         A = std::max(A0, A1);
     } else {
         CostModelManager::Global()->CalcMeshParam(

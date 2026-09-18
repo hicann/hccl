@@ -370,6 +370,12 @@ const std::vector<UbUtilEntry> CostTableManager::closOneJettyOnePortUbUtilTable_
        {8 * 1024 * 1024ULL, 0.6207f},  {16 * 1024 * 1024ULL, 0.7159f},  {32 * 1024 * 1024ULL, 0.7753f},
        {64 * 1024 * 1024ULL, 0.8089f}, {128 * 1024 * 1024ULL, 0.8268f}, {256 * 1024 * 1024ULL, 0.8361f}};
 
+const std::vector<UbUtilEntry> CostTableManager::closAivUbUtilTable_
+    = {{0.25 * 1024 * 1024ULL, 0.195f}, {0.5 * 1024 * 1024ULL, 0.294f}, {1 * 1024 * 1024ULL, 0.394f},
+       {2 * 1024 * 1024ULL, 0.475f},    {4 * 1024 * 1024ULL, 0.528f},   {8 * 1024 * 1024ULL, 0.56f},
+       {16 * 1024 * 1024ULL, 0.578f},   {32 * 1024 * 1024ULL, 0.587f},  {64 * 1024 * 1024ULL, 0.59f},
+       {128 * 1024 * 1024ULL, 0.595f}};
+
 CostTableManager::~CostTableManager() {}
 
 HcclResult CostTableManager::QueryUbUtil(
@@ -378,9 +384,12 @@ HcclResult CostTableManager::QueryUbUtil(
 {
     bool useOneJettyTable
         = (algoType == AlgoType::MESH || algoType == AlgoType::MESH_MULTILINK
-           || algoType == AlgoType::MESH_SINGLE_CHANNEL);
-    const std::vector<UbUtilEntry>& table = (netType == CommTopo::COMM_TOPO_CLOS && useOneJettyTable) ?
-                                                closOneJettyOnePortUbUtilTable_ :
+           || algoType == AlgoType::MESH_SINGLE_CHANNEL || algoType == AlgoType::MESH_ONESHOT
+           || algoType == AlgoType::MESH_TWOSHOT);
+    bool useAivClosTable = (engine == OpExecuteConfig::AIV && netType == CommTopo::COMM_TOPO_CLOS);
+    const std::vector<UbUtilEntry>& table = useAivClosTable ? closAivUbUtilTable_ :
+                                            (netType == CommTopo::COMM_TOPO_CLOS && useOneJettyTable) ?
+                                                              closOneJettyOnePortUbUtilTable_ :
                                             (netType == CommTopo::COMM_TOPO_CLOS) ? closUbUtilTable_ :
                                                                                     meshUbUtilTable_;
     if (table.empty()) {
@@ -402,7 +411,7 @@ HcclResult CostTableManager::QueryUbUtil(
     } else {
         utilization = it->utilization;
     }
-    if (engine == OpExecuteConfig::AIV) {
+    if (engine == OpExecuteConfig::AIV && !useAivClosTable) {
         utilization = utilization / 0.85f * 0.65f;
     }
     HCCL_DEBUG(

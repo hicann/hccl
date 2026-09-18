@@ -35,8 +35,9 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     // level0: server 内 mesh 组网，level1: 跨 server clos 组网
     int portNum0 = param.portNum[0];
-    int portNum1 = (param.portNum.size() > 1) ? (param.portNum[0] + param.portNum[1]) : param.portNum[0];
-    int kernelNum = 15;
+    // 先配置
+    int portNum1 = 8;
+    int kernelNum = 25;
     // pod 先乘3,后续需要考虑server
     int taskNum
         = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
@@ -45,8 +46,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     float A1 = 0.0f;
     CostModelManager::Global()->CalcMeshParam(
         nLevel0, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
-    CostModelManager::Global()->CalcMeshParam(
-        nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, param.isPod);
+    CostModelManager::Global()->CalcMeshParam(nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, false);
     float A = std::max(A0, A1);
 
     // B: 本地操作，两级各处理一半数据，reduce (rankSize-1) 份

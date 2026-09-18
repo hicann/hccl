@@ -20,18 +20,35 @@ TopoMatchOneLevel::~TopoMatchOneLevel() {}
 
 namespace {
     // 从 effIdx 中找 localRanks==userRankSize 的最低有效层；hostdpu 额外要求 locType==HOST
+    // MeshConcur 算法仅接受 COMM_TOPO_1DMESH 层
     u32 PickFullLocalRanksLayer(
         const std::vector<PhysicalLevelInfo>& physicalLevels, const std::vector<u32>& effIdx, u32 userRankSize,
-        bool requireHost)
+        bool requireHost, const std::vector<AlgoType>& algoTypes)
     {
-        for (u32 idx : effIdx) {
+        bool isMeshConcur = IsMeshConcurAlgo(algoTypes[0]);
+        for (u32 i = 0; i < static_cast<u32>(effIdx.size()); i++) {
+            u32 idx = effIdx[i];
             if (physicalLevels[idx].localRanks.size() != userRankSize) {
+                HCCL_INFO(
+                    "[PickFullLocalRanksLayer] skip effIdx[%u] physical idx[%u]: localRanks.size[%zu] != "
+                    "userRankSize[%u].",
+                    i, idx, physicalLevels[idx].localRanks.size(), userRankSize);
                 continue;
             }
             if (requireHost && physicalLevels[idx].locType != EndpointLocType::ENDPOINT_LOC_TYPE_HOST) {
+                HCCL_INFO(
+                    "[PickFullLocalRanksLayer] skip effIdx[%u] physical idx[%u]: requireHost but locType[%d] != HOST.",
+                    i, idx, static_cast<int32_t>(physicalLevels[idx].locType));
                 continue;
             }
-            return idx;
+            if (isMeshConcur && physicalLevels[idx].topoType != CommTopo::COMM_TOPO_1DMESH) {
+                HCCL_INFO(
+                    "[PickFullLocalRanksLayer] skip effIdx[%u] physical idx[%u]: MeshConcur but topoType[%d] != "
+                    "1DMESH.",
+                    i, idx, static_cast<int32_t>(physicalLevels[idx].topoType));
+                continue;
+            }
+            return i;
         }
         return INVALID_UINT;
     }
@@ -41,11 +58,11 @@ HcclResult TopoMatchOneLevel::MatchTopo(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
     const auto& physicalLevels = topoInfo->physicalLevels;
-    if (physicalLevels.empty() || topoInfo->userRankSize == 0) {
+    if (physicalLevels.empty() || topoInfo->userRankSize == 0 || algAttrs.algoTypes.size() != 1) {
         HCCL_WARNING(
-            "[TopoMatchOneLevel] Rank [%u], physicalLevels empty or userRankSize 0. "
-            "physicalLevels.size[%zu], userRankSize[%u].",
-            topoInfo->userRank, physicalLevels.size(), topoInfo->userRankSize);
+            "[TopoMatchOneLevel] Rank [%u], invalid input. "
+            "physicalLevels.size[%zu], userRankSize[%u], algoTypes.size[%zu].",
+            topoInfo->userRank, physicalLevels.size(), topoInfo->userRankSize, algAttrs.algoTypes.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
 
@@ -56,7 +73,8 @@ HcclResult TopoMatchOneLevel::MatchTopo(
     }
 
     bool requireHost = (algAttrs.engine == OpExecuteConfig::HOSTCPU);
-    u32 picked = PickFullLocalRanksLayer(physicalLevels, effIdx, topoInfo->userRankSize, requireHost);
+    u32 picked
+        = PickFullLocalRanksLayer(physicalLevels, effIdx, topoInfo->userRankSize, requireHost, algAttrs.algoTypes);
     if (picked == INVALID_UINT) {
         HCCL_INFO(
             "[TopoMatchOneLevel] Rank [%u], no layer with localRanks == userRankSize[%u] (requireHost[%d]).",
@@ -66,8 +84,13 @@ HcclResult TopoMatchOneLevel::MatchTopo(
 
     algHierarchyInfo.infos.resize(1);
     algHierarchyInfo.infos[0].resize(1);
-    algHierarchyInfo.infos[0][0] = physicalLevels[picked].localRanks;
-    algHierarchyInfo.physicalIdxForAlgoLevels = {{static_cast<PhysicalLevelIndex>(picked)}};
+    algHierarchyInfo.infos[0][0] = physicalLevels[effIdx[picked]].localRanks;
+
+    HcclResult ret = FillPhysicalIdxForAlgoLevels(
+        physicalLevels, effIdx, {picked}, algAttrs.algoTypes, algHierarchyInfo.physicalIdxForAlgoLevels);
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS, HCCL_INFO("[TopoMatchOneLevel] FillPhysicalIdxForAlgoLevels failed: hcclRet -> %d", ret),
+        HcclResult::HCCL_E_NOT_SUPPORT);
     HCCL_INFO(
         "[TopoMatchOneLevel] Rank [%u], userRankSize [%u], physicalIdxForAlgoLevels: [%s].", topoInfo->userRank,
         topoInfo->userRankSize, FormatPhysicalIdxForAlgoLevels(algHierarchyInfo.physicalIdxForAlgoLevels).c_str());

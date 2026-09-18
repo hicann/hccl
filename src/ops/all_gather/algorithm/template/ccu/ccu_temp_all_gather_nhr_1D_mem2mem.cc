@@ -28,6 +28,9 @@ std::vector<CostModelParam> CcuTempAllGatherNHR1DMem2Mem::CalcCostCoeff(CalcCost
         log2R++;
     }
     int kernelNum = (8 * static_cast<int>(param.rankSize) + RTT1 * log2R) / 5;
+    if (param.algName != nullptr && strcmp(param.algName, "CcuSchedAllGatherSoleNHR") == 0) {
+        kernelNum = std::max(kernelNum, 6);
+    }
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

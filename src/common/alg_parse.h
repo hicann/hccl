@@ -41,6 +41,7 @@ enum class AlgoType : uint8_t {
     MESH_CONCURRENT,
     NHR_MULTIJETTY,
     MESH_MULTIJETTY,
+    GROUP_MESH,
     UNKNOWN,
 };
 
@@ -56,7 +57,8 @@ const std::set<AlgoType> MESH_ALGO_TYPES
        AlgoType::MESH_CHUNK_TWOSHOT,
        AlgoType::MESH_SINGLE_CHANNEL,
        AlgoType::MESH_CONCURRENT,
-       AlgoType::MESH_MULTIJETTY};
+       AlgoType::MESH_MULTIJETTY,
+       AlgoType::GROUP_MESH};
 // NHR 类算法集合
 const std::set<AlgoType> NHR_ALGO_TYPES
     = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE, AlgoType::NHR_MULTIJETTY};

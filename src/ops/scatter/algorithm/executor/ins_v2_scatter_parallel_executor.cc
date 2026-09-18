@@ -131,6 +131,25 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
         v.insert(v.end(), p3.begin(), p3.end());
         return v;
     }();
+    // AICPU parallel totalD 锚定: 30 + 15×L1 + 10×log2(L1) us
+    // (L0=8 机型实测: 16P(L1=2)=70, 32P(L1=4)=110, 64P(L1=8)=180, 128P(L1=16)=310;
+    //  L1 随拓扑自适应, 不绑定具体 L0). 差值均摊进各段
+    if (strncmp(algName, "Aicpu", 5) == 0) {
+        int log2L1 = 0;
+        for (u32 r = rankSizeLevel1; r > 1; r >>= 1) {
+            log2L1++;
+        }
+        float targetD
+            = (30.0f + 15.0f * static_cast<float>(rankSizeLevel1) + 10.0f * static_cast<float>(log2L1)) * 1e-6f;
+        float currentD = 0.0f;
+        for (const auto& p : params) {
+            currentD += p.D;
+        }
+        float dExtra = (targetD - currentD) / static_cast<float>(params.size());
+        for (auto& p : params) {
+            p.D += dExtra;
+        }
+    }
     // CCU parallel 大数据量端带宽项偏低, A 乘 2 修正
     if (strncmp(algName, "Ccu", strlen("Ccu")) == 0) {
         for (auto& p : params) {

@@ -19,7 +19,7 @@ constexpr u32 SEND_RECV_DATA_FACTOR = 2;
 std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 8 : 1;
-    int kernelNum = 15;
+    int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
     float A = 0.0f;
     float B = 0.0f;
@@ -39,12 +39,10 @@ std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffPara
         int level0Port = 1;
         int level1Port = portNum;
         CostModelManager::Global()->CalcMeshParam(
-            SEND_RECV_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0,
-            param.isPod);
+            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            SEND_RECV_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1,
-            param.isPod);
+            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, false);
         A = std::max(A0, A1);
     } else {
         CostModelManager::Global()->CalcMeshParam(

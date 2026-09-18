@@ -73,6 +73,7 @@ private:
     static const std::vector<UbUtilEntry> closUbUtilTable_;
     static const std::vector<UbUtilEntry> meshUbUtilTable_;
     static const std::vector<UbUtilEntry> closOneJettyOnePortUbUtilTable_;
+    static const std::vector<UbUtilEntry> closAivUbUtilTable_;
     mutable std::mutex mu_;
 };
 

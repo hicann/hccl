@@ -896,7 +896,6 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false; op.isSupportProd = false;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        u64 totalSize = perRankSize * topo->userRankSize;
-        return totalSize > 4ULL * 1024 * 1024 * 1024;
+        return perRankSize > 4ULL * 1024 * 1024 * 1024;
     });
 } // namespace ops_hccl

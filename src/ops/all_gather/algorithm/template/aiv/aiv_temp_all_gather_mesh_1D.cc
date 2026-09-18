@@ -28,6 +28,9 @@ AivTempAllGatherMesh1D::~AivTempAllGatherMesh1D() {}
 std::vector<CostModelParam> AivTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = param.portNum[0];
+    if (!param.isPod) {
+        portNum = std::max(1, portNum / 2);
+    }
     int kernelNum = 1;
     float A = 0.0f;
     float B = 0.0f;

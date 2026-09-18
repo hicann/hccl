@@ -27,7 +27,7 @@ std::vector<CostModelParam> InsTempAllGatherNHR::CalcCostCoeff(CalcCostCoeffPara
         log2R++;
     }
     int kernelNum = 8 * log2R - 7;
-    kernelNum = std::max(kernelNum, 1);
+    kernelNum = std::max(kernelNum, 10);
     u32 rEff = static_cast<u32>(5 * log2R / 3);
     rEff = std::max(rEff, 2u);
     int taskNum = CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2;

@@ -11,6 +11,8 @@
 #include "ins_v2_scatter_sole_executor.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
+#include <cstring>
+#include <type_traits>
 #include "alg_attrs_registry.h"
 #include "hccl_aiv_utils.h"
 #include "hccl_res.h"
@@ -69,6 +71,13 @@ std::vector<CostModelParam> InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplat
     std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netType, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNum, isPod,
         algName, comm, topoInfo});
+    // AICPU SoleNHR 框架开销(每 op 一次, 真机实测锚定 8P=32us = 模板 16.5 + 10):
+    // 模板口径只覆盖 kernel 内 task 提交, 未覆盖 executor/host 侧固定开销
+    if (strncmp(algName, "AicpuScatterSoleNHR", 19) == 0) {
+        for (auto& p : params) {
+            p.D += 0.000010f;
+        }
+    }
     return params;
 }
 
@@ -102,6 +111,18 @@ AlgNetMeta InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta
     CommTopo netType
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     AlgNetMeta meta;
+    // AIV mesh 模板恒返回 [mesh 平面, clos 平面] 两段, meta 按组内 MAX 聚合,
+    // 使 utils 按各平面 netType 分别生效(单级拓扑由模板补零段)
+#ifndef AICPU_COMPILE
+    if constexpr (std::is_same_v<InsAlgTemplate, AivTempScatterMesh1D>) {
+        meta.netTypes = {CommTopo::COMM_TOPO_1DMESH, CommTopo::COMM_TOPO_CLOS};
+        meta.intraGroupMode = CostAggMode::MAX;
+        meta.groupSizes = {2};
+        meta.dataRatios = {1.0f, 1.0f};
+        meta.rankSizes = {rankSize, rankSize};
+        return meta;
+    }
+#endif
     meta.netTypes.push_back(netType);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};

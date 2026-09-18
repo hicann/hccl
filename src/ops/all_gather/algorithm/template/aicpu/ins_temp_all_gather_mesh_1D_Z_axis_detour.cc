@@ -36,7 +36,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float nLevel1 = param.dataRatio * level1Ratio;
 
     int portNum0 = param.portNum[0];
-    int portNum1 = 4;
+    int portNum1 = param.isPod ? 8 : 4;
     int kernelNum = (param.isPod ? 48 : 32);
     int taskNum
         = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;

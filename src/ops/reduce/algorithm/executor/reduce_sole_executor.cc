@@ -100,8 +100,10 @@ AlgNetMeta ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::GetAlgNetMeta(
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
-    CommTopo netTypeLevel0
-        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    u32 physLevelIdx = (topoInfo->topoLevelNums > 1 && algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                           static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                           static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physLevelIdx);
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;

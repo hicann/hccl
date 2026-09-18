@@ -424,20 +424,22 @@ void CostModelManager::CalcMeshParam(float n, CommTopo netType, int portNum, u32
 {
     // n用来表示传输数据量和总数据量之间的关系
     A = 0.0f;
+    double portNumEff = static_cast<double>(portNum);
     if (isPod && netType == CommTopo::COMM_TOPO_CLOS) {
-        portNum = portNum / 2;
+        portNumEff = portNumEff / 2.0;
     }
     if (netType == CommTopo::COMM_TOPO_1DMESH) {
         // cost = D/B(write)
         A = n / crossChipBw_;
     } else if (netType == CommTopo::COMM_TOPO_CLOS) {
         // cost = nD/B(write)
-        A = (n * (rankSize - 1)) / (portNum * crossChipBw_);
+        A = static_cast<float>((n * (rankSize - 1)) / (portNumEff * crossChipBw_));
     } else {
         HCCL_ERROR("[CostModelManager] CalcMeshParams unsupported netType=%d.", static_cast<int>(netType));
     }
-    HCCL_DEBUG(
-        "[CostModelManager] CalcMeshParams n=%f netType=%d portNum=%d A=%f.", n, static_cast<int>(netType), portNum, A);
+    HCCL_INFO(
+        "[CostModelManager] CalcMeshParams n=%f netType=%d portNum=%d portNumEff=%f A=%f.", n,
+        static_cast<int>(netType), portNum, portNumEff, A);
     return;
 }
 
@@ -447,13 +449,15 @@ void CostModelManager::CalcNHRParams(
     // n用来表示传输数据和总数据量之间的关系
     // rankSize是指总共通信的rankSize
     A = 0.0f;
+    double portNumEff = static_cast<double>(portNum);
     if (isPod && netType == CommTopo::COMM_TOPO_CLOS && halvePodPort) {
-        portNum = portNum / 2;
+        portNumEff = portNumEff / 2.0;
     }
     float data = n * (rankSize - 1);
-    A = data / (portNum * crossChipBw_);
-    HCCL_DEBUG(
-        "[CostModelManager] CalcNHRParams n=%f netType=%d portNum=%d A=%f.", n, static_cast<int>(netType), portNum, A);
+    A = static_cast<float>(data / (portNumEff * crossChipBw_));
+    HCCL_INFO(
+        "[CostModelManager] CalcNHRParams n=%f netType=%d portNum=%d portNumEff=%f A=%f.", n, static_cast<int>(netType),
+        portNum, portNumEff, A);
     return;
 }
 

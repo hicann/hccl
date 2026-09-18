@@ -22,6 +22,8 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     int portNum = static_cast<int>(param.portNum[0]);
     int remoteSyncNum = 1; // 单 kernel 下发
     float A = 0.0f;
+    float aMesh = 0.0f;
+    float aClos = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
@@ -39,18 +41,19 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
             }
         }
     }
-    if (meshRankNum >= MIN_MESH_RANK_NUM) {
-        u32 meshTargetNum = meshRankNum - 1;              // 框内目标份数
+    bool isClos = (param.netType == CommTopo::COMM_TOPO_CLOS);
+    if (isClos && meshRankNum >= MIN_MESH_RANK_NUM) {
         u32 closTargetNum = param.rankSize - meshRankNum; // 跨框目标份数
-        float aMesh = 0.0f;
-        float aClos = 0.0f;
         // 框内平面：mesh 直连每对端独享带宽，nMesh 份并发，时间=单份
         CostModelManager::Global()->CalcMeshParam(
             param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, meshRankNum, aMesh, false);
         // 跨框平面：closTargetNum 份共享 CLOS 端口
         CostModelManager::Global()->CalcMeshParam(
             param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, closTargetNum + 1, aClos, false);
-        A = std::max(aMesh, aClos);
+    } else if (isClos) {
+        // mesh 层仅 1 卡(如 181 每框单卡): 框内平面无数据, 全量走 clos 平面
+        CostModelManager::Global()->CalcMeshParam(
+            param.dataRatio, param.netType, portNum, param.rankSize, aClos, false);
     } else {
         CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     }
@@ -64,7 +67,17 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
         D); // AIV 的 D 恒为 0（kernel launch 无展开）
 
     std::vector<CostModelParam> params;
-    params.push_back({A, B, C, D});
+    // 恒返回 [mesh 平面, clos 平面] 两段(meta 注册表全局共享, 段数须恒定):
+    // 匹配层为 CLOS 时 cost_table 按组内 MAX 聚合, utils 按各平面 netType 分别
+    // 生效(181 等每框单卡场景 mesh 平面退化为零, 由 clos 平面承载全量);
+    // 匹配层为 mesh(单级)时 clos 段补零
+    if (isClos) {
+        params.push_back({aMesh, B, C, D});
+        params.push_back({aClos, B, C, 0.0f});
+    } else {
+        params.push_back({A, B, C, D});
+        params.push_back({0.0f, 0.0f, 0.0f, 0.0f});
+    }
     return params;
 }
 
