@@ -19,6 +19,8 @@
     - [server节点端口绑定失败（EI0003）](server_node_port_bind_fail_EI0019.md)
     - [通信域初始化topo探测超时（EI0015）](topo_detect_timeout_EI0015.md)
     - [典型多机场景通信域初始化失败（EI0015）](typical_multi_node_comm_init_fail_EI0015.md)
+    - [部分rank无法连接server（EI0015）](partial_rank_not_connect_to_server_EI0015.md)
+    - [rank与server间socket连接超时（EI0015）](rank_server_socket_timeout_EI0015.md)
   - [集群信息校验失败问题](_dump_cluster_info_verify_fail.md)
     - [定位思路](cluster_info_verify_fail_troubleshooting.md)
     - [IP Family校验不一致（EI0001）](ip_family_check_inconsistent_EI0001.md)
