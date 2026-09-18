@@ -47,6 +47,18 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
         return HCCL_SUCCESS;
     }
 
+    // 零拷贝不支持
+    if (param.isZeroCopy) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] zero copy is not supported");
+        return HCCL_SUCCESS;
+    }
+
+    // 对称内存不支持
+    if (param.supportSymmetricMemory) {
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] symmetric memory is not supported");
+        return HCCL_SUCCESS;
+    }
+
     // 校验算子类型
     if (!IsOpTypeSupported(param)) {
         return HCCL_SUCCESS;

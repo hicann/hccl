@@ -65,13 +65,14 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
     const HcclReduceOp reduceType = param.reduceType;
     const bool isZeroCopy = param.isZeroCopy;
     const OpMode opMode = param.opMode;
+    const bool supportSymmetricMemory = param.supportSymmetricMemory;
 
     // 使用'-'作为间隔符, 拼接cacheTag
     // 注意: 把input size放在前面, 如果需要解析, 可以减少解析开销
     // 注意: commId放在最后, 如果需要解析, 无需考虑commId中含有delimiter的情况
     // 注意: enum class不能转为uint8_t, 否则会作为char输出; 需显式转为uint32_t后再用to_chars, 否则编译失败
     const char* commId = param.commName;  // 最大长度COMM_INDENTIFIER_MAX_LENGTH (128)
-    constexpr size_t RESERVED_SIZE = 256; // commId+7个整数, 最多128+80+7个字符, 预留256足够
+    constexpr size_t RESERVED_SIZE = 256; // commId+8个整数, 最多128+90+8个字符, 预留256足够
     char buf[RESERVED_SIZE];
     char* ptr = buf;
     const char delimiter = '-';
@@ -100,6 +101,10 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
     ptr = UIntToChars(ptr, static_cast<uint32_t>(opMode));
     *ptr++ = delimiter;
 
+    // supportSymmetricMemory (uint32最多10个字符)
+    ptr = UIntToChars(ptr, static_cast<uint32_t>(supportSymmetricMemory));
+    *ptr++ = delimiter;
+
     // rootRank (uint32最多10个字符)
     ptr = UIntToChars(ptr, rootRank);
     *ptr++ = delimiter;
@@ -115,8 +120,9 @@ HcclResult AicpuTaskCacheKey::GetAicpuTaskCacheTag(const OpParam& param, uint64_
 
     HCCL_INFO(
         "[AicpuTaskCacheKey][GetAicpuTaskCacheTag] cacheTag[%s] from commId[%s] opType[%d] dataType[%d] "
-        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] rootRank[%d]",
-        cacheTag.c_str(), commId, opType, dataType, reduceType, isZeroCopy, inputSize, opMode, rootRank);
+        "reduceType[%d] isZeroCopy[%d] inputSize[%llu] opMode[%d] supportSymmetricMemory[%d] rootRank[%d]",
+        cacheTag.c_str(), commId, opType, dataType, reduceType, isZeroCopy, inputSize, opMode, supportSymmetricMemory,
+        rootRank);
 
     return HCCL_SUCCESS;
 }
