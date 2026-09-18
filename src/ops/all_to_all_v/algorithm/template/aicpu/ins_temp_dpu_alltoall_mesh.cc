@@ -11,6 +11,7 @@
 #include "ins_temp_dpu_alltoall_mesh.h"
 
 #include <algorithm>
+#include <set>
 
 namespace ops_hccl {
 
@@ -58,17 +59,28 @@ HcclResult InsTempDpuAlltoAllMesh::CalcRes(
     std::vector<HcclChannelDesc> level0Channels;
     if (topoInfo->level0Topo != Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix
         || topoInfo->deviceNumPerModule == 1) {
-        // 框内threadNum最大取MAX_RANK_NUM_PER_SERVER
-        threadNum = (templateRankSize_ > MAX_RANK_NUM_PER_SERVER) ? MAX_RANK_NUM_PER_SERVER :
-                    (templateRankSize_ > 1)                       ? (templateRankSize_ - 1) :
-                                                                    1;
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
+
+        // DEVICE 对端使用 AICPU thread，HOST 对端由 DPU 处理。
+        std::set<u32> deviceRemoteRanks;
+        // 同一 remoteRank 可能有多条 channel，只按 rank 去重。
+        for (const auto& channel : level0Channels) {
+            if (channel.remoteRank == myRank_) {
+                continue;
+            }
+            if (channel.remoteEndpoint.loc.locType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE) {
+                deviceRemoteRanks.insert(channel.remoteRank);
+            }
+        }
+        // 至少保留主 thread，threadNum 包含 threads[0]。
+        threadNum = std::max(1U, static_cast<u32>(deviceRemoteRanks.size()));
     } else {
         u32 intraRankNum = GetIntraRankNumFromPhysicalLevels(topoInfo);
         threadNum = (intraRankNum > 1) ? (intraRankNum - 1) : 1;
         CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
             comm, param, topoInfo, subCommRanks_, level0Channels, CommTopo::COMM_TOPO_1DMESH));
     }
+
     // 计算从流以及Notify数量
     resourceRequest.slaveThreadNum = threadNum - 1;
     for (u32 index = 0; index < threadNum - 1; index++) {
