@@ -368,7 +368,7 @@ REGISTER_ALG_ATTRS(
         if (t->level2UbRtp) {
             return false;
         }
-        if (t->topoLevelNums > 1 && t->userRankSize > A2AV_CCU_MAX_RANK_SIZE) {
+        if (t->topoLevelNums > 1 && t->userRankSize > A2AV_CCU_RANK_THRESHOLD) {
             return false;
         }
         if (t->topoLevelNums == 1 && t->level0Topo == Level0Shape::MESH_1D_CLOS
@@ -376,9 +376,6 @@ REGISTER_ALG_ATTRS(
             return false;
         }
         return true;
-    };
-    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return t->topoLevelNums > 1 && t->level0Topo != Level0Shape::CLOS && t->userRankSize <= A2AV_CCU_RANK_THRESHOLD;
     };
     op.opCustomCheck = [](const OpParam& param, const TopoInfoWithNetLayerDetails* t) -> bool {
         return !(
