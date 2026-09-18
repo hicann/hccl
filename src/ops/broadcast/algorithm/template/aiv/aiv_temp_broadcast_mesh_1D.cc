@@ -43,16 +43,18 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
         float A_clos = 0.0f;
         // 板内MESH直连
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio * 2 / param.rankSize, CommTopo::COMM_TOPO_1DMESH, 1, level0RankSize, A_mesh, isPodForCost);
+            param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, CommTopo::COMM_TOPO_1DMESH, 1, level0RankSize,
+            A_mesh, isPodForCost);
         // 跨板CLOS：level1RankSize个对端共享portNum端口
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio * 2 / param.rankSize, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize, A_clos,
-            isPodForCost);
+            param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize,
+            A_clos, isPodForCost);
         A = std::max(A_mesh, A_clos);
     } else {
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, isPodForCost);
+            param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A,
+            isPodForCost);
     }
     A *= 0.8;
 

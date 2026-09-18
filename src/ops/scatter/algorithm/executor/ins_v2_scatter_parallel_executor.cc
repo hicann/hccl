@@ -132,7 +132,7 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
         return v;
     }();
     // CCU parallel 大数据量端带宽项偏低, A 乘 2 修正
-    if (strncmp(algName, "Ccu", 3) == 0) {
+    if (strncmp(algName, "Ccu", strlen("Ccu")) == 0) {
         for (auto& p : params) {
             p.A *= 2.0f;
         }

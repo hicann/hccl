@@ -19,7 +19,7 @@ using namespace AscendC;
 
 #if defined(HCCL_AIV_ACLGRAPH_SK)
 #define AIV_ALL_REDUCE_ONESHOT_KERNEL_DECL(type) \
-    extern "C" __aicore__ void aiv_allreduce_##type##_inner(KERNEL_ARGS_DEF);
+    extern "C" __aicore__ void aiv_allreduce_##type##_inner(KERNEL_ARGS_DEF)
 
 #define AIV_ALL_REDUCE_ONESHOT_KERNEL_DEF(type)                              \
     extern "C" __aicore__ void aiv_allreduce_##type##_inner(KERNEL_ARGS_DEF) \
@@ -29,7 +29,7 @@ using namespace AscendC;
     }
 
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DECL(type) \
-    extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF);
+    extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF)
 
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DEF(type)                                       \
     extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF) \

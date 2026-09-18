@@ -19,7 +19,6 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // param.netType = CommTopo::COMM_TOPO_CLOS;
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];

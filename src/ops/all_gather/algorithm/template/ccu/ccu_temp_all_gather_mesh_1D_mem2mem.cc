@@ -14,6 +14,7 @@
 #include "ccu_launch_dl.h"
 
 namespace ops_hccl {
+constexpr int FULLMESH_KERNEL_NUM = 5;
 
 std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -22,7 +23,7 @@ std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCos
     // 跨机(CLOS)按 pod 数线性增长并设下限
     int kernelNum = 0;
     if (param.netType == CommTopo::COMM_TOPO_1DMESH) {
-        kernelNum = 5;
+        kernelNum = FULLMESH_KERNEL_NUM;
     } else {
         u32 pods = param.rankSize / 8;
         kernelNum = std::max(static_cast<int>(2.5f * pods), 8);

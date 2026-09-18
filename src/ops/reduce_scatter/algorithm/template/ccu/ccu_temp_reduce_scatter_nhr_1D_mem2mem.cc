@@ -19,11 +19,8 @@ constexpr u32 DIE_NUM_2 = 2;
 
 std::vector<CostModelParam> CcuTempReduceScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // param.netType = CommTopo::COMM_TOPO_CLOS;
-    // int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
     int portNum
         = (param.netType == CommTopo::COMM_TOPO_CLOS) ? (param.portNum[0] + param.portNum[1]) : param.portNum[0];
-    // int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
     int RTT1 = 2;
     int kernelNum = (0.6 * param.rankSize + log2(param.rankSize) * 3 * RTT1 + log2(param.rankSize) * 2 + 2) / 2;
     int log2R = 0;

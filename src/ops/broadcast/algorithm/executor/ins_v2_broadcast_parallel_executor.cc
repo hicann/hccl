@@ -1596,7 +1596,7 @@ REGISTER_ALG_ATTRS(
     CcuSchedBroadcastParallelMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
     topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
     topo.isSupportLevel1Nhr = false; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = true;
-    // TODO: 算法实现有问题，暂时通过opCustomCheck禁用
+    // 算法实现有问题，暂时通过opCustomCheck禁用
     op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) {
         return false;
     };);

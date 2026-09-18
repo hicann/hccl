@@ -27,7 +27,7 @@ HcclResult SelectorRegistry::Register(u32 priority, AutoSelectorBase* selector)
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if (impls_.count(priority) != 0) {
-        HCCL_ERROR("[Algo][Selector] priority %llu already registered.", priority);
+        HCCL_ERROR("[Algo][Selector] priority %u already registered.", priority);
         return HcclResult::HCCL_E_PARA;
     }
 
@@ -39,7 +39,7 @@ HcclResult SelectorRegistry::RegisterByOpType(const HcclCMDType opType, u32 prio
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if (opTypeImpls_[opType].count(priority) != 0) {
-        HCCL_ERROR("[Algo][Selector] opType %d priority %llu already registered.", opType, priority);
+        HCCL_ERROR("[Algo][Selector] opType %d priority %u already registered.", opType, priority);
         return HcclResult::HCCL_E_PARA;
     }
     opTypeImpls_[opType][priority] = selector;

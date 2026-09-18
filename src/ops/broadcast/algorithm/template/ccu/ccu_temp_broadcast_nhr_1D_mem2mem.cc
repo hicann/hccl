@@ -42,7 +42,7 @@ std::vector<CostModelParam> CcuTempBroadcastNHR1DMem2Mem::CalcCostCoeff(CalcCost
     // NHR两阶段：scatter阶段每轮发D/R，allgather阶段每轮发D/R，共2D/R
     // broadcast 是单向流量，CLOS 链路同一时刻只承载单方向数据，不需要除以 pod 上下行收敛比 2
     CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * 2 / param.rankSize, param.netType, portNum, param.rankSize, A, false);
+        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A, false);
 
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);

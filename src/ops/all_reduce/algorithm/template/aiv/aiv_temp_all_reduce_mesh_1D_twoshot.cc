@@ -13,6 +13,7 @@
 #include "config_log.h"
 
 namespace ops_hccl {
+constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
 
 AivTempAllReduceMesh1DTwoShot::AivTempAllReduceMesh1DTwoShot(
     const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
@@ -48,14 +49,16 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
         int level0Port = 1;
         int level1Port = portNum;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, param.isPod);
+            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0,
+            param.isPod);
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1,
+            param.isPod);
         A = std::max(A0, A1);
     } else {
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+            TWO_PHASE_DATA_FACTOR * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     }
 
     if (param.inputBuffer != param.scratchBuffer) {

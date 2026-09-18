@@ -41,10 +41,10 @@ ExecuteSelector::Run(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo, st
     selectors = SelectorRegistry::Global()->GetSelectorsByOpType(opParam.opType);
     HCCL_INFO("[Algo][Selector] The selector nums of optype[%d] is [%zu].", opParam.opType, selectors.size());
     for (auto iter : selectors) {
-        HCCL_DEBUG("[Algo][Selector] The selector[priority of %llu] is running.", iter.first);
+        HCCL_DEBUG("[Algo][Selector] The selector[priority of %u] is running.", iter.first);
         if (iter.second->Select(opParam, topoInfo, selectAlgName) == SelectorStatus::MATCH) {
             HCCL_INFO(
-                "[Algo][Selector] The selector[priority of %llu] is matched, the selected algo type is %s", iter.first,
+                "[Algo][Selector] The selector[priority of %u] is matched, the selected algo type is %s", iter.first,
                 selectAlgName.c_str());
             return HcclResult::HCCL_SUCCESS;
         }

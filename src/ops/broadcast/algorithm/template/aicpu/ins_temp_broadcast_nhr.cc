@@ -17,6 +17,7 @@ constexpr int DEFAULT_PHYSICAL_PORT_NUM = 8;
 constexpr int DEFAULT_SINGLE_CHANNEL_PORT_NUM = 6;
 constexpr int RESERVED_PORT_NUM_FOR_SINGLE_CHANNEL = 2;
 constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
+constexpr int DEFAULT_PORT_NUM = 8;
 
 std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -28,7 +29,7 @@ std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffPara
         portNum += static_cast<int>(p);
     }
     if (portNum <= 0) {
-        portNum = 8;
+        portNum = DEFAULT_PORT_NUM;
     }
     // NHR递归halving-doubling每轮通信对象按2的幂折叠，通信轮次与log2(rankSize)相关而非线性，
     // D 用 rEff 替代 rankSize（与 all_gather NHR 一致）
@@ -49,7 +50,7 @@ std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffPara
     // pod上下行收敛比2：<=64p实测带宽未收敛，不折半端口；>64p（如128p）实测带宽已收敛，按真实isPod折半
     bool isPodForCost = param.rankSize > 64 && param.isPod;
     CostModelManager::Global()->CalcNHRParams(
-        param.dataRatio * 2 / param.rankSize, netType, portNum, param.rankSize, A, isPodForCost);
+        param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, netType, portNum, param.rankSize, A, isPodForCost);
     if (param.inputBuffer != param.scratchBuffer) {
         // 原selector: CalcLocalCopyParams(param.n) 即全量数据的本地拷贝（root拷入、非root拷出，平均1份全量）
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);

@@ -15,10 +15,6 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> InsTempReduceScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // UBX机型
-    // if (param.rankSize > 8) {
-    //     return {};
-    // }
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
