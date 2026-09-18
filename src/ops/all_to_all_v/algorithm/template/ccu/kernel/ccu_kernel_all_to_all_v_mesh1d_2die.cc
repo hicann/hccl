@@ -13,7 +13,6 @@
 
 namespace ops_hccl {
 
-constexpr uint32_t PEER_BATCH_SIZE = 32;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
@@ -185,11 +184,12 @@ static CcuResult ProcessPeerStep(AllToAllVMesh1D2DieContext& ctx, uint32_t peerI
 static CcuResult LoopStep(AllToAllVMesh1D2DieContext& ctx)
 {
     const auto* arg = ctx.arg;
-    uint32_t numBatches = (ctx.peerSize + PEER_BATCH_SIZE - 1) / PEER_BATCH_SIZE;
+    const uint32_t peerBatchSize = arg->peerBatchSize;
+    uint32_t numBatches = (ctx.peerSize + peerBatchSize - 1) / peerBatchSize;
 
     for (uint32_t batch = 0; batch < numBatches; batch++) {
-        uint32_t start = batch * PEER_BATCH_SIZE;
-        uint32_t end = start + PEER_BATCH_SIZE;
+        uint32_t start = batch * peerBatchSize;
+        uint32_t end = start + peerBatchSize;
         if (end > ctx.peerSize) {
             end = ctx.peerSize;
         }

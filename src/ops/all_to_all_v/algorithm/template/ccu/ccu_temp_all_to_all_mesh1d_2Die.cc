@@ -137,9 +137,12 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
         kernelArg->subCommRanks = subCommRanks_;
         kernelArg->withMyRank = kernelWithMyRank_[i];
         kernelArg->rankGroup = kernelRankGroup_[i];
+        kernelArg->peerBatchSize
+            = (topoInfo != nullptr && topoInfo->isPod) ? PEER_BATCH_SIZE_POD : PEER_BATCH_SIZE_SERVER;
         kernelInfo.setKernelArg(kernelArg);
         kernelInfo.channels = kernelChannels_[i];
         resourceRequest.ccuKernelInfos.emplace_back(kernelInfo);
+        HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] kernel[%u], peerBatchSize=%u", i, kernelArg->peerBatchSize);
         HCCL_DEBUG(
             "[CcuTempAllToAllMesh1D2Die][CalcRes] kernel[%u], channels=%llu, withMyRank=%u, ccuKernelInfos=%llu", i,
             kernelChannels_[i].size(), kernelWithMyRank_[i], resourceRequest.ccuKernelInfos.size());

@@ -13,7 +13,6 @@
 
 namespace ops_hccl {
 
-constexpr uint32_t PEER_BATCH_SIZE = 32;
 constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int CKE_IDX_0 = 0;
@@ -139,13 +138,14 @@ static CcuResult DoRepeatAllToAll(AllToAllMesh2DieContext& ctx)
     CalcSrcDstAddrs(ctx, src, dst, localSrc, localDst);
 
     // 单 kernel 同时通信对端数超过阈值时，分批 Write+Wait 以避免 UB 拥塞
+    const uint32_t peerBatchSize = arg->peerBatchSize;
     uint32_t logicSize = static_cast<uint32_t>(ctx.logicRankSize);
-    uint32_t numBatches = (logicSize + PEER_BATCH_SIZE - 1) / PEER_BATCH_SIZE;
+    uint32_t numBatches = (logicSize + peerBatchSize - 1) / peerBatchSize;
 
     u32 channelsIdx = 0;
     for (uint32_t batch = 0; batch < numBatches; batch++) {
-        uint32_t start = batch * PEER_BATCH_SIZE;
-        uint32_t end = start + PEER_BATCH_SIZE;
+        uint32_t start = batch * peerBatchSize;
+        uint32_t end = start + peerBatchSize;
         if (end > logicSize) {
             end = logicSize;
         }

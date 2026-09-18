@@ -21,12 +21,17 @@ namespace ops_hccl {
 
 using RankId = u32;
 
+// 单批同时通信的对端数阈值：pod环境为32，server等其他环境为16
+constexpr uint32_t PEER_BATCH_SIZE_POD = 32;
+constexpr uint32_t PEER_BATCH_SIZE_SERVER = 16;
+
 struct CcuKernelArgAllToAllVMesh1D2Die : CcuKernelArgBase {
     uint32_t rankId;
     OpParam opParam;
     std::vector<std::vector<RankId>> subCommRanks;
     bool withMyRank;
     std::vector<RankId> rankGroup;
+    uint32_t peerBatchSize{PEER_BATCH_SIZE_POD};
 };
 
 struct A2AVSingleSendRecvInfoCtx1D2Die {
