@@ -209,8 +209,23 @@ CreateNegotiationSubCommAndRegCb(HcclComm comm, const std::string& negTag, u32 r
     auto nameRet = sprintf_s(subCommConfig.hcclCommName, sizeof(subCommConfig.hcclCommName), "%s", subCommName.c_str());
     CHK_PRT_RET(nameRet <= 0, HCCL_ERROR("[%s] sprintf_s for hcclCommName failed.", __func__), HCCL_E_INTERNAL);
 
+    // HcclCreateSubCommConfig内部调用aclrtSetDevice会切换为默认ctx，保存调用前ctx并在创建后恢复，
+    // 保证协商stream/buffer（属调用方ctx）与执行ctx一致，且不污染调用线程
+    aclrtContext curCtx = nullptr;
+    aclError aclRet = aclrtGetCurrentContext(&curCtx);
+    CHK_PRT_RET(
+        aclRet != ACL_SUCCESS, HCCL_ERROR("[%s] aclrtGetCurrentContext failed, ret[%d].", __func__, aclRet),
+        HCCL_E_RUNTIME);
+
     HcclResult subRet
         = HcclCreateSubCommConfig(&comm, rankSize, rankIds.data(), 0, myRank, &subCommConfig, &negCtx->subComm);
+    // 无论创建成败，内部ctx切换均已发生，须先恢复；ctx为null时跳过（ST仿真无ctx，走降级路径）
+    if (curCtx != nullptr) {
+        aclRet = aclrtSetCurrentContext(curCtx);
+        CHK_PRT_RET(
+            aclRet != ACL_SUCCESS, HCCL_ERROR("[%s] aclrtSetCurrentContext failed, ret[%d].", __func__, aclRet),
+            HCCL_E_RUNTIME);
+    }
     CHK_PRT_RET(
         subRet != HCCL_SUCCESS, HCCL_ERROR("[%s] HcclCreateSubCommConfig failed, ret[%d].", __func__, subRet),
         HCCL_E_UNAVAIL);
