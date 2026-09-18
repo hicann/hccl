@@ -294,19 +294,25 @@ SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
     (void)opParam;
 
     if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topoInfo->level0PcieMix) {
-                if (!(IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)
-                      || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)) {
-                    selectAlgName = "DpuScatterOmniPipeMeshNHR";
-                    HCCL_INFO("Using algo DpuScatterOmniPipeMeshNHR");
-                    return SelectorStatus::MATCH;
-                }
+        if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            selectAlgName = "DpuScatterSequenceMeshNHR";
+            HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))) {
+                selectAlgName = "DpuScatterPipeLineMeshNHRNHR";
+                HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterPipeLineMeshNHRNHR");
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuScatterSequenceMeshNHR";
+                HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
+                return SelectorStatus::MATCH;
             }
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            selectAlgName = "DpuScatterSequenceMeshNHR";
+            HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
+            return SelectorStatus::MATCH;
         }
-        selectAlgName = "DpuScatterSequenceMeshNHR";
-        HCCL_INFO("Using algo DpuScatterSequenceMeshNHR");
-        return SelectorStatus::MATCH;
     }
 
     return SelectorStatus::NOT_MATCH;

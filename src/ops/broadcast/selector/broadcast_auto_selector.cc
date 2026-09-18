@@ -350,17 +350,18 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuBroadcastSequenceMeshNHR";
+            HCCL_INFO("[BroadcastAutoSelector] Using algo DpuBroadcastSequenceMeshNHR");
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topoInfo->level0PcieMix) {
-                if (!(IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)
-                      || topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)) {
-                    selectAlgName = "DpuBroadcastOmniPipeMeshNHR";
-                    return SelectorStatus::MATCH;
-                }
+            if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))) {
+                selectAlgName = "DpuBroadcastPipeLineMeshNHRNHR";
+                HCCL_INFO("[BroadcastAutoSelector] Using algo DpuBroadcastPipeLineMeshNHRNHR");
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuBroadcastSequenceMeshNHR";
+                HCCL_INFO("[BroadcastAutoSelector] Using algo DpuBroadcastSequenceMeshNHR");
+                return SelectorStatus::MATCH;
             }
-            selectAlgName = "DpuBroadcastSequenceMeshNHR";
-            return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
             // seq算法兼容level0为clos的场景
             selectAlgName = "DpuBroadcastSequenceMeshNHR";
@@ -369,7 +370,6 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
             return SelectorStatus::MATCH;
         }
     }
-
     return SelectorStatus::NOT_MATCH;
 }
 

@@ -20,11 +20,7 @@
 #include "log.h"
 #include "sal.h"
 #include "config_log.h"
-#include "topo_match_base.h"
-#include "topo_match_multilevel.h"
-#include "topo_match_ubx.h"
-#include "topo_match_pcie_mix.h"
-#include "topo_match_3_level.h"
+#include "topo_match_three_level.h"
 #include "omnipipe_scatter_data_slice_calc.h"
 #include "omnipipe_data_slice_calc.h"
 
@@ -59,6 +55,10 @@ public:
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
+
 protected:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
@@ -85,11 +85,7 @@ protected:
         std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo);
     HcclResult BuildSubCommRanks(
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, std::vector<std::vector<u32>>& subCommRanks0,
-        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2,
-        const TopoInfoWithNetLayerDetails* topoInfo);
-    HcclResult BuildUbxSubCommRanks(
-        std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
-        std::vector<std::vector<u32>>& subCommRanks2, const TopoInfoWithNetLayerDetails* topoInfo);
+        std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2);
     void InitRankIndex();
     HcclResult InitRankInfoAndTemp(
         const OpParam& param, std::vector<std::vector<u32>>& subCommRanks0,
@@ -237,9 +233,6 @@ protected:
         OMNIPIPE_AG_LEVEL2 = 5,
         OMNIPIPE_BC_LEVEL_NUM = 6
     };
-
-    enum class TopoType { UBX_2LEVEL, THREE_LEVEL };
-    TopoType topoType_ = TopoType::UBX_2LEVEL;
 
     // root 三轴相对关系（用于编排阶段的路由判断）
     bool isSameXAxisAsRoot = false; // 框内与root同横轴
