@@ -5,11 +5,11 @@
 环境变量配置资源信息的方式仅适用于TensorFlow框架网络的通信域初始化，仅支持如下产品：
 
 <!-- npu="910b" id1 -->
-Atlas A2 训练系列产品/Atlas A2 推理系列产品
+Atlas A2系列产品
 <!-- end id1 -->
 
 <!-- npu="910" id2 -->
-Atlas 训练系列产品
+Atlas训练系列产品
 <!-- end id2 -->
 
 ## 配置说明
@@ -40,7 +40,7 @@ export HCCL_SOCKET_FAMILY=AF_INET
 - 如果环境变量“HCCL_SOCKET_FAMILY”指定的IP协议与实际获取到的网卡信息不匹配，则以实际环境上的网卡信息为准。
     例如，环境变量“HCCL_SOCKET_FAMILY”指定为“AF_INET6”，但Device侧只存在IPv4协议的网卡，则实际会使用IPv4协议的网卡。
 - 通过以上环境变量的方式配置集群信息时，环境中不能存在环境变量RANK_TABLE_FILE、RANK_ID、RANK_SIZE。
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，若业务为单卡多进程场景，建议通过环境变量[HCCL_NPU_SOCKET_PORT_RANGE](../hccl_env/HCCL_NPU_SOCKET_PORT_RANGE.md)配置HCCL在NPU侧使用的通信端口，否则可能会导致端口冲突，但需要注意，多进程会对资源开销、通信性能产生一定的影响，配置示例：
+- 针对Atlas A2系列产品，若业务为单卡多进程场景，建议通过环境变量[HCCL_NPU_SOCKET_PORT_RANGE](../hccl_env/HCCL_NPU_SOCKET_PORT_RANGE.md)配置HCCL在NPU侧使用的通信端口，否则可能会导致端口冲突，但需要注意，多进程会对资源开销、通信性能产生一定的影响，配置示例：
 
     ```bash
     export HCCL_NPU_SOCKET_PORT_RANGE="auto"

@@ -24,7 +24,7 @@
     - NHR：非均衡的层次环算法（Nonuniform Hierarchical Ring），通信步数少（对数复杂度），时延相对较低。适合通信域内Server个数较多且pipeline算法不适用的场景。
 
       <!-- npu="950" id2 -->
-      **当前版本Ascend 950PR/Ascend 950DT仅支持配置NHR算法。**
+      **当前版本Ascend 950PR&950DT系列产品仅支持配置NHR算法。**
       <!-- end id2 -->
 
     - NHR_V1：对应历史版本的NHR算法，通信步数少（根复杂度），时延相对较低，适合通信域内Server数为非2的整数次幂且pipeline算法不适用的场景。NHR_V1算法理论性能低于新版NHR算法，该配置项未来会逐步停用，建议开发者使用NHR算法。
@@ -39,16 +39,16 @@
     不设置level1时：
 
       <!-- npu="950" id3 -->
-    - 针对Ascend 950PR/Ascend 950DT，默认使用NHR算法。
+    - 针对Ascend 950PR&950DT系列产品，默认使用NHR算法。
       <!-- end id3 -->
       <!-- npu="A3" id4 -->
-    - 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，内部会根据产品形态、节点数以及数据量自动选择算法。
+    - 针对Atlas A3系列产品，内部会根据产品形态、节点数以及数据量自动选择算法。
       <!-- end id4 -->
       <!-- npu="910b" id5 -->
-    - 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，内部会根据产品形态、节点数以及数据量自动选择算法。
+    - 针对Atlas A2系列产品，内部会根据产品形态、节点数以及数据量自动选择算法。
       <!-- end id5 -->
       <!-- npu="910" id6 -->
-    - 针对Atlas 训练系列产品，当通信域内Server的个数为非2的整数次幂时，默认使用ring算法；其他场景默认使用H-D_R算法。
+    - 针对Atlas训练系列产品，当通信域内Server的个数为非2的整数次幂时，默认使用ring算法；其他场景默认使用H-D_R算法。
       <!-- end id6 -->
 
   - level2代表超节点间通信算法，支持如下取值：
@@ -65,8 +65,8 @@
 
     level2配置当前仅适用于如下产品：
 
-    - Ascend 950PR/Ascend 950DT，仅支持配置NHR算法，仅支持通信算子展开模式为AI_CPU的场景。
-    - Atlas A3 训练系列产品/Atlas A3 推理系列产品，仅支持通信算子展开模式为AI_CPU的场景。
+    - Ascend 950PR&950DT系列产品，仅支持配置NHR算法，仅支持通信算子展开模式为AI_CPU的场景。
+    - Atlas A3系列产品，仅支持通信算子展开模式为AI_CPU的场景。
     
       通信算子展开模式可通过环境变量[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)配置。
 
@@ -109,24 +109,24 @@
 
 - 当前版本Server内通信算法仅支持配置为“NA”。
   <!-- npu="910b" id7 -->
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，在严格确定性计算的保序场景下，不建议配置HCCL_ALGO环境变量。
+- 针对Atlas A2系列产品，在严格确定性计算的保序场景下，不建议配置HCCL_ALGO环境变量。
   <!-- end id7 -->
 - 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclAlgo”参数指定了通信算法，则以通信域粒度的配置优先。
 
 ## 产品支持情况
 
 <!-- npu="950" id10 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id10 -->
 <!-- npu="A3" id9 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id9 -->
 <!-- npu="910b" id8 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id8 -->
 <!-- npu="910" id1 -->
-- Atlas 训练系列产品：支持
+- Atlas训练系列产品：支持
 <!-- end id1 -->
 <!-- npu="310p" id11 -->
-- Atlas 推理系列产品：不支持
+- Atlas推理系列产品：不支持
 <!-- end id11 -->

@@ -1,6 +1,6 @@
-# rank table配置资源信息（Atlas 300I Duo 推理卡）
+# rank table配置资源信息（Atlas 300I Duo推理卡）
 
-针对Atlas 300I Duo 推理卡，以包含两个AI Server，每个AI Server内2个Device为例，rank table文件配置示例如下：
+针对Atlas 300I Duo推理卡，以包含两个AI Server，每个AI Server内2个Device为例，rank table文件配置示例如下：
 
 > [!NOTE]说明
 > rank table文件为JSON格式，本节所示JSON文件示例中的注释仅为方便理解，实际使用时，请删除JSON文件中的注释。

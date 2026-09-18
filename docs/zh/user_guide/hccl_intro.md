@@ -34,27 +34,27 @@ HCCL包含HCCL集合通信库与HCOMM（Huawei Communication）通信基础库�
 ## 支持的产品
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT
+- Ascend 950PR&950DT系列产品
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A3系列产品
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- Atlas A2系列产品
 <!-- end id3 -->
 <!-- npu="910" id4 -->
-- Atlas 训练系列产品
+- Atlas训练系列产品
 <!-- end id4 -->
 <!-- npu="310p" id5 -->
-- Atlas 推理系列产品
+- Atlas推理系列产品
 <!-- end id5 -->
 
 <!-- npu="910b,310p" id8 -->
 > [!NOTE]说明
 > <!-- npu="910b" id6 -->
-> - 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，仅支持Atlas 800T A2 训练服务器、Atlas 900 A2 PoD 集群基础单元、Atlas 200T A2 Box16 异构子框。
+> - 针对Atlas A2系列产品，仅支持Atlas 800T A2训练服务器、Atlas 900 A2 PoD集群基础单元、Atlas 200T A2 Box16异构子框。
 > <!-- end id6 -->
 > <!-- npu="310p" id7 -->
-> - 针对Atlas 推理系列产品，仅支持Atlas 300I Duo 推理卡。
+> - 针对Atlas推理系列产品，仅支持Atlas 300I Duo推理卡。
 <!-- end id7 -->
 <!-- end id8 -->

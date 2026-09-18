@@ -5,10 +5,10 @@ HCCL通信算子的任务编排完成后会下发到Device侧上异步执行，�
 针对如下产品，如果要跟踪task级信息，需要通过[HCCL_DIAGNOSE_ENABLE](../hccl_env/HCCL_DIAGNOSE_ENABLE.md)手动开启。
 
 <!-- npu="A3" id4 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A3系列产品
 <!-- end id4 -->
 <!-- npu="910b" id1 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- Atlas A2系列产品
 <!-- end id1 -->
 
 此时在CANN日志中打印的task exception的关键日志为**"Task run failed"或"TaskExecStage"**，如下所示：

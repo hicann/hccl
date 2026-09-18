@@ -32,11 +32,11 @@
     该环境变量仅支持以下产品：
 
     <!-- npu="A3" id2 -->
-    Atlas A3 训练系列产品/Atlas A3 推理系列产品
+    Atlas A3系列产品
     <!-- end id2 -->
 
     <!-- npu="910b" id3 -->
-    Atlas A2 训练系列产品/Atlas A2 推理系列产品
+    Atlas A2系列产品
     <!-- end id3 -->
     <!-- end id1 -->
 
@@ -108,16 +108,16 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
      针对如下产品，可以通过检索`HCCL_ENV`的关键字查询每个进程的环境变量实际生效值，例如执行：`grep -r "HCCL_ENV" run/plog/plog-_xxx_.log`。
     
       <!-- npu="A3" id4 -->
-    - Atlas A3 训练系列产品/Atlas A3 推理系列产品
+    - Atlas A3系列产品
       <!-- end id4 -->
       <!-- npu="910b" id5 -->
-    - Atlas A2 训练系列产品/Atlas A2 推理系列产品
+    - Atlas A2系列产品
       <!-- end id5 -->
       <!-- npu="910" id6 -->
-    - Atlas 训练系列产品
+    - Atlas训练系列产品
       <!-- end id6 -->
       <!-- npu="310p" id7 -->
-    - Atlas 推理系列产品
+    - Atlas推理系列产品
       <!-- end id7 -->
     
     命令执行后，得到以下信息：
@@ -154,7 +154,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
     <!-- end id8 -->
 
     <!-- npu="950" id9 -->
-    **针对Ascend 950PR/Ascend 950DT**，可通过检索关键字“base_config”查询当前已设置的环境变量。
+    **针对Ascend 950PR&950DT系列产品**，可通过检索关键字“base_config”查询当前已设置的环境变量。
 
     ```text
     [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.170[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_IP" is not set. Default value is used. 
@@ -207,7 +207,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 |                |Resource | 通信域初始化节点资源初始化失败 |
 | InitChannelStage | ParameterConflict | [参数面建链阶段参数一致性校验失败](./param_consistency_check_EI0005.md#参数一致性校验ei0005) |
 |                |VersionConflict | 参数面建链阶段HCCL版本不一致校验失败 |
-|                |Timeout | [参数面建链阶段超时报错](./link_timeout_EI0006.md#建链超时ei0006) |
+|                |Timeout | [参数面建链阶段超时报错](./link_timeout_EI0006.md#建链超时-ei0006) |
 | TaskExecStage | InvalidArgument | 算子执行阶段入参校验失败 |
 |               |Not Supported | 算子执行阶段不支持场景 |
 |               |Timeout | [算子执行阶段执行超时](./task_exec_stage_troubleshooting.md#定位思路) |
@@ -223,7 +223,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 | EI0003 | 集合通信算子入参校验失败 |
 | EI0004 | [rankTable文件加载失败](_dump_rank_table_load_fail.md) |
 | EI0005 | [参数一致性校验失败](param_consistency_check_EI0005.md#参数一致性校验ei0005) |
-| EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时ei0006) |
+| EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时-ei0006) |
 | EI0007 | 资源初始化失败 |
 | EI0008 | HCCL版本不一致，校验失败 |
 | EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) |

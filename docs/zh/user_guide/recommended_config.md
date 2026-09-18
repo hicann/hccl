@@ -3,20 +3,20 @@
 本节分别针对如下产品的常见业务场景，提供推荐的业务配置：
 
   <!-- npu="950" id5 -->
-- Ascend 950PR/Ascend 950DT
+- Ascend 950PR&950DT系列产品
   <!-- end id5 -->
   <!-- npu="A3" id3 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A3系列产品
   <!-- end id3 -->
   <!-- npu="910b" id4 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- Atlas A2系列产品
   <!-- end id4 -->
 
 > [!NOTE]说明
 > 本节仅给出了推荐配置环境变量的功能说明和配置示例，详细使用说明可参见[环境变量参考](./hccl_env/README.md)。
 
 <!-- npu="950" id6 -->
-## Ascend 950PR/Ascend 950DT
+## Ascend 950PR&950DT系列产品
 
 - **训练场景**
 
@@ -40,7 +40,7 @@
 <!-- end id6 -->
 
 <!-- npu="A3" id1 -->
-## Atlas A3 训练系列产品/Atlas A3 推理系列产品
+## Atlas A3系列产品
 
 - **训练场景**
 
@@ -75,7 +75,7 @@
 <!-- end id1 -->
 
 <!-- npu="910b" id2 -->
-## Atlas A2 训练系列产品/Atlas A2 推理系列产品
+## Atlas A2系列产品
 
 - **训练场景**
 

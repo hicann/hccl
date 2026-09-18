@@ -1,6 +1,6 @@
-# rank table配置资源信息（Ascend 950PR/Ascend 950DT）
+# rank table配置资源信息（Ascend 950PR&950DT系列产品）
 
-对Ascend 950PR/Ascend 950DT，rank table文件需要配合拓扑文件初始化HCCL通信域。
+对Ascend 950PR&950DT系列产品，rank table文件需要配合拓扑文件初始化HCCL通信域。
 
 > [!NOTE]说明
 >

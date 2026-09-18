@@ -3,19 +3,19 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id3 -->
 <!-- npu="310p" id4 -->
-- Atlas 推理系列产品：支持
+- Atlas推理系列产品：支持
 <!-- end id4 -->
 <!-- npu="910" id5 -->
-- Atlas 训练系列产品：支持
+- Atlas训练系列产品：支持
 <!-- end id5 -->
 
 ## 功能说明
@@ -48,19 +48,19 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 ### 数据类型说明
 
 <!-- npu="950" id10 -->
-- 针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。
+- 针对Ascend 950PR&950DT系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。
 <!-- end id10 -->
 <!-- npu="A3" id11 -->
-- 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
+- 针对Atlas A3系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
 <!-- end id11 -->
 <!-- npu="910b" id12 -->
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
+- 针对Atlas A2系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
 <!-- end id12 -->
 <!-- npu="910" id13 -->
-- 针对Atlas 训练系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
+- 针对Atlas训练系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
 <!-- end id13 -->
 <!-- npu="310p" id6 -->
-- 针对Atlas 300I Duo 推理卡，支持的数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
+- 针对Atlas 300I Duo推理卡，支持的数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
 <!-- end id6 -->
 
 ## 返回值
@@ -71,14 +71,14 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 
 - AlltoAllV操作的性能与NPU之间共享数据的缓存区大小有关，当通信数据量超过缓存区大小时性能将出现明显下降。若业务中AlltoAllV通信数据量较大，建议通过配置环境变量[HCCL_BUFFSIZE](../../user_guide/hccl_env/HCCL_BUFFSIZE.md)适当增大缓存区大小以提升通信性能。
 <!-- npu="910" id13 -->
-- 针对Atlas 训练系列产品，AlltoAllV的通信域需要满足如下约束：
+- 针对Atlas训练系列产品，AlltoAllV的通信域需要满足如下约束：
 
   集群组网下，单Server 1p、2p通信域要在同一个cluster内（Server内0-3卡和4-7卡各为一个cluster），单Server 4p、8p和多Server通信域中rank要以cluster为基本单位，并且Server间cluster选取要一致。
   
-- 针对Atlas 训练系列产品，如果是单Server场景，要求网卡的状态是“up”，否则此接口会执行失败。
+- 针对Atlas训练系列产品，如果是单Server场景，要求网卡的状态是“up”，否则此接口会执行失败。
 <!-- end id13 -->
 <!-- npu="310p" id14 -->
-- 针对Atlas 300I Duo 推理卡，仅支持单Server场景，单Server中最大支持部署2张Atlas 300I Duo 推理卡（即4个NPU）。
+- 针对Atlas 300I Duo推理卡，仅支持单Server场景，单Server中最大支持部署2张Atlas 300I Duo推理卡（即4个NPU）。
 <!-- end id14 -->
 
 ## 调用示例

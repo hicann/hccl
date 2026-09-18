@@ -10,7 +10,7 @@
 
 ## 可能原因
 
-superDeviceId是Atlas A3 训练系列产品/Atlas A3 推理系列产品内Device在超节点系统中的物理ID，是超节点系统中Device的唯一标识。HCCL在一致性校验时发现一个超节点内有相同的superDeviceId，因此校验失败。superDeviceId可通过npu-smi命令查询：
+superDeviceId是Atlas A3系列产品内Device在超节点系统中的物理ID，是超节点系统中Device的唯一标识。HCCL在一致性校验时发现一个超节点内有相同的superDeviceId，因此校验失败。superDeviceId可通过npu-smi命令查询：
 
 ```bash
 npu-smi info -t spod-info -i id -c chip_id

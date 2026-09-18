@@ -1,6 +1,6 @@
-# Ascend 950PR/Ascend 950DT
+# Ascend 950PR&950DT系列产品
 
-本节提供Ascend 950PR/Ascend 950DT的通信算子支持情况。
+本节提供Ascend 950PR&950DT系列产品的通信算子支持情况。
 
 > [!NOTE]说明
 > 

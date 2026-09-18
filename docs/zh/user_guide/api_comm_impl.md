@@ -41,7 +41,7 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
 - 同一个通信域内的算子需要由使用者确保串行执行。
 - 同一个NPU上需要串行创建多个通信域。
 <!-- npu="A3" id4 -->
-- 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，通信域初始化时，如果组网中存在多个超节点，请将属于同一超节点内的AI Server信息配置在一起。假设有两个超节点，标识分别为“0”和“1”，请先配置“0”中的AI Server信息，再配置“1”中的AI Server信息，不支持“0”中的AI Server信息与“1”中的AI Server信息交叉配置。
+- 针对Atlas A3系列产品，通信域初始化时，如果组网中存在多个超节点，请将属于同一超节点内的AI Server信息配置在一起。假设有两个超节点，标识分别为“0”和“1”，请先配置“0”中的AI Server信息，再配置“1”中的AI Server信息，不支持“0”中的AI Server信息与“1”中的AI Server信息交叉配置。
 <!-- end id4 -->
 
 ### 基于rank table创建通信域
@@ -72,13 +72,13 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
 
 针对如下产品：
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT
+- Ascend 950PR&950DT系列产品
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A3系列产品
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- Atlas A2系列产品
 <!-- end id3 -->
 
 若业务为单卡多进程场景，建议在rank table配置文件中配置“device_port”字段，并且不同的业务进程需要设置不同的端口号，否则业务可能会因为端口冲突运行失败。但需要注意，多进程会对资源开销、通信性能产生一定的影响。
@@ -89,7 +89,7 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
 
 - 每个Device对应一个业务进程的场景，实现流程如下所示：
        <!-- npu="950" id5 -->
-    1. 针对Ascend 950PR/Ascend 950DT，检查rootinfo文件是否存在，其他产品跳过此步骤。
+    1. 针对Ascend 950PR&950DT系列产品，检查rootinfo文件是否存在，其他产品跳过此步骤。
 
         基于root节点信息创建通信域前，请检查“/etc/hccl_rootInfo.json”文件是否存在，此文件记录了NPU间通信的EID（Entity ID，通信中发起或接收对象的标识）信息，环境部署完成后自动生成。若无此文件，请在当前源码仓提issue。
        <!-- end id5 -->
@@ -130,7 +130,7 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
 
 - 每个AI Server对应一个业务进程，每个线程对应一个Device，通过多线程的方式创建多个通信域的场景，实现流程如下所示：
        <!-- npu="950" id6 -->
-    1. 针对Ascend 950PR/Ascend 950DT，检查rootinfo文件是否存在，其他产品跳过此步骤。
+    1. 针对Ascend 950PR&950DT系列产品，检查rootinfo文件是否存在，其他产品跳过此步骤。
 
         基于root节点信息创建通信域前，请检查“/etc/hccl_rootInfo.json”文件是否存在，此文件记录了NPU间通信的EID（Entity ID，通信中发起或接收对象的标识）信息，环境部署完成后自动生成。若无此文件，请在当前代码仓提issue。
        <!-- end id6 -->
@@ -143,13 +143,13 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
 
 针对如下产品：
 <!-- npu="950" id7 -->
-- Ascend 950PR/Ascend 950DT
+- Ascend 950PR&950DT系列产品
 <!-- end id7 -->
 <!-- npu="A3" id8 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A3系列产品
 <!-- end id8 -->
 <!-- npu="910b" id9 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- Atlas A2系列产品
 <!-- end id9 -->
 
 若业务为单卡多进程场景，建议通过环境变量“[HCCL_HOST_SOCKET_PORT_RANGE](./hccl_env/HCCL_HOST_SOCKET_PORT_RANGE.md)”与“[HCCL_NPU_SOCKET_PORT_RANGE](./hccl_env/HCCL_NPU_SOCKET_PORT_RANGE.md)”分别配置HCCL在Host侧与NPU侧使用的通信端口，否则可能会导致端口冲突，配置示例如下所示。但需要注意，多进程会对资源开销、通信性能产生一定的影响。

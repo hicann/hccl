@@ -35,7 +35,7 @@ HCCL提供了多种故障检测功能的开关设置，包括建链故障探测�
     **说明**：
     - 该功能开启后会生成数据缓存，占用HOST侧内存。
     <!-- npu="A3,910b" id8 -->
-    - 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品与Atlas A2 训练系列产品/Atlas A2 推理系列产品，该功能不支持检测HcclBatchSendRecv算子和图模式场景。
+    - 针对Atlas A3系列产品与Atlas A2系列产品，该功能不支持检测HcclBatchSendRecv算子和图模式场景。
     <!-- end id8 -->
 
 <!-- npu="950" id5 -->
@@ -45,7 +45,7 @@ HCCL提供了多种故障检测功能的开关设置，包括建链故障探测�
 
     关闭该开关后，HCCL将不再记录与检索异常task的详细信息，task执行异常相关的维测信息将无法获取。
 
-    **说明**：该功能当前仅支持Ascend 950PR/Ascend 950DT。
+    **说明**：该功能当前仅支持Ascend 950PR&950DT系列产品。
 <!-- end id5 -->
 
 <!-- npu="A3" id4 -->
@@ -58,7 +58,7 @@ HCCL提供了多种故障检测功能的开关设置，包括建链故障探测�
 
     **说明**：
 
-    1. 该功能当前仅支持Atlas A3 训练系列产品/Atlas A3 推理系列产品，仅在通信算子展开模式为AI_CPU时生效。
+    1. 该功能当前仅支持Atlas A3系列产品，仅在通信算子展开模式为AI_CPU时生效。
     2. 该功能为异常时维测功能，开启后会对业务执行性能产生影响，因此不建议业务正常运行时开启。
     3. 当该配置取值小于100ms时，无法保证功能的完备性，同时可能对业务执行性能、功能造成较大影响，甚至可能导致业务执行失败。
     4. 该配置取值较小时，存在“$HOME/ascend/log/run/device-\*/”目录下日志刷屏的风险。
@@ -76,22 +76,22 @@ export HCCL_DFS_CONFIG="connection_fault_detection_time:30,cluster_heartbeat:on,
 
 ## 使用约束
 
-**当前版本Ascend 950PR/Ascend 950DT仅支持配置以下三个字段：task_exception、cluster_heartbeat、inconsistent_check。**
+**当前版本Ascend 950PR&950DT系列产品仅支持配置以下三个字段：task_exception、cluster_heartbeat、inconsistent_check。**
 
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id3 -->
 <!-- npu="910" id6 -->
-- Atlas 训练系列产品：不支持
+- Atlas训练系列产品：不支持
 <!-- end id6 -->
 <!-- npu="310p" id7 -->
-- Atlas 推理系列产品：不支持
+- Atlas推理系列产品：不支持
 <!-- end id7 -->

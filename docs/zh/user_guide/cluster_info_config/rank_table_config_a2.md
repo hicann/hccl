@@ -1,6 +1,6 @@
-# rank table配置资源信息（Atlas A2 训练系列产品/Atlas A2 推理系列产品）
+# rank table配置资源信息（Atlas A2系列产品）
 
-针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，以包含两个AI Server，每个AI Server内2个Device为例，rank table文件配置示例如下：
+针对Atlas A2系列产品，以包含两个AI Server，每个AI Server内2个Device为例，rank table文件配置示例如下：
 
 > [!NOTE]说明
 > rank table文件为JSON格式，本节所示JSON文件示例中的注释仅为方便理解，实际使用时，请删除JSON文件中的注释。

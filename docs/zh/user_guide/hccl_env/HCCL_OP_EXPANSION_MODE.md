@@ -5,7 +5,7 @@
 该环境变量用于配置通信算子的展开模式。
 
   <!-- npu="950" id2 -->
-- **针对Ascend 950PR/Ascend 950DT** ：支持的配置如下，若设置了不支持的环境变量，系统报错。
+- **针对Ascend 950PR&950DT系列产品** ：支持的配置如下，若设置了不支持的环境变量，系统报错。
 
   - **AI_CPU**：代表通信算子在AI CPU展开，Device侧根据硬件型号自动选择相应的调度器。
 
@@ -56,7 +56,7 @@
   <!-- end id2 -->
 
   <!-- npu="A3" id3 -->
-- **针对Atlas A3 训练系列产品/Atlas A3 推理系列产品**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
+- **针对Atlas A3系列产品**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
 
   - **AI_CPU（默认值）**：代表通信算子在AI CPU展开，Device侧根据硬件型号自动选择相应的调度器。
 
@@ -96,7 +96,7 @@
   <!-- end id3 -->
 
   <!-- npu="910b" id4 -->
-- **针对Atlas A2 训练系列产品/Atlas A2 推理系列产品**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
+- **针对Atlas A2系列产品**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
 
   - **HOST（默认值）**：代表通信算子在Host侧CPU展开，Device侧根据硬件型号自动选择相应的调度器。
   - **HOST_TS**：代表通信算子在Host侧CPU展开，Host向Device的Task Scheduler下发任务，Device的Task Scheduler进行任务调度执行。
@@ -135,7 +135,7 @@
   <!-- end id4 -->
 
   <!-- npu="310p" id1 -->
-- **针对Atlas 300I Duo 推理卡**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
+- **针对Atlas 300I Duo推理卡**：支持的配置如下，若设置了不支持的环境变量，使用默认值。
   - **HOST（默认值）**：代表通信算子在Host侧CPU展开，Device侧根据硬件型号自动选择相应的调度器。
   - **AI_CPU**：代表通信算子在AI CPU展开，Device侧根据硬件型号自动选择相应的调度器。
     - 仅支持单机单通信域场景。
@@ -153,7 +153,7 @@ export HCCL_OP_EXPANSION_MODE="AI_CPU"
 ## 使用约束
 
 - 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclOpExpansionMode”参数配置了通信算子的展开模式，则以通信域粒度的配置优先。
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品的**推理特性：**
+- 针对Atlas A2系列产品的**推理特性：**
 
     **配置为“AIV”的场景下**，若通过“CTRL+C”方式强制结束进程，在msnpureport工具导出的Device侧日志文件中可能会出现Device访问非法地址的错误，日志关键词为“devmm_page_fault_d2h_query_flag”、“devmm_svm_device_fault”或“ipc_fault_msg_para_check”，如下所示，此种场景不会影响Device上卡的状态，不会影响后续新起任务的执行。
 
@@ -168,17 +168,17 @@ export HCCL_OP_EXPANSION_MODE="AI_CPU"
 ## 产品支持情况
 
 <!-- npu="950" id5 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id5 -->
 <!-- npu="A3" id6 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id6 -->
 <!-- npu="910b" id7 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id7 -->
 <!-- npu="910" id8 -->
-- Atlas 训练系列产品：不支持
+- Atlas训练系列产品：不支持
 <!-- end id8 -->
 <!-- npu="310p" id9 -->
-- Atlas 推理系列产品：支持
+- Atlas推理系列产品：支持
 <!-- end id9 -->

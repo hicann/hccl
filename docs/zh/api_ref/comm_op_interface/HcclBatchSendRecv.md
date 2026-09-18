@@ -3,19 +3,19 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id3 -->
 <!-- npu="310p" id4 -->
-- Atlas 推理系列产品：不支持
+- Atlas推理系列产品：不支持
 <!-- end id4 -->
 <!-- npu="910" id5 -->
-- Atlas 训练系列产品：支持
+- Atlas训练系列产品：支持
 <!-- end id5 -->
 
 ## 功能说明
@@ -40,16 +40,16 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 ### 数据类型说明
 
 <!-- npu="950" id10 -->
-- 针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。
+- 针对Ascend 950PR&950DT系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float8-e5m2、float8-e4m3、float8-e8m0、hifloat8、float16、float32、float64、bfp16。
 <!-- end id10 -->
 <!-- npu="A3" id11 -->
-- 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
+- 针对Atlas A3系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
 <!-- end id11 -->
 <!-- npu="910b" id12 -->
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
+- 针对Atlas A2系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64、bfp16。
 <!-- end id12 -->
 <!-- npu="910" id13 -->
-- 针对Atlas 训练系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
+- 针对Atlas训练系列产品，支持数据类型：int8、uint8、int16、uint16、int32、uint32、int64、uint64、float16、float32、float64。
 <!-- end id13 -->
 
 ## 返回值
@@ -59,8 +59,8 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 ## 约束说明
 
 - “异步”是指同一张卡上的接收和发送任务是异步的，不会相互阻塞。但是在卡间，收发任务依旧是同步的，因此，卡间的收发任务也同HcclSend、HcclRecv一样，必须是一一对应的。
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，在大规模集群下（ranksize\>500）使用此接口时，并发执行数不能超过3个。
-- 针对[Atlas 200T A2 Box16 异构子框](https://support.huawei.com/enterprise/zh/doc/EDOC1100318274/287e0458)，若Server内卡间出现建链失败的情况（错误码：EI0010），需要将环境变量HCCL_INTRA_ROCE_ENABLE配置为1，HCCL_INTRA_PCIE_ENABLE配置为0，让Server内采用RoCE环路进行多卡间的通信（请确保Server上存在RoCE网卡，且具有send/recv收发关系的设备之间RDMA链路互通），环境变量配置示例如下：
+- 针对Atlas A2系列产品，在大规模集群下（ranksize\>500）使用此接口时，并发执行数不能超过3个。
+- 针对[Atlas 200T A2 Box16异构子框](https://support.huawei.com/enterprise/zh/doc/EDOC1100318274/287e0458)，若Server内卡间出现建链失败的情况（错误码：EI0010），需要将环境变量HCCL_INTRA_ROCE_ENABLE配置为1，HCCL_INTRA_PCIE_ENABLE配置为0，让Server内采用RoCE环路进行多卡间的通信（请确保Server上存在RoCE网卡，且具有send/recv收发关系的设备之间RDMA链路互通），环境变量配置示例如下：
 
     ```bash
     export HCCL_INTRA_ROCE_ENABLE=1

@@ -3,8 +3,8 @@
 > [!NOTE]说明
 > 本节所述场景及处理方法仅适用于如下产品：
 >
-> - Atlas A3 训练系列产品/Atlas A3 推理系列产品
-> - Atlas A2 训练系列产品/Atlas A2 推理系列产品
+> - Atlas A3系列产品
+> - Atlas A2系列产品
 
 若在Profiling数据中观察到有长达4秒左右的notify wait任务，一般对应的网络配置出现问题，导致出现了丢包重传的现象，可以通过hccn_tool工具查看统计值中的**roce_new_pkt_rty_num**字段来定位。
 

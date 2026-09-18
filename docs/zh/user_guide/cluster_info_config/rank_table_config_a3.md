@@ -1,6 +1,6 @@
-# rank table配置资源信息（Atlas A3 训练系列产品/Atlas A3 推理系列产品）
+# rank table配置资源信息（Atlas A3系列产品）
 
-针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，集群训练支持超节点模式组网与典型组网。需要注意，针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，每个NPU包含2个Device（即两个Die），每个Device为一个rank。
+针对Atlas A3系列产品，集群训练支持超节点模式组网与典型组网。需要注意，针对Atlas A3系列产品，每个NPU包含2个Device（即两个Die），每个Device为一个rank。
 
 > [!NOTE]说明
 > rank table文件为JSON格式，本节所示JSON文件示例中的注释仅为方便理解，实际使用时，请删除JSON文件中的注释。

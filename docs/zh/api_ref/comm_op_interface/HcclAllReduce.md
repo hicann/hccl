@@ -3,19 +3,19 @@
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：支持
+- Atlas A3系列产品：支持
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：支持
+- Atlas A2系列产品：支持
 <!-- end id3 -->
 <!-- npu="310p" id4 -->
-- Atlas 推理系列产品：支持
+- Atlas推理系列产品：支持
 <!-- end id4 -->
 <!-- npu="910" id5 -->
-- Atlas 训练系列产品：支持
+- Atlas训练系列产品：支持
 <!-- end id5 -->
 
 ## 功能说明
@@ -45,37 +45,37 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
 ### dataType说明
 
 <!-- npu="950" id10 -->
-- 针对Ascend 950PR/Ascend 950DT，支持数据类型：int8、int16、int32、int64、uint64、float16、float32、float64、bfp16。
+- 针对Ascend 950PR&950DT系列产品，支持数据类型：int8、int16、int32、int64、uint64、float16、float32、float64、bfp16。
 <!-- end id10 -->
 <!-- npu="A3" id11 -->
-- 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。
+- 针对Atlas A3系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。
 <!-- end id11 -->
 <!-- npu="910b" id12 -->
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。需要注意，针对int64数据类型，性能会有一定的劣化。
+- 针对Atlas A2系列产品，支持数据类型：int8、int16、int32、int64、float16、float32、bfp16。需要注意，针对int64数据类型，性能会有一定的劣化。
 <!-- end id12 -->
 <!-- npu="910" id13 -->
-- 针对Atlas 训练系列产品，支持数据类型：int8、int32、int64、float16、float32。
+- 针对Atlas训练系列产品，支持数据类型：int8、int32、int64、float16、float32。
 <!-- end id13 -->
 <!-- npu="310p" id6 -->
-- 针对Atlas 300I Duo 推理卡，支持数据类型：int8、int16、int32、float16、float32。
+- 针对Atlas 300I Duo推理卡，支持数据类型：int8、int16、int32、float16、float32。
 <!-- end id6 -->
 
 ### op说明
 
 <!-- npu="950" id14 -->
-- 针对Ascend 950PR/Ascend 950DT，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
+- 针对Ascend 950PR&950DT系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 <!-- end id14 -->
 <!-- npu="A3" id15 -->
-- 针对Atlas A3 训练系列产品/Atlas A3 推理系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
+- 针对Atlas A3系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 <!-- end id15 -->
 <!-- npu="910b" id16 -->
-- 针对Atlas A2 训练系列产品/Atlas A2 推理系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
+- 针对Atlas A2系列产品，支持的操作类型为sum、prod、max、min，其中prod操作不支持int16、bfp16数据类型。
 <!-- end id16 -->
 <!-- npu="910" id17 -->
-- 针对Atlas 训练系列产品，支持的操作类型为sum、prod、max、min。
+- 针对Atlas训练系列产品，支持的操作类型为sum、prod、max、min。
 <!-- end id17 -->
 <!-- npu="310p" id7 -->
-- 针对Atlas 300I Duo 推理卡，支持的操作类型为sum、prod、max、min，其中prod、max、min操作不支持int16数据类型。
+- 针对Atlas 300I Duo推理卡，支持的操作类型为sum、prod、max、min，其中prod、max、min操作不支持int16数据类型。
 <!-- end id7 -->
 
 ## 返回值

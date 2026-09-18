@@ -4,7 +4,7 @@
 
 用于配置UB_CTP协议下的Jetty超时时间的系数timeout。
 
-针对Ascend 950PR/Ascend 950DT，该环境变量配置为整数，取值范围为\[0,31\]，默认值为8。
+针对Ascend 950PR&950DT系列产品，该环境变量配置为整数，取值范围为\[0,31\]，默认值为8。
 
 UB_CTP协议下的Jetty超时时间分为4档，档位的计算公式为：timeout / 8（整除），其中timeout为该环境变量配置值，0档：512ms；1档：4s；2档：8s；3档：32s。UB_CTP协议直接使用环境变量配置值，不与TP总超时时间比较。时间配置建议按照0/8/16/24选择配置。
 
@@ -22,17 +22,17 @@ export HCOMM_TA_CTP_UB_TIMEOUT=8
 ## 产品支持情况
 
 <!-- npu="950" id1 -->
-- Ascend 950PR/Ascend 950DT：支持
+- Ascend 950PR&950DT系列产品：支持
 <!-- end id1 -->
 <!-- npu="A3" id2 -->
-- Atlas A3 训练系列产品/Atlas A3 推理系列产品：不支持
+- Atlas A3系列产品：不支持
 <!-- end id2 -->
 <!-- npu="910b" id3 -->
-- Atlas A2 训练系列产品/Atlas A2 推理系列产品：不支持
+- Atlas A2系列产品：不支持
 <!-- end id3 -->
 <!-- npu="910" id4 -->
-- Atlas 训练系列产品：不支持
+- Atlas训练系列产品：不支持
 <!-- end id4 -->
 <!-- npu="310p" id5 -->
-- Atlas 推理系列产品：不支持
+- Atlas推理系列产品：不支持
 <!-- end id5 -->
