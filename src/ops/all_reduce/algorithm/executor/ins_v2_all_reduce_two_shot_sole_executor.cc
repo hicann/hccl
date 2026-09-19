@@ -58,12 +58,12 @@ InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     std::vector<CostModelParam> params = [rankSize, portNumLevel0, netTypeLevel0, isPod] {
         std::vector<CostModelParam> v;
         auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-            portNumLevel0, isPod});
+            rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p0.begin(), p0.end());
         auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
-            portNumLevel0, isPod});
+            rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p1.begin(), p1.end());
         return v;
     }();
@@ -422,6 +422,11 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshConcur, InsV2AllReduceTwoShotSoleExecutor, TopoMatchOneLevel,
     InsTempReduceScatterMesh1DZAxisDetour, InsTempAllGatherMesh1D1DZAxisDetour);
-REGISTER_ALG_ATTRS(AicpuAllReduceSoleMeshConcur, op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
-                   topo.maxTopoLevelNum = 1);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceSoleMeshConcur, op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.maxTopoLevelNum = 1;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        u64 perRankSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return perRankSize > 4ULL * 1024 * 1024 * 1024;
+    });
 } // namespace ops_hccl

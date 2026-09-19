@@ -12,7 +12,6 @@
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
 #include <cstring>
-#include <type_traits>
 #include "alg_attrs_registry.h"
 #include "hccl_aiv_utils.h"
 #include "hccl_res.h"
@@ -111,18 +110,6 @@ AlgNetMeta InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta
     CommTopo netType
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     AlgNetMeta meta;
-    // AIV mesh 模板恒返回 [mesh 平面, clos 平面] 两段, meta 按组内 MAX 聚合,
-    // 使 utils 按各平面 netType 分别生效(单级拓扑由模板补零段)
-#ifndef AICPU_COMPILE
-    if constexpr (std::is_same_v<InsAlgTemplate, AivTempScatterMesh1D>) {
-        meta.netTypes = {CommTopo::COMM_TOPO_1DMESH, CommTopo::COMM_TOPO_CLOS};
-        meta.intraGroupMode = CostAggMode::MAX;
-        meta.groupSizes = {2};
-        meta.dataRatios = {1.0f, 1.0f};
-        meta.rankSizes = {rankSize, rankSize};
-        return meta;
-    }
-#endif
     meta.netTypes.push_back(netType);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};

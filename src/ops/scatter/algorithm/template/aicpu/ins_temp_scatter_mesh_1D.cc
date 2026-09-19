@@ -17,12 +17,7 @@ std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
     int remoteSyncNum = 4;
-    // taskNum 按 root 关键路径指令流物理组成(8P checker LogGraphV3Sqe 标定):
-    // threadNum = rankSize - 1 (每对端一线程; R=1 时为 0, 自然退化)
-    // [trans] 3×threadNum: 每对端 3 task(Send + 就绪W + 通知R)
-    // [sync]  4×threadNum: 前后两次同步(PreSync+PostSync), 每次 threadNum 对 W+R
-    // [copy]  PreCopy 1(root 自留份, input≠CCL 时); PostCopy 在非root, 不占 root 关键路径
-    // 总式 7R-6; 8P 实测48(差2: r1 在主线程内, 其起步/收尾与主线程同步重叠一对)
+    // taskNum: trans 3×(R-1) + sync 4×(R-1) + PreCopy = 7R-6
     int rankSize = static_cast<int>(param.rankSize);
     int threadNum = rankSize - 1;
     int transTaskNum = 3 * threadNum;
@@ -39,9 +34,7 @@ std::vector<CostModelParam> InsTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
-    // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
-    // PreCopy: in/out 均为 HCCL_BUFFER 时跳过（即 in!=HCCL || out!=HCCL 才执行）
-    // PostCopy: output==HCCL_BUFFER 时跳过
+    // B 对齐运行态 PreCopy/PostCopy 跳过条件
     float preCopyB = 0.0f;
     float postCopyB = 0.0f;
     if (param.inputBuffer != BufferType::HCCL_BUFFER || param.outputBuffer != BufferType::HCCL_BUFFER) {

@@ -49,8 +49,10 @@ std::vector<CostModelParam> InsTempAlltoAllVMesh1D::CalcCostCoeff(CalcCostCoeffP
     if (param.topoInfo != nullptr) {
         level0RankSize = param.topoInfo->deviceNumPerModule;
     }
+    bool isSymmetric
+        = (param.topoInfo != nullptr && param.topoInfo->level0Symmetric && param.topoInfo->level1Symmetric);
     bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
-    if (isMultiNode) {
+    if (isMultiNode && isSymmetric) {
         float A_intra = 0.0f;
         float A_inter = 0.0f;
         CostModelManager::Global()->CalcMeshParam(

@@ -17,7 +17,7 @@ std::vector<CostModelParam> ReduceMesh1DTwoShot::CalcCostCoeff(CalcCostCoeffPara
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = 11;
+    int kernelNum = 15;
     int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize) * 2
                   + CostModelManager::CalcSyncTaskNum(param.rankSize) * 3 + 10;
     float A = 0.0f;

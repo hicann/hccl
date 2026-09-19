@@ -23,23 +23,20 @@ std::vector<CostModelParam> CcuTempScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCo
     // CCU 执行侧单通道口径：每 rank 走一条链路，portNum 取 [0]
     // （isPod={6,2} 时取 6；与 AICPU SoleNHR 的单链路口径一致）
     int portNum = static_cast<int>(param.portNum[0]);
-    // C 为同步时延(kernelNum 口径)：线性主项 + log2R 步进同步项, RS 同族混合结构。
-    // 按真机实测锚定(小数据量 C 主导): 8P=25~30µs, 16P=59~65µs, 32P=110~115µs:
-    // kernelNum = 7R/4 + log2R/2 → 8P=30µs, 16P=60µs, 32P=116µs(均落实测区间)
+    // C 分段: R<=8 用线性公式, R>8 用 7R/4+log2R/2
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    int kernelNum = (7 * static_cast<int>(param.rankSize)) / 4 + log2R / 2;
+    int rVal = static_cast<int>(param.rankSize);
+    int kernelNum = (rVal <= 8) ? static_cast<int>(6.5f + 0.75f * rVal) : 7 * rVal / 4 + log2R / 2;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
     CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
-    // kernel 末尾 "final local copy to output"：非 root 从 scratch 拷 1 份到 output
-    // （ccu_kernel_scatter_nhr1d_mem2mem.cc 的 DoScatterNHR 收尾，串行于 NHR 步进循环后不被掩盖；
-    // root 第一跳直读 input 无铺开）。B 按 buffer 判据：output==HCCL_BUFFER 时该拷贝写给下一级，跳过
+    // kernel 末尾 local copy: 非 root 从 scratch 拷 1 份到 output
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::CCU, B);
     }

@@ -14,11 +14,7 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // portNum 向量语义随数据源而异（对齐 PR2890 统一取数口径）：
-    //   旧打桩: MESH 段 {1}；CLOS isPod={6,2} / 非 pod={8}
-    //   V2 匹配真实 portNums: MESH 段为每链路 iface 的 [1,1,...]；CLOS 段 [8] 或 [6,2] 形态
-    // 求和仅当 isPod && netType==CLOS && 元素数>=2（pod 双 die 双 channel 并行）；
-    // 其余（含 MESH 的 [1,1,...]）取 [0]。SoleNHR 算法名单通道语义并入该判定：
+    // pod 双 die CLOS 的 portNums 为 [6,2] 双 channel 并行, 取求和; 其余形态取 [0]
     // 其匹配段恒单链路（不 SetchannelsPerRank），单元素/非 pod/非 CLOS 均自然覆盖
     // pod 机型建链恒为 CLOS 双通道(跨 die 交换机), 匹配层 netType 不反映真实建链;
     // 但匹配层 portNums 可能只有单元素(如 CLOS [8] 形态), 需防御性检查
@@ -29,17 +25,9 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
     }
-    // C 为同步时延(kernelNum 口径)，与 CCU NHR 同公式(真机实测锚定):
-    // kernelNum = 7R/4 + log2R/2 → 8P=15(30us), 16P=30(60us), 32P=58(116us)
+    // C 为同步时延: NHR 每 rank 执行 log2R 步
     int kernelNum = (7 * static_cast<int>(param.rankSize)) / 4 + log2R / 2;
-    // taskNum（B 方案定案）：传输 task = 3/次（send 单边通信）× log2R 步（NHR 步进扇出，非 Mesh 的 R-1 线性）；
-    // 多通道（executor 注入的向量双元素）翻倍。local copy task = 1/份：
-    // PreCopy root 铺开 R 份 + PostCopy 每 rank 1 份（与 B 系数份数同口径）
-    // 发送侧视角（3 task/步）：每 rank 每步 tx/rx 互斥（GetStepInfo 的 deltaRoot 区间不重叠），
-    // 收侧为 4 task/步（SendRead 多一条 Record）；用户定案取 1（发送视角）
-    // 传输 task(root 口径,取最大 rank): root 向其余 R-1 个 rank 各发一份,
-    // NHR 步进扇出只是同一批 (R-1) 份的发送顺序(每步 slice 数 4/2/1 递减,总数不变);
-    // 多通道(portNum 双元素)时每份走双 channel 翻倍
+    // taskNum: 传输 (R-1) 份(多通道翻倍) + 同步 + local copy
     int transTaskNum = static_cast<int>(param.rankSize) - 1;
     if (isMultiChannel) {
         transTaskNum *= 2;
@@ -51,8 +39,7 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     if (param.outputBuffer != BufferType::HCCL_BUFFER) {
         localCopyCount += 1; // PostCopy：每 rank 1 份
     }
-    // 同步 task(root 口径): stream 级每 step 前后各一对 Wait/Record(含初始等待与收尾通知),
-    // 即 2*(log2R+1);外加 thread 间 notify 对(线程数=通道数,单链路=1 无从线程)
+    // 同步: 每 step 一对 Wait/Record + thread 间 notify 对
     int threadNum = isMultiChannel ? 2 : 1;
     int syncTaskNum = 2 * (log2R + 1) + 2 * (threadNum - 1);
     int taskNum = transTaskNum + syncTaskNum + localCopyCount;
@@ -62,9 +49,7 @@ std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam 
     float D = 0.0f;
 
     CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
-    // B 按 buffer 判据分段，对齐运行态 PreCopy/PostCopy 跳过条件：
-    // PreCopy 在 input==HCCL_BUFFER 时跳过（root 铺开全量 α·R）；PostCopy 在 output==HCCL_BUFFER 时跳过（每 rank 1 份
-    // α）
+    // B 对齐运行态 PreCopy/PostCopy 跳过条件
     float preCopyB = 0.0f;
     float postCopyB = 0.0f;
     if (param.inputBuffer != BufferType::HCCL_BUFFER) {

@@ -20,16 +20,14 @@ std::vector<CostModelParam> CcuTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
 {
     // Mesh 算法走 CLOS 时取 portNum[0]（单通道语义，不求和）；MESH 分支 portNum 不参与
     int portNum = static_cast<int>(param.portNum[0]);
-    int kernelNum = 4; // 实际下发 4 份 kernel（原按单 kernel 估算，按实测校准×4）
+    int kernelNum = 3;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
-    // B=0：kernel 内 root 自留份 GroupCopy 与 7 份远端 Write 并发执行
-    // （ccu_kernel_scatter_mesh1d.cc DoScatterOnce 注释"Write与GroupCopy并行执行"），
-    // 本地 1 份搬运被远端传输掩盖，关键路径上无独立贡献
+    // B=0: root 自留份 GroupCopy 与远端 Write 并发, 无独立贡献
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(
         CostModelManager::CalcTransTaskNum(param.rankSize), EngineType::CCU,

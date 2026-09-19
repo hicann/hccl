@@ -134,7 +134,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
         v.insert(v.end(), p6.begin(), p6.end());
         v.insert(v.end(), p7.begin(), p7.end());
         // parallel 固定开销
-        float bConst = 0.000005f;
+        float bConst = 0.000010f;
         for (auto& p : v) {
             p.C += bConst;
             p.D /= 2;

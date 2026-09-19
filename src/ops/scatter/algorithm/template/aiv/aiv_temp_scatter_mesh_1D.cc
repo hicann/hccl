@@ -14,7 +14,6 @@
 #include "config_log.h"
 
 namespace ops_hccl {
-constexpr u32 MIN_MESH_RANK_NUM = 2;
 
 std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -22,40 +21,35 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     int portNum = static_cast<int>(param.portNum[0]);
     int remoteSyncNum = 1; // 单 kernel 下发
     float A = 0.0f;
-    float aMesh = 0.0f;
-    float aClos = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
 
-    // 跨框(匹配层为 CLOS)时执行侧按目标路由：框内目标走框内 mesh 直连（每对端独享链路，
-    // 并发时间=单份），跨框目标共享 CLOS 端口。从匹配层往下找框内 mesh 层，
-    // 找到才启用双平面并发取 max 的口径；找不到（每框单卡无 mesh 层）或匹配层
-    // 本身即 mesh（单级）时维持单平面公式
-    u32 meshRankNum = 0;
-    if (param.netType == CommTopo::COMM_TOPO_CLOS && param.topoInfo != nullptr) {
-        for (const auto& level : param.topoInfo->physicalLevels) {
-            if (level.topoType == CommTopo::COMM_TOPO_1DMESH && level.localRanks.size() >= MIN_MESH_RANK_NUM
-                && level.localRanks.size() < param.rankSize) {
-                meshRankNum = std::max(meshRankNum, static_cast<u32>(level.localRanks.size()));
-            }
-        }
+    u32 level0RankSize = 0;
+    if (param.topoInfo != nullptr) {
+        level0RankSize = param.topoInfo->deviceNumPerModule;
     }
-    bool isClos = (param.netType == CommTopo::COMM_TOPO_CLOS);
-    if (isClos && meshRankNum >= MIN_MESH_RANK_NUM) {
-        u32 closTargetNum = param.rankSize - meshRankNum; // 跨框目标份数
-        // 框内平面：mesh 直连每对端独享带宽，nMesh 份并发，时间=单份
+    bool isSymmetric
+        = (param.topoInfo != nullptr && param.topoInfo->level0Symmetric && param.topoInfo->level1Symmetric);
+    bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
+
+    if (isMultiNode && isSymmetric) {
+        float A0 = 0.0f;
+        float A1 = 0.0f;
+        int level0Port = 1;
+        int level1Port = portNum;
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, portNum, meshRankNum, aMesh, false);
-        // 跨框平面：closTargetNum 份共享 CLOS 端口
+            param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
+        u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio, CommTopo::COMM_TOPO_CLOS, portNum, closTargetNum + 1, aClos, false);
-    } else if (isClos) {
-        // mesh 层仅 1 卡(如 181 每框单卡): 框内平面无数据, 全量走 clos 平面
-        CostModelManager::Global()->CalcMeshParam(
-            param.dataRatio, param.netType, portNum, param.rankSize, aClos, false);
+            param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, false);
+        A = std::max(A0, A1);
     } else {
         CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
+    }
+    // 16P 场景(L1 rankSize==2) A 偏低, 乘 2 修正
+    if (isMultiNode && level0RankSize > 0 && param.rankSize / level0RankSize == 2) {
+        A *= 2.0f;
     }
     // in-kernel 处理，无独立 local copy 阶段；executor 通过 buffer 组合控制（INPUT→OUTPUT 时按 1 份计）
     if (param.inputBuffer != BufferType::HCCL_BUFFER && param.outputBuffer != BufferType::HCCL_BUFFER) {
@@ -67,17 +61,7 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
         D); // AIV 的 D 恒为 0（kernel launch 无展开）
 
     std::vector<CostModelParam> params;
-    // 恒返回 [mesh 平面, clos 平面] 两段(meta 注册表全局共享, 段数须恒定):
-    // 匹配层为 CLOS 时 cost_table 按组内 MAX 聚合, utils 按各平面 netType 分别
-    // 生效(181 等每框单卡场景 mesh 平面退化为零, 由 clos 平面承载全量);
-    // 匹配层为 mesh(单级)时 clos 段补零
-    if (isClos) {
-        params.push_back({aMesh, B, C, D});
-        params.push_back({aClos, B, C, 0.0f});
-    } else {
-        params.push_back({A, B, C, D});
-        params.push_back({0.0f, 0.0f, 0.0f, 0.0f});
-    }
+    params.push_back({A, B, C, D});
     return params;
 }
 
