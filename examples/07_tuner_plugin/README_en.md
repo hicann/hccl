@@ -254,7 +254,7 @@ template is not enum-validated: single-level is a single template name, multi-le
 
 Single-level:
 
-`mesh` / `mesh2die` / `meshoneshot` / `meshtwoshot` / `meshconcur` / `meshmultilink` / `meshchunk` / `meshchunktwoshot` / `nhr` / `nhrmultilink` / `nhraicpureduce` / `nhrsinglechannel` / `meshconcurrent`
+`mesh` / `mesh2die` / `meshoneshot` / `meshtwoshot` / `meshconcur` / `meshmultilink` / `meshchunk` / `meshchunktwoshot` / `nhr` / `nhrmultilink` / `nhraicpureduce` / `meshsinglechannel` / `meshconcurrent`
 
 Multi-level (concatenation string):
 

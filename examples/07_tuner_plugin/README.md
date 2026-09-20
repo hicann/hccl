@@ -228,7 +228,7 @@ template 不做枚举校验：单级是单 template 名，多级是 executor 后
 
 单级：
 
-`mesh` / `mesh2die` / `meshoneshot` / `meshtwoshot` / `meshconcur` / `meshmultilink` / `meshchunk` / `meshchunktwoshot` / `nhr` / `nhrmultilink` / `nhraicpureduce` / `nhrsinglechannel` / `meshconcurrent`
+`mesh` / `mesh2die` / `meshoneshot` / `meshtwoshot` / `meshconcur` / `meshmultilink` / `meshchunk` / `meshchunktwoshot` / `nhr` / `nhrmultilink` / `nhraicpureduce` / `meshsinglechannel` / `meshconcurrent`
 
 多级（拼接串）：
 

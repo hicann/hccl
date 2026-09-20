@@ -52,7 +52,7 @@ static const std::map<std::string, std::string> ALGO_TYPES
        {"nhr", "NHR"},
        {"nhrmultilink", "NHRMultiLink"},
        {"nhraicpureduce", "NHRAicpuReduce"},
-       {"nhrsinglechannel", "MeshSingleChannel"},
+       {"meshsinglechannel", "MeshSingleChannel"},
        {"nhrmultijetty", "NHRMultiJetty"},
        {"meshmultijetty", "MeshMultiJetty"},
        {"meshconcurrent", "MeshConcurrent"},
@@ -114,11 +114,6 @@ public:
         }
         SkipWs();
         if (!AtEnd()) {
-            HCCL_ERROR(
-                "[HcclAlgoParser] parse algo config failed, standard format: \"opType:executorType{level0=algoType, "
-                "level1=algoType, level2=algoType};...\", "
-                "trailing chars at pos %zu: [%s]",
-                pos_, input_.substr(pos_).c_str());
             return HCCL_E_PARA;
         }
         return HCCL_SUCCESS;
@@ -220,7 +215,7 @@ private:
                 Eat(':');
                 std::string opType = ToLowerStr(name);
                 if (OP_TYPES.find(opType) == OP_TYPES.end()) {
-                    HCCL_ERROR("[HcclAlgoParser] invalid opType [%s] at pos %zu", opType.c_str(), pos_);
+                    HCCL_WARNING("[HcclAlgoParser] invalid opType [%s] at pos %zu", opType.c_str(), pos_);
                     return HCCL_E_PARA;
                 }
                 exec.opType = opType;
@@ -246,7 +241,7 @@ private:
                 CHK_RET(ParseExecutorUnitOrAtom(exec));
                 SkipWs();
                 if (!Eat(')')) {
-                    HCCL_ERROR("[HcclAlgoParser] expected ')' after not(...) at pos %zu", pos_);
+                    HCCL_WARNING("[HcclAlgoParser] expected ')' after not(...) at pos %zu", pos_);
                     return HCCL_E_PARA;
                 }
                 exec.enable = false;
@@ -263,14 +258,14 @@ private:
         SkipWs();
         std::string name;
         if (!ParseIdentifier(name)) {
-            HCCL_ERROR("[HcclAlgoParser] expected executor or template at pos %zu", pos_);
+            HCCL_WARNING("[HcclAlgoParser] expected executor or template at pos %zu", pos_);
             return HCCL_E_PARA;
         }
         SkipWs();
         if (Peek() == '{') {
             std::string executorType = ToLowerStr(name);
             if (EXECUTOR_TYPES.find(executorType) == EXECUTOR_TYPES.end()) {
-                HCCL_ERROR("[HcclAlgoParser] invalid executorType [%s] at pos %zu", executorType.c_str(), pos_);
+                HCCL_WARNING("[HcclAlgoParser] invalid executorType [%s] at pos %zu", executorType.c_str(), pos_);
                 return HCCL_E_PARA;
             }
             exec.executorType = executorType;
@@ -278,7 +273,7 @@ private:
             CHK_RET(ParseTemplateList(exec.algoList));
             SkipWs();
             if (!Eat('}')) {
-                HCCL_ERROR("[HcclAlgoParser] expected '}' at pos %zu", pos_);
+                HCCL_WARNING("[HcclAlgoParser] expected '}' at pos %zu", pos_);
                 return HCCL_E_PARA;
             }
             return HCCL_SUCCESS;
@@ -286,7 +281,7 @@ private:
         // template shorthand: name => sole{name}
         std::string algoType = ToLowerStr(UnderscoreToCamelCase(name));
         if (ALGO_TYPES.find(algoType) == ALGO_TYPES.end()) {
-            HCCL_ERROR("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
+            HCCL_WARNING("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
             return HCCL_E_PARA;
         }
         exec.executorType = "sole";
@@ -338,12 +333,12 @@ private:
                         try {
                             unsigned long parsed = std::stoul(name.substr(5));
                             if (parsed > UINT32_MAX) {
-                                HCCL_ERROR("[HcclAlgoParser] level %lu exceeds uint32_t range", parsed);
+                                HCCL_WARNING("[HcclAlgoParser] level %lu exceeds uint32_t range", parsed);
                                 return HCCL_E_PARA;
                             }
                             level = static_cast<uint32_t>(parsed);
                         } catch (...) {
-                            HCCL_ERROR("[HcclAlgoParser] invalid level: %s", name.c_str());
+                            HCCL_WARNING("[HcclAlgoParser] invalid level: %s", name.c_str());
                             return HCCL_E_PARA;
                         }
                         SkipWs();
@@ -371,7 +366,7 @@ private:
                 algo.enable = false;
                 SkipWs();
                 if (!Eat(')')) {
-                    HCCL_ERROR("[HcclAlgoParser] expected ')' after not(template) at pos %zu", pos_);
+                    HCCL_WARNING("[HcclAlgoParser] expected ')' after not(template) at pos %zu", pos_);
                     return HCCL_E_PARA;
                 }
                 return HCCL_SUCCESS;
@@ -387,12 +382,12 @@ private:
         SkipWs();
         std::string name;
         if (!ParseIdentifier(name)) {
-            HCCL_ERROR("[HcclAlgoParser] expected template name at pos %zu", pos_);
+            HCCL_WARNING("[HcclAlgoParser] expected template name at pos %zu", pos_);
             return HCCL_E_PARA;
         }
         std::string algoType = ToLowerStr(UnderscoreToCamelCase(name));
         if (ALGO_TYPES.find(algoType) == ALGO_TYPES.end()) {
-            HCCL_ERROR("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
+            HCCL_WARNING("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
             return HCCL_E_PARA;
         }
         algo.algoType = algoType;
@@ -769,13 +764,10 @@ HcclResult FilterCmByHcclAlgo(HcclComm comm, CostModel& cm, const std::vector<st
     HcclAlgoParser algoParser;
     ret = algoParser.Parser(algoConfig);
     if (ret != HCCL_SUCCESS) {
-        HcclDevType deviceType;
-        CHK_RET(HcclGetDeviceType(deviceType));
-        if (deviceType != HcclDevType::DEV_TYPE_910_93) {
-            ret = SetHcclAlgoConfig(algoConfig);
-            HCCL_WARNING("[FilterCmByHcclAlgo] parse algo failed, try Parse with old rules: ret[%d] .", ret);
-        }
-        return ret;
+        // 解析失败，不更新costTable, 不阻碍后续执行流程
+        HCCL_WARNING("[FilterCmByHcclAlgo] parse algo config failed, the config has not taken effect, standard format: "
+                     "'opType:executorType{level0=algoType, level1=algoType, level2=algoType};...'");
+        return HCCL_SUCCESS;
     }
 
     // 刷新 CostModel,使用 selector 传入的候选引擎前缀

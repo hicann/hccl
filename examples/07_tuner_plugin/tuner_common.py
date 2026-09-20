@@ -43,7 +43,7 @@ EXECUTOR_TYPES = ("sole", "sequence", "parallel", "pipeline", "concur", "stricto
 TEMPLATE_TYPES = (
     "mesh", "mesh2die", "meshoneshot", "meshtwoshot", "meshconcur", "meshmultilink",
     "meshchunk", "meshchunktwoshot", "nhr", "nhrmultilink", "nhraicpureduce",
-    "nhrsinglechannel", "meshconcurrent",
+    "meshsinglechannel", "meshconcurrent",
 )
 
 # template 两种口径：

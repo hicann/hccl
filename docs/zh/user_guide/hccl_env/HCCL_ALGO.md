@@ -10,6 +10,118 @@
 >- 在某些通信算子中，当使用特定类型的AI处理器且数据量较小时，通信算法会由HCCL自适应选择，不受此环境变量的控制。
 >- 本节所列出的算法为HCCL支持配置的全量通信算法，不同产品下支持的Server间通信算法与超节点间通信算法可参见[Server间通信算法支持度列表](inter_server_algo_support.md)与[超节点间通信算法支持度列表](inter_superpod_algo_support.md)。
 
+## 配置说明（Ascend 950PR\&Ascend 950DT系列产品）
+
+<!-- npu="950" id10 -->
+### 配置示例
+<!-- end id10 -->
+
+- 仅启用nhr
+
+  HCCL\_ALGO=nhr  // 等价于sole{nhr}, 全局配置, 所有算子都优先使用nhr算法
+- 排除nhr(其他全部启用)
+
+  HCCL\_ALGO=not(nhr)  // 等价于not(sole{nhr}), 全局配置, 所有算子都不使用nhr算法
+- 选择Sequence, level0执行mesh算法, level1执行nhr算法
+
+  HCCL\_ALGO=sequence{mesh,nhr}  // 全局配置, 所有算子都使用Sequence{mesh,nhr}执行器
+- AllReduce算子采用level0执行mesh算法, level1执行nhr算法的Sequence执行器
+
+  HCCL\_ALGO=allreduce:sequence{mesh,nhr}  // 单算子配置
+- allgather算子禁止使用level0执行mesh算法, level1执行nhr算法的Parallel执行器
+
+  HCCL\_ALGO=allgather:not(parallel{mesh,nhr})  // 单算子配置
+
+### 全局配置
+
+全局配置就是不指定算子OpType的配置，对所有算子都生效；其中没有指定ExecutorType的配置，默认使用Sole执行器。
+
+```bash
+export HCCL_ALGO="ExecutorType{level0=algoType,level1=algoType,...};algoType;not(algoType);"
+```
+
+### 按算子类型配置
+
+指定算子类型OpType，只对指定算子生效。
+
+```bash
+export HCCL_ALGO="OpType:ExecutorType{level0=algoType,level1=algoType,...};OpType:ExecutorType{...};"
+```
+<!-- npu="950" id10 -->
+### 解析规则
+<!-- end id10 -->
+
+- 用分号 “;” 表示多段并列配置，比如多个算子的配置，使用分号隔开
+- 用逗号 “,” 分隔executor{}花括号内部的各级level的对应算法algo
+- 用冒号 “:” 分隔算子：算法
+- 用花括号 “{}” 表示一种executor的多个algo组合
+- not() 取非，表示禁用某种算法
+
+### 语法规则
+
+- executorType{a1,a2}, 通过花括号语法指定executor的类型和组成executor的algo列表。
+- parallel{mesh,nhr}, algo默认按照netlayer从低到高匹配, 例如该写法表示在level0上跑mesh算法，在level1上跑nhr算法。
+  - sequence{level1=nhr,level0=mesh}, 指定level, 则不需要顺序匹配, 表示level1上跑nhr，level0的算法选择mesh。
+- a1, 缺省表示sole{a1}。
+  - nhr, 则表示打平使用nhr算法；与sole{nhr}含义一致。
+- not(a1), 表示取非, 不支持某种算法, 其他的都可选。
+- sequence{level0=not(nhr),level1=nhr}, 表示level0不支持nhr，可选的范围是level0不支持nhr的sequence{level0=xx,level1=nhr}算法。
+  - 取非支持作用在algo上, 也支持作用在executor{a1,a2}上, not(parallel{mesh,nhr})表示不支持parallel{mesh,nhr}算法其他的都可选。
+
+### 支持的算子类型
+
+- \<OpType>为通信算子的类型，支持如下配置：
+  - AllGather
+  - AllGatherV
+  - AllReduce
+  - AllToAll
+  - AllToAllV
+  - AllToAllVC
+  - Broadcast
+  - Reduce
+  - ReduceScatter
+  - ReduceScatterV
+  - Scatter
+
+### 支持的算法类型
+
+- \<algoType>为通信算法的类型，支持如下配置：
+  - Mesh：全互联mesh算法
+  - Mesh2Die：单NPU分布端口跨Die mesh算法
+  - MeshOneShot：OneShot mesh算法
+  - MeshTwoShot：TwoShot mesh算法
+  - MeshConcur：CLOS Z轴绕路
+  - MeshMultiLink：多链路Mesh通信算法，类似Concur
+  - MeshChunk：Mesh通信算法，支持chunk
+  - MeshChunkTwoShot：TwoShot mesh算法，支持chunk
+  - NHR：华为自研非均衡层次环算法
+  - NHRMultiLink：多链路NHR通信算法
+  - NHRAicpuReduce：INT64/FP64等数据类型对应的NHR算法
+  - MeshSingleChannel：单通道Mesh算法
+  - NHRMultiJetty：多Jetty NHR通信算法
+  - MeshMultiJetty：多Jetty Mesh通信算法
+  - MeshConcurrent：多路径并发Mesh通信算法
+
+### 支持的Executor类型
+
+- \<ExecutorType>为执行器的类型，支持如下配置：
+  - Sole：单算法执行器
+  - Sequence：顺序执行器，顺次执行一组算法
+  - Parallel：并行执行器，同一时刻不同Topo level并行执行不同算法
+  - PipeLine：流水线并行执行器
+  - Concur：并发执行器，同一时刻相同Topo level并行执行不同算法
+  - StrictOrdered: 严格保序执行器
+  - OmniPipe： OmniPipe算法对应的执行器
+
+### 使用约束
+
+- 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclAlgo”参数指定了通信算法，则以通信域粒度的配置优先。
+- 如果输入的HCCL\_ALGO配置字符串格式错误或是Atlas A3系列产品的语法则无法解析，配置不生效，会打印警告信息，但不会阻碍后续执行流程。
+
+## 配置说明（ Atlas A3系列产品，Atlas A2系列产品，Atlas 训练系列产品）
+
+### 配置规则
+
 - **全局配置算法类型，配置方式如下：**
 
   ```bash
@@ -90,7 +202,7 @@
   - <algo\>为指定的通信算子采用的通信算法，支持的配置同全局配置方法中的level1取值与level2取值，请确保指定的通信算法为通信算子支持的算法类型，每种算法支持的通信算子可参见[Server间通信算法支持度列表](inter_server_algo_support.md)与[超节点间通信算法支持度列表](inter_superpod_algo_support.md)，未指定通信算法的通信算子会根据产品形态、节点数以及数据量自动选择通信算法。
   - 多个算子之间的配置使用“/”分隔。
 
-## 配置示例
+### 配置示例
 
 - 全局配置算法类型
 
@@ -105,7 +217,7 @@
     export HCCL_ALGO="allreduce=level0:NA;level1:ring/allgather=level0:NA;level1:H-D_R"
     ```
 
-## 使用约束
+### 使用约束
 
 - 当前版本Server内通信算法仅支持配置为“NA”。
   <!-- npu="910b" id7 -->
@@ -130,3 +242,4 @@
 <!-- npu="310p" id11 -->
 - Atlas推理系列产品：不支持
 <!-- end id11 -->
+
