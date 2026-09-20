@@ -295,7 +295,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         "[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
-    if (resCtx.algHierarchyInfo.infos.empty() || resCtx.algHierarchyInfo.infos[0].size() < MIN_SUBGROUP_NUM) {
+    if (resCtx.algHierarchyInfo.infos.empty()) {
         HCCL_ERROR(
             "[InsV2ScatterOmniPipe2DExecutor][%s] algHierarchyInfo.infos[0] is invalid (empty or size < 2).", __func__);
         return HcclResult::HCCL_E_PARA;
