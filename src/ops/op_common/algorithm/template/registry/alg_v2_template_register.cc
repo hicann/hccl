@@ -31,17 +31,23 @@ HcclResult InsAlgTemplateRegistry::Register(const std::string& name, const InsAl
 
 std::unique_ptr<InsAlgTemplateBase> InsAlgTemplateRegistry::GetAlgTemplate(const std::string& name)
 {
-    if (tempCreators_.find(name) == tempCreators_.end()) {
-        HCCL_ERROR("[InsAlgTemplateRegistry]template name[%s] not found.", name.c_str());
-        return nullptr;
+    InsAlgTemplateCreator creator;
+    {
+        const std::lock_guard<std::mutex> lock(mu_);
+        auto it = tempCreators_.find(name);
+        if (it == tempCreators_.end()) {
+            HCCL_ERROR("[InsAlgTemplateRegistry]template name[%s] not found.", name.c_str());
+            return nullptr;
+        }
+        creator = it->second;
     }
 
-    if (tempCreators_[name] == nullptr) {
+    if (creator == nullptr) {
         HCCL_DEBUG("[InsAlgTemplateRegistry]Creator for template name[%s] has not registered.", name.c_str());
         return nullptr;
     }
     HCCL_DEBUG("[InsAlgTemplateRegistry][GetAlgTemplate]get template by name[%s]", name.c_str());
-    return std::unique_ptr<InsAlgTemplateBase>(tempCreators_[name]());
+    return std::unique_ptr<InsAlgTemplateBase>(creator());
 }
 
 } // namespace ops_hccl

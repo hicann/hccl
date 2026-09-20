@@ -12,11 +12,12 @@
 #define OPS_HCCL_SRC_OPS_LOAD_KERNEL
 
 #include "hccl.h"
+#include <atomic>
 
 namespace ops_hccl {
 
 HcclResult LoadAICPUKernel(void);
-extern aclrtBinHandle g_binKernelHandle;
+extern std::atomic<aclrtBinHandle> g_binKernelHandle;
 
 } // namespace ops_hccl
 

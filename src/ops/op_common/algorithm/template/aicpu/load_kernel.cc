@@ -11,9 +11,11 @@
 #include "load_kernel.h"
 #include "log.h"
 #include "adapter_acl.h"
+#include <mutex>
 namespace ops_hccl {
 
-aclrtBinHandle g_binKernelHandle = nullptr;
+std::atomic<aclrtBinHandle> g_binKernelHandle{nullptr};
+static std::mutex g_binKernelMutex;
 
 HcclResult GetKernelFilePath(std::string& binaryPath)
 {
@@ -38,13 +40,18 @@ HcclResult GetKernelFilePath(std::string& binaryPath)
 HcclResult LoadAICPUKernel(void)
 {
     // 不需要重复加载
-    if (g_binKernelHandle != nullptr) {
+    if (g_binKernelHandle.load(std::memory_order_acquire) != nullptr) {
+        return HCCL_SUCCESS;
+    }
+    const std::lock_guard<std::mutex> lock(g_binKernelMutex);
+    if (g_binKernelHandle.load(std::memory_order_relaxed) != nullptr) {
         return HCCL_SUCCESS;
     }
     std::string jsonPath;
     CHK_RET(GetKernelFilePath(jsonPath));
     jsonPath += "libscatter_aicpu_kernel.json";
-    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0, g_binKernelHandle);
+    aclrtBinHandle handle = nullptr;
+    HcclResult ret = LoadBinaryFromFile(jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0, handle);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
@@ -52,6 +59,7 @@ HcclResult LoadAICPUKernel(void)
             "cpuKernelMode[%u].",
             ret, jsonPath.c_str(), ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE, 0),
         ret);
+    g_binKernelHandle.store(handle, std::memory_order_release);
     return HCCL_SUCCESS;
 }
 

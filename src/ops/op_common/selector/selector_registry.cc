@@ -48,13 +48,19 @@ HcclResult SelectorRegistry::RegisterByOpType(const HcclCMDType opType, u32 prio
 
 std::map<u32, AutoSelectorBase*> SelectorRegistry::GetSelectorsByOpType(const HcclCMDType opType)
 {
-    if (opTypeImpls_.count(opType) == 0) {
+    const std::lock_guard<std::mutex> lock(mu_);
+    auto it = opTypeImpls_.find(opType);
+    if (it == opTypeImpls_.end()) {
         HCCL_WARNING("[Algo][Selector] opType %d has no selector registered.", opType);
         return {};
     }
-    return opTypeImpls_[opType];
+    return it->second;
 }
 
-std::map<u32, AutoSelectorBase*> SelectorRegistry::GetAllSelectors() { return impls_; }
+std::map<u32, AutoSelectorBase*> SelectorRegistry::GetAllSelectors()
+{
+    const std::lock_guard<std::mutex> lock(mu_);
+    return impls_;
+}
 
 } // namespace ops_hccl
