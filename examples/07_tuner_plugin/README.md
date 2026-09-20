@@ -187,7 +187,9 @@ export HCCL_TUNER_CONFIG_FILE=/path/to/hccl_tuner_config.json
 | `version` | int | 是 | 配置格式版本，目前必须为 `1` |
 | `op_types` | object | 是 | 按算子类型组织的规则集 |
 
-### match 条件（全部 AND，first-match-wins）
+### match 条件（全部 AND；首条真正改到条目的规则生效）
+
+规则命中但目标不在 cost table 或被禁用时**穿透**，继续评估后续规则；全部落空则 matched=0。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -219,6 +221,8 @@ device 算法全部被过滤。因此 optimize_config 为 dpu rule 强制 `min_s
 单机采集的 dpu 数据测得的是静默回退的其他算法耗时，属无效数据。
 
 ### executor 可选值
+
+executor 不做枚举校验：合法集合随 HCCL 版本演进（如 `strictordered` 为后增），固定枚举会拒绝新增值；拼写错误由运行时 "no entry modified" warning 兜底。以下为当前常见值，以所用 HCCL 版本的维度定义为准：
 
 `sole` / `sequence` / `parallel` / `pipeline` / `concur` / `strictordered`
 
@@ -316,24 +320,28 @@ AllReduce 8 ranks、4096B、fp32 匹配规则，将目标算法 cost 从 100.0 �
 
 ### 目标算法已禁用（cost<0）时跳过
 
-目标条目 cost=-1（已被禁用），插件不改它，`SelectMinCost` 中 cost<0 视为 filtered 不参与选择：
+目标条目 cost=-1（已被禁用），插件不改它（`SelectMinCost` 中 cost<0 视为 filtered 不参与选择）；该规则穿透，后续规则继续评估（穿透细节为 DEBUG 级日志）：
 
 ```
-[TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2
-  engine=aicpu executor=sole template=meshoneshot cost=0.000000
 [TunerDFX] skip disabled: algName=AicpuAllReduceSoleMeshOneShot cost=-1.000000
-[TunerDFX] rule matched but no entry modified
 ```
 
-### Schema 校验失败时整体不干预
+### Schema 校验：逐规则剔除，格式级错误整体不干预
 
-配置有拼写错误、缺失必填字段、枚举非法等任意 schema error 时，插件完全不干预（安全降级）：
+规则级错误（缺失必填字段、枚举非法、范围颠倒、data_type 非法等）只剔除该条规则，其余规则照常生效；仅格式级错误（根不是对象、version 缺失或非 1、op_types 缺失）才整体不干预（安全降级）。校验只覆盖部分内容（如 template 拼写不做枚举校验）：
 
 ```
 Schema: unknown field 'mtach' in rule, skipping
 Schema: rule missing required field 'match'
 Schema: invalid engine 'invalid_engine'
 Schema: min_ranks(16) > max_ranks(8)
-tuner config loaded, schemaErrors=4
-Schema validation failed (4 errors), plugin will not intervene
+tuner config loaded from hccl_tuner_config.json, opSetCount=1, totalRules=4, validRules=1, schemaErrors=3, schemaWarnings=1
+Schema: 3 rules rejected, 1 rules active
+```
+
+格式级错误示例（整份拒绝）：
+
+```
+Schema: version must be 1, got 2
+Schema fatal error (1), plugin will not intervene
 ```

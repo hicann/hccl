@@ -210,7 +210,9 @@ be run directly. Two maintenance notes:
 | `version` | int | Yes | Configuration format version, currently must be `1` |
 | `op_types` | object | Yes | Rule set organized by operator type |
 
-### Match Conditions (all AND, first-match-wins)
+### Match Conditions (all AND; the first rule that actually modifies an entry wins)
+
+If a rule hits but its target is absent from the cost table or disabled, it **falls through** to subsequent rules; if nothing applies, matched=0.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -245,6 +247,8 @@ collected on a single node measures the silently-fallen-back algorithm, which is
 invalid data.
 
 ### executor Available Values
+
+executor is not enum-validated: the valid set evolves with HCCL versions (e.g., `strictordered` was added later), and a fixed enum would reject newly added values; typos are caught at runtime via the "no entry modified" warning. The following are common current values, subject to the dimension definitions of the HCCL version in use:
 
 `sole` / `sequence` / `parallel` / `pipeline` / `concur` / `strictordered`
 
@@ -343,24 +347,28 @@ Multi-level algorithms are also supported. The `template` field is the lowercase
 
 ### Target Algorithm Disabled (cost<0) — Skip
 
-The target entry has cost=-1 (already disabled). The plugin does not modify it. In `SelectMinCost`, cost<0 is treated as filtered and excluded from selection:
+The target entry has cost=-1 (already disabled). The plugin does not modify it (in `SelectMinCost`, cost<0 is treated as filtered and excluded from selection); the rule falls through and subsequent rules are still evaluated (fall-through details are DEBUG-level logs):
 
 ```
-[TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2
-  engine=aicpu executor=sole template=meshoneshot cost=0.000000
 [TunerDFX] skip disabled: algName=AicpuAllReduceSoleMeshOneShot cost=-1.000000
-[TunerDFX] rule matched but no entry modified
 ```
 
-### Schema Validation Failed — No Intervention
+### Schema Validation — Per-Rule Rejection; Format-Level Errors Reject the Whole Config
 
-When the config contains typos, missing required fields, invalid enums, or any other schema errors, the plugin does not intervene at all (safe degradation):
+Rule-level errors (missing required fields, invalid enums, inverted ranges, invalid data_type, etc.) only reject that rule; the remaining rules still take effect. Only format-level errors (root is not an object, version missing or not 1, op_types missing) reject the whole config (safe degradation). Validation covers only part of the content (e.g., template spelling is not enum-validated):
 
 ```
 Schema: unknown field 'mtach' in rule, skipping
 Schema: rule missing required field 'match'
 Schema: invalid engine 'invalid_engine'
 Schema: min_ranks(16) > max_ranks(8)
-tuner config loaded, schemaErrors=4
-Schema validation failed (4 errors), plugin will not intervene
+tuner config loaded from hccl_tuner_config.json, opSetCount=1, totalRules=4, validRules=1, schemaErrors=3, schemaWarnings=1
+Schema: 3 rules rejected, 1 rules active
+```
+
+Format-level error example (whole config rejected):
+
+```
+Schema: version must be 1, got 2
+Schema fatal error (1), plugin will not intervene
 ```

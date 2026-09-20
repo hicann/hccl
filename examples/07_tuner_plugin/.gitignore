@@ -10,3 +10,5 @@
 
 third_party/
 hccl_tuner_example.so
+__pycache__/
+*.pyc

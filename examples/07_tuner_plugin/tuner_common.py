@@ -61,11 +61,11 @@ def templates_to_plugin_name(template_str):
 PLUGIN_OP_TYPES = frozenset(OP_TYPES)
 PLUGIN_ENGINES = frozenset(ENGINE_ALL)
 
-# plugin.cpp g_validExecutors 无 strictordered：写入会触发 SchemaError
-# 整份 conf 失效，必须在此排除
+# plugin.cpp 已不对 executor 做枚举校验（合法集合随 HCCL 版本演进）；
+# 此处仍保守排除 strictordered：该 executor 当前不在常规采集集合，放开属后续独立改动
 PLUGIN_EXECUTORS = frozenset(EXECUTOR_TYPES) - frozenset(("strictordered",))
 
-# plugin 对 template 不做枚举校验，全量放行
+# plugin 对 executor/template 均不做枚举校验，全量放行
 PLUGIN_TEMPLATES = frozenset(TEMPLATE_TYPES)
 
 # ===== 每算子合法 (engine, executor, template) 组合表 =====

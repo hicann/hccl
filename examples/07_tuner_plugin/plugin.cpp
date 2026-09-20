@@ -36,9 +36,8 @@
 #define MAX_STR_LEN 64
 #define MAX_FILE_SIZE (4 * 1024 * 1024)
 
-/* ===== 维度校验（与 alg_parse.cc 的 ENGINE_TYPES/EXECUTOR_TYPES/ALGO_TYPES key 保持一致）===== */
+/* ===== 维度校验（engine 与 alg_parse.cc 的 ENGINE_TYPES key 保持一致；executor/template 不枚举校验）===== */
 static const char* g_validEngines[] = {"aicpu", "ccums", "ccusched", "aiv", "dpu"};
-static const char* g_validExecutors[] = {"sole", "sequence", "parallel", "pipeline", "concur"};
 
 static int is_valid_name(const char* s, const char** list, int count)
 {
@@ -56,11 +55,6 @@ static int is_valid_name(const char* s, const char** list, int count)
 static int is_valid_engine(const char* s)
 {
     return is_valid_name(s, g_validEngines, (int)(sizeof(g_validEngines) / sizeof(g_validEngines[0])));
-}
-
-static int is_valid_executor(const char* s)
-{
-    return is_valid_name(s, g_validExecutors, (int)(sizeof(g_validExecutors) / sizeof(g_validExecutors[0])));
 }
 
 static HcclCMDType op_type_from_name(const char* name)
@@ -130,6 +124,7 @@ typedef struct {
     char templateName[128]; /* "meshoneshot" 单级 或 "meshconcurnhrnhr" 多级拼接串 */
     float cost;
     int hasCost;
+    int valid; /* 逐规则校验结果：1=有效，0=schema 剔除（不参与匹配） */
 } Rule;
 
 typedef struct {
@@ -163,6 +158,7 @@ static int g_hostFuncsReady = 0;
 typedef struct {
     int errors;
     int warnings;
+    int fatal; /* 配置级致命错误（root/version/op_types）：格式不可信，整份拒绝 */
     int foundVersion;
     int foundOpTypes;
 } SchemaState;
@@ -183,6 +179,23 @@ static void SchemaWarn(SchemaState* s, const char* scope, const char* field)
 static void SchemaError(SchemaState* s, const char* fmt, ...)
 {
     s->errors++;
+    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
+        va_list args;
+        va_start(args, fmt);
+        char buf[256] = {0};
+        if (vsnprintf_s(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
+            buf[0] = '\0';
+        }
+        va_end(args);
+        g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: %s", buf);
+    }
+}
+
+/* 配置级致命错误：格式不可信，整份拒绝（区别于规则级 error 的逐条剔除）。 */
+static void SchemaFatal(SchemaState* s, const char* fmt, ...)
+{
+    s->errors++;
+    s->fatal++;
     if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
         va_list args;
         va_start(args, fmt);
@@ -218,7 +231,8 @@ static HcclDataType ParseDataType(const char* name)
     return HCCL_DATA_TYPE_RESERVED;
 }
 
-/* 维度值校验由插件自维护的 is_valid_engine/is_valid_executor 完成（template 不校验，靠运行时 warning 兜底）。 */
+/* 维度值校验：engine 由插件自维护的 is_valid_engine 枚举校验；executor/template 不枚举校验
+ * （合法集合随 HCCL 版本演进，固定枚举会拒绝新增值，如 executor 的 strictordered），拼错靠运行时 warning 兜底。 */
 
 /* ===== JSON 解析（nlohmann/json）===== */
 
@@ -246,6 +260,32 @@ static int CountRules(const nlohmann::json& root, int* opSetCount)
     return total;
 }
 
+/* 整数匹配字段值域校验（Issue #738）：nlohmann 的 get<T>() 对窄化只做 static_cast（模运算截断），
+ * 溢出/负数/超 u64 均静默通过。转换前统一三查：无符号整数类型、非负、不超目标类型上界；
+ * 失败计入 SchemaError（走逐规则剔除），out 保持不变。 */
+static int GetU32Checked(const nlohmann::json& obj, const char* field, uint32_t& out, SchemaState* s)
+{
+    const auto& v = obj[field];
+    if (!v.is_number_unsigned() || v.get<uint64_t>() > 0xFFFFFFFFULL) {
+        SchemaError(s, "field '%s' must be a non-negative integer within uint32 range", field);
+        return -1;
+    }
+    out = v.get<uint32_t>();
+    return 0;
+}
+
+static int GetU64Checked(const nlohmann::json& obj, const char* field, uint64_t& out, SchemaState* s)
+{
+    const auto& v = obj[field];
+    if (!v.is_number_unsigned()) {
+        /* number_unsigned 已保证非负且 <= UINT64_MAX：更大值被解析为 double，负数为 number_integer */
+        SchemaError(s, "field '%s' must be a non-negative integer within uint64 range", field);
+        return -1;
+    }
+    out = v.get<uint64_t>();
+    return 0;
+}
+
 static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState* s)
 {
     static const char* knownKeys[]
@@ -267,19 +307,19 @@ static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState
     }
     if (matchObj.contains("min_ranks")) {
         r->match.hasMinRanks = 1;
-        r->match.minRanks = matchObj["min_ranks"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "min_ranks", r->match.minRanks, s);
     }
     if (matchObj.contains("max_ranks")) {
         r->match.hasMaxRanks = 1;
-        r->match.maxRanks = matchObj["max_ranks"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "max_ranks", r->match.maxRanks, s);
     }
     if (matchObj.contains("min_bytes")) {
         r->match.hasMinBytes = 1;
-        r->match.minBytes = matchObj["min_bytes"].get<size_t>();
+        (void)GetU64Checked(matchObj, "min_bytes", r->match.minBytes, s);
     }
     if (matchObj.contains("max_bytes")) {
         r->match.hasMaxBytes = 1;
-        r->match.maxBytes = matchObj["max_bytes"].get<size_t>();
+        (void)GetU64Checked(matchObj, "max_bytes", r->match.maxBytes, s);
     }
     if (matchObj.contains("data_type")) {
         if (snprintf_s(
@@ -289,6 +329,9 @@ static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState
             r->match.dataType[0] = '\0';
         }
         r->match.dataTypeEnum = ParseDataType(r->match.dataType);
+        if (r->match.dataTypeEnum == HCCL_DATA_TYPE_RESERVED) {
+            SchemaError(s, "invalid data_type '%s'", r->match.dataType);
+        }
         r->match.hasDataType = 1;
     }
     if (matchObj.contains("comm_name")) {
@@ -302,39 +345,39 @@ static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState
     }
     if (matchObj.contains("min_npus_per_server")) {
         r->match.hasMinNpusPerServer = 1;
-        r->match.minNpusPerServer = matchObj["min_npus_per_server"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "min_npus_per_server", r->match.minNpusPerServer, s);
     }
     if (matchObj.contains("max_npus_per_server")) {
         r->match.hasMaxNpusPerServer = 1;
-        r->match.maxNpusPerServer = matchObj["max_npus_per_server"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "max_npus_per_server", r->match.maxNpusPerServer, s);
     }
     if (matchObj.contains("min_servers")) {
         r->match.hasMinServers = 1;
-        r->match.minServers = matchObj["min_servers"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "min_servers", r->match.minServers, s);
     }
     if (matchObj.contains("max_servers")) {
         r->match.hasMaxServers = 1;
-        r->match.maxServers = matchObj["max_servers"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "max_servers", r->match.maxServers, s);
     }
     if (matchObj.contains("min_pods")) {
         r->match.hasMinPods = 1;
-        r->match.minPods = matchObj["min_pods"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "min_pods", r->match.minPods, s);
     }
     if (matchObj.contains("max_pods")) {
         r->match.hasMaxPods = 1;
-        r->match.maxPods = matchObj["max_pods"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "max_pods", r->match.maxPods, s);
     }
     if (matchObj.contains("min_super_pods")) {
         r->match.hasMinSuperPods = 1;
-        r->match.minSuperPods = matchObj["min_super_pods"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "min_super_pods", r->match.minSuperPods, s);
     }
     if (matchObj.contains("max_super_pods")) {
         r->match.hasMaxSuperPods = 1;
-        r->match.maxSuperPods = matchObj["max_super_pods"].get<uint32_t>();
+        (void)GetU32Checked(matchObj, "max_super_pods", r->match.maxSuperPods, s);
     }
     if (matchObj.contains("buffer_size")) {
         r->match.hasBufferSize = 1;
-        r->match.bufferSize = matchObj["buffer_size"].get<uint64_t>();
+        (void)GetU64Checked(matchObj, "buffer_size", r->match.bufferSize, s);
     }
 }
 
@@ -383,8 +426,10 @@ static void ParseRule(const nlohmann::json& ruleObj, Rule* r, SchemaState* s)
     }
     if (ruleObj.contains("executor")) {
         std::string buf = ruleObj["executor"].get<std::string>();
-        if (!is_valid_executor(buf.c_str())) {
-            SchemaError(s, "invalid executor '%s'", buf.c_str());
+        /* executor 不做枚举校验：合法集合随 HCCL 版本演进（strictordered 为后增），
+         * 固定枚举会拒绝新增值；拼错靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
+        if (buf.empty()) {
+            SchemaError(s, "invalid executor '%s' (empty)", buf.c_str());
         } else {
             if (snprintf_s(r->executor, sizeof(r->executor), sizeof(r->executor) - 1, "%s", buf.c_str()) < 0) {
                 r->executor[0] = '\0';
@@ -467,7 +512,10 @@ static void ParseOpRules(
 
     for (const auto& ruleItem : opObj["rules"]) {
         if (desc->ruleCount < MAX_RULES_PER_OP) {
+            int errBefore = s->errors;
             ParseRule(ruleItem, &rules[*curOffset], s);
+            /* 逐规则剔除：本条解析无新增 error 才有效，坏规则只废自己 */
+            rules[*curOffset].valid = (s->errors == errBefore);
             (*curOffset)++;
             desc->ruleCount++;
         } else {
@@ -487,7 +535,7 @@ static void ParseOpRules(
 static void ParseConfig(const nlohmann::json& root, StoredHeader* ctx, Rule* rules, int* curOffset, SchemaState* s)
 {
     if (!root.is_object()) {
-        SchemaError(s, "config root is not an object");
+        SchemaFatal(s, "config root is not an object");
         return;
     }
 
@@ -495,10 +543,10 @@ static void ParseConfig(const nlohmann::json& root, StoredHeader* ctx, Rule* rul
         s->foundVersion = 1;
         int ver = root["version"].get<int>();
         if (ver != 1) {
-            SchemaError(s, "version must be 1, got %d", ver);
+            SchemaFatal(s, "version must be 1, got %d", ver);
         }
     } else {
-        SchemaError(s, "missing required field 'version'");
+        SchemaFatal(s, "missing required field 'version'");
     }
 
     if (root.contains("op_types") && root["op_types"].is_object()) {
@@ -507,7 +555,7 @@ static void ParseConfig(const nlohmann::json& root, StoredHeader* ctx, Rule* rul
             ParseOpRules(it.value(), ctx, rules, curOffset, it.key().c_str(), s);
         }
     } else {
-        SchemaError(s, "missing required field 'op_types'");
+        SchemaFatal(s, "missing required field 'op_types'");
     }
 }
 
@@ -592,7 +640,8 @@ static int MatchRule(const Rule* r, const hcclTunerCollInfo_t* collInfo, const h
     return 1;
 }
 
-static void ApplyRule(const Rule* r, hcclTunerAlgoEntry_t* entries, int count)
+/* 返回: 实际修改 cost 的条目数（禁用条目跳过不计）。返回 0 时调用方穿透后续规则。 */
+static int ApplyRule(const Rule* r, hcclTunerAlgoEntry_t* entries, int count)
 {
     int modified = 0;
     for (int i = 0; i < count; i++) {
@@ -624,12 +673,14 @@ static void ApplyRule(const Rule* r, hcclTunerAlgoEntry_t* entries, int count)
         modified++;
     }
     if (modified == 0 && g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
+        /* 穿透前奏（正常流转），DEBUG 级；异常终态由 no rule matched WARN 兜底 */
         g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_WARN, __FILE__, __LINE__,
+            HCCL_TUNER_LOG_DEBUG, __FILE__, __LINE__,
             "[TunerDFX] rule matched but no entry modified: engine=%s executor=%s template=%s cost=%.6f",
             r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
             r->templateName[0] ? r->templateName : "*", r->hasCost ? r->cost : 0.0f);
     }
+    return modified;
 }
 
 /* ===== 插件接口实现 ===== */
@@ -722,21 +773,36 @@ static HcclResult MyInit(HcclComm comm, const hcclTunerCommInfo_t* commInfo, con
 #ifdef HCCL_TUNER_TESTING
     g_lastSchema = schema;
 #endif
+    int validRules = 0;
+    for (int i = 0; i < ctx->totalRuleCount; i++) {
+        if (rules[i].valid) {
+            validRules++;
+        }
+    }
     if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
         g_hostFuncs.logFunction(
             HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
-            "tuner config loaded from %s, opSetCount=%d, totalRules=%d, schemaErrors=%d, schemaWarnings=%d", loadedPath,
-            ctx->opSetCount, ctx->totalRuleCount, schema.errors, schema.warnings);
+            "tuner config loaded from %s, opSetCount=%d, totalRules=%d, validRules=%d, schemaErrors=%d, "
+            "schemaWarnings=%d",
+            loadedPath, ctx->opSetCount, ctx->totalRuleCount, validRules, schema.errors, schema.warnings);
     }
-    if (schema.errors > 0) {
+    if (schema.fatal > 0) {
+        /* 仅配置级致命错误整体拒绝；规则级错误已逐条剔除 */
         if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
             g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__,
-                "Schema validation failed (%d errors), plugin will not intervene", schema.errors);
+                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema fatal error (%d), plugin will not intervene",
+                schema.fatal);
         }
         ctx->configValid = 0;
     } else {
         ctx->configValid = 1;
+        if (validRules < ctx->totalRuleCount) {
+            if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
+                g_hostFuncs.logFunction(
+                    HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: %d rules rejected, %d rules active",
+                    ctx->totalRuleCount - validRules, validRules);
+            }
+        }
     }
 
     /* 5. 拷贝 commInfo（commName 需拷贝到持久缓冲，init 返回后 commInfo 指针失效） */
@@ -783,7 +849,7 @@ static HcclResult MyGetCollInfo(
     }
     StoredHeader* ctx = (StoredHeader*)ctxPtr;
 
-    /* Schema 校验失败时，不干预算法选择 */
+    /* 配置级致命错误（configValid=0）时不干预；规则级错误已在 init 时逐条剔除 */
     if (!ctx->configValid) {
         return HCCL_SUCCESS;
     }
@@ -794,21 +860,36 @@ static HcclResult MyGetCollInfo(
         if (desc->opType != collInfo->collType) {
             continue;
         }
-        for (int j = 0; j < desc->ruleCount; j++) { /* 首条命中即返回 */
+        for (int j = 0; j < desc->ruleCount; j++) { /* 首条真正改到条目的规则终结匹配 */
             Rule* r = &rules[desc->ruleOffset + j];
+            if (!r->valid) {
+                continue; /* schema 剔除的规则不参与匹配 */
+            }
             if (MatchRule(r, collInfo, &ctx->commInfo)) {
+                int modified = ApplyRule(r, entries, count);
+                if (modified > 0) {
+                    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
+                        g_hostFuncs.logFunction(
+                            HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
+                            "[TunerDFX] rule hit: opType=%d nBytes=%zu dataType=%d ruleIdx=%d/%d "
+                            "engine=%s executor=%s template=%s cost=%.6f",
+                            (int)collInfo->collType, collInfo->nBytes, (int)collInfo->dataType, j, desc->ruleCount,
+                            r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
+                            r->templateName[0] ? r->templateName : "*", r->hasCost ? r->cost : 0.0f);
+                    }
+                    *matched = 1; /* 真正修改了 cost 才算命中，对齐头文件契约 */
+                    return HCCL_SUCCESS;
+                }
+                /* 一条没改（目标缺席或全禁用）: 穿透后续规则；穿透是正常流转（多引擎规则集让路），DEBUG 级 */
                 if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
                     g_hostFuncs.logFunction(
-                        HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
-                        "[TunerDFX] rule hit: opType=%d nBytes=%zu dataType=%d ruleIdx=%d/%d "
-                        "engine=%s executor=%s template=%s cost=%.6f",
+                        HCCL_TUNER_LOG_DEBUG, __FILE__, __LINE__,
+                        "[TunerDFX] rule hit (fall through): opType=%d nBytes=%zu dataType=%d ruleIdx=%d/%d "
+                        "engine=%s executor=%s template=%s, target absent or disabled",
                         (int)collInfo->collType, collInfo->nBytes, (int)collInfo->dataType, j, desc->ruleCount,
                         r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
-                        r->templateName[0] ? r->templateName : "*", r->hasCost ? r->cost : 0.0f);
+                        r->templateName[0] ? r->templateName : "*");
                 }
-                ApplyRule(r, entries, count);
-                *matched = 1; /* 命中，设标志 */
-                return HCCL_SUCCESS;
             }
         }
     }
