@@ -35,6 +35,15 @@ public:
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
 
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
+
+    std::vector<CostModelParam> CalcCostCoeff(
+        HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
+
 protected:
     /* *************** 算法编排 *************** */
     HcclResult InitCommInfo(
@@ -47,6 +56,7 @@ protected:
         const u64 dataOffset, const u64 dataCountforTemp, const u64 maxCountPerLoop,
         TemplateDataParams& tempAlgParams) const;
     HcclResult InitExectorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
 
     std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
     std::vector<ThreadHandle> temp0Threads_;
