@@ -240,7 +240,6 @@ HcclResult AllGatherVOutPlace(
 
     // 参数准备
     param.outputSize = outputSize;
-    param.DataDes.count = sendCount;
     param.vDataDes.dataType = dataType;
     param.inputPtr = sendBuf;
     param.inputSize = inputSize;
@@ -351,8 +350,8 @@ HcclResult AllGatherVOutPlaceGraphMode(
     // 参数准备
     const void* temp = recvCounts;
     param.stream = stream, param.opMode = OpMode::OFFLOAD, param.inputPtr = sendBuf, param.inputSize = inputSize,
-    param.outputPtr = recvBuf, param.outputSize = outputSize, param.DataDes.count = sendCount,
-    param.vDataDes.dataType = dataType, param.varMemSize = varMemSize, param.vDataDes.counts = const_cast<void*>(temp);
+    param.outputPtr = recvBuf, param.outputSize = outputSize, param.vDataDes.dataType = dataType,
+    param.varMemSize = varMemSize, param.vDataDes.counts = const_cast<void*>(temp);
     // 从源内存地址按字节直接拷贝数据到目标地址
     std::vector<u64> merged(userRankSize + userRankSize);
     const uint64_t* countsPtr = reinterpret_cast<const uint64_t*>(recvCounts);

@@ -69,10 +69,8 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
-    dataCount_ = param.DataDes.count;
     dataType_ = param.vDataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.vDataDes.dataType];
-    dataSize_ = dataCount_ * dataTypeSize_;
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(
@@ -176,7 +174,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
         tempAlgParams.allRankProcessedDataCount = allRankProcessedDataCount;
         tempAlgParams.buffInfo.hcclBuffBaseOff = 0;
         // 这里的stride当成传统意义上的stride 间隔
-        tempAlgParams.inputSliceStride = dataSize_; // 如果是输入，偏移是算子的output datasize
+        tempAlgParams.inputSliceStride = 0; // AllGatherV模板不使用该stride，V类算子无单一input stride语义
         tempAlgParams.outputSliceStride
             = maxCountPerLoop * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 

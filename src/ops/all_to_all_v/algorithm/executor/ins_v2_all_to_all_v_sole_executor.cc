@@ -130,7 +130,6 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     rankSize_ = resCtx.topoInfo.userRankSize;
     sendTypeSize_ = DATATYPE_SIZE_TABLE[param.all2AllVDataDes.sendType];
     recvTypeSize_ = DATATYPE_SIZE_TABLE[param.all2AllVDataDes.recvType];
-    dataSize_ = dataCount_ * dataTypeSize_;
 
     // Init sendRevc data for alltoall/alltoallV/alltoallVC algorithm
     u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;

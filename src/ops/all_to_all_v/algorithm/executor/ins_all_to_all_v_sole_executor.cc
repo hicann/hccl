@@ -65,13 +65,10 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InitCommInfo(
     devType_ = topoInfo->deviceType;
     dataType_ = param.all2AllVDataDes.sendType;
     dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
-    dataCount_ = param.DataDes.count;
-    dataSize_ = dataCount_ * dataTypeSize_;
 
     HCCL_INFO(
-        "[InsAlltoAllVSoleExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], dataType_ [%u], "
-        "dataCount_ [%llu]",
-        myRank_, rankSize_, devType_, dataType_, dataCount_);
+        "[InsAlltoAllVSoleExecutor][InitCommInfo] myRank [%u], rankSize [%u], devType [%u], dataType_ [%u]", myRank_,
+        rankSize_, devType_, dataType_);
     return HCCL_SUCCESS;
 }
 
