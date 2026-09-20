@@ -848,8 +848,7 @@ AllocAlgResource(HcclComm comm, const OpParam& param, AlgResourceRequest& resReq
                     maxNotifyNum = resRequest.notifyNumPerThread[i];
                 }
             }
-            curPtr += sizeof(ThreadHandle);
-            ThreadHandle* slaveThreads = reinterpret_cast<ThreadHandle*>(curPtr);
+            ThreadHandle* slaveThreads = threads + 1;
             CHK_RET(HcclThreadAcquire(comm, param.engine, resRequest.slaveThreadNum, maxNotifyNum, slaveThreads));
         }
     }
