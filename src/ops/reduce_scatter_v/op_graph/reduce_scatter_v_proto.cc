@@ -36,11 +36,17 @@ static ge::graphStatus HcomReduceScatterVInferShapeV2(gert::InferShapeContext* c
     auto outputShape = context->GetOutputShape(0);
     OP_CHECK(outputShape == nullptr, CUBE_INNER_ERR_REPORT(opName, "output shape is null"), return GRAPH_FAILED);
 
+    if (inputShape->GetDimNum() == 0) {
+        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: > 0, actual: 0.");
+        return GRAPH_FAILED;
+    }
+
     const gert::Tensor* recvCountTensor = context->GetInputTensor(1);
     const gert::Tensor* sendCountsTensor = context->GetInputTensor(2);
 
     if (!HcomIsConstData(opName, recvCountTensor) || !HcomIsConstData(opName, sendCountsTensor)) {
         *outputShape = *inputShape;
+        outputShape->SetDim(0, ge::UNKNOWN_DIM);
         OP_LOGI(opName, "the op infershape end, shape first dim is unknown.");
         return GRAPH_SUCCESS;
     }
@@ -51,11 +57,6 @@ static ge::graphStatus HcomReduceScatterVInferShapeV2(gert::InferShapeContext* c
 
     if (recvCount.empty()) {
         CUBE_INNER_ERR_REPORT(opName, "recv_count is empty or dtype is not supported.");
-        return GRAPH_FAILED;
-    }
-
-    if (inputShape->GetDimNum() == 0) {
-        CUBE_INNER_ERR_REPORT(opName, "input tensor's first dim is illegal, expected: > 0, actual: 0.");
         return GRAPH_FAILED;
     }
 
