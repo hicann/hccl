@@ -224,9 +224,10 @@ HcclResult AllGatherOutPlaceCommon(
     const bool isTwoLevelMeshNhrOmni = algName == "AicpuAllGatherPipeLineMeshNHR"
                                        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1
                                        && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
+    const bool isAllGatherConcurrent = algName == "AicpuAllGatherConcurMeshNHR";
     if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
         && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isTwoLevelMeshNhrOmni)) {
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isTwoLevelMeshNhrOmni || isAllGatherConcurrent)) {
         CheckAndSetSymmetricMemory(param);
     }
     CHK_RET(HcclExecOp(comm, param, topoInfo, algName, resPack));

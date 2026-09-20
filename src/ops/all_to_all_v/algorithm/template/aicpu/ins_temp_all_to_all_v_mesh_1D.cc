@@ -202,7 +202,9 @@ HcclResult InsTempAlltoAllVMesh1D::KernelRun(
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
 
     bool isPcieProtocol = IsPcieProtocol(templateResource.channels); // 判断是否存在pcie链路
-    isDmaRead_ = isPcieProtocol;                                     // 是否使用Read模式
+    const bool useSymmetricAlltoAllRead = enableRemoteMemAccess_ && opType_ == HcclCMDType::HCCL_CMD_ALLTOALL
+                                          && std::string(param.algName) == "AicpuAllToAllSoleMeshConcurrent";
+    isDmaRead_ = isPcieProtocol || useSymmetricAlltoAllRead; // 对称内存Concurrent AlltoAll强制使用Read模式
     HCCL_DEBUG("[InsTempAlltoAllVMesh1D][KernelRun] Use Dma Read[%d]", isDmaRead_);
 
     myAlgRank_ = 0;

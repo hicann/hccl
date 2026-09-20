@@ -236,7 +236,8 @@ HcclResult AllReduceOutPlaceCommon(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         const bool isTwoLevelMeshNhrOmni
             = algName == "AicpuAllReducePipeLineMeshNHR" && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1;
-        if (!isTwoLevelMeshNhrOmni) {
+        const bool isConcurrentMeshNhr = algName == "AicpuAllReduceConcurMeshTwoShotNHR";
+        if (!isTwoLevelMeshNhrOmni && !isConcurrentMeshNhr) {
             param.supportSymmetricMemory = false;
         }
     } else {

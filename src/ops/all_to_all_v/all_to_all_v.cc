@@ -769,8 +769,10 @@ HcclResult AlltoAllVExecDispatch(
         = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshMultiJetty"
           && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
           && !topoInfo->level0PcieMix;
+    const bool isAllToAllConcurrent
+        = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshConcurrent";
     if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isSoleAlltoAllUbxSymmetric)) {
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isSoleAlltoAllUbxSymmetric || isAllToAllConcurrent)) {
         param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
         param.inputSymWindow = probeParam.inputSymWindow;
         param.inputOffset = probeParam.inputOffset;

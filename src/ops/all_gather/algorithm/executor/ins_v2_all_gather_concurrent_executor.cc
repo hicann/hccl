@@ -282,6 +282,7 @@ void InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
     tempAlgParams.outputRepeatStride = 0;
+    tempAlgParams.enableRemoteMemAccess = supportSymmetricMemory_;
 
     HCCL_DEBUG(
         "[InsV2AllGatherConcurrentExecutor][GenTemplateAlgParams] rank[%d] inBuffBaseOff[%llu] "
@@ -360,6 +361,14 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
+    supportSymmetricMemory_
+        = param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllGatherConcurMeshNHR";
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
 
     // 拆分algHierarchyInfo
     if (algHierarchyInfo_.infos.empty() || algHierarchyInfo_.infos[0].size() < MIN_SUBGROUP_NUM) {
@@ -392,7 +401,11 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     } else {
         const u64 splitIndex = rankSize_ - 1; // 默认第一个算法为mesh，使用 rankSize_ - 1 个 link
         for (u64 i = 0; i < resCtx.channels[0].size(); ++i) {
-            const auto& channel = resCtx.channels[0][i];
+            auto channel = resCtx.channels[0][i];
+            if (supportSymmetricMemory_) {
+                CHK_RET(FillChannelSymWinPeerAddrs(
+                    inputSymWindow_, inputOffset_, outputSymWindow_, outputOffset_, channel));
+            }
             auto& targetMap = (i < splitIndex) ? tmp0LinkMap_ : tmp1LinkMap_;
             targetMap[channel.remoteRank].push_back(channel);
         }
@@ -436,6 +449,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 计算数据切分比例
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(param, dataSplitSize);
+    const bool useSymmetricMemory = supportSymmetricMemory_;
 
     // 缓存切分
     u32 scratchMultiplierforTemp0 = algTemplate0.CalcScratchMultiple(
@@ -453,18 +467,18 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u64 scratchSizeforTemp0 = ScratchMultiplier0 * scratchMemBlockSize;
     u64 scratchSizeforTemp1 = maxTmpMemSize_ - scratchSizeforTemp0;
     u64 scratchOffsetforTemp0 = 0;
-    u64 scratchOffsetforTemp1 = scratchSizeforTemp0;
+    u64 scratchOffsetforTemp1 = useSymmetricMemory ? 0 : scratchSizeforTemp0;
 
     // 分别计算两个template的maxCountPerLoop
     const u64 maxCountUBLimit = UB_MAX_DATA_SIZE / dataTypeSize_;
     u64 maxCountPerLoopforTemp0 = maxCountUBLimit;
     u64 maxCountPerLoopforTemp1 = maxCountUBLimit;
-    if (scratchMultiplierforTemp0 > 0) {
+    if (!useSymmetricMemory && scratchMultiplierforTemp0 > 0) {
         maxCountPerLoopforTemp0 = std::min(
             maxCountUBLimit, scratchSizeforTemp0 / scratchMultiplierforTemp0 / HCCL_MIN_SLICE_ALIGN
                                  * HCCL_MIN_SLICE_ALIGN / dataTypeSize_);
     }
-    if (scratchMultiplierforTemp1 > 0) {
+    if (!useSymmetricMemory && scratchMultiplierforTemp1 > 0) {
         maxCountPerLoopforTemp1 = std::min(
             maxCountUBLimit, scratchSizeforTemp1 / scratchMultiplierforTemp1 / HCCL_MIN_SLICE_ALIGN
                                  * HCCL_MIN_SLICE_ALIGN / dataTypeSize_);

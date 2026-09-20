@@ -449,6 +449,8 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     tempAlgParams1.outputSliceStride = 0;
     tempAlgParams1.inputRepeatStride = 0;
     tempAlgParams1.outputRepeatStride = 0;
+    const bool useSymmetricMemory
+        = param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllReduceConcurMeshTwoShotNHR";
 
     TemplateResource tempAlgResource0;
     TemplateResource tempAlgResource1;
@@ -477,7 +479,11 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         const size_t channelCount = channels.size();
 
         for (u32 i = 0; i < channelCount; ++i) {
-            const auto& channel = channels[i];
+            auto channel = channels[i];
+            if (useSymmetricMemory) {
+                CHK_RET(FillChannelSymWinPeerAddrs(
+                    param.inputSymWindow, param.inputOffset, param.outputSymWindow, param.outputOffset, channel));
+            }
             auto& targetChannels = (i < channelCount / 2) ? tempAlgResource0.channels : tempAlgResource1.channels;
             targetChannels[channel.remoteRank].push_back(channel);
         }

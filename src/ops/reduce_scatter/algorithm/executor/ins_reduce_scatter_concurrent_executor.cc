@@ -321,6 +321,8 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     std::shared_ptr<InsAlgTemplate0> tempAlg0
         = std::make_shared<InsAlgTemplate0>(param, myRank_, temp0HierarchyInfo); // same as calres
     std::shared_ptr<InsAlgTemplate1> tempAlg1 = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
+    const bool useSymmetricMemory
+        = param.supportSymmetricMemory && std::string(param.algName) == "AicpuReduceScatterConcurMeshNHR";
     // 准备资源
     // mesh的流向nhr的流发一个信号，并等nhr流收到
     PrepareThreadFromTemplate(tempAlg0, tempAlg1); // 计算不同的流
@@ -341,7 +343,11 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         const auto& channels = resCtx.channels[0];
         const size_t channelCount = channels.size();
         for (u32 i = 0; i < channelCount; ++i) {
-            const auto& channel = channels[i];
+            auto channel = channels[i];
+            if (useSymmetricMemory) {
+                CHK_RET(FillChannelSymWinPeerAddrs(
+                    param.inputSymWindow, param.inputOffset, param.outputSymWindow, param.outputOffset, channel));
+            }
             auto& targetChannels
                 = (i < channelCount / 2) ? templateAlgResforTemp0.channels : templateAlgResforTemp1.channels;
             targetChannels[channel.remoteRank].push_back(channel);

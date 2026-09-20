@@ -303,6 +303,14 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
+    supportSymmetricMemory_ = param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
+                              && std::string(param.algName) == "AicpuAllToAllSoleMeshConcurrent";
+    if (supportSymmetricMemory_) {
+        inputOffset_ = param.inputOffset;
+        outputOffset_ = param.outputOffset;
+        inputSymWindow_ = param.inputSymWindow;
+        outputSymWindow_ = param.outputSymWindow;
+    }
     if (param.engine == CommEngine::COMM_ENGINE_AICPU || param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
         if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
             CHK_PRT_RET(
@@ -314,7 +322,11 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
             remoteRankToChannelInfo_.resize(CONCURRENT_NUM);
             size_t sizePerTemplate = resCtx.channels[0].size() / CONCURRENT_NUM;
             for (size_t i = 0; i < resCtx.channels[0].size(); i++) {
-                auto& channel = resCtx.channels[0][i];
+                auto channel = resCtx.channels[0][i];
+                if (supportSymmetricMemory_) {
+                    CHK_RET(FillChannelSymWinPeerAddrs(
+                        inputSymWindow_, inputOffset_, outputSymWindow_, outputOffset_, channel));
+                }
                 u32 remoteRank = channel.remoteRank;
                 u32 idx = (i < sizePerTemplate) ? CONST_0 : CONST_1;
                 remoteRankToChannelInfo_[idx][remoteRank].push_back(channel);
@@ -379,6 +391,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     tempAlgParams.recvCounts.resize(rankSize_, 0);
     tempAlgParams.sdispls.resize(rankSize_, 0);
     tempAlgParams.rdispls.resize(rankSize_, 0);
+    tempAlgParams.enableRemoteMemAccess = supportSymmetricMemory_;
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -554,7 +567,12 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     scratchMulti.push_back(
         algTemplate1->CalcScratchMultiple(tempAlgParams1.buffInfo.inBuffType, tempAlgParams1.buffInfo.outBuffType));
     std::vector<u64> maxDataCountPerLoop(CONCURRENT_NUM, 1);
-    CalcMaxDataCountPerLoop(param, scratchMulti, maxDataCountPerLoop);
+    if (supportSymmetricMemory_) {
+        maxDataCountPerLoop[0] = std::max(maxSendOrRecvDataCount0, static_cast<u64>(1));
+        maxDataCountPerLoop[1] = std::max(maxSendOrRecvDataCount1, static_cast<u64>(1));
+    } else {
+        CalcMaxDataCountPerLoop(param, scratchMulti, maxDataCountPerLoop);
+    }
 
     tempAlgParams0.buffInfo.hcclBuffBaseOff = 0;
     tempAlgParams1.buffInfo.hcclBuffBaseOff = scratchMulti[0] * maxDataCountPerLoop[0] * dataTypeSize_;
@@ -664,6 +682,9 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     tempAlgParams.outputSliceStride
         = maxDataCountPerLoop
           * dataTypeSize_; // 这里用来放每张卡可以用的cclBuffer的大小，数据从ureIn到cclBuffer的时候，以这个量来分隔
+    if (supportSymmetricMemory_) {
+        tempAlgParams.outputSliceStride = std::max(sendCounts_[0], recvCounts_[0]) * dataTypeSize_;
+    }
 
     for (u64 i = 0; i < rankSize_; i++) {
         if (splitData.sendCounts[i] > processedDataCount) {

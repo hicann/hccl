@@ -140,7 +140,7 @@ HcclResult InsTempReduceScatterMesh1D::KernelRun(
     if (supportSymmetricMemAccess_) {
         CHK_RET(LocalDataCopy(templateResource.threads, tempAlgParams));
     } else {
-        PostCopy(param, tempAlgParams, templateResource.threads);
+        CHK_RET(PostCopy(param, tempAlgParams, templateResource.threads));
     }
     HCCL_INFO("[InsTempReduceScatterMesh1D] Run End");
     return HcclResult::HCCL_SUCCESS;

@@ -228,7 +228,8 @@ HcclResult ReduceScatterOutPlace(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         const bool isTwoLevelMeshNhrOmni
             = algName == "AicpuReduceScatterPipeLineMeshNHR" && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1;
-        if (!isTwoLevelMeshNhrOmni) {
+        const bool isConcurrentMeshNhr = algName == "AicpuReduceScatterConcurMeshNHR";
+        if (!isTwoLevelMeshNhrOmni && !isConcurrentMeshNhr) {
             param.supportSymmetricMemory = false;
         }
     } else {
