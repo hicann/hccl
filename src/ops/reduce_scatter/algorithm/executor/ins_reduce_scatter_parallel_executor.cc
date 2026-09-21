@@ -615,8 +615,10 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<u64> scratchOffVec
         = {intra0ScratchOffset, intra1ScratchOffset, inter0ScratchOffset, inter1ScratchOffset};
 
-    u64 maxCountPerLoop
-        = std::min(static_cast<u64>(scratchMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE)) / dataTypeSize_;
+    u64 maxCountPerLoop = scratchMemBlockSize / dataTypeSize_;
+    if (param.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
+        maxCountPerLoop = std::min<u64>(scratchMemBlockSize, UB_MAX_DATA_SIZE) / dataTypeSize_;
+    }
     // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
     if (param.supportSymmetricMemory) {
         maxCountPerLoop = dataCount_;

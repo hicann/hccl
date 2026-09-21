@@ -358,9 +358,11 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     lastRankSizeLevel0_ = rankSizeLevel0;
     lastRankSizeLevel1_ = rankSizeLevel1;
 
-    float ratio = 0.5f;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = param.opConfig.multipleDimensionSplitRatio;
+    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = CalcParallelDataSplitRatio(
+            rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::BROADCAST,
+            param.opConfig.multipleDimensionSplitRatio);
     }
     HCCL_INFO(
         "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d rankSizeLevel1=%d isPod=%d netTypeLevel0=%d "
@@ -428,7 +430,6 @@ AlgNetMeta
 InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    (void)topoInfo;
     AlgNetMeta meta;
     CommTopo netTypeLevel0 = netTypeLevel0_;
     CommTopo netTypeLevel1 = netTypeLevel1_;
@@ -438,9 +439,11 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     meta.groupSizes = {2, 2, 2, 2};
     u32 rankSizeLevel0 = lastRankSizeLevel0_;
     u32 rankSizeLevel1 = lastRankSizeLevel1_;
-    float ratio = 0.5f;
-    if (param.opConfig.multipleDimensionSplitRatioSource != MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
-        ratio = param.opConfig.multipleDimensionSplitRatio;
+    float ratio = param.opConfig.multipleDimensionSplitRatio;
+    if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        ratio = CalcParallelDataSplitRatio(
+            rankSizeLevel0, rankSizeLevel1, portNumLevel1_, topoInfo, ParallelDataSplitType::BROADCAST,
+            param.opConfig.multipleDimensionSplitRatio);
     }
     // dataRatios 与 CalcCostCoeff 每段实际 n 值一一对应
     meta.dataRatios
@@ -470,9 +473,10 @@ void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
+        // 按AllGather第二阶段配平；ratio仍表示Scatter先走Mesh、最终在Mesh聚合的数据比例。
         ratio = CalcParallelDataSplitRatio(
             intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, level0Topo,
-            ParallelDataSplitType::SCATTER, multipleDimensionSplitRatio_);
+            ParallelDataSplitType::BROADCAST, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
@@ -842,10 +846,15 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     float multiple = std::max(multiple0, multiple1);
 
     // 数据切分
-    u64 sliceCountUB = std::min(static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_, dataCount_);
-    float onceSliceCountPercent = std::max(
-        dataSplitSize.at(0) * float(1.0 / intraLocalRankSize_), dataSplitSize.at(1) * float(1.0 / interLocalRankSize_));
-    u64 sliceCountUB0 = onceSliceCountPercent > 0 ? std::floor(sliceCountUB / onceSliceCountPercent) : sliceCountUB;
+    u64 sliceCountUB = dataCount_;
+    u64 sliceCountUB0 = dataCount_;
+    if (param.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
+        sliceCountUB = std::min(static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_, dataCount_);
+        float onceSliceCountPercent = std::max(
+            dataSplitSize.at(0) * float(1.0 / intraLocalRankSize_),
+            dataSplitSize.at(1) * float(1.0 / interLocalRankSize_));
+        sliceCountUB0 = onceSliceCountPercent > 0 ? std::floor(sliceCountUB / onceSliceCountPercent) : sliceCountUB;
+    }
     u64 sliceCount = sliceCountUB;
     if (multiple > 0 && maxTmpMemSize_ > 0) {
         u64 scratchCount = maxTmpMemSize_ / dataTypeSize_; // 按照count来切分

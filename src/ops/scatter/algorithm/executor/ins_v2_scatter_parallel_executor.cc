@@ -514,8 +514,11 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     }
     u64 intraScratchOffset = 0;
     u64 interScratchOffset = static_cast<u64>(hcclBuffMultipleIntra * hcclMemBlockSize);
-    u64 maxCountPerLoop = std::min(static_cast<u64>(hcclMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE))
-                          / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
+    u64 maxDataSizePerLoop = hcclMemBlockSize;
+    if (param.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
+        maxDataSizePerLoop = std::min<u64>(hcclMemBlockSize, UB_MAX_DATA_SIZE);
+    }
+    u64 maxCountPerLoop = maxDataSizePerLoop / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     CHK_PRT_RET(
         maxCountPerLoop == 0, HCCL_ERROR("[InsV2ScatterParallelExecutor][GenInsQuesHost] maxCountPerLoop is 0"),
         HcclResult::HCCL_E_INTERNAL);

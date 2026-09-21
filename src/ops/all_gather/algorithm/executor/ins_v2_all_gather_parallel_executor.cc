@@ -581,7 +581,10 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         std::ceil(dataSplitSize[0] * interScatchteMultipleStage1 * rankSizeLevel0_)));
     u32 totalScratchMultiple = scratchMultipleIntra + scratchMultipleInter;
     u64 scratchMemBlockSize = maxTmpMemSize_;
-    u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
+    u64 transportBoundDataSize = maxTmpMemSize_;
+    if (param.engine != CommEngine::COMM_ENGINE_AICPU_TS) {
+        transportBoundDataSize = UB_MAX_DATA_SIZE;
+    }
     if (totalScratchMultiple > 0) {
         scratchMemBlockSize = (maxTmpMemSize_ / HCCL_MIN_SLICE_ALIGN / totalScratchMultiple) * HCCL_MIN_SLICE_ALIGN;
         scratchMemBlockSize = std::min(scratchMemBlockSize, transportBoundDataSize);
@@ -589,8 +592,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     u64 intraScratchOffset = 0;
     u64 interScratchOffset = scratchMultipleIntra * scratchMemBlockSize;
 
-    u64 maxCountPerLoop
-        = std::min(static_cast<u64>(scratchMemBlockSize), static_cast<u64>(UB_MAX_DATA_SIZE)) / dataTypeSize_;
+    u64 maxCountPerLoop = std::min(scratchMemBlockSize, transportBoundDataSize) / dataTypeSize_;
 
     // 对称内存零拷贝：不受cclBuffer和UB_MAX_DATA_SIZE限制，一次传完
     if (param.supportSymmetricMemory) {

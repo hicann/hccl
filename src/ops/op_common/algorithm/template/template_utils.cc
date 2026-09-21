@@ -297,6 +297,7 @@ struct ParallelPortInfo {
 // mesh对应"先Mesh后Clos"的数据片，clos对应"先Clos后Mesh"的数据片；
 // 数据逐级收缩的算子(ReduceScatter/Scatter类)主导阶段为第一阶段，
 // 数据逐级放大的算子(AllGather)主导阶段为第二阶段，此时系数对应的物理链路与命名相反。
+// Broadcast沿用Scatter的分片命名，AllGather第二阶段的物理链路与命名一致。
 struct ParallelTimeCoeff {
     double mesh = 0.0; // 先Mesh后Clos数据片的主导阶段时间系数
     double clos = 0.0; // 先Clos后Mesh数据片的主导阶段时间系数
@@ -367,7 +368,7 @@ static bool PrepareParallelPortInfo(
 
     portInfo.intraPortGroupSize *= intraRankSize - 1;
     portInfo.isPod = rawPortInfo.isInterPod;
-    // Scatter/Broadcast在POD机型下的机间带宽不发生2:1收敛；其他模型保留原有修正。
+    // Scatter首阶段不做POD收敛修正；Broadcast按AllGather末阶段建模，保留2:1收敛修正。
     const bool needPodConvergence = portInfo.isPod && splitType != ParallelDataSplitType::SCATTER;
     portInfo.effectiveInterPortGroupSize
         = static_cast<double>(portInfo.interPortGroupSize) / (needPodConvergence ? POD_PORT_GROUP_DIVISOR : 1.0);
@@ -397,6 +398,10 @@ static bool CalcParallelTimeCoeff(
                              / (static_cast<double>(interRankSize) * portInfo.effectiveInterPortGroupSize);
             return true;
         case ParallelDataSplitType::SCATTER:
+        case ParallelDataSplitType::BROADCAST:
+            // Broadcast的先Mesh数据片在AllGather第二阶段走Mesh，先Clos数据片走Clos。
+            // 每rank通信量分别为r*D*(M-1)/M和(1-r)*D*(N-1)/N，与Scatter首阶段同形；
+            // 两者的POD有效带宽由PrepareParallelPortInfo按各自模型修正。
             timeCoeff.mesh = static_cast<double>(intraRankSize - 1)
                              / (static_cast<double>(intraRankSize) * portInfo.intraPortGroupSize);
             timeCoeff.clos = static_cast<double>(interRankSize - 1)
@@ -451,6 +456,8 @@ const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType)
             return "REDUCE_SCATTER_WITH_LOCAL_REDUCE";
         case ParallelDataSplitType::SCATTER:
             return "SCATTER";
+        case ParallelDataSplitType::BROADCAST:
+            return "BROADCAST";
         case ParallelDataSplitType::ALL_GATHER:
             return "ALL_GATHER";
         default:
