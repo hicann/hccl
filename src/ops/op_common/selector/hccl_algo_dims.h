@@ -29,7 +29,7 @@ typedef enum {
     HCCL_EXEC_SEQUENCE = 0,
     HCCL_EXEC_SOLE,
     HCCL_EXEC_PARALLEL,
-    HCCL_EXEC_PIPILINE,
+    HCCL_EXEC_PIPELINE,
     HCCL_EXEC_CONCUR,
     HCCL_EXEC_COUNT
 } hcclExecutorType_t;

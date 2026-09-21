@@ -132,7 +132,7 @@ public:
         multiOffset = MAX_NUM_BLOCKS * DOUBLE * FLAG_SIZE + localOffset;
         pingpongOffset = multiOffset + DOUBLE * DOUBLE * NUM_BLOCKS_FOUR_PER_RANK_A3 * ATOMIC_FLAG_SIZE * DOUBLE;
         countOffset = DOUBLE * pingpongOffset;
-        seperateOffset = countOffset + NUM_BLOCKS_FOUR_PER_RANK_A3 * rankSize_ * FLAG_SIZE;
+        separateOffset = countOffset + NUM_BLOCKS_FOUR_PER_RANK_A3 * rankSize_ * FLAG_SIZE;
 
         pipe.InitBuffer(localFlagBuf, LOCAL_FLAG_BUF_LEN);
         localSetTensor = localFlagBuf.GetWithOffset<int32_t>(UB_FLAG_PAD_COUNT, FLAG_ONE_OFFSET);
@@ -178,7 +178,7 @@ public:
         multiOffset = MAX_NUM_BLOCKS * DOUBLE * FLAG_SIZE + localOffset;
         pingpongOffset = multiOffset + DOUBLE * DOUBLE * NUM_BLOCKS_FOUR_PER_RANK_A3 * ATOMIC_FLAG_SIZE * DOUBLE;
         countOffset = DOUBLE * pingpongOffset;
-        seperateOffset = countOffset + NUM_BLOCKS_FOUR_PER_RANK_A3 * rankSize_ * FLAG_SIZE;
+        separateOffset = countOffset + NUM_BLOCKS_FOUR_PER_RANK_A3 * rankSize_ * FLAG_SIZE;
 
         pipe.InitBuffer(localFlagBuf, LOCAL_FLAG_BUF_LEN);
         localSetTensor = localFlagBuf.GetWithOffset<int32_t>(UB_FLAG_PAD_COUNT, FLAG_ONE_OFFSET);
@@ -374,7 +374,7 @@ public:
     uint32_t multiOffset;
     uint32_t pingpongOffset;
     uint32_t countOffset;
-    uint32_t seperateOffset;
+    uint32_t separateOffset;
 };
 
 __aicore__ inline void AivCommBase::Record(uint32_t targetRank, uint64_t flag_offset, int32_t curTag)
@@ -420,9 +420,9 @@ __aicore__ inline void AivCommBase::ClearFlag()
     // 无论pingpong，清零区域始终从FLAG1_OFFSET开始
     GM_ADDR flagBase = myGmOut_ - gmOutOffset_ + FLAG1_OFFSET;
     __gm__ int32_t* ctrlFlagsGM = (__gm__ int32_t*)(flagBase);
-    __gm__ int32_t* emtpyGM = (__gm__ int32_t*)(flagBase + AIV_FLAG_EMPTY_OFFSET - FLAG1_OFFSET);
+    __gm__ int32_t* emptyGM = (__gm__ int32_t*)(flagBase + AIV_FLAG_EMPTY_OFFSET - FLAG1_OFFSET);
     if (blockIdx_ == 0) {
-        CpGM2GM(ctrlFlagsGM, emtpyGM, (BASE_FLAG_OFFSET - FLAG1_OFFSET) / sizeof(int32_t));
+        CpGM2GM(ctrlFlagsGM, emptyGM, (BASE_FLAG_OFFSET - FLAG1_OFFSET) / sizeof(int32_t));
     }
 }
 

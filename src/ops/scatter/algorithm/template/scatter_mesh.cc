@@ -67,7 +67,7 @@ HcclResult ScatterMesh::RunAsync(const u32 rank, const u32 rankSize, std::vector
     }
     // rank存放scatter 结果的偏移
     u64 scatterOffset = slices_[rank].offset;
-    HCCL_DEBUG("rank[%u] scatter_offset is [%llu] reslutsize[%llu]", rank, scatterOffset, slices_[rank].size);
+    HCCL_DEBUG("rank[%u] scatter_offset is [%llu] resultsize[%llu]", rank, scatterOffset, slices_[rank].size);
 
     // root rank向其他rank发送数据
     if (rank == root_) {

@@ -58,7 +58,7 @@ protected:
     HcclResult InitCommInfo(
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    HcclResult InitExectorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitExecutorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
     HcclResult
     PrepareThreadFromTemplate(std::shared_ptr<InsAlgTemplate0>& tempAlg0, std::shared_ptr<InsAlgTemplate1>& tempAlg1);
 

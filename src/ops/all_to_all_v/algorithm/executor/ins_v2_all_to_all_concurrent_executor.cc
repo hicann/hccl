@@ -183,7 +183,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    // sole_exector只考虑通信域只有一级算法的情况，多级情况需要使用algHierarchyInfo
+    // sole_executor只考虑通信域只有一级算法的情况，多级情况需要使用algHierarchyInfo
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataType_ = param.all2AllVDataDes.sendType;

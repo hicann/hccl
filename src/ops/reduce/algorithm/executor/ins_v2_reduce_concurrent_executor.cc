@@ -338,7 +338,7 @@ HcclResult InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExectorInfo(
+HcclResult InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExecutorInfo(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;
@@ -362,7 +362,7 @@ HcclResult InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
 {
     HCCL_INFO("[InsV2ReduceConcurrentExecutor][Orchestrate] Orchestrate Start");
     // 参数填充
-    CHK_RET(InitExectorInfo(param, resCtx));
+    CHK_RET(InitExecutorInfo(param, resCtx));
     HcclResult ret = OrchestrateLoop(param, resCtx); // 算法展开
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,

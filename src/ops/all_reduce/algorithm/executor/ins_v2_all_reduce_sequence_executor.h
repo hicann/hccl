@@ -62,7 +62,7 @@ protected:
     HcclResult InitCommInfo(
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult InitExecutorInfo(const OpParam& param);
     HcclResult SplitData(const u64& dataCount, const uint64_t& rankSize, TemplateDataParams& tempAlgParams);
     u64 RoundUp(const u64 dividend, const u64 divisor);
 

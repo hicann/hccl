@@ -52,16 +52,16 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     CHK_PTR_NULL(topoInfo);
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
     if (algHierarchyInfo.infos.size() == 0) {
         HCCL_ERROR("[InsV2AivAlltoAllVSoleExecutor] algHierarchyInfo level num is zero!");
         return HCCL_E_PARA;
     }
 
-    tempAlgHierachyInfo = algHierarchyInfo.infos[0];
+    tempAlgHierarchyInfo = algHierarchyInfo.infos[0];
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierarchyInfo);
     // 调用计算资源的函数
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
     return HCCL_SUCCESS;
@@ -182,21 +182,21 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
         tempAlgParams.rdispls[i] = reinterpret_cast<u64*>(param.all2AllVDataDes.rdispls)[i];
     }
 
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
         && param.engine != CommEngine::COMM_ENGINE_AIV) {
         if (resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2) {
             HCCL_ERROR("[%s] algHierarchyInfo.infos size[%zu] < 2.", __func__, resCtx.algHierarchyInfo.infos.size());
             return HCCL_E_PARA;
         }
-        tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[1];
+        tempAlgHierarchyInfo = resCtx.algHierarchyInfo.infos[1];
     } else {
-        tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[0];
+        tempAlgHierarchyInfo = resCtx.algHierarchyInfo.infos[0];
     }
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierarchyInfo);
     u32 templateScratchMultiplier
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
 

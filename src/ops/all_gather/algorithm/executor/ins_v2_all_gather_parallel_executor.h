@@ -49,7 +49,7 @@ public:
 
 protected:
     HcclResult CalcLocalRankSize();
-    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult InitExecutorInfo(const OpParam& param);
 
     HcclResult InitCommInfo(
         HcclComm comm, const OpParam& param, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfo& algHierarchyInfo);

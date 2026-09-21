@@ -129,7 +129,7 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
 
     // 调用计算资源的函数
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
-    // 在comb_exector或是parallel_exector中合并两个template的资源
+    // 在comb_executor或是parallel_executor中合并两个template的资源
     return HCCL_SUCCESS;
 }
 

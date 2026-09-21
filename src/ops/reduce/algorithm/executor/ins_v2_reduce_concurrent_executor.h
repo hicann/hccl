@@ -55,7 +55,7 @@ protected:
     void GenTempAlgParams(
         const u64 dataOffset, const u64 dataCountforTemp, const u64 maxCountPerLoop,
         TemplateDataParams& tempAlgParams) const;
-    HcclResult InitExectorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
+    HcclResult InitExecutorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx);
     void GetParallelDataSplit(const OpParam& param, std::vector<float>& splitDataSize) const;
 
     std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;

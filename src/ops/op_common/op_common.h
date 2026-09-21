@@ -131,7 +131,7 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
 
 HcclResult GetAlgResAiv(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence);
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size);
 
 HcclResult HcclAllocAlgResourceAiv(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost);
@@ -211,7 +211,7 @@ HcclResult SaveUnfoldThreadInfo(HcclComm comm, const OpParam& param, ThreadHandl
 HcclResult GetUnfoldThreadInfo(HcclComm comm, const OpParam& param, ThreadHandle& unfoldThread);
 
 HcclResult
-HcclRegstryBuff(HcclComm comm, const char* memTag, void* bufferPtr, uint64_t bufferSize, HcclMemHandle* memHandle);
+HcclRegistryBuff(HcclComm comm, const char* memTag, void* bufferPtr, uint64_t bufferSize, HcclMemHandle* memHandle);
 
 HcclResult
 HcclGetRemoteBuff(HcclComm comm, ChannelHandle channel, const char* memTag, void** bufferPtr, uint64_t* bufferSize);

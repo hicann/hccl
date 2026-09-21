@@ -17,7 +17,7 @@ TopoMatch1D::TopoMatch1D() {}
 TopoMatch1D::~TopoMatch1D() {}
 
 HcclResult TopoMatch1D::MatchTopo(
-    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExector)
+    HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfoExecutor)
 {
 #ifndef AICPU_COMPILE
     u32 myRank = topoInfo->userRank;
@@ -48,9 +48,9 @@ HcclResult TopoMatch1D::MatchTopo(
     for (uint32_t rankId = 0; rankId < topoInfo->userRankSize; rankId++) {
         rankIds.push_back(rankId);
     }
-    algHierarchyInfoExector.infos.resize(1);
-    algHierarchyInfoExector.infos[0].resize(1);
-    algHierarchyInfoExector.infos[0][0] = rankIds;
+    algHierarchyInfoExecutor.infos.resize(1);
+    algHierarchyInfoExecutor.infos[0].resize(1);
+    algHierarchyInfoExecutor.infos[0][0] = rankIds;
 #endif
     return HcclResult::HCCL_SUCCESS;
 }

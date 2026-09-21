@@ -1565,7 +1565,7 @@ HcclResult GetAlgResWithEngine(
             comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size,
             increCreateChannelFlag, resPack));
     } else if (param.engine == COMM_ENGINE_AIV) {
-        CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence));
+        CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence, size));
     } else if (param.engine == COMM_ENGINE_CCU) {
         auto ret = GetAlgResCcu(
             comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size, resPack);
@@ -2131,13 +2131,13 @@ HcclResult RegGraphModeBuffers(
     HCCL_INFO("[RegGraphModeBuffers] graph mode registry remote buffer");
     if (param.inputPtr != nullptr && param.inputSize != 0) {
         HcclMemHandle inputHandle = nullptr;
-        CHK_RET(HcclRegstryBuff(comm, inputBuffTag, param.inputPtr, param.inputSize, &inputHandle));
+        CHK_RET(HcclRegistryBuff(comm, inputBuffTag, param.inputPtr, param.inputSize, &inputHandle));
         CHK_PTR_NULL(inputHandle);
         memHandles.emplace_back(inputHandle);
     }
     if (param.outputPtr != nullptr && param.outputSize != 0) {
         HcclMemHandle outputHandle = nullptr;
-        CHK_RET(HcclRegstryBuff(comm, outputBuffTag, param.outputPtr, param.outputSize, &outputHandle));
+        CHK_RET(HcclRegistryBuff(comm, outputBuffTag, param.outputPtr, param.outputSize, &outputHandle));
         CHK_PTR_NULL(outputHandle);
         memHandles.emplace_back(outputHandle);
     }
@@ -3011,9 +3011,9 @@ HcclResult HcclGetCcuKernel(
 
 HcclResult GetAlgResAiv(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence)
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size)
 {
-    uint64_t size = sizeof(AlgResourceCtxSerializable);
+    size = sizeof(AlgResourceCtxSerializable);
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, size, resCtxSequence));
 
     AlgResourceCtxSerializable* resCtxHost = static_cast<AlgResourceCtxSerializable*>(*resCtxSequence);
@@ -3598,7 +3598,7 @@ HcclResult ApplyOpExpansionMode(OpParam& param, HcclOpExpansionMode finalMode)
 }
 
 HcclResult
-HcclRegstryBuff(HcclComm comm, const char* memTag, void* bufferPtr, uint64_t bufferSize, HcclMemHandle* memHandle)
+HcclRegistryBuff(HcclComm comm, const char* memTag, void* bufferPtr, uint64_t bufferSize, HcclMemHandle* memHandle)
 {
     CHK_PTR_NULL(memHandle);
     CommMem regMem{COMM_MEM_TYPE_DEVICE, bufferPtr, bufferSize};
@@ -3928,8 +3928,9 @@ bool IsHostDpu(HcclComm comm)
     // 获取 topoLevelNums
     uint32_t* netLayers = nullptr;
     uint32_t netLayerNum = 0;
-    CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
+    ret = HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum);
     if (ret != HCCL_SUCCESS) {
+        HCCL_ERROR("[IsHostDpu]HcclRankGraphGetLayers fail, ret:%d", ret);
         return false;
     }
 

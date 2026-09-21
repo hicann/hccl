@@ -165,7 +165,7 @@ REG_OP(HcomAllGather)
     .OP_END_FACTORY_REG(HcomBroadcast)
 
     /**
-     * @brief preforms reduction from others rank to rootrank
+     * @brief performs reduction from others rank to rootrank
      * @par Inputs:
     * @li root_rank: A required integer identifying the root rank in the op
       the reduction result will be on this root rank

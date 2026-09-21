@@ -60,7 +60,7 @@ public:
 
 protected:
     /* *************** 算法编排 *************** */
-    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult InitExecutorInfo(const OpParam& param);
     HcclResult OrchestrateLoop(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx,
         std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap);

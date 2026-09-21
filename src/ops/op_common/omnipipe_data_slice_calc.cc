@@ -1561,15 +1561,15 @@ OmniPipeSliceInfo CalcAGOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
 
 u64 DataSliceCut(u64 originSliceSize, u64 originSliceOffset, u64 stopOffset)
 {
-    u64 cuttedSliceSize = originSliceSize;
+    u64 cutSliceSize = originSliceSize;
     if (originSliceSize + originSliceOffset > stopOffset) {
         if (originSliceOffset < stopOffset) {
-            cuttedSliceSize = stopOffset - originSliceOffset;
+            cutSliceSize = stopOffset - originSliceOffset;
         } else {
-            cuttedSliceSize = 0;
+            cutSliceSize = 0;
         }
     }
-    return cuttedSliceSize;
+    return cutSliceSize;
 }
 
 u64 sliceOffsetCut(u64 originOffset, u64 stopOffset)

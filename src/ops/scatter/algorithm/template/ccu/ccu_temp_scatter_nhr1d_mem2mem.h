@@ -18,7 +18,7 @@
 
 namespace ops_hccl {
 
-struct KernalRunTempArgs {
+struct KernelRunTempArgs {
     u32 kernelNum;
     uint64_t die0Size;
     uint64_t die1Size;
@@ -89,13 +89,13 @@ private:
     HcclResult SplitDataFor2Dies(
         const OpParam& param, const TemplateDataParams& templateDataParams, uint64_t& die0Size,
         uint64_t& die1Size) const;
-    void FillKernelRunTempArgs(const TemplateDataParams& templateDataParams, KernalRunTempArgs& tempArgs) const;
-    HcclResult PrepareLaunchArgs(const KernalRunTempArgs& tempArgs, std::vector<uint64_t>& taskArgs, uint64_t& argSize);
+    void FillKernelRunTempArgs(const TemplateDataParams& templateDataParams, KernelRunTempArgs& tempArgs) const;
+    HcclResult PrepareLaunchArgs(const KernelRunTempArgs& tempArgs, std::vector<uint64_t>& taskArgs, uint64_t& argSize);
     HcclResult FillKernelRunArgs(
-        const KernalRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams,
+        const KernelRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams,
         std::vector<uint64_t>& taskArgs, uint64_t argSize, const TemplateResource& templateResource) const;
     void SaveSubmitInfo(
-        const KernalRunTempArgs& tempArgs, const std::vector<uint64_t>& taskArgs,
+        const KernelRunTempArgs& tempArgs, const std::vector<uint64_t>& taskArgs,
         TemplateResource& templateResource) const;
     std::vector<uint64_t> goSizeNormal_[2];
     std::vector<uint64_t> goSizeLast_[2];

@@ -70,16 +70,16 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     CHK_PTR_NULL(topoInfo);
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
     if (algHierarchyInfo.infos.size() == 0) {
         HCCL_ERROR("[InsV2AlltoAllVSoleExecutor] algHierarchyInfo level num is zero!");
         return HCCL_E_PARA;
     }
     // UBX场景判断
-    tempAlgHierachyInfo = algHierarchyInfo.infos[0];
+    tempAlgHierarchyInfo = algHierarchyInfo.infos[0];
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierarchyInfo);
     // 调用计算资源的函数
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
     return HCCL_SUCCESS;
@@ -267,12 +267,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         }
     }
 
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
-    tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[0];
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
+    tempAlgHierarchyInfo = resCtx.algHierarchyInfo.infos[0];
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierarchyInfo);
     u32 templateScratchMultiplier
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
 

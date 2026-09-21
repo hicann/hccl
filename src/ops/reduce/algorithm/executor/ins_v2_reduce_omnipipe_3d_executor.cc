@@ -957,7 +957,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
 
         // 4.2 RS在每次loop进行之前先将所有数据从usrin拷贝到ccl
         // input -> ccl
-        // ccl : 从每个rank-intputmem 上面拿到的数据放到 ccl
+        // ccl : 从每个rank-inputmem 上面拿到的数据放到 ccl
         tempParamLocalcopy.buffInfo.inBuffType = BufferType::INPUT;
         tempParamLocalcopy.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
         tempParamLocalcopy.buffInfo.outBuffBaseOff = 0;

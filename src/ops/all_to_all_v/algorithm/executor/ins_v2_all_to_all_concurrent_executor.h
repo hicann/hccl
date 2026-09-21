@@ -57,7 +57,7 @@ protected:
     HcclResult InitCommInfo(
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo);
-    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult InitExecutorInfo(const OpParam& param);
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;

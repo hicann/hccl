@@ -80,12 +80,12 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     // 初始化一些基本成员变量
     CHK_RET(InitCommInfo(param, topoInfo));
 
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
-    tempAlgHierachyInfo = algHierarchyInfo.infos[0];
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
+    tempAlgHierarchyInfo = algHierarchyInfo.infos[0];
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, topoInfo->userRank, tempAlgHierarchyInfo);
     // 调用计算资源的函数
     CHK_RET(algTemplate->CalcRes(comm, param, topoInfo, resourceRequest));
 
@@ -190,10 +190,10 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
 {
     HCCL_INFO("[InsAlltoAllVSoleExecutor][OrchestrateLoop] Start");
 
-    std::vector<std::vector<u32>> tempAlgHierachyInfo;
-    tempAlgHierachyInfo = resCtx.algHierarchyInfo.infos[0];
+    std::vector<std::vector<u32>> tempAlgHierarchyInfo;
+    tempAlgHierarchyInfo = resCtx.algHierarchyInfo.infos[0];
     std::shared_ptr<InsAlgTemplate> algTemplate
-        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierachyInfo);
+        = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, tempAlgHierarchyInfo);
     // 构建template
     algTemplate->SetA2ASendRecvInfo(localSendRecvInfo_);
 

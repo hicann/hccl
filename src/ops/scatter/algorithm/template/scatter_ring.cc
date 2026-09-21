@@ -63,7 +63,7 @@ HcclResult ScatterRing::RunScatterOnEndRank()
     // 给前一节点发送同步，以便前一rank进行下一轮的操作
     CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_ACK)));
 
-    HCCL_DEBUG("last rank[%u] rx data ouputoffset[%llu] size[%llu]", interRank_, scatterOffset, scatterResult);
+    HCCL_DEBUG("last rank[%u] rx data outputoffset[%llu] size[%llu]", interRank_, scatterOffset, scatterResult);
 
     CHK_RET(static_cast<HcclResult>(
         HcommChannelNotifyWaitOnThread(thread_, channelLeft_.handle, NOTIFY_IDX_DATA_SIGNAL, CUSTOM_TIMEOUT)));

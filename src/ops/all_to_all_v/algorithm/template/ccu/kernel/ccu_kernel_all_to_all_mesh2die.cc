@@ -50,7 +50,7 @@ static CcuResult LoadArgs(AllToAllMesh2DieContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.token[ctx.virRankSize - 1], cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.sliceSize, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.inputSliceStride, cnt++));
-    CCU_CHK_RET(ccu::LoadArg(ctx.outputoffset, cnt++));
+    CCU_CHK_RET(ccu::LoadArg(ctx.outputOffset, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.groupOpSize.addrOffset, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.groupOpSize.loopParam, cnt++));
     CCU_CHK_RET(ccu::LoadArg(ctx.groupOpSize.parallelParam, cnt++));
@@ -107,7 +107,7 @@ static void CalcSrcDstAddrs(
         src[r].addr = ctx.input;
 
         dst[r].addr = ctx.output[r];
-        dst[r].addr += ctx.outputoffset;
+        dst[r].addr += ctx.outputOffset;
         for (uint64_t i = 0; i < dstRank; i++) {
             src[r].addr += ctx.inputSliceStride;
         }
@@ -120,7 +120,7 @@ static void CalcSrcDstAddrs(
 
         localDst.token = ctx.token[ctx.logicRankSize - 1];
         localDst.addr = ctx.output[ctx.logicRankSize - 1];
-        localDst.addr += ctx.outputoffset;
+        localDst.addr += ctx.outputOffset;
         for (uint64_t i = 0; i < withDstRank; i++) {
             localSrc.addr += ctx.inputSliceStride;
         }

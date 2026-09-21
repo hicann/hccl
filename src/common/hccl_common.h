@@ -238,7 +238,7 @@ enum class HcclRtDeviceModuleType {
     HCCL_RT_MODULE_TYPE_SYSTEM = 0,  /**< system info*/
     HCCL_RT_MODULE_TYPE_AICORE,      /**< AI CORE info*/
     HCCL_RT_MODULE_TYPE_VECTOR_CORE, /**< VECTOR CORE info*/
-    HCCL_RT_DEVICE_MOUDLE_RESERVED,
+    HCCL_RT_DEVICE_MODULE_RESERVED,
 };
 
 enum class HcclRtDeviceInfoType {

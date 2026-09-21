@@ -1043,7 +1043,7 @@ HcclResult ProcessLinksForChannel(
 
 HcclResult ProcessLinksForChannelMutiJetty(
     HcclComm comm, CommProtocol& expectedProtocol, std::vector<CommLink>& linkList, u32 myRank, u32 remoteRank,
-    uint32_t netLayer, std::vector<HcclChannelDesc>& channels, bool execptMesh, bool isIsolation)
+    uint32_t netLayer, std::vector<HcclChannelDesc>& channels, bool exceptMesh, bool isIsolation)
 {
 #ifndef AICPU_COMPILE
     CommTopo topoType;
@@ -1053,9 +1053,9 @@ HcclResult ProcessLinksForChannelMutiJetty(
         isIsolation = false;
     }
     HCCL_INFO(
-        "[ProcessLinksForChannelMutiJetty] myRank=%u, remoteRank=%u, netLayer=%u, linkList.size()=%zu, execptMesh=%d, "
+        "[ProcessLinksForChannelMutiJetty] myRank=%u, remoteRank=%u, netLayer=%u, linkList.size()=%zu, exceptMesh=%d, "
         "isIsolation=%d",
-        myRank, remoteRank, netLayer, linkList.size(), execptMesh, isIsolation);
+        myRank, remoteRank, netLayer, linkList.size(), exceptMesh, isIsolation);
     std::vector<HcclChannelDesc> tempChannels;
 #if CANN_VERSION_NUM < CANN_VERSION(9, 1, 0)
     // 9.1.0 之前不使用 ProcessLinksForChannelMutiJetty 等新 API，
@@ -1089,7 +1089,7 @@ HcclResult ProcessLinksForChannelMutiJetty(
         if (topoType == CommTopo::COMM_TOPO_CLOS
             && IsPortEqual(linkList[idx].srcEndpointDesc, linkList[idx].dstEndpointDesc, isIsolation)) {
             tempChannels.push_back(channelDesc);
-        } else if (topoType == CommTopo::COMM_TOPO_1DMESH && execptMesh) {
+        } else if (topoType == CommTopo::COMM_TOPO_1DMESH && exceptMesh) {
             HCCL_INFO("[CalcChannelRequestMeshClos] Clear clos channels and add mesh channel.");
             tempChannels.clear();
             tempChannels.push_back(channelDesc);
@@ -1242,7 +1242,7 @@ HcclResult CalcChannelRequestNhrMultiJettyUbx(
 HcclResult CalcChannelRequestMeshClosMultiJetty(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels, bool isIsolation,
-    bool execptMesh)
+    bool exceptMesh)
 {
 #ifndef AICPU_COMPILE
     (void)param;
@@ -1279,7 +1279,7 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(
             }
             std::vector<CommLink> links(linkList, linkList + listSize);
             CHK_RET(ProcessLinksForChannelMutiJetty(
-                comm, expectedProtocol, links, myRank, rank, netLayer, channels, execptMesh, isIsolation));
+                comm, expectedProtocol, links, myRank, rank, netLayer, channels, exceptMesh, isIsolation));
             if (channels.size() > channelCountBefore) {
                 break;
             }

@@ -45,7 +45,7 @@ struct AllToAllMesh2DieContext : CcuKernelCtxBase {
     std::vector<ccu::Variable> token;
     ccu::Variable sliceSize;
     ccu::Variable inputSliceStride;
-    ccu::Variable outputoffset;
+    ccu::Variable outputOffset;
     GroupOpSizeVars groupOpSize;
 
     CcuEventGroup eventGroup;

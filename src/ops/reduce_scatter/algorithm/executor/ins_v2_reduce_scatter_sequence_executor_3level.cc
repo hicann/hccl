@@ -154,7 +154,7 @@ InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     resourceRequest.channels[2] = resReq2.channels[0];
     HCCL_INFO(
         "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "
-        "level0 chanel size [%u], level1 channel size [%u], level2 channel size [%u]",
+        "level0 channel size [%u], level1 channel size [%u], level2 channel size [%u]",
         myRank_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.channels[0].size(),
         resourceRequest.channels[1].size(), resourceRequest.channels[2].size());
     return HCCL_SUCCESS;

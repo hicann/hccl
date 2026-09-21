@@ -295,7 +295,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 {
     HCCL_INFO("[InsReduceScatterConcurrentExecutor][Orchestrate] Orchestrate Start");
     // 参数填充
-    CHK_RET(InitExectorInfo(param, resCtx));
+    CHK_RET(InitExecutorInfo(param, resCtx));
     HcclResult ret = OrchestrateLoop(param, resCtx); // 算法展开
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
@@ -643,7 +643,7 @@ void InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
-HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExectorInfo(
+HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExecutorInfo(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;

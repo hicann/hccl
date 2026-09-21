@@ -324,7 +324,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::FastLaunch(const OpParam& param, const Te
 }
 
 void CcuTempScatterNHR1DMem2Mem::FillKernelRunTempArgs(
-    const TemplateDataParams& templateDataParams, KernalRunTempArgs& tempArgs) const
+    const TemplateDataParams& templateDataParams, KernelRunTempArgs& tempArgs) const
 {
     tempArgs.inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     tempArgs.outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
@@ -349,7 +349,7 @@ void CcuTempScatterNHR1DMem2Mem::FillKernelRunTempArgs(
 }
 
 HcclResult CcuTempScatterNHR1DMem2Mem::PrepareLaunchArgs(
-    const KernalRunTempArgs& tempArgs, std::vector<uint64_t>& taskArgs, uint64_t& argSize)
+    const KernelRunTempArgs& tempArgs, std::vector<uint64_t>& taskArgs, uint64_t& argSize)
 {
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
@@ -393,7 +393,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::PrepareLaunchArgs(
 }
 
 HcclResult CcuTempScatterNHR1DMem2Mem::FillKernelRunArgs(
-    const KernalRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams, std::vector<uint64_t>& taskArgs,
+    const KernelRunTempArgs& tempArgs, const TemplateDataParams& templateDataParams, std::vector<uint64_t>& taskArgs,
     uint64_t argSize, const TemplateResource& templateResource) const
 {
     for (uint32_t axisId = 0; axisId < tempArgs.kernelNum; axisId++) {
@@ -418,7 +418,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::FillKernelRunArgs(
 }
 
 void CcuTempScatterNHR1DMem2Mem::SaveSubmitInfo(
-    const KernalRunTempArgs& tempArgs, const std::vector<uint64_t>& taskArgs, TemplateResource& templateResource) const
+    const KernelRunTempArgs& tempArgs, const std::vector<uint64_t>& taskArgs, TemplateResource& templateResource) const
 {
     for (u32 i = 0; i < tempArgs.kernelNum; i++) {
         CcuKernelSubmitInfo submitInfo;
@@ -444,7 +444,7 @@ HcclResult CcuTempScatterNHR1DMem2Mem::KernelRun(
     HCCL_INFO("[CcuTempScatterNHR1DMem2Mem] Template KernelRun start.");
     opMode_ = param.opMode;
     buffInfo_ = templateDataParams.buffInfo;
-    KernalRunTempArgs tempArgs;
+    KernelRunTempArgs tempArgs;
 
     tempArgs.kernelNum = templateResource.ccuKernels.size();
 

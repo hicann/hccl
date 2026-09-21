@@ -384,7 +384,7 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
 {
     HCCL_DEBUG("[%s] start", __func__);
     threads_ = resCtx.threads;
-    HCCL_DEBUG("[%s] threads size: %u", __func__, threads_.size());
+    HCCL_DEBUG("[%s] threads size: %zu", __func__, threads_.size());
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
     dataCount_ = param.DataDes.count;
@@ -729,9 +729,9 @@ InsV2ReduceOmniPipeExecutor<AlgTopoMatch, CcuRsAlgTemplateX, CcuRsAlgTemplateY, 
             auto l0StepNum = omniPipeSliceInfoRS.dataSliceLevel0;
             auto l1StepNum = omniPipeSliceInfoRS.dataSliceLevel1;
             HCCL_DEBUG(
-                "[InsV2ReduceOmniPipeExecutor][%s] myRank[%u] L0 stepNum[%u]", __func__, myRank_, l0StepNum.size());
+                "[InsV2ReduceOmniPipeExecutor][%s] myRank[%u] L0 stepNum[%zu]", __func__, myRank_, l0StepNum.size());
             HCCL_DEBUG(
-                "[InsV2ReduceOmniPipeExecutor][%s] myRank[%u] L1 stepNum[%u]", __func__, myRank_, l1StepNum.size());
+                "[InsV2ReduceOmniPipeExecutor][%s] myRank[%u] L1 stepNum[%zu]", __func__, myRank_, l1StepNum.size());
         }
         // 4.2 RS for内层2d
         // template间同步所需信息计算

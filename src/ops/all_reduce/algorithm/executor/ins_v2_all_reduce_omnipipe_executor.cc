@@ -475,7 +475,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
         resCtx.topoInfo.userRank, param.supportSymmetricMemory);
     // 参数填充
 
-    CHK_RET(InitExectorInfo(param, resCtx));
+    CHK_RET(InitExecutorInfo(param, resCtx));
 
     // 通道归层依赖局部子通信域，在 OrchestrateLoop 中完成。
     // 算法展开
@@ -497,7 +497,7 @@ template <
     typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
 HcclResult InsV2AllReduceOmniPipeExecutor<
     AlgTopoMatch, InsRsAlgTemplateX, InsRsAlgTemplateY, InsRsAlgTemplateZ, InsAgAlgTemplateX, InsAgAlgTemplateY,
-    InsAgAlgTemplateZ>::InitExectorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
+    InsAgAlgTemplateZ>::InitExecutorInfo(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;

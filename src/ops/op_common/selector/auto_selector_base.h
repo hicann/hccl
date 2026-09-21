@@ -66,7 +66,7 @@ const std::map<HcclCMDType, std::string> OP_TYPE_TO_DPU_ALG_MAP = {
 
 };
 
-const std::unordered_map<std::string, std::string> RES_RESUSE_ALG
+const std::unordered_map<std::string, std::string> RES_REUSE_ALG
     = {{"AicpuReduceScatterSoleMesh", "InsReduceScatterMeshClass"},
        {"AicpuReduceScatterSoleMeshChunk", "InsReduceScatterMeshClass"},
        {"AicpuAllReduceSoleMeshOneShot", "InsAllReduceMeshClass"},

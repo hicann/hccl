@@ -189,7 +189,7 @@ HcclCalcOpResOfflineGraphMode(OpParamGraphMode* opParam, u64* opMemSize, u32* st
 
     // 其他引擎补充在下面
     // aiv引擎计算资源
-    ops_hccl::HcclCalcAivResOffline(&resResponse, paramPtr);
+    CHK_RET(ops_hccl::HcclCalcAivResOffline(&resResponse, paramPtr));
 
     // 将结果复制到输出参数
     *opMemSize = resResponse.opMemSize;
@@ -574,8 +574,12 @@ HcclResult HcclCalcAicpuResOffline(ResResponseGraphMode* resResponse)
 
 HcclResult HcclCalcAivResOffline(ResResponseGraphMode* resResponse, OpParamGraphMode* paramPtr)
 {
-    if (resResponse == nullptr || paramPtr == nullptr || paramPtr->aivCoreLimit == 0) {
+    if (resResponse == nullptr || paramPtr == nullptr) {
         return HCCL_E_PARA;
+    }
+    if (paramPtr->aivCoreLimit == 0) {
+        // aivCoreLimit==0表示未启用AIV，无AIV资源需计算，按成功跳过
+        return HCCL_SUCCESS;
     }
     constexpr u64 AIV_WORKSPACE_MEM_SIZE = 512;
     constexpr u32 AIV_STREAM_NUM = 0;

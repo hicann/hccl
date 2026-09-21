@@ -30,7 +30,7 @@ public:
 
     HcclResult MatchTopo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo,
-        AlgHierarchyInfoForAllLevel& algHierarchyInfoExector) override;
+        AlgHierarchyInfoForAllLevel& algHierarchyInfoExecutor) override;
 
 private:
     u32 myRank_{0};

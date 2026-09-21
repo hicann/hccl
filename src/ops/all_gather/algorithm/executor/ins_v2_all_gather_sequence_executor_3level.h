@@ -41,7 +41,7 @@ public:
 
 protected:
     HcclResult CalcLocalRankSize();
-    HcclResult InitExectorInfo(const OpParam& param);
+    HcclResult InitExecutorInfo(const OpParam& param);
     HcclResult GenTempResource(int idx, TemplateResource& res) const;
     HcclResult OrchestrateLoop(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTemplate0& tempAlgLevel0,

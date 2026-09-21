@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTY_JETTY_H
-#define HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTY_JETTY_H
+#ifndef HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTI_JETTY_H
+#define HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTI_JETTY_H
 
 #include "ccu_alg_template_base.h"
 #include "utils.h"
@@ -73,4 +73,4 @@ private:
     std::map<u32, u32> subCommRankMap_;        // 全局rank号映射到自通信域rank号
 };
 } // namespace ops_hccl
-#endif // HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTY_JETTY_H
+#endif // HCCL_CCU_TEMP_ALL_REDUCE_NHR_MEM2MEM_1D_MULTI_JETTY_H

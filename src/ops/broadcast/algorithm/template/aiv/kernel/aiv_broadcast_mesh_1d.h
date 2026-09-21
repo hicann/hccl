@@ -171,11 +171,11 @@ __aicore__ inline void AivBroadcastMesh1D::ProcessBigData(uint64_t curCount, uin
     // 最后所有的卡去做allgather,每个卡要读对面rankSize个flag
     uint64_t gatherSrcOffset
         = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rankInnerDispls + innerDispls) * sizeof(T);
-    uint64_t ouputOffset = input_ + (rankInnerDispls + innerDispls) * sizeof(T);
+    uint64_t outputOffset = input_ + (rankInnerDispls + innerDispls) * sizeof(T);
     if ((rank_ != root_) && (sendCurCount > 0)) {
         // 每块数据要去等rankSize个flag
         WaitFlag(rank_, flagTotal + targetRank + coreIndex * rankSize_, curTag_);
-        CpGM2GM((__gm__ T*)ouputOffset, (__gm__ T*)gatherSrcOffset, sendCurCount);
+        CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)gatherSrcOffset, sendCurCount);
         PipeBarrier<PIPE_ALL>();
     }
 }

@@ -195,7 +195,7 @@ private:
     static void CalcLinkBetweenParts(
         u32 part1Size, std::list<u32>& linkRankIndexInBlock, std::list<u32>& linkRankIndex, bool oddRank);
     static void
-    CalcRecursiveHalvingDobuleLinkReleation(u32 rank, u32 rankSize, u32 rootRank, std::vector<bool>& linkRelation);
+    CalcRecursiveHalvingDoubleLinkRelation(u32 rank, u32 rankSize, u32 rootRank, std::vector<bool>& linkRelation);
     static void
     CalcRecursiveHdLinkRelationForFirstScene(u32 rank, u32 part1Size, u32 blockSize, std::vector<bool>& linkRelation);
     static void
