@@ -25,20 +25,38 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     if (param.rankSize <= 1 || param.rankSize > 8) {
         return {};
     }
-    // Supported level1 layouts have total bandwidth weight 8 (one 8-port channel or two 6+2 channels).
-    constexpr u32 LEVEL1_BANDWIDTH = 8;
     // rankSize is the local mesh group size, including self, even for multi-server executors.
     const u32 level0Bandwidth = param.rankSize - 1;
-    float level0Ratio = static_cast<float>(level0Bandwidth) / (level0Bandwidth + LEVEL1_BANDWIDTH);
+    CommTopo netType0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netType1 = CommTopo::COMM_TOPO_CLOS;
+    int portNum0 = param.portNum.empty() ? 0 : static_cast<int>(param.portNum[0]);
+    // level1 端口总数(Σ); 列表为空走默认 8(旧行为)
+    int level1PortTotal = 8;
+    const bool hasPhyLevelInfo
+        = param.phyLevelIdxs.size() >= 2 && param.phyLevelNetTypes.size() >= 2 && param.phyLevelPortNums.size() >= 2;
+    if (hasPhyLevelInfo) {
+        netType0 = param.phyLevelNetTypes[0];
+        netType1 = param.phyLevelNetTypes[1];
+        portNum0 = param.phyLevelPortNums[0].empty() ? 0 : static_cast<int>(param.phyLevelPortNums[0][0]);
+        level1PortTotal = 0;
+        // 上层须为物理层1, 否则按 0 回退纯 fullmesh
+        if (static_cast<u32>(param.phyLevelIdxs[1]) == 1) {
+            for (u32 port : param.phyLevelPortNums[1]) {
+                level1PortTotal += static_cast<int>(port);
+            }
+        }
+    }
+    int portNum1 = level1PortTotal;
+    // 分流分母 = level1 端口Σ(与运行态 totalWeight 一致); 0 时全量走 level0
+    float level0Ratio = (level1PortTotal > 0) ? static_cast<float>(level0Bandwidth)
+                                                    / (level0Bandwidth + static_cast<u32>(level1PortTotal)) :
+                                                1.0f;
     float level1Ratio = 1.0f - level0Ratio;
     float nLevel0 = param.dataRatio * level0Ratio;
     float nLevel1 = param.dataRatio * level1Ratio;
 
     // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     // level0: server 内 mesh 组网，level1: 跨 server clos 组网
-    int portNum0 = param.portNum[0];
-    // 先配置
-    int portNum1 = 8;
     int kernelNum = 25;
     // pod 先乘3,后续需要考虑server
     int taskNum
@@ -46,10 +64,13 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
     float A0 = 0.0f;
     float A1 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(
-        nLevel0, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
-    CostModelManager::Global()->CalcMeshParam(nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, false);
-    float A = std::max(A0, A1);
+    CostModelManager::Global()->CalcMeshParam(nLevel0, netType0, portNum0, param.rankSize, A0, param.isPod);
+    // portNum1<=0(纯 fullmesh)时跳过 A1, 避免 0/0=NaN
+    float A = A0;
+    if (portNum1 > 0) {
+        CostModelManager::Global()->CalcMeshParam(nLevel1, netType1, portNum1, param.rankSize, A1, false);
+        A = std::max(A0, A1);
+    }
 
     // B: 本地操作，两级合计处理完整数据，reduce (rankSize-1) 份
     float B1 = 0.0f;

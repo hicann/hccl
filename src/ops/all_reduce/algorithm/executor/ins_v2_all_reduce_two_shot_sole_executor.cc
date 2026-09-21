@@ -43,10 +43,19 @@ InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     }
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = topoInfo->isPod;
-    CommTopo netTypeLevel0
-        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
-    std::vector<u32> portNumLevel0
-        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    // algo level 0 对应物理层(MeshConcur 为 {mesh层, 上层超集层})逐层下传, 供跨物理层模板用
+    CHK_PRT_RET(
+        algHierarchyInfo.physicalIdxForAlgoLevels.empty(),
+        HCCL_WARNING("[InsV2AllReduceTwoShotSoleExecutor][CalcCostCoeff] physicalIdxForAlgoLevels is empty."), {});
+    const std::vector<PhysicalLevelIndex>& phyLevelIdxs = algHierarchyInfo.physicalIdxForAlgoLevels[0];
+    std::vector<CommTopo> phyLevelNetTypes;
+    std::vector<std::vector<u32>> phyLevelPortNums;
+    for (PhysicalLevelIndex phyIdx : phyLevelIdxs) {
+        phyLevelNetTypes.push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
+        phyLevelPortNums.push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
+    }
+    CommTopo netTypeLevel0 = phyLevelNetTypes[0];
+    const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0];
     if (portNumLevel0.empty()) {
         HCCL_WARNING("[InsV2AllReduceSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
@@ -55,18 +64,21 @@ InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     HCCL_INFO(
         "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
         static_cast<int>(netTypeLevel0));
-    std::vector<CostModelParam> params = [rankSize, portNumLevel0, netTypeLevel0, isPod] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
-            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-        v.insert(v.end(), p1.begin(), p1.end());
-        return v;
-    }();
+    std::vector<CostModelParam> params
+        = [rankSize, portNumLevel0, netTypeLevel0, isPod, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums] {
+              std::vector<CostModelParam> v;
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod, nullptr, nullptr, nullptr, 1u, phyLevelIdxs,
+                  phyLevelNetTypes, phyLevelPortNums});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod, nullptr, nullptr, nullptr, 1u, phyLevelIdxs,
+                  phyLevelNetTypes, phyLevelPortNums});
+              v.insert(v.end(), p1.begin(), p1.end());
+              return v;
+          }();
     return params;
 }
 
@@ -95,6 +107,9 @@ AlgNetMeta InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
+    CHK_PRT_RET(
+        algHierarchyInfo.physicalIdxForAlgoLevels.empty(),
+        HCCL_WARNING("[InsV2AllReduceTwoShotSoleExecutor][GetAlgNetMeta] physicalIdxForAlgoLevels is empty."), {});
     CommTopo netTypeLevel0
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     AlgNetMeta meta;

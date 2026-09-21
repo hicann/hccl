@@ -415,12 +415,14 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceNHR);
-REGISTER_ALG_ATTRS(AicpuAllReduceSoleNHR,
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
-                   topo.isSupportLevel1Nhr = true; op.isSupportProd = false;
-                   op.unsupportedDataTypes
-                   = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
-                      HcclDataType::HCCL_DATA_TYPE_FP64};);
+REGISTER_ALG_ATTRS(
+    AicpuAllReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS | LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.isSupportLevel1Nhr = true; op.isSupportProd = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHRMultiLink, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceNHR);
@@ -510,14 +512,16 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempAllReduceNHRMem2Mem1D);
-REGISTER_ALG_ATTRS(CcuSchedAllReduceSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
-                   topo.isSupport2DieFullMesh = true; op.isSupportProd = false;
-                   op.unsupportedDataTypes
-                   = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64,
-                      HcclDataType::HCCL_DATA_TYPE_FP64};
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllReduceSoleNHR, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; topo.isSupport2DieFullMesh = true; op.isSupportProd = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
+    op.unsupportedDataTypes
+    = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
+    op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

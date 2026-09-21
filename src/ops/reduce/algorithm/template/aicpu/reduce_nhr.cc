@@ -17,7 +17,7 @@ std::vector<CostModelParam> ReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = param.rankSize;
+    int kernelNum = 30;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;
@@ -33,7 +33,7 @@ std::vector<CostModelParam> ReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
     if (param.inputBuffer != param.scratchBuffer) {
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize * 2, EngineType::AICPU, B);
     }
-    CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
+    C = 4e-6 * kernelNum;
     D = 1e-6 * taskNum;
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

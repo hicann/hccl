@@ -46,14 +46,18 @@ HcclResult AddAlgToAllAlgos(
     HcclCMDType opType, const char* algName, const char* executorName, const char** templateName, int templateNum);
 
 // 检查算法是否匹配当前拓扑，返回 true=匹配，false=不匹配
-bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo);
+// needSoftPolicyCheck=false 时跳过 topoCustomCheck 软策略（用户显式配置 HCCL_ALGO 或 tuner 接管时，
+// 由 InitCostModel 盖章到 CostAlgoParams.needSoftPolicyCheck 后直接传入）
+bool IsAlgoMatchTopo(
+    const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck = true);
 
 // topo 匹配检查结果（不打日志，供调用方决定日志级别）
 struct TopoMatchResult {
     bool matched = true;
     std::string reason; // matched=false 时的过滤原因
 };
-TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo);
+TopoMatchResult CheckAlgoMatchTopoWithReason(
+    const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck = true);
 
 typedef struct {
     float A; // 用来描述跨卡传输的时间随DataSize变化的趋势，会受到UB带宽利用率的影响
@@ -68,6 +72,10 @@ typedef struct {
     // FreeCostModel 会逐个释放 param 指向的内存。
     const CostModelParam* param;
     int count;
+    // 该算法是否需要软策略检查（topoCustomCheck/opCustomCheck/priorityCheck 排他）。
+    // InitCostModel 一次性判定：用户显式配置（HCCL_ALGO 覆盖该 opType）或 tuner 插件加载时为 false，
+    // costtable 阶段直接读本字段，不再重复判定。
+    bool needSoftPolicyCheck = true;
 } CostAlgoParams;
 
 typedef struct {
@@ -166,6 +174,10 @@ struct CalcCostCoeffParam {
     HcclComm comm = nullptr;
     const TopoInfoWithNetLayerDetails* topoInfo = nullptr;
     u32 repeatednum = 1;
+    // 跨物理层模板(ZAxisDetour)用: 逐层对应 topomatch 匹配结果; 为空走默认值(旧行为)
+    std::vector<PhysicalLevelIndex> phyLevelIdxs = {};   // 各层物理层idx
+    std::vector<CommTopo> phyLevelNetTypes = {};         // 各层互联形态
+    std::vector<std::vector<u32>> phyLevelPortNums = {}; // 各层各channel端口数(不求和)
 };
 
 struct AlgNetMeta {

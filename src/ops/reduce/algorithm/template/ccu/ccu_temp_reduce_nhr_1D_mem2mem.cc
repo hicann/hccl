@@ -28,7 +28,8 @@ std::vector<CostModelParam> CcuTempReduceNHR1DMem2Mem::CalcCostCoeff(CalcCostCoe
     float C = 0.0f;
     float D = 0.0f;
     float RTT1 = 0.000002;
-    CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
+    CostModelManager::Global()->CalcNHRParams(
+        param.dataRatio * 2, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize, EngineType::CCU, B);
     C = (0.000006 * log2R + log2R * 3 * RTT1 + log2R * 0.000002 + 0.000002);
     std::vector<CostModelParam> params;

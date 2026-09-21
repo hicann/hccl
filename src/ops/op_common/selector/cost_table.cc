@@ -124,8 +124,9 @@ bool IsHostNicToDeviceNicLink(const OpParam& opParam, const TopoInfoWithNetLayer
     return false;
 }
 
-OpMatchResult
-CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)
+OpMatchResult CheckAlgoMatchOpWithReason(
+    const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo,
+    bool needSoftPolicyCheck)
 {
     OpMatchResult result;
     const auto& op = attrs.op;
@@ -159,7 +160,7 @@ CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const 
         result.reason = "isSupportFloatOrderPreserved=false with order-preserved";
         return result;
     }
-    if (op.opCustomCheck && !op.opCustomCheck(opParam, topoInfo)) {
+    if (needSoftPolicyCheck && op.opCustomCheck && !op.opCustomCheck(opParam, topoInfo)) {
         result.matched = false;
         result.reason = "opCustomCheck returned false";
         return result;
@@ -197,6 +198,8 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
     }
 
     u64 dataSize = CalcCostTableDataSize(opParam, topoInfo->userRankSize);
+    // 软策略开关随 costModel 字段携带（InitCostModel 一次性判定），同表内按 opType 一致
+    bool needSoftCheck = true;
 
     for (int i = 0; i < cm.count; ++i) {
         if (cm.costAlgoParams[i].count <= 0) {
@@ -215,7 +218,7 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         }
 
         // normal filter
-        auto opResult = CheckAlgoMatchOpWithReason(*attrs, opParam, topoInfo);
+        auto opResult = CheckAlgoMatchOpWithReason(*attrs, opParam, topoInfo, cm.costAlgoParams[i].needSoftPolicyCheck);
         if (!opResult.matched) {
             HCCL_INFO("[InitAndFilterByAttrs] algName=%s filtered: %s.", name.c_str(), opResult.reason.c_str());
             continue;
@@ -225,11 +228,13 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
         ct.costs[ct.count].algName = algName;
         ct.costs[ct.count].cost = cost;
         ++ct.count;
+        needSoftCheck = needSoftCheck && cm.costAlgoParams[i].needSoftPolicyCheck;
         HCCL_INFO("[InitAndFilterByAttrs] algName=%s cost=%f.", name.c_str(), cost);
     }
 
     // Phase 2: priority — if any algo's opPriorityCheck returns true, keep only those.
-    if (ct.count > 0) {
+    // 被用户显式配置（HCCL_ALGO 覆盖）或 tuner 接管时跳过该软策略（读 costModel 字段）。
+    if (needSoftCheck && ct.count > 0) {
         std::vector<int> priorityIndices;
         for (int i = 0; i < ct.count; ++i) {
             const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(ct.costs[i].algName);

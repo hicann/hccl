@@ -106,6 +106,11 @@ struct HcclAlgoParser {
 // algo 模块据此过滤掉不在候选引擎中的算法
 HcclResult FilterCmByHcclAlgo(HcclComm comm, CostModel& cm, const std::vector<std::string>& candidateEngineNames);
 
+// 解析 comm 属性/env 的 HCCL_ALGO 配置（解析失败视为未配置），返回被配置覆盖的 opType 集合。
+// allCovered=true 表示存在全局条目（opType 为空），对所有算子生效。
+// 用途：被覆盖算子的软策略检查（topoCustomCheck/opCustomCheck/topoPriorityCheck）让位于用户显式配置。
+HcclResult GetConfiguredOpTypes(HcclComm comm, std::set<HcclCMDType>& coveredOps, bool& allCovered);
+
 // ---------------------------------------------------------------------------
 // 根据 HcclAlgoParser 解析结果刷新 CostModel
 // 参数：

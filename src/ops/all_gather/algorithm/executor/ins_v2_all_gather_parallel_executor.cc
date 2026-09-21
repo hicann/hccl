@@ -118,22 +118,22 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
                                           portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
         std::vector<CostModelParam> v;
         auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, meshFirstRatio, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            rankSizeLevel0, meshFirstRatio, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT,
             BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p0.begin(), p0.end());
         auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, closFirstRatio, netTypeLevel1, BufferType::INPUT, BufferType::HCCL_BUFFER,
+            rankSizeLevel1, closFirstRatio, netTypeLevel1, BufferType::INPUT, BufferType::OUTPUT,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p1.begin(), p1.end());
         auto p2 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, closFirstRatio * rankSizeLevel1, netTypeLevel0, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
+            rankSizeLevel0, closFirstRatio * rankSizeLevel1, netTypeLevel0, BufferType::OUTPUT, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p2.begin(), p2.end());
         auto p3 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, meshFirstRatio * rankSizeLevel0, netTypeLevel1, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, portNumLevel1, isPod});
+            rankSizeLevel1, meshFirstRatio * rankSizeLevel0, netTypeLevel1, BufferType::OUTPUT, BufferType::OUTPUT,
+            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p3.begin(), p3.end());
-        float bConst = 0.000038f;
+        float bConst = 0.000033f;
         for (auto& p : v) {
             p.C += bConst;
         }

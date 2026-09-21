@@ -31,6 +31,26 @@ std::string AlgAttrsRegistry::GetAlgAttrsSummary(const AlgAttrs& a)
     return s;
 }
 
+std::string AlgAttrsRegistry::GetDataTypesSummary(const AlgAttrs& a)
+{
+    const bool useWhitelist = !a.op.supportedDataTypes.empty();
+    const std::set<HcclDataType>& dataTypes = useWhitelist ? a.op.supportedDataTypes : a.op.unsupportedDataTypes;
+    std::string s = useWhitelist ? "supported=[" : "unsupported=[";
+    for (auto it = dataTypes.begin(); it != dataTypes.end(); ++it) {
+        if (it != dataTypes.begin()) {
+            s += ",";
+        }
+        const char* typeStr = GetHcclDataTypeStr(*it);
+        if (typeStr != nullptr) {
+            s += typeStr;
+        } else {
+            s += "unknown(" + std::to_string(static_cast<int>(*it)) + ")";
+        }
+    }
+    s += "]";
+    return s;
+}
+
 void AlgAttrsRegistry::ParseAlgName(const std::string& algoName, AlgAttrs& a)
 {
     a.name = algoName;

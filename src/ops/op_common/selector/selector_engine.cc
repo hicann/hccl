@@ -227,6 +227,7 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
 HcclResult SelectorEngine::TunerEnrichCostTable(
     HcclComm comm, CostModel* cm, CostTable& ct, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param)
 {
+    // 软策略（opCustomCheck/opPriority）是否让位已随 costModel 字段携带（InitCostModel 一次性判定）
     CHK_RET(CostTableManager::Global()->CostTableGen(*cm, ct, topoInfo, param));
 
     if (ct.count > 0 && HcclTunerIsLoaded()) {

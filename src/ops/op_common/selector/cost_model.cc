@@ -19,6 +19,13 @@
 #include "alg_attrs_registry.h"
 #include "selector_engine.h"
 #include "auto_selector_base.h"
+#include "alg_parse.h"
+// tuner 插件查询(HcclTunerIsLoaded)仅 host 侧 InitCostModel 使用(已在 AICPU_COMPILE 保护内);
+// device 核库(scatter_aicpu_kernel)的 include 路径不含 src/common/tuner, 无保护会 fatal error(2026-09-21 PR#3286 CI
+// 实证)
+#ifndef AICPU_COMPILE
+#include "tuner_setup.h"
+#endif
 
 namespace ops_hccl {
 
@@ -159,7 +166,8 @@ CostModelManager::CalcRankSizeByTopo(const TopoInfoWithNetLayerDetails* topoInfo
 }
 
 #ifndef AICPU_COMPILE
-TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+TopoMatchResult CheckAlgoMatchTopoWithReason(
+    const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck)
 {
     TopoMatchResult result;
     const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(algName);
@@ -266,7 +274,7 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const T
         return result;
     }
 
-    if (t.topoCustomCheck) {
+    if (needSoftPolicyCheck && t.topoCustomCheck) {
         if (!t.topoCustomCheck(topoInfo)) {
             result.matched = false;
             result.reason = "topoCustomCheck returned false";
@@ -277,9 +285,9 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(const std::string& algName, const T
     return result;
 }
 
-bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck)
 {
-    auto result = CheckAlgoMatchTopoWithReason(algName, topoInfo);
+    auto result = CheckAlgoMatchTopoWithReason(algName, topoInfo, needSoftPolicyCheck);
     if (!result.matched) {
         HCCL_INFO("[IsAlgoMatchTopo] algName=%s filtered: %s.", algName.c_str(), result.reason.c_str());
     }
@@ -290,6 +298,7 @@ bool IsAlgoMatchTopo(const std::string& algName, const TopoInfoWithNetLayerDetai
 #ifndef AICPU_COMPILE
 // 从已过滤的算法中筛选优先级算法。按 (opType, engine) 分组，仅在有 priority 匹配的组内过滤。
 // 不同引擎（AICPU/CCU/AIV）的 priority 互不影响，避免 AIV 算法被 AICPU/CCU 的 priority 规则误删。
+// 被用户显式配置（HCCL_ALGO 覆盖）或 tuner 接管的组不做排他（读 costAlgoParams[].needSoftPolicyCheck）。
 __attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     // 1. 收集每个 (opType, engine) 的 priority 匹配索引
@@ -302,10 +311,16 @@ __attribute__((unused)) static void ApplyTopoPriority(CostModel& costModel, cons
         }
     }
 
-    // 2. 对有 priority 匹配的 (opType, engine) 组，只保留匹配的算法
+    // 2. 对有 priority 匹配的 (opType, engine) 组，只保留匹配的算法；被用户显式配置/tuner 接管的组跳过排他
     std::set<int> toRemove;
     for (auto& [key, indices] : priorityByKey) {
         auto [opType, engine] = key;
+        if (!costModel.costAlgoParams[indices[0]].needSoftPolicyCheck) {
+            HCCL_INFO(
+                "[CostModelManager] opType=%d engine=%d covered by explicit config/tuner, skip topoPriority.",
+                static_cast<int>(opType), static_cast<int>(engine));
+            continue;
+        }
         std::set<int> keepSet(indices.begin(), indices.end());
         for (int i = 0; i < costModel.count; ++i) {
             const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(costModel.costAlgoParams[i].algName);
@@ -362,11 +377,24 @@ HcclResult CostModelManager::InitCostModel(
     }
     costModel.count = 0;
 
+    // 用户显式配置（HCCL_ALGO 覆盖的 opType）或 tuner 插件加载时，软策略检查让位
+    bool tunerLoaded = HcclTunerIsLoaded();
+    std::set<HcclCMDType> coveredOps;
+    bool allCovered = false;
+    CHK_RET(GetConfiguredOpTypes(comm, coveredOps, allCovered));
+    if (tunerLoaded || allCovered || !coveredOps.empty()) {
+        HCCL_INFO(
+            "[CostModelManager] soft policy check skipped: tunerLoaded=%d allCovered=%d coveredOps=%zu.",
+            static_cast<int>(tunerLoaded), static_cast<int>(allCovered), coveredOps.size());
+    }
+
     for (int i = 0; i < algNum; ++i) {
         const AlgElement& alg = allAlgos.algElements[i];
         std::string algName = (alg.algName != nullptr) ? alg.algName : "";
 
-        if (!IsAlgoMatchTopo(algName, topoInfo)) {
+        // 软策略让位一次性判定并随 costModel 携带，costtable 阶段直接读字段
+        bool needSoftCheck = !(tunerLoaded || allCovered || coveredOps.count(alg.opType) > 0);
+        if (!IsAlgoMatchTopo(algName, topoInfo, needSoftCheck)) {
             HCCL_INFO("[CostModelManager] algName=%s skipped by topo filter.", algName.c_str());
             continue;
         }
@@ -399,6 +427,7 @@ HcclResult CostModelManager::InitCostModel(
         cap.algName = alg.algName;
         cap.param = ownedParam;
         cap.count = paramCount;
+        cap.needSoftPolicyCheck = needSoftCheck;
         costModel.costAlgoParams[costModel.count] = cap;
         ++costModel.count;
     }
@@ -438,8 +467,8 @@ void CostModelManager::CalcMeshParam(float n, CommTopo netType, int portNum, u32
         HCCL_ERROR("[CostModelManager] CalcMeshParams unsupported netType=%d.", static_cast<int>(netType));
     }
     HCCL_INFO(
-        "[CostModelManager] CalcMeshParams n=%f netType=%d portNum=%d portNumEff=%f A=%f.", n,
-        static_cast<int>(netType), portNum, portNumEff, A);
+        "[CostModelManager] CalcMeshParams n=%f netType=%d portNum=%d portNumEff=%f A=%f crossChipBw=%f.", n,
+        static_cast<int>(netType), portNum, portNumEff, A, crossChipBw_);
     return;
 }
 
@@ -456,8 +485,9 @@ void CostModelManager::CalcNHRParams(
     float data = n * (rankSize - 1);
     A = static_cast<float>(data / (portNumEff * crossChipBw_));
     HCCL_INFO(
-        "[CostModelManager] CalcNHRParams n=%f netType=%d portNum=%d portNumEff=%f A=%f.", n, static_cast<int>(netType),
-        portNum, portNumEff, A);
+        "[CostModelManager] CalcNHRParams n=%f netType=%d portNum=%d portNumEff=%f A=%f crossChipBw=%f "
+        "rankSize=%u data=n*(rs-1)=%f.",
+        n, static_cast<int>(netType), portNum, portNumEff, A, crossChipBw_, rankSize, data);
     return;
 }
 

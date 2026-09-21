@@ -29,28 +29,51 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     if (param.rankSize <= 1 || param.rankSize > MAX_RANK_SIZE_FOR_MESH_1D) {
         return {};
     }
-    // Supported level1 layouts have total bandwidth weight 8 (one 8-port channel or two 6+2 channels).
-    constexpr u32 LEVEL1_BANDWIDTH = 8;
     // rankSize is the local mesh group size, including self, even for multi-server executors.
     const u32 level0Bandwidth = param.rankSize - 1;
-    float level0Ratio = static_cast<float>(level0Bandwidth) / (level0Bandwidth + LEVEL1_BANDWIDTH);
-    float level1Ratio = 1.0f - level0Ratio;
+    CommTopo netType0 = CommTopo::COMM_TOPO_1DMESH;
+    CommTopo netType1 = CommTopo::COMM_TOPO_CLOS;
+    int portNum0 = param.portNum.empty() ? 0 : static_cast<int>(param.portNum[0]);
+    // level1 端口总数(Σ); 列表为空走默认 8(旧行为)
+    int level1PortTotal = 8;
+    const bool hasPhyLevelInfo
+        = param.phyLevelIdxs.size() >= 2 && param.phyLevelNetTypes.size() >= 2 && param.phyLevelPortNums.size() >= 2;
+    if (hasPhyLevelInfo) {
+        netType0 = param.phyLevelNetTypes[0];
+        netType1 = param.phyLevelNetTypes[1];
+        portNum0 = param.phyLevelPortNums[0].empty() ? 0 : static_cast<int>(param.phyLevelPortNums[0][0]);
+        level1PortTotal = 0;
+        // 上层须为物理层1, 否则按 0 回退纯 fullmesh
+        if (static_cast<u32>(param.phyLevelIdxs[1]) == 1) {
+            for (u32 port : param.phyLevelPortNums[1]) {
+                level1PortTotal += static_cast<int>(port);
+            }
+        }
+    }
+    int portNum1 = level1PortTotal;
+    if (param.algName != nullptr && strcmp(param.algName, "AicpuAllGatherSoleMeshConcur") == 0) {
+        portNum1 /= 2;
+    }
+    // 分流分母 = level1 端口Σ(与运行态 totalWeight 一致); 0 时全量走 level0
+    float level0Ratio = (level1PortTotal > 0) ? static_cast<float>(level0Bandwidth)
+                                                    / (level0Bandwidth + static_cast<u32>(level1PortTotal)) :
+                                                1.0f;
     float nLevel0 = param.dataRatio * level0Ratio;
-    float nLevel1 = param.dataRatio * level1Ratio;
+    float nLevel1 = param.dataRatio * (1.0f - level0Ratio);
 
-    int portNum0 = param.portNum[0];
-    int portNum1 = param.isPod ? 8 : 4;
-    int kernelNum = (param.isPod ? 48 : 32);
+    int kernelNum = (param.isPod ? 18 : 32);
     int taskNum
         = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
     taskNum = param.isPod ? taskNum * 3 : taskNum * 2;
     float A0 = 0.0f;
     float A1 = 0.0f;
-    CostModelManager::Global()->CalcMeshParam(
-        nLevel0, CommTopo::COMM_TOPO_1DMESH, portNum0, param.rankSize, A0, param.isPod);
-    CostModelManager::Global()->CalcMeshParam(
-        nLevel1, CommTopo::COMM_TOPO_CLOS, portNum1, param.rankSize, A1, param.isPod);
-    float A = std::max(A0, A1);
+    CostModelManager::Global()->CalcMeshParam(nLevel0, netType0, portNum0, param.rankSize, A0, param.isPod);
+    // portNum1<=0(纯 fullmesh)时跳过 A1, 避免 0/0=NaN
+    float A = A0;
+    if (portNum1 > 0) {
+        CostModelManager::Global()->CalcMeshParam(nLevel1, netType1, portNum1, param.rankSize, A1, false);
+        A = std::max(A0, A1);
+    }
 
     // B: 本地拷贝，两级合计处理完整数据
     float B = 0.0f;
@@ -66,7 +89,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
     float C = 0.0f;
     float D = 0.0f;
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::AICPU, C);
-    D = std::max(100e-6f, 0.6e-6f * taskNum);
+    D = std::max(94e-6f, 0.5e-6f * taskNum);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

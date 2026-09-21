@@ -88,9 +88,19 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = topoInfo->isPod;
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
-    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
-    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
+    // algo level 0 对应物理层(MeshConcur 为 {mesh层, 上层超集层})逐层下传, 供跨物理层模板用
+    CHK_PRT_RET(
+        algHierarchyInfo.physicalIdxForAlgoLevels.empty(),
+        HCCL_WARNING("[InsV2ReduceScatterSoleExecutor][CalcCostCoeff] physicalIdxForAlgoLevels is empty."), {});
+    const std::vector<PhysicalLevelIndex>& phyLevelIdxs = algHierarchyInfo.physicalIdxForAlgoLevels[0];
+    std::vector<CommTopo> phyLevelNetTypes;
+    std::vector<std::vector<u32>> phyLevelPortNums;
+    for (PhysicalLevelIndex phyIdx : phyLevelIdxs) {
+        phyLevelNetTypes.push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
+        phyLevelPortNums.push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
+    }
+    CommTopo netTypeLevel0 = phyLevelNetTypes[0];
+    const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0];
     if (portNumLevel0.empty()) {
         HCCL_WARNING("[CalcCostCoeff] portNum is empty");
         return {};
@@ -100,7 +110,7 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
         portNumLevel0[0], static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-        portNumLevel0, isPod, algName});
+        portNumLevel0, isPod, algName, nullptr, nullptr, 1u, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -407,6 +417,9 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuReduceScatterSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel1Nhr = true; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return (
             topo->topLevelUboe
@@ -528,6 +541,9 @@ REGISTER_ALG_ATTRS(
     CcuSchedReduceScatterSoleNHR, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS; topo.isSupportLevel1Nhr = true;
     topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
     op.isSupportInplace = false; topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool dayu = topo->serverNum == 1 && topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::CLOS
                     && !topo->level0PcieMix;

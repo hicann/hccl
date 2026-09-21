@@ -104,14 +104,26 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     bool isPod = topoInfo->isPod;
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
-    u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
-    u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
-                            static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
-                            physIdxLevel0;
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
-    CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
-    std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
-    std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    // algo level 对应物理层(MeshConcur 为 2元组)逐层下传, 供跨物理层模板用; 层数不足时高层复用低层
+    const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
+    CHK_PRT_RET(
+        physIdx.size() != TOPO_LEVEL_NUM_2,
+        HCCL_WARNING(
+            "[InsV2ReduceScatterSequenceExecutorAicpu][CalcCostCoeff] physicalIdxForAlgoLevels size[%zu] != 2.",
+            physIdx.size()),
+        {});
+    std::vector<std::vector<CommTopo>> phyLevelNetTypes(physIdx.size());
+    std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(physIdx.size());
+    for (u32 lvl = 0; lvl < physIdx.size(); lvl++) {
+        for (PhysicalLevelIndex phyIdx : physIdx[lvl]) {
+            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
+            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
+        }
+    }
+    CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
+    CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
+    const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0][0];
+    const std::vector<u32>& portNumLevel1 = phyLevelPortNums[1][0];
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
         HCCL_WARNING("[InsV2ReduceScatterSequenceExecutorAicpu][CalcCostCoeff] portNum is empty");
         return {};
@@ -122,36 +134,39 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         "netTypeLevel0=%d, netTypeLevel1=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0.empty() ? 0 : portNumLevel0[0],
         portNumLevel1.empty() ? 0 : portNumLevel1[0], static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params = [rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0,
-                                          netTypeLevel1, isPod, algName, comm, topoInfo] {
-        std::vector<CostModelParam> v;
-        // Step1: 框内 RS（全量输入）
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo, rankSizeLevel1});
-        // Step2: 框间 RS（从 cclBuff 读取）
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
-            portNumLevel1, isPod, algName, comm, topoInfo, rankSizeLevel0});
-        // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
-        if (p0.empty() || p1.empty()) {
-            HCCL_WARNING(
-                "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).", p0.size(),
-                p1.size());
-            return v;
-        }
-        v.insert(v.end(), p0.begin(), p0.end());
-        v.insert(v.end(), p1.begin(), p1.end());
+    std::vector<CostModelParam> params
+        = [rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod, algName,
+           comm, topoInfo, physIdx, phyLevelNetTypes, phyLevelPortNums] {
+              std::vector<CostModelParam> v;
+              // Step1: 框内 RS（全量输入）
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f * rankSizeLevel1, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod, algName, comm, topoInfo, rankSizeLevel1, physIdx[0],
+                  phyLevelNetTypes[0], phyLevelPortNums[0]});
+              // Step2: 框间 RS（从 cclBuff 读取）
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod, algName, comm, topoInfo, rankSizeLevel0, physIdx[1],
+                  phyLevelNetTypes[1], phyLevelPortNums[1]});
+              // 任一 template 未实现 CalcCostCoeff（返回空）则整个算法不参与 CostModel
+              if (p0.empty() || p1.empty()) {
+                  HCCL_WARNING(
+                      "[InsV2ReduceScatterSequenceExecutorAicpu] CalcCostCoeff incomplete, skip (p0=%zu p1=%zu).",
+                      p0.size(), p1.size());
+                  return v;
+              }
+              v.insert(v.end(), p0.begin(), p0.end());
+              v.insert(v.end(), p1.begin(), p1.end());
 
-        bool isAicpuParallel = (strcmp(algName, "AicpuReduceScatterSequenceMeshConcurNHR") == 0);
-        if (isAicpuParallel) {
-            float bConst = 0.000020f;
-            for (auto& p : v) {
-                p.C += bConst;
-            }
-        }
-        return v;
-    }();
+              bool isAicpuParallel = (strcmp(algName, "AicpuReduceScatterSequenceMeshConcurNHR") == 0);
+              if (isAicpuParallel) {
+                  float bConst = 0.000020f;
+                  for (auto& p : v) {
+                      p.C += bConst;
+                  }
+              }
+              return v;
+          }();
     return params;
 }
 
@@ -182,6 +197,10 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
+    CHK_PRT_RET(
+        algHierarchyInfo.physicalIdxForAlgoLevels.empty(),
+        HCCL_WARNING("[InsV2ReduceScatterSequenceExecutorAicpu][GetAlgNetMeta] physicalIdxForAlgoLevels is empty."),
+        {});
     u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
     u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
                             static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :

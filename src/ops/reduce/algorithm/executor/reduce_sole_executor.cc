@@ -373,6 +373,9 @@ REGISTER_ALG_ATTRS(
     op.unsupportedDataTypes
     = {HcclDataType::HCCL_DATA_TYPE_INT64, HcclDataType::HCCL_DATA_TYPE_UINT64, HcclDataType::HCCL_DATA_TYPE_FP64};
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D) {
+            return false;
+        }
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
         }
@@ -442,9 +445,13 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, CcuSchedReduceSoleNHR, ReduceSoleExecutor, TopoMatchOneLevel,
     CcuTempReduceNHR1DMem2Mem);
-REGISTER_ALG_ATTRS(CcuSchedReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-                   topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
-                   op.isSupportInplace = __bool_true_false_are_defined; op.isSupportProd = false;);
+REGISTER_ALG_ATTRS(
+    CcuSchedReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
+    topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
+    };
+    op.isSupportInplace = __bool_true_false_are_defined; op.isSupportProd = false;);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

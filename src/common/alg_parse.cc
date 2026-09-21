@@ -741,6 +741,55 @@ UpdateCostModelWithAlgo(const HcclAlgoParser& algoParser, CostModel& model, cons
     return HCCL_SUCCESS;
 }
 
+HcclResult GetConfiguredOpTypes(HcclComm comm, std::set<HcclCMDType>& coveredOps, bool& allCovered)
+{
+    coveredOps.clear();
+    allCovered = false;
+
+    // 配置来源与 FilterCmByHcclAlgo 一致：通信域 hcclAlgo 优先，其次环境变量 HCCL_ALGO
+    std::string algoConfig;
+    HcclResult ret = HcclGetHcclAlgo(comm, algoConfig);
+    if (ret != HCCL_SUCCESS) {
+        algoConfig.clear();
+    }
+    if (algoConfig.empty()) {
+        algoConfig = GetEnv("HCCL_ALGO");
+        if (algoConfig == "EmptyString") {
+            return HCCL_SUCCESS;
+        }
+    }
+    if (algoConfig.empty()) {
+        return HCCL_SUCCESS;
+    }
+
+    HcclAlgoParser algoParser;
+    ret = algoParser.Parser(algoConfig);
+    if (ret != HCCL_SUCCESS) {
+        // 解析失败视为未配置，维持默认软策略
+        return HCCL_SUCCESS;
+    }
+
+    int count = 0;
+    const OpTypePatternEntry* patterns = GetOpTypePatternEntries(count);
+    for (const auto& exec : algoParser.executorList) {
+        if (exec.opType.empty()) {
+            allCovered = true;
+            continue;
+        }
+        auto it = OP_TYPES.find(exec.opType);
+        if (it == OP_TYPES.end()) {
+            continue;
+        }
+        for (int i = 0; i < count; ++i) {
+            if (patterns[i].pascal == it->second) {
+                coveredOps.insert(patterns[i].opType);
+                break;
+            }
+        }
+    }
+    return HCCL_SUCCESS;
+}
+
 HcclResult FilterCmByHcclAlgo(HcclComm comm, CostModel& cm, const std::vector<std::string>& candidateEngineNames)
 {
     // 获取配置：通信域 hcclAlgo 优先，其次环境变量 HCCL_ALGO

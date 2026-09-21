@@ -63,14 +63,26 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     bool isPod = topoInfo->isPod;
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
-    CommTopo netTypeLevel0
-        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
-    CommTopo netTypeLevel1
-        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]));
-    std::vector<u32> portNumLevel0
-        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
-    std::vector<u32> portNumLevel1
-        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]));
+    // algo level 对应物理层(MeshConcur 为 2元组)逐层下传, 供跨物理层模板用; 层数不足时高层复用低层
+    const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
+    CHK_PRT_RET(
+        physIdx.size() != TOPO_LEVEL_NUM_2,
+        HCCL_WARNING(
+            "[InsV2AllReduceSequenceExecutorAicpu][CalcCostCoeff] physicalIdxForAlgoLevels size[%zu] != 2.",
+            physIdx.size()),
+        {});
+    std::vector<std::vector<CommTopo>> phyLevelNetTypes(physIdx.size());
+    std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(physIdx.size());
+    for (u32 lvl = 0; lvl < physIdx.size(); lvl++) {
+        for (PhysicalLevelIndex phyIdx : physIdx[lvl]) {
+            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
+            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
+        }
+    }
+    CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
+    CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
+    const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0][0];
+    const std::vector<u32>& portNumLevel1 = phyLevelPortNums[1][0];
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
         HCCL_WARNING("[InsV2AllReduceSequenceExecutorAicpu][CalcCostCoeff] portNum is empty");
         return {};
@@ -81,27 +93,32 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
         "netTypeLevel0=%d, netTypeLevel1=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1,
-                                          netTypeLevel0, netTypeLevel1, isPod] {
-        std::vector<CostModelParam> v;
-        auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-        v.insert(v.end(), p0.begin(), p0.end());
-        auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
-        v.insert(v.end(), p1.begin(), p1.end());
-        auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-            BufferType::HCCL_BUFFER, portNumLevel1, isPod});
-        v.insert(v.end(), p2.begin(), p2.end());
-        auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
-            BufferType::HCCL_BUFFER, portNumLevel0, isPod});
-        v.insert(v.end(), p3.begin(), p3.end());
-        return v;
-    }();
+    std::vector<CostModelParam> params
+        = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod,
+           physIdx, phyLevelNetTypes, phyLevelPortNums] {
+              std::vector<CostModelParam> v;
+              auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod, nullptr, nullptr, nullptr, 1u, physIdx[0],
+                  phyLevelNetTypes[0], phyLevelPortNums[0]});
+              v.insert(v.end(), p0.begin(), p0.end());
+              auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod, nullptr, nullptr, nullptr, 1u, physIdx[1],
+                  phyLevelNetTypes[1], phyLevelPortNums[1]});
+              v.insert(v.end(), p1.begin(), p1.end());
+              auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+                  BufferType::HCCL_BUFFER, portNumLevel1, isPod, nullptr, nullptr, nullptr, 1u, physIdx[1],
+                  phyLevelNetTypes[1], phyLevelPortNums[1]});
+              v.insert(v.end(), p2.begin(), p2.end());
+              auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{
+                  rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::HCCL_BUFFER, BufferType::OUTPUT,
+                  BufferType::HCCL_BUFFER, portNumLevel0, isPod, nullptr, nullptr, nullptr, 1u, physIdx[0],
+                  phyLevelNetTypes[0], phyLevelPortNums[0]});
+              v.insert(v.end(), p3.begin(), p3.end());
+              return v;
+          }();
     return params;
 }
 
@@ -136,6 +153,12 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
     u32 rankSize = topoInfo->userRankSize;
+    CHK_PRT_RET(
+        algHierarchyInfo.physicalIdxForAlgoLevels.size() != TOPO_LEVEL_NUM_2,
+        HCCL_WARNING(
+            "[InsV2AllReduceSequenceExecutorAicpu][GetAlgNetMeta] physicalIdxForAlgoLevels size[%zu] != 2.",
+            algHierarchyInfo.physicalIdxForAlgoLevels.size()),
+        {});
     CommTopo netTypeLevel0
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     CommTopo netTypeLevel1

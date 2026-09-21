@@ -17,7 +17,7 @@ std::vector<CostModelParam> ReduceMesh1D::CalcCostCoeff(CalcCostCoeffParam param
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = 5;
+    int kernelNum = 20;
     int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize)
                   + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2 + (param.rankSize - 1);
     float A = 0.0f;

@@ -38,8 +38,9 @@ struct OpMatchResult {
     bool matched = true;
     std::string reason; // matched=false 时的过滤原因
 };
-OpMatchResult
-CheckAlgoMatchOpWithReason(const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo);
+OpMatchResult CheckAlgoMatchOpWithReason(
+    const AlgAttrs& attrs, const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo,
+    bool needSoftPolicyCheck = true);
 
 struct UbUtilEntry {
     double upperBound;
