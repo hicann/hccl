@@ -346,6 +346,16 @@ HcclResult CcuAlgTemplateBase::PartitionChannelsFor2Die(
         for (const auto& [dieId, dieChannels] : multiChByDie) {
             fillKernel(dieId == fullmeshDieId ? KERNEL_CLOS_MINOR : KERNEL_CLOS_MAJOR, dieChannels);
         }
+        // 无 mesh 链路时 fullmeshDieId 可能选错，用 bwCoeff 校验：CLOS_MAJOR(6口) bwCoeff 应 >= CLOS_MINOR(2口)
+        if (!kernelChannels[KERNEL_CLOS_MAJOR].empty() && !kernelChannels[KERNEL_CLOS_MINOR].empty()) {
+            uint32_t majorBw = 0, minorBw = 0;
+            CHK_RET(GetChannelBwCoeff(comm, myRank, kernelChannels[KERNEL_CLOS_MAJOR][0], majorBw));
+            CHK_RET(GetChannelBwCoeff(comm, myRank, kernelChannels[KERNEL_CLOS_MINOR][0], minorBw));
+            if (majorBw < minorBw) {
+                std::swap(kernelChannels[KERNEL_CLOS_MAJOR], kernelChannels[KERNEL_CLOS_MINOR]);
+                std::swap(kernelRankGroup[KERNEL_CLOS_MAJOR], kernelRankGroup[KERNEL_CLOS_MINOR]);
+            }
+        }
     } else {
         CHK_PRT_RET(
             singleChByDie.size() < 2,
