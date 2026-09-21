@@ -330,7 +330,9 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
         return;
     }
 
-    if (errorCode == ACL_ERROR_RT_VECTOR_CORE_TIMEOUT) {
+    const bool isTimeout = errorCode == ACL_ERROR_RT_VECTOR_CORE_TIMEOUT;
+    const char* logKeywordL2 = isTimeout ? "Timeout" : "RunFailed";
+    if (isTimeout) {
         std::stringstream baseSs;
         baseSs << "deviceId[" << deviceId << "], streamId[" << streamId << "], TaskId[" << taskId << "]";
         std::string baseInformation = baseSs.str();
@@ -349,21 +351,21 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
     }
 
     HCCL_ERROR(
-        "[TaskExceptionHandler][AIV]Task run failed, errorCode[%u], para information is deviceId[%u], streamId[%u], "
+        "[TaskExecStage][%s][AIV]Task run failed, errorCode[%u], para information is deviceId[%u], streamId[%u], "
         "TaskId[%u], cmdType[%u], tag[%u], rank[%u], rankSize[%u], dataCount[%llu], blockDim[%u], "
         "dataType:[%u], beginTime:[%llu], flagMem[%p]",
-        errorCode, deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag, taskInfo.rank, taskInfo.rankSize,
-        taskInfo.size, taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime, taskInfo.flagMem);
+        logKeywordL2, errorCode, deviceId, streamId, taskId, taskInfo.cmdType, taskInfo.tag, taskInfo.rank,
+        taskInfo.rankSize, taskInfo.size, taskInfo.blockDim, taskInfo.dataType, taskInfo.beginTime, taskInfo.flagMem);
 
     HCCL_ERROR(
-        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+        "[TaskExecStage][%s][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
         "TaskId[%u]. flag: %s",
-        deviceId, streamId, taskId, SerializeAivFlag(taskInfo).c_str());
+        logKeywordL2, deviceId, streamId, taskId, SerializeAivFlag(taskInfo).c_str());
 
     HCCL_ERROR(
-        "[TaskExceptionHandler][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
+        "[TaskExecStage][%s][AIV]Task run failed, para information is deviceId[%u], streamId[%u], "
         "TaskId[%u]. task info before failed task is:",
-        deviceId, streamId, taskId);
+        logKeywordL2, deviceId, streamId, taskId);
 
     u32 printed = 0;
     for (auto it = taskQueue.rbegin(); it != taskQueue.rend() && printed < AIV_TASK_CONTEXT_SIZE; ++it) {
@@ -371,11 +373,11 @@ void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo)
             continue;
         }
         HCCL_ERROR(
-            "[TaskExceptionHandler][AIV] previous TaskId[%llu], streamId[%llu], cmdType[%u], "
+            "[TaskExecStage][%s][AIV] previous TaskId[%llu], streamId[%llu], cmdType[%u], "
             "tag[%u], rank[%u], rankSize[%u], dataCount[%llu], blockDim[%u], dataType:[%u], beginTime:[%llu], "
             "flagMem[%p]",
-            it->taskId, it->streamId, it->cmdType, it->tag, it->rank, it->rankSize, it->size, it->blockDim,
-            it->dataType, it->beginTime, it->flagMem);
+            logKeywordL2, it->taskId, it->streamId, it->cmdType, it->tag, it->rank, it->rankSize, it->size,
+            it->blockDim, it->dataType, it->beginTime, it->flagMem);
         ++printed;
     }
 }

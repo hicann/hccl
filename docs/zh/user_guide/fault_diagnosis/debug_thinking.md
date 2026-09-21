@@ -154,7 +154,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
     <!-- end id8 -->
 
     <!-- npu="950" id9 -->
-    **针对Ascend 950PR&950DT系列产品**，可通过检索关键字“base_config”查询当前已设置的环境变量。
+    **针对Ascend 950PR&950DT系列产品**，可通过检索关键字`HCCL_ENV`查询环境变量的生效值及来源（环境变量或默认值）。部分版本可检索`base_config`或`Env config`，并结合环境变量名查看以下日志。环境变量配置异常时，应检索`[InitGroupStage][EnvConfig]`，并参考[环境变量配置异常定位思路](env_config_error_EI0001_troubleshooting.md)。
 
     ```text
     [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.170[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_IP" is not set. Default value is used. 
@@ -216,6 +216,23 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
 ### HCCL相关故障码
 
+<!-- npu="950" id10 -->
+以下plog关键字表仅适用于Ascend 950PR&950DT系列产品，可用于快速定位该系列产品的常见故障。三级关键字用于标识任务执行引擎；入参校验和环境变量校验尚未进入引擎执行阶段，因此没有三级关键字。
+
+| 故障码或场景 | 一级关键字 | 二级关键字 | 三级关键字 |
+| --- | --- | --- | --- |
+| EI0001环境变量配置异常 | InitGroupStage | EnvConfig | - |
+| EI0003算子入参校验失败 | TaskExecStage | InvalidArgument | - |
+| EI0002 AIV执行超时 | TaskExecStage | Timeout | AIV |
+| AIV其他执行异常 | TaskExecStage | RunFailed | AIV |
+
+例如，可使用`grep -F '[TaskExecStage][InvalidArgument]'`定位算子入参校验错误，使用`grep -F '[TaskExecStage][Timeout][AIV]'`定位AIV执行超时。`Communicator Key Info`、`LocalRank Key Info`和`LinkInfo`用于辅助检索通信域、本端rank和链路信息，按需结合使用。
+
+<!-- end id10 -->
+
+<!-- npu="A3,910b" id11 -->
+以下故障码说明表适用于Atlas A3系列产品和Atlas A2系列产品。
+
 | 故障码 | 故障码说明 |
 | --- | --- |
 | EI0001 | [环境变量配置异常](_dump_env_config_error_EI0001.md) |
@@ -232,3 +249,5 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 | EI0014 | [集群信息校验失败](_dump_cluster_info_verify_fail.md) |
 | EI0015 | [通信域集群信息协商阶段超时](_dump_cluster_info_nego.md) |
 | EI0019 | [通信域创建阶段server节点端口绑定失败](./server_node_port_bind_fail_EI0019.md#server节点端口绑定失败ei0019)或[参数面建链阶段端口绑定失败](./param_port_bind_fail_EI0019.md#参数面端口绑定失败ei0019) |
+
+<!-- end id11 -->
