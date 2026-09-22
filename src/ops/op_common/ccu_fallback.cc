@@ -103,7 +103,7 @@ HcclResult NegotiationCleanupCb(HcclComm comm, HcclCommStatePhase state, void* a
     // 通过comm动态获取negCtx，避免持有EngineCtx内存指针导致野指针；存在协商tag才执行处理
     char commName[COMM_INDENTIFIER_MAX_LENGTH] = {0};
     CHK_RET(HcclGetCommName(comm, commName));
-    std::string negTag = std::string(commName) + "_negotiation";
+    std::string negTag = std::string(commName) + NEGOTIATION_COMM_SUFFIX;
     void* ctxPtr = nullptr;
     uint64_t ctxSize = 0;
     HcclResult getRet = HcclEngineCtxGet(comm, negTag.c_str(), CommEngine::COMM_ENGINE_CPU_TS, &ctxPtr, &ctxSize);
@@ -244,7 +244,7 @@ CreateNegotiationSubCommAndRegCb(HcclComm comm, const std::string& negTag, u32 r
 
 static HcclResult GetNegotiationCtx(HcclComm comm, const OpParam& param, u32 rankSize, NegotiationResCtx*& negCtx)
 {
-    std::string negTag = std::string(param.commName) + "_negotiation";
+    std::string negTag = std::string(param.commName) + NEGOTIATION_COMM_SUFFIX;
     void* ctxPtr = nullptr;
     uint64_t ctxSize = 0;
     bool needCreate = false;

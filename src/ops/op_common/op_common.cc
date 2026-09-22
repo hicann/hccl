@@ -415,11 +415,32 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam& param, CcuFastLaunchCtx** ccu
 #endif
 }
 
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+// 判断通信域名称是否为协商子通信域（后缀_negotiation，由CCU fallback协商机制创建）
+static bool IsNegotiationCommName(const char* commName)
+{
+    const std::string commNameStr(commName);
+    return commNameStr.size() >= NEGOTIATION_COMM_SUFFIX.size()
+           && commNameStr.compare(
+                  commNameStr.size() - NEGOTIATION_COMM_SUFFIX.size(), NEGOTIATION_COMM_SUFFIX.size(),
+                  NEGOTIATION_COMM_SUFFIX)
+                  == 0;
+}
+#endif
+
 HcclResult ConstructHcclDfxOpInfo(
     const OpParam& param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo, ThreadHandle cpuTsThread)
 {
     bool isAclGraph = IsStreamInCaptureMode(param.stream);
     hcclDfxOpInfo.opMode = isAclGraph ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH) : static_cast<u32>(param.opMode);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    // 协商子通信域(名称后缀_negotiation)上的算子标记为NEGOTIATIONOP，profiling按非GE的opbase方式上报
+    if (IsNegotiationCommName(param.commName)) {
+        hcclDfxOpInfo.opMode = static_cast<u32>(OpMode::NEGOTIATIONOP);
+        HCCL_INFO(
+            "[%s] negotiation comm detected, commName[%s], opMode set to NEGOTIATIONOP.", __func__, param.commName);
+    }
+#endif
     hcclDfxOpInfo.opType = static_cast<u32>(param.opType);
     hcclDfxOpInfo.reduceOp = static_cast<u32>(param.reduceType);
     CHK_RET(GetHcclDfxOpInfoDataType(param, hcclDfxOpInfo.dataType));

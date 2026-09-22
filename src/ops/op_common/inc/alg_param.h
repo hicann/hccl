@@ -152,7 +152,7 @@ static const std::map<OpExecuteConfig, const char*> ENGINE_STR_MAP = {
     {OpExecuteConfig::HOSTCPU, "HOSTCPU"},     {OpExecuteConfig::CCU_FAIL, "CCU_FAIL"},
 };
 
-enum class OpMode { OFFLOAD = 0, OPBASE = 1, ACLGRAPH = 2 };
+enum class OpMode { OFFLOAD = 0, OPBASE = 1, ACLGRAPH = 2, NEGOTIATIONOP = 3 };
 
 enum class Level0Shape {
     CLOS = 0,
