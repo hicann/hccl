@@ -42,20 +42,9 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
     (void)comm;
     // 层划分与拓扑事实取自 V2 topo match, 替代 CalcRankSizeByTopo 与 {1}/{6,2}/{8} 打桩
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
-#else
-    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
-    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
-    const AlgAttrs* attrs = nullptr;
-#endif
-    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
-    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[InsV2ScatterParallelExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[InsV2ScatterParallelExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -165,22 +154,9 @@ AlgNetMeta InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 {
     (void)algName;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
-#else
-    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
-    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
-    const AlgAttrs* attrs = nullptr;
-#endif
-    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ?
-              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
-              HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO(
-            "[InsV2ScatterParallelExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[InsV2ScatterParallelExecutor][GetAlgNetMeta]",
+            TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
     AlgNetMeta meta;

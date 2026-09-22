@@ -503,10 +503,9 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
     // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet = topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs);
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[InsV2AlltoAllVSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[InsV2AlltoAllVSoleExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
         lastPortNum_ = {1};
         lastIsPod_ = false;

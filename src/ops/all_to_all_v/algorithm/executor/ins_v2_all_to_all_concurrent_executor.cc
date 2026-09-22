@@ -68,13 +68,8 @@ InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>:
     }
     // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ?
-              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
-              HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[GetAlgNetMeta]", TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
 
@@ -127,21 +122,8 @@ AlgNetMeta InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
-#else
-    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
-    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
-    const AlgAttrs* attrs = nullptr;
-#endif
-    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ?
-              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
-              HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[GetAlgNetMeta]", TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
 

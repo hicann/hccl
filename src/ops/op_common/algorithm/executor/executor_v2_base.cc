@@ -23,6 +23,18 @@ std::string InsCollAlgBase::Describe() const
     return s;
 }
 
+const AlgAttrs* InsCollAlgBase::ResolveProbeAlgAttrs(const char* algName) const
+{
+#ifndef AICPU_COMPILE
+    return AlgAttrsRegistry::Instance().Get(std::string(algName != nullptr ? algName : ""));
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    (void)algName;
+    return nullptr;
+#endif
+}
+
 CommTopo InsCollAlgBase::GetPhysicalLevelTopoType(const TopoInfoWithNetLayerDetails* topoInfo, u32 levelIdx) const
 {
     // 不用CHK_PTR_NULL: 它返回HcclResult, 与本函数的返回类型对不上

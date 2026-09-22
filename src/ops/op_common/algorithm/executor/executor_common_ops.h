@@ -22,4 +22,22 @@
 #include "topo_host.h"
 #include "utils.h"
 
+namespace ops_hccl {
+/*
+ * 统一填充template数据参数的buffInfo: 序列/两发等执行器GenBaseTempAlgParams中
+ * "三段buffer类型+输入输出指针+hcclBuff"的6行赋值样板, hcclBuffType恒为HCCL_BUFFER。
+ */
+inline void SetTemplateBuffInfo(
+    TemplateDataParams& tempAlgParams, BufferType inBuffType, BufferType outBuffType, void* inputPtr, void* outputPtr,
+    const HcclMem& hcclBuff)
+{
+    tempAlgParams.buffInfo.inBuffType = inBuffType;
+    tempAlgParams.buffInfo.outBuffType = outBuffType;
+    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParams.buffInfo.inputPtr = inputPtr;
+    tempAlgParams.buffInfo.outputPtr = outputPtr;
+    tempAlgParams.buffInfo.hcclBuff = hcclBuff;
+}
+} // namespace ops_hccl
+
 #endif

@@ -98,6 +98,117 @@ std::vector<uint64_t> CalGoSize(uint64_t size, const LoopGroupConfig& config, Cc
     return {offset, loopIterNum, loopExtendNum, tailSize};
 }
 
+// 填充broadcast loop端点: 本地src/本地dst + 各channel远端dst + 长度
+static void SetBroadcastLoopEndpoint(
+    GroupBroadcastVar& var, uint32_t idx, const ccu::LocalAddr& src, const ccu::LocalAddr& localDst,
+    const std::vector<ccu::RemoteAddr>& dst, uint32_t channelCount, const ccu::Variable& loopLen)
+{
+    var.loopSrc[idx].addr = src.addr;
+    var.loopSrc[idx].token = src.token;
+    var.loopLocalDst[idx].addr = localDst.addr;
+    var.loopLocalDst[idx].token = localDst.token;
+    for (uint32_t i = 0; i < channelCount; ++i) {
+        var.loopRemoteDst[idx][i].addr = dst[i].addr;
+        var.loopRemoteDst[idx][i].token = dst[i].token;
+    }
+    var.loopLen[idx] = loopLen;
+}
+
+// 填充broadcast_without_my_rank loop端点: 本地src + 各channel远端dst(无本地dst)
+static void SetBroadcastWmrLoopEndpoint(
+    GroupBroadcastVar& var, uint32_t idx, const ccu::LocalAddr& src, const std::vector<ccu::RemoteAddr>& dst,
+    uint32_t channelCount, const ccu::Variable& loopLen)
+{
+    var.loopSrc[idx].addr = src.addr;
+    var.loopSrc[idx].token = src.token;
+    for (uint32_t i = 0; i < channelCount; ++i) {
+        var.loopRemoteDst[idx][i].addr = dst[i].addr;
+        var.loopRemoteDst[idx][i].token = dst[i].token;
+    }
+    var.loopLen[idx] = loopLen;
+}
+
+// 填充reduce loop端点: 各channel远端src + 本地src + 目的dst + 普通/展开长度
+static void SetReduceLoopEndpoint(
+    GroupReduceVar& var, uint32_t idx, const std::vector<ccu::RemoteAddr>& src, const ccu::LocalAddr& localSrc,
+    const ccu::LocalAddr& dst, uint32_t srcCount, const ccu::Variable& loopLen, const ccu::Variable& loopLenExp)
+{
+    for (uint32_t i = 0; i < srcCount; ++i) {
+        var.loopRemoteSrc[idx][i].addr = src[i].addr;
+        var.loopRemoteSrc[idx][i].token = src[i].token;
+    }
+    var.loopLocalSrc[idx].addr = localSrc.addr;
+    var.loopLocalSrc[idx].token = localSrc.token;
+    var.loopDst[idx].addr = dst.addr;
+    var.loopDst[idx].token = dst.token;
+    var.loopLen[idx] = loopLen;
+    var.loopLenExp[idx] = loopLenExp;
+}
+
+// 填充reduce_without_my_rank loop端点: 各channel远端src + 目的dst(无本地src)
+static void SetReduceWmrLoopEndpoint(
+    GroupReduceVar& var, uint32_t idx, const std::vector<ccu::RemoteAddr>& src, const ccu::LocalAddr& dst,
+    uint32_t srcCount, const ccu::Variable& loopLen, const ccu::Variable& loopLenExp)
+{
+    for (uint32_t i = 0; i < srcCount; ++i) {
+        var.loopRemoteSrc[idx][i].addr = src[i].addr;
+        var.loopRemoteSrc[idx][i].token = src[i].token;
+    }
+    var.loopDst[idx].addr = dst.addr;
+    var.loopDst[idx].token = dst.token;
+    var.loopLen[idx] = loopLen;
+    var.loopLenExp[idx] = loopLenExp;
+}
+
+// broadcast端点地址按offset推进: 本地src/本地dst + 各channel远端dst
+static void AdvanceBroadcastAddrs(
+    ccu::LocalAddr& src, ccu::LocalAddr& localDst, std::vector<ccu::RemoteAddr>& dst, uint32_t channelCount,
+    const ccu::Variable& offset)
+{
+    src.addr += offset;
+    localDst.addr += offset;
+    for (uint32_t i = 0; i < channelCount; i++) {
+        dst[i].addr += offset;
+    }
+}
+
+// broadcast_without_my_rank端点地址推进: 本地src + 各channel远端dst
+static void AdvanceBroadcastWmrAddrs(
+    ccu::LocalAddr& src, std::vector<ccu::RemoteAddr>& dst, uint32_t channelCount, const ccu::Variable& offset)
+{
+    src.addr += offset;
+    for (uint32_t i = 0; i < channelCount; i++) {
+        dst[i].addr += offset;
+    }
+}
+
+// reduce端点地址按offset推进: 各channel远端src/本地src + 目的dst按展开份数
+static void AdvanceReduceAddrs(
+    std::vector<ccu::RemoteAddr>& src, ccu::LocalAddr& localSrc, ccu::LocalAddr& dst, uint32_t srcCount,
+    uint32_t expansionNum, const ccu::Variable& offset)
+{
+    for (uint32_t i = 0; i < srcCount; i++) {
+        src[i].addr += offset;
+    }
+    localSrc.addr += offset;
+    for (uint32_t i = 0; i < expansionNum; i++) {
+        dst.addr += offset;
+    }
+}
+
+// reduce_without_my_rank端点地址推进: 各channel远端src + 目的dst按展开份数
+static void AdvanceReduceWmrAddrs(
+    std::vector<ccu::RemoteAddr>& src, ccu::LocalAddr& dst, uint32_t srcCount, uint32_t expansionNum,
+    const ccu::Variable& offset)
+{
+    for (uint32_t i = 0; i < srcCount; i++) {
+        src[i].addr += offset;
+    }
+    for (uint32_t i = 0; i < expansionNum; i++) {
+        dst.addr += offset;
+    }
+}
+
 CcuResult CreateMultiOpReduceV1(
     CcuKernelCtxBase& ctx, GroupReduceVar& var, const size_t channels[], uint32_t channelCount, HcclDataType dataType,
     HcclDataType outputDataType, HcclReduceOp opType)
@@ -253,16 +364,7 @@ CcuResult GroupReduceV1(
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopLocalSrc[0].addr = localSrc.addr;
-        var.loopLocalSrc[0].token = localSrc.token;
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = sliceSize;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 0, src, localSrc, dst, size - 1, sliceSize, sliceSizeExpansion);
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1, CcuVersion::CCU_V1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
         loops.loopParam[0] = loopParam;
@@ -272,49 +374,19 @@ CcuResult GroupReduceV1(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        for (uint32_t i = 0; i < size - 1; i++) {
-            src[i].addr += goSize.addrOffset;
-        }
-        localSrc.addr += goSize.addrOffset;
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.addrOffset;
-        }
+        AdvanceReduceAddrs(src, localSrc, dst, size - 1, expansionNum, goSize.addrOffset);
 
         sliceSizeExpansion = 0;
         for (uint32_t i = 0; i < expansionNum; i++) {
             sliceSizeExpansion = sliceSizeExpansion + goSize.residual;
         }
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopLocalSrc[0].addr = localSrc.addr;
-        var.loopLocalSrc[0].token = localSrc.token;
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = goSize.residual;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 0, src, localSrc, dst, size - 1, goSize.residual, sliceSizeExpansion);
 
-        for (uint32_t i = 0; i < size - 1; i++) {
-            src[i].addr += goSize.residual;
-        }
-        localSrc.addr += goSize.residual;
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.residual;
-        }
+        AdvanceReduceAddrs(src, localSrc, dst, size - 1, expansionNum, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[1][i].addr = src[i].addr;
-            var.loopRemoteSrc[1][i].token = src[i].token;
-        }
-        var.loopLocalSrc[1].addr = localSrc.addr;
-        var.loopLocalSrc[1].token = localSrc.token;
-        var.loopDst[1].addr = dst.addr;
-        var.loopDst[1].token = dst.token;
-        var.loopLen[1] = sliceSize;
-        var.loopLenExp[1] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 1, src, localSrc, dst, size - 1, sliceSize, sliceSizeExpansion);
         loopCfg0 = GetLoopParam(0, 0, 1);
         loopCfg1 = GetLoopParam(0, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
@@ -354,16 +426,7 @@ CcuResult GroupReduceV2(
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopLocalSrc[0].addr = localSrc.addr;
-        var.loopLocalSrc[0].token = localSrc.token;
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = sliceSize;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 0, src, localSrc, dst, size - 1, sliceSize, sliceSizeExpansion);
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1, CcuVersion::CCU_V2);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, CCU_LOOP_CKE_NUM_REDUCE_V2);
         loops.loopParam[0] = goSize.loopParam;
@@ -375,48 +438,18 @@ CcuResult GroupReduceV2(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        for (uint32_t i = 0; i < size - 1; i++) {
-            src[i].addr += goSize.addrOffset;
-        }
-        localSrc.addr += goSize.addrOffset;
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.addrOffset;
-        }
+        AdvanceReduceAddrs(src, localSrc, dst, size - 1, expansionNum, goSize.addrOffset);
         ccu::Variable tmpExp;
         tmpExp = expansionNum;
         sliceSizeExpansion = tmpExp * goSize.residual;
 
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopLocalSrc[0].addr = localSrc.addr;
-        var.loopLocalSrc[0].token = localSrc.token;
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = goSize.residual;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 0, src, localSrc, dst, size - 1, goSize.residual, sliceSizeExpansion);
 
-        for (uint32_t i = 0; i < size - 1; i++) {
-            src[i].addr += goSize.residual;
-        }
-        localSrc.addr += goSize.residual;
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.residual;
-        }
+        AdvanceReduceAddrs(src, localSrc, dst, size - 1, expansionNum, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size - 1; ++i) {
-            var.loopRemoteSrc[1][i].addr = src[i].addr;
-            var.loopRemoteSrc[1][i].token = src[i].token;
-        }
-        var.loopLocalSrc[1].addr = localSrc.addr;
-        var.loopLocalSrc[1].token = localSrc.token;
-        var.loopDst[1].addr = dst.addr;
-        var.loopDst[1].token = dst.token;
-        var.loopLen[1] = sliceSize;
-        var.loopLenExp[1] = sliceSizeExpansion;
+        SetReduceLoopEndpoint(var, 1, src, localSrc, dst, size - 1, sliceSize, sliceSizeExpansion);
 
         loops.loopParam[0] = 1;
         loops.loopParam[1] = 1;
@@ -547,15 +580,7 @@ CcuResult GroupBroadcastV1(
         loopParam = GetLoopParam(0, ctx.moConfig.memSlice * ctx.moConfig.loopCount, 0);
         loopParam = loopParam + goSize.loopParam;
         sliceSize = ctx.moConfig.memSlice;
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        var.loopLocalDst[0].addr = localDst.addr;
-        var.loopLocalDst[0].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = sliceSize;
+        SetBroadcastLoopEndpoint(var, 0, src, localDst, dst, channelCount, sliceSize);
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1, CcuVersion::CCU_V1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
@@ -566,36 +591,12 @@ CcuResult GroupBroadcastV1(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        src.addr += goSize.addrOffset;
-        localDst.addr += goSize.addrOffset;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.addrOffset;
-        }
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        var.loopLocalDst[0].addr = localDst.addr;
-        var.loopLocalDst[0].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = goSize.residual;
+        AdvanceBroadcastAddrs(src, localDst, dst, channelCount, goSize.addrOffset);
+        SetBroadcastLoopEndpoint(var, 0, src, localDst, dst, channelCount, goSize.residual);
 
-        src.addr += goSize.residual;
-        localDst.addr += goSize.residual;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.residual;
-        }
+        AdvanceBroadcastAddrs(src, localDst, dst, channelCount, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
-        var.loopSrc[1].addr = src.addr;
-        var.loopSrc[1].token = src.token;
-        var.loopLocalDst[1].addr = localDst.addr;
-        var.loopLocalDst[1].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[1][i].addr = dst[i].addr;
-            var.loopRemoteDst[1][i].token = dst[i].token;
-        }
-        var.loopLen[1] = sliceSize;
+        SetBroadcastLoopEndpoint(var, 1, src, localDst, dst, channelCount, sliceSize);
         loopCfg0 = GetLoopParam(0, 0, 1);
         loopCfg1 = GetLoopParam(0, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
@@ -622,15 +623,7 @@ CcuResult GroupBroadcastV2(
     CCU_IF(goSize.loopParam != 0)
     {
         sliceSize = ctx.moConfig.memSlice;
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        var.loopLocalDst[0].addr = localDst.addr;
-        var.loopLocalDst[0].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = sliceSize;
+        SetBroadcastLoopEndpoint(var, 0, src, localDst, dst, channelCount, sliceSize);
 
         loops.loopParam[0] = goSize.loopParam;
         loops.addrOffset[0] = GetLoopGsaOffset(ctx.moConfig.memSlice * ctx.moConfig.loopCount);
@@ -644,36 +637,12 @@ CcuResult GroupBroadcastV2(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        src.addr += goSize.addrOffset;
-        localDst.addr += goSize.addrOffset;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.addrOffset;
-        }
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        var.loopLocalDst[0].addr = localDst.addr;
-        var.loopLocalDst[0].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = goSize.residual;
+        AdvanceBroadcastAddrs(src, localDst, dst, channelCount, goSize.addrOffset);
+        SetBroadcastLoopEndpoint(var, 0, src, localDst, dst, channelCount, goSize.residual);
 
-        src.addr += goSize.residual;
-        localDst.addr += goSize.residual;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.residual;
-        }
+        AdvanceBroadcastAddrs(src, localDst, dst, channelCount, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
-        var.loopSrc[1].addr = src.addr;
-        var.loopSrc[1].token = src.token;
-        var.loopLocalDst[1].addr = localDst.addr;
-        var.loopLocalDst[1].token = localDst.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[1][i].addr = dst[i].addr;
-            var.loopRemoteDst[1][i].token = dst[i].token;
-        }
-        var.loopLen[1] = sliceSize;
+        SetBroadcastLoopEndpoint(var, 1, src, localDst, dst, channelCount, sliceSize);
 
         loops.loopParam[0] = 1;
         loops.loopParam[1] = 1;
@@ -747,13 +716,7 @@ CcuResult GroupBroadcastWithoutMyRank(
         loopParam = loopParam + goSize.loopParam;
         sliceSize = ctx.moConfig.memSlice;
 
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = sliceSize;
+        SetBroadcastWmrLoopEndpoint(var, 0, src, dst, channelCount, sliceSize);
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
@@ -764,32 +727,14 @@ CcuResult GroupBroadcastWithoutMyRank(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        src.addr += goSize.addrOffset;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.addrOffset;
-        }
+        AdvanceBroadcastWmrAddrs(src, dst, channelCount, goSize.addrOffset);
 
-        var.loopSrc[0].addr = src.addr;
-        var.loopSrc[0].token = src.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[0][i].addr = dst[i].addr;
-            var.loopRemoteDst[0][i].token = dst[i].token;
-        }
-        var.loopLen[0] = goSize.residual;
+        SetBroadcastWmrLoopEndpoint(var, 0, src, dst, channelCount, goSize.residual);
 
-        src.addr += goSize.residual;
-        for (uint32_t i = 0; i < channelCount; i++) {
-            dst[i].addr += goSize.residual;
-        }
+        AdvanceBroadcastWmrAddrs(src, dst, channelCount, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
 
-        var.loopSrc[1].addr = src.addr;
-        var.loopSrc[1].token = src.token;
-        for (uint32_t i = 0; i < channelCount; ++i) {
-            var.loopRemoteDst[1][i].addr = dst[i].addr;
-            var.loopRemoteDst[1][i].token = dst[i].token;
-        }
-        var.loopLen[1] = sliceSize;
+        SetBroadcastWmrLoopEndpoint(var, 1, src, dst, channelCount, sliceSize);
         loopCfg0 = GetLoopParam(0, 0, 1);
         loopCfg1 = GetLoopParam(0, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
@@ -883,14 +828,7 @@ CcuResult GroupReduceWithoutMyRank(
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = sliceSize;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceWmrLoopEndpoint(var, 0, src, dst, size, sliceSize, sliceSizeExpansion);
         paraCfg = GetParallelParam(ctx.moConfig.loopCount - 1, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);
 
@@ -901,43 +839,19 @@ CcuResult GroupReduceWithoutMyRank(
 
     CCU_IF(goSize.parallelParam != 0)
     {
-        for (uint32_t i = 0; i < size; i++) {
-            src[i].addr += goSize.addrOffset;
-        }
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.addrOffset;
-        }
+        AdvanceReduceWmrAddrs(src, dst, size, expansionNum, goSize.addrOffset);
 
         sliceSizeExpansion = 0;
         for (uint32_t i = 0; i < expansionNum; i++) {
             sliceSizeExpansion = sliceSizeExpansion + goSize.residual;
         }
-        for (uint32_t i = 0; i < size; ++i) {
-            var.loopRemoteSrc[0][i].addr = src[i].addr;
-            var.loopRemoteSrc[0][i].token = src[i].token;
-        }
-        var.loopDst[0].addr = dst.addr;
-        var.loopDst[0].token = dst.token;
-        var.loopLen[0] = goSize.residual;
-        var.loopLenExp[0] = sliceSizeExpansion;
+        SetReduceWmrLoopEndpoint(var, 0, src, dst, size, goSize.residual, sliceSizeExpansion);
 
-        for (uint32_t i = 0; i < size; i++) {
-            src[i].addr += goSize.residual;
-        }
-        for (uint32_t i = 0; i < expansionNum; i++) {
-            dst.addr += goSize.residual;
-        }
+        AdvanceReduceWmrAddrs(src, dst, size, expansionNum, goSize.residual);
         sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
 
-        for (uint32_t i = 0; i < size; ++i) {
-            var.loopRemoteSrc[1][i].addr = src[i].addr;
-            var.loopRemoteSrc[1][i].token = src[i].token;
-        }
-        var.loopDst[1].addr = dst.addr;
-        var.loopDst[1].token = dst.token;
-        var.loopLen[1] = sliceSize;
-        var.loopLenExp[1] = sliceSizeExpansion;
+        SetReduceWmrLoopEndpoint(var, 1, src, dst, size, sliceSize, sliceSizeExpansion);
         loopCfg0 = GetLoopParam(0, 0, 1);
         loopCfg1 = GetLoopParam(0, 0, 1);
         offsetCfg = GetOffsetParam(ctx.moConfig.memSlice, ctx.moConfig.msInterleave, 1);

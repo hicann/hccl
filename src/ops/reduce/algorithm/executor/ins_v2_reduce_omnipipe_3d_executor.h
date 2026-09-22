@@ -24,12 +24,13 @@
 #include "topo_match_base_v2.h"
 #include "topo_match_three_level.h"
 #include "omnipipe_data_slice_calc.h"
+#include "omnipipe_executor_utils.h"
 
 namespace ops_hccl {
 template <
     typename AlgTopoMatch, typename InsRsAlgTemplateX, typename InsRsAlgTemplateY, typename InsRsAlgTemplateZ,
     typename InsAgAlgTemplateX, typename InsAgAlgTemplateY, typename InsAgAlgTemplateZ>
-class InsV2ReduceOmniPipe3DExecutor : public InsCollAlgBase {
+class InsV2ReduceOmniPipe3DExecutor : public InsV2OmniPipeExecutorBase {
 public:
     explicit InsV2ReduceOmniPipe3DExecutor();
     ~InsV2ReduceOmniPipe3DExecutor() override = default;
@@ -123,58 +124,11 @@ protected:
 
     HcclResult ClacOmniBandwidthInSever(const AlgResourceCtxSerializable& resCtx, std::vector<double>& bdvec) const;
 
-    uint64_t rankSizeLevel0_{0};
-    uint64_t rankSizeLevel1_{0};
-    uint64_t rankSizeLevel2_{0};
-
-    uint64_t rankIdxLevel0_{0};
-    uint64_t rankIdxLevel1_{0};
-    uint64_t rankIdxLevel2_{0};
-
-    AlgHierarchyInfoForAllLevel algHierarchyInfo_;
-    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-    std::vector<ThreadHandle> threads_;
-
-    ThreadHandle controlThread_ = 0;
-
-    std::vector<ThreadHandle> tempMainThreadsLevel01RS_;
-    std::vector<u32> ntfIdxCtrlToTempLevel01RS_;
-    std::vector<u32> ntfIdxTempToCtrlLevel01RS_;
-
-    std::vector<ThreadHandle> tempMainThreadsLevel2RS_;
-    std::vector<u32> ntfIdxCtrlToTempLevel2RS_;
-    std::vector<u32> ntfIdxTempToCtrlLevel2RS_;
-
-    std::vector<std::vector<ThreadHandle>> levelThreadsRS_;
-    std::vector<std::vector<ThreadHandle>> levelThreadsAG_;
-
-    std::vector<ThreadHandle> tempMainThreadsLevel01AG_;
-    std::vector<u32> ntfIdxCtrlToTempLevel01AG_;
-    std::vector<u32> ntfIdxTempToCtrlLevel01AG_;
-    std::vector<ThreadHandle> tempMainThreadsLevel2AG_;
-    std::vector<u32> ntfIdxCtrlToTempLevel2AG_;
-    std::vector<u32> ntfIdxTempToCtrlLevel2AG_;
-    OmniNeedSetStepNum omniNeedSetStepNum_ = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
-
-    enum OmnipipeARLevel {
-        OMNIPIPE_RS_LEVEL0 = 0,
-        OMNIPIPE_RS_LEVEL1 = 1,
-        OMNIPIPE_RS_LEVEL2 = 2,
-        OMNIPIPE_AG_LEVEL0 = 3,
-        OMNIPIPE_AG_LEVEL1 = 4,
-        OMNIPIPE_AG_LEVEL2 = 5,
-        OMNIPIPE_AR_LEVEL_NUM = 6
-    };
-
     HcclResult BuildSubCommAndTempMap(
         const OpParam& param, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
         std::vector<std::vector<u32>>& subCommRanks0, std::vector<std::vector<u32>>& subCommRanks1,
         std::vector<std::vector<u32>>& subCommRanks2, std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap,
         const TopoInfoWithNetLayerDetails* topoInfo);
-
-    std::vector<std::vector<u32>> subCommRanks0_;
-    std::vector<std::vector<u32>> subCommRanks1_;
-    std::vector<std::vector<u32>> subCommRanks2_;
 };
 } // namespace ops_hccl
 

@@ -21,6 +21,7 @@
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "omnipipe_data_slice_calc.h"
+#include "omnipipe_executor_utils.h"
 #include "omnipipe_template_utils.h"
 #include "template_utils.h"
 #include <cmath>
@@ -32,19 +33,9 @@ constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4; // 与selector保持一致�
 constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
 constexpr u32 ALG_HIERARCHY_NUM2 = 2;
 constexpr u32 ALG_HIERARCHY_NUM3 = 3;
-constexpr u32 MIN_NET_LAYER_NUM = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
 namespace {
-    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
-    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
-
-    struct OmniPipeCostAxes {
-        u64 mesh = 1;
-        u64 clos = 1;
-        u64 third = 1;
-    };
-
     struct OmniPipeStageCost {
         double transferCoeff = 0.0;
         double xyBandwidth = 0.0;
@@ -56,76 +47,6 @@ namespace {
         bool outerReachesMaxStep = false;
         bool thirdIsOuterSlow = false;
     };
-
-    bool CalcOmniPipeCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, OmniPipeCostAxes& axes)
-    {
-        if (topoInfo == nullptr || topoInfo->userRankSize == 0) {
-            return false;
-        }
-
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix) {
-            if (topoInfo->topoInstDetailsOfLayer.empty()) {
-                return false;
-            }
-            const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-            auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-            auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-            if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-                || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-                return false;
-            }
-            axes.mesh = meshIt->second[0];
-            axes.clos = closIt->second[0] / axes.mesh;
-        } else {
-            const auto& localSizes = topoInfo->netLayerDetails.localNetInsSizeOfLayer;
-            if (localSizes.empty() || localSizes[0] == 0) {
-                return false;
-            }
-            axes.mesh = localSizes[0];
-            if (topoInfo->topoLevelNums > 1) {
-                if (localSizes.size() < MIN_NET_LAYER_NUM || localSizes[1] < axes.mesh
-                    || localSizes[1] % axes.mesh != 0) {
-                    return false;
-                }
-                axes.clos = localSizes[1] / axes.mesh;
-            }
-        }
-
-        const u64 xyRankSize = axes.mesh * axes.clos;
-        if (xyRankSize == 0 || topoInfo->userRankSize % xyRankSize != 0) {
-            return false;
-        }
-        axes.third = topoInfo->userRankSize / xyRankSize;
-        return axes.third > 0;
-    }
-
-    u64 CalcStepNumByAxes(
-        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum,
-        bool isReduceScatter)
-    {
-        const bool firstIsSlow = firstBandwidth <= secondBandwidth;
-        const double slowBandwidth = firstIsSlow ? firstBandwidth : secondBandwidth;
-        const double fastBandwidth = firstIsSlow ? secondBandwidth : firstBandwidth;
-        const u64 slowRankSize = firstIsSlow ? firstRankSize : secondRankSize;
-        const u64 fastRankSize = firstIsSlow ? secondRankSize : firstRankSize;
-        return isReduceScatter ?
-                   CalcReducescatterStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum) :
-                   CalcAllgatherStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum);
-    }
-
-    float CalcTemplateLatency(u32 taskNum, EngineType engine)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcLatencyParams(taskNum, engine, latency);
-        return latency;
-    }
-
-    float CalcDpuTemplateLatency(int stepNum, int syncNum, int channelNum, int sndRcvnum)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcDpuLatencyParams(stepNum, syncNum, channelNum, sndRcvnum, latency);
-        return latency;
-    }
 
     OmniPipeStageCost CalcStageCost(
         const OmniPipeCostAxes& axes, u64 totalRankSize, double meshBandwidth, double closBandwidth,

@@ -728,16 +728,8 @@ std::vector<CostModelParam> BroadcastSequenceMesh1dNHRNHRExecutor<
     // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
     // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName != nullptr ? algName : ""));
-#else
-    const AlgAttrs* attrs = nullptr;
-#endif
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         netTypeLevel0_ = CommTopo::COMM_TOPO_1DMESH;
         netTypeLevel1_ = CommTopo::COMM_TOPO_1DMESH;
         netTypeLevel2_ = CommTopo::COMM_TOPO_1DMESH;

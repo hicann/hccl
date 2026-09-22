@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_reduce_sequence_executor_aicpu_3level.h"
+#include "executor_common_ops.h"
 #include "alg_attrs_registry.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_reduce_scatter_nhr.h"
@@ -34,22 +35,9 @@ std::vector<CostModelParam> InsV2AllReduceSequenceExecutorAicpu3Level<
 {
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
-#else
-    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
-    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
-    const AlgAttrs* attrs = nullptr;
-#endif
-    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
-    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO(
-            "[InsV2AllReduceSequenceExecutorAicpu3Level][CalcCostCoeff] algName=%s topo match not support, skip.",
-            algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllReduceSequenceExecutorAicpu3Level][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -138,24 +126,9 @@ AlgNetMeta InsV2AllReduceSequenceExecutorAicpu3Level<
 {
     (void)param;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
-#ifndef AICPU_COMPILE
-    const AlgAttrs* attrs = AlgAttrsRegistry::Instance().Get(std::string(algName));
-#else
-    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
-    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
-    const AlgAttrs* attrs = nullptr;
-#endif
-    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
-    AlgTopoMatch topoMatch;
-    HcclResult matchRet
-        = (attrs != nullptr) ?
-              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
-              HcclResult::HCCL_E_PARA;
-    if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO(
-            "[InsV2AllReduceSequenceExecutorAicpu3Level][GetAlgNetMeta] algName=%s topo match not support, return "
-            "empty.",
-            algName);
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllReduceSequenceExecutorAicpu3Level][GetAlgNetMeta]",
+            TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -423,47 +396,29 @@ void InsV2AllReduceSequenceExecutorAicpu3Level<
         TemplateDataParams& tempAlgParamsAGL2, TemplateDataParams& tempAlgParamsAGL1,
         TemplateDataParams& tempAlgParamsAGL0) const
 {
-    tempAlgParamsRSL0.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParamsRSL0.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL0.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParamsRSL0.buffInfo.outputPtr = resCtx.cclMem.addr;
-    tempAlgParamsRSL0.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsRSL0, BufferType::INPUT, BufferType::HCCL_BUFFER, param.inputPtr, resCtx.cclMem.addr,
+        resCtx.cclMem);
 
-    tempAlgParamsRSL1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL1.buffInfo.inputPtr = resCtx.cclMem.addr;
-    tempAlgParamsRSL1.buffInfo.outputPtr = resCtx.cclMem.addr;
-    tempAlgParamsRSL1.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsRSL1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
+        resCtx.cclMem);
 
-    tempAlgParamsRSL2.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL2.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsRSL2.buffInfo.inputPtr = resCtx.cclMem.addr;
-    tempAlgParamsRSL2.buffInfo.outputPtr = resCtx.cclMem.addr;
-    tempAlgParamsRSL2.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsRSL2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
+        resCtx.cclMem);
 
-    tempAlgParamsAGL2.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL2.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL2.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL2.buffInfo.inputPtr = resCtx.cclMem.addr;
-    tempAlgParamsAGL2.buffInfo.outputPtr = resCtx.cclMem.addr;
-    tempAlgParamsAGL2.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsAGL2, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
+        resCtx.cclMem);
 
-    tempAlgParamsAGL1.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL1.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL1.buffInfo.inputPtr = resCtx.cclMem.addr;
-    tempAlgParamsAGL1.buffInfo.outputPtr = resCtx.cclMem.addr;
-    tempAlgParamsAGL1.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsAGL1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
+        resCtx.cclMem);
 
-    tempAlgParamsAGL0.buffInfo.inBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL0.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParamsAGL0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParamsAGL0.buffInfo.inputPtr = resCtx.cclMem.addr;
-    tempAlgParamsAGL0.buffInfo.outputPtr = param.outputPtr;
-    tempAlgParamsAGL0.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParamsAGL0, BufferType::HCCL_BUFFER, BufferType::OUTPUT, resCtx.cclMem.addr, param.outputPtr,
+        resCtx.cclMem);
     return;
 }
 

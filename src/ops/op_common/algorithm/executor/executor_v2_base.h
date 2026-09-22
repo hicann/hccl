@@ -111,6 +111,47 @@ public:
         u32 notifyNumOnMainThread) const;
 #endif
 protected:
+    /* *************** costmodel 探测路径公共实现 *************** */
+    // 场景标识: 决定不匹配时 INFO 日志的后缀, 与原各执行器内联实现的两种日志保持一致
+    enum class TopoProbeScene {
+        PROBE_CALC_COST_COEFF, // CalcCostCoeff: "... skip."
+        PROBE_GET_ALG_NET_META // GetAlgNetMeta: "... return empty."
+    };
+
+    /*
+     * 解析算法属性: AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的
+     * AlgAttrsRegistry, 返回 nullptr 由调用方走 skip 分支; algName 判空兜底。
+     */
+    const AlgAttrs* ResolveProbeAlgAttrs(const char* algName) const;
+
+    /*
+     * 探测路径统一调 MatchTopo(不走 CalcAlgHierarchyInfoV2 的 CHK_RET):
+     * costmodel 迭代时"不匹配"是正常事件, 仅按 logTag 打 INFO 并返回 false,
+     * 避免执行路径语义的 ERROR 日志刷屏; topoInfo 统一按 const 入参收,
+     * 内部 const_cast 后与原 CalcCostCoeff/GetAlgNetMeta 两条路径行为一致。
+     */
+    template <typename AlgTopoMatch>
+    bool MatchTopoForProbe(
+        const TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const char* algName,
+        const char* logTag, TopoProbeScene scene) const
+    {
+        const AlgAttrs* attrs = ResolveProbeAlgAttrs(algName);
+        AlgTopoMatch topoMatch;
+        HcclResult matchRet
+            = (attrs != nullptr) ?
+                  topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+                  HcclResult::HCCL_E_PARA;
+        if (matchRet != HcclResult::HCCL_SUCCESS) {
+            if (scene == TopoProbeScene::PROBE_GET_ALG_NET_META) {
+                HCCL_INFO("%s algName=%s topo match not support, return empty.", logTag, algName);
+            } else {
+                HCCL_INFO("%s algName=%s topo match not support, skip.", logTag, algName);
+            }
+            return false;
+        }
+        return true;
+    }
+
     /*
      * 读取physicalLevels[levelIdx]的互联形态。Level下标与netLayer编号没有固定对应关系,
      * 一个netLayer可能贡献一级或两级, 拓扑形态必须走这里回查, 不能由下标推断。
