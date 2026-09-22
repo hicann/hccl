@@ -90,7 +90,7 @@ InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
-    if (portNumLevel0.empty() || portNumLevel1.empty()) {
+    if (portNumLevel1.empty()) {
         HCCL_WARNING("[InsV2ReduceScatterSequenceExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }

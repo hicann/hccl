@@ -43,33 +43,31 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
-    // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
-    if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
-        return {};
-    }
 
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
 
-    u32 allRankSize = rankSizeLevel0 * rankSizeLevel1;
+    if (portNumLevel1.empty()) {
+        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        return {};
+    }
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d", "netTypeLevel0=%d, netTypeLevel1=%d",
+        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, netTypeLevel0=%d, netTypeLevel1=%d",
         rankSize, rankSizeLevel0, rankSizeLevel1, static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
-    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, allRankSize, portNumLevel0,
-                                          portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
+    std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1,
+                                          netTypeLevel0, netTypeLevel1, isPod] {
         std::vector<CostModelParam> v;
         auto p0 = InsAlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
             rankSizeLevel0, 1.0f / rankSizeLevel0, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel0, isPod});
         v.insert(v.end(), p0.begin(), p0.end());
         auto p1 = InsAlgTemplate1::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / allRankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p1.begin(), p1.end());
         auto p2 = InsAlgTemplate2::CalcCostCoeff(CalcCostCoeffParam{
-            rankSizeLevel1, 1.0f / allRankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
+            rankSizeLevel1, 1.0f / rankSize, netTypeLevel1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p2.begin(), p2.end());
         auto p3 = InsAlgTemplate3::CalcCostCoeff(CalcCostCoeffParam{

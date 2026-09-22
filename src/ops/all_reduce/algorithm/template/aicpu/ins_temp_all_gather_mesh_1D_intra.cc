@@ -21,15 +21,25 @@ InsTempAllGatherMesh1dIntra::~InsTempAllGatherMesh1dIntra() {}
 
 std::vector<CostModelParam> InsTempAllGatherMesh1dIntra::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+    float A = 0;
+    float B = 0;
+    float C = 0;
+    float D = 0;
+    if (param.rankSize == 1) {
+        HCCL_DEBUG("[CalcCostCoeff] no transfer data");
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+        std::vector<CostModelParam> params;
+        params.push_back({A, B, C, D});
+        return params;
+    }
+    int portNum = 1;
+    if (!param.portNum.empty()) {
+        portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
+    }
     int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
-    float A = 0.0f;
-    float B = 0.0f;
-    float C = 0.0f;
-    float D = 0.0f;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio * param.rankSize, EngineType::AICPU, B);

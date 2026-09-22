@@ -18,14 +18,22 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    int portNum = param.portNum[0];
-    int kernelNum = 8;
-    int taskNum
-        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
     float A = 0;
     float B = 0;
     float C = 0;
     float D = 0;
+    if (param.rankSize == 1) {
+        HCCL_DEBUG("[CalcCostCoeff] no transfer data");
+        CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
+        std::vector<CostModelParam> params;
+        params.push_back({A, B, C, D});
+        return params;
+    }
+
+    int portNum = param.portNum.empty() ? 1 : param.portNum[0];
+    int kernelNum = 8;
+    int taskNum
+        = CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     float B1 = 0; // userin->ccl
