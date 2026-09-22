@@ -28,7 +28,7 @@ HcclResult CommWorker::Start()
     return HCCL_SUCCESS;
 }
 
-HcclResult CommWorker::Submit(aclrtContext ctx, const std::function<HcclResult()>& task)
+HcclResult CommWorker::Submit(aclrtContext ctx, const ErrContext& errCtx, const std::function<HcclResult()>& task)
 {
     std::unique_lock<std::mutex> lock(mtx_);
     if (stop_) {
@@ -36,6 +36,7 @@ HcclResult CommWorker::Submit(aclrtContext ctx, const std::function<HcclResult()
     }
     task_ = task;
     ctx_ = ctx;
+    errCtx_ = errCtx;
     result_ = HCCL_E_INTERNAL;
     hasTask_ = true;
     cv_.notify_all();
@@ -68,8 +69,12 @@ void CommWorker::WorkerLoop()
             break; // 仅stop_触发且无待处理任务
         }
         aclrtContext ctx = ctx_;
+        ErrContext errCtx = errCtx_;
         std::function<HcclResult()> task = task_;
         lock.unlock();
+
+        // 恢复主线程ErrorMgr上下文：先于aclrtSetCurrentContext设置；ctx为null（ST仿真）时同样需要设置
+        haclrtSetErrMgrContext(errCtx);
 
         // 每次任务重新绑定调用方context（调用方context可能变化，不能只在首次绑定时设置）
         HcclResult ret = HCCL_E_INTERNAL;

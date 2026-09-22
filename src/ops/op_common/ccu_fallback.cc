@@ -285,6 +285,9 @@ static HcclResult GetNegotiationCtx(HcclComm comm, const OpParam& param, u32 ran
 
 static HcclResult RunInCommWorker(HcclComm comm, const std::function<HcclResult()>& task)
 {
+    // ErrorMgr上下文由CommWorkerMgr::Submit在发起线程采集，由CommWorker::WorkerLoop在
+    // aclrtSetCurrentContext之后恢复到子线程，保证子线程内错误上报落入主线程
+    // work_stream_id对应的容器，可被上层aclGetRecentErrMsg查询到
     return CommWorkerMgr::GetInstance().Submit(comm, task);
 }
 

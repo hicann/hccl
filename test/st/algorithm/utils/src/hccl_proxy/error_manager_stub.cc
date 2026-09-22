@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <vector>
 #include <cstdarg>
+#include "base/err_mgr.h"
 
 namespace error_message {
 int32_t RegisterFormatErrorMessage(const char* error_msg, size_t error_msg_len) { return 0; }
@@ -27,4 +28,10 @@ int32_t ReportPredefinedErrMsg(
 {
     return 0;
 }
+
+// libhccl.so中ccu_fallback协商worker线程透传ErrorMgr上下文时引用Get/SetErrMgrContext，
+// ST不链接liberror_manager，此处打桩：Get返回零值上下文，Set为空实现
+ErrorManagerContext GetErrMgrContext() { return {}; }
+
+void SetErrMgrContext(ErrorManagerContext error_context) { (void)error_context; }
 } // namespace error_message

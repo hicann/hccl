@@ -10,6 +10,7 @@
 
 #include "comm_worker_mgr.h"
 #include <vector>
+#include "adapter_error_manager_pub.h"
 #include "log.h"
 
 namespace ops_hccl {
@@ -47,6 +48,9 @@ HcclResult CommWorkerMgr::Submit(HcclComm comm, const std::function<HcclResult()
         aclRet != ACL_SUCCESS, HCCL_ERROR("[%s] aclrtGetCurrentContext failed, ret[%d].", __func__, aclRet),
         HCCL_E_RUNTIME);
 
+    // 发起线程（主线程）采集ErrorMgr上下文，随任务下发，由WorkerLoop在绑定ctx后恢复到子线程
+    ErrContext errCtx = haclrtGetErrMgrContext();
+
     // 通信域归属device取发起线程当前绑定device（发起协商的线程必已绑定comm对应device）
     int32_t deviceId = -1;
     aclError devRet = aclrtGetDevice(&deviceId);
@@ -83,7 +87,7 @@ HcclResult CommWorkerMgr::Submit(HcclComm comm, const std::function<HcclResult()
         }
     }
     // 持有shared_ptr调用：与Remove并发时对象存活到本次Submit返回
-    return worker->Submit(curCtx, task);
+    return worker->Submit(curCtx, errCtx, task);
 }
 
 void CommWorkerMgr::Remove(HcclComm comm)

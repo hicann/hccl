@@ -15,6 +15,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include "adapter_error_manager_pub.h"
 #include "acl/acl_rt.h"
 #include "hccl.h"
 
@@ -31,7 +32,7 @@ public:
     HcclResult Start();
 
     // 投递任务并阻塞等待结果，语义与"临时线程+join"一致；单任务槽，同一worker同时最多一个在途任务
-    HcclResult Submit(aclrtContext ctx, const std::function<HcclResult()>& task);
+    HcclResult Submit(aclrtContext ctx, const ErrContext& errCtx, const std::function<HcclResult()>& task);
 
     // 幂等：在途任务先执行完并回传结果，worker再退出，不丢结果
     void Shutdown();
@@ -44,6 +45,7 @@ private:
     std::condition_variable cv_{};
     std::function<HcclResult()> task_{};
     aclrtContext ctx_{nullptr};
+    ErrContext errCtx_{};
     HcclResult result_{HCCL_E_INTERNAL};
     bool hasTask_{false};
     bool stop_{false};

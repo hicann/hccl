@@ -12,8 +12,22 @@
 #define HCCL_INC_ADAPTER_ERROR_MANAGER_PUB_H
 
 #include "log.h"
+#include <cstdint>
 #include <string>
 #include <vector>
+
+// 设备侧（aicpu）无liberror_manager，ErrorMgr上下文能力整体裁剪（实现见.cc的AICPU_COMPILE隔离）
+#ifndef AICPU_COMPILE
+// 对齐hcomm的ErrContext：业务侧统一使用本地结构，与liberror_manager的ErrorManagerContext解耦，
+// SDK结构变化时仅需调整本适配层的转换逻辑
+using ErrContext = struct Context {
+    uint64_t work_stream_id = 0;
+    uint64_t reserved[7] = {0};
+};
+
+ErrContext haclrtGetErrMgrContext(void);
+void haclrtSetErrMgrContext(ErrContext error_context);
+#endif
 
 __attribute__((weak)) void
 RptInputErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value);
