@@ -29,8 +29,8 @@ constexpr uint32_t CONST_3 = 3;
 constexpr uint32_t CONST_4 = 4;
 // 与 alltoallv_auto_selector.cc 保持一致：4P 且 mesh 数等于 clos 数时走并发算法的卡数上限
 constexpr uint32_t CONCURRENT_RANK_LIMIT = 4;
-constexpr u32 MESH_BW = 12;
-constexpr u32 CLOS_BW = 10;
+constexpr u32 MESH_BW = 100;
+constexpr u32 CLOS_BW = 96;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InsV2AllToAllVConcurrentExecutor()

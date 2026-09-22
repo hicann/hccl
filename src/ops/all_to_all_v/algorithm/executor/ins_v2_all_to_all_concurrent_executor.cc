@@ -35,7 +35,7 @@ constexpr uint32_t CONCURRENT_RANK_LIMIT = 4;
 constexpr uint64_t BIG_DATA_SIZE_LIMIT = 512;
 
 constexpr u32 MESH_BW = 100;
-constexpr u32 CLOS_BW = 113;
+constexpr u32 CLOS_BW = 93;
 constexpr u32 MESH_BW_AICPU = 10;
 constexpr u32 CLOS_BW_AICPU = 12;
 
