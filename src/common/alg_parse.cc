@@ -102,7 +102,9 @@ public:
         SkipWs();
         while (!AtEnd()) {
             HcclAlgoExecutor exec;
-            CHK_RET(ParseSegment(exec));
+            if (ParseSegment(exec) != HCCL_SUCCESS) {
+                return HCCL_E_PARA;
+            }
             CompactAlgoList(exec.algoList);
             result.push_back(std::move(exec));
             SkipWs();
@@ -238,7 +240,9 @@ private:
             if (ToLowerStr(name) == "not" && Peek() == '(') {
                 Eat('(');
                 SkipWs();
-                CHK_RET(ParseExecutorUnitOrAtom(exec));
+                if (ParseExecutorUnitOrAtom(exec) != HCCL_SUCCESS) {
+                    return HCCL_E_PARA;
+                }
                 SkipWs();
                 if (!Eat(')')) {
                     HCCL_WARNING("[HcclAlgoParser] expected ')' after not(...) at pos %zu", pos_);
@@ -270,7 +274,9 @@ private:
             }
             exec.executorType = executorType;
             Eat('{');
-            CHK_RET(ParseTemplateList(exec.algoList));
+            if (ParseTemplateList(exec.algoList) != HCCL_SUCCESS) {
+                return HCCL_E_PARA;
+            }
             SkipWs();
             if (!Eat('}')) {
                 HCCL_WARNING("[HcclAlgoParser] expected '}' at pos %zu", pos_);
@@ -301,7 +307,9 @@ private:
         while (true) {
             HcclAlgo algo;
             uint32_t level = LEVEL_UNSPECIFIED;
-            CHK_RET(ParseTemplateItem(algo, level));
+            if (ParseTemplateItem(algo, level) != HCCL_SUCCESS) {
+                return HCCL_E_PARA;
+            }
             InsertAlgoOrdered(algoList, std::move(algo), level);
             SkipWs();
             if (!Eat(','))
@@ -362,7 +370,9 @@ private:
             if (ToLowerStr(name) == "not" && Peek() == '(') {
                 Eat('(');
                 SkipWs();
-                CHK_RET(ParseTemplateAtom(algo));
+                if (ParseTemplateAtom(algo) != HCCL_SUCCESS) {
+                    return HCCL_E_PARA;
+                }
                 algo.enable = false;
                 SkipWs();
                 if (!Eat(')')) {
