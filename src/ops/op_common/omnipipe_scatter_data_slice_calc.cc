@@ -289,7 +289,7 @@ void CalcAndPushPiece(
 }
 
 static void PushScatterZDiagStepsImpl(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 zSOffset[][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, u64 zCclBufferBaseOff, u64 stepUpperBound, uint32_t root)
 {
@@ -321,7 +321,7 @@ static void PushScatterZDiagStepsImpl(
 }
 
 void PushScatterZDiagSteps(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 zSOffset[][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, u64 zCclBufferBaseOff, u64 zCornerStep, uint32_t root)
 {
@@ -331,7 +331,7 @@ void PushScatterZDiagSteps(
 }
 
 void PushScatterZDiagStepsZgXY(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 zSOffset[][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, u64 zCclBufferBaseOff, u64 zCornerStep, uint32_t root)
 {
@@ -343,7 +343,7 @@ void PushScatterZDiagStepsZgXY(
 
 // 收集z轴同轴段root对角piece：遍历非rootz的z轴rank，计算每片size/count/inputOffset/outputOffset并push
 static void PushScatterZSameAxisDiagPieces(
-    u64 osn, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 zSOffset[][MAX_STEP_NUM_SC],
+    u64 osn, u64 zSDataSize[][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, ScatterPieceVecs& pieces)
 {
@@ -362,8 +362,8 @@ static void PushScatterZSameAxisDiagPieces(
 
 // 计算z轴同轴段转发piece的offset：根据outerStepNum和osn位置选择offset计算分支
 static void CalcScatterZSameAxisFwdOffset(
-    u64 osn, u64 outerStepNum, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 pieceId,
+    u64 osn, u64 outerStepNum, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 pieceId,
     u64& sliceSizeOnePiece, u64& inputPieceIdOffset, u64& outputPieceIdOffset)
 {
     if (outerStepNum == 2) {
@@ -389,10 +389,9 @@ static void CalcScatterZSameAxisFwdOffset(
 // 计算z轴同轴段非rootz节点的转发piece：根据outerStepNum和osn位置选择offset计算分支
 // 注意：oneDid 是 xy 平面 2D 索引（范围 [0, xRankSize*yRankSize)），pieceId 不应再叠加 rooty*xRankSize
 static void CalcScatterZSameAxisFwdPieces(
-    u64 osn, u64 outerStepNum, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 oneDid,
-    ScatterPieceVecs& pieces)
+    u64 osn, u64 outerStepNum, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    const ScatterTopoInfo& topo, uint32_t root, u64 oneDid, ScatterPieceVecs& pieces)
 {
     u64 xRankSize = topo.xRankSize;
     u64 yRankSize = topo.yRankSize;
@@ -419,10 +418,10 @@ static void CalcScatterZSameAxisFwdPieces(
 }
 
 void PushScatterZSameAxisSteps(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
-    const ScatterTopoInfo& topo, u64 zCclBufferBaseOff, u64 zCornerStep, u64 outerStepNum, uint32_t root)
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, u64 zCclBufferBaseOff,
+    u64 zCornerStep, u64 outerStepNum, uint32_t root)
 {
     HCCL_DEBUG("[PushScatterZSameAxisSteps] start push scatter z same axis steps");
     for (u64 osn = zCornerStep; osn < outerStepNum; osn++) {
@@ -449,9 +448,8 @@ void PushScatterZSameAxisSteps(
 // 计算z轴同轴段(z带宽>xy)非rootz节点的转发piece：sliceSize和offset都从xy轴取
 // 注意：oneDid 是 xy 平面 2D 索引（范围 [0, xRankSize*yRankSize)），pieceId 不应再叠加 rooty*xRankSize
 static void CalcScatterZSameAxisZgXYFwdPieces(
-    u64 xySDataSize[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 oneDid,
-    ScatterPieceVecs& pieces)
+    u64 xySDataSize[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    const ScatterTopoInfo& topo, uint32_t root, u64 oneDid, ScatterPieceVecs& pieces)
 {
     u64 yRankSize = topo.yRankSize;
     u64 xRankSize = topo.xRankSize;
@@ -472,10 +470,10 @@ static void CalcScatterZSameAxisZgXYFwdPieces(
 }
 
 void PushScatterZSameAxisStepsZgXY(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
-    const ScatterTopoInfo& topo, u64 zCclBufferBaseOff, u64 zCornerStep, u64 outerStepNum, uint32_t root)
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, u64 zCclBufferBaseOff,
+    u64 zCornerStep, u64 outerStepNum, uint32_t root)
 {
     HCCL_DEBUG("[PushScatterZSameAxisStepsZgXY] start push scatter z same axis steps when z bandwidth greater than xy "
                "bandwidth");
@@ -499,8 +497,8 @@ void PushScatterZSameAxisStepsZgXY(
 }
 
 void PushScatterXInnerCornerOneDiag(
-    ScatterPieceVecs& pieces, u64 osn, u64 isn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    ScatterPieceVecs& pieces, u64 osn, u64 isn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 oneDid, uint32_t root)
 {
@@ -534,8 +532,8 @@ void PushScatterXInnerCornerOneDiag(
 }
 
 void PushScatterXInnerCornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 xCclBufferBaseOff, u64 xInCornerStep,
     uint32_t root)
@@ -558,8 +556,8 @@ void PushScatterXInnerCornerOneOsn(
 }
 
 static void CalcScatterXInnerDiagPieces(
-    u64 osn, u64 isn, u64 xySDataSize[][MAX_STEP_NUM_SC], u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 osn, u64 isn, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, ScatterPieceVecs& pieces)
 {
@@ -592,11 +590,10 @@ static void CalcScatterXInnerDiagPieces(
 }
 
 static void CalcScatterXInnerSameAxisPieceOffset(
-    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 pieceId, u64& sliceSizeOnePiece,
-    u64& inputPieceIdOffset, u64& outputPieceIdOffset)
+    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
+    u64 pieceId, u64& sliceSizeOnePiece, u64& inputPieceIdOffset, u64& outputPieceIdOffset)
 {
     u64 xyBaseOff = xySOffset[root][osn];
     if (innerStepNum == 2) {
@@ -642,11 +639,11 @@ static void CalcScatterXInnerSameAxisPieceOffset(
 
 // 计算x轴内层同轴段非rooty节点的转发piece：遍历非rootx的x轴rank和非rootz的z轴rank
 static void CalcScatterXInnerSameAxisFwdPieces(
-    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
-    const ScatterTopoInfo& topo, uint32_t root, u64 oneDid, ScatterPieceVecs& pieces)
+    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 oneDid,
+    ScatterPieceVecs& pieces)
 {
     u64 zRankSize = topo.zRankSize;
     u64 xRankSize = topo.xRankSize;
@@ -676,10 +673,10 @@ static void CalcScatterXInnerSameAxisFwdPieces(
 }
 
 void PushScatterXInnerSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 xCclBufferBaseOff, u64 xInCornerStep,
     u64 innerStepNum, uint32_t root)
@@ -705,8 +702,8 @@ void PushScatterXInnerSameAxisOneOsn(
 }
 
 static void CalcScatterXOverSameAxisPieces(
-    u64 osn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 osn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 one,
     ScatterPieceVecs& pieces)
 {
@@ -739,9 +736,9 @@ static void CalcScatterXOverSameAxisPieces(
 }
 
 void PushScatterXOverSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 xCclBufferBaseOff, u64 xInCornerStep,
     u64 innerStepNum, uint32_t root)
@@ -782,8 +779,8 @@ void PushScatterXOverSameAxisOneOsn(
 
 // 收集x轴外层斜对角piece：遍历非rootx的x轴rank和非rooty的y轴rank，计算xyoffset并调用CalcAndPushPiece
 static void PushScatterXOuterCornerDiagPieces(
-    u64 osn, u64 isn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    u64 osn, u64 isn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root, u64 dataTypeSize,
     ScatterPieceVecs& pieces)
 {
@@ -811,8 +808,8 @@ static void PushScatterXOuterCornerDiagPieces(
 // scatter x轴外层 xB<=yB
 // 斜对角段（单个osn，isn∈[0,xInCornerStep)）：root发斜对角数据，root数据放index=rootx，其余x轴rank塞0
 void PushScatterXOuterLECornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 xCclBufferBaseOff, u64 xInCornerStep)
 {
@@ -825,13 +822,8 @@ void PushScatterXOuterLECornerOneOsn(
         u64 rootx = topo.rootx;
         u64 rooty = topo.rooty;
         ScatterPieceVecs pieces;
-        for (u64 oneDid = 0; oneDid < xRankSize; oneDid++) {
-            if (oneDid == rootx) {
-                continue;
-            }
-            PushScatterXOuterCornerDiagPieces(
-                osn, isn, xSDataSize, xySOffset, xSOffset, perLoop, total, topo, root, dataTypeSize, pieces);
-        }
+        PushScatterXOuterCornerDiagPieces(
+            osn, isn, xSDataSize, xySOffset, xSOffset, perLoop, total, topo, root, dataTypeSize, pieces);
         for (u64 oneDid = 0; oneDid < yRankSize; oneDid++) {
             PushRootOrZeros(stepSliceInfotmp, pieces, oneDid, rooty, 0);
         }
@@ -843,8 +835,8 @@ void PushScatterXOuterLECornerOneOsn(
 // 同轴转发段（单个osn，isn∈[xInCornerStep,innerStepNum)）：root发同x轴数据，同y轴非root节点转发step1收到的对角数据
 void CalcScatterXOuterLEOffset(
     u64& inputPieceIdOffset, u64& outputPieceIdOffset, u64& sliceSizeOnePiece,
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, u64 isn, u64 innerStepNum, u64 pieceId,
     const ScatterTopoInfo& topo)
 {
@@ -890,12 +882,11 @@ void CalcScatterXOuterLEOffset(
 
 // scatter x轴外层 xB<=yB 同轴转发段：为非rooty的y轴节点构建转发piece并Push
 void PushScatterXOuterLEFwdOneRank(
-    StepSliceInfo& stepSliceInfotmp, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
-    u64 osn, u64 isn, u64 innerStepNum, const ScatterTopoInfo& topo, u64 oneDid,
-    const std::vector<u64>& dataSizePerLoop)
+    StepSliceInfo& stepSliceInfotmp, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, u64 isn, u64 innerStepNum,
+    const ScatterTopoInfo& topo, u64 oneDid, const std::vector<u64>& dataSizePerLoop)
 {
     HCCL_DEBUG("[PushScatterXOuterLEFwdOneRank] start push scatter x outer le fwd one rank");
     ScatterPieceVecs pieces;
@@ -938,10 +929,10 @@ void PushScatterXOuterLEFwdOneRank(
 }
 
 void PushScatterXOuterLESameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root, u64 xCclBufferBaseOff,
     u64 xInCornerStep, u64 innerStepNum, const std::vector<u64>& dataSizePerLoop)
 {
@@ -979,8 +970,8 @@ void PushScatterXOuterLESameAxisOneOsn(
 // scatter x轴外层 xB>yB
 // 斜对角转发段（单个osn，isn∈[0,xInCornerStep+1)）：前两步都是转发对角数据，buffer用yCclBufferBaseOff
 void PushScatterXOuterGTCornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 yCclBufferBaseOff, u64 xInCornerStep)
 {
@@ -993,12 +984,8 @@ void PushScatterXOuterGTCornerOneOsn(
     for (u64 isn = 0; isn < xInCornerStep + 1; isn++) {
         StepSliceInfo stepSliceInfotmp = MakeStepSliceInfo(yCclBufferBaseOff);
         ScatterPieceVecs pieces;
-        for (u64 oneDid = 0; oneDid < xRankSize; oneDid++) {
-            if (oneDid == rootx)
-                continue;
-            PushScatterXOuterCornerDiagPieces(
-                osn, isn, xSDataSize, xySOffset, xSOffset, perLoop, total, topo, root, dataTypeSize, pieces);
-        }
+        PushScatterXOuterCornerDiagPieces(
+            osn, isn, xSDataSize, xySOffset, xSOffset, perLoop, total, topo, root, dataTypeSize, pieces);
         for (u64 one = 0; one < yRankSize; one++) {
             PushRootOrZeros(stepSliceInfotmp, pieces, one, rooty, 0);
         }
@@ -1008,10 +995,9 @@ void PushScatterXOuterGTCornerOneOsn(
 
 // scatter x轴外层 xB>yB 同轴转发段：为非rooty的y轴节点构建转发piece并Push
 void PushScatterXOuterGTFwdOneRank(
-    StepSliceInfo& stepSliceInfotmp, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, const ScatterTopoInfo& topo, u64 one,
-    u64 dataTypeSize)
+    StepSliceInfo& stepSliceInfotmp, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
+    u64 osn, const ScatterTopoInfo& topo, u64 one, u64 dataTypeSize)
 {
     ScatterPieceVecs pieces1;
     u64 xRankSize = topo.xRankSize;
@@ -1030,9 +1016,9 @@ void PushScatterXOuterGTFwdOneRank(
 }
 
 void PushScatterXOuterGTSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 yCclBufferBaseOff, u64 xInCornerStep, u64 innerStepNum)
 {
@@ -1068,8 +1054,8 @@ void PushScatterXOuterGTSameAxisOneOsn(
 
 // scatter y轴内层斜对角段（单个osn，isn∈[0,yInCornerStep)）：root和同轴线节点处理y轴斜对角通信
 void PushScatterYInnerCornerOneDiag(
-    ScatterPieceVecs& pieces, u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    ScatterPieceVecs& pieces, u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, u64 oneDid, uint32_t root)
 {
@@ -1105,8 +1091,8 @@ void PushScatterYInnerCornerOneDiag(
 }
 
 void PushScatterYInnerCornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, u64 yCclBufferBaseOff, u64 yInCornerStep, uint32_t root)
 {
@@ -1128,8 +1114,8 @@ void PushScatterYInnerCornerOneOsn(
 }
 
 static void CalcScatterYOverDiagPieces(
-    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root,
     ScatterPieceVecs& pieces)
 {
@@ -1163,11 +1149,10 @@ static void CalcScatterYOverDiagPieces(
 }
 
 static void CalcScatterYOverSameAxisPieceOffset(
-    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 pieceId, u64& sliceSizeOnePiece,
-    u64& inputPieceIdOffset, u64& outputPieceIdOffset)
+    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
+    u64 pieceId, u64& sliceSizeOnePiece, u64& inputPieceIdOffset, u64& outputPieceIdOffset)
 {
     u64 xyBaseOff = xySOffset[root][osn];
     if (innerStepNum == SPECIAL_TWO_STEP_NUM) {
@@ -1213,11 +1198,11 @@ static void CalcScatterYOverSameAxisPieceOffset(
 
 // 计算y轴外层同轴段非rootx节点的转发piece：遍历非rooty的y轴rank和非rootz的z轴rank
 static void CalcScatterYOverSameAxisFwdPieces(
-    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
-    const ScatterTopoInfo& topo, uint32_t root, u64 oneDid, ScatterPieceVecs& pieces)
+    u64 osn, u64 isn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 oneDid,
+    ScatterPieceVecs& pieces)
 {
     u64 xRankSize = topo.xRankSize;
     u64 yRankSize = topo.yRankSize;
@@ -1247,10 +1232,10 @@ static void CalcScatterYOverSameAxisFwdPieces(
 }
 
 void PushScatterYOverSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo,
     const std::vector<u64>& dataSizePerLoop, u64 yCclBufferBaseOff, u64 yInCornerStep, u64 innerStepNum, uint32_t root)
 {
@@ -1275,8 +1260,8 @@ void PushScatterYOverSameAxisOneOsn(
 
 // scatter y轴内层同轴段（单个osn，isn∈[yInCornerStep,innerStepNum)）：root和同轴线节点处理y轴同轴通信
 static void CalcScatterYInnerDiagPieces(
-    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root,
     ScatterPieceVecs& pieces)
 {
@@ -1309,8 +1294,8 @@ static void CalcScatterYInnerDiagPieces(
 }
 
 static void CalcScatterYInnerSameAxisPieces(
-    u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const ScatterTopoInfo& topo, uint32_t root, u64 one,
     ScatterPieceVecs& pieces)
 {
@@ -1343,9 +1328,9 @@ static void CalcScatterYInnerSameAxisPieces(
 }
 
 void PushScatterYInnerSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 yCclBufferBaseOff, u64 yInCornerStep,
     u64 innerStepNum, uint32_t root)
@@ -1372,8 +1357,8 @@ void PushScatterYInnerSameAxisOneOsn(
 
 // 收集y轴外层斜对角piece：遍历非rooty的y轴rank和非rootx的x轴rank，计算xyoffset并调用CalcAndPushPiece
 static void PushScatterYOuterCornerDiagPieces(
-    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    u64 osn, u64 isn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root, u64 dataTypeSize,
     ScatterPieceVecs& pieces)
 {
@@ -1401,8 +1386,8 @@ static void PushScatterYOuterCornerDiagPieces(
 // scatter y轴外层 xB<=yB
 // 斜对角段（单个osn，isn∈[0,yInCornerStep+1)）：root发斜对角数据，root数据放index=rootx，其余x轴rank塞0
 void PushScatterYOuterLECornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 yCclBufferBaseOff, u64 yInCornerStep)
 {
@@ -1424,9 +1409,9 @@ void PushScatterYOuterLECornerOneOsn(
 
 // scatter y轴外层 xB<=yB 同轴转发段：为非rootx的x轴节点构建转发piece并Push
 void PushScatterYOuterLEFwdOneRank(
-    StepSliceInfo& stepSliceInfotmp, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, const ScatterTopoInfo& topo, u64 oneDid)
+    StepSliceInfo& stepSliceInfotmp, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
+    u64 osn, const ScatterTopoInfo& topo, u64 oneDid)
 {
     HCCL_DEBUG("[PushScatterYOuterLEFwdOneRank] start push scatter y outer le fwd one rank");
     u64 xRankSize = topo.xRankSize;
@@ -1448,9 +1433,9 @@ void PushScatterYOuterLEFwdOneRank(
 // scatter y轴外层 xB<=yB
 // 同轴转发段（单个osn，isn∈[yInCornerStep+1,innerStepNum)）：root发同y轴数据，同x轴非root节点转发step1收到的对角数据
 void PushScatterYOuterLESameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 yCclBufferBaseOff, u64 yInCornerStep, u64 innerStepNum)
 {
@@ -1484,8 +1469,8 @@ void PushScatterYOuterLESameAxisOneOsn(
 // scatter y轴外层 xB>yB
 // 斜对角段（单个osn，isn∈[0,yInCornerStep)）：第一步只有root发斜对角数据，buffer用xCclBufferBaseOff
 void PushScatterYOuterGTCornerOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, const std::vector<OmniPipeSplitSliceInfo>& total,
     const ScatterTopoInfo& topo, uint32_t root, u64 xCclBufferBaseOff, u64 yInCornerStep)
 {
@@ -1496,13 +1481,8 @@ void PushScatterYOuterGTCornerOneOsn(
         u64 yRankSize = topo.yRankSize;
         u64 dataTypeSize = topo.dataTypeSize;
         ScatterPieceVecs pieces;
-        for (u64 oneDid = 0; oneDid < yRankSize; oneDid++) {
-            if (oneDid == topo.rooty) {
-                continue;
-            }
-            PushScatterYOuterCornerDiagPieces(
-                osn, isn, ySDataSize, xySOffset, ySOffset, perLoop, total, topo, root, dataTypeSize, pieces);
-        }
+        PushScatterYOuterCornerDiagPieces(
+            osn, isn, ySDataSize, xySOffset, ySOffset, perLoop, total, topo, root, dataTypeSize, pieces);
         for (u64 oneRank = 0; oneRank < xRankSize; oneRank++) {
             PushRootOrZeros(stepSliceInfotmp, pieces, oneRank, topo.rootx, 0);
         }
@@ -1514,8 +1494,8 @@ void PushScatterYOuterGTCornerOneOsn(
 // 同轴转发段（单个osn，isn∈[yInCornerStep,innerStepNum)）：root发同y轴数据，同x轴非root节点转发step1收到的对角数据
 void CalcScatterYOuterGTOffset(
     u64& inputPieceIdOffset, u64& outputPieceIdOffset, u64& sliceSizeOnePiece,
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, u64 isn, u64 innerStepNum, u64 pieceId,
     const ScatterTopoInfo& topo)
 {
@@ -1560,12 +1540,14 @@ void CalcScatterYOuterGTOffset(
 }
 
 // scatter y轴外层 xB>yB 同轴转发段：为非rootx的x轴节点构建转发piece并Push
+// rankx为当前遍历的x轴列号（7.30原版参数，4cb1c5e49重构时误以topo.rootx替代，
+// 导致所有非root列取得root所在列的偏移，转发数据发到错误位置。此处恢复原版rankx参数）。
 void PushScatterYOuterGTFwdOneRank(
-    StepSliceInfo& stepSliceInfotmp, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root,
-    u64 osn, u64 isn, u64 innerStepNum, const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop)
+    StepSliceInfo& stepSliceInfotmp, u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    const std::vector<OmniPipeSplitSliceInfo>& perLoop, uint32_t root, u64 osn, u64 isn, u64 innerStepNum,
+    const ScatterTopoInfo& topo, const std::vector<u64>& dataSizePerLoop, u64 rankx)
 {
     HCCL_DEBUG("[PushScatterYOuterGTFwdOneRank] start push scatter y outer gt fwd one rank");
     u64 xRankSize = topo.xRankSize;
@@ -1576,7 +1558,7 @@ void PushScatterYOuterGTFwdOneRank(
     for (u64 cornerDataSlice = 0; cornerDataSlice < yRankSize; cornerDataSlice++) {
         if (cornerDataSlice == topo.rooty)
             continue;
-        u64 pieceId = topo.zAxis * xRankSize * yRankSize + cornerDataSlice * xRankSize + topo.rootx;
+        u64 pieceId = topo.zAxis * xRankSize * yRankSize + cornerDataSlice * xRankSize + rankx;
         u64 xyoffset = sameZAxis ? xySOffset[root][osn - 1] : xySOffset[root][osn];
         u64 xysize = sameZAxis ? xySDataSize[root][osn - 1] : xySDataSize[root][osn];
         u64 sliceSizeOnePiece
@@ -1605,10 +1587,10 @@ void PushScatterYOuterGTFwdOneRank(
 }
 
 void PushScatterYOuterGTSameAxisOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& perLoop,
     const std::vector<OmniPipeSplitSliceInfo>& total, const ScatterTopoInfo& topo, uint32_t root, u64 xCclBufferBaseOff,
     u64 yInCornerStep, u64 innerStepNum, const std::vector<u64>& dataSizePerLoop)
 {
@@ -1635,7 +1617,7 @@ void PushScatterYOuterGTSameAxisOneOsn(
             } else {
                 PushScatterYOuterGTFwdOneRank(
                     stepSliceInfotmp, xySDataSize, xSDataSize, ySDataSize, xySOffset, xSOffset, ySOffset, perLoop, root,
-                    osn, isn, innerStepNum, topo, dataSizePerLoop);
+                    osn, isn, innerStepNum, topo, dataSizePerLoop, rankx);
             }
         }
         dataSliceLevely.insert(dataSliceLevely.end(), stepSliceInfotmp);
@@ -1667,9 +1649,11 @@ ScatterTopoInfo InitScatterTopoInfo(OmniPipeSliceParam& omniPipeSliceParam, uint
     info.zB = endpointAttrBw[OmniPipeLevel::OMNIPIPE_LEVEL2];
     info.xyB = info.xB;
     if (info.yB >= info.xB) {
-        info.xyB = CalcBandwidth2D(info.xB, info.yB, info.xRankSize, info.yRankSize, MAX_STEP_NUM_SC);
+        info.xyB = CalcBandwidth2D(
+            info.xB, info.yB, info.xRankSize, info.yRankSize, (info.zRankSize > 1) ? MAX_STEP_NUM_SC : MAX_STEP_NUM);
     } else {
-        info.xyB = CalcBandwidth2D(info.yB, info.xB, info.yRankSize, info.xRankSize, MAX_STEP_NUM_SC);
+        info.xyB = CalcBandwidth2D(
+            info.yB, info.xB, info.yRankSize, info.xRankSize, (info.zRankSize > 1) ? MAX_STEP_NUM_SC : MAX_STEP_NUM);
     }
     info.xAxis = levelRankId[OmniPipeLevel::OMNIPIPE_LEVEL0];
     info.yAxis = levelRankId[OmniPipeLevel::OMNIPIPE_LEVEL1];
@@ -1697,18 +1681,18 @@ void InitScatterStepFlags(ScatterStepState& state, const ScatterTopoInfo& topo)
 
 // 零初始化scatter数据大小与偏移数组
 void ZeroInitScatterDataArrays(
-    u64 rankSize, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC])
+    u64 rankSize, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM])
 {
     for (u64 rs = 0; rs < rankSize; rs++) {
-        for (u64 i = 0; i < MAX_STEP_NUM_SC; i++) {
+        for (u64 i = 0; i < MAX_STEP_NUM; i++) {
             zSDataSize[rs][i] = 0;
             xySDataSize[rs][i] = 0;
             zSOffset[rs][i] = 0;
             xySOffset[rs][i] = 0;
-            for (u64 j = 0; j < MAX_STEP_NUM_SC; j++) {
+            for (u64 j = 0; j < MAX_STEP_NUM; j++) {
                 xSDataSize[rs][i][j] = 0;
                 ySDataSize[rs][i][j] = 0;
                 xSOffset[rs][i][j] = 0;
@@ -1721,9 +1705,9 @@ void ZeroInitScatterDataArrays(
 // 计算单个rank的scatter数据大小与偏移（isZSlowAxis决定外层轴选择，isXSlowAxis决定内层轴选择）
 static void CalcScatterInnerStepOnce(
     u64 rs, u64 i, const ScatterTopoInfo& topo, ScatterStepState& state, double innerSlowBw, double innerFastBw,
-    u64 innerSlowRankSize, u64 innerFastRankSize, u64 prevStepDataSize,
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC])
+    u64 innerSlowRankSize, u64 innerFastRankSize, u64 prevStepDataSize, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM])
 {
     u64* innerSlowDataSize = state.isXSlowAxis ? ySDataSize[rs][i] : xSDataSize[rs][i];
     u64* innerFastDataSize = state.isXSlowAxis ? xSDataSize[rs][i] : ySDataSize[rs][i];
@@ -1732,7 +1716,7 @@ static void CalcScatterInnerStepOnce(
 
     state.innerStepNum = CalScatterDataSize2D(
         innerSlowDataSize, innerFastDataSize, innerSlowBw, innerFastBw, innerSlowRankSize, innerFastRankSize,
-        prevStepDataSize, MAX_STEP_NUM_SC);
+        prevStepDataSize, (topo.zRankSize > 1) ? MAX_STEP_NUM_SC : MAX_STEP_NUM);
     HCCL_DEBUG("[CalcScatterOneRankDataSize] innerStepNum: %llu", state.innerStepNum);
     CalScatter2DOffset(
         innerSlowOffset, innerFastOffset, state.innerStepNum, innerSlowRankSize, innerFastRankSize, innerSlowDataSize,
@@ -1743,8 +1727,8 @@ static void CalcScatterInnerStepOnce(
 static void CalcScatterRootSameAxisInnerSteps(
     u64 rs, const ScatterTopoInfo& topo, ScatterStepState& state, double innerSlowBw, double innerFastBw,
     u64 innerSlowRankSize, u64 innerFastRankSize, u64* slowDataSize, u64* fastDataSize,
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC])
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM])
 {
     if (topo.zB >= topo.xyB) {
         for (u64 i = 1; i < state.outerStepNum; i++) {
@@ -1763,8 +1747,8 @@ static void CalcScatterRootSameAxisInnerSteps(
 static void CalcScatterNonRootSameAxisInnerSteps(
     u64 rs, const ScatterTopoInfo& topo, ScatterStepState& state, double innerSlowBw, double innerFastBw,
     u64 innerSlowRankSize, u64 innerFastRankSize, u64* slowDataSize, u64* fastDataSize,
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC])
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM])
 {
     for (u64 i = 0; i < state.outerStepNum; i++) {
         u64 prevStepDataSize = state.isZSlowAxis ? fastDataSize[i] : slowDataSize[i];
@@ -1791,10 +1775,10 @@ static void CalcScatterInCornerStep(ScatterStepState& state, u64 finStepMark)
 
 void CalcScatterOneRankDataSize(
     const ScatterTopoInfo& topo, ScatterStepState& state, u64 rs, u64 finStepMark, double slowBw, double fastBw,
-    u64 slowRankSize, u64 fastRankSize, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
+    u64 slowRankSize, u64 fastRankSize, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop)
 {
     u64* slowDataSize = state.isZSlowAxis ? zSDataSize[rs] : xySDataSize[rs];
@@ -1804,7 +1788,7 @@ void CalcScatterOneRankDataSize(
 
     state.outerStepNum = CalScatterDataSize2D(
         slowDataSize, fastDataSize, slowBw, fastBw, slowRankSize, fastRankSize,
-        omniPipeSplitSliceInfoListPerLoop[rs].size, MAX_STEP_NUM_SC - 1);
+        omniPipeSplitSliceInfoListPerLoop[rs].size, (topo.zRankSize > 1) ? (MAX_STEP_NUM_SC - 1) : MAX_STEP_NUM);
     HCCL_DEBUG("[CalcScatterOneRankDataSize] outerStepNum: %llu", state.outerStepNum);
 
     double innerSlowBw = state.isXSlowAxis ? topo.yB : topo.xB;
@@ -1851,11 +1835,10 @@ void CalcScatterOuterCornerStep(const ScatterTopoInfo& topo, ScatterStepState& s
 // 计算所有rank的scatter数据大小与偏移
 void CalcScatterAllRankDataSize(
     const ScatterTopoInfo& topo, ScatterStepState& state, uint32_t root, u64 finStepMark,
-    u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop)
+    u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop)
 {
     HCCL_DEBUG("[CalcScatterAllRankDataSize] start calc scatter all rank data size");
     double slowBw = state.isZSlowAxis ? topo.zB : topo.xyB;
@@ -1878,10 +1861,10 @@ void CalcScatterAllRankDataSize(
 
 // 构建X轴所有step的slice信息（inner corner+sameAxis + outer corner+sameAxis）
 static void PushScatterXCornerLEOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, const ScatterTopoInfo& topo,
     const std::vector<u64>& dataSizePerLoop, u64 xCclBufferBaseOff, u64 xInCornerStep, u64 innerStepNum, uint32_t root)
@@ -1896,9 +1879,9 @@ static void PushScatterXCornerLEOneOsn(
 }
 
 static void PushScatterXCornerGtOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
-    u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelx, u64 osn, u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, const ScatterTopoInfo& topo,
     const std::vector<u64>& dataSizePerLoop, u64 xCclBufferBaseOff, u64 xInCornerStep, u64 innerStepNum, uint32_t root)
@@ -1913,10 +1896,9 @@ static void PushScatterXCornerGtOneOsn(
 
 void PushScatterXAllSteps(
     std::vector<StepSliceInfo>& dataSliceLevelx, const ScatterTopoInfo& topo, const ScatterStepState& state,
-    u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, uint32_t root, u64 xCclBufferBaseOff,
     u64 yCclBufferBaseOff, const std::vector<u64>& dataSizePerLoop)
@@ -1975,10 +1957,10 @@ void PushScatterXAllSteps(
 
 // 构建Y轴所有step的slice信息（inner corner+sameAxis + outer corner+sameAxis）
 static void PushScatterYCornerLEOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, const ScatterTopoInfo& topo,
     const std::vector<u64>& dataSizePerLoop, u64 yCclBufferBaseOff, u64 yInCornerStep, u64 innerStepNum, uint32_t root)
@@ -1993,10 +1975,10 @@ static void PushScatterYCornerLEOneOsn(
 }
 
 static void PushScatterYCornerGtOneOsn(
-    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevely, u64 osn, u64 innerStepNum, u64 xySDataSize[][MAX_STEP_NUM],
+    u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 xySOffset[][MAX_STEP_NUM], u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, const ScatterTopoInfo& topo,
     const std::vector<u64>& dataSizePerLoop, u64 yCclBufferBaseOff, u64 yInCornerStep, uint32_t root)
@@ -2012,10 +1994,9 @@ static void PushScatterYCornerGtOneOsn(
 
 void PushScatterYAllSteps(
     std::vector<StepSliceInfo>& dataSliceLevely, const ScatterTopoInfo& topo, const ScatterStepState& state,
-    u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 xSDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC], u64 ySDataSize[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC], u64 xSOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
-    u64 ySOffset[][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC],
+    u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM], u64 xSDataSize[][MAX_STEP_NUM][MAX_STEP_NUM],
+    u64 ySDataSize[][MAX_STEP_NUM][MAX_STEP_NUM], u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
+    u64 xSOffset[][MAX_STEP_NUM][MAX_STEP_NUM], u64 ySOffset[][MAX_STEP_NUM][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, uint32_t root, u64 xCclBufferBaseOff,
     u64 yCclBufferBaseOff, const std::vector<u64>& dataSizePerLoop)
@@ -2072,8 +2053,8 @@ void PushScatterYAllSteps(
 }
 
 static void PushScatterZAllSteps(
-    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM_SC], u64 xySDataSize[][MAX_STEP_NUM_SC],
-    u64 zSOffset[][MAX_STEP_NUM_SC], u64 xySOffset[][MAX_STEP_NUM_SC],
+    std::vector<StepSliceInfo>& dataSliceLevelz, u64 zSDataSize[][MAX_STEP_NUM], u64 xySDataSize[][MAX_STEP_NUM],
+    u64 zSOffset[][MAX_STEP_NUM], u64 xySOffset[][MAX_STEP_NUM],
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListPerLoop,
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoListTotal, const ScatterTopoInfo& topo,
     const ScatterStepState& state, u64 zCclBufferBaseOff, uint32_t root)
@@ -2115,14 +2096,14 @@ OmniPipeSliceInfo CalcScatterOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSlice
     std::vector<OmniPipeSplitSliceInfo> omniPipeSplitSliceInfoListTotal
         = OmniPipeSplitSliceInfoListAssign(omniPipeSliceParam.dataWholeSize, topo.rankSize, topo.dataTypeSize);
 
-    u64 zSDataSize[topo.rankSize][MAX_STEP_NUM_SC];
-    u64 xySDataSize[topo.rankSize][MAX_STEP_NUM_SC];
-    u64 xSDataSize[topo.rankSize][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC];
-    u64 ySDataSize[topo.rankSize][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC];
-    u64 zSOffset[topo.rankSize][MAX_STEP_NUM_SC];
-    u64 xSOffset[topo.rankSize][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC];
-    u64 ySOffset[topo.rankSize][MAX_STEP_NUM_SC][MAX_STEP_NUM_SC];
-    u64 xySOffset[topo.rankSize][MAX_STEP_NUM_SC];
+    u64 zSDataSize[topo.rankSize][MAX_STEP_NUM];
+    u64 xySDataSize[topo.rankSize][MAX_STEP_NUM];
+    u64 xSDataSize[topo.rankSize][MAX_STEP_NUM][MAX_STEP_NUM];
+    u64 ySDataSize[topo.rankSize][MAX_STEP_NUM][MAX_STEP_NUM];
+    u64 zSOffset[topo.rankSize][MAX_STEP_NUM];
+    u64 xSOffset[topo.rankSize][MAX_STEP_NUM][MAX_STEP_NUM];
+    u64 ySOffset[topo.rankSize][MAX_STEP_NUM][MAX_STEP_NUM];
+    u64 xySOffset[topo.rankSize][MAX_STEP_NUM];
     ZeroInitScatterDataArrays(
         topo.rankSize, zSDataSize, xySDataSize, xSDataSize, ySDataSize, zSOffset, xSOffset, ySOffset, xySOffset);
     u64 xCclBufferBaseOff = 0;
