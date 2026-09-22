@@ -858,6 +858,11 @@ HcclResult HcclExecOp(
         return HCCL_E_INTERNAL;
     }
 
+    // 正常路径的初始选择、资源不足触发的FallbackOp回退、回退缓存命中的递归调用
+    // 都会携带最终algName与engine走到这里。算子入口仅按初始选中的算法评估对称内存，
+    // 回退到AICPU_TS引擎时由此处统一补齐对称内存探测与检查
+    CHK_RET(RefreshSymmetricMemory(param, topoInfo.get()));
+
     std::unique_ptr<InsCollAlgBase> executor = CollAlgExecRegistryV2::Instance().GetAlgExec(param.opType, algName);
     CHK_PRT_RET(
         executor.get() == nullptr, HCCL_ERROR("Fail to find executor for algName[%s]", algName.c_str()), HCCL_E_PARA);
@@ -4008,8 +4013,66 @@ bool IsBarrierHostDpu(HcclComm comm)
     return false;
 }
 
+// AllReduce/ReduceScatter共用的对称内存限制：64位数据类型与PROD规约不支持，
+// 与算子入口Selector后的限制条件保持一致
+static bool IsReduceOpSymMemAllowed(const OpParam& param)
+{
+    return param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64
+           && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_UINT64
+           && param.DataDes.dataType != HcclDataType::HCCL_DATA_TYPE_FP64
+           && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
+}
+
+// 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效
+static bool IsSymMemWindowValid(const OpParam& param)
+{
+    bool inputValid = param.inputPtr == nullptr || param.inputSize == 0 || param.inputSymWindow != nullptr;
+    bool outputValid = param.outputPtr == nullptr || param.outputSize == 0 || param.outputSymWindow != nullptr;
+    return inputValid && outputValid;
+}
+
+HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    // 基础门禁与算子入口一致：版本、单算子模式、AICPU_TS引擎、MESH_1D一级拓扑
+    bool symMemAllowed = GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+                         && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
+                         && topoInfo->level0Topo == Level0Shape::MESH_1D;
+    if (symMemAllowed) {
+        switch (param.opType) {
+            case HcclCMDType::HCCL_CMD_ALLGATHER:
+            case HcclCMDType::HCCL_CMD_BROADCAST:
+            case HcclCMDType::HCCL_CMD_ALLTOALL:
+            case HcclCMDType::HCCL_CMD_ALLTOALLVC:
+                break;
+            case HcclCMDType::HCCL_CMD_ALLREDUCE:
+                symMemAllowed = IsReduceOpSymMemAllowed(param);
+                break;
+            case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
+                symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr;
+                break;
+            default:
+                symMemAllowed = false;
+                break;
+        }
+    }
+
+    if (symMemAllowed) {
+        if (param.symMemChecked) {
+            // 本轮已在算子入口探测过，窗口句柄仍留在param中，无需重复查询；
+            // 入口条件块可能因初始引擎/算法清过flag，此处按窗口有效性恢复
+            param.supportSymmetricMemory = IsSymMemWindowValid(param);
+        } else {
+            CheckAndSetSymmetricMemory(param);
+        }
+    }
+    // 条件不满足时不清除：初始路径的清除由算子入口条件块负责；
+    // 回退仅发生在CCU向AICPU_TS的降级方向，初始为CCU时入口的flag必为false
+    return HCCL_SUCCESS;
+}
+
 void CheckAndSetSymmetricMemory(OpParam& param)
 {
+    param.symMemChecked = true;
     size_t inputOffset = 0;
     size_t outputOffset = 0;
 

@@ -237,6 +237,8 @@ bool IsHostDpu(HcclComm comm);
 bool IsBarrierHostDpu(HcclComm comm);
 
 void CheckAndSetSymmetricMemory(OpParam& param);
+
+HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo);
 } // namespace ops_hccl
 
 #endif

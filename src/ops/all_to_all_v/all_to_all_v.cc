@@ -771,13 +771,16 @@ HcclResult AlltoAllVExecDispatch(
           && !topoInfo->level0PcieMix;
     const bool isAllToAllConcurrent
         = param.opType == HcclCMDType::HCCL_CMD_ALLTOALL && algName == "AicpuAllToAllSoleMeshConcurrent";
+    // 探测结果无条件带入param：窗口句柄供HcclExecOp回退路径直接复用，避免重复探测；
+    // 是否生效仍由下方引擎/拓扑条件与HcclExecOp内的RefreshSymmetricMemory决定
+    param.inputSymWindow = probeParam.inputSymWindow;
+    param.inputOffset = probeParam.inputOffset;
+    param.outputSymWindow = probeParam.outputSymWindow;
+    param.outputOffset = probeParam.outputOffset;
+    param.symMemChecked = probeParam.symMemChecked;
     if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
         && (topoInfo->level0Topo == Level0Shape::MESH_1D || isSoleAlltoAllUbxSymmetric || isAllToAllConcurrent)) {
         param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
-        param.inputSymWindow = probeParam.inputSymWindow;
-        param.inputOffset = probeParam.inputOffset;
-        param.outputSymWindow = probeParam.outputSymWindow;
-        param.outputOffset = probeParam.outputOffset;
     }
 
     // 经过Selector后，算法可能从aicpu回退到aiv模型，需要检查aiv缓存
