@@ -20,13 +20,11 @@ using namespace ops_hccl;
 
 std::vector<CostModelParam> CcuTempAllReduceExperimentalMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    if (param.rankSize > 8) {
-        return {};
-    }
     // 和twoshot相同
-    int portNum = (param.portNum.size() == 1) ? param.portNum[0] : (param.portNum[0] + param.portNum[1]);
-    int kernelNum = 20;
-    int taskNum = 5 * (param.rankSize - 1);
+    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+                      (param.portNum[0] + param.portNum[1]) :
+                      param.portNum[0];
+    int kernelNum = 5;
     // 第一步是reducescatter，
     float A = 0.0f;
     float B = 0.0f;
@@ -35,7 +33,6 @@ std::vector<CostModelParam> CcuTempAllReduceExperimentalMesh1D::CalcCostCoeff(Ca
     CostModelManager::Global()->CalcMeshParam(
         2 * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
-    CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});

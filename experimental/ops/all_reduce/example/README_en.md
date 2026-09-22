@@ -68,7 +68,7 @@ hccl/                                                      # Repository root
 
 | Layer | File | Base Class | Responsibilities |
 |---|---|---|---|
-| executor | `executor/ins_v2_all_reduce_experimental_sole_executor.*` | `ops_hccl::InsCollAlgBase` (template class `InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>`) | A5 registration framework entry point: topology matching (`TopoMatch1D`), cost modeling `CalcCostCoeff`/`GetAlgNetMeta`, resource calculation `CalcRes`, per-loop orchestration `Orchestrate/OrchestrateLoop`, fast dispatch `FastLaunchSaveCtx/FastLaunch` |
+| executor | `executor/ins_v2_all_reduce_experimental_sole_executor.*` | `ops_hccl::InsCollAlgBase` (template class `InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>`) | A5 registration framework entry point: topology matching (`TopoMatchOneLevel`), cost modeling `CalcCostCoeff`/`GetAlgNetMeta`, resource calculation `CalcRes`, per-loop orchestration `Orchestrate/OrchestrateLoop`, fast dispatch `FastLaunchSaveCtx/FastLaunch` |
 | template | `template/ccu/ccu_temp_all_reduce_experimental_mesh_1D.*` | `ops_hccl::CcuAlgTemplateBase` | Slice calculation `CalcSliceInfo`, resource/data validation, `KernelRun` assembles taskArgs and calls `HcommCcuKernelLaunch`, `FastLaunch` rewrites addresses and dispatches directly |
 | kernel | `template/ccu/kernel/ccu_kernel_all_reduce_experimental_mesh1d.*` | `CcuKernelArgBase` / `CcuKernelCtxBase` | CCU variable-level kernel: `InitResource` establishes full-mesh input/output/token over `rankSize-1` channels, `LoadArgs`/`RunKernel`/`PostSync` complete reduce and synchronization |
 
@@ -76,7 +76,7 @@ hccl/                                                      # Repository root
 
 - **Registration (`REGISTER_EXEC_V2`)**: At the end of `ins_v2_all_reduce_experimental_sole_executor.cc`, via
   `REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceExperimentalSoleMesh,
-  InsV2AllReduceExperimentalSoleExecutor, TopoMatch1D, CcuTempAllReduceExperimentalMesh1D)`
+  InsV2AllReduceExperimentalSoleExecutor, TopoMatchOneLevel, CcuTempAllReduceExperimentalMesh1D)`
   binds the algorithm name to the executor/template and writes it into `CollAlgExecRegistryV2` (same macro, same registry as the main pathway),
   protected by the `CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)` compile guard.
 - **Algorithm attributes (`REGISTER_ALG_ATTRS`)**: Via
@@ -149,7 +149,7 @@ To implement a custom algorithm, you only need to create the following files und
 
 | File | Required/Optional | Description |
 |---|---|---|
-| `ins_v2_<op>_<variant>_executor.h` | Required | Executor class template, inherits `InsCollAlgBase`, implements `CalcAlgHierarchyInfo` / `CalcRes` / `Orchestrate` |
+| `ins_v2_<op>_<variant>_executor.h` | Required | Executor class template, inherits `InsCollAlgBase`, implements `CalcAlgHierarchyInfo(V2)` / `CalcRes` / `Orchestrate` |
 | `ins_v2_<op>_<variant>_executor.cc` | Required | Where the registration macros `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` are placed |
 | `<engine>_temp_<op>_<variant>.h` | Required | Template derived class, inherits the engine template base class, implements `CalcRes` / `KernelRun` / `GetThreadNum`, etc. |
 | `<engine>_temp_<op>_<variant>.cc` | Required | Template implementation |
@@ -161,6 +161,25 @@ To implement a custom algorithm, you only need to create the following files und
 - `<engine>`: Execution engine, values `ccu`/`aiv`/`aicpu`.
 - New algorithms register the exec pathway via `REGISTER_EXEC_V2`, then declare their topology/operator attributes via `REGISTER_ALG_ATTRS`; the two algorithm names must match. After registration they automatically enter the selector lookup table; no selector-side changes are needed.
 
+#### Algorithm Name Format
+
+The algorithm name (the `name` of `REGISTER_EXEC_V2`, which must match the `algoName` of `REGISTER_ALG_ATTRS`) is formed by concatenating registered tokens in the fixed order **`Engine·Op·Com·Algo`** (camel case), for example `CcuMSAllReduceSoleMesh`. Each segment's token comes from the registries in `src/common/alg_parse.cc`:
+
+- `Engine`: execution engine prefix (including pattern), e.g., `CcuMS` (the `MS` pattern of engine `Ccu`) / `CcuSched` / `Aiv` / `Aicpu` (`ENGINE_TYPES`);
+- `Op`: operator name, e.g., `AllReduce` (`OP_TYPES`);
+- `Com`: communication orchestration pattern / executor type, e.g., `Sole` (`EXECUTOR_TYPES`);
+- `Algo`: algorithm type (template), e.g., `Mesh` (`ALGO_TYPES`); it can stack multiple layers corresponding to multiple levels, e.g., `Algo=Mesh+Mesh` in `CcuSchedAllReduceSequenceMeshMesh`.
+
+Therefore `CcuMSAllReduceSoleMesh` is parsed as `Engine=CcuMS` · `Op=AllReduce` · `Com=Sole` · `Algo=Mesh`.
+At runtime, `REGISTER_ALG_ATTRS` calls `ParseAlgName` to strip segments in the above order `Engine → Op → Com → Algo`
+and derives `engine`/`opType`/`algoTypes` for the selector's pre-filtering and attribute derivation.
+
+> **Warning**: The test algorithm name `CcuMSAllReduceExperimentalSoleMesh` in this directory does **not** satisfy
+> the above algorithm name format — the `Experimental` segment is not a registered token, so `ParseAlgName` cannot
+> fully resolve `algoTypes` (a parsing warning is printed). This name is only a temporary placeholder to distinguish
+> the experimental directory carrier and is not a naming example. When implementing a custom algorithm, always follow
+> the `Engine·Op·Com·Algo` naming convention.
+
 This directory's three-layer implementation is exactly the minimum scope of changes above; the specific usage of `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` is covered in Section 2.2 of this directory.
 
 #### Core Functions to Inherit
@@ -170,9 +189,10 @@ The executor inherits from `InsCollAlgBase` and must implement the following pur
 | Function | Purpose | Parameters |
 |---|---|---|
 | `CalcAlgHierarchyInfo` | Topology matching entry: instantiates `AlgTopoMatch` and calls its `MatchTopo` to compute algorithm hierarchy info for each communication layer | `comm` communicator handle; `topoInfo` topology details (userRank/rankSize/network layers, output); `algHierarchyInfo` algorithm hierarchy info (output) |
+| `CalcAlgHierarchyInfoV2` | V2 topology matching entry: behaves like `CalcAlgHierarchyInfo`, additionally carrying `algAttrs` for topology matching filtering. **The main flow (`HcclGetAlgRes`) actually calls this function**; without overriding it falls back to the base default and returns `HCCL_E_PARA` | `topoInfo` topology details; `algHierarchyInfo` algorithm hierarchy info (output); `algAttrs` algorithm attributes |
 | `CalcRes` | Resource calculation entry: constructs template instances per topo layer and delegates to their `CalcRes` to compute required channel/thread/buffer | `comm` communicator; `param` operator parameters; `topoInfo` topology details; `algHierarchyInfo` produced by `CalcAlgHierarchyInfo`; `resourceRequest` resource request (output) |
 | `CalcCostCoeff` | Cost-modeling entry: constructs a `CalcCostCoeffParam` (`rankSize`/`dataRatio`/`netType`, etc.) and delegates to the template `CalcCostCoeff` to compute bandwidth/latency cost coefficients A/B/C/D for selection cost competition | `comm` communicator; `topoInfo` topology details; `algName` algorithm name; `param` op parameter |
-| `GetAlgNetMeta` | Returns the network metadata `AlgNetMeta` (`netTypes`/`intraGroupMode`/`groupSizes`), describing each template's network type and in-group cost aggregation mode | `topoInfo` topology details |
+| `GetAlgNetMeta` | Returns the network metadata `AlgNetMeta` (`netTypes`/`intraGroupMode`/`groupSizes`), describing each template's network type and in-group cost aggregation mode | `topoInfo` topology details; `param` operator parameters; `algName` algorithm name |
 | `Orchestrate` | Data-plane execution entry: sets base class members such as maxTmpMemSize_/channels_/threads_, validates data types and overflow, and orchestrates dispatch per loop | `param` operator parameters; `resCtx` serialized resource context |
 | `FastLaunch` | Fast dispatch: takes thread/kernel from pre-stored context, rewrites addresses and dispatches directly, avoiding repeated orchestration | `param` operator parameters; `resCtx` `CcuFastLaunchCtx` pre-stored by `FastLaunchSaveCtx` |
 
@@ -266,7 +286,7 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 This algorithm can only be selected after being compiled into the package:
 
-**① Compile switch `--experimental`** (corresponding to `ENABLE_EXPERIMENTAL=ON`, uniformly controls whether the
+**Compile switch `--experimental`** (corresponding to `ENABLE_EXPERIMENTAL=ON`, uniformly controls whether the
 `experimental/` folder is compiled; when disabled, this directory is not compiled and the algorithm is not registered).
 
 When participating in algorithm selection, under the single-machine two-card (`userRankSize == 2`) topology, the
@@ -293,7 +313,7 @@ this algorithm, so no extra modification is needed and it can be tested directly
 1. **Affects the selection of all `experimental/` algorithms (important warning)**: This algorithm is registered via `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` into the same registry and selector as the main pathway. Under `ENABLE_EXPERIMENTAL=ON`, the `opPriorityCheck` declared in its `REGISTER_ALG_ATTRS` takes effect **globally** while the selector scans algorithms, and preferentially selects this algorithm under the single-machine dual-card scenario, potentially preempting or perturbing the selection results of all other `experimental/` algorithms and encroaching on their verification space. When verifying other `experimental/` algorithms, you must trim out this directory's compilation/registration to ensure this algorithm is not selected.
 2. **Not for production**: This algorithm is intended to test the usability of the latest algorithm registration and selection approaches under the experimental folder, and should not be used as a production algorithm.
 3. **Type/topology constraints**: Does not support in place, ordering (DETERMINISTIC_STRICT), int8, PROD, INT64/UINT64/FP64
-   (falls back via `SelectCcuMsAlgo`/`SelectMeshAlgo` pre-checks); template depends on `TopoMatch1D` and the mesh-1D full-mesh
+   (falls back via `SelectCcuMsAlgo`/`SelectMeshAlgo` pre-checks); template depends on `TopoMatchOneLevel` and the mesh-1D full-mesh
    assumption, kernel requires `channelCount >= rankSize-1`, `CalcRes` validates `templateRankSize_` upper bound
    `CCU_MAX_RANK_SIZE` (128).
 4. **Version dependency**: `REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` registration only takes effect when

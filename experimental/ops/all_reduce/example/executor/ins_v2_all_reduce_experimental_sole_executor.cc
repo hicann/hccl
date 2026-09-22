@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_reduce_experimental_sole_executor.h"
+#include "topo_match_one_level.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_reduce_experimental_mesh_1D.h"
@@ -24,17 +25,55 @@ InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::InsV2AllRe
 {}
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
+AlgAttrs
+InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::BuildExperimentalAlgAttrs(const AlgAttrs& base)
+{
+    AlgAttrs attrs = base;
+    attrs.opType = HcclCMDType::HCCL_CMD_ALLREDUCE;
+    attrs.engine = OpExecuteConfig::CCU_MS;
+    attrs.algoTypes = {AlgoType::MESH};
+    return attrs;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
     (void)comm;
-    (void)algName;
-    (void)param;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    // 直接构建修好的 AlgAttrsExperimental（规避 Experimental 段导致 algName 解析失败、algoTypes 为空）
+    AlgAttrs algAttrsExperimental = BuildExperimentalAlgAttrs(AlgAttrs{});
+    const AlgAttrs* attrs = &algAttrsExperimental;
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo（不走 CalcAlgHierarchyInfoV2 的 CHK_RET）：
+    // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO(
+            "[InsV2AllReduceExperimentalSoleExecutor][CalcCostCoeff] algName=%s topo match not support, skip.",
+            algName);
+        return {};
+    }
     u32 rankSize = topoInfo->userRankSize;
-    CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
-    std::vector<u32> portNumLevel0 = {1};
-    bool isPod = true;
-    HCCL_DEBUG("[InsV2AllReduceExperimentalSoleExecutor] CalcCostCoeff delegate to template.");
+    bool isPod = topoInfo->isPod;
+    CommTopo netTypeLevel0
+        = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    std::vector<u32> portNumLevel0
+        = GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
+    if (portNumLevel0.empty()) {
+        HCCL_WARNING("[InsV2AllReduceExperimentalSoleExecutor][CalcCostCoeff] portNum is empty");
+        return {};
+    }
+    HCCL_INFO(
+        "[InsV2AllReduceExperimentalSoleExecutor][CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d",
+        rankSize, portNumLevel0, static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f / rankSize, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod});
@@ -42,16 +81,42 @@ std::vector<CostModelParam> InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch,
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 AlgNetMeta InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta(
-    const TopoInfoWithNetLayerDetails* topoInfo) const
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const
 {
-    (void)topoInfo;
+    (void)param;
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+#ifndef AICPU_COMPILE
+    // 直接构建修好的 AlgAttrsExperimental（规避 Experimental 段导致 algName 解析失败、algoTypes 为空）
+    AlgAttrs algAttrsExperimental = BuildExperimentalAlgAttrs(AlgAttrs{});
+    const AlgAttrs* attrs = &algAttrsExperimental;
+#else
+    // AICPU 独立核库(scatter_aicpu_kernel.so)不链接 host-only 的 AlgAttrsRegistry,
+    // device 侧亦无 costmodel 调用链, 置空走 skip 分支
+    const AlgAttrs* attrs = nullptr;
+#endif
+    // 探测路径直接调 MatchTopo：无 CHK_RET 的 ERROR，且免去 V2 调用所需的多层 const_cast
+    AlgTopoMatch topoMatch;
+    HcclResult matchRet
+        = (attrs != nullptr) ?
+              topoMatch.MatchTopo(const_cast<TopoInfoWithNetLayerDetails*>(topoInfo), algHierarchyInfo, *attrs) :
+              HcclResult::HCCL_E_PARA;
+    if (matchRet != HcclResult::HCCL_SUCCESS) {
+        HCCL_INFO(
+            "[InsV2AllReduceExperimentalSoleExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.",
+            algName);
+        return {};
+    }
+    u32 rankSize = topoInfo->userRankSize;
+    u32 physLevelIdx = (topoInfo->topoLevelNums > 1 && algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
+                           static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
+                           static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physLevelIdx);
     AlgNetMeta meta;
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+    meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    HCCL_DEBUG(
-        "[InsV2AllReduceExperimentalSoleExecutor] GetAlgNetMeta netTypes=%zu intraGroupMode=%d.", meta.netTypes.size(),
-        static_cast<int>(meta.intraGroupMode));
+    meta.dataRatios = {1.0f / rankSize};
+    meta.rankSizes = {rankSize};
     return meta;
 }
 
@@ -60,8 +125,21 @@ HcclResult InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>:
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     // 使用topo match计算AlgHierarchyInfoForAllLevel
+    (void)comm;
     AlgTopoMatch topoMatch;
-    CHK_RET(topoMatch.MatchTopo(comm, topoInfo, algHierarchyInfo));
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, AlgAttrs{}));
+    return HCCL_SUCCESS;
+}
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+HcclResult InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcAlgHierarchyInfoV2(
+    TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
+{
+    // 使用topo match计算AlgHierarchyInfoForAllLevel（携带算法属性，供拓扑匹配过滤）
+    // 基于框架传入的 algAttrs 修正 experimental 相关字段，规避 Experimental 段导致算法名解析失败
+    AlgAttrs algAttrsExperimental = BuildExperimentalAlgAttrs(algAttrs);
+    AlgTopoMatch topoMatch;
+    CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrsExperimental));
     return HCCL_SUCCESS;
 }
 
@@ -296,7 +374,7 @@ namespace ops_hccl {
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceExperimentalSoleMesh,
-    ops_hccl_experimental::InsV2AllReduceExperimentalSoleExecutor, TopoMatch1D,
+    ops_hccl_experimental::InsV2AllReduceExperimentalSoleExecutor, TopoMatchOneLevel,
     ops_hccl_experimental::CcuTempAllReduceExperimentalMesh1D);
 REGISTER_ALG_ATTRS(
     CcuMSAllReduceExperimentalSoleMesh, topo.maxTopoLevelNum = 1;

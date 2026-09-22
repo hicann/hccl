@@ -34,16 +34,27 @@ public:
 
     HcclResult CalcAlgHierarchyInfo(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo) override;
+    HcclResult CalcAlgHierarchyInfoV2(
+        TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+        const AlgAttrs& algAttrs) override;
 
     std::vector<CostModelParam> CalcCostCoeff(
         HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param) override;
-    AlgNetMeta GetAlgNetMeta(const TopoInfoWithNetLayerDetails* topoInfo) const override;
+
+    AlgNetMeta GetAlgNetMeta(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
 #ifndef AICPU_COMPILE
     HcclResult
     FastLaunchSaveCtx(const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const;
     HcclResult FastLaunch(const OpParam& param, const CcuFastLaunchCtx* fastLaunchCtx) override;
 #endif
+
+private:
+    /* 构造实验算法的 AlgAttrs：
+       本算法名含非注册词元 Experimental，ParseAlgName 会在该段中断，导致 algoTypes 为空，
+       MatchTopo 因 algoTypes.size()!=1 直接判不支持。此处基于 base 补全 opType/engine/algoTypes。 */
+    static AlgAttrs BuildExperimentalAlgAttrs(const AlgAttrs& base);
 
 protected:
     /* *************** 算法编排 *************** */

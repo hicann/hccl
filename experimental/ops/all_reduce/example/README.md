@@ -85,7 +85,7 @@ hccl/                                                      # 仓库根
 
 | 层 | 文件 | 基类 | 职责 |
 |---|---|---|---|
-| executor | `executor/ins_v2_all_reduce_experimental_sole_executor.*` | `ops_hccl::InsCollAlgBase`（模板类 `InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>`） | A5 注册框架接入点：拓扑匹配（`TopoMatch1D`）、成本建模 `CalcCostCoeff`/`GetAlgNetMeta`、资源计算 `CalcRes`、按 loop 编排 `Orchestrate/OrchestrateLoop`、快速下发 `FastLaunchSaveCtx/FastLaunch` |
+| executor | `executor/ins_v2_all_reduce_experimental_sole_executor.*` | `ops_hccl::InsCollAlgBase`（模板类 `InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>`） | A5 注册框架接入点：拓扑匹配（`TopoMatchOneLevel`）、成本建模 `CalcCostCoeff`/`GetAlgNetMeta`、资源计算 `CalcRes`、按 loop 编排 `Orchestrate/OrchestrateLoop`、快速下发 `FastLaunchSaveCtx/FastLaunch` |
 | template | `template/ccu/ccu_temp_all_reduce_experimental_mesh_1D.*` | `ops_hccl::CcuAlgTemplateBase` | 切片计算 `CalcSliceInfo`、资源/数据校验、`KernelRun` 组装 taskArgs 并调用 `HcommCcuKernelLaunch`、`FastLaunch` 改写地址后直发 |
 | kernel | `template/ccu/kernel/ccu_kernel_all_reduce_experimental_mesh1d.*` | `CcuKernelArgBase` / `CcuKernelCtxBase` | CCU 变量级内核：`InitResource` 按 `rankSize-1` 条 channel 建立全互联输入/输出/token，`LoadArgs`/`RunKernel`/`PostSync` 完成 reduce 与同步 |
 
@@ -93,7 +93,7 @@ hccl/                                                      # 仓库根
 
 - **注册（`REGISTER_EXEC_V2`）**：`ins_v2_all_reduce_experimental_sole_executor.cc` 末尾通过
   `REGISTER_EXEC_V2(HcclCMDType::HCCL_CMD_ALLREDUCE, CcuMSAllReduceExperimentalSoleMesh,
-  InsV2AllReduceExperimentalSoleExecutor, TopoMatch1D, CcuTempAllReduceExperimentalMesh1D)`
+  InsV2AllReduceExperimentalSoleExecutor, TopoMatchOneLevel, CcuTempAllReduceExperimentalMesh1D)`
   把算法名绑定到 executor/模板并写入 `CollAlgExecRegistryV2`（与主链路同宏、同注册表），
   受 `CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)` 编译保护。
 - **算法属性（`REGISTER_ALG_ATTRS`）**：通过
@@ -104,7 +104,7 @@ hccl/                                                      # 仓库根
   - 数据类型：不支持 PROD（`op.isSupportProd = false`），
     `op.unsupportedDataTypes = {INT8, INT64, UINT64, FP64}`；
   - 就地运算：不支持 in place（`op.isSupportInplace = false`）；
-  - 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节编译开关时
+- 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节编译开关时
     优先选中本算法（详见第 4 节）。
 - **运行时查找**：执行时按 selector 选出的算法名调用 `CollAlgExecRegistryV2::GetAlgExec` 取执行器；
   注册成功则返回非空执行器，注册缺失则返回 `nullptr`。
@@ -166,7 +166,7 @@ graph TB
 
 | 文件 | 必须/可选 | 说明 |
 |---|---|---|
-| `ins_v2_<op>_<variant>_executor.h` | 必须 | Executor 类模板，继承 `InsCollAlgBase`，实现 `CalcAlgHierarchyInfo` / `CalcRes` / `Orchestrate` |
+| `ins_v2_<op>_<variant>_executor.h` | 必须 | Executor 类模板，继承 `InsCollAlgBase`，实现 `CalcAlgHierarchyInfo(V2)` / `CalcRes` / `Orchestrate` |
 | `ins_v2_<op>_<variant>_executor.cc` | 必须 | 注册宏 `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 放置处 |
 | `<engine>_temp_<op>_<variant>.h` | 必须 | Template 派生类，继承引擎模板基类，实现 `CalcRes` / `KernelRun` / `GetThreadNum` 等 |
 | `<engine>_temp_<op>_<variant>.cc` | 必须 | Template 实现 |
@@ -178,6 +178,27 @@ graph TB
 - `<engine>`：执行引擎，取值 `ccu`/`aiv`/`aicpu`。
 - 新算法通过 `REGISTER_EXEC_V2` 注册 exec 链路，再用 `REGISTER_ALG_ATTRS` 声明其拓扑/算子属性，两个算法名须一致；注册后自动进入 selector 查找表，selector 侧无需改动。
 
+#### 算法名字格式
+
+算法名（`REGISTER_EXEC_V2` 的 `name`，须与 `REGISTER_ALG_ATTRS` 的 `algoName` 一致）由已注册词元按
+**`Engine·Op·Com·Algo`** 的固定顺序（驼峰命名）拼接而成，例如 `CcuMSAllReduceSoleMesh`。各段词元均来自
+`src/common/alg_parse.cc` 中的注册表：
+
+- `Engine`：执行引擎前缀（含模式），如 `CcuMS`（引擎 `Ccu` 的 `MS` 模式）/`CcuSched`/`Aiv`/`Aicpu`（`ENGINE_TYPES`）；
+- `Op`：算子名，如 `AllReduce`（`OP_TYPES`）；
+- `Com`：通信编排模式 / executor 类型，如 `Sole`（`EXECUTOR_TYPES`）；
+- `Algo`：算法类型（template），如 `Mesh`（`ALGO_TYPES`），**可叠加多层**对应多 level，如
+  `CcuSchedAllReduceSequenceMeshMesh` 的 `Algo=Mesh+Mesh`。
+
+因此 `CcuMSAllReduceSoleMesh` 解析为 `Engine=CcuMS` · `Op=AllReduce` · `Com=Sole` · `Algo=Mesh`。
+运行时 `REGISTER_ALG_ATTRS` 通过 `ParseAlgName` 按上述顺序逐段剥离 `Engine → Op → Com → Algo`
+解析出 `engine`/`opType`/`algoTypes`，供 selector 前置过滤与属性推导。
+
+> **警告**：本目录测试算法名 `CcuMSAllReduceExperimentalSoleMesh` **不满足**上述算法名格式——其中
+> 的 `Experimental` 段不是已注册词元，导致 `ParseAlgName` 无法完整解析出 `algoTypes`（会打印解析
+> warning）。该命名仅为区分 experimental 目录载体而起的临时名字，不作为命名范本；实现自定义算法时
+> 请务必按 `Engine·Op·Com·Algo` 规范命名。
+
 本目录的三层实现即上表的最小改动范围，`REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 的具体用法见本目录第 2.2 节。
 
 #### 需继承的核心函数
@@ -187,9 +208,10 @@ executor 继承自 `InsCollAlgBase`，须实现以下纯虚/关键虚函数：
 | 函数 | 作用 | 参数 |
 |---|---|---|
 | `CalcAlgHierarchyInfo` | 拓扑匹配入口：实例化 `AlgTopoMatch` 并调用其 `MatchTopo`，计算各通信层级的算法层次信息 | `comm` 通信域句柄；`topoInfo` 拓扑详情（userRank/rankSize/网络层级，出参）；`algHierarchyInfo` 算法层次信息（出参） |
+| `CalcAlgHierarchyInfoV2` | V2 版本的拓扑匹配入口：行为同 `CalcAlgHierarchyInfo`，额外携带 `algAttrs` 供拓扑匹配过滤。**主流程（`HcclGetAlgRes`）实际调用的是本函数**；若不重写将回落基类默认实现并返回 `HCCL_E_PARA` | `topoInfo` 拓扑详情；`algHierarchyInfo` 算法层次信息（出参）；`algAttrs` 算法属性 |
 | `CalcRes` | 资源计算入口：按 topo 层级构造 template 实例并委托其 `CalcRes` 计算所需 channel/thread/buffer | `comm` 通信域；`param` 算子参数；`topoInfo` 拓扑详情；`algHierarchyInfo` 由 `CalcAlgHierarchyInfo` 产出；`resourceRequest` 资源请求（出参） |
 | `CalcCostCoeff` | 成本建模入口：构造 `CalcCostCoeffParam`（`rankSize`/`dataRatio`/`netType` 等）委托模板 `CalcCostCoeff` 计算带宽、时延成本系数 A/B/C/D，供 selection cost 竞争 | `comm` 通信域；`topoInfo` 拓扑详情；`algName` 算法名；`param` 算子参数 |
-| `GetAlgNetMeta` | 组网元信息：返回 `AlgNetMeta`（`netTypes`/`intraGroupMode`/`groupSizes`），描述各 template 的网络类型与 cost 组内聚合方式 | `topoInfo` 拓扑详情 |
+| `GetAlgNetMeta` | 组网元信息：返回 `AlgNetMeta`（`netTypes`/`intraGroupMode`/`groupSizes`），描述各 template 的网络类型与 cost 组内聚合方式 | `topoInfo` 拓扑详情；`param` 算子参数；`algName` 算法名 |
 | `Orchestrate` | 数据面执行入口：设置 maxTmpMemSize_/channels_/threads_ 等基类成员，校验数据类型与溢出，按 loop 编排下发 | `param` 算子参数；`resCtx` 序列化资源上下文 |
 | `FastLaunch` | 快速下发：从预存上下文取 thread/kernel 改写地址后直发，避免重复编排 | `param` 算子参数；`resCtx` 由 `FastLaunchSaveCtx` 预存的 `CcuFastLaunchCtx` |
 
@@ -284,7 +306,7 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 本算法在编译进包后才可能被选中：
 
-**① 编译开关 `--experimental`**（对应 `ENABLE_EXPERIMENTAL=ON`，统一控制 `experimental/` 文件夹是否参与
+**编译开关 `--experimental`**（对应 `ENABLE_EXPERIMENTAL=ON`，统一控制 `experimental/` 文件夹是否参与
 编译；关闭时本目录不被编译、算法不注册）。
 
 参与算法选择时，单机两卡（`userRankSize == 2`）拓扑下，`REGISTER_ALG_ATTRS` 中为 `CcuMSAllReduceExperimentalSoleMesh`
@@ -310,7 +332,7 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 1. **影响所有 `experimental/` 算法的选择（重要警告）**：本算法经 `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 接入与主链路相同的注册表与选择器。在 `ENABLE_EXPERIMENTAL=ON` 下，其 `REGISTER_ALG_ATTRS` 声明的 `opPriorityCheck` 会在选择器扫描算法时**全局生效**，单机两卡场景优先选中本算法，从而可抢占/扰动 `experimental/` 下所有其他实验算法的选择结果、挤占其验证空间。验证其他 `experimental/` 算法时，必须裁剪本目录的编译/注册以确保本算法不被选中。
 2. **不可上线**：本算法目的为测试当前最新算法注册方式及选择方式在experimental文件夹的可用性。不应作为线上算法 使用。
 3. **类型/拓扑约束**：不支持 in place、保序（DETERMINISTIC_STRICT）、int8、PROD、INT64/UINT64/FP64
-   （由 `SelectCcuMsAlgo`/`SelectMeshAlgo` 前置判断回退）；模板依赖 `TopoMatch1D` 与 mesh-1D 全互联
+   （由 `SelectCcuMsAlgo`/`SelectMeshAlgo` 前置判断回退）；模板依赖 `TopoMatchOneLevel` 与 mesh-1D 全互联
    假设，kernel 要求 `channelCount >= rankSize-1`，`CalcRes` 校验 `templateRankSize_` 上限
    `CCU_MAX_RANK_SIZE`（128）。
 4. **版本依赖**：`REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` 注册仅在
