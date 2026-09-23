@@ -52,16 +52,12 @@ private:
         const OpParam& param, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams,
         const RankSliceInfo& sliceInfoVec);
-    HcclResult SymmetricReadReduce(
-        const ChannelInfo& linkSend, const ChannelInfo& linkRecv, const TemplateDataParams& tempAlgParams,
-        const DataSlice& usrOutSlices, const std::vector<ThreadHandle>& threads, u32 queIdx);
     HcclResult PostLocalReduce(
         const OpParam& param, const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams,
         const RankSliceInfo& sliceInfoVec);
     bool needAicpuReduce_{false};
     u64 processSize_{0};
     u64 count_{0};
-    bool supportSymmetricMemAccess_{false};
 };
 
 } // namespace ops_hccl

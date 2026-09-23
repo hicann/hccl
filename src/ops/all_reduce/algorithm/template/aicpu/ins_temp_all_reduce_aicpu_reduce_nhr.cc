@@ -232,7 +232,7 @@ HcclResult InsTempAllReduceAicpuReduceNHR::RunReduce(
     HCCL_INFO("[InsTempAllReduceAicpuReduceNHR][RunReduce] start");
     const BuffInfo& buffInfo = tempAlgParams.buffInfo;
     const u64 sliceSize = tempAlgParams.sliceSize;
-    const DataSlice srcSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff + myIdx_ * sliceSize, sliceSize, count_);
+    const DataSlice srcSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff, sliceSize, count_);
     const DataSlice dstSlice(buffInfo.outputPtr, buffInfo.outBuffBaseOff, sliceSize, count_);
     CHK_RET(static_cast<HcclResult>(LocalCopy(thread_, srcSlice, dstSlice)));
 
@@ -240,10 +240,7 @@ HcclResult InsTempAllReduceAicpuReduceNHR::RunReduce(
     CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(algTag.c_str())));
     CHK_RET(static_cast<HcclResult>(HcommThreadJoin(thread_, CUSTOM_TIMEOUT)));
 
-    for (u32 idx = 0; idx < subCommRanks_.at(0).size(); ++idx) {
-        if (idx == myRank_) {
-            continue;
-        }
+    for (u32 idx = 1; idx < subCommRanks_.at(0).size(); ++idx) {
         const DataSlice srcSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff + sliceSize * idx, sliceSize, count_);
 
         CHK_RET(static_cast<HcclResult>(LocalReduce(thread_, srcSlice, dstSlice, dataType_, reduceOp_)));

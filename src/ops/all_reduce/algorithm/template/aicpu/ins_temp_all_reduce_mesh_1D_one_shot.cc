@@ -108,7 +108,6 @@ HcclResult InsTempAllReduceMesh1DOneShot::KernelRun(
     processSize_ = tempAlgParams.sliceSize;
     count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
-    supportSymmetricMemAccess_ = param.supportSymmetricMemory;
     needAicpuReduce_
         = dataType_ == HcclDataType::HCCL_DATA_TYPE_INT64 || dataType_ == HcclDataType::HCCL_DATA_TYPE_UINT64
           || dataType_ == HcclDataType::HCCL_DATA_TYPE_FP64 || param.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
@@ -133,9 +132,7 @@ HcclResult InsTempAllReduceMesh1DOneShot::KernelRun(
         GetNotifyIdxSubToMain(notifyIdxSubToMain_);
         CHK_RET(PostSyncInterThreads(templateResource.threads[0], subThreads, notifyIdxSubToMain_));
     }
-    if (!supportSymmetricMemAccess_) {
-        CHK_PRT(PostLocalReduce(param, templateResource.threads, tempAlgParams, sliceInfoVec));
-    }
+    CHK_PRT(PostLocalReduce(param, templateResource.threads, tempAlgParams, sliceInfoVec));
     HCCL_INFO("[InsTempAllReduceMesh1DOneShot][KernelRun] AllReduceMesh1DOneShot finished: rank[%d] end", myRank_);
     return HCCL_SUCCESS;
 }
@@ -152,13 +149,17 @@ HcclResult InsTempAllReduceMesh1DOneShot::RunAllReduce(
     DataSlice usrOutSlices
         = DataSlice(tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_, count_);
 
-    // 主流 - 本地拷贝
-    CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], usrInSlices, usrOutSlices)));
-
     // 特殊场景
     if (subCommRanks_[0].size() == 1) {
+        CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], usrInSlices, usrOutSlices)));
         return HCCL_SUCCESS;
     }
+
+    // 主流 - 本地拷贝
+    u64 slotMeOffset = sliceInfoVec[myRank_][0].offset + tempAlgParams.buffInfo.hcclBuffBaseOff;
+    u64 slotMeSize = sliceInfoVec[myRank_][0].size;
+    DataSlice slotMeSlices = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, slotMeOffset, slotMeSize, count_);
+    CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], usrInSlices, slotMeSlices)));
 
     // 从流
     for (u32 queIdx = 1; queIdx < threadNum_; queIdx++) {
@@ -168,11 +169,6 @@ HcclResult InsTempAllReduceMesh1DOneShot::RunAllReduce(
 
         const ChannelInfo& linkRecv = channels.at(fromRank)[0]; // linkRecv - 从fromRank接收的链路
         const ChannelInfo& linkSend = channels.at(toRank)[0];   // linkSend - 向toRank发送的链路
-
-        if (supportSymmetricMemAccess_) {
-            CHK_RET(SymmetricReadReduce(linkSend, linkRecv, tempAlgParams, usrOutSlices, threads, queIdx));
-            continue;
-        }
 
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
@@ -204,36 +200,15 @@ HcclResult InsTempAllReduceMesh1DOneShot::RunAllReduce(
     return HCCL_SUCCESS;
 }
 
-HcclResult InsTempAllReduceMesh1DOneShot::SymmetricReadReduce(
-    const ChannelInfo& linkSend, const ChannelInfo& linkRecv, const TemplateDataParams& tempAlgParams,
-    const DataSlice& usrOutSlices, const std::vector<ThreadHandle>& threads, u32 queIdx)
-{
-    // 对称内存路径：从远端 input read+reduce 到本地 output
-    std::vector<DataSlice> txSrcSlices;
-    std::vector<DataSlice> txDstSlices;
-    std::vector<DataSlice> rxSrcSlices;
-    std::vector<DataSlice> rxDstSlices;
-    txSrcSlices.push_back(
-        DataSlice(tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff, processSize_, count_));
-    txDstSlices.push_back(
-        DataSlice(linkSend.remoteInputGraphMode.addr, tempAlgParams.buffInfo.inBuffBaseOff, processSize_, count_));
-    rxSrcSlices.push_back(
-        DataSlice(linkRecv.remoteInputGraphMode.addr, tempAlgParams.buffInfo.inBuffBaseOff, processSize_, count_));
-    rxDstSlices.push_back(usrOutSlices);
-    SendRecvReduceInfo sendRecvReduceInfo{
-        {linkSend, linkRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_, reduceOp_};
-    CHK_PRT_RET(
-        SendRecvBatchReadReduce(sendRecvReduceInfo, threads[queIdx]),
-        HCCL_ERROR("[InsTempAllReduceMesh1DOneShot] RunAllReduce SendRecvBatchReadReduce failed"),
-        HcclResult::HCCL_E_INTERNAL);
-    return HCCL_SUCCESS;
-}
-
 HcclResult InsTempAllReduceMesh1DOneShot::PostLocalReduce(
     const OpParam& param, const std::vector<ThreadHandle>& threads, const TemplateDataParams& tempAlgParams,
     const RankSliceInfo& sliceInfoVec)
 {
     HCCL_INFO("[InsTempAllReduceMesh1DOneShot][RunAllReduce] reduce: rank[%d]", myRank_);
+
+    DataSlice usrOutSlices
+        = DataSlice(tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_, count_);
+
     // 增加thread synchronize以支持64类数据类型
     if (needAicpuReduce_) {
         // 启动任务并等待所有threads任务执行完成
@@ -244,24 +219,24 @@ HcclResult InsTempAllReduceMesh1DOneShot::PostLocalReduce(
         }
     }
 
-    DataSlice usrOutSlices
-        = DataSlice(tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, processSize_, count_);
+    if (subCommRanks_[0].size() > 1) {
+        // 逐片累加到第0片，最后统一拷贝到输出
+        u64 baseDstOffset = sliceInfoVec[0][0].offset + tempAlgParams.buffInfo.hcclBuffBaseOff;
+        u64 baseDstSize = sliceInfoVec[0][0].size;
+        DataSlice baseDstSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, baseDstOffset, baseDstSize, count_);
 
-    for (u32 rankIdx = 0; rankIdx < subCommRanks_[0].size(); rankIdx++) {
-        u32 curRank = rankIdx;
-        // 遍历除自身外所有rank，计算reduce(scratch, local-usrout)
-        if (curRank == myRank_) {
-            continue;
+        for (u32 rankIdx = 1; rankIdx < subCommRanks_[0].size(); rankIdx++) {
+            u32 curRank = rankIdx;
+
+            // 执行本地归约
+            u64 curSrcOffset = sliceInfoVec[curRank][0].offset + tempAlgParams.buffInfo.hcclBuffBaseOff;
+            u64 curSrcSize = sliceInfoVec[curRank][0].size;
+            DataSlice curSrcSlice = DataSlice(tempAlgParams.buffInfo.hcclBuff.addr, curSrcOffset, curSrcSize, count_);
+
+            CHK_RET(static_cast<HcclResult>(LocalReduce(threads[0], curSrcSlice, baseDstSlice, dataType_, reduceOp_)));
         }
 
-        // 执行本地归约
-        void* RemotePtr = tempAlgParams.buffInfo.hcclBuff.addr;
-        u64 curSrcOffset = sliceInfoVec[curRank][0].offset + tempAlgParams.buffInfo.hcclBuffBaseOff;
-        u64 curSrcSize = sliceInfoVec[curRank][0].size;
-        DataSlice curSrcSlice = DataSlice(RemotePtr, curSrcOffset, curSrcSize, count_);
-        DataSlice curDstSlice = usrOutSlices;
-
-        CHK_RET(static_cast<HcclResult>(LocalReduce(threads[0], curSrcSlice, curDstSlice, dataType_, reduceOp_)));
+        CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], baseDstSlice, usrOutSlices)));
     }
     return HCCL_SUCCESS;
 }
