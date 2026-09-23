@@ -154,7 +154,7 @@ CCU（Collective Communication Unit，集合通信加速单元）是位于 IO Di
 2. CCU Kernel 被调度器调度后发送至 CCU 执行
 3. CCU 执行对应指令流，并利用 URMA（Unified Remote Memory Access，统一远端内存访问）完成数据搬运
 
-> **要点**: CCU 是专用集合通信加速单元，执行预置的 CCU 指令流（经 URMA 搬运数据）；**高带宽、低时延**且少占计算核与访存带宽，但受片上资源限制、支持的通信域数量有限（Ascend 950PR/950DT）
+> **要点**: CCU 是专用集合通信加速单元，执行预置的 CCU 指令流（经 URMA 搬运数据）；**高带宽、低时延**且少占计算核与访存带宽，但受片上资源限制、支持的通信域数量有限（Ascend 950PR&950DT系列产品）
 
 #### 2.4.3 AIV通信引擎
 

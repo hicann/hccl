@@ -10,7 +10,7 @@
 >- 在某些通信算子中，当使用特定类型的AI处理器且数据量较小时，通信算法会由HCCL自适应选择，不受此环境变量的控制。
 >- 本节所列出的算法为HCCL支持配置的全量通信算法，不同产品下支持的Server间通信算法与超节点间通信算法可参见[Server间通信算法支持度列表](inter_server_algo_support.md)与[超节点间通信算法支持度列表](inter_superpod_algo_support.md)。
 
-## 配置说明（Ascend 950PR\&Ascend 950DT系列产品）
+## 配置说明（Ascend 950PR&950DT系列产品）
 
 <!-- npu="950" id10 -->
 ### 配置示例
@@ -118,7 +118,7 @@ export HCCL_ALGO="OpType:ExecutorType{level0=algoType,level1=algoType,...};OpTyp
 - 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclAlgo”参数指定了通信算法，则以通信域粒度的配置优先。
 - 如果输入的HCCL\_ALGO配置字符串格式错误或是Atlas A3系列产品的语法则无法解析，配置不生效，会打印警告信息，但不会阻碍后续执行流程。
 
-## 配置说明（ Atlas A3系列产品，Atlas A2系列产品，Atlas 训练系列产品）
+## 配置说明（Atlas A3训练系列产品/Atlas A3推理系列产品，Atlas A2训练系列产品/Atlas A2推理系列产品，Atlas训练系列产品）
 
 ### 配置规则
 
