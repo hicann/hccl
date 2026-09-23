@@ -30,6 +30,9 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     CommTopo netType0 = CommTopo::COMM_TOPO_1DMESH;
     CommTopo netType1 = CommTopo::COMM_TOPO_CLOS;
     int portNum0 = param.portNum.empty() ? 0 : static_cast<int>(param.portNum[0]);
+    bool isSoleMeshConcur
+        = (param.algName != nullptr && (strcmp(param.algName, "AicpuReduceScatterSoleMeshConcur") == 0));
+    bool isPod = isSoleMeshConcur ? param.isPod : false;
     // level1 端口总数(Σ); 列表为空走默认 8(旧行为)
     int level1PortTotal = 8;
     const bool hasPhyLevelInfo
@@ -57,7 +60,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
 
     // A: 两级跨片传输代价取最大值（level0 和 level1 并行传输）
     // level0: server 内 mesh 组网，level1: 跨 server clos 组网
-    int kernelNum = 25;
+    int kernelNum = 27;
     // pod 先乘3,后续需要考虑server
     int taskNum
         = (CostModelManager::CalcTransTaskNum(param.rankSize) + CostModelManager::CalcSyncTaskNum(param.rankSize) * 2);
@@ -68,7 +71,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DZAxisDetour::CalcCostCoeff
     // portNum1<=0(纯 fullmesh)时跳过 A1, 避免 0/0=NaN
     float A = A0;
     if (portNum1 > 0) {
-        CostModelManager::Global()->CalcMeshParam(nLevel1, netType1, portNum1, param.rankSize, A1, false);
+        CostModelManager::Global()->CalcMeshParam(nLevel1, netType1, portNum1, param.rankSize, A1, isPod);
         A = std::max(A0, A1);
     }
 

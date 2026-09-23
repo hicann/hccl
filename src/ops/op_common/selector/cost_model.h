@@ -66,6 +66,23 @@ typedef struct {
     float D;
 } CostModelParam;
 
+enum class CostAggMode : int {
+    SUM = 0, // 多组 cost 求和
+    MAX = 1, // 多组 cost 取最大值
+};
+
+struct AlgNetMeta {
+    std::vector<CommTopo> netTypes;                // 每个 template 一个，顺序与 costmodel 中 A/B/C 一致
+    std::vector<float> dataRatios;                 // 每个 segment 的 dataRatio，用于查 UB 利用率
+    std::vector<u32> rankSizes;                    // 每个 segment 使用的 rankSize
+    CostAggMode intraGroupMode = CostAggMode::SUM; // 组内聚合方式
+    CostAggMode interGroupMode = CostAggMode::SUM; // 组间聚合方式，默认为SUM
+    std::vector<u32> groupSizes;                   // 每组 template 数量，为空时按每组1个兜底
+    // 逐段算法类型(如 Parallel 的4段 [MESH,NHR,NHR,MESH]); 为空时 cost_table 回退用 AlgAttrs 按算法名
+    // 解析的 algoTypes(该值同时是 topo_match 的层级数依据, 只能保留层级个条目, 不能扩展成段数)
+    std::vector<AlgoType> algoTypes;
+};
+
 typedef struct {
     const char* algName;
     // 所有权：param 指向的内存由 costModel_ 持有（InitCostModel 深拷贝）。
@@ -155,11 +172,6 @@ private:
     float hDLatency_{};
 };
 
-enum class CostAggMode : int {
-    SUM = 0, // 多组 cost 求和
-    MAX = 1, // 多组 cost 取最大值
-};
-
 // CalcCostCoeff 的参数结构体，新增参数只需在此结构体加成员，无需改动所有调用点签名
 struct CalcCostCoeffParam {
     u32 rankSize = 0;
@@ -178,29 +190,6 @@ struct CalcCostCoeffParam {
     std::vector<PhysicalLevelIndex> phyLevelIdxs = {};   // 各层物理层idx
     std::vector<CommTopo> phyLevelNetTypes = {};         // 各层互联形态
     std::vector<std::vector<u32>> phyLevelPortNums = {}; // 各层各channel端口数(不求和)
-};
-
-struct AlgNetMeta {
-    std::vector<CommTopo> netTypes;                // 每个 template 一个，顺序与 costmodel 中 A/B/C 一致
-    std::vector<float> dataRatios;                 // 每个 segment 的 dataRatio，用于查 UB 利用率
-    std::vector<u32> rankSizes;                    // 每个 segment 使用的 rankSize
-    CostAggMode intraGroupMode = CostAggMode::SUM; // 组内聚合方式
-    CostAggMode interGroupMode = CostAggMode::SUM; // 组间聚合方式，默认为SUM
-    std::vector<u32> groupSizes;                   // 每组 template 数量，为空时按每组1个兜底
-    // 逐段算法类型(如 Parallel 的4段 [MESH,NHR,NHR,MESH]); 为空时 cost_table 回退用 AlgAttrs 按算法名
-    // 解析的 algoTypes(该值同时是 topo_match 的层级数依据, 只能保留层级个条目, 不能扩展成段数)
-    std::vector<AlgoType> algoTypes;
-};
-
-class AlgNetMetaRegistry {
-public:
-    static AlgNetMetaRegistry* Global();
-    void Register(const std::string& algName, AlgNetMeta meta);
-    bool Query(const std::string& algName, AlgNetMeta& meta) const;
-
-private:
-    std::map<std::string, AlgNetMeta> metas_;
-    mutable std::mutex mu_;
 };
 
 } // namespace ops_hccl

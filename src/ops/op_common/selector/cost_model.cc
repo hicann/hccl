@@ -421,8 +421,6 @@ HcclResult CostModelManager::InitCostModel(
         }
         std::copy(params.begin(), params.end(), ownedParam);
 
-        AlgNetMetaRegistry::Global()->Register(alg.algName, exec->GetAlgNetMeta(topoInfo, param, alg.algName));
-
         CostAlgoParams cap;
         cap.algName = alg.algName;
         cap.param = ownedParam;
@@ -559,46 +557,5 @@ void CostModelManager::CalcLaunchParams(int taskNum, EngineType engine, float& D
 int CostModelManager::CalcTransTaskNum(u32 rankSize) { return static_cast<int>(5 * (rankSize - 1)); }
 
 int CostModelManager::CalcSyncTaskNum(u32 rankSize) { return static_cast<int>(2 * (rankSize - 1)); }
-
-AlgNetMetaRegistry* AlgNetMetaRegistry::Global()
-{
-#ifndef AICPU_COMPILE
-    static AlgNetMetaRegistry* globalRegistry = new AlgNetMetaRegistry;
-    return globalRegistry;
-#else
-    return nullptr;
-#endif
-}
-
-void AlgNetMetaRegistry::Register(const std::string& algName, AlgNetMeta meta)
-{
-#ifndef AICPU_COMPILE
-    const std::lock_guard<std::mutex> lock(mu_);
-    metas_[algName] = meta;
-    HCCL_DEBUG(
-        "[AlgNetMetaRegistry] register algName=%s netTypes=%zu intraGroupMode=%d groupSizes=%zu.", algName.c_str(),
-        meta.netTypes.size(), static_cast<int>(meta.intraGroupMode), meta.groupSizes.size());
-#else
-    (void)algName;
-    (void)meta;
-#endif
-}
-
-bool AlgNetMetaRegistry::Query(const std::string& algName, AlgNetMeta& meta) const
-{
-#ifndef AICPU_COMPILE
-    const std::lock_guard<std::mutex> lock(mu_);
-    auto it = metas_.find(algName);
-    if (it == metas_.end()) {
-        return false;
-    }
-    meta = it->second;
-    return true;
-#else
-    (void)algName;
-    (void)meta;
-    return false;
-#endif
-}
 
 } // namespace ops_hccl

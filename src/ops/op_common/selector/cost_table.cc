@@ -22,6 +22,7 @@
 #include "selector_engine.h"
 #include "alg_attrs_registry.h"
 #include "alg_parse.h"
+#include "coll_alg_v2_exec_registry.h"
 #include "order_preserved_common.h"
 
 namespace ops_hccl {
@@ -224,7 +225,14 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
             continue;
         }
 
-        float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType, attrs->algoTypes);
+        // 现查 meta：per-rank per-call，避免全局 Registry 多通信域覆盖
+        std::unique_ptr<InsCollAlgBase> exec = CollAlgExecRegistryV2::Instance().GetAlgExec(opParam.opType, name);
+        AlgNetMeta meta;
+        if (exec != nullptr) {
+            meta = exec->GetAlgNetMeta(topoInfo, opParam, name.c_str());
+        }
+
+        float cost = CalcAlgCost(name, dataSize, cm.costAlgoParams[i], opParam.opType, attrs->algoTypes, meta);
         ct.costs[ct.count].algName = algName;
         ct.costs[ct.count].cost = cost;
         ++ct.count;
@@ -275,11 +283,8 @@ HcclResult CostTableManager::InitAndFilterByAttrs(
 
 float CostTableManager::CalcAlgCost(
     const std::string& algName, u64 dataSize, const CostAlgoParams& algoParams, HcclCMDType opType,
-    const std::vector<AlgoType>& algoTypes) const
+    const std::vector<AlgoType>& algoTypes, const AlgNetMeta& meta) const
 {
-    AlgNetMeta meta;
-    AlgNetMetaRegistry::Global()->Query(algName, meta);
-
     OpExecuteConfig engine = SelectorEngine::GetEngineByAlgName(algName);
 
     const CostModelParam* params = algoParams.param;
