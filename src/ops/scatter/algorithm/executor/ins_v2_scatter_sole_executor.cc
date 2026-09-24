@@ -327,7 +327,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSoleMesh, InsV2ScatterSoleExecutor, TopoMatchOneLevel,
     InsTempScatterMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuScatterSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+    AicpuScatterSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_1;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

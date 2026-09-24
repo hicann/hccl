@@ -57,8 +57,8 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
         CostModelManager::Global()->CalcMeshParam(
             param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, param.netType, portNum, param.rankSize, A,
             isPodForCost);
+        A *= 0.8;
     }
-    A *= 0.8;
 
     if (param.inputBuffer != param.scratchBuffer) {
         // 本地拷贝1份全量数据（root拷入、非root拷出，平均1份）

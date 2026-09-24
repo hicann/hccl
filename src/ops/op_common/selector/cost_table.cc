@@ -381,10 +381,10 @@ const std::vector<UbUtilEntry> CostTableManager::closOneJettyOnePortUbUtilTable_
        {64 * 1024 * 1024ULL, 0.8089f}, {128 * 1024 * 1024ULL, 0.8268f}, {256 * 1024 * 1024ULL, 0.8361f}};
 
 const std::vector<UbUtilEntry> CostTableManager::closAivUbUtilTable_
-    = {{0.25 * 1024 * 1024ULL, 0.195f}, {0.5 * 1024 * 1024ULL, 0.294f}, {1 * 1024 * 1024ULL, 0.394f},
-       {2 * 1024 * 1024ULL, 0.475f},    {4 * 1024 * 1024ULL, 0.528f},   {8 * 1024 * 1024ULL, 0.56f},
-       {16 * 1024 * 1024ULL, 0.578f},   {32 * 1024 * 1024ULL, 0.587f},  {64 * 1024 * 1024ULL, 0.59f},
-       {128 * 1024 * 1024ULL, 0.595f}};
+    = {{0.125 * 1024 * 1024ULL, 0.258f}, {0.25 * 1024 * 1024ULL, 0.375f}, {0.5 * 1024 * 1024ULL, 0.485f},
+       {1 * 1024 * 1024ULL, 0.568f},     {2 * 1024 * 1024ULL, 0.622f},    {4 * 1024 * 1024ULL, 0.652f},
+       {8 * 1024 * 1024ULL, 0.669f},     {16 * 1024 * 1024ULL, 0.678f},   {32 * 1024 * 1024ULL, 0.682f},
+       {64 * 1024 * 1024ULL, 0.684f},    {128 * 1024 * 1024ULL, 0.685f},  {256 * 1024 * 1024ULL, 0.686f}};
 
 CostTableManager::~CostTableManager() {}
 
