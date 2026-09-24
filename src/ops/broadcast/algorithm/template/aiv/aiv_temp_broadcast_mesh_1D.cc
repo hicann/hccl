@@ -52,6 +52,9 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
         CostModelManager::Global()->CalcMeshParam(
             param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize,
             A_clos, isPodForCost);
+        if (!isPodForCost) {
+            A_clos *= 1.1;
+        }
         A = std::max(A_mesh, A_clos);
     } else {
         CostModelManager::Global()->CalcMeshParam(

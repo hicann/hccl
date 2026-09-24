@@ -27,7 +27,12 @@ std::vector<CostModelParam> InsTempReduceScatterNHR::CalcCostCoeff(CalcCostCoeff
     taskNum = (isSingleChannelNHR || !param.isPod) ? taskNum : taskNum * 2;
     taskNum = taskNum + TASK_NUM_EXTRA_OVERHEAD;
     if (isSingleChannelNHR) {
-        int floorTaskNum = static_cast<int>(30.0 * log2(static_cast<double>(param.rankSize))) - 26;
+        // D 地板 30×log2N-26 仅在 8~128 卡标定; NHR 每步 task 数与 rankSize 弱相关,
+        // 大 N 直接外推会高估(1024 卡外推 274, 而 Parallel 层级拆分后仅 240),
+        // log2N 饱和在标定区间上界(128 卡, log2=7), 区间外地板不再增长
+        double log2N = log2(static_cast<double>(param.rankSize));
+        double log2NSat = (log2N < 7.0) ? log2N : 7.0;
+        int floorTaskNum = static_cast<int>(30.0 * log2NSat) - 26;
         taskNum = (floorTaskNum > taskNum) ? floorTaskNum : taskNum;
     }
     float A = 0.0f;

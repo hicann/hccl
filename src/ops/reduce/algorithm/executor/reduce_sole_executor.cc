@@ -31,7 +31,7 @@ namespace ops_hccl {
 
 // MESH_1D aicpu 单发/两发算法数据量分界，与 selector 保持一致
 constexpr u64 REDUCE_AICPU_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
-
+constexpr u64 AICPU_MESH_MAX_RANK_SIZE = 64;
 template <typename AlgTopoMatch, typename AlgTemplate>
 ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::ReduceSoleExecutor()
 {}
@@ -322,7 +322,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleMesh, ReduceSoleExecutor, TopoMatchOneLevel, ReduceMesh1D);
 REGISTER_ALG_ATTRS(
-    AicpuReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    AicpuReduceSoleMesh, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxSupportRankSize = AICPU_MESH_MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
@@ -334,7 +334,7 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSoleMeshTwoShot, ReduceSoleExecutor, TopoMatchOneLevel,
     ReduceMesh1DTwoShot);
 REGISTER_ALG_ATTRS(
-    AicpuReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1;
+    AicpuReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1; topo.maxSupportRankSize = AICPU_MESH_MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
     topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {

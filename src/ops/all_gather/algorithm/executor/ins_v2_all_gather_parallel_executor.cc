@@ -123,7 +123,7 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
             rankSizeLevel1, meshFirstRatio * rankSizeLevel0, netTypeLevel1, BufferType::OUTPUT, BufferType::OUTPUT,
             BufferType::HCCL_BUFFER, portNumLevel1, isPod});
         v.insert(v.end(), p3.begin(), p3.end());
-        float bConst = 0.000033f;
+        float bConst = 0.000023f;
         for (auto& p : v) {
             p.C += bConst;
         }

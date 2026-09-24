@@ -877,9 +877,13 @@ REGISTER_EXEC_V2_MULTI(
     InsTempAllGatherNHR,                  // AllGather L2 (跨超节点)
     InsTempAllGatherNHR,                  // AllGather L1 (框间)
     InsTempAllGatherMesh1D1DZAxisDetour); // AllGather L0 (框内, Z轴绕路)
-REGISTER_ALG_ATTRS(AicpuBroadcastSequenceMeshConcurNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.isSupportLevel1Nhr = false;);
+REGISTER_ALG_ATTRS(
+    AicpuBroadcastSequenceMeshConcurNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        (void)topo;
+        return false;
+    };);
 REGISTER_EXEC_V2_MULTI(
     HcclCMDType::HCCL_CMD_BROADCAST, AicpuBroadcastSequenceMeshConcurNHR, BroadcastSequenceMesh1dNHRNHRExecutor,
     TopoMatchTwoLevel,

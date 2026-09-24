@@ -50,6 +50,9 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D1DZAxisDetour::CalcCostCoeff(C
             }
         }
     }
+    if (level1PortTotal == 1) {
+        level1PortTotal = 0;
+    }
     int portNum1 = level1PortTotal;
     if (param.algName != nullptr && strcmp(param.algName, "AicpuAllGatherSoleMeshConcur") == 0) {
         portNum1 /= 2;

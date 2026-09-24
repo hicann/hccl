@@ -39,8 +39,10 @@ std::vector<CostModelParam> InsTempBroadcastNHR::CalcCostCoeff(CalcCostCoeffPara
     }
     u32 rEff = std::max(static_cast<u32>(5 * log2R / 3), 2u);
     int kernelNum = 10 + 12 * log2R;
+    int extraTask = (param.rankSize > 32) ? static_cast<int>(param.rankSize - 32) * 2 : 0;
     int taskNum
-        = (CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2 + 4 * log2R) * 2;
+        = (CostModelManager::CalcTransTaskNum(rEff) + CostModelManager::CalcSyncTaskNum(rEff) * 2 + 4 * log2R) * 2
+          + extraTask;
 
     float A = 0.0f;
     float B = 0.0f;
