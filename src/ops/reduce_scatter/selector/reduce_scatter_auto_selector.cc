@@ -31,6 +31,7 @@ constexpr u64 RS_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_PCIE_RS_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_UBX_RS_SCHED_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_UBX_RS_MS_DATA_SIZE = 2 * 1024 * 1024;
+constexpr u64 OMNI_UBX_RS_LARGE_SIZE = 16 * 1024 * 1024;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 
 SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(
@@ -680,7 +681,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoAicpuForMesh1DClos(
     } else if (Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
         selectAlgName = "AicpuReduceScatterSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
-        if (opParam.supportSymmetricMemory) {
+        if (opParam.supportSymmetricMemory && dataSize >= OMNI_UBX_RS_LARGE_SIZE) {
             selectAlgName = "AicpuReduceScatterPipeLineMeshNHR";
         } else {
             selectAlgName = "AicpuReduceScatterParallelMeshNHRMultiJetty";

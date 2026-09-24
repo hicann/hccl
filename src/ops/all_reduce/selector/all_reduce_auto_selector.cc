@@ -30,6 +30,9 @@ constexpr u64 AR_AICPU_SEQUENCE_DATA_SIZE = 4ULL * 1024 * 1024 * 1024;
 constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_SCHED_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_MS_DATA_SIZE = 32 * 1024 * 1024;
+constexpr u64 OMNI_UBX_AR_LARGE_SIZE = 128 * 1024 * 1024;
+constexpr u64 OMNI_UBX_AR_16P_LARGE_SIZE = 256 * 1024 * 1024;
+constexpr u32 OMNI_UBX_AR_RANK_SIZE = 16;
 constexpr u64 AR_AIV_SMALL_DATA_SIZE_IN_BOARD = 128 * 1024;
 constexpr u64 AR_AIV_BOARD_SIZE = 8;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
@@ -505,7 +508,9 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgoAicpuUBX(
     } else if (isDataTypeOrReduceTypeSpecial) {
         selectAlgName = "AicpuAllReduceSoleNHRAicpuReduce";
     } else if (isClosNumMultipleOfMeshNum && IsLargeData(dataSize)) {
-        if (opParam.supportSymmetricMemory) {
+        if (opParam.supportSymmetricMemory
+            && ((dataSize >= OMNI_UBX_AR_LARGE_SIZE && topoInfo->userRankSize < OMNI_UBX_AR_RANK_SIZE)
+                || dataSize >= OMNI_UBX_AR_16P_LARGE_SIZE)) {
             selectAlgName = "AicpuAllReducePipeLineMeshNHR";
         } else {
             // 矩形场景大数据量，用Parallel并行算法
