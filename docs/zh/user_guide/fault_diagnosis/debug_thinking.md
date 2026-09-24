@@ -52,6 +52,21 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 - HCCL在CANN日志的run目录下会默认记录一些关键运行日志，如通信域的初始化与析构（默认打印）、通信算子的下发（需开启HCCL_ENTRY_LOG_ENABLE环境变量）等，关键日志示例如下：
   - 通信域初始化：
 
+    <!-- npu="950" id13 -->
+    针对Ascend 950PR&950DT系列产品，日志示例如下：
+
+    ```text
+    Entry-HcclGetRootInfo V950
+    Entry-HcclCommInitRootInfo V950, rankId[0], rankNum[16].
+    ```
+
+    - rankId：当前rank在通信域内的rank编号。
+    - rankNum：通信域大小。
+    <!-- end id13 -->
+
+    <!-- npu="A3,910b" id12 -->
+    针对Atlas A3系列产品和Atlas A2系列产品，日志示例如下：
+
     ```text
     Entry-HcclGetRootInfo:rootInfo[0x7fffcd65f130], deviceLogicId[0]
     Entry-HcclCommInitRootInfoConfigInner:ranks[16], rank[0], rootinfo: host ip[127.10.0.1] port[60000] nicDeploy[1] identifier[group_name_0], deviceLogicId[0]
@@ -61,14 +76,47 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
     - rank：当前rank在通信域内的rank编号。
     - rootinfo：root节点的信息。
     - identifier：通信域名。
+    <!-- end id12 -->
 
   - 通信域析构：
+
+    <!-- npu="950" id15 -->
+    针对Ascend 950PR&950DT系列产品，日志示例如下，其中`comm`表示通信域名：
+
+    ```text
+    Entry-HcclCommDestroy V950 comm[group_name_0]
+    ```
+    <!-- end id15 -->
+
+    <!-- npu="A3,910b" id14 -->
+    针对Atlas A3系列产品和Atlas A2系列产品，日志示例如下：
 
     ```text
     Entry-HcclCommDestroy: op_base comm destroy begin
     ```
+    <!-- end id14 -->
 
   - 通信算子下发（需开启HCCL_ENTRY_LOG_ENABLE环境变量）：
+
+    <!-- npu="950" id17 -->
+    针对Ascend 950PR&950DT系列产品，日志示例如下：
+
+    ```text
+    Entry-HcclAllReduce: tag[AllReduce_127.10.0.1%eth1_30000_0_1736576907435382], sendBuf[0x12e7bf550000], recvBuf[0x12e7bf550000], count[531260224], dataType[float32], reduceOp[sum], streamId[5], deviceId[0]
+    ```
+
+    - tag：通信算子标识符。
+    - sendBuf：输入数据地址指针。
+    - recvBuf：输出数据地址指针。
+    - count：数据量。
+    - dataType：数据类型。
+    - reduceOp：reduce计算类型。
+    - streamId：通信算子执行流。
+    - deviceId：通信算子下发的设备逻辑ID。
+    <!-- end id17 -->
+
+    <!-- npu="A3,910b" id16 -->
+    针对Atlas A3系列产品和Atlas A2系列产品，日志示例如下：
 
     ```text
     Entry-HcclAllReduce: tag[AllReduce_127.10.0.1%eth1_30000_0_1736576907435382], sendBuf[0x12e7bf550000], recvBuf[0x12e7bf550000], count[531260224], dataType[float32], op[sum], localRank[0], streamId[5],comm[0x331c9c00], deviceLogicId[0]
@@ -82,10 +130,29 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
     - op：reduce计算类型。
     - localRank：本端rank号。
     - streamId：通信算子执行流。
-    - comm：通信域指针。
-    - deviceLogicid：通信算子下发的设备逻辑ID。
+    - comm：通信域句柄。
+    - deviceLogicId：通信算子下发的设备逻辑ID。
+    <!-- end id16 -->
 
-  - 为了方便快速检索和识别通信域及本端的相关信息，HCCL提供了快速检索关键字：`Communicator Key Info`和`LocalRank Key Info`。
+  - 为了方便快速检索和识别通信域、本端及链路的相关信息，HCCL提供了快速检索关键字：`Communicator Key Info`、`LocalRank Key Info`和`LinkInfo`。
+
+    <!-- npu="950" id19 -->
+    针对Ascend 950PR&950DT系列产品，日志示例如下：
+
+    ```text
+    [Communicator Key Info]identifier[group_name_0] rankSize[8] comm[0x331c9c00]
+    [LocalRank Key Info]userRank[3] deviceLogicId[1]
+    [LinkInfo]userRank[3] remoteRank[4] localProtocol[6] remoteProtocol[6] engine[AICPU_TS] channel[1/1]
+    ```
+
+    - 通信域关键信息：`identifier[通信域名]`、`rankSize[通信域大小]`、`comm[通信域句柄]`。
+    - 本端关键信息：`userRank[通信域内的rank号]`、`deviceLogicId[设备逻辑ID]`。
+    - 链路关键信息：`userRank[本端rank号]`、`remoteRank[对端rank号]`、`localProtocol[本端通信协议]`、`remoteProtocol[对端通信协议]`、`engine[通信引擎]`、`channel[当前通道序号/通道总数]`。
+    <!-- end id19 -->
+
+    <!-- npu="A3,910b" id18 -->
+    针对Atlas A3系列产品和Atlas A2系列产品，日志示例如下：
+
     - 例如执行`grep -r "Communicator Key Info"`得到以下信息：
 
       ```text
@@ -101,8 +168,23 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
       ```
 
       本端关键信息：`userRank[通信域内的Rank号]`、`hostIp[host侧Ip]`、`devicePhyId[物理Id]`、`server[节点信息]`、`deviceIp[device侧Ip]`、`superPodId[超节点Id]`、`useSuperPodMode[是否为超节点模式]`、`isStandardCard[是否为标卡场景]`，信息中，“1”表示是，“0”表示否。
+    <!-- end id18 -->
 
   - 如果想要查询已经配置成功的环境变量，其配置及实际生效值会被打印在CANN日志的run/plog目录下。
+
+    <!-- npu="950" id9 -->
+    **针对Ascend 950PR&950DT系列产品**，可通过检索关键字`HCCL_ENV`查询环境变量的生效值及来源（环境变量或默认值）。部分版本可检索`base_config`或`Env config`，并结合环境变量名查看以下日志。环境变量配置异常时，应检索`[InitGroupStage][EnvConfig]`，并参考[环境变量配置异常定位思路](env_config_error_EI0001_troubleshooting.md)。
+
+    ```text
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.170[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_IP" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.176[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_BASE_PORT" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.181[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_SOCKET_IFNAME" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.187[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_WHITELIST_DISABLE" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.192[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_HOST_SOCKET_PORT_RANGE" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.197[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_SOCKET_FAMILY" is not set. Default value is used.
+    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.206[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_CONNECT_TIMEOUT" is parsed.
+    ```
+    <!-- end id9 -->
 
     <!-- npu="A3,910b,910,310p" id8 -->
      针对如下产品，可以通过检索`HCCL_ENV`的关键字查询每个进程的环境变量实际生效值，例如执行：`grep -r "HCCL_ENV" run/plog/plog-_xxx_.log`。
@@ -153,20 +235,6 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
     ```
     <!-- end id8 -->
 
-    <!-- npu="950" id9 -->
-    **针对Ascend 950PR&950DT系列产品**，可通过检索关键字`HCCL_ENV`查询环境变量的生效值及来源（环境变量或默认值）。部分版本可检索`base_config`或`Env config`，并结合环境变量名查看以下日志。环境变量配置异常时，应检索`[InitGroupStage][EnvConfig]`，并参考[环境变量配置异常定位思路](env_config_error_EI0001_troubleshooting.md)。
-
-    ```text
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.170[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_IP" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.176[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_IF_BASE_PORT" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.181[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_SOCKET_IFNAME" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.187[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_WHITELIST_DISABLE" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.192[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_HOST_SOCKET_PORT_RANGE" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.197[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_SOCKET_FAMILY" is not set. Default value is used. 
-    [INFO] HCCL(229424,python3.8):2025-12-23-22:31:40.239.206[base_config.cc:33][229424][Init][EnvVarParam]Env config "HCCL_CONNECT_TIMEOUT" is parsed. 
-    ```
-    <!-- end id9 -->
-
 ## 快速定位定界思路
 
 1. 确认是否为HCCL相关的异常报错。
@@ -216,17 +284,34 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
 ### HCCL相关故障码
 
+本节表格用于快速检索，不作为完整故障码清单。完整故障码定义、现象、可能原因及解决方法请参见《[HCCL错误码参考](https://gitcode.com/cann/hcomm/blob/master/docs/zh/error_codes/README.md)》，场景化定位指导请参见[故障诊断](README.md)。
+
 <!-- npu="950" id10 -->
-以下plog关键字表仅适用于Ascend 950PR&950DT系列产品，可用于快速定位该系列产品的常见故障。三级关键字用于标识任务执行引擎；入参校验和环境变量校验尚未进入引擎执行阶段，因此没有三级关键字。
+以下plog关键字表仅适用于Ascend 950PR&950DT系列产品，可用于快速定位该系列产品的常见故障。三级关键字用于进一步标识任务执行方式或异常类型，取值包括`HOST`、`AICPU`、`AIV`、`CCU`和`CQE ERROR`。若入参校验和环境变量校验未进入任务执行阶段，则没有三级关键字。
 
 | 故障码或场景 | 一级关键字 | 二级关键字 | 三级关键字 |
 | --- | --- | --- | --- |
 | EI0001环境变量配置异常 | InitGroupStage | EnvConfig | - |
 | EI0003算子入参校验失败 | TaskExecStage | InvalidArgument | - |
-| EI0002 AIV执行超时 | TaskExecStage | Timeout | AIV |
+| EI0002（HOST执行超时） | TaskExecStage | Timeout | HOST |
+| HOST其他执行异常 | TaskExecStage | RunFailed | HOST |
+| EI0002（AICPU执行超时） | TaskExecStage | Timeout | AICPU |
+| AICPU其他执行异常 | TaskExecStage | RunFailed | AICPU |
 | AIV其他执行异常 | TaskExecStage | RunFailed | AIV |
+| EI0002（CCU执行超时） | TaskExecStage | Timeout | CCU |
+| CCU其他执行异常 | TaskExecStage | RunFailed | CCU |
+| CQE错误 | TaskExecStage | RunFailed | CQE ERROR |
+| 心跳检测到CQE错误 | TaskExecStage | HeartbeatAbnormal | CQE ERROR |
+| EI0007通信域初始化资源申请失败 | InitGroupStage | Resource | - |
+| EI0007参数面资源申请失败 | InitChannelStage | Resource | - |
+| EI0009传输初始化失败 | InitGroupStage | RunFailed | - |
+| EI0014 rankTable集群配置校验失败 | InitGroupStage | RanktableCheck | - |
+| EI0015集群信息协商阶段异常 | InitGroupStage | RanktableDetect | - |
+| EI0016通信域配置项校验失败 | InitGroupStage | RanktableCheck | - |
 
-例如，可使用`grep -F '[TaskExecStage][InvalidArgument]'`定位算子入参校验错误，使用`grep -F '[TaskExecStage][Timeout][AIV]'`定位AIV执行超时。`Communicator Key Info`、`LocalRank Key Info`和`LinkInfo`用于辅助检索通信域、本端rank和链路信息，按需结合使用。
+故障码说明以表格标注的产品范围为准。多级检索关键字用于定位故障阶段，不用于唯一标识故障码。Ascend 950PR&950DT系列产品的EI0014与EI0016均属于通信域初始化阶段的配置校验，因此检索关键字相同，需结合故障码和报错信息区分具体原因。
+
+例如，可使用`grep -F '[TaskExecStage][InvalidArgument]'`定位算子入参校验错误，使用`grep -F '[TaskExecStage][Timeout][AICPU]'`定位AICPU执行超时。`Communicator Key Info`、`LocalRank Key Info`和`LinkInfo`用于辅助检索通信域、本端rank和链路信息，按需结合使用。
 
 <!-- end id10 -->
 
@@ -243,11 +328,15 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 | EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时-ei0006) |
 | EI0007 | 资源初始化失败，请根据报错信息判断具体失败原因 |
 | EI0008 | HCCL版本不一致，校验失败，请根据报错信息中的版本信息判断 |
+| EI0009 | 传输初始化失败，请根据报错信息判断具体失败原因 |
+| EI0010 | Server内卡间建链失败，请根据报错信息判断具体失败原因 |
 | EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) |
 | EI0012 | [算子执行时发生SDMA任务异常](./sdma_error_EI0012.md#sdma-errorei0012) |
 | EI0013 | [算子执行时发生ROCE CQE ERROR异常](./error_cqe_report_EI0013.md#error-cqe报错ei0013) |
 | EI0014 | [集群信息校验失败](_dump_cluster_info_verify_fail.md) |
 | EI0015 | [通信域集群信息协商阶段超时](_dump_cluster_info_nego.md) |
+| EI0016 | [TLS信息配置不一致](tls_info_config_inconsistent_EI0016.md) |
 | EI0019 | [通信域创建阶段server节点端口绑定失败](./server_node_port_bind_fail_EI0019.md#server节点端口绑定失败ei0019)或[参数面建链阶段端口绑定失败](./param_port_bind_fail_EI0019.md#参数面端口绑定失败ei0019) |
+| EI9999 | HCCL内部错误，请结合CANN日志排查；仍无法解决时请联系技术支持 |
 
 <!-- end id11 -->
