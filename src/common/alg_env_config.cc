@@ -78,6 +78,7 @@ HcclResult ParseExecTimeout()
     if (execTimeOutEnv == "EmptyString") {
         g_algEnvConfig.execTimeOutSet = false;
         g_algEnvConfig.execTimeout = 0;
+        HCCL_INFO("HCCL_EXEC_TIMEOUT is not set, use default timeout.");
         return HCCL_SUCCESS;
     }
 
@@ -106,6 +107,7 @@ HcclResult ParseExecTimeout()
     }
     g_algEnvConfig.execTimeOutSet = true;
     g_algEnvConfig.execTimeout = execTimeOut;
+    HCCL_INFO("HCCL_EXEC_TIMEOUT set by environment to [%s] s", execTimeOutEnv.c_str());
     return HCCL_SUCCESS;
 }
 
@@ -126,6 +128,7 @@ HcclResult ParseMultipleDimensionSplitRatio()
     if (multipleDimensionSplitRatioEnv == nullptr) {
         g_algEnvConfig.multipleDimensionSplitRatioSet = false;
         g_algEnvConfig.multipleDimensionSplitRatio = 0;
+        HCCL_INFO("HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO is not set, use built-in split ratio.");
         return HCCL_SUCCESS;
     }
 
@@ -152,6 +155,8 @@ HcclResult ParseMultipleDimensionSplitRatio()
 
     g_algEnvConfig.multipleDimensionSplitRatioSet = true;
     g_algEnvConfig.multipleDimensionSplitRatio = multipleDimensionSplitRatio;
+    HCCL_INFO(
+        "HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO set by environment to [%s]", multipleDimensionSplitRatioStr.c_str());
     return HCCL_SUCCESS;
 }
 
@@ -170,6 +175,41 @@ bool GetExternalInputTaskExceptionEnable()
 {
     std::lock_guard<std::mutex> lock(g_algEnvConfigMutex);
     return g_algEnvConfig.taskExceptionEnable;
+}
+
+// 调用方已完成全部解析并持有g_algEnvConfigMutex；不要在这里调用会再次加锁的配置getter。
+static void LogEnvConfigSummary(HcclDevType deviceType)
+{
+    const auto& config = g_algEnvConfig;
+    HCCL_RUN_INFO(
+        "[InitEnvConfig] initialized: deviceType[%u], aicpuUnfold[%u], aicpuCacheEnable[%u], "
+        "aivMode[%u], ccuMSMode[%u], ccuSchedMode[%u], enableFfts[%u], deterministic[%u], "
+        "entryLog[%u], debugConfig[0x%llx].",
+        static_cast<u32>(deviceType), config.aicpuUnfold, config.aicpuCacheEnable, config.aivMode, config.ccuMSMode,
+        config.ccuSchedMode, config.enableFfts, config.hcclDeterministic, config.enableEntryLog, GetDebugConfig());
+
+    // retry及旧算法配置仅在A3解析；其他设备的算法配置由后续CostModel处理。
+    const bool isA3 = deviceType == HcclDevType::DEV_TYPE_910_93;
+    u32 retryMask = 0;
+    if (isA3) {
+        for (u32 level = 0; level < HCCL_RETRY_ENABLE_LEVEL_NUM; ++level) {
+            retryMask |= static_cast<u32>(config.hcclRetryConfig[level]) << level;
+        }
+    }
+    std::string algoConfig = isA3 ? GetEnv("HCCL_ALGO") : "deferred-to-costmodel";
+    if (algoConfig == "EmptyString") {
+        algoConfig = "default";
+    }
+    // Set为0表示未配置，数值字段为占位值，不表示禁用超时或采用零切分比例。
+    HCCL_RUN_INFO(
+        "[InitEnvConfig] initialized: execTimeoutSet[%u], execTimeoutSec[%.2f], "
+        "splitRatioSet[%u], splitRatio[%.17g], intraLinkConfigSupported[%u], intraRoce[%u], "
+        "a3ConfigSupported[%u], interHccsDisable[%u], retryMask[0x%x], "
+        "inconsistentCheck[%d], taskException[%u], algoConfig[%s].",
+        config.execTimeOutSet, config.execTimeout, config.multipleDimensionSplitRatioSet,
+        config.multipleDimensionSplitRatio, !shouldGoOutPlace(deviceType), config.intraRoceSwitch, isA3,
+        config.interHccsDisable, retryMask, config.inconsistentCheckSwitch, config.taskExceptionEnable,
+        algoConfig.c_str());
 }
 
 /* 入口 */
@@ -358,6 +398,7 @@ HcclResult InitEnvConfig()
         ret);
 
     g_algEnvConfig.initialized = true;
+    LogEnvConfigSummary(deviceType);
 
     return HCCL_SUCCESS;
 }
@@ -820,11 +861,13 @@ HcclResult ParseOpExpansion()
 
     if (opExpansionModeEnv == "CCU_MS") {
         g_algEnvConfig.ccuMSMode = true;
+        HCCL_INFO("HCCL_OP_EXPANSION_MODE set by environment to [CCU_MS]");
         return HCCL_SUCCESS;
     }
 
     if (opExpansionModeEnv == "CCU_SCHED") {
         g_algEnvConfig.ccuSchedMode = true;
+        HCCL_INFO("HCCL_OP_EXPANSION_MODE set by environment to [CCU_SCHED]");
         return HCCL_SUCCESS;
     }
 

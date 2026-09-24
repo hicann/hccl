@@ -639,6 +639,7 @@ struct DevAicpuOpConfig {
     double multipleDimensionSplitRatio = 0.5;
     MultipleDimensionSplitRatioSource multipleDimensionSplitRatioSource
         = MultipleDimensionSplitRatioSource::BUILTIN_FORMULA;
+    bool enableEntryLog = false; // Host解析日志开关后传到Device，避免在AICPU热路径读取环境变量
 };
 
 struct OpParam { // 不申请ctx，每个算子单独下发

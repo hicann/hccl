@@ -626,14 +626,21 @@ static u32 RunLegacyExecutorPath(OpParam* param, const std::string& algName)
 }
 
 // 收尾: 释放通信域并打印成功日志
-static u32 ReleaseCommAndLogSuccess(OpParam* param, CommRefGuard& commGuard)
+static u32 ReleaseCommAndLogSuccess(OpParam* param, CommRefGuard& commGuard, const char* entryName = nullptr)
 {
     commGuard.MarkReleased();
     if (HcommReleaseComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommReleaseComm fail, commName[%s]", __func__, param->commName);
         return 1;
     }
-    HCCL_INFO("%s success, tag[%s], algTag[%s], commName[%s]", __func__, param->tag, param->algTag, param->commName);
+    // 仅显式传入入口名称的调用方启用受控运行日志，其他入口保持原有INFO行为。
+    const char* logName = entryName == nullptr ? __func__ : entryName;
+    if (UNLIKELY(entryName != nullptr && param->opConfig.enableEntryLog)) {
+        HCCL_RUN_INFO(
+            "%s success, tag[%s], algTag[%s], commName[%s]", logName, param->tag, param->algTag, param->commName);
+    } else {
+        HCCL_INFO("%s success, tag[%s], algTag[%s], commName[%s]", logName, param->tag, param->algTag, param->commName);
+    }
     return 0;
 }
 
@@ -650,7 +657,12 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         HCCL_ERROR("%s param is nullptr", __func__);
         return 1;
     }
-    HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
+    if (UNLIKELY(param->opConfig.enableEntryLog)) {
+        HCCL_RUN_INFO(
+            "Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
+    } else {
+        HCCL_INFO("Entry-%s, commName[%s], tag[%s], algTag[%s]", __func__, param->commName, param->tag, param->algTag);
+    }
     if (HcommAcquireComm(param->commName) != HCCL_SUCCESS) {
         HCCL_ERROR("%s HcommAcquireComm fail, commName[%s]", __func__, param->commName);
         return 1;
@@ -821,7 +833,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
         }
     }
 
-    return ReleaseCommAndLogSuccess(param, commGuard);
+    return ReleaseCommAndLogSuccess(param, commGuard, __func__);
 }
 
 extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)

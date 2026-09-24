@@ -21,7 +21,7 @@ HcclResult InitDebugConfigByEnv()
     g_debugConfig = 0;
     char* env = std::getenv("HCCL_DEBUG_CONFIG"); // 环境变量值
     if (env == nullptr) {
-        HCCL_RUN_INFO("HCCL_DEBUG_CONFIG is not set, debugConfig set by default to 0x%llx", g_debugConfig);
+        HCCL_INFO("HCCL_DEBUG_CONFIG is not set, debugConfig set by default to 0x%llx", g_debugConfig);
         return HCCL_SUCCESS;
     }
 
@@ -52,7 +52,7 @@ HcclResult InitDebugConfigByEnv()
         subConfig = strtok_r(nullptr, ",", &left);
     }
     free(configDup);
-    HCCL_RUN_INFO("HCCL_DEBUG_CONFIG[%s], set debugConfig[0x%llx]", env, g_debugConfig);
+    HCCL_INFO("HCCL_DEBUG_CONFIG[%s], set debugConfig[0x%llx]", env, g_debugConfig);
     return HCCL_SUCCESS;
 }
 

@@ -117,8 +117,8 @@ namespace {
         algName = pluginAlgName;
         param.pluginSelected = true;
         HCCL_INFO(
-            "[Selector] plugin algorithm selected, algName=[%s], opType=[%d]", algName.c_str(),
-            static_cast<int>(param.opType));
+            "[Selector] plugin algorithm selected, algName=[%s], opType=[%s]", algName.c_str(),
+            HcclCMDTypeToString(param.opType).c_str());
 
         if (algName == "") {
             HCCL_ERROR("[Selector] select algname fail!");
@@ -1185,6 +1185,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(
 
 HcclResult AicpuKernelLaunch(HcclComm comm, OpParam& param, ThreadHandle unfoldThread)
 {
+    param.opConfig.enableEntryLog = GetExternalInputHcclEnableEntryLog() || (GetDebugConfig() & HCCL_ALG) != 0;
     std::string kernelName = "HcclLaunchAicpuKernel";
     aclrtFuncHandle funcHandle;
     aclrtArgsHandle argsHandle;
@@ -1458,10 +1459,11 @@ HcclResult HcclGetAlgRes(
             channelNumInfo += "level" + std::to_string(i) + "[" + std::to_string(resCtxHost->channels[i].size()) + "]";
         }
         HCCL_RUN_INFO(
-            "[HcclGetAlgRes] engine[%s], algTag[%s], resource allocated: thread num[%u], "
-            "channel num per level[%s], ccu kernel num[%u].",
+            "[HcclGetAlgRes] engine[%s], algTag[%s], resource allocated: thread num[%zu], "
+            "channel num per level[%s], ccu kernel num[%zu], commName[%s], userRank[%u], ctxSize[%llu].",
             GetEnumToString(GetCommEngineStatusStrMap(), param.engine).c_str(), param.algTag,
-            resCtxHost->threads.size(), channelNumInfo.c_str(), resCtxHost->ccuKernels.size());
+            resCtxHost->threads.size(), channelNumInfo.c_str(), resCtxHost->ccuKernels.size(), param.commName,
+            topoInfo->userRank, size);
     }
 
     // 参数一致性校验
@@ -1776,7 +1778,20 @@ HcclResult HcclAllocAlgResourceAICPU(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest,
     std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost, const ResPackGraphMode& resPack)
 {
-    HCCL_INFO("Start to execute AllocAlgResource.");
+    if (param.engine == COMM_ENGINE_AICPU_TS && HcclCheckLogLevel(HCCL_LOG_INFO, HCCL_LOG_MASK)) {
+        size_t channelNum = 0;
+        for (const auto& channels : resRequest.channels) {
+            channelNum += channels.size();
+        }
+        HCCL_RUN_INFO(
+            "[%s] resource calculated: commName[%s], algTag[%s], algName[%s], "
+            "slaveThreadNum[%u], notifyNumOnMainThread[%u], channelNum[%zu], channelLevels[%zu].",
+            __func__, param.commName, param.algTag, param.algName, resRequest.slaveThreadNum,
+            resRequest.notifyNumOnMainThread, channelNum, resRequest.channels.size());
+    }
+    HCCL_RUN_INFO(
+        "[%s] start allocation: commName[%s], algTag[%s], algName[%s]", __func__, param.commName, param.algTag,
+        param.algName);
     void* cclBufferAddr;
     uint64_t cclBufferSize;
     // 从通信域获取CCL buffer
