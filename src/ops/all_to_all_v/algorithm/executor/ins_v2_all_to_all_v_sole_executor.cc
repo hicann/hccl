@@ -12,6 +12,7 @@
 #include <cstring>
 #include "alg_attrs_registry.h"
 #include "ins_temp_all_to_all_v_mesh_1D.h"
+#include "ins_temp_all_to_all_v_pairwise.h"
 #include "ins_temp_dpu_alltoall_mesh.h"
 #include "ins_temp_ubx_all_to_all_v_mesh_1D.h"
 #include "alg_attrs_registry.h"
@@ -603,6 +604,36 @@ REGISTER_EXEC_V2(
     InsTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
                    topo.isSupportLevel0PcieMix = true;);
+
+constexpr u32 PAIRWISE_RANK_NUM_PER_BOARD = InsTempAllToAllVPairwise::RANK_NUM_PER_BOARD;
+constexpr u32 PAIRWISE_UNIT_RANK_SIZE = InsTempAllToAllVPairwise::THREAD_SET_NUM * PAIRWISE_RANK_NUM_PER_BOARD;
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSolePairwise, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
+    InsTempAllToAllVPairwise);
+REGISTER_ALG_ATTRS(
+    AicpuAllToAllSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
+               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
+    };);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALLV, AicpuAllToAllVSolePairwise, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
+    InsTempAllToAllVPairwise);
+REGISTER_ALG_ATTRS(
+    AicpuAllToAllVSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
+               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
+    };);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSolePairwise, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
+    InsTempAllToAllVPairwise);
+REGISTER_ALG_ATTRS(
+    AicpuAllToAllVCSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
+               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
+    };);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // UBX 场景并入 Dpu 标准注册（TopoMatchOneLevel），分流由 selector 保证
 REGISTER_EXEC_V2(

@@ -247,6 +247,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_sequence_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_mesh_1D.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_pairwise.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/alltoall_stage_template_registry.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/ins_temp_all_to_all_hier_mesh_stage.cc
@@ -264,7 +265,7 @@ add_library(scatter_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor_aicpu.cc
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor_aicpu_3level.cc
-    
+
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_two_shot_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_reduce_mesh_1D_one_shot.cc
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_reduce_mesh_1D_two_shot.cc

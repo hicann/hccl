@@ -424,6 +424,10 @@ HcclResult CostTableManager::QueryUbUtil(
     if (engine == OpExecuteConfig::AIV && !useAivClosTable) {
         utilization = utilization / 0.85f * 0.65f;
     }
+    // Pairwise 多通道并发把带宽打满，util 不随数据量变化，不查表；真实利用率在模板折算，这里固定 1
+    if (algoType == AlgoType::PAIRWISE && opType == HcclCMDType::HCCL_CMD_ALLTOALL) {
+        utilization = 1.0f;
+    }
     HCCL_DEBUG(
         "[CostTableManager] QueryUbUtil netType=%d dataSize=%llu engine=%d utilization=%f.", static_cast<int>(netType),
         dataSize, static_cast<int>(engine), utilization);

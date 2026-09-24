@@ -124,6 +124,7 @@ inline bool Is64BitDataType(const HcclDataType dataType)
 }
 
 inline bool Is8BitDataType(const HcclDataType dataType) { return dataType == HcclDataType::HCCL_DATA_TYPE_INT8; }
+
 } // namespace ops_hccl
 
 // AIV_ONLY 额外打 ERROR（前缀 Failed to select AIV algorithm while configured as AIV_ONLY.，直接报错不回退，原因同

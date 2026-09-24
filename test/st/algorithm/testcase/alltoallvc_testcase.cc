@@ -17,6 +17,7 @@
 #include "check_utils.h"
 #include <thread>
 #include "alg_env_config.h"
+#include "pairwise_testcase_common.h"
 
 using namespace HcclSim;
 using namespace ops_hccl;
@@ -698,6 +699,33 @@ TEST_F(ST_ALLTOALLVC_TEST, st_alltoallvc_28)
         134217728, 536870912, 0,         67108864,  67108864,  1,         67108864, 134217728, 536870912, 4096,
         0,         67108864,  1,         67108864,  134217728, 536870912, 4096,     67108864,  0,
     };
+    RunAlltoAllVCMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// AllToAllVCPairwise 算子 ST 用例（口径与 alltoallv 一致：每 rank 总发送量 ≤ 8MB）
+TEST_F(ST_ALLTOALLVC_TEST, st_alltoallvc_pairwise_1)
+{
+    // 128 rank 回归基线, FP16 非对称矩阵 (N=8, XOR)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 8, 8); // 2 框 × 8 板 × 8 卡 = 128 rank
+    uint32_t rankSize = PAIRWISE_RANK_SIZE;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2); // FP16 2B
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVCMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// 稀疏多通道矩阵：每 rank 仅 1 个 pair 发 4MB（超 2MB 多通道阈值），其余 256KB，
+// 16 rank（守卫最小规格）下每 rank 总量 7.5MB ≤ 8MB 预算，覆盖多通道切分下 TX 落点偏移不错位、不越界
+TEST_F(ST_ALLTOALLVC_TEST, st_alltoallvc_pairwise_2)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 1, 8); // 2 框 × 1 板 × 8 卡 = 16 rank
+    uint32_t rankSize = 16;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    std::vector<u64> sendCountMatrix = GenPairwiseSparseMatrix(rankSize, 2 * 1024 * 1024, 128 * 1024);
+
     RunAlltoAllVCMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
 }
 } // namespace checker

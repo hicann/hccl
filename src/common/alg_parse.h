@@ -42,6 +42,7 @@ enum class AlgoType : uint8_t {
     NHR_MULTIJETTY,
     MESH_MULTIJETTY,
     GROUP_MESH,
+    PAIRWISE,
     UNKNOWN,
 };
 

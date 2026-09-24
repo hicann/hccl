@@ -13,6 +13,28 @@
 #include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
+
+namespace {
+    constexpr u32 PAIRWISE_RANK_NUM_PER_BOARD = 8; // 模板硬约束：每板 8 卡，逻辑板须与物理框对齐
+    constexpr u32 PAIRWISE_UNIT_RANK_SIZE = 2 * PAIRWISE_RANK_NUM_PER_BOARD; // 2 套流集合 × 8 卡/板
+
+    // Pairwise 能力守卫：跨框 MESH_1D 拓扑、每框恰好 8 卡，且 rankSize 为 16 的倍数
+    // （boardNumPerStreamSet = rankSize/16 任意 ≥1 均可：2 的幂走 XOR 配对，
+    //   非 2 的幂走反射配对 (t-i) mod N，自环轮由 fullMesh 填空，奇数板同样支持）
+    bool IsPairwiseCapable(const TopoInfoWithNetLayerDetails* topoInfo)
+    {
+        if (topoInfo->topoLevelNums <= 1 || topoInfo->level0Topo != Level0Shape::MESH_1D) {
+            return false;
+        }
+        // 每框非 8 卡时逻辑板与物理框错位，板内 HCCS 带宽与板间跨框的流量假设失效
+        if (topoInfo->deviceNumPerModule != PAIRWISE_RANK_NUM_PER_BOARD) {
+            return false;
+        }
+        return topoInfo->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
+               && topoInfo->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
+    }
+} // namespace
+
 constexpr uint32_t INDEX_0 = 0;
 constexpr uint32_t INDEX_1 = 1;
 constexpr uint32_t INDEX_2 = 2;
@@ -107,6 +129,12 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(
     (void)opParam;
     (void)configAlgMap;
     if (topoInfo->topoLevelNums > 1) {
+        // 跨框 MESH_1D 且 rankSize 为 16 的倍数走 Pairwise
+        if (IsPairwiseCapable(topoInfo)) {
+            selectAlgName = "AicpuAllToAllVSolePairwise";
+            HCCL_INFO("[AlltoAllVAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
         if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS
             || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             selectAlgName = "AicpuAllToAllVSoleMesh";
@@ -138,6 +166,7 @@ SelectorStatus AlltoAllVAutoSelector::SelectAicpuAlgo(
         HCCL_ERROR("[AlltoAllVAutoSelector][%s] hccl algo no match");
         return SelectorStatus::NOT_MATCH;
     }
+
     HCCL_DEBUG("[AlltoAllVAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }

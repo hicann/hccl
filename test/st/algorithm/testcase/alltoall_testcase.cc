@@ -17,6 +17,7 @@
 #include "check_utils.h"
 #include <thread>
 #include "alg_env_config.h"
+#include "pairwise_testcase_common.h"
 
 using namespace HcclSim;
 using namespace ops_hccl;
@@ -386,4 +387,81 @@ TEST_F(ST_ALLTOALL_TEST, st_alltoall_13)
     RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
 }
 
+// AllToAllPairwise 跨框算子 ST 用例
+// 物理 topology: superPodNum × serverNum × rankNum（每 server 8 rank = 1 板），
+// 板间配对：2 的幂走 XOR，否则走反射 (t-i) mod N；每 pair 数据量 1MB（对齐 1~2MB 约定）
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_1)
+{
+    // 128 rank 回归基线 (N=8, XOR)，INT8 覆盖 1 字节 dtype
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 8, 8); // 2 框 × 8 板 × 8 卡 = 128 rank
+    uint32_t rankSize = PAIRWISE_RANK_SIZE;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    uint64_t dataCount = 1 * 1024 * 1024; // 每 pair 1MB (1M 元素 × 1B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
+
+// 多 rank 规模矩阵（2 superpod × N server × 8 rank）：非 2 的幂板数走反射配对路径
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_2)
+{
+    // 48 rank (N=3, 奇数板反射, 自环轮 fullMesh)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 8);
+    uint32_t rankSize = 48;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    uint64_t dataCount = 1 * 1024 * 1024; // 每 pair 1MB (1M 元素 × 1B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
+
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_3)
+{
+    // 96 rank (N=6, 偶数非幂反射)，FP32 覆盖 4 字节 dtype
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 6, 8);
+    uint32_t rankSize = 96;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    uint64_t dataCount = 256 * 1024; // 每 pair 1MB (256K 元素 × 4B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
+
+// 拒绝用例：守卫不命中走默认算法，验证兜底路径正确性
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_4)
+{
+    // 8 rank 单机（非 16 倍数 + 无跨流集合层级）→ Mesh1D 兜底
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 1, 8);
+    uint32_t rankSize = 8;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    uint64_t dataCount = 1 * 1024 * 1024; // 每 pair 1MB (1M 元素 × 1B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
+
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_5)
+{
+    // 24 rank 跨框（8 的奇数倍，非 16 倍数）→ 守卫拒绝，Mesh1D 兜底
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 4);
+    uint32_t rankSize = 24;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    uint64_t dataCount = 1 * 1024 * 1024; // 每 pair 1MB (1M 元素 × 1B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
+
+// 小规模大数据量：满足守卫的最小非退化 ring（N=2 XOR），单对数据超 cclBuff 单槽容量覆盖多轮搬运
+TEST_F(ST_ALLTOALL_TEST, st_alltoall_pairwise_6)
+{
+    // 32 rank 跨框（2 板 × 8 卡），INT8 每 pair 4MB (4M 元素 × 1B)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 8);
+    uint32_t rankSize = 32;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    uint64_t dataCount = 4 * 1024 * 1024; // 每 pair 4MB (4M 元素 × 1B)
+
+    RunAlltoAllMeshTest(topoMeta, rankSize, dataType, dataCount);
+}
 } // namespace checker

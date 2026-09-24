@@ -13,6 +13,28 @@
 #include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
+
+namespace {
+    constexpr u32 PAIRWISE_RANK_NUM_PER_BOARD = 8; // 模板硬约束：每板 8 卡，逻辑板须与物理框对齐
+    constexpr u32 PAIRWISE_UNIT_RANK_SIZE = 2 * PAIRWISE_RANK_NUM_PER_BOARD; // 2 套流集合 × 8 卡/板
+
+    // Pairwise 能力守卫：跨框 MESH_1D 拓扑、每框恰好 8 卡，且 rankSize 为 16 的倍数
+    // （boardNumPerStreamSet = rankSize/16 任意 ≥1 均可：2 的幂走 XOR 配对，
+    //   非 2 的幂走反射配对 (t-i) mod N，自环轮由 fullMesh 填空，奇数板同样支持）
+    bool IsPairwiseCapable(const TopoInfoWithNetLayerDetails* topoInfo)
+    {
+        if (topoInfo->topoLevelNums <= 1 || topoInfo->level0Topo != Level0Shape::MESH_1D) {
+            return false;
+        }
+        // 每框非 8 卡时逻辑板与物理框错位，板内 HCCS 带宽与板间跨框的流量假设失效
+        if (topoInfo->deviceNumPerModule != PAIRWISE_RANK_NUM_PER_BOARD) {
+            return false;
+        }
+        return topoInfo->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
+               && topoInfo->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
+    }
+} // namespace
+
 constexpr uint32_t INDEX_0 = 0;
 constexpr uint32_t INDEX_1 = 1;
 constexpr uint32_t INDEX_2 = 2;
@@ -22,7 +44,7 @@ constexpr uint64_t BIG_DATA_SIZE_LIMIT = 512;
 constexpr uint64_t ALLTOALL_ENABLE_MULTI_CHANNEL_DATA_SIZE_LIMIT = 150 * 1024 * 1024;
 
 constexpr u64 A2A_CCU_64P_MAX_DATA_SIZE = 256 * 1024 * 1024;
-constexpr uint32_t A2A_CCU_MAX_RANK_SIZE = 64;
+constexpr u32 A2A_CCU_MAX_RANK_SIZE = 64;
 SelectorStatus AlltoAllAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -134,6 +156,21 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
 {
     HCCL_DEBUG("[AlltoAllAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
+    if (topoInfo->topoLevelNums > 1) {
+        // 跨框 MESH_1D 且 rankSize 为 16 的倍数走 Pairwise
+        if (IsPairwiseCapable(topoInfo)) {
+            selectAlgName = "AicpuAllToAllSolePairwise";
+            HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS
+            || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            selectAlgName = "AicpuAllToAllSoleMesh";
+        } else {
+            HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match", __func__);
+            return SelectorStatus::NOT_MATCH;
+        }
+    }
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS) {
         uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
@@ -172,7 +209,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
             selectAlgName = "AicpuAllToAllSoleMeshMultiJetty";
         }
     } else {
-        HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match");
+        HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match", __func__);
         return SelectorStatus::NOT_MATCH;
     }
     HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());

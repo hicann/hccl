@@ -778,8 +778,12 @@ HcclResult AlltoAllVExecDispatch(
     param.outputSymWindow = probeParam.outputSymWindow;
     param.outputOffset = probeParam.outputOffset;
     param.symMemChecked = probeParam.symMemChecked;
+    // 当前pairwise算法不支持对称内存
+    const bool isPairwiseAlgo = algName == "AicpuAllToAllSolePairwise" || algName == "AicpuAllToAllVSolePairwise"
+                                || algName == "AicpuAllToAllVCSolePairwise";
     if (probeParam.supportSymmetricMemory && param.engine == CommEngine::COMM_ENGINE_AICPU_TS
-        && (topoInfo->level0Topo == Level0Shape::MESH_1D || isSoleAlltoAllUbxSymmetric || isAllToAllConcurrent)) {
+        && ((topoInfo->level0Topo == Level0Shape::MESH_1D && !isPairwiseAlgo) || isSoleAlltoAllUbxSymmetric
+            || isAllToAllConcurrent)) {
         param.supportSymmetricMemory = probeParam.supportSymmetricMemory;
     }
 

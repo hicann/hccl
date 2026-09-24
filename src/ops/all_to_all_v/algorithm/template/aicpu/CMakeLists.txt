@@ -10,6 +10,7 @@
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_to_all_v_mesh_1D.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_to_all_v_pairwise.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_ubx_all_to_all_v_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/hier/alltoall_stage_template_registry.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/hier/ins_temp_all_to_all_hier_mesh_stage.cc

@@ -17,6 +17,7 @@
 #include "check_utils.h"
 #include <thread>
 #include "alg_env_config.h"
+#include "pairwise_testcase_common.h"
 
 using namespace HcclSim;
 using namespace ops_hccl;
@@ -727,4 +728,156 @@ TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_28)
     RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
 }
 
+// AllToAllVPairwise 算子 ST 用例
+// 物理 topology: superPodNum × serverNum × rankNum（每 server 8 rank = 1 板），
+// 模板内部按 2 套流集合（stream set）划分板空间；板间配对：2 的幂走 XOR，否则走反射 (t-i) mod N
+// 支持矩阵：rankSize 为 16 的倍数（含奇数板），128 回归基线见 pairwise_1~3
+// 数据量口径：每 rank 总发送量 ≤ 8MB（PAIRWISE_RANK_BUDGET_BYTES 均摊，8 级变化峰值=均摊值）
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_1)
+{
+    // FP16 非对称矩阵 (128 rank 基线, per-pair 8~64KB, 8 级变化)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 8, 8); // 2 框 × 8 板 × 8 卡 = 128 rank
+    uint32_t rankSize = PAIRWISE_RANK_SIZE;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2); // FP16 2B
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_2)
+{
+    // FP64 零对角矩阵 (对角 0, 不自发自收)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 8, 8);
+    uint32_t rankSize = PAIRWISE_RANK_SIZE;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP64;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 8); // FP64 8B
+    std::vector<u64> sendCountMatrix = GenPairwiseZeroDiagMatrix(rankSize, perPair);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_3)
+{
+    // INT8 64B 对齐边界矩阵 (均摊值天然为 64B 整数倍, 对齐属性不受规模影响)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 8, 8);
+    uint32_t rankSize = PAIRWISE_RANK_SIZE;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 1); // INT8 1B
+    std::vector<u64> sendCountMatrix = GenPairwiseAlignedMatrix(rankSize, perPair, 64);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// 以下为多 rank 规模矩阵（2 superpod × N server × 8 rank，N = boardNumPerStreamSet，规模 ≤128 控制耗时）：
+// N 为 2 的幂（32/64）走 XOR 路径；非 2 的幂含奇数板（48/96）走反射路径
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_4)
+{
+    // 32 rank (N=2, XOR)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 8);
+    uint32_t rankSize = 32;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_5)
+{
+    // 48 rank (N=3, 奇数板反射, 自环轮 fullMesh)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 8);
+    uint32_t rankSize = 48;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_6)
+{
+    // 64 rank (N=4, XOR)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 4, 8);
+    uint32_t rankSize = 64;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_7)
+{
+    // 96 rank (N=6, 偶数非幂反射)
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 6, 8);
+    uint32_t rankSize = 96;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// 拒绝用例：守卫不命中走默认算法，验证兜底路径正确性（不崩溃、结果成图校验通过）
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_8)
+{
+    // 8 rank 单机（非 16 倍数 + 无跨流集合层级）→ Mesh1D 兜底
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 1, 8);
+    uint32_t rankSize = 8;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_9)
+{
+    // 24 rank 跨框（8 的奇数倍，非 16 倍数）→ 守卫拒绝，Mesh1D 兜底
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 3, 4);
+    uint32_t rankSize = 24;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    u64 perPair = GenPairwisePerPairCount(rankSize, 2);
+    std::vector<u64> sendCountMatrix = GenPairwiseAsymmetricMatrix(rankSize, perPair / 8, perPair / 8);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// 稀疏环方向矩阵：每 rank 仅向 (i+1) 邻居发 512KB，其余 pair 双向 0。
+// 每对跨 rank pair 要么单向有数（纯发/纯收象限，MoE 稀疏路由形态），要么双向为 0（双零对称跳过象限）；
+// 多通道组合见 pairwise_11；32 rank 下每 rank 总发送量 512KB
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_10)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 8);
+    uint32_t rankSize = 32;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    std::vector<u64> sendCountMatrix = GenPairwiseSparseMatrix(rankSize, 256 * 1024, 0);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
+
+// 稀疏多通道矩阵：每 rank 仅 1 个 pair 发 4MB（超 2MB 多通道阈值，多通道路径唯一回归防线），
+// 其余 pair 发 256KB，16 rank（守卫最小规格）下每 rank 总量 = 4MB + 14 × 256KB = 7.5MB ≤ 8MB 预算，
+// 覆盖多通道切分下 send/recv 切分基准差异，验证 TX 落点偏移不错位、不越界
+TEST_F(ST_ALLTOALLV_TEST, st_alltoallv_pairwise_11)
+{
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 1, 8); // 2 框 × 1 板 × 8 卡 = 16 rank
+    uint32_t rankSize = 16;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP16;
+    std::vector<u64> sendCountMatrix = GenPairwiseSparseMatrix(rankSize, 2 * 1024 * 1024, 128 * 1024);
+
+    RunAlltoAllVMeshTest(topoMeta, rankSize, dataType, sendCountMatrix);
+}
 } // namespace checker
