@@ -304,6 +304,12 @@ HcclResult HcclSelectAlgGraphMode(
 
     CHK_RET(ops_hccl::HcclGetOpExpansionMode(hcclComm, param));
 
+    if (rankSize == 1) {
+        HCCL_INFO("[HcclSelectAlgGraphMode] rankSize == 1, skip Selector");
+        *ifAiv = false;
+        return HCCL_SUCCESS;
+    }
+
     std::unique_ptr<ops_hccl::TopoInfoWithNetLayerDetails> topoInfo
         = std::make_unique<ops_hccl::TopoInfoWithNetLayerDetails>();
     std::string localAlgName;
@@ -388,6 +394,11 @@ HcclResult RecordAivOpArgsGraphMode(
     CHK_PRT_RET(ret <= 0, HCCL_ERROR("[RecordAivOpArgsGraphMode] failed to fill param.commModeTag"), HCCL_E_INTERNAL);
 
     CHK_RET(ops_hccl::HcclGetOpExpansionMode(comm, param));
+
+    if (rankSize == 1) {
+        HCCL_INFO("[RecordAivOpArgsGraphMode] rankSize == 1, skip recording");
+        return HCCL_SUCCESS;
+    }
 
     // 算法选择
     std::unique_ptr<ops_hccl::TopoInfoWithNetLayerDetails> topoInfo
