@@ -145,12 +145,17 @@ static CcuResult DoSendRecvSlice(
     ctx.repeatTimeFlag = 0;
     repeatNumAdd = 1;
     ctx.repeatNumVarTemp = ctx.repeatNumVar;
+    uint16_t mask = 1 << signalIndex;
 
     CCU_WHILE(ctx.repeatNumVarTemp != UINT64_MAX)
     {
         ctx.repeatNumVarTemp += repeatNumAdd;
         CCU_IF(ctx.repeatTimeFlag == 1)
         {
+            // 同一bit同时只能挂一笔在飞: repeat 多笔时发本笔前先等上一笔完成并清位,
+            // 保证每笔完成信号恰好被消费一次(末笔完成信号留给外层批量Wait);
+            // repeatNum==1(小数据)时本分支不执行, 16个bit并发挂16笔由外层批量等待收敛
+            ccu::EventWait(ctx.event, mask);
             if (ctx.rankId == ctx.rootId) {
                 src.addr += ctx.inputRepeatStride;
             } else {
@@ -176,9 +181,7 @@ static CcuResult DoSendRecvSlice(
         } else {
             ctx.curSliceSize = (ctx.axisId == 0) ? ctx.die0Size : ctx.die1Size;
         }
-        uint16_t mask = 1 << signalIndex;
         DoWrite(sendChannel, dst, src, ctx.curSliceSize, ctx.event, mask);
-        ccu::EventWait(ctx.event, mask);
         ctx.repeatTimeFlag = 1;
     }
     return CCU_SUCCESS;
@@ -233,6 +236,11 @@ static CcuResult DoScatterNHRSingleStep(ScatterNHR1DContext& ctx, const NHRStepI
             CCU_CHK_RET(DoSendRecvSlice(
                 ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.dstRemoteMem, i % RANK_NUM_PER_CKE, isLastSlice));
         }
+
+        // 等最后一批(可能不足16笔)全部完成再发step完成通知, 避免接收方提前读scratch造成数据竞争;
+        // 批量为16时(1<<16)-1经int运算得65535, 截断到uint16_t恰为全1掩码
+        u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % RANK_NUM_PER_CKE) + 1;
+        ccu::EventWait(ctx.event, (1 << lastGroupSize) - 1);
 
         ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID);
     }
@@ -306,7 +314,9 @@ static CcuResult DoScatterNHR(ScatterNHR1DContext& ctx)
             ctx.curSliceSize = (ctx.axisId == 0) ? ctx.die0TailSize : ctx.die1TailSize;
         }
         GroupOpSizeVars& goSize = (ctx.rankId != ctx.rankSize - 1) ? ctx.goSizeNormal : ctx.goSizeLast;
-        uint16_t mask = 1 << ctx.rankId;
+        // 本kernel私有event, 各step批量Wait已清位, 复用bit0即可;
+        // 原按rankId置位在rankId>=16时移位溢出导致mask为0, 同步失效
+        uint16_t mask = 1;
         CCU_IF(ctx.isOutputScratch == 1)
         {
             CCU_IF(ctx.outputSliceStride == 0)

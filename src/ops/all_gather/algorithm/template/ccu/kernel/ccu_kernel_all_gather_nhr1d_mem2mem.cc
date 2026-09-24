@@ -133,12 +133,17 @@ static CcuResult DoRepeatSendRecvSlices(
     ChannelHandle sendChannel = arg->channels[arg->rank2ChannelIdx.at(toRank)];
     tmpRepeatNum = ctx.repeatNum;
     ctx.repeatTimeflag = 0;
+    const uint16_t signalMask = 1 << signalIndex;
 
     CCU_WHILE(tmpRepeatNum != UINT64_MAX)
     {
         tmpRepeatNum += ctx.constVar1;
         CCU_IF(ctx.repeatTimeflag == 1)
         {
+            // 同一bit同时只能挂一笔在飞: repeat 多笔时发本笔前先等上一笔完成并清位,
+            // 每笔完成信号恰好被消费一次(末笔完成信号留给外层批量Wait);
+            // repeatNum==1(小数据)时本分支不执行, 16个bit并发挂16笔由外层批量等待收敛
+            CCU_CHK_RET(ccu::EventWait(ctx.localEvent, signalMask));
             src.addr += ctx.inputRepeatStride;
             dst.addr += ctx.outputRepeatStride;
         }
@@ -152,15 +157,62 @@ static CcuResult DoRepeatSendRecvSlices(
         ccu::Variable& sliceSize = (arg->axisId == 0) ? (islastSlice ? ctx.die0LastSize : ctx.die0Size) :
                                                         (islastSlice ? ctx.die1LastSize : ctx.die1Size);
 
-        const uint16_t signalMask = 1 << signalIndex;
         CCU_IF(sliceSize != 0)
         {
             CCU_CHK_RET(ccu::Write(sendChannel, dst, src, sliceSize, ctx.localEvent, signalMask));
-            CCU_CHK_RET(ccu::EventWait(ctx.localEvent, signalMask));
+        }
+        CCU_ELSE
+        {
+            // 空片也置位完成信号, 保证外层批量Wait不悬挂
+            CCU_CHK_RET(ccu::EventRecord(ctx.localEvent, signalMask));
         }
         ctx.repeatTimeflag = 1;
     }
 
+    return CCU_SUCCESS;
+}
+
+static CcuResult DoAllGatherGroupCopy(AllGatherNHR1DMem2MemContext& ctx)
+{
+    const auto* arg = ctx.arg;
+    CCU_IF(ctx.isInputOutputEqual == 0)
+    {
+        CCU_IF(ctx.groupCopyRepeatNum != UINT64_MAX)
+        {
+            // src/dst 在此独立计算: GroupCopy 已移至最后一个 step 内提交,
+            // 此时 ctx.srcMem 已被 Write 循环改写, 不能再依赖其在 DoRepeatAllGatherNHR 的初值
+            ccu::Variable tmpSrc;
+            ccu::Variable tmpDst;
+            tmpSrc = ctx.input;
+            tmpSrc += ctx.myrankInputSliceOffset;
+            tmpDst = ctx.output[ctx.myRankIdx];
+            tmpDst += ctx.outputSliceOffset[arg->mySubCommRankId];
+            bool islastSlice = (arg->mySubCommRankId + 1 == arg->dimSize);
+            if (arg->axisId == 1) {
+                ccu::Variable die0Slice = islastSlice ? ctx.die0LastSize : ctx.die0Size;
+                tmpSrc += die0Slice;
+                tmpDst += die0Slice;
+            }
+            ctx.repeatTimeflag = 0;
+            CCU_WHILE(ctx.groupCopyRepeatNum != UINT64_MAX)
+            {
+                ctx.groupCopyRepeatNum += ctx.constVar1;
+                CCU_IF(ctx.repeatTimeflag != 0)
+                {
+                    tmpDst += ctx.outputRepeatStride;
+                    tmpSrc += ctx.inputRepeatStride;
+                }
+                ccu::LocalAddr localDst;
+                localDst.addr = tmpDst;
+                localDst.token = ctx.token[ctx.myRankIdx];
+                ccu::LocalAddr localSrc;
+                localSrc.addr = tmpSrc;
+                localSrc.token = ctx.token[ctx.myRankIdx];
+                CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize, GetCcuVersion()));
+                ctx.repeatTimeflag = 1;
+            }
+        }
+    }
     return CCU_SUCCESS;
 }
 
@@ -180,7 +232,14 @@ static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherNHR1DMem2MemContext& ct
 
     for (u32 i = 0; i < sendSliceIdxList.size(); i++) {
         sendSliceIdx = sendSliceIdxList[i];
-        if (nhrStepInfo.step == 0) {
+        if (i != 0 && i % BIT_NUM_PER_CKE == 0) {
+            // 等满上一批16笔完成并清位, 释放bit给本批复用
+            CCU_CHK_RET(ccu::EventWait(ctx.localEvent, (1 << BIT_NUM_PER_CKE) - 1));
+        }
+        if (nhrStepInfo.step == 0 || sendSliceIdx == arg->mySubCommRankId) {
+            // 自己的贡献数据从 input 直发: txSliceIdxs 每个 step 均以自己的 slot 开头,
+            // 若走 output 转发路径会依赖 GroupCopy 先完成; 直发后 GroupCopy 只承担
+            // 最终结果落位, 可与通信并发(数据源头相同, 内容完全等价)
             ctx.srcMem.addr = ctx.input;
             ctx.srcMem.addr += ctx.myrankInputSliceOffset;
         } else {
@@ -198,40 +257,24 @@ static CcuResult DoRepeatAllGatherNHRSingleStep(AllGatherNHR1DMem2MemContext& ct
             DoRepeatSendRecvSlices(ctx, nhrStepInfo.toRank, ctx.srcMem, ctx.dstMem, i % BIT_NUM_PER_CKE, islastSlice));
     }
 
+    // 等最后一批(可能不足16笔)全部完成再发step同步通知, 避免接收方提前读数据造成竞争;
+    // 批量为16时(1<<16)-1经int运算得65535, 截断到uint16_t恰为全1掩码
+    u32 lastGroupSize = ((sendSliceIdxList.size() - 1) % BIT_NUM_PER_CKE) + 1;
+
+    if (nhrStepInfo.step + 1 == arg->stepInfoVector.size()) {
+        // 最后一个step发送slice最多: 此刻全部Write已在飞, 提交本rank贡献的GroupCopy,
+        // local copy与通信并发执行, 由EventWait等待期间与PostSync掩盖其耗时;
+        // 自己slot的转发已改为input直发, 无数据依赖; kernel结束前运行时保证copy完成
+        CCU_CHK_RET(DoAllGatherGroupCopy(ctx));
+    }
+
+    CCU_CHK_RET(ccu::EventWait(ctx.localEvent, (1 << lastGroupSize) - 1));
+
     if (nhrStepInfo.step + 1 != arg->stepInfoVector.size()) {
         CCU_CHK_RET(ccu::NotifyRecord(sendChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID));
         CCU_CHK_RET(ccu::NotifyWait(recvChannel, CKE_IDX_0, 1 << STEP_POST_SYNC_ID));
     }
 
-    return CCU_SUCCESS;
-}
-
-static CcuResult DoAllGatherGroupCopy(AllGatherNHR1DMem2MemContext& ctx)
-{
-    CCU_IF(ctx.isInputOutputEqual == 0)
-    {
-        CCU_IF(ctx.groupCopyRepeatNum != UINT64_MAX)
-        {
-            ctx.repeatTimeflag = 0;
-            CCU_WHILE(ctx.groupCopyRepeatNum != UINT64_MAX)
-            {
-                ctx.groupCopyRepeatNum += ctx.constVar1;
-                CCU_IF(ctx.repeatTimeflag != 0)
-                {
-                    ctx.localDst.addr += ctx.outputRepeatStride;
-                    ctx.srcMem.addr += ctx.inputRepeatStride;
-                }
-                ccu::LocalAddr localDst;
-                localDst.addr = ctx.localDst.addr;
-                localDst.token = ctx.localDst.token;
-                ccu::LocalAddr localSrc;
-                localSrc.addr = ctx.srcMem.addr;
-                localSrc.token = ctx.srcMem.token;
-                CCU_CHK_RET(GroupCopy(ctx, localDst, localSrc, ctx.goSize, GetCcuVersion()));
-                ctx.repeatTimeflag = 1;
-            }
-        }
-    }
     return CCU_SUCCESS;
 }
 
@@ -250,26 +293,9 @@ static CcuResult DoRepeatAllGatherNHR(AllGatherNHR1DMem2MemContext& ctx)
         tmpSliceOffset += ctx.outputSliceStride;
     }
 
-    ctx.srcMem.addr = ctx.input;
-    ctx.srcMem.addr += ctx.myrankInputSliceOffset;
-    ctx.srcMem.token = ctx.token[ctx.myRankIdx];
-    ctx.dstMem.addr = ctx.output[ctx.myRankIdx];
-    ctx.dstMem.addr += ctx.outputSliceOffset[arg->mySubCommRankId];
-    ctx.dstMem.token = ctx.token[ctx.myRankIdx];
-    ctx.localDst.addr = ctx.output[ctx.myRankIdx];
-    ctx.localDst.addr += ctx.outputSliceOffset[arg->mySubCommRankId];
-    ctx.localDst.token = ctx.token[ctx.myRankIdx];
+    // GroupCopy 已移至最后一个 step 内与通信并发提交(见 DoRepeatAllGatherNHRSingleStep),
+    // 本 rank 贡献的转发由 input 直发, 不再需要 step 循环前先完成落位
     ctx.groupCopyRepeatNum = ctx.repeatNum;
-
-    bool islastSlice = (arg->mySubCommRankId + 1 == arg->dimSize);
-
-    if (arg->axisId == 1) {
-        ccu::Variable die0Slice = islastSlice ? ctx.die0LastSize : ctx.die0Size;
-        ctx.srcMem.addr += die0Slice;
-        ctx.localDst.addr += die0Slice;
-    }
-
-    CCU_CHK_RET(DoAllGatherGroupCopy(ctx));
 
     for (auto& nhrStepInfo : arg->stepInfoVector) {
         CCU_CHK_RET(DoRepeatAllGatherNHRSingleStep(ctx, nhrStepInfo));
