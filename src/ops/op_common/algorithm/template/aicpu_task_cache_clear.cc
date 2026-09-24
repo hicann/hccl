@@ -118,8 +118,10 @@ __attribute__((constructor)) void RegisterAicpuTaskCacheCallback()
     // 确保dlsym符号已解析, HcommDlInit内部幂等，HcommIsSupportHcclCommRegCommStateCallback依赖
     HcommDlInit();
     const char REG_NAME[] = "aicpu_task_cache_callback";
+    // 这里传入args是为了解决兼容性问题，实际AicpuTaskCacheCommStateCallback回调时不会用这个值
+    static u32 args = 0;
     HCCL_INFO("[%s] start register comm state callback", __func__);
     if (HcommIsSupportHcclCommRegCommStateCallback()) {
-        CHK_PRT(HcclCommRegCommStateCallback(REG_NAME, AicpuTaskCacheCommStateCallback, nullptr));
+        CHK_PRT(HcclCommRegCommStateCallback(REG_NAME, AicpuTaskCacheCommStateCallback, &args));
     }
 }
