@@ -34,8 +34,8 @@ public:
 
         for (int64_t coreIndex = 0; coreIndex < cutNum; coreIndex++) {
             // 数据对不齐的情况
-            uint64_t innerDispls = 0;
             uint64_t sendCurCount = 0;
+            uint64_t innerDispls = 0;
             if (coreIndex < remainder) { // 这部分核需要多处理一个数据
                 innerDispls = coreIndex * dataPerCore + coreIndex;
                 sendCurCount = dataPerCore + 1;

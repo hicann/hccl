@@ -58,12 +58,12 @@ std::vector<CostModelParam> ReduceSequenceExecutorAicpu3Level<
     u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
     u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
     u32 physIdxLevel2 = (physIdx.size() > 2) ? static_cast<u32>(physIdx[2][0]) : physIdxLevel0;
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     CommTopo netTypeLevel2 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel2);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel2 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel2);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     if (portNumLevel0.empty() || portNumLevel1.empty() || portNumLevel2.empty()) {
         HCCL_WARNING("[ReduceSequenceExecutorAicpu3Level][CalcCostCoeff] portNum is empty");
         return {};
@@ -130,9 +130,9 @@ AlgNetMeta ReduceSequenceExecutorAicpu3Level<
     u32 physIdxLevel0 = static_cast<u32>(physIdx[0][0]);
     u32 physIdxLevel1 = (physIdx.size() > 1) ? static_cast<u32>(physIdx[1][0]) : physIdxLevel0;
     u32 physIdxLevel2 = (physIdx.size() > 2) ? static_cast<u32>(physIdx[2][0]) : physIdxLevel0;
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     CommTopo netTypeLevel2 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel2);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     AlgNetMeta meta;
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
@@ -333,8 +333,8 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
     AlgTemplate5>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO("[ReduceSequenceExecutorAicpu3Level][Orchestrate] Orchestrate Start");
-    myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
+    myRank_ = resCtx.topoInfo.userRank;
 
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;

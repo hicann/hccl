@@ -66,10 +66,10 @@ InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     u32 physIdxLevel1 = (algHierarchyInfo.physicalIdxForAlgoLevels.size() > 1) ?
                             static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]) :
                             physIdxLevel0;
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
         HCCL_WARNING("[InsReduceScatterParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
@@ -79,7 +79,8 @@ InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     float ratio0 = ratio;
     float ratio1 = 1.0f - ratio;
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "[InsReduceScatterParallelExecutor][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, "
+        "portNumLevel0=%d, portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0.empty() ? 0 : portNumLevel0[0],
         portNumLevel1.empty() ? 0 : portNumLevel1[0], static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1),
@@ -485,8 +486,8 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // cclBuffer的大小
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
-    threads_ = resCtx.threads;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
+    threads_ = resCtx.threads;
     if (supportSymmetricMemory_) {
         inputOffset_ = param.inputOffset;
         outputOffset_ = param.outputOffset;
@@ -632,8 +633,8 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     templateAlgResIntra.threads = intraThreads_;
     templateAlgResInter.threads = interThreads_;
 
-    u64 processedCount = 0;
     u32 loopIndex = 0;
+    u64 processedCount = 0;
     while (processedCount < dataCount_) {
         u64 remainingCount = dataCount_ - processedCount;
         u32 remainingLoopTimes = (loopIndex < loopTimes) ? (loopTimes - loopIndex) : 1;

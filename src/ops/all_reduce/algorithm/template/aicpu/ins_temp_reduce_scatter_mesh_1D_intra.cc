@@ -27,7 +27,7 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DIntra::CalcCostCoeff(CalcC
     float C = 0;
     float D = 0;
     if (param.rankSize == 1) {
-        HCCL_DEBUG("[CalcCostCoeff] no transfer data");
+        HCCL_DEBUG("[InsTempReduceScatterMesh1DIntra][CalcCostCoeff] no transfer data");
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
         std::vector<CostModelParam> params;
         params.push_back({A, B, C, D});
@@ -39,8 +39,8 @@ std::vector<CostModelParam> InsTempReduceScatterMesh1DIntra::CalcCostCoeff(CalcC
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
     }
-    int kernelNum = 1;
     int taskNum = 5 * (param.rankSize - 1);
+    int kernelNum = 1;
 
     float B1 = 0.0f;
     float B2 = 0.0f;

@@ -21,13 +21,8 @@ CcuTempReduceScatterOmniPipeNHR1DMem2Mem::CcuTempReduceScatterOmniPipeNHR1DMem2M
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    // 获取本卡在子通信域(如果有)中的rankid, 以及子通信域内所有卡数
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
-    templateRankSize_ = ranks.size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
+    templateRankSize_ = subCommRanks[0].size();
 
     HCCL_DEBUG(
         "[%s] myRank[%u] mySubCommRank[%u] templateRankSize[%u]", __func__, rankId, mySubCommRank_, templateRankSize_);
@@ -169,8 +164,8 @@ HcclResult CcuTempReduceScatterOmniPipeNHR1DMem2Mem::KernelRun(
     uint64_t localCopyFlag = templateDataParams.localCopyFlag;
     auto stepSliceInfo = templateDataParams.stepSliceInfo;
 
-    uint64_t inputAddrBase = PointerToAddr(buffInfo_.inputPtr);
     uint64_t outputAddrBase = PointerToAddr(buffInfo_.outputPtr);
+    uint64_t inputAddrBase = PointerToAddr(buffInfo_.inputPtr);
 
     uint64_t inBuffBaseOff = buffInfo_.inBuffBaseOff;
     uint64_t outBuffBaseOff = buffInfo_.outBuffBaseOff;

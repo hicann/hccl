@@ -63,10 +63,10 @@ std::vector<CostModelParam> InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTempl
     if (!MatchTopoForProbe<AlgTopoMatch>(
             topoInfo, algHierarchyInfo, algName, "[InsV2BroadcastSoleExecutor][CalcCostCoeff]",
             TopoProbeScene::PROBE_CALC_COST_COEFF)) {
-        lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
         lastPortNum_ = {1};
         lastIsPod_ = false;
         lastRankSize_ = 0;
+        lastNetType_ = CommTopo::COMM_TOPO_1DMESH;
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -85,8 +85,8 @@ std::vector<CostModelParam> InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTempl
     lastIsPod_ = isPod;
     lastRankSize_ = rankSize;
     HCCL_INFO(
-        "[CalcCostCoeff] algName=%s rankSize=%d isPod=%d netType=%d portNumSize=%zu", algName, rankSize, isPod,
-        static_cast<int>(netTypeLevel0), portNumLevel0.size());
+        "[InsV2BroadcastSoleExecutor][CalcCostCoeff] algName=%s rankSize=%d isPod=%d netType=%d portNumSize=%zu",
+        algName, rankSize, isPod, static_cast<int>(netTypeLevel0), portNumLevel0.size());
     // broadcast是in-place操作，output==input，故outputBuffer=INPUT；scratch=HCCL_BUFFER
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::INPUT, BufferType::HCCL_BUFFER, portNumLevel0,
@@ -136,10 +136,10 @@ HcclResult InsV2BroadcastSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
     if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
         outputOffset_ = param.outputOffset;
         inputSymWindow_ = param.inputSymWindow;
         outputSymWindow_ = param.outputSymWindow;
+        inputOffset_ = param.inputOffset;
     }
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));

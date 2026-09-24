@@ -23,7 +23,7 @@ std::vector<CostModelParam> InsTempAllGatherMesh1D::CalcCostCoeff(CalcCostCoeffP
     float C = 0;
     float D = 0;
     if (param.rankSize == 1) {
-        HCCL_DEBUG("[CalcCostCoeff] no transfer data");
+        HCCL_DEBUG("[InsTempAllGatherMesh1D][CalcCostCoeff] no transfer data");
         CostModelManager::Global()->CalcLocalCopyParams(param.dataRatio, EngineType::AICPU, B);
         std::vector<CostModelParam> params;
         params.push_back({A, B, C, D});

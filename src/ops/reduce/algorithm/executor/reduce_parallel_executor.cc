@@ -75,7 +75,8 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
     }
     float ratio = 0.5;
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "[ReduceParallelExecutor][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, "
+        "portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1), ratio);
@@ -162,13 +163,13 @@ AlgNetMeta ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     meta.netTypes.push_back(netTypeLevel1);
     meta.netTypes.push_back(netTypeLevel0);
     meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::MAX;
     meta.groupSizes = {2, 2, 2, 2};
+    meta.intraGroupMode = CostAggMode::MAX;
+    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1,
+                      rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
     meta.dataRatios = {ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1, (1 - ratio) / rankSize,
                        ratio / rankSize,       (1 - ratio) / rankSize,       ratio / rankSize,
                        ratio / rankSizeLevel0, (1 - ratio) / rankSizeLevel1};
-    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1,
-                      rankSizeLevel0, rankSizeLevel1, rankSizeLevel0, rankSizeLevel1};
 // costmodel 为8段 [RS阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR; AG阶段: L0-mesh, L1-NHR, L0-mesh, L1-NHR],
 // 按名解析的层级类型逐段展开, 防止 seg2+ 越界回退 UNKNOWN 丢 perTransfer 放大/用错 util 表
 #ifndef AICPU_COMPILE

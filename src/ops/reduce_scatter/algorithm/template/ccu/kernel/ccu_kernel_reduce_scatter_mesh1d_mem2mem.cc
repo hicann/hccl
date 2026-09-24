@@ -648,8 +648,8 @@ CcuResult ReduceLoopGroupV2(
     // 第一个loopgroup，处理m部分数据
     CCU_IF(ctx.goSize.loopParam != 0)
     {
-        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
+        sliceSize = ctx.moConfig.memSlice;
 
         // 绑定loop0的外部LocalAddr和Variable
         for (uint32_t i = 0; i < size; i++) {

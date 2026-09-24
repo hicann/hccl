@@ -162,8 +162,8 @@ private:
         }
     }
 
-    uint32_t coreNum_;
     uint32_t coreIdx_;
+    uint32_t coreNum_;
 
     uint64_t dataSize_; // 要给每个rank搬运的数据大小
 
@@ -196,8 +196,8 @@ __aicore__ inline void AivAlltoAllV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
 {
     AivAlltoAllMesh1D<T> op;
     op.Init(SUPERKERNEL_CLASS_INIT, false);
-    uint64_t maxCountPerLoop = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / op.rankSize_ / sizeof(T);
     uint64_t countLeft = op.len_;
+    uint64_t maxCountPerLoop = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / op.rankSize_ / sizeof(T);
 
     int32_t loopTag = op.tag_;
 

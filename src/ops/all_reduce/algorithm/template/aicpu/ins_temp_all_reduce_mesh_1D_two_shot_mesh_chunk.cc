@@ -47,7 +47,8 @@ std::vector<CostModelParam> InsTempAllReduceMesh1DTwoShotMeshChunk::CalcCostCoef
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    HCCL_DEBUG(
+        "[InsTempAllReduceMesh1DTwoShotMeshChunk][%s][CalcCostCoeff] A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 

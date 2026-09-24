@@ -18,10 +18,10 @@
 
 namespace ops_hccl {
 
-constexpr int OUTPUT_XN_ID = 1;
 constexpr int TOKEN_XN_ID = 2;
 constexpr int POST_SYNC_ID = 3;
 constexpr int CKE_IDX_0 = 0;
+constexpr int OUTPUT_XN_ID = 1;
 
 struct CcuKernelArgAllGather2DiesMesh1D : CcuKernelArgBase {
     uint64_t dimSize;

@@ -27,15 +27,15 @@ public:
 
     std::string Describe() const override { return "Template of AllReduce ccu concurrent(Mesh+NHR)"; }
 
-    HcclResult CalcRes(
-        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-        AlgResourceRequest& resourceRequest) override;
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
     HcclResult FastLaunch(const OpParam& param, const TemplateFastLaunchCtx& tempFastLaunchCtx) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     u64 GetThreadNum() const override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
 private:

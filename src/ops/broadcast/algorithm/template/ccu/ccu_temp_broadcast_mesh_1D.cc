@@ -44,17 +44,9 @@ CcuTempBroadcastMesh1D::CcuTempBroadcastMesh1D(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域(如果有)中的rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
-    auto itRoot = std::find(ranks.begin(), ranks.end(), param.root);
-    if (itRoot != ranks.end()) {
-        subCommRootId_ = std::distance(ranks.begin(), itRoot);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
+    subCommRootId_ = CalcRankIdxInSubComm(param.root, subCommRanks, subCommRootId_);
     HCCL_INFO(
         "[CcuTempBroadcastMesh1D] subCommRanksSize[%zu] mySubCommRank[%u] subCommRootId[%u] rankId[%u]",
         subCommRanks.size(), mySubCommRank_, subCommRootId_, rankId);

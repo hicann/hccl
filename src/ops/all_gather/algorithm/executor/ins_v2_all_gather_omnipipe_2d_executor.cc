@@ -24,48 +24,11 @@
 #endif
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "omnipipe_executor_utils.h"
 
 namespace ops_hccl {
 constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
-namespace {
-    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
-    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
-
-    bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
-    {
-        if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
-            return false;
-        }
-        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-            return false;
-        }
-        meshRankSize = meshIt->second[0];
-        closRankSize = closIt->second[0] / meshRankSize;
-        return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
-    }
-
-    u64 CalcStepNumByAxes(
-        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum)
-    {
-        if (firstBandwidth <= secondBandwidth) {
-            return CalcAllgatherStepNum2D(firstBandwidth, secondBandwidth, firstRankSize, secondRankSize, maxStepNum);
-        }
-        return CalcAllgatherStepNum2D(secondBandwidth, firstBandwidth, secondRankSize, firstRankSize, maxStepNum);
-    }
-
-    float CalcTemplateLatency(u32 taskNum)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, latency);
-        return latency;
-    }
-} // namespace
-
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 constexpr u64 OMNI_UBX_AG_DATA_SIZE = 16 * 1024 * 1024; // UBX机型ccu流水算法数据量下限，与selector保持一致
 
@@ -115,7 +78,8 @@ InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel
     const double closBandwidth = BW_OMNI_UBX_CCU_SCHED_AG_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
     const double closPlanBandwidth = closRankSize > 1 ? closBandwidth / (closRankSize - 1) : closBandwidth;
     const u64 maxStepNum = static_cast<u64>(SetMaxStepNumOmni(OmniNeedSetStepNum::OMNIPIPE_DEFAULT));
-    const u64 stepNum = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum);
+    const u64 stepNum
+        = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum, false);
 
     const bool meshActive = meshRankSize > 1;
     const bool closActive = closRankSize > 1;
@@ -146,8 +110,9 @@ InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuAlgTempLevel
         CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::CCU, costParam.B);
     }
 
-    const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
-    const float nhrLatency = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize))) : 0.0f;
+    const float meshLatency = meshActive ? CalcTemplateLatency(1, EngineType::CCU) : 0.0f;
+    const float nhrLatency
+        = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize)), EngineType::CCU) : 0.0f;
     costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
 
     HCCL_INFO(
@@ -177,13 +142,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, InsA
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     dataSize_ = dataCount_ * dataTypeSize_;
 
     if (algHierarchyInfo.infos.empty()) {

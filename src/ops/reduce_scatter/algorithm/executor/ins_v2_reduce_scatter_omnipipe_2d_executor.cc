@@ -24,6 +24,7 @@
 
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "omnipipe_executor_utils.h"
 namespace ops_hccl {
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 constexpr u64 OMNI_UBX_RS_SCHED_DATA_SIZE = 4 * 1024 * 1024; // UBX机型ccu并行与流水算法的数据量分界，与selector保持一致
@@ -32,44 +33,6 @@ constexpr u64 OMNI_UBX_RS_MS_DATA_SIZE = 2 * 1024 * 1024; // MS模式UBX流水�
 constexpr u32 DUAL_TEMPLATE_NUM = 2;
 constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
-namespace {
-    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
-    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
-
-    bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
-    {
-        if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
-            return false;
-        }
-        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-            return false;
-        }
-        meshRankSize = meshIt->second[0];
-        closRankSize = closIt->second[0] / meshRankSize;
-        return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
-    }
-
-    u64 CalcStepNumByAxes(
-        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum)
-    {
-        if (firstBandwidth <= secondBandwidth) {
-            return CalcReducescatterStepNum2D(
-                firstBandwidth, secondBandwidth, firstRankSize, secondRankSize, maxStepNum);
-        }
-        return CalcReducescatterStepNum2D(secondBandwidth, firstBandwidth, secondRankSize, firstRankSize, maxStepNum);
-    }
-
-    float CalcTemplateLatency(u32 taskNum)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, latency);
-        return latency;
-    }
-} // namespace
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ReduceScatterOmniPipe2dExecutor<
@@ -122,7 +85,8 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
         = (isCcuMs ? BW_OMNI_UBX_CCU_MS_RS_CLOS : BW_OMNI_UBX_CCU_SCHED_RS_CLOS) / OMNIPIPE_FIXED_UB_UTILIZATION;
     const double closPlanBandwidth = closRankSize > 1 ? closBandwidth / (closRankSize - 1) : closBandwidth;
     const u64 maxStepNum = static_cast<u64>(SetMaxStepNumOmni(OmniNeedSetStepNum::OMNIPIPE_DEFAULT) + 1);
-    const u64 stepNum = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum);
+    const u64 stepNum
+        = CalcStepNumByAxes(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum, true);
 
     const bool meshActive = meshRankSize > 1;
     const bool closActive = closRankSize > 1;
@@ -152,8 +116,9 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
         CostModelManager::Global()->CalcLocalCopyParams(1.0f, EngineType::CCU, costParam.B);
     }
 
-    const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
-    const float nhrLatency = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize))) : 0.0f;
+    const float meshLatency = meshActive ? CalcTemplateLatency(1, EngineType::CCU) : 0.0f;
+    const float nhrLatency
+        = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize)), EngineType::CCU) : 0.0f;
     costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
 
     HCCL_INFO(
@@ -605,8 +570,8 @@ REGISTER_ALG_ATTRS(
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1; op.isSupportProd = false;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
         bool isMultiple = false;
+        bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return !topo->level2UbRtp && !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple

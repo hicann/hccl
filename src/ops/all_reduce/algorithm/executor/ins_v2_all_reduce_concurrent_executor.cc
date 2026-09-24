@@ -41,7 +41,8 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllReduceConcurrentExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
 
@@ -57,7 +58,7 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllReduceConcurrentExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 
@@ -98,7 +99,8 @@ AlgNetMeta InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[GetAlgNetMeta]", TopoProbeScene::PROBE_GET_ALG_NET_META)) {
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllReduceConcurrentExecutor][GetAlgNetMeta]",
+            TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -140,13 +142,7 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     algHierarchyInfo_ = algHierarchyInfo;
 
     HCCL_INFO(

@@ -51,7 +51,8 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+            topoInfo, algHierarchyInfo, algName, "[InsAllReduceParallelExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -71,7 +72,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsAllReduceParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 
@@ -83,7 +84,8 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     }
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, portNumLevel0=%d, portNumLevel1=%d, "
+        "[InsAllReduceParallelExecutor][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, rankSizeLevel1=%d, "
+        "portNumLevel0=%d, portNumLevel1=%d, "
         "netTypeLevel0=%d, netTypeLevel1=%d, ratio=%f",
         rankSize, rankSizeLevel0, rankSizeLevel1, portNumLevel0, portNumLevel1, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1), ratio);
@@ -140,7 +142,8 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 {
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[GetAlgNetMeta]", TopoProbeScene::PROBE_GET_ALG_NET_META)) {
+            topoInfo, algHierarchyInfo, algName, "[InsAllReduceParallelExecutor][GetAlgNetMeta]",
+            TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -603,7 +606,8 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     CHK_PRT_RET(
         resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || resCtx.algHierarchyInfo.infos[0].empty()
             || resCtx.algHierarchyInfo.infos[1].empty(),
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+        HCCL_ERROR("[InsAllReduceParallelExecutor][%s][Orchestrate] algHierarchyInfo.infos is invalid.", __func__),
+        HcclResult::HCCL_E_PARA);
     temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
     temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
 
@@ -1095,7 +1099,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     }
 
     if (sliceCount == 0) {
-        HCCL_WARNING("The divisor cannot be zero.");
+        HCCL_WARNING("[InsAllReduceParallelExecutor][GenInsQues] The divisor cannot be zero.");
         return HcclResult::HCCL_SUCCESS;
     }
     // 计算循环次数
@@ -1174,8 +1178,8 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
 #ifndef AICPU_COMPILE
         if (loopTimes == 1 && param.engine == CommEngine::COMM_ENGINE_CCU) {
-            ccuKernelLaunchNumIntra0_ = intraTempAlgRes.submitInfos.size();
             ccuKernelLaunchNumInter1_ = interTempAlgRes.submitInfos.size();
+            ccuKernelLaunchNumIntra0_ = intraTempAlgRes.submitInfos.size();
         }
 #endif
 
@@ -1611,8 +1615,8 @@ REGISTER_ALG_ATTRS(
        HcclDataType::HCCL_DATA_TYPE_FP64};
     op.isSupportInplace = false;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
         bool isMultiple = false;
+        bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return !(isEqual && topo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) && isMultiple;

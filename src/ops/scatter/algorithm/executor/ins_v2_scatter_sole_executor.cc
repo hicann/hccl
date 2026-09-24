@@ -50,12 +50,13 @@ std::vector<CostModelParam> InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplat
     std::vector<u32> portNum = GetPhysicalLevelPortNums(topoInfo, physIdx);
     // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
     if (portNum.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2ScatterSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] algName=%s rankSize=%d, physIdx=%u, portNum(size=%zu, first=%u), netType=%d", algName,
-        rankSize, physIdx, portNum.size(), portNum[0], static_cast<int>(netType));
+        "[InsV2ScatterSoleExecutor][CalcCostCoeff] algName=%s rankSize=%d, physIdx=%u, portNum(size=%zu, first=%u), "
+        "netType=%d",
+        algName, rankSize, physIdx, portNum.size(), portNum[0], static_cast<int>(netType));
     std::vector<CostModelParam> params = InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netType, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNum, isPod,
         algName, comm, topoInfo});

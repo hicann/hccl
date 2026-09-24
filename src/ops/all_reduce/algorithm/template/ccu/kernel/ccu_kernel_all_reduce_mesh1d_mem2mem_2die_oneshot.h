@@ -41,15 +41,15 @@ struct AllReduceMesh1DMem2Mem2DieOneShotContext : CcuKernelCtxBase {
     uint32_t missionSyncMybit{0};
     uint32_t missionSyncWaitBit{0};
 
-    HcclDataType dataType;
     HcclDataType outputDataType;
     HcclReduceOp reduceOp;
+    HcclDataType dataType;
 
+    std::vector<ccu::Variable> peerInput;
     ccu::Variable myInput;
     ccu::Variable myOutput;
     ccu::Variable myScratch;
     ccu::Variable myToken;
-    std::vector<ccu::Variable> peerInput;
     std::vector<ccu::Variable> peerToken;
 
     ccu::Variable scratchBaseOffset0;

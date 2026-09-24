@@ -30,7 +30,7 @@ std::vector<CostModelParam> InsTempAllReduceAicpuReduceNHR::CalcCostCoeff(CalcCo
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
+    HCCL_DEBUG("[InsTempAllReduceAicpuReduceNHR][%s][CalcCostCoeff] A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
     return params;
 }
 
@@ -50,8 +50,8 @@ HcclResult InsTempAllReduceAicpuReduceNHR::CalcRes(
 {
     u32 threadNum = 1;
     resourceRequest.slaveThreadNum = threadNum - 1;
-    resourceRequest.notifyNumPerThread = {};
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    resourceRequest.notifyNumPerThread = {};
 
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));

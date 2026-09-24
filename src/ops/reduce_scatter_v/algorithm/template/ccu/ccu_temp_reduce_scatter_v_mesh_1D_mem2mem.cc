@@ -18,12 +18,12 @@ namespace ops_hccl {
 std::vector<CostModelParam> CcuTempReduceScatterVMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
     int portNum = param.portNum[0];
-    int kernelNum = 1;
     int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize);
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
+    int kernelNum = 1;
 
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     // 走GroupLocalReduce，不用串行做localReduce
@@ -39,13 +39,8 @@ CcuTempReduceScatterVMesh1DMem2Mem::CcuTempReduceScatterVMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域(如果有)中的rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
 }
 
 CcuTempReduceScatterVMesh1DMem2Mem::~CcuTempReduceScatterVMesh1DMem2Mem() {}

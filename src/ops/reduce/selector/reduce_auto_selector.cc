@@ -253,13 +253,16 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcuSchedule(
         }
     } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
         if (topoInfo->level0PcieMix) { // PCIE-SW定制机型，Mesh无法链接全卡时，需要跨pcie链路，不支持ccu模式
-            HCCL_WARNING("[ReduceAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
+            HCCL_WARNING("[ReduceAutoSelector][SelectMeshAlgoCcuSchedule] pcie mixed topo is not supported yet for ccu "
+                         "schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
         selectAlgName = "CcuSchedReduceSoleNHR";
     } else {
         HCCL_WARNING(
-            "[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu schedule mode.", topoInfo->level0Topo);
+            "[ReduceAutoSelector][SelectMeshAlgoCcuSchedule] level0Topo[%d] is not supported yet for ccu schedule "
+            "mode.",
+            topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
     HCCL_INFO("[ReduceAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());

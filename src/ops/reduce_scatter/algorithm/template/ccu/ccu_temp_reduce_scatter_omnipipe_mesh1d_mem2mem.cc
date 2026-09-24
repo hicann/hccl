@@ -20,13 +20,8 @@ CcuTempReduceScatterOmniPipeMesh1DMem2Mem::CcuTempReduceScatterOmniPipeMesh1DMem
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        // 获取本卡在子通信域(如果有)中的rankid
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     HCCL_DEBUG(
         "[CcuTempReduceScatterOmniPipeMesh1DMem2Mem] myRank[%u] mySubCommRank[%u] "
         "templateRankSize[%u]",

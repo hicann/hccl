@@ -59,17 +59,9 @@ CcuTempBroadcastMesh1DMem2Mem::CcuTempBroadcastMesh1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域(如果有)中的rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
-    auto itRoot = std::find(ranks.begin(), ranks.end(), param.root);
-    if (itRoot != ranks.end()) {
-        subCommRootId_ = std::distance(ranks.begin(), itRoot);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
+    subCommRootId_ = CalcRankIdxInSubComm(param.root, subCommRanks, subCommRootId_);
     HCCL_INFO(
         "[CcuTempBroadcastMesh1DMem2Mem] subCommRanksSize[%zu] mySubCommRank[%u] subCommRootId[%u] rankId[%u]",
         subCommRanks.size(), mySubCommRank_, subCommRootId_, rankId);
@@ -142,11 +134,11 @@ CcuTempBroadcastMesh1DMem2Mem::FastLaunch(const OpParam& param, const TemplateFa
     }
     HCCL_DEBUG("[CcuTempBroadcastMesh1DMem2Mem::FastLaunch] start");
     uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs);
-    constexpr u32 inputIdx = 0;
     constexpr u32 outputIdx = 1;
     constexpr u32 inputOffsetIdx = 11;
     constexpr u32 outputOffsetIdx = 12;
     uint64_t argSize = 11;
+    constexpr u32 inputIdx = 0;
 
     args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
     args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];

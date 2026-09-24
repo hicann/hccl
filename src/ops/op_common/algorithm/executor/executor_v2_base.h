@@ -180,6 +180,22 @@ protected:
         maxTmpMemSize_ = params.maxTmpMemSize;
     }
 
+    /*
+     * 各executor InitCommInfo/CalcRes开头的公共成员初始化样板收敛:
+     * myRank_/rankSize_/devType_/reduceOp_/dataType_/dataCount_/dataTypeSize_
+     * 七项赋值在多个executor内逐字重复; algHierarchyInfo_为派生类成员, 由调用方继续自行赋值。
+     */
+    inline void InitCommonCommInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+    {
+        myRank_ = topoInfo->userRank;
+        rankSize_ = topoInfo->userRankSize;
+        devType_ = topoInfo->deviceType;
+        reduceOp_ = param.reduceType;
+        dataType_ = param.DataDes.dataType;
+        dataCount_ = param.DataDes.count;
+        dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    }
+
     // CollAlg base params
     u32 myRank_ = INVALID_VALUE_RANKID;
     u32 rankSize_ = 0;

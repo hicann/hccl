@@ -228,8 +228,8 @@ HcclResult InsTempScatterOmniPipeNHRDpu::GetStepInfo(
     stepInfo.fromRank = rankSize;
     stepInfo.myRank = myRank_;
 
-    u32 deltaRoot = (rootAlgRank + rankSize - myAlgRank) % rankSize;
     u32 deltaRankPair = 1 << step;
+    u32 deltaRoot = (rootAlgRank + rankSize - myAlgRank) % rankSize;
 
     u32 nSlices = (rankSize - 1 + (1 << step)) / (1 << (step + 1));
     u32 deltaSliceIndex = 1 << (step + 1);

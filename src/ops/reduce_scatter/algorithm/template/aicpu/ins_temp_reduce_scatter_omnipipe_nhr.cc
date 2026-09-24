@@ -104,8 +104,8 @@ HcclResult InsTempReduceScatterOmniPipeNHR::DoLocalCopy(
     void* srcAddr;
     void* dstAddr;
     if (tempAlgParams.buffInfo.inBuffType == BufferType::INPUT) {
-        srcAddr = tempAlgParams.buffInfo.inputPtr;
         dstAddr = tempAlgParams.buffInfo.hcclBuff.addr;
+        srcAddr = tempAlgParams.buffInfo.inputPtr;
     } else if (tempAlgParams.buffInfo.inBuffType == BufferType::HCCL_BUFFER) {
         srcAddr = tempAlgParams.buffInfo.hcclBuff.addr;
         dstAddr = tempAlgParams.buffInfo.outputPtr;

@@ -235,9 +235,9 @@ __aicore__ inline void AivReduceScatterV2LocalTreeCoreCtrlSuperKernel(SUPERKERNE
     AivReduceScatterLocalTreeCoreCtrl<T> op;
     op.Init(SUPERKERNEL_CLASS_INIT);
 
-    uint64_t maxCountPerLoop = op.cclBufferSize_ / (2 * op.rankSize_) / UB_ALIGN_SIZE * UB_ALIGN_SIZE / sizeof(T);
     uint64_t countLeft = op.len_;
     int32_t loopTag = op.tag_;
+    uint64_t maxCountPerLoop = op.cclBufferSize_ / (2 * op.rankSize_) / UB_ALIGN_SIZE * UB_ALIGN_SIZE / sizeof(T);
 
     while (countLeft > 0) {
         uint64_t curCount = (countLeft > maxCountPerLoop) ? maxCountPerLoop : countLeft;

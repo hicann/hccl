@@ -136,8 +136,8 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::Orchestrate(
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
         HCCL_DEBUG("[ReduceSoleExecutor][Orchestrate] info[0].size():%u", remoteRankToChannelInfo_[0].size());
     }
-    dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
+    dataCount_ = param.DataDes.count;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
 

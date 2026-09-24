@@ -44,18 +44,14 @@ CcuTempAllToAllMesh1dMultiJetty::CcuTempAllToAllMesh1dMultiJetty(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
+    templateRankSize_ = subCommRanks[0].size();
     for (u32 i = 0; i < subCommRanks_.size(); i++) {
         for (u32 j = 0; j < subCommRanks_[i].size(); j++) {
             HCCL_INFO("subCommRanks_[%u][%u]=%u", i, j, subCommRanks_[i][j]);
         }
     }
     jettyNums_.assign(templateRankSize_, STUB_JETTY_NUM);
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        myRank_ = std::distance(ranks.begin(), it);
-    }
+    myRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, myRank_);
 }
 
 CcuTempAllToAllMesh1dMultiJetty::~CcuTempAllToAllMesh1dMultiJetty() {}

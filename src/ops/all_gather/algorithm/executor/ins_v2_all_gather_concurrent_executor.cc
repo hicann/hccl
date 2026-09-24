@@ -91,7 +91,8 @@ InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllGatherConcurrentExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -106,7 +107,7 @@ InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     // 匹配层链路降级(portNums 为空)时算法不参与 costmodel(与其余算子统一口径)
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2AllGatherConcurrentExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
 
@@ -144,7 +145,8 @@ AlgNetMeta InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[GetAlgNetMeta]", TopoProbeScene::PROBE_GET_ALG_NET_META)) {
+            topoInfo, algHierarchyInfo, algName, "[InsV2AllGatherConcurrentExecutor][GetAlgNetMeta]",
+            TopoProbeScene::PROBE_GET_ALG_NET_META)) {
         return {};
     }
 

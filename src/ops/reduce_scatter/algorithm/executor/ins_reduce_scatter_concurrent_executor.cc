@@ -59,8 +59,8 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     u32 physIdxLevel0 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]);
     u32 physIdxLevel1 = static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][1]);
 
-    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
+    CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
 
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
@@ -173,23 +173,20 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
             "[InsReduceScatterConcurrentExecutor] algHierarchyInfo has no members, Please check the algHierarchyInfo!");
         return HCCL_E_PARA;
     }
-    std::vector<std::vector<u32>> temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
     std::vector<std::vector<u32>> temp1HierarchyInfo = {algHierarchyInfo.infos[0][1]};
-
+    std::vector<std::vector<u32>> temp0HierarchyInfo = {algHierarchyInfo.infos[0][0]};
+    std::shared_ptr<InsAlgTemplate1> tempAlg1 = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
     std::shared_ptr<InsAlgTemplate0> tempAlg0 = std::make_shared<InsAlgTemplate0>(param, myRank_, temp0HierarchyInfo);
 
-    std::shared_ptr<InsAlgTemplate1> tempAlg1 = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
-
-    AlgResourceRequest temp0ResReq;
     AlgResourceRequest temp1ResReq;
-
+    AlgResourceRequest temp0ResReq;
     CHK_RET(tempAlg0->CalcRes(comm, param, topoInfo, temp0ResReq));
     CHK_RET(tempAlg1->CalcRes(comm, param, topoInfo, temp1ResReq));
 
     // 合并两个resourceRequest
+    resourceRequest.notifyNumOnMainThread = temp0ResReq.notifyNumOnMainThread + 1;
     resourceRequest.slaveThreadNum
         = temp0ResReq.slaveThreadNum + temp1ResReq.slaveThreadNum + 1; // 将mesh作为主流，其他都是从流
-    resourceRequest.notifyNumOnMainThread = temp0ResReq.notifyNumOnMainThread + 1;
     resourceRequest.notifyNumPerThread.insert(
         resourceRequest.notifyNumPerThread.end(), temp0ResReq.notifyNumPerThread.begin(),
         temp0ResReq.notifyNumPerThread.end());
@@ -198,7 +195,6 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     resourceRequest.notifyNumPerThread.insert(
         resourceRequest.notifyNumPerThread.end(), temp1ResReq.notifyNumPerThread.begin(),
         temp1ResReq.notifyNumPerThread.end());
-    // 分别获取两种拓扑的链路，这里约束temp0为mesh拓扑，走mesh算法；temp1为clos拓扑，走nhr算法
     std::vector<HcclChannelDesc> channelDescs0;
     std::vector<HcclChannelDesc> channelDescsTemp0;
     CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
@@ -297,13 +293,14 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     std::shared_ptr<InsAlgTemplate1> tempAlg1 = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
     const bool useSymmetricMemory
         = param.supportSymmetricMemory && std::string(param.algName) == "AicpuReduceScatterConcurMeshNHR";
+
     // 准备资源
-    // mesh的流向nhr的流发一个信号，并等nhr流收到
     PrepareThreadFromTemplate(tempAlg0, tempAlg1); // 计算不同的流
-    TemplateResource templateAlgResforTemp0;
-    templateAlgResforTemp0.threads = temp0Threads_; // 这里用重新算出的thread计算
     TemplateResource templateAlgResforTemp1;
     templateAlgResforTemp1.threads = temp1Threads_;
+    TemplateResource templateAlgResforTemp0;
+    templateAlgResforTemp0.threads = temp0Threads_; // 这里用重新算出的thread计算
+
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         // CCU模式处理逻辑
         templateAlgResforTemp0.ccuKernels.push_back(resCtx.ccuKernels[0]);
@@ -316,7 +313,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         // AICPU模式 从channel中取出分给两个template的channel
         const auto& channels = resCtx.channels[0];
         const size_t channelCount = channels.size();
-        for (u32 i = 0; i < channelCount; ++i) {
+        for (size_t i = 0; i < channelCount; ++i) {
             auto channel = channels[i];
             if (useSymmetricMemory) {
                 CHK_RET(FillChannelSymWinPeerAddrs(
@@ -326,52 +323,51 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
                 = (i < channelCount / 2) ? templateAlgResforTemp0.channels : templateAlgResforTemp1.channels;
             targetChannels[channel.remoteRank].push_back(channel);
         }
-        CHK_RET(tempAlg0->SetchannelsPerRank(templateAlgResforTemp0.channels));
         CHK_RET(tempAlg1->SetchannelsPerRank(templateAlgResforTemp1.channels));
+        CHK_RET(tempAlg0->SetchannelsPerRank(templateAlgResforTemp0.channels));
     }
     // 准备数据
     TemplateDataParams tempAlgParamsforTemp0;
-    tempAlgParamsforTemp0.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParamsforTemp0.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsforTemp0.buffInfo.inputSize = param.inputSize;
     tempAlgParamsforTemp0.buffInfo.outputSize = param.outputSize;
     tempAlgParamsforTemp0.buffInfo.inBuffType = BufferType::INPUT;
     tempAlgParamsforTemp0.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsforTemp0.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsforTemp0.buffInfo.inputPtr = param.inputPtr;
+    tempAlgParamsforTemp0.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsforTemp0.repeatNum = 1; // 不重复
 
     TemplateDataParams tempAlgParamsforTemp1;
-    tempAlgParamsforTemp1.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParamsforTemp1.buffInfo.outputPtr = param.outputPtr;
-    tempAlgParamsforTemp1.buffInfo.inputSize = param.inputSize;
     tempAlgParamsforTemp1.buffInfo.outputSize = param.outputSize;
     tempAlgParamsforTemp1.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParamsforTemp1.buffInfo.outBuffType = BufferType::OUTPUT;
+    tempAlgParamsforTemp1.buffInfo.inputPtr = param.inputPtr;
+    tempAlgParamsforTemp1.buffInfo.outputPtr = param.outputPtr;
     tempAlgParamsforTemp1.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    tempAlgParamsforTemp1.buffInfo.inputSize = param.inputSize;
+    tempAlgParamsforTemp1.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParamsforTemp1.repeatNum = 1; // 不重复
 
-    u32 templateScratchMultiplier0 = tempAlg0->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    u64 portNum = 4;
     u32 templateScratchMultiplier1 = tempAlg1->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u64 portNum0 = rankSize_ - 1;
-    u64 portNum = 4;
+    u32 templateScratchMultiplier0 = tempAlg0->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
         portNum0 = MESH_BW_SCHED;
         portNum = CLOS_BW_SCHED;
-    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
-        portNum0 = MESH_BW_MS;
-        portNum = CLOS_BW_MS;
     } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
         portNum0 = MESH_BW_AICPU;
         portNum = CLOS_BW_AICPU;
+    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+        portNum0 = MESH_BW_MS;
+        portNum = CLOS_BW_MS;
     }
-
-    const u64 sliceAlignCount = HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     // 划分cclbuffer
     void* cclMemAddr = resCtx.cclMem.addr;
     const u64 cclMemSize = resCtx.cclMem.size;
     const auto cclMemType = resCtx.cclMem.type;
-    HcclMem cclMem0 = {cclMemType, cclMemAddr, cclMemSize};
+    const u64 sliceAlignCount = HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
     HcclMem cclMem1 = {cclMemType, cclMemAddr, cclMemSize};
+    HcclMem cclMem0 = {cclMemType, cclMemAddr, cclMemSize};
 
     // ccl buffer 按数据比例和ScratchMultiple比例划分给两个template用
     if (templateScratchMultiplier0 > 0 || templateScratchMultiplier1 > 0) {
@@ -383,10 +379,11 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         cclMem1.addr = static_cast<void*>(static_cast<s8*>(cclMemAddr) + cclMem0.size);
         cclMem1.size = cclMemSize - cclMem0.size;
     }
-
     u64 maxCountPerLoopforTemp0 = static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_;
     u64 maxCountPerLoopforTemp1 = static_cast<u64>(UB_MAX_DATA_SIZE) / dataTypeSize_;
 
+    u64 dataCountforTemp0 = dataCount_ * portNum0 / (portNum0 + portNum) / sliceAlignCount * sliceAlignCount; // 128对齐
+    u64 dataCountforTemp1 = dataCount_ - dataCountforTemp0;
     if (templateScratchMultiplier0 > 0) {
         u64 scratchMemBlockSizeforTemp0
             = cclMem0.size / templateScratchMultiplier0 / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
@@ -399,9 +396,6 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         maxCountPerLoopforTemp1 = static_cast<u64>(
             std::min(scratchMemBlockSizeforTemp1, static_cast<u64>(UB_MAX_DATA_SIZE)) / dataTypeSize_);
     }
-
-    u64 dataCountforTemp0 = dataCount_ * portNum0 / (portNum0 + portNum) / sliceAlignCount * sliceAlignCount; // 128对齐
-    u64 dataCountforTemp1 = dataCount_ - dataCountforTemp0;
     CHK_PRT_RET(
         maxCountPerLoopforTemp0 == 0 || maxCountPerLoopforTemp1 == 0,
         HCCL_ERROR(
@@ -575,13 +569,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;       // 全局的
-    rankSize_ = topoInfo->userRankSize; // 全局的
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count; // recvCount
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
 
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO(

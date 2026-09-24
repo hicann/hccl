@@ -244,8 +244,8 @@ static CcuResult ReduceLoopGroup(
     {
         loopParam = GetLoopParam(0, ctx.moConfig.memSlice * ctx.moConfig.loopCount, 0);
         loopParam = loopParam + goSize.loopParam;
-        sliceSize = ctx.moConfig.memSlice;
         sliceSizeExpansion = ctx.moConfig.memSlice * expansionNum;
+        sliceSize = ctx.moConfig.memSlice;
 
         for (uint32_t i = 0; i < size; ++i) {
             var.loopSrc[0][i].addr = src[i].addr;

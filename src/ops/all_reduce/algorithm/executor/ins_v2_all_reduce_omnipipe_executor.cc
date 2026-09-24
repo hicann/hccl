@@ -153,13 +153,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
         AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     algHierarchyInfo_ = algHierarchyInfo;
     return HCCL_SUCCESS;
 }
@@ -349,13 +343,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     // 初始化一些基本成员变量
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     algHierarchyInfo_ = algHierarchyInfo;
 
     std::vector<std::vector<u32>> subCommRanks0;
@@ -1234,8 +1222,8 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_ALG_ATTRS(
     AicpuAllReducePipeLineMeshNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
     topo.isSupportLevel0PcieMix = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        bool isEqual = false;
         bool isMultiple = false;
+        bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
         AutoSelectorBase::CheckClosNumMultipleOfMeshNum(topo, isMultiple);
         return (topo->level0PcieMix

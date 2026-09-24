@@ -104,7 +104,7 @@ HcclResult HcclReduceScatterGraphMode(
 
     ResPackGraphMode resPack;
     if (strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1) != 0) {
-        HCCL_ERROR("failed to fill resPack.tag");
+        HCCL_ERROR("[HcclReduceScatterGraphMode] failed to fill resPack.tag");
         return HCCL_E_INTERNAL;
     }
 

@@ -232,8 +232,8 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     // 参数填充
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     CHK_RET(InitExecutorInfo(param, resCtx));
-    threads_ = resCtx.threads;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
+    threads_ = resCtx.threads;
     if (supportSymmetricMemory_) {
         inputOffset_ = param.inputOffset;
         outputOffset_ = param.outputOffset;
@@ -729,7 +729,8 @@ std::vector<CostModelParam> BroadcastSequenceMesh1dNHRNHRExecutor<
     // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+            topoInfo, algHierarchyInfo, algName, "[InsV2BroadcastSequenceExecutorAicpu3Level][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         netTypeLevel0_ = CommTopo::COMM_TOPO_1DMESH;
         netTypeLevel1_ = CommTopo::COMM_TOPO_1DMESH;
         netTypeLevel2_ = CommTopo::COMM_TOPO_1DMESH;
@@ -755,7 +756,7 @@ std::vector<CostModelParam> BroadcastSequenceMesh1dNHRNHRExecutor<
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     std::vector<u32> portNumLevel2 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel2);
     if (portNumLevel0.empty() || portNumLevel1.empty() || portNumLevel2.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2BroadcastSequenceExecutorAicpu3Level][CalcCostCoeff] portNum is empty");
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -778,7 +779,8 @@ std::vector<CostModelParam> BroadcastSequenceMesh1dNHRNHRExecutor<
     float r2 = static_cast<float>(rankSizeLevel2);
 
     HCCL_INFO(
-        "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%u rankSizeLevel1=%u rankSizeLevel2=%u isPod=%d "
+        "[InsV2BroadcastSequenceExecutorAicpu3Level][CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%u "
+        "rankSizeLevel1=%u rankSizeLevel2=%u isPod=%d "
         "netTypeLevel0=%d netTypeLevel1=%d netTypeLevel2=%d portNumLevel0=%d portNumLevel1=%d portNumLevel2=%d",
         algName, rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, isPod, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2), portNumLevel0, portNumLevel1, portNumLevel2);

@@ -13,6 +13,7 @@
 
 #include "common_alg_template_base.h"
 #include "cost_model.h"
+#include <algorithm>
 #include <array>
 #include <set>
 #include <string>
@@ -107,6 +108,18 @@ protected:
     HcclReduceOp reduceOp_ = HcclReduceOp::HCCL_REDUCE_RESERVED;
     BuffInfo buffInfo_{};
     std::vector<std::vector<u32>> subCommRanks_;
+
+    /*
+     * 查询targetRankId在subCommRanks[0](0级子通信域rank表)中的下标;
+     * 未找到时返回fallback, 等价于原"if (it != ranks.end()) { xxx_ = distance; }"
+     * 找到才赋值的语义(调用方传成员自身当前值作fallback)。
+     */
+    static u32 CalcRankIdxInSubComm(u32 targetRankId, const std::vector<std::vector<u32>>& subCommRanks, u32 fallback)
+    {
+        const std::vector<u32>& ranks = subCommRanks[0];
+        auto it = std::find(ranks.begin(), ranks.end(), targetRankId);
+        return (it != ranks.end()) ? static_cast<u32>(std::distance(ranks.begin(), it)) : fallback;
+    }
 };
 } // namespace ops_hccl
 #endif // HCCLV2_CCU_ALG_TEMPLATE_BASE

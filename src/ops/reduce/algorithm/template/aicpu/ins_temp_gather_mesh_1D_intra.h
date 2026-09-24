@@ -47,9 +47,9 @@ public:
 private:
     HcclResult
     RunGatherMesh(const std::vector<ThreadHandle>& threads, const std::map<u32, std::vector<ChannelInfo>>& channels);
+    TemplateDataParams tempAlgParams_;
     HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads);
     HcclResult PostLocalCopy(const std::vector<ThreadHandle>& threads);
-    TemplateDataParams tempAlgParams_;
     u64 count_{0};
     u32 dataTypeSize_{0};
 };

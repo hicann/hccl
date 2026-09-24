@@ -39,9 +39,9 @@ struct ReduceScatterMesh2DieContext : public CcuKernelCtxBase {
     uint32_t rmtSyncMyBit{0};
     uint32_t rmtSyncWaitBit{0};
 
+    HcclReduceOp reduceOp;
     HcclDataType dataType;
     HcclDataType outputDataType;
-    HcclReduceOp reduceOp;
 
     ccu::Variable myInput;
     ccu::Variable myOutput;

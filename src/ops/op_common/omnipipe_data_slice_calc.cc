@@ -1772,19 +1772,16 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                         = sliceOffsetCut(
                               zRSOffset[maxDataPieceId][osn], omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                           + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                    sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                    sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                    inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                    outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                    PushSlicePiece(
+                        sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                        outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset,
+                        outputslicestride, dataTypeSize);
                     outputslicestride += zRSDataSize[maxDataPieceId][osn];
                 }
             }
-            stepSliceInfotmp.stepInputSliceStride.push_back(0);
-            stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[OMNIPIPE_LEVEL2][osn] * oneDid);
-            stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-            stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-            stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-            stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+            PushStepPieceVectors(
+                stepSliceInfotmp, 0, xyzDataSizeStep[OMNIPIPE_LEVEL2][osn] * oneDid, sliceSizeMultRankPiece,
+                sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece, outputOmniPipeSliceStrideMultRankPiece);
         }
         dataSliceLevelz.insert(dataSliceLevelz.end(), stepSliceInfotmp);
     }
@@ -1807,16 +1804,12 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
             u64 inputPieceIdOffset
                 = sliceOffsetCut(zRSOffset[maxDataPieceId][osn], omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                   + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-            sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-            sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-            inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-            outputOmniPipeSliceStrideMultRankPiece.push_back(0);
-            stepSliceInfotmp.stepInputSliceStride.push_back(0);
-            stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[OMNIPIPE_LEVEL2][osn] * oneDid);
-            stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-            stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-            stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-            stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+            PushSlicePiece(
+                sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset, 0, dataTypeSize);
+            PushStepPieceVectors(
+                stepSliceInfotmp, 0, xyzDataSizeStep[OMNIPIPE_LEVEL2][osn] * oneDid, sliceSizeMultRankPiece,
+                sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece, outputOmniPipeSliceStrideMultRankPiece);
         }
         dataSliceLevelz.insert(dataSliceLevelz.end(), stepSliceInfotmp);
     }
@@ -1877,21 +1870,19 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                           xyRSOffset[maxDataPieceId][osn] + xRSOffset[maxDataPieceId][osn][isn],
                                           omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                                       + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                                sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                                sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                                inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                                outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                                PushSlicePiece(
+                                    sliceSizeMultRankPiece, sliceCountMultRankPiece,
+                                    inputOmniPipeSliceStrideMultRankPiece, outputOmniPipeSliceStrideMultRankPiece,
+                                    sliceSizeOnePiece, inputPieceIdOffset, outputslicestride, dataTypeSize);
                                 outputslicestride += xRSDataSize[maxDataPieceId][osn][isn];
                             }
                         }
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevelx.insert(dataSliceLevelx.end(), stepSliceInfotmp);
         }
@@ -1922,19 +1913,17 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                   xyRSOffset[maxDataPieceId][osn] + xRSOffset[maxDataPieceId][osn][isn],
                                   omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                               + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                        sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                        sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                        inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                        outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                        PushSlicePiece(
+                            sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                            outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset,
+                            outputslicestride, dataTypeSize);
                         outputslicestride += xRSDataSize[maxDataPieceId][osn][isn];
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevelx.insert(dataSliceLevelx.end(), stepSliceInfotmp);
         }
@@ -1966,19 +1955,17 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                   xyRSOffset[maxDataPieceId][osn] + xRSOffset[maxDataPieceId][osn][isn],
                                   omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                               + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                        sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                        sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                        inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                        outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                        PushSlicePiece(
+                            sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                            outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset,
+                            outputslicestride, dataTypeSize);
                         outputslicestride += xRSDataSize[maxDataPieceId][osn][isn];
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevelx.insert(dataSliceLevelx.end(), stepSliceInfotmp);
         }
@@ -2002,16 +1989,13 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                              xyRSOffset[maxDataPieceId][osn] + xRSOffset[maxDataPieceId][osn][isn],
                                              omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                                          + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                outputOmniPipeSliceStrideMultRankPiece.push_back(0);
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushSlicePiece(
+                    sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset, 0, dataTypeSize);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[0][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevelx.insert(dataSliceLevelx.end(), stepSliceInfotmp);
         }
@@ -2053,21 +2037,19 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                           xyRSOffset[maxDataPieceId][osn] + yRSOffset[maxDataPieceId][osn][isn],
                                           omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                                       + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                                sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                                sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                                inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                                outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                                PushSlicePiece(
+                                    sliceSizeMultRankPiece, sliceCountMultRankPiece,
+                                    inputOmniPipeSliceStrideMultRankPiece, outputOmniPipeSliceStrideMultRankPiece,
+                                    sliceSizeOnePiece, inputPieceIdOffset, outputslicestride, dataTypeSize);
                                 outputslicestride += yRSDataSize[maxDataPieceId][osn][isn];
                             }
                         }
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevely.insert(dataSliceLevely.end(), stepSliceInfotmp);
         }
@@ -2098,19 +2080,17 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                   xyRSOffset[maxDataPieceId][osn] + yRSOffset[maxDataPieceId][osn][isn],
                                   omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                               + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                        sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                        sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                        inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                        outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                        PushSlicePiece(
+                            sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                            outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset,
+                            outputslicestride, dataTypeSize);
                         outputslicestride += yRSDataSize[maxDataPieceId][osn][isn];
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevely.insert(dataSliceLevely.end(), stepSliceInfotmp);
         }
@@ -2142,19 +2122,17 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                   xyRSOffset[maxDataPieceId][osn] + yRSOffset[maxDataPieceId][osn][isn],
                                   omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                               + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                        sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                        sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                        inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                        outputOmniPipeSliceStrideMultRankPiece.push_back(outputslicestride);
+                        PushSlicePiece(
+                            sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                            outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset,
+                            outputslicestride, dataTypeSize);
                         outputslicestride += yRSDataSize[maxDataPieceId][osn][isn];
                     }
                 }
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
             dataSliceLevely.insert(dataSliceLevely.end(), stepSliceInfotmp);
         }
@@ -2178,16 +2156,13 @@ OmniPipeSliceInfo CalcRSOmniPipeSliceInfo(OmniPipeSliceParam& omniPipeSliceParam
                                              xyRSOffset[maxDataPieceId][osn] + yRSOffset[maxDataPieceId][osn][isn],
                                              omniPipeSplitSliceInfoListPerLoop[pieceId].size)
                                          + omniPipeSplitSliceInfoListTotal[pieceId].offset;
-                sliceSizeMultRankPiece.push_back(sliceSizeOnePiece);
-                sliceCountMultRankPiece.push_back(sliceSizeOnePiece / dataTypeSize);
-                inputOmniPipeSliceStrideMultRankPiece.push_back(inputPieceIdOffset);
-                outputOmniPipeSliceStrideMultRankPiece.push_back(0);
-                stepSliceInfotmp.stepInputSliceStride.push_back(0);
-                stepSliceInfotmp.stepOutputSliceStride.push_back(xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid);
-                stepSliceInfotmp.inputOmniPipeSliceStride.push_back(inputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.outputOmniPipeSliceStride.push_back(outputOmniPipeSliceStrideMultRankPiece);
-                stepSliceInfotmp.stepCount.push_back(sliceCountMultRankPiece);
-                stepSliceInfotmp.stepSliceSize.push_back(sliceSizeMultRankPiece);
+                PushSlicePiece(
+                    sliceSizeMultRankPiece, sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece, sliceSizeOnePiece, inputPieceIdOffset, 0, dataTypeSize);
+                PushStepPieceVectors(
+                    stepSliceInfotmp, 0, xyzDataSizeStep[1][osn * innerStepNum + isn] * oneDid, sliceSizeMultRankPiece,
+                    sliceCountMultRankPiece, inputOmniPipeSliceStrideMultRankPiece,
+                    outputOmniPipeSliceStrideMultRankPiece);
             }
 
             dataSliceLevely.insert(dataSliceLevely.end(), stepSliceInfotmp);

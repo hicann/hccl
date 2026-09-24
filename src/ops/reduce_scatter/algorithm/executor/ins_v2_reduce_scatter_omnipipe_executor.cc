@@ -42,13 +42,7 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     dataSize_ = dataCount_ * dataTypeSize_;
 
     algHierarchyInfo_ = algHierarchyInfo;
@@ -108,9 +102,9 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_UBX_32P;
     }
 
-    double meshBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
     double closBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
     double thirdBandwidth = BW_OMNI_UBX_ROCE / OMNIPIPE_FIXED_UB_UTILIZATION;
+    double meshBandwidth = BW_OMNI_DEFAULT / OMNIPIPE_FIXED_UB_UTILIZATION;
     if (topoInfo->level0PcieMix) {
         if (axes.clos == RANK_SIZE_LEVEL_2) {
             closBandwidth = BW_OMNI_PCIE_EIGHT_RS_CLOS / OMNIPIPE_FIXED_UB_UTILIZATION;
@@ -406,8 +400,8 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         param, algHierarchyInfo_, subCommRanks0, subCommRanks1, subCommRanks2, tempMap, &resCtx.topoInfo));
 
     // 为temp分配thread
-    threads_ = resCtx.threads;
     controlThread_ = threads_.at(0);
+    threads_ = resCtx.threads;
     levelThreads_.resize(OMNIPIPE_LEVEL_NUM);
 
     // 对称路径的建链结果扁平存入 channels[0]，普通路径仍按层保存；遍历全部集合后，

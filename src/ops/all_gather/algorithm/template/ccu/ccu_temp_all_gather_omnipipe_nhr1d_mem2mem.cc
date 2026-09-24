@@ -19,13 +19,8 @@ CcuTempAllGatherOmniPipeNHR1DMem2Mem::CcuTempAllGatherOmniPipeNHR1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    // 获取本卡在子通信域(如果有)中的rankid, 以及子通信域内所有卡数
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
-    templateRankSize_ = ranks.size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
+    templateRankSize_ = subCommRanks[0].size();
     HCCL_DEBUG("[%s] mySubCommRank[%u] rankId[%u]", __func__, mySubCommRank_, rankId);
 }
 

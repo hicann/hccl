@@ -260,9 +260,9 @@ HcclResult InsTempScatterNHRDPUInter::PostLocalCopy(
             u32 algRank = 0;
             CHK_RET(GetAlgRank(rank, subCommRanks_[0], algRank));
 
-            u64 sliceSize = tempAlgParams.allRankSliceSize.at(algRank);
             u64 sliceCount = tempAlgParams.allRankProcessedDataCount.at(algRank);
             u64 sliceOffset = tempAlgParams.allRankDispls.at(algRank);
+            u64 sliceSize = tempAlgParams.allRankSliceSize.at(algRank);
 
             u64 scratchOffset = scratchBase + sliceOffset;
             u64 outOffset = outBaseOff + sliceOffset;

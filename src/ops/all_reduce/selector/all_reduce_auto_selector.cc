@@ -87,10 +87,12 @@ SelectorStatus AllReduceAutoSelector::SelectMeshUBXAlgo(
     bool isClosNumMultipleOfMeshNum = false;
     CHK_PRT_RET(
         CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
-        HCCL_DEBUG("[AllReduceAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
+        HCCL_DEBUG("[AllReduceAutoSelector][SelectMeshUBXAlgo] CheckMeshNumEqualToClosNum failed."),
+        SelectorStatus::NOT_MATCH);
     CHK_PRT_RET(
         CheckClosNumMultipleOfMeshNum(topoInfo, isClosNumMultipleOfMeshNum) != HCCL_SUCCESS,
-        HCCL_DEBUG("[AllReduceAutoSelector] CheckClosNumMultipleOfMeshNum failed."), SelectorStatus::NOT_MATCH);
+        HCCL_DEBUG("[AllReduceAutoSelector][SelectMeshUBXAlgo] CheckClosNumMultipleOfMeshNum failed."),
+        SelectorStatus::NOT_MATCH);
     if (isMeshNumEqualToClosNum && topoInfo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) {
         // 4P mesh
         if (IsSmallData(dataSize)) {
@@ -285,10 +287,12 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0UBXAlgo(
     bool isClosNumMultipleOfMeshNum = false;
     CHK_PRT_RET(
         CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
-        HCCL_DEBUG("[AllReduceAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
+        HCCL_DEBUG("[AllReduceAutoSelector][SelectCcuScheduleLevel0UBXAlgo] CheckMeshNumEqualToClosNum failed."),
+        SelectorStatus::NOT_MATCH);
     CHK_PRT_RET(
         CheckClosNumMultipleOfMeshNum(topoInfo, isClosNumMultipleOfMeshNum) != HCCL_SUCCESS,
-        HCCL_DEBUG("[AllReduceAutoSelector] CheckClosNumMultipleOfMeshNum failed."), SelectorStatus::NOT_MATCH);
+        HCCL_DEBUG("[AllReduceAutoSelector][SelectCcuScheduleLevel0UBXAlgo] CheckClosNumMultipleOfMeshNum failed."),
+        SelectorStatus::NOT_MATCH);
     if (isMeshNumEqualToClosNum && topoInfo->userRankSize <= MAX_RANK_NUM_FOR_CONCURRENT_ALGO) {
         // 4P mesh
         if (IsSmallData(dataSize)) {

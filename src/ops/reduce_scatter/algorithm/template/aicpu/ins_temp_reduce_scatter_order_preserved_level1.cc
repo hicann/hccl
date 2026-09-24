@@ -16,10 +16,10 @@ namespace ops_hccl {
 
 std::vector<CostModelParam> InsTempReduceScatterOrderPreservedLevel1::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
+    float A = 0.0f;
 
     A = 1000;
     C = 1000;
@@ -87,10 +87,10 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
     }
 
     // 初始化成员变量
-    threadNum_ = templateResource.threads.size();
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     processSize_ = tempAlgParams.sliceSize;
+    threadNum_ = templateResource.threads.size();
     count_ = tempAlgParams.sliceSize / DATATYPE_SIZE_TABLE[dataType_];
 
     HCCL_INFO(
@@ -345,8 +345,8 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunLocalReduce(
 
     // ========== 树形Reduce主循环 ==========
     // remainingBlocks: 当前待处理的数据块数量
-    u32 remainingBlocks = templateRankSize_;
     u32 step = 0;
+    u32 remainingBlocks = templateRankSize_;
 
     while (remainingBlocks > 1) {
         u32 M = GetLargestPowerOf2LessThan(remainingBlocks);

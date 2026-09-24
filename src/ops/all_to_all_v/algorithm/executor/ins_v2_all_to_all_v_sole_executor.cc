@@ -148,7 +148,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         const u64* data = reinterpret_cast<const u64*>(param.varData);
         // 从varData把值取出来
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-            HCCL_INFO("OrchestrateLoop, param.varData[%u] is [%u]", i, data[i]);
+            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][Orchestrate] param.varData[%u] is [%u]", i, data[i]);
         }
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
             u64 val = i / rankSize_;
@@ -237,7 +237,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         const u64* data = reinterpret_cast<const u64*>(param.varData);
         // 从varData把值取出来
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-            HCCL_INFO("OrchestrateLoop, param.varData[%u] is [%u]", i, data[i]);
+            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] param.varData[%u] is [%u]", i, data[i]);
         }
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
             u64 val = i / rankSize_;
@@ -278,9 +278,9 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
 
     // 计算最小传输大小
-    u64 maxDataSizePerLoop = 0;
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
+    u64 maxDataSizePerLoop = 0;
     HCCL_INFO("[InsV2AlltoAllVSoleExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);
     if (templateScratchMultiplier != 0) {
         u64 scratchBoundDataSize
@@ -406,15 +406,15 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSaveCtx(
     const OpParam& param, const TemplateResource& templateAlgRes, u32 notifyNumOnMainThread) const
 {
-    HCCL_INFO("[InsAlltoAllVSoleExecutor] save fast launch ctx.");
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor] save fast launch ctx.");
     u32 threadNum = static_cast<u32>(templateAlgRes.threads.size());
     u32 ccuKernelNum = templateAlgRes.submitInfos.size();
     if (ccuKernelNum < 1) {
-        HCCL_INFO("[InsAlltoAllVSoleExecutor] ccu kernel num is 0, no need to save.");
+        HCCL_INFO("[InsV2AlltoAllVSoleExecutor] ccu kernel num is 0, no need to save.");
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsAlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], "
+        "[InsV2AlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], "
         "ccuKernelNum[%llu]",
         threadNum, ccuKernelNum);
 
@@ -489,7 +489,7 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     const AlgAttrs* attrs = nullptr;
 #endif
     if (attrs == nullptr) {
-        HCCL_WARNING("[CalcCostCoeff] algName=%s attrs not found, skip.", algName);
+        HCCL_WARNING("[InsV2AlltoAllVSoleExecutor][CalcCostCoeff] algName=%s attrs not found, skip.", algName);
         return {};
     }
     if (attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLV || attrs->opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
@@ -531,8 +531,9 @@ std::vector<CostModelParam> InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTempl
     lastRankSize_ = rankSize;
 
     HCCL_INFO(
-        "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d isPod=%d netType=%d portNum=%d", algName, rankSize,
-        rankSizeLevel0, isPod, static_cast<int>(netTypeLevel0), portNumLevel0);
+        "[InsV2AlltoAllVSoleExecutor][CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d isPod=%d netType=%d "
+        "portNum=%d",
+        algName, rankSize, rankSizeLevel0, isPod, static_cast<int>(netTypeLevel0), portNumLevel0);
     // AllToAll非in-place: input=INPUT, output=OUTPUT, scratch=HCCL_BUFFER
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSizeLevel0, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::OUTPUT, BufferType::HCCL_BUFFER,

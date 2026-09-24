@@ -60,8 +60,8 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
     // 通过 topoInfo 中的 netLayers 获取链路信息，判断本端和对端的 locationType
     // host nic -- device nic 场景走 DpuSendSoleHost，其他走 DpuSendSoleMesh
     u32 myRank = topoInfo->userRank;
-    u32 remoteRank = opParam.sendRecvRemoteRank;
     HcclComm comm = opParam.hcclComm;
+    u32 remoteRank = opParam.sendRecvRemoteRank;
 
     // 获取最高层（最后一个 netLayer）
     const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;
@@ -88,8 +88,8 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
         // 获取第一条链路的 endpoint 信息
         EndpointDesc& srcEndpoint = linkList[0].srcEndpointDesc;
         EndpointDesc& dstEndpoint = linkList[0].dstEndpointDesc;
-        EndpointLocType srcLocType = srcEndpoint.loc.locType;
         EndpointLocType dstLocType = dstEndpoint.loc.locType;
+        EndpointLocType srcLocType = srcEndpoint.loc.locType;
 
         HCCL_INFO(
             "[SendAutoSelector][SelectDPUAlgo] myRank:%u, remoteRank:%u, netLayer:%u, "

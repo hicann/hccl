@@ -26,14 +26,13 @@
 #endif
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "omnipipe_executor_utils.h"
 namespace ops_hccl {
 constexpr u64 OMNI_UBX_MS_DATA_SIZE = 64 * 1024 * 1024; // MS模式UBX流水算法数据量下限，与selector保持一致
 constexpr u64 OMNI2D_UBX_REDUCE_DATA_SIZE = 128 * 1024 * 1024; // UBX机型ccu并行/流水算法数据量分界，与selector保持一致
 constexpr u32 OMNIPIPE_MIN_THREAD_NUM = 2;
 constexpr u32 OMNIPIPE_MIN_CCU_KERNEL_NUM = 4;
 namespace {
-    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
-    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
 
     struct OmniPipeStageCost {
         double transferCoeff = 0.0;
@@ -44,44 +43,6 @@ namespace {
         u64 stepNum = 0;
         bool reachesMaxStep = false;
     };
-
-    bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
-    {
-        if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
-            return false;
-        }
-        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-            return false;
-        }
-        meshRankSize = meshIt->second[0];
-        closRankSize = closIt->second[0] / meshRankSize;
-        return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
-    }
-
-    u64 CalcStepNumByAxes(
-        double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum,
-        bool isReduceScatter)
-    {
-        const bool firstIsSlow = firstBandwidth <= secondBandwidth;
-        const double slowBandwidth = firstIsSlow ? firstBandwidth : secondBandwidth;
-        const double fastBandwidth = firstIsSlow ? secondBandwidth : firstBandwidth;
-        const u64 slowRankSize = firstIsSlow ? firstRankSize : secondRankSize;
-        const u64 fastRankSize = firstIsSlow ? secondRankSize : firstRankSize;
-        return isReduceScatter ?
-                   CalcReducescatterStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum) :
-                   CalcAllgatherStepNum2D(slowBandwidth, fastBandwidth, slowRankSize, fastRankSize, maxStepNum);
-    }
-
-    float CalcTemplateLatency(u32 taskNum)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, latency);
-        return latency;
-    }
 
     OmniPipeStageCost CalcStageCost(
         u64 meshRankSize, u64 closRankSize, u64 totalRankSize, double meshBandwidth, double closBandwidth,
@@ -121,8 +82,9 @@ namespace {
             stage.transferCoeff = (closRankSize - 1) / closBandwidth;
         }
 
-        const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
-        const float nhrLatency = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize))) : 0.0f;
+        const float meshLatency = meshActive ? CalcTemplateLatency(1, EngineType::CCU) : 0.0f;
+        const float nhrLatency
+            = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize)), EngineType::CCU) : 0.0f;
         stage.syncCost = 2.0f * static_cast<float>(stage.stepNum) * std::max(meshLatency, nhrLatency);
         return stage;
     }

@@ -44,8 +44,8 @@ public:
 
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
 
-    uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
     uint32_t mySubCommRank_ = 0;
+    uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
 };
 
 } // namespace ops_hccl

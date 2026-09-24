@@ -65,10 +65,10 @@ public:
     bool ifDoTask_ = false;
 
 protected:
-    HcclResult CalcNHRInfo(std::vector<NHRStepInfo>& stepInfoVector) const;
-    u32 GetNHRStepNum(u32 rankSize) const;
     HcclResult GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const;
     uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
+    HcclResult CalcNHRInfo(std::vector<NHRStepInfo>& stepInfoVector) const;
+    u32 GetNHRStepNum(u32 rankSize) const;
 };
 
 } // namespace ops_hccl

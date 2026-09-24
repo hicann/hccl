@@ -21,15 +21,9 @@ CcuTempScatterOmniPipeNHR1DMem2Mem::CcuTempScatterOmniPipeNHR1DMem2Mem(
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     templateRankSize_ = ranks.size();
-    auto itRoot = std::find(ranks.begin(), ranks.end(), param.root);
-    if (itRoot != ranks.end()) {
-        subCommRootId_ = std::distance(ranks.begin(), itRoot);
-    }
+    subCommRootId_ = CalcRankIdxInSubComm(param.root, subCommRanks, subCommRootId_);
     ifRealRoot_ = (rankId == param.root);
     std::string ranksStr = "";
     for (auto r : ranks) {

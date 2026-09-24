@@ -158,8 +158,8 @@ HcclResult InsTempAllGatherNhrDpuInter::GetStepInfo(uint32_t step, uint32_t nSte
 
     // 计算通信对象
     uint32_t deltaRank = 1 << (nSteps - 1 - step);
-    uint32_t recvFrom = (rankIdx + templateRankSize_ - deltaRank) % templateRankSize_;
     uint32_t sendTo = (rankIdx + deltaRank) % templateRankSize_;
+    uint32_t recvFrom = (rankIdx + templateRankSize_ - deltaRank) % templateRankSize_;
 
     // 数据份数和数据编号增量
     uint32_t nSlices = (templateRankSize_ - 1 + (1 << (nSteps - 1 - step))) / (1 << (nSteps - step));

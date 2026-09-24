@@ -41,13 +41,8 @@ CcuTempReduceNHR1DMem2Mem::CcuTempReduceNHR1DMem2Mem(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域中的虚拟rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     rootId_ = param.root;
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
@@ -66,8 +61,8 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetDieNumFromChannelDescs(HcclComm comm, u
         return HcclResult::HCCL_SUCCESS;
     } else if (firstVector.size() == LINK_NUM_2) {
         // 检查2个channel是否在2个die上
-        uint32_t dieId0 = 0;
         uint32_t dieId1 = 0;
+        uint32_t dieId0 = 0;
         GetChannelDieId(comm, myRank_, firstVector[0], dieId0);
         GetChannelDieId(comm, myRank_, firstVector[1], dieId1);
         if (dieId0 == dieId1) {
@@ -487,8 +482,8 @@ HcclResult CcuTempReduceNHR1DMem2Mem::HandlePostSync(u32 kernelNum, TemplateReso
 
 HcclResult CcuTempReduceNHR1DMem2Mem::GetStepInfo(u32 step, u32 nSteps, NHRStepInfo& stepInfo) const
 {
-    u32 nStepsNHR = nSteps / 2;
     u32 realStep = step;
+    u32 nStepsNHR = nSteps / 2;
     if (realStep < nStepsNHR) {
         CHK_RET(GetReduceScatterStepInfo(realStep, stepInfo));
     } else {
@@ -512,10 +507,10 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetReduceScatterStepInfo(u32 step, NHRStep
     u32 recvFrom = (virtRankIdx + deltaRank) % templateRankSize_;
 
     // 数据份数和数据编号增量
-    u32 nSlices = (templateRankSize_ - 1 + (1 << step)) / (1 << (step + 1));
     u32 deltaSliceIndex = 1 << (step + 1);
     u32 rxSliceIdx = virtRankIdx;
     u32 txSliceIdx = (virtRankIdx - (1 << step) + templateRankSize_) % templateRankSize_;
+    u32 nSlices = (templateRankSize_ - 1 + (1 << step)) / (1 << (step + 1));
 
     stepInfo.nSlices = nSlices;
     stepInfo.toRank = sendTo;
@@ -547,10 +542,10 @@ HcclResult CcuTempReduceNHR1DMem2Mem::GetAllGatherStepInfo(u32 step, u32 nSteps,
     u32 sendTo = (virtRankIdx + deltaRank) % templateRankSize_;
 
     // 数据份数和数据编号增量
-    u32 nSlices = (templateRankSize_ - 1 + (1 << (nSteps - 1 - step))) / (1 << (nSteps - step));
     u32 deltaSliceIndex = 1 << (nSteps - step);
     u32 txSliceIdx = virtRankIdx;
     u32 rxSliceIdx = (virtRankIdx - (1 << (nSteps - 1 - step)) + templateRankSize_) % templateRankSize_;
+    u32 nSlices = (templateRankSize_ - 1 + (1 << (nSteps - 1 - step))) / (1 << (nSteps - step));
 
     stepInfo.nSlices = nSlices;
     stepInfo.toRank = sendTo;

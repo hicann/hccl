@@ -23,11 +23,7 @@ CcuTempAllGatherNHR1DMultiJettyMem2Mem::CcuTempAllGatherNHR1DMultiJettyMem2Mem(
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     std::vector<u32> ranks = subCommRanks[0];
-    // 获取本卡在子通信域(如果有)中的rankid, 以及子通信域内所有卡数
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     tempRankSize_ = ranks.size();
     subCommRanks_ = subCommRanks;
 }
@@ -46,10 +42,10 @@ std::vector<CostModelParam> CcuTempAllGatherNHR1DMultiJettyMem2Mem::CalcCostCoef
         log2R++;
     }
     int kernelNum = (8 * static_cast<int>(param.rankSize) + RTT1 * log2R) / 5;
-    float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
+    float A = 0.0f;
 
     CostModelManager::Global()->CalcNHRParams(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
@@ -189,8 +185,8 @@ HcclResult CcuTempAllGatherNHR1DMultiJettyMem2Mem::PrepareLaunchArgs(
 {
     buffInfo_ = templateDataParams.buffInfo;
 
-    uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + buffInfo_.outBuffBaseOff;
+    uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + buffInfo_.inBuffBaseOff;
     uint64_t token;
     CHK_RET(GetToken(buffInfo_, token));
 

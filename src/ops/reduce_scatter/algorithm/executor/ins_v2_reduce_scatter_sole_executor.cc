@@ -91,12 +91,13 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
     CommTopo netTypeLevel0 = phyLevelNetTypes[0];
     const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0];
     if (portNumLevel0.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsV2ReduceScatterSoleExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, rankSizeLevel0,
-        portNumLevel0[0], static_cast<int>(netTypeLevel0));
+        "[InsV2ReduceScatterSoleExecutor][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, "
+        "netTypeLevel0=%d",
+        rankSize, rankSizeLevel0, portNumLevel0[0], static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
         portNumLevel0, isPod, algName, nullptr, nullptr, 1u, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums});

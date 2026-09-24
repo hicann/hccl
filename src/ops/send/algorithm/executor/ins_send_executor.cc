@@ -160,9 +160,9 @@ HcclResult InsSendExecutor::Orchestrate(const OpParam& param, const AlgResourceC
 HcclResult InsSendExecutor::OrchestrateWithThread(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, ThreadHandle sendRecvThread)
 {
-    opMode_ = param.opMode;
     myRank_ = resCtx.topoInfo.userRank;
     remoteRank_ = param.sendRecvRemoteRank;
+    opMode_ = param.opMode;
     // maxTmpMemSize_设定为ccl buffer的大小
     maxTmpMemSize_ = resCtx.cclMem.size;
     dataCount_ = param.DataDes.count;

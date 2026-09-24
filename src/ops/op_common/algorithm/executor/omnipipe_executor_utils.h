@@ -69,6 +69,27 @@ inline bool CalcOmniPipeCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, Om
     return axes.third > 0;
 }
 
+/* 纯2D(CLOS)形态的层级解析: 与三维版CalcOmniPipeCostAxes不同, 本版本仅走
+ * topoInstDetailsOfLayer路径且要求mesh*clos==userRankSize(无third维)。原先在
+ * reduce/all_reduce_2d/all_gather_2d/reduce_scatter_2d/scatter_2d/broadcast_2d
+ * 六个omnipipe executor的匿名命名空间中逐字重复, 收敛至此, 行为不变。 */
+inline bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
+{
+    if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
+        return false;
+    }
+    const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
+    auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
+    auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
+    if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
+        || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
+        return false;
+    }
+    meshRankSize = meshIt->second[0];
+    closRankSize = closIt->second[0] / meshRankSize;
+    return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
+}
+
 // 统一的二维步数计算: 慢链路在前, isReduceScatter选择RS/AG步数模型
 inline u64 CalcStepNumByAxes(
     double firstBandwidth, double secondBandwidth, u64 firstRankSize, u64 secondRankSize, u64 maxStepNum,

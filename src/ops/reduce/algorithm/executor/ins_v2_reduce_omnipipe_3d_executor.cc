@@ -43,13 +43,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     algHierarchyInfo_ = algHierarchyInfo;
     return HCCL_SUCCESS;
 }
@@ -121,13 +115,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
     // 初始化一些基本成员变量
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    devType_ = topoInfo->deviceType;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitCommonCommInfo(param, topoInfo);
     algHierarchyInfo_ = algHierarchyInfo;
 
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>> tempMap;
@@ -192,10 +180,10 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     dataCount_ = param.DataDes.count;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
-    dataSize_ = dataCount_ * dataTypeSize_;
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     threads_ = resCtx.threads;
+    dataSize_ = dataCount_ * dataTypeSize_;
 
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
@@ -545,12 +533,12 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     const
 {
     bdvec.clear();
-    double bw_ag_l0 = BW_OMNI_DEFAULT;
     double bw_ag_l1 = BW_OMNI_DEFAULT;
     double bw_ag_l2 = BW_OMNI_DEFAULT;
     double bw_rs_l0 = BW_OMNI_DEFAULT;
     double bw_rs_l1 = BW_OMNI_DEFAULT;
     double bw_rs_l2 = BW_OMNI_DEFAULT;
+    double bw_ag_l0 = BW_OMNI_DEFAULT;
 
     if (resCtx.topoInfo.level0PcieMix) {
         if (rankSizeLevel1_ == RANK_SIZE_LEVEL1_2) {

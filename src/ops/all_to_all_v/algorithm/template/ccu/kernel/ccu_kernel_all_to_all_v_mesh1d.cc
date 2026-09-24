@@ -319,7 +319,7 @@ CcuResult CcuAlltoAllVMesh1DKernel(CcuKernelArg arg)
     ctx.moRes.bufCount = 0;
     ctx.enginePool = 0;
 
-    HCCL_INFO("[CcuKernelAlltoAllMesh1D] AlltoAllMesh1D run");
+    HCCL_INFO("[CcuKernelAlltoAllVMesh1D] AlltoAllMesh1D run");
     CCU_CHK_RET(ParseKernelArg(ctx, kernelArg));
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));

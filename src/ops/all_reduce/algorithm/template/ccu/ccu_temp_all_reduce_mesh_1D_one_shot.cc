@@ -24,12 +24,12 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1DOneShot::CalcCostCoeff(CalcCos
     int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
-    int kernelNum = 1;
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
     float D = 0.0f;
     float n = param.dataRatio * param.rankSize;
+    int kernelNum = 1;
     CostModelManager::Global()->CalcMeshParam(n, param.netType, portNum, param.rankSize, A, param.isPod);
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
 
@@ -43,13 +43,8 @@ CcuTempAllReduceMesh1DOneShot::CcuTempAllReduceMesh1DOneShot(
     const OpParam& param, const u32 rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域(如果有)中的rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
 }

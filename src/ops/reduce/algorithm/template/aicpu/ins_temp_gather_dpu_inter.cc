@@ -171,9 +171,9 @@ InsTempGatherDpuInter::LocalDataCopy(const TemplateDataParams& tempAlgParams, co
     uint32_t algRankIdx = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], algRankIdx));
 
-    u64 sliceSize = tempAlgParams.allRankSliceSize.at(algRankIdx);
     u64 sliceCount = tempAlgParams.allRankProcessedDataCount.at(algRankIdx);
     u64 sliceOffset = tempAlgParams.allRankDispls.at(algRankIdx);
+    u64 sliceSize = tempAlgParams.allRankSliceSize.at(algRankIdx);
 
     // 数据量为0的数据片无需Copy
     if (sliceSize == 0) {
@@ -186,8 +186,8 @@ InsTempGatherDpuInter::LocalDataCopy(const TemplateDataParams& tempAlgParams, co
         const u64 scratchRepeatStride = tempAlgParams.sliceSize * templateRankSize_;
         const u64 scratchBaseoff = tempAlgParams.buffInfo.hcclBuffBaseOff + rpt * scratchRepeatStride;
 
-        const u64 inOff = inBaseOff;
         const u64 scOff = scratchBaseoff + sliceOffset;
+        const u64 inOff = inBaseOff;
 
         DataSlice srcSlices(tempAlgParams.buffInfo.inputPtr, inOff, sliceSize, sliceCount);
         DataSlice dstSlice(tempAlgParams.buffInfo.hcclBuff.addr, scOff, sliceSize, sliceCount);

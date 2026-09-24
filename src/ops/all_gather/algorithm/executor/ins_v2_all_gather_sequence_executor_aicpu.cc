@@ -34,8 +34,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     (void)comm;
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
-    dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
+    dataType_ = param.DataDes.dataType;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     algHierarchyInfo_ = algHierarchyInfo;
 

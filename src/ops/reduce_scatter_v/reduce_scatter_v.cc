@@ -55,6 +55,11 @@ HcclResult HcclReduceScatterV(
                 return count == 0;
             }),
         HCCL_WARNING("input all %u elements in sendCounts are 0, return success", rankSize), HCCL_SUCCESS);
+    // sendCounts不全为0时，sendBuf必填，此时才需要校验sendBuf非空
+    RPT_INPUT_ERR(
+        sendBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclReduceScatterV", "nullptr", "sendBuf", "non-null pointer"}));
+    CHK_PTR_NULL(sendBuf);
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
@@ -109,6 +114,11 @@ HcclResult HcclReduceScatterVGraphMode(
                 return count == 0;
             }),
         HCCL_WARNING("input all %u elements in sendCounts are 0, return success", rankSize), HCCL_SUCCESS);
+    // sendCounts不全为0时，sendBuf必填，此时才需要校验sendBuf非空
+    RPT_INPUT_ERR(
+        sendBuf == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclReduceScatterV", "nullptr", "sendBuf", "non-null pointer"}));
+    CHK_PTR_NULL(sendBuf);
     u32 userRank = INVALID_VALUE_RANKID;
     CHK_RET(HcclGetRankId(comm, &userRank));
     char commName[COMM_INDENTIFIER_MAX_LENGTH];
@@ -125,7 +135,7 @@ HcclResult HcclReduceScatterVGraphMode(
     ResPackGraphMode resPack;
     // 设置tag
     if (strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1) != 0) {
-        HCCL_ERROR("failed to fill resPack.tag");
+        HCCL_ERROR("[HcclReduceScatterVGraphMode] failed to fill resPack.tag");
         return HCCL_E_INTERNAL;
     }
     // 设置streams

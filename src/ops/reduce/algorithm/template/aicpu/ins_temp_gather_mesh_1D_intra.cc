@@ -34,7 +34,7 @@ std::vector<CostModelParam> InsTempGatherMesh1dIntra::CalcCostCoeff(CalcCostCoef
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
+    HCCL_DEBUG("[InsTempGatherMesh1dIntra][%s][CalcCostCoeff] A=%f B=%f C=%f D=%f.", __func__, A, B, C, D);
     return params;
 }
 
@@ -118,9 +118,9 @@ HcclResult InsTempGatherMesh1dIntra::RunGatherMesh(
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_INFO("[InsTempGatherMesh1dIntra] RunGatherMesh RankIDs[%d], myAlgRank[%d].", myRank_, myAlgRank);
 
-    u64 myAlgSize = tempAlgParams_.allRankSliceSize.at(myAlgRank);
     u64 myAlgCount = tempAlgParams_.allRankProcessedDataCount.at(myAlgRank);
     u64 myAlgOffset = tempAlgParams_.allRankDispls.at(myAlgRank);
+    u64 myAlgSize = tempAlgParams_.allRankSliceSize.at(myAlgRank);
 
     for (u32 rpt = 0; rpt < tempAlgParams_.repeatNum; ++rpt) {
         const u64 outBaseOff = tempAlgParams_.buffInfo.outBuffBaseOff + rpt * tempAlgParams_.outputRepeatStride;
@@ -274,8 +274,8 @@ HcclResult InsTempGatherMesh1dIntra::PostLocalCopy(const std::vector<ThreadHandl
                 continue;
             }
 
-            u64 scratchOffset = sliceOffset + scratchBase;
             u64 outOffset = sliceOffset + outBaseOff;
+            u64 scratchOffset = sliceOffset + scratchBase;
             DataSlice srcSlice(tempAlgParams_.buffInfo.hcclBuff.addr, scratchOffset, sliceSize, sliceCount);
             DataSlice dstSlice(tempAlgParams_.buffInfo.outputPtr, outOffset, sliceSize, sliceCount);
             HCCL_DEBUG(

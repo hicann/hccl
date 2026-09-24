@@ -22,14 +22,8 @@ CcuTempScatterOmniPipeMesh1DMem2Mem::CcuTempScatterOmniPipeMesh1DMem2Mem(
 {
     std::vector<u32> ranks = subCommRanks[0];
     templateRankSize_ = ranks.size();
-    auto itRoot = std::find(ranks.begin(), ranks.end(), param.root);
-    if (itRoot != ranks.end()) {
-        subCommRootId_ = std::distance(ranks.begin(), itRoot);
-    }
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
+    subCommRootId_ = CalcRankIdxInSubComm(param.root, subCommRanks, subCommRootId_);
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     ifRealRoot_ = (rankId == param.root);
     std::string ranksStr = "";
     for (auto r : ranks) {

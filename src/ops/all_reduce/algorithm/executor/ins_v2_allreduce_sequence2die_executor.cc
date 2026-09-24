@@ -39,7 +39,7 @@ InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     CommTopo netTypeLevel0 = CommTopo::COMM_TOPO_1DMESH;
     std::vector<u32> portNumLevel0 = {1};
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, "
+        "[InsV2AllReduceSequence2DieExecutor][CalcCostCoeff] rankSize=%d, rankSizeLevel0=%d, portNumLevel0=%d, "
         "netTypeLevel0=%d",
         rankSize, rankSizeLevel0, portNumLevel0, static_cast<int>(netTypeLevel0));
     std::vector<CostModelParam> params = [rankSize, rankSizeLevel0, portNumLevel0, netTypeLevel0, isPod] {

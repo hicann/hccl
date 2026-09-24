@@ -28,12 +28,8 @@ CcuTempAlltoAllVMesh1D2Die::CcuTempAlltoAllVMesh1D2Die(
     const OpParam& param, RankId rankId, const std::vector<std::vector<u32>>& subCommRanks)
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        myRank_ = std::distance(ranks.begin(), it);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    myRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, myRank_);
 }
 
 CcuTempAlltoAllVMesh1D2Die::~CcuTempAlltoAllVMesh1D2Die() {}

@@ -381,23 +381,23 @@ HcclResult ReduceNHR::GetStepInfoList(std::vector<AicpuNHRStepInfo>& stepInfoLis
     u32 nSteps = GetNHRStepNum(templateRankSize_);
     stepInfoList.resize(nSteps);
     for (u32 step = 0; step < nSteps; step++) {
+        // ReduceNHR 数据份数和数据编号增量
+        u32 nSlices = (templateRankSize_ - 1 + (1 << step)) / (1 << (step + 1));
+        u32 deltaSliceIndex = 1 << (step + 1);
         // ReduceNHR 计算通信对象
         u32 deltaRank = 1 << step;
         u32 sendTo = (rankIdx + templateRankSize_ - deltaRank) % templateRankSize_;
         u32 recvFrom = (rankIdx + deltaRank) % templateRankSize_;
 
-        // ReduceNHR 数据份数和数据编号增量
-        u32 nSlices = (templateRankSize_ - 1 + (1 << step)) / (1 << (step + 1));
-        u32 deltaSliceIndex = 1 << (step + 1);
         u32 txSliceIdx = sendTo;
         u32 rxSliceIdx = rankIdx;
 
         AicpuNHRStepInfo& currStepInfo = stepInfoList[step];
+        currStepInfo.toRank = sendTo;
+        currStepInfo.fromRank = recvFrom;
         currStepInfo.step = step;
         currStepInfo.myRank = rankIdx;
         currStepInfo.nSlices = nSlices;
-        currStepInfo.toRank = sendTo;
-        currStepInfo.fromRank = recvFrom;
 
         // ReduceNHR 计算本rank在每轮收/发中的slice编号
         currStepInfo.txSliceIdxs.reserve(nSlices);

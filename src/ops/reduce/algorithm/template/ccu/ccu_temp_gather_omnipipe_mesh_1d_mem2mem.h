@@ -30,15 +30,15 @@ public:
             "Template of Gather ccu omnipipe mesh 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
     }
 
-    HcclResult CalcRes(
-        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
-        AlgResourceRequest& resourceRequest) override;
-    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& templateDataParams,
         TemplateResource& templateResource) override;
     u64 GetThreadNum() const override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     uint32_t RemoteRankId2RankId(const uint32_t remoteRankId) const;
     void SetRoot(u32 root);
     void UnsetRoot(u32 rank);

@@ -52,8 +52,8 @@ InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1
     }
 
     HCCL_INFO(
-        "[CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize, portNumLevel0,
-        static_cast<int>(netTypeLevel0));
+        "[InsV2AllReduceTwoShotSoleExecutor][CalcCostCoeff] rankSize=%d, portNumLevel0=%d, netTypeLevel0=%d", rankSize,
+        portNumLevel0, static_cast<int>(netTypeLevel0));
     std::vector<CostModelParam> params
         = [rankSize, portNumLevel0, netTypeLevel0, isPod, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums] {
               std::vector<CostModelParam> v;
@@ -200,10 +200,10 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     dataType_ = param.DataDes.dataType;
-    reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
+    reduceOp_ = param.reduceType;
     if (supportSymmetricMemory_) {
         inputOffset_ = param.inputOffset;
         outputOffset_ = param.outputOffset;

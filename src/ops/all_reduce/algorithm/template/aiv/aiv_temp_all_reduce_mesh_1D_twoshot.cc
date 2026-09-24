@@ -44,10 +44,10 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
         = (param.topoInfo != nullptr && param.topoInfo->level0Symmetric && param.topoInfo->level1Symmetric);
     bool isMultiNode = (level0RankSize > 0 && level0RankSize < param.rankSize);
     if (isMultiNode && isSymmetric) {
-        float A0 = 0.0f;
         float A1 = 0.0f;
         int level0Port = 1;
         int level1Port = portNum;
+        float A0 = 0.0f;
         CostModelManager::Global()->CalcMeshParam(
             2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
         u32 level1RankSize = param.rankSize - level0RankSize;

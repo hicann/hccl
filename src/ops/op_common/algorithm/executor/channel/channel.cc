@@ -386,7 +386,8 @@ HcclResult CalcChannelRequestMesh1D(
     auto it = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), topoInfo->userRank);
     CHK_PRT_RET(
         (it == subcommInfo[COMM_LEVEL0].end()),
-        HCCL_ERROR("[CollAlgFactory] [channel] Rank [%d] is not in commInfo.", topoInfo->userRank),
+        HCCL_ERROR(
+            "[CollAlgFactory][channel][CalcChannelRequestMesh1D]  Rank [%d] is not in commInfo.", topoInfo->userRank),
         HcclResult::HCCL_E_PARA);
     u32 myRank = topoInfo->userRank;
     std::vector<CommProtocol> expectedProtocols;
@@ -1250,7 +1251,9 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(
     auto it = std::find(subcommInfo[COMM_LEVEL0].begin(), subcommInfo[COMM_LEVEL0].end(), topoInfo->userRank);
     CHK_PRT_RET(
         (it == subcommInfo[COMM_LEVEL0].end()),
-        HCCL_ERROR("[CollAlgFactory] [channel] Rank [%d] is not in commInfo.", topoInfo->userRank),
+        HCCL_ERROR(
+            "[CollAlgFactory][channel][CalcChannelRequestMeshClosMultiJetty]  Rank [%d] is not in commInfo.",
+            topoInfo->userRank),
         HcclResult::HCCL_E_PARA);
     u32 myRank = topoInfo->userRank;
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)

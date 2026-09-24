@@ -55,8 +55,8 @@ std::vector<CostModelParam> InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTem
     // 两维数据划分失去意义, 不注册 costmodel, 新选择器不参与竞争
     if (rankSizeLevel0 <= 1 || rankSizeLevel1 <= 1) {
         HCCL_INFO(
-            "[CalcCostCoeff] algName=%s parallel dims degenerate (L0=%u, L1=%u), skip.", algName, rankSizeLevel0,
-            rankSizeLevel1);
+            "[InsV2ScatterParallelExecutor][CalcCostCoeff] algName=%s parallel dims degenerate (L0=%u, L1=%u), skip.",
+            algName, rankSizeLevel0, rankSizeLevel1);
         return {};
     }
     const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;
@@ -170,7 +170,7 @@ AlgNetMeta InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     // 与 CalcCostCoeff 同口径: portNums 为空时返回空 meta(算法已不注册)
     if (portNumLevel1.empty()) {
-        HCCL_WARNING("[GetAlgNetMeta] portNum is empty");
+        HCCL_WARNING("[InsV2ScatterParallelExecutor][GetAlgNetMeta] portNum is empty");
         return {};
     }
     // 对齐 CalcCostCoeff 的段划分与 dataRatio 逐段相等(与 all_gather parallel 同约定):

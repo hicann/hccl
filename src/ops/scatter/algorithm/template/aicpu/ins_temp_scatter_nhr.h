@@ -69,10 +69,10 @@ private:
     u64 processSize_{0};
     u64 count_{0};
     bool isDmaRead_{false};
-    std::vector<u64> dataSplit_;
-    std::vector<u64> dataOffset_;
     std::vector<u64> dataSplitTail_;
     std::vector<u64> dataOffsetTail_;
+    std::vector<u64> dataSplit_;
+    std::vector<u64> dataOffset_;
 };
 
 } // namespace ops_hccl

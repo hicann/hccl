@@ -81,10 +81,10 @@ private:
     u64 tailSize_{0};
     std::map<u32, u32> tempVirtRankMap_;
     bool isDmaRead_{false};
-    std::vector<u64> dataSplit_;
     std::vector<u64> dataOffset_;
     std::vector<u64> dataSplitTail_;
     std::vector<u64> dataOffsetTail_;
+    std::vector<u64> dataSplit_;
 };
 
 } // namespace ops_hccl

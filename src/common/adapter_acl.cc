@@ -167,7 +167,7 @@ HcclResult haclrtMemcpy(void* dst, size_t destMax, const void* src, size_t count
 
     aclmdlRICaptureMode mode = aclmdlRICaptureMode::ACL_MODEL_RI_CAPTURE_MODE_RELAXED;
     aclError ret = aclmdlRICaptureThreadExchangeMode(&mode);
-    HCCL_DEBUG("Call aclmdlRICaptureThreadExchangeMode mode before: %d, ret: %d", mode, ret);
+    HCCL_DEBUG("[BeforeMemcpy] Call aclmdlRICaptureThreadExchangeMode mode before: %d, ret: %d", mode, ret);
     if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
         HCCL_WARNING("[haclrtMemcpy]aclmdlRICaptureThreadExchangeMode not support!");
     } else {
@@ -201,7 +201,7 @@ HcclResult haclrtMemcpy(void* dst, size_t destMax, const void* src, size_t count
     }
 
     ret = aclmdlRICaptureThreadExchangeMode(&mode);
-    HCCL_DEBUG("Call aclmdlRICaptureThreadExchangeMode mode before: %d, ret: %d", mode, ret);
+    HCCL_DEBUG("[AfterMemcpy] Call aclmdlRICaptureThreadExchangeMode mode before: %d, ret: %d", mode, ret);
     if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
         HCCL_WARNING("[haclrtMemcpy]aclmdlRICaptureThreadExchangeMode not support!");
     } else {

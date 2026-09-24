@@ -77,7 +77,7 @@ HcclResult HcclAllReduceGraphMode(
     ResPackGraphMode resPack;
     // 设置tag
     if (strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1) != 0) {
-        HCCL_ERROR("failed to fill resPack.tag");
+        HCCL_ERROR("[HcclAllReduceGraphMode] failed to fill resPack.tag");
         return HCCL_E_INTERNAL;
     }
     // 设置streams

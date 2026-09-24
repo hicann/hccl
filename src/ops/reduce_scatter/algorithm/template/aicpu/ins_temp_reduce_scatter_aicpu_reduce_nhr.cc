@@ -22,7 +22,7 @@ std::vector<CostModelParam> InsTempReduceScatterAicpuReduceNHR::CalcCostCoeff(Ca
 
     std::vector<CostModelParam> params;
     params.push_back({A, B, C, D});
-    HCCL_DEBUG("[%s] CalcCostCoeff A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
+    HCCL_DEBUG("[InsTempReduceScatterAicpuReduceNHR][%s][CalcCostCoeff] A=%f B=%f C=%f D=%f", __func__, A, B, C, D);
     return params;
 }
 

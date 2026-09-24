@@ -176,10 +176,10 @@ InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     dataSize_ = dataCount_ * dataTypeSize_;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
         outputOffset_ = param.outputOffset;
         inputSymWindow_ = param.inputSymWindow;
         outputSymWindow_ = param.outputSymWindow;
+        inputOffset_ = param.inputOffset;
     }
 
     if (algHierarchyInfo_.infos.size() < TOPO_LEVEL_NUM_3 || algHierarchyInfo_.infos[0][0].empty()

@@ -270,7 +270,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     CHK_PRT_RET(
         resCtx.algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || resCtx.algHierarchyInfo.infos[0].empty()
             || resCtx.algHierarchyInfo.infos[1].empty(),
-        HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid.", __func__), HcclResult::HCCL_E_PARA);
+        HCCL_ERROR("[InsBroadcastParallelExecutor][%s][Orchestrate] algHierarchyInfo.infos is invalid.", __func__),
+        HcclResult::HCCL_E_PARA);
     temp0HierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
     temp1HierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
 
@@ -279,8 +280,9 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     interLocalRankSize_ = GetRankSize(temp1HierarchyInfo_);
     rankSize_ = intraLocalRankSize_ * interLocalRankSize_;
     HCCL_INFO(
-        "[Orchestrate] localRankSize: myRank[%d] intraLocalRankSize[%u] interLocalRankSize[%u] rankSize_[%u]", myRank_,
-        intraLocalRankSize_, interLocalRankSize_, rankSize_);
+        "[InsBroadcastParallelExecutor][Orchestrate] localRankSize: myRank[%d] intraLocalRankSize[%u] "
+        "interLocalRankSize[%u] rankSize_[%u]",
+        myRank_, intraLocalRankSize_, interLocalRankSize_, rankSize_);
 
     CHK_RET(CalcLocalRoot());
 
@@ -315,7 +317,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     // costmodel 迭代时"不匹配"是正常事件，避免执行路径语义的 ERROR 日志刷屏
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
-            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+            topoInfo, algHierarchyInfo, algName, "[InsBroadcastParallelExecutor][CalcCostCoeff]",
+            TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         netTypeLevel0_ = CommTopo::COMM_TOPO_1DMESH;
         netTypeLevel1_ = CommTopo::COMM_TOPO_1DMESH;
         portNumLevel0_ = {1};
@@ -336,7 +339,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     std::vector<u32> portNumLevel0 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel0);
     std::vector<u32> portNumLevel1 = GetPhysicalLevelPortNums(topoInfo, physIdxLevel1);
     if (portNumLevel0.empty() || portNumLevel1.empty()) {
-        HCCL_WARNING("[CalcCostCoeff] portNum is empty");
+        HCCL_WARNING("[InsBroadcastParallelExecutor][CalcCostCoeff] portNum is empty");
         return {};
     }
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
@@ -359,7 +362,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
             param.opConfig.multipleDimensionSplitRatio);
     }
     HCCL_INFO(
-        "[CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d rankSizeLevel1=%d isPod=%d netTypeLevel0=%d "
+        "[InsBroadcastParallelExecutor][CalcCostCoeff] algName=%s rankSize=%d rankSizeLevel0=%d rankSizeLevel1=%d "
+        "isPod=%d netTypeLevel0=%d "
         "netTypeLevel1=%d portNumLevel0=%d portNumLevel1=%d",
         algName, rankSize, rankSizeLevel0, rankSizeLevel1, isPod, static_cast<int>(netTypeLevel0),
         static_cast<int>(netTypeLevel1), portNumLevel0, portNumLevel1);
@@ -746,9 +750,9 @@ template <
 void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     PrePareDataParamstempAlgInter(const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount)
 {
-    u32 myRankIdx = tempVirtRankMapInter_.at(myRank_);
     u64 sendDataSize = 0;
     u64 curSize = 0;
+    u32 myRankIdx = tempVirtRankMapInter_.at(myRank_);
     allRankDisplsInter_.clear();
     allRankSliceSizeInter_.clear();
     u64 rankStride = RoundDown(currCountPart * dataTypeSize_, (intraLocalRankSize_ * dataTypeSize_)) * dataTypeSize_;
@@ -771,9 +775,9 @@ template <
 void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
     PrePareDataParamstempAlgIntra(const u64 dataOffset, const u64 currCountPart, const u64 scratchOffsetCount)
 {
-    u64 myRankIdx = tempVirtRankMapIntra_.at(myRank_);
     u64 sendDataSize = 0;
     u64 curSize = 0;
+    u64 myRankIdx = tempVirtRankMapIntra_.at(myRank_);
     allRankDisplsInter_.clear();
     allRankSliceSizeInter_.clear();
     u64 rankStride = RoundDown(currCountPart * dataTypeSize_, (interLocalRankSize_ * dataTypeSize_)) * dataTypeSize_;
@@ -872,16 +876,16 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     u64 sliceCountPart1 = sliceCount - sliceCountPart0;
 
     if (sliceCount == 0) {
-        HCCL_WARNING("The divisor cannot be zero.");
+        HCCL_WARNING("[InsBroadcastParallelExecutor][OrchestrateLoop] The divisor cannot be zero.");
         return HcclResult::HCCL_SUCCESS;
     }
     // 计算循环次数
     u32 loopTimes = dataCount_ / sliceCount + ((dataCount_ % sliceCount == 0) ? 0 : 1);
     // 计算Scratch偏移，数据尾块必然小于常规块，不用额外计算尾块时的Scratch偏移
-    u64 scratchOffsetCountIntraStage0 = 0;
     u64 scratchOffsetCountInterStage0 = sliceCountPart0 * multipleIntra;
     u64 scratchOffsetCountInterStage1 = 0;
     u64 scratchOffsetCountIntraStage1 = sliceCountPart0 * multipleInter;
+    u64 scratchOffsetCountIntraStage0 = 0;
     HCCL_DEBUG(
         "[InsBroadcastParallelExecutor][OrchestrateLoop] dataCount_[%lu], myRank_[%d], sliceCountPart0[%d], "
         "multipleIntra[%d]",
@@ -899,8 +903,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     TemplateDataParams tempAlgParamsInter11;
     TemplateDataParams tempAlgParamsIntra11;
 
-    u64 processedCount = 0;
     u32 loopIndex = 0;
+    u64 processedCount = 0;
     while (processedCount < dataCount_) {
         u64 remainingCount = dataCount_ - processedCount;
         u32 remainingLoopTimes = (loopIndex < loopTimes) ? (loopTimes - loopIndex) : 1;

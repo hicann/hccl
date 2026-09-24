@@ -57,17 +57,9 @@ CcuTempBroadcastNHR1DMem2Mem::CcuTempBroadcastNHR1DMem2Mem(
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem] root[%u] rank[%u] myRank_[%u]", param.root, rankId, myRank_);
-    std::vector<u32> ranks = subCommRanks[0];
-    templateRankSize_ = ranks.size();
-    // 获取本卡在子通信域中的虚拟rankid
-    auto it = std::find(ranks.begin(), ranks.end(), rankId);
-    if (it != ranks.end()) {
-        mySubCommRank_ = std::distance(ranks.begin(), it);
-    }
-    auto itRoot = std::find(ranks.begin(), ranks.end(), param.root);
-    if (itRoot != ranks.end()) {
-        subCommRootId_ = std::distance(ranks.begin(), itRoot);
-    }
+    templateRankSize_ = subCommRanks[0].size();
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
+    subCommRootId_ = CalcRankIdxInSubComm(param.root, subCommRanks, subCommRootId_);
     HCCL_INFO("[CcuTempBroadcastNHR1DMem2Mem] mySubCommRank[%u] subCommRootId[%u]", mySubCommRank_, subCommRootId_);
 }
 
@@ -471,8 +463,8 @@ HcclResult CcuTempBroadcastNHR1DMem2Mem::GetScatterStepInfo(u32 step, u32 nSteps
         stepInfo.toRank = ranks[sendTo];
         stepInfo.nSlices = nSlices;
     } else if (deltaRoot >= deltaRankPair && deltaRoot < nRanks + deltaRankPair) { // 需要收
-        u32 recvFrom = (rankIdx + deltaRankPair) % rankSize;
         u32 rxSliceIdx = rankIdx;
+        u32 recvFrom = (rankIdx + deltaRankPair) % rankSize;
         for (u32 i = 0; i < nSlices; i++) {
             u32 targetRxSliceIdx = rxSliceIdx;
             stepInfo.rxSliceIdxs.push_back(targetRxSliceIdx);

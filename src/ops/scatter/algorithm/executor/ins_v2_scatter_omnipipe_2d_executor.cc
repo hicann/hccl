@@ -23,6 +23,7 @@
 #include "coll_alg_v2_exec_registry.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "omnipipe_executor_utils.h"
 
 namespace ops_hccl {
 constexpr u64 OMNI2D_UBX_SC_DATA_SIZE = 16 * 1024 * 1024; // UBX机型ccu并行/流水算法数据量分界，与selector保持一致
@@ -30,43 +31,6 @@ constexpr u32 OMNIPIPE_2D_MIN_THREAD_NUM = 3;
 constexpr u32 OMNIPIPE_2D_MIN_CCU_KERNEL_NUM = 2;
 constexpr u32 OMNIPIPE_2D_TEMPLATE_NUM = 2;    // 两个template(intra+inter)
 constexpr u32 OMNIPIPE_2D_MAIN_NOTIFY_NUM = 2; // 两个template各自的notify数
-namespace {
-    constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
-    constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
-
-    bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
-    {
-        if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
-            return false;
-        }
-        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-            return false;
-        }
-        meshRankSize = meshIt->second[0];
-        closRankSize = closIt->second[0] / meshRankSize;
-        return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
-    }
-
-    u64 CalcScatterStepNum(
-        double meshBandwidth, double closPlanBandwidth, u64 meshRankSize, u64 closRankSize, u64 maxStepNum)
-    {
-        if (meshBandwidth <= closPlanBandwidth) {
-            return CalcAllgatherStepNum2D(meshBandwidth, closPlanBandwidth, meshRankSize, closRankSize, maxStepNum);
-        }
-        return CalcAllgatherStepNum2D(closPlanBandwidth, meshBandwidth, closRankSize, meshRankSize, maxStepNum);
-    }
-
-    float CalcTemplateLatency(u32 taskNum)
-    {
-        float latency = 0.0f;
-        CostModelManager::Global()->CalcLatencyParams(taskNum, EngineType::CCU, latency);
-        return latency;
-    }
-} // namespace
 
 template <typename AlgTopoMatch, typename InsAlgTempLevel0, typename InsAlgTempLevel1>
 InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>::InsV2ScatterOmniPipe2DExecutor()
@@ -123,7 +87,7 @@ InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>
     const bool useSched2dCost = meshActive && closActive;
     const u64 maxStepNum = useSched2dCost ? MAX_STEP_NUM_SC : MAX_STEP_NUM;
     const u64 stepNum
-        = CalcScatterStepNum(meshPlanBandwidth, closPlanBandwidthPerRank, meshRankSize, closRankSize, maxStepNum);
+        = CalcStepNumByAxes(meshPlanBandwidth, closPlanBandwidthPerRank, meshRankSize, closRankSize, maxStepNum, false);
 
     double transferCoeff = 0.0;
     double equivalentBandwidth = 0.0;
@@ -142,8 +106,9 @@ InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempLevel1>
     CostModelParam costParam{};
     costParam.A = static_cast<float>(transferCoeff / GBPS_TO_BYTES_PER_SECOND);
     CostModelManager::Global()->CalcLocalCopyParams(useSched2dCost ? 0.5f : 1.0f, EngineType::CCU, costParam.B);
-    const float meshLatency = meshActive ? CalcTemplateLatency(1) : 0.0f;
-    const float nhrLatency = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize))) : 0.0f;
+    const float meshLatency = meshActive ? CalcTemplateLatency(1, EngineType::CCU) : 0.0f;
+    const float nhrLatency
+        = closActive ? CalcTemplateLatency(GetNHRStepNum(static_cast<u32>(closRankSize)), EngineType::CCU) : 0.0f;
     costParam.C = 2.0f * static_cast<float>(stepNum) * std::max(meshLatency, nhrLatency);
 
     HCCL_INFO(
@@ -174,8 +139,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
+    dataType_ = param.DataDes.dataType;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     myRank_ = topoInfo->userRank;
