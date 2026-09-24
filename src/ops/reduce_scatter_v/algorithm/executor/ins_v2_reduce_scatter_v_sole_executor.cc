@@ -241,8 +241,15 @@ AlgNetMeta InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlg
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, AicpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
     TopoMatchOneLevel, InsTempReduceScatterVMesh1D);
-REGISTER_ALG_ATTRS(AicpuReduceScatterVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
-                   topo.isSupportLevel0PcieMix = true; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;
+    op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0PcieMix) {
+            return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
+    };);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

@@ -82,7 +82,12 @@ SelectorStatus AllGatherVAutoSelector::SelectAicpuAlgo(
         algos[1], algos[2], algos[3]);
 
     if (topoInfo->topoLevelNums >= 1 && topoInfo->topoLevelNums <= TOPO_LEVEL_NUM_3) {
-        selectAlgName = "AicpuAllGatherVSoleMesh";
+        if (topoInfo->level0PcieMix && !IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+            // PCIE机型算法选择，仅在1DMESH覆盖范围内支持
+            return SelectorStatus::NOT_MATCH;
+        } else {
+            selectAlgName = "AicpuAllGatherVSoleMesh";
+        }
     } else {
         return SelectorStatus::NOT_MATCH;
     }

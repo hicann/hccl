@@ -12,6 +12,7 @@
 #include "topo_match_one_level.h"
 #include "ins_temp_all_gather_v_mesh_1D.h"
 #include "alg_attrs_registry.h"
+#include "auto_selector_base.h"
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -250,8 +251,14 @@ AlgNetMeta InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetM
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLGATHER_V, AicpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
     InsTempAllGatherVMesh1D);
-REGISTER_ALG_ATTRS(AicpuAllGatherVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
-                   topo.isSupportLevel0PcieMix = true;);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0PcieMix) {
+            return AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return true;
+    };);
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

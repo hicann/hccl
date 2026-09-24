@@ -191,7 +191,12 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAicpuAlgo(
     }
 
     if (topoInfo->topoLevelNums >= TOPO_LEVEL_1 && topoInfo->topoLevelNums <= TOPO_LEVEL_3) {
-        selectAlgName = "AicpuReduceScatterVSoleMesh";
+        if (topoInfo->level0PcieMix && !IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+            // PCIE机型算法选择，仅在1DMESH覆盖范围内支持
+            return SelectorStatus::NOT_MATCH;
+        } else {
+            selectAlgName = "AicpuReduceScatterVSoleMesh";
+        }
     } else {
         return SelectorStatus::NOT_MATCH;
     }
