@@ -610,13 +610,14 @@ template <
     typename AlgTopoMatch, typename AlgTemplate0, typename AlgTemplate1, typename AlgTemplate2, typename AlgTemplate3>
 double
 ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3>::GetParallelDataSplit(
-    Level0Shape level0Topo) const
+    const AlgResourceCtxSerializable& resCtx) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, level0Topo,
-            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, &resCtx.topoInfo,
+            resCtx.algHierarchyInfo, ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE,
+            multipleDimensionSplitRatio_);
     }
     HCCL_INFO("[ReduceParallelExecutor] meshFirstRatio[%f], closFirstRatio[%f]", ratio, 1.0 - ratio);
     return ratio;
@@ -637,7 +638,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
 
     multipleDimensionSplitRatio_ = param_.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param_.opConfig.multipleDimensionSplitRatioSource;
-    const double ratio = GetParallelDataSplit(resCtx_.topoInfo.level0Topo);
+    const double ratio = GetParallelDataSplit(resCtx_);
     parallelDataSplitRatio_ = ratio;
     std::array<long double, dataSplitPart_> dataSplitSize{ratio, 1.0 - ratio};
     HCCL_INFO("[ReduceParallelExecutor] meshFirstRatio[%Lf], closFirstRatio[%Lf]", dataSplitSize[0], dataSplitSize[1]);

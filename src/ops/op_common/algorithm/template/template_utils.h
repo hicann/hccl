@@ -535,16 +535,19 @@ bool GetPortGroupSize(const std::map<u32, std::vector<ChannelInfo>>& channels, u
 
 // 返回值统一表示"先Mesh后Clos"数据片的目标比例，"先Clos后Mesh"数据片的比例为1减去该值。
 // fallbackRatio需按同一语义传入：公式无法计算时直接返回该回退值(已裁剪到[0, 1])。
+// 仅用于BUILTIN_FORMULA；物理层映射不是{{0}, {1}}或物理层信息不足时固定返回0.5。
 // MESH_1D_CLOS拓扑不使用自适应切分，直接返回fallbackRatio，不依赖端口信息。
 // resPortInfo有效时直接使用其中的端口信息（CCU模式），否则从ChannelInfo Map中提取（AICPU/DPU模式）。
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
     const std::map<u32, std::vector<ChannelInfo>>& interChannels, const ParallelChannelPortInfo& resPortInfo,
-    Level0Shape level0Topo, ParallelDataSplitType splitType, double fallbackRatio);
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+    ParallelDataSplitType splitType, double fallbackRatio);
 
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::vector<u32>& portNum,
-    const TopoInfoWithNetLayerDetails* topoInfo, ParallelDataSplitType splitType, double fallbackRatio);
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+    ParallelDataSplitType splitType, double fallbackRatio);
 
 #ifndef AICPU_COMPILE
 // CCU模式的资源上下文中没有ChannelInfo，需在CalcRes阶段从机内/机间template的建链请求中采集端口信息。

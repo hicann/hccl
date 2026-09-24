@@ -68,7 +68,7 @@ protected:
     void GenTemplateAlgParamsInter1(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
         const u64 dataCountPerLoopAxis1, const u64 scratchOffset, TemplateDataParams& tempAlgParamsInter1) const;
-    void GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const;
     HcclResult PrepareResForTemplate(InsAlgTemplate0& tempAlgIntra, InsAlgTemplate1& tempAlgInter);
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo) const;
 

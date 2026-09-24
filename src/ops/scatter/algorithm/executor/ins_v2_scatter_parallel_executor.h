@@ -81,7 +81,7 @@ protected:
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
         const u64 dataCountPerLoopAxis1, const u64 scratchOffset, TemplateDataParams& tempAlgParamsInter1) const;
 
-    void GetParallelDataSplit(std::vector<double>& splitDataSize, Level0Shape level0Topo) const;
+    void GetParallelDataSplit(std::vector<double>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const;
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo) const;
 
     u32 ccuKernelLaunchNumIntra0_{0};

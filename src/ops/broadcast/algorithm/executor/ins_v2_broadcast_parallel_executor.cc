@@ -320,6 +320,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         netTypeLevel1_ = CommTopo::COMM_TOPO_1DMESH;
         portNumLevel0_ = {1};
         portNumLevel1_ = {1};
+        lastAlgHierarchyInfo_ = {};
         lastIsPod_ = false;
         lastRankSizeLevel0_ = 0;
         lastRankSizeLevel1_ = 0;
@@ -341,11 +342,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
 
-    // 缓存给 const GetAlgNetMeta 使用（当前分支 GetAlgNetMeta 无 algName 入参，无法重跑 topomatch）
+    // 缓存给 const GetAlgNetMeta 使用，物理层映射与端口信息必须来自同一次匹配。
     netTypeLevel0_ = netTypeLevel0;
     netTypeLevel1_ = netTypeLevel1;
     portNumLevel0_ = portNumLevel0;
     portNumLevel1_ = portNumLevel1;
+    lastAlgHierarchyInfo_.physicalIdxForAlgoLevels = algHierarchyInfo.physicalIdxForAlgoLevels;
     lastIsPod_ = isPod;
     lastRankSizeLevel0_ = rankSizeLevel0;
     lastRankSizeLevel1_ = rankSizeLevel1;
@@ -353,7 +355,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     float ratio = param.opConfig.multipleDimensionSplitRatio;
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::BROADCAST,
+            rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, algHierarchyInfo, ParallelDataSplitType::BROADCAST,
             param.opConfig.multipleDimensionSplitRatio);
     }
     HCCL_INFO(
@@ -434,8 +436,8 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     float ratio = param.opConfig.multipleDimensionSplitRatio;
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0, rankSizeLevel1, portNumLevel1_, topoInfo, ParallelDataSplitType::BROADCAST,
-            param.opConfig.multipleDimensionSplitRatio);
+            rankSizeLevel0, rankSizeLevel1, portNumLevel1_, topoInfo, lastAlgHierarchyInfo_,
+            ParallelDataSplitType::BROADCAST, param.opConfig.multipleDimensionSplitRatio);
     }
     // dataRatios 与 CalcCostCoeff 每段实际 n 值一一对应
     meta.dataRatios
@@ -461,14 +463,14 @@ template <
     typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2,
     typename InsAlgTemplate3>
 void InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsAlgTemplate2, InsAlgTemplate3>::
-    GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const
+    GetParallelDataSplit(std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         // 按AllGather第二阶段配平；ratio仍表示Scatter先走Mesh、最终在Mesh聚合的数据比例。
         ratio = CalcParallelDataSplitRatio(
-            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, level0Topo,
-            ParallelDataSplitType::BROADCAST, multipleDimensionSplitRatio_);
+            intraLocalRankSize_, interLocalRankSize_, intraLinks_, interLinks_, parallelPortInfo_, &resCtx.topoInfo,
+            resCtx.algHierarchyInfo, ParallelDataSplitType::BROADCAST, multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
@@ -823,7 +825,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo);
+    GetParallelDataSplit(dataSplitSize, resCtx);
 
     u32 multipleIntra = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 multipleInter = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);

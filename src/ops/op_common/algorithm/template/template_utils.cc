@@ -509,14 +509,31 @@ static void LogParallelDataSplitRatio(
         quantizedRatio);
 }
 
+// 映射值是 physicalLevels 的数组下标，不是 netLayer 编号。折叠或跳过物理层时，
+// 同一算法层可能同时包含不同端口数的链路，不能以本地首个对端的端口数自适应切分。
+static bool SupportsParallelAdaptiveSplit(
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
+{
+    const auto& physicalIndices = algHierarchyInfo.physicalIdxForAlgoLevels;
+    return topoInfo != nullptr && topoInfo->physicalLevels.size() >= TOPO_LEVEL_NUM_2
+           && physicalIndices.size() == TOPO_LEVEL_NUM_2 && physicalIndices[0].size() == 1
+           && physicalIndices[1].size() == 1 && static_cast<u32>(physicalIndices[0][0]) == 0
+           && static_cast<u32>(physicalIndices[1][0]) == 1;
+}
+
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::map<u32, std::vector<ChannelInfo>>& intraChannels,
     const std::map<u32, std::vector<ChannelInfo>>& interChannels, const ParallelChannelPortInfo& resPortInfo,
-    Level0Shape level0Topo, ParallelDataSplitType splitType, double fallbackRatio)
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+    ParallelDataSplitType splitType, double fallbackRatio)
 {
+    if (!SupportsParallelAdaptiveSplit(topoInfo, algHierarchyInfo)) {
+        HCCL_INFO("[CalcParallelDataSplitRatio] physical mapping is not {0},{1}, uses fixed ratio[0.5]");
+        return 0.5;
+    }
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
-    if (level0Topo == Level0Shape::MESH_1D_CLOS) {
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         HCCL_INFO("[CalcParallelDataSplitRatio] MESH_1D_CLOS uses fixed ratio[%f]", validFallback);
         return validFallback;
     }
@@ -554,8 +571,13 @@ double CalcParallelDataSplitRatio(
 
 double CalcParallelDataSplitRatio(
     uint64_t intraRankSize, uint64_t interRankSize, const std::vector<u32>& portNum,
-    const TopoInfoWithNetLayerDetails* topoInfo, ParallelDataSplitType splitType, double fallbackRatio)
+    const TopoInfoWithNetLayerDetails* topoInfo, const AlgHierarchyInfoForAllLevel& algHierarchyInfo,
+    ParallelDataSplitType splitType, double fallbackRatio)
 {
+    if (!SupportsParallelAdaptiveSplit(topoInfo, algHierarchyInfo)) {
+        HCCL_INFO("[CalcParallelDataSplitRatio] physical mapping is not {0},{1}, uses fixed ratio[0.5]");
+        return 0.5;
+    }
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
     if (topoInfo != nullptr && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {

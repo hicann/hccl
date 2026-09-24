@@ -428,13 +428,14 @@ void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
-    std::vector<float>& splitDataSize, Level0Shape level0Topo) const
+    std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const
 {
     double ratio = multipleDimensionSplitRatio_;
     if (multipleDimensionSplitRatioSource_ == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         ratio = CalcParallelDataSplitRatio(
-            rankSizeLevel0_, rankSizeLevel1_, intraChannelMap_, interChannelMap_, parallelPortInfo_, level0Topo,
-            ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE, multipleDimensionSplitRatio_);
+            rankSizeLevel0_, rankSizeLevel1_, intraChannelMap_, interChannelMap_, parallelPortInfo_, &resCtx.topoInfo,
+            resCtx.algHierarchyInfo, ParallelDataSplitType::REDUCE_SCATTER_WITH_LOCAL_REDUCE,
+            multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(ratio);
     splitDataSize.push_back(1.0 - ratio);
@@ -558,7 +559,7 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo);
+    GetParallelDataSplit(dataSplitSize, resCtx);
     u64 alignedSize = PARALLEL_DATA_ALIGN_SIZE;
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;

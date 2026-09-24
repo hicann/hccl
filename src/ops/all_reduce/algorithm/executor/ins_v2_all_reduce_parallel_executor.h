@@ -76,7 +76,7 @@ private:
     void FillOffsetMaps(
         const std::map<u32, std::pair<u64, u64>>& dataMap, const u32 part1, const u32 part2, std::map<u32, u64>& agMap,
         bool isInter);
-    void GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const;
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo);
     // Aicpu
     HcclResult

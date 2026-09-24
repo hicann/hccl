@@ -77,7 +77,7 @@ private:
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
         const u64 dataCountPerLoopAxis1, std::vector<u64>& scratchOffVec,
         TemplateDataParams& tempAlgParamsInter1) const;
-    void GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const;
     HcclResult PrepareResForTemplate(const InsAlgTemplate0& tempAlgIntra, const InsAlgTemplate1& tempAlgInter);
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& subCommRanks) const;
     CommEngine engine_{CommEngine::COMM_ENGINE_AICPU};

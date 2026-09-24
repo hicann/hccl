@@ -93,8 +93,8 @@ InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         closFirstRatio = 1.0f
                          - CalcParallelDataSplitRatio(
-                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::ALL_GATHER,
-                             1.0f - param.opConfig.multipleDimensionSplitRatio);
+                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, algHierarchyInfo,
+                             ParallelDataSplitType::ALL_GATHER, 1.0f - param.opConfig.multipleDimensionSplitRatio);
     }
     float meshFirstRatio = 1.0f - closFirstRatio;
 
@@ -157,8 +157,8 @@ AlgNetMeta InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     if (param.opConfig.multipleDimensionSplitRatioSource == MultipleDimensionSplitRatioSource::BUILTIN_FORMULA) {
         closFirstRatio = 1.0f
                          - CalcParallelDataSplitRatio(
-                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, ParallelDataSplitType::ALL_GATHER,
-                             1.0f - param.opConfig.multipleDimensionSplitRatio);
+                             rankSizeLevel0, rankSizeLevel1, portNumLevel1, topoInfo, algHierarchyInfo,
+                             ParallelDataSplitType::ALL_GATHER, 1.0f - param.opConfig.multipleDimensionSplitRatio);
     }
     float meshFirstRatio = 1.0f - closFirstRatio;
 
@@ -513,7 +513,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GetParallelDataSplit(
-    std::vector<float>& splitDataSize, Level0Shape level0Topo) const
+    std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const
 {
     // AllGather的数据片0为"先Mesh后Clos"、数据片1为"先Clos后Mesh"，
     // 与ReduceScatter等算子相反，配置值multipleDimensionSplitRatio_表示数据片1的比例，
@@ -523,8 +523,8 @@ void InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
         // 公式返回的是"先Mesh后Clos"的比例，回退值也需按该语义传入，取反后即为数据片1的比例。
         ratio = 1.0
                 - CalcParallelDataSplitRatio(
-                    rankSizeLevel0_, rankSizeLevel1_, intraLinkMap_, interLinkMap_, parallelPortInfo_, level0Topo,
-                    ParallelDataSplitType::ALL_GATHER, 1.0 - multipleDimensionSplitRatio_);
+                    rankSizeLevel0_, rankSizeLevel1_, intraLinkMap_, interLinkMap_, parallelPortInfo_, &resCtx.topoInfo,
+                    resCtx.algHierarchyInfo, ParallelDataSplitType::ALL_GATHER, 1.0 - multipleDimensionSplitRatio_);
     }
     splitDataSize.push_back(1.0 - ratio);
     splitDataSize.push_back(ratio);
@@ -543,7 +543,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     multipleDimensionSplitRatio_ = param.opConfig.multipleDimensionSplitRatio;
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(dataSplitSize, resCtx.topoInfo.level0Topo);
+    GetParallelDataSplit(dataSplitSize, resCtx);
     u32 intraScatchteMultipleStage0 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 interScatchteMultipleStage0 = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 intraScatchteMultipleStage1 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);

@@ -53,7 +53,7 @@ public:
 #endif
 
 private:
-    void GetParallelDataSplit(std::vector<float>& splitDataSize, Level0Shape level0Topo) const;
+    void GetParallelDataSplit(std::vector<float>& splitDataSize, const AlgResourceCtxSerializable& resCtx) const;
     uint64_t GetRankSize(const std::vector<std::vector<u32>>& vTopo) const;
     HcclResult CalcLocalRoot();
     // Aicpu
@@ -200,6 +200,7 @@ private:
     mutable CommTopo netTypeLevel1_ = CommTopo::COMM_TOPO_CLOS;
     mutable std::vector<u32> portNumLevel0_ = {1};
     mutable std::vector<u32> portNumLevel1_ = {8};
+    AlgHierarchyInfoForAllLevel lastAlgHierarchyInfo_;
     mutable bool lastIsPod_ = true;
     mutable u32 lastRankSizeLevel0_ = 0;
     mutable u32 lastRankSizeLevel1_ = 0;
