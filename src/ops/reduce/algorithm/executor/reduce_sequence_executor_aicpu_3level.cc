@@ -12,7 +12,6 @@
 #include "executor_common_ops.h"
 #include "alg_attrs_registry.h"
 #include <algorithm>
-#include "alg_data_trans_wrapper.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "ins_temp_all_gather_nhr.h"
@@ -342,7 +341,6 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
     dataCount_ = param.DataDes.count;
     dataSize_ = dataCount_ * dataTypeSize_;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
-    threads_ = resCtx.threads;
 
     CHK_PRT_RET(
         algHierarchyInfo_.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
@@ -368,6 +366,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
     }
     rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
     rankIdxLevel1_ = (myRank_ / algHierarchyInfo_.infos[0][0].size()) % algHierarchyInfo_.infos[1][0].size();
+    isRootRank_ = (myRank_ == param.root);
 
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
@@ -413,9 +412,15 @@ void ReduceSequenceExecutorAicpu3Level<
         tempAlgParamsAGL1, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
         resCtx.cclMem);
 
-    SetTemplateBuffInfo(
-        tempAlgParamsAGL0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
-        resCtx.cclMem);
+    if (isRootRank_) {
+        SetTemplateBuffInfo(
+            tempAlgParamsAGL0, BufferType::HCCL_BUFFER, BufferType::OUTPUT, resCtx.cclMem.addr, param.outputPtr,
+            resCtx.cclMem);
+    } else {
+        SetTemplateBuffInfo(
+            tempAlgParamsAGL0, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER, resCtx.cclMem.addr, resCtx.cclMem.addr,
+            resCtx.cclMem);
+    }
     return;
 }
 
@@ -607,12 +612,12 @@ template <
 void ReduceSequenceExecutorAicpu3Level<
     AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, AlgTemplate3, AlgTemplate4, AlgTemplate5>::
     GenTempAlgParamsAGL0(
-        const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount, const u64 sliceSize, const u64 tailSize,
         TemplateDataParams& tempAlgParamsAGL0) const
 {
     tempAlgParamsAGL0.count = currDataCount;
     tempAlgParamsAGL0.buffInfo.inBuffBaseOff = 0;
-    tempAlgParamsAGL0.buffInfo.outBuffBaseOff = meshCommBuffOffset_;
+    tempAlgParamsAGL0.buffInfo.outBuffBaseOff = isRootRank_ ? processedDataCount * dataTypeSize_ : meshCommBuffOffset_;
     tempAlgParamsAGL0.buffInfo.hcclBuffBaseOff = 0;
 
     tempAlgParamsAGL0.sliceSize = sliceSize;
@@ -819,15 +824,9 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
 
         // ----------- AGL0: level0 AllGather -----------
         GenTempAlgParamsAGL0(
-            loop, currDataCount, tempAlgParamsRSL0.sliceSize, tempAlgParamsRSL0.tailSize, tempAlgParamsAGL0);
+            loop, currDataCount, processedDataCount, tempAlgParamsRSL0.sliceSize, tempAlgParamsRSL0.tailSize,
+            tempAlgParamsAGL0);
         CHK_RET(algTemplateAGL0->KernelRun(param, tempAlgParamsAGL0, templateResourceAGL0));
-
-        if (myRank_ == param.root) {
-            const DataSlice srcSlice(resCtx.cclMem.addr, meshCommBuffOffset_, currDataCount * dataTypeSize_);
-            const DataSlice dstSlice(
-                param.outputPtr, processedDataCount * dataTypeSize_, currDataCount * dataTypeSize_);
-            CHK_RET(LocalCopy(threads_.at(0), srcSlice, dstSlice));
-        }
 
         processedDataCount += currDataCount;
         loop++;

@@ -84,7 +84,7 @@ protected:
         const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
         TemplateDataParams& tempAlgParamsAGL1) const;
     void GenTempAlgParamsAGL0(
-        const u64 loop, const u64 currDataCount, const u64 sliceSize, const u64 tailSize,
+        const u64 loop, const u64 currDataCount, const u64 processedDataCount, const u64 sliceSize, const u64 tailSize,
         TemplateDataParams& tempAlgParamsAGL0) const;
     template <typename AlgTemplate>
     HcclResult GenTempResource(
@@ -100,6 +100,7 @@ protected:
 
     bool skipLevel1_{false};
     bool skipLevel2_{false};
+    bool isRootRank_{false};
 
     uint64_t cclBuffSliceSize_{0};   // CCL buffer每份slice大小（切分为scratchMultiplier+1份）
     uint64_t rsResultBuffSize_{0};   // ReduceScatter归约结果存储区大小（第1份）
@@ -109,7 +110,6 @@ protected:
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
-    std::vector<ThreadHandle> threads_;
 };
 } // namespace ops_hccl
 
