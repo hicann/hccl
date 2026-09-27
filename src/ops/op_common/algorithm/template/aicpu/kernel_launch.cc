@@ -329,13 +329,19 @@ static HcclResult HcclOrderLaunchNotifyRecord(const OpParam* param)
         "[%s]. Before Notify1 Record, commName[%s], exportHostOrderThread is [0x%llx], deviceOrderThread is [0x%llx]",
         __func__, param->commName, exportHostOrderThread, deviceOrderThread);
 
-    if (exportHostOrderThread != 0 && deviceOrderThread != 0) {
-        CHK_RET(static_cast<HcclResult>(
-            HcommThreadNotifyRecordOnThread(deviceOrderThread, exportHostOrderThread, HOST_ORDER_THREAD_NOTIFY_IDX)));
+    if (exportHostOrderThread == 0 || deviceOrderThread == 0) {
         HCCL_INFO(
-            "[%s]. After Notify1 Record deviceOrderThread is [0x%llx], exportHostOrderThread is [0x%llx]", __func__,
-            deviceOrderThread, exportHostOrderThread);
+            "[%s]. exportHostOrderThread[0x%llx] or deviceOrderThread[0x%llx] is null, skip notify record, "
+            "commName[%s]",
+            __func__, exportHostOrderThread, deviceOrderThread, param->commName);
+        return HCCL_SUCCESS;
     }
+
+    CHK_RET(static_cast<HcclResult>(
+        HcommThreadNotifyRecordOnThread(deviceOrderThread, exportHostOrderThread, HOST_ORDER_THREAD_NOTIFY_IDX)));
+    HCCL_INFO(
+        "[%s]. After Notify1 Record deviceOrderThread is [0x%llx], exportHostOrderThread is [0x%llx]", __func__,
+        deviceOrderThread, exportHostOrderThread);
 
     return HCCL_SUCCESS;
 }

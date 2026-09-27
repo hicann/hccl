@@ -1016,15 +1016,14 @@ static HcclResult GetUnfoldStream(HcclComm comm, OpParam& param, ThreadHandle un
 {
     void* unfoldStream = nullptr;
     auto& HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
-    HcclResult ret;
-    if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo || param.opMode == OpMode::OFFLOAD) { // 不走提前展开
+    if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo || unfoldThread == 0) { // 不走提前展开
         resolvedStream = param.stream;
     } else {
-        ret = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
+        HcclResult ret
+            = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
         if (ret == HCCL_E_NOT_SUPPORT) {
             resolvedStream = param.stream;
         } else if (ret != HCCL_SUCCESS) {
-            resolvedStream = param.stream;
             return ret;
         } else {
             resolvedStream = unfoldStream;
@@ -1069,11 +1068,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(
         opInfo.p2p.dataType = param.DataDes.dataType;
         opInfo.p2p.count = param.DataDes.count;
         opInfo.p2p.remoteRank = param.sendRecvRemoteRank;
-        aclrtStream resolvedStream;
-        (void)GetUnfoldStream(comm, param, unfoldThread, resolvedStream);
-        HCCL_INFO("unfoldThread[%llu]", unfoldThread);
 
-        opInfo.p2p.unfoldStream = resolvedStream;
         // 构造 HcclKernelFuncInfo
         HcclKernelFuncInfo funcInfo;
         CHK_SAFETY_FUNC_RET(memset_s(&funcInfo, sizeof(HcclKernelFuncInfo), 0, sizeof(HcclKernelFuncInfo)));
@@ -1106,25 +1101,20 @@ HcclResult HcclAicpuKernelEntranceLaunch(
 
         // OrderLaunch第一阶段
         HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P add Order Launch");
-        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
-        OrderLaunchMode launchMode = param.isCapture ?
-                                         OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH :
-                                         (param.opMode == OpMode::OFFLOAD ? OrderLaunchMode::ORDER_LAUNCH_GE :
-                                                                            OrderLaunchMode::ORDER_LAUNCH_OPBASE);
-        HcclRtEventGuard event0Guard;
-        HcclRtEventGuard event1Guard;
-        if (launchMode == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
-            CHK_RET(event0Guard.Create());
-            CHK_RET(event1Guard.Create());
-        }
-        CHK_RET(HcclOrderLaunchToOrderStream(
-            comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX, execTimeout, launchMode, event0Guard.Get()));
+        OrderLaunch orderLaunch;
+        CHK_RET(orderLaunch.HcclOrderLaunchPrepare(comm, param, unfoldThread));
+        CHK_RET(orderLaunch.HcclOrderLaunchToOrderStream(comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX));
+
+        // Prepare可能在GE模式下覆盖unfoldThread，须在Prepare之后解析P2P展开流，保证P2P任务流与保序流一致
+        aclrtStream p2pUnfoldStream;
+        CHK_RET(GetUnfoldStream(comm, param, unfoldThread, p2pUnfoldStream));
+        HCCL_INFO("unfoldThread[%llu]", unfoldThread);
+        opInfo.p2p.unfoldStream = p2pUnfoldStream;
 
         CHK_RET(HcclAicpuKernelLaunch(comm, &opInfo, &funcInfo, aicpuThreadHandle, param.stream, &kernelLaunchCfg));
 
         // OrderLaunch第二阶段
-        CHK_RET(HcclOrderLaunchToKernelStream(
-            comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX, execTimeout, launchMode, event1Guard.Get()));
+        CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX));
 
         HCCL_INFO("[HcclAicpuKernelEntranceLaunch] P2P launch success, algTag[%s]", param.algTag);
         return HCCL_SUCCESS;
@@ -1135,22 +1125,9 @@ HcclResult HcclAicpuKernelEntranceLaunch(
         HcommThreadNotifyRecordOnThread(cpuTsThread, exportedCpuTsThread, notifyNumOnMainThread - 1)));
 
     // OrderLaunch第一阶段
-    // 获取执行超时时间
-    u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
-
-    OrderLaunchMode launchMode = param.isCapture ?
-                                     OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH :
-                                     (param.opMode == OpMode::OFFLOAD ? OrderLaunchMode::ORDER_LAUNCH_GE :
-                                                                        OrderLaunchMode::ORDER_LAUNCH_OPBASE);
-
-    HcclRtEventGuard event0Guard;
-    HcclRtEventGuard event1Guard;
-    if (launchMode == OrderLaunchMode::ORDER_LAUNCH_ACLGRAPH) {
-        CHK_RET(event0Guard.Create());
-        CHK_RET(event1Guard.Create());
-    }
-    CHK_RET(HcclOrderLaunchToOrderStream(
-        comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX, execTimeout, launchMode, event0Guard.Get()));
+    OrderLaunch orderLaunch;
+    CHK_RET(orderLaunch.HcclOrderLaunchPrepare(comm, param, unfoldThread));
+    CHK_RET(orderLaunch.HcclOrderLaunchToOrderStream(comm, param, unfoldThread, ORDER_UNFOLD_THREAD_NOTIFY_IDX));
 
     // AicpuKernel report
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
@@ -1158,8 +1135,7 @@ HcclResult HcclAicpuKernelEntranceLaunch(
     CHK_PTR_NULL(comm);
 
     // OrderLaunch第二阶段
-    CHK_RET(HcclOrderLaunchToKernelStream(
-        comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX, execTimeout, launchMode, event1Guard.Get()));
+    CHK_RET(orderLaunch.HcclOrderLaunchToKernelStream(comm, unfoldThread, HOST_ORDER_THREAD_NOTIFY_IDX));
 
     std::string kernelName = "HcclLaunchAicpuKernel";
     char* kernelNameCStr = const_cast<char*>(kernelName.c_str());
@@ -1239,22 +1215,10 @@ HcclResult AicpuKernelLaunch(HcclComm comm, OpParam& param, ThreadHandle unfoldT
     cfg.numAttrs = 1;
     cfg.attrs = &attr;
     constexpr u32 numBlocks = 1;
-    HCCL_INFO("[AicpuKernelLaunch] unfoldThread [%lu]", unfoldThread); // 通过Thread获取展开流stream
-    void* unfoldStream = nullptr;
-    auto& HcclThreadResGetInfoFunc = ops_hccl::DlHcommFunction::GetInstance();
-    if (!HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo || param.opMode == OpMode::OFFLOAD) { // 不走提前展开
-        ret = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
-    } else {
-        HcclResult ret1
-            = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
-        if (ret1 == HCCL_E_NOT_SUPPORT) {
-            ret = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, param.stream, &cfg, argsHandle, nullptr);
-        } else if (ret1 != HCCL_SUCCESS) {
-            return ret1;
-        } else {
-            ret = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, unfoldStream, &cfg, argsHandle, nullptr);
-        }
-    }
+    HCCL_INFO("[AicpuKernelLaunch] unfoldThread [%lu]", unfoldThread);
+    aclrtStream unfoldStream;
+    CHK_RET(GetUnfoldStream(comm, param, unfoldThread, unfoldStream));
+    ret = aclrtLaunchKernelWithConfig(funcHandle, numBlocks, unfoldStream, &cfg, argsHandle, nullptr);
     CHK_PRT_RET(
         ret != ACL_SUCCESS,
         HCCL_ERROR(

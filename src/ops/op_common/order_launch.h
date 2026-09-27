@@ -56,11 +56,26 @@ private:
     HcclRtEvent event_ = nullptr;
 };
 
-HcclResult HcclOrderLaunchToOrderStream(
-    HcclComm comm, OpParam& param, ThreadHandle unfoldThread, u32 notifyIdx, u32 timeout, OrderLaunchMode mode,
-    HcclRtEvent event);
-HcclResult HcclOrderLaunchToKernelStream(
-    HcclComm comm, ThreadHandle unfoldThread, u32 notifyIdx, u32 timeout, OrderLaunchMode mode, HcclRtEvent event);
+class OrderLaunch {
+public:
+    OrderLaunch() = default;
+    ~OrderLaunch() = default;
+    OrderLaunch(const OrderLaunch&) = delete;
+    OrderLaunch& operator=(const OrderLaunch&) = delete;
+
+    HcclResult HcclOrderLaunchPrepare(HcclComm comm, const OpParam& param, ThreadHandle& unfoldThread);
+    HcclResult HcclOrderLaunchToOrderStream(HcclComm comm, OpParam& param, ThreadHandle unfoldThread, u32 notifyIdx);
+    HcclResult HcclOrderLaunchToKernelStream(HcclComm comm, ThreadHandle unfoldThread, u32 notifyIdx);
+
+private:
+    u32 execTimeout_{CUSTOM_TIMEOUT};
+    OrderLaunchMode launchMode_{OrderLaunchMode::ORDER_LAUNCH_OPBASE};
+    HcclRtEventGuard event0Guard_;
+    HcclRtEventGuard event1Guard_;
+    bool orderLaunchRequired_{true};
+    // Phase1获取并缓存的Host侧保序线程句柄，Phase2直接复用，避免二次acquire结果漂移
+    ThreadHandle hostOrderThread_{0};
+};
 
 } // namespace ops_hccl
 #endif
