@@ -89,7 +89,7 @@ HcclResult ScatterMesh::RunAsync(const u32 rank, const u32 rankSize, std::vector
     if (barrierSwitchOn_) {
         for (u32 dstRank = 0; dstRank < rankSize; dstRank++) {
             if (dstRank != interRank_) {
-                CHK_RET(ExecuteBarrier(channels[dstRank], thread_));
+                CHK_RET(ExecuteBarrierExplicit(channels[dstRank], thread_));
             }
         }
     }

@@ -205,7 +205,7 @@ HcclResult ScatterRing::RunAsync(const u32 rank, const u32 rankSize, std::vector
 
     if (barrierSwitchOn_) {
         // 执行barrier，保证数据收发完成
-        CHK_RET(ExecuteBarrier(channelLeft_, channelRight_));
+        CHK_RET(ExecuteBarrierExplicit(channelLeft_, channelRight_));
     }
     HCCL_INFO("ScatterRing finished: rank:[%u] end", interRank_);
 

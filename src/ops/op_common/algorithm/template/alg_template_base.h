@@ -158,6 +158,11 @@ protected:
     HcclResult ExecuteBarrier(ChannelInfo& channel, ThreadHandle thread) const;
     HcclResult ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel) const;
     HcclResult ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel, ThreadHandle thread) const;
+    // 显式超时barrier，不走Default变体，scatter host模板使用
+    // 对builtin通道，ExecuteBarrier会返回E_NOT_SUPPORT，故scatter显式传execTimeout
+    HcclResult ExecuteBarrierExplicit(ChannelInfo& channel, ThreadHandle thread) const;
+    HcclResult ExecuteBarrierExplicit(ChannelInfo& preChannel, ChannelInfo& aftChannel) const;
+    HcclResult ExecuteBarrierExplicit(ChannelInfo& preChannel, ChannelInfo& aftChannel, ThreadHandle thread) const;
 
     // 下面这组是否需要？
     HcclResult ExecuteBarrier(ChannelInfo& preChannel, ChannelInfo& aftChannel, u32 notifyIdx) const;

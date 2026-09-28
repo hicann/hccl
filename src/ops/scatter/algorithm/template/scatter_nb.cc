@@ -179,7 +179,7 @@ HcclResult ScatterNB::RunAsync(const u32 rank, const u32 rankSize, std::vector<C
 
     if (barrierSwitchOn_) {
         // 执行barrier，保证数据收发完成
-        CHK_RET(ExecuteBarrier(
+        CHK_RET(ExecuteBarrierExplicit(
             channels[(interRank_ + interRankSize_ - 1) % interRankSize_], channels[(interRank_ + 1) % interRankSize_]));
     }
     return HCCL_SUCCESS;

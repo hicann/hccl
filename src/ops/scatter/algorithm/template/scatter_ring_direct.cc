@@ -48,7 +48,7 @@ HcclResult ScatterRingDirect::RunAsync(const u32 rank, const u32 rankSize, std::
 
     if (barrierSwitchOn_) {
         // 执行barrier，保证数据收发完成
-        CHK_RET(ExecuteBarrier(leftChannel_, rightChannel_));
+        CHK_RET(ExecuteBarrierExplicit(leftChannel_, rightChannel_));
     }
 
     HCCL_INFO("ScatterRingDirect finished: rank[%u]", rank);
