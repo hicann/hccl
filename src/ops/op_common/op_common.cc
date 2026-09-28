@@ -1886,26 +1886,43 @@ HcclResult GeGetThread(
     if (param.opMode == OpMode::OPBASE) {
         u32 threadNum = resRequest.slaveThreadNum;
         if (threadNum > 0) {
-            std::vector<ThreadHandle> threads(threadNum);
             if (HcommIsSupportHcclThreadAcquireWithConfig()) {
-                std::vector<ThreadConfig> threadConfigs(threadNum);
-                CHK_RET(static_cast<HcclResult>(ThreadConfigInit(threadConfigs.data(), threadNum)));
+                // hcomm的(COMM_ENGINE_CPU, THREAD_TYPE_TS)线程池每次申请均从池首返回，
+                // AICPU按需展开流(单条申请)会命中池首；CCU从流与展开流共用该池，
+                // 须多申请一条并跳过第0条，避免从流与展开流落到同一物理流
+                bool reserveUnfoldThread = (param.engine == COMM_ENGINE_CCU);
+                u32 acquireNum = threadNum + (reserveUnfoldThread ? 1 : 0);
+                u32 slaveOffset = reserveUnfoldThread ? 1 : 0;
+                std::vector<ThreadConfig> threadConfigs(acquireNum);
+                CHK_RET(static_cast<HcclResult>(ThreadConfigInit(threadConfigs.data(), acquireNum)));
                 CHK_PRT_RET(
                     resRequest.notifyNumPerThread.size() < threadNum,
                     HCCL_ERROR(
                         "[GeGetThread] notifyNumPerThread size[%zu] is less than slaveThreadNum[%u].",
                         resRequest.notifyNumPerThread.size(), threadNum),
                     HCCL_E_INTERNAL);
-                for (u32 i = 0; i < threadNum; i++) {
-                    threadConfigs[i].notifyNumPerThread = resRequest.notifyNumPerThread[i];
+                if (reserveUnfoldThread) {
+                    // 预留的第0条给按需展开流，按其已知notify需求预填
+                    threadConfigs[0].notifyNumPerThread = ORDER_UNFOLD_THREAD_NOTIFY_NUM;
                 }
+                for (u32 i = 0; i < threadNum; i++) {
+                    threadConfigs[slaveOffset + i].notifyNumPerThread = resRequest.notifyNumPerThread[i];
+                }
+                std::vector<ThreadHandle> acquireThreads(acquireNum);
                 CHK_RET(HcclThreadAcquireWithConfig(
-                    comm, COMM_ENGINE_CPU, threadNum, THREAD_TYPE_TS, threadConfigs.data(), threads.data()));
+                    comm, COMM_ENGINE_CPU, acquireNum, THREAD_TYPE_TS, threadConfigs.data(), acquireThreads.data()));
+                for (u32 i = 0; i < threadNum; i++) {
+                    // 跳过预留的第0条展开流
+                    resCtxHost->threads.push_back(acquireThreads[slaveOffset + i]);
+                }
             } else {
+                // legacy路径按param.engine申请线程池(CCU走(CCU, TS)池)，
+                // 与展开流的(CPU, TS)池不冲突，无需预留
+                std::vector<ThreadHandle> threads(threadNum);
                 CHK_RET(HcclThreadAcquire(comm, param.engine, threadNum, maxNotifyNum, threads.data()));
-            }
-            for (u32 i = 0; i < threadNum; i++) {
-                resCtxHost->threads.push_back(threads[i]);
+                for (u32 i = 0; i < threadNum; i++) {
+                    resCtxHost->threads.push_back(threads[i]);
+                }
             }
         }
     } else {
