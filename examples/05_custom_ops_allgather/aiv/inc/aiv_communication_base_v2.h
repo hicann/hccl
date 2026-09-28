@@ -43,14 +43,14 @@ constexpr uint64_t LOW_16_BITS = 0xFFFF;
         uint64_t yRankSize, uint64_t zRankSize, uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, \
         uint32_t tag, uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum,                   \
         uint64_t inputRepeatStride, uint64_t outputRepeatStride, bool isOpBase, GM_ADDR headCountMem,              \
-        GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter
+        GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter, uint64_t cclBufferSize
 
 #define EXTERN_KERNEL_ARGS_DEF_V2 KERNEL_ARGS_DEF, ExtraArgs extraArgs
 
 #define KERNEL_ARGS_CALL                                                                                               \
     buffIn, input, output, rank, rankSize, xRankSize, yRankSize, zRankSize, len, dataType, reduceOp, root, tag,        \
         inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, isOpBase, headCountMem, \
-        tailCountMem, addOneMem, counterMemSize, isEnableCounter
+        tailCountMem, addOneMem, counterMemSize, isEnableCounter, cclBufferSize
 
 #define EXTERN_KERNEL_ARGS_CALL KERNEL_ARGS_CALL, extraArgs
 
@@ -92,6 +92,7 @@ constexpr uint32_t MAX_FLAG_SIZE_PER_KERNEL = 6 * MAX_RANK_SIZE_A3 * FLAG_SIZE;
 constexpr int32_t TAG_INIT_VALUE = 1;
 constexpr int32_t TAG_RESET_COUNT = 4096;
 constexpr int32_t TAG_BARRIER_OFFSET = 2048;
+constexpr uint64_t TAG_SYNC_OFFSET = 3072;
 
 __aicore__ inline void SyncAllSafe()
 {

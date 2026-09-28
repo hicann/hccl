@@ -63,13 +63,36 @@ public:
         PipeBarrier<PIPE_ALL>();
     }
 
-    __aicore__ inline void Process(uint64_t count, uint64_t tag, uint64_t stride)
+    __aicore__ inline void ProcessChunk(uint64_t count, uint64_t tag, uint64_t stride)
     {
         if (numBlocks_ >= rankSize_) {
             InitCoreInfo(count, tag);
             Run(count, stride);
         } else {
             RunCtrlCore(count, tag, stride);
+        }
+    }
+
+    __aicore__ inline void Process(uint64_t len, int32_t tag, uint64_t stride, uint64_t cclBufferSize)
+    {
+        uint64_t alignCount = UB_ALIGN_SIZE / sizeof(T);
+        uint64_t avgBufferCount = cclBufferSize / sizeof(T) / alignCount * alignCount;
+        if (avgBufferCount == 0) {
+            return;
+        }
+        int32_t curTag = tag << AIV_TAG_MOVE_RIGHT_BITS;
+        uint64_t remainCount = len;
+        while (remainCount > 0) {
+            uint64_t curCount = remainCount > avgBufferCount ? avgBufferCount : remainCount;
+            PipeBarrier<PIPE_ALL>();
+            ProcessChunk(curCount, curTag, stride);
+            PipeBarrier<PIPE_ALL>();
+            // 读写完成同步
+            BatchRecordWait(curTag);
+            curTag += 1;
+            remainCount -= curCount;
+            input_ += curCount * sizeof(T);
+            output_ += curCount * sizeof(T);
         }
     }
 
@@ -105,6 +128,17 @@ public:
             PipeBarrier<PIPE_ALL>();
         }
     }
+
+    __aicore__ inline void BatchRecordWait(int32_t tag)
+    {
+        for (uint32_t idx = 0; idx < rankSize_; idx++) {
+            Record(idx, TAG_SYNC_OFFSET + GetBlockIdx() * rankSize_ + rank_, tag);
+        }
+        for (uint32_t idx = 0; idx < rankSize_; idx++) {
+            WaitFlag(rank_, TAG_SYNC_OFFSET + GetBlockIdx() * rankSize_ + idx, tag);
+        }
+    }
+
     uint64_t coreOffset;
     int32_t curTag;
     uint64_t curCount;
@@ -121,6 +155,6 @@ __aicore__ inline void AivAllGatherV2Mesh1D(EXTERN_KERNEL_ARGS_DEF_V2)
     }
     SyncAllSafe();
 
-    op.Process(len, tag, outputSliceStride);
+    op.Process(len, op.tag_, outputSliceStride, cclBufferSize);
     op.BarrierAll();
 }

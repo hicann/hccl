@@ -24,13 +24,13 @@ constexpr uint32_t AIV_TAG_ADDR_OFFSET = 16 * 1024;
 static HcclResult FillOpParam(OpParam& param, uint64_t sendCount, HcclDataType dataType)
 {
     CHK_PRT_RET(SIZE_TABLE[dataType] == 0, HCCL_ERROR("[FillOpParam] unsupported dataType[%d]", dataType), HCCL_E_PARA);
-    param.len = sendCount * SIZE_TABLE[dataType];
+    param.len = sendCount;
     param.dataType = dataType;
     param.reduceOp = 0;
     param.root = 0;
     param.tagId = 1;
-    param.inputSliceStride = param.len;
-    param.outputSliceStride = param.len;
+    param.inputSliceStride = sendCount * SIZE_TABLE[dataType];
+    param.outputSliceStride = sendCount * SIZE_TABLE[dataType];
     param.repeatNum = 1;
     param.inputRepeatStride = 0;
     param.outputRepeatStride = 0;
@@ -177,6 +177,7 @@ HcclResult PrepareResources(HcclComm comm, OpParam& param, aclrtStream stream)
     void* cclBufferAddr = nullptr;
     uint64_t cclBufferSize = 0;
     CHK_RET(HcclGetHcclBuffer(comm, &cclBufferAddr, &cclBufferSize));
+    param.cclBufferSize = cclBufferSize;
 
     uint64_t buffersInOut[MAX_RANK_SIZE_A3 * 2] = {};
     buffersInOut[2 * rank] = (uint64_t)cclBufferAddr;

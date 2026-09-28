@@ -60,6 +60,8 @@ struct OpParam {
     uint32_t counterMemSize = 0;
     bool isEnableCounter = false;
 
+    uint64_t cclBufferSize = 0;
+
     ExtraArgs extraArgs;
 };
 constexpr uint32_t SIZE_TABLE[HCCL_DATA_TYPE_RESERVED]
