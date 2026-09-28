@@ -104,7 +104,7 @@ hccl/                                                      # 仓库根
   - 数据类型：不支持 PROD（`op.isSupportProd = false`），
     `op.unsupportedDataTypes = {INT8, INT64, UINT64, FP64}`；
   - 就地运算：不支持 in place（`op.isSupportInplace = false`）；
-- 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节编译开关时
+- 优先级：`op.opPriorityCheck` 回调在 `userRankSize == 2`（单机两卡）且满足第 4 节编译开关与运行期开关时
     优先选中本算法（详见第 4 节）。
 - **运行时查找**：执行时按 selector 选出的算法名调用 `CollAlgExecRegistryV2::GetAlgExec` 取执行器；
   注册成功则返回非空执行器，注册缺失则返回 `nullptr`。
@@ -280,12 +280,30 @@ REGISTER_ALG_ATTRS(algoName, ...)
 | `opCustomCheck` | 定制算子过滤回调，返回 `true` 保留参与 cost 竞争 | `nullptr` |
 | `opPriorityCheck` | 定制算子优先级回调，返回 `true` 表示优先选中 | `nullptr` |
 
+#### 运行期开关
+
+`experimental/` 下的算法通过运行期开关控制是否生效，防止实验功能意外影响主干；命名与判定约定见
+`experimental/README.md` 第 5 节：运行期开关为环境变量 `HCCL_EXPERIMENTAL_<NAME>=true`，并在项目入口提供
+`IsXxxEnabled()` 函数，内部按「编译期常量 → 环境变量」顺序判定。本目录算法即按此约定实现其入口守卫：
+
+```cpp
+bool IsExampleEnabled() {
+    constexpr bool exampleEnabled = false;  // 编译期常量，见 experimental/README.md 第5节
+    if (!exampleEnabled) return false;
+    const char* env = std::getenv("HCCL_EXPERIMENTAL_EXAMPLE");
+    return env && std::string(env) == "true";
+}
+```
+
+算法入口（如本目录 executor 的 `CalcCostCoeff`）以 `if (!IsExampleEnabled()) { return {}; }` 守卫，不满足时
+selection 阶段返回空、算法被跳过。实现自定义算法时应提供配套的 `IsXxxEnabled()` 并声明 `HCCL_EXPERIMENTAL_<NAME>`
+环境变量。
+
 ---
 
 ## 3. 构建
 
-仅改动 `hccl` 仓（本目录 + 本地临时的 selector 修改）时，用 `hccl_vm` 的编包链路，但注意 `build_pkg.sh`
-内部有无条件 `sudo`（清除 python 的 `EXTERNALLY-MANAGED` 锁），无免密 `sudo` 的环境需手动分步：
+构建时可使用以下指令手动替换CANN包中的HCCL包并配置环境。hccl_vm 自动编包链路（`build_pkg.sh`）内部含无条件 sudo。不使用hccl-vm时可按以下步骤手动分步替换：
 
 ```bash
 cd /home/workspace/hccl
@@ -298,7 +316,26 @@ bash build.sh --full --experimental
 # 2. 安装 .run 包到 CANN（用户目录可免 root）
 yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/home/workspace/Ascend
 
+# 3. （可选）如果使用时遇到CMS Verified Failed问题，可通过npu-smi工具来绕开CMS验证。绕开CMS验证可能带来安全问题，请谨慎操作。
+for i in {0..7}; do
+  # 使能自定义验签
+  npu-smi set -t custom-op-secverify-enable -i $i -d 1
+  # 设置成“关闭验签”模式
+  npu-smi set -t custom-op-secverify-mode -i $i -d 0
+done
+
 ```
+
+其中：
+
+- `-i` 用于指定设备ID，即通过“npu-smi info -l”命令查出的NPU ID
+- `-d` 用于指定对应配置项的属性值
+
+> **注意：**
+> 上述两条命令需以 **root** 用户在**物理机**上执行，且需配套 **Ascend HDK 25.5.T2.B001** 及以上版本的 npu-smi 工具。
+> 关闭驱动安全验签机制存在一定的安全风险，需要用户自行确保自定义通信算子的安全可靠，防止恶意攻击行为。请仅在受控验证环境中临时使用，验证完成后应及时恢复验签。
+
+> **说明：** 本目录样例算法属验证用途，绕过验签仅服务于该验证场景。
 
 ---
 
@@ -309,8 +346,13 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 **编译开关 `--experimental`**（对应 `ENABLE_EXPERIMENTAL=ON`，统一控制 `experimental/` 文件夹是否参与
 编译；关闭时本目录不被编译、算法不注册）。
 
-参与算法选择时，单机两卡（`userRankSize == 2`）拓扑下，`REGISTER_ALG_ATTRS` 中为 `CcuMSAllReduceExperimentalSoleMesh`
-配置的 `opPriorityCheck` 会优先选中本算法，无需额外改动，直接可测。
+**运行期开关（`IsExampleEnabled` / `HCCL_EXPERIMENTAL_EXAMPLE`）**：除编译开关外，算法入口受 `IsExampleEnabled()`
+守卫，启用本算法需同时满足：
+
+- 编译期常量 `exampleEnabled` 为 `true`；
+- 设置环境变量 `HCCL_EXPERIMENTAL_EXAMPLE=true`。
+
+设置环境变量 `HCCL_EXPERIMENTAL_EXAMPLE=true` 后，参与算法选择时，单机两卡（userRankSize == 2）拓扑下，REGISTER_ALG_ATTRS 中为 CcuMSAllReduceExperimentalSoleMesh 配置的 opPriorityCheck 会优先选中本算法，无需其他改动、直接可测。不设置时，selection 阶段 `CalcCostCoeff` 直接返回空，本算法会被跳过、不会被选中。实现说明见第 2.5 节「运行期开关」。
 
 ---
 
@@ -329,13 +371,12 @@ yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/h
 
 ## 6. 限制
 
-1. **影响所有 `experimental/` 算法的选择（重要警告）**：本算法经 `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` 接入与主链路相同的注册表与选择器。在 `ENABLE_EXPERIMENTAL=ON` 下，其 `REGISTER_ALG_ATTRS` 声明的 `opPriorityCheck` 会在选择器扫描算法时**全局生效**，单机两卡场景优先选中本算法，从而可抢占/扰动 `experimental/` 下所有其他实验算法的选择结果、挤占其验证空间。验证其他 `experimental/` 算法时，必须裁剪本目录的编译/注册以确保本算法不被选中。
-2. **不可上线**：本算法目的为测试当前最新算法注册方式及选择方式在experimental文件夹的可用性。不应作为线上算法 使用。
-3. **类型/拓扑约束**：不支持 in place、保序（DETERMINISTIC_STRICT）、int8、PROD、INT64/UINT64/FP64
+1. **不可上线**：本算法目的为测试当前最新算法注册方式及选择方式在experimental文件夹的可用性。不应作为线上算法 使用。
+2. **类型/拓扑约束**：不支持 in place、保序（DETERMINISTIC_STRICT）、int8、PROD、INT64/UINT64/FP64
    （由 `SelectCcuMsAlgo`/`SelectMeshAlgo` 前置判断回退）；模板依赖 `TopoMatchOneLevel` 与 mesh-1D 全互联
    假设，kernel 要求 `channelCount >= rankSize-1`，`CalcRes` 校验 `templateRankSize_` 上限
    `CCU_MAX_RANK_SIZE`（128）。
-4. **版本依赖**：`REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` 注册仅在
+3. **版本依赖**：`REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` 注册仅在
    `CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)`（CANN 9.0+）时生效，低版本 CANN 下本算法不会注册。
-5. **原型级质量**：属 `experimental/` 实验代码，不承诺 API/ABI 稳定、不编入商用版本；代码风格与
+4. **原型级质量**：属 `experimental/` 实验代码，不承诺 API/ABI 稳定、不编入商用版本；代码风格与
    防御性检查以本次验证为目的，未做完整性能优化。

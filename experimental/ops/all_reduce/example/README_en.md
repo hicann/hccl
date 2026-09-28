@@ -92,8 +92,8 @@ hccl/                                                      # Repository root
     (see Section 4).
 - **Runtime lookup**: At execution time, the executor is retrieved by calling `CollAlgExecRegistryV2::GetAlgExec` with the algorithm name selected by the selector;
   if registration succeeds, a non-null executor is returned; if registration is missing, `nullptr` is returned.
-- **Selection method**: When compiled into the package (`ENABLE_EXPERIMENTAL=ON`), this algorithm is preferentially
-  selected under the single-machine two-card scenario (see Section 4).
+- **Selection method**: When compiled into the package (`ENABLE_EXPERIMENTAL=ON`) and the runtime switch is satisfied,
+  this algorithm is preferentially selected under the single-machine two-card scenario (see Section 4).
 
 ### 2.3 Build Integration
 
@@ -261,11 +261,33 @@ It takes effect under `#ifndef AICPU_COMPILE`; under AICPU compilation the macro
 | `opCustomCheck` | Custom operator filter callback; returning `true` keeps it for cost competition | `nullptr` |
 | `opPriorityCheck` | Custom operator priority callback; returning `true` means prioritized | `nullptr` |
 
+#### Runtime Switch
+
+Algorithms under `experimental/` are controlled at runtime by a switch to keep experimental features from
+inadvertently affecting the main stream; the naming and decision convention is described in `experimental/README.md`
+Section 5: the runtime switch is the environment variable `HCCL_EXPERIMENTAL_<NAME>=true`, and an `IsXxxEnabled()`
+function is provided at the project entry, which decides in the order "compile-time constant → environment variable".
+This directory's algorithm follows this convention for its entry guard:
+
+```cpp
+bool IsExampleEnabled() {
+    constexpr bool exampleEnabled = false;  // compile-time constant, see experimental/README.md Section 5
+    if (!exampleEnabled) return false;
+    const char* env = std::getenv("HCCL_EXPERIMENTAL_EXAMPLE");
+    return env && std::string(env) == "true";
+}
+```
+
+The algorithm entry (such as `CalcCostCoeff` of this directory's executor) is guarded by
+`if (!IsExampleEnabled()) { return {}; }`; if not satisfied, it returns empty during the selection phase and the
+algorithm is skipped. When implementing a custom algorithm, provide a matching `IsXxxEnabled()` and declare the
+`HCCL_EXPERIMENTAL_<NAME>` environment variable.
+
 ---
 
 ## 3. Build
 
-When only the `hccl` repository is modified (this directory + local temporary selector modifications), use the `hccl_vm` build pipeline, but note that `build_pkg.sh` contains an unconditional `sudo` (to clear Python's `EXTERNALLY-MANAGED` lock); environments without passwordless `sudo` require manual step-by-step execution:
+The following commands can be used to manually replace the HCCL package in the CANN package and configure the environment. The `hccl-vm` automatic build chain (`build_pkg.sh`) internally uses unconditional `sudo`. When not using `hccl-vm`, you can manually replace the package step by step using the following commands:
 
 ```bash
 cd /home/workspace/hccl
@@ -278,7 +300,26 @@ bash build.sh --full --experimental
 # 2. Install the .run package to CANN (user directory, no root required)
 yes y | bash build_out/cann-hccl_9.2.0_linux-x86_64.run --full --install-path=/home/workspace/Ascend
 
+# 3. (Optional) If a CMS Verified Failed problem is encountered at runtime, use the npu-smi tool to bypass CMS verification. Bypassing CMS verification may pose security risks; proceed with caution.
+for i in {0..7}; do
+  # Enable custom signature verification
+  npu-smi set -t custom-op-secverify-enable -i $i -d 1
+  # Switch "signature verification" off
+  npu-smi set -t custom-op-secverify-mode -i $i -d 0
+done
+
 ```
+
+Where:
+
+- `-i` specifies the device ID, that is, the NPU ID shown by the `npu-smi info -l` command
+- `-d` specifies the property value for the corresponding configuration item
+
+> **Note:**
+> The two commands above must be run as **root** on a **physical machine**, with an **Ascend HDK 25.5.T2.B001 or later** npu-smi tool.
+> Disabling the driver's security signature verification mechanism carries certain security risks. Users must ensure the safety and reliability of custom communication operators themselves to guard against malicious attacks. Use it only temporarily in a controlled verification environment, and restore signature verification promptly after verification.
+
+> **Note:** The sample algorithms in this directory are for verification purposes; bypassing signature verification serves that verification scenario only.
 
 ---
 
@@ -291,7 +332,16 @@ This algorithm can only be selected after being compiled into the package:
 
 When participating in algorithm selection, under the single-machine two-card (`userRankSize == 2`) topology, the
 `opPriorityCheck` configured for `CcuMSAllReduceExperimentalSoleMesh` in `REGISTER_ALG_ATTRS` preferentially selects
-this algorithm, so no extra modification is needed and it can be tested directly.
+this algorithm; with `HCCL_EXPERIMENTAL_EXAMPLE=true` set and no other modification, it can be tested directly. When it is not set, `CalcCostCoeff` returns empty during the selection phase and this algorithm is skipped and not selected.
+
+**Runtime switch (`IsExampleEnabled` / `HCCL_EXPERIMENTAL_EXAMPLE`)**: In addition to the compile switch, the
+algorithm entry is guarded by `IsExampleEnabled()`. Enabling this algorithm requires BOTH of the following:
+
+- The compile-time constant `exampleEnabled` is `true`;
+- The environment variable `HCCL_EXPERIMENTAL_EXAMPLE=true` is set.
+
+If not satisfied, `CalcCostCoeff` returns empty during the selection phase and this algorithm is skipped and not
+selected. For implementation details, see the "Runtime Switch" subsection in Section 2.5.
 
 ---
 
@@ -310,12 +360,11 @@ this algorithm, so no extra modification is needed and it can be tested directly
 
 ## 6. Limitations
 
-1. **Affects the selection of all `experimental/` algorithms (important warning)**: This algorithm is registered via `REGISTER_EXEC_V2`/`REGISTER_ALG_ATTRS` into the same registry and selector as the main pathway. Under `ENABLE_EXPERIMENTAL=ON`, the `opPriorityCheck` declared in its `REGISTER_ALG_ATTRS` takes effect **globally** while the selector scans algorithms, and preferentially selects this algorithm under the single-machine dual-card scenario, potentially preempting or perturbing the selection results of all other `experimental/` algorithms and encroaching on their verification space. When verifying other `experimental/` algorithms, you must trim out this directory's compilation/registration to ensure this algorithm is not selected.
-2. **Not for production**: This algorithm is intended to test the usability of the latest algorithm registration and selection approaches under the experimental folder, and should not be used as a production algorithm.
-3. **Type/topology constraints**: Does not support in place, ordering (DETERMINISTIC_STRICT), int8, PROD, INT64/UINT64/FP64
+1. **Not for production**: This algorithm is intended to test the usability of the latest algorithm registration and selection approaches under the experimental folder, and should not be used as a production algorithm.
+2. **Type/topology constraints**: Does not support in place, ordering (DETERMINISTIC_STRICT), int8, PROD, INT64/UINT64/FP64
    (falls back via `SelectCcuMsAlgo`/`SelectMeshAlgo` pre-checks); template depends on `TopoMatchOneLevel` and the mesh-1D full-mesh
    assumption, kernel requires `channelCount >= rankSize-1`, `CalcRes` validates `templateRankSize_` upper bound
    `CCU_MAX_RANK_SIZE` (128).
-4. **Version dependency**: `REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` registration only takes effect when
+3. **Version dependency**: `REGISTER_EXEC_V2` / `REGISTER_ALG_ATTRS` registration only takes effect when
    `CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)` (CANN 9.0+); under lower CANN versions, this algorithm will not be registered.
-5. **Prototype-level quality**: This is `experimental/` experimental code, with no guarantee of API/ABI stability, and is not compiled into the commercial version; code style and defensive checks are aimed at this verification, without full performance optimization.
+4. **Prototype-level quality**: This is `experimental/` experimental code, with no guarantee of API/ABI stability, and is not compiled into the commercial version; code style and defensive checks are aimed at this verification, without full performance optimization.

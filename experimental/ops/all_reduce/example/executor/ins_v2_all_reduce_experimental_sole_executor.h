@@ -56,6 +56,8 @@ private:
        MatchTopo 因 algoTypes.size()!=1 直接判不支持。此处基于 base 补全 opType/engine/algoTypes。 */
     static AlgAttrs BuildExperimentalAlgAttrs(const AlgAttrs& base);
 
+    static bool IsExampleEnabled();
+
 protected:
     /* *************** 算法编排 *************** */
     HcclResult OrchestrateLoop(const OpParam& param, const AlgResourceCtxSerializable& resCtx);

@@ -8,6 +8,9 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <cstdlib>
+#include <string>
+
 #include "ins_v2_all_reduce_experimental_sole_executor.h"
 #include "topo_match_one_level.h"
 #ifndef AICPU_COMPILE
@@ -39,6 +42,14 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
+    if (!IsExampleEnabled()) {
+        HCCL_INFO(
+            "[InsV2AllReduceExperimentalSoleExecutor][CalcCostCoeff] Example is not enabled, algName=%s "
+            "will be skipped in selection. Set env HCCL_EXPERIMENTAL_EXAMPLE=true to enable it.",
+            algName);
+        return {};
+    }
+
     (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
 #ifndef AICPU_COMPILE
@@ -367,6 +378,16 @@ HcclResult InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>:
     return HCCL_SUCCESS;
 }
 #endif
+
+template <typename AlgTopoMatch, typename InsAlgTemplate>
+bool InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::IsExampleEnabled()
+{
+    constexpr bool exampleEnabled = false;
+    if (!exampleEnabled)
+        return false;
+    const char* env = std::getenv("HCCL_EXPERIMENTAL_EXAMPLE");
+    return env && std::string(env) == "true";
+}
 
 } // namespace ops_hccl_experimental
 
