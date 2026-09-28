@@ -171,6 +171,10 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             }
         }
     } else {
+        CHK_PRT_RET(
+            param.all2AllVDataDes.sendCounts == nullptr || param.all2AllVDataDes.sdispls == nullptr
+                || param.all2AllVDataDes.recvCounts == nullptr || param.all2AllVDataDes.rdispls == nullptr,
+            HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][Orchestrate] all2AllVDataDes pointer is null"), HCCL_E_PTR);
         for (u32 j = 0; j < rankSize_; j++) {
             // Send info
             u64 curSendCounts = *(static_cast<const u64*>(param.all2AllVDataDes.sendCounts) + j);
@@ -260,6 +264,10 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             }
         }
     } else {
+        CHK_PRT_RET(
+            param.all2AllVDataDes.sendCounts == nullptr || param.all2AllVDataDes.sdispls == nullptr
+                || param.all2AllVDataDes.recvCounts == nullptr || param.all2AllVDataDes.rdispls == nullptr,
+            HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] all2AllVDataDes pointer is null"), HCCL_E_PTR);
         for (u64 i = 0; i < rankSize_; i++) {
             sendCounts[i] = reinterpret_cast<u64*>(param.all2AllVDataDes.sendCounts)[i];
             recvCounts[i] = reinterpret_cast<u64*>(param.all2AllVDataDes.recvCounts)[i];

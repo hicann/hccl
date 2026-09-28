@@ -335,6 +335,17 @@ HcclResult ExecOp(HcclComm comm, OpParam& param)
         CHK_PRT_RET(
             retComm != HCCL_SUCCESS, HCCL_ERROR("[%s] [%s] HcommAcquireComm failed ", __func__, param.commName),
             static_cast<HcclResult>(retComm));
+        // RAII守卫: 确保所有提前返回路径均配对释放引用计数
+        struct CommReleaseGuard {
+            const char* name;
+            bool released;
+            ~CommReleaseGuard()
+            {
+                if (!released) {
+                    (void)HcommReleaseComm(name);
+                }
+            }
+        } commGuard{param.commName, false};
         if (HcommIsExportThreadSupported()) {
             // Host stream通知Device主thread，使用主流上idx最大的notify
             CHK_RET(static_cast<HcclResult>(
@@ -419,6 +430,7 @@ HcclResult ExecOp(HcclComm comm, OpParam& param)
                 return HCCL_E_INTERNAL;
             }
         }
+        commGuard.released = true;
         CHK_RET(static_cast<HcclResult>(HcommReleaseComm(param.commName)));
     } else {
         CHK_RET(executor->Orchestrate(param, resCtx));
