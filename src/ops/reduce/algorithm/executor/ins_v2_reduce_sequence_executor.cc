@@ -524,14 +524,11 @@ REGISTER_ALG_ATTRS(
     topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo == Level0Shape::MESH_1D || topo->level0PcieMix || topo->deviceNumPerModule == 1) {
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS || topo->level0PcieMix || topo->deviceNumPerModule == 1) {
             return true;
         }
-        if (topo->level0Topo == Level0Shape::CLOS) {
-            return false;
-        }
         // UBX
-        return topo->Level1Nhr && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        return topo->Level1Nhr || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     };);
 
 } // namespace ops_hccl

@@ -473,6 +473,10 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     InsAlgTemplate1 interTempAlg(param, resCtx.topoInfo.userRank, interHierarchyInfo_);
     if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
         interTempAlg.SetchannelsPerRank(interLinkMap_);
+        // 框内 rankSize 为 1 时无需通信，跳过 SetchannelsPerRank，保留 CalcRes 阶段的值
+        if (rankSizeLevel0_ > 1) {
+            intraTempAlg.SetchannelsPerRank(intraLinkMap_);
+        }
     }
     // 将计算资源分配个每个算法
     PrepareResForTemplate(intraTempAlg, interTempAlg);

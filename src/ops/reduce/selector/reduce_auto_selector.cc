@@ -483,9 +483,9 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
                     return SelectorStatus::MATCH;
                 }
             }
-        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+        } else {
             selectAlgName = "DpuReduceSequenceMeshNHR";
-            HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+            HCCL_INFO("[ReduceAutoSelector] selectAlgName is DpuReduceSequenceMeshNHR");
             return SelectorStatus::MATCH;
         }
     }

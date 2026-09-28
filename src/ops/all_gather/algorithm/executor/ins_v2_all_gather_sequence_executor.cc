@@ -253,6 +253,11 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
 
+    // 构造框内template的channelsPerRank：框内 rankSize 为 1 时无需通信，跳过
+    if (rankSizeLevel0_ > 1) {
+        CHK_RET(intraTempAlg.SetchannelsPerRank(remoteRankToChannelInfo_[0]));
+    }
+
     if (templateScratchMultiplier == 0) {
         HCCL_ERROR("[%s] templateScratchMultiplier is 0, division by zero.", __func__);
         return HCCL_E_INTERNAL;
