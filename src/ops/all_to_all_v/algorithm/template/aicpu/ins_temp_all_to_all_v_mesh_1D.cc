@@ -97,7 +97,9 @@ HcclResult InsTempAlltoAllVMesh1D::CalcRes(
                 "[InsTempAlltoAllVMesh1D][CalcRes] subCommRankNum[%zu] is not [%u]", subCommRanks_.size(), NET_NUM),
             HCCL_E_PARA);
         subCommRanks_ = {subCommRanks_[1]};
-        templateRankSize_ = subCommRanks_[1].size();
+        // subCommRanks_ 在上一步已收缩为单层，这里必须取收缩后保留的那一层 [0]；
+        // 取 [1] 属越界读（vector::operator[] 不做边界检查），而 templateRankSize_ 后续被用作取模的模数。
+        templateRankSize_ = subCommRanks_[0].size();
     }
 
     std::vector<HcclChannelDesc> level0Channels;
