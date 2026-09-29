@@ -9,6 +9,7 @@
  */
 
 #include <algorithm>
+#include "executor_common_ops.h"
 #include "alg_data_trans_wrapper.h"
 #include "ins_v2_batch_send_recv_sole_executor.h"
 #include "ins_temp_batch_send_recv_dpu.h"
@@ -399,12 +400,10 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(sendRecvParam, myRank_, algHierarchyInfo_.infos[0]);
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = sendSlice.addr_;
-    tempAlgParams.buffInfo.outputPtr = sendChannel.remoteCclMem.addr; // 无论跨框还是框内，都发送到对端CCL Buffer
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
-    tempAlgParams.buffInfo.hcclBuff = cclMem_; // 本端的ccl
+    // 无论跨框还是框内，都发送到对端CCL Buffer；hcclBuff保留本端CCL。
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::HCCL_BUFFER, sendSlice.addr_, sendChannel.remoteCclMem.addr,
+        cclMem_);
     tempAlgParams.sliceSize = sendSlice.size_;
     tempAlgParams.count = sendSlice.size_ / dataTypeSize_;
     tempAlgParams.opType = opType; // 传入实际操作
@@ -447,13 +446,9 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(sendRecvParam, myRank_, algHierarchyInfo_.infos[0]);
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr
-        = recvChannel.remoteInput.addr; // 此处channel.remoteInput不是对端input buffer 这里地址实际上不会被使用
-    tempAlgParams.buffInfo.outputPtr = recvSlice.addr_; // 最后读到本端ccl上
-    tempAlgParams.buffInfo.hcclBuff = cclMem_;          // 本端的ccl
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
+    // remoteInput并非对端input buffer，此处输入地址不会被使用；hcclBuff保留本端CCL。
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, recvChannel.remoteInput.addr, recvSlice.addr_, cclMem_);
     tempAlgParams.sliceSize = recvSlice.size_;
     tempAlgParams.count = recvSlice.size_ / dataTypeSize_;
     tempAlgParams.opType = opType; // 传入实际操作
@@ -620,14 +615,7 @@ AlgNetMeta InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgN
 {
     (void)algName;
     (void)param;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 REGISTER_EXEC_V2(

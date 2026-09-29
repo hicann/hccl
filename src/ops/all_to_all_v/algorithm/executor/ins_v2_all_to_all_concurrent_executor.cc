@@ -9,6 +9,7 @@
  */
 
 #include <type_traits>
+#include "executor_common_ops.h"
 #include "alg_data_trans_wrapper.h"
 #include "channel.h"
 #include "ccu_alg_template_base.h"
@@ -363,14 +364,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitTemplateDataParams(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, TemplateDataParams& tempAlgParams) const
 {
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     tempAlgParams.sendCounts.resize(rankSize_, 0);
     tempAlgParams.recvCounts.resize(rankSize_, 0);
     tempAlgParams.sdispls.resize(rankSize_, 0);

@@ -129,14 +129,7 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = (algHierarchyInfo.infos.size() > 1) ? algHierarchyInfo.infos[1][0].size() : 1;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
-    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
-    return meta;
+    return BuildSequenceNetMeta(netTypeLevel0, netTypeLevel1, rankSizeLevel0, rankSizeLevel1);
 }
 
 // ! 已编码完成

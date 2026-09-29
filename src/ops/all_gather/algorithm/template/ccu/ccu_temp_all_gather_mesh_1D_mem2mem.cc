@@ -15,6 +15,8 @@
 
 namespace ops_hccl {
 constexpr int FULLMESH_KERNEL_NUM = 5;
+constexpr double MIN_POD_CLOS_COEFF = 0.5;
+constexpr double POD_CLOS_COST_FACTOR = 0.5;
 
 std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -37,8 +39,8 @@ std::vector<CostModelParam> CcuTempAllGatherMesh1DMem2Mem::CalcCostCoeff(CalcCos
     CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);
     if (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS) {
         double coeff = 1.0 - 0.5 * (static_cast<double>(param.rankSize) - 2.0) / 62.0;
-        coeff = std::max(0.5, std::min(1.0, coeff));
-        A = static_cast<float>(A * 0.5 / coeff);
+        coeff = std::max(MIN_POD_CLOS_COEFF, std::min(1.0, coeff));
+        A = static_cast<float>(A * POD_CLOS_COST_FACTOR / coeff);
     }
     CostModelManager::Global()->CalcLatencyParams(kernelNum, EngineType::CCU, C);
     CostModelManager::Global()->CalcLaunchParams(taskNum, EngineType::CCU, D);

@@ -36,6 +36,14 @@ struct SliceInfo {
     u64 size{0};
 };
 
+struct SplitSliceInfo {
+    u64 offset{0};
+    u64 size{0};
+    u64 count{0};
+
+    SplitSliceInfo(const u64 offset, const u64 size, const u64 count) : offset(offset), size(size), count(count) {}
+};
+
 using RankSliceInfo = std::vector<std::vector<SliceInfo>>;
 
 enum class BufferType { INPUT = 0, OUTPUT = 1, HCCL_BUFFER = 2, DEFAULT };
@@ -561,6 +569,40 @@ const char* ParallelDataSplitTypeToStr(ParallelDataSplitType splitType);
 
 HcclResult FillChannelSymWinPeerAddrs(
     void* inputSymWindow, u64 inputOffset, void* outputSymWindow, u64 outputOffset, ChannelInfo& channel);
+
+// 输出vector由调用方预先resize；counts/displs仍使用元素数单位。
+inline void CopyAllToAllVCountsAndDispls(const OpParam& param, u32 rankSize, A2ASendRecvInfo& info)
+{
+    for (u32 j = 0; j < rankSize; j++) {
+        // Send info
+        u64 curSendCounts = *(static_cast<const u64*>(param.all2AllVDataDes.sendCounts) + j);
+        u64 curSendDispls = *(static_cast<const u64*>(param.all2AllVDataDes.sdispls) + j);
+        info.sendCounts[j] = curSendCounts;
+        info.sendDispls[j] = curSendDispls;
+
+        // Recv info
+        u64 curRecvCounts = *(static_cast<const u64*>(param.all2AllVDataDes.recvCounts) + j);
+        u64 curRecvDispls = *(static_cast<const u64*>(param.all2AllVDataDes.rdispls) + j);
+        info.recvCounts[j] = curRecvCounts;
+        info.recvDispls[j] = curRecvDispls;
+    }
+}
+
+// 本rank单jetty，远端按开关选择；保留resize和逐rank填写的顺序。
+inline void FillMeshJettyNums(std::vector<uint32_t>& jettyNums, u32 rankSize, u32 myRank, bool multijetty)
+{
+    constexpr u32 SINGLE_JETTY_NUM = 1;
+    jettyNums.resize(rankSize, 0);
+    for (int i = 0; i < rankSize; i++) {
+        if (i == myRank) {
+            jettyNums[i] = SINGLE_JETTY_NUM;
+        } else if (multijetty) {
+            jettyNums[i] = MAX_JETTY_NUM;
+        } else {
+            jettyNums[i] = SINGLE_JETTY_NUM;
+        }
+    }
+}
 
 } // namespace ops_hccl
 #endif

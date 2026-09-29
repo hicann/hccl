@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_gather_sequence_executor_aicpu.h"
+#include "executor_common_ops.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
 #ifndef AICPU_COMPILE
@@ -95,12 +96,7 @@ InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
     const std::vector<std::vector<PhysicalLevelIndex>>& phyIdxForAlgoLevels = algHierarchyInfo.physicalIdxForAlgoLevels;
     std::vector<std::vector<CommTopo>> phyLevelNetTypes(phyIdxForAlgoLevels.size());
     std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(phyIdxForAlgoLevels.size());
-    for (u32 lvl = 0; lvl < phyIdxForAlgoLevels.size(); lvl++) {
-        for (PhysicalLevelIndex phyIdx : phyIdxForAlgoLevels[lvl]) {
-            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
-            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
-        }
-    }
+    AppendPhysicalLevelInfo(topoInfo, phyIdxForAlgoLevels, phyLevelNetTypes, phyLevelPortNums);
     CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
     CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
     const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0][0];
@@ -167,14 +163,7 @@ AlgNetMeta InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[0][0]));
     CommTopo netTypeLevel1
         = GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(algHierarchyInfo.physicalIdxForAlgoLevels[1][0]));
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
-    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
-    return meta;
+    return BuildSequenceNetMeta(netTypeLevel0, netTypeLevel1, rankSizeLevel0, rankSizeLevel1);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -580,21 +569,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitData(
     const u64 dataCount, const u64 rankSize, TemplateDataParams& tempAlgParams)
 {
-    u32 sliceNum = rankSize;
-    tempAlgParams.allRankSliceSize.clear();
-    tempAlgParams.allRankDispls.clear();
-    tempAlgParams.allRankProcessedDataCount.clear();
-    tempAlgParams.allRankSliceSize.reserve(sliceNum);
-    tempAlgParams.allRankDispls.reserve(sliceNum);
-    tempAlgParams.allRankProcessedDataCount.reserve(sliceNum);
-
-    u64 sliceSize = dataCount * dataTypeSize_;
-    for (u32 i = 0; i < sliceNum; i++) {
-        tempAlgParams.allRankDispls.emplace_back(i * sliceSize);
-        tempAlgParams.allRankSliceSize.emplace_back(sliceSize);
-        tempAlgParams.allRankProcessedDataCount.emplace_back(dataCount);
-    }
-    return HCCL_SUCCESS;
+    return FillAllGatherEqualSlices(dataCount, rankSize, dataTypeSize_, tempAlgParams);
 }
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

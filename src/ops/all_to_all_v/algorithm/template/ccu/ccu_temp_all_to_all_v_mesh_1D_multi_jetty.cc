@@ -231,16 +231,7 @@ u64 CcuTempAllToAllVMesh1DMultiJetty::GetThreadNum() const { return 1; }
 
 HcclResult CcuTempAllToAllVMesh1DMultiJetty::SetJettyNums(std::vector<uint32_t>& jettyNums, const bool multijetty) const
 {
-    jettyNums.resize(templateRankSize_, 0);
-    for (int i = 0; i < templateRankSize_; i++) {
-        if (i == myRank_) {
-            jettyNums[i] = CONST_1;
-        } else if (multijetty) {
-            jettyNums[i] = CONST_4;
-        } else {
-            jettyNums[i] = CONST_1;
-        }
-    }
+    FillMeshJettyNums(jettyNums, templateRankSize_, myRank_, multijetty);
     return HcclResult::HCCL_SUCCESS;
 }
 } // namespace ops_hccl

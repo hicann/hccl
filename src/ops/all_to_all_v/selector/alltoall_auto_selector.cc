@@ -14,27 +14,6 @@
 
 namespace ops_hccl {
 
-namespace {
-    constexpr u32 PAIRWISE_RANK_NUM_PER_BOARD = 8; // 模板硬约束：每板 8 卡，逻辑板须与物理框对齐
-    constexpr u32 PAIRWISE_UNIT_RANK_SIZE = 2 * PAIRWISE_RANK_NUM_PER_BOARD; // 2 套流集合 × 8 卡/板
-
-    // Pairwise 能力守卫：跨框 MESH_1D 拓扑、每框恰好 8 卡，且 rankSize 为 16 的倍数
-    // （boardNumPerStreamSet = rankSize/16 任意 ≥1 均可：2 的幂走 XOR 配对，
-    //   非 2 的幂走反射配对 (t-i) mod N，自环轮由 fullMesh 填空，奇数板同样支持）
-    bool IsPairwiseCapable(const TopoInfoWithNetLayerDetails* topoInfo)
-    {
-        if (topoInfo->topoLevelNums <= 1 || topoInfo->level0Topo != Level0Shape::MESH_1D) {
-            return false;
-        }
-        // 每框非 8 卡时逻辑板与物理框错位，板内 HCCS 带宽与板间跨框的流量假设失效
-        if (topoInfo->deviceNumPerModule != PAIRWISE_RANK_NUM_PER_BOARD) {
-            return false;
-        }
-        return topoInfo->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
-               && topoInfo->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
-    }
-} // namespace
-
 constexpr uint32_t INDEX_0 = 0;
 constexpr uint32_t INDEX_1 = 1;
 constexpr uint32_t INDEX_2 = 2;
@@ -282,12 +261,7 @@ SelectorStatus AlltoAllAutoSelector::SelectDPUAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {
-    std::vector<HcclAlgoType> algos
-        = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
-    auto it = configAlgMap.find(opParam.opType);
-    if ((it != configAlgMap.end()) && (it->second.size() > 1)) {
-        algos = it->second;
-    }
+    std::vector<HcclAlgoType> algos = GetConfiguredAlgorithms(opParam.opType, configAlgMap);
     HCCL_INFO(
         "[AlltoAllAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);

@@ -21,6 +21,30 @@ constexpr u32 MIN_NET_LAYER_NUM = 2;
 constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
 constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
 
+// 缺层时追加本rank；第三层还要求首个子通信域非空。是否清空输出由调用方决定。
+inline void FillOmniPipeSubCommRanks(
+    const AlgHierarchyInfoForAllLevel& hierarchy, u32 myRank, std::vector<std::vector<u32>>& subCommRanks0,
+    std::vector<std::vector<u32>>& subCommRanks1, std::vector<std::vector<u32>>& subCommRanks2)
+{
+    constexpr u32 ALG_HIERARCHY_NUM2 = 2;
+    constexpr u32 ALG_HIERARCHY_NUM3 = 3;
+    if (hierarchy.infos.size() >= 1 && !hierarchy.infos[0].empty()) {
+        subCommRanks0 = hierarchy.infos[0];
+    } else {
+        subCommRanks0.emplace_back(std::vector<u32>{myRank});
+    }
+    if (hierarchy.infos.size() >= ALG_HIERARCHY_NUM2 && !hierarchy.infos[1].empty()) {
+        subCommRanks1 = hierarchy.infos[1];
+    } else {
+        subCommRanks1.emplace_back(std::vector<u32>{myRank});
+    }
+    if (hierarchy.infos.size() >= ALG_HIERARCHY_NUM3 && !hierarchy.infos[2].empty() && !hierarchy.infos[2][0].empty()) {
+        subCommRanks2 = hierarchy.infos[2];
+    } else {
+        subCommRanks2.emplace_back(std::vector<u32>{myRank});
+    }
+}
+
 struct OmniPipeCostAxes {
     u64 mesh = 1;
     u64 clos = 1;

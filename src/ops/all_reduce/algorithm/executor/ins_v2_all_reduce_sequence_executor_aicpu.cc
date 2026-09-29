@@ -62,12 +62,7 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
         {});
     std::vector<std::vector<CommTopo>> phyLevelNetTypes(physIdx.size());
     std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(physIdx.size());
-    for (u32 lvl = 0; lvl < physIdx.size(); lvl++) {
-        for (PhysicalLevelIndex phyIdx : physIdx[lvl]) {
-            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
-            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
-        }
-    }
+    AppendPhysicalLevelInfo(topoInfo, physIdx, phyLevelNetTypes, phyLevelPortNums);
     CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
     CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
     const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0][0];
@@ -166,12 +161,7 @@ InsV2AllReduceSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
         const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    myRank_ = topoInfo->userRank;
-    rankSize_ = topoInfo->userRankSize;
-    reduceOp_ = param.reduceType;
-    dataType_ = param.DataDes.dataType;
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    InitRankAndDataInfo(param, topoInfo);
 
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO(

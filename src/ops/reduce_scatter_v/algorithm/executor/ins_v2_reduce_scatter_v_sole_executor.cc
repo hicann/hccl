@@ -96,14 +96,10 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     templateAlgRes.threads = resCtx.threads;
     // 准备数据
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
     // 不需要重复
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;

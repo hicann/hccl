@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_scatter_sole_executor.h"
+#include "executor_common_ops.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr.h"
 #include <cstring>
@@ -179,14 +180,10 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
 
     // 准备数据
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate

@@ -66,14 +66,7 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
         "[InsV2AllReduceConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
 
@@ -112,14 +105,7 @@ AlgNetMeta InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
 
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
 

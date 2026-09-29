@@ -137,11 +137,7 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::CalcMeshRes(
     CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
         comm, param, topoInfo, std::vector<std::vector<u32>>{meshGroup_}, myChannelDescs, CommTopo::COMM_TOPO_1DMESH));
     std::vector<HcclChannelDesc> channelDescs;
-    for (const auto& ch : myChannelDescs) {
-        if (ch.channelProtocol == COMM_PROTOCOL_UB_CTP) {
-            channelDescs.push_back(ch);
-        }
-    }
+    AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_CTP, channelDescs);
     CHK_PRT_RET(
         channelDescs.empty(),
         HCCL_ERROR("[CcuTempReduceScatterConcurrentMeshNHR][CalcMeshRes] mesh channelDescs is empty"), HCCL_E_INTERNAL);
@@ -227,11 +223,7 @@ HcclResult CcuTempReduceScatterConcurrentMeshNHR::CalcNhrRes(
     std::vector<HcclChannelDesc> myChannelDescs;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, std::vector<std::vector<u32>>{nhrGroup_}, myChannelDescs));
     std::vector<HcclChannelDesc> channelDescs;
-    for (const auto& ch : myChannelDescs) {
-        if (ch.channelProtocol == COMM_PROTOCOL_UB_CTP) {
-            channelDescs.push_back(ch);
-        }
-    }
+    AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_CTP, channelDescs);
     CHK_RET(RestoreChannelMap(channelDescs, nhrRankIdToChannelDesc_));
 
     u32 enableDieNum = 0;

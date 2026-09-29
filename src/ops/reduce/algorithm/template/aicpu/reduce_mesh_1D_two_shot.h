@@ -12,18 +12,11 @@
 #define AICPU_REDUCE_MESH_1D_TWO_SHOT_H
 
 #include "alg_v2_template_base.h"
+#include "template_utils.h"
 #include "executor_base.h"
 #include "alg_data_trans_wrapper.h"
 
 namespace ops_hccl {
-
-struct SplitSliceInfo {
-    u64 offset{0};
-    u64 size{0};
-    u64 count{0};
-
-    SplitSliceInfo(const u64 offset, const u64 size, const u64 count) : offset(offset), size(size), count(count) {}
-};
 
 class ReduceMesh1DTwoShot : public InsAlgTemplateBase {
 public:

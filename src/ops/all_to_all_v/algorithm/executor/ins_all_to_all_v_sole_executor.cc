@@ -339,16 +339,9 @@ AlgNetMeta InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMeta
 {
     (void)algName;
     (void)param;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
     // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel
     // 此处给一些默认参数值
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 // 第二个参数是All to AllV的template文件

@@ -74,14 +74,7 @@ InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
     std::vector<CostModelParam> params
@@ -119,24 +112,10 @@ AlgNetMeta InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     u32 rankSize = topoInfo->userRankSize;
 
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::MAX;
-    meta.groupSizes = {2};
-    meta.dataRatios = {dataSplitSize[0], dataSplitSize[1]};
-    meta.rankSizes = {rankSize, rankSize};
-    return meta;
+    return BuildConcurrentNetMeta(netTypeLevel0, netTypeLevel1, rankSize, dataSplitSize);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -235,15 +214,7 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HcclResult::HCCL_E_INTERNAL);
 
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
-        resourceRequest.ccuKernelNum.insert(
-            resourceRequest.ccuKernelNum.end(), temp0ResReq.ccuKernelNum.begin(), temp0ResReq.ccuKernelNum.end());
-        resourceRequest.ccuKernelNum.insert(
-            resourceRequest.ccuKernelNum.end(), temp1ResReq.ccuKernelNum.begin(), temp1ResReq.ccuKernelNum.end());
-        // 将两个合并
-        resourceRequest.ccuKernelInfos.insert(
-            resourceRequest.ccuKernelInfos.end(), temp0ResReq.ccuKernelInfos.begin(), temp0ResReq.ccuKernelInfos.end());
-        resourceRequest.ccuKernelInfos.insert(
-            resourceRequest.ccuKernelInfos.end(), temp1ResReq.ccuKernelInfos.begin(), temp1ResReq.ccuKernelInfos.end());
+        AppendCcuTemplateResources(resourceRequest, temp0ResReq, temp1ResReq);
     } else if (param.engine == CommEngine::COMM_ENGINE_AICPU || param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
         resourceRequest.channels.resize(1);
         resourceRequest.channels[0].insert(
@@ -608,14 +579,9 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExecutorInfo(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    myRank_ = resCtx.topoInfo.userRank;
-    rankSize_ = resCtx.topoInfo.userRankSize;
+    InitRankAndDataInfo(param, &resCtx.topoInfo);
 
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
-    dataType_ = param.DataDes.dataType;
-    reduceOp_ = param.reduceType;
     maxTmpMemSize_ = resCtx.cclMem.size;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;

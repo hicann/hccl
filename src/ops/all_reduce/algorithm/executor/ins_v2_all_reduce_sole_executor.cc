@@ -38,6 +38,34 @@
 #endif
 
 namespace ops_hccl {
+#ifndef AICPU_COMPILE
+namespace {
+    bool CheckAicpuSoleMeshTopo(const TopoInfoWithNetLayerDetails* topo)
+    {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topo->level0PcieMix) {
+                bool isEqual = false;
+                AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+                return isEqual && topo->userRankSize <= 4;
+            }
+            return true;
+        }
+        return true;
+    }
+
+    bool CheckAivSoleBufferSize(const OpParam& opParam, const TopoInfoWithNetLayerDetails*)
+    {
+        void* bufAddr = nullptr;
+        uint64_t bufSize = 0;
+        if (HcclGetHcclBuffer(opParam.hcclComm, &bufAddr, &bufSize) != HCCL_SUCCESS) {
+            return false;
+        }
+        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+        return dataSize <= bufSize * AIV_MAX_CCL_LOOP_NUM;
+    }
+} // namespace
+#endif
+
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4; // 与selector保持一致：并发算法的卡数上限
 constexpr u32 MAX_RANK_NUM_FOR_REDUCE_MS_ALGO = 8;  // 与selector保持一致：reduce MS 算法的卡数上限
 
@@ -141,12 +169,7 @@ HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     // 给channels_和threads_赋值
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     threads_ = resCtx.threads;
-    if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-    }
+    SetSymmetricMemoryInfo(param);
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
@@ -357,37 +380,17 @@ HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshOneShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceMesh1DOneShot);
-REGISTER_ALG_ATTRS(
-    AicpuAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 1;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
-    topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topo->level0PcieMix) {
-                bool isEqual = false;
-                AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-                return isEqual && topo->userRankSize <= 4;
-            }
-            return true;
-        }
-        return true;
-    });
+REGISTER_ALG_ATTRS(AicpuAllReduceSoleMeshOneShot, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+                   topo.topoCustomCheck = CheckAicpuSoleMeshTopo);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceMesh1DTwoShot);
-REGISTER_ALG_ATTRS(
-    AicpuAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1;
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
-    topo.requireAllMeshConnected = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            if (!topo->level0PcieMix) {
-                bool isEqual = false;
-                AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
-                return isEqual && topo->userRankSize <= 4;
-            }
-            return true;
-        }
-        return true;
-    });
+REGISTER_ALG_ATTRS(AicpuAllReduceSoleMeshTwoShot, topo.maxTopoLevelNum = 1;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+                   topo.topoCustomCheck = CheckAicpuSoleMeshTopo);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AicpuAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     InsTempAllReduceNHR);
@@ -453,15 +456,7 @@ REGISTER_ALG_ATTRS(
     };
 
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
-    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
-        void* bufAddr = nullptr;
-        uint64_t bufSize = 0;
-        if (HcclGetHcclBuffer(opParam.hcclComm, &bufAddr, &bufSize) != HCCL_SUCCESS) {
-            return false;
-        }
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return dataSize <= bufSize * AIV_MAX_CCL_LOOP_NUM;
-    });
+    op.opCustomCheck = CheckAivSoleBufferSize);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, AivAllReduceSoleMeshTwoShot, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,
     AivTempAllReduceMesh1DTwoShot);
@@ -475,15 +470,7 @@ REGISTER_ALG_ATTRS(
     };
 
     op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;
-    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
-        void* bufAddr = nullptr;
-        uint64_t bufSize = 0;
-        if (HcclGetHcclBuffer(opParam.hcclComm, &bufAddr, &bufSize) != HCCL_SUCCESS) {
-            return false;
-        }
-        u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
-        return dataSize <= bufSize * AIV_MAX_CCL_LOOP_NUM;
-    });
+    op.opCustomCheck = CheckAivSoleBufferSize);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLREDUCE, CcuSchedAllReduceSoleNHR, InsV2AllReduceSoleExecutor, TopoMatchOneLevel,

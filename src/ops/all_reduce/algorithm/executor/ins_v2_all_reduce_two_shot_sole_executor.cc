@@ -204,12 +204,7 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     threads_ = resCtx.threads;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     reduceOp_ = param.reduceType;
-    if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-    }
+    SetSymmetricMemoryInfo(param);
 
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 

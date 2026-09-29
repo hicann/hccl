@@ -36,12 +36,8 @@ HcclResult InsTempScatterNHRDPUInterNode::CalcRes(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     AlgResourceRequest& resourceRequest)
 {
-    u32 threadNum = 1;
-    resourceRequest.slaveThreadNum = threadNum - 1;
-    for (u32 index = 0; index < threadNum - 1; index++) {
-        resourceRequest.notifyNumPerThread.push_back(1);
-    }
-    resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    resourceRequest.slaveThreadNum = 0;
+    resourceRequest.notifyNumOnMainThread = 0;
 
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestNhrHighestHostRoce(comm, param, topoInfo, subCommRanks_, level0Channels));

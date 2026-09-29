@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_gather_sequence_executor.h"
+#include "executor_common_ops.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
 #include "coll_alg_v2_exec_registry.h"
@@ -126,14 +127,7 @@ AlgNetMeta InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     u32 rankSizeLevel0 = algHierarchyInfo.infos[0][0].size();
     u32 rankSizeLevel1 = algHierarchyInfo.infos[1][0].size();
 
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
-    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
-    return meta;
+    return BuildSequenceNetMeta(netTypeLevel0, netTypeLevel1, rankSizeLevel0, rankSizeLevel1);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -242,16 +236,10 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
 
     // 构造框间template资源
     TemplateResource templateResourceInter;
-    templateResourceInter.channels = remoteRankToChannelInfo_[1];
-    templateResourceInter.threads = resCtx.threads;
-    templateResourceInter.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceInter.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
     // 构造框内template资源
     TemplateResource templateResourceIntra;
-    templateResourceIntra.channels = remoteRankToChannelInfo_[0];
-    templateResourceIntra.threads = resCtx.threads;
-    templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceIntra, remoteRankToChannelInfo_[0], resCtx);
 
     // 构造框内template的channelsPerRank：框内 rankSize 为 1 时无需通信，跳过
     if (rankSizeLevel0_ > 1) {
@@ -340,21 +328,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SplitData(
     const u64 dataCount, const u64 rankSize, TemplateDataParams& tempAlgParams)
 {
-    u32 sliceNum = rankSize;
-    tempAlgParams.allRankSliceSize.clear();
-    tempAlgParams.allRankDispls.clear();
-    tempAlgParams.allRankProcessedDataCount.clear();
-    tempAlgParams.allRankSliceSize.reserve(sliceNum);
-    tempAlgParams.allRankDispls.reserve(sliceNum);
-    tempAlgParams.allRankProcessedDataCount.reserve(sliceNum);
-
-    u64 sliceSize = dataCount * dataTypeSize_;
-    for (u32 i = 0; i < sliceNum; i++) {
-        tempAlgParams.allRankDispls.emplace_back(i * sliceSize);
-        tempAlgParams.allRankSliceSize.emplace_back(sliceSize);
-        tempAlgParams.allRankProcessedDataCount.emplace_back(dataCount);
-    }
-    return HCCL_SUCCESS;
+    return FillAllGatherEqualSlices(dataCount, rankSize, dataTypeSize_, tempAlgParams);
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(

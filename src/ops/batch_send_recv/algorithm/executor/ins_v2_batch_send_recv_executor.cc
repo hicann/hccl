@@ -454,14 +454,7 @@ AlgNetMeta InsV2BatchSendRecvExecutor::GetAlgNetMeta(
 {
     (void)param;
     (void)algName;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 REGISTER_EXECUTOR_IMPL(HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, AicpuBatchSendRecvSoleMesh, InsV2BatchSendRecvExecutor);

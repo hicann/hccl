@@ -26,8 +26,6 @@
 #include "auto_selector_base.h"
 
 namespace ops_hccl {
-constexpr u32 ALG_HIERARCHY_NUM2 = 2;
-constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr u32 RANK_LEVEL_2 = 2;
 constexpr u32 RANK_LEVEL_4 = 4;
 
@@ -74,22 +72,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         "algorithm hierarchy, hierarchy[%s].",
         ThreeDVecToStrOmni(algHierarchyInfo_.infos).c_str());
     // 统一按 infos 层级数赋值 subCommRanks（同位卡过滤已由 topoMatch 完成）
-    if (algHierarchyInfo_.infos.size() >= 1 && !algHierarchyInfo_.infos[0].empty()) {
-        subCommRanks0 = algHierarchyInfo_.infos[0];
-    } else {
-        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM2 && !algHierarchyInfo_.infos[1].empty()) {
-        subCommRanks1 = algHierarchyInfo_.infos[1];
-    } else {
-        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        subCommRanks2 = algHierarchyInfo_.infos[2];
-    } else {
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    }
+    FillOmniPipeSubCommRanks(algHierarchyInfo_, myRank_, subCommRanks0, subCommRanks1, subCommRanks2);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][BuildSubCommAndTempMap] UBX specific optimization flags.");
         omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_LEVEL_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :

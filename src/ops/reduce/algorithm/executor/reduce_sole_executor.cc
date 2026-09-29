@@ -170,14 +170,10 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::OrchestrateLoop(
     templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;
     // 准备数据
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建template
     std::shared_ptr<AlgTemplate> algTemplate

@@ -488,12 +488,7 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 给channels_和threads_赋值
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     threads_ = resCtx.threads;
-    if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-    }
+    SetSymmetricMemoryInfo(param);
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
         intraChannelMap_ = remoteRankToChannelInfo_[0];

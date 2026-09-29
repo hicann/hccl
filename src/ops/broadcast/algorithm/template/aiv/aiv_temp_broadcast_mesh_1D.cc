@@ -14,6 +14,7 @@
 
 namespace ops_hccl {
 constexpr u32 TWO_PHASE_DATA_FACTOR = 2;
+constexpr double NON_POD_CLOS_COST_FACTOR = 1.1;
 
 std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
@@ -53,7 +54,7 @@ std::vector<CostModelParam> AivTempBroadcastMesh1D::CalcCostCoeff(CalcCostCoeffP
             param.dataRatio * TWO_PHASE_DATA_FACTOR / param.rankSize, CommTopo::COMM_TOPO_CLOS, portNum, level1RankSize,
             A_clos, isPodForCost);
         if (!isPodForCost) {
-            A_clos *= 1.1;
+            A_clos *= NON_POD_CLOS_COST_FACTOR;
         }
         A = std::max(A_mesh, A_clos);
     } else {

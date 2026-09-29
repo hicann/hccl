@@ -257,28 +257,16 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
 
     // 构造框内ReduceScatterMesh1D的template资源
     TemplateResource templateResourceReduceScatterMesh1D;
-    templateResourceReduceScatterMesh1D.channels = remoteRankToChannelInfo_[0];
-    templateResourceReduceScatterMesh1D.threads = resCtx.threads;
-    templateResourceReduceScatterMesh1D.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceReduceScatterMesh1D.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceReduceScatterMesh1D, remoteRankToChannelInfo_[0], resCtx);
     // 构造框间ReduceScatterMesh1dDpu的template资源
     TemplateResource templateResourceReduceScatterMesh1dDpu;
-    templateResourceReduceScatterMesh1dDpu.channels = remoteRankToChannelInfo_[1];
-    templateResourceReduceScatterMesh1dDpu.threads = resCtx.threads;
-    templateResourceReduceScatterMesh1dDpu.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceReduceScatterMesh1dDpu.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceReduceScatterMesh1dDpu, remoteRankToChannelInfo_[1], resCtx);
     // 构造框间GatherDpu的template资源
     TemplateResource templateResourceGatherDpu;
-    templateResourceGatherDpu.channels = remoteRankToChannelInfo_[1];
-    templateResourceGatherDpu.threads = resCtx.threads;
-    templateResourceGatherDpu.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceGatherDpu.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceGatherDpu, remoteRankToChannelInfo_[1], resCtx);
     // 构造框内GatherMesh1D的template资源
     TemplateResource templateResourceGatherMesh1D;
-    templateResourceGatherMesh1D.channels = remoteRankToChannelInfo_[0];
-    templateResourceGatherMesh1D.threads = resCtx.threads;
-    templateResourceGatherMesh1D.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceGatherMesh1D.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceGatherMesh1D, remoteRankToChannelInfo_[0], resCtx);
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 maxCountPerLoop = tempAlgParamsReduceScatterMesh1D.buffInfo.hcclBuff.size / 2 / HCCL_MIN_SLICE_ALIGN

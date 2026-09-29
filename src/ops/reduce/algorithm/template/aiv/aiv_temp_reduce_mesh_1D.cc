@@ -41,12 +41,12 @@ std::vector<CostModelParam> AivTempReduceMesh1D::CalcCostCoeff(CalcCostCoeffPara
         float A0 = 0.0f;
         float A1 = 0.0f;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
+            SEND_RECV_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+            SEND_RECV_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1,
+            param.isPod);
         A = A0 + A1;
-
     } else {
         CostModelManager::Global()->CalcMeshParam(
             SEND_RECV_DATA_FACTOR * param.dataRatio, param.netType, portNum, param.rankSize, A, param.isPod);

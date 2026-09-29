@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_aiv_all_to_all_v_sole_executor.h"
+#include "executor_common_ops.h"
 #include "alg_attrs_registry.h"
 #include "hccl_aiv_utils.h"
 #ifndef AICPU_COMPILE
@@ -115,19 +116,7 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
     localSendRecvInfo_.recvCounts.resize(rankSize_, 0);
     localSendRecvInfo_.recvDispls.resize(rankSize_, 0);
 
-    for (u32 j = 0; j < rankSize_; j++) {
-        // Send info
-        u64 curSendCounts = *(static_cast<const u64*>(param.all2AllVDataDes.sendCounts) + j);
-        u64 curSendDispls = *(static_cast<const u64*>(param.all2AllVDataDes.sdispls) + j);
-        localSendRecvInfo_.sendCounts[j] = curSendCounts;
-        localSendRecvInfo_.sendDispls[j] = curSendDispls;
-
-        // Recv info
-        u64 curRecvCounts = *(static_cast<const u64*>(param.all2AllVDataDes.recvCounts) + j);
-        u64 curRecvDispls = *(static_cast<const u64*>(param.all2AllVDataDes.rdispls) + j);
-        localSendRecvInfo_.recvCounts[j] = curRecvCounts;
-        localSendRecvInfo_.recvDispls[j] = curRecvDispls;
-    }
+    CopyAllToAllVCountsAndDispls(param, rankSize_, localSendRecvInfo_);
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
     CHK_PRT_RET(
@@ -161,14 +150,10 @@ HcclResult InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestr
     templateAlgRes.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
     // 准备数据
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // RestoreVarDataAlltoAllV 已经将数据放到对应的指针
     tempAlgParams.sendCounts.resize(rankSize_, 0);
@@ -332,16 +317,9 @@ AlgNetMeta InsV2AivAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNe
 {
     (void)algName;
     (void)param;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
     // AllToAllV和AllToAllVC获取不到其他rank间的通信量，不实现costmodel
     // 此处给一些默认参数值
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 REGISTER_EXEC_V2(

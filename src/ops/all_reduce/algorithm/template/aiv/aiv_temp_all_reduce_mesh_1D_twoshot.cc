@@ -49,10 +49,11 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
         int level1Port = portNum;
         float A0 = 0.0f;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
+            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_1DMESH, level0Port, level0RankSize, A0, false);
         u32 level1RankSize = param.rankSize - level0RankSize;
         CostModelManager::Global()->CalcMeshParam(
-            2 * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1, param.isPod);
+            TWO_PHASE_DATA_FACTOR * param.dataRatio, CommTopo::COMM_TOPO_CLOS, level1Port, level1RankSize, A1,
+            param.isPod);
         A = std::max(A0, A1);
     } else {
         CostModelManager::Global()->CalcMeshParam(
@@ -136,20 +137,7 @@ HcclResult AivTempAllReduceMesh1DTwoShot::KernelRun(
     AivOpArgs aivAllReduceArgs;
     aivAllReduceArgs.cmdType = HcclCMDType::HCCL_CMD_ALLREDUCE;
     aivAllReduceArgs.argsType = KernelArgsType::ARGS_TYPE_TWO_SHOT;
-    aivAllReduceArgs.input
-        = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
-    aivAllReduceArgs.output
-        = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
-    aivAllReduceArgs.rank = u32(myRank_);
-    aivAllReduceArgs.rankSize = tempRankSize_;
-    aivAllReduceArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
-    aivAllReduceArgs.dataType = dataType_;
-    aivAllReduceArgs.op = param.reduceType;
-    aivAllReduceArgs.root = root_;
-    aivAllReduceArgs.sliceId = static_cast<uint32_t>(sliceId_);
-    aivAllReduceArgs.buffersIn = templateResource.aivCommInfoPtr;
-    aivAllReduceArgs.stream = param.stream;
-    aivAllReduceArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    FillCommonAivOpArgs(aivAllReduceArgs, param, tempAlgParams, templateResource);
 
     CHK_RET(CalNumBlocks(aivAllReduceArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 

@@ -101,12 +101,7 @@ InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         {});
     std::vector<std::vector<CommTopo>> phyLevelNetTypes(physIdx.size());
     std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(physIdx.size());
-    for (u32 lvl = 0; lvl < physIdx.size(); lvl++) {
-        for (PhysicalLevelIndex phyIdx : physIdx[lvl]) {
-            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
-            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
-        }
-    }
+    AppendPhysicalLevelInfo(topoInfo, physIdx, phyLevelNetTypes, phyLevelPortNums);
     CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
     CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
     const std::vector<u32>& portNumLevel0 = phyLevelPortNums[0][0];
@@ -180,14 +175,7 @@ AlgNetMeta InsV2ReduceScatterSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0
                             physIdxLevel0;
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1, 1};
-    meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
-    meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
-    return meta;
+    return BuildSequenceNetMeta(netTypeLevel0, netTypeLevel1, rankSizeLevel0, rankSizeLevel1);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>

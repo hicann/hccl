@@ -111,6 +111,47 @@ public:
         u32 notifyNumOnMainThread) const;
 #endif
 protected:
+    // 默认单级Mesh元数据；无拓扑时仍按单rank处理。
+    static AlgNetMeta BuildDefaultMeshNetMeta(const TopoInfoWithNetLayerDetails* topoInfo)
+    {
+        u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
+        AlgNetMeta meta;
+        meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
+        meta.intraGroupMode = CostAggMode::SUM;
+        meta.groupSizes = {1};
+        meta.dataRatios = {1.0f};
+        meta.rankSizes = {rankSize};
+        return meta;
+    }
+
+    // 两级顺序执行的固定聚合语义，拓扑查询与校验由调用方保留。
+    static AlgNetMeta
+    BuildSequenceNetMeta(CommTopo netTypeLevel0, CommTopo netTypeLevel1, u32 rankSizeLevel0, u32 rankSizeLevel1)
+    {
+        AlgNetMeta meta;
+        meta.netTypes.push_back(netTypeLevel0);
+        meta.netTypes.push_back(netTypeLevel1);
+        meta.intraGroupMode = CostAggMode::SUM;
+        meta.groupSizes = {1, 1};
+        meta.dataRatios = {1.0f * rankSizeLevel1, 1.0f};
+        meta.rankSizes = {rankSizeLevel0, rankSizeLevel1};
+        return meta;
+    }
+
+    // 两个并发模板共享rank规模，比例沿用调用方计算的两个分量。
+    static AlgNetMeta BuildConcurrentNetMeta(
+        CommTopo netTypeLevel0, CommTopo netTypeLevel1, u32 rankSize, const std::vector<float>& dataSplitSize)
+    {
+        AlgNetMeta meta;
+        meta.netTypes.push_back(netTypeLevel0);
+        meta.netTypes.push_back(netTypeLevel1);
+        meta.intraGroupMode = CostAggMode::MAX;
+        meta.groupSizes = {2};
+        meta.dataRatios = {dataSplitSize[0], dataSplitSize[1]};
+        meta.rankSizes = {rankSize, rankSize};
+        return meta;
+    }
+
     /* *************** costmodel 探测路径公共实现 *************** */
     // 场景标识: 决定不匹配时 INFO 日志的后缀, 与原各执行器内联实现的两种日志保持一致
     enum class TopoProbeScene {
@@ -194,6 +235,42 @@ protected:
         dataType_ = param.DataDes.dataType;
         dataCount_ = param.DataDes.count;
         dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    }
+
+    // 输出容器已按physIdx.size()分配；按物理层顺序追加类型和端口数。
+    void AppendPhysicalLevelInfo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const std::vector<std::vector<PhysicalLevelIndex>>& physIdx,
+        std::vector<std::vector<CommTopo>>& phyLevelNetTypes,
+        std::vector<std::vector<std::vector<u32>>>& phyLevelPortNums) const
+    {
+        for (u32 lvl = 0; lvl < physIdx.size(); lvl++) {
+            for (PhysicalLevelIndex phyIdx : physIdx[lvl]) {
+                phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
+                phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
+            }
+        }
+    }
+
+    // 不修改devType_，供原本只初始化rank和数据描述的路径使用。
+    void InitRankAndDataInfo(const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo)
+    {
+        myRank_ = topoInfo->userRank;
+        rankSize_ = topoInfo->userRankSize;
+        reduceOp_ = param.reduceType;
+        dataType_ = param.DataDes.dataType;
+        dataCount_ = param.DataDes.count;
+        dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
+    }
+
+    // 开关由调用方设置；未启用时保留原有偏移和窗口。
+    void SetSymmetricMemoryInfo(const OpParam& param)
+    {
+        if (supportSymmetricMemory_) {
+            inputOffset_ = param.inputOffset;
+            outputOffset_ = param.outputOffset;
+            inputSymWindow_ = param.inputSymWindow;
+            outputSymWindow_ = param.outputSymWindow;
+        }
     }
 
     // CollAlg base params

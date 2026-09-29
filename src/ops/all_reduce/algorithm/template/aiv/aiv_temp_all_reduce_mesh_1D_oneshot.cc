@@ -130,20 +130,7 @@ HcclResult AivTempAllReduceMesh1DOneShot::KernelRun(
     dataType_ = param.DataDes.dataType;
     AivOpArgs aivAllReduceArgs;
     aivAllReduceArgs.cmdType = HcclCMDType::HCCL_CMD_ALLREDUCE;
-    aivAllReduceArgs.input
-        = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
-    aivAllReduceArgs.output
-        = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
-    aivAllReduceArgs.rank = u32(myRank_);
-    aivAllReduceArgs.rankSize = tempRankSize_;
-    aivAllReduceArgs.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
-    aivAllReduceArgs.dataType = dataType_;
-    aivAllReduceArgs.op = param.reduceType;
-    aivAllReduceArgs.root = root_;
-    aivAllReduceArgs.sliceId = static_cast<uint32_t>(sliceId_);
-    aivAllReduceArgs.buffersIn = templateResource.aivCommInfoPtr;
-    aivAllReduceArgs.stream = param.stream;
-    aivAllReduceArgs.isOpBase = (param.opMode == OpMode::OPBASE);
+    FillCommonAivOpArgs(aivAllReduceArgs, param, tempAlgParams, templateResource);
 
     CHK_RET(CalNumBlocks(aivAllReduceArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
 

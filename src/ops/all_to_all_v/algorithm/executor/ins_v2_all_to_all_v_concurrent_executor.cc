@@ -68,14 +68,7 @@ AlgNetMeta InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     (void)algName;
     (void)param;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -326,16 +319,7 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::SetJettyNums(
     std::vector<uint32_t>& jettyNums, const bool multijetty) const
 {
-    jettyNums.resize(rankSize_, 0);
-    for (int i = 0; i < rankSize_; i++) {
-        if (i == myRank_) {
-            jettyNums[i] = CONST_1;
-        } else if (multijetty) {
-            jettyNums[i] = CONST_4;
-        } else {
-            jettyNums[i] = CONST_1;
-        }
-    }
+    FillMeshJettyNums(jettyNums, rankSize_, myRank_, multijetty);
     return HcclResult::HCCL_SUCCESS;
 }
 

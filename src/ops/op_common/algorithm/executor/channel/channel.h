@@ -88,6 +88,17 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels, bool isIsolation = false,
     bool exceptMesh = true);
+// 保持输入顺序和重复项，追加指定协议的通道；不清空目标容器。
+inline void AppendChannelsByProtocol(
+    const std::vector<HcclChannelDesc>& source, CommProtocol protocol, std::vector<HcclChannelDesc>& target)
+{
+    for (const auto& channel : source) {
+        if (channel.channelProtocol == protocol) {
+            target.push_back(channel);
+        }
+    }
+}
+
 } // namespace ops_hccl
 
 #endif

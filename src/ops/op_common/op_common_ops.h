@@ -11,6 +11,9 @@
 #ifndef OP_COMMON_OPS_H
 #define OP_COMMON_OPS_H
 
+#include <cstdlib>
+
+#include "alg_param.h"
 #include "adapter_acl.h"
 #include "adapter_error_manager_pub.h"
 #include "alg_env_config.h"
@@ -23,5 +26,18 @@
 #include <hccl/hccl_types.h>
 #include "hcomm_dlsym.h"
 #include "hcom.h"
+
+namespace ops_hccl {
+// 仅用于malloc分配、placement new构造的OpParam（包括尾随变长数据）。
+struct MallocOpParamDeleter {
+    void operator()(OpParam* param) const
+    {
+        if (param) {
+            param->~OpParam();
+            std::free(param);
+        }
+    }
+};
+} // namespace ops_hccl
 
 #endif

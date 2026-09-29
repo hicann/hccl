@@ -12,6 +12,7 @@
 #define AIV_ALG_TEMPLATE_BASE
 
 #include <memory>
+#include "hccl_aiv_utils.h"
 #include <map>
 #include <vector>
 #include "alg_template_base.h"
@@ -56,6 +57,25 @@ public:
     virtual HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels);
 
 protected:
+    // 只填写公共数据字段；cmdType、argsType、核数与sliceId递增由调用方管理。
+    void FillCommonAivOpArgs(
+        AivOpArgs& args, const OpParam& param, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource) const
+    {
+        args.input = tempAlgParams.buffInfo.inBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.inputPtr);
+        args.output = tempAlgParams.buffInfo.outBuffBaseOff + reinterpret_cast<u64>(tempAlgParams.buffInfo.outputPtr);
+        args.rank = u32(myRank_);
+        args.rankSize = tempRankSize_;
+        args.count = tempAlgParams.sliceSize / HCCL_SIZE_TABLE[dataType_];
+        args.dataType = dataType_;
+        args.op = param.reduceType;
+        args.root = root_;
+        args.sliceId = static_cast<uint32_t>(sliceId_);
+        args.buffersIn = templateResource.aivCommInfoPtr;
+        args.stream = param.stream;
+        args.isOpBase = (param.opMode == OpMode::OPBASE);
+    }
+
     void IncSliceId();
 
     OpMode opMode_; // 单算子还是图模式

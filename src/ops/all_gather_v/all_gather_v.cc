@@ -216,13 +216,7 @@ HcclResult AllGatherVOutPlace(
         return HCCL_E_INTERNAL;
     }
     OpParam* tmpParamPtr = new (paramMem) OpParam();
-    auto deleter = [](OpParam* p) {
-        if (p) {
-            p->~OpParam();
-            free(p);
-        }
-    };
-    std::unique_ptr<OpParam, decltype(deleter)> paramPtr(tmpParamPtr, deleter);
+    std::unique_ptr<OpParam, MallocOpParamDeleter> paramPtr(tmpParamPtr);
     OpParam& param = *paramPtr;
     CHK_RET(HcclGetCommName(comm, param.commName));
     param.opMode = OpMode::OPBASE;
@@ -327,13 +321,7 @@ HcclResult AllGatherVOutPlaceGraphMode(
         return HCCL_E_INTERNAL;
     }
     OpParam* tmpParamPtr = new (paramMem) OpParam();
-    auto deleter = [](OpParam* p) {
-        if (p) {
-            p->~OpParam();
-            free(p);
-        }
-    };
-    std::unique_ptr<OpParam, decltype(deleter)> paramPtr(tmpParamPtr, deleter);
+    std::unique_ptr<OpParam, MallocOpParamDeleter> paramPtr(tmpParamPtr);
     OpParam& param = *paramPtr;
     CHK_RET(HcclGetCommName(comm, param.commName));
 

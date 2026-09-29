@@ -66,11 +66,7 @@ HcclResult InsTempReduceScatterMesh1DIntra::CalcRes(
     AlgResourceRequest& resourceRequest)
 {
     u32 threadNum = templateRankSize_ > 1 ? templateRankSize_ : 1;
-    resourceRequest.slaveThreadNum = threadNum - 1;
-    for (u32 index = 0; index < threadNum - 1; index++) {
-        resourceRequest.notifyNumPerThread.push_back(1);
-    }
-    resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    SetThreadNotifyRequest(threadNum, resourceRequest);
 
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));

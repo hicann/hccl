@@ -31,8 +31,6 @@
 namespace ops_hccl {
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4; // 与selector保持一致：并发算法的卡数上限
 constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024; // pcie/UBX机型并行与流水算法的数据量分界，与selector保持一致
-constexpr u32 ALG_HIERARCHY_NUM2 = 2;
-constexpr u32 ALG_HIERARCHY_NUM3 = 3;
 constexpr uint64_t RANK_SIZE_LEVEL1_2 = 2;
 constexpr uint64_t RANK_SIZE_LEVEL1_4 = 4;
 namespace {
@@ -721,22 +719,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     subCommRanks1.clear();
     subCommRanks2.clear();
 
-    if (algHierarchyInfo_.infos.size() >= 1 && !algHierarchyInfo_.infos[0].empty()) {
-        subCommRanks0 = algHierarchyInfo_.infos[0];
-    } else {
-        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM2 && !algHierarchyInfo_.infos[1].empty()) {
-        subCommRanks1 = algHierarchyInfo_.infos[1];
-    } else {
-        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        subCommRanks2 = algHierarchyInfo_.infos[2];
-    } else {
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    }
+    FillOmniPipeSubCommRanks(algHierarchyInfo_, myRank_, subCommRanks0, subCommRanks1, subCommRanks2);
     HCCL_INFO(
         "[InsV2AllReduceOmniPipeExecutor][InitSubCommRanks] build per-level sub-communicators, "
         "hierarchy[%s].",
@@ -798,22 +781,7 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     subCommRanks2.clear();
     tempMap.clear();
 
-    if (algHierarchyInfo_.infos.size() >= 1 && !algHierarchyInfo_.infos[0].empty()) {
-        subCommRanks0 = algHierarchyInfo_.infos[0];
-    } else {
-        subCommRanks0.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM2 && !algHierarchyInfo_.infos[1].empty()) {
-        subCommRanks1 = algHierarchyInfo_.infos[1];
-    } else {
-        subCommRanks1.emplace_back(std::vector<u32>{myRank_});
-    }
-    if (algHierarchyInfo_.infos.size() >= ALG_HIERARCHY_NUM3 && !algHierarchyInfo_.infos[2].empty()
-        && !algHierarchyInfo_.infos[2][0].empty()) {
-        subCommRanks2 = algHierarchyInfo_.infos[2];
-    } else {
-        subCommRanks2.emplace_back(std::vector<u32>{myRank_});
-    }
+    FillOmniPipeSubCommRanks(algHierarchyInfo_, myRank_, subCommRanks0, subCommRanks1, subCommRanks2);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         omniNeedSetStepNum_ = (subCommRanks1[0].size() == RANK_SIZE_LEVEL1_4) ? OmniNeedSetStepNum::OMNIPIPE_UBX_16P :
                                                                                 OmniNeedSetStepNum::OMNIPIPE_DEFAULT;

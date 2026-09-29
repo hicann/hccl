@@ -234,12 +234,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     CHK_RET(InitExecutorInfo(param, resCtx));
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     threads_ = resCtx.threads;
-    if (supportSymmetricMemory_) {
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-    }
+    SetSymmetricMemoryInfo(param);
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -303,12 +298,7 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     params.buffInfo.outBuffBaseOff = 0;
     params.buffInfo.hcclBuffBaseOff = 0;
 
-    params.inputSliceStride = params.sliceSize;
-    params.outputSliceStride = params.sliceSize;
-
-    params.repeatNum = 1;
-    params.inputRepeatStride = 0;
-    params.outputRepeatStride = 0;
+    SetSingleRepeatSliceStrides(params);
 }
 
 template <
@@ -328,12 +318,7 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     params.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
     params.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte;
 
-    params.inputSliceStride = params.sliceSize;
-    params.outputSliceStride = params.sliceSize;
-
-    params.repeatNum = 1;
-    params.inputRepeatStride = 0;
-    params.outputRepeatStride = 0;
+    SetSingleRepeatSliceStrides(params);
 }
 
 template <
@@ -354,12 +339,7 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     params.buffInfo.outBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
     params.buffInfo.hcclBuffBaseOff = rankIdxLevel0_ * l0SliceByte + rankIdxLevel1_ * l1SliceByte;
 
-    params.inputSliceStride = params.sliceSize;
-    params.outputSliceStride = params.sliceSize;
-
-    params.repeatNum = 1;
-    params.inputRepeatStride = 0;
-    params.outputRepeatStride = 0;
+    SetSingleRepeatSliceStrides(params);
 }
 
 template <

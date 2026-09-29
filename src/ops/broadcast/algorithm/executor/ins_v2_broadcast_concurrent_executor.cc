@@ -73,14 +73,7 @@ InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
 
@@ -120,25 +113,11 @@ AlgNetMeta InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CommTopo netTypeLevel0 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel0);
 
     OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-        localParam.opExecuteConfig = (std::string(algName).find("CcuMS") != std::string::npos) ?
-                                         OpExecuteConfig::CCU_MS :
-                                         OpExecuteConfig::CCU_SCHED;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
+    SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
 
-    AlgNetMeta meta;
-    meta.netTypes.push_back(netTypeLevel0);
-    meta.netTypes.push_back(netTypeLevel1);
-    meta.intraGroupMode = CostAggMode::MAX;
-    meta.groupSizes = {2};
-    meta.dataRatios = {dataSplitSize[0], dataSplitSize[1]};
-    meta.rankSizes = {rankSize, rankSize};
-    return meta;
+    return BuildConcurrentNetMeta(netTypeLevel0, netTypeLevel1, rankSize, dataSplitSize);
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -223,11 +202,7 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<HcclChannelDesc> channelDescsTemp0;
     CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
         comm, param, topoInfo, temp0HierarchyInfo, channelDescsTemp0, CommTopo::COMM_TOPO_1DMESH));
-    for (const auto& channel : channelDescsTemp0) {
-        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
-            channelDescs0.push_back(channel);
-        }
-    }
+    AppendChannelsByProtocol(channelDescsTemp0, COMM_PROTOCOL_UBC_CTP, channelDescs0);
     CHK_PRT_RET(
         channelDescs0.empty(),
         HCCL_ERROR(
@@ -238,11 +213,7 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<HcclChannelDesc> channelDescs1;
     std::vector<HcclChannelDesc> channelDescsTemp1;
     CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, temp1HierarchyInfo, channelDescsTemp1));
-    for (auto& channel : channelDescsTemp1) {
-        if (channel.channelProtocol == COMM_PROTOCOL_UBC_CTP) {
-            channelDescs1.push_back(channel);
-        }
-    }
+    AppendChannelsByProtocol(channelDescsTemp1, COMM_PROTOCOL_UBC_CTP, channelDescs1);
     CHK_PRT_RET(
         channelDescs1.empty(),
         HCCL_ERROR(
@@ -260,15 +231,7 @@ HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         HcclResult::HCCL_E_INTERNAL);
 
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
-        resourceRequest.ccuKernelNum.insert(
-            resourceRequest.ccuKernelNum.end(), temp0ResReq.ccuKernelNum.begin(), temp0ResReq.ccuKernelNum.end());
-        resourceRequest.ccuKernelNum.insert(
-            resourceRequest.ccuKernelNum.end(), temp1ResReq.ccuKernelNum.begin(), temp1ResReq.ccuKernelNum.end());
-        // 将两个合并
-        resourceRequest.ccuKernelInfos.insert(
-            resourceRequest.ccuKernelInfos.end(), temp0ResReq.ccuKernelInfos.begin(), temp0ResReq.ccuKernelInfos.end());
-        resourceRequest.ccuKernelInfos.insert(
-            resourceRequest.ccuKernelInfos.end(), temp1ResReq.ccuKernelInfos.begin(), temp1ResReq.ccuKernelInfos.end());
+        AppendCcuTemplateResources(resourceRequest, temp0ResReq, temp1ResReq);
     } else if (param.engine == CommEngine::COMM_ENGINE_AICPU || param.engine == CommEngine::COMM_ENGINE_AICPU_TS) {
         resourceRequest.channels.resize(1);
         resourceRequest.channels[0].insert(
@@ -288,14 +251,9 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2BroadcastConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::InitExecutorInfo(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    myRank_ = resCtx.topoInfo.userRank;
-    rankSize_ = resCtx.topoInfo.userRankSize;
+    InitRankAndDataInfo(param, &resCtx.topoInfo);
 
-    dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
-    dataType_ = param.DataDes.dataType;
-    reduceOp_ = param.reduceType;
     maxTmpMemSize_ = resCtx.cclMem.size;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;

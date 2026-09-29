@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_reduce_sequence_executor.h"
+#include "executor_common_ops.h"
 #include "ins_temp_reduce_scatter_mesh_1D_intra.h"
 #include "ins_temp_reduce_scatter_mesh_1D_dpu_inter.h"
 #include "ins_temp_all_gather_nhr_dpu_inter.h"
@@ -344,28 +345,16 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     // 构造框内ReduceScatterMesh1D的template资源
     TemplateResource templateResourceReduceScatterMesh1D;
-    templateResourceReduceScatterMesh1D.channels = remoteRankToChannelInfo_[0];
-    templateResourceReduceScatterMesh1D.threads = resCtx.threads;
-    templateResourceReduceScatterMesh1D.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceReduceScatterMesh1D.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceReduceScatterMesh1D, remoteRankToChannelInfo_[0], resCtx);
     // 构造框间ReduceScatterMesh1dDpu的template资源
     TemplateResource templateResourceReduceScatterMesh1dDpu;
-    templateResourceReduceScatterMesh1dDpu.channels = remoteRankToChannelInfo_[1];
-    templateResourceReduceScatterMesh1dDpu.threads = resCtx.threads;
-    templateResourceReduceScatterMesh1dDpu.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceReduceScatterMesh1dDpu.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceReduceScatterMesh1dDpu, remoteRankToChannelInfo_[1], resCtx);
     // 构造框间AllGatherNhrDPU的template资源
     TemplateResource templateResourceAllGatherNhrDPU;
-    templateResourceAllGatherNhrDPU.channels = remoteRankToChannelInfo_[1];
-    templateResourceAllGatherNhrDPU.threads = resCtx.threads;
-    templateResourceAllGatherNhrDPU.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceAllGatherNhrDPU.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceAllGatherNhrDPU, remoteRankToChannelInfo_[1], resCtx);
     // 构造框内AllGatherMesh1D的template资源
     TemplateResource templateResourceAllGatherMesh1D;
-    templateResourceAllGatherMesh1D.channels = remoteRankToChannelInfo_[0];
-    templateResourceAllGatherMesh1D.threads = resCtx.threads;
-    templateResourceAllGatherMesh1D.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceAllGatherMesh1D.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceAllGatherMesh1D, remoteRankToChannelInfo_[0], resCtx);
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 maxCountPerLoop = tempAlgParamsStepOne.buffInfo.hcclBuff.size / 2 / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN

@@ -73,12 +73,7 @@ InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTempla
     const std::vector<std::vector<PhysicalLevelIndex>>& phyIdxForAlgoLevels = algHierarchyInfo.physicalIdxForAlgoLevels;
     std::vector<std::vector<CommTopo>> phyLevelNetTypes(phyIdxForAlgoLevels.size());
     std::vector<std::vector<std::vector<u32>>> phyLevelPortNums(phyIdxForAlgoLevels.size());
-    for (u32 lvl = 0; lvl < phyIdxForAlgoLevels.size(); lvl++) {
-        for (PhysicalLevelIndex phyIdx : phyIdxForAlgoLevels[lvl]) {
-            phyLevelNetTypes[lvl].push_back(GetPhysicalLevelTopoType(topoInfo, static_cast<u32>(phyIdx)));
-            phyLevelPortNums[lvl].push_back(GetPhysicalLevelPortNums(topoInfo, static_cast<u32>(phyIdx)));
-        }
-    }
+    AppendPhysicalLevelInfo(topoInfo, phyIdxForAlgoLevels, phyLevelNetTypes, phyLevelPortNums);
     CommTopo netTypeLevel0 = phyLevelNetTypes[0][0];
     CommTopo netTypeLevel1 = phyLevelNetTypes[1][0];
     CommTopo netTypeLevel2 = phyLevelNetTypes[2][0];

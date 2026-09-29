@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_barrier_sequence_executor.h"
+#include "executor_common_ops.h"
 #include "ins_temp_barrier_mesh_1D.h"
 #include "ins_temp_barrier_nhr_dpu.h"
 #include "coll_alg_v2_exec_registry.h"
@@ -85,16 +86,10 @@ HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo_.infos[0]);
 
     TemplateResource templateResourceInter;
-    templateResourceInter.channels = remoteRankToChannelInfo_[1];
-    templateResourceInter.threads = resCtx.threads;
-    templateResourceInter.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceInter.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
 
     TemplateResource templateResourceIntra;
-    templateResourceIntra.channels = remoteRankToChannelInfo_[0];
-    templateResourceIntra.threads = resCtx.threads;
-    templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceIntra, remoteRankToChannelInfo_[0], resCtx);
 
     // 先框间（DPU）再框内（AICPU），与 AllGather SequenceExecutor 顺序一致。
     CHK_RET(interTempAlg.KernelRun(param, interTempDataParams, templateResourceInter));
@@ -121,14 +116,7 @@ AlgNetMeta InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 {
     (void)algName;
     (void)param;
-    u32 rankSize = (topoInfo != nullptr) ? topoInfo->userRankSize : 1;
-    AlgNetMeta meta;
-    meta.netTypes.push_back(CommTopo::COMM_TOPO_1DMESH);
-    meta.intraGroupMode = CostAggMode::SUM;
-    meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
-    meta.rankSizes = {rankSize};
-    return meta;
+    return BuildDefaultMeshNetMeta(topoInfo);
 }
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(

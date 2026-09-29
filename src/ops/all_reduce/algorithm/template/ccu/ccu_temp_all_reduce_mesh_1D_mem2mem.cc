@@ -53,10 +53,7 @@ CcuTempAllReduceMeshMem2Mem1D::CcuTempAllReduceMeshMem2Mem1D(
     : CcuAlgTemplateBase(param, rankId, subCommRanks)
 {
     // 获取本卡在子通信域(如果有)中的rankid
-    auto it = std::find(subCommRanks[0].begin(), subCommRanks[0].end(), rankId);
-    if (it != subCommRanks[0].end()) {
-        mySubCommRank_ = std::distance(subCommRanks[0].begin(), it);
-    }
+    mySubCommRank_ = CalcRankIdxInSubComm(rankId, subCommRanks, mySubCommRank_);
     templateRankSize_ = subCommRanks[0].size();
     reduceOp_ = param.reduceType;
     dataType_ = param.DataDes.dataType;
@@ -123,11 +120,7 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::CalcRes(
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
             comm, param, topoInfo, subCommRanks_, myChannelDescs, CommTopo::COMM_TOPO_1DMESH));
-        for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UB_CTP) {
-                channelDescs.push_back(channel);
-            }
-        }
+        AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_CTP, channelDescs);
         HCCL_DEBUG("[CcuTempAllReduceMeshMem2Mem1D::CalcRes] Get Mesh Channel Success!");
     }
     auto kernelArg = std::make_shared<CcuKernelArgAllReduceMeshMem2Mem1D>();

@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_to_all_v_sole_executor.h"
+#include "executor_common_ops.h"
 #include <cstring>
 #include "alg_attrs_registry.h"
 #include "ins_temp_all_to_all_v_mesh_1D.h"
@@ -175,19 +176,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
             param.all2AllVDataDes.sendCounts == nullptr || param.all2AllVDataDes.sdispls == nullptr
                 || param.all2AllVDataDes.recvCounts == nullptr || param.all2AllVDataDes.rdispls == nullptr,
             HCCL_ERROR("[InsV2AlltoAllVSoleExecutor][Orchestrate] all2AllVDataDes pointer is null"), HCCL_E_PTR);
-        for (u32 j = 0; j < rankSize_; j++) {
-            // Send info
-            u64 curSendCounts = *(static_cast<const u64*>(param.all2AllVDataDes.sendCounts) + j);
-            u64 curSendDispls = *(static_cast<const u64*>(param.all2AllVDataDes.sdispls) + j);
-            localSendRecvInfo_.sendCounts[j] = curSendCounts;
-            localSendRecvInfo_.sendDispls[j] = curSendDispls;
-
-            // Recv info
-            u64 curRecvCounts = *(static_cast<const u64*>(param.all2AllVDataDes.recvCounts) + j);
-            u64 curRecvDispls = *(static_cast<const u64*>(param.all2AllVDataDes.rdispls) + j);
-            localSendRecvInfo_.recvCounts[j] = curRecvCounts;
-            localSendRecvInfo_.recvDispls[j] = curRecvDispls;
-        }
+        CopyAllToAllVCountsAndDispls(param, rankSize_, localSendRecvInfo_);
     }
 
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -223,14 +212,10 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     templateAlgRes.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
     // 准备数据
     TemplateDataParams tempAlgParams;
-    tempAlgParams.buffInfo.inputPtr = param.inputPtr;
-    tempAlgParams.buffInfo.outputPtr = param.outputPtr;
+    SetTemplateBuffInfo(
+        tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
-    tempAlgParams.buffInfo.hcclBuff = resCtx.cclMem;
-    tempAlgParams.buffInfo.inBuffType = BufferType::INPUT;
-    tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
-    tempAlgParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // RestoreVarDataAlltoAllV 已经将数据放到对应的指针
     std::vector<u64> sendCounts(rankSize_, 0);

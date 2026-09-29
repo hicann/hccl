@@ -11,7 +11,9 @@
 #include "adapter_error_manager_pub.h"
 #include "base/err_mgr.h"
 
-void RptInputErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value)
+namespace {
+void ReportPredefinedError(
+    const std::string& error_code, const std::vector<std::string>& key, const std::vector<std::string>& value)
 {
     // 将 std::vector<std::string> 转换为 std::vector<const char*>
     std::vector<const char*> key_cstr;
@@ -25,25 +27,17 @@ void RptInputErr(std::string error_code, std::vector<std::string> key, std::vect
     }
 
     REPORT_PREDEFINED_ERR_MSG(error_code.c_str(), key_cstr, value_cstr);
-    return;
+}
+} // namespace
+
+void RptInputErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value)
+{
+    ReportPredefinedError(error_code, key, value);
 }
 
 void RptEnvErr(std::string error_code, std::vector<std::string> key, std::vector<std::string> value)
 {
-    // 将 std::vector<std::string> 转换为 std::vector<const char*>
-    std::vector<const char*> key_cstr;
-    for (const auto& k : key) {
-        key_cstr.push_back(k.c_str());
-    }
-
-    std::vector<const char*> value_cstr;
-    for (const auto& v : value) {
-        value_cstr.push_back(v.c_str());
-    }
-
-    REPORT_PREDEFINED_ERR_MSG(error_code.c_str(), key_cstr, value_cstr);
-
-    return;
+    ReportPredefinedError(error_code, key, value);
 }
 
 // 设备侧（aicpu）环境无liberror_manager且加载链带-z now，强引用会使

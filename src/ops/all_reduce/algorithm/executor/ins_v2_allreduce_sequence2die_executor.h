@@ -12,6 +12,7 @@
 #define HCCLV2_INS_V2_ALLREDUCE_SEQUENCE2DIE_EXECUTOR_H
 
 #include "executor_common_ops.h"
+#include "template_utils.h"
 #include "topo_match_1d.h"
 #include "topo_match_base.h"
 #include "topo_match_base_v2.h"
@@ -19,14 +20,6 @@
 #include <type_traits>
 
 namespace ops_hccl {
-struct SplitSliceInfo {
-    u64 offset{0};
-    u64 size{0};
-    u64 count{0};
-
-    SplitSliceInfo(const u64 offset, const u64 size, const u64 count) : offset(offset), size(size), count(count) {}
-};
-
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 class InsV2AllReduceSequence2DieExecutor : public InsCollAlgBase {
 public:

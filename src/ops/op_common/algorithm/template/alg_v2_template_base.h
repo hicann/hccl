@@ -53,6 +53,16 @@ public:
     bool IsPcieProtocol(const std::map<u32, std::vector<ChannelInfo>>& channels);
 
 protected:
+    // 每个从线程追加一个notify；已有notify列表保持不变。
+    static void SetThreadNotifyRequest(u32 threadNum, AlgResourceRequest& resourceRequest)
+    {
+        resourceRequest.slaveThreadNum = threadNum - 1;
+        for (u32 index = 0; index < threadNum - 1; index++) {
+            resourceRequest.notifyNumPerThread.push_back(1);
+        }
+        resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    }
+
     OpMode opMode_; // 单算子还是图模式
     u32 root_ = 0;  // 一般是scatter、broadcast需要
 

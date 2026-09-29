@@ -17,6 +17,7 @@ constexpr u32 DIE_NUM_2 = 2;
 namespace ops_hccl {
 constexpr double POD_PORT_GROUP_DIVISOR = 2.0; // Pod场景下端口组对半分
 constexpr u32 MIN_PORT_NUM_LAYERS = 2;
+constexpr double FIXED_PARALLEL_SPLIT_RATIO = 0.5;
 
 HcclResult GetAlgRank(const u32 virtRank, const std::vector<u32>& rankIds, u32& algRank)
 {
@@ -529,7 +530,7 @@ double CalcParallelDataSplitRatio(
 {
     if (!SupportsParallelAdaptiveSplit(topoInfo, algHierarchyInfo)) {
         HCCL_INFO("[CalcParallelDataSplitRatio] physical mapping is not {0},{1}, uses fixed ratio[0.5]");
-        return 0.5;
+        return FIXED_PARALLEL_SPLIT_RATIO;
     }
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);
@@ -576,7 +577,7 @@ double CalcParallelDataSplitRatio(
 {
     if (!SupportsParallelAdaptiveSplit(topoInfo, algHierarchyInfo)) {
         HCCL_INFO("[CalcParallelDataSplitRatio] physical mapping is not {0},{1}, uses fixed ratio[0.5]");
-        return 0.5;
+        return FIXED_PARALLEL_SPLIT_RATIO;
     }
     // 主流程仅负责编排，各类校验、公式和日志细节由独立辅助函数处理。
     const double validFallback = NormalizeParallelFallbackRatio(fallbackRatio);

@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_scatter_sequence_executor.h"
+#include "executor_common_ops.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr_dpu_inter_node.h"
 #include "alg_attrs_registry.h"
@@ -209,16 +210,10 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     // 构造框内template资源
     TemplateResource templateResourceIntra;
-    templateResourceIntra.channels = remoteRankToChannelInfo_[0];
-    templateResourceIntra.threads = resCtx.threads;
-    templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceIntra, remoteRankToChannelInfo_[0], resCtx);
     // 构造框间template资源
     TemplateResource templateResourceInter;
-    templateResourceInter.channels = remoteRankToChannelInfo_[1];
-    templateResourceInter.threads = resCtx.threads;
-    templateResourceInter.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
-    templateResourceInter.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
     u64 maxCountPerLoop
