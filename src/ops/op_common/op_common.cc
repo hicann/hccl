@@ -216,13 +216,16 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     // 获取多维度切分比例
     CHK_RET(SetMultipleDimensionSplitRatio(comm, param));
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
-    // CCU模式跨rank协商：各rank交换opExecuteConfig取最低公共值，若被降级则直接走ReSelector回退到该config对应的算法
-    char algNameBuf[ALG_MAX_LENGTH];
-    errno_t algCopyRet = strncpy_s(algNameBuf, ALG_MAX_LENGTH, algName.c_str(), algName.size());
-    CHK_PRT_RET(algCopyRet != EOK, HCCL_ERROR("[%s] strncpy_s for algName failed.", __func__), HCCL_E_MEMORY);
-    void* topoInfoVoidPtr = static_cast<void*>(&topoInfo);
-    CHK_RET(CheckCcuParamAndFallbackC(comm, static_cast<void*>(&param), &topoInfoVoidPtr, algNameBuf, ALG_MAX_LENGTH));
-    algName = algNameBuf;
+    if (HcommIsSupportHcclChannelDestroy()) {
+        // CCU模式跨rank协商：各rank交换opExecuteConfig取最低公共值，若被降级则直接走ReSelector回退到该config对应的算法
+        char algNameBuf[ALG_MAX_LENGTH];
+        errno_t algCopyRet = strncpy_s(algNameBuf, ALG_MAX_LENGTH, algName.c_str(), algName.size());
+        CHK_PRT_RET(algCopyRet != EOK, HCCL_ERROR("[%s] strncpy_s for algName failed.", __func__), HCCL_E_MEMORY);
+        void* topoInfoVoidPtr = static_cast<void*>(&topoInfo);
+        CHK_RET(
+            CheckCcuParamAndFallbackC(comm, static_cast<void*>(&param), &topoInfoVoidPtr, algNameBuf, ALG_MAX_LENGTH));
+        algName = algNameBuf;
+    }
 #endif
     HCCL_INFO("Success to execute Selector.");
     return HCCL_SUCCESS;
@@ -675,15 +678,20 @@ HcclResult FallbackOp(
 {
     OpExecuteConfig nextConfig;
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
-    if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
-        nextConfig = OpExecuteConfig::CCU_SCHED;
-    } else if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
-        nextConfig = OpExecuteConfig::AICPU_TS;
+    if (HcommIsSupportHcclChannelDestroy()) {
+        if (param.opExecuteConfig == OpExecuteConfig::CCU_MS) {
+            nextConfig = OpExecuteConfig::CCU_SCHED;
+        } else if (param.opExecuteConfig == OpExecuteConfig::CCU_SCHED) {
+            nextConfig = OpExecuteConfig::AICPU_TS;
+        } else {
+            HCCL_ERROR(
+                "[FallbackOp] already at AICPU_TS or unknown config[%u], cannot fallback further.",
+                static_cast<uint32_t>(param.opExecuteConfig));
+            return HCCL_E_NOT_SUPPORT;
+        }
     } else {
-        HCCL_ERROR(
-            "[FallbackOp] already at AICPU_TS or unknown config[%u], cannot fallback further.",
-            static_cast<uint32_t>(param.opExecuteConfig));
-        return HCCL_E_NOT_SUPPORT;
+        // HCOMM不支持HcclChannelDestroy，不走CCU逐级回退，直接回退到AICPU_TS
+        nextConfig = OpExecuteConfig::AICPU_TS;
     }
 #else
     nextConfig = OpExecuteConfig::AICPU_TS;
@@ -1564,14 +1572,21 @@ HcclResult GetAlgResWithEngine(
         // 多卡CCU资源协商回退
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
         if (ret == HCCL_E_UNAVAIL || ret == HCCL_SUCCESS) {
-            bool localResAvailable = (ret == HCCL_SUCCESS);
-            auto negRet = CheckCcuResNegotiationC(comm, static_cast<const void*>(&param), localResAvailable);
-            if (negRet == HCCL_E_UNAVAIL) {
-                // 多卡协商失败，释放本端已申请的CCU通道资源
-                ReleaseCcuAcquiredChannels(comm, resRequest);
-                return HCCL_E_UNAVAIL;
+            if (!HcommIsSupportHcclChannelDestroy()) {
+                // HCOMM不支持HcclChannelDestroy，跳过多卡CCU资源协商，本端资源不足直接回退
+                if (ret == HCCL_E_UNAVAIL) {
+                    return HCCL_E_UNAVAIL;
+                }
+            } else {
+                bool localResAvailable = (ret == HCCL_SUCCESS);
+                auto negRet = CheckCcuResNegotiationC(comm, static_cast<const void*>(&param), localResAvailable);
+                if (negRet == HCCL_E_UNAVAIL) {
+                    // 多卡协商失败，释放本端已申请的CCU通道资源
+                    ReleaseCcuAcquiredChannels(comm, resRequest);
+                    return HCCL_E_UNAVAIL;
+                }
+                CHK_RET(negRet);
             }
-            CHK_RET(negRet);
         } else {
             CHK_RET(ret);
         }
