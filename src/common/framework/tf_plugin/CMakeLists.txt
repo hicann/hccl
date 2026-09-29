@@ -31,6 +31,7 @@ target_include_directories(ops_proto_init PRIVATE
 )
 target_compile_options(ops_proto_init PRIVATE -O0 -Dgoogle=ascend_private -D_GLIBCXX_USE_CXX11_ABI=0)
 target_link_libraries(ops_proto_init PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
     graph
     graph_base
     register
@@ -48,6 +49,7 @@ target_include_directories(optf_plugin_hccl PRIVATE
 target_compile_options(optf_plugin_hccl PRIVATE -Dgoogle=ascend_private -D_GLIBCXX_USE_CXX11_ABI=0)
 
 target_link_libraries(optf_plugin_hccl PRIVATE
+    $<BUILD_INTERFACE:intf_pub>
     -Wl,--whole-archive
     ops_proto_init
     -Wl,--no-whole-archive
