@@ -102,10 +102,10 @@ HcclResult TopoMatchPcieMix::TopoForLayer0(
     }
     CHK_RET(DeduplicateLevelRanks(myRank, ranksInMeshTopo, ranksInClosTopo));
     HCCL_DEBUG(
-        "[TopoMatchPcieMix] Rank[%d], netLayer[%u], rank num in 1DMESH topo is [%u]", myRank, netLayer,
+        "[TopoMatchPcieMix] Rank[%d], netLayer[%u], rank num in 1DMESH topo is [%zu]", myRank, netLayer,
         ranksInMeshTopo.size());
     HCCL_DEBUG(
-        "[TopoMatchPcieMix] Rank[%d], netLayer[%u], rank num in CLOS topo is [%u]", myRank, netLayer,
+        "[TopoMatchPcieMix] Rank[%d], netLayer[%u], rank num in CLOS topo is [%zu]", myRank, netLayer,
         ranksInClosTopo.size());
 
     algHierarchyInfo.infos[0].push_back({ranksInMeshTopo});

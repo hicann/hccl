@@ -144,8 +144,8 @@ HcclResult CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes(
         resourceRequest.ccuKernelInfos.push_back(kernelInfo1);
     }
     HCCL_DEBUG(
-        "[CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempAllGather2DiesMeshMem2Mem1D::CalcRes] channelDescs.size()=%zu, dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

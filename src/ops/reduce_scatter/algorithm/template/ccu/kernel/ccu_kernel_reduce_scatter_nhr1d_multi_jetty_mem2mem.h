@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_MUTILJETTY_1D_MEM2MEM_H
-#define HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_MUTILJETTY_1D_MEM2MEM_H
+#ifndef HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_MULTIJETTY_1D_MEM2MEM_H
+#define HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_MULTIJETTY_1D_MEM2MEM_H
 
 #include <vector>
 #include <ios>
@@ -33,7 +33,7 @@ using NHRStepInfo = struct NHRStepInfoDef {
 
 namespace ops_hccl {
 
-struct CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D : public CcuKernelArgBase {
+struct CcuKernelArgReduceScatterNhrMultiJettyMem2Mem1D : public CcuKernelArgBase {
     uint64_t dimSize{0};
     uint32_t rankId{0};
     uint16_t portNum{0};
@@ -44,7 +44,7 @@ struct CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D : public CcuKernelArgBase
 };
 
 struct ReduceScatterNhrMem2Mem1DMultiJettyContext : public CcuKernelCtxBase {
-    const CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D* arg;
+    const CcuKernelArgReduceScatterNhrMultiJettyMem2Mem1D* arg;
 
     uint64_t dimSize{0};
     uint32_t rankId{0};
@@ -81,4 +81,4 @@ struct ReduceScatterNhrMem2Mem1DMultiJettyContext : public CcuKernelCtxBase {
 CcuResult CcuReduceScatterNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg);
 
 } // namespace ops_hccl
-#endif // HCCLV2_CCU_KERNEL_REDUCE_SCATTER_NHR_1D_MUTIL_JETTY_MEM2MEM_H
+#endif // HCCL_CCU_KERNEL_REDUCE_SCATTER_NHR_MULTIJETTY_1D_MEM2MEM_H

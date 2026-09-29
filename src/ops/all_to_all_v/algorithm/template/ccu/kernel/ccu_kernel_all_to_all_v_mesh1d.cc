@@ -86,7 +86,7 @@ static CcuResult InitResource(AlltoAllVMesh1DContext& ctx)
             channelIdx++;
         }
     }
-    HCCL_INFO("output size: %d, token size: %d", ctx.output.size(), ctx.token.size());
+    HCCL_INFO("output size: %zu, token size: %zu", ctx.output.size(), ctx.token.size());
 
     ctx.src.resize(arg->rankSize);
     ctx.dst.resize(arg->rankSize);

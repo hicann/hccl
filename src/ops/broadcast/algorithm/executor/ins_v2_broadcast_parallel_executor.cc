@@ -214,7 +214,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
     HCCL_DEBUG(
         "[InsBroadcastParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
-        "channels[%u]",
+        "channels[%zu]",
         myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
         resourceRequest.channels.size());
     for (auto i = 0; i < resourceRequest.notifyNumPerThread.size(); i++) {
@@ -239,7 +239,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     myRank_ = resCtx.topoInfo.userRank;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
-    HCCL_INFO("[InsBroadcastParallelExecutor][Orchestrate] threads_size[%d]", threads_.size());
+    HCCL_INFO("[InsBroadcastParallelExecutor][Orchestrate] threads_size[%zu]", threads_.size());
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     if (supportSymmetricMemory_) {
         inputOffset_ = param.inputOffset;
@@ -637,7 +637,7 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     for (auto i : intraTempAlgRes.channels) {
         HCCL_DEBUG(
             "[InsBroadcastParallelExecutor][PrepareResForTemplateResource],intraTempAlgRes.channels, myRank_[%u], "
-            "channels[%u]= size[%u] ",
+            "channels[%u]= size[%zu] ",
             myRank_, i.first, i.second.size());
     }
     interTempAlgRes.threads = interThreads_;
@@ -645,12 +645,12 @@ InsBroadcastParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     for (auto i : interTempAlgRes.channels) {
         HCCL_DEBUG(
             "[InsBroadcastParallelExecutor][PrepareResForTemplateResource],interTempAlgRes.channels, myRank_[%u], "
-            "channels[%u]= size[%u] ",
+            "channels[%u]= size[%zu] ",
             myRank_, i.first, i.second.size());
     }
     HCCL_DEBUG(
-        "[InsBroadcastParallelExecutor][PrepareResForTemplateResource] AlgTemplate intraThreads_size[%d] "
-        "interThreads_size[%d] ccuKernelNumSize[%zu] ccuKernelsSize[%zu] isScatter[%u]",
+        "[InsBroadcastParallelExecutor][PrepareResForTemplateResource] AlgTemplate intraThreads_size[%zu] "
+        "interThreads_size[%zu] ccuKernelNumSize[%zu] ccuKernelsSize[%zu] isScatter[%u]",
         intraThreads_.size(), interThreads_.size(), resCtx.ccuKernelNum.size(), resCtx.ccuKernels.size(), isScatter);
 
     return HcclResult::HCCL_SUCCESS;

@@ -163,14 +163,15 @@ static HcclResult AnchorHostDpu(
     }
     if (!found) {
         HCCL_INFO(
-            "[FindAnchors] hostdpu but no HOST layer with localRanks==userRankSize[%u], not support.", userRankSize);
+            "[FindAnchors] hostdpu but no HOST layer with localRanks==userRankSize[%u], unsupported topology.",
+            userRankSize);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     // HOST 锚点以下的物理层数（= topPhysPos）须 >= 剩余待匹配的算法层数（= topAlgo），否则低层无足够物理层
     if (topPhysPos < topAlgo) {
         HCCL_INFO(
-            "[FindAnchors] hostdpu phys layers below host[%u] < remaining algo levels[%u], not support.", topPhysPos,
-            topAlgo);
+            "[FindAnchors] hostdpu phys layers below host[%u] < remaining algo levels[%u], unsupported topology.",
+            topPhysPos, topAlgo);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
     return HcclResult::HCCL_SUCCESS;
@@ -209,7 +210,7 @@ static HcclResult AnchorMeshLevels(
             }
         }
         if (!found && IsMeshConcurAlgo(algoTypes[i])) {
-            HCCL_INFO("[FindAnchors] algo[%u] MeshConcur but no Mesh layer, not support.", i);
+            HCCL_INFO("[FindAnchors] algo[%u] MeshConcur but no Mesh layer, unsupported topology.", i);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
     }
@@ -261,7 +262,8 @@ static HcclResult MatchLastSegment(
     }
     if (!found) {
         HCCL_INFO(
-            "[MatchLastSegment] no physical level with localRanks==userRankSize[%u] in range [%u, %u], not support.",
+            "[MatchLastSegment] no physical level with localRanks==userRankSize[%u] in range [%u, %u], unsupported "
+            "topology.",
             userRankSize, searchStart, physHigh);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
@@ -294,7 +296,7 @@ HcclResult ResolveSegmentMapping(
     // 兜底校验：所有算法层都应已映射到有效的 effIdx position
     for (size_t i = 0; i < pIndices.size(); i++) {
         if (pIndices[i] >= effIdx.size()) {
-            HCCL_INFO("[ResolveSegmentMapping] pIndices[%zu] invalid value[%u], not support.", i, pIndices[i]);
+            HCCL_INFO("[ResolveSegmentMapping] pIndices[%zu] invalid value[%u], unsupported topology.", i, pIndices[i]);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
     }
@@ -353,7 +355,8 @@ HcclResult FillPhysicalIdxForAlgoLevels(
         if (IsMeshConcurAlgo(algoTypes[i])) {
             int32_t upperPos = FindUpperEncompassingLevel(physicalLevels, effIdx, pIndices[i]);
             if (upperPos == INVALID_PHYSICAL_LEVEL_IDX) {
-                HCCL_INFO("[FillPhysicalIdx] level[%u] MeshConcur no upper encompassing layer, not support.", i);
+                HCCL_INFO(
+                    "[FillPhysicalIdx] level[%u] MeshConcur no upper encompassing layer, unsupported topology.", i);
                 return HcclResult::HCCL_E_NOT_SUPPORT;
             }
             physicalIdxForAlgoLevels[i]

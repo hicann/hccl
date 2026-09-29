@@ -79,7 +79,7 @@ HcclResult InsTempAllReduceNHR::CalcRes(
     } else {
         CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level1Channels));
     }
-    HCCL_DEBUG(" %s level1Channels.size() is %u ", __func__, level1Channels.size());
+    HCCL_DEBUG(" %s level1Channels.size() is %zu ", __func__, level1Channels.size());
     resourceRequest.channels.push_back(level1Channels);
     channelsPerRank_ = CalcChannelsPerRank(level1Channels);
     if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {

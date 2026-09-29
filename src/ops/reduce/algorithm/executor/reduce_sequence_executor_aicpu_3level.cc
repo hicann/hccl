@@ -211,7 +211,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
     if (algHierarchyInfo.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
         || algHierarchyInfo.infos.size() > SEQUENCE_EXECUTOR_LEVEL_NUM) {
         HCCL_ERROR(
-            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
+            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%zu] should be 2 or 3",
             algHierarchyInfo.infos.size());
         return HCCL_E_INTERNAL;
     }
@@ -341,7 +341,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
         algHierarchyInfo_.infos.size() < SEQUENCE_EXECUTOR_MIN_LEVEL_NUM
             || algHierarchyInfo_.infos.size() > SEQUENCE_EXECUTOR_LEVEL_NUM,
         HCCL_ERROR(
-            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%u] should be 2 or 3",
+            "[ReduceSequenceExecutorAicpu3Level] algHierarchyInfo size[%zu] should be 2 or 3",
             algHierarchyInfo_.infos.size()),
         HCCL_E_INTERNAL);
 
@@ -650,7 +650,7 @@ HcclResult ReduceSequenceExecutorAicpu3Level<
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
             "[ReduceSequenceExecutorAicpu3Level][GenTempResource] channelLevelIdx[%u] should be lower"
-            "than remoteRankToChannelInfo_.size()[%u]",
+            "than remoteRankToChannelInfo_.size()[%zu]",
             channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }

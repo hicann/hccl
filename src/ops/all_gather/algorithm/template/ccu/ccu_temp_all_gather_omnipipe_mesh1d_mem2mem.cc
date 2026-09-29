@@ -72,7 +72,7 @@ HcclResult CcuTempAllGatherOmniPipeMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[%s] myRank[%u] mySubCommRank[%u] channelSize[%u] dimsize[%u] ccuKernelInfos.size[%u]", __func__, myRank_,
+        "[%s] myRank[%u] mySubCommRank[%u] channelSize[%zu] dimsize[%zu] ccuKernelInfos.size[%zu]", __func__, myRank_,
         mySubCommRank_, channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

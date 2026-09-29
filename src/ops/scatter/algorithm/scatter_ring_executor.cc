@@ -55,8 +55,8 @@ HcclResult ScatterRingExecutor::CalcResRequest(
     resourceRequest.channels.push_back(level2Channels);
 
     HCCL_INFO(
-        "[ScatterRingExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-        " level0Channels[%u] level1Channels[%u] level2Channels[%u].",
+        "[ScatterRingExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%zu] notifyNumOnMainThread[%u]"
+        " level0Channels[%zu] level1Channels[%zu] level2Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
         resourceRequest.notifyNumOnMainThread, level0Channels.size(), level1Channels.size(), level2Channels.size());
     return HCCL_SUCCESS;

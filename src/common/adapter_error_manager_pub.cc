@@ -52,7 +52,7 @@ ErrContext haclrtGetErrMgrContext(void)
     // 复制 reserved 数组
     errno_t ret = memcpy_s(local_ctx.reserved, sizeof(local_ctx.reserved), sdk_ctx.reserved, sizeof(sdk_ctx.reserved));
 
-    CHK_PRT_RET(ret != EOK, HCCL_ERROR("[%s]memcpy failed. errorno[%d]:", __func__, ret), local_ctx);
+    CHK_PRT_RET(ret != EOK, HCCL_ERROR("[%s]memcpy failed. errNo[%d]:", __func__, ret), local_ctx);
 
     return local_ctx;
 }
@@ -66,7 +66,7 @@ void haclrtSetErrMgrContext(ErrContext error_context)
         = memcpy_s(sdk_ctx.reserved, sizeof(sdk_ctx.reserved), error_context.reserved, sizeof(error_context.reserved));
 
     if (ret != EOK) {
-        HCCL_ERROR("[%s]memcpy failed. errorno[%d]:", __func__, ret);
+        HCCL_ERROR("[%s]memcpy failed. errNo[%d]:", __func__, ret);
         return;
     }
 

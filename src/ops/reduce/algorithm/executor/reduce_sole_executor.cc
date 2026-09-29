@@ -127,14 +127,14 @@ template <typename AlgTopoMatch, typename AlgTemplate>
 HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::Orchestrate(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
-    HCCL_INFO("[ReduceSoleExecutor][Orchestrate] Orchestrate Start channels: [%u]", resCtx.channels.size());
+    HCCL_INFO("[ReduceSoleExecutor][Orchestrate] Orchestrate Start channels: [%zu]", resCtx.channels.size());
     // maxTmpMemSize_设定为cclIn的大小，op中将申请的HcclBuff全给了cclIn
     maxTmpMemSize_ = resCtx.cclMem.size;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
-        HCCL_DEBUG("[ReduceSoleExecutor][Orchestrate] info[0].size():%u", remoteRankToChannelInfo_[0].size());
+        HCCL_DEBUG("[ReduceSoleExecutor][Orchestrate] info[0].size():%zu", remoteRankToChannelInfo_[0].size());
     }
     dataType_ = param.DataDes.dataType;
     dataCount_ = param.DataDes.count;
@@ -164,7 +164,7 @@ HcclResult ReduceSoleExecutor<AlgTopoMatch, AlgTemplate>::OrchestrateLoop(
     if (remoteRankToChannelInfo_.size() > 0) {
         templateAlgRes.channels = remoteRankToChannelInfo_[0];
     }
-    HCCL_INFO("[ReduceSoleExecutor][OrchestrateLoop] channels: %u", templateAlgRes.channels.size());
+    HCCL_INFO("[ReduceSoleExecutor][OrchestrateLoop] channels: %zu", templateAlgRes.channels.size());
     // }
     templateAlgRes.threads = resCtx.threads;
     templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;

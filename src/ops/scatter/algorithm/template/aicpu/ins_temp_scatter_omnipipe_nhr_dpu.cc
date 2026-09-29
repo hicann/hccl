@@ -42,7 +42,7 @@ HcclResult InsTempScatterOmniPipeNHRDpu::CalcRes(
     resourceRequest.channels.push_back(level0Channels);
     HCCL_DEBUG(
         "[InsTempScatterOmniPipeNHRDpu][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-        " level0Channels[%u].",
+        " level0Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level0Channels.size());
     return HCCL_SUCCESS;

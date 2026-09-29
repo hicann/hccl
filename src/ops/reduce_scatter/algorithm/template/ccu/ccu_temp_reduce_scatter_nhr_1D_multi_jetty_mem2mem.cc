@@ -69,7 +69,7 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes(
     // 创建每个kernel的ctxArg，放入kernelInfo, 然后将kernelinfo放入resourceRequest.ccuKernelInfos
     CcuKernelInfo kernelInfo;
     CHK_SAFETY_FUNC_RET(strcpy_s(
-        kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceScatterNhrMutilJettyMem2Mem1D"));
+        kernelInfo.kernelFuncName, sizeof(kernelInfo.kernelFuncName), "CcuKernelReduceScatterNhrMultiJettyMem2Mem1D"));
     kernelInfo.kernelFunc = reinterpret_cast<void*>(CcuReduceScatterNhrMem2Mem1DMultiJettyKernel);
 
     std::vector<HcclChannelDesc> channelDescs;
@@ -87,7 +87,7 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes(
     std::vector<HcclChannelDesc> channelResort; // 重排channel
     GetNhrStepInfo(channelResort, stepInfoVector, rank2ChannelIdx);
 
-    auto kernelArg = std::make_shared<CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D>();
+    auto kernelArg = std::make_shared<CcuKernelArgReduceScatterNhrMultiJettyMem2Mem1D>();
     kernelArg->dimSize = subCommRanks_[0].size();
     kernelArg->rankId = mySubCommRank_;
     kernelArg->portNum = portNum;
@@ -100,8 +100,8 @@ HcclResult CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes] myChannelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempReduceScatterNhrMultiJettyMem2Mem1D::CalcRes] myChannelDescs.size()=%zu, dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu",
         myChannelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;

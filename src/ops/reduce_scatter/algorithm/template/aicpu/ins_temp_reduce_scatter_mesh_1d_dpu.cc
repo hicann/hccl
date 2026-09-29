@@ -64,7 +64,7 @@ HcclResult InsTempReduceScatterMesh1dDpu::CalcRes(
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
         "[InsTempReduceScatterMesh1dDpu][CalcRes]slaveThreadNum[%u] notifyNumOnMainThread[%u]"
-        " level1Channels[%u].",
+        " level1Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, level1Channels.size());
     return HCCL_SUCCESS;
 }

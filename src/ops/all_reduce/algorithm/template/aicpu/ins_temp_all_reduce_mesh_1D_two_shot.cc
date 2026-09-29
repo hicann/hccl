@@ -27,7 +27,7 @@ std::vector<CostModelParam> InsTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
     int kernelNum = 20;
     int taskNum = CostModelManager::CalcTransTaskNum(param.rankSize) * 2
                   + CostModelManager::CalcSyncTaskNum(param.rankSize) * 3 + 10;
-    // 第一步是reducescatter，
+    // 第一步是ReduceScatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -74,7 +74,7 @@ HcclResult InsTempAllReduceMesh1DTwoShot::CalcRes(
 
     HCCL_INFO(
         "[InsTempAllReduceMesh1DTwoShot] Calculate resource finished."
-        "resource request: threadNum[%u], main thread notifyNum[%u], channelNum[%u]",
+        "resource request: threadNum[%u], main thread notifyNum[%u], channelNum[%zu]",
         resourceRequest.slaveThreadNum + 1, resourceRequest.notifyNumOnMainThread,
         resourceRequest.channels.at(0).size());
     return HCCL_SUCCESS;
@@ -157,7 +157,7 @@ HcclResult InsTempAllReduceMesh1DTwoShot::KernelRun(
     CHK_PRT_RET(
         sliceInfoList_.size() != templateRankSize_,
         HCCL_ERROR(
-            "[InsTempAllReduceMesh1DTwoShot][KernelRun] slice num[%u] is not equal to rank size[%u].",
+            "[InsTempAllReduceMesh1DTwoShot][KernelRun] slice num[%zu] is not equal to rank size[%u].",
             sliceInfoList_.size(), templateRankSize_),
         HcclResult::HCCL_E_INTERNAL);
 

@@ -21,7 +21,7 @@
 - Plane0-X：表示不同通信流，每个Plane对应一个通信流，HCCL的通信算子编排会通过多流并发来充分利用HCCS物理链路资源。
 - hcom_allReduce_xx：表示通信算子的执行流程，在详细信息中可以看到通信算子的耗时、数据量及数据类型等信息。
 
-由于通信算子由多个notify同步任务及memcpy内存拷贝任务编排而成，若需要在Profiling中显示具体的通信任务编排信息，需至少采集level 1级别的Profiling数据**。**
+由于通信算子由多个notify同步任务及memcpy内存拷贝任务编排而成，若需要在Profiling中显示具体的通信任务编排信息，需至少采集level 1级别的Profiling数据。
 
 ## 同步任务
 

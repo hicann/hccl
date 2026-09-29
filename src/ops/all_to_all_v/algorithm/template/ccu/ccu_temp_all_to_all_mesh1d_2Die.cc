@@ -97,17 +97,17 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
     CHK_PRT_RET(
         subCommRanks_.size() != 1 || subCommRanks_[0].empty(),
         HCCL_ERROR(
-            "[CcuTempAllToAllMesh1D2Die][CalcRes] Invalid subCommRanks[%u] or subCommRanks empty.",
+            "[CcuTempAllToAllMesh1D2Die][CalcRes] Invalid subCommRanks[%zu] or subCommRanks empty.",
             subCommRanks_.size()),
         HcclResult::HCCL_E_INTERNAL);
     HCCL_DEBUG(
-        "[CcuTempAllToAllMesh1D2Die][CalcRes] rankSize[%u] subCommRanks0[%u].", templateRankSize_,
+        "[CcuTempAllToAllMesh1D2Die][CalcRes] rankSize[%u] subCommRanks0[%zu].", templateRankSize_,
         subCommRanks_[0].size());
 
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     CHK_RET(RestoreChannelMap(channelDescs, rankIdToChannelDesc_));
-    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] channelDescs size[%u]", channelDescs.size());
+    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] channelDescs size[%zu]", channelDescs.size());
 
     CHK_RET(PartitionChannels(comm, rankIdToChannelDesc_));
     double ratio = 1.0;
@@ -119,7 +119,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
     resourceRequest.slaveThreadNum = slaveThreadNum;
     resourceRequest.notifyNumPerThread.assign(slaveThreadNum, 1);
     resourceRequest.channels.emplace_back(channelDescs);
-    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] resourceRequest.channels[%d]", resourceRequest.channels.size());
+    HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] resourceRequest.channels[%zu]", resourceRequest.channels.size());
     resourceRequest.ccuKernelNum.push_back(kernelCount_);
 
     for (uint32_t i = 0; i < kernelCount_; i++) {
@@ -140,7 +140,7 @@ HcclResult CcuTempAllToAllMesh1D2Die::CalcRes(
         resourceRequest.ccuKernelInfos.emplace_back(kernelInfo);
         HCCL_INFO("[CcuTempAllToAllMesh1D2Die][CalcRes] kernel[%u], peerBatchSize=%u", i, kernelArg->peerBatchSize);
         HCCL_DEBUG(
-            "[CcuTempAllToAllMesh1D2Die][CalcRes] kernel[%u], channels=%llu, withMyRank=%u, ccuKernelInfos=%llu", i,
+            "[CcuTempAllToAllMesh1D2Die][CalcRes] kernel[%u], channels=%zu, withMyRank=%u, ccuKernelInfos=%zu", i,
             kernelChannels_[i].size(), kernelWithMyRank_[i], resourceRequest.ccuKernelInfos.size());
     }
     return HcclResult::HCCL_SUCCESS;

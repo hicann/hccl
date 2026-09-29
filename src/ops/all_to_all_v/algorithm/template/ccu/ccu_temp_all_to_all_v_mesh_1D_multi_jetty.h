@@ -30,7 +30,7 @@ public:
     std::string Describe() const override
     {
         return StringFormat(
-            "Template of AlltoAllV ccu mesh 1D MultiJetty with tempRankSize [%u].", subCommRanks_[0].size());
+            "Template of AlltoAllV ccu mesh 1D MultiJetty with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     HcclResult CalcRes(

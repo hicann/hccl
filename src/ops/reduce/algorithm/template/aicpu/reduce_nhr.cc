@@ -84,8 +84,8 @@ HcclResult ReduceNHR::CalcRes(
         HcclResult::HCCL_E_INTERNAL);
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
-        "[ReduceNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-        " level1Channels[%u] .",
+        "[ReduceNHR][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%zu] notifyNumOnMainThread[%u]"
+        " level1Channels[%zu] .",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
         resourceRequest.notifyNumOnMainThread, level1Channels.size());
     return HCCL_SUCCESS;
@@ -128,7 +128,7 @@ ReduceNHR::KernelRun(const OpParam& param, const TemplateDataParams& tempAlgPara
 
     const std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     HCCL_DEBUG(
-        "[Kernel Run] myRank_[%u], channels.size():%u, channels first[%u]", myRank_, channels.size(),
+        "[Kernel Run] myRank_[%u], channels.size():%zu, channels first[%u]", myRank_, channels.size(),
         channels.begin()->first);
 
     // 1. 切片

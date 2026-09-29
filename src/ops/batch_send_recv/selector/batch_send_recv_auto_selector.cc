@@ -22,7 +22,7 @@ SelectorStatus BatchSendRecvAutoSelector::SelectAicpuAlgo(
     (void)configAlgMap;
 
     selectAlgName = "AicpuBatchSendRecvSoleMesh";
-    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -35,7 +35,7 @@ SelectorStatus BatchSendRecvAutoSelector::SelectDPUAlgo(
     (void)configAlgMap;
 
     selectAlgName = "DpuBatchSendRecvSoleMesh";
-    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[BatchSendRecvAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 

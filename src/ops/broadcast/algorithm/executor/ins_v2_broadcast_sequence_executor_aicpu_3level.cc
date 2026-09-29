@@ -67,7 +67,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
             "[BroadcastSequenceMesh1dNHRNHRExecutor][GenTempResource] myRank[%u] channelLevelIdx[%u] should be lower"
-            "than remoteRankToChannelInfo_.size()[%u]",
+            "than remoteRankToChannelInfo_.size()[%zu]",
             myRank_, channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }

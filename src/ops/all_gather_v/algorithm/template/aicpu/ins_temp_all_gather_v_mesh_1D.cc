@@ -139,8 +139,8 @@ HcclResult InsTempAllGatherVMesh1D::RunAllGatherVMesh(
             CHK_PRT_RET(
                 threadIdx >= threads.size() || channels.count(connectedRank) == 0 || channels.at(connectedRank).empty(),
                 HCCL_ERROR(
-                    "[InsTempAllGatherVMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
-                    "connectedRank=%d, channels.size=%u",
+                    "[InsTempAllGatherVMesh1D][RankID]=%u threadIdx=%u, threads.size=%zu, "
+                    "connectedRank=%d, channels.size=%zu",
                     myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
                 HcclResult::HCCL_E_INTERNAL);
 

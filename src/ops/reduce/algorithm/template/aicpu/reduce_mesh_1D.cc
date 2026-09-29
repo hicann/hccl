@@ -101,7 +101,7 @@ HcclResult ReduceMesh1D::KernelRun(
     threadNum_ = templateRankSize_;
     CHK_PRT_RET(
         threads.size() != threadNum_,
-        HCCL_ERROR("[ReduceMesh1D] resource threadNum[%u] is invalid, need[%u]", threads.size(), threadNum_),
+        HCCL_ERROR("[ReduceMesh1D] resource threadNum[%zu] is invalid, need[%u]", threads.size(), threadNum_),
         HcclResult::HCCL_E_INTERNAL);
 
     myIdx_ = GetAlgRank(myRank_);

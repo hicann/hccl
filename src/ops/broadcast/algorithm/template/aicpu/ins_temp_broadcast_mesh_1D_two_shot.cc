@@ -233,7 +233,7 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RankRecvData(
         remoteRank);
     for (auto i : channels) {
         HCCL_DEBUG(
-            "[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u], channels[%u]= size[%u] ", myRank_, i.first,
+            "[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u], channels[%u]= size[%zu] ", myRank_, i.first,
             i.second.size());
     }
     // 非root执行常规scatter接收，从root接收本rank的数据分片
@@ -255,7 +255,7 @@ HcclResult InsTempBroadcastMesh1DTwoShot::RankRecvData(
     SlicesList recvDataSlice0(recvSrcSliceVec0, recvDstSliceVec0);
     DataInfo recvDataInfo0(linkRecv, recvDataSlice0);
     HCCL_DEBUG(
-        "[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u] threads size[%u] idx[%u]", myRank_, threads.size(),
+        "[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u] threads size[%zu] idx[%u]", myRank_, threads.size(),
         id);
     CHK_RET(RecvWrite(recvDataInfo0, threads[id]));
     HCCL_DEBUG("[InsTempBroadcastMesh1DTwoShot][RankRecvData],myRank_[%u] RecvWrite1 end", myRank_);

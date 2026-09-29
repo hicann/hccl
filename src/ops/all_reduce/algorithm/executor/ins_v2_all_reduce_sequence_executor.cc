@@ -377,7 +377,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         CHK_PRT_RET(
             tempAlgParamsStepOne.allRankSliceSize.size() != rankSizeLevel0_,
             HCCL_ERROR(
-                "[InsV2AllReduceSequenceExecutor][tempAlgParamsStepOne] slice num[%u] is not equal to rank size[%u].",
+                "[InsV2AllReduceSequenceExecutor][tempAlgParamsStepOne] slice num[%zu] is not equal to rank size[%u].",
                 tempAlgParamsStepOne.allRankSliceSize.size(), rankSizeLevel0_),
             HcclResult::HCCL_E_INTERNAL);
         tempAlgParamsStepOne.sliceSize = 0; // 没用到，template里面用SplitData算了
@@ -415,7 +415,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
             CHK_PRT_RET(
                 tempAlgParamsStepTwo.allRankSliceSize.size() != rankSizeLevel1_,
                 HCCL_ERROR(
-                    "[InsV2AllReduceSequenceExecutor][tempAlgParamsStepTwo] slice num[%u] is not "
+                    "[InsV2AllReduceSequenceExecutor][tempAlgParamsStepTwo] slice num[%zu] is not "
                     "equal to rank size[%u].",
                     tempAlgParamsStepTwo.allRankSliceSize.size(), rankSizeLevel1_),
                 HcclResult::HCCL_E_INTERNAL);

@@ -38,7 +38,7 @@ HcclResult InsTempScatterOmniPipeMesh1D::CalcRes(
 
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
-    HCCL_DEBUG("InsTempScatterOmniPipeMesh1D--CalcRes],level0Channels.size()=[%u]", level0Channels.size());
+    HCCL_DEBUG("InsTempScatterOmniPipeMesh1D--CalcRes],level0Channels.size()=[%zu]", level0Channels.size());
     resourceRequest.channels.push_back(level0Channels);
     HCCL_DEBUG("Resource calculation is temporarily not performed in the template.");
     return HCCL_SUCCESS;
@@ -144,7 +144,7 @@ HcclResult InsTempScatterOmniPipeMesh1D::RunScatter(
     // 这里获取子通信域的subrank给myAlgRank
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_DEBUG(
-        "[InsTempScatterOmniPipeMesh1D][RunScatter] myRank[%u], myAlgRank[%u], root[%u], channels.size=%u "
+        "[InsTempScatterOmniPipeMesh1D][RunScatter] myRank[%u], myAlgRank[%u], root[%u], channels.size=%zu "
         "templateRankSize_=%u",
         myRank_, myAlgRank, root_, channels.size(), templateRankSize_);
 
@@ -218,7 +218,7 @@ HcclResult InsTempScatterOmniPipeMesh1D::SendRootDataToRank(
         return HcclResult::HCCL_SUCCESS;
     }
     if (threadIdx >= threads.size()) {
-        HCCL_ERROR("[RunScatter] threadIdx[%u] >= threads.size[%u]", threadIdx, threads.size());
+        HCCL_ERROR("[RunScatter] threadIdx[%u] >= threads.size[%zu]", threadIdx, threads.size());
         return HcclResult::HCCL_E_INTERNAL;
     }
     SlicesList txSlicesList({txSrcSlices}, {txDstSlices});

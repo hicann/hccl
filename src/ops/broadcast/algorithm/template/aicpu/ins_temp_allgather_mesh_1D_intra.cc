@@ -115,8 +115,8 @@ HcclResult InsTempAllGatherMesh1DIntra::RunAllGatherMesh(
             CHK_PRT_RET(
                 threadIdx >= threads.size() || !channels.count(connectedRank),
                 HCCL_ERROR(
-                    "[InsTempAllGatherMesh1DIntra][RankID]=%u threadIdx=%u, threads.size=%u, "
-                    "connectedRank=%d, channels.size=%u",
+                    "[InsTempAllGatherMesh1DIntra][RankID]=%u threadIdx=%u, threads.size=%zu, "
+                    "connectedRank=%d, channels.size=%zu",
                     myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
                 HcclResult::HCCL_E_INTERNAL);
 
@@ -124,7 +124,7 @@ HcclResult InsTempAllGatherMesh1DIntra::RunAllGatherMesh(
             u64 remoteCount = tempAlgParams_.allRankProcessedDataCount.at(connectedAlgRank);
             u64 remoteOffset = tempAlgParams_.allRankDispls.at(connectedAlgRank);
 
-            // 既不发送也不接受
+            // 既不发送也不接收
             if (localSize == 0 && remoteSize == 0) {
                 continue;
             }

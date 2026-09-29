@@ -38,7 +38,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::CalcRes(
     HCCL_INFO(
         "[InsTempReduceScatterOmniPipeMesh1dDpu][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] "
         "notifyNumOnMainThread[%u]"
-        " level0Channels[%u].",
+        " level0Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level0Channels.size());
     return HCCL_SUCCESS;
@@ -249,7 +249,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::DPUKernelRun(
     templateRankSize_ = subCommRanks[0].size();
     subCommRanks_ = subCommRanks;
 #ifndef AICPU_COMPILE
-    HCCL_INFO("MT start to RunReduceScatter, channels.size()=%u", channels.size());
+    HCCL_INFO("MT start to RunReduceScatter, channels.size()=%zu", channels.size());
     u32 myAlgRank = 0;
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank);
     if (iter != subCommRanks_[0].end()) {

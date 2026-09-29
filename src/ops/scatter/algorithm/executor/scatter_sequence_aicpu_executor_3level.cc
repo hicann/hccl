@@ -148,19 +148,19 @@ HcclResult ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     resourceRequest.channels.resize(SEQUENCE_EXECUTOR_LEVEL_NUM);
     if (resReq0.channels.empty()) {
         HCCL_ERROR(
-            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level0[%u] level2[%u]", myRank_,
+            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level0[%zu] level2[%zu]", myRank_,
             resReq0.channels.size(), resReq2.channels.size());
         return HCCL_E_INTERNAL;
     }
     if (!skipLevel1_ && resReq1.channels.empty()) {
         HCCL_ERROR(
-            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level1[%u]", myRank_,
+            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level1[%zu]", myRank_,
             resReq1.channels.size());
         return HCCL_E_INTERNAL;
     }
     if (!skipLevel2_ && resReq2.channels.empty()) {
         HCCL_ERROR(
-            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level2[%u]", myRank_,
+            "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] channels empty, level2[%zu]", myRank_,
             resReq2.channels.size());
         return HCCL_E_INTERNAL;
     }
@@ -173,7 +173,7 @@ HcclResult ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     }
     HCCL_INFO(
         "[ScatterSequenceAicpu3LevelExecutor] myRank[%u] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "
-        "level0 channel size [%u], level1 channel size [%u], level2 channel size [%u]",
+        "level0 channel size [%zu], level1 channel size [%zu], level2 channel size [%zu]",
         myRank_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread,
         resourceRequest.channels[0].size(), resourceRequest.channels[1].size(), resourceRequest.channels[2].size());
     return HCCL_SUCCESS;
@@ -337,7 +337,7 @@ ScatterSequenceAicpu3LevelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
             "[ScatterSequenceAicpu3LevelExecutor][GenTempResource] myRank[%u] channelLevelIdx[%u] should be lower"
-            "than remoteRankToChannelInfo_.size()[%u]",
+            "than remoteRankToChannelInfo_.size()[%zu]",
             myRank_, channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }

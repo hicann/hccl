@@ -108,12 +108,12 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::CalcRes(
         resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
         HCCL_DEBUG(
-            "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] channelDescs.size()=%llu, rankSize=%llu, ",
+            "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] channelDescs.size()=%zu, rankSize=%zu, ",
             channelDescsDie[die].size(), groupRanksforDie[die].size());
     }
 
     HCCL_DEBUG(
-        "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] ccuKernelInfos.size()=%llu",
+        "[CcuTempAllreduceMesh1D2DieOneShot::CalcRes] ccuKernelInfos.size()=%zu",
         resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

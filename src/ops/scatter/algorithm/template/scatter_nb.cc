@@ -172,7 +172,7 @@ HcclResult ScatterNB::RunAsync(const u32 rank, const u32 rankSize, std::vector<C
 
     CHK_PRT_RET(
         channels.size() < rankSize,
-        HCCL_ERROR("[ScatterNB][RunAsync]rank[%u] channel size[%llu] is less than rank size", rank, channels.size()),
+        HCCL_ERROR("[ScatterNB][RunAsync]rank[%u] channel size[%zu] is less than rank size", rank, channels.size()),
         HCCL_E_INTERNAL);
 
     CHK_RET(RunScatterNB(channels));

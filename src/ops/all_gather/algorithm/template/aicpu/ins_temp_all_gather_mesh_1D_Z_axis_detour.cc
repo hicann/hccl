@@ -118,11 +118,11 @@ HcclResult InsTempAllGatherMesh1D1DZAxisDetour::CalcRes(
     level1ChannelNumPerRank_ = level1Channels.empty() ? 0 : CalcChannelsPerRank(level1Channels);
     channelsPerRank_ = level0ChannelNumPerRank_ + level1ChannelNumPerRank_;
     std::vector<HcclChannelDesc> mergedChannels;
-    HCCL_INFO("level0Channels[%d]level1Channels[%d]\n", level0Channels.size(), level1Channels.size());
+    HCCL_INFO("level0Channels[%zu]level1Channels[%zu]\n", level0Channels.size(), level1Channels.size());
     mergedChannels.insert(mergedChannels.end(), level0Channels.begin(), level0Channels.end());
     mergedChannels.insert(mergedChannels.end(), level1Channels.begin(), level1Channels.end());
     resourceRequest.channels.push_back(mergedChannels);
-    HCCL_INFO("mergedChannels[%d]\n", mergedChannels.size());
+    HCCL_INFO("mergedChannels[%zu]\n", mergedChannels.size());
 
     if (subCommRanks_.size() <= COMM_LEVEL0) {
         return HCCL_E_PARA;

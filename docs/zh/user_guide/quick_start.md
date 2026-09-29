@@ -14,11 +14,11 @@ AllReduce操作是将通信域内所有节点的输入数据进行归约操作�
 
 用户可以点击[样例链接](https://gitcode.com/cann/hcomm/tree/9.2.0/examples/01_communicators/03_one_device_per_pthread)获取完整样例代码，该样例基于root节点信息创建通信域，在一个进程中管理一个AI Server，其中每个NPU设备由一个线程进行管理，主要包含以下功能点：
 
-- 设备检测，通过aclrtGetDeviceCount( )接口查询可用设备数量。
-- 将rank0作为root节点，通过HcclGetRootInfo( )接口生成root节点的rootInfo标识信息。
+- 设备检测，通过aclrtGetDeviceCount()接口查询可用设备数量。
+- 将rank0作为root节点，通过HcclGetRootInfo()接口生成root节点的rootInfo标识信息。
 
-- 基于rootInfo，在每个线程中通过HcclCommInitRootInfo( )接口初始化通信域。
-- 调用HcclAllReduce( ) 接口，将通信域内所有rank的输入数据进行相加后，再把结果发送到所有节点，并打印结果。
+- 基于rootInfo，在每个线程中通过HcclCommInitRootInfo()接口初始化通信域。
+- 调用HcclAllReduce()接口，将通信域内所有rank的输入数据进行相加后，再把结果发送到所有节点，并打印结果。
 
 ## 编译运行
 

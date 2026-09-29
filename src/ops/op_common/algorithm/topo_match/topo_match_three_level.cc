@@ -56,8 +56,9 @@ namespace {
             HcclResult::HCCL_E_NOT_SUPPORT);
         if (!sym0 || !sym1) {
             HCCL_INFO(
-                "[TopoMatchThreeLevel] Rank [%u], asymmetric detected (sym0[%d] sym1[%d]), not support.", myRank,
-                static_cast<int32_t>(sym0), static_cast<int32_t>(sym1));
+                "[TopoMatchThreeLevel] Rank [%u], asymmetric topology detected (sym0[%d] sym1[%d]), unsupported "
+                "topology.",
+                myRank, static_cast<int32_t>(sym0), static_cast<int32_t>(sym1));
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         if (d0 == 0 || level1TotalSize == 0 || level1TotalSize % d0 != 0) {
@@ -75,7 +76,9 @@ namespace {
         }
         d2 = userRankSize / d0 / d1;
         if (d2 == 1) {
-            HCCL_INFO("[TopoMatchThreeLevel] Rank [%u], d0=%u, d1=%u, d2=1, not support three level.", myRank, d0, d1);
+            HCCL_INFO(
+                "[TopoMatchThreeLevel] Rank [%u], d0=%u, d1=%u, d2=1, three-level topology is not supported.", myRank,
+                d0, d1);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         return HcclResult::HCCL_SUCCESS;

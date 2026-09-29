@@ -389,11 +389,11 @@ HcclResult InsTempAllGatherNHR::RunStepNHR(
     if (isDmaRead_) {
         CHK_PRT_RET(
             SendRecvRead(sendRecvInfo, threads[channelIdx]),
-            HCCL_ERROR("[InsTempAllGatherNHR] sendrecv batch failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
+            HCCL_ERROR("[InsTempAllGatherNHR] SendRecv batch failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
     } else {
         CHK_PRT_RET(
             SendRecvBatchWrite(sendRecvInfo, threads[channelIdx]),
-            HCCL_ERROR("[InsTempAllGatherNHR] sendrecv batch failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
+            HCCL_ERROR("[InsTempAllGatherNHR] SendRecv batch failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
     }
     return HCCL_SUCCESS;
 }

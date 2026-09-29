@@ -113,7 +113,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(
 
         HCCL_INFO(
             "[CcuTempReduceScatterMeshMem2Mem1D2Die] kernelIdx[%u], dieId[%u], meshDieId[%u], gRankSize[%d], "
-            "rankSize[%d], myRank[%d], isReduceToOutput[%d], channels[%u]",
+            "rankSize[%zu], myRank[%d], isReduceToOutput[%d], channels[%zu]",
             i, dieId, meshDieId, templateRankSize_, rankGroup_[dieId].size(), myRank_, isReduceToOutput,
             channels_[dieId].size());
         kernelInfo.channels = channels_[dieId];
@@ -121,8 +121,8 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes(
     }
 
     HCCL_DEBUG(
-        "[CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempReduceScatterMeshMem2Mem1D2Die::CalcRes] channelDescs.size()=%zu, dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;
@@ -190,7 +190,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::PartitionByTwoDieRegular(
     CHK_PRT_RET(
         singleChByDie.size() != DIE_NUM,
         HCCL_ERROR(
-            "[CcuTempReduceScatterMeshMem2Mem1D2Die][PartitionByTwoDieRegular] Rank[%u] singleChByDie size[%u] "
+            "[CcuTempReduceScatterMeshMem2Mem1D2Die][PartitionByTwoDieRegular] Rank[%u] singleChByDie size[%zu] "
             "!= DIE_NUM[%u].",
             myRank_, singleChByDie.size(), DIE_NUM),
         HcclResult::HCCL_E_INTERNAL);
@@ -202,7 +202,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::PartitionByTwoDieRegular(
     meshDieId = it0->first;
     HCCL_INFO(
         "[CcuTempReduceScatterMeshMem2Mem1D2Die][PartitionByTwoDieRegular] Rank[%u] two_die_regular, "
-        "die[%u] channels[%u] -> meshDieId, die[%u] channels[%u] -> closDieId.",
+        "die[%u] channels[%zu] -> meshDieId, die[%u] channels[%zu] -> closDieId.",
         myRank_, it0->first, it0->second.size(), it1->first, it1->second.size());
     for (const auto& ch : it0->second) {
         channels_[it0->first].emplace_back(ch);
@@ -236,7 +236,7 @@ HcclResult CcuTempReduceScatterMeshMem2Mem1D2Die::PartitionChannels(
 
     HCCL_INFO(
         "[CcuTempReduceScatterMeshMem2Mem1D2Die][PartitionChannels] Rank[%u], hasMultiChannel[%d], "
-        "meshDieId[%u], die0 channels[%u] rankGroup[%u], die1 channels[%u] rankGroup[%u].",
+        "meshDieId[%u], die0 channels[%zu] rankGroup[%zu], die1 channels[%zu] rankGroup[%zu].",
         myRank_, hasMultiChannel, meshDieId, channels_[0].size(), rankGroup_[0].size(), channels_[1].size(),
         rankGroup_[1].size());
 

@@ -28,7 +28,7 @@ static HcclResult OpLaunchGetUnfoldStream(HcclComm comm, ThreadHandle unfoldThre
         = HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, unfoldThread, 0, sizeof(void*), &unfoldStream);
     if (ret == HCCL_E_NOT_SUPPORT) {
         resolvedStream = nullptr;
-        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcclThreadResGetInfo not support.");
+        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcclThreadResGetInfo is not supported.");
         return HCCL_SUCCESS;
     } else if (ret != HCCL_SUCCESS) {
         resolvedStream = nullptr;
@@ -52,7 +52,7 @@ static HcclResult OpLaunchGetHostOrderStream(ThreadHandle hostOrderThread, aclrt
         = HcclThreadResGetInfoFunc.dlHcommThreadResGetInfo(hostOrderThread, 0, sizeof(void*), &hostOrderStream);
     if (ret == HCCL_E_NOT_SUPPORT) {
         resolvedStream = nullptr;
-        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcommThreadResGetInfo not support.");
+        HCCL_WARNING("HcclThreadResGetInfoFunc dlHcommThreadResGetInfo is not supported.");
         return HCCL_SUCCESS;
     } else if (ret != HCCL_SUCCESS) {
         resolvedStream = nullptr;

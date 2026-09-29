@@ -37,7 +37,7 @@ HcclResult InsTempRecvHostNicDpu::CalcRes(
     resourceRequest.channels.push_back(level1Channels);
     HCCL_INFO(
         "[InsTempRecvHostNicDpu][CalcRes]slaveThreadNum[%u], notifyNumPerThread [%u], notifyNumOnMainThread [%u],"
-        " level1Channels [%u].",
+        " level1Channels [%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level1Channels.size());
     return HCCL_SUCCESS;

@@ -283,7 +283,7 @@ REGISTER_ALG_ATTRS(
     };
     op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
 
-// 注册分组 all2all 版保序 ReduceScatter 执行器（大于32卡场景）
+// 注册分组 AlltoAll 版保序 ReduceScatter 执行器（大于32卡场景）
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
     InsV2ReduceScatterOrderPreservedExecutor, TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup);

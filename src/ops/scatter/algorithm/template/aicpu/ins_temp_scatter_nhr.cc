@@ -172,7 +172,7 @@ HcclResult InsTempScatterNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo
             txSliceIdx = (txSliceIdx + rankSize - deltaSliceIndex) % rankSize;
         }
         HCCL_DEBUG(
-            "[InsTempScatterNHR][GetStepInfo] rankSize[%u], myAlgRank[%d], sendTo Idx[%u]", subCommRanks_[0].size(),
+            "[InsTempScatterNHR][GetStepInfo] rankSize[%zu], myAlgRank[%d], sendTo Idx[%u]", subCommRanks_[0].size(),
             myAlgRank, sendTo);
         stepInfo.toRank = subCommRanks_[0].at(sendTo);
         stepInfo.nSlices = nSlices;
@@ -188,7 +188,7 @@ HcclResult InsTempScatterNHR::GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo
             rxSliceIdx = (rxSliceIdx + rankSize - deltaSliceIndex) % rankSize;
         }
         HCCL_DEBUG(
-            "[InsTempScatterNHR][GetStepInfo] rankSize[%u], myAlgRank[%d], recvFrom Idx[%u]", subCommRanks_[0].size(),
+            "[InsTempScatterNHR][GetStepInfo] rankSize[%zu], myAlgRank[%d], recvFrom Idx[%u]", subCommRanks_[0].size(),
             myAlgRank, recvFrom);
         stepInfo.fromRank = subCommRanks_[0].at(recvFrom);
         stepInfo.nSlices = nSlices;
@@ -231,7 +231,7 @@ HcclResult InsTempScatterNHR::KernelRun(
     HCCL_DEBUG("[InsTempScatterNHR] Use Dma Read[%d]", isDmaRead_);
     CHK_RET(PrepareDataSplitForMultiChannel(templateResource, tempAlgParams));
 
-    HCCL_INFO("[InsTempScatterNHR] queNum_ = [%d], threads size = [%d]", threadNum_, templateResource.threads.size());
+    HCCL_INFO("[InsTempScatterNHR] queNum_ = [%d], threads size = [%zu]", threadNum_, templateResource.threads.size());
     HCCL_INFO("[InsTempScatterNHR] Run Start");
     CHK_PRT_RET(
         templateResource.threads.empty(), HCCL_ERROR("[InsTempScatterNHR][KernelRun] threads is empty"),

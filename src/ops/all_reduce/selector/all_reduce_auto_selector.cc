@@ -72,7 +72,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuMsAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_DEBUG("[AllReduceAutoSelector] ccu_ms mode not support INT64, UINT64, FP64.");
+        HCCL_DEBUG("[AllReduceAutoSelector] ccu_ms mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -135,7 +135,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(
         return SelectorStatus::NOT_MATCH;
     }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        if (IsInputOutputOverlap(opParam) == true) { // 不支持 inplace 场景
+        if (IsInputOutputOverlap(opParam) == true) { // 不支持 in-place 场景
             return SelectorStatus::NOT_MATCH;
         }
         if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
@@ -158,7 +158,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(
         }
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (IsInputOutputOverlap(opParam) == true) {
-            // 不支持 inplace 场景
+            // 不支持 in-place 场景
             return SelectorStatus::NOT_MATCH;
         }
         return SelectMeshUBXAlgo(topoInfo, selectAlgName, dataSize);
@@ -206,7 +206,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_DEBUG("[AllReduceAutoSelector] ccu_schedule mode not support INT64, UINT64, FP64.");
+        HCCL_DEBUG("[AllReduceAutoSelector] ccu_schedule mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
@@ -216,7 +216,7 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleAlgo(
         if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
             CHK_PRT_RET(
                 IsInputOutputOverlap(opParam) == true,
-                HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_sched does not support inplace allreduce."),
+                HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_sched does not support in-place allreduce."),
                 SelectorStatus::NOT_MATCH);
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
             if (topoInfo->Level1Nhr) {
@@ -360,10 +360,10 @@ SelectorStatus AllReduceAutoSelector::SelectCcuScheduleLevel0Algo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName,
     const u64 dataSize) const
 {
-    // ccu 模式不支持 inplace 场景
+    // ccu 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_sched does not support inplace allreduce."),
+        HCCL_WARNING("[Algo][AllReduceAutoSelector] ccu_sched does not support in-place allreduce."),
         SelectorStatus::NOT_MATCH);
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         return SelectCcuScheduleLevel0AlgoMesh1D(topoInfo, opParam, selectAlgName, dataSize);
@@ -418,10 +418,10 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
 
     if (IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize)) {
         if (topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED) {
-            // 内部reducescatter中采用分组all2all + NHR 算法
+            // 内部ReduceScatter中采用分组AlltoAll + NHR 算法
             selectAlgName = "AicpuAllReduceStrictOrderedGroupMesh";
         } else {
-            // 内部reducescatter中采用非分组all2all + mesh1D 算法
+            // 内部ReduceScatter中采用非分组AlltoAll + mesh1D 算法
             selectAlgName = "AicpuAllReduceStrictOrderedMesh";
         }
         HCCL_INFO(
@@ -644,7 +644,8 @@ SelectorStatus AllReduceAutoSelector::SelectAivAlgo(
 
     if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_DEBUG, "[Algo][AllReduceAutoSelector] aiv mode not support UINT64, FP64.");
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_DEBUG, "[Algo][AllReduceAutoSelector] aiv mode does not support UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 

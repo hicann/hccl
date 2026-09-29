@@ -145,7 +145,7 @@ bash build.sh --pkg --full --experimental
 option(ENABLE_EXPERIMENTAL "Enable experimental features" OFF)
 ```
 
-To enable experimental functions, use the `--experimental option`. This sets the compilation flag `-DENABLE_EXPERIMENTAL=ON`, which in turn causes the `experimental/ops/` subdirectory to be compiled. Disabled by default, with no impact on existing builds.
+To enable experimental functions, use the `--experimental` option. This sets the compilation flag `-DENABLE_EXPERIMENTAL=ON`, which in turn causes the `experimental/ops/` subdirectory to be compiled. Disabled by default, with no impact on existing builds.
 
 #### 2.3 API Compatibility
 
@@ -333,7 +333,7 @@ When conditions are not met, the workflow exits and logs error messages via HCCL
 
 - Compare against the RHD algorithm, measuring Task Duration across different message sizes.
 - Expected: For message sizes >= 16MB, BIRS achieves up to 25% improvement over RHD.
-- Note: At the moment of this RFC creation kernel submission mechanism in HCCL is slower than the one of HCOMM, so 25% performance improvement applies only to operator execution time (without submission overhead).
+- Note: At the moment of this RFC creation, kernel submission mechanism in HCCL is slower than that of HCOMM, so 25% performance improvement applies only to operator execution time (without submission overhead).
 
 #### 6.4 Regression Testing
 
@@ -355,7 +355,7 @@ N/A
 ## Open Questions
 
 1. **AllReduce extension**: Batch-invariant AllReduce which follows the same ideas will be submitted in separate PR.
-2. **Efficient support for arbitrary rank enumeration**: Current solution assumes default rank enumeration where rankID of SIO neighbour of RankX can be calculated as (RankX XOR 1). In case of other rank enumerations BIRS is functional but doesn't deliver performance advantage over RHD. Efficient support for custom enumerations have already been implemented and will be submitted in the next PR.
+2. **Efficient support for arbitrary rank enumeration**: Current solution assumes default rank enumeration where rankID of SIO neighbour of RankX can be calculated as (RankX XOR 1). In case of other rank enumerations BIRS is functional but doesn't deliver performance advantage over RHD. Efficient support for custom enumerations has already been implemented and will be submitted in the next PR.
 
 ---
 

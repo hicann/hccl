@@ -32,12 +32,12 @@ HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(
     CHK_PRT_RET(
         subCommRanks_.size() != 1 || subCommRanks_[0].empty(),
         HCCL_ERROR(
-            "[CcuTempAlltoAllVMesh2Die][CalcRes] Invalid subCommRanks[%u] or subCommRanks empty.",
+            "[CcuTempAlltoAllVMesh2Die][CalcRes] Invalid subCommRanks[%zu] or subCommRanks empty.",
             subCommRanks_.size()),
         HcclResult::HCCL_E_INTERNAL);
 
     HCCL_DEBUG(
-        "[CcuTempAlltoAllVMesh2Die][CalcRes] rankSize[%u] subCommRanks0[%u].", templateRankSize_,
+        "[CcuTempAlltoAllVMesh2Die][CalcRes] rankSize[%u] subCommRanks0[%zu].", templateRankSize_,
         subCommRanks_[0].size());
 
     // 需要从流
@@ -47,7 +47,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(
 
     std::vector<HcclChannelDesc> channelDescs;
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
-    HCCL_DEBUG("[CcuTempAlltoAllVMesh2Die][CalcRes] channelDescs size[%u].", channelDescs.size());
+    HCCL_DEBUG("[CcuTempAlltoAllVMesh2Die][CalcRes] channelDescs size[%zu].", channelDescs.size());
     CHK_RET(PartitionChannels(comm, channelDescs));
     resourceRequest.channels.emplace_back(channelDescs);
 
@@ -69,7 +69,7 @@ HcclResult CcuTempAlltoAllVMesh2Die::CalcRes(
         kernelInfo.channels = channels_[dieId];
         resourceRequest.ccuKernelInfos.emplace_back(kernelInfo);
         HCCL_DEBUG(
-            "[CcuTempAlltoAllVMesh2Die][CalcRes] dieId=%u, channels=%llu, withMyRank=%u, ccuKernelInfos=%llu", dieId,
+            "[CcuTempAlltoAllVMesh2Die][CalcRes] dieId=%u, channels=%zu, withMyRank=%u, ccuKernelInfos=%zu", dieId,
             channels_[dieId].size(), withMyRank, resourceRequest.ccuKernelInfos.size());
     }
 
@@ -110,11 +110,11 @@ HcclResult CcuTempAlltoAllVMesh2Die::PartitionChannels(HcclComm comm, const std:
         minChannels + 1 != maxChannels,
         HCCL_ERROR(
             "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], Unexpected channels size, "
-            "die0 channels[%u], die1 channels[%u].",
+            "die0 channels[%zu], die1 channels[%zu].",
             myRank_, channels_[0].size(), channels_[1].size()),
         HcclResult::HCCL_E_PARA);
     HCCL_DEBUG(
-        "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], die0 channels[%u], die1 channels[%u].", myRank_,
+        "[CcuTempAlltoAllVMesh2Die][PartitionChannels] Rank[%d], die0 channels[%zu], die1 channels[%zu].", myRank_,
         channels_[0].size(), channels_[1].size());
     // keep myRank_ at last, sync with kernel
     if (channels_[0].size() < channels_[1].size()) {

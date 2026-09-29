@@ -212,7 +212,7 @@ HcclResult InsTempReduceScatterMesh1DIntra::RunReduceScatter(
         u64 sendCount = tempAlgParam.allRankProcessedDataCount.at(nextRank);
         u64 sendOffset = tempAlgParam.allRankDispls.at(nextRank);
 
-        if (sendSize == 0 && recvSize == 0) { // 既不发送也不接受
+        if (sendSize == 0 && recvSize == 0) { // 既不发送也不接收
             continue;
         }
 

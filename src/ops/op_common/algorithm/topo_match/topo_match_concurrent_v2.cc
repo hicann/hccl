@@ -43,12 +43,13 @@ static HcclResult ResolveConcurrentPhysicalIdx(
     }
     CHK_PRT_RET(
         meshPos == INVALID_PHYSICAL_LEVEL_IDX,
-        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], Mesh algo but no mesh topo layer, not support.", myRank),
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], Mesh algo but no mesh topo layer, unsupported topology.", myRank),
         HcclResult::HCCL_E_NOT_SUPPORT);
     int32_t upperPos = FindUpperEncompassingLevel(physicalLevels, effIdx, static_cast<u32>(meshPos));
     CHK_PRT_RET(
         upperPos == INVALID_PHYSICAL_LEVEL_IDX,
-        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], mesh layer no upper encompassing layer, not support.", myRank),
+        HCCL_INFO(
+            "[TopoMatchConcurrentV2] Rank [%u], mesh layer no upper encompassing layer, unsupported topology.", myRank),
         HcclResult::HCCL_E_NOT_SUPPORT);
     physicalIdxForAlgoLevels
         = {{static_cast<PhysicalLevelIndex>(effIdx[meshPos]), static_cast<PhysicalLevelIndex>(effIdx[upperPos])}};
@@ -73,7 +74,7 @@ HcclResult TopoMatchConcurrentV2::MatchTopo(
     u32 effNum = effIdx.size();
     CHK_PRT_RET(
         effNum == 0 || effNum > ALGO_LEVEL_NUM_TWO,
-        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], level num[%u] not support.", myRank, effNum),
+        HCCL_INFO("[TopoMatchConcurrentV2] Rank [%u], level num[%u] is not supported.", myRank, effNum),
         HcclResult::HCCL_E_NOT_SUPPORT);
     CHK_PRT_RET(
         (topoInfo->userRankSize == 0), HCCL_WARNING("[TopoMatchConcurrentV2] Rank [%u], rankSize is 0.", myRank),

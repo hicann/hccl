@@ -120,7 +120,7 @@ export HCCL_ALGO="level0:NA;level1:<algo>;level2:<algo>"
   - ring：基于环结构的通信算法，通信步数多（线性复杂度），时延相对较高，但通信关系简单，受网络拥塞影响较小。适合通信域内Server个数较少、通信数据量较小、网络存在明显拥塞、且pipeline算法不适用的场景。
   - H-D_R：递归二分和倍增算法（Recursive Halving-Doubling：RHD），通信步数少（对数复杂度），时延相对较低，但在非2的整数次幂节点规模下会引入额外的通信量。适合通信域内Server个数是2的整数次幂且pipeline算法不适用的场景，或Server个数不是2的整数次幂但通信数据量较小的场景。
   - NHR：非均衡的层次环算法（Nonuniform Hierarchical Ring），通信步数少（对数复杂度），时延相对较低。适合通信域内Server个数较多且pipeline算法不适用的场景。
-  - NHR_V1：对应历史版本的NHR算法，通信步数少（根复杂度），时延相对较低，适合通信域内Server数为非2的整数次幂且pipeline算法不适用的场景。NHR_V1算法理论性能低于新版NHR算法，该配置项未来会逐步停用，建议开发者使用NHR算法。
+  - NHR_V1：对应历史版本的NHR算法，通信步数少（平方根复杂度），时延相对较低，适合通信域内Server数为非2的整数次幂且pipeline算法不适用的场景。NHR_V1算法理论性能低于新版NHR算法，该配置项未来会逐步停用，建议开发者使用NHR算法。
   - NB：非均匀的数据块通信算法（Nonuniform Bruck），通信步数少（对数复杂度），时延相对较低。适合通信域内Server个数较多且pipeline算法不适用的场景。
   - AHC：层次化集合通信算法（Asymmetric Hierarchical Concatenate），适用于通信域内NPU分布存在多个层次、多个层次间NPU对称或者非对称分布（即卡数非对称）的场景，当通信域内层次间存在带宽收敛时相对收益会更好。
     注意：当level1（Server间通信算法）配置为“AHC”时，level2（超节点间通信算法）将自动采用“AHC”算法，无需另行配置，即使level2设置了其他算法，这些设置也不会生效。

@@ -27,7 +27,7 @@ static CcuResult ParseKernelArg(AllGatherNHR1DMem2MemContext& ctx, CcuKernelArgA
     ctx.myRankIdx = kernelArg->rank2ChannelIdx.size();
     HCCL_DEBUG(
         "[CcuKernelAllGatherNHR1DMem2Mem] Init, KernelArgs are mySubCommRankId[%u], axisId[%u], axisSize[%u], "
-        "stepInfoVector.size[%u], myRankIdx[%u] localSize[%u]",
+        "stepInfoVector.size[%zu], myRankIdx[%u] localSize[%u]",
         kernelArg->mySubCommRankId, kernelArg->axisId, kernelArg->axisSize, kernelArg->stepInfoVector.size(),
         ctx.myRankIdx, ctx.localSize);
     return CCU_SUCCESS;

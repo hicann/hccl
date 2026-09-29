@@ -221,7 +221,7 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
 
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
-            "[GenTempResource] channelLevelIdx[%u] should be lower than remoteRankToChannelInfo_.size()[%u]",
+            "[GenTempResource] channelLevelIdx[%u] should be lower than remoteRankToChannelInfo_.size()[%zu]",
             channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }
@@ -356,7 +356,7 @@ HcclResult InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, 
         sizeRemain -= size;
     }
     memInfo_.totalSize = std::max(memInfo_.sizePerBlock * rankSize_, dataSize_);
-    HCCL_INFO("[CalcGroupSlices] groupSize.size[%u], totalSize[%llu]", memInfo_.groupSize.size(), memInfo_.totalSize);
+    HCCL_INFO("[CalcGroupSlices] groupSize.size[%zu], totalSize[%llu]", memInfo_.groupSize.size(), memInfo_.totalSize);
     return HCCL_SUCCESS;
 }
 

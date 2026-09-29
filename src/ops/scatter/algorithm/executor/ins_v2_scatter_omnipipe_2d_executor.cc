@@ -257,7 +257,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
     localThreads_ = resCtx.threads;
     HCCL_DEBUG(
-        "[%s]localThreads_ size[%u] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
+        "[%s]localThreads_ size[%zu] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
     if (resCtx.algHierarchyInfo.infos.empty()) {
@@ -364,7 +364,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, InsAlgTempLevel0& algTempLevel0,
     InsAlgTempLevel1& algTempLevel1)
 {
-    HCCL_DEBUG("[%s] start localThreads_ size[%u]", __func__, localThreads_.size());
+    HCCL_DEBUG("[%s] start localThreads_ size[%zu]", __func__, localThreads_.size());
     // 获取每个template的线程数
     u64 level0ThreadsNum = 0;
     u64 level1ThreadsNum = 0;
@@ -388,15 +388,15 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     }
     HCCL_DEBUG("[%s]level0ThreadsNum[%u] level1ThreadsNum[%u]", __func__, level0ThreadsNum, level1ThreadsNum);
     HCCL_DEBUG(
-        "[%s]level0Threads size[%u] level1Threads size[%u]", __func__, level0Threads_.size(), level1Threads_.size());
-    HCCL_DEBUG("[%s]templateMainThreads size[%u]", __func__, templateMainThreads_.size());
+        "[%s]level0Threads size[%zu] level1Threads size[%zu]", __func__, level0Threads_.size(), level1Threads_.size());
+    HCCL_DEBUG("[%s]templateMainThreads size[%zu]", __func__, templateMainThreads_.size());
 
     // 控制线程用于算法同步
     controlThread_ = localThreads_.at(0);
 
     // 获取template各自的主thread上有多少notify
-    HCCL_DEBUG("[%s]notifyIdxControlToTemplates_ size[%u]", __func__, notifyIdxControlToTemplates_.size());
-    HCCL_DEBUG("[%s]notifyIdxTemplatesToControl_ size[%u]", __func__, notifyIdxTemplatesToControl_.size());
+    HCCL_DEBUG("[%s]notifyIdxControlToTemplates_ size[%zu]", __func__, notifyIdxControlToTemplates_.size());
+    HCCL_DEBUG("[%s]notifyIdxTemplatesToControl_ size[%zu]", __func__, notifyIdxTemplatesToControl_.size());
 
     // 单独本地拷贝使用
     if (!level0Threads_.empty()) {

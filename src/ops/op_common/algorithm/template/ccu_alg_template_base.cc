@@ -158,7 +158,7 @@ HcclResult CcuAlgTemplateBase::GetDieInfoFromChannelDescs(
             }
         } else {
             HCCL_ERROR(
-                "[CcuAlgTemplateBase::GetDieNumFromChannelDescs] get channelDescs fail: there are [%u] link to rank "
+                "[CcuAlgTemplateBase::GetDieNumFromChannelDescs] get channelDescs fail: there are [%zu] link to rank "
                 "[%u]",
                 channels.size(), rmtRankId);
             return HcclResult::HCCL_E_INTERNAL;
@@ -220,7 +220,7 @@ HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(
 {
     if (channelsPerDie.size() <= 1) {
         HCCL_ERROR(
-            "[ReverseChannelPerDieIfNeed] channelsPerDie.size() = [%u], there's no channel on both dies",
+            "[ReverseChannelPerDieIfNeed] channelsPerDie.size() = [%zu], there's no channel on both dies",
             channelsPerDie.size());
         return HCCL_E_PTR;
     }

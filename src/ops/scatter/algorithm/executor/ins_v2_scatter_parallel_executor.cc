@@ -286,7 +286,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
         interResourceRequest.notifyNumPerThread.end());
     if (param.engine != COMM_ENGINE_CCU) {
         HCCL_DEBUG(
-            "[InsV2ScatterParallelExecutor][CalcRes] intraResourceRequest.channels[0].size[%u]",
+            "[InsV2ScatterParallelExecutor][CalcRes] intraResourceRequest.channels[0].size[%zu]",
             intraResourceRequest.channels[0].size());
         resourceRequest.channels.emplace_back(intraResourceRequest.channels[0]);
         resourceRequest.channels.emplace_back(interResourceRequest.channels[0]);
@@ -315,7 +315,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     }
     HCCL_DEBUG(
         "[InsV2ScatterParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
-        "channels[%u]",
+        "channels[%zu]",
         myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
         resourceRequest.channels.size());
     for (size_t i = 0; i < resourceRequest.notifyNumPerThread.size(); i++) {
@@ -348,7 +348,7 @@ HcclResult InsV2ScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
     HCCL_INFO(
-        "[InsV2ScatterParallelExecutor][Orchestrate] resCtx.threads.size()[%u], resCtx.cclMem.size[%u]",
+        "[InsV2ScatterParallelExecutor][Orchestrate] resCtx.threads.size()[%zu], resCtx.cclMem.size[%u]",
         resCtx.threads.size(), resCtx.cclMem.size);
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));

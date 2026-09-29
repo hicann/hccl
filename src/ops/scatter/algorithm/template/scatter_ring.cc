@@ -187,7 +187,7 @@ HcclResult ScatterRing::RunAsync(const u32 rank, const u32 rankSize, std::vector
     u32 ringNextRank = (rank + 1) % rankSize;
 
     if (channels.size() < rankSize) {
-        HCCL_ERROR("[ScatterRing][RunAsync]rank[%u] link size[%llu] is less than rank size", rank, channels.size());
+        HCCL_ERROR("[ScatterRing][RunAsync]rank[%u] link size[%zu] is less than rank size", rank, channels.size());
         return HCCL_E_INTERNAL;
     }
 

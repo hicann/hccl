@@ -31,7 +31,7 @@ public:
     std::string Describe() const override
     {
         return StringFormat(
-            "Template of All Gather ccu mesh 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
+            "Template of All Gather ccu mesh 1D Mem2Mem with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);

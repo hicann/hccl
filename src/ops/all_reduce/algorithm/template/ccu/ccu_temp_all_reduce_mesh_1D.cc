@@ -23,7 +23,7 @@ std::vector<CostModelParam> CcuTempAllReduceMesh1D::CalcCostCoeff(CalcCostCoeffP
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
     int kernelNum = 5;
-    // 第一步是reducescatter，
+    // 第一步是ReduceScatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;
@@ -129,8 +129,8 @@ HcclResult CcuTempAllReduceMesh1D::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempAllReduceMesh1D::CalcRes] channelDescs.size()=%llu, templateRankSize_=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempAllReduceMesh1D::CalcRes] channelDescs.size()=%zu, templateRankSize_=%llu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), templateRankSize_, resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

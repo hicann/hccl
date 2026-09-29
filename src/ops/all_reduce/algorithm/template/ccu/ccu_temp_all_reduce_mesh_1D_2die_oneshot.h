@@ -29,7 +29,7 @@ public:
 
     std::string Describe() const override
     {
-        return StringFormat("Template of allreduce ccu mesh1D 2die with tempRankSize [%u].", subCommRanks_[0].size());
+        return StringFormat("Template of allreduce ccu mesh1D 2die with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);

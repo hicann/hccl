@@ -202,7 +202,7 @@ AlgTemplateBase::CheckConcurrentDirectParameters(const u32 rank, const u32 rankS
     CHK_PRT_RET(
         channels.size() < rankSize,
         HCCL_ERROR(
-            "[AlgTemplateBase] rank[%u] link size[%u] is less than "
+            "[AlgTemplateBase] rank[%u] link size[%zu] is less than "
             "rank size[%u]",
             rank, channels.size(), rankSize),
         HCCL_E_PARA);

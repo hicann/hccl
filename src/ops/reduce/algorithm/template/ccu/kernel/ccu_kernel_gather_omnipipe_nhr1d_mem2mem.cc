@@ -130,7 +130,7 @@ static CcuResult DoGatherOmniPipeNHRSingleStep(GatherOmniPipeNHR1DMem2MemContext
     }
 
     HCCL_DEBUG(
-        "[recvSliceNum%u, sendSliceNum=%lu fromRank=%lu ctx.myRankIdx=%lu", recvSliceIdxList.size(),
+        "[recvSliceNum%zu, sendSliceNum=%zu fromRank=%lu ctx.myRankIdx=%lu", recvSliceIdxList.size(),
         sendSliceIdxList.size(), nhrStepInfo.fromRank, ctx.myRankIdx);
 
     if (recvSliceIdxList.size() != 0) {
@@ -163,7 +163,7 @@ static CcuResult DoGatherOmniPipeNHRSingleStep(GatherOmniPipeNHR1DMem2MemContext
     }
 
     HCCL_DEBUG(
-        "[DoGatherOmniPipeNHRSingleStep] step %u, toRank=%u, fromRank=%u, sendSliceNum=%lu", nhrStepInfo.step,
+        "[DoGatherOmniPipeNHRSingleStep] step %u, toRank=%u, fromRank=%u, sendSliceNum=%zu", nhrStepInfo.step,
         nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }

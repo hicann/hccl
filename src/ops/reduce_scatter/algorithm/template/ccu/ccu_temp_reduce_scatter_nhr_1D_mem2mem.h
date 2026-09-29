@@ -30,7 +30,7 @@ public:
     std::string Describe() const override
     {
         return StringFormat(
-            "Template of ReduceScatter ccu nhr 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
+            "Template of ReduceScatter ccu nhr 1D mem2mem with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     static std::vector<CostModelParam> CalcCostCoeff(CalcCostCoeffParam param);

@@ -123,7 +123,7 @@ HcclResult InsTempReduceScatterMesh1D::KernelRun(
     count_ = tempAlgParams.sliceSize / DATATYPE_SIZE_TABLE[dataType_];
     HCCL_INFO("[InsTempReduceScatterMesh1D] Run Start");
     HCCL_INFO(
-        "[InsTempReduceScatterMesh1D] KernelRun threadNum_[%u], templateResource.threads.size()[%u]", threadNum_,
+        "[InsTempReduceScatterMesh1D] KernelRun threadNum_[%u], templateResource.threads.size()[%zu]", threadNum_,
         templateResource.threads.size());
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());

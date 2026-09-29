@@ -104,8 +104,8 @@ HcclResult CcuTempScatterMesh1D::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempScatterMesh1D::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempScatterMesh1D::CalcRes] channelDescs.size()=%zu, dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;

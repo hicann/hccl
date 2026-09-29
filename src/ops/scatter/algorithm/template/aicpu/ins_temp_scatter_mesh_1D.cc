@@ -263,7 +263,7 @@ HcclResult InsTempScatterMesh1D::RunMesh(
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_DEBUG(
-        "[InsTempScatterMesh1D][RunMesh] myRank[%d], myAlgRank[%d], channels size[%d]", myRank_, myAlgRank,
+        "[InsTempScatterMesh1D][RunMesh] myRank[%d], myAlgRank[%d], channels size[%zu]", myRank_, myAlgRank,
         channels.size());
     if (root_ == u32(myRank_)) {
         u32 count = 0; // 用于标记当前使用的线程
@@ -335,7 +335,7 @@ HcclResult InsTempScatterMesh1D::RunMesh(
                 CHK_PRT_RET(
                     count >= threads.size(),
                     HCCL_ERROR(
-                        "[InsTempScatterMesh1D][RunMesh] count[%d] >= threads.size()[%d]", count, threads.size()),
+                        "[InsTempScatterMesh1D][RunMesh] count[%d] >= threads.size()[%zu]", count, threads.size()),
                     HCCL_E_INTERNAL);
                 CHK_PRT_RET(
                     static_cast<HcclResult>(SendBatchWrite(sendData, threads.at(count))),

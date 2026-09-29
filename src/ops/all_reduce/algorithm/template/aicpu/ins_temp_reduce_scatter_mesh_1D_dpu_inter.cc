@@ -62,7 +62,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::CalcRes(
     HCCL_INFO(
         "[InsTempReduceScatterMesh1dDpuInter][CalcRes]slaveThreadNum[%u] notifyNumPerThread[%u] "
         "notifyNumOnMainThread[%u]"
-        " level1Channels[%u].",
+        " level1Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.notifyNumOnMainThread,
         level1Channels.size());
     return HCCL_SUCCESS;
@@ -164,7 +164,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
         HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][RunReduceScatter] rankIds or myRank is error.");
         return HCCL_E_INTERNAL;
     }
-    HCCL_DEBUG("[InsTempReduceScatterMesh1dDpuInter][sliceNum]: [%u] ", tempAlgParams.allRankSliceSize.size());
+    HCCL_DEBUG("[InsTempReduceScatterMesh1dDpuInter][sliceNum]: [%zu] ", tempAlgParams.allRankSliceSize.size());
     u64 recvSize = tempAlgParams.allRankSliceSize.at(myAlgRank);
     u64 recvCount = tempAlgParams.allRankProcessedDataCount.at(myAlgRank);
     u64 recvOffset = tempAlgParams.allRankDispls.at(myAlgRank);

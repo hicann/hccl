@@ -532,7 +532,7 @@ extern "C" HcclResult <fnSymbol>(void*        sendBuf,
 
 - **Backward compatibility**: This design only adds optional branches to HCCL's original algorithm-selection and execution flow. When `HCCL_ALGO_PLUGIN_PATH` is not configured, all newly added branches are skipped directly and HCCL behavior remains completely unchanged.
 
-- **Interface version management**: The `HcclAlgoPlugin_t` function table contains a `version` field for HCCL to validate whether the loaded PluginBroker is valid. If loading is rejected, execution falls back to the original selection logic, preventing an invalid or corrupted PluginBroker dynamic library from being loaded.
+- **Interface version management**: The `HcclAlgoPlugin_t` function table contains a `version` field that HCCL uses to validate the loaded PluginBroker. If loading is rejected, HCCL falls back to the original selection logic to avoid loading an invalid or corrupted PluginBroker dynamic library.
 
 - **Data-structure compatibility**: HCCL extracts and fills the communication parameters for the current operation from the internal `OpParam` and `TopoInfoWithNetLayerDetails` structures. HCCL-ALGO-Plugin does not directly depend on HCCL internal structures.
 

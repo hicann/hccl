@@ -23,7 +23,7 @@ public:
     ~InsTempAllGatherOmniPipeNHR() override;
     std::string Describe() const override
     {
-        std::string info = "Template of all gather nhr (omniPipe) with tempRankSize ";
+        std::string info = "Template of all gather nhr (OmniPipe) with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }

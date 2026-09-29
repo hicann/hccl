@@ -236,7 +236,7 @@ REG_OP(HcomAllGather)
      * @par Inputs:
      * @li x: A tensor. Must be one of the following types: int8, int16, int32, float16, float32.
      * @li send_counts: int64 array, where entry i specifies the first dimension number of elements to send to rank i.
-     * @li send_displacesments: int64 array, optional, where entry i specifies the displacement from which to send data
+     * @li send_displacements: int64 array, optional, where entry i specifies the displacement from which to send data
      to rank i. If not provided, it is assumed to be contiguous memory by default.
      * @li recv_count: int64 array, only one entry which specifies the first dimension number of elements of the output
      data.

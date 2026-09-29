@@ -64,7 +64,8 @@ InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::C
     HcclResult matchRet
         = (attrs != nullptr) ? topoMatch.MatchTopo(topoInfo, algHierarchyInfo, *attrs) : HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
-        HCCL_INFO("[InsV2ReduceConcurrentExecutor][CalcCostCoeff] algName=%s topo match not support, skip.", algName);
+        HCCL_INFO(
+            "[InsV2ReduceConcurrentExecutor][CalcCostCoeff] algName=%s topo match is not supported, skip.", algName);
         return {};
     }
     u32 rankSize = topoInfo->userRankSize;
@@ -152,7 +153,8 @@ AlgNetMeta InsV2ReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
               HcclResult::HCCL_E_PARA;
     if (matchRet != HcclResult::HCCL_SUCCESS) {
         HCCL_INFO(
-            "[InsV2ReduceConcurrentExecutor][GetAlgNetMeta] algName=%s topo match not support, return empty.", algName);
+            "[InsV2ReduceConcurrentExecutor][GetAlgNetMeta] algName=%s topo match is not supported, return empty.",
+            algName);
         return {};
     }
     const auto& physIdx = algHierarchyInfo.physicalIdxForAlgoLevels;

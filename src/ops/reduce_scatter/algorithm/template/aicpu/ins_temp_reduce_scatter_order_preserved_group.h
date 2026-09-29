@@ -21,7 +21,7 @@
 
 namespace ops_hccl {
 
-// 保序 ReduceScatter "分组 all2all" template
+// 保序 ReduceScatter "分组 AlltoAll" template
 //   - RunAllToAll 用"按环上距离 distance 对称分批"，保证 A→B 与 B→A 落在同一批次，
 //     notify 不跨批等待，从根本上避免大卡数场景的 notify 死锁
 //   - 适用于大卡数场景（rankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED）

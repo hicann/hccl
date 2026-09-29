@@ -132,13 +132,13 @@ InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     resourceRequest.channels.resize(SEQUENCE_EXECUTOR_LEVEL_NUM);
     if (resReq0.channels.empty() || resReq2.channels.empty()) {
         HCCL_ERROR(
-            "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] channels empty, level0[%u] level2[%u]", myRank_,
+            "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] channels empty, level0[%zu] level2[%zu]", myRank_,
             resReq0.channels.size(), resReq2.channels.size());
         return HCCL_E_INTERNAL;
     }
     if (!skipLevel1_ && resReq1.channels.empty()) {
         HCCL_ERROR(
-            "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] channels empty, level1[%u]", myRank_,
+            "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] channels empty, level1[%zu]", myRank_,
             resReq1.channels.size());
         return HCCL_E_INTERNAL;
     }
@@ -149,7 +149,7 @@ InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     resourceRequest.channels[2] = resReq2.channels[0];
     HCCL_INFO(
         "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "
-        "level0 channel size [%u], level1 channel size [%u], level2 channel size [%u]",
+        "level0 channel size [%zu], level1 channel size [%zu], level2 channel size [%zu]",
         myRank_, resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.channels[0].size(),
         resourceRequest.channels[1].size(), resourceRequest.channels[2].size());
     return HCCL_SUCCESS;
@@ -319,7 +319,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
             "[InsV2ReduceScatterSequenceExecutor3Level][GenTempResource] myRank[%u] channelLevelIdx[%u] should be lower"
-            "than remoteRankToChannelInfo_.size()[%u]",
+            "than remoteRankToChannelInfo_.size()[%zu]",
             myRank_, channelLevelIdx, remoteRankToChannelInfo_.size());
         return HCCL_E_INTERNAL;
     }

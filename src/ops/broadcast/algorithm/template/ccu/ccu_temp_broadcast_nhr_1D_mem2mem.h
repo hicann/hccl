@@ -33,7 +33,7 @@ public:
     std::string Describe() const override
     {
         return StringFormat(
-            "Template of Broadcast ccu nhr 1D Mem2Mem with tempRankSize [%u].", subCommRanks_[0].size());
+            "Template of Broadcast ccu nhr 1D Mem2Mem with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     HcclResult CalcRes(

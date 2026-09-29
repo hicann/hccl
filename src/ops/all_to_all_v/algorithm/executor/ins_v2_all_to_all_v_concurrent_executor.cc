@@ -474,7 +474,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u64 temp0ThreadsNum = tempAlg0.GetThreadNum();
     if (temp0ThreadsNum > threads_.size()) {
         HCCL_ERROR(
-            "[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0ThreadsNum[%llu] exceeds available threads[%llu]",
+            "[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0ThreadsNum[%llu] exceeds available threads[%zu]",
             temp0ThreadsNum, threads_.size());
         return HCCL_E_PARA;
     }

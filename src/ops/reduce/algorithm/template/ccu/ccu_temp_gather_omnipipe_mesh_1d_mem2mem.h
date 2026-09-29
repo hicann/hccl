@@ -27,7 +27,7 @@ public:
     std::string Describe() const override
     {
         return StringFormat(
-            "Template of Gather ccu omnipipe mesh 1D mem2mem with tempRankSize [%u].", subCommRanks_[0].size());
+            "Template of Gather ccu OmniPipe mesh 1D mem2mem with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     HcclResult KernelRun(

@@ -49,7 +49,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectCcuScheduleAlgo(
         HCCL_DEBUG("hccl algo no match");
         return SelectorStatus::NOT_MATCH;
     }
-    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -64,11 +64,11 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAicpuAlgo(
     // 跨框 MESH_1D 且 rankSize 为 16 的倍数走 Pairwise
     if (IsPairwiseCapable(topoInfo)) {
         selectAlgName = "AicpuAllToAllVCSolePairwise";
-        HCCL_INFO("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+        HCCL_INFO("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
         return SelectorStatus::MATCH;
     }
     selectAlgName = "AicpuAllToAllVCSoleMesh";
-    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -103,7 +103,7 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAivAlgo(
     }
 
     selectAlgName = "AivAllToAllVCSoleMesh";
-    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 

@@ -193,7 +193,7 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY
         && param.engine != CommEngine::COMM_ENGINE_AIV) {
         HCCL_ERROR(
-            "[HcclExecOp] opType[%d] currently do not select aiv mode, aiv only not support.",
+            "[HcclExecOp] opType[%d] currently does not select AIV mode; AIV-only mode is not supported.",
             static_cast<int>(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
@@ -610,7 +610,7 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam& param, const CcuFastL
     param.dataCount = hcclDfxOpInfo.dataCount;
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
     if (IsStreamInCaptureMode(param.stream) && threadTemps.size() > 1) {
-        HCCL_INFO("HcclExecOpCcuFastLaunch streamnum %d add slavestream", threadTemps.size());
+        HCCL_INFO("HcclExecOpCcuFastLaunch streamnum %zu add slavestream", threadTemps.size());
         CHK_RET(CaptureSlaveStreams(comm, param.stream, threadTemps, param.isCapture));
     }
 
@@ -738,7 +738,7 @@ HcclResult ReSelector(
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY
         && param.engine != CommEngine::COMM_ENGINE_AIV) {
         HCCL_ERROR(
-            "[HcclExecOp] opType[%d] currently do not select aiv mode, aiv only not support.",
+            "[HcclExecOp] opType[%d] currently does not select AIV mode; AIV-only mode is not supported.",
             static_cast<int>(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
@@ -1273,7 +1273,7 @@ CaptureSlaveStreams(HcclComm comm, aclrtStream mainStream, const std::vector<Thr
     aclmdlRICaptureStatus captureStatus = aclmdlRICaptureStatus::ACL_MODEL_RI_CAPTURE_STATUS_NONE;
     aclError ret = aclmdlRICaptureGetInfo(mainStream, &captureStatus, &rtModel);
     if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
-        HCCL_WARNING("[%s]Stream capture not support.", __func__);
+        HCCL_WARNING("[%s]Stream capture is not supported.", __func__);
         return HCCL_SUCCESS;
     } else {
         CHK_PRT_RET(
@@ -1290,7 +1290,7 @@ CaptureSlaveStreams(HcclComm comm, aclrtStream mainStream, const std::vector<Thr
     for (size_t i = 1; i < threads.size(); ++i) {
         void* stream = nullptr;
         CHK_PRT_RET(
-            !HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo, HCCL_ERROR("AclGraph is not support."),
+            !HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo, HCCL_ERROR("AclGraph is not supported."),
             HCCL_E_NOT_SUPPORT);
         CHK_RET(HcclThreadResGetInfoFunc.dlHcclThreadResGetInfo(comm, threads[i], 0, sizeof(void*), &stream));
         rtError_t addRet = rtStreamAddToModel(stream, rtModel);
@@ -2178,7 +2178,7 @@ HcclResult RegGraphModeBuffers(
         CHK_PTR_NULL(outputHandle);
         memHandles.emplace_back(outputHandle);
     }
-    HCCL_INFO("[RegGraphModeBuffers]memHandles size[%d]", memHandles.size());
+    HCCL_INFO("[RegGraphModeBuffers]memHandles size[%zu]", memHandles.size());
     return HCCL_SUCCESS;
 }
 
@@ -3355,13 +3355,13 @@ HcclResult SingleRankProc(HcclComm comm, OpParam& param)
     HCCL_INFO("[SingleRankProc]Start to execute HcclExecOp. HcommGetProfilingSysCycleTime[%llu us]", beginTime);
     if (param.commOpExpansionMode == HcclOpExpansionMode::HCCL_OP_EXPANSION_AIV_ONLY) {
         HCCL_ERROR(
-            "[SingleRankProc] opType[%d] currently do not select aiv mode, aiv only not support, "
+            "[SingleRankProc] opType[%d] currently does not select AIV mode; AIV-only mode is not supported, "
             "please ensure rankNum is greater than one",
             static_cast<int>(param.opType));
         return HCCL_E_NOT_SUPPORT;
     }
     if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE) {
-        HCCL_WARNING("[%s] ranksize == 1 is not support BATCHSENDRECV SEND RECV", __func__);
+        HCCL_WARNING("[%s] rankSize == 1 does not support BatchSendRecv, Send or Recv", __func__);
         return HcclResult::HCCL_SUCCESS;
     }
     if (param.inputPtr == param.outputPtr) {
@@ -4092,7 +4092,7 @@ void CheckAndSetSymmetricMemory(OpParam& param)
             = HcclCommSymWinGet(param.hcclComm, param.inputPtr, param.inputSize, &param.inputSymWindow, &inputOffset);
         if (ret != HCCL_SUCCESS || param.inputSymWindow == nullptr) {
             HCCL_INFO(
-                "[%s] input[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.inputPtr,
+                "[%s] input[%p], size[%llu] does not support symmetric memory, ret[%d]", __func__, param.inputPtr,
                 param.inputSize, ret);
             return;
         }
@@ -4103,7 +4103,7 @@ void CheckAndSetSymmetricMemory(OpParam& param)
             param.hcclComm, param.outputPtr, param.outputSize, &param.outputSymWindow, &outputOffset);
         if (ret != HCCL_SUCCESS || param.outputSymWindow == nullptr) {
             HCCL_INFO(
-                "[%s] output[%p], size[%llu] is not support symmetric memory, ret[%d]", __func__, param.outputPtr,
+                "[%s] output[%p], size[%llu] does not support symmetric memory, ret[%d]", __func__, param.outputPtr,
                 param.outputSize, ret);
             return;
         }

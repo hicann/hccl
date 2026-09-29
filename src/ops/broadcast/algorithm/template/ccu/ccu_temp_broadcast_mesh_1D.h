@@ -31,7 +31,7 @@ public:
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Broadcast ccu mesh 1D with tempRankSize [%u].", subCommRanks_[0].size());
+        return StringFormat("Template of Broadcast ccu mesh 1D with tempRankSize [%zu].", subCommRanks_[0].size());
     }
 
     HcclResult CalcRes(

@@ -234,7 +234,7 @@ HcclResult InsTempUBXAllToAllVMesh1D::GetRankNumPerBoard(TemplateResource& templ
     if (rankNumPerBoard_ == 1) {
         HCCL_ERROR(
             "[InsTempUBXAllToAllVMesh1D][GetRankNumPerBoard] rankNumPerBoard_ is [%u], "
-            "templateRankSize_ is [%u], only clos is not support",
+            "templateRankSize_ is [%u], only clos is not supported",
             rankNumPerBoard_, templateRankSize_);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }

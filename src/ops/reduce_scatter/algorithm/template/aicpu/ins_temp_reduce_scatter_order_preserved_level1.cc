@@ -96,7 +96,7 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::KernelRun(
     // 步骤1: 执行预处理本地拷贝（将本rank对应的数据从用户输入拷贝到临时缓冲区）
     CHK_RET(PreLocalCopy(tempAlgParams, templateResource.threads));
 
-    // 多线程同步：如果线程数大于1，等待子线程就绪，为all2all做准备
+    // 多线程同步：如果线程数大于1，等待子线程就绪，为AlltoAll做准备
     if (threadNum_ > 1) {
         std::vector<ThreadHandle> subThreads(templateResource.threads.begin() + 1, templateResource.threads.end());
         GetNotifyIdxMainToSub(notifyIdxMainToSub_);
@@ -169,7 +169,7 @@ void InsTempReduceScatterOrderPreservedLevel1::GetNotifyIdxSubToMain(std::vector
 u32 InsTempReduceScatterOrderPreservedLevel1::CalcOutputIndex(const u32 round, const u32 localRank)
 {
     // 使用取模运算确保索引在rank范围内
-    // round为轮次，也为all2all结果的偏移量，localRank为本地rank
+    // round为轮次，也为AlltoAll结果的偏移量，localRank为本地rank
     return (round + localRank) % templateRankSize_;
 }
 
@@ -229,7 +229,7 @@ HcclResult InsTempReduceScatterOrderPreservedLevel1::RunAllToAll(
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
 
-    // queIdx用于选择线程（从线程1开始，子线程用于all2all）
+    // queIdx用于选择线程（从线程1开始，子线程用于AlltoAll）
     u32 queIdx = 1;
     // 遍历除自己外的所有rank（round 1 到 rankSize-1）
     for (u32 rankIdx = 1; rankIdx < templateRankSize_; rankIdx++) {

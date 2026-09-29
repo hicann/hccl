@@ -34,7 +34,7 @@ HcclResult InsTempBarrierMesh1D::CalcRes(
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     resourceRequest.channels.push_back(level0Channels);
     HCCL_INFO(
-        "[InsTempBarrierMesh1D][CalcRes] slaveThreadNum[%u] notifyNumOnMainThread[%u] level0Channels[%u].",
+        "[InsTempBarrierMesh1D][CalcRes] slaveThreadNum[%u] notifyNumOnMainThread[%u] level0Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, level0Channels.size());
     return HCCL_SUCCESS;
 }
@@ -89,8 +89,8 @@ HcclResult InsTempBarrierMesh1D::RunBarrierMesh(
         CHK_PRT_RET(
             threadIdx >= threads.size() || channels.count(connectedRank) == 0 || channels.at(connectedRank).empty(),
             HCCL_ERROR(
-                "[InsTempBarrierMesh1D][RankID]=%u threadIdx=%u, threads.size=%u, "
-                "connectedRank=%d, channels.size=%u",
+                "[InsTempBarrierMesh1D][RankID]=%u threadIdx=%u, threads.size=%zu, "
+                "connectedRank=%d, channels.size=%zu",
                 myRank_, threadIdx, threads.size(), connectedRank, channels.size()),
             HcclResult::HCCL_E_INTERNAL);
 

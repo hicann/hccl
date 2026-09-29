@@ -33,7 +33,7 @@ public:
 
     std::string Describe() const override
     {
-        return StringFormat("Template of Scatter ccu mesh 1D with templateRankSize [%u].", subCommRanks_[0].size());
+        return StringFormat("Template of Scatter ccu mesh 1D with templateRankSize [%zu].", subCommRanks_[0].size());
     }
 
     HcclResult CalcRes(

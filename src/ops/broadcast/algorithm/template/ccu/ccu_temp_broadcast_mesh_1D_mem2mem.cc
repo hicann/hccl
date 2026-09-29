@@ -115,9 +115,9 @@ HcclResult CcuTempBroadcastMesh1DMem2Mem::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] channelDescs.size()=%llu, "
-        "dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu, mySubCommRank_=%u, subCommRootId_=%u root=%u",
+        "[CcuTempBroadcastMesh1DMem2Mem::CalcRes] channelDescs.size()=%zu, "
+        "dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu, mySubCommRank_=%u, subCommRootId_=%u root=%u",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size(), mySubCommRank_,
         subCommRootId_, param.root);
 

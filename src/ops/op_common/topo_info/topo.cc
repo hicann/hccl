@@ -54,7 +54,7 @@ u32 CalGCD(std::vector<u32>& nums)
     for (u32 i = 1; i < nums.size(); i++) {
         curGcd = CalGCD(curGcd, nums[i]);
     }
-    HCCL_DEBUG("[CalGCD]size[%u], gcd[%u]", nums.size(), curGcd);
+    HCCL_DEBUG("[CalGCD]size[%zu], gcd[%u]", nums.size(), curGcd);
     return curGcd;
 }
 

@@ -140,7 +140,7 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcRes(
     myRank_ = topoInfo->userRank;
     HCCL_DEBUG(
         "[InsV2AllGatherSoleExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
-        "channels[%u]",
+        "channels[%zu]",
         myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
         resourceRequest.channels.size());
     for (auto i = 0; i < resourceRequest.notifyNumPerThread.size(); i++) {
@@ -174,7 +174,7 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
     HCCL_DEBUG(
-        "[InsV2AllGatherSoleExecutor][Orchestrate] myRank[%u], threadsSize[%lu], "
+        "[InsV2AllGatherSoleExecutor][Orchestrate] myRank[%u], threadsSize[%zu], "
         "dataCount[%llu], dataTypeSize[%lu]",
         myRank_, threads_.size(), dataCount_, dataTypeSize_);
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -221,7 +221,7 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.outputRepeatStride = 0;
     HCCL_INFO(
         "[InsV2AllGatherSoleExecutor][OrchestrateLoop] myRank[%u], inputPtr[%#llx] outputPtr[%#llx], "
-        "cclAddr[%#llx], cclSize[%llu], channelSize[%lu], threadSize[%lu], ",
+        "cclAddr[%#llx], cclSize[%llu], channelSize[%zu], threadSize[%zu], ",
         myRank_, param.inputPtr, param.outputPtr, resCtx.cclMem.addr, resCtx.cclMem.size,
         templateAlgRes.channels.size(), templateAlgRes.threads.size());
     // 构建template

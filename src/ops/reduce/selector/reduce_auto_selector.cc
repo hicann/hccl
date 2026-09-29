@@ -48,7 +48,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuMsAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_WARNING("[ReduceAutoSelector] ccu_ms mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceAutoSelector] ccu_ms mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -130,7 +130,7 @@ SelectorStatus ReduceAutoSelector::SelectCcuScheduleAlgo(
             "[ReduceAutoSelector] ReduceOp[%d] is not supported yet for ccu schedule mode.", opParam.reduceType),
         SelectorStatus::NOT_MATCH);
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_WARNING("[ReduceAutoSelector] ccu_schedule mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceAutoSelector] ccu_schedule mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
     constexpr u64 CCU_SCHEDULE_2LEVEL_LESS_64P_MAX_SIZE = 64ULL * 1024 * 1024;
@@ -407,7 +407,7 @@ SelectorStatus ReduceAutoSelector::SelectAivAlgo(
 
     if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceAutoSelector] aiv mode not support UINT64, FP64.");
+        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceAutoSelector] aiv mode does not support UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 

@@ -107,8 +107,8 @@ HcclResult InsTempBatchSendRecvDpu::KernelRun(
     } else if (sendRecvChannel_.locationType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE) {
         if (threadNum_ < DEVICE_MIN_RES_NUM || channelIter->second.size() < DEVICE_MIN_RES_NUM) {
             HCCL_ERROR(
-                "[InsTempBatchSendRecvDpu][KernelRun] resource less than 2, thread num[%u] channel num[%u]", threadNum_,
-                channelIter->second.size());
+                "[InsTempBatchSendRecvDpu][KernelRun] resource less than 2, thread num[%u] channel num[%zu]",
+                threadNum_, channelIter->second.size());
             return HCCL_E_INTERNAL;
         }
         subThread_ = templateResource.threads[1];

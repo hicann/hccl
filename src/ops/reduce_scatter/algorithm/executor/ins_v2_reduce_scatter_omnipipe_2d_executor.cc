@@ -245,7 +245,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 {
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
     threads_ = resCtx.threads;
-    HCCL_DEBUG("[%s] threads_ size[%u]", __func__, threads_.size()); // 3: main+x+y
+    HCCL_DEBUG("[%s] threads_ size[%zu]", __func__, threads_.size()); // 3: main+x+y
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
@@ -339,14 +339,15 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
     level0Threads_.assign(threads_.begin() + 1, threads_.begin() + 1 + level0ThreadsNum);
     level1Threads_.assign(threads_.begin() + 1 + level0ThreadsNum, threads_.end());
     HCCL_DEBUG(
-        "[%s] level0Threads size[%u], level1Threads size[%u]", __func__, level0Threads_.size(), level1Threads_.size());
+        "[%s] level0Threads size[%zu], level1Threads size[%zu]", __func__, level0Threads_.size(),
+        level1Threads_.size());
 
     // 控制线程 用于算法同步
     controlThread_ = threads_.at(0);
     // xy轴各自的主线程
     templateMainThreads_.push_back(level0Threads_.at(0));
     templateMainThreads_.push_back(level1Threads_.at(0));
-    HCCL_DEBUG("[%s] templateMainThreads size[%u]", __func__, templateMainThreads_.size());
+    HCCL_DEBUG("[%s] templateMainThreads size[%zu]", __func__, templateMainThreads_.size());
 
     // 单独本地拷贝使用
     templateLocalCopyThreads_.push_back(level0Threads_.at(0));
@@ -508,8 +509,8 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
         } else {
             auto l0si = omniPipeSliceInfo.dataSliceLevel0;
             auto l1si = omniPipeSliceInfo.dataSliceLevel1;
-            HCCL_DEBUG("[%s] myRank[%u] L0 stepNum[%u]", __func__, myRank_, l0si.size());
-            HCCL_DEBUG("[%s] myRank[%u] L1 stepNum[%u]", __func__, myRank_, l1si.size());
+            HCCL_DEBUG("[%s] myRank[%u] L0 stepNum[%zu]", __func__, myRank_, l0si.size());
+            HCCL_DEBUG("[%s] myRank[%u] L1 stepNum[%zu]", __func__, myRank_, l1si.size());
         }
 
         // 5.2 for内层2d

@@ -24,7 +24,7 @@ public:
 
     std::string Describe() const override
     {
-        std::string info = "Template of all gather mesh (omniPipe) with tempRankSize ";
+        std::string info = "Template of all gather mesh (OmniPipe) with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }

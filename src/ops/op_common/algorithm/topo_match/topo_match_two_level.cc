@@ -37,7 +37,7 @@ namespace {
         gcd = CalcGcd(level0.instSizeListByLayer);
         HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric level0, instList GCD[%u], d0=gcd.", myRank, gcd);
         if (gcd == 1 && algAttrs.engine != OpExecuteConfig::HOSTCPU) {
-            HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric GCD=1, not support.", myRank);
+            HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], asymmetric GCD=1, unsupported topology.", myRank);
             return HcclResult::HCCL_E_NOT_SUPPORT;
         }
         d0 = gcd;
@@ -103,7 +103,7 @@ HcclResult TopoMatchTwoLevel::MatchTopo(
     }
     u32 d1 = userRankSize / d0;
     if (d1 == 1) {
-        HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], d0=%u, d1=1, not support two level.", myRank, d0);
+        HCCL_INFO("[TopoMatchTwoLevel] Rank [%u], d0=%u, d1=1, two-level topology is not supported.", myRank, d0);
         return HcclResult::HCCL_E_NOT_SUPPORT;
     }
 

@@ -23,10 +23,10 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(
 {
     HCCL_DEBUG("[ReduceScatterVAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
-    // ccu ms 模式不支持 inplace 场景
+    // ccu ms 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu ms does not support inplace reduce_scatter_v."),
+        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu ms does not support in-place reduce_scatter_v."),
         SelectorStatus::NOT_MATCH);
     // MS 模式不支持 int8
     CHK_PRT_RET(
@@ -44,7 +44,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuMsAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.vDataDes.dataType)) {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] ccu_ms mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceScatterVAutoSelector] ccu_ms mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -65,7 +65,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcums(
     (void)topoInfo;
     (void)opParam;
     (void)selectAlgName;
-    HCCL_WARNING("[ReduceScatterVAutoSelector] not support ccu_ms mode.");
+    HCCL_WARNING("[ReduceScatterVAutoSelector] ccu_ms mode is not supported.");
     return SelectorStatus::NOT_MATCH;
 }
 
@@ -88,10 +88,10 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(
         return SelectorStatus::NOT_MATCH;
     }
     (void)configAlgMap;
-    // ccu schedule 模式不支持 inplace 场景
+    // ccu schedule 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu schedule does not support inplace reduce_scatter_v."),
+        HCCL_WARNING("[Algo][ReduceScatterVAutoSelector] ccu schedule does not support in-place reduce_scatter_v."),
         SelectorStatus::NOT_MATCH);
     // ccu 模式不支持 PROD
     CHK_PRT_RET(
@@ -102,7 +102,7 @@ SelectorStatus ReduceScatterVAutoSelector::SelectCcuScheduleAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.vDataDes.dataType)) {
-        HCCL_WARNING("[ReduceScatterVAutoSelector] ccu_schedule mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceScatterVAutoSelector] ccu_schedule mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 

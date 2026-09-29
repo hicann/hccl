@@ -54,10 +54,10 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
             __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
-    // ccu schedule 模式不支持 inplace 场景
+    // ccu schedule 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[Algo][AllGatherVAutoSelector] ccu schedule does not support inplace allgatherv."),
+        HCCL_WARNING("[Algo][AllGatherVAutoSelector] ccu schedule does not support in-place allgatherv."),
         SelectorStatus::NOT_MATCH);
     if (topoInfo->topoLevelNums == 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "CcuSchedAllGatherVSoleMesh";

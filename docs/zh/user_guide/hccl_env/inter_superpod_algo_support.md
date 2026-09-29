@@ -30,9 +30,9 @@
   | AllGather | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为H-D_R或者ring算法 |
   | AllReduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为H-D_R或者ring算法 |
   | Broadcast | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为H-D_R或者ring算法 |
-  | ReduceScatterV | int8、int16、int32、int64、 float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
-  | Scatter | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
-  | AllGatherV | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
+  | ReduceScatterV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
+  | Scatter | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
+  | AllGatherV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为H-D_R或者ring算法 |
 
 - **NB算法**
 
@@ -42,7 +42,7 @@
   | AllGather | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为NHR、H-D_R或者ring算法 |
   | AllReduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为NHR、H-D_R或者ring算法 |
   | Broadcast | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 是 | 自动选择为NHR、H-D_R或者ring算法 |
-  | ReduceScatterV | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为NHR、H-D_R或者ring算法 |
+  | ReduceScatterV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为NHR、H-D_R或者ring算法 |
   | Scatter | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为NHR、H-D_R或者ring算法 |
   | AllGatherV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 是 | 自动选择为NHR、H-D_R或者ring算法 |
 

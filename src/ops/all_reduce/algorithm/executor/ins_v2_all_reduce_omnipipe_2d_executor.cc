@@ -346,7 +346,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
 {
     HCCL_DEBUG("[%s] start", __func__);
     threads_ = resCtx.threads;
-    HCCL_DEBUG("[%s]threads size: %u", __func__, threads_.size());
+    HCCL_DEBUG("[%s]threads size: %zu", __func__, threads_.size());
     rankSize_ = resCtx.topoInfo.userRankSize;
     myRank_ = resCtx.topoInfo.userRank;
     dataType_ = param.DataDes.dataType;
@@ -407,9 +407,9 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
         tempMap[OMNIPIPE_RS_LEVEL1] = std::make_shared<CcuRsAlgTemplateY>(param, myRank_, subCommRanks1);
         tempMap[OMNIPIPE_AG_LEVEL1] = std::make_shared<CcuAgAlgTemplateY>(param, myRank_, subCommRanks1);
     }
-    HCCL_DEBUG("[InsV2AllReduceOmniPipe2dExecutor][%s] tempMap.size:%u", __func__, tempMap.size());
+    HCCL_DEBUG("[InsV2AllReduceOmniPipe2dExecutor][%s] tempMap.size:%zu", __func__, tempMap.size());
 
-    HCCL_DEBUG("[InsV2AllReduceOmniPipe2dExecutor][%s] threads_.size:%d", __func__, threads_.size());
+    HCCL_DEBUG("[InsV2AllReduceOmniPipe2dExecutor][%s] threads_.size:%zu", __func__, threads_.size());
     levelThreads_.resize(CCU_OMNIPIPE_LEVEL_NUM);
 
     levelThreads_[CCU_OMNIPIPE_LEVEL0].push_back(threads_[0]);
@@ -495,7 +495,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
         "myrank is %u, outBuffBaseOff is %llu, processedDataCount is %llu, end outBuffBaseOff is %llu", myRank_,
         stepSliceInfo.buffInfo.outBuffBaseOff, processedDataCount, tempAlgParams.buffInfo.outBuffBaseOff);
 
-    HCCL_DEBUG("[%s] inputSliceStrie.size[%u]", __func__, tempAlgParams.stepSliceInfo.stepInputSliceStride.size());
+    HCCL_DEBUG("[%s] inputSliceStrie.size[%zu]", __func__, tempAlgParams.stepSliceInfo.stepInputSliceStride.size());
 
     tempAlgParams.inputSliceStride = 0;
     tempAlgParams.outputSliceStride = 0;
@@ -654,10 +654,10 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
             auto l0StepNum = omniPipeSliceInfoRS.dataSliceLevel0;
             auto l1StepNum = omniPipeSliceInfoRS.dataSliceLevel1;
             HCCL_DEBUG(
-                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L0 stepNum[%u]", __func__, myRank_,
+                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L0 stepNum[%zu]", __func__, myRank_,
                 l0StepNum.size());
             HCCL_DEBUG(
-                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L1 stepNum[%u]", __func__, myRank_,
+                "[InsV2AllReduceOmniPipe2dExecutor][%s] myRank[%u] L1 stepNum[%zu]", __func__, myRank_,
                 l1StepNum.size());
         }
 

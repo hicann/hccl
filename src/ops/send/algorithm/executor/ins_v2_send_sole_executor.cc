@@ -41,7 +41,7 @@ HcclResult InsV2SendSoleExecutor<InsAlgTemplate>::CalcRes(
         "[InsV2SendSoleExecutor][CalcRes] myRank [%u], receiveRank [%u], devType [%u],dataType[%u] "
         "dataTypeSize[%u] ",
         myRank_, recvRank_, devType_, dataType_, dataTypeSize_);
-    HCCL_INFO("[InsV2SendSoleExecutor][CalcRes] algHierarchyInfo size is [%u]", algHierarchyInfo.infos.size());
+    HCCL_INFO("[InsV2SendSoleExecutor][CalcRes] algHierarchyInfo size is [%zu]", algHierarchyInfo.infos.size());
     algHierarchyInfo_ = algHierarchyInfo;
     if (algHierarchyInfo_.infos.empty()) {
         HCCL_ERROR("[InsV2SendSoleExecutor][CalcRes] algHierarchyInfo infos is empty!");

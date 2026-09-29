@@ -54,7 +54,7 @@ HCCL目前提供两种batch不变算法：
 | 算法 | 适用场景 | 局限性 |
 |------|----------|--------|
 | **Mesh + Local Reduce** | 小消息（< 数MB） | 大消息场景带宽利用率低 |
-| **RHD（递归半倍-倍增）** | 大消息 | 仅利用约50%的可用带宽（每轮仅一半节点参与通信） |
+| **RHD（递归减半-倍增）** | 大消息 | 仅利用约50%的可用带宽（每轮仅一半节点参与通信） |
 
 在A3 服务器拓扑（SIO + HCCS 混合互连）上，RHD无法同时利用SIO和HCCS链路，导致大消息场景下带宽利用不足。
 
@@ -145,7 +145,7 @@ bash build.sh --pkg --full --experimental
 option(ENABLE_EXPERIMENTAL "Enable experimental features" OFF)
 ```
 
-使用`--experimental option`选项启用实验功能。为该选项设置编译标志`-DENABLE_EXPERIMENTAL=ON`，从而编译`experimental/ops/`子目录中的代码。该功能默认关闭，不影响现有构建。
+使用`--experimental`选项启用实验功能。为该选项设置编译标志`-DENABLE_EXPERIMENTAL=ON`，从而编译`experimental/ops/`子目录中的代码。该功能默认关闭，不影响现有构建。
 
 #### 2.3 API 兼容性
 

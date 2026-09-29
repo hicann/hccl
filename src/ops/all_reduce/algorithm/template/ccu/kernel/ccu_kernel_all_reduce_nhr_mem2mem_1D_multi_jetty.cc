@@ -285,7 +285,7 @@ DoReduceScatterNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext& ctx, const 
     ccu::NotifyWait(arg->channels[fromRankIdx], signalIdDone, signalBitDoneMask);
 
     HCCL_DEBUG(
-        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId,
+        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%zu", ctx.rankId,
         nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
@@ -387,7 +387,7 @@ static CcuResult DoAllGatherNHRSingleStep(AllReduceNhrMem2Mem1DMultiJettyContext
     ccu::NotifyWait(arg->channels[fromRankIdx], signalIdDone, signalBitDoneMask);
 
     HCCL_DEBUG(
-        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId, nhrStepInfo.step,
+        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%zu", ctx.rankId, nhrStepInfo.step,
         nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }

@@ -128,7 +128,7 @@ static CcuResult PreSync(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx)
             CCU_CHK_RET(ccu::NotifyWait(arg->channels[i], signalIdx, waitMask));
         }
     }
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] PreSync end");
+    HCCL_INFO("[CcuKernelReduceScatterOmniPipeNHR1DMem2Mem] PreSync end");
     return CCU_SUCCESS;
 }
 
@@ -163,7 +163,7 @@ DoRepeatReduceScatterNHRSingleStep(ReduceScatterOmniPipeNHR1DMem2MemContext& ctx
     const std::vector<uint32_t>& recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
     HCCL_DEBUG(
         "[DoRepeatReduceScatterNHRSingleStep] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) "
-        "fromRank[%u](channelIdx[%u]) SliceSize[%u]",
+        "fromRank[%u](channelIdx[%u]) SliceSize[%zu]",
         ctx.userRank, ctx.rankId, nhrStepInfo.step, nhrStepInfo.toRank, toRankIdx, nhrStepInfo.fromRank, fromRankIdx,
         recvSliceIdxList.size());
 

@@ -45,7 +45,7 @@ HcclResult ScatterNHR::RunAsync(const u32 rank, const u32 rankSize, std::vector<
 
     CHK_PRT_RET(
         channels.size() < rankSize,
-        HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] link size[%llu] is less than rank size", rank, channels.size()),
+        HCCL_ERROR("[ScatterNHR][RunAsync] rank[%u] link size[%zu] is less than rank size", rank, channels.size()),
         HCCL_E_INTERNAL);
 
     if (sliceMap_.size() != rankSize) {

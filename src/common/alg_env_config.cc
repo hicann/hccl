@@ -225,7 +225,7 @@ HcclResult InitEnvConfig()
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-            "HCCL_OP_EXPANSION_MODE failed. errorno[%d]",
+            "HCCL_OP_EXPANSION_MODE failed. errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -241,12 +241,12 @@ HcclResult InitEnvConfig()
     RPT_ENV_ERR(
         ret != HCCL_SUCCESS, "EI0001", std::vector<std::string>({"value", "env", "expect"}),
         std::vector<std::string>(
-            {GetEnv("HCCL_DETERMINISTIC"), "HCCL_DETERMINISTIC", "should be true ,false or strict"}));
+            {GetEnv("HCCL_DETERMINISTIC"), "HCCL_DETERMINISTIC", "should be true, false or strict"}));
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-            "HCCL_DETERMINISTIC failed. errorno[%d]",
+            "HCCL_DETERMINISTIC failed. errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -263,7 +263,7 @@ HcclResult InitEnvConfig()
             ret != HCCL_SUCCESS,
             HCCL_ERROR(
                 "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse intra "
-                "comm type failed. errorno[%d]",
+                "comm type failed. errNo[%d]",
                 HCCL_ERROR_CODE(ret), ret),
             ret);
     }
@@ -277,7 +277,7 @@ HcclResult InitEnvConfig()
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-            "HCCL_ENTRY_LOG_ENABLE failed. errorno[%d]",
+            "HCCL_ENTRY_LOG_ENABLE failed. errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -292,7 +292,7 @@ HcclResult InitEnvConfig()
             ret != HCCL_SUCCESS,
             HCCL_ERROR(
                 "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-                "HCCL_INTER_HCCS_DISABLE failed. errorno[%d]",
+                "HCCL_INTER_HCCS_DISABLE failed. errNo[%d]",
                 HCCL_ERROR_CODE(ret), ret),
             ret);
     }
@@ -307,7 +307,7 @@ HcclResult InitEnvConfig()
             ret != HCCL_SUCCESS,
             HCCL_ERROR(
                 "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_OP_RETRY_ENABLE failed. "
-                "errorno[%d]",
+                "errNo[%d]",
                 HCCL_ERROR_CODE(ret), ret),
             ret);
     }
@@ -322,7 +322,7 @@ HcclResult InitEnvConfig()
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse HCCL_EXEC_TIMEOUT failed. "
-            "errorno[%d]",
+            "errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -340,7 +340,7 @@ HcclResult InitEnvConfig()
         HCCL_ERROR(
             "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
             "HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO failed. "
-            "errorno[%d]",
+            "errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -356,7 +356,7 @@ HcclResult InitEnvConfig()
             ret != HCCL_SUCCESS,
             HCCL_ERROR(
                 "[Init][EnvVarParam]errNo[0x%016llx] In init env variable param, parse "
-                "hccl algorithm config failed. errorno[%d]",
+                "hccl algorithm config failed. errNo[%d]",
                 HCCL_ERROR_CODE(ret), ret),
             ret);
     } else {
@@ -376,7 +376,7 @@ HcclResult InitEnvConfig()
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[InitEnvParam]errNo[0x%016llx] In init environment param, parse "
-            "HCCL_DEBUG_CONFIG failed. errorno[%d]",
+            "HCCL_DEBUG_CONFIG failed. errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -393,7 +393,7 @@ HcclResult InitEnvConfig()
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
             "[InitEnvParam]errNo[0x%016llx] In init environment param, parse "
-            "HCCL_DFS_CONFIG failed. errorno[%d]",
+            "HCCL_DFS_CONFIG failed. errNo[%d]",
             HCCL_ERROR_CODE(ret), ret),
         ret);
 
@@ -526,8 +526,8 @@ HcclResult ParserHcclAlgoLevel(const std::string& algoLevel, u32& level, HcclAlg
         return HCCL_E_PARA;
     }
 
-    std::string orginalLevel = algoLevel.substr(0, found);
-    std::string orginalAlgo = algoLevel.substr(found + 1);
+    std::string originalLevel = algoLevel.substr(0, found);
+    std::string originalAlgo = algoLevel.substr(found + 1);
 
     const std::map<std::string, u32> hcclAlgoLevelMap
         = {{"level0", HCCL_ALGO_LEVEL_0},
@@ -550,15 +550,15 @@ HcclResult ParserHcclAlgoLevel(const std::string& algoLevel, u32& level, HcclAlg
         {"NA", HcclAlgoType::HCCL_ALGO_TYPE_NA},
     };
 
-    auto iterAlgoLevel = hcclAlgoLevelMap.find(orginalLevel);
+    auto iterAlgoLevel = hcclAlgoLevelMap.find(originalLevel);
     if (iterAlgoLevel == hcclAlgoLevelMap.end()) {
-        HCCL_ERROR("[Parser][HcclAlgoLevel] algo config is invalid, level %s is not supported.", orginalLevel.c_str());
+        HCCL_ERROR("[Parser][HcclAlgoLevel] algo config is invalid, level %s is not supported.", originalLevel.c_str());
         return HCCL_E_PARA;
     }
 
-    auto iterAlgoType = hcclAlgoTypeMap.find(orginalAlgo);
+    auto iterAlgoType = hcclAlgoTypeMap.find(originalAlgo);
     if (iterAlgoType == hcclAlgoTypeMap.end()) {
-        HCCL_ERROR("[Parser][HcclAlgoLevel] algo config is invalid, algo %s is not supported.", orginalAlgo.c_str());
+        HCCL_ERROR("[Parser][HcclAlgoLevel] algo config is invalid, algo %s is not supported.", originalAlgo.c_str());
         return HCCL_E_PARA;
     }
 
@@ -749,7 +749,7 @@ HcclResult ParseIntraLinkType()
             !isEnvLenValid,
             HCCL_ERROR(
                 "[Parse][IntraLinkType]errNo[0x%016llx] Invalid INTRA_PCIE_ENABLE env len, len is bigger than "
-                "[%u]. errorno[%d]",
+                "[%u]. errNo[%d]",
                 HCCL_ERROR_CODE(HCCL_E_PARA), MAX_LEN_OF_DIGIT_ENV, HCCL_E_PARA),
             HCCL_E_PARA);
         std::string intraPcieStr(intraPcieEnv);
@@ -763,7 +763,7 @@ HcclResult ParseIntraLinkType()
             !isEnvLenValid,
             HCCL_ERROR(
                 "[Parse][IntraLinkType]errNo[0x%016llx] Invalid INTRA_ROCE_ENABLE env len, len is bigger than "
-                "[%u]. errorno[%d]",
+                "[%u]. errNo[%d]",
                 HCCL_ERROR_CODE(HCCL_E_PARA), MAX_LEN_OF_DIGIT_ENV, HCCL_E_PARA),
             HCCL_E_PARA);
         std::string intraRoceStr(intraRoceEnv);
@@ -773,7 +773,7 @@ HcclResult ParseIntraLinkType()
     // 只配置了roce的环境变量
     if (intraPcieEnv == "EmptyString" && intraRoceEnv != "EmptyString") {
         if (intraRoce == 0) { // roce环境变量值为0，报错
-            HCCL_ERROR("[Parse][IntraLinkType]only set HCCL_INTRA_ROCE_ENABLE, and the val is zero, pls set "
+            HCCL_ERROR("[Parse][IntraLinkType]only set HCCL_INTRA_ROCE_ENABLE, and the value is zero, please set "
                        "HCCL_INTRA_PCIE_ENABLE");
             return HCCL_E_PARA;
         } else { // roce环境变量值为1，走roce
@@ -788,7 +788,7 @@ HcclResult ParseIntraLinkType()
     // 只配置了pcie的环境变量
     if (intraPcieEnv != "EmptyString" && intraRoceEnv == "EmptyString") {
         if (intraPcie == 0) { // pcie环境变量值为0，报错
-            HCCL_ERROR("[Parse][IntraLinkType]only set HCCL_INTRA_PCIE_ENABLE, and the val is zero, pls set "
+            HCCL_ERROR("[Parse][IntraLinkType]only set HCCL_INTRA_PCIE_ENABLE, and the value is zero, please set "
                        "HCCL_INTRA_ROCE_ENABLE");
             return HCCL_E_PARA;
         }
@@ -887,7 +887,7 @@ HcclResult ParseOpExpansion()
 
     if (opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "AICPU_TS") {
         if (deviceType == HcclDevType::DEV_TYPE_910) {
-            HCCL_WARNING("910 do not support AICPU unfold.");
+            HCCL_WARNING("910 does not support AICPU unfolding.");
         } else {
             g_algEnvConfig.aicpuUnfold = true;
         }
@@ -898,7 +898,7 @@ HcclResult ParseOpExpansion()
         }
     } else if (opExpansionModeEnv == "AIV") {
         if (g_algEnvConfig.hcclDeterministic == true) {
-            HCCL_WARNING("Deterministic do not support aiv");
+            HCCL_WARNING("Deterministic mode does not support AIV");
         }
         g_algEnvConfig.aivMode = true;
     } else if (opExpansionModeEnv == "HOST") {
@@ -908,11 +908,11 @@ HcclResult ParseOpExpansion()
         if (deviceType == HcclDevType::DEV_TYPE_910B) {
             g_algEnvConfig.enableFfts = false;
         } else {
-            HCCL_WARNING("deviceType[%u] do not support HOST_TS", deviceType);
+            HCCL_WARNING("deviceType[%u] does not support HOST_TS", deviceType);
         }
     } else if (opExpansionModeEnv == "AICPU_CacheDisable") {
         if (deviceType == HcclDevType::DEV_TYPE_910) {
-            HCCL_WARNING("910 do not support AICPU unfold.");
+            HCCL_WARNING("910 does not support AICPU unfolding.");
         } else {
             g_algEnvConfig.aicpuUnfold = true;
             g_algEnvConfig.aicpuCacheEnable = 0; // Disable aicpu cache
@@ -972,39 +972,39 @@ HcclResult CollectRetryEnableFromConfig(const std::vector<std::string>& retryEna
             HCCL_ERROR("[CollectRetryEnableFromConfig] Hccl retryEnableLevel is invalid.");
             return HCCL_E_PARA;
         }
-        std::string orginalLevel = retryEnableLevel.substr(0, found);
-        std::string orginalRetryEnable = retryEnableLevel.substr(found + 1);
-        if (orginalLevel == "L0") {
+        std::string originalLevel = retryEnableLevel.substr(0, found);
+        std::string originalRetryEnable = retryEnableLevel.substr(found + 1);
+        if (originalLevel == "L0") {
             HCCL_RUN_WARNING("[CollectRetryEnableFromConfig] L0 config does not take effect");
         }
         // 检查是否存在重复配置level
-        auto iterCountRetryLevel = countHcclRetryLevelMap.find(orginalLevel);
+        auto iterCountRetryLevel = countHcclRetryLevelMap.find(originalLevel);
         if (iterCountRetryLevel == countHcclRetryLevelMap.end()) {
             HCCL_ERROR(
                 "[CollectRetryEnableFromConfig] Retry config is invalid, level %s is not supported.",
-                orginalLevel.c_str());
+                originalLevel.c_str());
             return HCCL_E_PARA;
         }
-        if (countHcclRetryLevelMap[orginalLevel] == 1) {
+        if (countHcclRetryLevelMap[originalLevel] == 1) {
             HCCL_ERROR(
                 "[CollectRetryEnableFromConfig] Retry config level[%s] is repeated, expect: L1:0, L2:0",
-                orginalLevel.c_str());
+                originalLevel.c_str());
             return HCCL_E_PARA;
         }
-        countHcclRetryLevelMap[orginalLevel] += 1;
+        countHcclRetryLevelMap[originalLevel] += 1;
         // 获取level和对应的retryEnable，并赋值给g_algEnvConfig.hcclRetryConfig
-        auto iterRetryLevel = hcclRetryLevelMap.find(orginalLevel);
+        auto iterRetryLevel = hcclRetryLevelMap.find(originalLevel);
         if (iterRetryLevel == hcclRetryLevelMap.end()) {
             HCCL_ERROR(
                 "[CollectRetryEnableFromConfig] Retry config is invalid, level %s is not supported.",
-                orginalLevel.c_str());
+                originalLevel.c_str());
             return HCCL_E_PARA;
         }
-        auto iterRetryEnable = hcclRetryEnableMap.find(orginalRetryEnable);
+        auto iterRetryEnable = hcclRetryEnableMap.find(originalRetryEnable);
         if (iterRetryEnable == hcclRetryEnableMap.end()) {
             HCCL_ERROR(
                 "[CollectRetryEnableFromConfig] Retry config is invalid, retryEnable %s is not supported.",
-                orginalRetryEnable.c_str());
+                originalRetryEnable.c_str());
             return HCCL_E_PARA;
         }
         level = iterRetryLevel->second;

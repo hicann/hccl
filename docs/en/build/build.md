@@ -32,7 +32,7 @@ The following software dependencies are required for compiling this project. Ens
         ```bash
         # Ensure the installation package has executable permissions
         chmod +x Ascend-cann-toolkit_${cann_version}_linux-${arch}.run
-        # Installation command
+        # Install the CANN Toolkit package in the specified directory
         ./Ascend-cann-toolkit_${cann_version}_linux-${arch}.run --install --install-path=${install_path}
         ```
 

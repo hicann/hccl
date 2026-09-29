@@ -52,7 +52,7 @@ HcclResult haclrtGetPairDeviceLinkType(s32 phyDevId, s32 otherPhyDevId, LinkType
 
     u64 linkTypeRaw = 0;
     ACLCHECK(aclrtGetDevicesTopo(logicIdLocal, logicIdDest, reinterpret_cast<uint64_t*>(&linkTypeRaw)));
-    HCCL_INFO("[haclrtGetPairDeviceLinkType]linkType[%u]", linkTypeRaw);
+    HCCL_INFO("[haclrtGetPairDeviceLinkType]linkType[%llu]", linkTypeRaw);
 
     // 若当前为标卡/虚拟机device间通过HCCS直接互联：HCCS_TYPE，device间通过HCCS交换芯片互联：TOPOLOGY_HCCS_SW
     // Ascend910_93 die间为SIO_TYPE，其他情况为PXI_TYPE
@@ -80,7 +80,7 @@ HcclResult haclrtGetCaptureInfo(aclrtStream stream, aclmdlRICaptureStatus& captu
     aclmdlRI rtModel = nullptr;
     aclError ret = aclmdlRICaptureGetInfo(stream, &captureStatus, &rtModel);
     if (ret == ACL_ERROR_RT_FEATURE_NOT_SUPPORT) {
-        HCCL_WARNING("[%s]Stream capture does not support!", __func__);
+        HCCL_WARNING("[%s]Stream capture is not supported!", __func__);
         return HCCL_SUCCESS;
     } else {
         CHK_PRT_RET(
@@ -151,7 +151,7 @@ HcclResult LoadBinaryFromFile(
     aclError aclRet
         = aclrtBinaryLoadFromFile(realPath, &loadOptions, &binHandle); // ACL_RT_BINARY_LOAD_OPT_CPU_KERNEL_MODE
     CHK_PRT_RET(
-        aclRet != ACL_SUCCESS, HCCL_ERROR("[LoadBinaryFromFile]errNo[0x%016llx] load binary from file error.", aclRet),
+        aclRet != ACL_SUCCESS, HCCL_ERROR("[LoadBinaryFromFile]errNo[%d] load binary from file error.", aclRet),
         HCCL_E_OPEN_FILE_FAILURE);
 
     return HCCL_SUCCESS;

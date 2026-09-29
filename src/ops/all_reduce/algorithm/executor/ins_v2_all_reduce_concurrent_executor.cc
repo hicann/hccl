@@ -584,7 +584,7 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u64 meshThreadsNum = tempAlg0.GetThreadNum(); // check流数
     if (meshThreadsNum > threads_.size()) {
         HCCL_ERROR(
-            "[InsV2AllReduceConcurrentExecutor][FastLaunch] meshThreadsNum[%llu] exceeds available threads[%llu]",
+            "[InsV2AllReduceConcurrentExecutor][FastLaunch] meshThreadsNum[%llu] exceeds available threads[%zu]",
             meshThreadsNum, threads_.size());
         return HCCL_E_PARA;
     }

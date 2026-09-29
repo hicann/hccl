@@ -2025,7 +2025,7 @@ void PushScatterYAllSteps(
     bool sameZAxis = (topo.rootz != topo.zAxis);
     const std::vector<OmniPipeSplitSliceInfo>& omniPipeSplitSliceInfoList
         = sameZAxis ? omniPipeSplitSliceInfoListPerLoop : omniPipeSplitSliceInfoListTotal;
-    // 处理本平面内的的对角节点的y轴
+    // 处理本平面内的对角节点的y轴
     if (topo.xB <= topo.yB) {
         for (u64 osn = state.xyCornerStep; osn < state.outerStepNum; osn++) {
             PushScatterYOuterLECornerOneOsn(

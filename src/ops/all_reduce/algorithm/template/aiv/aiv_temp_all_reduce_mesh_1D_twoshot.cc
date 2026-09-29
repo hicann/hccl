@@ -27,7 +27,7 @@ std::vector<CostModelParam> AivTempAllReduceMesh1DTwoShot::CalcCostCoeff(CalcCos
 {
     int portNum = param.portNum[0]; // 没有2+6
     int kernelNum = 2;
-    // 第一步是reducescatter，
+    // 第一步是ReduceScatter，
     float A = 0.0f;
     float B = 0.0f;
     float C = 0.0f;

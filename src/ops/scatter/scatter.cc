@@ -529,7 +529,7 @@ HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
         case HcclAlgoType::HCCL_ALGO_TYPE_AHC:
             if (opType < HcclCMDType::HCCL_CMD_ALL) {
                 algoConfigShadow = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
-                HCCL_INFO("server num[%u]: level1:ahc algo is not support, set default.", topoInfo->moduleNum);
+                HCCL_INFO("server num[%u]: level1:ahc algo is not supported, set default.", topoInfo->moduleNum);
                 break;
             } else {
                 algType = AlgTypeLevel1::ALG_LEVEL1_AHC;
@@ -538,7 +538,7 @@ HcclResult SetAlgoLevel1(TopoInfo* topoInfo, HcclAlgoType algoConfig, AlgTypeLev
         case HcclAlgoType::HCCL_ALGO_TYPE_AHC_BROKE:
             if (opType < HcclCMDType::HCCL_CMD_ALL) {
                 algoConfigShadow = HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT;
-                HCCL_INFO("server num[%u]: level1:ahc broke algo is not support, set default.", topoInfo->moduleNum);
+                HCCL_INFO("server num[%u]: level1:ahc broke algo is not supported, set default.", topoInfo->moduleNum);
                 break;
             } else {
                 algType = AlgTypeLevel1::ALG_LEVEL1_AHC_BROKE;

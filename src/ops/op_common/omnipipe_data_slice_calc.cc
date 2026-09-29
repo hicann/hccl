@@ -652,7 +652,7 @@ std::vector<u64> CalcOmniPipeScratchInfo(OmniPipeScratchParam& omniPipeScratchPa
     CommEngine engine = omniPipeScratchParam.engine;
     HCCL_INFO(
         "[CalcOmniPipeScratchInfo] "
-        "dataSize=[%llu],dataTypeSize=[%llu],maxTmpMemSize=[%llu],opMode=[%u],engine=[%s],levelAlgType.size()=[%u]",
+        "dataSize=[%llu],dataTypeSize=[%llu],maxTmpMemSize=[%llu],opMode=[%u],engine=[%s],levelAlgType.size()=[%zu]",
         dataSize, dataTypeSize, maxTmpMemSize, opMode, GetEnumToString(GetCommEngineStatusStrMap(), engine).c_str(),
         levelAlgType.size());
 

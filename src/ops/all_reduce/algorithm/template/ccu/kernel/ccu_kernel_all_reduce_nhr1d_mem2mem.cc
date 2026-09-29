@@ -194,7 +194,7 @@ static CcuResult DoReduceScatterNHRSingleStep(AllReduceNHR1DContext& ctx, const 
     // 等待fromRank通知数据写入完毕
     ccu::NotifyWait(recvChannel, CKE_IDX_0, 1 << STEP0_POST_SYNC_ID);
     HCCL_DEBUG(
-        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId,
+        "[DoReduceScatterNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%zu", ctx.rankId,
         nhrStepInfo.step, nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }
@@ -275,7 +275,7 @@ static CcuResult DoAllGatherNHRSingleStep(AllReduceNHR1DContext& ctx, const NHRS
     }
 
     HCCL_DEBUG(
-        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%lu", ctx.rankId, nhrStepInfo.step,
+        "[DoAllGatherNHRSingleStep] rank %u step %u, toRank=%u, fromRank=%u, nSlice=%zu", ctx.rankId, nhrStepInfo.step,
         nhrStepInfo.toRank, nhrStepInfo.fromRank, sendSliceIdxList.size());
     return CCU_SUCCESS;
 }

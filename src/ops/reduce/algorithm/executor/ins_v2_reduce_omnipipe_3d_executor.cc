@@ -158,7 +158,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     CHK_PRT_RET(
         ret != HCCL_SUCCESS,
         HCCL_ERROR(
-            "[InsV2ReduceOmniPipe3DExecutor][Orchestrate]errNo[0x%016llx] AllReduce executor kernel run failed",
+            "[InsV2ReduceOmniPipe3DExecutor][Orchestrate]errNo[0x%016llx] Reduce executor kernel run failed",
             HCCL_ERROR_CODE(ret)),
         ret);
     HCCL_INFO("[InsV2ReduceOmniPipe3DExecutor][Orchestrate] Orchestrate END");

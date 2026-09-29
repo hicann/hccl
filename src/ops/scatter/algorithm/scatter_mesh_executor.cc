@@ -43,8 +43,8 @@ HcclResult ScatterMeshExecutor::CalcResRequest(
     resourceRequest.channels.push_back(level1Channels);
 
     HCCL_INFO(
-        "[ScatterMeshExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%u] notifyNumOnMainThread[%u]"
-        " level0Channels[%u] level1Channels[%u].",
+        "[ScatterMeshExecutor][CalcResRequest]slaveThreadNum[%u] notifyNumPerThread[%zu] notifyNumOnMainThread[%u]"
+        " level0Channels[%zu] level1Channels[%zu].",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread.size(),
         resourceRequest.notifyNumOnMainThread, level0Channels.size(), level1Channels.size());
     return HCCL_SUCCESS;

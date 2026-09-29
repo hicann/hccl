@@ -8,7 +8,7 @@ ERROR CQE在HCCL中代表RoCE报文的重传超时，出现后必然会伴随集
 
 ```text
 [PID: 3448331] 2025-12-04-21:59:08.232.310 Execution Error ROCE CQE(EI0013): An error CQE occurred during operator execution. Local information: server 127.0.0.1, device ID 0, device IP 127.10.0.1. Peer information: server 127.0.0.2, device ID 1, device IP 127.10.0.2.
-Possible Cause: 1. The network between two devices is abnormal. For example, the network port is intermittently disconnected.2. The peer process exits abnormally in advance. As a result, the local end cannot receive the response from the peer end.
+Possible Cause: 1. The network between two devices is abnormal. For example, the network port is intermittently disconnected. 2. The peer process exits abnormally in advance. As a result, the local end cannot receive the response from the peer end.
 Solution: 1. Check whether the network devices between the two ends are abnormal.2. Check whether the peer process exits first. If yes, check the cause of the process exit.
 ```
 

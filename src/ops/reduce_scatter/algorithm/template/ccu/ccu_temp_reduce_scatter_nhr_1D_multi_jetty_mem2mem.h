@@ -8,8 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#ifndef HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MUTIL_JETTY_MEM2MEM_H
-#define HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MUTIL_JETTY_MEM2MEM_H
+#ifndef HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MULTI_JETTY_MEM2MEM_H
+#define HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MULTI_JETTY_MEM2MEM_H
 
 #include "ccu_alg_template_base.h"
 #include "ccu_kernel_reduce_scatter_nhr1d_multi_jetty_mem2mem.h"
@@ -63,4 +63,4 @@ private:
 
 } // namespace ops_hccl
 
-#endif // HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MUTIL_JETTY_MEM2MEM_H
+#endif // HCCL_CCU_TEMP_REDUCE_SCATTER_NHR_1D_MULTI_JETTY_MEM2MEM_H

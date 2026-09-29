@@ -356,7 +356,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
 
     HCCL_DEBUG(
         "[InsAllReduceParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
-        "channels[%u]",
+        "channels[%zu]",
         myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
         resourceRequest.channels.size());
     for (auto i = 0; i < resourceRequest.notifyNumPerThread.size(); i++) {
@@ -578,7 +578,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     myRank_ = resCtx.topoInfo.userRank;
     // 给channels_和threads_赋值
     threads_ = resCtx.threads;
-    HCCL_INFO("[InsAllReduceParallelExecutor][Orchestrate] threads_size[%d]", threads_.size());
+    HCCL_INFO("[InsAllReduceParallelExecutor][Orchestrate] threads_size[%zu]", threads_.size());
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
@@ -792,7 +792,7 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     for (auto i : intraTempAlgRes.channels) {
         HCCL_DEBUG(
             "[InsAllReduceParallelExecutor][PrepareResForTemplateResource],intraTempAlgRes.channels, myRank_[%u], "
-            "channels[%u]= size[%u] ",
+            "channels[%u]= size[%zu] ",
             myRank_, i.first, i.second.size());
     }
     interTempAlgRes.threads = interThreads_;
@@ -800,12 +800,12 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     for (auto i : interTempAlgRes.channels) {
         HCCL_DEBUG(
             "[InsAllReduceParallelExecutor][PrepareResForTemplateResource],interTempAlgRes.channels, myRank_[%u], "
-            "channels[%u]= size[%u] ",
+            "channels[%u]= size[%zu] ",
             myRank_, i.first, i.second.size());
     }
     HCCL_DEBUG(
-        "[InsAllReduceParallelExecutor][PrepareResForTemplateResource] AlgTemplate intraThreads_size[%d] "
-        "interThreads_size[%d]",
+        "[InsAllReduceParallelExecutor][PrepareResForTemplateResource] AlgTemplate intraThreads_size[%zu] "
+        "interThreads_size[%zu]",
         intraThreads_.size(), interThreads_.size());
 
     return HcclResult::HCCL_SUCCESS;
@@ -1088,8 +1088,9 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         HCCL_INFO("[InsAllReduceParallelExecutor][GenInsQues] %s: symmetric memory enabled", param.algName);
     }
     HCCL_DEBUG(
-        "[InsAllReduceParallelExecutor][GenInsQues] dataCount_[%lu], myRank_[%d], sliceCountUB[%d], sliceCountUB0[%d], "
-        "sliceCount[%d]",
+        "[InsAllReduceParallelExecutor][GenInsQues] dataCount_[%llu], myRank_[%d], sliceCountUB[%llu], "
+        "sliceCountUB0[%llu], "
+        "sliceCount[%llu]",
         dataCount_, myRank_, sliceCountUB, sliceCountUB0, sliceCount);
 
     u64 alignSize = AICPU_ALIGN_SIZE;
@@ -1110,12 +1111,12 @@ InsAllReduceParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
     u64 scratchOffsetCountInterStage1 = 0;
     u64 scratchOffsetCountIntraStage1 = sliceCountPart0 * multipleInter;
     HCCL_DEBUG(
-        "[InsAllReduceParallelExecutor][GenInsQues] dataCount_[%lu], myRank_[%d], sliceCountPart0[%d], "
-        "multipleIntra[%d]",
+        "[InsAllReduceParallelExecutor][GenInsQues] dataCount_[%llu], myRank_[%d], sliceCountPart0[%llu], "
+        "multipleIntra[%u]",
         dataCount_, myRank_, sliceCountPart0, multipleIntra);
     HCCL_DEBUG(
-        "[InsAllReduceParallelExecutor][GenInsQues] myRank_[%d],scratchOffsetCountInterStage0[%d], "
-        "scratchOffsetCountIntraStage1[%d]",
+        "[InsAllReduceParallelExecutor][GenInsQues] myRank_[%d],scratchOffsetCountInterStage0[%llu], "
+        "scratchOffsetCountIntraStage1[%llu]",
         myRank_, scratchOffsetCountInterStage0, scratchOffsetCountIntraStage1);
     TemplateDataParams tempAlgParamsIntra0;
     TemplateDataParams tempAlgParamsInter0;

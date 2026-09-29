@@ -120,7 +120,7 @@ HcclResult CcuTempGatherOmniPipeMesh1DMem2Mem::CalcRes(
     kernelInfo.channels = channelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
     HCCL_DEBUG(
-        "[%s]channelDescs.size()=%llu, ccuKernelInfos.size() = %llu", __func__, channelDescs.size(),
+        "[%s]channelDescs.size()=%zu, ccuKernelInfos.size() = %zu", __func__, channelDescs.size(),
         resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

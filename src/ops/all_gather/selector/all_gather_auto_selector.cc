@@ -67,7 +67,7 @@ SelectorStatus AllGatherAutoSelector::SelectMeshAlgo(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         CHK_PRT_RET(
             IsInputOutputOverlap(opParam) == true,
-            HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_ms does not support inplace allgather."),
+            HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_ms does not support in-place allgather."),
             SelectorStatus::NOT_MATCH);
         if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
             selectAlgName = "CcuMSAllGatherSoleMesh2Die";
@@ -109,7 +109,7 @@ SelectorStatus AllGatherAutoSelector::SelectMeshAlgo(
             topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -140,7 +140,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleUBXAlgo(
     } else {
         selectAlgName = "CcuSchedAllGatherSoleMesh";
     }
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -168,7 +168,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0AlgoMesh1D(
             selectAlgName = "CcuSchedAllGatherSoleMesh";
         }
     }
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -203,7 +203,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleLevel0Algo(
         return SelectorStatus::NOT_MATCH;
     }
 
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -235,7 +235,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
             // Level1Nhr 已在 CalcTopoShape 中设置（GCD==1 时为 true）
             CHK_PRT_RET(
                 IsInputOutputOverlap(opParam) == true,
-                HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_sched does not support inplace allgather."),
+                HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_sched does not support in-place allgather."),
                 SelectorStatus::NOT_MATCH);
             if (topoInfo->userRankSize > ccuMaxSize) {
                 HCCL_INFO("[AllGatherAutoSelector] ranksize > ccuMaxSize, fallback to aicpu mode.");
@@ -292,11 +292,11 @@ SelectorStatus AllGatherAutoSelector::SelectCcuScheduleAlgo(
     } else {
         CHK_PRT_RET(
             IsInputOutputOverlap(opParam) == true,
-            HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_sched does not support inplace allgather."),
+            HCCL_WARNING("[Algo][AllGatherAutoSelector] ccu_sched does not support in-place allgather."),
             SelectorStatus::NOT_MATCH);
         return SelectCcuScheduleLevel0Algo(topoInfo, opParam, selectAlgName, dataSize);
     }
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -373,7 +373,7 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
                     selectAlgName = (dataSize < OMNI_PCIE_AG_DATA_SIZE) ? "AicpuAllGatherParallelMeshNHR" :
                                                                           "AicpuAllGatherPipeLineMeshNHR";
                 }
-                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             }
             // UBX机型
@@ -405,7 +405,7 @@ SelectorStatus AllGatherAutoSelector::SelectAicpuAlgo(
             return SelectorStatus::NOT_MATCH;
         }
     }
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -467,7 +467,7 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
     }
 
     selectAlgName = "AivAllGatherSoleMesh";
-    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 
@@ -482,21 +482,21 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
         if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
             || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuAllGatherSequenceMeshNHR";
-            HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
                 selectAlgName = "DpuAllGatherPipeLineMeshNHRNHR";
-                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             } else {
                 selectAlgName = "DpuAllGatherSequenceMeshNHR";
-                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+                HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
                 return SelectorStatus::MATCH;
             }
         } else {
             selectAlgName = "DpuAllGatherSequenceMeshNHR";
-            HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
     }

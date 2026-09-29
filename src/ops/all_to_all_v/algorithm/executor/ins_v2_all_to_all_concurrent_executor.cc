@@ -213,7 +213,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     u32 topoNum = 2;
     if (algHierarchyInfo.infos[0].size() != topoNum) {
         HCCL_ERROR(
-            "[InsV2AllToAllConcurrentExecutor[%s] toposize = %u", __FUNCTION__, algHierarchyInfo.infos[0].size());
+            "[InsV2AllToAllConcurrentExecutor[%s] toposize = %zu", __FUNCTION__, algHierarchyInfo.infos[0].size());
         return HCCL_E_PARA;
     }
 
@@ -745,7 +745,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     u64 meshThreadsNum = tempAlg0.GetThreadNum(); // check流数
     if (meshThreadsNum > threads_.size()) {
         HCCL_ERROR(
-            "[InsV2AllToAllConcurrentExecutor][FastLaunch] meshThreadsNum[%llu] exceeds available threads[%llu]",
+            "[InsV2AllToAllConcurrentExecutor][FastLaunch] meshThreadsNum[%llu] exceeds available threads[%zu]",
             meshThreadsNum, threads_.size());
         return HCCL_E_PARA;
     }

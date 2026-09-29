@@ -63,14 +63,14 @@ HcclResult ScatterRingDirect::CheckParameters(const u32 rank, const u32 rankSize
     CHK_PRT_RET(
         ringsOrder_.size() != rankSize,
         HCCL_ERROR(
-            "[ScatterRingDirect] ringsOrder size[%u] is not equal to rank size[%u]", ringsOrder_.size(), rankSize),
+            "[ScatterRingDirect] ringsOrder size[%zu] is not equal to rank size[%u]", ringsOrder_.size(), rankSize),
         HCCL_E_PARA);
     // 判断userMemInputSlices数量是否正确
     CHK_PRT_RET(
         userMemInputSlices_.size() != rankSize,
         HCCL_ERROR(
-            "[ScatterRingDirect] userMemInputSlices size[%u] is not equal to rank size[%u]", userMemInputSlices_.size(),
-            rankSize),
+            "[ScatterRingDirect] userMemInputSlices size[%zu] is not equal to rank size[%u]",
+            userMemInputSlices_.size(), rankSize),
         HCCL_E_PARA);
     HCCL_INFO("ScatterRingDirect CheckParameters success");
     return HCCL_SUCCESS;

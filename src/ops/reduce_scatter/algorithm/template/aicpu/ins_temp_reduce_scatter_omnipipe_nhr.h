@@ -27,7 +27,7 @@ public:
 
     std::string Describe() const override
     {
-        std::string info = "Template of reduce scatter omnipipe NHR with tempRankSize ";
+        std::string info = "Template of reduce scatter OmniPipe NHR with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }

@@ -183,7 +183,7 @@ HcclResult InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsA
     resourceRequest.channels[0] = resReqReduceScatter.channels[0];
     HCCL_INFO(
         "[InsV2AllReduceTwoShotSoleExecutor] slaveThreadNum is [%u], notifyNumOnMainThread is [%u], "
-        "channel size [%u]",
+        "channel size [%zu]",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumOnMainThread, resourceRequest.channels[0].size());
     return HCCL_SUCCESS;
 }

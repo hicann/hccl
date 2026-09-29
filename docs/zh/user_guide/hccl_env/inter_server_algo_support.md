@@ -11,7 +11,7 @@
   | --- | --- | --- | --- |
   | ReduceScatter | int8、int16、int32、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
   | AllGather | int8、int16、int32、int64、uint8、uint16、uint32、uint64、float16、float32、float64、bfp16、fp8-e5m2、fp8-e4m3、hif8、fp8-e8m0 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
-  | AllReduce | int8、int16、int32、float16、float32、 bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
+  | AllReduce | int8、int16、int32、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
   | Broadcast | int8、int16、int32、int64、uint8、uint16、uint32、uint64、float16、float32、float64、bfp16、fp8-e5m2、fp8-e4m3、hif8、fp8-e8m0 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
   | Reduce | int8、int16、int32、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | AI_CPU/CCU_SCHED |
   | Scatter | int8、int16、int32、int64、uint8、uint16、uint32、uint64、float16、float32、float64、bfp16、fp8-e5m2、fp8-e4m3、hif8、fp8-e8m0 | - 单算子模式 | AI_CPU/CCU_SCHED |
@@ -72,13 +72,13 @@
 
   | 集合通信算子 | 数据类型 | 网络运行模式 | 不支持算子处理方法 |
   | --- | --- | --- | --- |
-  | ReduceScatter | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | AllGather | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | AllReduce | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | Reduce | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | ReduceScatter | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | AllGather | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | AllReduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | Reduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
   | ReduceScatterV | int8、int16、int32、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | Scatter | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式 | 自动选择为NHR或者H-D_R算法 |
-  | AllGatherV | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | Scatter | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式 | 自动选择为NHR或者H-D_R算法 |
+  | AllGatherV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
 
 - **H-D_R算法**
 
@@ -160,10 +160,10 @@
 
   | 集合通信算子 | 数据类型 | 网络运行模式 | 不支持算子处理方法 |
   | --- | --- | --- | --- |
-  | ReduceScatter | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | AllGather | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | AllReduce | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
-  | Reduce | int8、int16、int32、 int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | ReduceScatter | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | AllGather | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | AllReduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
+  | Reduce | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 自动选择为NHR或者H-D_R算法 |
 
 - **H-D_R算法**
   

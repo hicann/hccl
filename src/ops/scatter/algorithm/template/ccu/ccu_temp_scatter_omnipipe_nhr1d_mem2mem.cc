@@ -127,7 +127,7 @@ HcclResult CcuTempScatterOmniPipeNHR1DMem2Mem::CalcRes(
     kernelInfo.channels = channelDescs;
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
     HCCL_DEBUG(
-        "[%s]channelDescs.size()=%llu, dimsize=%llu, ccuKernelInfos.size()=%llu", __func__, channelDescs.size(),
+        "[%s]channelDescs.size()=%zu, dimsize=%zu, ccuKernelInfos.size()=%zu", __func__, channelDescs.size(),
         subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;

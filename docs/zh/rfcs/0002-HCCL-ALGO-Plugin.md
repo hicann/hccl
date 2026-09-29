@@ -513,7 +513,7 @@ extern "C" HcclResult <fnSymbol>(void*        sendBuf,
 
 - **向后兼容性**：本方案仅在HCCL原有算法选择与执行流程中新增可选分支。当`HCCL_ALGO_PLUGIN_PATH`未配置时，所有新增分支直接跳过，HCCL行为与原有完全一致。
 
-- **接口版本管理**：`HcclAlgoPlugin_t`函数表设计`version`字段，用于HCCL侧校验所加载的PluginBroker是否合法,若拒绝加载，则降级为原有选择逻辑，防止加载到非法或损坏的PluginBroker动态库。
+- **接口版本管理**：`HcclAlgoPlugin_t`函数表设计`version`字段，用于HCCL侧校验所加载的PluginBroker是否合法，若拒绝加载，则降级为原有选择逻辑，防止加载到非法或损坏的PluginBroker动态库。
 
 - **数据结构兼容性**：HCCL从内部的`OpParam`和`TopoInfoWithNetLayerDetails`中提取并填充本次通信参数，HCCL-ALGO-Plugin不直接依赖HCCL内部结构体。
 

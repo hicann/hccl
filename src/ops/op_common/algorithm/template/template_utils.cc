@@ -226,7 +226,7 @@ bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails* topoInfo, const u3
     CHK_PRT_RET(
         topoInfo->netLayerDetails.localNetInsSizeOfLayer.size() <= netLayer,
         HCCL_WARNING(
-            "[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%u] <= netLayer[%u]",
+            "[BaseSelector][IsLayerAllConnetedWithTopo] localNetInsSizeOfLayer size[%zu] <= netLayer[%u]",
             topoInfo->netLayerDetails.localNetInsSizeOfLayer.size(), netLayer),
         false);
     u32 localRankSize = topoInfo->netLayerDetails.localNetInsSizeOfLayer[netLayer];
@@ -234,7 +234,7 @@ bool IsAllConnetedWithTopo(const TopoInfoWithNetLayerDetails* topoInfo, const u3
     CHK_PRT_RET(
         topoInfo->topoInstDetailsOfLayer.size() <= netLayer,
         HCCL_WARNING(
-            "[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%u] <= netLayer[%u]",
+            "[BaseSelector][IsLayerAllConnetedWithTopo] topoInstDetailsOfLayer size[%zu] <= netLayer[%u]",
             topoInfo->topoInstDetailsOfLayer.size(), netLayer),
         false);
 

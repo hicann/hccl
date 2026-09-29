@@ -297,7 +297,7 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
         CHK_PRT_RET(
             tempAlgParamsReduceScatterMesh1D.allRankSliceSize.size() != rankSizeLevel0_,
             HCCL_ERROR(
-                "[InsV2ReduceSequenceExecutor][tempAlgParamsReduceScatterMesh1D] slice num[%u] is not equal to rank "
+                "[InsV2ReduceSequenceExecutor][tempAlgParamsReduceScatterMesh1D] slice num[%zu] is not equal to rank "
                 "size[%u].",
                 tempAlgParamsReduceScatterMesh1D.allRankSliceSize.size(), rankSizeLevel0_),
             HcclResult::HCCL_E_INTERNAL);
@@ -341,7 +341,7 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
             CHK_PRT_RET(
                 tempAlgParamsReduceScatterMesh1dDpu.allRankSliceSize.size() != rankSizeLevel1_,
                 HCCL_ERROR(
-                    "[InsV2ReduceSequenceExecutor][tempAlgParamsReduceScatterMesh1dDpu] slice num[%u] is not "
+                    "[InsV2ReduceSequenceExecutor][tempAlgParamsReduceScatterMesh1dDpu] slice num[%zu] is not "
                     "equal to rank size[%u].",
                     tempAlgParamsReduceScatterMesh1dDpu.allRankSliceSize.size(), rankSizeLevel1_),
                 HcclResult::HCCL_E_INTERNAL);

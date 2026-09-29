@@ -176,7 +176,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     resourceRequest.channels[0] = resReqInter.channels[0];
     resourceRequest.channels[1] = resReqIntra.channels[0];
     HCCL_INFO(
-        "slaveThreadNum is [%u], notifyNumOnMainThread is [%u], level 1 channel size [%u], level 2 channel size [%u]",
+        "slaveThreadNum is [%u], notifyNumOnMainThread is [%u], level 1 channel size [%zu], level 2 channel size [%zu]",
         resourceRequest.slaveThreadNum, resourceRequest.notifyNumPerThread, resourceRequest.channels[0].size(),
         resourceRequest.channels[1].size());
     return HCCL_SUCCESS;

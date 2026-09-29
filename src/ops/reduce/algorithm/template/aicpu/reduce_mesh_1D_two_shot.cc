@@ -109,7 +109,7 @@ HcclResult ReduceMesh1DTwoShot::KernelRun(
     threadNum_ = templateRankSize_;
     CHK_PRT_RET(
         threads.size() != threadNum_,
-        HCCL_ERROR("[ReduceMesh1DTwoShot] resource threadNum[%u] is invalid, need[%u]", threads.size(), threadNum_),
+        HCCL_ERROR("[ReduceMesh1DTwoShot] resource threadNum[%zu] is invalid, need[%u]", threads.size(), threadNum_),
         HcclResult::HCCL_E_INTERNAL);
     rankList_ = subCommRanks_.at(0);
 

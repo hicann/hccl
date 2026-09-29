@@ -22,7 +22,7 @@ flowchart LR
 
 | 维度 | 能力 |
 |------|------|
-| **集合通信原语** | AllReduce、Broadcast、AllGather、ReduceScatter、AlltoAllv、Send、Receive、…… |
+| **集合通信原语** | AllReduce、Broadcast、AllGather、ReduceScatter、AlltoAllV、Send、Receive、…… |
 | **通信算法** | Ring、Mesh、RHD(Halving-Doubling)、Star + 自研算法 |
 | **主要通信协议** | UB_CTP、UB_RTP、UBoE、RoCE(v2)、HCCS、UB_MEM |
 | **执行模式** | 单算子模式 + 图模式 |
@@ -82,7 +82,7 @@ RankGraph 使用图（Graph）对通信域内不同 Rank 间的连接关系进�
 | **通信内存(CommMem)** | 注册到通信域、可被通信设备(Endpoint)访问的内存段 | NPU HBM / Host 内存 |
 | **通信引擎(CommEngine)** | 执行通信任务的模块，含 Thread 与线程调度器，驱动通信硬件搬移数据 | AICPU_TS、CCU、AIV |
 
-> **组合关系**: Channel = 两端通信设备 + 通信协议 + N Notifys
+> **组合关系**： Channel = 两端通信设备 + 通信协议 + N个Notify
 
 ![基础通信模型](diagrams/base_comm_model.excalidraw.svg)
 

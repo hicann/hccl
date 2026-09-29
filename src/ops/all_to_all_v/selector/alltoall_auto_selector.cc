@@ -54,10 +54,10 @@ SelectorStatus AlltoAllAutoSelector::SelectCcuScheduleAlgo(
             __func__, topoInfo->topoLevelNums);
         return SelectorStatus::NOT_MATCH;
     }
-    // ccu schedule 模式不支持 inplace 场景
+    // ccu schedule 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[Algo][AlltoAllAutoSelector] ccu schedule does not support inplace alltoall."),
+        HCCL_WARNING("[Algo][AlltoAllAutoSelector] ccu schedule does not support in-place alltoall."),
         SelectorStatus::NOT_MATCH);
     uint32_t ccuSize = A2A_CCU_MAX_RANK_SIZE;
     uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllDataDes.sendType];
@@ -139,7 +139,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
         // 跨框 MESH_1D 且 rankSize 为 16 的倍数走 Pairwise
         if (IsPairwiseCapable(topoInfo)) {
             selectAlgName = "AicpuAllToAllSolePairwise";
-            HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
         if (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::CLOS
@@ -167,7 +167,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
         // PCIE-SW定制机型，使用mesh1d算法
         if (topoInfo->level0PcieMix) {
             selectAlgName = "AicpuAllToAllSoleMesh";
-            HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
         uint32_t dataTypeSize = DATATYPE_SIZE_TABLE[opParam.all2AllVDataDes.sendType];
@@ -191,7 +191,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAicpuAlgo(
         HCCL_ERROR("[AlltoAllAutoSelector][%s] hccl algo no match", __func__);
         return SelectorStatus::NOT_MATCH;
     }
-    HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
 
     return SelectorStatus::MATCH;
 }
@@ -253,7 +253,7 @@ SelectorStatus AlltoAllAutoSelector::SelectAivAlgo(
     }
     selectAlgName = "AivAllToAllSoleMesh";
 
-    HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+    HCCL_INFO("[AlltoAllAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 

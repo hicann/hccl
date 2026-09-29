@@ -52,8 +52,7 @@ HcclResult ScatterMesh::RunAsync(const u32 rank, const u32 rankSize, std::vector
 
     if (channels.size() < rankSize) {
         HCCL_ERROR(
-            "[ScatterMesh][RunAsync]rank[%u] linksize[%llu] is less than rankSize[%u]", rank, channels.size(),
-            rankSize);
+            "[ScatterMesh][RunAsync]rank[%u] linksize[%zu] is less than rankSize[%u]", rank, channels.size(), rankSize);
         return HCCL_E_INTERNAL;
     }
 
@@ -127,7 +126,7 @@ HcclResult ScatterMesh::RunRecvScatter(const u32 srcRank, const Slice& slice, st
 {
     // 判断数据是否需要分片
     if (srcRank >= channels.size()) {
-        HCCL_ERROR("[Run][RecvScatter]SrcRank[%u] is out of range, linkSize[%llu]", srcRank, channels.size());
+        HCCL_ERROR("[Run][RecvScatter]SrcRank[%u] is out of range, linkSize[%zu]", srcRank, channels.size());
         return HCCL_E_INTERNAL;
     }
     HCCL_DEBUG("rank[%u] will rcv with output's offset[%llu], size[%llu]", interRank_, slice.offset, slice.size);

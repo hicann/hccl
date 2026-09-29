@@ -65,7 +65,7 @@ HcclResult TopoMatchUBX::TopoForLayer0(
             }
         }
         HCCL_INFO(
-            "[TopoMatchUBX] layer0Size %u topoInstNum [%d], infos[0].size %u, mesh1DRanks[%u], closRanks[%u]",
+            "[TopoMatchUBX] layer0Size %u topoInstNum [%d], infos[0].size %zu, mesh1DRanks[%zu], closRanks[%zu]",
             layer0Size, topoInstNum, algHierarchyInfo.infos[0].size(), mesh1DRanks.size(), closRanks.size());
     }
 #endif

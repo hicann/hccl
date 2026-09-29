@@ -26,7 +26,7 @@ public:
 
     std::string Describe() const override
     {
-        std::string info = "Template of AllGather omniPipe NHR dpu with tempRankSize ";
+        std::string info = "Template of AllGather OmniPipe NHR dpu with tempRankSize ";
         info += std::to_string(templateRankSize_);
         return info;
     }

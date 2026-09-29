@@ -147,7 +147,7 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
                 info.resGroup = 1;
             });
         HCCL_INFO(
-            "[InsV2AllReduceSequence2DieExecutor][CalcRes] all has [%d] kernels.",
+            "[InsV2AllReduceSequence2DieExecutor][CalcRes] all has [%zu] kernels.",
             resourceRequest.ccuKernelInfos.size());
     }
     return HCCL_SUCCESS;
@@ -240,7 +240,7 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     BufferType outBuffType = BufferType::OUTPUT;
     u32 templateScratchMultiplier = algTemplate0->CalcScratchMultiple(inBuffType, outBuffType);
     TemplateResource templateAlgRes0;
-    // 构造reducescatter template资源
+    // 构造ReduceScatter template资源
     templateAlgRes0.threads = resCtx.threads;
     // 构造allgather template资源
     TemplateResource templateAlgRes1;

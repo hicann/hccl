@@ -55,15 +55,18 @@ HcclResult ExecutorBase::RefreshAlgType(AlgType& algType)
     const std::vector<AlgTypeLevel2>& l2Algo = desc_.level2SupportedAlgos;
 
     if (!l0Algo.empty() && std::find(l0Algo.begin(), l0Algo.end(), algType.algoLevel0) == l0Algo.end()) {
-        HCCL_WARNING("[%s] not support level0 algo[%d], reset to algo[%d]", __func__, algType.algoLevel0, l0Algo[0]);
+        HCCL_WARNING(
+            "[%s] does not support level0 algo[%d], reset to algo[%d]", __func__, algType.algoLevel0, l0Algo[0]);
         algType.algoLevel0 = l0Algo[0];
     }
     if (!l1Algo.empty() && std::find(l1Algo.begin(), l1Algo.end(), algType.algoLevel1) == l1Algo.end()) {
-        HCCL_WARNING("[%s] not support level1 algo[%d], reset to algo[%d]", __func__, algType.algoLevel1, l1Algo[0]);
+        HCCL_WARNING(
+            "[%s] does not support level1 algo[%d], reset to algo[%d]", __func__, algType.algoLevel1, l1Algo[0]);
         algType.algoLevel1 = l1Algo[0];
     }
     if (!l2Algo.empty() && std::find(l2Algo.begin(), l2Algo.end(), algType.algoLevel2) == l2Algo.end()) {
-        HCCL_WARNING("[%s] not support level2 algo[%d], reset to algo[%d]", __func__, algType.algoLevel2, l2Algo[0]);
+        HCCL_WARNING(
+            "[%s] does not support level2 algo[%d], reset to algo[%d]", __func__, algType.algoLevel2, l2Algo[0]);
         algType.algoLevel2 = l2Algo[0];
     }
     return HCCL_SUCCESS;

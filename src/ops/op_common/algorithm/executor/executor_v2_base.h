@@ -184,9 +184,9 @@ protected:
                   HcclResult::HCCL_E_PARA;
         if (matchRet != HcclResult::HCCL_SUCCESS) {
             if (scene == TopoProbeScene::PROBE_GET_ALG_NET_META) {
-                HCCL_INFO("%s algName=%s topo match not support, return empty.", logTag, algName);
+                HCCL_INFO("%s algName=%s topo match is not supported, return empty.", logTag, algName);
             } else {
-                HCCL_INFO("%s algName=%s topo match not support, skip.", logTag, algName);
+                HCCL_INFO("%s algName=%s topo match is not supported, skip.", logTag, algName);
             }
             return false;
         }

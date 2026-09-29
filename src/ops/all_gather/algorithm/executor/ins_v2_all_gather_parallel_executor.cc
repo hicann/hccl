@@ -257,7 +257,7 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     }
     HCCL_DEBUG(
         "[InsV2AllGatherParallelExecutor][CalcRes] myRank[%u], notifyNumOnMainThread[%u], slaveThreadNum[%u], "
-        "channels[%u]",
+        "channels[%zu]",
         myRank_, resourceRequest.notifyNumOnMainThread, resourceRequest.slaveThreadNum,
         resourceRequest.channels.size());
     for (auto i = 0; i < resourceRequest.notifyNumPerThread.size(); i++) {
@@ -549,16 +549,16 @@ HcclResult InsV2AllGatherParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     multipleDimensionSplitRatioSource_ = param.opConfig.multipleDimensionSplitRatioSource;
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(dataSplitSize, resCtx);
-    u32 intraScatchteMultipleStage0 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    u32 interScatchteMultipleStage0 = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    u32 intraScatchteMultipleStage1 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    u32 interScatchteMultipleStage1 = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    u32 intraScratchMultipleStage0 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    u32 interScratchMultipleStage0 = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    u32 intraScratchMultipleStage1 = tempAlgIntra.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    u32 interScratchMultipleStage1 = tempAlgInter.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     u32 scratchMultipleIntra = static_cast<u32>(std::max(
-        std::ceil(dataSplitSize[0] * intraScatchteMultipleStage0),
-        std::ceil(dataSplitSize[1] * intraScatchteMultipleStage1 * rankSizeLevel1_)));
+        std::ceil(dataSplitSize[0] * intraScratchMultipleStage0),
+        std::ceil(dataSplitSize[1] * intraScratchMultipleStage1 * rankSizeLevel1_)));
     u32 scratchMultipleInter = static_cast<u32>(std::max(
-        std::ceil(dataSplitSize[1] * interScatchteMultipleStage0),
-        std::ceil(dataSplitSize[0] * interScatchteMultipleStage1 * rankSizeLevel0_)));
+        std::ceil(dataSplitSize[1] * interScratchMultipleStage0),
+        std::ceil(dataSplitSize[0] * interScratchMultipleStage1 * rankSizeLevel0_)));
     u32 totalScratchMultiple = scratchMultipleIntra + scratchMultipleInter;
     u64 scratchMemBlockSize = maxTmpMemSize_;
     u64 transportBoundDataSize = maxTmpMemSize_;

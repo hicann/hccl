@@ -176,8 +176,8 @@ HcclResult CcuTempReduceScatterNHR1DMem2Mem::CalcRes(
     }
 
     HCCL_DEBUG(
-        "[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempReduceScatterNHR1DMem2Mem::CalcRes] channelDescs.size()=%zu, dimsize=%zu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), subCommRanks_[0].size(), resourceRequest.ccuKernelInfos.size());
     return HcclResult::HCCL_SUCCESS;
 }

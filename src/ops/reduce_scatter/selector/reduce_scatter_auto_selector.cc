@@ -79,7 +79,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(
         SelectorStatus::NOT_MATCH);
 
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_ms mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_ms mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -96,7 +96,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcums(
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-        if (IsInputOutputOverlap(opParam) == true) { // 不支持 inplace 场景
+        if (IsInputOutputOverlap(opParam) == true) { // 不支持 in-place 场景
             return SelectorStatus::NOT_MATCH;
         }
         if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
@@ -191,15 +191,16 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuScheduleAlgo(
             "[ReduceScatterAutoSelector] ReduceOp[%d] is not supported yet for ccu schedule mode.", opParam.reduceType),
         SelectorStatus::NOT_MATCH);
 
-    // ccu 模式不支持 inplace 场景
+    // ccu 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu schedule mode not support inplace."), SelectorStatus::NOT_MATCH);
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu schedule mode does not support in-place."),
+        SelectorStatus::NOT_MATCH);
 
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (Is64BitDataType(opParam.DataDes.dataType)) {
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_schedule mode not support INT64, UINT64, FP64.");
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_schedule mode does not support INT64, UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -303,8 +304,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcuScheduleMesh1D(
             RS_M2M_1D_MAX_DATA_SIZE);
         return SelectorStatus::NOT_MATCH;
     }
-    if (IsInputOutputOverlap(opParam) == true) { // 不支持 inplace 场景
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_ms mode not support inplace.");
+    if (IsInputOutputOverlap(opParam) == true) { // 不支持 in-place 场景
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_ms mode does not support in-place.");
         return SelectorStatus::NOT_MATCH;
     }
     if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {
@@ -322,10 +323,11 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcuScheduleMesh1D(
 SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcuSchedule(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam, std::string& selectAlgName) const
 {
-    // ccu 模式不支持 inplace 场景
+    // ccu 模式不支持 in-place 场景
     CHK_PRT_RET(
         IsInputOutputOverlap(opParam) == true,
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu schedule mode not support inplace."), SelectorStatus::NOT_MATCH);
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu schedule mode does not support in-place."),
+        SelectorStatus::NOT_MATCH);
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
     CHK_PRT_RET(
@@ -402,10 +404,10 @@ SelectorStatus ReduceScatterAutoSelector::SelectAicpuAlgo(
 
     if (IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize)) {
         if (topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED) {
-            // 内部reducescatter中采用分组all2all
+            // 内部ReduceScatter中采用分组AlltoAll
             selectAlgName = "AicpuReduceScatterStrictOrderedGroupMesh";
         } else {
-            // 内部reducescatter中采用非分组all2all
+            // 内部ReduceScatter中采用非分组AlltoAll
             selectAlgName = "AicpuReduceScatterStrictOrderedMesh";
         }
         HCCL_INFO(
@@ -578,7 +580,8 @@ SelectorStatus ReduceScatterAutoSelector::SelectAivAlgo(
 
     if (opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_UINT64
         || opParam.DataDes.dataType == HcclDataType::HCCL_DATA_TYPE_FP64) {
-        HCCL_AIV_NOT_MATCH_LOG(opParam, HCCL_WARNING, "[ReduceScatterAutoSelector] aiv mode not support UINT64, FP64.");
+        HCCL_AIV_NOT_MATCH_LOG(
+            opParam, HCCL_WARNING, "[ReduceScatterAutoSelector] aiv mode does not support UINT64, FP64.");
         return SelectorStatus::NOT_MATCH;
     }
 
@@ -630,7 +633,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
         if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
             || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
             selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-            HCCL_DEBUG("[ReduceScatterAutoSelector][%s] Algo match[%s]", __func__, selectAlgName.c_str());
+            HCCL_DEBUG("[ReduceScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {

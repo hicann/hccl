@@ -87,8 +87,8 @@ HcclResult CcuTempAllToAllMesh1dMultiJetty::CalcRes(
     resourceRequest.ccuKernelInfos.push_back(kernelInfo);
 
     HCCL_DEBUG(
-        "[CcuTempAllToAllMesh1dMultiJetty::CalcRes] channelDescs.size()=%llu, dimsize=%llu, "
-        "ccuKernelInfos.size()=%llu",
+        "[CcuTempAllToAllMesh1dMultiJetty::CalcRes] channelDescs.size()=%zu, dimsize=%llu, "
+        "ccuKernelInfos.size()=%zu",
         channelDescs.size(), templateRankSize_, resourceRequest.ccuKernelInfos.size());
 
     return HcclResult::HCCL_SUCCESS;

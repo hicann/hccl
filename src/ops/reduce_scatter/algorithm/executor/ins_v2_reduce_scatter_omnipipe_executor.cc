@@ -515,7 +515,7 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
                                                BufferType::DEFAULT, BufferType::DEFAULT)) :
                                            levelAlgType.push_back(0);
     scratchParam.levelAlgType = levelAlgType;
-    // 手动转成数组，这边只给reducescatter用
+    // 手动转成数组，这边只给ReduceScatter用
     std::vector<u64> dataSizeVec;
     for (int i = 0; i < rankSize_; i++) {
         dataSizeVec.push_back(dataSize_);

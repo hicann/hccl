@@ -454,7 +454,7 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u64 interThreadsNum = tempAlgInter.GetThreadNum();
     if (threads_.size() < intraThreadsNum + interThreadsNum + 1) {
         HCCL_ERROR(
-            "[InsReduceScatterParallelExecutor][PrepareResForTemplate] threads size is %d, but intraThreadsNum is %d, "
+            "[InsReduceScatterParallelExecutor][PrepareResForTemplate] threads size is %zu, but intraThreadsNum is %d, "
             "interThreadsNum is %d",
             threads_.size(), intraThreadsNum, interThreadsNum);
         return HCCL_E_PARA;
@@ -559,20 +559,20 @@ HcclResult InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u64 alignedSize = PARALLEL_DATA_ALIGN_SIZE;
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;
-    u32 intraScatchteMultipleStage0 = tempAlgIntra.CalcScratchMultiple(inBuffType, outBuffType);
-    u32 interScatchteMultipleStage0 = tempAlgInter.CalcScratchMultiple(inBuffType, outBuffType);
-    u32 intraScatchteMultipleStage1 = tempAlgIntra.CalcScratchMultiple(outBuffType, outBuffType);
-    u32 interScatchteMultipleStage1 = tempAlgInter.CalcScratchMultiple(outBuffType, outBuffType);
-    if (interScatchteMultipleStage0 == 0 || interScatchteMultipleStage1 == 0) {
-        interScatchteMultipleStage0 = rankSizeLevel1_;
-        interScatchteMultipleStage1 = rankSizeLevel1_;
+    u32 intraScratchMultipleStage0 = tempAlgIntra.CalcScratchMultiple(inBuffType, outBuffType);
+    u32 interScratchMultipleStage0 = tempAlgInter.CalcScratchMultiple(inBuffType, outBuffType);
+    u32 intraScratchMultipleStage1 = tempAlgIntra.CalcScratchMultiple(outBuffType, outBuffType);
+    u32 interScratchMultipleStage1 = tempAlgInter.CalcScratchMultiple(outBuffType, outBuffType);
+    if (interScratchMultipleStage0 == 0 || interScratchMultipleStage1 == 0) {
+        interScratchMultipleStage0 = rankSizeLevel1_;
+        interScratchMultipleStage1 = rankSizeLevel1_;
     }
     u32 scratchMultipleIntra0
-        = static_cast<u32>(std::ceil(dataSplitSize[0] * intraScatchteMultipleStage0 * rankSizeLevel1_));
-    u32 scratchMultipleIntra1 = static_cast<u32>(std::ceil(dataSplitSize[1] * intraScatchteMultipleStage1));
+        = static_cast<u32>(std::ceil(dataSplitSize[0] * intraScratchMultipleStage0 * rankSizeLevel1_));
+    u32 scratchMultipleIntra1 = static_cast<u32>(std::ceil(dataSplitSize[1] * intraScratchMultipleStage1));
     u32 scratchMultipleInter1
-        = static_cast<u32>(std::ceil(dataSplitSize[1] * interScatchteMultipleStage0 * rankSizeLevel0_));
-    u32 scratchMultipleInter0 = static_cast<u32>(std::ceil(dataSplitSize[0] * interScatchteMultipleStage1));
+        = static_cast<u32>(std::ceil(dataSplitSize[1] * interScratchMultipleStage0 * rankSizeLevel0_));
+    u32 scratchMultipleInter0 = static_cast<u32>(std::ceil(dataSplitSize[0] * interScratchMultipleStage1));
     u32 totalScratchMultiple
         = scratchMultipleIntra0 + scratchMultipleIntra1 + scratchMultipleInter0 + scratchMultipleInter1;
     u64 scratchMemBlockSize = maxTmpMemSize_;

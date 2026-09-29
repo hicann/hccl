@@ -63,7 +63,7 @@ run/plog/plog-2111666_20251024111652405.log:[INFO] HCCL(2111666,all_reduce_test)
 
 1. 检查通信参数是否一致。
 
-   检查所有rank报错日志中的算子参数是否一致 ：通信算子、count、 dataType、reduceType、 通信域名称是否完全一致。**如果不一致，该场景非HCCL问题，需要业务侧进一步分析算子下发不一致的原因。**
+   检查所有rank报错日志中的算子参数是否一致：通信算子、count、dataType、reduceType、通信域名称是否完全一致。**如果不一致，该场景非HCCL问题，需要业务侧进一步分析算子下发不一致的原因。**
    如下案例中，同一个通信域下的rank0报错在AllReduce算子，而rank1报错在Allgather算子，则需要从业务上进一步排查同一个通信域不同rank之间下发算子不一致的根因。
 
    ```text

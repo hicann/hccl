@@ -58,7 +58,7 @@ HcclResult CcuTempAllToAllMesh2Die::CalcRes(
     CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, channelDescs));
     CHK_RET(PartitionChannels(comm, channelDescs));
     resourceRequest.channels.emplace_back(channelDescs);
-    HCCL_INFO("resourceRequest.channels[%d]", resourceRequest.channels.size());
+    HCCL_INFO("resourceRequest.channels[%zu]", resourceRequest.channels.size());
 
     const uint32_t rankSize = subCommRanks_[0].size();
     resourceRequest.ccuKernelNum.push_back(DIE_NUM);
@@ -80,7 +80,7 @@ HcclResult CcuTempAllToAllMesh2Die::CalcRes(
         kernelInfo.channels = channels_[dieId];
         resourceRequest.ccuKernelInfos.emplace_back(kernelInfo);
         HCCL_DEBUG(
-            "[CcuTempAlltoAllMesh2Die][CalcRes] dieId=%u, channels=%llu, rankSize=%llu, ccuKernelInfos=%llu", dieId,
+            "[CcuTempAlltoAllMesh2Die][CalcRes] dieId=%u, channels=%zu, rankSize=%llu, ccuKernelInfos=%zu", dieId,
             channels_[dieId].size(), rankSize, resourceRequest.ccuKernelInfos.size());
     }
 

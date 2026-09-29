@@ -387,7 +387,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     param_ = param;
     CHK_PTR_NULL(resCtx.cclMem.addr);
     resCtx_ = resCtx;
-    HCCL_INFO("[ReduceParallelExecutor][Orchestrate] threads_ size[%d]", threads_.size());
+    HCCL_INFO("[ReduceParallelExecutor][Orchestrate] threads_ size[%zu]", threads_.size());
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo;
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo));
@@ -462,7 +462,7 @@ ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgTemplate2, A
     u32 expectedThreadsNum = 1 + stageSize_ + (intraThreadsNumMax - 1) + stageSize_ + (interThreadsNumMax - 1);
     CHK_PRT_RET(
         threads_.size() < expectedThreadsNum,
-        HCCL_ERROR("[ReduceParallelExecutor][PrepareRes] act:[%u] exp:[%u]", threads_.size(), expectedThreadsNum),
+        HCCL_ERROR("[ReduceParallelExecutor][PrepareRes] act:[%zu] exp:[%u]", threads_.size(), expectedThreadsNum),
         HcclResult::HCCL_E_INTERNAL);
 
     // 第0条流是全局主流
@@ -882,7 +882,7 @@ HcclResult ReduceParallelExecutor<AlgTopoMatch, AlgTemplate0, AlgTemplate1, AlgT
     algTemplatePtrArr_.at(1).at(0) = std::make_shared<AlgTemplate2>();
     algTemplatePtrArr_.at(1).at(1) = std::make_shared<AlgTemplate3>();
 
-    // 保存reducescatter信息
+    // 保存ReduceScatter信息
     TemplateFastLaunchCtx tempFastLaunchCtxIntra0, tempFastLaunchCtxInter0;
     TemplateFastLaunchCtx tempFastLaunchCtxInter1, tempFastLaunchCtxIntra1;
     // 保存allgather信息

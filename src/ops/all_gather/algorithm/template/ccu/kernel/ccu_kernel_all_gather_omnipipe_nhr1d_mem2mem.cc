@@ -139,7 +139,7 @@ DoRepeatAllGatherNHRSingleStep(AllGatherOmniPipeNHR1DMem2MemContext& ctx, const 
     const std::vector<u32>& sendSliceIdxList = nhrStepInfo.txSliceIdxs;
     const std::vector<u32>& recvSliceIdxList = nhrStepInfo.rxSliceIdxs;
     HCCL_DEBUG(
-        "[%s] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) fromRank[%u](channelIdx[%u]) SliceSize[%u]",
+        "[%s] myRank[%u] rankId[%u] step[%u] toRank[%u](channelIdx[%u]) fromRank[%u](channelIdx[%u]) SliceSize[%zu]",
         __func__, arg->userRank, arg->rankId, nhrStepInfo.step, nhrStepInfo.toRank, toRankIdx, nhrStepInfo.fromRank,
         fromRankIdx, recvSliceIdxList.size());
 

@@ -192,7 +192,7 @@ HcclResult InsTempScatterOmniPipeNHR::GetNHRDataSize(
 {
     HCCL_DEBUG("GetNHRDataSize myRank_[%u], root_[%u] , st.nSlices[%u]", myRank_, root_, st.nSlices);
     for (u32 i = 0; i < st.nSlices; ++i) {
-        HCCL_DEBUG("st.txSliceIdxs.size[%u] st.rxSliceIdxs.size[%u]", st.txSliceIdxs.size(), st.rxSliceIdxs.size());
+        HCCL_DEBUG("st.txSliceIdxs.size[%zu] st.rxSliceIdxs.size[%zu]", st.txSliceIdxs.size(), st.rxSliceIdxs.size());
         bool hasTx = i < st.txSliceIdxs.size();
         bool hasRx = i < st.rxSliceIdxs.size();
         for (u64 rpt = 0; rpt < rptNum; ++rpt) {
@@ -273,7 +273,7 @@ HcclResult InsTempScatterOmniPipeNHR::RunNHR(
                 continue;
             }
             HCCL_DEBUG(
-                "step[%u], stepInfo.txSliceIdxs.size[%u] stepInfo.rxSliceIdxs.size[%u]", step,
+                "step[%u], stepInfo.txSliceIdxs.size[%zu] stepInfo.rxSliceIdxs.size[%zu]", step,
                 stepInfo.txSliceIdxs.size(), stepInfo.rxSliceIdxs.size());
             // 只有Tx，使用Send指令（root分发场景）
             if (!stepInfo.txSliceIdxs.empty() && stepInfo.rxSliceIdxs.empty()) {

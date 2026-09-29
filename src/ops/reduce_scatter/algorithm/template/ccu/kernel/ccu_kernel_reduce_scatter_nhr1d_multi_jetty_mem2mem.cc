@@ -33,7 +33,7 @@ static CcuResult InitResource(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
 {
     const auto* arg = ctx.arg;
     if (arg->channelCount == 0) {
-        HCCL_ERROR("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] channels is empty!");
+        HCCL_ERROR("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] channels is empty!");
         return CcuResult::CCU_E_INTERNAL;
     }
 
@@ -45,7 +45,7 @@ static CcuResult InitResource(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
     }
 
     ctx.jettyEvent.resize(ctx.portNum);
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] InitResource success!");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] InitResource success!");
     return CCU_SUCCESS;
 }
 
@@ -64,14 +64,14 @@ static CcuResult LoadArgs(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
     CCU_CHK_RET(ccu::LoadArg(ctx.inputRepeatStride, argId++));
     CCU_CHK_RET(ccu::LoadArg(ctx.outputRepeatStride, argId++));
     ctx.repeatNumVarTemp = ctx.repeatNumVar;
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] LoadArgs success!");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] LoadArgs success!");
     return CCU_SUCCESS;
 }
 
 static CcuResult PreSync(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
 {
     const auto* arg = ctx.arg;
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] PreSync start");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] PreSync start");
 
     const uint16_t signalBitInput = GetSignalMask(CKE_IDX_INPUT);
     const uint16_t signalBitToken = GetSignalMask(CKE_IDX_TOKEN);
@@ -89,14 +89,14 @@ static CcuResult PreSync(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
         ccu::NotifyWait(arg->channels[i], signalIndexInput, signalBitInput);
         ccu::NotifyWait(arg->channels[i], signalIndexToken, signalBitToken);
     }
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] PreSync end");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] PreSync end");
     return CCU_SUCCESS;
 }
 
 static CcuResult PostSync(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
 {
     const auto* arg = ctx.arg;
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] PostSync start");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] PostSync start");
     const uint16_t selfBitInput = GetSignalMask(POST_XN_ID);
     const uint32_t signalIndexInput = GetSignalIndex(POST_XN_ID);
 
@@ -107,7 +107,7 @@ static CcuResult PostSync(ReduceScatterNhrMem2Mem1DMultiJettyContext& ctx)
     for (uint32_t i = 0; i < arg->channelCount; i++) {
         ccu::NotifyWait(arg->channels[i], signalIndexInput, selfBitInput);
     }
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] PostSync end");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] PostSync end");
     return CCU_SUCCESS;
 }
 
@@ -199,12 +199,12 @@ static CcuResult DoRepeatReduceScatterNHRSingleStep(
         ctx.localSrc.addr = ctx.input[ctx.myRankIdx];
         ctx.localSrc.addr += inputSliceOffset[sendSliceIdx];
         CCU_CHK_RET(DoRepeatSendRecvSlices(ctx, nhrStepInfo.toRank, ctx.localSrc, ctx.remoteDst));
-        HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] DoRepeatSendRecvSlices success");
+        HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] DoRepeatSendRecvSlices success");
     }
 
     ccu::NotifyRecord(sendChannel, signalIdxDone, signalBitDone);
     ccu::NotifyWait(recvChannel, signalIdxDone, signalBitDone);
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] DoRepeatReduceScatterNHRSingleStep success");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] DoRepeatReduceScatterNHRSingleStep success");
     return CCU_SUCCESS;
 }
 
@@ -243,13 +243,13 @@ static CcuResult DoRepeatReduceScatter(ReduceScatterNhrMem2Mem1DMultiJettyContex
         ccu::EventWait(ctx.event, 1);
         ctx.flag = 1;
     }
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] DoRepeatReduceScatter success");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] DoRepeatReduceScatter success");
     return CCU_SUCCESS;
 }
 
 CcuResult CcuReduceScatterNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg)
 {
-    auto* kernelArg = static_cast<CcuKernelArgReduceScatterNhrMutilJettyMem2Mem1D*>(arg);
+    auto* kernelArg = static_cast<CcuKernelArgReduceScatterNhrMultiJettyMem2Mem1D*>(arg);
 
     ReduceScatterNhrMem2Mem1DMultiJettyContext ctx;
     ctx.arg = kernelArg;
@@ -267,17 +267,17 @@ CcuResult CcuReduceScatterNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg)
     if (ctx.outputDataType == HcclDataType::HCCL_DATA_TYPE_RESERVED) {
         ctx.outputDataType = ctx.dataType;
         HCCL_DEBUG(
-            "[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] outputDataType is [INVALID], set outputDataType to[%d]",
+            "[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] outputDataType is [INVALID], set outputDataType to[%d]",
             ctx.outputDataType);
     }
     ctx.reduceOp = kernelArg->opParam.reduceType;
 
     HCCL_INFO(
-        "[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] Init, KernelArgs are rankId[%u], dimSize[%u], dataType[%d], "
+        "[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] Init, KernelArgs are rankId[%u], dimSize[%u], dataType[%d], "
         "outputDataType[%d], reduceOp[%d], portNum[%d]",
         ctx.rankId, ctx.dimSize, ctx.dataType, ctx.outputDataType, ctx.reduceOp, ctx.portNum);
 
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] CcuKernelReduceScatterNhrMutilJettyMem2Mem1D run");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] CcuKernelReduceScatterNhrMultiJettyMem2Mem1D run");
 
     CCU_CHK_RET(InitResource(ctx));
     CCU_CHK_RET(LoadArgs(ctx));
@@ -285,7 +285,7 @@ CcuResult CcuReduceScatterNhrMem2Mem1DMultiJettyKernel(CcuKernelArg arg)
     CCU_CHK_RET(DoRepeatReduceScatter(ctx));
     CCU_CHK_RET(PostSync(ctx));
 
-    HCCL_INFO("[CcuKernelReduceScatterNhrMutilJettyMem2Mem1D] CcuKernelReduceScatterNhrMutilJettyMem2Mem1D end");
+    HCCL_INFO("[CcuKernelReduceScatterNhrMultiJettyMem2Mem1D] CcuKernelReduceScatterNhrMultiJettyMem2Mem1D end");
 
     return CCU_SUCCESS;
 }

@@ -116,7 +116,7 @@ HcclResult SetServerModuleInfo(HcclComm comm, TopoInfo* topoInfo, const std::uno
         if (moduleMap[i].size() != topoInfo->deviceNumPerModule) {
             topoInfo->multiModuleDiffDeviceNumMode = true;
         }
-        HCCL_INFO("module[%u] contains [%d]devices", i, moduleMap[i].size());
+        HCCL_INFO("module[%u] contains [%zu]devices", i, moduleMap[i].size());
     }
     return HCCL_SUCCESS;
 }
@@ -536,7 +536,7 @@ HcclResult CalculateServersPerSuperPod(
     std::vector<uint32_t>& serversPerSuperPod)
 {
     if (l0Sizes.empty() || l1Sizes.empty()) {
-        HCCL_ERROR("[CalculateServersPerSuperPod]l0Sizes.size[%u], l1Sizes.size[%u]", l0Sizes.size(), l1Sizes.size());
+        HCCL_ERROR("[CalculateServersPerSuperPod]l0Sizes.size[%zu], l1Sizes.size[%zu]", l0Sizes.size(), l1Sizes.size());
         return HCCL_E_PARA;
     }
 
@@ -1008,7 +1008,7 @@ HcclResult ExtractNetLayerDetails(const HcclComm comm, TopoInfoWithNetLayerDetai
     }
 
     HCCL_INFO(
-        "[BaseSelector][ExtractNetLayerDetails] topoLevelNum[%u], netLayerNum[%u], netLayers.size[%u]", topoLevelNum,
+        "[BaseSelector][ExtractNetLayerDetails] topoLevelNum[%u], netLayerNum[%u], netLayers.size[%zu]", topoLevelNum,
         netLayerNum, netLayers.size());
 
     CHK_PRT_RET(

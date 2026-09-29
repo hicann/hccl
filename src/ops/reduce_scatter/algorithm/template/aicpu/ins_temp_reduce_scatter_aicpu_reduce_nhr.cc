@@ -261,12 +261,12 @@ HcclResult InsTempReduceScatterAicpuReduceNHR::RunAllGather(const std::vector<Th
         if (isDmaRead_) {
             CHK_PRT_RET(
                 SendRecvRead(sendRecvInfo, threads[0]),
-                HCCL_ERROR("[InsTempReduceScatterAicpuReduceNHR] sendrecv failed (step=%u)", step),
+                HCCL_ERROR("[InsTempReduceScatterAicpuReduceNHR] SendRecv failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
             CHK_PRT_RET(
                 SendRecvWrite(sendRecvInfo, threads[0]),
-                HCCL_ERROR("[InsTempReduceScatterAicpuReduceNHR] sendrecv failed (step=%u)", step),
+                HCCL_ERROR("[InsTempReduceScatterAicpuReduceNHR] SendRecv failed (step=%u)", step),
                 HcclResult::HCCL_E_INTERNAL);
         }
     }
