@@ -18,7 +18,7 @@
   - [通信算子支持度清单<a name="sub_menu"></a>](./comm_ops_support_list/README.md)
 
 - [系统约束与限制](constraints.md)
-- [API参考](api_ref.md)
+- [API参考<a npu_parse_enabled="true"></a>](api_ref.md)
   - [HCCL头文件与库文件说明](../api_ref/hccl_header_and_lib.md)
   - [HCOMM头文件与库文件说明](https://gitcode.com/cann/hcomm/blob/9.2.0/docs/zh/api_ref/hcomm_header_and_lib.md)
   - [通信域管理接口（C语言）<a name="sub_menu"></a>](https://gitcode.com/cann/hcomm/blob/9.2.0/docs/zh/api_ref/comm_mgr_c/README.md)
