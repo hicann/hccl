@@ -9,7 +9,6 @@
  */
 
 #include "ins_v2_reduce_scatter_order_preserved_executor.h"
-#include "ins_temp_reduce_scatter_order_preserved_level1.h"
 #include "ins_temp_reduce_scatter_order_preserved_group.h"
 #include "alg_env_config.h"
 #include "order_preserved_common.h"
@@ -206,7 +205,7 @@ HcclResult InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate
 
         // 将内存块信息设置到算法模板
         algTemplate->SetMemBlockInfo(memBlockInfo);
-        // 调用InsTempReduceScatterOrderPreservedLevel1模板算法
+        // 调用InsTempReduceScatterOrderPreservedGroup模板算法
         CHK_RET(algTemplate->KernelRun(param, tempAlgParams, templateAlgRes));
         processedDataCount += currDataCount;
     }
@@ -270,30 +269,13 @@ u64 InsV2ReduceScatterOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplate>::Roun
     return ((value + (divisor - 1)) / divisor) * divisor;
 }
 
-// 注册保序ReduceScatter执行器（32卡及以内场景）
+// 注册保序ReduceScatter执行器：统一走分组all2all实现，不再按卡数区分
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedMesh, InsV2ReduceScatterOrderPreservedExecutor,
-    TopoMatchOneLevel, InsTempReduceScatterOrderPreservedLevel1);
-REGISTER_ALG_ATTRS(
-    AicpuReduceScatterStrictOrderedMesh,
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->userRankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-    };
-    op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
-
-// 注册分组 AlltoAll 版保序 ReduceScatter 执行器（大于32卡场景）
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterStrictOrderedGroupMesh,
-    InsV2ReduceScatterOrderPreservedExecutor, TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup);
-REGISTER_ALG_ATTRS(
-    AicpuReduceScatterStrictOrderedGroupMesh,
-    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
-        return topo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED;
-    };
-    op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
+    TopoMatchOneLevel, InsTempReduceScatterOrderPreservedGroup);
+REGISTER_ALG_ATTRS(AicpuReduceScatterStrictOrderedMesh,
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+                   topo.isSupportLevel0PcieMix = true; topo.isSupportLevel1Nhr = true;
+                   op.isSupportFloatOrderPreserved = true; op.supportedDataTypes = SUPPORTED_FLOAT_ONLY;);
 
 } // namespace ops_hccl

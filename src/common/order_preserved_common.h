@@ -18,7 +18,7 @@
 namespace ops_hccl {
 
 constexpr u32 MIN_STRICT_RANK_NUM_ORDER_PRESERVED = 2;
-// 保序算子分组all2all算法的rank数上限，超过该值则使用分组all2all + NHR算法
+// 保序算子AG模板选择的rank数上限：8卡及以内AG走Mesh1D，超过该值AG走NHR（RS统一走分组all2all）
 constexpr u32 MAX_RANK_NUM_FOR_ORDER_PRESERVED = 8;
 // 保序算子总线程数上限（含主线程），解耦线程数与rank数的关系
 constexpr u32 ORDER_PRESERVED_MAX_THREADS = 32;

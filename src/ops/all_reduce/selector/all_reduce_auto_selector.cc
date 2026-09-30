@@ -417,17 +417,11 @@ SelectorStatus AllReduceAutoSelector::SelectAicpuAlgo(
     u64 dataSize = opParam.DataDes.count * perDataSize;
 
     if (IsNeedStrictModeForOrderPreserved(opParam, topoInfo->userRankSize)) {
-        if (topoInfo->userRankSize > MAX_RANK_NUM_FOR_ORDER_PRESERVED) {
-            // 内部ReduceScatter中采用分组AlltoAll + NHR 算法
-            selectAlgName = "AicpuAllReduceStrictOrderedGroupMesh";
-        } else {
-            // 内部ReduceScatter中采用非分组AlltoAll + mesh1D 算法
-            selectAlgName = "AicpuAllReduceStrictOrderedMesh";
-        }
+        // 统一走分组all2all实现，AG由executor按rankSize选择Mesh1D/NHR
+        selectAlgName = "AicpuAllReduceStrictOrderedMesh";
         HCCL_INFO(
-            "[AllReduceAutoSelector] DETERMINISTIC_STRICT mode, rankSize[%u], threshold[%u], "
-            "select [%s]",
-            topoInfo->userRankSize, MAX_RANK_NUM_FOR_ORDER_PRESERVED, selectAlgName.c_str());
+            "[AllReduceAutoSelector] DETERMINISTIC_STRICT mode, rankSize[%u], select [%s]", topoInfo->userRankSize,
+            selectAlgName.c_str());
         return SelectorStatus::MATCH;
     }
 

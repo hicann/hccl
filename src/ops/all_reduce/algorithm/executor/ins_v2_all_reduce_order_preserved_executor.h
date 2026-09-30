@@ -36,7 +36,7 @@ struct OrderPreservedAllReduceMemInfo {
     u64 totalSize{0};
 };
 
-template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAG>
+template <typename AlgTopoMatch, typename InsAlgTemplateRS, typename InsAlgTemplateAGMesh, typename InsAlgTemplateAGNHR>
 class InsV2AllReduceOrderPreservedExecutor : public InsCollAlgBase {
 public:
     explicit InsV2AllReduceOrderPreservedExecutor();
@@ -79,9 +79,23 @@ protected:
     HcclResult RunReduceScatter(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
         std::shared_ptr<InsAlgTemplateRS> rsTempAlg, TemplateResource& rsTemplateAlgRes);
+
+    // AG模板选择判据的单一来源：CreateAgTemplate与CalcCostCoeff均基于该枚举分派
+    enum class AgTemplateKind { MESH_1D, NHR };
+
+    static AgTemplateKind SelectAgTemplateKind(u32 rankSize)
+    {
+        // 8卡及以内走Mesh1D，8卡以上走NHR
+        return (rankSize <= MAX_RANK_NUM_FOR_ORDER_PRESERVED) ? AgTemplateKind::MESH_1D : AgTemplateKind::NHR;
+    }
+
+    // AG模板运行期选择：8卡及以内走Mesh1D，8卡以上走NHR
+    std::shared_ptr<InsAlgTemplateBase>
+    CreateAgTemplate(const OpParam& param, u32 rankSize, const std::vector<std::vector<u32>>& subCommRanks) const;
+
     HcclResult RunAllGather(
         const OpParam& param, const AlgResourceCtxSerializable& resCtx, u64 currDataCount, u64 processedDataCount,
-        std::shared_ptr<InsAlgTemplateAG> agTempAlg, TemplateResource& agTemplateAlgRes);
+        std::shared_ptr<InsAlgTemplateBase> agTempAlg, TemplateResource& agTemplateAlgRes);
 
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_;

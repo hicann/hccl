@@ -42,6 +42,7 @@ HCCL_DETERMINISTIC支持的取值如下：
     - 支持归约类通信算子AllReduce、ReduceScatter。
     - 通信规模要求rank size ≥ 3。
     - 仅支持归约类通信算子展开模式为AI_CPU，其他展开模式（CCU_MS、CCU_SCHED、AIV）配置保序功能会回退到AI_CPU，使能保序。
+    - 不支持RoCE协议的链路。
   <!-- end id12 -->
   <!-- npu="A3" id11 -->
   - 针对Atlas A3系列产品，
