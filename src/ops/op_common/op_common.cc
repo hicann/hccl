@@ -4034,6 +4034,18 @@ static bool IsReduceOpSymMemAllowed(const OpParam& param)
            && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
 }
 
+// AllReduce/ReduceScatter对称内存的规约确定性门禁：
+// 仅放行规约过程完全由 InsTempReduceScatterOmniPipeMesh1D 完成的算法，
+// 其余算法（SOLE/PARALLEL/SEQUENCE/NHR等）的规约顺序存在不确定性，禁用对称内存。
+bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
+{
+    if (topoInfo->topoLevelNums != TOPO_LEVEL_NUM_1) {
+        // 多级拓扑下 L1 NHR 模板同样参与规约，无法保证规约顺序确定性
+        return false;
+    }
+    return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR";
+}
+
 // 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效
 static bool IsSymMemWindowValid(const OpParam& param)
 {
@@ -4056,10 +4068,12 @@ HcclResult RefreshSymmetricMemory(OpParam& param, const TopoInfoWithNetLayerDeta
             case HcclCMDType::HCCL_CMD_ALLTOALLVC:
                 break;
             case HcclCMDType::HCCL_CMD_ALLREDUCE:
-                symMemAllowed = IsReduceOpSymMemAllowed(param);
+                symMemAllowed
+                    = IsReduceOpSymMemAllowed(param) && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
                 break;
             case HcclCMDType::HCCL_CMD_REDUCE_SCATTER:
-                symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr;
+                symMemAllowed = IsReduceOpSymMemAllowed(param) && param.inputPtr != param.outputPtr
+                                && IsReduceOpSymMemDeterministic(param.algName, topoInfo);
                 break;
             default:
                 symMemAllowed = false;

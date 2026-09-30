@@ -225,6 +225,9 @@ HcclResult ReduceScatterOutPlace(
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
 
+    if (!IsReduceOpSymMemDeterministic(algName, topoInfo.get())) {
+        param.supportSymmetricMemory = false;
+    }
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         const bool isTwoLevelMeshNhrOmni
             = algName == "AicpuReduceScatterPipeLineMeshNHR" && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1;
