@@ -59,6 +59,12 @@ private:
     HcclResult RunFullMesh(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource);
     HcclResult
     RunPairwise(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource, u32 targetBoard);
+    bool CanRunPairwise4x4(const TemplateResource& templateResource) const;
+    HcclResult
+    RunPairwise4x4(const TemplateDataParams& tempAlgParams, TemplateResource& templateResource, u32 targetBoard);
+    HcclResult RunSymmetricWrite(
+        const TemplateDataParams& tempAlgParams, u32 targetRank, const ChannelInfo& channel, const ThreadHandle& thread,
+        u64 sendDataOffset, u64 sendDataCount, u64 recvDataCount) const;
 
     u64 dataTypeSize_{0};
     bool isDmaRead_{false};
@@ -90,12 +96,6 @@ private:
     std::vector<std::vector<DataSlice>> localCopyInfoFullMesh_;
     std::vector<ThreadHandle> subThreadsBoard_;
     std::vector<ThreadHandle> subThreadsFullMesh_;
-
-    u64 inputOffset_{0};
-    u64 outputOffset_{0};
-    void* inputSymWindow_{nullptr};
-    void* outputSymWindow_{nullptr};
-    HcclResult GetSymmetricPeerInput(u32 peerRank, void** peerInput);
 };
 
 } // namespace ops_hccl

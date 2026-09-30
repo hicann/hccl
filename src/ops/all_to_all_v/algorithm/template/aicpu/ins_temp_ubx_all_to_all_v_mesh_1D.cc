@@ -298,22 +298,11 @@ InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, 
             CHK_RET(LocalCopy(threads[fullMeshThreadId], usrInSlices, usrOutSlices));
         } else {                                                             // 和板内其他卡去收发
             const ChannelInfo& channelSendRecv = channels.at(targetRank)[0]; // 和对端收发
-            // 对称路径直读对端input中发往本卡的数据并写入本地output，不经过scratch。
+            // 对称路径把本地input直接写到对端output，不经scratch。
             if (enableRemoteMemAccess_) {
-                const u32 peerRank = subCommRanks_[0][targetRank];
-                void* peerInput = nullptr;
-                CHK_RET(GetSymmetricPeerInput(peerRank, &peerInput));
-                DataSlice rxSrcSlice(
-                    peerInput, tempAlgParams.sdispls[myAlgRank_] * dataTypeSize_,
-                    tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
-                DataSlice rxDstSlice(
-                    tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
-                    tempAlgParams.recvCounts[targetRank] * dataTypeSize_, tempAlgParams.recvCounts[targetRank]);
-                std::vector<DataSlice> emptySlices;
-                TxRxSlicesList sendRecvSlicesList({emptySlices, emptySlices}, {{rxSrcSlice}, {rxDstSlice}});
-                TxRxChannels sendRecvChannels(channelSendRecv, channelSendRecv);
-                SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-                CHK_RET(SendRecvBatchRead(sendRecvInfo, threads[fullMeshThreadId]));
+                CHK_RET(RunSymmetricWrite(
+                    tempAlgParams, targetRank, channelSendRecv, threads[fullMeshThreadId], 0,
+                    tempAlgParams.sendCounts[targetRank], tempAlgParams.recvCounts[targetRank]));
                 continue;
             }
             std::vector<DataSlice> txSrcSlices;
@@ -409,11 +398,6 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
             "targetBoard is [%u], linkNumSendRecv is[%u]",
             myAlgRank_, targetRank, currBoard_, targetBoard, linkNumSendRecv);
         const std::vector<ChannelInfo>& channelSendRecv = channels.at(targetRank);
-        void* peerInput = nullptr;
-        if (enableRemoteMemAccess_) {
-            const u32 peerRank = subCommRanks_[0][targetRank];
-            CHK_RET(GetSymmetricPeerInput(peerRank, &peerInput));
-        }
         std::vector<float> dataSplitRate(linkNumSendRecv, (float)1.0 / (float)linkNumSendRecv);
         u64 innerSendOffset = 0;
         u64 innerRecvOffset = 0;
@@ -429,20 +413,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
             u64 innerCurrSendDataSize = innerCurrSendDataCount * dataTypeSize_;
             u64 innerCurrRecvDataSize = innerCurrRecvDataCount * dataTypeSize_;
             u32 queId = j + 1; // 主流用来后同步了
-            // 对称路径只提交read任务，数据从对端input直接落入本地output。
+            // 对称路径也按4 jetty切分，每条jetty把本地input直接写到对端output。
             if (enableRemoteMemAccess_) {
-                DataSlice rxSrcSlice(
-                    peerInput, (tempAlgParams.sdispls[myAlgRank_] + innerRecvOffset) * dataTypeSize_,
-                    innerCurrRecvDataSize, innerCurrRecvDataCount);
-                DataSlice rxDstSlice(
-                    tempAlgParams.buffInfo.outputPtr,
-                    (tempAlgParams.rdispls[targetRank] + innerRecvOffset) * dataTypeSize_, innerCurrRecvDataSize,
-                    innerCurrRecvDataCount);
-                std::vector<DataSlice> emptySlices;
-                TxRxSlicesList sendRecvSlicesList({emptySlices, emptySlices}, {{rxSrcSlice}, {rxDstSlice}});
-                TxRxChannels sendRecvChannels(channelSendRecv[j], channelSendRecv[j]);
-                SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
-                CHK_RET(SendRecvBatchRead(sendRecvInfo, threads[queId]));
+                CHK_RET(RunSymmetricWrite(
+                    tempAlgParams, targetRank, channelSendRecv[j], threads[queId], innerSendOffset,
+                    innerCurrSendDataCount, innerCurrRecvDataCount));
                 innerSendOffset += innerCurrSendDataCount;
                 innerRecvOffset += innerCurrRecvDataCount;
                 continue;
@@ -508,6 +483,188 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
         }
     }
 
+    return HcclResult::HCCL_SUCCESS;
+}
+
+// 4x4流水前置条件检查：对称内存直写、存在跨框、框内满配（rankNumPerBoard_ == maxRankNumPerBoard_），
+// 且到每个跨框对端的链路数不少于rankNumPerBoard_，保证每条CLOS从流独占一条链路。
+bool InsTempUBXAllToAllVMesh1D::CanRunPairwise4x4(const TemplateResource& templateResource) const
+{
+    if (!enableRemoteMemAccess_ || boardNum_ <= 1 || rankNumPerBoard_ != maxRankNumPerBoard_
+        || rankNumPerBoard_ > maxPathNum_ || subThreadsBoard_.size() < rankNumPerBoard_) {
+        return false;
+    }
+
+    const std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
+    for (u32 targetRank = 0; targetRank < templateRankSize_; targetRank++) {
+        if (targetRank / rankNumPerBoard_ == currBoard_) {
+            continue;
+        }
+        auto channelItr = channels.find(targetRank);
+        if (channelItr == channels.end() || channelItr->second.size() < rankNumPerBoard_) {
+            return false;
+        }
+    }
+    return true;
+}
+
+HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise4x4(
+    const TemplateDataParams& tempAlgParams, TemplateResource& templateResource, u32 targetBoard)
+{
+    std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
+    std::vector<ThreadHandle>& threads = templateResource.threads;
+
+    std::vector<std::vector<u32>> rankSendRecvMatrix(
+        algBoardNum_ * rankNumPerBoard_, std::vector<u32>(rankNumPerBoard_, 0));
+    CHK_RET(GetRankSendRecvMatrix(currBoard_, targetBoard, rankSendRecvMatrix));
+
+    // 1 前同步：四条CLOS从流与主流对齐，整组只做一次（RunPairwise是每个step都同步）。
+    if (threadNum_ > 1) {
+        GetNotifyIdxMainToClos(notifyIdxMainToSub_);
+        CHK_RET(PreSyncInterThreads(threads[0], subThreadsBoard_, notifyIdxMainToSub_));
+    }
+
+    // 2 主流落盘：把上一组CLOS收到scratch的数据拷到output（对称路径直写output，此处为空），
+    //   与本组CLOS收发并行。
+    for (u32 i = 0; i < localCopyInfo_.size(); i++) {
+        CHK_RET(LocalCopy(threads[0], localCopyInfo_[i][0], localCopyInfo_[i][1]));
+    }
+    localCopyInfo_.clear();
+
+    // 3 并发收发：四条从流同时开工，每条固定负责对端板内的一个rank。
+    for (u32 step = 0; step < rankNumPerBoard_; step++) {
+        const u32 targetRank = rankSendRecvMatrix[myAlgRank_][step];
+        if (targetRank >= templateRankSize_) {
+            HCCL_INFO(
+                "[InsTempUBXAllToAllVMesh1D][RunPairwise4x4] rank[%u] targetRank[%u] is virtual, skip.", myAlgRank_,
+                targetRank);
+            continue;
+        }
+
+        auto channelItr = channels.find(targetRank);
+        CHK_PRT_RET(
+            channelItr == channels.end() || channelItr->second.size() <= step,
+            HCCL_ERROR(
+                "[InsTempUBXAllToAllVMesh1D][RunPairwise4x4] targetRank[%u] channelNum[%u] step[%u].", targetRank,
+                channelItr == channels.end() ? 0 : static_cast<u32>(channelItr->second.size()), step),
+            HcclResult::HCCL_E_INTERNAL);
+
+        // 绑口规则：第step步固定用第step条从流和到对端的第step条链路；两端按同一step互为
+        // 收发对端，保证绑口一致。
+        const ChannelInfo& channel = channelItr->second[step];
+        const ThreadHandle& thread = threads[step + 1];
+        const u64 sendCount = tempAlgParams.sendCounts[targetRank];
+        const u64 recvCount = tempAlgParams.recvCounts[targetRank];
+        HCCL_DEBUG(
+            "[InsTempUBXAllToAllVMesh1D][RunPairwise4x4] rank[%u] targetRank[%u] step[%u] channelIdx[%u] "
+            "symmetric[%d].",
+            myAlgRank_, targetRank, step, step, enableRemoteMemAccess_);
+
+        // 对称直写：本地input直接落到对端output，不进scratch，也无需后拷贝。
+        if (enableRemoteMemAccess_) {
+            CHK_RET(RunSymmetricWrite(tempAlgParams, targetRank, channel, thread, 0, sendCount, recvCount));
+            continue;
+        }
+
+        DataSlice txSrcSlice(
+            tempAlgParams.buffInfo.inputPtr, tempAlgParams.sdispls[targetRank] * dataTypeSize_,
+            sendCount * dataTypeSize_, sendCount);
+        DataSlice txDstSlice(
+            channel.remoteCclMem.addr, myAlgRank_ * scratchBufferSizePerRank_, sendCount * dataTypeSize_, sendCount);
+        DataSlice rxSrcSlice(
+            channel.remoteCclMem.addr, targetRank * scratchBufferSizePerRank_, recvCount * dataTypeSize_, recvCount);
+        DataSlice rxDstSlice(
+            tempAlgParams.buffInfo.hcclBuff.addr, targetRank * scratchBufferSizePerRank_, recvCount * dataTypeSize_,
+            recvCount);
+        std::vector<DataSlice> txSrcSlices{txSrcSlice};
+        std::vector<DataSlice> txDstSlices{txDstSlice};
+        std::vector<DataSlice> rxSrcSlices{rxSrcSlice};
+        std::vector<DataSlice> rxDstSlices{rxDstSlice};
+
+        if (sendCount > 0 && recvCount > 0) {
+            TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices});
+            SendRecvInfo sendRecvInfo(TxRxChannels(channel, channel), sendRecvSlicesList, dataType_);
+            CHK_RET(SendRecvWrite(sendRecvInfo, thread));
+        } else if (sendCount > 0) {
+            DataInfo sendInfo{channel, {txSrcSlices, txDstSlices}, dataType_};
+            CHK_RET(SendWrite(sendInfo, thread));
+        } else if (recvCount > 0) {
+            DataInfo recvInfo{channel, {rxSrcSlices, rxDstSlices}, dataType_};
+            CHK_RET(RecvWrite(recvInfo, thread));
+        }
+
+        if (recvCount > 0) {
+            DataSlice usrOutSlice(
+                tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[targetRank] * dataTypeSize_,
+                recvCount * dataTypeSize_, recvCount);
+            localCopyInfo_.push_back(std::vector<DataSlice>{rxDstSlice, usrOutSlice});
+        }
+    }
+
+    // 4 后同步：等四条CLOS从流全部收发完成，主流才继续。
+    if (threadNum_ > 1) {
+        GetNotifyIdxClosToMain(notifyIdxSubToMain_);
+        CHK_RET(PostSyncInterThreads(threads[0], subThreadsBoard_, notifyIdxSubToMain_));
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempUBXAllToAllVMesh1D::RunSymmetricWrite(
+    const TemplateDataParams& tempAlgParams, u32 targetRank, const ChannelInfo& channel, const ThreadHandle& thread,
+    u64 sendDataOffset, u64 sendDataCount, u64 recvDataCount) const
+{
+    // 1 算切片位置：sendOffset是本端input上的发送起点；peerRecvOffset是写入对端output的起点
+    //   （对端output按来源rank以outputSliceStride等距分段，本rank段基址由myAlgRank_决定）。
+    const u64 sendSize = sendDataCount * dataTypeSize_;
+    const u64 sendOffset = (tempAlgParams.sdispls[targetRank] + sendDataOffset) * dataTypeSize_;
+    const u64 peerRecvOffset = myAlgRank_ * tempAlgParams.outputSliceStride + tempAlgParams.buffInfo.outBuffBaseOff
+                               + sendDataOffset * dataTypeSize_;
+    // 2 算对端output的有效范围：对称窗口经GetSymWinRemoteMem只填地址、不填size（恒为0），
+    //   AllToAll各rank的output布局一致，用本地outputSize兜底。
+    const u64 peerOutputSize = channel.remoteOutputGraphMode.size > 0 ? channel.remoteOutputGraphMode.size :
+                                                                        tempAlgParams.buffInfo.outputSize;
+
+    // 3 越界检查：本端input区间和对端output区间都必须完整覆盖sendSize。
+    CHK_PRT_RET(
+        sendSize > 0 && channel.remoteOutputGraphMode.addr == nullptr,
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][RunSymmetricWrite] remote output is null, "
+            "rank[%u] targetRank[%u].",
+            myAlgRank_, targetRank),
+        HcclResult::HCCL_E_INTERNAL);
+    CHK_PRT_RET(
+        sendSize > 0
+            && (sendOffset > tempAlgParams.buffInfo.inputSize
+                || sendSize > tempAlgParams.buffInfo.inputSize - sendOffset || peerRecvOffset > peerOutputSize
+                || sendSize > peerOutputSize - peerRecvOffset),
+        HCCL_ERROR(
+            "[InsTempUBXAllToAllVMesh1D][RunSymmetricWrite] slice is out of range, "
+            "rank[%u] targetRank[%u] sendOffset[%llu] peerRecvOffset[%llu] sendSize[%llu] "
+            "inputSize[%llu] remoteOutputSize[%llu].",
+            myAlgRank_, targetRank, sendOffset, peerRecvOffset, sendSize, tempAlgParams.buffInfo.inputSize,
+            peerOutputSize),
+        HcclResult::HCCL_E_INTERNAL);
+
+    // 4 下发任务：发送方向把本地input直写对端output；收方向切片为空，数据由对端直写本端output。
+    std::vector<DataSlice> txSrcSlices;
+    std::vector<DataSlice> txDstSlices;
+    if (sendSize > 0) {
+        txSrcSlices.emplace_back(tempAlgParams.buffInfo.inputPtr, sendOffset, sendSize, sendDataCount);
+        txDstSlices.emplace_back(channel.remoteOutputGraphMode.addr, peerRecvOffset, sendSize, sendDataCount);
+    }
+    std::vector<DataSlice> emptySlices;
+
+    if (sendDataCount > 0 && recvDataCount > 0) {
+        TxRxSlicesList sendRecvSlicesList({txSrcSlices, txDstSlices}, {emptySlices, emptySlices});
+        SendRecvInfo sendRecvInfo(TxRxChannels(channel, channel), sendRecvSlicesList, dataType_);
+        CHK_RET(SendRecvWrite(sendRecvInfo, thread));
+    } else if (sendDataCount > 0) {
+        DataInfo sendInfo{channel, {txSrcSlices, txDstSlices}, dataType_};
+        CHK_RET(SendWrite(sendInfo, thread));
+    } else if (recvDataCount > 0) {
+        DataInfo recvInfo{channel, {emptySlices, emptySlices}, dataType_};
+        CHK_RET(RecvWrite(recvInfo, thread));
+    }
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -579,29 +736,9 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(
 
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     if (enableRemoteMemAccess_) {
-        inputSymWindow_ = param.inputSymWindow;
-        outputSymWindow_ = param.outputSymWindow;
-        inputOffset_ = param.inputOffset;
-        outputOffset_ = param.outputOffset;
-        HCCL_INFO(
-            "[InsTempUBXAllToAllVMesh1D][InitParam] symmetric memory enabled, "
-            "inputSymWin[%p] outputSymWin[%p] inOff[%llu] outOff[%llu].",
-            inputSymWindow_, outputSymWindow_, inputOffset_, outputOffset_);
+        HCCL_INFO("[InsTempUBXAllToAllVMesh1D][InitParam] symmetric memory remote write enabled.");
     }
 
-    return HcclResult::HCCL_SUCCESS;
-}
-
-HcclResult InsTempUBXAllToAllVMesh1D::GetSymmetricPeerInput(u32 peerRank, void** peerInput)
-{
-    CHK_PTR_NULL(peerInput);
-    HcclResult ret = GetSymWinRemoteMem(inputSymWindow_, inputOffset_, peerRank, peerInput);
-    CHK_PRT_RET(
-        ret != HCCL_SUCCESS || *peerInput == nullptr,
-        HCCL_ERROR(
-            "[InsTempUBXAllToAllVMesh1D][GetSymmetricPeerInput] failed, peerRank[%u] ret[%d] ptr[%p].", peerRank, ret,
-            *peerInput),
-        HcclResult::HCCL_E_INTERNAL);
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -623,6 +760,37 @@ HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(
     if (threadNum_ > 1) {
         GetNotifyIdxMainToFullMesh(notifyIdxMainToSub_);
         CHK_RET(PreSyncInterThreads(threads[0], subThreadsFullMesh_, notifyIdxMainToSub_));
+    }
+
+    if (CanRunPairwise4x4(templateResource)) {
+        HCCL_INFO("[InsTempUBXAllToAllVMesh1D][KernelRun] use symmetric-memory 1-rank-to-4-rank CLOS pipeline.");
+
+        // 1 板内FullMesh：占用后四条从流，先整体提交出去。
+        CHK_RET(RunFullMesh(tempAlgParams, templateResource));
+        // 2 跨框CLOS流水：占用前四条从流和主流，与FullMesh互不占用，并行推进。
+        for (u32 boardIndex = 0; boardIndex < algBoardNum_ - 1; boardIndex++) {
+            const u32 targetBoard = sendRecvMatrix[currBoard_][boardIndex];
+            CHK_RET(RunPairwise4x4(tempAlgParams, templateResource, targetBoard));
+        }
+
+        // 3 收尾：排空最后一组CLOS留在scratch的数据（对称路径直写output，此处为空）。
+        for (u32 i = 0; i < localCopyInfo_.size(); i++) {
+            CHK_RET(LocalCopy(threads[0], localCopyInfo_[i][0], localCopyInfo_[i][1]));
+        }
+        localCopyInfo_.clear();
+
+        // 4 FullMesh后同步，再把板内fullmesh收到scratch的数据落到output。
+        if (threadNum_ > 1) {
+            GetNotifyIdxFullMeshToMain(notifyIdxSubToMain_);
+            CHK_RET(PostSyncInterThreads(threads[0], subThreadsFullMesh_, notifyIdxSubToMain_));
+        }
+        for (u32 i = 0; i < localCopyInfoFullMesh_.size(); i++) {
+            CHK_RET(LocalCopy(threads[0], localCopyInfoFullMesh_[i][0], localCopyInfoFullMesh_[i][1]));
+        }
+        localCopyInfoFullMesh_.clear();
+        needDealWithFullMeshInfo_ = false;
+        HCCL_INFO("[InsTempUBXAllToAllVMesh1D] 1-rank-to-4-rank CLOS pipeline rank[%d] finish.", myAlgRank_);
+        return HcclResult::HCCL_SUCCESS;
     }
 
     // 前 maxPathNum_条从流用来做clos通信
