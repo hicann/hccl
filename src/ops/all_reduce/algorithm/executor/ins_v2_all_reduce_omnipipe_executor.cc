@@ -200,12 +200,12 @@ std::vector<CostModelParam> InsV2AllReduceOmniPipeExecutor<
         return {};
     }
 
-    OmniPipeCostAxes axes;
-    if (!CalcOmniPipeCostAxes(topoInfo, axes)) {
-        HCCL_WARNING(
-            "[InsV2AllReduceOmniPipeExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__, algName);
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
     }
+    OmniPipeCostAxes axes = CalcOmniPipeCostAxes(algHierarchyInfo);
 
     OmniNeedSetStepNum needSetStepNum = OmniNeedSetStepNum::OMNIPIPE_DEFAULT;
     if (axes.clos == RANK_SIZE_LEVEL1_4) {

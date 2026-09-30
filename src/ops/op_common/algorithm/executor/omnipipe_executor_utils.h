@@ -15,9 +15,7 @@
 #include "omnipipe_data_slice_calc.h"
 
 namespace ops_hccl {
-/* omnipipe流水线执行器公共工具: 原先在 all_reduce/all_gather/reduce_scatter 三个
- * omnipipe executor 的匿名命名空间中逐字重复的helper, 收敛至此, 行为不变。 */
-constexpr u32 MIN_NET_LAYER_NUM = 2;
+// OmniPipe 流水线执行器公共工具。
 constexpr double OMNIPIPE_FIXED_UB_UTILIZATION = 0.85;
 constexpr double GBPS_TO_BYTES_PER_SECOND = 1000.0 * 1000.0 * 1000.0;
 
@@ -51,67 +49,15 @@ struct OmniPipeCostAxes {
     u64 third = 1;
 };
 
-// 解析mesh/clos/third三维层级; 拓扑形态不满足整除约束时返回false
-inline bool CalcOmniPipeCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, OmniPipeCostAxes& axes)
+// Cost 维度与执行路径使用同一组 TopoMatch 逻辑通信组，避免非对称物理实例在各 rank 上产生不同结果。
+inline OmniPipeCostAxes CalcOmniPipeCostAxes(const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
-    if (topoInfo == nullptr || topoInfo->userRankSize == 0) {
-        return false;
-    }
-
-    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS || topoInfo->level0PcieMix) {
-        if (topoInfo->topoInstDetailsOfLayer.empty()) {
-            return false;
-        }
-        const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-        auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-        auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-        if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-            || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-            return false;
-        }
-        axes.mesh = meshIt->second[0];
-        axes.clos = closIt->second[0] / axes.mesh;
-    } else {
-        const auto& localSizes = topoInfo->netLayerDetails.localNetInsSizeOfLayer;
-        if (localSizes.empty() || localSizes[0] == 0) {
-            return false;
-        }
-        axes.mesh = localSizes[0];
-        if (topoInfo->topoLevelNums > 1) {
-            if (localSizes.size() < MIN_NET_LAYER_NUM || localSizes[1] < axes.mesh || localSizes[1] % axes.mesh != 0) {
-                return false;
-            }
-            axes.clos = localSizes[1] / axes.mesh;
-        }
-    }
-
-    const u64 xyRankSize = axes.mesh * axes.clos;
-    if (xyRankSize == 0 || topoInfo->userRankSize % xyRankSize != 0) {
-        return false;
-    }
-    axes.third = topoInfo->userRankSize / xyRankSize;
-    return axes.third > 0;
-}
-
-/* 纯2D(CLOS)形态的层级解析: 与三维版CalcOmniPipeCostAxes不同, 本版本仅走
- * topoInstDetailsOfLayer路径且要求mesh*clos==userRankSize(无third维)。原先在
- * reduce/all_reduce_2d/all_gather_2d/reduce_scatter_2d/scatter_2d/broadcast_2d
- * 六个omnipipe executor的匿名命名空间中逐字重复, 收敛至此, 行为不变。 */
-inline bool CalcOmniPipe2dCostAxes(const TopoInfoWithNetLayerDetails* topoInfo, u64& meshRankSize, u64& closRankSize)
-{
-    if (topoInfo == nullptr || topoInfo->topoInstDetailsOfLayer.empty()) {
-        return false;
-    }
-    const auto& rankNumForTopoType = topoInfo->topoInstDetailsOfLayer[0].rankNumForTopoType;
-    auto meshIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_1DMESH);
-    auto closIt = rankNumForTopoType.find(CommTopo::COMM_TOPO_CLOS);
-    if (meshIt == rankNumForTopoType.end() || meshIt->second.empty() || closIt == rankNumForTopoType.end()
-        || closIt->second.empty() || meshIt->second[0] == 0 || closIt->second[0] % meshIt->second[0] != 0) {
-        return false;
-    }
-    meshRankSize = meshIt->second[0];
-    closRankSize = closIt->second[0] / meshRankSize;
-    return closRankSize > 0 && meshRankSize * closRankSize == topoInfo->userRankSize;
+    const auto& infos = algHierarchyInfo.infos;
+    OmniPipeCostAxes axes;
+    axes.mesh = infos[0][0].size();
+    axes.clos = infos[1][0].size();
+    axes.third = infos.size() == 3 ? infos[2][0].size() : 1;
+    return axes;
 }
 
 // 统一的二维步数计算: 慢链路在前, isReduceScatter选择RS/AG步数模型

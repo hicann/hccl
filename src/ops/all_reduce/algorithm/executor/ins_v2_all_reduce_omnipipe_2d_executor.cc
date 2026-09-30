@@ -145,14 +145,21 @@ std::vector<CostModelParam> InsV2AllReduceOmniPipe2dExecutor<
         HCCL_ERROR("[InsV2AllReduceOmniPipe2dExecutor][%s] topoInfo or algName is null.", __func__);
         return {};
     }
-    u64 meshRankSize = 1;
-    u64 closRankSize = 1;
-    if (!CalcOmniPipe2dCostAxes(topoInfo, meshRankSize, closRankSize)) {
+    AlgHierarchyInfoForAllLevel algHierarchyInfo;
+    if (!MatchTopoForProbe<AlgTopoMatch>(
+            topoInfo, algHierarchyInfo, algName, "[CalcCostCoeff]", TopoProbeScene::PROBE_CALC_COST_COEFF)) {
+        return {};
+    }
+    if (algHierarchyInfo.infos.size() != 2) {
         HCCL_WARNING(
             "[InsV2AllReduceOmniPipe2dExecutor][%s] unable to derive OmniPipe axes for algName[%s].", __func__,
             algName);
         return {};
     }
+    OmniPipeCostAxes axes = CalcOmniPipeCostAxes(algHierarchyInfo);
+
+    const u64 meshRankSize = axes.mesh;
+    const u64 closRankSize = axes.clos;
 
     const bool isCcuMs = std::string(algName) == "CcuMSAllReducePipeLineMeshNHR";
     const double rsMeshBandwidth
