@@ -230,6 +230,16 @@ public:
 
         // scatter（SK空闲核跳过，避免与忙核重复写数据和flag）
         if (!IsIdleCore()) {
+            uint32_t preSyncOffset = rankSize_ * 2;
+            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
+                targetRank = blockIdx_ + i * numBlocks_;
+                Record(targetRank, preSyncOffset + rank_, curTag_);
+            }
+            pipe_barrier(PIPE_ALL);
+            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
+                targetRank = blockIdx_ + i * numBlocks_;
+                WaitFlag(rank_, preSyncOffset + targetRank, curTag_);
+            }
             for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
                 targetRank = blockIdx_ + i * numBlocks_;
                 rankChunkSize
