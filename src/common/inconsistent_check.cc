@@ -185,8 +185,9 @@ HcclResult ReportOpExchangeInfoCheckFailed(
         std::vector<std::string>(
             {opInfo, exchangeInfo.group, paraName, std::to_string(expectVal), std::to_string(remotePara)}));
     HCCL_ERROR(
-        "[ReportOpExchangeInfoCheckFailed]op information %s check fail. remoteRank[%u] expectValue[%u] remotePara[%u]",
-        paraName.c_str(), remoteRank, expectVal, remotePara);
+        "[InitChannelStage][ParameterConflict] errNo[0x%016llx] CMD information op[%s] %s check fail. "
+        "local[%u], remote[%u], remoteRank[%u]",
+        HCCL_ERROR_CODE(HCCL_E_PARA), opInfo.c_str(), paraName.c_str(), expectVal, remotePara, remoteRank);
     return HCCL_E_PARA;
 }
 
@@ -200,8 +201,10 @@ HcclResult ReportOpExchangeInfoCheckFailed(
         true, "EI0005", std::vector<std::string>({"ccl_op", "group", "para_name", "local_para", "remote_para"}),
         std::vector<std::string>({opInfo, exchangeInfo.group, paraName, expectVal, remotePara}));
     HCCL_ERROR(
-        "[ReportOpExchangeInfoCheckFailed]op information %s check fail. remoteRank[%u] expectValue[%s] remotePara[%s]",
-        paraName.c_str(), remoteRank, expectVal.c_str(), remotePara.c_str());
+        "[InitChannelStage][ParameterConflict] errNo[0x%016llx] CMD information op[%s] %s check fail. "
+        "local[%s], remote[%s], remoteRank[%u]",
+        HCCL_ERROR_CODE(HCCL_E_PARA), opInfo.c_str(), paraName.c_str(), expectVal.c_str(), remotePara.c_str(),
+        remoteRank);
     return HCCL_E_PARA;
 }
 
