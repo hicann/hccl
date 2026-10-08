@@ -2596,31 +2596,84 @@ static HcclResult IsResCapSufficient(
     return HCCL_SUCCESS;
 }
 
-static HcclResult CalcMaxResReqWithDefault(
-    uint32_t dieId, HcclOpExpansionMode opExpansionMode, HcommCcuResDescHandle resReq, HcommCcuResDescHandle outMax)
+// 计算最终资源申请量，决策顺序（reqNum=算法需求, default=opExpansionMode阈值, remain=实际剩余）：
+// 1. reqNum > remain：算法需求超过实际剩余，资源不足（sufficient=false），该资源类型不写入 outFinal；
+// 2. reqNum <= remain 且 default <= remain：final = max(reqNum, default)，两者均装得下；
+// 3. reqNum <= remain 且 default > remain：final = remain，尽力预留到剩余上限。
+// 注意契约：outFinal 仅在 sufficient==true 时有效（调用方须先判 sufficient 再使用 outFinal，
+// 避免误用无效申请量导致静默申请不足量实例）。
+static HcclResult CalcFinalResReqWithRemain(
+    uint32_t dieId, HcclOpExpansionMode opExpansionMode, HcommCcuResDescHandle resReq, HcommCcuResDescHandle outFinal,
+    bool& sufficient, std::string& insuffSummary)
 {
+    sufficient = true;
+    insuffSummary.clear();
     HCCL_INFO(
-        "[CalcMaxResReqWithDefault] start, dieId[%u], opExpansionMode[%u].", dieId,
+        "[CalcFinalResReqWithRemain] start, dieId[%u], opExpansionMode[%u].", dieId,
         static_cast<uint32_t>(opExpansionMode));
+    // 查询当前剩余资源，作为预留的上限
+    HcommCcuResDescHandle remainDesc = 0;
+    CcuResult rCreateRet = HcommCcuInsResDescCreate(dieId, &remainDesc);
+    CHK_PRT_RET(
+        rCreateRet != CCU_SUCCESS,
+        HCCL_ERROR(
+            "[CalcFinalResReqWithRemain] HcommCcuInsResDescCreate remainDesc dieId[%u] failed: ccuRet -> %d", dieId,
+            rCreateRet),
+        ConvertCcuToHccl(rCreateRet));
+    CcuResult rQueryRet = HcommCcuQueryRemainResDesc(remainDesc);
+    if (rQueryRet != CCU_SUCCESS) {
+        HcommCcuInsResDescDestroy(remainDesc);
+        HCCL_ERROR(
+            "[CalcFinalResReqWithRemain] HcommCcuQueryRemainResDesc dieId[%u] failed: ccuRet -> %d", dieId, rQueryRet);
+        return ConvertCcuToHccl(rQueryRet);
+    }
     for (HcommCcuResType resType : GetCcuInsCreateResTypes()) {
         uint32_t reqNum = 0;
         CcuResult qRet = HcommCcuInsResDescQueryNum(resReq, resType, &reqNum);
         if (qRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CalcMaxResReqWithDefault] dieId[%u] query req failed: ccuRet -> %d", dieId, qRet);
+            HcommCcuInsResDescDestroy(remainDesc);
+            HCCL_ERROR("[CalcFinalResReqWithRemain] dieId[%u] query req failed: ccuRet -> %d", dieId, qRet);
             return ConvertCcuToHccl(qRet);
         }
+        uint32_t remainNum = 0;
+        CcuResult rNumRet = HcommCcuInsResDescQueryNum(remainDesc, resType, &remainNum);
+        if (rNumRet != CCU_SUCCESS) {
+            HcommCcuInsResDescDestroy(remainDesc);
+            HCCL_ERROR("[CalcFinalResReqWithRemain] dieId[%u] query remain failed: ccuRet -> %d", dieId, rNumRet);
+            return ConvertCcuToHccl(rNumRet);
+        }
         uint32_t defaultNum = GetDefaultResFraction(resType, opExpansionMode);
-        uint32_t maxNum = std::max(reqNum, defaultNum);
-        CcuResult setRet = HcommCcuInsResDescSetNum(outMax, resType, maxNum);
+        // 决策：先比 reqNum 与 remain（需求超剩余即不足，不写 outFinal），再在需求可满足时按 default
+        // 与 remain 的关系确定预留量
+        bool resInsufficient = (reqNum > remainNum);
+        if (resInsufficient) { // 分支1：算法需求超过实际剩余，真正的资源不足
+            sufficient = false;
+            if (!insuffSummary.empty()) {
+                insuffSummary += ",";
+            }
+            insuffSummary += std::string(GetCcuResTypeName(resType)) + "(need=" + std::to_string(reqNum)
+                             + ",remain=" + std::to_string(remainNum) + ")";
+            HCCL_INFO(
+                "[CalcFinalResReqWithRemain] dieId[%u] resType[%s] req[%u] remain[%u] default[%u] -> insufficient.",
+                dieId, GetCcuResTypeName(resType), reqNum, remainNum, defaultNum);
+            continue;
+        }
+        // 分支2：需求与默认阈值均不超过剩余，取 max；分支3：默认阈值超剩余，取 remain
+        uint32_t finalNum = (defaultNum <= remainNum) ? std::max(reqNum, defaultNum) : remainNum;
+        CcuResult setRet = HcommCcuInsResDescSetNum(outFinal, resType, finalNum);
         if (setRet != CCU_SUCCESS) {
-            HCCL_ERROR("[CalcMaxResReqWithDefault] dieId[%u] set failed: ccuRet -> %d", dieId, setRet);
+            HcommCcuInsResDescDestroy(remainDesc);
+            HCCL_ERROR("[CalcFinalResReqWithRemain] dieId[%u] set failed: ccuRet -> %d", dieId, setRet);
             return ConvertCcuToHccl(setRet);
         }
         HCCL_INFO(
-            "[CalcMaxResReqWithDefault] dieId[%u] resType[%s] req[%u] default[%u] -> max[%u].", dieId,
-            GetCcuResTypeName(resType), reqNum, defaultNum, maxNum);
+            "[CalcFinalResReqWithRemain] dieId[%u] resType[%s] req[%u] remain[%u] default[%u] -> final[%u].", dieId,
+            GetCcuResTypeName(resType), reqNum, remainNum, defaultNum, finalNum);
     }
-    HCCL_INFO("[CalcMaxResReqWithDefault] dieId[%u] finish.", dieId);
+    HcommCcuInsResDescDestroy(remainDesc);
+    HCCL_INFO(
+        "[CalcFinalResReqWithRemain] dieId[%u] finish, %s.", dieId,
+        sufficient ? "all resTypes sufficient" : "some resTypes insufficient");
     return HCCL_SUCCESS;
 }
 
@@ -2726,7 +2779,7 @@ static HcclResult BuildAggregatedResReq(AlgResourceRequest& resRequest, ResDescB
     // 补齐缺失的 die。区分两类 die：
     // 1. 首算子 kernel 所在的 die：已在 groupedResMap 中，必须申请资源，不判断使能状态。
     // 2. kernel 不所在的 die（groupedResMap 中缺失的 die）：通过 IsDieEnabledForPadding 探测是否使能，
-    //    使能才创建空条目，后续 CreateFinalReqDescs 会按默认阈值为其申请资源（防止后续算子回退）；
+    //    使能才创建空条目，后续 CreateFinalReqDescs 会按"实际剩余与默认阈值"决策为其申请资源（防止后续算子回退）；
     //    未使能（单 die 场景）跳过补齐，避免冗余申请。
     for (uint32_t dieId = 0; dieId < CCU_DEFAULT_DIE_NUM; dieId++) {
         if (groupedResMap.find(dieId) != groupedResMap.end())
@@ -2833,10 +2886,24 @@ static HcclResult ReuseExistingCcuIns(
     return RegisterCcuKernels(insHandle, resRequest, resCtxHost);
 }
 
-// 为每个 die 创建 finalReqDesc = max(reqDesc, 默认阈值)，避免按实际需求申请造成资源碎片。出参由调用方销毁。
+// CreateFinalReqDescs 返回 HCCL_E_UNAVAIL 的原因分类（显式出参，调用方按枚举区分，
+// 不依赖 allDieInsuffSummary 字符串内容反推）
+enum class UnavailReason {
+    NONE,            // 返回值非 HCCL_E_UNAVAIL（成功或其他错误）
+    RES_SHORTAGE,    // 算法需求超过实际剩余，真正的资源不足
+    DIE_UNAVAILABLE, // remain 创建/查询时 die 不可用（探测与查询间的竞态）
+};
+
+// 生成最终申请描述：逐 die 按"reqNum超实际剩余判不足回退；否则default不超剩余取max(reqNum,default)、
+// 超剩余取remain"决策申请量；任一 die 判不足则整体返回 HCCL_E_UNAVAIL（摘要经 allDieInsuffSummary 带出，
+// 原因经 unavailReason 带出）。
 static HcclResult CreateFinalReqDescs(
-    ResDescByDie& reqDescs, HcclOpExpansionMode opExpansionMode, std::vector<HcommCcuResDescHandle>& finalReqDescs)
+    ResDescByDie& reqDescs, HcclOpExpansionMode opExpansionMode, std::vector<HcommCcuResDescHandle>& finalReqDescs,
+    std::string& allDieInsuffSummary, UnavailReason& unavailReason)
 {
+    bool allSufficient = true;
+    allDieInsuffSummary.clear();
+    unavailReason = UnavailReason::NONE;
     for (auto& dieEntry : reqDescs) {
         uint32_t dieId = dieEntry.first;
         HcommCcuResDescHandle reqDesc = dieEntry.second;
@@ -2849,18 +2916,45 @@ static HcclResult CreateFinalReqDescs(
                 HcommCcuInsResDescDestroy(d);
             }
             finalReqDescs.clear();
-            return ConvertCcuToHccl(fCreateRet);
+            HcclResult ret = ConvertCcuToHccl(fCreateRet);
+            if (ret == HCCL_E_UNAVAIL) { // die 不可用（探测与创建间的竞态）
+                unavailReason = UnavailReason::DIE_UNAVAILABLE;
+            }
+            return ret;
         }
-        HcclResult maxRet = CalcMaxResReqWithDefault(dieId, opExpansionMode, reqDesc, finalReqDesc);
-        if (maxRet != HCCL_SUCCESS) {
+        bool sufficient = true;
+        std::string insuffSummary;
+        HcclResult finalRet
+            = CalcFinalResReqWithRemain(dieId, opExpansionMode, reqDesc, finalReqDesc, sufficient, insuffSummary);
+        if (finalRet != HCCL_SUCCESS) {
+            if (finalRet == HCCL_E_UNAVAIL) { // remain 创建/查询时 die 不可用（竞态）
+                unavailReason = UnavailReason::DIE_UNAVAILABLE;
+            }
             HcommCcuInsResDescDestroy(finalReqDesc);
             for (auto d : finalReqDescs) {
                 HcommCcuInsResDescDestroy(d);
             }
             finalReqDescs.clear();
-            return maxRet;
+            return finalRet;
+        }
+        if (!sufficient) { // 该die算法需求超过实际剩余，汇总摘要，整体判不足
+            allSufficient = false;
+            if (!allDieInsuffSummary.empty()) {
+                allDieInsuffSummary += "; ";
+            }
+            allDieInsuffSummary += "dieId[" + std::to_string(dieId) + "]: " + insuffSummary;
+            HcommCcuInsResDescDestroy(finalReqDesc);
+            continue;
         }
         finalReqDescs.push_back(finalReqDesc);
+    }
+    if (!allSufficient) {
+        for (auto d : finalReqDescs) {
+            HcommCcuInsResDescDestroy(d);
+        }
+        finalReqDescs.clear();
+        unavailReason = UnavailReason::RES_SHORTAGE; // 算法需求超过实际剩余，真正的资源不足
+        return HCCL_E_UNAVAIL;
     }
     return HCCL_SUCCESS;
 }
@@ -2908,8 +3002,8 @@ static void CollectInsufficientResFromRemain(
     }
 }
 
-// 新建 CcuIns：取需求与默认阈值的最大值创建实例并绑定到 comm，使后续算子走复用路径。
-// 函数内部销毁 reqDescs。
+// 新建 CcuIns：算法需求超过实际剩余则回退；否则按 max(reqNum,default) 或 remain 决策申请量；
+// 创建失败（查询与创建间的竞态）时降级按算法实际需求重试。函数内部销毁 reqDescs。
 static HcclResult CreateAndAssignNewCcuIns(
     HcclComm comm, HcclOpExpansionMode opExpansionMode, ResDescByDie& reqDescs, AlgResourceRequest& resRequest,
     std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
@@ -2925,9 +3019,25 @@ static HcclResult CreateAndAssignNewCcuIns(
     }
 
     std::vector<HcommCcuResDescHandle> finalReqDescs;
-    HcclResult createRet = CreateFinalReqDescs(reqDescs, opExpansionMode, finalReqDescs);
-    DestroyAllDescs(reqDescs);
+    std::string precheckInsuffSummary;
+    UnavailReason unavailReason = UnavailReason::NONE;
+    HcclResult createRet
+        = CreateFinalReqDescs(reqDescs, opExpansionMode, finalReqDescs, precheckInsuffSummary, unavailReason);
+    if (createRet == HCCL_E_UNAVAIL) {
+        // 预检查回退：按显式原因分类打日志
+        if (unavailReason == UnavailReason::RES_SHORTAGE) {
+            // 算法实际需求已超过实际剩余，真正的资源不足，回退
+            HCCL_RUN_INFO(
+                "[CreateAndAssignNewCcuIns] precheck insufficient res detail: %s", precheckInsuffSummary.c_str());
+        } else {
+            // remain 查询时 die 不可用（探测与查询间的竞态），并非资源不足
+            HCCL_RUN_INFO("[CreateAndAssignNewCcuIns] precheck unavailable: remain query returned UNAVAIL.");
+        }
+        DestroyAllDescs(reqDescs);
+        return HCCL_E_UNAVAIL;
+    }
     if (createRet != HCCL_SUCCESS) {
+        DestroyAllDescs(reqDescs);
         return createRet;
     }
 
@@ -2935,21 +3045,42 @@ static HcclResult CreateAndAssignNewCcuIns(
     CcuResult createInsRet = HcommCcuInsCreate(finalReqDescs.data(), finalReqDescs.size(), &newInsHandle);
     HCCL_INFO("[CreateAndAssignNewCcuIns] HcommCcuInsCreate ret[%d], newInsHandle[%p].", createInsRet, newInsHandle);
     if (createInsRet == CCU_E_UNAVAIL) {
-        HCCL_WARNING("[CreateAndAssignNewCcuIns] HcommCcuInsCreate unavailable, try to fallback.");
-        std::string allDieInsuffSummary;
-        CollectInsufficientResFromRemain(finalReqDescs, finalReqDieIds, allDieInsuffSummary);
-        HCCL_RUN_INFO("[CreateAndAssignNewCcuIns] insufficient res detail: %s", allDieInsuffSummary.c_str());
-        for (auto d : finalReqDescs) {
-            HcommCcuInsResDescDestroy(d);
+        // 竞态兜底：remain 查询与实例创建之间资源被并发占用时，降级为按算法实际需求重试
+        HCCL_WARNING(
+            "[CreateAndAssignNewCcuIns] HcommCcuInsCreate with final res unavailable, downgrade to alg-only req "
+            "and retry.");
+        // pureReqDescs 仅借用 reqDescs 中的句柄做重试（不拥有、不销毁），所有权仍归 reqDescs，
+        // 统一由本函数末尾/各失败路径的 DestroyAllDescs(reqDescs) 销毁，勿对其逐个 Destroy
+        std::vector<HcommCcuResDescHandle> pureReqDescs; // 与 finalReqDieIds 同序（map 升序）
+        for (const auto& entry : reqDescs) {
+            pureReqDescs.push_back(entry.second);
         }
-        return HCCL_E_UNAVAIL;
-    } else if (createInsRet != CCU_SUCCESS) {
+        createInsRet = HcommCcuInsCreate(pureReqDescs.data(), pureReqDescs.size(), &newInsHandle);
+        HCCL_INFO(
+            "[CreateAndAssignNewCcuIns] retry with alg-only req ret[%d], newInsHandle[%p].", createInsRet,
+            newInsHandle);
+        if (createInsRet == CCU_E_UNAVAIL) { // 算法实际需求也无法满足，才是真正的回退
+            HCCL_WARNING("[CreateAndAssignNewCcuIns] alg-only req still unavailable, try to fallback.");
+            std::string allDieInsuffSummary;
+            CollectInsufficientResFromRemain(pureReqDescs, finalReqDieIds, allDieInsuffSummary);
+            HCCL_RUN_INFO("[CreateAndAssignNewCcuIns] insufficient res detail: %s", allDieInsuffSummary.c_str());
+            for (auto d : finalReqDescs) {
+                HcommCcuInsResDescDestroy(d);
+            }
+            // pureReqDescs 为借用视图不重复销毁，统一由 DestroyAllDescs(reqDescs) 销毁
+            DestroyAllDescs(reqDescs);
+            return HCCL_E_UNAVAIL;
+        }
+    }
+    if (createInsRet != CCU_SUCCESS) {
         HCCL_ERROR("[CreateAndAssignNewCcuIns] HcommCcuInsCreate failed: ccuRet -> %d", createInsRet);
         for (auto d : finalReqDescs) {
             HcommCcuInsResDescDestroy(d);
         }
+        DestroyAllDescs(reqDescs);
         return ConvertCcuToHccl(createInsRet);
     }
+    DestroyAllDescs(reqDescs);
 
     HcclResult assignRet = HcclCommAssignCcuIns(comm, newInsHandle);
     HCCL_INFO("[CreateAndAssignNewCcuIns] HcclCommAssignCcuIns ret[%d].", assignRet);
