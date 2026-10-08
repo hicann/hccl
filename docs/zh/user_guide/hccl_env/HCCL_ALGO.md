@@ -42,7 +42,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - Mesh2Die（mesh2die）：单NPU分布端口跨Die mesh算法。
       - MeshOneShot（meshoneshot）：OneShot mesh算法。
       - MeshTwoShot（meshtwoshot）：TwoShot mesh算法。
-      - MeshConcur（meshsoncur）：CLOS Z轴绕路。
+      - MeshConcur（meshconcur）：CLOS Z轴绕路。
       - MeshMultiLink（meshmultilink）：多链路Mesh通信算法，类似Concur。
       - MeshChunk（meshchunk）：Mesh通信算法，支持chunk。
       - MeshChunkTwoShot（meshchunktwoshot）：TwoShot mesh算法，支持chunk。
@@ -172,7 +172,7 @@ export HCCL_ALGO="<op0>=level0:NA;level1:<algo0>;level2:<algo1>/<op1>=level0:NA;
   - reduce：对应通信算子Reduce。
   - scatter：对应通信算子Scatter。
   - alltoall：对应通信算子AlltoAll、AlltoAllV和AlltoAllVC。
-- <algo\>为指定的通信算子采用的通信算法，支持的配置同全局配置方法中的level1取值与level2取，请确保指定的通信算法为通信算子支持的算法类型，每种算法支持的通信算子可参见[Server间通信法支持度列表](inter_server_algo_support.md)与[超节点间通信算法支持度列表](inter_superpod_algo_support.md)，未指定通信算法的通信算子会根据产品形态、节点数以及数据自动选择通信算法。
+- <algo\>为指定的通信算子采用的通信算法，支持的配置同全局配置方法中的level1取值与level2取值，请确保指定的通信算法为通信算子支持的算法类型，每种算法支持的通信算子可参见[Server间通信算法支持度列表](inter_server_algo_support.md)与[超节点间通信算法支持度列表](inter_superpod_algo_support.md)，未指定通信算法的通信算子会根据产品形态、节点数以及数据自动选择通信算法。
 - 多个算子之间的配置使用“/”分隔。
 
 配置示例：
