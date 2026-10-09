@@ -60,18 +60,9 @@ static ge::graphStatus HcomReduceScatterVInferShapeV2(gert::InferShapeContext* c
         return GRAPH_FAILED;
     }
 
-    // recvCount 是元素个数, 需除以 otherDims 得到首维个数
-    int64_t otherDims = 1;
-    for (size_t i = 1; i < inputShape->GetDimNum(); i++) {
-        otherDims *= inputShape->GetDim(i);
-    }
-    if (otherDims == 0) {
-        CUBE_INNER_ERR_REPORT(opName, "otherDims is 0, input shape may contain zero dim.");
-        return GRAPH_FAILED;
-    }
-
+    // recv_count 的单位为首维长度，输出首维即 recvCount[0]
     *outputShape = *inputShape;
-    outputShape->SetDim(0, recvCount[0] / otherDims);
+    outputShape->SetDim(0, recvCount[0]);
 
     OP_INFER_SHAPE_END;
     return GRAPH_SUCCESS;

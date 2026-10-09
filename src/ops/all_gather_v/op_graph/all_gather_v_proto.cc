@@ -56,30 +56,27 @@ static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* conte
         return GRAPH_FAILED;
     }
 
-    // 计算recvDisp
+    // 计算recvDisp：recv_displacements为可选输入(index 3)，有const数据时使用真实值，
+    // 否则按recvCounts连续累加（与HcomVInputVecSetPass中CalcDisplacements的行为一致）
+    const gert::Tensor* recvDisplsTensor = context->GetInputTensor(3);
     vector<int64_t> recvDisp;
-    int64_t tempSum = 0;
-    for (size_t i = 0; i < recvCounts.size(); i++) {
-        recvDisp.push_back(tempSum);
-        tempSum += recvCounts[i];
-    }
-
-    int64_t otherDims = 1;
-    for (size_t i = 1; i < inputShape->GetDimNum(); i++) {
-        if (inputShape->GetDim(i) == ge::UNKNOWN_DIM) {
-            *outputShape = *inputShape;
-            outputShape->SetDim(0, ge::UNKNOWN_DIM);
-            OP_LOGI(opName, "the op infershape end, shape first dim is unknown.");
-            return GRAPH_SUCCESS;
+    if ((recvDisplsTensor != nullptr) && HcomIsConstData(opName, recvDisplsTensor)) {
+        HcomGetConstValue(opName, recvDisplsTensor, recvDisplsTensor->GetDataType(), recvDisp);
+        if (recvDisp.size() != recvCounts.size()) {
+            CUBE_INNER_ERR_REPORT(
+                opName, "recv_displacements size[%zu] must equal recv_counts size[%zu].", recvDisp.size(),
+                recvCounts.size());
+            return GRAPH_FAILED;
         }
-        otherDims *= inputShape->GetDim(i);
-    }
-    if (otherDims == 0) {
-        CUBE_INNER_ERR_REPORT(opName, "otherDims is 0, input shape may contain zero dim.");
-        return GRAPH_FAILED;
+    } else {
+        int64_t tempSum = 0;
+        for (size_t i = 0; i < recvCounts.size(); i++) {
+            recvDisp.push_back(tempSum);
+            tempSum += recvCounts[i];
+        }
     }
 
-    // 计算outDim = max(recvDisp[i] + recvCounts[i]) / otherDims
+    // recv_counts 的单位为首维长度，输出首维 = max(recvDisp[i] + recvCounts[i])
     int64_t outDim = 0;
     for (size_t i = 0; i < recvCounts.size(); i++) {
         int64_t tempRecvSum = recvDisp[i] + recvCounts[i];
@@ -87,7 +84,6 @@ static ge::graphStatus HcomAllGatherVInferShapeV2(gert::InferShapeContext* conte
             outDim = tempRecvSum;
         }
     }
-    outDim = outDim / otherDims;
 
     *outputShape = *inputShape;
     outputShape->SetDim(0, outDim);
@@ -110,5 +106,5 @@ static ge::graphStatus HcomAllGatherVInferDataTypeV2(gert::InferDataTypeContext*
 IMPL_OP_INFERSHAPE(HcomAllGatherV)
     .InferShape(HcomAllGatherVInferShapeV2)
     .InferDataType(HcomAllGatherVInferDataTypeV2)
-    .InputsDataDependency({1, 2});
+    .InputsDataDependency({1, 2, 3});
 } // namespace ops
