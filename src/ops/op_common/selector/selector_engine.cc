@@ -26,6 +26,7 @@
 #include "hccl_common.h"
 #include "tuner_setup.h"
 #include "auto_selector_base.h"
+#include "op_common.h"
 
 namespace ops_hccl {
 
@@ -311,9 +312,15 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
 void SelectorEngine::LogSelectedAlgo(
     const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo, const std::string& algName)
 {
-    HCCL_INFO(
-        "[SelectorEngine] The opExecuteConfig is %s, the selected algo type is %s",
-        ENGINE_STR_MAP.at(param.opExecuteConfig), algName.c_str());
+    if (IsNegotiationCommName(param.commName)) {
+        HCCL_INFO(
+            "[SelectorEngine] The opExecuteConfig is %s, comm is[%s], the negotiation op algo type is %s",
+            ENGINE_STR_MAP.at(param.opExecuteConfig), param.commName, algName.c_str());
+    } else {
+        HCCL_INFO(
+            "[SelectorEngine] The opExecuteConfig is %s, comm is[%s], the selected algo type is %s",
+            ENGINE_STR_MAP.at(param.opExecuteConfig), param.commName, algName.c_str());
+    }
 
     HCCL_CONFIG_INFO(
         HCCL_ALG,

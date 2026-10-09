@@ -418,9 +418,8 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam& param, CcuFastLaunchCtx** ccu
 #endif
 }
 
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
 // 判断通信域名称是否为协商子通信域（后缀_negotiation，由CCU fallback协商机制创建）
-static bool IsNegotiationCommName(const char* commName)
+bool IsNegotiationCommName(const char* commName)
 {
     const std::string commNameStr(commName);
     return commNameStr.size() >= NEGOTIATION_COMM_SUFFIX.size()
@@ -429,7 +428,6 @@ static bool IsNegotiationCommName(const char* commName)
                   NEGOTIATION_COMM_SUFFIX)
                   == 0;
 }
-#endif
 
 HcclResult ConstructHcclDfxOpInfo(
     const OpParam& param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo, ThreadHandle cpuTsThread)

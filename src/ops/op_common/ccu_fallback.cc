@@ -355,8 +355,8 @@ static HcclResult CompareNegotiationResult(int32_t result)
 HcclResult CheckCcuResNegotiation(HcclComm comm, const OpParam& param, bool localResAvailable)
 {
     HCCL_INFO(
-        "[%s] start, comm[%p], commName[%s], tag[%s], opType[%u], localResAvailable[%d].", __func__, comm,
-        param.commName, param.tag, static_cast<u32>(param.opType), static_cast<int>(localResAvailable));
+        "[%s] start, comm[%p], commName[%s], algName[%s], tag[%s], opType[%u], localResAvailable[%d].", __func__, comm,
+        param.commName, param.algName, param.tag, static_cast<u32>(param.opType), static_cast<int>(localResAvailable));
 
     u32 rankSize = 0;
     CHK_RET(HcclGetRankSize(comm, &rankSize));
@@ -501,9 +501,9 @@ HcclResult CheckCcuParamAndFallback(
     HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDetails>& topoInfo, std::string& algName)
 {
     HCCL_INFO(
-        "[%s] entry, comm[%p], commName[%s], tag[%s], opType[%u], opExecuteConfig[%u], count[%llu].", __func__, comm,
-        param.commName, param.tag, static_cast<u32>(param.opType), static_cast<uint32_t>(param.opExecuteConfig),
-        param.DataDes.count);
+        "[%s] entry, comm[%p], commName[%s], algName[%s], tag[%s], opType[%u], opExecuteConfig[%u], count[%llu].",
+        __func__, comm, param.commName, algName.c_str(), param.tag, static_cast<u32>(param.opType),
+        static_cast<uint32_t>(param.opExecuteConfig), param.DataDes.count);
 
     if (strncmp(param.tag, "SelectAlg_", strlen("SelectAlg_")) == 0) {
         HCCL_INFO("[%s] aiv sk selector, skip ccu param check, tag[%s].", __func__, param.tag);
