@@ -6,10 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for sending an requirement! Please fill in the following template to help quickly solve your problem.
+        Thanks for sending a requirement! Please fill in the following template to help quickly solve your problem.
   - type: textarea
     attributes:
-      label: Backgroud（背景信息）
+      label: Background（背景信息）
       description: 请描述下新需求的功能是什么，解决了什么问题
     validations:
       required: true
