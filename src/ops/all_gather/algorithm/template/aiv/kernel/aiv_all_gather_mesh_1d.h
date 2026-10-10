@@ -57,7 +57,6 @@ public:
                 uint64_t cclInOffset
                     = reinterpret_cast<uint64_t>(myGmIn_) + (innerDisplsPerRank + innerDispls) * sizeof(T);
                 CpGM2GM((__gm__ T*)cclInOffset, (__gm__ T*)usrInOffset, sendCurCount);
-                PipeBarrier<PIPE_ALL>();
                 // 每个核写flag
                 Record(rank_, blockIdx_ * cutNum + coreIndex, curTag_);
             }
