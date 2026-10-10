@@ -382,7 +382,7 @@ HcclResult InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>:
 template <typename AlgTopoMatch, typename InsAlgTemplate>
 bool InsV2AllReduceExperimentalSoleExecutor<AlgTopoMatch, InsAlgTemplate>::IsExampleEnabled()
 {
-    constexpr bool exampleEnabled = false;
+    constexpr bool exampleEnabled = true;
     if (!exampleEnabled)
         return false;
     const char* env = std::getenv("HCCL_EXPERIMENTAL_EXAMPLE");
