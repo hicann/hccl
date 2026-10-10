@@ -420,7 +420,8 @@ REGISTER_EXEC_V2(
     CcuTempReduceNHR1DMem2Mem);
 REGISTER_ALG_ATTRS(
     CcuSchedReduceSoleNHR, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_CLOS;
-    topo.isSupportLevel1Nhr = true; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel1Nhr = true;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !(topo->topoLevelNums == 1 && topo->level0Topo == Level0Shape::MESH_1D);
     };
