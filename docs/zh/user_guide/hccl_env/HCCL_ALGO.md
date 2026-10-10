@@ -25,7 +25,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
   - `<ExecutorType>`为算法执行器的类型，支持如下配置：
     - Sole（sole）：单算法执行器。
     - Sequence（sequence）：顺序执行器，串行执行一组算法，当前仅支持配置2级或3级算法。
-    - Parallel（paralle）：两维度并行执行器，同一时刻两维度并行执行不同算法。
+    - Parallel（parallel）：两维度并行执行器，同一时刻两维度并行执行不同算法。
     - PipeLine（pipeline）：流水线并行执行器。
     - Concur（concur）：并发执行器，同一时刻相同level并行执行不同算法。
     - StrictOrdered（strictordered）：严格保序执行器。
