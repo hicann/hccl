@@ -1244,8 +1244,8 @@ const u8& GetExternalInputHcclDeterministic() { return g_algEnvConfig.hcclDeterm
 bool RunIndependentOpExpansion(HcclDevType deviceType)
 {
     std::string opExpansionModeEnv = GetEnv("HCCL_OP_EXPANSION_MODE");
-    if (deviceType == HcclDevType::DEV_TYPE_910_93) {
-        return opExpansionModeEnv == "AI_CPU" || opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "EmptyString";
+    if (deviceType == HcclDevType::DEV_TYPE_910_93 || deviceType == HcclDevType::DEV_TYPE_910B) {
+        return false;
     }
 
     if (EqualToOrGreaterThan950(deviceType)) {
@@ -1253,11 +1253,6 @@ bool RunIndependentOpExpansion(HcclDevType deviceType)
                || opExpansionModeEnv == "AICPU_CacheDisable" || opExpansionModeEnv == "HOST_TS"
                || opExpansionModeEnv == "EmptyString" || opExpansionModeEnv == "AIV"
                || opExpansionModeEnv == "CCU_SCHED" || opExpansionModeEnv == "CCU_MS";
-    }
-
-    // HOST_TS为Host展开
-    if (deviceType == HcclDevType::DEV_TYPE_910B) {
-        return opExpansionModeEnv == "HOST_TS" || opExpansionModeEnv == "HOST";
     }
     return false;
 }
