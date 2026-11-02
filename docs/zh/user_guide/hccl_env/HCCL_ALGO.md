@@ -42,6 +42,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - MeshOneShot（meshoneshot）：OneShot mesh算法，每个rank把完整输入直接写入其余N-1个对端，再本地归约N份数据；一步完成、时延最优，但流量为(N-1)×全量数据，仅适合AllReduce小数据量场景。
       - MeshTwoShot（meshtwoshot）：TwoShot mesh算法，把AllReduce拆分为ReduceScatter+AllGather两步（先切N片分发归约、再全收集），通信量约为OneShot的2/N；适合通信数据量较大的场景，适用于AllReduce、Reduce、Broadcast算子。
       - MeshConcur（meshconcur）：CLOS轴绕路算法，同时合并level0直连mesh链路与level1 CLOS上行链路，按两侧带宽比对每个对端的数据分流，让部分数据“向上绕行”；该算法同时使用fullmesh和CLOS链路。
+      - MeshConcurrent（meshconcurrent）：Mesh/CLOS双路径并发算法，在同一组rank内联合利用Mesh直连链路与CLOS链路，按预设带宽比例将每个对端的收发数据划分为两部分并发处理；适用于AlltoAll/AlltoAllV算子。
       - MeshChunk（meshchunk）：支持chunk的Mesh算法，把数据切成多块（ReduceScatter下为N-1块、(N-1)步）逐步与对端交换，收发与归约融合；适用于fullmesh直连的ReduceScatter。
       - MeshChunkTwoShot（meshchunktwoshot）：TwoShot版MeshChunk算法，AllReduce走ReduceScatter+AllGather两步，其中ReduceScatter阶段使用mesh chunk。
       - MeshSingleChannel（meshsinglechannel）：单通道Mesh算法，与默认mesh同算法，但每对rank只建立1条channel、不做多通道数据切分；适合需要降低通道/流同步开销或链路资源受限的AllToAll算子场景。
