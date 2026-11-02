@@ -55,6 +55,7 @@ private:
     HcclResult GatherData(
         const TemplateDataParams& dataParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads);
+    HcclResult CopyBaseSlotToOutput(const TemplateDataParams& dataParams, const ThreadHandle& thread);
     HcclResult ReduceData(const TemplateDataParams& dataParams, const std::vector<ThreadHandle>& threads);
     HcclResult SendData(
         const TemplateDataParams& dataParams, const std::map<u32, std::vector<ChannelInfo>>& channels,

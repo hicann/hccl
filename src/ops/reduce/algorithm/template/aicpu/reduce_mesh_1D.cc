@@ -151,10 +151,10 @@ HcclResult ReduceMesh1D::RunReduce(
         if (threads.size() > 1u) {
             CHK_RET(PostSyncInterThreads(masterThread, subThreads, notifyIdxSubToMain_));
         }
-        // 64位数据或乘积reduce操作需要在aicpu上执行reduce操作
+        // INPUT到OUTPUT的基数拷贝须先入本轮batch；64位/PROD需在BatchModeEnd/ThreadJoin完成后再归约。
+        CHK_RET(CopyBaseSlotToOutput(tempAlgParam, masterThread));
         if (dataType_ == HcclDataType::HCCL_DATA_TYPE_INT64 || dataType_ == HcclDataType::HCCL_DATA_TYPE_UINT64
             || dataType_ == HcclDataType::HCCL_DATA_TYPE_FP64 || param.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-            // 启动任务并等待所有threads任务执行完成
             CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
             CHK_RET(static_cast<HcclResult>(HcommBatchModeStart(param.algTag)));
             for (const auto& thread : threads) {
@@ -261,6 +261,22 @@ HcclResult ReduceMesh1D::GatherData(
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult ReduceMesh1D::CopyBaseSlotToOutput(const TemplateDataParams& dataParams, const ThreadHandle& thread)
+{
+    const BuffInfo& buffInfo = dataParams.buffInfo;
+    if (templateRankSize_ == 1u || buffInfo.inBuffType != BufferType::INPUT
+        || buffInfo.outBuffType != BufferType::OUTPUT) {
+        return HcclResult::HCCL_SUCCESS;
+    }
+
+    // 将rank 0槽拷到output，作为ReduceData的归约基数。
+    HCCL_DEBUG("[ReduceMesh1D] fixed base slot[0], root input staged in slot[%u]", myIdx_);
+    DataSlice baseSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff, processSize_, count_);
+    DataSlice dstSlice(buffInfo.outputPtr, buffInfo.outBuffBaseOff, processSize_, count_);
+    CHK_RET(static_cast<HcclResult>(LocalCopy(thread, baseSlice, dstSlice)));
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult ReduceMesh1D::ReduceData(const TemplateDataParams& dataParams, const std::vector<ThreadHandle>& threads)
 {
     if (templateRankSize_ == 1u) {
@@ -272,26 +288,9 @@ HcclResult ReduceMesh1D::ReduceData(const TemplateDataParams& dataParams, const 
 
     DataSlice dstSlice(buffInfo.outputPtr, buffInfo.outBuffBaseOff, processSize_, count_);
 
-    if (buffInfo.inBuffType == BufferType::INPUT && buffInfo.outBuffType == BufferType::OUTPUT) {
-        // 以 rank 0 槽为基数，按 rank 顺序归约。
-        HCCL_DEBUG("[ReduceMesh1D] fixed base slot[0], root input staged in slot[%u]", myIdx_);
-        DataSlice baseSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff, processSize_, count_);
-        CHK_RET(static_cast<HcclResult>(LocalCopy(threads.at(0), baseSlice, dstSlice)));
-
-        for (u32 idx = 1; idx < subCommRanks_.at(0).size(); ++idx) {
-            DataSlice srcSlice(
-                buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff + processSize_ * idx, processSize_, count_);
-            CHK_RET(static_cast<HcclResult>(LocalReduce(threads.at(0), srcSlice, dstSlice, dataType_, reduceOp_)));
-        }
-    } else {
-        for (u32 idx = 0; idx < subCommRanks_.at(0).size(); ++idx) {
-            if (idx == 0) {
-                continue;
-            }
-            DataSlice srcSlice(
-                buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff + processSize_ * idx, processSize_, count_);
-            CHK_RET(static_cast<HcclResult>(LocalReduce(threads.at(0), srcSlice, dstSlice, dataType_, reduceOp_)));
-        }
+    for (u32 idx = 1; idx < subCommRanks_.at(0).size(); ++idx) {
+        DataSlice srcSlice(buffInfo.hcclBuff.addr, buffInfo.hcclBuffBaseOff + processSize_ * idx, processSize_, count_);
+        CHK_RET(static_cast<HcclResult>(LocalReduce(threads.at(0), srcSlice, dstSlice, dataType_, reduceOp_)));
     }
 
     return HcclResult::HCCL_SUCCESS;
