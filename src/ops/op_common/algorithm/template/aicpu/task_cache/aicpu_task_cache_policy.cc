@@ -14,7 +14,6 @@
 #include <unordered_set>
 
 #include "alg_env_config.h"
-#include "hcomm_primitives_dl.h"
 #include "log.h"
 #include "aicpu_task_cache_utils.h"
 
@@ -77,10 +76,6 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
     }
 
     if (AicpuTaskCacheUtils::IsAlltoallvType(param.opType)) {
-        if (!HcommIsSupportHcommAicpuTsTaskCacheSupportsVFormat()) {
-            HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] HCOMM V cache format is not supported");
-            return HCCL_SUCCESS;
-        }
         bool isAlltoallvCacheSupported = false;
         CHK_RET(IsAlltoallvCacheSupported(param, resCtx, isAlltoallvCacheSupported));
         if (!isAlltoallvCacheSupported) {

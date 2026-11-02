@@ -68,7 +68,6 @@
         HcommIsSupportHcommAicpuTsTaskCacheExecute;
         HcommIsSupportHcommAicpuTsTaskCacheLookup;
         HcommIsSupportHcommAicpuTsTaskCacheStart;
-        HcommIsSupportHcommAicpuTsTaskCacheSupportsVFormat;
         HcommIsSupportHcommBatchTransferOnThread;
         HcommIsSupportHcommChannelFence;
         HcommIsSupportHcommChannelFenceOnThread;

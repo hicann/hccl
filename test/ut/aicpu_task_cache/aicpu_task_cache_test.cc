@@ -18,9 +18,6 @@
 #include "aicpu_task_cache_key.h"
 #include "aicpu_task_cache_utils.h"
 
-// The policy queries the dynamically loaded HCOMM capability; no device runtime is needed in this UT.
-extern "C" bool HcommIsSupportHcommAicpuTsTaskCacheSupportsVFormat(void) { return true; }
-
 namespace ops_hccl {
 namespace {
 
@@ -97,6 +94,19 @@ namespace {
         OpParam param_{};
         AlgResourceCtxSerializable resCtx_{};
     };
+
+    TEST_P(AlltoallvCachePolicyTest, HonorsHostCacheDisable)
+    {
+        counts_[1] = 1;
+        bool isCacheEnable = false;
+        ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
+        ASSERT_TRUE(isCacheEnable);
+
+        // Host关闭缓存后，Device侧不得重新使能。
+        param_.aicpuCacheEnable = false;
+        ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
+        EXPECT_FALSE(isCacheEnable);
+    }
 
     TEST_P(AlltoallvCachePolicyTest, AdmissionUsesActualDataTypeSize)
     {

@@ -71,12 +71,6 @@ DEFINE_WEAK_FUNC(
     uint32_t localNotifyIdx);
 DEFINE_WEAK_FUNC(int32_t, HcommChannelNotifyWaitWithDefaultTimeout, ChannelHandle channel, uint32_t localNotifyIdx);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheLookup, const char* tag, bool* isHit);
-// V格式能力仅检测HCOMM符号是否存在，不调用旧包中不存在的接口。
-static bool g_HcommAicpuTsTaskCacheSupportsVFormatSupported = false;
-extern "C" bool HcommIsSupportHcommAicpuTsTaskCacheSupportsVFormat(void)
-{
-    return g_HcommAicpuTsTaskCacheSupportsVFormatSupported;
-}
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheStart, const char* tag, void** addrs, uint64_t* sizes, uint64_t count);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheEnd, const char* tag);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheExecute, const char* tag, void** addrs, uint64_t* sizes, uint64_t count);
@@ -136,7 +130,6 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyWaitOnThreadWithDefaultTimeout);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommChannelNotifyWaitWithDefaultTimeout);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheLookup);
-    INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheSupportsVFormat);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheStart);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheEnd);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheExecute);

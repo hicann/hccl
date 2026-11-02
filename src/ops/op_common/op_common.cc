@@ -865,8 +865,7 @@ namespace {
         return HCCL_SUCCESS;
 #endif
         if (!GetExternalInputHcclAicpuCacheEnable() || !EqualToOrGreaterThan950(param.deviceType) || param.isMc2
-            || param.isCapture || !HcommIsSupportHcommAicpuTsTaskCacheLookup()
-            || !HcommIsSupportHcommAicpuTsTaskCacheSupportsVFormat()) {
+            || param.isCapture || !HcommIsSupportHcommAicpuTsTaskCacheLookup()) {
             return HCCL_SUCCESS;
         }
         const char* cacheAlgName
