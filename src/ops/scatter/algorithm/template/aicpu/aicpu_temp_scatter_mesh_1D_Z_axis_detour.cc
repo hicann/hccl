@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
 #include "cost_model.h"
 

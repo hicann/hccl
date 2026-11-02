@@ -23,7 +23,11 @@ std::vector<CostModelParam> CcuTempScatterNHR1DMem2Mem::CalcCostCoeff(CalcCostCo
     // CCU 执行侧单通道口径：每 rank 走一条链路，portNum 取 [0]
     // （isPod={6,2} 时取 6；与 AICPU SoleNHR 的单链路口径一致）
     int portNum = static_cast<int>(param.portNum[0]);
-    // C 分段: R<=8 用线性公式, R>8 用 7R/4+log2R/2
+    // C 项时延 kernelNum(task 估算数, 非实际下发 kernel 数) 按段内 rankSize R 分段;
+    // 本模板 sole/concurrent(单级, R=全量) 与 parallel(两级, R=NHR 段 L1) 共用, 分段键仅按 R, 与使用方形态无绑定:
+    //  - R<=8: 6.5+0.75R, 拟合值, 8P 规模点验证
+    //  - R>8: 7R/4+log2R/2, 标定公式, 16P/32P 规模点锚定
+    //  R=9~15 为两段公式外推区, 无独立标定点
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;

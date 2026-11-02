@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_scatter_mesh_1D.h"
 #include "cost_model.h"
@@ -48,7 +49,7 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
         CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     }
     // 16P 场景(L1 rankSize==2) A 偏低, 乘 2 修正
-    if (isMultiNode && level0RankSize > 0 && param.rankSize / level0RankSize == 2) {
+    if (isMultiNode && level0RankSize > 0 && param.rankSize == 2 * level0RankSize) {
         A *= 2.0f;
     }
     // in-kernel 处理，无独立 local copy 阶段；executor 通过 buffer 组合控制（INPUT→OUTPUT 时按 1 份计）
