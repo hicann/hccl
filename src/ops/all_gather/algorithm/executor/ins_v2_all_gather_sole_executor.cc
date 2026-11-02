@@ -261,12 +261,12 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         tempAlgParams.outputSliceStride = dataSize_;
 
         HCCL_DEBUG(
-            "[InsV2AllGatherSoleExecutor] myRank[%u], loop [%u] tempAlgParams.inputSliceStride [%u],"
-            "tempAlgParams.outputSliceStride [%u] tempAlgParams.sliceSize [%u]",
+            "[InsV2AllGatherSoleExecutor] myRank[%u], loop [%llu] tempAlgParams.inputSliceStride [%llu],"
+            "tempAlgParams.outputSliceStride [%llu] tempAlgParams.sliceSize [%llu]",
             myRank_, loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize);
         HCCL_DEBUG(
-            "[InsV2AllGatherSoleExecutor] myRank[%u], loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParams.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2AllGatherSoleExecutor] myRank[%u], loop [%llu] tempAlgParams.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParams.buffInfo.outBuffBaseOff [%llu]",
             myRank_, loop, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
 
         CHK_RET(algTemplate.KernelRun(param, tempAlgParams, templateAlgRes));

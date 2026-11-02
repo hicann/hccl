@@ -179,7 +179,7 @@ HcclResult CcuTempAllGatherMesh1DMem2Mem::PrepareLaunchArgs(
     if (templateDataParams.tailSize != 0 && mySubCommRank_ == templateRankSize_ - 1) {
         normalSliceSize = templateDataParams.tailSize;
     }
-    HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem][KernelRun] normalSliceSize [%u]", normalSliceSize);
+    HCCL_INFO("[CcuTempAllGatherMesh1DMem2Mem][KernelRun] normalSliceSize [%llu]", normalSliceSize);
 
     HcclDataType dataType = param.DataDes.dataType;
     uint64_t dataTypeSize = DataTypeSizeGet(dataType);

@@ -1066,7 +1066,11 @@ HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
 
         std::vector<u32> topoInsts;
         uint32_t* topoInstsTemp = nullptr;
-        HcclRankGraphGetTopoInstsByLayer(comm, netLayerIdx, &topoInstsTemp, &topoInstNum);
+        ret = HcclRankGraphGetTopoInstsByLayer(comm, netLayerIdx, &topoInstsTemp, &topoInstNum);
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS,
+            HCCL_ERROR("[BaseSelector][ExtractTopoDetails] GetTopoInstsByLayer failed, netLayerIdx[%u]", netLayerIdx),
+            ret);
         for (uint32_t topoInstIdx = 0; topoInstIdx < topoInstNum; topoInstIdx++) {
             topoInsts.push_back(topoInstsTemp[topoInstIdx]);
         }
@@ -1096,16 +1100,16 @@ HcclResult ExtractTopoDetails(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
             // 获取拓扑实例中包含的rank
             uint32_t* ranksTemp;
             uint32_t rankNum;
-            HcclRankGraphGetRanksByTopoInst(comm, netLayerIdx, topoInstId, &ranksTemp, &rankNum);
-            for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {
-                ranks.push_back(ranksTemp[rankIdx]);
-            }
+            ret = HcclRankGraphGetRanksByTopoInst(comm, netLayerIdx, topoInstId, &ranksTemp, &rankNum);
             CHK_PRT_RET(
                 ret != HCCL_SUCCESS,
                 HCCL_ERROR(
                     "[BaseSelector][ExtractTopoDetails] GetRanksByTopoInst failed, netLayerIdx[%u], topoInstId[%u]",
                     netLayerIdx, topoInstId),
                 ret);
+            for (uint32_t rankIdx = 0; rankIdx < rankNum; rankIdx++) {
+                ranks.push_back(ranksTemp[rankIdx]);
+            }
 
             // 将topoInstId按照topoType进行归类
             currentLayerTopo2SizeMap[topoType].push_back(rankNum);

@@ -195,6 +195,9 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
         maxDataSizePerLoop = transportBoundDataSize;
     }
     u64 maxCountPerLoop = maxDataSizePerLoop / dataTypeSize_;
+    CHK_PRT_RET(
+        maxCountPerLoop == 0, HCCL_ERROR("[InsV2ScatterSoleExecutor][OrchestrateLoop] maxCountPerLoop is 0"),
+        HCCL_E_INTERNAL);
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;

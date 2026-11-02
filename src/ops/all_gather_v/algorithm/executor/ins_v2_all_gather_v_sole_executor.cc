@@ -111,7 +111,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + rankSize_ + rankSize_);
     HCCL_DEBUG(
         "[InsV2AllGatherVSoleExecutor][OrchestrateLoop] Rank[%u], inputPtr[%#llx] outputPtr[%#llx], "
-        "cclAddr[%#llx], cclSize[%u]",
+        "cclAddr[%#llx], cclSize[%llu]",
         myRank_, param.inputPtr, param.outputPtr, resCtx.cclMem.addr, resCtx.cclMem.size);
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate
@@ -169,12 +169,12 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
             = maxCountPerLoop * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
         HCCL_INFO(
-            "[InsV2AllGatherVSoleExecutor] loop [%u] tempAlgParams.inputSliceStride [%u],"
-            "tempAlgParams.outputSliceStride [%u] tempAlgParams.sliceSize [%u]",
+            "[InsV2AllGatherVSoleExecutor] loop [%llu] tempAlgParams.inputSliceStride [%llu],"
+            "tempAlgParams.outputSliceStride [%llu] tempAlgParams.sliceSize [%llu]",
             loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize);
         HCCL_INFO(
-            "[InsV2AllGatherVSoleExecutor] loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParams.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2AllGatherVSoleExecutor] loop [%llu] tempAlgParams.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParams.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
         // 不需要重复
         tempAlgParams.repeatNum = 1;

@@ -633,7 +633,7 @@ HcclResult HcclCalcCcuResOffline(OpParamGraphMode* opParam, ResResponseGraphMode
     resResponse->streamNum = std::max(resResponse->streamNum, ccuStreamNum);
     resResponse->taskNum = std::max(resResponse->taskNum, ccuTaskNum);
     HCCL_INFO(
-        "[HcclCalcCcuResOffline] opMemSize[%llu], streamNum[%llu], taskNum[%llu]", resResponse->opMemSize,
+        "[HcclCalcCcuResOffline] opMemSize[%llu], streamNum[%u], taskNum[%u]", resResponse->opMemSize,
         resResponse->streamNum, resResponse->taskNum);
     return HCCL_SUCCESS;
 }

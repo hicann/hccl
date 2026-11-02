@@ -429,7 +429,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     u32 ScratchMultiplier1 = static_cast<u32>(std::ceil(dataSplitSize[1] * scratchMultiplierforTemp1));
     u32 totalScratchMultiple = ScratchMultiplier0 + ScratchMultiplier1;
     u64 scratchMemBlockSize = maxTmpMemSize_;
-    HCCL_INFO("[InsV2AllGatherConcurrentExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);
+    HCCL_INFO("[InsV2AllGatherConcurrentExecutor]maxTmpMemSize_ [%llu]", maxTmpMemSize_);
     if (totalScratchMultiple > 0) {
         scratchMemBlockSize = (maxTmpMemSize_ / HCCL_MIN_SLICE_ALIGN / totalScratchMultiple) * HCCL_MIN_SLICE_ALIGN;
     }
