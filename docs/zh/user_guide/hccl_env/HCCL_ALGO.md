@@ -51,6 +51,8 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - MeshMultiJetty（meshmultijetty）：多Jetty Mesh算法，对每个对端建多条channel（每个channel一个jetty），数据按jetty切片在多端口上聚合并发，可用于每对rank有多个物理端口的AllToAll/AllToAllV算子。
       - NHRMultiJetty（nhrmultijetty）：多Jetty NHR算法，对每个对端建立多条channel（每个channel一个jetty），数据按jetty切片在多端口上聚合并发，适合每对rank有多个物理端口的NHR通信。
       - NHRAicpuReduce（nhraicpureduce）：先按NHR式log2(N)步减半交换收集数据，再使用AICPU标量归约保证正确性；适用于常规NHR/mesh模板不支持的数据类型（INT64/UINT64/FP64及PROD归约等）的NHR算法变体。
+      - HDAicpuReduce（hdaicpureduce）：ReduceScatter的HD递归折半算法（AICPU引擎），log2(N)步XOR配对交换、步内归约在DMA传输侧完成；要求通信域rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
+      - HD（hd）：跨机层（level1）HD递归折半算法（AICPU引擎），level0机内走mesh、level1按log2(N)步折半交换并归约；要求该层rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
 
     - 若不指定`level`，`<algoType>`默认按照算法层级从低到高匹配。例如{Mesh, NHR}，代表level0使用Mesh算法，level1使用NHR算法。
 

@@ -15,6 +15,7 @@
 #include "ins_temp_reduce_scatter_nhr.h"
 #include "ins_temp_reduce_scatter_mesh_1D_meshchunk.h"
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr.h"
+#include "ins_temp_reduce_scatter_aicpu_reduce_hd.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ccu_temp_reduce_scatter_concurrent_mesh_nhr.h"
 #include "topo_match_concurrent.h"
@@ -61,7 +62,6 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
-    (void)comm;
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
             topoInfo, algHierarchyInfo, algName, "[InsV2ReduceScatterSoleExecutor][CalcCostCoeff]",
@@ -94,7 +94,7 @@ std::vector<CostModelParam> InsV2ReduceScatterSoleExecutor<AlgTopoMatch, InsAlgT
         rankSize, rankSizeLevel0, portNumLevel0[0], static_cast<int>(netTypeLevel0));
     return InsAlgTemplate::CalcCostCoeff(CalcCostCoeffParam{
         rankSize, 1.0f, netTypeLevel0, BufferType::INPUT, BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER,
-        portNumLevel0, isPod, algName, nullptr, nullptr, 1u, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums});
+        portNumLevel0, isPod, algName, comm, nullptr, 1u, phyLevelIdxs, phyLevelNetTypes, phyLevelPortNums});
 }
 
 template <typename AlgTopoMatch, typename InsAlgTemplate>
@@ -414,6 +414,24 @@ REGISTER_ALG_ATTRS(
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
     };);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleHDAicpuReduce, InsV2ReduceScatterSoleExecutor,
+    TopoMatchOneLevel, InsTempReduceScatterAicpuReduceHD);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSoleHDAicpuReduce, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;
+    topo.requireAllMeshConnected = true;
+    // preferred-only 软策略门控（对齐 AicpuAllReduceParallelMeshHD 的控制面机制）：
+    // topoCustomCheck 恒 false 仅作用于默认选路（软策略）——未配置 HCCL_ALGO 时本算法被过滤、
+    // 默认选路零变化；显式配置打 preferred(+1) 后软策略跳过该检查仍可选。
+    // 非 2 幂硬门控在模板 CalcCostCoeff（守卫 1）。
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };
+    // 对称内存场景由PipeLineUBX参选，本算法不参与候选（与 ParallelMeshNHRMultiJetty 同族约定；
+    // 本模板走 scratch 镜像无零拷贝路径，且对称场景 executor 强制单循环会绕过 scratch 容量约束）
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
+        return !opParam.supportSymmetricMemory;
+    });
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSoleNHRMultiLink, InsV2ReduceScatterSoleExecutor,
     TopoMatchOneLevel, InsTempReduceScatterNHR);

@@ -52,12 +52,13 @@ static const std::map<std::string, std::string> ALGO_TYPES
        {"nhr", "NHR"},
        {"nhrmultilink", "NHRMultiLink"},
        {"nhraicpureduce", "NHRAicpuReduce"},
+       {"hdaicpureduce", "HDAicpuReduce"},
+       {"hd", "HD"},
        {"meshsinglechannel", "MeshSingleChannel"},
        {"nhrmultijetty", "NHRMultiJetty"},
        {"meshmultijetty", "MeshMultiJetty"},
        {"meshconcurrent", "MeshConcurrent"},
-       {"pairwise", "Pairwise"},
-       {"hd", "HD"}};
+       {"pairwise", "Pairwise"}};
 
 // 小写字符串转换（自由函数，供全局使用）
 static std::string ToLowerStr(const std::string& s)
@@ -876,6 +877,7 @@ const std::map<AlgoType, std::string>& GetAlgoTypeToNameMap()
         {AlgoType::NHR, "NHR"},
         {AlgoType::NHR_MULTILINK, "NHRMultiLink"},
         {AlgoType::NHR_AICPU_REDUCE, "NHRAicpuReduce"},
+        {AlgoType::HD_AICPU_REDUCE, "HDAicpuReduce"},
         {AlgoType::MESH_SINGLE_CHANNEL, "MeshSingleChannel"},
         {AlgoType::NHR_MULTIJETTY, "NHRMultiJetty"},
         {AlgoType::MESH_MULTIJETTY, "MeshMultiJetty"},
@@ -901,6 +903,7 @@ const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap()
         {"NHR", AlgoType::NHR},
         {"NHRMultiLink", AlgoType::NHR_MULTILINK},
         {"NHRAicpuReduce", AlgoType::NHR_AICPU_REDUCE},
+        {"HDAicpuReduce", AlgoType::HD_AICPU_REDUCE},
         {"MeshSingleChannel", AlgoType::MESH_SINGLE_CHANNEL},
         {"NHRMultiJetty", AlgoType::NHR_MULTIJETTY},
         {"MeshMultiJetty", AlgoType::MESH_MULTIJETTY},

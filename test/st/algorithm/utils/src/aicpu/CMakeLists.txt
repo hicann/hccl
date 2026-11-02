@@ -347,6 +347,7 @@ target_sources(hccl_aicpu_kernel PRIVATE
     ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/reduce_mesh_1D_two_shot.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_hd.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_ubx_all_to_all_v_mesh_1D.cc
 
     # AicpuReduceScatterVSoleMesh.

@@ -324,3 +324,120 @@ TEST_F(HcclAlgoParserTest, ParseHdAlgoCase3)
     EXPECT_EQ(parser.executorList[2].algoList[1].algoType, "nhr");
     EXPECT_FALSE(parser.executorList[2].enable);
 }
+// 测试正确用例：HD 算法词表解析——reducescatter:sole{level0=hdaicpureduce}（Sole HD 显式启用 DSL）
+TEST_F(HcclAlgoParserTest, ParseHdSoleReduceScatter)
+{
+    HcclAlgoParser parser;
+    std::string input = "reducescatter:sole{level0=hdaicpureduce}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "reducescatter");
+    EXPECT_EQ(parser.executorList[0].executorType, "sole");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "hdaicpureduce");
+    EXPECT_TRUE(parser.executorList[0].algoList[0].enable);
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例：HD 算法词表解析——reducescatter:parallel{level0=mesh,level1=hd}（层级化 MeshHD DSL，
+// levelN= 前缀按下标展开：algoList[0] 对应 level0、algoList[1] 对应 level1）
+TEST_F(HcclAlgoParserTest, ParseHdParallelReduceScatter)
+{
+    HcclAlgoParser parser;
+    std::string input = "reducescatter:parallel{level0=mesh,level1=hd}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "reducescatter");
+    EXPECT_EQ(parser.executorList[0].executorType, "parallel");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "mesh");
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "hd");
+    EXPECT_TRUE(parser.executorList[0].algoList[0].enable);
+    EXPECT_TRUE(parser.executorList[0].algoList[1].enable);
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例：HD 与既有算法混排——shorthand "hd"、executor 级否定 not(parallel{mesh,hd})、
+// 槽位级否定 level0=not(hdaicpureduce)
+TEST_F(HcclAlgoParserTest, ParseHdMixedAndNegated)
+{
+    HcclAlgoParser parser;
+    std::string input = "hd;reducescatter:not(parallel{level0=mesh,level1=hd});sole{level0=not(hdaicpureduce)}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 3u);
+
+    // 第一段：shorthand "hd" → sole{hd}
+    EXPECT_EQ(parser.executorList[0].opType, "");
+    EXPECT_EQ(parser.executorList[0].executorType, "sole");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "hd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+
+    // 第二段：reducescatter:not(parallel{level0=mesh,level1=hd}) → executor 级否定
+    EXPECT_EQ(parser.executorList[1].opType, "reducescatter");
+    EXPECT_EQ(parser.executorList[1].executorType, "parallel");
+    EXPECT_EQ(parser.executorList[1].algoList.size(), 2u);
+    EXPECT_EQ(parser.executorList[1].algoList[0].algoType, "mesh");
+    EXPECT_EQ(parser.executorList[1].algoList[1].algoType, "hd");
+    EXPECT_FALSE(parser.executorList[1].enable);
+
+    // 第三段：sole{level0=not(hdaicpureduce)} → 槽位级否定（否定型配置不视为显式启用）
+    EXPECT_EQ(parser.executorList[2].opType, "");
+    EXPECT_EQ(parser.executorList[2].executorType, "sole");
+    EXPECT_EQ(parser.executorList[2].algoList.size(), 1u);
+    EXPECT_EQ(parser.executorList[2].algoList[0].algoType, "hdaicpureduce");
+    EXPECT_FALSE(parser.executorList[2].algoList[0].enable);
+}
+
+// 测试：HD DSL 配置 → 注册名拼名匹配（选路打标链端到端）：显式配置必须使对应 HD 注册名获得
+// 正向优先级——拼名 Aicpu+ReduceScatter+Sole+HDAicpuReduce 与 Aicpu+ReduceScatter+Parallel+Mesh+HD
+// 须与注册名逐字符一致；拼名错位/大小写错会使选路静默回退既有算法（数据仍正确、用例仍 PASS），
+// 本用例锁定该链路。注意：UpdateCostModelWithAlgo 倒序处理子句且同 opType 去重（后写子句生效），
+// 两个绑定须分别用独立配置验证
+TEST_F(HcclAlgoParserTest, UpdateCostModelWithAlgoHdNameMatch)
+{
+    const char* hdAlgNames[2] = {"AicpuReduceScatterSoleHDAicpuReduce", "AicpuReduceScatterParallelMeshHD"};
+    const char* hdConfigs[2]
+        = {"reducescatter:sole{level0=hdaicpureduce}", "reducescatter:parallel{level0=mesh,level1=hd}"};
+    for (int cfg = 0; cfg < 2; cfg++) {
+        HcclAlgoParser parser;
+        ASSERT_EQ(parser.Parser(hdConfigs[cfg]), HCCL_SUCCESS);
+
+        CostAlgoParams entries[2] = {};
+        entries[0].algName = hdAlgNames[0];
+        entries[0].count = 1;
+        entries[1].algName = hdAlgNames[1];
+        entries[1].count = 1;
+        CostModel model{entries, 2};
+
+        EXPECT_EQ(UpdateCostModelWithAlgo(parser, model, {"Aicpu"}), HCCL_SUCCESS);
+        // 配置指向的绑定获得正向优先级，另一绑定不受影响
+        EXPECT_EQ(entries[cfg].hcclAlgoPriority, 1) << "config: " << hdConfigs[cfg];
+        EXPECT_EQ(entries[1 - cfg].hcclAlgoPriority, 0) << "config: " << hdConfigs[cfg];
+    }
+}
+
+// 测试：否定型配置语义——not(nhr) 表示"不支持 nhr、其他的都可选"（HCCL_ALGO 文档语义），
+// sole 执行器下所有非 nhr 算法（含 HD）同获正向优先级，最终选路由成本竞争决定；
+// 与同族 AicpuAllReduceParallelMeshHD 的 topoCustomCheck 机制行为一致
+TEST_F(HcclAlgoParserTest, UpdateCostModelWithAlgoHdNegatedSelectable)
+{
+    HcclAlgoParser parser;
+    ASSERT_EQ(parser.Parser("reducescatter:sole{level0=not(nhr)}"), HCCL_SUCCESS);
+
+    CostAlgoParams entries[1] = {};
+    entries[0].algName = "AicpuReduceScatterSoleHDAicpuReduce";
+    entries[0].count = 1;
+    CostModel model{entries, 1};
+
+    EXPECT_EQ(UpdateCostModelWithAlgo(parser, model, {"Aicpu"}), HCCL_SUCCESS);
+    EXPECT_EQ(entries[0].hcclAlgoPriority, 1);
+}

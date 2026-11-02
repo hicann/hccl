@@ -13,6 +13,7 @@
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
 #include "ins_temp_reduce_scatter_nhr.h"
+#include "ins_temp_reduce_scatter_aicpu_reduce_hd.h"
 #include "alg_data_trans_wrapper.h"
 #include "topo_match_squeeze_2d.h"
 #ifndef AICPU_COMPILE
@@ -290,6 +291,16 @@ void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
     return;
 }
 
+// inter0 scratch 布局特性：NHR 的区内位移布局（倍数 N1）峰值 (N0-1+N1)*SS0 ≤ N0*N1*SS0 恒在
+// intra0 区内（(N0-1)(N1-1)≥1，N0/N1≥2），沿用 intra0 区内同址镜像紧凑化（历史布局保持不变）；
+// HD 的 N 槽单缓冲以 hcclBuffBaseOff 为基址整段占用 N1*SS0，基址借用 intra0 区内偏移时 N0=2
+// 峰值可越界破坏并发 intra1 scratch，必须使用 inter0 专用区（预算
+// ceil(f0*N1)*block 恒覆盖）。CCU 引擎本就使用专用区。
+template <typename T>
+struct Inter0UseDedicatedScratch : std::false_type {};
+template <>
+struct Inter0UseDedicatedScratch<InsTempReduceScatterAicpuReduceHD> : std::true_type {};
+
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
 void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::GenTemplateAlgParamsInter0(
     const OpParam& param, const AlgResourceCtxSerializable& resCtx, const u64 dataOffset,
@@ -306,7 +317,15 @@ void InsReduceScatterParallelExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
     tempAlgParamsInter0.buffInfo.inBuffBaseOff
         = scratchOffVec[0] + rankIdxLevel0_ * dataCountPerLoopAxis0 * dataTypeSize_;
     tempAlgParamsInter0.buffInfo.outBuffBaseOff = dataOffset;
-    if (engine_ == CommEngine::COMM_ENGINE_CCU) {
+    // 非 CCU 且 inter 模板为 HD 时 inter0 SCR 迁至专用区（scratchOffVec[2]），SCR 全生命周期
+    // ⊆ 专用区（容量 ceil(f0*N1)*block 恒覆盖 N1*SS0），消除 N0=2 大消息时借用 intra0 区内偏移
+    // 的越界（破坏并发 intra1 交付槽）；输入侧 inBuffBaseOff（读 intra0 输出）与输出侧均不变。
+    // trait 以 if constexpr 编译期分派（仅 HD 特化为 true）；engine_ 为运行期成员（Orchestrate 时取
+    // param.engine），不可出现在 if constexpr 常量表达式中，故 CCU 判定保持原运行期分支——
+    // 非 HD 绑定（trait=false，含 NHR/MultiJetty）的代码与行为逐字节不变
+    if constexpr (Inter0UseDedicatedScratch<InsAlgTemplate1>::value) {
+        tempAlgParamsInter0.buffInfo.hcclBuffBaseOff = scratchOffVec[2];
+    } else if (engine_ == CommEngine::COMM_ENGINE_CCU) {
         tempAlgParamsInter0.buffInfo.hcclBuffBaseOff = scratchOffVec[2];
     } else {
         tempAlgParamsInter0.buffInfo.hcclBuffBaseOff
@@ -821,6 +840,26 @@ REGISTER_ALG_ATTRS(
         return isMultiple && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     };
     // 对称内存场景由PipeLineUBX参选，本算法不参与候选
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
+        return !opParam.supportSymmetricMemory;
+    });
+// 层级化 HD：level0 机内 Mesh + level1 跨机 HD 递归折半；机器数（rankSizeLevel1）非 2 幂由
+// HD template CalcCostCoeff 守卫 1 拒绝（p1/p2 传 rankSizeLevel1，任一空返回整算法跳过）；
+// preferred-only 软策略门控见下方 topoCustomCheck（对齐 AicpuAllReduceParallelMeshHD 的控制面机制）
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterParallelMeshHD, InsReduceScatterParallelExecutor,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterAicpuReduceHD);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterParallelMeshHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = 3; topo.requireAllMeshConnected = true;
+    // preferred-only 软策略门控（对齐 AicpuAllReduceParallelMeshHD 的控制面机制）：
+    // topoCustomCheck 恒 false 仅作用于默认选路（软策略）——未配置 HCCL_ALGO 时本算法被过滤、
+    // 默认选路零变化；显式配置打 preferred(+1) 后软策略跳过该检查仍可选。
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };
+    // 对称内存场景由PipeLineUBX参选，本算法不参与候选（与 ParallelMeshNHRMultiJetty 同族约定；
+    // 本模板 inter 走 scratch 镜像无零拷贝路径，且对称场景 executor 强制单循环会绕过 scratch 容量约束）
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails*) -> bool {
         return !opParam.supportSymmetricMemory;
     });
