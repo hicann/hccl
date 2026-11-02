@@ -67,6 +67,9 @@ HcclResult HcclSend(void* sendBuf, uint64_t count, HcclDataType dataType, uint32
 | HCCL_E_PARA | The passed parameter is invalid, e.g., count exceeds the upper limit or destRank is out of range. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported, e.g., the dataType is invalid or not supported by the current model, or self-send and self-receive are not supported when destRank equals the current rank. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

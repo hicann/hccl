@@ -69,6 +69,9 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
 | HCCL_E_PARA | A passed parameter is invalid. For example, `count` exceeds the upper limit, or root is out of range. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported. For example, dataType is invalid or not supported by the current model. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

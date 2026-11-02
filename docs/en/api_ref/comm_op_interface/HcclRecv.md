@@ -67,6 +67,9 @@ HcclResult HcclRecv(void* recvBuf, uint64_t count, HcclDataType dataType, uint32
 | HCCL_E_PARA | A passed parameter is invalid, for example, count exceeds the upper limit or srcRank is out of range. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported. For example, dataType is invalid or not supported by the current model, or self-send and self-receive is not supported when srcRank equals the current rank. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

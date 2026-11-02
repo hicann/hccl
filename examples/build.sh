@@ -10,37 +10,59 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set -e
+set -o pipefail
 
 CURRENT_DIR=$(dirname $(readlink -f ${BASH_SOURCE[0]}))
 BUILD_DIR=${CURRENT_DIR}/../build/
 
+# 创建构建目录并截断历史日志，避免历史残留记录干扰失败判定
+mkdir -p "${BUILD_DIR}"
+: > "${BUILD_DIR}/build.log"
+
+# 并行编译参数：外部未设置JOB_NUM时默认按CPU核数并行编译
+JOB_NUM="${JOB_NUM:--j$(nproc)}"
+
 CB_TEST_DIRS=("02_collectives/01_allreduce")
+
+fail_cnt=0
 
 for cb_test_dir in "${CB_TEST_DIRS[@]}"; do
     dir="${CURRENT_DIR}/${cb_test_dir}"
 
     # 进入子目录
     if ! cd "$dir"; then
-        echo "Failed to enter directory: $dir" | tee -a ${BUILD_DIR}/build.log
+        echo "Failed to enter directory: $dir" | tee -a "${BUILD_DIR}/build.log"
+        fail_cnt=$((fail_cnt + 1))
         continue
     fi
 
     # 检查是否存在Makefile
     if [ -f Makefile ]; then
-        echo "Processing directory: $dir" | tee -a ${BUILD_DIR}/build.log
-        # 执行make和make test，并将输出记录到build.log
-        make ${JOB_NUM} && echo "Make Success" || echo "Make Failure" | tee -a ${BUILD_DIR}/build.log
-        if grep -q "Make Failure" ${BUILD_DIR}/build.log; then
-            echo "Processing directory: $dir .. make failed" | tee -a ${BUILD_DIR}/build.log
-            break
+        echo "Processing directory: $dir" | tee -a "${BUILD_DIR}/build.log"
+        # 执行make和make test，将输出记录到build.log，失败时以非零退出码退出脚本
+        if make ${JOB_NUM} 2>&1 | tee -a "${BUILD_DIR}/build.log"; then
+            echo "Make Success" | tee -a "${BUILD_DIR}/build.log"
+        else
+            echo "Make Failure" | tee -a "${BUILD_DIR}/build.log"
+            echo "Processing directory: $dir .. make failed" | tee -a "${BUILD_DIR}/build.log"
+            exit 1
         fi
 
-        make test && echo "Make test Success" || echo "Make test Failure" | tee -a ${BUILD_DIR}/build.log
-        if grep -q "Make test Failure" ${BUILD_DIR}/build.log; then
-            echo "Processing directory: $dir .. make test failed" | tee -a ${BUILD_DIR}/build.log
-            break
+        if make test 2>&1 | tee -a "${BUILD_DIR}/build.log"; then
+            echo "Make test Success" | tee -a "${BUILD_DIR}/build.log"
+        else
+            echo "Make test Failure" | tee -a "${BUILD_DIR}/build.log"
+            echo "Processing directory: $dir .. make test failed" | tee -a "${BUILD_DIR}/build.log"
+            exit 1
         fi
     else
-        echo "No Makefile found in directory: $dir" | tee -a ${BUILD_DIR}/build.log
+        echo "No Makefile found in directory: $dir" | tee -a "${BUILD_DIR}/build.log"
+        fail_cnt=$((fail_cnt + 1))
     fi
 done
+
+# 存在无法进入或无Makefile的目录时视为构建失败，避免未执行任何构建却返回成功
+if [ ${fail_cnt} -gt 0 ]; then
+    echo "Failed directories: ${fail_cnt}" | tee -a "${BUILD_DIR}/build.log"
+    exit 1
+fi

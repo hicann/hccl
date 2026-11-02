@@ -74,8 +74,11 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 | HCCL_SUCCESS | API call success. |
 | HCCL_E_PTR | The passed pointer parameter is null. For example, comm, sendBuf, recvBuf, stream, sendCounts, sdispls, recvCounts, or rdispls is nullptr. |
 | HCCL_E_PARA | The passed parameter is invalid. For example, the addresses of sendBuf and recvBuf are the same. |
-| HCCL_E_NOT_SUPPORT | The operation is not supported. For example, dataType is invalid or not supported by the current model. |
+| HCCL_E_NOT_SUPPORT | The operation is not supported. For example, sendType/recvType is invalid or not supported by the current model. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

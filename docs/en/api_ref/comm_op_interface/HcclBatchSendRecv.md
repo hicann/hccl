@@ -65,6 +65,9 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 | HCCL_E_PARA | The passed parameter is invalid, for example, `count` of an item in sendRecvInfo exceeds the upper limit, or remoteRank is out of range. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported, for example, dataType is invalid or the current product model is not supported. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

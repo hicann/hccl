@@ -84,9 +84,12 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 | --- | --- |
 | HCCL_SUCCESS | API call success. |
 | HCCL_E_PTR | A passed pointer parameter is null, for example, comm, sendCounts, sendDispls, or stream is nullptr (recvBuf cannot be nullptr when recvCount is greater than 0). |
-| HCCL_E_PARA | A passed parameter is invalid, for example, count exceeds the upper limit. |
+| HCCL_E_PARA | A passed parameter is invalid, for example, recvCount exceeds the upper limit. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported, for example, dataType is invalid or not supported by the current model, or the prod operation does not support the int16/bfp16 data type. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

@@ -73,9 +73,12 @@ HcclResult HcclAllGatherV(void *sendBuf, uint64_t sendCount, void *recvBuf, cons
 | --- | --- |
 | HCCL_SUCCESS | API call success. |
 | HCCL_E_PTR | A passed pointer parameter is nullptr, such as comm, recvCounts, recvDispls, or stream (sendBuf cannot be nullptr when sendCount is greater than 0, and recvBuf cannot be nullptr when recvCounts are not all zeros). |
-| HCCL_E_PARA | A passed parameter is invalid, for example, `count` exceeds the upper limit. |
+| HCCL_E_PARA | A passed parameter is invalid, for example, `sendCount` exceeds the upper limit. |
 | HCCL_E_NOT_SUPPORT | The operation is not supported, for example, `dataType` is invalid or not supported by the current model. |
 | HCCL_E_INTERNAL | Internal error. |
+| HCCL_E_UNAVAIL | The resource is unavailable, e.g., an exception occurs during CCU resource reuse (reused threads are empty, or the thread count exceeds the limit). |
+| HCCL_E_RUNTIME | Failed to call the underlying runtime API (e.g., memory copy or memory reset). |
+| HCCL_E_MEMORY | Memory allocation or operation failed. |
 
 ## Constraints
 

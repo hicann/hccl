@@ -188,17 +188,10 @@ elseif(BUILD_OPEN_PROJECT)
         include/hccl_mc2.h
     )
 
-    set(HCCL_JSON
-        # hccl json 待补充
-    )
-
     install(FILES
         ${HCCL_HEAD}
-        ${HCCL_JSON}
         DESTINATION ${INSTALL_INCLUDE_DIR}/hccl/ 
         ${INSTALL_OPTIONAL}
         COMPONENT hccl
     )
 endif()
-
-# this is a test commit

@@ -89,6 +89,9 @@ HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataType
 | HCCL_E_PARA | 传入的参数无效，如count超过上限、root越界等。 |
 | HCCL_E_NOT_SUPPORT | 操作不被支持，如dataType非法或当前型号不支持、prod操作不支持int16/bfp16数据类型等。 |
 | HCCL_E_INTERNAL | 内部错误。 |
+| HCCL_E_UNAVAIL | 资源不可用，如CCU资源复用异常（复用线程为空、线程数超限）等。 |
+| HCCL_E_RUNTIME | 调用底层运行时接口（如内存拷贝、内存清零）失败。 |
+| HCCL_E_MEMORY | 内存申请或操作失败。 |
 
 ## 约束说明
 
