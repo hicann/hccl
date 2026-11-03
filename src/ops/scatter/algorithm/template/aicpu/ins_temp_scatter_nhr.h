@@ -41,6 +41,7 @@ public:
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
+    HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
     HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
     u64 GetThreadNum() const override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
@@ -66,6 +67,7 @@ private:
         const TemplateDataParams& tempAlgParams, u32 channelIdx) const;
     HcclResult
     PrepareDataSplitForMultiChannel(const TemplateResource& templateResource, const TemplateDataParams& tempAlgParams);
+    u32 maxChannelsPerRank_ = 1;
     u64 processSize_{0};
     u64 count_{0};
     bool isDmaRead_{false};

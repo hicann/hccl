@@ -179,6 +179,16 @@ HcclResult InsV2ScatterSoleExecutor<AlgTopoMatch, InsAlgTemplate>::OrchestrateLo
     std::shared_ptr<InsAlgTemplate> algTemplate
         = std::make_shared<InsAlgTemplate>(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
 
+    // InsTempScatterMesh1D 线程数按 rankSize-1 申请，RunMesh 发送循环按 channelsPerRank_ 展开，
+    // 并以全局计数作为 threads.at(count) 下标，线程数与通道数不联动；校准后通道数变大（双 die 由 1 变 2）
+    // 会导致 count 越过线程数，触发 HCCL_E_INTERNAL（MR !3261）。故该校准只认线程数与通道数联动的 NHR 模板
+    // （GetThreadNum 按 maxChannelsPerRank_ 申请线程），即 AicpuScatterSoleNHR，Mesh1D 恒排除。
+    // channels 为空（无远端通道，如单 rank）时跳过，避免命中 SetchannelsPerRank 的空 map 保护（HCCL_E_INTERNAL）。
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && !templateAlgRes.channels.empty()
+        && std::string(param.algName) == "AicpuScatterSoleNHR") {
+        CHK_RET(algTemplate->SetchannelsPerRank(templateAlgRes.channels));
+    }
+
     // 初始化操作
     u32 templateScratchMultiplier
         = algTemplate->CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);

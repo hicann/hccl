@@ -19,7 +19,7 @@ constexpr u32 DIE_NUM_2 = 2;
 std::vector<CostModelParam> CcuTempAllReduceNHRMem2Mem1D::CalcCostCoeff(CalcCostCoeffParam param)
 {
     HCCL_DEBUG("[CcuTempAllReduceNHRMem2Mem1D] CalcCostCoeff.");
-    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
     int kernelNum = 2 * param.rankSize;

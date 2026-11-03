@@ -14,11 +14,11 @@
 namespace ops_hccl {
 std::vector<CostModelParam> InsTempScatterNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
-    // pod 双 die CLOS 的 portNums 为 [6,2] 双 channel 并行, 取求和; 其余形态取 [0]
-    // 其匹配段恒单链路（不 SetchannelsPerRank），单元素/非 pod/非 CLOS 均自然覆盖
-    // pod 机型建链恒为 CLOS 双通道(跨 die 交换机), 匹配层 netType 不反映真实建链;
-    // 但匹配层 portNums 可能只有单元素(如 CLOS [8] 形态), 需防御性检查
-    bool isMultiChannel = param.isPod && param.portNum.size() >= 2;
+    // pod 或 CLOS 多 die 时同一 peer 存在多条并行链路(每 die 一条 channel), 求和才是该 peer 的总端口;
+    // MESH_1D 每个 iface 连不同 peer, NHR 每步只用一个 iface, 只取 [0]
+    // pod 机型建链恒为 CLOS 双通道(跨 die 交换机), 匹配层 netType 不反映真实建链, 故 isPod 不能省略;
+    // 匹配层 portNums 可能只有单元素(如 CLOS [8] 形态), 需防御性检查
+    bool isMultiChannel = (param.isPod || param.netType == CommTopo::COMM_TOPO_CLOS) && param.portNum.size() >= 2;
     int portNum
         = isMultiChannel ? static_cast<int>(param.portNum[0] + param.portNum[1]) : static_cast<int>(param.portNum[0]);
     int log2R = 0;
@@ -77,7 +77,9 @@ InsTempScatterNHR::~InsTempScatterNHR() {}
 
 u64 InsTempScatterNHR::GetThreadNum() const
 {
-    u64 threadNum = channelsPerRank_;
+    // 线程按通道数最多的远端 rank 申请，数据切分按通道数最少的 rank 切(见 SetchannelsPerRank)，
+    // 避免通道数不等时 channelIdx 越过某远端 rank 的实际 channel 数
+    u64 threadNum = maxChannelsPerRank_;
     return threadNum;
 }
 
@@ -101,12 +103,14 @@ HcclResult InsTempScatterNHR::CalcRes(
         CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
-    channelsPerRank_ = CalcChannelsPerRank(level0Channels);
+    channelsPerRank_ = CalcChannelsPerRankMin(level0Channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(level0Channels);
     if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {
-        HCCL_DEBUG(" %s channelsPerRank_ is %u ", __func__, channelsPerRank_);
+        HCCL_DEBUG(
+            " %s channelsPerRank_ is %u, maxChannelsPerRank_ is %u ", __func__, channelsPerRank_, maxChannelsPerRank_);
     }
     CHK_RET(GetRes(resourceRequest));
     return HCCL_SUCCESS;
@@ -114,10 +118,21 @@ HcclResult InsTempScatterNHR::CalcRes(
 
 HcclResult InsTempScatterNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
-    u32 threadNum = channelsPerRank_;
+    u32 threadNum = GetThreadNum();
     resourceRequest.slaveThreadNum = threadNum - 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempScatterNHR::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
+{
+    CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
+    channelsPerRank_ = CalcChannelsPerRankMin(channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(channels);
+    HCCL_INFO(
+        "[InsTempScatterNHR][SetchannelsPerRank] channelsPerRank_[%u], maxChannelsPerRank_[%u]", channelsPerRank_,
+        maxChannelsPerRank_);
     return HCCL_SUCCESS;
 }
 

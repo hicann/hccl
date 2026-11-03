@@ -18,11 +18,12 @@ constexpr u32 DIE_NUM_2 = 2;
 
 std::vector<CostModelParam> CcuTempAllGatherNHR1DMem2Mem::CalcCostCoeff(CalcCostCoeffParam param)
 {
+    // 本模板仅由 CLOS 承载层级命中：单层 MESH_1D 被 topoCustomCheck 排除，
+    // 双层 MESH_1D 仅在 localNetInsSizeOfLayer[0]==1 时作占位层级，实际通信在 level1(CLOS)。
+    // 故此处直接按 CLOS 双 die 口径求和，netType 判断不再需要。
     param.netType = CommTopo::COMM_TOPO_CLOS;
-    int portNum = (param.isPod && param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
-                      (param.portNum[0] + param.portNum[1]) :
-                      param.portNum[0];
-    int RTT1 = (param.netType == CommTopo::COMM_TOPO_CLOS) ? 4 : 2;
+    int portNum = (param.portNum.size() >= 2) ? (param.portNum[0] + param.portNum[1]) : param.portNum[0];
+    int RTT1 = 4;
     int log2R = 0;
     for (u32 r = param.rankSize; r > 1; r >>= 1) {
         log2R++;

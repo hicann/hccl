@@ -9,6 +9,7 @@
  */
 
 #include "ins_temp_all_reduce_nhr.h"
+#include <cstring>
 
 namespace ops_hccl {
 
@@ -22,7 +23,11 @@ InsTempAllReduceNHR::~InsTempAllReduceNHR() {}
 std::vector<CostModelParam> InsTempAllReduceNHR::CalcCostCoeff(CalcCostCoeffParam param)
 {
     CommTopo netType = param.netType;
-    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2) ?
+    // 多通道判据与执行器 SetchannelsPerRank 触发条件对齐:
+    // AICPU_TS 下 pod 或 AicpuAllReduceSoleNHRMultiLink 才校准为多通道, 其余为单链路
+    bool isMultiChannelNHR
+        = param.isPod || (param.algName != nullptr && strcmp(param.algName, "AicpuAllReduceSoleNHRMultiLink") == 0);
+    int portNum = (param.netType == CommTopo::COMM_TOPO_CLOS && param.portNum.size() >= 2 && isMultiChannelNHR) ?
                       (param.portNum[0] + param.portNum[1]) :
                       param.portNum[0];
     int kernelNum = 30;
