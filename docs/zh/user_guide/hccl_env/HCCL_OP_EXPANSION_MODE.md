@@ -44,7 +44,7 @@
     | `AICPU_CacheDisable` | `0` | 关闭 |
 
   - **AIV**：代表通信算子在Vector Core展开，执行也在Vector Core。
-    - 该配置项仅支持对称组网、推理特性。
+    - 该配置项仅支持推理特性。
     - 该配置项不支持多通信域并行的场景（因为不支持多个通信域同时配置为“AIV”模式），否则可能会导致不可预期行为。您可以在初始化具有特定配置的通信域时，通过“HcclCommConfig”将某个通信域的算子展开模式设置为“AIV”。
     - 该配置项仅支持Broadcast、Reduce、AllReduce、ReduceScatter、Scatter、AllGather、AlltoAll、AlltoAllV、AlltoAllVC、Send、Recv算子。
       - 针对Reduce、AllReduce算子，数据类型支持int8、int16、int32、int64、float16、float32、bfp16，reduce的操作类型仅支持sum、max、min，不支持prod。
