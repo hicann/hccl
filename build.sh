@@ -1105,12 +1105,15 @@ else
 
     fi
     # Clang-Tidy incremental check: after build, compile_commands.json ready.
-    # Only blocks new-code complexity warnings. Fallback: skip (exit 0) if
-    # clang-tidy / compile_commands.json / base-ref unavailable.
-    if [ "${ENABLE_CLANG_TIDY_CHECK:-on}" == "on" ] && [ -f "${BUILD_DIR}/compile_commands.json" ]; then
-        log "Info: Running clang-tidy incremental check (ENABLE_CLANG_TIDY_CHECK=${ENABLE_CLANG_TIDY_CHECK:-on})"
+    # Blocks new-code complexity warnings; also blocks (exit 1) when the
+    # incremental diff cannot be computed (interception incomplete). Skips
+    # (exit 0) only when clang-tidy / compile_commands.json is unavailable;
+    # escape hatch: ENABLE_CLANG_TIDY_CHECK=off.
+    clang_tidy_opt="${ENABLE_CLANG_TIDY_CHECK:-on}"
+    if [ "${clang_tidy_opt,,}" == "on" ] && [ -f "${BUILD_DIR}/compile_commands.json" ]; then
+        log "Info: Running clang-tidy incremental check (ENABLE_CLANG_TIDY_CHECK=${clang_tidy_opt})"
         if ! bash ${CURRENT_DIR}/scripts/clang-tidy/clang_tidy_check.sh --build-dir ${BUILD_DIR}; then
-            log "Error: clang-tidy incremental check failed (new code complexity violation)"
+            log "Error: clang-tidy incremental check failed (violation or interception incomplete)"
             exit 1
         fi
     fi

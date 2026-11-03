@@ -8,6 +8,10 @@
 # INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
 # See LICENSE in the root of the software repository for the full text of the License.
 # Clang-Tidy incremental check wrapper: block only complexity warnings on newly added lines.
-# Fallback: skip (exit 0) if clang-tidy / compile_commands.json / base ref unavailable.
+# Skips (exit 0) only when the gate cannot even start: clang-tidy not installed,
+# compile_commands.json missing, or base ref unresolvable on a local box (CI
+# blocks on an unresolvable base ref). An incremental diff that cannot be
+# computed (shallow checkout beyond healing) blocks (exit 1) in CI and warns
+# + skips locally; escape hatch: ENABLE_CLANG_TIDY_CHECK=off.
 # Usage: bash scripts/clang-tidy/clang_tidy_check.sh [--build-dir build] [--base-ref upstream/master]
 python3 "$(dirname "$0")/clang_tidy_check.py" "$@"

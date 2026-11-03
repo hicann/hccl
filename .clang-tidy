@@ -65,6 +65,15 @@
 #   - The check runs after the DEFAULT package build (bash build.sh --pkg),
 #     which is exactly what the CI Compile task executes. It does NOT run on
 #     the --ut/--st/custom build paths.
+#   - CI checkouts are shallow (--depth=1) fetches of the PR merge ref; the
+#     script heals them itself: deepen 1/10/100 levels, then a full --unshallow
+#     as the last resort. Both fetches carry an explicit target-branch
+#     refspec (they only limit which remote-tracking refs are updated - the
+#     healing expands from the client's shallow boundary and is unaffected).
+#     A diff that still cannot be computed BLOCKS (exit 1) in CI: a silently
+#     skipped gate is a gate that does not exist. A local shallow clone that
+#     cannot heal (offline) only warns and skips, like any gate that cannot
+#     start. The escape hatch for offline builds is ENABLE_CLANG_TIDY_CHECK=off.
 #   - The script's own unit tests (scripts/clang-tidy/clang_tidy_check_test.py)
 #     run inside the UT flow (bash build.sh -u).
 #   - Switch: ENABLE_CLANG_TIDY_CHECK=off skips the gate entirely.
