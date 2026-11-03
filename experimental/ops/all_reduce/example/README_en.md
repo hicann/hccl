@@ -125,7 +125,7 @@ graph TB
         A1["HcclAllReduce(...)"]
     end
     subgraph "op_common Dispatch"
-        B1["hcclExecOP()"]
+        B1["HcclExecOp()"]
     end
     subgraph "Selector"
         C1["Select()<br/>Select algorithm name"]

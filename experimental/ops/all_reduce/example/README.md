@@ -142,7 +142,7 @@ graph TB
         A1["HcclAllReduce(...)"]
     end
     subgraph op_common调度
-        B1["hcclExecOP()"]
+        B1["HcclExecOp()"]
     end
     subgraph 选择器Selector
         C1["Select()<br/>选出算法名"]
