@@ -358,8 +358,9 @@ HcclResult CheckCcuResNegotiation(HcclComm comm, const OpParam& param, bool loca
         "[%s] start, comm[%p], commName[%s], algName[%s], tag[%s], opType[%u], localResAvailable[%d].", __func__, comm,
         param.commName, param.algName, param.tag, static_cast<u32>(param.opType), static_cast<int>(localResAvailable));
 
-    if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE) {
-        HCCL_INFO("[%s] send/recv op, skip ccu res negotiation, tag[%s].", __func__, param.tag);
+    if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE
+        || param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
+        HCCL_INFO("[%s] send/recv/batch_send_recv op, skip ccu res negotiation, tag[%s].", __func__, param.tag);
         return HCCL_SUCCESS;
     }
 
@@ -460,8 +461,7 @@ CompareCcuParam(const CheckParamInfo* recvInfos, u32 rankSize, const OpParam& pa
         = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC
            || param.opType == HcclCMDType::HCCL_CMD_ALLGATHER_V
            || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V
-           || param.opType == HcclCMDType::HCCL_CMD_HALF_ALLTOALLV
-           || param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV);
+           || param.opType == HcclCMDType::HCCL_CMD_HALF_ALLTOALLV);
 
     if (!isVariableCountOp) {
         for (u32 i = 0; i < rankSize; i++) {
@@ -510,8 +510,11 @@ HcclResult CheckCcuParamAndFallback(
         __func__, comm, param.commName, algName.c_str(), param.tag, static_cast<u32>(param.opType),
         static_cast<uint32_t>(param.opExecuteConfig), param.DataDes.count);
 
-    if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE) {
-        HCCL_INFO("[%s] send/recv op, skip ccu param check and fallback, tag[%s].", __func__, param.tag);
+    if (param.opType == HcclCMDType::HCCL_CMD_SEND || param.opType == HcclCMDType::HCCL_CMD_RECEIVE
+        || param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
+        // 与send/recv同理，batch允许子集参与，故不做跨rank协商；hostDPU场景默认不进协商
+        HCCL_INFO(
+            "[%s] send/recv/batch_send_recv op, skip ccu param check and fallback, tag[%s].", __func__, param.tag);
         return HCCL_SUCCESS;
     }
 
