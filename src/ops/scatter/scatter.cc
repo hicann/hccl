@@ -50,17 +50,6 @@ HcclResult HcclScatter(
     // 入口的地方先解析环境变量, 调用位置有特殊要求，不要变化
     CHK_RET(InitEnvConfig());
 
-    // AclGraph引导到老的流程上面
-    if (!EqualToOrGreaterThan950(deviceType) && IsStreamCapture(stream)) {
-        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
-    }
-    // 重执行引导到老的流程上面
-    if (deviceType == HcclDevType::DEV_TYPE_910_93
-        && (GetExternalInputIntraServerRetryEnable() || GetExternalInputInterServerRetryEnable()
-            || GetExternalInputInterSuperPodRetryEnable())) {
-        return HcclScatterInner(sendBuf, recvBuf, recvCount, dataType, root, comm, stream);
-    }
-
     // Attention! zeroCopy模式、recompute等先不支持，且当前不引导到老的流程上
 
     HcclUs startut = TIME_NOW(); // 走老流程的判断时间不统计在内
