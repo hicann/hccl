@@ -31,6 +31,10 @@ private:
         const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
         const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap,
         std::string& selectAlgName) const override;
+    SelectorStatus SelectNdaAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap,
+        std::string& selectAlgName) const override;
     SelectorStatus SelectCcuScheduleUBXAlgo(
         const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName, const u64 dataSize) const;
     SelectorStatus SelectCcuScheduleLevel0Algo(

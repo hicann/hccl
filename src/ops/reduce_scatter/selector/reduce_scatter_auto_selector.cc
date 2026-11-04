@@ -14,6 +14,7 @@
 #include "ins_v2_reduce_scatter_order_preserved_executor.h"
 #include "order_preserved_common.h"
 #include "reduce_scatter_selector_utils.h"
+#include "op_common.h"
 
 namespace ops_hccl {
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
@@ -29,6 +30,7 @@ constexpr u64 RS_AICPU_1D_TWO_LEVEL_DATA_SIZE_THRESHOLD = 1536 * 1024 * 1024;
 constexpr u64 RS_CCU_64P_MIN_DATA_SIZE = 128 * 1024 * 1024;
 constexpr u64 RS_CCU_64P_SEQ_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 RS_CCU_8P_MIN_DATA_SIZE = 64 * 1024 * 1024;
+constexpr u64 RS_NDA_PIPELINE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 
 constexpr u32 RS_CCU_MAX_RANK_SIZE = 64;
 constexpr u64 RS_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
@@ -651,6 +653,51 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
         } else {
             selectAlgName = "DpuReduceScatterSequenceMeshMesh";
             HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterSequenceMeshMesh");
+            return SelectorStatus::MATCH;
+        }
+    }
+
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus ReduceScatterAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)configAlgMap;
+    u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    HCCL_INFO(
+        "[ReduceScatterAutoSelector][%s] topoLevelNums[%u], localNetInsSizeOfLayer0[%u], level0Topo[%u], "
+        "level0PcieMix[%d], dataSize[%llu], pipelineMinDataSize[%llu]",
+        __func__, topoInfo->topoLevelNums, topoInfo->netLayerDetails.localNetInsSizeOfLayer[0],
+        static_cast<u32>(topoInfo->level0Topo), topoInfo->level0PcieMix, dataSize, RS_NDA_PIPELINE_MIN_DATA_SIZE);
+    if (topoInfo->topoLevelNums > 1) {
+        if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+            || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            selectAlgName = "DpuReduceScatterSequenceMeshMeshNDA";
+            HCCL_INFO(
+                "[ReduceScatterAutoSelector][%s] Algo match [%s], branch[singleNetIns-or-mesh1d]", __func__,
+                selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topoInfo->level0PcieMix && dataSize > RS_NDA_PIPELINE_MIN_DATA_SIZE) {
+                selectAlgName = "DpuReduceScatterPipeLineMeshNHRMeshNDA";
+                HCCL_INFO(
+                    "[ReduceScatterAutoSelector][%s] Algo match [%s], branch[clos-pipeline]", __func__,
+                    selectAlgName.c_str());
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuReduceScatterSequenceMeshMeshNDA";
+                HCCL_INFO(
+                    "[ReduceScatterAutoSelector][%s] Algo match [%s], branch[clos-pciemix-or-lte-%llu]", __func__,
+                    selectAlgName.c_str(), RS_NDA_PIPELINE_MIN_DATA_SIZE);
+                return SelectorStatus::MATCH;
+            }
+        } else {
+            selectAlgName = "DpuReduceScatterSequenceMeshMeshNDA";
+            HCCL_INFO(
+                "[ReduceScatterAutoSelector][%s] Algo match [%s], branch[other-level0topo]", __func__,
+                selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
     }

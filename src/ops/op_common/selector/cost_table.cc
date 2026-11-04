@@ -371,7 +371,7 @@ float CostTableManager::CalcAlgCost(
             AlgoType at = (idx < meta.algoTypes.size()) ?
                               meta.algoTypes[idx] :
                               ((idx < algoTypes.size()) ? algoTypes[idx] : AlgoType::UNKNOWN);
-            if (at == AlgoType::NHR || at == AlgoType::NHR_MULTILINK) {
+            if (at == AlgoType::NHR || at == AlgoType::NHR_MULTILINK || at == AlgoType::NHR_NDA) {
                 u32 rs = (idx < meta.rankSizes.size()) ? meta.rankSizes[idx] : 1;
                 dr *= static_cast<float>(rs) / 2.0f;
             }
@@ -452,7 +452,7 @@ HcclResult CostTableManager::QueryUbUtil(
     bool useOneJettyTable
         = (algoType == AlgoType::MESH || algoType == AlgoType::MESH_MULTILINK
            || algoType == AlgoType::MESH_SINGLE_CHANNEL || algoType == AlgoType::MESH_ONESHOT
-           || algoType == AlgoType::MESH_TWOSHOT);
+           || algoType == AlgoType::MESH_TWOSHOT || algoType == AlgoType::MESH_NDA);
     bool useAivClosTable = (engine == OpExecuteConfig::AIV && netType == CommTopo::COMM_TOPO_CLOS);
     const std::vector<UbUtilEntry>& table = useAivClosTable ? closAivUbUtilTable_ :
                                             (netType == CommTopo::COMM_TOPO_CLOS && useOneJettyTable) ?

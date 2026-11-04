@@ -17,6 +17,7 @@
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1D.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
 #include "ins_temp_reduce_scatter_omnipipe_nhr.h"
+#include "ins_temp_reduce_scatter_omnipipe_mesh_1d_nda.h"
 #include "topo_match_pcie_mix.h"
 #include "omnipipe_template_utils.h"
 #include "omnipipe_executor_utils.h"
@@ -831,4 +832,16 @@ REGISTER_ALG_ATTRS(
     topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
     });
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterPipeLineMeshNHRMeshNDA, InsV2ReduceScatterOmniPipeExecutor,
+    TopoMatchThreeLevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
+    InsTempReduceScatterOmniPipeMesh1dNDA);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterPipeLineMeshNHRMeshNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
+    topo.topoPriorityCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->level0Topo == Level0Shape::MESH_1D_CLOS && !topo->level0PcieMix;
+    });
+
 } // namespace ops_hccl

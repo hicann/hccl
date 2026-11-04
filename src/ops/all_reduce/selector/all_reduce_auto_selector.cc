@@ -13,6 +13,7 @@
 #include "hccl_aiv_utils.h"
 #include "ins_v2_all_reduce_order_preserved_executor.h"
 #include "order_preserved_common.h"
+#include "op_common.h"
 
 namespace ops_hccl {
 constexpr u64 RS_MAX_DATA_SIZE = 16 * 1024 * 1024;
@@ -30,6 +31,7 @@ constexpr u64 AR_AICPU_SEQUENCE_DATA_SIZE = 4ULL * 1024 * 1024 * 1024;
 constexpr u64 OMNI_PCIE_AR_DATA_SIZE = 32 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_SCHED_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_MS_DATA_SIZE = 32 * 1024 * 1024;
+constexpr u64 AR_NDA_PIPELINE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_LARGE_SIZE = 128 * 1024 * 1024;
 constexpr u64 OMNI_UBX_AR_16P_LARGE_SIZE = 256 * 1024 * 1024;
 constexpr u32 OMNI_UBX_AR_RANK_SIZE = 16;
@@ -709,6 +711,47 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
         } else {
             selectAlgName = "DpuAllReduceSequenceMeshNHR";
             HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHR");
+            return SelectorStatus::MATCH;
+        }
+    }
+
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus AllReduceAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)configAlgMap;
+    u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+
+    HCCL_INFO(
+        "[AllReduceAutoSelector] SelectNdaAlgo topoLevelNums[%u], deviceNumPerModule[%u], level0Topo[%u], "
+        "level0PcieMix[%d], dataSize[%llu], pipelineMinDataSize[%llu]",
+        topoInfo->topoLevelNums, topoInfo->deviceNumPerModule, static_cast<u32>(topoInfo->level0Topo),
+        topoInfo->level0PcieMix, dataSize, AR_NDA_PIPELINE_MIN_DATA_SIZE);
+    if (topoInfo->topoLevelNums > 1) {
+        if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            selectAlgName = "DpuAllReduceSequenceMeshNHRNDA";
+            HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHRNDA, branch[1dev-or-mesh1d]");
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topoInfo->level0PcieMix && dataSize > AR_NDA_PIPELINE_MIN_DATA_SIZE) {
+                selectAlgName = "DpuAllReducePipeLineMeshNHRNHRNDA";
+                HCCL_INFO(
+                    "[AllReduceAutoSelector] Using algo DpuAllReducePipeLineMeshNHRNHRNDA, branch[clos-pipeline]");
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuAllReduceSequenceMeshNHRNDA";
+                HCCL_INFO(
+                    "[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHRNDA, branch[clos-pciemix-or-"
+                    "lte-%llu]",
+                    AR_NDA_PIPELINE_MIN_DATA_SIZE);
+                return SelectorStatus::MATCH;
+            }
+        } else {
+            selectAlgName = "DpuAllReduceSequenceMeshNHRNDA";
+            HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHRNDA, branch[other-level0topo]");
             return SelectorStatus::MATCH;
         }
     }

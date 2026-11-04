@@ -22,6 +22,18 @@ AutoSelectorBase::Select(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo
     SelectorStatus ret = SelectorStatus::NOT_MATCH;
     bool hostDPUOnly = false;
     if ((CheckHostDPUOnly(opParam.hcclComm, topoInfo, hostDPUOnly) == HCCL_SUCCESS) && hostDPUOnly) {
+        bool isSupportNda = false;
+        if ((CheckSupportNda(opParam.hcclComm, topoInfo, isSupportNda) == HCCL_SUCCESS) && isSupportNda) {
+            opParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
+            opParam.engine = CommEngine::COMM_ENGINE_AICPU_TS;
+            if (SelectNdaAlgo(topoInfo, opParam, configAlgMap, selectAlgName) == SelectorStatus::MATCH) {
+                HCCL_INFO(
+                    "[Algo][AutoSelectorBase] The selected algo is %s, OpExecuteConfig is %d.", selectAlgName.c_str(),
+                    opParam.opExecuteConfig);
+                return SelectorStatus::MATCH;
+            }
+            HCCL_INFO("[Algo][AutoSelectorBase] SelectNdaAlgo not match, fallback to SelectDPUAlgo.");
+        }
         opParam.opExecuteConfig = OpExecuteConfig::HOSTCPU;
         opParam.engine = CommEngine::COMM_ENGINE_CPU;
         return SelectDPUAlgo(topoInfo, opParam, configAlgMap, selectAlgName);
@@ -183,6 +195,17 @@ SelectorStatus AutoSelectorBase::SelectAivAlgo(
 }
 
 SelectorStatus AutoSelectorBase::SelectDPUAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)opParam;
+    (void)topoInfo;
+    (void)configAlgMap;
+    (void)selectAlgName;
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus AutoSelectorBase::SelectNdaAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
 {

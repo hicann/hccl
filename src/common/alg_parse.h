@@ -44,6 +44,8 @@ enum class AlgoType : uint8_t {
     GROUP_MESH,
     PAIRWISE,
     HD,
+    NHR_NDA,  // NHR 的 NDA 变体（UBX host 直驱网卡场景）
+    MESH_NDA, // Mesh 的 NDA 变体（UBX host 直驱网卡场景）
     UNKNOWN,
     HD_AICPU_REDUCE, // ReduceScatter HD（递归折半）AicpuReduce 变体；追加在末尾保持既有枚举数值不变
 };
@@ -61,12 +63,17 @@ const std::set<AlgoType> MESH_ALGO_TYPES
        AlgoType::MESH_SINGLE_CHANNEL,
        AlgoType::MESH_CONCURRENT,
        AlgoType::MESH_MULTIJETTY,
+       AlgoType::MESH_NDA,
        AlgoType::GROUP_MESH};
 // NHR 类算法集合
 const std::set<AlgoType> NHR_ALGO_TYPES
-    = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE, AlgoType::NHR_MULTIJETTY};
+    = {AlgoType::NHR, AlgoType::NHR_MULTILINK, AlgoType::NHR_AICPU_REDUCE, AlgoType::NHR_MULTIJETTY, AlgoType::NHR_NDA};
 // MeshConcur 类算法（MESH_CONCUR 与 MESH_CONCURRENT 都触发 CLOS 双层规则）
 const std::set<AlgoType> MESH_CONCUR_ALGO_TYPES = {AlgoType::MESH_CONCUR, AlgoType::MESH_CONCURRENT};
+
+// NDA 变体类算法（最高层为 host 直驱网卡场景：L0 不做 mesh 锚点，由段内压缩映射到
+// HOST 锚点以下的最高物理层，即 server 内最大域，避免被锚到更低的 device fullmesh 层）
+const std::set<AlgoType> NDA_VARIANT_ALGO_TYPES = {AlgoType::NHR_NDA, AlgoType::MESH_NDA};
 
 // ---------------------------------------------------------------------------
 // 算法（template）条目

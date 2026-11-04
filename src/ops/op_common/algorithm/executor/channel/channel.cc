@@ -239,6 +239,7 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol>& 
             protocols.push_back(CommProtocol::COMM_PROTOCOL_UBOE);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
             protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_RTP);
+            protocols.push_back(CommProtocol::COMM_PROTOCOL_ROCE);
 #endif
             break;
         case CommEngine::COMM_ENGINE_CCU:

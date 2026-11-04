@@ -911,6 +911,8 @@ const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap()
         {"GroupMesh", AlgoType::GROUP_MESH},
         {"Pairwise", AlgoType::PAIRWISE},
         {"HD", AlgoType::HD},
+        {"NHRNDA", AlgoType::NHR_NDA},
+        {"MeshNDA", AlgoType::MESH_NDA},
     };
     return map;
 }

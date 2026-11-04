@@ -118,6 +118,15 @@ HcclResult CheckHostDPUOnly(const HcclComm comm, const TopoInfoWithNetLayerDetai
     return HCCL_SUCCESS;
 }
 
+// auto_selector_base.cc NDA 判定调用，定义在 op_common.cc（本 UT 不链接），桩为不支持 NDA
+HcclResult CheckSupportNda(const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, bool& isSupportNda)
+{
+    (void)comm;
+    (void)topoInfo;
+    isSupportNda = false;
+    return HCCL_SUCCESS;
+}
+
 bool IsNegotiationCommName(const char* commName)
 {
     (void)commName;

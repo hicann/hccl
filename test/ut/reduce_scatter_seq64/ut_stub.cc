@@ -66,6 +66,15 @@ HcclResult CheckHostDPUOnly(const HcclComm comm, const TopoInfoWithNetLayerDetai
     return HCCL_SUCCESS;
 }
 
+// auto_selector_base.cc NDA 判定调用，定义在 op_common.cc（本 UT 不链接），桩为不支持 NDA
+HcclResult CheckSupportNda(const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, bool& isSupportNda)
+{
+    (void)comm;
+    (void)topoInfo;
+    isSupportNda = false;
+    return HCCL_SUCCESS;
+}
+
 // ============ 通道申请计算（4 个被测模板的 CalcRes 路径引用，UT 不执行；声明见 channel.h） ============
 
 HcclResult CalcChannelRequestNhr(

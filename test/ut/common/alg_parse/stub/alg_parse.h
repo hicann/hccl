@@ -109,6 +109,8 @@ enum class AlgoType : uint8_t {
     GROUP_MESH,
     PAIRWISE,
     HD,
+    NHR_NDA,  // NHR 的 NDA 变体（UBX host 直驱网卡场景）
+    MESH_NDA, // Mesh 的 NDA 变体（UBX host 直驱网卡场景）
     UNKNOWN,
     HD_AICPU_REDUCE, // ReduceScatter HD（递归折半）AicpuReduce 变体；追加在末尾保持既有枚举数值不变
 };

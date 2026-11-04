@@ -11,6 +11,7 @@
 #include "all_gather_auto_selector.h"
 #include "selector_registry.h"
 #include "hccl_aiv_utils.h"
+#include "op_common.h"
 
 namespace ops_hccl {
 constexpr u64 AG_2D_SMALL_DATA_SIZE = 1024 * 1024;
@@ -26,6 +27,7 @@ constexpr u64 AG_AICPU_SEQUENCE_DATA_SIZE = 4ULL * 1024 * 1024 * 1024;
 constexpr u64 AG_2P_DETOUR_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 OMNI_PCIE_AG_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u32 OMNI_UBX_AG_DATA_SIZE = 16 * 1024 * 1024;
+constexpr u64 AG_NDA_PIPELINE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u32 DEVICE_NUM_PER_MODULE_8 = 8;
 constexpr u32 AG_CCU_MAX_RANK_SIZE = 64;
 constexpr u32 AG_CCU_RANK_SIZE = 32;
@@ -495,6 +497,51 @@ SelectorStatus AllGatherAutoSelector::SelectDPUAlgo(
         } else {
             selectAlgName = "DpuAllGatherSequenceMeshNHR";
             HCCL_DEBUG("[AllGatherAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
+    }
+    HCCL_DEBUG("[AllGatherAutoSelector][%s] end", __func__);
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus AllGatherAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)configAlgMap;
+    u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    HCCL_INFO(
+        "[AllGatherAutoSelector][%s] topoLevelNums[%u], localNetInsSizeOfLayer0[%u], level0Topo[%u], "
+        "level0PcieMix[%d], dataSize[%llu], pipelineMinDataSize[%llu]",
+        __func__, topoInfo->topoLevelNums, topoInfo->netLayerDetails.localNetInsSizeOfLayer[0],
+        static_cast<u32>(topoInfo->level0Topo), topoInfo->level0PcieMix, dataSize, AG_NDA_PIPELINE_MIN_DATA_SIZE);
+    if (topoInfo->topoLevelNums > 1) {
+        if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
+            || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            selectAlgName = "DpuAllGatherSequenceNHRNHRNDA";
+            HCCL_INFO(
+                "[AllGatherAutoSelector][%s] Algo match [%s], branch[singleNetIns-or-mesh1d]", __func__,
+                selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topoInfo->level0PcieMix && dataSize > AG_NDA_PIPELINE_MIN_DATA_SIZE) {
+                selectAlgName = "DpuAllGatherPipeLineMeshNHRNHRNDA";
+                HCCL_INFO(
+                    "[AllGatherAutoSelector][%s] Algo match [%s], branch[clos-pipeline]", __func__,
+                    selectAlgName.c_str());
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuAllGatherSequenceNHRNHRNDA";
+                HCCL_INFO(
+                    "[AllGatherAutoSelector][%s] Algo match [%s], branch[clos-pciemix-or-lte-%llu]", __func__,
+                    selectAlgName.c_str(), AG_NDA_PIPELINE_MIN_DATA_SIZE);
+                return SelectorStatus::MATCH;
+            }
+        } else {
+            selectAlgName = "DpuAllGatherSequenceNHRNHRNDA";
+            HCCL_INFO(
+                "[AllGatherAutoSelector][%s] Algo match [%s], branch[other-level0topo]", __func__,
+                selectAlgName.c_str());
             return SelectorStatus::MATCH;
         }
     }

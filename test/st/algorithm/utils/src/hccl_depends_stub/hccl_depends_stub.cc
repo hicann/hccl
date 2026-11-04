@@ -25,6 +25,15 @@ int HcclDedicatedThreadAcquire(void* comm, unsigned int useType, uint32_t notify
     return 0;
 }
 
+// HcommEndpointCheckFeature 桩：ST仿真不支持NDA特性，设置 *isSupport = false 走 host 建链降级路径
+int HcommEndpointCheckFeature(int featureType, void* endpoint, bool* isSupport)
+{
+    if (isSupport != nullptr) {
+        *isSupport = false;
+    }
+    return 0;
+}
+
 #ifdef __cplusplus
 }
 #endif

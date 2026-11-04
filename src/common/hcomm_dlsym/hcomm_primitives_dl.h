@@ -132,6 +132,15 @@ DECL_SUPPORT_FLAG(HcommAicpuTsTaskCacheExecute);
 DECL_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheClear, const char* tag);
 DECL_SUPPORT_FLAG(HcommAicpuTsTaskCacheClear);
 
+/* 9.1.0 新增 Endpoint 特性查询接口（如 NDA），经 dlsym 弱符号绑定；
+ * HcommEndpointFeatureType/EndpointDesc 类型由 dlsym_common.h 已包含的 hcomm_res_defs.h 提供 */
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+DECL_WEAK_FUNC(
+    HcommResult, HcommEndpointCheckFeature, HcommEndpointFeatureType featureType, const EndpointDesc* endpointDesc,
+    bool* value);
+DECL_SUPPORT_FLAG(HcommEndpointCheckFeature);
+#endif
+
 void HcommPrimitivesDlInit(void* libHcommHandle); // 本模块独立初始化
 
 #ifdef __cplusplus

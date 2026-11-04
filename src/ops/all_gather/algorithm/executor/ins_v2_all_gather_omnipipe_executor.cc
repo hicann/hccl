@@ -19,6 +19,7 @@
 #include "ins_temp_all_gather_omnipipe_mesh_1D.h"
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
+#include "ins_temp_all_gather_omnipipe_nhr_nda.h"
 #include "omnipipe_template_utils.h"
 #include "omnipipe_executor_utils.h"
 #include "template_utils.h"
@@ -886,5 +887,14 @@ REGISTER_ALG_ATTRS(
             return !topo->level0PcieMix;
         }
         return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->level0Symmetric && !IsOnlyThirdAxisTopo(topo);
+    });
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherPipeLineMeshNHRNHRNDA, InsV2AllGatherOmniPipeExecutor,
+    TopoMatchThreeLevel, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRNDA);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherPipeLineMeshNHRNHRNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.isHostDpuOnly = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
     });
 } // namespace ops_hccl

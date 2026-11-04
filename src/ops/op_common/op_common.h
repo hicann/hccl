@@ -237,6 +237,8 @@ HcclResult GetCommMultipleDimensionSplitRatio(HcclComm comm, double& ratio, bool
 
 HcclResult CheckHostDPUOnly(const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, bool& hostDPUOnly);
 
+HcclResult CheckSupportNda(const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, bool& isSupportNda);
+
 HcclResult SetExecTimeout(OpParam& param);
 bool IsHostDpu(HcclComm comm);
 

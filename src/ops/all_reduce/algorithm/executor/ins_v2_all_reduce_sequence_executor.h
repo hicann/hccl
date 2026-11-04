@@ -70,6 +70,8 @@ protected:
     uint64_t rankIdxLevel1_{0};
 
     AlgHierarchyInfoForAllLevel algHierarchyInfo_;
+    std::vector<std::vector<u32>> intraHierarchyInfo_;
+    std::vector<std::vector<u32>> interHierarchyInfo_;
     std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
     std::vector<ThreadHandle> threads_; // 相当于之前的std::vector<InsQuePtr> tempInsQue_;
 };

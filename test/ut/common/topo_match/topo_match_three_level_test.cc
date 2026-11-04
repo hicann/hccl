@@ -508,3 +508,32 @@ TEST_F(TopoMatchThreeLevelTest, P3AdjacentMeshAnchorsNoInvalidUint)
     ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_3);
     ASSERT_EQ(info.physicalIdxForAlgoLevels[2][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_4);
 }
+
+// H16: Pipeline NDA（top=MESH_NDA）+ hostdpu 回归 — 守卫跳过 mesh 锚点后，1:1 段内映射结果不变
+// 场景：2 server × 16 NPU；phys0=4卡 fullmesh(1DMESH), phys1=16卡 CLOS, phys2=32卡 HOST
+// 期望映射仍为 {0,1,2}: d0=4, d1=4, d2=2（与 mesh 锚点路径结果一致）
+TEST_F(TopoMatchThreeLevelTest, PipelineNdaVariantMappingUnchanged)
+{
+    auto topo = MakeTopoInfo(
+        17, 32,
+        {
+            MakeLevel(RangeFrom(16, 4), PhysicalLevelView::GLOBAL, {4, 4, 4, 4, 4, 4, 4, 4}, true, COMM_TOPO_1DMESH),
+            MakeLevel(RangeFrom(16, 16), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_HOST),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::NHR, AlgoType::MESH_NDA}, OpExecuteConfig::HOSTCPU);
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
+    // HOST 锚 algo2→phys2；段内 1:1: algo0→phys0, algo1→phys1（与 mesh 锚点路径结果一致）
+    // d0=4(phys0), d1=16/4=4(phys1), d2=32/16=2(phys2)
+    ASSERT_EQ(info.infos.size(), 3u);
+    ASSERT_EQ(info.infos[0][0], RangeFrom(16, 4));
+    // level1Base=(17/4)*4=16, offset=16+17%4=17 → group1={17,21,25,29}
+    ASSERT_EQ(info.infos[1][0], (std::vector<u32>{17, 21, 25, 29}));
+    // group2=BuildRepresentativeGroup(16, 2, 17%16=1)={1,17}（同号卡对）
+    ASSERT_EQ(info.infos[2][0], (std::vector<u32>{1, 17}));
+    ASSERT_EQ(info.physicalIdxForAlgoLevels.size(), 3u);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[2][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+}

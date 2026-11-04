@@ -32,4 +32,14 @@ HcclResult ClearAivTagCb(HcclComm, HcclCommStatePhase, void*)
     ADD_FAILURE() << "CCU资源申请用例不应调用ClearAivTagCb";
     return HCCL_E_NOT_SUPPORT;
 }
+
+// op_common.cc CheckNdaMainboardSupported 引用，定义在 adapter_acl.cc（本 UT 不链接），按取不到主板信息处理
+HcclResult hcalrtGetDeviceInfo(u32 deviceId, aclrtDevAttr devAttr, s64& val, bool quiet)
+{
+    (void)deviceId;
+    (void)devAttr;
+    (void)val;
+    (void)quiet;
+    return HCCL_E_NOT_SUPPORT;
+}
 } // namespace ops_hccl

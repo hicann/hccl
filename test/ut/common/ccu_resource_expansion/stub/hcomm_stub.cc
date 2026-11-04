@@ -292,6 +292,9 @@ CCU_EXPANSION_SUPPORTED(HcclChannelDestroy)
 #undef CCU_EXPANSION_SUPPORTED
 
 bool HcommIsSupportHcclChannelQuery(void) { return false; }
+// op_common.cc HcclGetChannel/CheckSupportNda 引用（真实符号由 hcomm_primitives_dl.cc 生成，本 UT 用桩），按不支持 NDA
+// 特性查询处理
+bool HcommIsSupportHcommEndpointCheckFeature(void) { return false; }
 bool HcommIsSupportHcclThreadAcquireWithConfig(void) { return false; }
 bool HcommIsSupportHcclDedicatedThreadAcquire(void) { return false; }
 int GetHcommVersion(void) { return CANN_VERSION_NUM; }

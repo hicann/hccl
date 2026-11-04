@@ -95,6 +95,9 @@ public:
     virtual SelectorStatus SelectDPUAlgo(
         const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
         const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
+    virtual SelectorStatus SelectNdaAlgo(
+        const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+        const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const;
     bool IsStarsState(const OpExecuteConfig& opExecuteConfig) const;
     static bool IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetails* topoInfo);
     static bool IsLayerAllConnetedWithTopo(

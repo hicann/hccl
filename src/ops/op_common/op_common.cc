@@ -69,6 +69,7 @@
 #include "utils.h"
 #include "selector_engine.h"
 #include "hcomm_dlsym.h"
+#include "hccl/hccl_res.h"
 
 namespace ops_hccl {
 thread_local bool needInconsistentCheck = false;
@@ -2214,6 +2215,39 @@ HcclResult GetMainThreadInfo(HcclComm comm, const OpParam& param, ThreadHandle& 
     return HCCL_SUCCESS;
 }
 
+// UBX(350L)机型的mainboard id, 取自ACL_DEV_ATTR_MAINBOARD_ID; NDA仅在该机型上支持
+constexpr s64 UBX_350L_MAINBOARD_ID = 0x44;
+
+/* 查询本卡mainboard id是否为支持NDA的机型(0x44/UBX 350L)。
+ * 恒返回HCCL_SUCCESS: 查询失败按"不支持NDA"降级, 不阻断既有执行路径。
+ */
+static HcclResult CheckNdaMainboardSupported(bool& isSupported)
+{
+    isSupported = false;
+    s32 userDevId = 0;
+    aclError aclRet = aclrtGetDevice(&userDevId);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_WARNING(
+            "[CheckNdaMainboardSupported] get current device failed, ret[%d]. treat as not support NDA.", aclRet);
+        return HCCL_SUCCESS;
+    }
+    s64 mainBoardId = 0;
+    HcclResult ret = hcalrtGetDeviceInfo(static_cast<u32>(userDevId), ACL_DEV_ATTR_MAINBOARD_ID, mainBoardId, true);
+    if (ret != HCCL_SUCCESS) {
+        HCCL_WARNING(
+            "[CheckNdaMainboardSupported] get mainboard id failed, ret[%d], userDevId[%d]. "
+            "treat as not support NDA.",
+            ret, userDevId);
+        return HCCL_SUCCESS;
+    }
+    // 严格相等的正向判断: 未识别的机型一律不支持NDA
+    isSupported = (mainBoardId == UBX_350L_MAINBOARD_ID);
+    HCCL_INFO(
+        "[CheckNdaMainboardSupported] userDevId[%d] mainBoardId[0x%llx] isSupportNdaBoard[%d]", userDevId,
+        static_cast<u64>(mainBoardId), static_cast<s32>(isSupported));
+    return HCCL_SUCCESS;
+}
+
 HcclResult HcclGetChannel(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost)
 {
@@ -2224,6 +2258,9 @@ HcclResult HcclGetChannel(
             RegGraphModeBuffers(comm, param, memRegInfo.inputBuffTag, memRegInfo.outputBuffTag, memRegInfo.memHandles));
     }
     resCtxHost->channels.resize(resRequest.channels.size());
+    // NDA仅在mainboard id为0x44(UBX 350L)的机型上支持
+    bool isNdaBoard = false;
+    CHK_RET(CheckNdaMainboardSupported(isNdaBoard));
     for (u32 level = 0; level < resRequest.channels.size(); level++) {
         // 获取子通信域的建链请求
         std::vector<HcclChannelDesc>& levelNChannelRequest = resRequest.channels[level];
@@ -2233,7 +2270,29 @@ HcclResult HcclGetChannel(
             if (channelRequest.localEndpoint.loc.locType == ENDPOINT_LOC_TYPE_DEVICE) {
                 deviceChannelRequest.emplace_back(channelRequest);
             } else if (channelRequest.localEndpoint.loc.locType == ENDPOINT_LOC_TYPE_HOST) {
-                hostChannelRequest.emplace_back(channelRequest);
+                bool isSupportNda = false;
+                // 9.1.0 以下版本、当前 HCOMM 无 NDA 特性查询接口或非 NDA 机型(mainboard id 非 0x44)，
+                // 按不支持处理，走 host 建链；避免在非 NDA 机型上触发 HCOMM 侧 NDA 能力查询
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+                if (isNdaBoard && HcommIsSupportHcommEndpointCheckFeature()) {
+                    CHK_RET(static_cast<HcclResult>(HcommEndpointCheckFeature(
+                        HcommEndpointFeatureType::HCOMM_ENDPOINT_FEATURE_NDA, &channelRequest.localEndpoint,
+                        &isSupportNda)));
+                }
+#endif
+                // NDA 建链仅支持白名单算子，其余算子(含 alltoall/alltoallv/alltoallvc)走 host 建链
+                bool isNdaSupportedOp
+                    = (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER
+                       || param.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
+                       || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
+                       || param.opType == HcclCMDType::HCCL_CMD_SCATTER || param.opType == HcclCMDType::HCCL_CMD_REDUCE
+                       || param.opType == HcclCMDType::HCCL_CMD_BROADCAST || param.opType == HcclCMDType::HCCL_CMD_SEND
+                       || param.opType == HcclCMDType::HCCL_CMD_RECEIVE);
+                if (isSupportNda && isNdaBoard && isNdaSupportedOp) {
+                    deviceChannelRequest.emplace_back(channelRequest);
+                } else {
+                    hostChannelRequest.emplace_back(channelRequest);
+                }
             }
         }
         // device建链
@@ -4467,6 +4526,88 @@ HcclResult CheckHostDPUOnly(const HcclComm comm, const TopoInfoWithNetLayerDetai
         HCCL_INFO("Using host dpu trans.");
         hostDPUOnly = true;
     }
+    return HCCL_SUCCESS;
+}
+
+HcclResult CheckSupportNda(const HcclComm comm, const TopoInfoWithNetLayerDetails* topoInfo, bool& isSupportNda)
+{
+    isSupportNda = false;
+    HCCL_INFO("Start CheckSupportNda");
+
+    // NDA仅在mainboard id为0x44(UBX 350L)的机型上支持
+    bool isNdaBoard = false;
+    CHK_RET(CheckNdaMainboardSupported(isNdaBoard));
+    if (!isNdaBoard) {
+        HCCL_INFO("Not support NDA because mainboard id is not 0x44(UBX 350L)");
+        return HCCL_SUCCESS;
+    }
+
+    if (topoInfo->topoLevelNums == 1) {
+        HCCL_INFO("Not support NDA because topoLevelNums is 1");
+        return HCCL_SUCCESS;
+    }
+
+    uint32_t* netLayers = nullptr;
+    uint32_t netLayerNum = 0;
+    CHK_RET(HcclRankGraphGetLayers(comm, &netLayers, &netLayerNum));
+    if ((netLayers == nullptr) || (netLayerNum == 0)) {
+        HCCL_WARNING("HcclRankGraphGetLayers fail");
+        return HCCL_E_INTERNAL;
+    }
+
+    for (uint32_t layerIdx = 0; layerIdx < netLayerNum; layerIdx++) {
+        uint32_t netLayer = netLayers[layerIdx];
+        if (netLayer < (topoInfo->topoLevelNums - 1)) {
+            HCCL_INFO("Skip checking layer[%u], topoLevelNums is [%u]", netLayer, topoInfo->topoLevelNums);
+            continue;
+        }
+        uint32_t* topoInsts = nullptr;
+        uint32_t topoInsNum = 0;
+        CHK_RET(HcclRankGraphGetTopoInstsByLayer(comm, netLayer, &topoInsts, &topoInsNum));
+        if ((topoInsts == nullptr) || (topoInsNum == 0)) {
+            HCCL_WARNING("HcclRankGraphGetTopoInstsByLayer fail, netLayer[%u]", netLayer);
+            return HCCL_E_INTERNAL;
+        }
+        for (uint32_t topoInsIdx = 0; topoInsIdx < topoInsNum; topoInsIdx++) {
+            uint32_t topoInstId = topoInsts[topoInsIdx];
+            CommTopo topoType;
+            CHK_RET(HcclRankGraphGetTopoType(comm, netLayer, topoInstId, &topoType));
+            if (topoType != COMM_TOPO_CLOS) {
+                continue;
+            }
+            uint32_t* ranks = nullptr;
+            uint32_t rankNum = 0;
+            CHK_RET(HcclRankGraphGetRanksByTopoInst(comm, netLayer, topoInstId, &ranks, &rankNum));
+            if (rankNum != topoInfo->userRankSize) {
+                continue;
+            }
+            uint32_t endPointNums = 0;
+            CHK_RET(HcclRankGraphGetEndpointNum(comm, netLayer, topoInstId, &endPointNums));
+            std::vector<EndpointDesc> endPointDescs(endPointNums);
+            CHK_RET(HcclRankGraphGetEndpointDesc(comm, netLayer, topoInstId, &endPointNums, endPointDescs.data()));
+            for (uint32_t endPointIdx = 0; endPointIdx < endPointNums; endPointIdx++) {
+                if (endPointDescs[endPointIdx].loc.locType == ENDPOINT_LOC_TYPE_HOST) {
+                    bool supportNda = false;
+                    // 9.1.0 以下版本或当前 HCOMM 无 NDA 特性查询接口，按不支持处理，回落 DPU
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+                    if (HcommIsSupportHcommEndpointCheckFeature()) {
+                        CHK_RET(static_cast<HcclResult>(HcommEndpointCheckFeature(
+                            HcommEndpointFeatureType::HCOMM_ENDPOINT_FEATURE_NDA, &endPointDescs[endPointIdx],
+                            &supportNda)));
+                    }
+#endif
+                    if (supportNda) {
+                        HCCL_INFO(
+                            "Support NDA in netLayer[%u] topoInstId[%u] endPointIdx[%u]", netLayer, topoInstId,
+                            endPointIdx);
+                        isSupportNda = true;
+                        return HCCL_SUCCESS;
+                    }
+                }
+            }
+        }
+    }
+    HCCL_INFO("Not support NDA after checking all endpoints in last level");
     return HCCL_SUCCESS;
 }
 

@@ -16,9 +16,11 @@
 #include "topo_match_3_level.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1D.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
+#include "ins_temp_reduce_scatter_omnipipe_mesh_1d_nda.h"
 #include "ins_temp_reduce_scatter_omnipipe_nhr.h"
 #include "ins_temp_all_gather_omnipipe_mesh_1D.h"
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
+#include "ins_temp_all_gather_omnipipe_nhr_nda.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "omnipipe_data_slice_calc.h"
 #include "omnipipe_executor_utils.h"
@@ -1278,4 +1280,16 @@ REGISTER_ALG_ATTRS(
         }
         return topo->topoLevelNums == TOPO_LEVEL_NUM_3 && topo->level0Symmetric && !IsOnlyThirdAxisTopo(topo);
     });
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, DpuAllReducePipeLineMeshNHRNHRNDA, InsV2AllReduceOmniPipeExecutor,
+    TopoMatchThreeLevel, InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR,
+    InsTempReduceScatterOmniPipeMesh1dNDA, InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR,
+    InsTempAllGatherOmniPipeNHRNDA);
+REGISTER_ALG_ATTRS(
+    DpuAllReducePipeLineMeshNHRNHRNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS, topo.isHostDpuOnly = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
+
 } // namespace ops_hccl

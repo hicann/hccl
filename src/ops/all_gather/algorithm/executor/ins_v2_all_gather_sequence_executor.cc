@@ -10,8 +10,10 @@
 
 #include "ins_v2_all_gather_sequence_executor.h"
 #include "executor_common_ops.h"
+#include "ins_temp_all_gather_nhr_nda.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
+#include "ins_temp_all_gather_nhr.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_two_level.h"
 #include "alg_attrs_registry.h"
@@ -133,8 +135,19 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         return HCCL_E_PARA;
     }
 
-    InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo.infos[0]);
-    InsAlgTemplate1 interTempAlg(param, myRank_, algHierarchyInfo.infos[1]);
+    std::vector<std::vector<u32>> intraHierarchyInfo;
+    std::vector<std::vector<u32>> interHierarchyInfo;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix
+        && algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo = {algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo = algHierarchyInfo.infos[0];
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    }
+
+    InsAlgTemplate0 intraTempAlg(param, myRank_, intraHierarchyInfo);
+    InsAlgTemplate1 interTempAlg(param, myRank_, interHierarchyInfo);
 
     AlgResourceRequest resReqIntra;
     CHK_RET(intraTempAlg.CalcRes(comm, param, topoInfo, resReqIntra));
@@ -172,8 +185,17 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
-    rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
+
+    if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
+        && resCtx.algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    }
+    rankSizeLevel0_ = intraHierarchyInfo_[0].size();
+    rankSizeLevel1_ = interHierarchyInfo_[0].size();
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
     // 算法展开
@@ -203,7 +225,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     interTempDataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间template
-    InsAlgTemplate1 interTempAlg(param, myRank_, algHierarchyInfo_.infos[1]);
+    InsAlgTemplate1 interTempAlg(param, myRank_, interHierarchyInfo_);
 
     // 框内template
     TemplateDataParams intraTempDataParams;
@@ -216,7 +238,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     intraTempDataParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
 
     // 构建框内template
-    InsAlgTemplate0 intraTempAlg(param, myRank_, algHierarchyInfo_.infos[0]);
+    InsAlgTemplate0 intraTempAlg(param, myRank_, intraHierarchyInfo_);
 
     u32 intraTemplateScratchMultiplier = intraTempAlg.CalcScratchMultiple(BufferType::OUTPUT, BufferType::OUTPUT);
     u32 interTemplateScratchMultiplier = interTempAlg.CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
@@ -336,4 +358,12 @@ REGISTER_ALG_ATTRS(
         return topo->Level1Nhr;
     };);
 
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSequenceNHRNHRNDA, InsV2AllGatherSequenceExecutor, TopoMatchTwoLevel,
+    InsTempAllGatherNHR, InsTempAllGatherNHRNDA);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherSequenceNHRNHRNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.isHostDpuOnly = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 } // namespace ops_hccl

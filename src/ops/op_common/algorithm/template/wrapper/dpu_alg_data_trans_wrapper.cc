@@ -146,4 +146,41 @@ HcclResult RecvWrite(const DataInfo& recvInfo)
 #endif
     return HCCL_SUCCESS;
 }
+
+HcclResult SendRecvWriteForNda(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread)
+{
+    const std::vector<DataSlice> srcSlices = sendRecvInfo.sendRecvSlices_.txSlicesList_.srcSlices_;
+    const std::vector<DataSlice> dstSlices = sendRecvInfo.sendRecvSlices_.txSlicesList_.dstSlices_;
+    const ChannelInfo& sendChannel = sendRecvInfo.sendRecvChannels_.txChannel_;
+    const ChannelInfo& recvChannel = sendRecvInfo.sendRecvChannels_.rxChannel_;
+    // 获取执行超时时间
+    u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+    // 向write rank发送tx同步，确保该rank的hcclBuffer可用
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, recvChannel.handle, NOTIFY_IDX_ACK)));
+    CHK_RET(static_cast<HcclResult>(
+        HcommChannelNotifyWaitOnThread(thread, sendChannel.handle, NOTIFY_IDX_ACK, execTimeout)));
+    u32 repeatNum = srcSlices.size();
+    for (int i = 0; i < repeatNum; i++) {
+        // tx同步完成后准备将自己的userIn上的数据写到对方的hcclBuffer上
+        const DataSlice srcSlice = srcSlices[i];
+        const DataSlice dstSlice = dstSlices[i];
+        if (srcSlice.size_ == 0) {
+            HCCL_WARNING("[AlgDataTransWrapper] SendRecvWrite: size is 0.");
+            continue;
+        }
+        void* dst = static_cast<void*>(static_cast<s8*>(dstSlice.addr_) + dstSlice.offset_);
+        void* src = static_cast<void*>(static_cast<s8*>(srcSlice.addr_) + srcSlice.offset_);
+        CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(thread, sendChannel.handle, dst, src, srcSlice.size_)));
+    }
+    // 写完之后做DATA_SIGNAL同步告诉对面写完了
+    CHK_RET(
+        static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, sendChannel.handle, NOTIFY_IDX_DATA_SIGNAL)));
+    CHK_RET(static_cast<HcclResult>(
+        HcommChannelNotifyWaitOnThread(thread, recvChannel.handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
+    // 后同步，对端告诉本端数据接收完成了
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, recvChannel.handle, NOTIFY_IDX_FIN_ACK)));
+    CHK_RET(static_cast<HcclResult>(
+        HcommChannelNotifyWaitOnThread(thread, sendChannel.handle, NOTIFY_IDX_FIN_ACK, execTimeout)));
+    return HCCL_SUCCESS;
+}
 } // namespace ops_hccl

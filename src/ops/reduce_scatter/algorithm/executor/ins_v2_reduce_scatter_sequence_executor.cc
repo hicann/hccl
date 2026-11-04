@@ -11,6 +11,7 @@
 #include "ins_v2_reduce_scatter_sequence_executor.h"
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
+#include "ins_temp_reduce_scatter_mesh_1d_nda.h"
 
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
@@ -135,10 +136,22 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         HCCL_ERROR("algHierarchyInfo size should be %u", SEQUENCE_EXECUTOR_LEVEL_NUM);
         return HCCL_E_INTERNAL;
     }
+
+    std::vector<std::vector<u32>> intraHierarchyInfo;
+    std::vector<std::vector<u32>> interHierarchyInfo;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix
+        && algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo = {algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo = algHierarchyInfo.infos[0];
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    }
+
     std::shared_ptr<InsAlgTemplate0> interTempAlg
-        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, intraHierarchyInfo);
     std::shared_ptr<InsAlgTemplate1> intraTempAlg
-        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[1]);
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, interHierarchyInfo);
 
     AlgResourceRequest resReqInter;
     AlgResourceRequest resReqIntra;
@@ -189,18 +202,20 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
     threads_ = resCtx.threads;
 
-    rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
-    rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
+    if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
+        && resCtx.algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    }
+    rankSizeLevel0_ = intraHierarchyInfo_[0].size();
+    rankSizeLevel1_ = interHierarchyInfo_[0].size();
 
-    rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
+    rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
+    rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
-
-    rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
-    rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
-
-    rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx);
@@ -235,7 +250,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     // 构建框内template
     std::shared_ptr<InsAlgTemplate0> algTemplateInter
-        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, intraHierarchyInfo_);
 
     // 声明框间templateargs，ccl-in写到对端ccl-out，最终规约到outputPtr上
     TemplateDataParams tempAlgParamsIntra;
@@ -249,7 +264,7 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
     // 构建框间template
     std::shared_ptr<InsAlgTemplate1> algTemplateIntra
-        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, interHierarchyInfo_);
 
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;
@@ -372,4 +387,13 @@ REGISTER_ALG_ATTRS(
         return topo->Level1Nhr;
     };);
 
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshMeshNDA, InsV2ReduceScatterSequenceExecutor,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterMesh1DNDA);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterSequenceMeshMeshNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isHostDpuOnly = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 } // namespace ops_hccl

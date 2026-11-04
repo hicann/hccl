@@ -196,6 +196,8 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_sequence_executor_3level_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1d_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1d_nda.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_omnipipe_mesh_1d_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor_aicpu_3level.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_dpu_inter.cc
@@ -203,6 +205,8 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/executor/ins_v2_all_gather_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/executor/ins_v2_all_gather_sequence_executor_3level_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_nhr_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_nhr_nda.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_omnipipe_nhr_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/executor/ins_v2_barrier_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/executor/ins_v2_barrier_sole_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_nhr_dpu.cc
@@ -213,7 +217,9 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_sequence_executor_dpu_3level.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1D_nda_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_gather_nhr_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_gather_nhr_nda_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/template/ins_temp_send_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/template/ins_temp_recv_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template/ins_temp_batch_send_recv_dpu.cc

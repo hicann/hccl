@@ -23,7 +23,9 @@ set(src_list
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_nhr_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_nhr_nda_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1D_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1D_nda_inter.cc
     )
 endif()
 

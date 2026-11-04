@@ -266,6 +266,14 @@ HcclResult FindAnchors(
             ret != HCCL_SUCCESS, HCCL_INFO("[FindAnchors] AnchorHostDpu failed: hcclRet -> %d", ret),
             HcclResult::HCCL_E_NOT_SUPPORT);
     }
+    // NDA 变体算法（最高层 NHR_NDA/MESH_NDA，host 直驱网卡）：L0 不做 mesh 锚点，保留 HOST
+    // 锚点后交给段内压缩，映射到 HOST 锚点以下的最高物理层（server 内最大域）。
+    // 若走 mesh 锚点会被钉到最低 1DMESH（device fullmesh）层，L1 代表组将超出
+    // NDA 同号卡直连范围，导致建链失败。
+    if (engine == OpExecuteConfig::HOSTCPU && NDA_VARIANT_ALGO_TYPES.count(algoTypes[topAlgo]) > 0) {
+        HCCL_INFO("[FindAnchors] NDA variant algo (top level), skip mesh anchor, L0 falls to segment mapping.");
+        return HcclResult::HCCL_SUCCESS;
+    }
     ret = AnchorMeshLevels(physicalLevels, effIdx, algoTypes, topAlgo, topPhysPos, anchors);
     CHK_PRT_RET(
         ret != HCCL_SUCCESS, HCCL_INFO("[FindAnchors] AnchorMeshLevels failed: hcclRet -> %d", ret),

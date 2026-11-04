@@ -17,6 +17,7 @@ using ops_hccl::ut_helper::MakeLevel;
 using ops_hccl::ut_helper::MakeProfile;
 using ops_hccl::ut_helper::MakeTopoInfo;
 using ops_hccl::ut_helper::Range;
+using ops_hccl::ut_helper::RangeFrom;
 
 class TopoMatchTwoLevelTest : public ::testing::Test {
 protected:
@@ -580,4 +581,47 @@ TEST_F(TopoMatchTwoLevelTest, EmptyProtocolsBehavesAsNormal)
     ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
     ASSERT_EQ(info.infos[0][0], Range(8));
     ASSERT_EQ(info.infos[1][0], (std::vector<u32>{3, 11}));
+}
+
+// T29: NDA 变体（top=MESH_NDA）+ hostdpu — L0 跳过 mesh 锚点，段内压缩到 HOST 锚点以下最高层
+// 场景：2 server × 16 NPU；phys0=4卡 fullmesh(1DMESH), phys1=16卡 CLOS, phys2=32卡 HOST
+// 期望 L0→phys1（server 内最大域）: d0=16, d1=2, physIdx=[{1},{2}]，L1 代表组={r, r+16}（同号卡对）
+TEST_F(TopoMatchTwoLevelTest, NdaVariantSkipsMeshAnchor)
+{
+    auto topo = MakeTopoInfo(
+        17, 32,
+        {
+            MakeLevel(RangeFrom(16, 4), PhysicalLevelView::GLOBAL, {4, 4, 4, 4, 4, 4, 4, 4}, true, COMM_TOPO_1DMESH),
+            MakeLevel(RangeFrom(16, 16), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_HOST),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::MESH_NDA}, OpExecuteConfig::HOSTCPU);
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
+    // L0→phys1: d0=16（CLOS 对称 {16,16}）; group0=phys1.localRanks={16..31}
+    ASSERT_EQ(info.infos[0][0], RangeFrom(16, 16));
+    // d1=32/16=2; group1=BuildRepresentativeGroup(16, 2, 17%16=1)={1,17}（同号卡对，NDA 直连）
+    ASSERT_EQ(info.infos[1][0], (std::vector<u32>{1, 17}));
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_1);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
+}
+
+// T30: 非 NDA 变体（top=NHR）+ hostdpu 同拓扑 — mesh 锚点行为不变（L0 仍锚 phys0），守卫不影响存量路径
+TEST_F(TopoMatchTwoLevelTest, NonNdaHostdpuKeepsMeshAnchor)
+{
+    auto topo = MakeTopoInfo(
+        17, 32,
+        {
+            MakeLevel(RangeFrom(16, 4), PhysicalLevelView::GLOBAL, {4, 4, 4, 4, 4, 4, 4, 4}, true, COMM_TOPO_1DMESH),
+            MakeLevel(RangeFrom(16, 16), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS),
+            MakeLevel(Range(32), PhysicalLevelView::GLOBAL, {16, 16}, true, COMM_TOPO_CLOS, ENDPOINT_LOC_TYPE_HOST),
+        });
+    AlgAttrs profile = MakeProfile({AlgoType::MESH, AlgoType::NHR}, OpExecuteConfig::HOSTCPU);
+    AlgHierarchyInfoForAllLevel info;
+    ASSERT_EQ(matcher_.MatchTopo(&topo, info, profile), HcclResult::HCCL_SUCCESS);
+    // algo0(Mesh) 锚 phys0(1DMESH): d0=4, group0={16..19}; d1=8, group1={1,5,9,13,17,21,25,29}
+    ASSERT_EQ(info.infos[0][0], RangeFrom(16, 4));
+    ASSERT_EQ(info.infos[1][0], (std::vector<u32>{1, 5, 9, 13, 17, 21, 25, 29}));
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[0][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_0);
+    ASSERT_EQ(info.physicalIdxForAlgoLevels[1][0], PhysicalLevelIndex::PHYSICAL_LEVEL_IDX_2);
 }

@@ -12,7 +12,9 @@
 #include "executor_common_ops.h"
 #include "ins_temp_reduce_scatter_mesh_1D_intra.h"
 #include "ins_temp_reduce_scatter_mesh_1D_dpu_inter.h"
+#include "ins_temp_reduce_scatter_mesh_1D_nda_inter.h"
 #include "ins_temp_all_gather_nhr_dpu_inter.h"
+#include "ins_temp_all_gather_nhr_nda_inter.h"
 #include "ins_temp_all_gather_mesh_1D_intra.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
@@ -177,46 +179,54 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         HCCL_ERROR("[%s] algHierarchyInfo.infos is invalid (empty or size < 2).", __func__);
         return HCCL_E_PARA;
     }
-    rankSizeLevel0_ = algHierarchyInfo.infos[0].size();
-    rankSizeLevel1_ = algHierarchyInfo.infos[1].size();
+    std::vector<std::vector<u32>> intraHierarchyInfo;
+    std::vector<std::vector<u32>> interHierarchyInfo;
+    if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix
+        && algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo = {algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo = algHierarchyInfo.infos[0];
+        interHierarchyInfo = algHierarchyInfo.infos[1];
+    }
 
-    std::shared_ptr<InsAlgTemplate0> reduceScatterMesh1DTempAlg
-        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo.infos[0]);
-    std::shared_ptr<InsAlgTemplate1> reduceScatterMesh1dDpuTempAlg
-        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo.infos[1]);
-    std::shared_ptr<InsAlgTemplate2> allGatherNhrDPUTempAlg
-        = std::make_shared<InsAlgTemplate2>(param, myRank_, algHierarchyInfo.infos[1]);
-    std::shared_ptr<InsAlgTemplate3> allGatherMesh1DTempAlg
-        = std::make_shared<InsAlgTemplate3>(param, myRank_, algHierarchyInfo.infos[0]);
+    std::shared_ptr<InsAlgTemplate0> reduceScatterIntraTempAlg
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, intraHierarchyInfo);
+    std::shared_ptr<InsAlgTemplate1> reduceScatterInterTempAlg
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, interHierarchyInfo);
+    std::shared_ptr<InsAlgTemplate2> allGatherInterTempAlg
+        = std::make_shared<InsAlgTemplate2>(param, myRank_, interHierarchyInfo);
+    std::shared_ptr<InsAlgTemplate3> allGatherIntraTempAlg
+        = std::make_shared<InsAlgTemplate3>(param, myRank_, intraHierarchyInfo);
 
-    AlgResourceRequest resReqReduceScatterMesh1D;
-    AlgResourceRequest resReqReduceScatterMesh1dDpu;
-    AlgResourceRequest resReqAllGatherNhrDPU;
-    AlgResourceRequest resReqAllGatherMesh1D;
-    CHK_RET(reduceScatterMesh1DTempAlg->CalcRes(comm, param, topoInfo, resReqReduceScatterMesh1D));
-    CHK_RET(reduceScatterMesh1dDpuTempAlg->CalcRes(comm, param, topoInfo, resReqReduceScatterMesh1dDpu));
-    CHK_RET(allGatherNhrDPUTempAlg->CalcRes(comm, param, topoInfo, resReqAllGatherNhrDPU));
-    CHK_RET(allGatherMesh1DTempAlg->CalcRes(comm, param, topoInfo, resReqAllGatherMesh1D));
+    AlgResourceRequest resReqReduceScatterIntra;
+    AlgResourceRequest resReqReduceScatterInter;
+    AlgResourceRequest resReqAllGatherInter;
+    AlgResourceRequest resReqAllGatherIntra;
+    CHK_RET(reduceScatterIntraTempAlg->CalcRes(comm, param, topoInfo, resReqReduceScatterIntra));
+    CHK_RET(reduceScatterInterTempAlg->CalcRes(comm, param, topoInfo, resReqReduceScatterInter));
+    CHK_RET(allGatherInterTempAlg->CalcRes(comm, param, topoInfo, resReqAllGatherInter));
+    CHK_RET(allGatherIntraTempAlg->CalcRes(comm, param, topoInfo, resReqAllGatherIntra));
 
     // step1、2、3、4为串行，因此slaveThread和对应notify可以复用
     resourceRequest.slaveThreadNum
-        = std::max(resReqReduceScatterMesh1D.slaveThreadNum, resReqReduceScatterMesh1dDpu.slaveThreadNum);
+        = std::max(resReqReduceScatterIntra.slaveThreadNum, resReqReduceScatterInter.slaveThreadNum);
     resourceRequest.notifyNumPerThread.clear();
     resourceRequest.notifyNumPerThread.resize(resourceRequest.slaveThreadNum);
     for (u32 i = 0; i < resourceRequest.slaveThreadNum; ++i) {
-        if (i < resReqReduceScatterMesh1D.notifyNumPerThread.size()) {
+        if (i < resReqReduceScatterIntra.notifyNumPerThread.size()) {
             resourceRequest.notifyNumPerThread[i]
-                = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatterMesh1D.notifyNumPerThread[i]);
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatterIntra.notifyNumPerThread[i]);
         }
-        if (i < resReqReduceScatterMesh1dDpu.notifyNumPerThread.size()) {
+        if (i < resReqReduceScatterInter.notifyNumPerThread.size()) {
             resourceRequest.notifyNumPerThread[i]
-                = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatterMesh1dDpu.notifyNumPerThread[i]);
+                = std::max(resourceRequest.notifyNumPerThread[i], resReqReduceScatterInter.notifyNumPerThread[i]);
         }
     }
     resourceRequest.notifyNumOnMainThread
-        = std::max(resReqReduceScatterMesh1D.notifyNumOnMainThread, resReqReduceScatterMesh1dDpu.notifyNumOnMainThread);
+        = std::max(resReqReduceScatterIntra.notifyNumOnMainThread, resReqReduceScatterInter.notifyNumOnMainThread);
 
-    resourceRequest.channels = {resReqReduceScatterMesh1D.channels[0], resReqReduceScatterMesh1dDpu.channels[0]};
+    resourceRequest.channels = {resReqReduceScatterIntra.channels[0], resReqReduceScatterInter.channels[0]};
     return HCCL_SUCCESS;
 }
 
@@ -232,9 +242,9 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
 
+    dataCount_ = param.DataDes.count;
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
     dataSize_ = dataCount_ * dataTypeSize_;
-    dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
     reduceOp_ = param.reduceType;
     algHierarchyInfo_ = resCtx.algHierarchyInfo;
@@ -245,11 +255,18 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         HCCL_ERROR("[%s] invalid algHierarchyInfo infos.", __func__);
         return HCCL_E_PARA;
     }
-    rankIdxLevel0_ = myRank_ % algHierarchyInfo_.infos[0][0].size();
-    rankIdxLevel1_ = myRank_ / algHierarchyInfo_.infos[0][0].size();
-
-    rankSizeLevel0_ = algHierarchyInfo_.infos[0][0].size();
-    rankSizeLevel1_ = algHierarchyInfo_.infos[1][0].size();
+    if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix
+        && resCtx.algHierarchyInfo.infos[0].size() > 1) {
+        intraHierarchyInfo_ = {resCtx.algHierarchyInfo.infos[0][1]};
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    } else {
+        intraHierarchyInfo_ = resCtx.algHierarchyInfo.infos[0];
+        interHierarchyInfo_ = resCtx.algHierarchyInfo.infos[1];
+    }
+    rankSizeLevel0_ = intraHierarchyInfo_[0].size();
+    rankSizeLevel1_ = interHierarchyInfo_[0].size();
+    rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
+    rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
 
     // 算法展开
@@ -288,7 +305,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     // 构建框内ReduceScatterMesh1D的template
     std::shared_ptr<InsAlgTemplate0> algTemplateStepOne
-        = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
+        = std::make_shared<InsAlgTemplate0>(param, myRank_, intraHierarchyInfo_);
 
     // 声明框间ReduceScatterMesh1dDpu的templateargs
     TemplateDataParams tempAlgParamsStepTwo;
@@ -301,7 +318,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     // 构建框间ReduceScatterMesh1dDpu的template
     std::shared_ptr<InsAlgTemplate1> algTemplateStepTwo
-        = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
+        = std::make_shared<InsAlgTemplate1>(param, myRank_, interHierarchyInfo_);
 
     // 声明框间AllGatherNhr的templateargs，ccl-out搬运到ccl-out
     TemplateDataParams tempAlgParamsStepThree;
@@ -314,7 +331,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     // 构建框间AllGatherNhrDPU的template
     std::shared_ptr<InsAlgTemplate2> algTemplateStepThree
-        = std::make_shared<InsAlgTemplate2>(param, myRank_, algHierarchyInfo_.infos[1]);
+        = std::make_shared<InsAlgTemplate2>(param, myRank_, interHierarchyInfo_);
 
     // 声明框内AllGatherMesh1D的templateargs，ccl-out搬运到user-out
     TemplateDataParams tempAlgParamsStepFour;
@@ -327,7 +344,7 @@ InsV2AllReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     // 构建框内AllGatherMesh1D的template
     std::shared_ptr<InsAlgTemplate3> algTemplateStepFour
-        = std::make_shared<InsAlgTemplate3>(param, myRank_, algHierarchyInfo_.infos[0]);
+        = std::make_shared<InsAlgTemplate3>(param, myRank_, intraHierarchyInfo_);
 
     // 构造框内ReduceScatterMesh1D的template资源
     TemplateResource templateResourceReduceScatterMesh1D;
@@ -577,4 +594,15 @@ REGISTER_ALG_ATTRS(
         // UBX非对称
         return topo->Level1Nhr;
     };);
+
+REGISTER_EXECUTOR_BY_FOUR_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLREDUCE, DpuAllReduceSequenceMeshNHRNDA, InsV2AllReduceSequenceExecutor, TopoMatchTwoLevel,
+    InsTempReduceScatterMesh1DIntra, InsTempReduceScatterMesh1dNdaInter, InsTempAllGatherNhrNdaInter,
+    InsTempAllGatherMesh1dIntra);
+REGISTER_ALG_ATTRS(
+    DpuAllReduceSequenceMeshNHRNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 } // namespace ops_hccl

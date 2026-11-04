@@ -75,6 +75,11 @@ DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheStart, const char* tag, void** ad
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheEnd, const char* tag);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheExecute, const char* tag, void** addrs, uint64_t* sizes, uint64_t count);
 DEFINE_WEAK_FUNC(int32_t, HcommAicpuTsTaskCacheClear, const char* tag);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+DEFINE_WEAK_FUNC(
+    HcommResult, HcommEndpointCheckFeature, HcommEndpointFeatureType featureType, const EndpointDesc* endpointDesc,
+    bool* value);
+#endif
 
 using HcclHcommBatchTransferOnThreadFunc
     = int32_t (*)(ThreadHandle, ChannelHandle, const HcclHcommBatchTransferDesc*, uint32_t);
@@ -134,6 +139,9 @@ void HcommPrimitivesDlInit(void* libHcommHandle)
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheEnd);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheExecute);
     INIT_SUPPORT_FLAG(libHcommHandle, HcommAicpuTsTaskCacheClear);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
+    INIT_SUPPORT_FLAG(libHcommHandle, HcommEndpointCheckFeature);
+#endif
     g_HcommBatchTransferOnThread
         = reinterpret_cast<HcclHcommBatchTransferOnThreadFunc>(HcclDlsym(libHcommHandle, "HcommBatchTransferOnThread"));
     if (g_HcommBatchTransferOnThread == nullptr) {
