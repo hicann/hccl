@@ -867,9 +867,50 @@ HcclResult CalcTopoShape(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
     CHK_RET(CalcHostDPUOnly(comm, topoInfo));
     // 与comm无关, 只查本卡; 恒返回HCCL_SUCCESS, 取不到时停在false
     CHK_RET(CalcDeviceFormFactor(topoInfo));
+    // 与comm无关, 只查本卡; 恒返回HCCL_SUCCESS, 取不到时停在false
+    CHK_RET(CalcIsUBX(topoInfo));
     // 放在最后: 现有字段的提取与派生逻辑完全不受影响, 且可复用已提取的netLayerDetails。
     // BuildPhysicalLevels的网络结构校验错误直接传播; 仅后续视图构建限制可降级为空视图
     CHK_RET(BuildPhysicalLevels(comm, topoInfo));
+    return HCCL_SUCCESS;
+}
+
+/**
+ * 查询本卡是否为UBX机型(350L)并写入topoInfo->isUBX。不依赖HcclComm, 只查本设备。
+ * 恒返回HCCL_SUCCESS: 取不到时停在false, 不影响任何现有字段与执行路径。
+ * Mainboard ID为16bit编码(bit[7:5]整机形态/bit[4:1]细分/bit[0]主从池化), UBX 350L为0x44,
+ * 与hcomm侧拓扑文件选择(atlas_850_3.json)的机型判定同源。
+ */
+HcclResult CalcIsUBX(TopoInfoWithNetLayerDetails* topoInfo)
+{
+    CHK_PTR_NULL(topoInfo);
+    topoInfo->isUBX = false;
+#ifndef AICPU_COMPILE
+    // aclrtGetDeviceInfo的deviceId形参就是userDevId(aclrtGetDevice的返回值), ACL内部自己做user->logic映射。
+    // 这里不能再调aclrtGetLogicDevIdByUserDevId转一道: 配了ASCEND_RT_VISIBLE_DEVICES时会二次映射, 读到另一张卡
+    s32 userDevId = 0;
+    aclError aclRet = aclrtGetDevice(&userDevId);
+    if (aclRet != ACL_SUCCESS) {
+        HCCL_WARNING("[Topo][CalcIsUBX] get current device failed, ret[%d]. isUBX stays false.", aclRet);
+        return HCCL_SUCCESS;
+    }
+
+    s64 val = 0;
+    // quiet: 驱动不支持该attr时会稳定失败, 按ERROR打会在正常环境上持续刷错误日志
+    HcclResult ret = hcalrtGetDeviceInfo(static_cast<u32>(userDevId), ACL_DEV_ATTR_MAINBOARD_ID, val, true);
+    if (ret != HCCL_SUCCESS) {
+        HCCL_WARNING(
+            "[Topo][CalcIsUBX] get mainboard id failed, ret[%d], userDevId[%d]. isUBX stays false.", ret, userDevId);
+        return HCCL_SUCCESS;
+    }
+
+    // 必须是严格相等的正向判断: 未识别的机型取值必须落到false一侧
+    constexpr s64 UBX_350L_MAINBOARD_ID = 0x44;
+    topoInfo->isUBX = (val == UBX_350L_MAINBOARD_ID);
+    HCCL_INFO(
+        "[Topo][CalcIsUBX] userDevId[%d] mainboardId[0x%llx] isUBX[%d]", userDevId,
+        static_cast<unsigned long long>(val), static_cast<s32>(topoInfo->isUBX));
+#endif // AICPU_COMPILE
     return HCCL_SUCCESS;
 }
 

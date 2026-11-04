@@ -313,6 +313,8 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     u32 topoInstDetailsOfLayerSize = 0;
     // 本卡是否为POD机型, 由CalcDeviceFormFactor查ACL_DEV_ATTR_DEVICE_FORM_FACTOR得到, 取不到停在false
     bool isPod = false;
+    // 本卡是否为UBX机型(350L), 由CalcIsUBX查ACL_DEV_ATTR_MAINBOARD_ID(0x44)得到, 取不到停在false
+    bool isUBX = false;
     Level0MeshType level0MeshType;
     NetLayerDetails netLayerDetails;
     std::vector<TopoInstDetails> topoInstDetailsOfLayer;
@@ -330,7 +332,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         ar & isHCCSSWNumEqualToTwiceSIONum & mainThread & notifyNumOnMainThread;
         ar & topoLevelNums & level0Topo & Level0Nhr & Level1Nhr & Level1Hd & is2DieFullMesh;
         ar & level0PcieMix & level0BigClosRange & topLevelUboe & level2UbRtp & hostDpuOnly;
-        ar & level0Symmetric & level1Symmetric & topoInstDetailsOfLayerSize & isPod & level0MeshType;
+        ar & level0Symmetric & level1Symmetric & topoInstDetailsOfLayerSize & isPod & isUBX & level0MeshType;
         ar & netLayerDetails.netLayerNum & netLayerDetails.netLayers & netLayerDetails.netInstNumOfLayer;
         ar & netLayerDetails.instSizeListOfLayer & netLayerDetails.localNetInsSizeOfLayer;
     }

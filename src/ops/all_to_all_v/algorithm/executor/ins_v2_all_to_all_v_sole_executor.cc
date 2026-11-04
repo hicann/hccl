@@ -671,9 +671,12 @@ REGISTER_ALG_ATTRS(
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiLink, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1D2Die);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   topo.maxSupportRankSize = A2A_CCU_MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
-                   op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllSoleMeshMultiLink, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.maxSupportRankSize = A2A_CCU_MAX_RANK_SIZE; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    op.isSupportInplace = false; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        return !t->isUBX;
+    };);
 #endif // !HCCL_CANN_COMPAT_850
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AivAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
@@ -709,9 +712,19 @@ REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMesh2Die, topo.maxTopoLevelNum = 1;
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, CcuSchedAllToAllSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAllToAllMesh1dMultiJetty);
-REGISTER_ALG_ATTRS(CcuSchedAllToAllSoleMeshMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
-                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
-                   op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllSoleMeshMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        if (t->level0Topo == Level0Shape::MESH_1D) {
+            return t->isUBX;
+        } else if (t->topoLevelNums > 1) {
+            return false;
+        } else {
+            return true;
+        }
+    };);
 #endif // !HCCL_CANN_COMPAT_850
 #if !defined(HCCL_CANN_COMPAT_850)
 REGISTER_EXEC_V2(

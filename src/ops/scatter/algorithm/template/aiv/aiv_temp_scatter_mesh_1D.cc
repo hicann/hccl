@@ -48,8 +48,13 @@ std::vector<CostModelParam> AivTempScatterMesh1D::CalcCostCoeff(CalcCostCoeffPar
     } else {
         CostModelManager::Global()->CalcMeshParam(param.dataRatio, param.netType, portNum, param.rankSize, A, false);
     }
-    // 16P 场景(L1 rankSize==2) A 偏低, 乘 2 修正
-    if (isMultiNode && level0RankSize > 0 && param.rankSize == 2 * level0RankSize) {
+    // 16P 场景(L1 rankSize==2) A 偏低, 乘 2 修正。
+    // 修正条件必须限定对称拓扑: level0RankSize(=deviceNumPerModule)是per-rank局部量, 非对称拓扑下
+    // 各rank视角不同, 整数除法rankSize/level0RankSize==2会在1+1+1+2(5/2=2)、1+1+1+3(6/3=2)等
+    // 分组上只对部分rank误命中, AIV cost被放大2倍引发跨rank选型分叉(部分rank选AIV、部分选AICPU,
+    // AIV侧WaitFlag永久等待, 68s VECTOR_CORE_TIMEOUT)。对称拓扑下各rank的level0RankSize一致,
+    // 条件判定恒同步, 16P(8+8)等对称场景行为不变; 判定同时改为精确乘法, 排除商为2但非整除的误命中
+    if (isSymmetric && isMultiNode && level0RankSize > 0 && param.rankSize == 2 * level0RankSize) {
         A *= 2.0f;
     }
     // in-kernel 处理，无独立 local copy 阶段；executor 通过 buffer 组合控制（INPUT→OUTPUT 时按 1 份计）
