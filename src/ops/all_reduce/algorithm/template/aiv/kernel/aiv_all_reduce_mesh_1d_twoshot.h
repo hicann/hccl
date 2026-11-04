@@ -249,19 +249,13 @@ public:
         rankChunkStride = RoundUPAiv(dataCount, rankSize_);
         ipc_reduce_flag_offset = rankSize_;
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
+        // 镜像区/槽区分界。只依赖 len_，各卡一致，对端可直接算出
+        slotBase_ = ((len_ * sizeof(T) + UB_ALIGN_SIZE - 1) / UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
 
-        // scatter（SK空闲核跳过，避免与忙核重复写数据和flag）
+        // step1: 本卡 input -> 本卡镜像区，然后写对端 flag。索引 rank_ 落在 targetRank 卡上，
+        // 对给定 (源rank, 目标片) 只有唯一一个核，握手已精确到片。
+        // SK空闲核跳过，避免与忙核重复写数据和flag。
         if (!IsIdleCore()) {
-            uint32_t preSyncOffset = rankSize_ * 2;
-            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-                targetRank = blockIdx_ + i * numBlocks_;
-                Record(targetRank, preSyncOffset + rank_, curTag_);
-            }
-            pipe_barrier(PIPE_ALL);
-            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-                targetRank = blockIdx_ + i * numBlocks_;
-                WaitFlag(rank_, preSyncOffset + targetRank, curTag_);
-            }
             for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
                 targetRank = blockIdx_ + i * numBlocks_;
                 rankChunkSize
@@ -269,18 +263,41 @@ public:
                           rankChunkStride :
                           (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
 
+                uint64_t chunkOffset = (targetRank * rankChunkStride) * sizeof(T);
                 if (rankChunkSize > 0) {
-                    uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
-                    uint64_t outputOffset
-                        = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rank_ * rankChunkSize) * sizeof(T);
-                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
+                    uint64_t outputOffset = reinterpret_cast<uint64_t>(myGmIn_) + chunkOffset;
+                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)(input_ + chunkOffset), rankChunkSize);
                     pipe_barrier(PIPE_ALL);
                 }
                 // set flag
                 Record(targetRank, rank_, curTag_);
             }
+            pipe_barrier(PIPE_ALL);
         }
-        // reduce
+        // step2: 对端镜像区 -> 本卡槽区。核 c 负责 peer r = c, c+numBlocks_, ...，
+        // 每核 ceil(rankSize_/numBlocks_) 次跨卡读，
+        // 各核写入的槽互不重叠，可完全并行。槽地址与改动前一致，折叠代码原样复用。
+        if (!IsIdleCore()) {
+            uint64_t myChunkSize
+                = ((rank_ + 1) * rankChunkStride <= dataCount) ?
+                      rankChunkStride :
+                      (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
+            uint64_t peerChunkOffset = (rank_ * rankChunkStride) * sizeof(T);
+            for (uint32_t r = blockIdx_; r < rankSize_; r += static_cast<uint32_t>(numBlocks_)) {
+                WaitFlag(rank_, r, curTag_);
+                if (myChunkSize > 0) {
+                    uint64_t srcOffset = reinterpret_cast<uint64_t>(GetGmIn(r)) + peerChunkOffset;
+                    uint64_t dstOffset
+                        = reinterpret_cast<uint64_t>(myGmIn_) + slotBase_ + (r * myChunkSize) * sizeof(T);
+                    CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, myChunkSize);
+                    pipe_barrier(PIPE_ALL);
+                }
+            }
+        }
+        // 卡内栅栏：槽区由多核分头填充，折叠核必须等全部就绪
+        SyncAll<true>();
+        pipe_barrier(PIPE_ALL);
+        // step3: 树形折叠(与 Aicpu 保序 RunLocalReduce 同序)，仅槽基址平移到 slotBase_
         if (blockIdx_ == numBlocks_ - 1) {
             uint64_t myRankChuckSize
                 = ((rank_ + 1) * rankChunkStride <= dataCount) ?
@@ -288,9 +305,9 @@ public:
                       (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
             ;
             if (myRankChuckSize > 0) {
-                // 树形折叠（与 Aicpu 保序 RunLocalReduce 同序）：累加器 = rank0 槽（myGmIn_+0，初值已是
-                // rank0），slot(dst) += slot(src) 零存储 flag 等待：源槽仅当 src >= k 时等待（[1,k)
-                // 已在作为目的槽被折入时等待过）； 目的槽仅首次被折入时等待（新目的槽只出现在第 0/1 轮）
+                // 树形折叠（与 Aicpu 保序 RunLocalReduce 同序）：累加器 = rank0 槽（初值已是 rank0，
+                // 由 step2 跨卡读回填充），slot(dst) += slot(src) 零存储 flag 等待：源槽仅当 src >= k 时
+                // 等待（[1,k) 已在作为目的槽被折入时等待过）； 目的槽仅首次被折入时等待（新目的槽只在第 0/1 轮）
                 uint32_t curBlocks = static_cast<uint32_t>(rankSize_);
                 uint32_t m0 = GetLargestPowerOf2LessThan(curBlocks);
                 uint32_t firstRoundDstNum = curBlocks - m0;
@@ -311,9 +328,9 @@ public:
                         }
                         // reduce
                         uint64_t inputOffset
-                            = reinterpret_cast<uint64_t>(myGmIn_) + (src * myRankChuckSize) * sizeof(T);
+                            = reinterpret_cast<uint64_t>(myGmIn_) + slotBase_ + (src * myRankChuckSize) * sizeof(T);
                         uint64_t outputOffset
-                            = reinterpret_cast<uint64_t>(myGmIn_) + (dst * myRankChuckSize) * sizeof(T);
+                            = reinterpret_cast<uint64_t>(myGmIn_) + slotBase_ + (dst * myRankChuckSize) * sizeof(T);
                         CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, myRankChuckSize, reduceOp_);
                         pipe_barrier(PIPE_ALL);
                     }
@@ -347,7 +364,7 @@ public:
             WaitFlag(targetRank, ipc_reduce_flag_offset + 1, curTag_);
 
             // gather
-            uint64_t inputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank));
+            uint64_t inputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + slotBase_;
             uint64_t outputOffset = output_ + (targetRank * rankChunkStride) * sizeof(T);
             CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
             pipe_barrier(PIPE_ALL);
@@ -384,6 +401,7 @@ public:
     uint64_t rankChunkSize;
     uint64_t rankChunkStride;
     uint64_t ipc_reduce_flag_offset{1024};
+    uint64_t slotBase_{0}; // 镜像区/槽区分界(= align32(len_*sizeof(T)))，各卡一致
 };
 
 template <typename T>
@@ -417,7 +435,12 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotSuperKernel(SUPERKERNEL_ARGS_D
         uint64_t baseCount = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / 2 / sizeof(T);
         maxCountPerLoop = (baseCount > consumerNum) ? (baseCount - consumerNum) : 0;
     } else {
-        maxCountPerLoop = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE / op.rankSize_ / sizeof(T);
+        // 少核路径 scratch = 镜像区 + 槽区，两段各约 curCount*sizeof(T)，需 curCount <= base/2/sizeof(T)。
+        // 原式在 rankSize_>=2 时更紧(已覆盖)，取 min 后对 rankSize_>=2 行为不变，只堵住 rankSize_==1。
+        uint64_t base = op.cclBufferSize_ / UB_ALIGN_SIZE * UB_ALIGN_SIZE;
+        uint64_t bySlotLayout = base / op.rankSize_ / sizeof(T);
+        uint64_t byPullRegions = base / DOUBLE / sizeof(T);
+        maxCountPerLoop = (bySlotLayout < byPullRegions) ? bySlotLayout : byPullRegions;
     }
     uint64_t countLeft = op.len_;
 

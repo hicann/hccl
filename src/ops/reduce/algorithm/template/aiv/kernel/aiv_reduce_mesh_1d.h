@@ -24,8 +24,9 @@ public:
         if (len_ < maxCoreNum_ && rankSize_ < maxCoreNum_) {
             maxCoreNum_ = rankSize_;
         }
-        // 多余核退出
+        // 多余核退出。缩核场景下这些核不搬运，但要与内部那次 SyncAll 配对
         if (blockIdx_ >= maxCoreNum_) {
+            SyncAll<true>();
             return;
         }
 
@@ -55,6 +56,27 @@ private:
         return dividend / divisor + ((dividend % divisor != 0) ? 1 : 0);
     }
 
+    __aicore__ inline uint64_t AlignUp(uint64_t bytes)
+    {
+        return ((bytes + UB_ALIGN_SIZE - 1) / UB_ALIGN_SIZE) * UB_ALIGN_SIZE;
+    }
+
+    // 第 chunkIdx 片的实际元素数(按 dataCount 收敛)
+    __aicore__ inline uint64_t ChunkSizeOf(uint32_t chunkIdx)
+    {
+        uint64_t dataCount = len_;
+        return ((chunkIdx + 1) * rankChunkStride <= dataCount) ?
+                   rankChunkStride :
+                   (dataCount <= chunkIdx * rankChunkStride ? 0 : (dataCount - chunkIdx * rankChunkStride));
+    }
+
+    __aicore__ inline uint64_t InnerSizeOf(uint64_t chunkSize, uint32_t innerIdx)
+    {
+        return ((innerIdx + 1) * innerChunkStride <= chunkSize) ?
+                   innerChunkStride :
+                   (chunkSize <= innerIdx * innerChunkStride ? 0 : (chunkSize - innerIdx * innerChunkStride));
+    }
+
     __aicore__ inline void InitCoreInfo(int32_t sliceId)
     {
         curTag = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
@@ -67,58 +89,68 @@ private:
         rankChunkStride = innerChunkStride * coreNumPerRank;
         if (blockIdx_ < coreNumFirstStage) {
             targetRank = blockIdx_ / coreNumPerRank;
-            rankChunkSize
-                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
-                      rankChunkStride :
-                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
+            rankChunkSize = ChunkSizeOf(targetRank);
         } else if (blockIdx_ < coreNumTotal) {
             targetRank = rank_;
-            rankChunkSize = ((rank_ + 1) * rankChunkStride <= dataCount) ?
-                                rankChunkStride :
-                                (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
+            rankChunkSize = ChunkSizeOf(rank_);
         }
 
         if (blockIdx_ < coreNumTotal) {
             innerId = blockIdx_ % coreNumPerRank;
-            innerChunkSize
-                = ((innerId + 1) * innerChunkStride <= rankChunkSize) ?
-                      innerChunkStride :
-                      (rankChunkSize <= innerId * innerChunkStride ? 0 : (rankChunkSize - innerId * innerChunkStride));
+            innerChunkSize = InnerSizeOf(rankChunkSize, innerId);
         }
         ipcReduceFlagOffset = coreNumFirstStage;
+        // 镜像区基址用 rankChunkStride 算，各卡一致，对端可直接算出
+        mirrorBase_ = AlignUp(rankSize_ * rankChunkStride * sizeof(T));
+        // 跨卡读的是"本卡那一片(rank_)"，与本核的 targetRank 无关
+        myInnerChunkSize_ = InnerSizeOf(ChunkSizeOf(rank_), blockIdx_ % coreNumPerRank);
     }
 
+    // 本地暂存 -> 握手 -> 跨卡读到本地 -> 卡内栅栏 -> 本地折叠。数据面无跨卡写。
     __aicore__ inline void ReduceScatter()
     {
         if (blockIdx_ < coreNumFirstStage) {
-            Record(targetRank, coreNumTotal + rank_, curTag);
-            WaitFlag(rank_, coreNumTotal + targetRank, curTag);
+            // step1: 本卡 input -> 本卡镜像区，偏移与 input 布局相同
             if (innerChunkSize > 0) {
-                uint64_t inputOffset = input_ + (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
-                uint64_t outputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank))
-                                        + (rank_ * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
-                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize);
+                uint64_t chunkOffset = (targetRank * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
+                uint64_t outputOffset = reinterpret_cast<uint64_t>(myGmIn_) + mirrorBase_ + chunkOffset;
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)(input_ + chunkOffset), innerChunkSize);
                 pipe_barrier(PIPE_ALL);
             }
-            Record(targetRank, rank_ * coreNumPerRank + innerId, curTag);
-        } else if (blockIdx_ < coreNumTotal) {
+
+            // 握手: 写对端 flag / 读本端 flag。索引必须带 innerId 才精确到片——只用 rank_ 的话
+            // 同一 targetRank 的 coreNumPerRank 个核会写同一索引，消费方可能读到未暂存的数据。
+            pipe_barrier(PIPE_ALL);
+            Record(targetRank, coreNumTotal + rank_ * coreNumPerRank + innerId, curTag);
+            WaitFlag(rank_, coreNumTotal + targetRank * coreNumPerRank + innerId, curTag);
+            pipe_barrier(PIPE_ALL);
+
+            // step2: 对端镜像区 -> 本卡槽区。槽地址与改动前一致，故折叠与 GatherToRoot 原样复用。
+            // 每核恰好 1 次跨卡读，coreNumFirstStage 个核覆盖 rankSize*coreNumPerRank 个 (peer,innerId)。
+            if (myInnerChunkSize_ > 0) {
+                uint64_t inputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + mirrorBase_
+                                       + (rank_ * rankChunkStride + innerId * innerChunkStride) * sizeof(T);
+                uint64_t outputOffset = reinterpret_cast<uint64_t>(myGmIn_)
+                                        + (targetRank * ChunkSizeOf(rank_) + innerId * innerChunkStride) * sizeof(T);
+                CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, myInnerChunkSize_);
+                pipe_barrier(PIPE_ALL);
+            }
+        }
+
+        // 卡内栅栏：槽区由搬运核分头填充，折叠核必须等全部就绪
+        SyncAll<true>();
+        pipe_barrier(PIPE_ALL);
+
+        // step3: 本地折叠，全本地访存，栅栏已保证槽区就绪故无需 flag
+        if (blockIdx_ >= coreNumFirstStage && blockIdx_ < coreNumTotal) {
             if (innerChunkSize > 0) {
-                for (uint32_t i = 0; i < rankSize_; i++) {
-                    WaitFlag(rank_, i * coreNumPerRank + innerId, curTag);
-                    if (i == 0) {
-                        continue;
-                    }
+                for (uint32_t i = 1; i < rankSize_; i++) {
                     uint64_t inputOffset = reinterpret_cast<uint64_t>(myGmIn_)
                                            + (i * rankChunkSize + innerId * innerChunkStride) * sizeof(T);
                     uint64_t outputOffset
                         = reinterpret_cast<uint64_t>(myGmIn_) + (innerId * innerChunkStride) * sizeof(T);
                     CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, innerChunkSize, reduceOp_);
                     pipe_barrier(PIPE_ALL);
-                }
-            } else {
-                // 没有数据要处理，也需要接收同步信号保证时序，防止后续Gather数据异常
-                for (uint32_t i = 0; i < rankSize_; i++) {
-                    WaitFlag(rank_, i * coreNumPerRank + innerId, curTag);
                 }
             }
             Record(rank_, ipcReduceFlagOffset + innerId, curTag);
@@ -159,28 +191,20 @@ private:
 
         syncTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         reduceTagOffset_ = rankSize_; // reduce流程的tag起始偏移
+        // 参与跨卡读的核数 = 活核数-1(留最后一个核折叠)；只有 1 个活核时它自己兼做
+        pullCoreNum_ = (useCoreNum_ > 1) ? (useCoreNum_ - 1) : 1;
+        // 镜像区基址用 tailCount_(>= sliceCount_)算，各卡一致
+        mirrorBase_ = AlignUp(rankSize_ * tailCount_ * sizeof(T));
     }
 
+    // 同 ProcessMultiCore：本地暂存 -> 握手 -> 跨卡读到本地 -> 卡内栅栏 -> 本地折叠
     __aicore__ inline void ReduceScatterMultiRank()
     {
         uint32_t preSyncOffset = rankSize_ * 2;
-        for (uint32_t i = 0; i < maxRankPerCore_; ++i) {
-            uint32_t targetRank = i * useCoreNum_ + coreIdx_;
-            if (targetRank >= rankSize_) {
-                break;
-            }
-            Record(targetRank, preSyncOffset + rank_, syncTag_);
-        }
-        pipe_barrier(PIPE_ALL);
-        for (uint32_t i = 0; i < maxRankPerCore_; ++i) {
-            uint32_t targetRank = i * useCoreNum_ + coreIdx_;
-            if (targetRank >= rankSize_) {
-                break;
-            }
-            WaitFlag(rank_, preSyncOffset + targetRank, syncTag_);
-        }
 
-        // 向远端写数据
+        // step1: 本卡 input -> 本卡镜像区，然后写对端 flag。
+        // 索引 preSyncOffset+rank_ 落在 targetRank 卡上，对给定 (源rank, 目标片) 只有唯一一个核，
+        // 故握手已精确到片。
         for (uint32_t i = 0; i < maxRankPerCore_; ++i) {
             // 每个core负责的rank间隔为useCoreNum_
             uint32_t targetRank = i * useCoreNum_ + coreIdx_;
@@ -189,27 +213,44 @@ private:
             }
 
             uint64_t processCount = (targetRank == rankSize_ - 1) ? tailCount_ : sliceCount_;
+            uint64_t chunkOffset = targetRank * sliceCount_ * sizeof(T);
             if (processCount > 0) {
-                uint64_t srcOffset = input_ + targetRank * sliceCount_ * sizeof(T);
-                uint64_t dstOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + rank_ * processCount * sizeof(T);
-                CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, processCount);
+                uint64_t dstOffset = reinterpret_cast<uint64_t>(myGmIn_) + mirrorBase_ + chunkOffset;
+                CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)(input_ + chunkOffset), processCount);
                 pipe_barrier(PIPE_ALL);
             }
-            Record(targetRank, rank_, syncTag_);
+            Record(targetRank, preSyncOffset + rank_, syncTag_);
+        }
+        pipe_barrier(PIPE_ALL);
+
+        // step2: 前 pullCoreNum_ 个核分摊 rankSize_ 个 peer，把"本卡那一片"跨卡读回本卡槽区。
+        // 等待方是"自己要读的 source"而非"自己要写的 target"。
+        // 槽地址 r*reduceCount 与改动前一致，故折叠与 GatherMultiRank 原样复用。
+        if (coreIdx_ < pullCoreNum_) {
+            uint64_t reduceCount = (rank_ == rankSize_ - 1) ? tailCount_ : sliceCount_;
+            uint64_t peerChunkOffset = rank_ * sliceCount_ * sizeof(T);
+            for (uint32_t r = coreIdx_; r < rankSize_; r += pullCoreNum_) {
+                WaitFlag(rank_, preSyncOffset + r, syncTag_);
+                if (reduceCount > 0) {
+                    uint64_t srcOffset = reinterpret_cast<uint64_t>(GetGmIn(r)) + mirrorBase_ + peerChunkOffset;
+                    uint64_t dstOffset = reinterpret_cast<uint64_t>(myGmIn_) + r * reduceCount * sizeof(T);
+                    CpGM2GM((__gm__ T*)dstOffset, (__gm__ T*)srcOffset, reduceCount);
+                    pipe_barrier(PIPE_ALL);
+                }
+            }
         }
 
-        // 本地reduce
+        // 卡内栅栏：槽区由多核分头填充，折叠核必须等全部就绪
+        SyncAll<true>();
+        pipe_barrier(PIPE_ALL);
+
+        // step3: 本地折叠，栅栏已保证槽区就绪故无需 flag
         if (coreIdx_ != useCoreNum_ - 1) {
             return;
         }
         // 用最后一个core做reduce，reduce至首片数据位置
-        uint64_t reduceCount = sliceCount_;
-        if (rank_ == rankSize_ - 1) {
-            reduceCount = tailCount_;
-        }
-        WaitFlag(rank_, 0, syncTag_);
+        uint64_t reduceCount = (rank_ == rankSize_ - 1) ? tailCount_ : sliceCount_;
         for (uint32_t sliceIdx = 1; sliceIdx < rankSize_; ++sliceIdx) {
-            WaitFlag(rank_, sliceIdx, syncTag_);
             if (reduceCount > 0) {
                 uint64_t srcOffset = reinterpret_cast<uint64_t>(myGmIn_) + sliceIdx * reduceCount * sizeof(T);
                 uint64_t dstOffset = reinterpret_cast<uint64_t>(myGmIn_);
@@ -255,6 +296,8 @@ private:
     uint64_t innerChunkStride;
     int32_t curTag;
     uint64_t ipcReduceFlagOffset{1024};
+    uint64_t mirrorBase_{0};       // 本卡 input 镜像区基址(各卡一致)
+    uint64_t myInnerChunkSize_{0}; // 本卡那一片中本核 innerId 对应的小块长度
 
     uint32_t syncTag_{0};
     uint32_t maxCoreNum_{0};
@@ -264,6 +307,7 @@ private:
     uint64_t sliceCount_{0};
     uint64_t tailCount_{0};
     uint64_t reduceTagOffset_{0};
+    uint32_t pullCoreNum_{0}; // 参与跨卡读的核数(mirrorBase_ 与 MultiCore 分支共用)
 };
 
 template <typename T>

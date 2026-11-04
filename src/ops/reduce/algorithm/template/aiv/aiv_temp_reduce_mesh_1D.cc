@@ -78,7 +78,12 @@ u64 AivTempReduceMesh1D::CalcScratchMultiple(BufferType inBuffType, BufferType o
     (void)inBuffType;
     (void)outBuffType;
     // TwoShot场景部分数据量切分会有尾快，且需要确定性计算，需要2倍scratch才能保证数据不溢出
-    u64 multiple = 2;
+    // scratch = 槽区(<= dataSize) + input 镜像区(dataSize)，镜像区基址还要对齐：
+    // 大数据量下合计约 2 倍，小数据量下对齐补齐占比放大(16p/256B 实测 640B = 2.5 倍)，故取 3 倍。
+    // 对 loop 切分的影响：host 侧 UB_MAX_DATA_SIZE = 256MB，默认 HCCL_BUFFSIZE = 200MB 时
+    // hcclBuff/3 ≈ 66.7MB < 256MB，即该倍数就是 maxDataSizePerLoop 的约束项(2 倍时为 100MB)，
+    // 因此 dataSize 落在 (66.7MB, 100MB] 时 loop 数会由 1 变 2。
+    u64 multiple = 3;
     HCCL_INFO("[AivTempReduceMesh1D] scratch multiple is [%llu]", multiple);
     return multiple;
 }

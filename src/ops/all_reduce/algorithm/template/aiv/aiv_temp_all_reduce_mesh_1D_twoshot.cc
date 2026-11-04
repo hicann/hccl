@@ -79,7 +79,12 @@ u64 AivTempAllReduceMesh1DTwoShot::CalcScratchMultiple(BufferType inBuffType, Bu
 {
     (void)inBuffType;
     (void)outBuffType;
-    u32 multiplier = 4;
+    // 少核路径 scratch = 镜像区 + 槽区，两段各约 dataSize。极小数据量+大通信规模(如 32B/32p)下
+    // rankChunkStride 向上取整到 1 个元素，槽区可达 dataSize 数倍，4 倍贴边、加镜像区会溢出，故取 5 倍。
+    // 对 loop 切分的影响：默认 HCCL_BUFFSIZE = 200MB 时 hcclBuff/5 = 40MB(4 倍时为 50MB)
+    // 即为 maxDataSizePerLoop 的约束项(< host 侧 UB_MAX_DATA_SIZE 256MB)，
+    // 因此 dataSize 落在 (40MB, 50MB] 时 loop 数会由 1 变 2。
+    u32 multiplier = 5;
     return multiplier;
 }
 

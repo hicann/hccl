@@ -29,6 +29,11 @@ add_subdirectory(reduce_scatter_seq64)
 add_subdirectory(alltoall_aiv)
 # reduce_scatter_aiv: RS 写语义 kernel（LocalTree / BigData）的 CPU 桩级覆盖，含 flag 依赖与输出平铺校验。
 add_subdirectory(reduce_scatter_aiv)
+# reduce_aiv: Reduce pull 语义 kernel（MultiCore / MultiRank）的 CPU 桩级覆盖，
+# 含 flag 依赖与死锁、发布区不被归约写覆盖、跨卡读源已发布、root 输出平铺、SyncAll 配平校验。
+add_subdirectory(reduce_aiv)
+# all_reduce_aiv: AllReduce TwoShot(多核路径/少核路径) 的 CPU 桩级覆盖，校验项同 reduce_aiv。
+add_subdirectory(all_reduce_aiv)
 # recursive_executor 测试仅在 --experimental 构建（ENABLE_EXPERIMENTAL=ON）时编译
 if(ENABLE_EXPERIMENTAL)
     add_subdirectory(reduce_scatter_birs)
