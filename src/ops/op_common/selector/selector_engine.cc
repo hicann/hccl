@@ -325,19 +325,18 @@ void SelectorEngine::LogSelectedAlgo(
     HCCL_CONFIG_INFO(
         HCCL_ALG,
         "op[%s] algName[%s] engine[%s] executor[%s] templates[%s] "
-        "opMode[%d] deterministic[%u] isCapture[%d] "
+        "opMode[%d] deterministic[%u] "
         "dataSize[%llu] dataType[%s] reduceType[%s] root[%u] "
         "userRank[%u] rankSize[%u] serverNum[%u] superPodNum[%u] "
         "topoLevelNums[%u] level0Topo[%d] level0MeshType[%d] level0PcieMix[%d] "
-        "deviceType[%d] commName[%s] enableDetour[%d] symMem[%d]",
+        "deviceType[%d] commName[%s]",
         HcclCMDTypeToString(param.opType).c_str(), algName.c_str(), ENGINE_STR_MAP.at(param.opExecuteConfig),
         QueryExecutorName(algName).c_str(), QueryTemplateInfo(algName).c_str(), static_cast<int>(param.opMode),
-        GetExternalInputHcclDeterministic(), static_cast<int>(param.isCapture), param.inputSize,
-        GetDataTypeEnumStr(param.DataDes.dataType).c_str(), GetReduceOpEnumStr(param.reduceType).c_str(), param.root,
-        topoInfo->userRank, topoInfo->userRankSize, topoInfo->serverNum, topoInfo->superPodNum, topoInfo->topoLevelNums,
-        static_cast<int>(topoInfo->level0Topo), static_cast<int>(topoInfo->level0MeshType),
-        static_cast<int>(topoInfo->level0PcieMix), static_cast<int>(param.deviceType), param.commName,
-        static_cast<int>(param.enableDetour), static_cast<int>(param.supportSymmetricMemory));
+        GetExternalInputHcclDeterministic(), param.inputSize, GetDataTypeEnumStr(GetOpDataType(param)).c_str(),
+        GetReduceOpEnumStr(param.reduceType).c_str(), param.root, topoInfo->userRank, topoInfo->userRankSize,
+        topoInfo->serverNum, topoInfo->superPodNum, topoInfo->topoLevelNums, static_cast<int>(topoInfo->level0Topo),
+        static_cast<int>(topoInfo->level0MeshType), static_cast<int>(topoInfo->level0PcieMix),
+        static_cast<int>(param.deviceType), param.commName);
 }
 
 std::string SelectorEngine::QueryTemplateInfo(const std::string& algName)

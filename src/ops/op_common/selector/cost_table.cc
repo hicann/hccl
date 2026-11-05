@@ -83,25 +83,6 @@ static inline u64 CalcCostTableDataSize(const OpParam& opParam, u32 userRankSize
     }
 }
 
-static inline HcclDataType GetOpDataType(const OpParam& opParam)
-{
-    switch (opParam.opType) {
-        case HcclCMDType::HCCL_CMD_ALLGATHER_V:
-        case HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V:
-            return opParam.vDataDes.dataType;
-        case HcclCMDType::HCCL_CMD_ALLTOALL:
-        case HcclCMDType::HCCL_CMD_ALLTOALLV:
-        case HcclCMDType::HCCL_CMD_ALLTOALLVC:
-            return opParam.all2AllVDataDes.sendType;
-        case HcclCMDType::HCCL_CMD_BATCH_SEND_RECV:
-            if (opParam.batchSendRecvDataDes.itemNum == 0 || opParam.batchSendRecvDataDes.sendRecvItemsPtr == nullptr) {
-                return HCCL_DATA_TYPE_RESERVED;
-            }
-            return opParam.batchSendRecvDataDes.sendRecvItemsPtr[0].dataType;
-        default:
-            return opParam.DataDes.dataType;
-    }
-}
 bool IsHostNicToDeviceNicLink(const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo)
 {
     const std::vector<u32>& netLayers = topoInfo->netLayerDetails.netLayers;

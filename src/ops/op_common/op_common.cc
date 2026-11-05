@@ -430,9 +430,11 @@ bool IsNegotiationCommName(const char* commName)
 }
 
 HcclResult ConstructHcclDfxOpInfo(
-    const OpParam& param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo, ThreadHandle cpuTsThread)
+    const OpParam& param, const char* tag, u32 tagSize, HcclDfxOpInfoCompat& hcclDfxOpInfo, ThreadHandle cpuTsThread,
+    bool& isAclGraph)
 {
-    bool isAclGraph = IsStreamInCaptureMode(param.stream);
+    // 流捕获探测结果经出参带出; opMode存在协商域覆写逻辑, 调用方不可从其反推捕获态
+    isAclGraph = IsStreamInCaptureMode(param.stream);
     hcclDfxOpInfo.opMode = isAclGraph ? static_cast<u32>(ops_hccl::OpMode::ACLGRAPH) : static_cast<u32>(param.opMode);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
     // 协商子通信域(名称后缀_negotiation)上的算子标记为NEGOTIATIONOP，profiling按非GE的opbase方式上报
@@ -560,8 +562,9 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
 
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
 
+    bool isAclGraph = false; // 本路径不消费捕获态，仅接出参
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
-    CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0));
+    CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0, isAclGraph));
     param.dataCount = hcclDfxOpInfo.dataCount;
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
 
@@ -603,11 +606,12 @@ HcclResult HcclExecOpCcuFastLaunch(HcclComm comm, OpParam& param, const CcuFastL
     threadTemps.assign(threads, threads + ccuFastLaunchCtx->threadNum);
     uint64_t beginTime = HcommGetProfilingSysCycleTime();
     // Op注册
+    bool isAclGraph = false;
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
-    CHK_RET(ConstructHcclDfxOpInfo(param, param.fastLaunchTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0));
+    CHK_RET(ConstructHcclDfxOpInfo(param, param.fastLaunchTag, ALG_TAG_LENGTH, hcclDfxOpInfo, 0, isAclGraph));
     param.dataCount = hcclDfxOpInfo.dataCount;
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
-    if (IsStreamInCaptureMode(param.stream) && threadTemps.size() > 1) {
+    if (isAclGraph && threadTemps.size() > 1) {
         HCCL_INFO("HcclExecOpCcuFastLaunch streamnum %zu add slavestream", threadTemps.size());
         CHK_RET(CaptureSlaveStreams(comm, param.stream, threadTemps, param.isCapture));
     }
@@ -900,15 +904,18 @@ HcclResult HcclExecOp(
 
     param.cacheValid = isResourceReused;
 
-    HCCL_CONFIG_INFO(
-        HCCL_ALG, "resourceReuse[%d] algName[%s] engine[%s] algTag[%s]", static_cast<int>(param.cacheValid),
-        param.algName, ENGINE_STR_MAP.at(param.opExecuteConfig), param.algTag);
-
     // Op注册
+    bool isAclGraph = false;
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
-    CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, cpuTsThread));
+    CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, cpuTsThread, isAclGraph));
     param.dataCount = hcclDfxOpInfo.dataCount;
+    // 字段至此均已定稿: isCapture为DFX构造时的流捕获探测值; 在DFX注册前打, 保留注册失败路径的现场
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "resourceReuse[%d] algName[%s] engine[%s] algTag[%s] isCapture[%d]",
+        static_cast<int>(param.cacheValid), param.algName, ENGINE_STR_MAP.at(param.opExecuteConfig), param.algTag,
+        static_cast<int>(isAclGraph));
     CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
+
     ThreadHandle exportedCpuTsThread;
     ThreadHandle mainThread;
     u32 notifyNumOnMainThread;
