@@ -77,7 +77,9 @@ InsTempScatterNHR::~InsTempScatterNHR() {}
 
 u64 InsTempScatterNHR::GetThreadNum() const
 {
-    u64 threadNum = channelsPerRank_;
+    // 线程按通道数最多的远端 rank 申请，数据切分按通道数最少的 rank 切(见 SetchannelsPerRank)，
+    // 避免通道数不等时 channelIdx 越过某远端 rank 的实际 channel 数
+    u64 threadNum = maxChannelsPerRank_;
     return threadNum;
 }
 
@@ -101,12 +103,14 @@ HcclResult InsTempScatterNHR::CalcRes(
         CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
-    channelsPerRank_ = CalcChannelsPerRank(level0Channels);
+    channelsPerRank_ = CalcChannelsPerRankMin(level0Channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(level0Channels);
     if (isUBX && channelsPerRank_ > MAX_JETTY_NUM) {
         HCCL_ERROR(
             " %s channelsPerRank_ %u is greater than MAX_JETTY_NUM %u", __func__, channelsPerRank_, MAX_JETTY_NUM);
     } else {
-        HCCL_DEBUG(" %s channelsPerRank_ is %u ", __func__, channelsPerRank_);
+        HCCL_DEBUG(
+            " %s channelsPerRank_ is %u, maxChannelsPerRank_ is %u ", __func__, channelsPerRank_, maxChannelsPerRank_);
     }
     CHK_RET(GetRes(resourceRequest));
     return HCCL_SUCCESS;
@@ -114,10 +118,21 @@ HcclResult InsTempScatterNHR::CalcRes(
 
 HcclResult InsTempScatterNHR::GetRes(AlgResourceRequest& resourceRequest) const
 {
-    u32 threadNum = channelsPerRank_;
+    u32 threadNum = GetThreadNum();
     resourceRequest.slaveThreadNum = threadNum - 1;
     resourceRequest.notifyNumPerThread.assign(resourceRequest.slaveThreadNum, 1);
     resourceRequest.notifyNumOnMainThread = threadNum - 1;
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempScatterNHR::SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels)
+{
+    CHK_PRT_RET(channels.empty(), HCCL_ERROR("[SetchannelsPerRank] channels is empty."), HCCL_E_INTERNAL);
+    channelsPerRank_ = CalcChannelsPerRankMin(channels);
+    maxChannelsPerRank_ = CalcChannelsPerRank(channels);
+    HCCL_INFO(
+        "[InsTempScatterNHR][SetchannelsPerRank] channelsPerRank_[%u], maxChannelsPerRank_[%u]", channelsPerRank_,
+        maxChannelsPerRank_);
     return HCCL_SUCCESS;
 }
 
