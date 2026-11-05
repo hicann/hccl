@@ -49,9 +49,12 @@ u32 GetRhdStepNum(u32 rankSize)
     return nSteps;
 }
 
-// r = p − 2^⌊log₂p⌋：part1 配对数（2^N 时为 0）
+// r = p − 2^⌊log₂p⌋：part1 配对数
 static u32 CalcRhdPairNum(u32 rankSize)
 {
+    if (rankSize == 0) {
+        return 0;
+    }
     u32 highPow = 1;
     while (highPow <= rankSize / 2) {
         highPow *= 2;
@@ -59,38 +62,56 @@ static u32 CalcRhdPairNum(u32 rankSize)
     return rankSize - highPow;
 }
 
-// σ：algRank → unit 起点（r 为 part1 配对数）
+static inline bool RhdRepIsLow(u32 r, u32 root)
+{
+    return (root == INVALID_VALUE_RANKID || root >= 2 * r) ? true : (root < r);
+}
+
+static HcclResult CheckRhdInfoInvariant(const RhdPart1Info& info, const char* tag)
+{
+    if ((info.effectiveRankSize & (info.effectiveRankSize - 1)) != 0 || info.r >= info.effectiveRankSize) {
+        HCCL_ERROR(
+            "[RHD][%s] invalid info: r[%u] effectiveRankSize[%u] (P must be power of 2 and r < P).", tag, info.r,
+            info.effectiveRankSize);
+        return HcclResult::HCCL_E_PARA;
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+// σ：algRank → unit 起点
 static inline u32 RhdUnitStartOfRankImpl(u32 r, u32 algRank)
 {
     if (algRank < r) {
-        return 2 * algRank; // 代表侧（默认低位 t）：配对整块起点 2t
+        return 2 * algRank;
     }
     if (algRank < 2 * r) {
-        return 2 * (algRank - r) + 1; // 被合并侧（t+r）：自身份额槽位 2t+1
+        return 2 * (algRank - r) + 1;
     }
-    return algRank; // block 成员：恒等布局
+    return algRank;
 }
 
-u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank) { return RhdUnitStartOfRankImpl(CalcRhdPairNum(rankSize), algRank); }
-
-u32 RhdUnitCountOfRank(u32 rankSize, u32 algRank) { return (algRank < CalcRhdPairNum(rankSize)) ? 2 : 1; }
-
-u32 RhdAlgRankOfVirtual(u32 rankSize, u32 root, u32 virtualRank)
+u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank)
 {
-    if (rankSize == 0) {
+    if (rankSize == 0 || algRank >= rankSize) {
         return INVALID_VALUE_RANKID;
     }
-    const u32 r = CalcRhdPairNum(rankSize);
-    const u32 P = rankSize - r;
+    return RhdUnitStartOfRankImpl(CalcRhdPairNum(rankSize), algRank);
+}
+
+u32 RhdAlgRankOfVirtual(u32 physRankSize, u32 root, u32 virtualRank)
+{
+    if (physRankSize == 0) {
+        return INVALID_VALUE_RANKID;
+    }
+    const u32 r = CalcRhdPairNum(physRankSize);
+    const u32 P = physRankSize - r;
     if (virtualRank >= P) {
         return INVALID_VALUE_RANKID;
     }
     if (virtualRank >= r) {
         return virtualRank + r; // block：恒为 v + r（2^N 时 r=0，即恒等）
     }
-    // 配对：取代表侧（root 落 part1 时跟随 root 所在侧，否则低位）
-    const bool repIsLow = (root == INVALID_VALUE_RANKID || root >= 2 * r) ? true : (root < r);
-    return repIsLow ? virtualRank : virtualRank + r;
+    return RhdRepIsLow(r, root) ? virtualRank : virtualRank + r; // 配对：取代表侧
 }
 
 HcclResult CalcRhdPart1Info(u32 rankSize, u32 myAlgRank, u32 root, RhdPart1Info& info)
@@ -113,22 +134,20 @@ HcclResult CalcRhdPart1Info(u32 rankSize, u32 myAlgRank, u32 root, RhdPart1Info&
     info.inPart1 = (myAlgRank < 2 * r);
 
     if (info.inPart1) {
-        // part1 成员：配对 (t ↔ t+r)，t = myAlgRank mod r
+        // 配对 (t ↔ t+r)，t = myAlgRank mod r
         u32 pairIdx = myAlgRank % r;
         bool lowSide = myAlgRank < r;
         info.pairedAlgRank = lowSide ? (pairIdx + r) : pairIdx;
-        // 代表选取：root 落 part1 时跟随 root 所在侧，否则低位
-        bool repIsLow = (root == INVALID_VALUE_RANKID || root >= 2 * r) ? true : (root < r);
+        bool repIsLow = RhdRepIsLow(r, root);
         info.isRepresentative = repIsLow ? lowSide : !lowSide;
         if (info.isRepresentative) {
             info.unitStart = 2 * pairIdx; // 代表持有配对整块 [2t, 2t+2)
             info.unitCount = 2;
         } else {
-            info.unitStart = RhdUnitStartOfRank(rankSize, myAlgRank); // 自身份额槽位（t→2t，t+r→2t+1）
+            info.unitStart = RhdUnitStartOfRank(rankSize, myAlgRank);
             info.unitCount = 1;
         }
     } else {
-        // 2^N 或 block 成员：无配对，恒等布局
         info.pairedAlgRank = INVALID_VALUE_RANKID;
         info.isRepresentative = false;
         info.unitStart = myAlgRank;
@@ -157,6 +176,7 @@ HcclResult GenRhdReduceScatterSteps(const RhdPart1Info& info, std::vector<RhdSte
             info.effectiveRankSize);
         return HcclResult::HCCL_E_PARA;
     }
+    CHK_RET(CheckRhdInfoInvariant(info, "GenRhdReduceScatterSteps"));
 
     const u32 myVirtualRank = info.virtualRank; // 单一事实来源：主体有效序取自 info
     const u32 P = info.effectiveRankSize;
@@ -197,6 +217,7 @@ HcclResult GenRhdAllGatherSteps(const RhdPart1Info& info, std::vector<RhdStepInf
             info.effectiveRankSize);
         return HcclResult::HCCL_E_PARA;
     }
+    CHK_RET(CheckRhdInfoInvariant(info, "GenRhdAllGatherSteps"));
 
     const u32 myVirtualRank = info.virtualRank; // 单一事实来源：主体有效序取自 info
     const u32 P = info.effectiveRankSize;
@@ -232,18 +253,23 @@ HcclResult GenRhdPrePostSteps(
 {
     pre = RhdStepInfo{};
     post = RhdStepInfo{};
+    CHK_RET(CheckRhdInfoInvariant(info, "GenRhdPrePostSteps"));
     pre.phase = RhdPhase::PRE;
     post.phase = RhdPhase::POST;
 
     if (!info.inPart1) {
-        // 2^N 或 block 成员：无前后处理，空步骤（无对端）
         pre.peer = INVALID_VALUE_RANKID;
         post.peer = INVALID_VALUE_RANKID;
         return HcclResult::HCCL_SUCCESS;
     }
 
-    const u32 p = info.effectiveRankSize + info.r; // 物理规模
-    // 被合并方自身份额槽位（恒 1 unit）：代表经配对反查，被合并方取自身持有
+    const u32 p = info.effectiveRankSize + info.r;
+    if (info.pairedAlgRank >= p || (!info.isRepresentative && info.unitStart >= p)) {
+        HCCL_ERROR(
+            "[RHD][GenRhdPrePostSteps] invalid info: unitStart[%u] pairedAlgRank[%u] p[%u].", info.unitStart,
+            info.pairedAlgRank, p);
+        return HcclResult::HCCL_E_PARA;
+    }
     const u32 segStart = info.isRepresentative ? RhdUnitStartOfRank(p, info.pairedAlgRank) : info.unitStart;
     const u32 segEnd = segStart + 1;
     // 区段：SHARE = 被合并方份额段；FULL = [0, p) 全量段（RS 族 pre 须全量：代表须含被合并方全量贡献）
@@ -285,21 +311,29 @@ RhdSegBytes RhdSegToBytesUniform(u32 unitStart, u32 unitEnd, u64 sliceSize, u64 
 {
     RhdSegBytes bytes;
     if (unitStart >= unitEnd) {
-        return bytes; // {0, 0}
+        return bytes; // 空区段（2^N PRE/POST 步骤为常态），正常返回 {0, 0}
     }
     bytes.offset = static_cast<u64>(unitStart) * sliceSize;
-    // 末 unit（tailUnit，恒为布局最后一个）长 tailSize，其余长 sliceSize
+    // 末 unit（tailUnit，恒为布局最后一个）长 tailSize，其余长 sliceSize；
+    // tailSize == 0 视为无尾块（对齐 TemplateDataParams/HD 模板 tailSize > 0 判尾约定，直传安全）
+    const u64 tailLen = (tailSize == 0) ? sliceSize : tailSize;
     const bool includesTail = unitEnd > tailUnit;
     const u32 normalUnits = unitEnd - unitStart - (includesTail ? 1 : 0);
-    bytes.len = static_cast<u64>(normalUnits) * sliceSize + (includesTail ? tailSize : 0);
+    bytes.len = static_cast<u64>(normalUnits) * sliceSize + (includesTail ? tailLen : 0);
     return bytes;
 }
 
-RhdSegBytes RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u64>& unitSizes)
+HcclResult RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u64>& unitSizes, RhdSegBytes& bytes)
 {
-    RhdSegBytes bytes;
-    if (unitStart >= unitEnd || unitSizes.size() < unitEnd) {
-        return bytes; // {0, 0}，不越界
+    bytes = RhdSegBytes{};
+    if (unitStart >= unitEnd) {
+        return HcclResult::HCCL_SUCCESS; // 空区段（2^N PRE/POST 常态），{0, 0}
+    }
+    if (unitSizes.size() < unitEnd) {
+        HCCL_ERROR(
+            "[RHD][RhdSegToBytesAllRank] invalid params: unitStart[%u] unitEnd[%u] unitSizesNum[%zu].", unitStart,
+            unitEnd, unitSizes.size());
+        return HcclResult::HCCL_E_PARA;
     }
     for (u32 u = 0; u < unitStart; u++) {
         bytes.offset += unitSizes[u];
@@ -307,7 +341,7 @@ RhdSegBytes RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u
     for (u32 u = unitStart; u < unitEnd; u++) {
         bytes.len += unitSizes[u];
     }
-    return bytes;
+    return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult RhdBuildUnitSizes(u32 rankSize, const std::vector<u64>& allRankSliceSize, std::vector<u64>& unitSizes)

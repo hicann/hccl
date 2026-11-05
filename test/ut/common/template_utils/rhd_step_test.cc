@@ -166,7 +166,6 @@ TEST(SigmaMappingTest, UnitStartCountAndContinuity)
         std::vector<u32> starts(p);
         for (u32 j = 0; j < p; j++) {
             starts[j] = RhdUnitStartOfRank(p, j);
-            EXPECT_EQ(RhdUnitCountOfRank(p, j), (j < r) ? 2u : 1u) << "份数 (j<r)?2:1";
         }
         // σ 单射：start 是 [0,p) 的置换
         std::vector<u32> sorted = starts;
@@ -174,11 +173,10 @@ TEST(SigmaMappingTest, UnitStartCountAndContinuity)
         for (u32 u = 0; u < p; u++) {
             EXPECT_EQ(sorted[u], u) << "p=" << p << " unit " << u << " 缺失/重复";
         }
-        // 配对两成员份额相邻：t 在 2t（占 2 unit），t+r 在 2t+1
+        // 配对两成员份额相邻（配对块 [2t, 2t+2)）：t 在 2t，t+r 在 2t+1
         for (u32 t = 0; t < r; t++) {
             EXPECT_EQ(RhdUnitStartOfRank(p, t), 2 * t);
             EXPECT_EQ(RhdUnitStartOfRank(p, t + r), 2 * t + 1);
-            EXPECT_EQ(RhdUnitCountOfRank(p, t), 2u);
         }
         // 虚拟序单调：startV(v) = (v<r)?2v:v+r 严格递增
         u32 prevStart = 0;
@@ -226,6 +224,55 @@ TEST(CalcRhdPart1InfoTest, ParamValidation)
     EXPECT_EQ(info.unitCount, 1u);
 }
 
+// σ 布局与持有语义交叉断言（root 全扫描）：代表持有配对整块 [2t,2t+2)、被合并方持自身份额槽位、
+// block 持有恒等——持有查询的唯一出口是 info.unitStart/unitCount；
+// 默认 root（低位代表）下 σ 槽位视角与持有全等（块宽 (j<r)?2:1 由邻接导出）
+TEST(CalcRhdPart1InfoTest, LayoutHoldingConsistency)
+{
+    for (u32 p : {5u, 7u, 13u}) {
+        const u32 r = p - LargestPow2Le(p);
+        for (u32 root = 0; root < p; root++) {
+            for (u32 j = 0; j < p; j++) {
+                RhdPart1Info info;
+                ASSERT_EQ(CalcRhdPart1Info(p, j, root, info), HcclResult::HCCL_SUCCESS)
+                    << "p=" << p << " root=" << root << " j=" << j;
+                if (j >= 2 * r) { // block：布局恒等 = 持有恒等
+                    EXPECT_EQ(info.unitStart, j);
+                    EXPECT_EQ(info.unitCount, 1u);
+                    continue;
+                }
+                const u32 t = j % r;
+                if (info.isRepresentative) {
+                    EXPECT_EQ(info.unitStart, 2 * t) << "代表持有配对整块 [2t,2t+2)";
+                    EXPECT_EQ(info.unitCount, 2u);
+                } else {
+                    EXPECT_EQ(info.unitStart, RhdUnitStartOfRank(p, j)) << "被合并方持自身份额槽位";
+                    EXPECT_EQ(info.unitCount, 1u);
+                }
+            }
+        }
+        // 默认 root：σ 槽位视角与持有全等
+        for (u32 j = 0; j < p; j++) {
+            RhdPart1Info info;
+            ASSERT_EQ(CalcRhdPart1Info(p, j, INVALID_VALUE_RANKID, info), HcclResult::HCCL_SUCCESS);
+            EXPECT_EQ(info.unitStart, RhdUnitStartOfRank(p, j));
+            EXPECT_EQ(info.unitCount, (j < r) ? 2u : 1u);
+        }
+    }
+}
+
+// RhdUnitStartOfRank 哨兵：rankSize==0 / algRank >= rankSize → INVALID_VALUE_RANKID
+TEST(SigmaMappingTest, StartOfRankSentinel)
+{
+    EXPECT_EQ(RhdUnitStartOfRank(0, 0), INVALID_VALUE_RANKID);
+    EXPECT_EQ(RhdUnitStartOfRank(5, 5), INVALID_VALUE_RANKID);
+    EXPECT_EQ(RhdUnitStartOfRank(5, 9), INVALID_VALUE_RANKID);
+    // 合法入参不受影响
+    EXPECT_EQ(RhdUnitStartOfRank(5, 0), 0u);
+    EXPECT_EQ(RhdUnitStartOfRank(5, 1), 1u);
+    EXPECT_EQ(RhdUnitStartOfRank(5, 4), 4u);
+}
+
 // 虚拟序 → 承载 algRank（MAIN 相位对端的物理解析）：
 // 2^N 恒等；非 2^N 配对取代表侧（跟随 root）、block 恒 v+r；越界入参返回 INVALID_VALUE_RANKID
 TEST(RhdVirtualMappingTest, AlgRankOfVirtual)
@@ -270,60 +317,72 @@ TEST(RhdVirtualMappingTest, AlgRankOfVirtual)
 // pre 用 FULL 段（RS 族：代表须含被合并方全量贡献）把被合并方贡献并入代表后其退出，
 // 主体按步骤表搬运 + SUM，终态每 unit 在 owner 处计数 == p（每份贡献恰好到达一次）。
 // pre 若退化为份额段（SHARE），除被合并方槽位外的 unit 恒缺一份贡献（计数 p−1），缺陷直接暴露。
+// root 参数化（默认/低位侧/首个高半区/末高半区）：承载侧由 RhdAlgRankOfVirtual 解析，
+// 端到端覆盖代表跟随 root 的路径（root 落 [r,2r) 时代表在高侧）。
 TEST(GenRhdReduceScatterStepsTest, RsFinalState)
 {
     for (u32 p : {2u, 3u, 4u, 5u, 6u, 7u, 9u, 17u, 32u}) {
         const u32 r = p - LargestPow2Le(p);
         const u32 P = p - r;
+        // root 全形态：默认、低位侧、首个高半区、末高半区（2^N 仅有默认）
+        const std::vector<u32> roots = (r == 0) ? std::vector<u32>{INVALID_VALUE_RANKID} :
+                                                  std::vector<u32>{INVALID_VALUE_RANKID, 0u, r, 2 * r - 1};
         std::vector<std::vector<RhdStepInfo>> steps(P);
         for (u32 v = 0; v < P; v++) {
             const RhdPart1Info info = MakeInfoForVirtual(p, v);
             ASSERT_EQ(GenRhdReduceScatterSteps(info, steps[v]), HcclResult::HCCL_SUCCESS) << "p=" << p << " v=" << v;
             ASSERT_EQ(steps[v].size(), static_cast<size_t>(GetRhdStepNum(P)));
         }
-        // 全量输入：每物理 rank 持全部 p unit 各 +1
-        std::vector<std::vector<u32>> hold(p, std::vector<u32>(p, 1));
-        // pre(FULL)：被合并方全量并入代表（默认低位代表承载），被合并方退出
-        for (u32 t = 0; t < r; t++) {
-            RhdPart1Info mergedInfo;
-            ASSERT_EQ(CalcRhdPart1Info(p, t + r, INVALID_VALUE_RANKID, mergedInfo), HcclResult::HCCL_SUCCESS);
-            RhdStepInfo pre, post;
-            ASSERT_EQ(
-                GenRhdPrePostSteps(mergedInfo, pre, post, RhdSegMode::FULL, RhdSegMode::SHARE),
-                HcclResult::HCCL_SUCCESS);
-            ASSERT_EQ(pre.txSegStart, 0u) << "FULL 段 = [0, p)";
-            ASSERT_EQ(pre.txSegEnd, p);
-            for (u32 u = pre.txSegStart; u < pre.txSegEnd; u++) {
-                hold[t][u] += hold[t + r][u];
-                hold[t + r][u] = 0;
-            }
-        }
-        // 主体：每步按 tx 段搬出发送（清零），按 rx 段累加对端送入（承载：配对=代表，block=v+r）
-        const u32 nSteps = GetRhdStepNum(P);
-        for (u32 k = 0; k < nSteps; k++) {
-            std::vector<std::vector<u32>> sent(p, std::vector<u32>(p, 0));
-            for (u32 v = 0; v < P; v++) {
-                const RhdStepInfo& s = steps[v][k];
-                const u32 phys = CarrierOfVirtual(r, v);
-                for (u32 u = s.txSegStart; u < s.txSegEnd; u++) {
-                    sent[phys][u] = hold[phys][u];
-                    hold[phys][u] = 0;
+        for (const u32 root : roots) {
+            // 全量输入：每物理 rank 持全部 p unit 各 +1
+            std::vector<std::vector<u32>> hold(p, std::vector<u32>(p, 1));
+            // pre(FULL)：被合并方全量并入代表（承载侧由 root 决定），被合并方退出
+            for (u32 t = 0; t < r; t++) {
+                const u32 repAlg = RhdAlgRankOfVirtual(p, root, t);
+                const u32 mergedAlg = (repAlg == t) ? (t + r) : t;
+                RhdPart1Info mergedInfo;
+                ASSERT_EQ(CalcRhdPart1Info(p, mergedAlg, root, mergedInfo), HcclResult::HCCL_SUCCESS)
+                    << "p=" << p << " root=" << root << " t=" << t;
+                ASSERT_FALSE(mergedInfo.isRepresentative);
+                RhdStepInfo pre, post;
+                ASSERT_EQ(
+                    GenRhdPrePostSteps(mergedInfo, pre, post, RhdSegMode::FULL, RhdSegMode::SHARE),
+                    HcclResult::HCCL_SUCCESS);
+                ASSERT_EQ(pre.peer, repAlg) << "pre 对端 = 代表侧";
+                ASSERT_EQ(pre.txSegStart, 0u) << "FULL 段 = [0, p)";
+                ASSERT_EQ(pre.txSegEnd, p);
+                for (u32 u = pre.txSegStart; u < pre.txSegEnd; u++) {
+                    hold[repAlg][u] += hold[mergedAlg][u];
+                    hold[mergedAlg][u] = 0;
                 }
             }
-            for (u32 v = 0; v < P; v++) {
-                const RhdStepInfo& s = steps[v][k];
-                const u32 phys = CarrierOfVirtual(r, v);
-                const u32 peerPhys = CarrierOfVirtual(r, s.peer);
-                for (u32 u = s.rxSegStart; u < s.rxSegEnd; u++) {
-                    hold[phys][u] += sent[peerPhys][u];
+            // 主体：每步按 tx 段搬出发送（清零），按 rx 段累加对端送入（承载由 root 解析）
+            const u32 nSteps = GetRhdStepNum(P);
+            for (u32 k = 0; k < nSteps; k++) {
+                std::vector<std::vector<u32>> sent(p, std::vector<u32>(p, 0));
+                for (u32 v = 0; v < P; v++) {
+                    const RhdStepInfo& s = steps[v][k];
+                    const u32 phys = RhdAlgRankOfVirtual(p, root, v);
+                    for (u32 u = s.txSegStart; u < s.txSegEnd; u++) {
+                        sent[phys][u] = hold[phys][u];
+                        hold[phys][u] = 0;
+                    }
+                }
+                for (u32 v = 0; v < P; v++) {
+                    const RhdStepInfo& s = steps[v][k];
+                    const u32 phys = RhdAlgRankOfVirtual(p, root, v);
+                    const u32 peerPhys = RhdAlgRankOfVirtual(p, root, s.peer);
+                    for (u32 u = s.rxSegStart; u < s.rxSegEnd; u++) {
+                        hold[phys][u] += sent[peerPhys][u];
+                    }
                 }
             }
-        }
-        // 终态：每 unit 在 owner（虚拟 vOf(u) 的承载）处计数 == p
-        for (u32 u = 0; u < p; u++) {
-            const u32 v = (u < 2 * r) ? u / 2 : u - r;
-            const u32 owner = CarrierOfVirtual(r, v);
-            EXPECT_EQ(hold[owner][u], p) << "p=" << p << " unit=" << u;
+            // 终态：每 unit 在 owner（虚拟 vOf(u) 的承载）处计数 == p
+            for (u32 u = 0; u < p; u++) {
+                const u32 v = (u < 2 * r) ? u / 2 : u - r;
+                const u32 owner = RhdAlgRankOfVirtual(p, root, v);
+                EXPECT_EQ(hold[owner][u], p) << "p=" << p << " root=" << root << " unit=" << u;
+            }
         }
     }
 }
@@ -385,7 +444,7 @@ TEST(GenRhdReduceScatterStepsTest, RsSegmentFormula)
     }
 }
 
-// RS 参数校验：info.effectiveRankSize == 0 / info.virtualRank >= P → HCCL_E_PARA（手造 POD）
+// RS 参数校验：info.effectiveRankSize == 0 / virtualRank >= P / P 非 2 的幂 / r >= P → HCCL_E_PARA（手造 POD）
 TEST(GenRhdReduceScatterStepsTest, RsParamValidation)
 {
     RhdPart1Info info{};
@@ -394,6 +453,14 @@ TEST(GenRhdReduceScatterStepsTest, RsParamValidation)
     info.effectiveRankSize = 4;
     info.r = 0;
     info.virtualRank = 4; // >= P
+    EXPECT_EQ(GenRhdReduceScatterSteps(info, steps), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 6; // P 非 2 的幂（无对应真实 p，peer 位技巧将越界）
+    info.r = 1;
+    info.virtualRank = 5;
+    EXPECT_EQ(GenRhdReduceScatterSteps(info, steps), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 4;
+    info.r = 4; // r >= P
+    info.virtualRank = 0;
     EXPECT_EQ(GenRhdReduceScatterSteps(info, steps), HcclResult::HCCL_E_PARA);
     EXPECT_TRUE(steps.empty());
 }
@@ -408,55 +475,66 @@ TEST(GenRhdAllGatherStepsTest, AgFinalState)
     for (u32 p : {2u, 3u, 4u, 5u, 6u, 7u, 9u, 17u, 32u}) {
         const u32 r = p - LargestPow2Le(p);
         const u32 P = p - r;
+        // root 全形态：默认、低位侧、首个高半区、末高半区（2^N 仅有默认）
+        const std::vector<u32> roots = (r == 0) ? std::vector<u32>{INVALID_VALUE_RANKID} :
+                                                  std::vector<u32>{INVALID_VALUE_RANKID, 0u, r, 2 * r - 1};
         std::vector<std::vector<RhdStepInfo>> steps(P);
         for (u32 v = 0; v < P; v++) {
             const RhdPart1Info info = MakeInfoForVirtual(p, v);
             ASSERT_EQ(GenRhdAllGatherSteps(info, steps[v]), HcclResult::HCCL_SUCCESS) << "p=" << p << " v=" << v;
             ASSERT_EQ(steps[v].size(), static_cast<size_t>(GetRhdStepNum(P)));
         }
-        // 各自份额：物理 rank j 持自身槽位 +1
-        std::vector<std::vector<u32>> hold(p, std::vector<u32>(p, 0));
-        for (u32 j = 0; j < p; j++) {
-            hold[j][RhdUnitStartOfRank(p, j)] = 1;
-        }
-        // pre(SHARE)：被合并方份额并入代表，被合并方退出
-        for (u32 t = 0; t < r; t++) {
-            RhdPart1Info mergedInfo;
-            ASSERT_EQ(CalcRhdPart1Info(p, t + r, INVALID_VALUE_RANKID, mergedInfo), HcclResult::HCCL_SUCCESS);
-            RhdStepInfo pre, post;
-            ASSERT_EQ(
-                GenRhdPrePostSteps(mergedInfo, pre, post, RhdSegMode::SHARE, RhdSegMode::FULL),
-                HcclResult::HCCL_SUCCESS);
-            for (u32 u = pre.txSegStart; u < pre.txSegEnd; u++) {
-                hold[t][u] += hold[t + r][u];
-                hold[t + r][u] = 0;
+        for (const u32 root : roots) {
+            // 各自份额：物理 rank j 持自身槽位 +1
+            std::vector<std::vector<u32>> hold(p, std::vector<u32>(p, 0));
+            for (u32 j = 0; j < p; j++) {
+                hold[j][RhdUnitStartOfRank(p, j)] = 1;
             }
-        }
-        // 主体：AG 副本发送（不清零），rx 段累加对端送入（承载：配对=代表，block=v+r）
-        const u32 nSteps = GetRhdStepNum(P);
-        for (u32 k = 0; k < nSteps; k++) {
-            std::vector<std::vector<u32>> sent(p, std::vector<u32>(p, 0));
-            for (u32 v = 0; v < P; v++) {
-                const RhdStepInfo& s = steps[v][k];
-                const u32 phys = CarrierOfVirtual(r, v);
-                for (u32 u = s.txSegStart; u < s.txSegEnd; u++) {
-                    sent[phys][u] = hold[phys][u]; // 副本
+            // pre(SHARE)：被合并方份额并入代表（承载侧由 root 决定），被合并方退出
+            for (u32 t = 0; t < r; t++) {
+                const u32 repAlg = RhdAlgRankOfVirtual(p, root, t);
+                const u32 mergedAlg = (repAlg == t) ? (t + r) : t;
+                RhdPart1Info mergedInfo;
+                ASSERT_EQ(CalcRhdPart1Info(p, mergedAlg, root, mergedInfo), HcclResult::HCCL_SUCCESS)
+                    << "p=" << p << " root=" << root << " t=" << t;
+                ASSERT_FALSE(mergedInfo.isRepresentative);
+                RhdStepInfo pre, post;
+                ASSERT_EQ(
+                    GenRhdPrePostSteps(mergedInfo, pre, post, RhdSegMode::SHARE, RhdSegMode::FULL),
+                    HcclResult::HCCL_SUCCESS);
+                ASSERT_EQ(pre.peer, repAlg) << "pre 对端 = 代表侧";
+                ASSERT_EQ(pre.txSegEnd - pre.txSegStart, 1u) << "SHARE 段 = 被合并方自身份额槽位";
+                for (u32 u = pre.txSegStart; u < pre.txSegEnd; u++) {
+                    hold[repAlg][u] += hold[mergedAlg][u];
+                    hold[mergedAlg][u] = 0;
                 }
             }
-            for (u32 v = 0; v < P; v++) {
-                const RhdStepInfo& s = steps[v][k];
-                const u32 phys = CarrierOfVirtual(r, v);
-                const u32 peerPhys = CarrierOfVirtual(r, s.peer);
-                for (u32 u = s.rxSegStart; u < s.rxSegEnd; u++) {
-                    hold[phys][u] += sent[peerPhys][u];
+            // 主体：AG 副本发送（不清零），rx 段累加对端送入（承载由 root 解析）
+            const u32 nSteps = GetRhdStepNum(P);
+            for (u32 k = 0; k < nSteps; k++) {
+                std::vector<std::vector<u32>> sent(p, std::vector<u32>(p, 0));
+                for (u32 v = 0; v < P; v++) {
+                    const RhdStepInfo& s = steps[v][k];
+                    const u32 phys = RhdAlgRankOfVirtual(p, root, v);
+                    for (u32 u = s.txSegStart; u < s.txSegEnd; u++) {
+                        sent[phys][u] = hold[phys][u]; // 副本
+                    }
+                }
+                for (u32 v = 0; v < P; v++) {
+                    const RhdStepInfo& s = steps[v][k];
+                    const u32 phys = RhdAlgRankOfVirtual(p, root, v);
+                    const u32 peerPhys = RhdAlgRankOfVirtual(p, root, s.peer);
+                    for (u32 u = s.rxSegStart; u < s.rxSegEnd; u++) {
+                        hold[phys][u] += sent[peerPhys][u];
+                    }
                 }
             }
-        }
-        // 终态：每 virtual 承载者持有全量份额且每 unit 计数恰为 1
-        for (u32 v = 0; v < P; v++) {
-            const u32 phys = CarrierOfVirtual(r, v);
-            for (u32 u = 0; u < p; u++) {
-                EXPECT_EQ(hold[phys][u], 1u) << "p=" << p << " v=" << v << " unit=" << u;
+            // 终态：每 virtual 承载者持有全量份额且每 unit 计数恰为 1
+            for (u32 v = 0; v < P; v++) {
+                const u32 phys = RhdAlgRankOfVirtual(p, root, v);
+                for (u32 u = 0; u < p; u++) {
+                    EXPECT_EQ(hold[phys][u], 1u) << "p=" << p << " root=" << root << " v=" << v << " unit=" << u;
+                }
             }
         }
     }
@@ -500,6 +578,14 @@ TEST(GenRhdAllGatherStepsTest, AgParamValidation)
     info.effectiveRankSize = 4;
     info.r = 0;
     info.virtualRank = 4; // >= P
+    EXPECT_EQ(GenRhdAllGatherSteps(info, steps), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 6; // P 非 2 的幂
+    info.r = 1;
+    info.virtualRank = 5;
+    EXPECT_EQ(GenRhdAllGatherSteps(info, steps), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 4;
+    info.r = 4; // r >= P
+    info.virtualRank = 0;
     EXPECT_EQ(GenRhdAllGatherSteps(info, steps), HcclResult::HCCL_E_PARA);
     EXPECT_TRUE(steps.empty());
 }
@@ -561,6 +647,28 @@ TEST(GenRhdPrePostStepsTest, PrePostPowerOfTwo)
             EXPECT_EQ(post.rxSegEnd, 0u);
         }
     }
+}
+
+// 防御校验：默认构造 info（P==0）、r >= P、pairedAlgRank >= p 的非法 info → HCCL_E_PARA
+TEST(GenRhdPrePostStepsTest, ParamValidation)
+{
+    RhdPart1Info info{};
+    RhdStepInfo pre, post;
+    EXPECT_EQ(GenRhdPrePostSteps(info, pre, post, RhdSegMode::SHARE, RhdSegMode::SHARE), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 2;
+    info.r = 2; // r >= P
+    EXPECT_EQ(GenRhdPrePostSteps(info, pre, post, RhdSegMode::FULL, RhdSegMode::SHARE), HcclResult::HCCL_E_PARA);
+    info.effectiveRankSize = 4;
+    info.r = 1;
+    info.inPart1 = true;
+    info.pairedAlgRank = 5; // >= p=5
+    EXPECT_EQ(GenRhdPrePostSteps(info, pre, post, RhdSegMode::SHARE, RhdSegMode::SHARE), HcclResult::HCCL_E_PARA);
+    info.pairedAlgRank = 0;
+    info.isRepresentative = false;
+    info.unitStart = 100; // >= p=5：被合并方 unitStart 越界
+    EXPECT_EQ(GenRhdPrePostSteps(info, pre, post, RhdSegMode::SHARE, RhdSegMode::SHARE), HcclResult::HCCL_E_PARA);
+    EXPECT_EQ(pre.nSlices, 0u);
+    EXPECT_EQ(post.nSlices, 0u);
 }
 
 // 非 2^N × root 全扫描 × 三角色（代表/被合并方/block）× SHARE/FULL 双模式：
@@ -701,6 +809,13 @@ TEST(RhdSegBytesTest, BytesUniform)
     b = RhdSegToBytesUniform(2, 5, sliceSize, sliceSize, tailUnit);
     EXPECT_EQ(b.offset, 200u);
     EXPECT_EQ(b.len, 300u);
+    // tailSize == 0 = 无尾块（对齐 TemplateDataParams/HD 模板 tailSize>0 判尾约定，直传安全）
+    b = RhdSegToBytesUniform(4, 5, sliceSize, 0, tailUnit);
+    EXPECT_EQ(b.offset, 400u);
+    EXPECT_EQ(b.len, 100u); // 修复前为 0——末 unit 数据静默丢失
+    b = RhdSegToBytesUniform(2, 5, sliceSize, 0, tailUnit);
+    EXPECT_EQ(b.offset, 200u);
+    EXPECT_EQ(b.len, 300u);
 }
 
 // σ 反查构建 unit 尺寸表 + 变长契约与均匀契约字节观一致
@@ -721,7 +836,8 @@ TEST(RhdSegBytesTest, BuildUnitSizesAndBytesAllRank)
     ASSERT_EQ(RhdBuildUnitSizes(5, allRank5, unitSizes5), HcclResult::HCCL_SUCCESS);
     const std::vector<std::pair<u32, u32>> segs = {{0, 1}, {1, 3}, {2, 5}, {4, 5}, {0, 5}};
     for (const auto& seg : segs) {
-        const RhdSegBytes a = RhdSegToBytesAllRank(seg.first, seg.second, unitSizes5);
+        RhdSegBytes a;
+        ASSERT_EQ(RhdSegToBytesAllRank(seg.first, seg.second, unitSizes5, a), HcclResult::HCCL_SUCCESS);
         const RhdSegBytes u = RhdSegToBytesUniform(seg.first, seg.second, 100, 60, 4);
         EXPECT_EQ(a.offset, u.offset) << "seg=[" << seg.first << "," << seg.second << ")";
         EXPECT_EQ(a.len, u.len);
@@ -738,10 +854,12 @@ TEST(RhdSegBytesTest, BytesParamValidation)
     EXPECT_EQ(b.offset, 0u);
     EXPECT_EQ(b.len, 0u);
     const std::vector<u64> unitSizes = {100, 100, 100};
-    b = RhdSegToBytesAllRank(1, 4, unitSizes); // unitEnd=4 > size=3，不越界
+    HcclResult rc = RhdSegToBytesAllRank(1, 4, unitSizes, b); // unitEnd=4 > size=3，越界
+    EXPECT_EQ(rc, HcclResult::HCCL_E_PARA);
     EXPECT_EQ(b.offset, 0u);
     EXPECT_EQ(b.len, 0u);
-    b = RhdSegToBytesAllRank(2, 2, unitSizes);
+    rc = RhdSegToBytesAllRank(2, 2, unitSizes, b); // 空区段
+    EXPECT_EQ(rc, HcclResult::HCCL_SUCCESS);
     EXPECT_EQ(b.offset, 0u);
     EXPECT_EQ(b.len, 0u);
     std::vector<u64> out;

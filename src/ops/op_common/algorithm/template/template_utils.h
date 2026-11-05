@@ -407,12 +407,11 @@ struct AicpuNHRStepInfo {
 };
 
 // ==================== RHD 步骤生成公共函数族 ====================
-// 约定：区段字段（txSeg*/rxSeg*）一律为物理单元空间（σ 布局）；区段字节长度只准经
-// txSeg*/rxSeg* + RhdSegToBytes* 推导（nSlices 为主体步的步距，非区段 unit 数）。
+// 区段字段（txSeg*/rxSeg*）一律为物理单元空间（σ 布局）；字节长度经 RhdSegToBytes* 推导。
+// 主体步 nSlices 为虚拟步距（非区段 unit 数），PRE/POST 为区段 unit 数；勿照搬 HD/NHR 的 nSlices 消费范式。
 
 enum class RhdPhase : u8 { MAIN_RS, MAIN_AG, PRE, POST };
 
-// RHD 步骤（同构 AicpuNHRStepInfo 并扩展区段字段）
 struct RhdStepInfo {
     u32 step = 0;                      // 步序（相位内 0 起）
     RhdPhase phase{RhdPhase::MAIN_RS}; // 相位
@@ -424,7 +423,6 @@ struct RhdStepInfo {
     u32 rxSegEnd = 0;                  // 接收区段止（unit 空间，不含）
 };
 
-// 非 2 次幂 part1 划分（本 rank 视角，由 CalcRhdPart1Info 填充）
 struct RhdPart1Info {
     u32 r = 0;                                // r = p − 2^⌊log₂p⌋（2^N 时 0）
     bool isPowerOfTwo = true;                 // 本层为 2^N（无前后处理）
@@ -433,51 +431,46 @@ struct RhdPart1Info {
     u32 pairedAlgRank = INVALID_VALUE_RANKID; // 配对对端（inPart1 时有效）
     u32 virtualRank = 0;                      // 主体有效序 v ∈ [0, P)
     u32 effectiveRankSize = 0;                // P = p − r
-    u32 unitStart = 0;                        // 持有份额的 unit 起点（代表占 2 unit 连续）
+    u32 unitStart = 0;                        // 持有份额的 unit 起点（代表占 2 unit）
     u32 unitCount = 1;                        // 持有份额的 unit 数（代表 2，其余 1）
 };
 
-// 主体步数：⌊log₂rankSize⌋（物理规模 p 与有效规模 P 结果相同）
+// 主体步数：⌊log₂rankSize⌋
 u32 GetRhdStepNum(u32 rankSize);
 
-// part1 划分：part1 = 前 2r 个 rank，按 (t ↔ t+r) 配对，代表默认低位 t；
-// root 落在 part1 时代表跟随 root 所在侧（root = INVALID_VALUE_RANKID 表示恒低位）。
-// 防御校验：rankSize == 0 / myAlgRank >= rankSize / root 越界 → HCCL_E_PARA
+// part1 划分：前 2r 个 rank 按 (t ↔ t+r) 配对，代表默认低位 t，root 落 part1 时跟随 root 所在侧
+// （root = INVALID_VALUE_RANKID 表示恒低位）；root 类外的算子传 INVALID 即可
 HcclResult CalcRhdPart1Info(u32 rankSize, u32 myAlgRank, u32 root, RhdPart1Info& info);
 
-// RS（折半）相位步骤表：步 k 的 dist = P>>(k+1)、对端 = v⊕dist，发送对端对齐半区、保留己方对齐半区
+// RS（折半）相位步骤表：步 k 的 dist = P>>(k+1)、对端 = v⊕dist
 HcclResult GenRhdReduceScatterSteps(const RhdPart1Info& info, std::vector<RhdStepInfo>& steps);
 
-// AG（倍增）相位步骤表：步 k 的 dist = 1<<k，整段发送当前持有区段、接收补半区（与 RS 相位互为镜像）
+// AG（倍增）相位步骤表：步 k 的 dist = 1<<k（与 RS 相位互为镜像）
 HcclResult GenRhdAllGatherSteps(const RhdPart1Info& info, std::vector<RhdStepInfo>& steps);
 
-// 前/后处理（2^N 输出空步骤：nSlices == 0 且区段 [0,0)）：
-//   pre：被合并方发送，代表为接收镜像——SHARE 区段 = 被合并方自身份额段（AG 族输入即各自份额），
-//        FULL 区段 = [0, p) 全量段（RS 族：代表须含被合并方全量贡献，缺则折半结果少一份贡献）；
-//   post：代表发送，被合并方接收——SHARE 区段 = 被合并方份额段，FULL 区段 = [0, p) 全量段。
-// 两模式均显式传参（不设默认），按算子语义取：RS 族 (FULL, SHARE)，AG 族 (SHARE, FULL)
+// 前/后处理（2^N 输出空步骤）：
+//   pre：被合并方发送（SHARE = 自身份额段 / FULL = [0,p) 全量段），代表为接收镜像
+//   post：代表发送，被合并方接收（SHARE / FULL 同上）
+//   RS 族取 (FULL, SHARE)，AG 族取 (SHARE, FULL)
 enum class RhdSegMode : u8 { SHARE, FULL };
 HcclResult GenRhdPrePostSteps(
     const RhdPart1Info& info, RhdStepInfo& pre, RhdStepInfo& post, RhdSegMode preSegMode, RhdSegMode postSegMode);
 
 // ---- 支撑辅助 ----
-// 前置条件：rankSize >= 1（u32 返回型无法自报错；主入口 CalcRhdPart1Info 已校验）
-u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank); // σ：algRank → unit 起点
-u32 RhdUnitCountOfRank(u32 rankSize, u32 algRank); // σ 布局占位数（低侧恒 2，与代表选取无关）
-// 虚拟序 → 承载 algRank（MAIN 相位对端 peer 的物理解析）：
-//   v < r：配对，取代表侧（root 落 part1 时跟随 root 所在侧，root = INVALID_VALUE_RANKID 恒低位）
-//   v >= r：block，恒为 v + r；2^N（r=0）时恒等
-// 返回 INVALID_VALUE_RANKID 表示入参非法（rankSize == 0 或 virtualRank >= P）
-u32 RhdAlgRankOfVirtual(u32 rankSize, u32 root, u32 virtualRank);
+// σ：algRank → 自身份额槽位；越界返回 INVALID_VALUE_RANKID
+u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank);
+// 虚拟序 → 承载 algRank；越界返回 INVALID_VALUE_RANKID
+// ⚠ physRankSize 为物理规模 p（非有效规模 P），root 须与 CalcRhdPart1Info 一致
+u32 RhdAlgRankOfVirtual(u32 physRankSize, u32 root, u32 virtualRank);
 
 struct RhdSegBytes {
     u64 offset{0};
     u64 len{0};
 };
-// 均匀布局区段 → 字节（末 unit 长 tailSize，无尾块传 tailSize == sliceSize；tailUnit 为末 unit 编号）
+// 均匀布局区段 → 字节（仅紧凑布局；tailSize == 0 视为无尾块，对齐 TemplateDataParams 约定）
 RhdSegBytes RhdSegToBytesUniform(u32 unitStart, u32 unitEnd, u64 sliceSize, u64 tailSize, u32 tailUnit);
-// 变长布局区段 → 字节（unitSizes 由 RhdBuildUnitSizes 构建）
-RhdSegBytes RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u64>& unitSizes);
+// 变长布局区段 → 字节（仅紧凑布局）；越界返回 HCCL_E_PARA，空区段返回 HCCL_SUCCESS + {0,0}
+HcclResult RhdSegToBytesAllRank(u32 unitStart, u32 unitEnd, const std::vector<u64>& unitSizes, RhdSegBytes& bytes);
 // algRank 索引的尺寸表 → unit 空间尺寸表（σ 反查）
 HcclResult RhdBuildUnitSizes(u32 rankSize, const std::vector<u64>& allRankSliceSize, std::vector<u64>& unitSizes);
 
