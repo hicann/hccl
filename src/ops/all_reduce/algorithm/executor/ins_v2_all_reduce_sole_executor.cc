@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_reduce_sole_executor.h"
+#include "aiv_alg_template_base.h"
 #include "alg_attrs_registry.h"
 #include "ins_temp_all_reduce_mesh_1D_one_shot.h"
 #include "ins_temp_all_reduce_mesh_1D_two_shot.h"
@@ -218,6 +219,8 @@ HcclResult InsV2AllReduceSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
     tempAlgParams.outputRepeatStride = 0;
+    // 写语义通过执行期参数下传；host模板类型只负责选择对应的控核策略。
+    tempAlgParams.isWrite = IsAivWriteEnabled(param, &resCtx.topoInfo);
 
     // 构建template
     std::shared_ptr<InsAlgTemplate> algTemplate

@@ -14,7 +14,7 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-enum class KernelArgsType { ARGS_TYPE_SERVER };
+enum class KernelArgsType { ARGS_TYPE_SERVER, ARGS_TYPE_TWO_SHOT };
 
 struct AivOpArgs {
     HcclCMDType cmdType = HcclCMDType::HCCL_CMD_ALLTOALL;

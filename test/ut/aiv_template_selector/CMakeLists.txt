@@ -10,20 +10,26 @@
 
 file(GLOB UT_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cc")
 add_executable(aiv_template_selector_test ${UT_FILES}
+    ${PROJECT_SOURCE_DIR}/src/ops/all_reduce/algorithm/template/aiv/aiv_temp_all_reduce_mesh_1D_twoshot.cc
     ${PROJECT_SOURCE_DIR}/src/ops/all_to_all_v/algorithm/template/aiv/aiv_temp_all_to_all_mesh_1D.cc
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aiv/aiv_temp_reduce_scatter_mesh_1D.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aiv/aiv_temp_all_gather_mesh_1D.cc
 )
 target_compile_features(aiv_template_selector_test PRIVATE cxx_std_17)
 target_include_directories(aiv_template_selector_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/stub
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/topo_info
+    ${PROJECT_SOURCE_DIR}/src/ops/all_reduce/algorithm/template/aiv
+    ${PROJECT_SOURCE_DIR}/src/ops/all_reduce/algorithm/template
     ${PROJECT_SOURCE_DIR}/src/ops/all_to_all_v/algorithm/template/aiv
     ${PROJECT_SOURCE_DIR}/src/ops/all_to_all_v/algorithm/template
     ${PROJECT_SOURCE_DIR}/src/ops/broadcast/algorithm/template/aiv
     ${PROJECT_SOURCE_DIR}/src/ops/reduce/algorithm/template/aiv
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template/aiv
     ${PROJECT_SOURCE_DIR}/src/ops/reduce_scatter/algorithm/template
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aiv
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template
 )
 target_link_libraries(aiv_template_selector_test PRIVATE
     $<BUILD_INTERFACE:intf_llt_pub>

@@ -26,6 +26,14 @@ namespace aiv_selector_test {
             EXPECT_FALSE(IsAivWriteEnabled(param_, &topo_));
         }
 
+        TEST_F(AivTemplateSelectorTest, FullMeshDisablesWriteEvenWithPcieLinks)
+        {
+            topo_.level0AllMesh = true;
+            EXPECT_FALSE(IsAivWriteEnabled(param_, &topo_));
+            topo_.level0AllMesh = false;
+            EXPECT_TRUE(IsAivWriteEnabled(param_, &topo_));
+        }
+
         TEST_F(AivTemplateSelectorTest, GraphModeDisablesWriteSemantics)
         {
             param_.opMode = OpMode::OFFLOAD;

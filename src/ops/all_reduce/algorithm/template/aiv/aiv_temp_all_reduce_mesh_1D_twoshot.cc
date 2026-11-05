@@ -8,6 +8,7 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
 #include "hccl_aiv_utils.h"
 #include "aiv/aiv_temp_all_reduce_mesh_1D_twoshot.h"
 #include "config_log.h"
@@ -132,6 +133,31 @@ HcclResult AivTempAllReduceMesh1DTwoShot::CalNumBlocks(u32& numBlocks, u64 dataS
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult AivTempAllReduceMesh1DTwoShot::CalNumBlocksWrite(u32& numBlocks, u32 numBlocksLimit)
+{
+    constexpr u32 TWO_RANK_SIZE = 2;
+    constexpr u32 TWO_RANK_CORE_LIMIT = 24;
+    constexpr u32 SMALL_RANK_SIZE = 4;
+    constexpr u32 SMALL_RANK_CORE_LIMIT = 12;
+    constexpr u32 MEDIUM_RANK_SIZE = 8;
+    constexpr u32 MEDIUM_RANK_CORE_LIMIT = 24;
+    constexpr u32 LARGE_RANK_CORE_LIMIT = 36;
+    // 写语义按rank数分档控核：2卡单独24核、3~4卡12核、5~8卡24核、8卡以上36核，并受用户limit约束。
+    u32 rankCoreLimit = LARGE_RANK_CORE_LIMIT;
+    if (tempRankSize_ == TWO_RANK_SIZE) {
+        rankCoreLimit = TWO_RANK_CORE_LIMIT;
+    } else if (tempRankSize_ <= SMALL_RANK_SIZE) {
+        rankCoreLimit = SMALL_RANK_CORE_LIMIT;
+    } else if (tempRankSize_ <= MEDIUM_RANK_SIZE) {
+        rankCoreLimit = MEDIUM_RANK_CORE_LIMIT;
+    }
+    numBlocks = std::min(numBlocksLimit, rankCoreLimit);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempAllReduceMesh1DTwoShot] Write semantics use core num[%u], limit[%u], rank limit[%u]",
+        numBlocks, numBlocksLimit, rankCoreLimit);
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult AivTempAllReduceMesh1DTwoShot::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
@@ -141,10 +167,16 @@ HcclResult AivTempAllReduceMesh1DTwoShot::KernelRun(
     dataType_ = param.DataDes.dataType;
     AivOpArgs aivAllReduceArgs;
     aivAllReduceArgs.cmdType = HcclCMDType::HCCL_CMD_ALLREDUCE;
+    // 核入口统一为aiv_allreduce_mesh1d_twoshot_*，读写语义由运行期isWrite分流，funcKey不随语义变化。
     aivAllReduceArgs.argsType = KernelArgsType::ARGS_TYPE_TWO_SHOT;
     FillCommonAivOpArgs(aivAllReduceArgs, param, tempAlgParams, templateResource);
+    aivAllReduceArgs.isWrite = tempAlgParams.isWrite;
 
-    CHK_RET(CalNumBlocks(aivAllReduceArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
+    if (tempAlgParams.isWrite) {
+        CHK_RET(CalNumBlocksWrite(aivAllReduceArgs.numBlocks, param.numBlocksLimit));
+    } else {
+        CHK_RET(CalNumBlocks(aivAllReduceArgs.numBlocks, tempAlgParams.sliceSize, param.numBlocksLimit));
+    }
 
     aivAllReduceArgs.inputSliceStride = tempAlgParams.inputSliceStride;
     aivAllReduceArgs.outputSliceStride = tempAlgParams.outputSliceStride;
@@ -154,7 +186,9 @@ HcclResult AivTempAllReduceMesh1DTwoShot::KernelRun(
 
     CHK_RET(ExecuteKernelLaunch(aivAllReduceArgs));
 
-    HCCL_INFO("[AivTempAllReduceMesh1DTwoShot] KernelRun finished");
+    HCCL_INFO(
+        "[AivTempAllReduceMesh1DTwoShot] KernelRun finished, isWrite[%d] numBlocks[%u]",
+        static_cast<int>(aivAllReduceArgs.isWrite), aivAllReduceArgs.numBlocks);
     return HcclResult::HCCL_SUCCESS;
 }
 

@@ -167,20 +167,23 @@ namespace aiv_selector_test {
                 OpMode mode;
                 bool pcie;
                 bool hasTopo;
+                bool allMesh;
                 bool expectedWrite;
             };
             const Scenario cases[]
-                = {{OpMode::OPBASE, true, true, true},
-                   {OpMode::OPBASE, false, true, false},
-                   {OpMode::OFFLOAD, true, true, false},
-                   {OpMode::OPBASE, true, false, false}};
+                = {{OpMode::OPBASE, true, true, false, true},
+                   {OpMode::OPBASE, true, true, true, false},
+                   {OpMode::OPBASE, false, true, false, false},
+                   {OpMode::OFFLOAD, true, true, false, false},
+                   {OpMode::OPBASE, true, false, false, false}};
             for (const auto& scenario : cases) {
                 SCOPED_TRACE(
                     ::testing::Message() << "mode=" << static_cast<int>(scenario.mode) << " pcie=" << scenario.pcie
-                                         << " hasTopo=" << scenario.hasTopo);
+                                         << " hasTopo=" << scenario.hasTopo << " allMesh=" << scenario.allMesh);
                 param_.opMode = scenario.mode;
                 param_.numBlocksLimit = 48;
                 topo_.level0PcieMix = scenario.pcie;
+                topo_.level0AllMesh = scenario.allMesh;
                 sendCount_ = 512 * 1024 / DATATYPE_SIZE_TABLE[param_.all2AllVDataDes.sendType];
                 param_.all2AllVDataDes.sendCounts = &sendCount_;
                 TemplateDataParams tempAlgParams;

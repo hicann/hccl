@@ -29,6 +29,23 @@ namespace aiv_selector_test {
             EXPECT_EQ(AivTempReduceScatterMesh1D::props.algoType, AlgoType::MESH);
         }
 
+        TEST_F(AivTemplateSelectorTest, ReduceScatterFullMeshSelectsReadAtLaunch)
+        {
+            AivTempReduceScatterMesh1D algorithm(param_, 0, ranks_);
+            for (bool allMesh : {false, true, false}) {
+                topo_.level0AllMesh = allMesh;
+                TemplateDataParams data;
+                data.isWrite = IsReduceScatterAivWriteEnabled(param_, &topo_);
+                data.sliceSize = param_.DataDes.count * DATATYPE_SIZE_TABLE[param_.DataDes.dataType];
+                data.inputSliceStride = data.sliceSize;
+                data.outputSliceStride = data.sliceSize;
+                kernelLaunches = 0;
+                ASSERT_EQ(algorithm.KernelRun(param_, data, TemplateResource{}), HCCL_SUCCESS);
+                ASSERT_EQ(kernelLaunches, 1u);
+                EXPECT_EQ(launchedArgs.isWrite, !allMesh);
+            }
+        }
+
         TEST_F(AivTemplateSelectorTest, ReduceScatterHif8DoesNotSelectWrite)
         {
             param_.DataDes.dataType = HcclDataType::HCCL_DATA_TYPE_HIF8;

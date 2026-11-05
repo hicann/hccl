@@ -28,7 +28,8 @@ enum class HcclCMDType {
     HCCL_CMD_ALLTOALL,
     HCCL_CMD_ALLTOALLV,
     HCCL_CMD_ALLTOALLVC,
-    HCCL_CMD_REDUCE_SCATTER
+    HCCL_CMD_REDUCE_SCATTER,
+    HCCL_CMD_ALLGATHER
 };
 enum HcclDataType { HCCL_DATA_TYPE_FP32, HCCL_DATA_TYPE_FP16, HCCL_DATA_TYPE_HIF8 };
 enum class AlgoType { UNKNOWN, MESH, MESH_TWOSHOT };
@@ -67,6 +68,7 @@ struct OpParam {
 
 struct TopoInfoWithNetLayerDetails {
     bool level0PcieMix = false;
+    bool level0AllMesh = false;
     u32 userRank = 0;
     u32 userRankSize = 1;
     u32 deviceNumPerModule = 1;
@@ -81,6 +83,9 @@ struct TemplateDataParams {
         void* outputPtr = nullptr;
         u64 inBuffBaseOff = 0;
         u64 outBuffBaseOff = 0;
+        struct {
+            u64 size = 0;
+        } hcclBuff;
     } buffInfo;
     u64 sliceSize = 0;
     u64 inputSliceStride = 0;

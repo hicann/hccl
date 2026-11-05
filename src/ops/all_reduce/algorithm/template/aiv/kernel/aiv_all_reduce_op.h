@@ -13,6 +13,7 @@
 
 #include "aiv_communication_base_v2.h"
 #include "aiv_all_reduce_mesh_1d_twoshot.h"
+#include "aiv_all_reduce_mesh_1d_twoshot_write.h"
 #include "aiv_all_reduce_mesh_1d_oneshot.h"
 
 using namespace AscendC;
@@ -31,10 +32,15 @@ using namespace AscendC;
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DECL(type) \
     extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF)
 
+// isWrite为host下发的运行期参数：true走写语义实现（少核场景沿用原少核路径），false保持原读语义实现。
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DEF(type)                                       \
     extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF) \
     {                                                                                       \
         AIV_INFO_HINT;                                                                      \
+        if (isWrite) {                                                                      \
+            AivAllReduceV2Mesh1DTwoShotWrite<type>(KERNEL_ARGS_CALL);                       \
+            return;                                                                         \
+        }                                                                                   \
         return AivAllReduceV2Mesh1DTwoShot<type>(KERNEL_ARGS_CALL);                         \
     }
 
@@ -72,6 +78,10 @@ using namespace AscendC;
     extern "C" __global__ __aicore__ void aiv_allreduce_mesh1d_twoshot_##type(KERNEL_ARGS_DEF) \
     {                                                                                          \
         AIV_INFO_HINT;                                                                         \
+        if (isWrite) {                                                                         \
+            AivAllReduceV2Mesh1DTwoShotWrite<type>(KERNEL_ARGS_CALL);                          \
+            return;                                                                            \
+        }                                                                                      \
         return AivAllReduceV2Mesh1DTwoShot<type>(KERNEL_ARGS_CALL);                            \
     }                                                                                          \
     EXPORT_AIV_META_INFO(aiv_allreduce_mesh1d_twoshot_##type)

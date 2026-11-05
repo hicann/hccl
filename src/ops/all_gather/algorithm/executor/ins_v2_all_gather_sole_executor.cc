@@ -9,6 +9,7 @@
  */
 
 #include "ins_v2_all_gather_sole_executor.h"
+#include "aiv_alg_template_base.h"
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
@@ -205,6 +206,8 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     tempAlgParams.buffInfo.outBuffType = BufferType::OUTPUT;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
     tempAlgParams.enableRemoteMemAccess = param.opMode == OpMode::OFFLOAD;
+    // 写语义通过执行期参数下传；host模板类型只负责选择对应的控核策略。
+    tempAlgParams.isWrite = IsAivWriteEnabled(param, &resCtx.topoInfo);
     // 不需要重复
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
@@ -218,6 +221,11 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     InsAlgTemplate algTemplate(param, resCtx.topoInfo.userRank, resCtx.algHierarchyInfo.infos[0]);
     u32 templateScratchMultiplier
         = algTemplate.CalcScratchMultiple(tempAlgParams.buffInfo.inBuffType, tempAlgParams.buffInfo.outBuffType);
+    if (tempAlgParams.isWrite) {
+        // infos按[算法层][子组][rank]组织，必须使用组内rank数，而不是该层的子组数量。
+        // 与AivAlgTemplateBase构造时的tempRankSize_保持一致，保证单轮输入不超过CCL大小/rankSize。
+        templateScratchMultiplier = static_cast<u32>(resCtx.algHierarchyInfo.infos[0][0].size());
+    }
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     if (param.engine == COMM_ENGINE_AICPU_TS
         && (resCtx.topoInfo.isPod || std::string(param.algName) != "AicpuAllGatherSoleNHR")) {
@@ -234,6 +242,12 @@ HcclResult InsV2AllGatherSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         maxDataSizePerLoop = transportBoundDataSize;
     }
     u64 maxCountPerLoop = maxDataSizePerLoop / dataTypeSize_;
+    CHK_PRT_RET(
+        tempAlgParams.isWrite && maxCountPerLoop == 0,
+        HCCL_ERROR(
+            "[InsV2AllGatherSoleExecutor] CCL size[%llu] cannot hold a write slice for rankSize[%u], typeSize[%llu]",
+            maxTmpMemSize_, templateScratchMultiplier, dataTypeSize_),
+        HCCL_E_PARA);
     // 计算loopTimes
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;

@@ -27,6 +27,7 @@ add_subdirectory(aicpu_task_cache)
 # ENABLE_EXPERIMENTAL，放入下方 if(ENABLE_EXPERIMENTAL) 分支将不被 -u 覆盖。
 add_subdirectory(reduce_scatter_seq64)
 add_subdirectory(alltoall_aiv)
+add_subdirectory(all_gather_aiv)
 # reduce_scatter_aiv: RS 写语义 kernel（LocalTree / BigData）的 CPU 桩级覆盖，含 flag 依赖与输出平铺校验。
 add_subdirectory(reduce_scatter_aiv)
 # reduce_aiv: Reduce pull 语义 kernel（MultiCore / MultiRank）的 CPU 桩级覆盖，
@@ -34,6 +35,8 @@ add_subdirectory(reduce_scatter_aiv)
 add_subdirectory(reduce_aiv)
 # all_reduce_aiv: AllReduce TwoShot(多核路径/少核路径) 的 CPU 桩级覆盖，校验项同 reduce_aiv。
 add_subdirectory(all_reduce_aiv)
+# allreduce_aiv: AllReduce TwoShot 写语义 kernel 的 CPU 桩级覆盖。
+add_subdirectory(allreduce_aiv)
 # recursive_executor 测试仅在 --experimental 构建（ENABLE_EXPERIMENTAL=ON）时编译
 if(ENABLE_EXPERIMENTAL)
     add_subdirectory(reduce_scatter_birs)

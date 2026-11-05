@@ -20,6 +20,7 @@ namespace ops_hccl {
 class AivTempAllReduceMesh1DTwoShot : public AivAlgTemplateBase {
 public:
     static constexpr TemplateProp props = {.algoType = AlgoType::MESH_TWOSHOT};
+
     AivTempAllReduceMesh1DTwoShot() = default;
     explicit AivTempAllReduceMesh1DTwoShot(
         const OpParam& param, const u32 rankId, // 传通信域的rankId，userRank
@@ -42,6 +43,9 @@ public:
         const TemplateResource& templateResource) override;
     HcclResult CalNumBlocks(u32& numBlocks, u64 dataSize, u32 numBlocksLimit) override;
     u64 CalcScratchMultiple(BufferType inBuffType, BufferType outBuffType) override;
+
+private:
+    HcclResult CalNumBlocksWrite(u32& numBlocks, u32 numBlocksLimit);
 };
 } // namespace ops_hccl
 

@@ -114,10 +114,37 @@ HcclResult AivTempAllGatherMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
     return HcclResult::HCCL_SUCCESS;
 }
 
+HcclResult AivTempAllGatherMesh1D::CalNumBlocksForWrite(u32& numBlocks, u32 numBlocksLimit)
+{
+    constexpr u32 SMALL_RANK_LIMIT = 2;
+    constexpr u32 MEDIUM_RANK_LIMIT = 4;
+    constexpr u32 DEFAULT_BLOCKS = 24;
+    constexpr u32 MEDIUM_RANK_BLOCKS = 12;
+    u32 targetBlocks = DEFAULT_BLOCKS;
+    // 3~4卡使用12核，其余卡数使用24核。
+    if (tempRankSize_ > SMALL_RANK_LIMIT && tempRankSize_ <= MEDIUM_RANK_LIMIT) {
+        targetBlocks = MEDIUM_RANK_BLOCKS;
+    }
+    numBlocks = std::min(targetBlocks, numBlocksLimit);
+    HCCL_CONFIG_INFO(
+        HCCL_ALG, "[AivTempAllGatherMesh1D] Write rank size[%u], core num[%u], target[%u], limit[%u]", tempRankSize_,
+        numBlocks, targetBlocks, numBlocksLimit);
+    return HcclResult::HCCL_SUCCESS;
+}
+
 HcclResult AivTempAllGatherMesh1D::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource)
 {
     HCCL_INFO("[AivTempAllGatherMesh1D] KernelRun start");
+
+    if (tempAlgParams.isWrite) {
+        CHK_PRT_RET(
+            tempRankSize_ == 0 || tempAlgParams.sliceSize > tempAlgParams.buffInfo.hcclBuff.size / tempRankSize_,
+            HCCL_ERROR(
+                "[AivTempAllGatherMesh1D] write sliceSize[%llu] exceeds CCL size[%llu] for rankSize[%u]",
+                tempAlgParams.sliceSize, tempAlgParams.buffInfo.hcclBuff.size, tempRankSize_),
+            HCCL_E_PARA);
+    }
 
     IncSliceId(); // 自动增长sliceId，传入sliceId
     dataType_ = param.DataDes.dataType;
@@ -140,7 +167,14 @@ HcclResult AivTempAllGatherMesh1D::KernelRun(
     aivAllGatherArgs.isOpBase = (param.opMode == OpMode::OPBASE);
 
     u64 dataSize = tempAlgParams.sliceSize;
-    CHK_RET(CalNumBlocks(aivAllGatherArgs.numBlocks, dataSize, param.numBlocksLimit));
+    if (tempAlgParams.isWrite) {
+        CHK_RET(CalNumBlocksForWrite(aivAllGatherArgs.numBlocks, param.numBlocksLimit));
+    } else {
+        CHK_RET(CalNumBlocks(aivAllGatherArgs.numBlocks, dataSize, param.numBlocksLimit));
+    }
+
+    // 读写语义共用同一kernel入口，运行期通过isWrite分流；funcKey保持ARGS_TYPE_SERVER不变。
+    aivAllGatherArgs.isWrite = tempAlgParams.isWrite;
 
     aivAllGatherArgs.inputSliceStride = tempAlgParams.inputSliceStride;
     aivAllGatherArgs.outputSliceStride = tempAlgParams.outputSliceStride;

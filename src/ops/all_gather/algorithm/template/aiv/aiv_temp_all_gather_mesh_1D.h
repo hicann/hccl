@@ -41,6 +41,9 @@ public:
     HcclResult CalcRes(
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         AlgResourceRequest& resourceRequest) override;
+
+private:
+    HcclResult CalNumBlocksForWrite(u32& numBlocks, u32 numBlocksLimit);
 };
 } // namespace ops_hccl
 
