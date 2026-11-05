@@ -17,7 +17,6 @@
 
 // AICPU template 头文件
 #include "ins_temp_all_gather_mesh_1D.h"
-#include "ins_temp_all_gather_nhr.h"
 
 #ifndef AICPU_COMPILE
 // CCU template 头文件
@@ -36,8 +35,11 @@ namespace ops_hccl {
 constexpr u32 CLOS_BW = 10;
 constexpr u32 MESH_BW = 11;
 constexpr u32 CLOS_JETTY = 4;
-constexpr u32 MESH_BW_AICPU = 37;
-constexpr u32 CLOS_BW_AICPU = 25;
+// AICPU 模式的 Mesh/CLOS 数据切分权重，分别用于非对称和对称内存路径。
+constexpr u32 MESH_BW_AICPU = 5;
+constexpr u32 CLOS_BW_AICPU = 6;
+constexpr u32 MESH_BW_AICPU_SYMMETRIC = 8;
+constexpr u32 CLOS_BW_AICPU_SYMMETRIC = 13;
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 
 template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
@@ -107,14 +109,8 @@ InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
         "[InsV2AllGatherConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
 
-    OpParam localParam;
-    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
-        localParam.engine = CommEngine::COMM_ENGINE_CCU;
-    } else {
-        localParam.opExecuteConfig = OpExecuteConfig::AICPU_TS;
-    }
     std::vector<float> dataSplitSize;
-    GetParallelDataSplit(localParam, dataSplitSize);
+    GetParallelDataSplit(param, dataSplitSize);
     std::vector<CostModelParam> params
         = [rankSize, &dataSplitSize, portNumLevel0, portNumLevel1, netTypeLevel0, netTypeLevel1, isPod] {
               std::vector<CostModelParam> v;
@@ -180,6 +176,10 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 构建template
     std::shared_ptr<InsAlgTemplate0> temp0Alg = std::make_shared<InsAlgTemplate0>(param, myRank_, temp0HierarchyInfo);
     std::shared_ptr<InsAlgTemplate1> temp1Alg = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
+    if constexpr (std::is_same_v<InsAlgTemplate1, InsTempAllGatherMesh1D>) {
+        // 为第二个Mesh模板申请CLOS物理轴上的通信资源。
+        temp1Alg->SetConcurrentTopo(COMM_TOPO_CLOS);
+    }
     // 调用计算资源的函数
     AlgResourceRequest temp0ResReq;
     AlgResourceRequest temp1ResReq;
@@ -205,12 +205,18 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         resourceRequest.ccuKernelInfos.insert(
             resourceRequest.ccuKernelInfos.end(), temp1ResReq.ccuKernelInfos.begin(), temp1ResReq.ccuKernelInfos.end());
     } else {
-        std::vector<HcclChannelDesc> temp0Channels;
-        std::vector<HcclChannelDesc> temp1Channels;
-        CommTopo temp0PriorityTopo = COMM_TOPO_1DMESH;
-        CHK_RET(CalcChannelRequestMesh1DWithPriorityTopo(
-            comm, param, topoInfo, temp0HierarchyInfo, temp0Channels, temp0PriorityTopo));
-        CHK_RET(CalcChannelRequestNhrMultiJetty(comm, param, topoInfo, temp1HierarchyInfo, temp1Channels));
+        CHK_PRT_RET(
+            temp0ResReq.channels.empty() || temp1ResReq.channels.empty(),
+            HCCL_ERROR("[InsV2AllGatherConcurrentExecutor][CalcRes] template channel request is empty."),
+            HCCL_E_INTERNAL);
+        // 取出Mesh轴和CLOS轴各自申请的channel列表。
+        const auto& temp0Channels = temp0ResReq.channels[0];
+        const auto& temp1Channels = temp1ResReq.channels[0];
+        HCCL_DEBUG(
+            "[InsV2AllGatherConcurrentExecutor][CalcRes] rank[%u], meshThreads[%u], closThreads[%u], "
+            "meshChannels[%zu], closChannels[%zu].",
+            myRank_, temp0ResReq.slaveThreadNum + 1, temp1ResReq.slaveThreadNum + 1, temp0Channels.size(),
+            temp1Channels.size());
         CHK_PRT_RET(
             temp0Channels.size() != temp1Channels.size(),
             HCCL_ERROR(
@@ -219,6 +225,7 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
                 temp0Channels.size(), temp1Channels.size()),
             HcclResult::HCCL_E_INTERNAL);
         resourceRequest.channels.resize(1);
+        // 按Mesh、CLOS的顺序保存channel，供执行阶段拆分两轴资源。
         resourceRequest.channels[0].insert(
             resourceRequest.channels[0].end(), temp0Channels.begin(), temp0Channels.end());
         resourceRequest.channels[0].insert(
@@ -268,19 +275,21 @@ void InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
 {
     u32 portNum0 = rankSize_ - 1; // mesh端口数为rank size - 1
     u32 portNum1 = CLOS_JETTY;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+    // 根据模板类型选择CCU或AICPU的两轴数据切分权重。
+    if constexpr (std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value) {
         portNum0 = MESH_BW;
         portNum1 = CLOS_BW;
-    } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
-        portNum0 = MESH_BW_AICPU;
-        portNum1 = CLOS_BW_AICPU;
+    } else {
+        portNum0 = param.supportSymmetricMemory ? MESH_BW_AICPU_SYMMETRIC : MESH_BW_AICPU;
+        portNum1 = param.supportSymmetricMemory ? CLOS_BW_AICPU_SYMMETRIC : CLOS_BW_AICPU;
     }
     double splitData = static_cast<double>(portNum0) / (portNum0 + portNum1);
     splitDataSize.push_back(splitData);
     splitDataSize.push_back(1 - splitData);
     HCCL_INFO(
-        "[InsV2AllGatherConcurrentExecutor][GenTemplate1AlgParams] portNum0[%u], portNum1[%u], splitData[%.4f], ",
-        portNum0, portNum1, splitData);
+        "[InsV2AllGatherConcurrentExecutor][GetParallelDataSplit] symmetric[%d], portNum0[%u], "
+        "portNum1[%u], splitData[%.4f].",
+        param.supportSymmetricMemory, portNum0, portNum1, splitData);
     return;
 }
 
@@ -290,8 +299,8 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 {
     AlgResourceRequest temp0Request;
     AlgResourceRequest temp1Request;
-    algTemplate0.GetRes(temp0Request); // 算法0需要的资源
-    algTemplate1.GetRes(temp1Request); // 算法1需要的资源
+    CHK_RET(algTemplate0.GetRes(temp0Request)); // 算法0需要的资源
+    CHK_RET(algTemplate1.GetRes(temp1Request)); // 算法1需要的资源
 
     auto tmp0ThreadsNum = temp0Request.slaveThreadNum + 1;
     auto tmp1ThreadsNum = temp1Request.slaveThreadNum + 1;
@@ -304,8 +313,9 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
             "[%s] threads resource is not enough. threads.size=[%zu], tmp0ThreadsNum=[%u], tmp1ThreadsNum=[%u].",
             __func__, threads_.size(), tmp0ThreadsNum, tmp1ThreadsNum),
         HcclResult::HCCL_E_INTERNAL);
+    // 按模板申请数量分别截取两轴线程，确定各自的主从流同步范围。
     tmp0Threads_.assign(threads_.begin(), threads_.begin() + tmp0ThreadsNum);
-    tmp1Threads_.assign(threads_.begin() + tmp0ThreadsNum, threads_.end());
+    tmp1Threads_.assign(threads_.begin() + tmp0ThreadsNum, threads_.begin() + tmp0ThreadsNum + tmp1ThreadsNum);
     // 用于两个算法同步
     mainThread_ = tmp0Threads_.at(0);
     templateMainThreads_.emplace_back(tmp1Threads_.at(0));
@@ -350,9 +360,10 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 构建template
     InsAlgTemplate0 algTemplate0(param, myRank_, temp0HierarchyInfo);
     InsAlgTemplate1 algTemplate1(param, myRank_, temp1HierarchyInfo);
-
-    // 分配threads
-    PrepareResForTemplate(algTemplate0, algTemplate1);
+    if constexpr (std::is_same_v<InsAlgTemplate1, InsTempAllGatherMesh1D>) {
+        // 使第二轴的Mesh模板通过CLOS链路提交Read任务。
+        algTemplate1.SetConcurrentTopo(COMM_TOPO_CLOS);
+    }
 
     // 分配channels或者ccuKernels
     if (param.engine == CommEngine::COMM_ENGINE_CCU) {
@@ -378,7 +389,13 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
             auto& targetMap = (i < splitIndex) ? tmp0LinkMap_ : tmp1LinkMap_;
             targetMap[channel.remoteRank].push_back(channel);
         }
+        // 记录每个peer的channel数量，供GetRes计算线程和notify需求。
+        CHK_RET(algTemplate0.SetchannelsPerRank(tmp0LinkMap_));
+        CHK_RET(algTemplate1.SetchannelsPerRank(tmp1LinkMap_));
     }
+
+    // 按两轴模板的线程数和notify需求划分执行资源。
+    CHK_RET(PrepareResForTemplate(algTemplate0, algTemplate1));
 
     // 算法展开
     HcclResult ret = OrchestrateLoop(param, resCtx, algTemplate0, algTemplate1);
@@ -600,9 +617,13 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
 // 算法注册
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherConcurMeshNHR, InsV2AllGatherConcurrentExecutor,
-    TopoMatchConcurrentV2, InsTempAllGatherMesh1D, InsTempAllGatherNHR);
+    TopoMatchConcurrentV2, InsTempAllGatherMesh1D, InsTempAllGatherMesh1D);
 REGISTER_ALG_ATTRS(
     AicpuAllGatherConcurMeshNHR, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    // 将两条物理轴的算法属性均设为Mesh。
+    a.algoTypes = {AlgoType::MESH, AlgoType::MESH};
+    // 禁止输入与输出重叠，保护peer读取期间的input数据。
+    op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;
         AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);

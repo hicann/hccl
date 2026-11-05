@@ -227,7 +227,8 @@ HcclResult AllGatherOutPlaceCommon(
                                        && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix;
     const bool isAllGatherConcurrent = algName == "AicpuAllGatherConcurMeshNHR";
     constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
-    constexpr u64 UBX_ALLGATHER_SYM_DATA_SIZE = 4ULL * 1024 * 1024;
+    // Concurrent适用拓扑中，输入达到该阈值后查询对称窗口。
+    constexpr u64 UBX_ALLGATHER_SYM_DATA_SIZE = 8ULL * 1024 * 1024;
     // 在 Concurrent 适用拓扑内，小数据即使选中 SoleMesh 也使用非对称内存路径。
     bool isUbxConcurrentTopo = false;
     if (param.opMode == OpMode::OPBASE && param.engine == CommEngine::COMM_ENGINE_AICPU_TS

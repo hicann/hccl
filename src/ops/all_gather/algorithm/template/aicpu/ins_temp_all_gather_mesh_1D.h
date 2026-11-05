@@ -39,6 +39,8 @@ public:
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    // 设置Concurrent模板的物理通信轴，选择对应的建链方式和Read接口。
+    void SetConcurrentTopo(CommTopo topo) { concurrentTopo_ = topo; }
 
     u64 GetThreadNum() const override;
     HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels) override;
@@ -52,13 +54,18 @@ protected:
     HcclResult RunAllGatherMeshOnChannel(
         const ThreadHandle& thread, const ChannelInfo& linkRemote, const u32 connectedRank, const u32 connectedAlgRank,
         const u32 channelIdx);
-    virtual HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads);
+    // outputOnly=true时仅生成本卡输出，false时执行前置拷贝。
+    virtual HcclResult LocalDataCopy(const std::vector<ThreadHandle>& threads, bool outputOnly = false);
     HcclResult PostLocalCopy(const std::vector<ThreadHandle>& threads);
     TemplateDataParams tempAlgParams_;
     std::vector<u64> elemCountOut_;
     std::vector<u64> sizeOut_;
     std::vector<u64> elemOffset_;
     u32 maxChannelsPerRank_{1};
+
+private:
+    bool isConcurrent_{false};                  // 启用Concurrent的独立主流和分阶段拷贝。
+    CommTopo concurrentTopo_{COMM_TOPO_1DMESH}; // 当前模板使用的物理通信轴。
 };
 
 } // namespace ops_hccl
