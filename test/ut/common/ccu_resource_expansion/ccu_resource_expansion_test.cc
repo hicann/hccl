@@ -28,6 +28,7 @@ class CcuResourceExpansionTest : public testing::Test {
 protected:
     void SetUp() override
     {
+        errorLogCount_ = 0;
         g_resources = MockResources{};
         auto original = KernelNumbers();
         original[HCOMM_CCU_RES_TYPE_VARIABLE] = ORIGINAL_CAPACITY;
@@ -48,10 +49,21 @@ protected:
         context_ = std::make_unique<AlgResourceCtxSerializable>();
         MOCKER(HcclGetThread).stubs().will(returnValue(HCCL_SUCCESS));
         MOCKER(HcclGetChannelForCcu).stubs().will(returnValue(HCCL_SUCCESS));
-        MOCKER(HcclCheckLogLevel).stubs().will(returnValue(false));
+        MOCKER(HcclCheckLogLevel).stubs().will(invoke(CheckLogLevel));
     }
 
     void TearDown() override { GlobalMockObject::verify(); }
+
+    // 关闭实际日志输出，同时检查代码是否进入ERROR分支。
+    static bool CheckLogLevel(int logType, int)
+    {
+        if (logType == HCCL_LOG_ERROR) {
+            ++errorLogCount_;
+        }
+        return false;
+    }
+
+    inline static uint32_t errorLogCount_ = 0;
 
     HcclComm Comm() { return static_cast<HcclComm>(&commIdentity_); }
 
@@ -168,6 +180,33 @@ TEST_F(CcuResourceExpansionTest, InsufficientDeviceDoesNotCreateInstance)
         g_resources.remainQueryDies.end());
     EXPECT_TRUE(g_resources.createRequests.empty());
     EXPECT_TRUE(g_resources.contexts.empty());
+}
+
+TEST_F(CcuResourceExpansionTest, OriginalInstanceInsufficientDoesNotLogError)
+{
+    MOCKER(HcclCommQueryAssignedCcuIns).stubs().will(returnValue(HCCL_E_UNAVAIL));
+    g_resources.instances.clear();
+    g_resources.remain = ORIGINAL_CAPACITY;
+
+    EXPECT_EQ(Apply(), HCCL_E_UNAVAIL);
+    EXPECT_EQ(errorLogCount_, 0u);
+    EXPECT_TRUE(g_resources.createRequests.empty());
+    EXPECT_EQ(g_resources.assignCalls, 0u);
+    EXPECT_TRUE(g_resources.registerTargets.empty());
+    EXPECT_TRUE(g_resources.descriptors.empty());
+}
+
+TEST_F(CcuResourceExpansionTest, OriginalInstanceCreateErrorStillLogsError)
+{
+    MOCKER(HcclCommQueryAssignedCcuIns).stubs().will(returnValue(HCCL_E_UNAVAIL));
+    MOCKER(HcommCcuInsCreate).stubs().will(returnValue(CCU_E_INTERNAL));
+    g_resources.instances.clear();
+
+    EXPECT_EQ(Apply(), HCCL_E_INTERNAL);
+    EXPECT_GT(errorLogCount_, 0u);
+    EXPECT_EQ(g_resources.assignCalls, 0u);
+    EXPECT_TRUE(g_resources.registerTargets.empty());
+    EXPECT_TRUE(g_resources.descriptors.empty());
 }
 
 TEST_F(CcuResourceExpansionTest, RegisterErrorPreservesExistingExtraAndOldKernel)

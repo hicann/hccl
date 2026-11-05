@@ -3331,7 +3331,15 @@ static HcclResult CreateAndAssignNewCcuIns(
     std::unique_ptr<AlgResourceCtxSerializable>& resCtxHost)
 {
     CcuInsHandle newInsHandle = 0;
-    CHK_RET(CreateCcuInsWithReq(opExpansionMode, reqDescs, newInsHandle));
+    auto createRet = CreateCcuInsWithReq(opExpansionMode, reqDescs, newInsHandle);
+    if (createRet != HCCL_SUCCESS) {
+        if (createRet == HCCL_E_UNAVAIL) {
+            HCCL_WARNING("[CreateAndAssignNewCcuIns] CCU resource unavailable, try to fallback, ret[%d].", createRet);
+        } else {
+            HCCL_ERROR("[CreateAndAssignNewCcuIns] CreateCcuInsWithReq failed, ret[%d].", createRet);
+        }
+        return createRet;
+    }
     HcclResult assignRet = HcclCommAssignCcuIns(comm, newInsHandle);
     HCCL_INFO(
         "[CreateAndAssignNewCcuIns] HcclCommAssignCcuIns insHandle[%llu] ret[%d].",
