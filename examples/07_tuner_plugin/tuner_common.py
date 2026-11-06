@@ -217,7 +217,7 @@ def parse_algos(algos_str):
         brace_pos = token.find("{")
         if brace_pos >= 0:
             if not token.endswith("}"):
-                raise ValueError("invalid algo token (missing '}'): {!r}".format(token))
+                raise ValueError("invalid algo token (missing '}}'): {!r}".format(token))
             executor = token[:brace_pos].strip()
             inner = token[brace_pos + 1:-1].strip()
             if not inner:
