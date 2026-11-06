@@ -419,17 +419,14 @@ HcclResult InsTempAllReduceNHR::RunReduceScatter(
             dataType_,
             reduceOp_};
 
-        if (supportSymmetricMemAccess_) {
-            CHK_PRT_RET(
-                SendRecvBatchReadReduce(sendRecvReduceInfo, threads.at(channelIdx)),
-                HCCL_ERROR("[InsTempAllReduceNHR] RunReduceScatter SendRecvBatchReadReduce failed"),
-                HcclResult::HCCL_E_INTERNAL);
-        } else if (isDmaRead_) {
+        if (isDmaRead_) {
             CHK_PRT_RET(
                 SendRecvReadReduce(sendRecvReduceInfo, threads.at(channelIdx)),
                 HCCL_ERROR("[InsTempAllReduceNHR] RunReduceScatter SendRecvReduce failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else {
+            // 对称内存路径统一推模式：tx 源为本端 input 中的部分和，目标为对端 input 对称窗口，
+            // 切片构造在上方已按 supportSymmetricMemAccess_ 就绪
             CHK_PRT_RET(
                 SendRecvBatchWriteReduce(sendRecvReduceInfo, threads.at(channelIdx)),
                 HCCL_ERROR("[InsTempAllReduceNHR] RunReduceScatter SendRecvReduce failed"),

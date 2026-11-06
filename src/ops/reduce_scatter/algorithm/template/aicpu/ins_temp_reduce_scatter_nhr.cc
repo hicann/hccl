@@ -144,7 +144,7 @@ HcclResult InsTempReduceScatterNHR::KernelRun(
     HCCL_DEBUG("[InsTempReduceScatterNHR] Use Dma Read[%d]", isDmaRead_);
 
     if (supportSymmetricMemAccess_) {
-        HCCL_INFO("[InsTempReduceScatterNHR] Remote mem access enabled, skip PreCopy, use read+reduce on input");
+        HCCL_INFO("[InsTempReduceScatterNHR] Remote mem access enabled, skip PreCopy, use write+reduce on input");
     } else if (!isDmaRead_ && templateRankSize_ > 1) {
         skipStep0TxPreCopy_ = true;
         HCCL_INFO("[InsTempReduceScatterNHR] Skip step0 tx pre-copy enabled");
@@ -423,16 +423,13 @@ HcclResult InsTempReduceScatterNHR::RunNHR(const std::vector<ThreadHandle>& thre
         SendRecvReduceInfo info{
             {linkSend, linkRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_, reduceOp_};
 
-        if (supportSymmetricMemAccess_) {
-            CHK_PRT_RET(
-                SendRecvBatchReadReduce(info, threads[channelIdx]),
-                HCCL_ERROR("[RS-NHR][RunNHR] SendRecvBatchReadReduce failed (step=%u)", st.step),
-                HcclResult::HCCL_E_INTERNAL);
-        } else if (isDmaRead_) {
+        if (isDmaRead_) {
             CHK_PRT_RET(
                 SendRecvReadReduce(info, threads[channelIdx]),
                 HCCL_ERROR("[RS-NHR][RunNHR] SendRecvReduce failed (step=%u)", st.step), HcclResult::HCCL_E_INTERNAL);
         } else {
+            // 对称内存路径统一推模式：tx 源为本端 input 中的部分和，目标为对端 input 对称窗口，
+            // 切片构造在上方已按 supportSymmetricMemAccess_ 就绪
             CHK_PRT_RET(
                 SendRecvBatchWriteReduce(info, threads[channelIdx]),
                 HCCL_ERROR("[RS-NHR][RunNHR] SendRecvBatchWriteReduce failed (step=%u)", st.step),
