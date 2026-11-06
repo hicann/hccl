@@ -46,6 +46,9 @@ public:
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;
 
 private:
+    // index is a zero-based subthread index, excluding the main thread.
+    bool IsMeshSubThread(u32 index) const { return index >= maxPathNum_; }
+
     void GetNotifyIdxMainToClos(std::vector<u32>& notifyIdxMianToSub);
     void GetNotifyIdxClosToMain(std::vector<u32>& notifyIdxSubToMain);
     void GetNotifyIdxMainToFullMesh(std::vector<u32>& notifyIdxMianToSub);
@@ -76,7 +79,6 @@ private:
     std::vector<u64> recvSizeSplit_;
     std::vector<u64> recvOffsetSplit_;
 
-    bool needDealWithFullMeshInfo_{false};
     u32 myAlgRank_{0};
     u32 rankNumPerBoard_{0};
     u32 maxPathNum_{4};         // 跨框最多4jetty

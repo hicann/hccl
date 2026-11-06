@@ -110,7 +110,9 @@ HcclResult InsTempUBXAllToAllVMesh1D::CalcRes(
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D::CalcRes] slaveThreadNum is [%u]", resourceRequest.slaveThreadNum);
     for (u32 index = 0; index < resourceRequest.slaveThreadNum; index++) {
         // 从流的notify数量以rank间channel数的最大值为准，用于和主流同步以及同一个rank多条链路间的同步
-        resourceRequest.notifyNumPerThread.push_back(channelsPerRank_);
+        // 对应本rank的Mesh流负责本地拷贝和组内汇合：notify 0用于启动，notify 1~3用于汇合。
+        u32 notifyNum = IsMeshSubThread(index) ? std::max(channelsPerRank_, maxRankNumPerBoard_) : channelsPerRank_;
+        resourceRequest.notifyNumPerThread.push_back(notifyNum);
     }
     resourceRequest.notifyNumOnMainThread = resourceRequest.slaveThreadNum;
     return HCCL_SUCCESS;
@@ -283,6 +285,8 @@ InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, 
     std::map<u32, std::vector<ChannelInfo>>& channels = templateResource.channels;
     std::vector<ThreadHandle>& threads = templateResource.threads;
     // 用后面的 maxRankNumPerBoard_ 条流做fullmesh内的收发
+    // 对应本rank的流不做网络收发，统一承载Mesh的本地拷贝。
+    const ThreadHandle& meshCopyThread = subThreadsFullMesh_[currRankIndex_];
     localCopyInfoFullMesh_.clear();
     for (u32 i = 0; i < rankNumPerBoard_; i++) {
         u32 targetRank = currBoard_ * rankNumPerBoard_ + i;
@@ -295,7 +299,7 @@ InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, 
             DataSlice usrOutSlices = DataSlice(
                 tempAlgParams.buffInfo.outputPtr, tempAlgParams.rdispls[myAlgRank_] * dataTypeSize_,
                 tempAlgParams.recvCounts[myAlgRank_] * dataTypeSize_, tempAlgParams.recvCounts[myAlgRank_]);
-            CHK_RET(LocalCopy(threads[fullMeshThreadId], usrInSlices, usrOutSlices));
+            CHK_RET(LocalCopy(meshCopyThread, usrInSlices, usrOutSlices));
         } else {                                                             // 和板内其他卡去收发
             const ChannelInfo& channelSendRecv = channels.at(targetRank)[0]; // 和对端收发
             // 对称路径把本地input直接写到对端output，不经scratch。
@@ -345,7 +349,18 @@ InsTempUBXAllToAllVMesh1D::RunFullMesh(const TemplateDataParams& tempAlgParams, 
             }
         }
     }
-    needDealWithFullMeshInfo_ = true;
+    // 收发完成后在Mesh内部汇合，再由本地拷贝流统一执行后拷贝。
+    std::vector<ThreadHandle> meshSubThreads(subThreadsFullMesh_);
+    meshSubThreads.erase(meshSubThreads.begin() + currRankIndex_);
+    std::vector<u32> notifyIdxMeshToMesh;
+    for (u32 i = 1; i < subThreadsFullMesh_.size(); i++) {
+        notifyIdxMeshToMesh.push_back(i);
+    }
+    CHK_RET(PostSyncInterThreads(meshCopyThread, meshSubThreads, notifyIdxMeshToMesh));
+    for (u32 i = 0; i < localCopyInfoFullMesh_.size(); i++) {
+        CHK_RET(LocalCopy(meshCopyThread, localCopyInfoFullMesh_[i][0], localCopyInfoFullMesh_[i][1]));
+    }
+    localCopyInfoFullMesh_.clear();
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -380,15 +395,6 @@ HcclResult InsTempUBXAllToAllVMesh1D::RunPairwise(
         // 一条流做上一个step的后拷贝
         for (u32 i = 0; i < localCopyInfo_.size(); i++) {
             CHK_RET(LocalCopy(threads[0], localCopyInfo_[i][0], localCopyInfo_[i][1]));
-        }
-
-        // 这里要处理一次 localCopyInfoFullMesh_，第一次进来的时候需要处理一下
-        if (needDealWithFullMeshInfo_) {
-            for (u32 i = 0; i < localCopyInfoFullMesh_.size(); i++) {
-                CHK_RET(LocalCopy(threads[0], localCopyInfoFullMesh_[i][0], localCopyInfoFullMesh_[i][1]));
-            }
-            needDealWithFullMeshInfo_ = false;
-            localCopyInfoFullMesh_.clear(); // 用完要清空
         }
 
         // 其他流开始和对端卡 4 jetty 收发
@@ -727,11 +733,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::InitParam(
     }
 
     std::vector<ThreadHandle>& threads = templateResource.threads;
-    if (threadNum_ > 1) {
-        subThreadsBoard_.assign(threads.begin() + 1, threads.begin() + 1 + maxPathNum_); // clos用
-        subThreadsFullMesh_.assign(
-            threads.begin() + 1 + maxPathNum_,
-            threads.begin() + 1 + maxPathNum_ + maxRankNumPerBoard_); // fullmesh用
+    subThreadsBoard_.clear();
+    subThreadsFullMesh_.clear();
+    for (u32 index = 0; index + 1 < threadNum_; index++) {
+        auto& subThreads = IsMeshSubThread(index) ? subThreadsFullMesh_ : subThreadsBoard_;
+        subThreads.push_back(threads[index + 1]);
     }
 
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
@@ -779,16 +785,11 @@ HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(
         }
         localCopyInfo_.clear();
 
-        // 4 FullMesh后同步，再把板内fullmesh收到scratch的数据落到output。
+        // 4 仅在结束时等待Mesh本地拷贝流完成。
         if (threadNum_ > 1) {
             GetNotifyIdxFullMeshToMain(notifyIdxSubToMain_);
-            CHK_RET(PostSyncInterThreads(threads[0], subThreadsFullMesh_, notifyIdxSubToMain_));
+            CHK_RET(PostSyncInterThreads(threads[0], {subThreadsFullMesh_[currRankIndex_]}, notifyIdxSubToMain_));
         }
-        for (u32 i = 0; i < localCopyInfoFullMesh_.size(); i++) {
-            CHK_RET(LocalCopy(threads[0], localCopyInfoFullMesh_[i][0], localCopyInfoFullMesh_[i][1]));
-        }
-        localCopyInfoFullMesh_.clear();
-        needDealWithFullMeshInfo_ = false;
         HCCL_INFO("[InsTempUBXAllToAllVMesh1D] 1-rank-to-4-rank CLOS pipeline rank[%d] finish.", myAlgRank_);
         return HcclResult::HCCL_SUCCESS;
     }
@@ -798,26 +799,24 @@ HcclResult InsTempUBXAllToAllVMesh1D::KernelRun(
     u32 targetBoard = sendRecvMatrix[currBoard_][0];
     CHK_RET(RunPairwise(tempAlgParams, templateResource, targetBoard));
 
-    // fullmesh的前后流同步要取出来，不然就变串行了
+    // fullmesh 的前同步已在 KernelRun 入口统一发出，此处仅提交 fullmesh 收发；
+    // fullmesh 的后同步已下沉到 Mesh 轴内（RunFullMesh 末尾），主流仅在收尾时等待 Mesh 本地拷贝流。
     CHK_RET(RunFullMesh(tempAlgParams, templateResource));
-
-    // 这里是fullmesh的后同步
-    if (threadNum_ > 1) {
-        GetNotifyIdxFullMeshToMain(notifyIdxSubToMain_);
-        CHK_RET(PostSyncInterThreads(threads[0], subThreadsFullMesh_, notifyIdxSubToMain_));
-    }
 
     for (u32 boardIndex = 1; boardIndex < algBoardNum_ - 1; boardIndex++) {
         targetBoard = sendRecvMatrix[currBoard_][boardIndex];
         CHK_RET(RunPairwise(tempAlgParams, templateResource, targetBoard));
     }
 
-    // 最后做一次后同步
+    // 收尾：排空 CLOS 留在 scratch 上的后拷贝
     for (u32 i = 0; i < localCopyInfo_.size(); i++) {
         CHK_RET(LocalCopy(threads[0], localCopyInfo_[i][0], localCopyInfo_[i][1]));
     }
-    for (u32 i = 0; i < localCopyInfoFullMesh_.size(); i++) {
-        CHK_RET(LocalCopy(threads[0], localCopyInfoFullMesh_[i][0], localCopyInfoFullMesh_[i][1]));
+
+    // 仅在结束时等待Mesh本地拷贝流完成。
+    if (threadNum_ > 1) {
+        GetNotifyIdxFullMeshToMain(notifyIdxSubToMain_);
+        CHK_RET(PostSyncInterThreads(threads[0], {subThreadsFullMesh_[currRankIndex_]}, notifyIdxSubToMain_));
     }
 
     HCCL_INFO("[InsTempUBXAllToAllVMesh1D] AllToAll full mesh rank[%d] finish.", myAlgRank_);
@@ -871,11 +870,10 @@ void InsTempUBXAllToAllVMesh1D::GetNotifyIdxClosToMain(std::vector<u32>& notifyI
 
 void InsTempUBXAllToAllVMesh1D::GetNotifyIdxFullMeshToMain(std::vector<u32>& notifyIdxSubToMain)
 {
+    // 主流通知槽按从流位置映射，等待当前 rank 对应的 Mesh 本地拷贝流。
+    const u32 MESH_TO_MAIN_NOTIFY_IDX = maxPathNum_ + currRankIndex_;
     notifyIdxSubToMain.clear();
-    u32 notifyNum = threadNum_ - 1;
-    for (u32 notifyIdx = maxPathNum_; notifyIdx < notifyNum; notifyIdx++) {
-        notifyIdxSubToMain.push_back(notifyIdx);
-    }
+    notifyIdxSubToMain.push_back(MESH_TO_MAIN_NOTIFY_IDX);
 }
 
 } // namespace ops_hccl
