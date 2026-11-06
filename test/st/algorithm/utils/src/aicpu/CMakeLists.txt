@@ -278,6 +278,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_all_to_all_v_pairwise.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh.cc
+    ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh_nda.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/alltoall_stage_template_registry.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/hier/ins_temp_all_to_all_hier_mesh_stage.cc
 

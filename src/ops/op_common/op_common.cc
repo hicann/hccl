@@ -184,8 +184,18 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     HCCL_ALGO_PLUGIN_SELECTOR_FAST_PATH(comm, param, topoInfo.get(), algName);
 #endif
 
+    // host DPU 场景、NDA 机型且支持 NDA 时，走 collAlgSelector 分支，由 AutoSelectorBase::Select 的 NDA 分支选择
+    // NDA 算法
+    bool hostDPUOnly = false;
+    bool isSupportNda = false;
+    bool useNdaSelector
+        = ((CheckHostDPUOnly(comm, topoInfo.get(), hostDPUOnly) == HCCL_SUCCESS) && hostDPUOnly
+           && (CheckSupportNda(comm, topoInfo.get(), isSupportNda) == HCCL_SUCCESS) && isSupportNda);
+    HCCL_INFO(
+        "[Selector] hostDPUOnly=%d, isSupportNda=%d, useNdaSelector=%d.", hostDPUOnly, isSupportNda, useNdaSelector);
+
     // 算法选择，选择完后顺便param.algTag设置了，资源的保存是以算子+算法为单位
-    if ((topoInfo->level0Topo == Level0Shape::MESH_1D) || AutoSelectorBase::IsDevType960()) {
+    if (!useNdaSelector && ((topoInfo->level0Topo == Level0Shape::MESH_1D) || AutoSelectorBase::IsDevType960())) {
         CHK_RET(SelectorEngine::Global()->Run(comm, param, topoInfo.get(), algName));
     } else {
         std::shared_ptr<ExecuteSelector> collAlgSelector = std::make_shared<ExecuteSelector>(ExecuteSelector());
@@ -2280,14 +2290,16 @@ HcclResult HcclGetChannel(
                         &isSupportNda)));
                 }
 #endif
-                // NDA 建链仅支持白名单算子，其余算子(含 alltoall/alltoallv/alltoallvc)走 host 建链
+                // NDA 建链仅支持白名单算子，其余算子走 host 建链
                 bool isNdaSupportedOp
                     = (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER
                        || param.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
                        || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
-                       || param.opType == HcclCMDType::HCCL_CMD_SCATTER || param.opType == HcclCMDType::HCCL_CMD_REDUCE
-                       || param.opType == HcclCMDType::HCCL_CMD_BROADCAST || param.opType == HcclCMDType::HCCL_CMD_SEND
-                       || param.opType == HcclCMDType::HCCL_CMD_RECEIVE);
+                       || param.opType == HcclCMDType::HCCL_CMD_REDUCE || param.opType == HcclCMDType::HCCL_CMD_SEND
+                       || param.opType == HcclCMDType::HCCL_CMD_RECEIVE
+                       || param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
+                       || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
+                       || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC);
                 if (isSupportNda && isNdaBoard && isNdaSupportedOp) {
                     deviceChannelRequest.emplace_back(channelRequest);
                 } else {

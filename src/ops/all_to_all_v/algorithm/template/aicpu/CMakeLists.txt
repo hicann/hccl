@@ -20,6 +20,7 @@ set(src_list
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_dpu_alltoall_mesh.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_dpu_alltoall_mesh_nda.cc
     )
 endif()
 

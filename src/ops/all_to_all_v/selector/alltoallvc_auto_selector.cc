@@ -115,20 +115,31 @@ SelectorStatus AlltoAllVCAutoSelector::SelectDPUAlgo(
     HCCL_INFO(
         "[AlltoAllVCAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
-    if (topoInfo->topoLevelNums > 1) {
-        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
-            selectAlgName = "DpuAllToAllVCSoleMesh";
-            return SelectorStatus::MATCH;
-        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
-            selectAlgName = "DpuAllToAllVCSoleMesh";
-            return SelectorStatus::MATCH;
-        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            // seq算法兼容level0为clos的场景
-            selectAlgName = "DpuAllToAllVCSoleMesh";
-            HCCL_DEBUG(
-                "[AlltoAllVCAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
-            return SelectorStatus::MATCH;
-        }
+    if (topoInfo->topoLevelNums > 1
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+            || topoInfo->level0Topo == Level0Shape::CLOS)) {
+        selectAlgName = "DpuAllToAllVCSoleMesh";
+        HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] use algo [%s]", __func__, selectAlgName.c_str());
+        return SelectorStatus::MATCH;
+    }
+
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus AlltoAllVCAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    std::vector<HcclAlgoType> algos = GetConfiguredAlgorithms(opParam.opType, configAlgMap);
+    HCCL_INFO(
+        "[AlltoAllVCAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
+        opParam.opType, algos[0], algos[1], algos[2], algos[3]);
+    if (topoInfo->topoLevelNums > 1
+        && (topoInfo->level0Topo == Level0Shape::MESH_1D || topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+            || topoInfo->level0Topo == Level0Shape::CLOS)) {
+        selectAlgName = "DpuAllToAllVCSoleMeshNDA";
+        HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] use algo [%s]", __func__, selectAlgName.c_str());
+        return SelectorStatus::MATCH;
     }
 
     return SelectorStatus::NOT_MATCH;

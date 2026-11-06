@@ -25,6 +25,8 @@ HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle thread, ChannelHandl
 HcclResult SendWrite(const DataInfo& sendInfo);
 HcclResult RecvWrite(const DataInfo& recvInfo);
 HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo);
+HcclResult SendWriteForNda(const DataInfo& sendInfo, const ThreadHandle& thread);
+HcclResult RecvWriteForNda(const DataInfo& recvInfo, const ThreadHandle& thread);
 HcclResult SendRecvWriteForNda(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
 
 } // namespace ops_hccl
