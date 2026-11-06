@@ -364,7 +364,7 @@ The following are typical outputs from `./test_plugin`, demonstrating the plugin
 
 ### Rule Hit and Cost Override
 
-AllReduce with 8 ranks, 4096B, fp32 matches a rule. The target algorithm's cost is changed from 100.0 to 0.0 (optimal preference). The Selector will pick this algorithm:
+AllReduce with 8 ranks, 4096B, fp16 matches a rule. The target algorithm's cost is changed from 100.0 to 0.0 (optimal preference). The Selector will pick this algorithm:
 
 ```
 [TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2 engine=aicpu executor=sole template=meshoneshot cost=0.000000

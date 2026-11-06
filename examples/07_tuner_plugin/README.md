@@ -322,7 +322,7 @@ make
 
 ### 命中规则并覆盖 cost
 
-AllReduce 8 ranks、4096B、fp32 匹配规则，将目标算法 cost 从 100.0 改为 0.0（最优偏好），Selector 会选这个算法：
+AllReduce 8 ranks、4096B、fp16 匹配规则，将目标算法 cost 从 100.0 改为 0.0（最优偏好），Selector 会选这个算法：
 
 ```
 [TunerDFX] rule hit: opType=2 nBytes=4096 dataType=3 ruleIdx=0/2 engine=aicpu executor=sole template=meshoneshot cost=0.000000
