@@ -6,7 +6,7 @@
 
 This environment variable is used to control the size of the shared data buffer used by a communicator. It must be set to an integer greater than or equal to 1. The default value is 200, in MB.
 
-In collective communication, each communicator occupies a buffer of HCCL_BUFFSIZE. If there are many communicators in the cluster, the total buffer use increases, which may affect the normal storage of model data. In such cases, you can reduce the value of this environment variable to lower the buffer space occupied by communicators. If your service has a small model data volume but a large communication data volume, you can appropriately increase the value of this environment variable to enlarge the buffer space occupied by communicators, thereby improving data communication efficiency.
+In collective communication, each communicator has send and receive buffers of HCCL_BUFFSIZE each, totaling 2 x HCCL_BUFFSIZE for these two buffers. If there are many communicators in the cluster, the total buffer use increases, which may affect the normal storage of model data. In such cases, you can reduce the value of this environment variable to lower the buffer space occupied by communicators. If your service has a small model data volume but a large communication data volume, you can appropriately increase the value of this environment variable to enlarge the buffer space occupied by communicators, thereby improving data communication efficiency.
 
 The recommended config for LLMs is:
 
