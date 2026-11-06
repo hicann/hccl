@@ -34,7 +34,7 @@ HCCL接口的头文件在`${INSTALL_DIR}/include/hccl/`目录下，库文件在`
 | hccl/hccl.h | 用于定义集合通信与点对点通信算子接口。 | libhccl.so |
 | hccl/hccl_mc2.h | 用于定义MC2自定义算子框架接口，包括HcclKfc\*参数对象分配/设置与HcclCreateOpResCtx通信资源上下文创建等接口。 | libhccl.so |
 
-HCCL以`cann-hccl_<version>_linux-<arch>.run`安装包形式发布，包含`libhccl.so`、对外头文件与`aicpu_hccl.tar.gz`（HCCL AI CPU算子包）；静态构建模式另产出`libhccl_static.a`。
+HCCL以`cann-hccl_<version>_linux-<arch>.run`安装包形式发布，包含`libhccl.so`、对外头文件与`aicpu_hccl.tar.gz`（HCCL AI CPU算子包）；静态构建模式单独生成`cann-hccl-static_<version>_linux-<arch>.tar.gz`归档包，包含对外头文件和`lib64/libhccl_static.a`。
 
 - 源码编译与安装流程详见[构建指南](../build/build.md)。
 - 通信算子接口的原型定义、参数说明、数据类型支持与约束详见[通信算子接口](./comm_op_interface/README.md)。

@@ -36,7 +36,7 @@ Include the required files based on the HCCL APIs you actually use. The purpose 
 | hccl/hccl.h | Defines the collective communication and point-to-point communication operator APIs. | libhccl.so |
 | hccl/hccl_mc2.h | Defines the MC2 custom operator framework APIs, including HcclKfc\* parameter object allocation/setting and HcclCreateOpResCtx communication resource context creation. | libhccl.so |
 
-HCCL is released as the `cann-hccl_<version>_linux-<arch>.run` installation package, which contains `libhccl.so`, external header files, and `aicpu_hccl.tar.gz` (the HCCL AI CPU operator package). For static builds, the package additionally includes `libhccl_static.a`.
+HCCL is released as the `cann-hccl_<version>_linux-<arch>.run` installation package, which contains `libhccl.so`, external header files, and `aicpu_hccl.tar.gz` (the HCCL AI CPU operator package). Static builds produce a separate `cann-hccl-static_<version>_linux-<arch>.tar.gz` archive containing the external header files and `lib64/libhccl_static.a`.
 
 - For details about the source code build and installation procedure, see [Build Guide](../build/build.md).
 - For details about the prototype, parameters, data types, and constraints of communication operator APIs, see [Communication Operator APIs](./comm_op_interface/README.md).
