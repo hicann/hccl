@@ -141,6 +141,9 @@ HcclResult CcuTempAllreduceMesh1D2DieOneShot::KernelRun(
     uint64_t scratchAddr = PointerToAddr(buffInfo_.hcclBuff.addr) + buffInfo_.hcclBuffBaseOff;
     uint64_t sliceSize = templateDataParams.sliceSize;
     const uint64_t isInplace = (inputAddr == outputAddr) ? 1 : 0;
+    HCCL_INFO(
+        "[CcuTempAllreduceMesh1D2DieOneShot::KernelRun] isInplace[%llu], inputAddr[0x%llx], outputAddr[0x%llx].",
+        isInplace, inputAddr, outputAddr);
 
     uint32_t dieNum = ALL_REDUCE_DIE_NUM;
 

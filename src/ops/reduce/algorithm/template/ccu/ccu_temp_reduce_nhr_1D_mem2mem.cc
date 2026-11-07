@@ -244,6 +244,7 @@ HcclResult CcuTempReduceNHR1DMem2Mem::FastLaunch(const OpParam& param, const Tem
     const uint64_t* args0 = tempFastLaunchCtx.ccuKernelSubmitInfos[0].cachedArgs;
     constexpr u32 inputIdx = 0;
     constexpr u32 outputIdx = 1;
+    constexpr u32 isInputOutputEqualIdx = 3;
     constexpr u32 inputOffsetIdx = 18;
     constexpr u32 outputOffsetIdx = 19;
     uint64_t argSize = 18;
@@ -262,6 +263,10 @@ HcclResult CcuTempReduceNHR1DMem2Mem::FastLaunch(const OpParam& param, const Tem
         uint64_t* args = const_cast<uint64_t*>(tempFastLaunchCtx.ccuKernelSubmitInfos[kernelIdx].cachedArgs);
         args[inputIdx] = inputAddr;
         args[outputIdx] = outputAddr;
+        // 动态刷新 isInputOutputEqual，保证同 tag 连续 inplace/非 inplace 混调时标志正确
+        args[isInputOutputEqualIdx] = (inputAddr == outputAddr) ? 1 : 0;
+        HCCL_DEBUG(
+            "[CcuTempReduceNHR1DMem2Mem::FastLaunch] refresh isInputOutputEqual[%llu].", args[isInputOutputEqualIdx]);
 
         void* taskArgs = reinterpret_cast<void*>(args);
         CcuResult launchRet = HcommCcuKernelLaunch(
@@ -377,8 +382,9 @@ HcclResult CcuTempReduceNHR1DMem2Mem::PrepareLaunchArgs(
 
     RankSliceInfo die0SliceInfoVec;
     HCCL_INFO(
-        "[CcuTempReduceNHR1DMem2Mem] dieSplitRatio_[%f] die0Size[%llu] die1Size[%llu] kernelNum[%u] sliceSize[%llu]",
-        dieSplitRatio_, die0Size, die1Size, kernelNum, templateDataParams.sliceSize);
+        "[CcuTempReduceNHR1DMem2Mem] dieSplitRatio_[%f] die0Size[%llu] die1Size[%llu] kernelNum[%u] "
+        "sliceSize[%llu], isInputOutputEqual[%llu].",
+        dieSplitRatio_, die0Size, die1Size, kernelNum, templateDataParams.sliceSize, isInputOutputEqual);
     CHK_RET(CalcSliceInfoAllReduce(die0Size, die0SliceInfoVec));
     for (u32 rankIdx = 0; rankIdx < die0SliceInfoVec.size(); rankIdx++) {
         HCCL_DEBUG(

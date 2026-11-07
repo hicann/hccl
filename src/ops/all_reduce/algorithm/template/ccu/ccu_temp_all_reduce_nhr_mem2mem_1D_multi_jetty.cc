@@ -140,23 +140,24 @@ CcuTempAllReduceNhrMem2Mem1DMultiJetty::FastLaunch(const OpParam& param, const T
     // 计算NHR Multi Jetty特有的参数
     const uint64_t inputAddr = PointerToAddr(buffInfo_.inputPtr) + args[0];
     const uint64_t outputAddr = PointerToAddr(buffInfo_.outputPtr) + args[1];
+    const uint64_t isInplace = (inputAddr == outputAddr) ? 1ULL : 0ULL;
+    HCCL_DEBUG("[%s] refresh isInplace[%llu].", __func__, isInplace);
     std::vector<uint64_t> taskArgs = {
-        inputAddr,
-        outputAddr,
-        args[2],                                 // outputToken
-        (inputAddr == outputAddr) ? 1ULL : 0ULL, // isInplace
-        args[4],                                 // dataSizePerRank
-        args[5],                                 // dataSizePerPort
-        args[6],                                 // lastRankSliceSize
-        args[7],                                 // lastPortSliceSize
-        args[8],                                 // localCopyGoSize[0]
-        args[9],                                 // localCopyGoSize[1]
-        args[10],                                // localCopyGoSize[2]
-        args[11],                                // localCopyGoSize[3]
-        args[12],                                // localCopyGoSizeLastSlice[0]
-        args[13],                                // localCopyGoSizeLastSlice[1]
-        args[14],                                // localCopyGoSizeLastSlice[2]
-        args[15]                                 // localCopyGoSizeLastSlice[3]
+        inputAddr, outputAddr,
+        args[2],   // outputToken
+        isInplace, // isInplace
+        args[4],   // dataSizePerRank
+        args[5],   // dataSizePerPort
+        args[6],   // lastRankSliceSize
+        args[7],   // lastPortSliceSize
+        args[8],   // localCopyGoSize[0]
+        args[9],   // localCopyGoSize[1]
+        args[10],  // localCopyGoSize[2]
+        args[11],  // localCopyGoSize[3]
+        args[12],  // localCopyGoSizeLastSlice[0]
+        args[13],  // localCopyGoSizeLastSlice[1]
+        args[14],  // localCopyGoSizeLastSlice[2]
+        args[15]   // localCopyGoSizeLastSlice[3]
     };
     uint64_t argSize = taskArgs.size();
 

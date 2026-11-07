@@ -169,14 +169,21 @@ CcuTempAllReduceMeshMem2Mem1D::FastLaunch(const OpParam& param, const TemplateFa
     constexpr u32 inputIdx = 0;
     constexpr u32 outputIdx = 1;
     constexpr u32 scratchIdx = 3;
+    constexpr u32 isInputOutputEqualIdx = 10;
     constexpr u32 inputOffsetIdx = 15;
     constexpr u32 outputOffsetIdx = 16;
     constexpr u32 scratchOffsetIdx = 17;
     uint64_t argSize = 15;
 
-    args[inputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
-    args[outputIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
+    const uint64_t inputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[inputOffsetIdx];
+    const uint64_t outputAddr = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[outputOffsetIdx];
+    args[inputIdx] = inputAddr;
+    args[outputIdx] = outputAddr;
     args[scratchIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.hcclBuff.addr) + args[scratchOffsetIdx];
+    // 动态刷新 isInputOutputEqual，保持下发值与本次调用一致（当前 kernel 仅 LoadArg 加载该参数，暂未消费）
+    args[isInputOutputEqualIdx] = (inputAddr == outputAddr) ? 1 : 0;
+    HCCL_DEBUG(
+        "[CcuTempAllReduceMeshMem2Mem1D::FastLaunch] refresh isInputOutputEqual[%llu].", args[isInputOutputEqualIdx]);
 
     void* taskArgs = reinterpret_cast<void*>(args);
     CcuResult launchRet = HcommCcuKernelLaunch(
@@ -246,6 +253,10 @@ HcclResult CcuTempAllReduceMeshMem2Mem1D::KernelRun(
     CHK_RET(GetToken(buffInfo_, token));
     const uint64_t scratchAddr = PointerToAddr(buffInfo_.hcclBuff.addr) + buffInfo_.hcclBuffBaseOff;
     const uint64_t isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
+    HCCL_INFO(
+        "[CcuTempAllReduceMeshMem2Mem1D::KernelRun] isInputOutputEqual[%llu], inputAddr[0x%llx], "
+        "outputAddr[0x%llx].",
+        isInputOutputEqual, inputAddr, outputAddr);
 
     const uint64_t normalSliceSize = sliceInfoVec[0][0].size;
     const uint64_t lastSliceSize = sliceInfoVec[templateRankSize_ - 1][0].size;

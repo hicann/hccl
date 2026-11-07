@@ -116,6 +116,9 @@ HcclResult CcuTempAllReduceMesh1DOneShot::KernelRun(
     uint64_t sliceSize = templateDataParams.sliceSize;
     const uint64_t isInplace = (inputAddr == outputAddr) ? 1 : 0;
     uint64_t scratchAddr = PointerToAddr(buffInfo_.hcclBuff.addr) + buffInfo_.hcclBuffBaseOff;
+    HCCL_INFO(
+        "[CcuTempAllReduceMesh1DOneShot::KernelRun] isInplace[%llu], inputAddr[0x%llx], outputAddr[0x%llx].", isInplace,
+        inputAddr, outputAddr);
 
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
@@ -170,6 +173,7 @@ CcuTempAllReduceMesh1DOneShot::FastLaunch(const OpParam& param, const TemplateFa
     // 动态刷新 scratch（ccl 副本）地址与 isInplace，保证同 tag 连续 inplace/非 inplace 混调时标志正确
     args[scratchIdx] = PointerToAddr(tempFastLaunchCtx.buffInfo.hcclBuff.addr) + args[scratchOffsetIdx];
     args[isInplaceIdx] = (inputAddr == outputAddr) ? 1 : 0;
+    HCCL_DEBUG("[CcuTempAllReduceMesh1DOneShot::FastLaunch] refresh isInplace[%llu].", args[isInplaceIdx]);
 
     CcuResult launchRet = HcommCcuKernelLaunch(
         tempFastLaunchCtx.threads[0], tempFastLaunchCtx.ccuKernelSubmitInfos[0].kernelHandle,

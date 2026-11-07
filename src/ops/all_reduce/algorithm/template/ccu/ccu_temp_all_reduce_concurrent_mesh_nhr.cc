@@ -370,6 +370,10 @@ HcclResult CcuTempAllReduceConcurrentMeshNHR::LaunchNhrKernel(
     u64 die0Size = nhrParams.sliceSize;
     u64 die1Size = 0;
     u64 isInputOutputEqual = (inputAddr == outputAddr) ? 1 : 0;
+    HCCL_INFO(
+        "[CcuTempAllReduceConcurrentMeshNHR][LaunchNhrKernel] isInputOutputEqual[%llu], inputAddr[0x%llx], "
+        "outputAddr[0x%llx].",
+        isInputOutputEqual, inputAddr, outputAddr);
     RankSliceInfo die0SliceInfoVec;
     RankSliceInfo die1SliceInfoVec;
     CHK_RET(CalcSlice(die0Size, die0SliceInfoVec));
@@ -484,6 +488,7 @@ CcuTempAllReduceConcurrentMeshNHR::FastLaunch(const OpParam& param, const Templa
         args[0] = PointerToAddr(tempFastLaunchCtx.buffInfo.inputPtr) + args[10];
         args[1] = PointerToAddr(tempFastLaunchCtx.buffInfo.outputPtr) + args[11];
         args[3] = (args[0] == args[1]) ? 1 : 0;
+        HCCL_DEBUG("[CcuTempAllReduceConcurrentMeshNHR][FastLaunch] refresh isInputOutputEqual[%llu].", args[3]);
         CcuResult ret = HcommCcuKernelLaunch(nhrMain, submitInfos[1].kernelHandle, reinterpret_cast<void*>(args), 10);
         CHK_PRT_RET(
             ret != CCU_SUCCESS,

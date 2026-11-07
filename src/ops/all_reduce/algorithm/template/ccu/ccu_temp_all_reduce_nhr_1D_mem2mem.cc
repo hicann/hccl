@@ -260,6 +260,9 @@ CcuTempAllReduceNHRMem2Mem1D::FastLaunch(const OpParam& param, const TemplateFas
         args[outputIdx] = outputAddr;
         // 动态刷新 isInputOutputEqual，保证同 tag 连续 inplace/非 inplace 混调时标志正确
         args[isInputOutputEqualIdx] = (inputAddr == outputAddr) ? 1 : 0;
+        HCCL_DEBUG(
+            "[CcuTempAllReduceNHRMem2Mem1D::FastLaunch] refresh isInputOutputEqual[%llu].",
+            args[isInputOutputEqualIdx]);
 
         void* taskArgs = reinterpret_cast<void*>(args);
         CcuResult launchRet = HcommCcuKernelLaunch(
@@ -379,11 +382,12 @@ HcclResult CcuTempAllReduceNHRMem2Mem1D::KernelRun(
     CHK_RET(CalcSlice(die1Size, die1SliceInfoVec));
 
     HCCL_INFO(
-        "[CcuTempAllReduceNHRMem2Mem1D] die0Size[%llu], die1Size[%llu], inputAddr[%llu], "
-        "outputAddr[%llu], die0Slicesize[%llu], die1Slicesize[%llu], die0LastSlicesize[%llu], "
-        "die1LastSlicesize[%llu]",
-        die0Size, die1Size, inputAddr, outputAddr, die0SliceInfoVec[0][0].size, die1SliceInfoVec[0][0].size,
-        die0SliceInfoVec[templateRankSize_ - 1][0].size, die1SliceInfoVec[templateRankSize_ - 1][0].size);
+        "[CcuTempAllReduceNHRMem2Mem1D] die0Size[%llu], die1Size[%llu], inputAddr[0x%llx], "
+        "outputAddr[0x%llx], isInputOutputEqual[%llu], die0Slicesize[%llu], die1Slicesize[%llu], "
+        "die0LastSlicesize[%llu], die1LastSlicesize[%llu]",
+        die0Size, die1Size, inputAddr, outputAddr, isInputOutputEqual, die0SliceInfoVec[0][0].size,
+        die1SliceInfoVec[0][0].size, die0SliceInfoVec[templateRankSize_ - 1][0].size,
+        die1SliceInfoVec[templateRankSize_ - 1][0].size);
 
     std::vector<uint64_t> taskArgs;
     BuildTaskArgs(

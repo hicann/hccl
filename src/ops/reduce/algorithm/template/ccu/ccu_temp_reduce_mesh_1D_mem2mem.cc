@@ -226,13 +226,15 @@ HcclResult CcuTempReduceMesh1DMem2Mem::KernelRun(
     uint64_t outputRepeatStride = templateDataParams.outputRepeatStride;
     uint64_t normalSliceSize = templateDataParams.sliceSize;
     uint64_t repeatNumVar = UINT64_MAX - repeatNum;
+    // 该模板不把此标志下发给 CCU kernel，仅用于主机侧排查输入输出地址关系
+    const uint64_t inputOutputAddrEqual = (inputAddr == outputAddr) ? 1 : 0;
 
     HCCL_INFO(
-        "[CcuTempReduceMesh1DMem2Mem::KernelRun] TaskArgs: inputAddr[%llu], outputAddr[%llu], scratchAddr[%llu], "
-        "repeatNum[%llu], inputRepeatStride[%llu], outputRepeatStride[%llu], normalSliceSize[%llu], "
-        "repeatNumVar[%llu]",
-        inputAddr, outputAddr, scratchAddr, repeatNum, inputRepeatStride, outputRepeatStride, normalSliceSize,
-        repeatNumVar);
+        "[CcuTempReduceMesh1DMem2Mem::KernelRun] inputOutputAddrEqual[%llu], inputAddr[0x%llx], "
+        "outputAddr[0x%llx], scratchAddr[0x%llx], repeatNum[%llu], inputRepeatStride[%llu], "
+        "outputRepeatStride[%llu], normalSliceSize[%llu], repeatNumVar[%llu]",
+        inputOutputAddrEqual, inputAddr, outputAddr, scratchAddr, repeatNum, inputRepeatStride, outputRepeatStride,
+        normalSliceSize, repeatNumVar);
     LoopGroupConfig config{};
     config.msInterleave = CCU_MS_INTERLEAVE;
     config.loopCount = CCU_M2M_LOCAL_COPY_LOOP_COUNT;
