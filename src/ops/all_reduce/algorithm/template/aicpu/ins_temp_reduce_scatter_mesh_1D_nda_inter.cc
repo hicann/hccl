@@ -50,7 +50,6 @@ u64 InsTempReduceScatterMesh1dNdaInter::CalcScratchMultiple(BufferType inBufferT
 HcclResult InsTempReduceScatterMesh1dNdaInter::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
-#ifndef AICPU_COMPILE
     dataType_ = param.DataDes.dataType;
     if (templateResource.threads.empty()) {
         HCCL_ERROR("[InsTempReduceScatterMesh1dNdaInter] Rank[%u], required thread error.", myRank_);
@@ -134,7 +133,6 @@ HcclResult InsTempReduceScatterMesh1dNdaInter::KernelRun(
         HCCL_ERROR("[InsTempReduceScatterMesh1dNdaInter] failed to start batch mode, tag[%s].", param.algTag),
         HCCL_E_INTERNAL);
     CHK_RET(PostLocalReduce(param, tempAlgParams, templateResource.threads));
-#endif
     return HCCL_SUCCESS;
 }
 
@@ -198,8 +196,6 @@ HcclResult InsTempReduceScatterMesh1dNdaInter::PostLocalReduce(
     return HCCL_SUCCESS;
 }
 
-#ifndef AICPU_COMPILE
 REGISTER_TEMPLATE_V2("InsTempReduceScatterMesh1dNdaInter", InsTempReduceScatterMesh1dNdaInter);
-#endif
 
 } // namespace ops_hccl

@@ -50,7 +50,6 @@ u64 InsTempAllGatherNhrNdaInter::CalcScratchMultiple(BufferType inBufferType, Bu
 HcclResult InsTempAllGatherNhrNdaInter::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
-#ifndef AICPU_COMPILE
     if (templateResource.threads.empty()) {
         HCCL_ERROR("[InsTempAllGatherNhrNdaInter] Rank[%u], required thread error.", myRank_);
         return HCCL_E_INTERNAL;
@@ -68,7 +67,6 @@ HcclResult InsTempAllGatherNhrNdaInter::KernelRun(
         HCCL_ERROR("[InsTempAllGatherNhrNdaInter] failed to start batch mode, tag[%s].", param.algTag),
         HCCL_E_INTERNAL);
     CHK_RET(PostLocalCopy(tempAlgParams, templateResource));
-#endif
     return HCCL_SUCCESS;
 }
 
@@ -130,7 +128,6 @@ HcclResult InsTempAllGatherNhrNdaInter::RunNHR(
     const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
     const ThreadHandle& thread) const
 {
-#ifndef AICPU_COMPILE
     const u32 stepNum = GetNHRStepNum(templateRankSize_);
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; ++repeatIdx) {
         for (u32 step = 0; step < stepNum; ++step) {
@@ -188,7 +185,6 @@ HcclResult InsTempAllGatherNhrNdaInter::RunNHR(
                 HCCL_E_INTERNAL);
         }
     }
-#endif
     return HCCL_SUCCESS;
 }
 
@@ -220,8 +216,6 @@ HcclResult InsTempAllGatherNhrNdaInter::PostLocalCopy(
     return HCCL_SUCCESS;
 }
 
-#ifndef AICPU_COMPILE
 REGISTER_TEMPLATE_V2("InsTempAllGatherNhrNdaInter", InsTempAllGatherNhrNdaInter);
-#endif
 
 } // namespace ops_hccl
