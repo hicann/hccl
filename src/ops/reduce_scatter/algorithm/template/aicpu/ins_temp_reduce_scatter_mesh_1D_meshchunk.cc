@@ -257,24 +257,25 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::DoMeshChunk(
             for (u32 repeatIdx = 0; repeatIdx < repeatNum; repeatIdx++) {
                 u64 inputBaseOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
                                    + myAlgRank * tempAlgParams.inputSliceStride;
-                u64 sliceExchOffset = supportSymmetricMemAccess_ ? sliceSendOffset_ : sliceRecvOffset_;
+                // 对称内存路径：推模式 write-reduce，本 rank 将自己对「对端区域(frontRank)子块」的拷贝
+                // 直接写规约到对端 input 的同一位置，收发地址均按对端区域定位
+                u64 peerRegionOff = tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
+                                    + frontRank * tempAlgParams.inputSliceStride + sliceSendOffset_;
                 DataSlice rxSrcSlice = DataSlice(
                     supportSymmetricMemAccess_ ? remoteBuffAddr : tempAlgParams.buffInfo.inputPtr,
-                    inputBaseOff + sliceExchOffset, sliceSize[i], sliceSize[i] / dataTypeSize_); // 接收源
+                    supportSymmetricMemAccess_ ? peerRegionOff : (inputBaseOff + sliceRecvOffset_), sliceSize[i],
+                    sliceSize[i] / dataTypeSize_); // 接收源
                 DataSlice rxDstSlice = DataSlice(
                     supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr : tempAlgParams.buffInfo.hcclBuff.addr,
-                    supportSymmetricMemAccess_ ? (inputBaseOff + sliceExchOffset) :
-                                                 (remoteBuffBaseOff + sliceRecvOffset_),
-                    sliceSize[i], sliceSize[i] / dataTypeSize_); // 接收目标
+                    supportSymmetricMemAccess_ ? peerRegionOff : (remoteBuffBaseOff + sliceRecvOffset_), sliceSize[i],
+                    sliceSize[i] / dataTypeSize_); // 接收目标
                 DataSlice txSrcSlice = DataSlice(
                     tempAlgParams.buffInfo.inputPtr,
                     tempAlgParams.buffInfo.inBuffBaseOff + repeatIdx * tempAlgParams.inputRepeatStride
                         + frontRank * tempAlgParams.inputSliceStride + sliceSendOffset_,
                     sliceSize[i], sliceSize[i] / dataTypeSize_); // 发送源
                 DataSlice txDstSlice = DataSlice(
-                    remoteBuffAddr,
-                    supportSymmetricMemAccess_ ? (inputBaseOff + sliceSendOffset_) :
-                                                 (remoteBuffBaseOff + sliceSendOffset_),
+                    remoteBuffAddr, supportSymmetricMemAccess_ ? peerRegionOff : (remoteBuffBaseOff + sliceSendOffset_),
                     sliceSize[i], sliceSize[i] / dataTypeSize_); // 发送目标
 
                 rxSrcSlices.push_back(rxSrcSlice);
@@ -285,18 +286,13 @@ HcclResult InsTempReduceScatterMesh1DMeshChunk::DoMeshChunk(
             SendRecvReduceInfo sendRecvReduceInfo{
                 {linkSend, linkRecv}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}, dataType_, reduceOp_};
 
-            if (supportSymmetricMemAccess_) {
-                CHK_PRT_RET(
-                    SendRecvBatchReadReduce(sendRecvReduceInfo, threads[queIdx]),
-                    HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk] RunReduceScatter SendRecvBatchReadReduce failed"),
-                    HcclResult::HCCL_E_INTERNAL);
-            } else {
-                CHK_PRT_RET(
-                    SendRecvBatchWriteReduce(sendRecvReduceInfo, threads[queIdx]),
-                    HCCL_ERROR(
-                        "[InsTempReduceScatterMesh1DMeshChunk] RunReduceScatter SendRecvBatchWriteReduce failed"),
-                    HcclResult::HCCL_E_INTERNAL);
-            }
+            // 对称与非对称路径统一推模式：WriteReduce 只消费 tx 切片；上方 rx 列表仅占位、不被消费，寻址
+            // 未按接收方对齐（对称分支 rxDst 仍指向本地 input 的 frontRank 索引，语义含混），恢复 Read
+            // 系原语前须先修正； 对称路径目标为对端 input 对称窗口，非对称路径目标为对端 cclBuff
+            CHK_PRT_RET(
+                SendRecvBatchWriteReduce(sendRecvReduceInfo, threads[queIdx]),
+                HCCL_ERROR("[InsTempReduceScatterMesh1DMeshChunk] RunReduceScatter SendRecvBatchWriteReduce failed"),
+                HcclResult::HCCL_E_INTERNAL);
 
             sliceSendOffset_ += sliceSize[i];
             if (templateRankSize_ > rankNum && i < (templateRankSize_ - rankNum)) {

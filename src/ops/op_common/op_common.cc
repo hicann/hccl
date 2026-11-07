@@ -4171,16 +4171,20 @@ static bool IsReduceOpSymMemAllowed(const OpParam& param)
            && param.reduceType != HcclReduceOp::HCCL_REDUCE_PROD;
 }
 
-// AllReduce/ReduceScatter对称内存的规约确定性门禁：
-// 仅放行规约过程完全由 InsTempReduceScatterOmniPipeMesh1D 完成的算法，
-// 其余算法（SOLE/PARALLEL/SEQUENCE/NHR等）的规约顺序存在不确定性，禁用对称内存。
+// 对称内存规约确定性门禁：SoleNHR 为单模板单棵全 rank 蝶形树，多级仅改变链路层、规约顺序仍固定，
+// 不受 topoLevelNums 限制，故先于拓扑级数检查放行；其余多级算法 L0/L1 两棵树参与规约，确定性未验证；
+// 单级白名单算法均由单一模板完成规约、规约写者按步序固定，确定性成立。
 bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo)
 {
+    if (algName == "AicpuAllReduceSoleNHR" || algName == "AicpuReduceScatterSoleNHR") {
+        return true;
+    }
     if (topoInfo->topoLevelNums != TOPO_LEVEL_NUM_1) {
-        // 多级拓扑下 L1 NHR 模板同样参与规约，无法保证规约顺序确定性
+        // 多级否决仅针对分层算法
         return false;
     }
-    return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR";
+    return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR"
+           || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk";
 }
 
 // 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效
