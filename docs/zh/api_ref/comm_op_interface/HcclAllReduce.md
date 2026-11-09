@@ -122,32 +122,42 @@ HcclResult HcclAllReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclDataT
 
 ## 调用示例
 
-```c
-// 申请集合通信操作的Device 内存
-void *sendBuf = nullptr;
-void *recvBuf = nullptr;
-uint64_t count = 8;
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
-aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+针对Atlas推理系列产品，通信域初始化须在其他涉及Device内存申请的操作之前，参见《[系统约束与限制](../../user_guide/constraints.md#atlas推理系列产品)》。
 
-// 初始化通信域
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+以下应用层函数展示调用顺序。调用前应完成ACL运行时初始化；`rankId`为通信域内的rank编号，`deviceId`为本机逻辑Device编号。`rootInfo`由rank0调用HcclGetRootInfo生成，经应用的带外通信分发给同一通信域的所有rank后作为参数传入。`rankSize`及各参数应符合本接口的产品与组网约束。
 
-// 创建任务流
-aclrtStream stream;
-aclrtCreateStream(&stream);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
 
-// 执行AllReduce，将通信域内所有节点的输入数据进行相加后，再把结果发送到所有节点的输出buffer
-HcclAllReduce(sendBuf, recvBuf, count, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream);
-// 阻塞等待任务流中的集合通信任务执行完成
-aclrtSynchronizeStream(stream);
+void ExampleHcclAllReduce(uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo)
+{
+    // 选择本进程使用的逻辑设备并初始化通信域
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
 
-// 释放资源
-aclrtFree(sendBuf);          // 释放Device侧内存
-aclrtFree(recvBuf);          // 释放Device侧内存
-aclrtDestroyStream(stream);  // 销毁任务流
-HcclCommDestroy(hcclComm);   // 销毁通信域
+    // 创建任务流
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    // 申请集合通信操作的Device内存
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
+    uint64_t count = 8;
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc((void**)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+    aclrtMalloc((void**)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // 执行AllReduce，将通信域内所有节点的输入数据进行相加后，再把结果发送到所有节点的输出buffer
+    HcclAllReduce(sendBuf, recvBuf, count, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream);
+    // 阻塞等待任务流中的集合通信任务执行完成
+    aclrtSynchronizeStream(stream);
+
+    // 释放资源
+    aclrtFree(sendBuf);         // 释放Device侧内存
+    aclrtFree(recvBuf);         // 释放Device侧内存
+    aclrtDestroyStream(stream); // 销毁任务流
+    HcclCommDestroy(hcclComm);  // 销毁通信域
+}
 ```

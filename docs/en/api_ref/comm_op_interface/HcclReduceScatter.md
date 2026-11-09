@@ -112,29 +112,44 @@ HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, H
 
 ## Example
 
-```c
-uint32_t rankSize = 8;
-uint64_t recvCount = 1;  // Number of data elements received by each node
-uint64_t sendSize = rankSize * recvCount * sizeof(float);
-uint64_t recvSize = recvCount * sizeof(float);
+For the Atlas 300I Duo Inference Card, initialize the communicator before allocating device memory. See [Constraints and Limitations](../../user_guide/constraints.md#atlas-300i-duo-inference-card).
 
-// Allocate device memory for the collective communication operation.
-void *sendBuf = nullptr, *recvBuf = nullptr;
-aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
-aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
+The following application function shows the call order. Initialize the ACL runtime before calling it. `rankId` is the communicator rank and `deviceId` is the local logical device ID. Rank 0 obtains `rootInfo` using HcclGetRootInfo and distributes the same value to all ranks through the application's out-of-band channel before passing it to this function. Configure `rankSize` and other arguments according to the interface's product and networking constraints.
 
-// Initialize the communicator and stream.
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
 
-// Execute ReduceScatter: Sum the sendBuf of all ranks, and evenly scatter the result to the recvBuf of each rank in rank_id order.
-HcclReduceScatter(sendBuf, recvBuf, recvCount, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream);
-// Block and wait for the collective communication task in the task stream to complete.
-aclrtSynchronizeStream(stream);
+void ExampleHcclReduceScatter(uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo)
+{
+    // Select the local logical device and initialize the communicator.
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
 
-// Release resources.
-aclrtFree(sendBuf);          // Free memory on the device.
-aclrtFree(recvBuf);          // Free memory on the device.
-aclrtDestroyStream(stream);  // Destroy the task stream.
-HcclCommDestroy(hcclComm);   // Destroy the communicator.
+    // Create the stream.
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    uint64_t recvCount = 1; // Number of data elements received by each node
+    uint64_t sendSize = rankSize * recvCount * sizeof(float);
+    uint64_t recvSize = recvCount * sizeof(float);
+
+    // Allocate device memory for the collective communication operation.
+    void *sendBuf = nullptr, *recvBuf = nullptr;
+    aclrtMalloc(&sendBuf, sendSize, ACL_MEM_MALLOC_HUGE_ONLY);
+    aclrtMalloc(&recvBuf, recvSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // Execute ReduceScatter: Sum the sendBuf of all ranks, and evenly scatter the result to the recvBuf of each rank in
+    // rank_id order.
+    HcclReduceScatter(sendBuf, recvBuf, recvCount, HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM, hcclComm, stream);
+    // Block and wait for the collective communication task in the task stream to complete.
+    aclrtSynchronizeStream(stream);
+
+    // Release resources.
+    aclrtFree(sendBuf);         // Free memory on the device.
+    aclrtFree(recvBuf);         // Free memory on the device.
+    aclrtDestroyStream(stream); // Destroy the task stream.
+    HcclCommDestroy(hcclComm);  // Destroy the communicator.
+}
 ```

@@ -14,7 +14,7 @@
 - Atlas A2 training products/Atlas A2 inference products: Supported
 <!-- end id3 -->
 <!-- npu="310p" id4 -->
-- Atlas inference products: Not supported
+- Atlas inference products: Supported
 <!-- end id4 -->
 <!-- npu="910" id5 -->
 - Atlas training products: Supported
@@ -85,39 +85,49 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 
 ## Example
 
-```c
-// Allocate device memory for the collective communication operation.
-void *sendBuf = nullptr;
-void *recvBuf = nullptr;
-uint64_t count = 8;
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
-aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+For the Atlas 300I Duo Inference Card, initialize the communicator before allocating device memory. See [Constraints and Limitations](../../user_guide/constraints.md#atlas-300i-duo-inference-card).
 
-// Initialize the communicator.
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+The following application function shows the call order. Initialize the ACL runtime before calling it. `rankId` is the communicator rank and `deviceId` is the local logical device ID. Rank 0 obtains `rootInfo` using HcclGetRootInfo and distributes the same value to all ranks through the application's out-of-band channel before passing it to this function. Configure `rankSize` and other arguments according to the interface's product and networking constraints.
 
-// Create a stream.
-aclrtStream stream;
-aclrtCreateStream(&stream);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
 
-// Execute Send/Recv to send data to the next node and receive data from the previous node at the same time.
-// HcclBatchSendRecv can issue multiple Send/Recv tasks on this rank at the same time.
-uint32_t next = (deviceId + 1) % count;
-uint32_t prev = (deviceId - 1 + count) % count;
-HcclSendRecvItem sendRecvInfo[2];
-sendRecvInfo[0] = HcclSendRecvItem{HCCL_SEND, sendBuf, count, HCCL_DATA_TYPE_FP32, next};
-sendRecvInfo[1] = HcclSendRecvItem{HCCL_RECV, recvBuf, count, HCCL_DATA_TYPE_FP32, prev};
-HcclBatchSendRecv(sendRecvInfo, 2, hcclComm, stream);
+void ExampleHcclBatchSendRecv(uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo)
+{
+    // Select the local logical device and initialize the communicator.
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
 
-// Block and wait for the collective communication tasks in the stream to complete.
-ACLCHECK(aclrtSynchronizeStream(stream));
+    // Create the stream.
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
 
-// Release resources.
-aclrtFree(sendBuf);          // Free device-side memory.
-aclrtFree(recvBuf);          // Free device-side memory.
-aclrtDestroyStream(stream);  // Destroy the stream.
-HcclCommDestroy(hcclComm);   // Destroy the communicator.
+    // Allocate device memory for the collective communication operation.
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
+    uint64_t count = 4;
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc((void**)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+    aclrtMalloc((void**)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // Execute Send/Recv to send data to the next node and receive data from the previous node at the same time.
+    // HcclBatchSendRecv can issue multiple Send/Recv tasks on this rank at the same time.
+    uint32_t next = (rankId + 1) % rankSize;
+    uint32_t prev = (rankId - 1 + rankSize) % rankSize;
+    HcclSendRecvItem sendRecvInfo[2];
+    sendRecvInfo[0] = HcclSendRecvItem{HCCL_SEND, sendBuf, count, HCCL_DATA_TYPE_FP32, next};
+    sendRecvInfo[1] = HcclSendRecvItem{HCCL_RECV, recvBuf, count, HCCL_DATA_TYPE_FP32, prev};
+    HcclBatchSendRecv(sendRecvInfo, 2, hcclComm, stream);
+
+    // Block and wait for the collective communication tasks in the stream to complete.
+    aclrtSynchronizeStream(stream);
+
+    // Release resources.
+    aclrtFree(sendBuf);         // Free device-side memory.
+    aclrtFree(recvBuf);         // Free device-side memory.
+    aclrtDestroyStream(stream); // Destroy the stream.
+    HcclCommDestroy(hcclComm);  // Destroy the communicator.
+}
 ```

@@ -122,9 +122,19 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 
 ## 调用示例
 
-```c
-// 申请集合通信操作的Device内存
+针对Atlas推理系列产品，通信域初始化须在其他涉及Device内存申请的操作之前，参见《[系统约束与限制](../../user_guide/constraints.md#atlas推理系列产品)》。
+
+示例中的`rankId`为通信域内的rank编号，`deviceId`为本机逻辑Device编号；调用前应完成ACL运行时初始化，并由rank0获取及带外分发`rootInfo`。`rankSize`须符合本接口的产品与组网约束。
+
+```cpp
 uint32_t rankSize = 8;
+
+// 初始化通信域
+aclrtSetDevice(deviceId);
+HcclComm hcclComm;
+HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
+
+// 申请集合通信操作的Device内存
 uint64_t recvCount = 1;  // 每个rank接收的数据个数
 size_t recvSize = recvCount * sizeof(float);
 size_t totalSendCount = rankSize * recvCount;
@@ -141,10 +151,6 @@ std::vector<uint64_t> sendDispls(rankSize);
 for (uint32_t i = 0; i < rankSize; ++i) {
     sendDispls[i] = i * recvCount;
 }
-
-// 初始化通信域
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
 
 // 创建任务流
 aclrtStream stream;

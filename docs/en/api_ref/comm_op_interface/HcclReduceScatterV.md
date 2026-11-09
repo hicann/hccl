@@ -113,9 +113,19 @@ HcclResult HcclReduceScatterV(void *sendBuf, const void *sendCounts, const void 
 
 ## Example
 
-```c
-// Allocate device memory for the collective communication operation.
+For the Atlas 300I Duo Inference Card, initialize the communicator before allocating device memory. See [Constraints and Limitations](../../user_guide/constraints.md#atlas-300i-duo-inference-card).
+
+In this example, `rankId` is the communicator rank and `deviceId` is the local logical device ID. Initialize the ACL runtime and obtain and distribute `rootInfo` from rank 0 before this sequence. Choose `rankSize` within the product and deployment constraints of this API.
+
+```cpp
 uint32_t rankSize = 8;
+
+// Initialize the communicator.
+aclrtSetDevice(deviceId);
+HcclComm hcclComm;
+HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
+
+// Allocate device memory for the collective communication operation.
 uint64_t recvCount = 1;  // Number of data units received by each rank
 size_t recvSize = recvCount * sizeof(float);
 size_t totalSendCount = rankSize * recvCount;
@@ -132,10 +142,6 @@ std::vector<uint64_t> sendDispls(rankSize);
 for (uint32_t i = 0; i < rankSize; ++i) {
     sendDispls[i] = i * recvCount;
 }
-
-// Initialize the communicator.
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
 
 // Create a stream.
 aclrtStream stream;

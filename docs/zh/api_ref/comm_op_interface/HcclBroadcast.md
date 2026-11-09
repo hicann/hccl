@@ -85,34 +85,44 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
 
 ## 调用示例
 
-```c
-// 申请集合通信操作的Device 内存
-void *buf = nullptr;    // 对于root节点，是数据源；对于非root节点，是数据接收buffer
-uint64_t count = 8;     // 参与broadcast操作的数据个数
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+以下应用层函数展示调用顺序。调用前应完成ACL运行时初始化；`rankId`为通信域内的rank编号，`deviceId`为本机逻辑Device编号。`rootInfo`由rank0调用HcclGetRootInfo生成，经应用的带外通信分发给同一通信域的所有rank后作为参数传入。`rankSize`及各参数应符合本接口的产品与组网约束。root节点提供至少8个float元素的`hostBuf`，`rootRank`取通信域内有效rank编号。
 
-// 在root 节点构造输入数据
-if (deviceId == rootRank) {
-    aclrtMemcpy(buf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
+
+void ExampleHcclBroadcast(
+    uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo, uint32_t rootRank,
+    const float* hostBuf)
+{
+    // 选择本进程使用的逻辑设备并初始化通信域
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
+
+    // 创建任务流
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    // 申请集合通信操作的Device内存
+    void* buf = nullptr; // 对于root节点，是数据源；对于非root节点，是数据接收buffer
+    uint64_t count = 8;  // 参与broadcast操作的数据个数
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // 在root节点构造输入数据
+    if (rankId == rootRank) {
+        aclrtMemcpy(buf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE);
+    }
+
+    // 执行广播操作，将通信域内root节点的数据广播至其他rank
+    HcclBroadcast(buf, count, HCCL_DATA_TYPE_FP32, rootRank, hcclComm, stream);
+    // 阻塞等待任务流中的集合通信任务执行完成
+    aclrtSynchronizeStream(stream);
+
+    // 释放资源
+    aclrtFree(buf);             // 释放Device侧内存
+    aclrtDestroyStream(stream); // 销毁任务流
+    HcclCommDestroy(hcclComm);  // 销毁通信域
 }
-
-// 初始化通信域
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
-
-// 创建任务流
-aclrtStream stream;
-aclrtCreateStream(&stream);
-
-// 执行广播操作，将通信域内root 节点的数据广播至其他rank
-HcclBroadcast(buf, count, HCCL_DATA_TYPE_FP32, rootRank, hcclComm, stream);
-// 阻塞等待任务流中的集合通信任务执行完成
-aclrtSynchronizeStream(stream);
-
-// 释放资源
-aclrtFree(buf);              // 释放Device 侧内存
-aclrtDestroyStream(stream);  // 销毁任务流
-HcclCommDestroy(hcclComm);   // 销毁通信域
 ```

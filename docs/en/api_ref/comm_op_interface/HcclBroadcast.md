@@ -82,34 +82,45 @@ HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType, uint3
 
 ## Example
 
-```c
-// Allocate device memory for the collective communication operation.
-void *buf = nullptr;    // For the root node, it is the data source; for non-root nodes, it is the buffer for receiving data.
-uint64_t count = 8;     // Number of data elements involved in the broadcast operation.
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+The following application function shows the call order. Initialize the ACL runtime before calling it. `rankId` is the communicator rank and `deviceId` is the local logical device ID. Rank 0 obtains `rootInfo` using HcclGetRootInfo and distributes the same value to all ranks through the application's out-of-band channel before passing it to this function. Configure `rankSize` and other arguments according to the interface's product and networking constraints. On the root rank, `hostBuf` points to at least 8 float elements and `rootRank` names a valid communicator rank.
 
-// Construct the input data on the root node.
-if (deviceId == rootRank) {    
-    aclrtMemcpy(buf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
+
+void ExampleHcclBroadcast(
+    uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo, uint32_t rootRank,
+    const float* hostBuf)
+{
+    // Select the local logical device and initialize the communicator.
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
+
+    // Create the stream.
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    // Allocate device memory for the collective communication operation.
+    void* buf
+        = nullptr; // For the root node, it is the data source; for non-root nodes, it is the buffer for receiving data.
+    uint64_t count = 8; // Number of data elements involved in the broadcast operation.
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc(&buf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // Construct the input data on the root node.
+    if (rankId == rootRank) {
+        aclrtMemcpy(buf, mallocSize, hostBuf, mallocSize, ACL_MEMCPY_HOST_TO_DEVICE);
+    }
+
+    // Broadcast the data of the root node in the communicator to other ranks.
+    HcclBroadcast(buf, count, HCCL_DATA_TYPE_FP32, rootRank, hcclComm, stream);
+    // Block and wait for the collective communication task in the task stream to complete.
+    aclrtSynchronizeStream(stream);
+
+    // Release resources.
+    aclrtFree(buf);             // Free memory on the device.
+    aclrtDestroyStream(stream); // Destroy the task stream.
+    HcclCommDestroy(hcclComm);  // Destroy the communicator.
 }
-
-// Initialize the communicator.
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
-
-// Create a task stream.
-aclrtStream stream;
-aclrtCreateStream(&stream);
-
-// Broadcast the data of the root node in the communicator to other ranks.
-HcclBroadcast(buf, count, HCCL_DATA_TYPE_FP32, rootRank, hcclComm, stream);
-// Block and wait for the collective communication task in the task stream to complete.
-aclrtSynchronizeStream(stream);
-
-// Release resources.
-aclrtFree(buf);              // Free memory on the device.
-aclrtDestroyStream(stream);  // Destroy the task stream.
-HcclCommDestroy(hcclComm);   // Destroy the communicator.
 ```

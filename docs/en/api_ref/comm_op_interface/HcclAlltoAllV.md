@@ -98,42 +98,55 @@ HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void
 
 ## Example
 
-```c
-// Allocate device memory for the collective communication operation.
-void *sendBuf = nullptr;
-void *recvBuf = nullptr;
-uint64_t count = 8;
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
-aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+For the Atlas 300I Duo Inference Card, initialize the communicator before allocating device memory. See [Constraints and Limitations](../../user_guide/constraints.md#atlas-300i-duo-inference-card).
 
-// Initialize the communicator.
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+The following application function shows the call order. Initialize the ACL runtime before calling it. `rankId` is the communicator rank and `deviceId` is the local logical device ID. Rank 0 obtains `rootInfo` using HcclGetRootInfo and distributes the same value to all ranks through the application's out-of-band channel before passing it to this function. Configure `rankSize` and other arguments according to the interface's product and networking constraints.
 
-// Create a task stream.
-aclrtStream stream;
-aclrtCreateStream(&stream);
+```cpp
+#include <cstdint>
+#include <vector>
+#include "hccl/hccl.h"
 
-// Set the amounts of data to send and receive. The amounts are the same.
-std::vector<uint64_t> sendCounts(rankSize, 1);
-std::vector<uint64_t> recvCounts(rankSize, 1);
-std::vector<uint64_t> sdispls(rankSize);
-std::vector<uint64_t> rdispls(rankSize);
-for (size_t i = 0; i < rankSize; ++i) {
-    sdispls[i] = i;
-    rdispls[i] = i;
+void ExampleHcclAlltoAllV(uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo)
+{
+    // Select the local logical device and initialize the communicator.
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
+
+    // Create the stream.
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
+
+    // Allocate device memory for the collective communication operation.
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
+    uint64_t count = rankSize;
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc((void**)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+    aclrtMalloc((void**)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // Set the amounts of data to send and receive. The amounts are the same.
+    std::vector<uint64_t> sendCounts(rankSize, 1);
+    std::vector<uint64_t> recvCounts(rankSize, 1);
+    std::vector<uint64_t> sdispls(rankSize);
+    std::vector<uint64_t> rdispls(rankSize);
+    for (size_t i = 0; i < rankSize; ++i) {
+        sdispls[i] = i;
+        rdispls[i] = i;
+    }
+    // Execute AlltoAllV to send the same amount of data to all ranks in the communicator and receive the same amount of
+    // data from all ranks. The data amount can be customized.
+    HcclAlltoAllV(
+        sendBuf, sendCounts.data(), sdispls.data(), HCCL_DATA_TYPE_FP32, recvBuf, recvCounts.data(), rdispls.data(),
+        HCCL_DATA_TYPE_FP32, hcclComm, stream);
+    // Block and wait for the collective communication tasks in the task stream to complete.
+    aclrtSynchronizeStream(stream);
+
+    // Release resources
+    aclrtFree(sendBuf);         // Free memory on the device.
+    aclrtFree(recvBuf);         // Free memory on the device.
+    aclrtDestroyStream(stream); // Destroy the stream.
+    HcclCommDestroy(hcclComm);  // Destroy the communicator.
 }
-// Execute AlltoAllV to send the same amount of data to all ranks in the communicator and receive the same amount of data from all ranks. The data amount can be customized.
-HcclAlltoAllV(sendBuf, sendCounts.data(), sdispls.data(), HCCL_DATA_TYPE_FP32,
-              recvBuf, recvCounts.data(), rdispls.data(), HCCL_DATA_TYPE_FP32, hcclComm, stream);
-// Block and wait for the collective communication tasks in the task stream to complete.
-aclrtSynchronizeStream(stream);
-
-// Release resources
-aclrtFree(sendBuf);          // Free memory on the device.
-aclrtFree(recvBuf);          // Free memory on the device.
-aclrtDestroyStream(stream);  // Destroy the stream.
-HcclCommDestroy(hcclComm);   // Destroy the communicator.
 ```

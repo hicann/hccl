@@ -97,39 +97,49 @@ HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, H
 
 ## 调用示例
 
-```c
-// 申请集合通信操作的Device内存
-void *sendBuf = nullptr;
-void *recvBuf = nullptr;
-uint64_t count = 4;
-size_t mallocSize = count * sizeof(float);
-aclrtMalloc((void **)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
-aclrtMalloc((void **)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+针对Atlas推理系列产品，通信域初始化须在其他涉及Device内存申请的操作之前，参见《[系统约束与限制](../../user_guide/constraints.md#atlas推理系列产品)》。
 
-// 初始化通信域
-uint32_t rankSize = 8;
-HcclComm hcclComm;
-HcclCommInitRootInfo(rankSize, &rootInfo, deviceId, &hcclComm);
+以下应用层函数展示调用顺序。调用前应完成ACL运行时初始化；`rankId`为通信域内的rank编号，`deviceId`为本机逻辑Device编号。`rootInfo`由rank0调用HcclGetRootInfo生成，经应用的带外通信分发给同一通信域的所有rank后作为参数传入。`rankSize`及各参数应符合本接口的产品与组网约束。
 
-// 创建任务流
-aclrtStream stream;
-aclrtCreateStream(&stream);
+```cpp
+#include <cstdint>
+#include "hccl/hccl.h"
 
-// 执行Send/Recv，将数据发送至下一节点，同时接收上一节点的数据
-// HcclBatchSendRecv可以同时下发本rank上的多个收发任务
-uint32_t next = (deviceId + 1) % rankSize;
-uint32_t prev = (deviceId - 1 + rankSize) % rankSize;
-HcclSendRecvItem sendRecvInfo[2];
-sendRecvInfo[0] = HcclSendRecvItem{HCCL_SEND, sendBuf, count, HCCL_DATA_TYPE_FP32, next};
-sendRecvInfo[1] = HcclSendRecvItem{HCCL_RECV, recvBuf, count, HCCL_DATA_TYPE_FP32, prev};
-HcclBatchSendRecv(sendRecvInfo, 2, hcclComm, stream);
+void ExampleHcclBatchSendRecv(uint32_t rankSize, uint32_t rankId, uint32_t deviceId, const HcclRootInfo& rootInfo)
+{
+    // 选择本进程使用的逻辑设备并初始化通信域
+    aclrtSetDevice(deviceId);
+    HcclComm hcclComm = nullptr;
+    HcclCommInitRootInfo(rankSize, &rootInfo, rankId, &hcclComm);
 
-// 阻塞等待任务流中的集合通信任务执行完成
-ACLCHECK(aclrtSynchronizeStream(stream));
+    // 创建任务流
+    aclrtStream stream = nullptr;
+    aclrtCreateStream(&stream);
 
-// 释放资源
-aclrtFree(sendBuf);          // 释放Device侧内存
-aclrtFree(recvBuf);          // 释放Device侧内存
-aclrtDestroyStream(stream);  // 销毁任务流
-HcclCommDestroy(hcclComm);   // 销毁通信域
+    // 申请集合通信操作的Device内存
+    void* sendBuf = nullptr;
+    void* recvBuf = nullptr;
+    uint64_t count = 4;
+    size_t mallocSize = count * sizeof(float);
+    aclrtMalloc((void**)&sendBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+    aclrtMalloc((void**)&recvBuf, mallocSize, ACL_MEM_MALLOC_HUGE_ONLY);
+
+    // 执行Send/Recv，将数据发送至下一节点，同时接收上一节点的数据
+    // HcclBatchSendRecv可以同时下发本rank上的多个收发任务
+    uint32_t next = (rankId + 1) % rankSize;
+    uint32_t prev = (rankId - 1 + rankSize) % rankSize;
+    HcclSendRecvItem sendRecvInfo[2];
+    sendRecvInfo[0] = HcclSendRecvItem{HCCL_SEND, sendBuf, count, HCCL_DATA_TYPE_FP32, next};
+    sendRecvInfo[1] = HcclSendRecvItem{HCCL_RECV, recvBuf, count, HCCL_DATA_TYPE_FP32, prev};
+    HcclBatchSendRecv(sendRecvInfo, 2, hcclComm, stream);
+
+    // 阻塞等待任务流中的集合通信任务执行完成
+    aclrtSynchronizeStream(stream);
+
+    // 释放资源
+    aclrtFree(sendBuf);         // 释放Device侧内存
+    aclrtFree(recvBuf);         // 释放Device侧内存
+    aclrtDestroyStream(stream); // 销毁任务流
+    HcclCommDestroy(hcclComm);  // 销毁通信域
+}
 ```
