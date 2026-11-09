@@ -308,6 +308,9 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
     bool topLevelUboe{false};
     bool level2UbRtp{false};
     bool hostDpuOnly{false};
+    // hostDPU组网下本端host侧代表端点（CalcHostDPUOnly落存），inline reduce能力协商时以它查询
+    // per-endpoint特性；序列化流中的值仅为契约占位，未落存时保持全零(locType=DEVICE)安全降级
+    EndpointDesc hostDpuEndpoint{};
     // 通信域全部hostDPU是否支持inline reduce（DPU传输带规约语义）。
     // per-comm静态能力：由Selector内独立协商阶段（公共协商机制聚合本端能力位）设置，
     // 序列化流中的值仅为契约占位，真值来自per-comm协商缓存；cost model构建期topoCustomCheck可读
@@ -336,7 +339,7 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         ar & isHCCSSWNumEqualToTwiceSIONum & mainThread & notifyNumOnMainThread;
         ar & topoLevelNums & level0Topo & Level0Nhr & Level1Nhr & Level1Hd & is2DieFullMesh;
         ar & level0PcieMix & level0BigClosRange & topLevelUboe & level2UbRtp & hostDpuOnly;
-        ar & allDpuSupportInlineReduce;
+        ar & allDpuSupportInlineReduce & hostDpuEndpoint;
         ar & level0Symmetric & level1Symmetric & topoInstDetailsOfLayerSize & isPod & isUBX & level0MeshType;
         ar & netLayerDetails.netLayerNum & netLayerDetails.netLayers & netLayerDetails.netInstNumOfLayer;
         ar & netLayerDetails.instSizeListOfLayer & netLayerDetails.localNetInsSizeOfLayer;
