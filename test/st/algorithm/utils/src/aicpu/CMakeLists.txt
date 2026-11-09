@@ -233,6 +233,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1d_dpu.cc
     ${HCCL_DEV_BASE}/src/ops/all_reduce/algorithm/template/aicpu/ins_temp_reduce_scatter_hd.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_mesh_1d_nda.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_nhr_dpu.cc
 
     ${HCCL_DEV_BASE}/src/ops/all_gather/algorithm/executor/ins_v2_all_gather_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_gather/algorithm/executor/ins_v2_all_gather_parallel_executor.cc
@@ -373,7 +374,7 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_mesh_1D_intra.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_mesh_1D_intra.cc
 
-        # DpuReduceSequenceMeshNHR
+        # DpuReduceSequenceMeshMesh
         ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/executor/ins_v2_reduce_sequence_executor.cc
         ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/ins_temp_gather_dpu_inter.cc
         ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/template/aicpu/ins_temp_gather_mesh_1D_intra.cc

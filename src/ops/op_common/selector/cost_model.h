@@ -46,7 +46,7 @@ HcclResult AddAlgToAllAlgos(
     HcclCMDType opType, const char* algName, const char* executorName, const char** templateName, int templateNum);
 
 // 检查算法是否匹配当前拓扑，返回 true=匹配，false=不匹配
-// needSoftPolicyCheck=false 时跳过 topoCustomCheck 软策略（算法被 HCCL_ALGO 正向指定或 tuner 接管时）
+// needSoftPolicyCheck=false 时跳过软策略 topoCustomCheck；topoPrecondCheck 硬前提始终执行。
 bool IsAlgoMatchTopo(
     const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck = true);
 

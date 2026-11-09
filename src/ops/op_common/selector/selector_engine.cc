@@ -427,7 +427,7 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
     }
 
     // step 2: 生成 costTable(Phase1 过滤+算cost → Phase2 排他 → Phase3 收敛);
-    // 软策略(opCustomCheck/opPriority)是否让位由各过滤点按 tuner 加载状态现场判定
+    // 软策略(opCustomCheck/opPriority)是否让位由各过滤点按 tuner 加载状态现场判定，硬约束不让位。
     CostTable ct{nullptr, 0};
     // RAII 兜底: tuner 失败等早退路径同样释放 costTable(经 FreeCostTable, 申请/释放同模块)
     struct CostTableGuard {

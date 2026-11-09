@@ -199,3 +199,10 @@ if("all" IN_LIST ST_TASKS OR "comm_worker" IN_LIST ST_TASKS)
     # 桩库libscatter_aicpu_kernel.so已在utils/src/aicpu/CMakeLists.txt补齐hccl_dl.cc与
     # hccl_device_comm_dl.cc(镜像生产版依赖的hccl_kernel_compat), 自身链接自洽, 无需特殊链接选项
 endif()
+
+# Inline-reduce operator STs use process-local capability setup; keep existing STs isolated.
+foreach(op IN ITEMS all_reduce reduce reduce_scatter)
+    if("all" IN_LIST ST_TASKS OR "hostdpu_inline_${op}" IN_LIST ST_TASKS)
+        add_st_test(hostdpu_inline_${op} hostdpu_inline_${op}_testcase.cc)
+    endif()
+endforeach()

@@ -9,6 +9,7 @@
  */
 
 #include "reduce_scatter_auto_selector.h"
+#include "dpu_inline_reduce_selector.h"
 #include "selector_registry.h"
 #include "hccl_aiv_utils.h"
 #include "ins_v2_reduce_scatter_order_preserved_executor.h"
@@ -17,6 +18,18 @@
 #include "op_common.h"
 
 namespace ops_hccl {
+namespace {
+
+    void SelectDpuReduceScatterSequenceAlgo(
+        const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName)
+    {
+        selectAlgName = CanUseDpuInlineReduce(opParam, topoInfo) ? "DpuReduceScatterSequenceMeshNHR" :
+                                                                   "DpuReduceScatterSequenceMeshMesh";
+        HCCL_INFO("[ReduceScatterAutoSelector] Using algo %s", selectAlgName.c_str());
+    }
+
+} // namespace
+
 constexpr u32 MAX_RANK_NUM_FOR_CONCURRENT_ALGO = 4;
 // 与 reduce_scatter_selector_utils.h 的 MAX_RANK_NUM_FOR_CCU_MS_REDUCE_SCATTER_STRICT、
 // ins_v2_reduce_scatter_sole_executor.cc 的 MAX_RANK_NUM_FOR_REDUCE_MS_ALGO 同源于内核
@@ -636,13 +649,11 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
 {
     HCCL_INFO(
         "topoInfo->topoLevelNums is %u, topoInfo->level0Topo is %u", topoInfo->topoLevelNums, topoInfo->level0Topo);
-    (void)opParam;
     (void)configAlgMap;
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1)
             || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-            HCCL_DEBUG("[ReduceScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+            SelectDpuReduceScatterSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
@@ -650,13 +661,11 @@ SelectorStatus ReduceScatterAutoSelector::SelectDPUAlgo(
                 HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterPipeLineMeshNHRMesh");
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-                HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterSequenceMeshMesh");
+                SelectDpuReduceScatterSequenceAlgo(opParam, topoInfo, selectAlgName);
                 return SelectorStatus::MATCH;
             }
         } else {
-            selectAlgName = "DpuReduceScatterSequenceMeshMesh";
-            HCCL_INFO("[ReduceScatterAutoSelector] Using algo DpuReduceScatterSequenceMeshMesh");
+            SelectDpuReduceScatterSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         }
     }

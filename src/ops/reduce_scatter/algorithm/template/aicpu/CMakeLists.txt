@@ -21,6 +21,7 @@ if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1d_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_mesh_1d_nda.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_nhr_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_omnipipe_nhr.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_omnipipe_mesh_1D.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.cc

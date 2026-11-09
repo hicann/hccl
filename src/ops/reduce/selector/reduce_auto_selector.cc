@@ -9,10 +9,23 @@
  */
 
 #include "reduce_auto_selector.h"
+#include "dpu_inline_reduce_selector.h"
 #include "selector_registry.h"
 #include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
+namespace {
+
+    void SelectDpuReduceSequenceAlgo(
+        const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName)
+    {
+        selectAlgName
+            = CanUseDpuInlineReduce(opParam, topoInfo) ? "DpuReduceSequenceMeshNHR" : "DpuReduceSequenceMeshMesh";
+        HCCL_INFO("[ReduceAutoSelector] Using algo %s", selectAlgName.c_str());
+    }
+
+} // namespace
+
 constexpr u64 REDUCE_AICPU_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 REDUCE_CCU_TWOSHOT_1D_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 REDUCE_NHR_CCU_MAX_DATA_SIZE = 256 * 1024;
@@ -470,13 +483,11 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "DpuReduceSequenceMeshNHR";
-            HCCL_INFO("[ReduceAutoSelector] selectAlgName is DpuReduceSequenceMeshNHR");
+            SelectDpuReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (topoInfo->level0PcieMix) {
-                selectAlgName = "DpuReduceSequenceMeshNHR";
-                HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+                SelectDpuReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
                 return SelectorStatus::MATCH;
             } else {
                 if (!IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
@@ -484,14 +495,12 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
                     HCCL_INFO("selectAlgName is DpuReducePipeLineMeshNHRNHR");
                     return SelectorStatus::MATCH;
                 } else {
-                    selectAlgName = "DpuReduceSequenceMeshNHR";
-                    HCCL_INFO("selectAlgName is DpuReduceSequenceMeshNHR");
+                    SelectDpuReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
                     return SelectorStatus::MATCH;
                 }
             }
         } else {
-            selectAlgName = "DpuReduceSequenceMeshNHR";
-            HCCL_INFO("[ReduceAutoSelector] selectAlgName is DpuReduceSequenceMeshNHR");
+            SelectDpuReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         }
     }

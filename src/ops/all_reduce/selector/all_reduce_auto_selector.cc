@@ -9,6 +9,7 @@
  */
 
 #include "all_reduce_auto_selector.h"
+#include "dpu_inline_reduce_selector.h"
 #include "selector_registry.h"
 #include "hccl_aiv_utils.h"
 #include "ins_v2_all_reduce_order_preserved_executor.h"
@@ -16,6 +17,18 @@
 #include "op_common.h"
 
 namespace ops_hccl {
+namespace {
+
+    void SelectDpuAllReduceSequenceAlgo(
+        const OpParam& opParam, const TopoInfoWithNetLayerDetails* topoInfo, std::string& selectAlgName)
+    {
+        selectAlgName
+            = CanUseDpuInlineReduce(opParam, topoInfo) ? "DpuAllReduceSequenceMeshNHR" : "DpuAllReduceSequenceMeshMesh";
+        HCCL_INFO("[AllReduceAutoSelector] Using algo %s", selectAlgName.c_str());
+    }
+
+} // namespace
+
 constexpr u64 RS_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 AR_ONESHOT_1D_MAX_DATA_SIZE = 16 * 1024;
 constexpr u64 AR_M2M_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
@@ -698,8 +711,7 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
         if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
-            selectAlgName = "DpuAllReduceSequenceMeshNHR"; // 对应executor最后register的第二个参数
-            HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHR");
+            SelectDpuAllReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
             if (!topoInfo->level0PcieMix) {
@@ -707,13 +719,11 @@ SelectorStatus AllReduceAutoSelector::SelectDPUAlgo(
                 HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReducePipeLineMeshNHRNHR");
                 return SelectorStatus::MATCH;
             } else {
-                selectAlgName = "DpuAllReduceSequenceMeshNHR";
-                HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHR");
+                SelectDpuAllReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
                 return SelectorStatus::MATCH;
             }
         } else {
-            selectAlgName = "DpuAllReduceSequenceMeshNHR";
-            HCCL_INFO("[AllReduceAutoSelector] Using algo DpuAllReduceSequenceMeshNHR");
+            SelectDpuAllReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
             return SelectorStatus::MATCH;
         }
     }

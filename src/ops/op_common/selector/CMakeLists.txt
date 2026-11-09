@@ -17,6 +17,7 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/cost_model.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/cost_table.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/alg_attrs_registry.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/dpu_inline_reduce_selector.cc
 )
 
 if(TARGET hccl)

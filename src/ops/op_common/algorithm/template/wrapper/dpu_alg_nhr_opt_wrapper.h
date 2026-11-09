@@ -39,6 +39,25 @@ HcclResult BatchTransferNHR(
     const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
     const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize);
 
+// 校验NHR write-reduce所需的数据类型、规约操作及slice与buffer范围。
+HcclResult ValidateReduceScatterNhrParams(const TemplateDataParams& tempAlgParams, u32 rankSize);
+
+/**
+ * @brief 构造单个ReduceScatter NHR step的通道和slice，并委托DpuWriteReduceTransfer执行。
+ *        调用前须通过ValidateReduceScatterNhrParams校验参数，step中的对端须转换为user rank，
+ *        slice索引保留算法rank，入口校验索引未超出rank及元数据范围；repeat须小于repeatNum。
+ *        零长度slice无需通道。
+ *
+ * @param stepInfo 当前step的收发信息
+ * @param channels 所有user rank的channel映射
+ * @param tempAlgParam 已校验的算法参数
+ * @param repeat 当前repeat索引
+ * @param templateRankSize 模板rank总数，须与参数校验时的rankSize一致
+ */
+HcclResult DpuBatchWriteReduceTransferNHR(
+    const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize);
+
 // ========== 三阶段批量传输 ==========
 
 struct DpuTransferCtx {
@@ -55,12 +74,26 @@ struct DpuTransferCtx {
     bool hasRecv() const { return hasRxChannel() && !rxSrcSlices.empty(); }
 };
 
+// 当前step的slice元数据、channel及发送目标范围校验。
+HcclResult CheckWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType dataType);
+
 /**
  * @brief 三阶段批量传输：前同步 → 写数据 → 后同步
  *        调用方负责填充 DpuTransferCtx 列表（含正确的 txDst/txSrc 偏移），
  *        本函数批量执行 Phase 1（step sync）/ Phase 2（HcommWriteNbi）/ Phase 3（data sync + Drain）。
  */
 HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs);
+
+/**
+ * @brief 单个NHR step的DPU write-reduce传输：前同步 → write-reduce → Drain/Fence → 后同步。
+ *        调用前须完成slice元数据、数据类型、规约操作和channel校验，本函数仅执行通信。
+ *        空slice不下发通信原语，返回成功时当前step的接收数据已可供下一step使用。
+ *
+ * @param transfer 当前step的发送和接收通道及slice
+ * @param dataType 规约数据类型
+ * @param reduceOp 规约操作
+ */
+HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType dataType, HcclReduceOp reduceOp);
 
 } // namespace ops_hccl
 

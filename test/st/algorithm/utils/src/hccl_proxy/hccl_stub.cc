@@ -703,6 +703,7 @@ int32_t HcommWriteReduceOnThread(
 {
     CHK_PTR_NULL(dst);
     CHK_PTR_NULL(src);
+    thread = (thread == 0) ? curThread : thread; // DPU模式使用AICPU的thread
 
     // 1.获取当前rankId,NpuPos和stream
     uint32_t curRank = reinterpret_cast<HcclSim::SimHcclThread*>(thread)->GetCurRank();

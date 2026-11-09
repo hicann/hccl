@@ -12,9 +12,11 @@
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
 #include "ins_temp_reduce_scatter_mesh_1d_nda.h"
+#include "ins_temp_reduce_scatter_nhr_dpu.h"
 
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "dpu_inline_reduce_selector.h"
 namespace ops_hccl {
 
 // 序列执行器需要的层级数
@@ -385,7 +387,29 @@ REGISTER_ALG_ATTRS(
         }
         // UBX
         return topo->Level1Nhr;
+    };
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !CanUseDpuInlineReduce(opParam, topo);
     };);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshNHR, InsV2ReduceScatterSequenceExecutor,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterNhrDpu);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterSequenceMeshNHR,
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.isSupportLevel1Nhr = true; topo.supportDevTypes = {HcclDevType::DEV_TYPE_950, HcclDevType::DEV_TYPE_960};
+    topo.topoPrecondCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (!CheckDpuInlineReduceTopo(topo)) {
+            return false;
+        }
+        if (topo->level0Topo != Level0Shape::MESH_1D_CLOS || topo->level0PcieMix
+            || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1) {
+            return true;
+        }
+        return topo->Level1Nhr;
+    };
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;);
 
 REGISTER_EXECUTOR_BY_TWO_TEMPS(
     HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshMeshNDA, InsV2ReduceScatterSequenceExecutor,
