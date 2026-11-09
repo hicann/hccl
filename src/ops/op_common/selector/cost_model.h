@@ -58,7 +58,7 @@ struct TopoMatchResult {
 TopoMatchResult CheckAlgoMatchTopoWithReason(
     const std::string& algName, const TopoInfoWithNetLayerDetails* topoInfo, bool needSoftPolicyCheck = true);
 
-typedef struct {
+struct CostModelParam {
     float A; // 用来描述跨卡传输的时间随DataSize变化的趋势，会受到UB带宽利用率的影响
     float B; // 用来描述本地传输的时间随DataSize变化的趋势，不受到UB带宽利用率的影响
     float C; // 用来描述一些基本时延的常数项
@@ -66,7 +66,7 @@ typedef struct {
     // AICPU 规约总量折算为 dataSize 的份数(字节口径, 与 dtype 无关): 规约总字节 = reduceCopies×dataSize;
     // 64bit/PROD 时由框架 per-call 按 count×1.2ns 折算进 B。存量 {A,B,C,D} 聚合初始化自动补 0
     float reduceCopies = 0.0f;
-} CostModelParam;
+};
 
 // host 内联标量规约实测斜率(1.2ns/count, fp64 1GB 0.162s / 128M count); 64bit/PROD 的 LocalReduce 走该路径
 constexpr float REDUCE_SEC_PER_COUNT = 1.2e-9f; // 取值为秒/count, 与 A/B/C/D 的秒口径一致
@@ -99,7 +99,7 @@ struct AlgNetMeta {
     std::vector<AlgoType> algoTypes;
 };
 
-typedef struct {
+struct CostAlgoParams {
     const char* algName;
     // 所有权：param 指向的内存由 costModel_ 持有（FilterByTopoAndCalibrate 深拷贝）。
     // FreeCostModel 会逐个释放 param 指向的内存。
@@ -109,7 +109,7 @@ typedef struct {
     // 只提供优先级不强制过滤: costtable 过滤后在幸存者中按最高优先级层收敛, 全为否定层时放开回退;
     // 正向指定(preferred)的算法跳过软策略 customCheck, 排他时不被删除
     int hcclAlgoPriority = 0;
-} CostAlgoParams;
+};
 
 typedef struct {
     CostAlgoParams* costAlgoParams;
