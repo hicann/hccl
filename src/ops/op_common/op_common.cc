@@ -1094,21 +1094,18 @@ HcclResult HcclExecOp(
     }
 
     param.cacheValid = isResourceReused;
-    // algTag等选型信息在DFX注册前已定稿, 先打可保留注册失败路径的现场; symMem/isCapture需DFX探测后在下方打
-    HCCL_CONFIG_INFO(
-        HCCL_ALG, "resourceReuse[%d] algName[%s] engine[%s] algTag[%s]", static_cast<int>(param.cacheValid),
-        param.algName, ENGINE_STR_MAP.at(param.opExecuteConfig), param.algTag);
 
     // Op注册
     bool isAclGraph = false;
     HcclDfxOpInfoCompat hcclDfxOpInfo{};
     CHK_RET(ConstructHcclDfxOpInfo(param, param.algTag, ALG_TAG_LENGTH, hcclDfxOpInfo, cpuTsThread, isAclGraph));
     param.dataCount = hcclDfxOpInfo.dataCount;
-    CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
-
+    // 字段至此均已定稿: isCapture为DFX构造时的流捕获探测值; 在DFX注册前打, 保留注册失败路径的现场
     HCCL_CONFIG_INFO(
-        HCCL_ALG, "symMem[%d] isCapture[%d]", static_cast<int>(param.supportSymmetricMemory),
+        HCCL_ALG, "resourceReuse[%d] algName[%s] engine[%s] algTag[%s] isCapture[%d]",
+        static_cast<int>(param.cacheValid), param.algName, ENGINE_STR_MAP.at(param.opExecuteConfig), param.algTag,
         static_cast<int>(isAclGraph));
+    CHK_RET(HcclDfxRegOpInfoByCommId(param.commName, reinterpret_cast<void*>(&hcclDfxOpInfo)));
 
     ThreadHandle exportedCpuTsThread;
     ThreadHandle mainThread;
