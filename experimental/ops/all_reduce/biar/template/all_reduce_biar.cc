@@ -67,14 +67,14 @@ HcclResult AllReduceBIAR::Preprocess(const u32 rank, const u32 rankSize, std::ve
 
     if (channels.size() < rankSize) {
         HCCL_ERROR(
-            "[AllReduceBIAR][RunAsync]rank[%u] linksize[%llu] is less than rankSize[%u]", rank, channels.size(),
+            "[AllReduceBIAR][Preprocess]rank[%u] linksize[%llu] is less than rankSize[%u]", rank, channels.size(),
             rankSize);
         return HCCL_E_INTERNAL;
     }
 
     unitSize_ = DataUnitSize(dataType_);
     if (unitSize_ == 0) {
-        HCCL_ERROR("[AllReduceBIAR][RunAsync]rank[%u] unit data size is zero", rank);
+        HCCL_ERROR("[AllReduceBIAR][Preprocess]rank[%u] unit data size is zero", rank);
         return HCCL_E_INTERNAL;
     }
 

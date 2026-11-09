@@ -44,7 +44,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoCcuMs(
     u64 dataSize = opParam.DataDes.count * perDataSize;
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         if (topoInfo->is2DieFullMesh) {
-            HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for schedule mode.");
+            HCCL_WARNING("[BroadcastAutoSelector] 2DieFullMesh is not supported yet for ccu_ms mode.");
             return SelectorStatus::NOT_MATCH;
         } else {
             selectAlgName = "CcuMSBroadcastSoleMesh";
@@ -245,7 +245,7 @@ SelectorStatus BroadcastAutoSelector::SelectMeshAlgoAicpu(
 {
     u64 perDataSize = DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
     u64 dataSize = opParam.DataDes.count * perDataSize;
-    HCCL_DEBUG("[SelectMeshAlgoCcuSchedule] dataSize[%llu]", dataSize);
+    HCCL_DEBUG("[BroadcastAutoSelector][%s] dataSize[%llu]", __func__, dataSize);
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "AicpuBroadcastSoleMeshTwoShot";

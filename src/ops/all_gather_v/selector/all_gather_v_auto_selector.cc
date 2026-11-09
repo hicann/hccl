@@ -62,7 +62,10 @@ SelectorStatus AllGatherVAutoSelector::SelectCcuScheduleAlgo(
     if (topoInfo->topoLevelNums == 1 && topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "CcuSchedAllGatherVSoleMesh";
     } else {
-        HCCL_WARNING("[AllGatherVAutoSelector] ccu_schedule not supported for multi-level AllGatherV yet");
+        HCCL_WARNING(
+            "[AllGatherVAutoSelector] ccu_schedule only supports single-level MESH_1D yet, "
+            "topoLevelNums[%u] level0Topo[%d] not supported.",
+            topoInfo->topoLevelNums, topoInfo->level0Topo);
         return SelectorStatus::NOT_MATCH;
     }
     return SelectorStatus::MATCH;

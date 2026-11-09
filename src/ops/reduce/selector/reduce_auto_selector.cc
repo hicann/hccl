@@ -88,8 +88,10 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoCcums(
             }
         } else { // MS 不支持
             if (dataSize < OMNI_UBX_MS_DATA_SIZE) {
-                HCCL_WARNING(
-                    "[ReduceAutoSelector] level0Topo[%d] is not supported yet for ccu_ms mode.", topoInfo->level0Topo);
+                HCCL_INFO(
+                    "[ReduceAutoSelector] MESH_1D_CLOS dataSize[%llu] < OMNI_UBX_MS_DATA_SIZE[%llu], ccu_ms mode "
+                    "not matched, fallback.",
+                    dataSize, OMNI_UBX_MS_DATA_SIZE);
                 return SelectorStatus::NOT_MATCH;
             } else {
                 selectAlgName = "CcuMSReducePipeLineMeshNHR";

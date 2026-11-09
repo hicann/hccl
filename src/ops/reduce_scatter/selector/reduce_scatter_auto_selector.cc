@@ -58,7 +58,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectCcuMsAlgo(
     if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= RS_2P_DETOUR_DATA_SIZE) {
         HCCL_DEBUG(
             "[ReduceScatterAutoSelector] 2P scenario with data size[%llu], "
-            "fallback to AICPU for better performance.",
+            "fallback to CCU sched for better performance.",
             dataSize);
         return SelectorStatus::NOT_MATCH;
     }
@@ -147,7 +147,9 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcums(
             }
         } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
             if (dataSize < OMNI_UBX_RS_MS_DATA_SIZE) {
-                HCCL_WARNING("[%s] MESH_1D_CLOS not match.", __func__);
+                HCCL_INFO(
+                    "[%s] dataSize[%llu] < OMNI_UBX_RS_MS_DATA_SIZE[%llu], not match.", __func__, dataSize,
+                    OMNI_UBX_RS_MS_DATA_SIZE);
                 return SelectorStatus::NOT_MATCH;
             } else {
                 selectAlgName = "CcuMSReduceScatterPipeLineMeshNHR";
@@ -155,7 +157,9 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcums(
         } else if (topoInfo->userRankSize <= MAX_RANK_NUM_FOR_CCU_MS_REDUCE_SCATTER) {
             selectAlgName = CCU_MS_RS_SOLE_MESH_ALG_NAME;
         } else {
-            HCCL_DEBUG("[ReduceScatterAutoSelector] level0Topo[%u] is not supported mesh yet.", topoInfo->level0Topo);
+            HCCL_DEBUG(
+                "[ReduceScatterAutoSelector] rankSize[%u] > MAX_RANK_NUM_FOR_CCU_MS_REDUCE_SCATTER[%u], not match.",
+                topoInfo->userRankSize, MAX_RANK_NUM_FOR_CCU_MS_REDUCE_SCATTER);
             return SelectorStatus::NOT_MATCH;
         }
     } else {
@@ -316,7 +320,7 @@ SelectorStatus ReduceScatterAutoSelector::SelectMeshAlgoCcuScheduleMesh1D(
         return SelectorStatus::NOT_MATCH;
     }
     if (IsInputOutputOverlap(opParam) == true) { // 不支持 in-place 场景
-        HCCL_WARNING("[ReduceScatterAutoSelector] ccu_ms mode does not support in-place.");
+        HCCL_WARNING("[ReduceScatterAutoSelector] ccu schedule mode does not support in-place.");
         return SelectorStatus::NOT_MATCH;
     }
     if (topoInfo->level0MeshType == Level0MeshType::TWO_DIE_REGULAR) {

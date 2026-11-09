@@ -331,10 +331,10 @@ bool AutoSelectorBase::IsTwoLevelNetLayer(const TopoInfoWithNetLayerDetails* top
         return false;
     }
     HCCL_INFO(
-        "[AutoSelectorBase][IsTwoLevelNetLayer] topoLevelNums[%u], netLayerNum[%u], level0Topo[MESH_1D], "
+        "[AutoSelectorBase][IsTwoLevelNetLayer] topoLevelNums[%u], netLayerNum[%u], level0Topo[%d], "
         "level1Idx[%u] has CLOS, level0LocalNetInsSize[%u], is two level net layer.",
-        topoInfo->topoLevelNums, topoInfo->netLayerDetails.netLayerNum, level1Idx,
-        topoInfo->netLayerDetails.localNetInsSizeOfLayer[0]);
+        topoInfo->topoLevelNums, topoInfo->netLayerDetails.netLayerNum, static_cast<int>(topoInfo->level0Topo),
+        level1Idx, topoInfo->netLayerDetails.localNetInsSizeOfLayer[0]);
     return true;
 }
 

@@ -164,9 +164,8 @@ SelectorStatus ReduceScatterVAutoSelector::SelectMeshAlgoCcuSchedule(
                 return SelectorStatus::NOT_MATCH;
             }
         } else {
-            HCCL_WARNING(
-                "[ReduceScatterVAutoSelector] level0Topo[%d] is not supported yet for ccu schedule mode.",
-                topoInfo->level0Topo);
+            HCCL_WARNING("[ReduceScatterVAutoSelector] MESH_1D_CLOS with layer0 not fully connected by 1D mesh is not "
+                         "supported yet for ccu schedule mode.");
             return SelectorStatus::NOT_MATCH;
         }
     } else {

@@ -110,7 +110,10 @@ SelectorStatus AllReduceAutoSelector::SelectMeshUBXAlgo(
         }
     } else if (isClosNumMultipleOfMeshNum && !IsSmallData(dataSize)) {
         if (dataSize < OMNI_UBX_AR_MS_DATA_SIZE) {
-            HCCL_DEBUG("[AllReduceAutoSelector][%s] MESH_1D_CLOS not match.", __func__);
+            HCCL_DEBUG(
+                "[AllReduceAutoSelector][%s] dataSize[%llu] < OMNI_UBX_AR_MS_DATA_SIZE[%llu], ccu_ms mode not "
+                "matched, fallback.",
+                __func__, dataSize, OMNI_UBX_AR_MS_DATA_SIZE);
             return SelectorStatus::NOT_MATCH;
         } else {
             selectAlgName = "CcuMSAllReducePipeLineMeshNHR";
@@ -136,7 +139,7 @@ SelectorStatus AllReduceAutoSelector::SelectMeshAlgo(
     if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= AR_2P_DETOUR_DATA_SIZE) {
         HCCL_DEBUG(
             "[AllReduceAutoSelector] 2P scenario with data size[%llu], "
-            "fallback to AICPU for better performance.",
+            "fallback to CCU sched for better performance.",
             dataSize);
         return SelectorStatus::NOT_MATCH;
     }

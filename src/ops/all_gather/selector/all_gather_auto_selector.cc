@@ -52,7 +52,7 @@ SelectorStatus AllGatherAutoSelector::SelectCcuMsAlgo(
     if (IsTwoLevelNetLayer(topoInfo, opParam) && topoInfo->userRankSize == 2 && dataSize >= AG_2P_DETOUR_DATA_SIZE) {
         HCCL_DEBUG(
             "[AllGatherAutoSelector] 2P scenario with data size[%llu], "
-            "fallback to AICPU for better performance.",
+            "fallback to CCU sched for better performance.",
             dataSize);
         return SelectorStatus::NOT_MATCH;
     }
@@ -454,8 +454,10 @@ SelectorStatus AllGatherAutoSelector::SelectAivAlgo(
             && (topoInfo->userRankSize > AG_UBX_AIV_BIGDATA_RANK_UPPER
                 || topoInfo->userRankSize <= AG_UBX_AIV_BIGDATA_RANK_LOWER))) {
         HCCL_DEBUG(
-            "[AllGatherAutoSelector][%s] totalSize[%llu] larger than AIV_MAX_PER_RANK_DATA_SIZE[%llu] * rankSize[%u]",
-            __func__, totalSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize);
+            "[AllGatherAutoSelector][%s] isUBX[%d], totalSize[%llu], per-rank threshold[%llu], rankSize[%u], "
+            "UBX rank range (%u, %u)",
+            __func__, isUBX, totalSize, AIV_MAX_PER_RANK_DATA_SIZE, topoInfo->userRankSize,
+            AG_UBX_AIV_BIGDATA_RANK_LOWER, AG_UBX_AIV_BIGDATA_RANK_UPPER);
         return SelectorStatus::NOT_MATCH;
     }
     if (totalSize > cclBufferSize * AIV_MAX_CCL_LOOP_NUM) {
