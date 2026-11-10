@@ -2,6 +2,7 @@ name: Question|问题咨询
 description: 如果您需要咨询或者讨论问题，请使用此模板。
 title: "[Question|问题咨询]: "
 labels: ["question"]
+type: "咨询"
 body:
   - type: markdown
     attributes:

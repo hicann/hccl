@@ -2,6 +2,7 @@ name: Bug-Report|缺陷反馈
 description: 当您发现了一个缺陷，需要向社区反馈时，请使用此模板。
 title: "[Bug-Report|缺陷反馈]: "
 labels: ["bug-report"]
+type: "缺陷"
 body:
   - type: markdown
     attributes:

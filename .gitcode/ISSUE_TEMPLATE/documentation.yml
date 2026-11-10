@@ -2,6 +2,7 @@ name: Documentation|文档反馈
 description: 如果您需要反馈文档问题，请使用此模板。
 title: "[Documentation|文档反馈]: "
 labels: ["documentation"]
+type: "文档"
 body:
   - type: markdown
     attributes:

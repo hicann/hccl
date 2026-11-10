@@ -2,6 +2,7 @@ name: Requirement|需求建议
 description: 您需要反馈或实现一个新需求时，请使用此模板。
 title: "[Requirement|需求建议]: "
 labels: ["requirement"]
+type: "需求"
 body:
   - type: markdown
     attributes:
