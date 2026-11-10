@@ -174,7 +174,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
 
     HCCL_DEBUG(
         "[%s] myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+        "rankIdxLevel1[%u] devType[%u] dataCount[%llu] dataType[%u] dataTypeSize[%llu]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
     return HcclResult::HCCL_SUCCESS;
@@ -320,7 +320,7 @@ InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlgTempL
     // 获取每个temp的线程数
     u64 level0ThreadsNum = algTempLevel0.GetThreadNum();
     u64 level1ThreadsNum = algTempLevel1.GetThreadNum();
-    HCCL_DEBUG("[%s] level0ThreasNum[%u] level1ThreadsNum[%u]", __func__, level0ThreadsNum, level1ThreadsNum);
+    HCCL_DEBUG("[%s] level0ThreadsNum[%llu] level1ThreadsNum[%llu]", __func__, level0ThreadsNum, level1ThreadsNum);
 
     // 获取template各自的主thread上有多少notify
     AlgResourceRequest level0TempRequest;
@@ -450,7 +450,7 @@ HcclResult InsV2ReduceScatterOmniPipe2dExecutor<AlgTopoMatch, InsAlgTempLevel0, 
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;
     HCCL_DEBUG(
-        "[%s] myRank[%u] loopTimes[%llu] perLoopSize[%u] dataSize_[%u] rankSize_[%u]", __func__, myRank_, loopTimes,
+        "[%s] myRank[%u] loopTimes[%llu] perLoopSize[%llu] dataSize_[%llu] rankSize_[%u]", __func__, myRank_, loopTimes,
         perLoopSize, dataSize_, rankSize_);
     std::vector<u64> dataSizePerLoop(rankSize_, perLoopSize);
     std::vector<u64> dataWholeSize(rankSize_, dataSize_);

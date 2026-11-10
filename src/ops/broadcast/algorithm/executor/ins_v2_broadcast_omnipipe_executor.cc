@@ -689,7 +689,7 @@ HcclResult InsV2BroadcastOmniPipeExecutor<
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scatterDataSize = maxTmpMemSize / rankSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
     HCCL_DEBUG(
-        "[%s] myRank[%u] transportBoundDataSize[%u] scatterDataSize[%u]", __func__, myRank_, transportBoundDataSize,
+        "[%s] myRank[%u] transportBoundDataSize[%llu] scatterDataSize[%llu]", __func__, myRank_, transportBoundDataSize,
         scatterDataSize);
     loopSplitData.maxCountPerLoop = std::min(transportBoundDataSize, scatterDataSize) / dataTypeSize_;
     CHK_PRT_RET(loopSplitData.maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
@@ -699,7 +699,7 @@ HcclResult InsV2BroadcastOmniPipeExecutor<
     loopSplitData.loopTimes
         = maxRankCount / loopSplitData.maxCountPerLoop + ((maxRankCount % loopSplitData.maxCountPerLoop == 0) ? 0 : 1);
     HCCL_DEBUG(
-        "[%s] myRank[%u] maxCountPerLoop[%u] loopTimes[%u]", __func__, myRank_, loopSplitData.maxCountPerLoop,
+        "[%s] myRank[%u] maxCountPerLoop[%llu] loopTimes[%u]", __func__, myRank_, loopSplitData.maxCountPerLoop,
         loopSplitData.loopTimes);
 
     // 3. 每个rank每个loop切分的count

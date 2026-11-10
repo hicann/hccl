@@ -437,7 +437,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsV2AllToAllVConcurrentExecutor][FastLaunchSaveCtx] threadNum[%llu], ccuKernelNum[%llu]", threadNum,
+        "[InsV2AllToAllVConcurrentExecutor][FastLaunchSaveCtx] threadNum[%u], ccuKernelNum[%u]", threadNum,
         ccuKernelNum);
 
     std::vector<u32> ccuKernelNumList
@@ -487,7 +487,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     tempAlg1.SetA2ASendRecvInfo(sendRecvInfoTemp1);
 
     CcuKernelSubmitInfo* ccuKernelSubmitInfos = resCtx->GetCcuKernelSubmitInfoPtr();
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0 ccuKernelNum[%llu]", resCtx->ccuKernelNum[0]);
+    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp0 ccuKernelNum[%u]", resCtx->ccuKernelNum[0]);
 
     std::vector<ThreadHandle> subThreads;
     subThreads.emplace_back(temp1ThreadMain_);
@@ -503,7 +503,7 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         CHK_RET(tempAlg0.FastLaunch(param, tempFastLaunchCtx0));
     }
 
-    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp1 ccuKernelNum[%llu]", resCtx->ccuKernelNum[1]);
+    HCCL_INFO("[InsV2AllToAllVConcurrentExecutor][FastLaunch] temp1 ccuKernelNum[%u]", resCtx->ccuKernelNum[1]);
     CHK_RET(SetTempFastLaunchAddr(tempFastLaunchCtx1, param.inputPtr, param.outputPtr, param.hcclBuff));
     tempFastLaunchCtx1.threads = temp1Threads_;
     tempFastLaunchCtx1.ccuKernelSubmitInfos.assign(

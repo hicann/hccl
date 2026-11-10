@@ -498,7 +498,8 @@ HcclResult InsBroadcastParallelExecutor<
     interLocalRoot_ = root_ / intraLocalRankSize_ * intraLocalRankSize_ + rankIdxLevel0_;
     intraLocalRoot_ = root_ % intraLocalRankSize_ + rankIdxLevel1_ * intraLocalRankSize_;
     HCCL_DEBUG(
-        "[DEBUG] new myrank[%u], rankIdxLevel0_[%u] ,rankIdxLevel1_[%u] interLocalRoot_[%u] intraLocalRoot_[%u]",
+        "[InsBroadcastParallelExecutor][CalcLocalRoot] new myrank[%u], rankIdxLevel0_[%u] ,rankIdxLevel1_[%u] "
+        "interLocalRoot_[%u] intraLocalRoot_[%u]",
         myRank_, rankIdxLevel0_, rankIdxLevel1_, interLocalRoot_, intraLocalRoot_);
     HCCL_INFO(
         "[CalcLocalRoot] localRoot: myRank[%d] intraLocalRoot[%u] interLocalRoot[%u]", myRank_, intraLocalRoot_,

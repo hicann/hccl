@@ -237,7 +237,7 @@ HcclResult CcuAlgTemplateBase::ReverseChannelPerDieIfNeed(
         // 2个die出框端口数不同，将端口数多的channel放在前面
         std::swap(channelsPerDie[0], channelsPerDie[1]);
     }
-    HCCL_INFO("portNum0 = %lld,portNum1 = %lld", portNum0, portNum1);
+    HCCL_INFO("[CcuAlgTemplateBase::ReverseChannelPerDieIfNeed] portNum0 = %u, portNum1 = %u", portNum0, portNum1);
     return HCCL_SUCCESS;
 }
 

@@ -142,7 +142,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         const u64* data = reinterpret_cast<const u64*>(param.varData);
         // 从varData把值取出来
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][Orchestrate] param.varData[%u] is [%u]", i, data[i]);
+            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][Orchestrate] param.varData[%llu] is [%llu]", i, data[i]);
         }
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
             u64 val = i / rankSize_;
@@ -225,7 +225,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         const u64* data = reinterpret_cast<const u64*>(param.varData);
         // 从varData把值取出来
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
-            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] param.varData[%u] is [%u]", i, data[i]);
+            HCCL_INFO("[InsV2AlltoAllVSoleExecutor][OrchestrateLoop] param.varData[%llu] is [%llu]", i, data[i]);
         }
         for (u64 i = 0; i < ALL_TO_ALL_V_VECTOR_NUM * rankSize_; i++) {
             u64 val = i / rankSize_;
@@ -273,7 +273,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     maxTmpMemSize_ = tempAlgParams.buffInfo.hcclBuff.size;
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 maxDataSizePerLoop = 0;
-    HCCL_INFO("[InsV2AlltoAllVSoleExecutor]maxTmpMemSize_ [%u]", maxTmpMemSize_);
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor]maxTmpMemSize_ [%llu]", maxTmpMemSize_);
     if (templateScratchMultiplier != 0) {
         u64 scratchBoundDataSize
             = maxTmpMemSize_ / templateScratchMultiplier / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
@@ -291,7 +291,7 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, sendCounts[i]);
         maxSendOrRecvDataCount = std::max(maxSendOrRecvDataCount, recvCounts[i]);
     }
-    HCCL_INFO("[InsV2AlltoAllVSoleExecutor] maxSendOrRecvDataCount[%u]", maxSendOrRecvDataCount);
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor] maxSendOrRecvDataCount[%llu]", maxSendOrRecvDataCount);
 
     // 对称路径直接把本地input写入对端output，不受ccl scratch和UB_MAX_DATA_SIZE限制。
     if (param.supportSymmetricMemory && param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
@@ -336,12 +336,12 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
         tempAlgParams.tailSize = tempAlgParams.sliceSize;
 
         HCCL_INFO(
-            "[InsV2AlltoAllVSoleExecutor] loop [%u] tempAlgParams.inputSliceStride [%u],"
-            "tempAlgParams.outputSliceStride [%u] tempAlgParams.sliceSize [%u]",
+            "[InsV2AlltoAllVSoleExecutor] loop [%llu] tempAlgParams.inputSliceStride [%llu],"
+            "tempAlgParams.outputSliceStride [%llu] tempAlgParams.sliceSize [%llu]",
             loop, tempAlgParams.inputSliceStride, tempAlgParams.outputSliceStride, tempAlgParams.sliceSize);
         HCCL_INFO(
-            "[InsV2AlltoAllVSoleExecutor] loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParams.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2AlltoAllVSoleExecutor] loop [%llu] tempAlgParams.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParams.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParams.buffInfo.inBuffBaseOff, tempAlgParams.buffInfo.outBuffBaseOff);
         // 不需要重复
         tempAlgParams.repeatNum = 1;
@@ -406,8 +406,8 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchS
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsV2AlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], "
-        "ccuKernelNum[%llu]",
+        "[InsV2AlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%u], "
+        "ccuKernelNum[%u]",
         threadNum, ccuKernelNum);
 
     u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
@@ -447,13 +447,13 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
     // 1 取线程
     ThreadHandle* threads = fastLaunchCtx->GetThreadHandlePtr();
     tempFastLaunchCtx.threads.assign(threads, threads + fastLaunchCtx->threadNum);
-    HCCL_INFO("[InsV2AlltoAllVSoleExecutor][FastLaunch] threadNum[%llu]", fastLaunchCtx->threadNum);
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor][FastLaunch] threadNum[%u]", fastLaunchCtx->threadNum);
 
     // 2 取arg
     CcuKernelSubmitInfo* ccuKernelSubmitInfos = fastLaunchCtx->GetCcuKernelSubmitInfoPtr();
     tempFastLaunchCtx.ccuKernelSubmitInfos.assign(
         ccuKernelSubmitInfos, ccuKernelSubmitInfos + fastLaunchCtx->ccuKernelNum[0]);
-    HCCL_INFO("[InsV2AlltoAllVSoleExecutor][FastLaunch] ccuKernelNum[%llu]", fastLaunchCtx->ccuKernelNum[0]);
+    HCCL_INFO("[InsV2AlltoAllVSoleExecutor][FastLaunch] ccuKernelNum[%u]", fastLaunchCtx->ccuKernelNum[0]);
     tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
     tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
 

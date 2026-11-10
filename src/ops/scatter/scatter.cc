@@ -378,7 +378,7 @@ HcclResult ExecOp(HcclComm comm, OpParam& param)
         CHK_PRT_RET(
             ret != ACL_SUCCESS,
             HCCL_ERROR(
-                "[aclrtKernelArgsAppend]errNo[0x%016llx] args append failed, append size %u, kernelName:%s", ret,
+                "[aclrtKernelArgsAppend]errNo[0x%016llx] args append failed, append size %zu, kernelName:%s", ret,
                 sizeof(OpParam), kernelName.c_str()),
             HCCL_E_RUNTIME);
 

@@ -104,7 +104,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dDpu::DoLocalCopy(
         return HCCL_E_PARA;
     }
     // 这里的循环precopy是ranksize-1，postcopy是1
-    HCCL_INFO("MT tempAlgParams.sliceSize = %u", tempAlgParams.sliceSize);
+    HCCL_INFO("MT tempAlgParams.sliceSize = %llu", tempAlgParams.sliceSize);
     for (auto i = 0; i < tempAlgParams.repeatNum; ++i) {
         auto srcSlice = DataSlice(
             srcAddr, tempAlgParams.buffInfo.inBuffBaseOff + i * tempAlgParams.inputSliceStride, tempAlgParams.sliceSize,

@@ -321,16 +321,18 @@ HcclResult InsV2AllReduceSequence2DieExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
 
         processedDataCount += currDataCount;
         HCCL_DEBUG(
-            "[InsV2AllReduceSequence2DieExecutor] testargs fortemplate0 tempAlgParams0.buffInfo.inBuffBaseOff[%u], "
-            "tempAlgParams0.buffInfo.outBuffBaseOff[%u], tempAlgParams0.sliceSize[%u],"
-            "tempAlgParams0.tailSize[%u], tempAlgParams0.inputSliceStride[%u], tempAlgParams0.outputSliceStride[%u].",
+            "[InsV2AllReduceSequence2DieExecutor] testargs fortemplate0 tempAlgParams0.buffInfo.inBuffBaseOff[%llu], "
+            "tempAlgParams0.buffInfo.outBuffBaseOff[%llu], tempAlgParams0.sliceSize[%llu],"
+            "tempAlgParams0.tailSize[%llu], tempAlgParams0.inputSliceStride[%llu], tempAlgParams0.outputSliceStride"
+            "[%llu].",
             tempAlgParams0.buffInfo.inBuffBaseOff, tempAlgParams0.buffInfo.outBuffBaseOff, tempAlgParams0.sliceSize,
             tempAlgParams0.tailSize, tempAlgParams0.inputSliceStride, tempAlgParams0.outputSliceStride);
 
         HCCL_DEBUG(
-            "[InsV2AllReduceSequence2DieExecutor] testargs fortemplate1 tempAlgParams1.buffInfo.inBuffBaseOff[%u], "
-            "tempAlgParams0.buffInfo.outBuffBaseOff[%u], tempAlgParams0.sliceSize[%u],"
-            "tempAlgParams1.tailSize[%u], tempAlgParams1.inputSliceStride[%u], tempAlgParams1.outputSliceStride[%u].",
+            "[InsV2AllReduceSequence2DieExecutor] testargs fortemplate1 tempAlgParams1.buffInfo.inBuffBaseOff[%llu], "
+            "tempAlgParams0.buffInfo.outBuffBaseOff[%llu], tempAlgParams0.sliceSize[%llu],"
+            "tempAlgParams1.tailSize[%llu], tempAlgParams1.inputSliceStride[%llu], tempAlgParams1.outputSliceStride"
+            "[%llu].",
             tempAlgParams1.buffInfo.inBuffBaseOff, tempAlgParams1.buffInfo.outBuffBaseOff, tempAlgParams1.sliceSize,
             tempAlgParams1.tailSize, tempAlgParams1.inputSliceStride, tempAlgParams1.outputSliceStride);
     }

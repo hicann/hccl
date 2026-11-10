@@ -116,25 +116,29 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlltoAllLo
                 localSendRecvInfo.sendCounts[curRank] = data[i];
                 localSendRecvInfo.sendLength[curRank] = data[i] * dataTypeSize_;
                 HCCL_INFO(
-                    "data[i]: %u, localSendRecvInfo.sendLength: %u", data[i], localSendRecvInfo.sendLength[curRank]);
+                    "data[i]: %llu, localSendRecvInfo.sendLength: %llu", data[i],
+                    localSendRecvInfo.sendLength[curRank]);
                 break;
             case CONST_ONE:
                 localSendRecvInfo.recvCounts[curRank] = data[i];
                 localSendRecvInfo.recvLength[curRank] = data[i] * dataTypeSize_;
                 HCCL_INFO(
-                    "data[i]: %u, localSendRecvInfo.recvLength: %u", data[i], localSendRecvInfo.recvLength[curRank]);
+                    "data[i]: %llu, localSendRecvInfo.recvLength: %llu", data[i],
+                    localSendRecvInfo.recvLength[curRank]);
                 break;
             case CONST_TWO:
                 localSendRecvInfo.sendDispls[curRank] = data[i];
                 localSendRecvInfo.sendOffset[curRank] = data[i] * dataTypeSize_;
                 HCCL_INFO(
-                    "data[i]: %u, localSendRecvInfo.sendOffset: %u", data[i], localSendRecvInfo.sendOffset[curRank]);
+                    "data[i]: %llu, localSendRecvInfo.sendOffset: %llu", data[i],
+                    localSendRecvInfo.sendOffset[curRank]);
                 break;
             case CONST_THREE:
                 localSendRecvInfo.recvDispls[curRank] = data[i];
                 localSendRecvInfo.recvOffset[curRank] = data[i] * dataTypeSize_;
                 HCCL_INFO(
-                    "data[i]: %u, localSendRecvInfo.recvOffset: %u", data[i], localSendRecvInfo.recvOffset[curRank]);
+                    "data[i]: %llu, localSendRecvInfo.recvOffset: %llu", data[i],
+                    localSendRecvInfo.recvOffset[curRank]);
                 break;
             default:
                 break;
@@ -239,7 +243,7 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunchSav
         return HCCL_SUCCESS;
     }
     HCCL_INFO(
-        "[InsAlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%llu], ccuKernelNum[%llu]", threadNum, ccuKernelNum);
+        "[InsAlltoAllVSoleExecutor][HcclEngineCtxCreate] threadNum[%u], ccuKernelNum[%u]", threadNum, ccuKernelNum);
 
     u64 size = CcuFastLaunchCtx::GetCtxSize(threadNum, ccuKernelNum);
     // 申请ctx
@@ -278,13 +282,13 @@ HcclResult InsAlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::FastLaunch(
     // 1 取线程
     ThreadHandle* threads = fastLaunchCtx->GetThreadHandlePtr();
     tempFastLaunchCtx.threads.assign(threads, threads + fastLaunchCtx->threadNum);
-    HCCL_INFO("[InsAlltoAllVSoleExecutor][FastLaunch] threadNum[%llu]", fastLaunchCtx->threadNum);
+    HCCL_INFO("[InsAlltoAllVSoleExecutor][FastLaunch] threadNum[%u]", fastLaunchCtx->threadNum);
 
     // 2 取arg
     CcuKernelSubmitInfo* ccuKernelSubmitInfos = fastLaunchCtx->GetCcuKernelSubmitInfoPtr();
     tempFastLaunchCtx.ccuKernelSubmitInfos.assign(
         ccuKernelSubmitInfos, ccuKernelSubmitInfos + fastLaunchCtx->ccuKernelNum[0]);
-    HCCL_INFO("[InsAlltoAllVSoleExecutor][FastLaunch] ccuKernelNum[%llu]", fastLaunchCtx->ccuKernelNum[0]);
+    HCCL_INFO("[InsAlltoAllVSoleExecutor][FastLaunch] ccuKernelNum[%u]", fastLaunchCtx->ccuKernelNum[0]);
     tempFastLaunchCtx.buffInfo.inputPtr = param.inputPtr;
     tempFastLaunchCtx.buffInfo.outputPtr = param.outputPtr;
 

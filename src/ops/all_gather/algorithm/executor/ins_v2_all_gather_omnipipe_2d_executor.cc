@@ -163,7 +163,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, InsA
 
     HCCL_INFO(
         "[%s] myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+        "rankIdxLevel1[%u] devType[%u] dataCount[%llu] dataType[%u] dataTypeSize[%llu]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
 
@@ -456,7 +456,7 @@ HcclResult InsV2AllGatherOmniPipe2DExecutor<AlgTopoMatch, CcuAlgTempLevel0, CcuA
         tempAlgParamsLocalCopy.sliceSize = currDataCount * dataTypeSize_;
         tempAlgParamsLocalCopy.localCopyFlag = 1;
         HCCL_DEBUG(
-            "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu]", __func__, myRank_,
+            "[%s] myRank[%u] localCopy inBuffBaseOff[%llu] outBuffBaseOff[%llu] sliceSize[%llu]", __func__, myRank_,
             tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff, tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff,
             tempAlgParamsLocalCopy.sliceSize);
 

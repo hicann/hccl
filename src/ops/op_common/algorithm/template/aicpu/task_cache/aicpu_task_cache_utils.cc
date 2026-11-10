@@ -94,7 +94,18 @@ HcclResult AicpuTaskCacheUtils::GetInputOutputInfoForCache(
             param.all2AllVDataDes.sendCounts == nullptr,
             HCCL_ERROR("[%s] all2AllVDataDes.sendCounts is nullptr, opType[%u]", __func__, opType), HCCL_E_PARA);
         const uint64_t sendCount = *(reinterpret_cast<const uint64_t*>(param.all2AllVDataDes.sendCounts));
-        inputSize = sendCount * rankSize * DATATYPE_SIZE_TABLE[sendType];
+        const uint32_t type = static_cast<uint32_t>(sendType);
+        CHK_PRT_RET(
+            type >= static_cast<uint32_t>(HCCL_DATA_TYPE_RESERVED), HCCL_ERROR("[%s] invalid data type", __func__),
+            HCCL_E_PARA);
+        const uint64_t typeSize = DATATYPE_SIZE_TABLE[type];
+        CHK_PRT_RET(typeSize == 0, HCCL_ERROR("[%s] zero type size", __func__), HCCL_E_PARA);
+        CHK_PRT_RET(sendCount > UINT64_MAX / typeSize, HCCL_ERROR("[%s] send bytes overflow", __func__), HCCL_E_PARA);
+        const uint64_t sendBytes = sendCount * typeSize;
+        CHK_PRT_RET(
+            rankSize == 0 || sendBytes > UINT64_MAX / rankSize, HCCL_ERROR("[%s] input size overflow", __func__),
+            HCCL_E_PARA);
+        inputSize = sendBytes * rankSize;
 
         // 注意: 不能使用param.All2AllDataDes.recvCount * rankSize * SIZE_TABLE[recvType],
         // 因为alltoall使用sendCount来表示send/recvCount, 而recvCount本身为0

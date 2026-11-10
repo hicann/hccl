@@ -46,8 +46,8 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
 
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO(
-        "[BroadcastSequenceMesh1dNHRNHRExecutor][InitCommInfo] myRank [%u], rankSize [%u], dataTypeSize [%u]", myRank_,
-        rankSize_, dataTypeSize_);
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][InitCommInfo] myRank [%u], rankSize [%u], dataTypeSize [%llu]",
+        myRank_, rankSize_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
 
@@ -260,7 +260,7 @@ HcclResult BroadcastSequenceMesh1dNHRNHRExecutor<
     dataSize_ = dataCount_ * dataTypeSize_;
 
     HCCL_INFO(
-        "[BroadcastSequenceMesh1dNHRNHRExecutor][InitExecutorInfo] myRank [%u], rankSize [%u], dataTypeSize [%u]",
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][InitExecutorInfo] myRank [%u], rankSize [%u], dataTypeSize [%llu]",
         +myRank_, rankSize_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
@@ -347,9 +347,9 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     params.outputSliceStride = params.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] params.inputSliceStride [%u],"
-        "params.outputSliceStride [%u] params.sliceSize [%u], params.tailSize [%u], "
-        "params.buffInfo.inBuffBaseOff [%u], params.buffInfo.outBuffBaseOff [%u]",
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][GenTempAlgParamsAGL2] params.inputSliceStride [%llu],"
+        "params.outputSliceStride [%llu] params.sliceSize [%llu], params.tailSize [%llu], "
+        "params.buffInfo.inBuffBaseOff [%llu], params.buffInfo.outBuffBaseOff [%llu]",
         params.inputSliceStride, params.outputSliceStride, params.sliceSize, params.tailSize,
         params.buffInfo.inBuffBaseOff, params.buffInfo.outBuffBaseOff);
 
@@ -378,9 +378,9 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     params.outputSliceStride = params.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] params.inputSliceStride [%u], "
-        "params.outputSliceStride [%u], params.sliceSize [%u], params.tailSize [%u], "
-        "params.buffInfo.inBuffBaseOff [%u], params.buffInfo.outBuffBaseOff [%u]",
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][GenTempAlgParamsAGL1] params.inputSliceStride [%llu], "
+        "params.outputSliceStride [%llu], params.sliceSize [%llu], params.tailSize [%llu], "
+        "params.buffInfo.inBuffBaseOff [%llu], params.buffInfo.outBuffBaseOff [%llu]",
         params.inputSliceStride, params.outputSliceStride, params.sliceSize, params.tailSize,
         params.buffInfo.inBuffBaseOff, params.buffInfo.outBuffBaseOff);
 
@@ -411,10 +411,11 @@ void BroadcastSequenceMesh1dNHRNHRExecutor<
     tempAlgParamsStepFour.outputSliceStride = tempAlgParamsStepFour.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] tempAlgParamsStepFour.inputSliceStride [%u], "
-        "tempAlgParamsStepFour.outputSliceStride [%u], tempAlgParamsStepFour.sliceSize [%u], "
-        "tempAlgParamsStepFour.tailSize [%u], "
-        "tempAlgParamsStepFour.buffInfo.inBuffBaseOff [%u], tempAlgParamsStepFour.buffInfo.outBuffBaseOff [%u]",
+        "[BroadcastSequenceMesh1dNHRNHRExecutor][GenTempAlgParamsAGL0] tempAlgParamsStepFour.inputSliceStride "
+        "[%llu], "
+        "tempAlgParamsStepFour.outputSliceStride [%llu], tempAlgParamsStepFour.sliceSize [%llu], "
+        "tempAlgParamsStepFour.tailSize [%llu], "
+        "tempAlgParamsStepFour.buffInfo.inBuffBaseOff [%llu], tempAlgParamsStepFour.buffInfo.outBuffBaseOff [%llu]",
         tempAlgParamsStepFour.inputSliceStride, tempAlgParamsStepFour.outputSliceStride,
         tempAlgParamsStepFour.sliceSize, tempAlgParamsStepFour.tailSize, tempAlgParamsStepFour.buffInfo.inBuffBaseOff,
         tempAlgParamsStepFour.buffInfo.outBuffBaseOff);

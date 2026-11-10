@@ -303,13 +303,13 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
         tempAlgParamsReduceScatterMesh1D.outputSliceStride = 0; // 没用到
 
         HCCL_INFO(
-            "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsReduceScatterMesh.inputSliceStride [%u],"
-            "tempAlgParamsReduceScatterMesh.outputSliceStride [%u] tempAlgParamsReduceScatterMesh.sliceSize [%u]",
+            "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsReduceScatterMesh.inputSliceStride [%llu],"
+            "tempAlgParamsReduceScatterMesh.outputSliceStride [%llu] tempAlgParamsReduceScatterMesh.sliceSize [%llu]",
             loop, tempAlgParamsReduceScatterMesh1D.inputSliceStride, tempAlgParamsReduceScatterMesh1D.outputSliceStride,
             tempAlgParamsReduceScatterMesh1D.sliceSize);
         HCCL_INFO(
-            "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsReduceScatterMesh.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParamsReduceScatterMesh.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsReduceScatterMesh.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParamsReduceScatterMesh.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParamsReduceScatterMesh1D.buffInfo.inBuffBaseOff,
             tempAlgParamsReduceScatterMesh1D.buffInfo.outBuffBaseOff);
         // 不需要重复
@@ -343,15 +343,15 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
             tempAlgParamsReduceScatterDpu.outputSliceStride = 0; // 没用到
             //
             HCCL_INFO(
-                "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsReduceScatterDpu.inputSliceStride [%u],"
-                "tempAlgParamsReduceScatterDpu.outputSliceStride [%u] "
-                "tempAlgParamsReduceScatterDpu.sliceSize [%u]",
+                "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsReduceScatterDpu.inputSliceStride [%llu],"
+                "tempAlgParamsReduceScatterDpu.outputSliceStride [%llu] "
+                "tempAlgParamsReduceScatterDpu.sliceSize [%llu]",
                 loop, tempAlgParamsReduceScatterDpu.inputSliceStride, tempAlgParamsReduceScatterDpu.outputSliceStride,
                 tempAlgParamsReduceScatterDpu.sliceSize);
             HCCL_INFO(
-                "[InsV2ReduceSequenceExecutor] loop [%u] "
-                "tempAlgParamsReduceScatterDpu.buffInfo.inBuffBaseOff [%u],"
-                "tempAlgParamsReduceScatterDpu.buffInfo.outBuffBaseOff [%u]",
+                "[InsV2ReduceSequenceExecutor] loop [%llu] "
+                "tempAlgParamsReduceScatterDpu.buffInfo.inBuffBaseOff [%llu],"
+                "tempAlgParamsReduceScatterDpu.buffInfo.outBuffBaseOff [%llu]",
                 loop, tempAlgParamsReduceScatterDpu.buffInfo.inBuffBaseOff,
                 tempAlgParamsReduceScatterDpu.buffInfo.outBuffBaseOff);
             // 不需要重复
@@ -381,13 +381,13 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
             tempAlgParamsGatherDpu.outputSliceStride = 0;
 
             HCCL_INFO(
-                "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsGatherDpu.inputSliceStride [%u],"
-                "tempAlgParamsGatherDpu.outputSliceStride [%u] tempAlgParamsGatherDpu.sliceSize [%u]",
+                "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsGatherDpu.inputSliceStride [%llu],"
+                "tempAlgParamsGatherDpu.outputSliceStride [%llu] tempAlgParamsGatherDpu.sliceSize [%llu]",
                 loop, tempAlgParamsGatherDpu.inputSliceStride, tempAlgParamsGatherDpu.outputSliceStride,
                 tempAlgParamsGatherDpu.sliceSize);
             HCCL_INFO(
-                "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsGatherDpu.buffInfo.inBuffBaseOff [%u],"
-                "tempAlgParamsGatherDpu.buffInfo.outBuffBaseOff [%u]",
+                "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsGatherDpu.buffInfo.inBuffBaseOff [%llu],"
+                "tempAlgParamsGatherDpu.buffInfo.outBuffBaseOff [%llu]",
                 loop, tempAlgParamsGatherDpu.buffInfo.inBuffBaseOff, tempAlgParamsGatherDpu.buffInfo.outBuffBaseOff);
             // 不需要重复
             tempAlgParamsGatherDpu.repeatNum = 1;
@@ -415,13 +415,13 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
         tempAlgParamsGatherMesh1D.outputSliceStride = 0;
 
         HCCL_INFO(
-            "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsGatherMesh.inputSliceStride [%u],"
-            "tempAlgParamsGatherMesh.outputSliceStride [%u] tempAlgParamsGatherMesh.sliceSize [%u]",
+            "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsGatherMesh.inputSliceStride [%llu],"
+            "tempAlgParamsGatherMesh.outputSliceStride [%llu] tempAlgParamsGatherMesh.sliceSize [%llu]",
             loop, tempAlgParamsGatherMesh1D.inputSliceStride, tempAlgParamsGatherMesh1D.outputSliceStride,
             tempAlgParamsGatherMesh1D.sliceSize);
         HCCL_INFO(
-            "[InsV2ReduceSequenceExecutor] loop [%u] tempAlgParamsGatherMesh.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParamsGatherMesh.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2ReduceSequenceExecutor] loop [%llu] tempAlgParamsGatherMesh.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParamsGatherMesh.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParamsGatherMesh1D.buffInfo.inBuffBaseOff, tempAlgParamsGatherMesh1D.buffInfo.outBuffBaseOff);
         // 应该不需要重复
         tempAlgParamsGatherMesh1D.repeatNum = 1;
@@ -488,8 +488,9 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
 
     for (u32 i = 0; i < tempAlgParams.allRankSliceSize.size(); ++i) {
         HCCL_DEBUG(
-            "[InsV2ReduceSequenceExecutor] SliceInfo: offset[%u] size[%u] count[%u]", tempAlgParams.allRankDispls.at(i),
-            tempAlgParams.allRankSliceSize.at(i), tempAlgParams.allRankProcessedDataCount.at(i));
+            "[InsV2ReduceSequenceExecutor] SliceInfo: offset[%llu] size[%llu] count[%llu]",
+            tempAlgParams.allRankDispls.at(i), tempAlgParams.allRankSliceSize.at(i),
+            tempAlgParams.allRankProcessedDataCount.at(i));
     }
 
     return HcclResult::HCCL_SUCCESS;

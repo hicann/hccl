@@ -81,7 +81,15 @@ HcclResult InsTempReduceScatterMesh1DNDA::KernelRun(
         if (remoteRank == myRank_) {
             continue;
         }
-        const ChannelInfo& link = templateResource.channels.at(remoteRank)[0];
+        auto channelIt = templateResource.channels.find(remoteRank);
+        if (channelIt == templateResource.channels.end() || channelIt->second.empty()) {
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1DNDA][KernelRun] channel not found or empty for remoteRank[%u], channels "
+                "size[%zu]",
+                remoteRank, templateResource.channels.size());
+            return HCCL_E_INTERNAL;
+        }
+        const ChannelInfo& link = channelIt->second[0];
 
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;

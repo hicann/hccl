@@ -171,7 +171,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
 
     HCCL_DEBUG(
         "[%s] myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+        "rankIdxLevel1[%u] devType[%u] dataCount[%llu] dataType[%u] dataTypeSize[%llu]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
     return HcclResult::HCCL_SUCCESS;
@@ -252,7 +252,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     HCCL_DEBUG("[%s] myRank[%u] start", __func__, myRank_);
     localThreads_ = resCtx.threads;
     HCCL_DEBUG(
-        "[%s]localThreads_ size[%zu] dataSize_[%u] dataCount_[%u]", __func__, localThreads_.size(), dataSize_,
+        "[%s]localThreads_ size[%zu] dataSize_[%llu] dataCount_[%llu]", __func__, localThreads_.size(), dataSize_,
         dataCount_); // 3 main+x+y
 
     if (resCtx.algHierarchyInfo.infos.empty()) {
@@ -381,7 +381,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         notifyIdxControlToTemplates_.push_back(level1TempRequest.notifyNumOnMainThread);
         notifyIdxTemplatesToControl_.push_back(1);
     }
-    HCCL_DEBUG("[%s]level0ThreadsNum[%u] level1ThreadsNum[%u]", __func__, level0ThreadsNum, level1ThreadsNum);
+    HCCL_DEBUG("[%s]level0ThreadsNum[%llu] level1ThreadsNum[%llu]", __func__, level0ThreadsNum, level1ThreadsNum);
     HCCL_DEBUG(
         "[%s]level0Threads size[%zu] level1Threads size[%zu]", __func__, level0Threads_.size(), level1Threads_.size());
     HCCL_DEBUG("[%s]templateMainThreads size[%zu]", __func__, templateMainThreads_.size());
@@ -498,7 +498,7 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scatterDataSize = maxTmpMemSize / rankSize_;
     HCCL_DEBUG(
-        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxTmpMemSize[%u] transportBoundDataSize[%u]", __func__,
+        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxTmpMemSize[%llu] transportBoundDataSize[%llu]", __func__,
         myRank_, maxTmpMemSize, transportBoundDataSize);
     u64 maxCountPerLoop = std::min(scatterDataSize, transportBoundDataSize) / HCCL_MIN_SLICE_ALIGN
                           * HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
@@ -506,12 +506,12 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         maxCountPerLoop == 0, HCCL_ERROR("[InsV2ScatterOmniPipe2DExecutor][%s] maxCountPerLoop is 0", __func__),
         HCCL_E_INTERNAL);
     HCCL_DEBUG(
-        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, maxCountPerLoop);
+        "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] maxCountPerLoop[%llu]", __func__, myRank_, maxCountPerLoop);
     u32 loopTimes = dataCount_ / maxCountPerLoop + ((dataCount_ % maxCountPerLoop == 0) ? 0 : 1);
     HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] loopTimes[%u]", __func__, myRank_, loopTimes);
     u64 perLoopSize = maxCountPerLoop * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;
-    HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] perLoopSize[%u]", __func__, perLoopSize);
+    HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] perLoopSize[%llu]", __func__, perLoopSize);
 
     // 3.计算对齐数据的切片信息
     OmniPipeSliceInfo alignSliceInfo;
@@ -542,7 +542,8 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
     if (dataCount_ > maxCountPerLoop && dataCount_ % maxCountPerLoop != 0) {
         u64 tailCount = dataCount_ % maxCountPerLoop;
         tailLoopSize = tailCount * dataTypeSize_;
-        HCCL_DEBUG("[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] tailLoopSize[%u]", __func__, myRank_, tailLoopSize);
+        HCCL_DEBUG(
+            "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] tailLoopSize[%llu]", __func__, myRank_, tailLoopSize);
         std::vector<u64> tailPerLoop(rankSize_, tailLoopSize);
         sliceParam.dataSizePerLoop = tailPerLoop;
         tailSliceInfo = CalcScatterOmniPipeSliceInfo(sliceParam, param.root);
@@ -691,9 +692,9 @@ HcclResult InsV2ScatterOmniPipe2DExecutor<AlgTopoMatch, InsAlgTempLevel0, InsAlg
         }
 
         HCCL_DEBUG(
-            "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] "
-            "sliceSize[%lu] outputSize[%u] "
-            "inputSize[%u]",
+            "[InsV2ScatterOmniPipe2DExecutor][%s] myRank[%u] localCopy inBuffBaseOff[%llu] outBuffBaseOff[%llu] "
+            "sliceSize[%llu] outputSize[%llu] "
+            "inputSize[%llu]",
             __func__, myRank_, tempAlgParamsLocalCopy.buffInfo.inBuffBaseOff,
             tempAlgParamsLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamsLocalCopy.sliceSize,
             tempAlgParamsLocalCopy.buffInfo.outputSize, tempAlgParamsLocalCopy.buffInfo.inputSize);

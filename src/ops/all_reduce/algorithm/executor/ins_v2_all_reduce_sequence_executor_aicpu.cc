@@ -415,10 +415,10 @@ void InsV2AllReduceSequenceExecutorAicpu<
     tempAlgParamsStepOne.outputSliceStride = supportSymmetricMemory_ ? tempAlgParamsStepOne.sliceSize : 0;
 
     HCCL_INFO(
-        "[InsV2AllReduceSequenceExecutorAicpu] loop [%u] tempAlgParamsStepOne.inputSliceStride [%u], "
-        "tempAlgParamsStepOne.outputSliceStride [%u], tempAlgParamsStepOne.sliceSize [%u], "
-        "tempAlgParamsStepOne.tailSize [%u], "
-        "tempAlgParamsStepOne.buffInfo.inBuffBaseOff [%u], tempAlgParamsStepOne.buffInfo.outBuffBaseOff [%u]",
+        "[InsV2AllReduceSequenceExecutorAicpu] loop [%llu] tempAlgParamsStepOne.inputSliceStride [%llu], "
+        "tempAlgParamsStepOne.outputSliceStride [%llu], tempAlgParamsStepOne.sliceSize [%llu], "
+        "tempAlgParamsStepOne.tailSize [%llu], "
+        "tempAlgParamsStepOne.buffInfo.inBuffBaseOff [%llu], tempAlgParamsStepOne.buffInfo.outBuffBaseOff [%llu]",
         loop, tempAlgParamsStepOne.inputSliceStride, tempAlgParamsStepOne.outputSliceStride,
         tempAlgParamsStepOne.sliceSize, tempAlgParamsStepOne.tailSize, tempAlgParamsStepOne.buffInfo.inBuffBaseOff,
         tempAlgParamsStepOne.buffInfo.outBuffBaseOff);

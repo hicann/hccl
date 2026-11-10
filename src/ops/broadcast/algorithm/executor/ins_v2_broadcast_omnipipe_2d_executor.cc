@@ -233,7 +233,7 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
 
     HCCL_DEBUG(
         "[%s]myRank[%u] rankSize[%u] rankSizeLevel0[%u] rankSizeLevel1[%u] rankIdxLevel0[%u] "
-        "rankIdxLevel1[%u] devType[%u] dataCount[%u] dataType[%u] dataTypeSize[%u]",
+        "rankIdxLevel1[%u] devType[%u] dataCount[%llu] dataType[%u] dataTypeSize[%llu]",
         __func__, myRank_, rankSize_, rankSizeLevel0_, rankSizeLevel1_, rankIdxLevel0_, rankIdxLevel1_, devType_,
         dataCount_, dataType_, dataTypeSize_);
     return HcclResult::HCCL_SUCCESS;
@@ -555,11 +555,11 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
     u64 transportBoundDataSize = UB_MAX_DATA_SIZE;
     u64 scratchBoundDataSize = maxTmpMemSize / rankSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN;
     HCCL_DEBUG(
-        "[%s] myRank[%u] transportBoundDataSize[%u] scratchBoundDataSize[%u]", __func__, myRank_,
+        "[%s] myRank[%u] transportBoundDataSize[%llu] scratchBoundDataSize[%llu]", __func__, myRank_,
         transportBoundDataSize, scratchBoundDataSize);
     loopSplitData.maxCountPerLoop = std::min(transportBoundDataSize, scratchBoundDataSize) / dataTypeSize_;
     CHK_PRT_RET(loopSplitData.maxCountPerLoop == 0, HCCL_ERROR("[%s] maxCountPerLoop is 0", __func__), HCCL_E_INTERNAL);
-    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%u]", __func__, myRank_, loopSplitData.maxCountPerLoop);
+    HCCL_DEBUG("[%s] myRank[%u] maxCountPerLoop[%llu]", __func__, myRank_, loopSplitData.maxCountPerLoop);
 
     const u64 maxRankCount
         = *std::max_element(loopSplitData.allRankSplitData.begin(), loopSplitData.allRankSplitData.end());
@@ -803,8 +803,8 @@ HcclResult InsV2BroadcastOmniPipe2dExecutor<
             tempAlgParamLocalCopy.buffInfo.inBuffBaseOff = perInnnerLoopOffset[myRank_] * dataTypeSize_;
             tempAlgParamLocalCopy.outputSliceStride = 0;
             HCCL_DEBUG(
-                "[%s] myRank[%u] localCopy inBuffBaseOff[%lu] outBuffBaseOff[%lu] sliceSize[%lu] "
-                "inputSliceStride [%lu]",
+                "[%s] myRank[%u] localCopy inBuffBaseOff[%llu] outBuffBaseOff[%llu] sliceSize[%llu] "
+                "inputSliceStride [%llu]",
                 __func__, myRank_, tempAlgParamLocalCopy.buffInfo.inBuffBaseOff,
                 tempAlgParamLocalCopy.buffInfo.outBuffBaseOff, tempAlgParamLocalCopy.sliceSize,
                 tempAlgParamLocalCopy.inputSliceStride);

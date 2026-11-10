@@ -593,7 +593,7 @@ HcclResult InsV2AllReduceOmniPipe2dExecutor<
     u64 perLoopSize = multiLoopAllRankSplitData[0][0] * dataTypeSize_;
     perLoopSize = dataSize_ > perLoopSize ? perLoopSize : dataSize_;
     HCCL_DEBUG(
-        "[%s] myRank[%u] loopTimes[%llu] perLoopSize[%u] dataSize_[%u] rankSize_[%u]", __func__, myRank_, loopTimes,
+        "[%s] myRank[%u] loopTimes[%llu] perLoopSize[%llu] dataSize_[%llu] rankSize_[%u]", __func__, myRank_, loopTimes,
         perLoopSize, dataSize_, rankSize_);
     std::vector<u64> dataSizePerLoop(rankSize_, perLoopSize);
     std::vector<u64> dataWholeSize(rankSize_, allRankSplitData[myRank_] * dataTypeSize_);

@@ -88,7 +88,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::DoLocalCopy(
         HCCL_ERROR("[%s]InputBufferType Error.", __func__);
         return HCCL_E_PARA;
     }
-    HCCL_INFO("MT tempAlgParams.sliceSize = %u", tempAlgParams.sliceSize);
+    HCCL_INFO("MT tempAlgParams.sliceSize = %llu", tempAlgParams.sliceSize);
     for (auto i = 0; i < tempAlgParams.repeatNum; ++i) {
         auto srcSlice = DataSlice(
             srcAddr, tempAlgParams.buffInfo.inBuffBaseOff + i * tempAlgParams.inputSliceStride, tempAlgParams.sliceSize,
@@ -97,7 +97,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::DoLocalCopy(
             dstAddr, tempAlgParams.buffInfo.outBuffBaseOff + i * tempAlgParams.outputSliceStride,
             tempAlgParams.sliceSize, tempAlgParams.count);
         HCCL_INFO(
-            "myRank[%u], i[%u],  srcSlice:%s, dstSlice:%s", myRank_, i, srcSlice.Describe().c_str(),
+            "myRank[%u], i[%u], srcSlice:%s, dstSlice:%s", myRank_, i, srcSlice.Describe().c_str(),
             dstSlice.Describe().c_str());
         CHK_RET(static_cast<HcclResult>(LocalCopy(threads[0], srcSlice, dstSlice)));
     }
@@ -113,11 +113,13 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::KernelRun(
     }
 
     threadNum_ = templateResource.threads.size();
+    processSize_ = tempAlgParams.sliceSize;
+    count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
 
     HCCL_INFO(
-        "[%s]Run Start, threadNum_=%u, processSize_=%u, count_=%u, dataType_=%u", __func__, threadNum_, processSize_,
-        count_, dataType_);
+        "[%s]Run Start, threadNum_=%u, processSize_=%llu, count_=%llu, dataType_=%u", __func__, threadNum_,
+        processSize_, count_, dataType_);
 
     if (threadNum_ < 1) {
         HCCL_ERROR("[InsTempReduceScatterOmniPipeMesh1dNDA] Rank [%d], required thread error.", myRank_);
@@ -174,8 +176,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::PostReduce(
                 auto dstSlice = DataSlice(
                     cclBuffAddr, dstCurrent, tempAlgParams.stepSliceInfo.stepSliceSize[rankIdx][repeatIdx],
                     tempAlgParams.stepSliceInfo.stepCount[rankIdx][repeatIdx]);
-                HCCL_DEBUG(
-                    "MT srcSlice=[%s],  dstSlice=[%s]", srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
+                HCCL_DEBUG("MT srcSlice=[%s], dstSlice=[%s]", srcSlice.Describe().c_str(), dstSlice.Describe().c_str());
                 CHK_RET(static_cast<HcclResult>(LocalReduce(threads[0], srcSlice, dstSlice, dataType_, reduceOp_)));
             }
         }
@@ -202,7 +203,15 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::RunReduceScatter(
         if (remoteRank == myRank_) {
             continue;
         }
-        const ChannelInfo& linkRemote = channels.at(remoteRank)[0];
+        auto channelIt = channels.find(remoteRank);
+        if (channelIt == channels.end() || channelIt->second.empty()) {
+            HCCL_ERROR(
+                "[InsTempReduceScatterOmniPipeMesh1dNDA][RunReduceScatter] channel not found or empty for "
+                "remoteRank[%u], channels size[%zu]",
+                remoteRank, channels.size());
+            return HCCL_E_INTERNAL;
+        }
+        const ChannelInfo& linkRemote = channelIt->second[0];
         std::vector<DataSlice> txSrcSlices;
         std::vector<DataSlice> txDstSlices;
         std::vector<DataSlice> rxSrcSlices;

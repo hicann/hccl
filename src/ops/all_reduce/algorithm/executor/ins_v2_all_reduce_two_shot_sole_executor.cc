@@ -240,10 +240,10 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     tempAlgParamsReduceScatter.outputSliceStride = 0;
 
     HCCL_INFO(
-        "[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsReduceScatter.inputSliceStride [%u], "
-        "tempAlgParamsReduceScatter.outputSliceStride [%u], tempAlgParamsReduceScatter.sliceSize [%u], "
-        "tempAlgParamsReduceScatter.tailSize [%u], tempAlgParamsReduceScatter.buffInfo.inBuffBaseOff [%u], "
-        "tempAlgParamsReduceScatter.buffInfo.outBuffBaseOff [%u]",
+        "[InsV2AllReduceTwoShotSoleExecutor] loop [%llu] tempAlgParamsReduceScatter.inputSliceStride [%llu], "
+        "tempAlgParamsReduceScatter.outputSliceStride [%llu], tempAlgParamsReduceScatter.sliceSize [%llu], "
+        "tempAlgParamsReduceScatter.tailSize [%llu], tempAlgParamsReduceScatter.buffInfo.inBuffBaseOff [%llu], "
+        "tempAlgParamsReduceScatter.buffInfo.outBuffBaseOff [%llu]",
         loop, tempAlgParamsReduceScatter.inputSliceStride, tempAlgParamsReduceScatter.outputSliceStride,
         tempAlgParamsReduceScatter.sliceSize, tempAlgParamsReduceScatter.tailSize,
         tempAlgParamsReduceScatter.buffInfo.inBuffBaseOff, tempAlgParamsReduceScatter.buffInfo.outBuffBaseOff);
@@ -271,10 +271,10 @@ void InsV2AllReduceTwoShotSoleExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemp
     tempAlgParamsAllGather.outputSliceStride = tempAlgParamsAllGather.sliceSize;
 
     HCCL_INFO(
-        "[InsV2AllReduceTwoShotSoleExecutor] loop [%u] tempAlgParamsAllGather.inputSliceStride [%u], "
-        "tempAlgParamsAllGather.outputSliceStride [%u], tempAlgParamsAllGather.sliceSize [%u], "
-        "tempAlgParamsAllGather.tailSize [%u], tempAlgParamsAllGather.buffInfo.inBuffBaseOff [%u], "
-        "tempAlgParamsAllGather.buffInfo.outBuffBaseOff [%u]",
+        "[InsV2AllReduceTwoShotSoleExecutor] loop [%llu] tempAlgParamsAllGather.inputSliceStride [%llu], "
+        "tempAlgParamsAllGather.outputSliceStride [%llu], tempAlgParamsAllGather.sliceSize [%llu], "
+        "tempAlgParamsAllGather.tailSize [%llu], tempAlgParamsAllGather.buffInfo.inBuffBaseOff [%llu], "
+        "tempAlgParamsAllGather.buffInfo.outBuffBaseOff [%llu]",
         loop, tempAlgParamsAllGather.inputSliceStride, tempAlgParamsAllGather.outputSliceStride,
         tempAlgParamsAllGather.sliceSize, tempAlgParamsAllGather.tailSize,
         tempAlgParamsAllGather.buffInfo.inBuffBaseOff, tempAlgParamsAllGather.buffInfo.outBuffBaseOff);

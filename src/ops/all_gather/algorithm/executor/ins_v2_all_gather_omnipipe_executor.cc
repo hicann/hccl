@@ -54,7 +54,7 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     algHierarchyInfo_ = algHierarchyInfo;
     HCCL_INFO(
         "[InsV2AllGatherOmniPipeExecutor][InitCommInfo] initialize communication metadata, "
-        "rank[%u], rankSize[%u], devType[%u], dataType[%u], dataTypeSize[%u].",
+        "rank[%u], rankSize[%u], devType[%u], dataType[%u], dataTypeSize[%llu].",
         myRank_, rankSize_, devType_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }

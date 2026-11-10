@@ -359,7 +359,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
                 tempAlgParamsScatterInter.allRankSliceSize.size(), rankSizeLevel1_),
             HcclResult::HCCL_E_INTERNAL);
         HCCL_INFO(
-            "[InsV2BroadcastSequenceExecutor][SplitData][ScatterInter] count[%u] slicenum[%u]",
+            "[InsV2BroadcastSequenceExecutor][SplitData][ScatterInter] count[%llu] slicenum[%u]",
             tempAlgParamsScatterInter.count, rankSizeLevel1_);
 
         // 这里的stride当成传统意义上的stride 间隔
@@ -367,13 +367,13 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsScatterInter.outputSliceStride = 0;
 
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsScatterInter.inputSliceStride [%u],"
-            "tempAlgParamsScatterInter.outputSliceStride [%u] tempAlgParamsScatterInter.sliceSize [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsScatterInter.inputSliceStride [%llu],"
+            "tempAlgParamsScatterInter.outputSliceStride [%llu] tempAlgParamsScatterInter.sliceSize [%llu]",
             loop, tempAlgParamsScatterInter.inputSliceStride, tempAlgParamsScatterInter.outputSliceStride,
             tempAlgParamsScatterInter.sliceSize);
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsScatterInter.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParamsScatterInter.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsScatterInter.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParamsScatterInter.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParamsScatterInter.buffInfo.inBuffBaseOff, tempAlgParamsScatterInter.buffInfo.outBuffBaseOff);
         // 不需要重复
         tempAlgParamsScatterInter.repeatNum = 1;
@@ -406,13 +406,13 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherInter.outputSliceStride = 0; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherInter.inputSliceStride [%u],"
-            "tempAlgParamsAllGatherInter.outputSliceStride [%u] tempAlgParamsAllGatherInter.sliceSize [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherInter.inputSliceStride [%llu],"
+            "tempAlgParamsAllGatherInter.outputSliceStride [%llu] tempAlgParamsAllGatherInter.sliceSize [%llu]",
             loop, tempAlgParamsAllGatherInter.inputSliceStride, tempAlgParamsAllGatherInter.outputSliceStride,
             tempAlgParamsAllGatherInter.sliceSize);
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherInter.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParamsAllGatherInter.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherInter.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParamsAllGatherInter.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParamsAllGatherInter.buffInfo.inBuffBaseOff,
             tempAlgParamsAllGatherInter.buffInfo.outBuffBaseOff);
         // 不需要重复
@@ -420,8 +420,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherInter.inputRepeatStride = 0;
         tempAlgParamsAllGatherInter.outputRepeatStride = 0;
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherInter.repeatNum [%u],"
-            "tempAlgParamsAllGatherInter.inputRepeatStride [%u], tempAlgParamsAllGatherInter.outputRepeatStride [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherInter.repeatNum [%llu],"
+            "tempAlgParamsAllGatherInter.inputRepeatStride [%llu], tempAlgParamsAllGatherInter.outputRepeatStride "
+            "[%llu]",
             loop, tempAlgParamsAllGatherInter.repeatNum, tempAlgParamsAllGatherInter.inputRepeatStride,
             tempAlgParamsAllGatherInter.outputRepeatStride);
         // 因为只考虑执行0级算法，所以传进template里面的channels就是channels_的第一个vector
@@ -447,13 +448,13 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherIntra.outputSliceStride = 0; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherIntra.inputSliceStride [%u],"
-            "tempAlgParamsAllGatherIntra.outputSliceStride [%u] tempAlgParamsAllGatherIntra.sliceSize [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherIntra.inputSliceStride [%llu],"
+            "tempAlgParamsAllGatherIntra.outputSliceStride [%llu] tempAlgParamsAllGatherIntra.sliceSize [%llu]",
             loop, tempAlgParamsAllGatherIntra.inputSliceStride, tempAlgParamsAllGatherIntra.outputSliceStride,
             tempAlgParamsAllGatherIntra.sliceSize);
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherIntra.buffInfo.inBuffBaseOff [%u],"
-            "tempAlgParamsAllGatherIntra.buffInfo.outBuffBaseOff [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherIntra.buffInfo.inBuffBaseOff [%llu],"
+            "tempAlgParamsAllGatherIntra.buffInfo.outBuffBaseOff [%llu]",
             loop, tempAlgParamsAllGatherIntra.buffInfo.inBuffBaseOff,
             tempAlgParamsAllGatherIntra.buffInfo.outBuffBaseOff);
         // 不需要重复
@@ -461,8 +462,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamsAllGatherIntra.inputRepeatStride = 0;
         tempAlgParamsAllGatherIntra.outputRepeatStride = 0;
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] loop [%u] tempAlgParamsAllGatherIntra.repeatNum [%u],"
-            "tempAlgParamsAllGatherIntra.inputRepeatStride [%u], tempAlgParamsAllGatherIntra.outputRepeatStride [%u]",
+            "[InsV2BroadcastSequenceExecutor] loop [%llu] tempAlgParamsAllGatherIntra.repeatNum [%llu],"
+            "tempAlgParamsAllGatherIntra.inputRepeatStride [%llu], tempAlgParamsAllGatherIntra.outputRepeatStride "
+            "[%llu]",
             loop, tempAlgParamsAllGatherIntra.repeatNum, tempAlgParamsAllGatherIntra.inputRepeatStride,
             tempAlgParamsAllGatherIntra.outputRepeatStride);
         // 因为只考虑执行0级算法，所以传进template里面的channels就是channels_的第一个vector
@@ -514,7 +516,7 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
 
     for (u32 i = 0; i < tempAlgParams.allRankSliceSize.size(); ++i) {
         HCCL_DEBUG(
-            "[InsV2BroadcastSequenceExecutor] SliceInfo: offset[%u] size[%u] count[%u]",
+            "[InsV2BroadcastSequenceExecutor] SliceInfo: offset[%llu] size[%llu] count[%llu]",
             tempAlgParams.allRankDispls.at(i), tempAlgParams.allRankSliceSize.at(i),
             tempAlgParams.allRankProcessedDataCount.at(i));
     }

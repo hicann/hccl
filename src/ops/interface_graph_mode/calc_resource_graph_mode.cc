@@ -710,7 +710,7 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
         ccuTaskNum = loopTimes * GE_PARALLEL;
     }
     HCCL_INFO(
-        "[CalcTaskNum] maxDataSizePerLoop[%llu] maxDataCountPerLoop[%llu] loopTimes[%llu] ccuTaskNum[%llu]",
+        "[CalcTaskNum] maxDataSizePerLoop[%llu] maxDataCountPerLoop[%llu] loopTimes[%llu] ccuTaskNum[%u]",
         maxDataSizePerLoop, maxDataCountPerLoop, loopTimes, ccuTaskNum);
     HCCL_INFO("[CalcTaskNum] end.");
     return HCCL_SUCCESS;

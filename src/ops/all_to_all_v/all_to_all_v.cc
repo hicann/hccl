@@ -700,7 +700,7 @@ HcclResult AlltoAllVConstructOpParam(
 
     u64 logNum = varMemSize / (rankSize * sizeof(u64));
     for (u64 i = 0; i < logNum * rankSize; i++) {
-        HCCL_INFO("[AlltoAllVConstructOpParam] varData[%u] is [%u]", i, data[i]);
+        HCCL_INFO("[AlltoAllVConstructOpParam] varData[%llu] is [%llu]", i, data[i]);
     }
     HCCL_INFO("[AlltoAllVConstructOpParam] HCCL_SIZE_TABLE[dataType] is [%u]", HCCL_SIZE_TABLE[dataType]);
     return HCCL_SUCCESS;

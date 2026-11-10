@@ -33,7 +33,7 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     algHierarchyInfo_ = algHierarchyInfo;
 
     HCCL_INFO(
-        "[InsV2AllGatherSequenceExecutor][InitCommInfo] myRank[%u], rankSize[%u], dataType[%u], dataTypeSize[%u]",
+        "[InsV2AllGatherSequenceExecutor][InitCommInfo] myRank[%u], rankSize[%u], dataType[%u], dataTypeSize[%llu]",
         myRank_, rankSize_, dataType_, dataTypeSize_);
     return HCCL_SUCCESS;
 }
