@@ -147,11 +147,6 @@ The following lists the algorithms supported by different inter-server product m
   | AlltoAllV | int8, int16, int32, int64, float16, float32, bfp16 | - Single-operator<br>  - Graph (Ascend IR) | None |
   | AlltoAllVC | int8, int16, int32, int64, float16, float32, bfp16 | - Single-operator<br>  - Graph (Ascend IR) | None |
 
-- **CP**
-
-  | Operator | Data Type | Networking Mode | Handling for Unsupported Operators |
-  | --- | --- | --- | --- |
-  | AlltoAllV | int8, int16, int32, int64, float16, float32, bfp16 | Single-operator | Auto selects pairwise algorithm. |
 <!-- end id4 -->
 
 <!-- npu="910" id1 -->
