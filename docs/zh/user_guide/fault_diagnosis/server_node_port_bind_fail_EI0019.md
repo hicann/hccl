@@ -27,9 +27,12 @@ HCCL端口绑定失败，在通信域创建阶段，HCCL需要默认绑定60000-
 
 - 通过[HCCL_IF_BASE_PORT](../hccl_env/HCCL_IF_BASE_PORT.md)环境变量指定Host网卡的起始端口号及设置端口预留范围。
 - 若业务上需要在单个NPU上同时执行多个进程，需通过[HCCL_HOST_SOCKET_PORT_RANGE](../hccl_env/HCCL_HOST_SOCKET_PORT_RANGE.md)设置HCCL在Host侧使用的通信端口范围来避免多进程之间端口使用冲突。**该操作仅适用于如下产品**：
+    <!-- npu="950" id4 -->
+  - Ascend 950PR&950DT系列产品
+    <!-- end id4 -->
     <!-- npu="A3" id2 -->
   - Atlas A3系列产品
     <!-- end id2 -->
-  <!-- npu="910b" id3 -->
+    <!-- npu="910b" id3 -->
   - Atlas A2系列产品
     <!-- end id3 -->
