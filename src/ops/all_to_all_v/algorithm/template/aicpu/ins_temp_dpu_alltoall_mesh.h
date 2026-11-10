@@ -66,6 +66,14 @@ private:
         const OpParam& param, const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
         const TemplateResource& templateResource, std::vector<ThreadHandle>& threads);
 
+    HcclResult RunAicpuTransfer(
+        const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+        const TemplateResource& templateResource, std::vector<ThreadHandle>& threads);
+
+    HcclResult RunDpuTransfer(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
+
     HcclResult PostCopyDataToRecvBuf(
         const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams, std::vector<ThreadHandle>& threads);
 

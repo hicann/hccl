@@ -76,6 +76,10 @@ HcclResult InsV2BarrierSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
 
     TemplateResource templateResourceInter;
     SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
+    templateResourceInter.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceInter.dpuThread = resCtx.dpuThread;
+    templateResourceInter.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceInter.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
     TemplateResource templateResourceIntra;
     SetTemplateCommResource(templateResourceIntra, remoteRankToChannelInfo_[0], resCtx);

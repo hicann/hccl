@@ -118,6 +118,13 @@ constexpr u32 ORDER_UNFOLD_THREAD_NOTIFY_NUM = 1;
 constexpr u32 HOST_ORDER_THREAD_NOTIFY_IDX = 0;
 constexpr u32 HOST_ORDER_THREAD_NOTIFY_NUM = 1;
 constexpr u32 DEVICE_ORDER_THREAD_NOTIFY_NUM = 0;
+constexpr u32 HOST_DPU_THREAD_NOTIFY_IDX = 0;
+constexpr u32 HOST_DPU_THREAD_NOTIFY_NUM = 1;
+constexpr u32 AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_IDX = 0;
+constexpr u32 AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_NUM = 1;
+
+// Host Channel Drain（HcommChannelDrainOnThread）所需的最低hcomm版本
+constexpr int HOST_CHANNEL_DRAIN_MIN_HCOMM_VERSION = CANN_VERSION(9, 2, 0, 2);
 
 enum class TopoType {
     TOPO_TYPE_COMMON = 0,         // 普通拓扑类型 ，default单层拓扑使用
@@ -581,10 +588,13 @@ struct AlgResourceCtxSerializable {
     void* aivCommInfoPtr = nullptr;
     std::vector<ThreadHandle> threads;
     ThreadHandle unfoldThread = 0; // 展开流thread
+    ThreadHandle dpuThread = 0;    // hostdpu新路径：执行搬运的DPU线程
     std::vector<std::vector<ChannelInfo>> channels;
     double dieSplitRatio = 0.0;
     bool isHcommBatchTransferOnThreadSupported = false;
     bool isHcclThreadAcquireWithConfigSupported = false;
+    bool isDpuThreadEnabled = false;
+    bool isHcommChannelDrainSupported = false;
     void* commInfoPtr = nullptr;
     // hostdpu
     void* npu2DpuShmemPtr = nullptr;
@@ -613,9 +623,12 @@ struct AlgResourceCtxSerializable {
         binaryStream << commInfoPtr;
         binaryStream << threads;
         binaryStream << unfoldThread;
+        binaryStream << dpuThread;
         binaryStream << channels;
         binaryStream << isHcommBatchTransferOnThreadSupported;
         binaryStream << isHcclThreadAcquireWithConfigSupported;
+        binaryStream << isDpuThreadEnabled;
+        binaryStream << isHcommChannelDrainSupported;
 
         binaryStream << npu2DpuShmemPtr;
         binaryStream << dpu2NpuShmemPtr;
@@ -650,9 +663,12 @@ struct AlgResourceCtxSerializable {
         binaryStream >> commInfoPtr;
         binaryStream >> threads;
         binaryStream >> unfoldThread;
+        binaryStream >> dpuThread;
         binaryStream >> channels;
         binaryStream >> isHcommBatchTransferOnThreadSupported;
         binaryStream >> isHcclThreadAcquireWithConfigSupported;
+        binaryStream >> isDpuThreadEnabled;
+        binaryStream >> isHcommChannelDrainSupported;
 
         binaryStream >> npu2DpuShmemPtr;
         binaryStream >> dpu2NpuShmemPtr;

@@ -50,6 +50,10 @@ public:
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override {};
 
 private:
+    HcclResult RunDpuTransfer(
+        const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
+
     u32 recvRank_{0};
     u64 count_{0};
     u64 processSize_{0};

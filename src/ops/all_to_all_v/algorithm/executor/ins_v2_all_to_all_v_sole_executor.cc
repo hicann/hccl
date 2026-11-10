@@ -203,6 +203,10 @@ HcclResult InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrate
     templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;
     templateAlgRes.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateAlgRes.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateAlgRes.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateAlgRes.dpuThread = resCtx.dpuThread;
+    templateAlgRes.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateAlgRes.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 准备数据
     TemplateDataParams tempAlgParams;
     SetTemplateBuffInfo(

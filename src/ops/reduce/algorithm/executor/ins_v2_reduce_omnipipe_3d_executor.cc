@@ -453,6 +453,10 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
             }
             tempResMap[level].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
             tempResMap[level].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+            tempResMap[level].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+            tempResMap[level].dpuThread = resCtx.dpuThread;
+            tempResMap[level].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+            tempResMap[level].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
             tempAlgParamMap[level].buffInfo.inputPtr = param.inputPtr;
             tempAlgParamMap[level].buffInfo.outputPtr = param.outputPtr;

@@ -523,6 +523,10 @@ HcclResult InsV2AllReduceSequenceExecutorDpu3Level<
     // Task2：DPU 共享内存透传（AICPU 三级缺这两行；不透传则 L2 DPU 模板 KernelRun 读到野值崩溃）
     tempResource.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     tempResource.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    tempResource.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    tempResource.dpuThread = resCtx.dpuThread;
+    tempResource.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    tempResource.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     return HCCL_SUCCESS;
 }
 

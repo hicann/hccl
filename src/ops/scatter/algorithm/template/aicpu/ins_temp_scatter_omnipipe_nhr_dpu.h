@@ -60,10 +60,12 @@ public:
 
 private:
     HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo, u32 rootAlgRank, u32 myAlgRank);
-    HcclResult RunNHR(const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam);
+    HcclResult RunNHR(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
     HcclResult ExecuteNhrStep(
         const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam, u64 repeatNum,
-        u32 rootAlgRank, u32 myAlgRank, u32 step, u32 nSteps);
+        u32 rootAlgRank, u32 myAlgRank, u32 step, u32 nSteps, ThreadHandle thread, bool isDrainSupported);
     HcclResult BuildTxBatchSlices(
         const std::map<u32, std::vector<ChannelInfo>>& channels, const AicpuNHRStepInfo& stepInfo,
         const StepSliceInfo& stepSliceInfo, u32 dim0Idx, u64 repeatNum, u64 outBuffBaseOff, void* localCclBuffAddr,
@@ -77,7 +79,8 @@ private:
     HcclResult ExecuteDpuCommPrimitive(
         bool hasTx, bool hasRx, const ChannelInfo* txCh, const ChannelInfo* rxCh,
         const std::vector<DataSlice>& txSrcSlices, const std::vector<DataSlice>& txDstSlices,
-        const std::vector<DataSlice>& rxSrcSlices, const std::vector<DataSlice>& rxDstSlices, u32 step);
+        const std::vector<DataSlice>& rxSrcSlices, const std::vector<DataSlice>& rxDstSlices, u32 step,
+        ThreadHandle thread, bool isDrainSupported);
     // PreLocalCopy 已提至 public，供 executor 提前调用
     // DPU数据交换：eager模式切换、DPURunInfo序列化、SendRequest/WaitResponse、msgId校验
     HcclResult RunDpuDataExchange(

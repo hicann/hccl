@@ -18,13 +18,11 @@
 
 namespace ops_hccl {
 
-#ifndef AICPU_COMPILE
-HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle thread, ChannelHandle channel);
-#endif
-
-HcclResult SendWrite(const DataInfo& sendInfo);
-HcclResult RecvWrite(const DataInfo& recvInfo);
-HcclResult SendRecvWrite(const SendRecvInfo& sendRecvInfo);
+HcclResult
+HcommChannelDrainOnThreadWithCompat(ThreadHandle thread, ChannelHandle channel, bool isDrainSupported = false);
+HcclResult DpuSendWrite(const DataInfo& sendInfo, ThreadHandle thread = 0, bool isDrainSupported = false);
+HcclResult DpuRecvWrite(const DataInfo& recvInfo, ThreadHandle thread = 0, bool isDrainSupported = false);
+HcclResult DpuSendRecvWrite(const SendRecvInfo& sendRecvInfo, ThreadHandle thread = 0, bool isDrainSupported = false);
 HcclResult SendWriteForNda(const DataInfo& sendInfo, const ThreadHandle& thread);
 HcclResult RecvWriteForNda(const DataInfo& recvInfo, const ThreadHandle& thread);
 HcclResult SendRecvWriteForNda(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);

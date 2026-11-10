@@ -89,6 +89,10 @@ private:
     const HcclSendRecvItem* itemPtr_ = nullptr;
     void* npu2DpuShmemPtr_ = nullptr;
     void* dpu2NpuShmemPtr_ = nullptr;
+    bool isDpuThreadEnabled_ = false;
+    ThreadHandle dpuThread_ = 0;
+    u32 dpuThreadNotifyIdxOnMain_ = 0;
+    bool isHcommChannelDrainSupported_ = false;
     HcclMem cclMem_{HCCL_MEM_TYPE_DEVICE, nullptr, 0};
     u32 itemNum_ = 0;
     u64 maxRoundTransferSize_ = 0; // 单轮最多能够传输的size

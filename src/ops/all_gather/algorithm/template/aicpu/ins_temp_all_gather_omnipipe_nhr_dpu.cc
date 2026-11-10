@@ -9,10 +9,9 @@
  */
 
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
-#include "alg_data_trans_wrapper.h"
 #include "dpu_alg_data_trans_wrapper.h"
-#include "channel.h"
 #include "alg_v2_template_register.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempAllGatherOmniPipeNHRDPU::InsTempAllGatherOmniPipeNHRDPU(
@@ -36,54 +35,74 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(
         return HcclResult::HCCL_SUCCESS;
     }
 
-    // 转换成eager-mode，保障AICPU指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：层线程通知DPU线程开工并下发搬运任务，最后在本层线程上等其完工通知
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：入参就是本对象成员，只需对齐可能不同的templateRankSize_
+        templateRankSize_ = subCommRanks_[0].size();
+        CHK_RET(RunNHR(
+            tempAlgParams, templateResource.channels, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_IDX)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_IDX, execTimeout)));
+    } else {
+        // 转换成eager-mode，保障AICPU指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempAllGatherOmniPipeNHRDPU";
-    dpuRunInfo.tempAlgParams = tempAlgParams;
-    dpuRunInfo.channels = templateResource.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempAllGatherOmniPipeNHRDPU";
+        dpuRunInfo.tempAlgParams = tempAlgParams;
+        dpuRunInfo.channels = templateResource.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
 
-    u32 sendMsgId = 0;
-    if (HcommSendRequest(
-            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
-        != 0) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommSendRequest failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+        u32 sendMsgId = 0;
+        if (HcommSendRequest(
+                reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommSendRequest failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
 
-    // 等待DPU数据传输，然后回写结果回来
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        // 等待DPU数据传输，然后回写结果回来
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
+        if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] HcommWaitResponse failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        return HCCL_E_INTERNAL;
-    }
+        if (recvMsgId != sendMsgId) {
+            HCCL_ERROR(
+                "[InsTempAllGatherOmniPipeNHRDPU] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+            return HCCL_E_INTERNAL;
+        }
 
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+        // 将执行模式转换回到batch
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
     }
 
     HCCL_INFO("[InsTempAllGatherOmniPipeNHRDPU] Run End");
@@ -91,9 +110,9 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::KernelRun(
 }
 
 HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels) const
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    ThreadHandle thread, bool isDrainSupported) const
 {
-#ifndef AICPU_COMPILE
     u32 myAlgRank = 0;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     const uint32_t nSteps = GetNHRStepNum(templateRankSize_);
@@ -153,20 +172,28 @@ HcclResult InsTempAllGatherOmniPipeNHRDPU::RunNHR(
         SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
 
         CHK_PRT_RET(
-            SendRecvWrite(sendRecvInfo),
+            DpuSendRecvWrite(sendRecvInfo, thread, isDrainSupported),
             HCCL_ERROR("[InsTempAllGatherOmniPipeNHRDPU] SendRecvWrite failed (step=%u)", step),
             HcclResult::HCCL_E_INTERNAL);
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempAllGatherOmniPipeNHRDPU::CalcRes(
+    HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+    AlgResourceRequest& resourceRequest)
+{
+    CHK_RET(InsTempAllGatherNHRDPU::CalcRes(comm, param, topoInfo, resourceRequest));
+    resourceRequest.notifyNumOnMainThread = AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_NUM;
+    return HCCL_SUCCESS;
 }
 
 HcclResult InsTempAllGatherOmniPipeNHRDPU::GetRes(AlgResourceRequest& resourceRequest) const
 {
     // NHR算法只需要一条主流
     resourceRequest.slaveThreadNum = 0;
-    resourceRequest.notifyNumPerThread = {};   // 没有从流
-    resourceRequest.notifyNumOnMainThread = 0; // 没有从流
+    resourceRequest.notifyNumPerThread = {}; // 没有从流
+    resourceRequest.notifyNumOnMainThread = AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_NUM;
     return HCCL_SUCCESS;
 }
 

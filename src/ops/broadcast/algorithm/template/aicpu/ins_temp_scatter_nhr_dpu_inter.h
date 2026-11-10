@@ -54,7 +54,9 @@ public:
 private:
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
     HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
-    HcclResult RunNHR(const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams);
+    HcclResult RunNHR(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
 
     u64 count_{0};
     u64 dataTypeSize_{0};

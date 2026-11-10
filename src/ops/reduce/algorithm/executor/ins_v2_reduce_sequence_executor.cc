@@ -248,9 +248,17 @@ InsV2ReduceSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, InsA
     // 构造框间ReduceScatterDpu的template资源
     TemplateResource templateResourceReduceScatterDpu;
     SetTemplateCommResource(templateResourceReduceScatterDpu, remoteRankToChannelInfo_[1], resCtx);
+    templateResourceReduceScatterDpu.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceReduceScatterDpu.dpuThread = resCtx.dpuThread;
+    templateResourceReduceScatterDpu.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceReduceScatterDpu.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 构造框间GatherDpu的template资源
     TemplateResource templateResourceGatherDpu;
     SetTemplateCommResource(templateResourceGatherDpu, remoteRankToChannelInfo_[1], resCtx);
+    templateResourceGatherDpu.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceGatherDpu.dpuThread = resCtx.dpuThread;
+    templateResourceGatherDpu.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceGatherDpu.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 构造框内GatherMesh1D的template资源
     TemplateResource templateResourceGatherMesh1D;
     SetTemplateCommResource(templateResourceGatherMesh1D, remoteRankToChannelInfo_[0], resCtx);

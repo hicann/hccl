@@ -9,11 +9,11 @@
  */
 
 #include "ins_temp_barrier_nhr_dpu.h"
-#include "alg_data_trans_wrapper.h"
 #include "dpu_alg_data_trans_wrapper.h"
 #include "channel.h"
 #include "template_utils.h"
 #include "alg_v2_template_register.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempBarrierNHRDPU::InsTempBarrierNHRDPU(
@@ -57,52 +57,70 @@ HcclResult InsTempBarrierNHRDPU::KernelRun(
         return HCCL_E_INTERNAL;
     }
 
-    // 转换成 eager-mode，保障 AICPU 指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：主流通知DPU线程开工，再由主流把搬运任务下发到DPU线程队列，最后等其完工通知
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：入参就是本对象成员，只需对齐可能不同的templateRankSize_
+        templateRankSize_ = subCommRanks_[0].size();
+        CHK_RET(RunNHRBarrier(
+            templateResource.channels, templateResource.dpuThread, templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain, execTimeout)));
+    } else {
+        // 转换成 eager-mode，保障 AICPU 指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempBarrierNHRDPU";
-    dpuRunInfo.tempAlgParams = tempAlgParams;
-    dpuRunInfo.channels = templateResource.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempBarrierNHRDPU";
+        dpuRunInfo.tempAlgParams = tempAlgParams;
+        dpuRunInfo.channels = templateResource.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
 
-    u32 sendMsgId = 0;
-    if (HcommSendRequest(
-            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
-        != 0) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] HcommSendRequest failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempBarrierNHRDPU] HcommSendRequest sendMsgId[%u]", sendMsgId);
+        u32 sendMsgId = 0;
+        if (HcommSendRequest(
+                reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] HcommSendRequest failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempBarrierNHRDPU] HcommSendRequest sendMsgId[%u]", sendMsgId);
 
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempBarrierNHRDPU] HcommWaitResponse recvMsgId[%u]", recvMsgId);
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
+        if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] HcommWaitResponse failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempBarrierNHRDPU] HcommWaitResponse recvMsgId[%u]", recvMsgId);
 
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        return HCCL_E_INTERNAL;
-    }
+        if (recvMsgId != sendMsgId) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempBarrierNHRDPU] failed set batch mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempBarrierNHRDPU] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
     }
     HCCL_INFO("[InsTempBarrierNHRDPU] Run End");
     return HCCL_SUCCESS;
@@ -122,9 +140,9 @@ HcclResult InsTempBarrierNHRDPU::DPUKernelRun(
 
 u32 InsTempBarrierNHRDPU::GetRankFromMap(const uint32_t rankIdx) const { return subCommRanks_[0].at(rankIdx); }
 
-HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(const std::map<u32, std::vector<ChannelInfo>>& channels) const
+HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, ThreadHandle thread, bool isDrainSupported) const
 {
-#ifndef AICPU_COMPILE
     if (templateRankSize_ <= 1) {
         return HCCL_SUCCESS;
     }
@@ -150,35 +168,34 @@ HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(const std::map<u32, std::vector<C
             SendRecvInfo sendRecvInfo(sendRecvChannels, sendRecvSlicesList);
 
             CHK_PRT_RET(
-                SendRecvWrite(sendRecvInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] SendRecvWrite failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                DpuSendRecvWrite(sendRecvInfo, thread, isDrainSupported),
+                HCCL_ERROR("[InsTempBarrierNHRDPU] SendRecvWrite failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
         } else if (txChannel[0].remoteRank < rxChannel[0].remoteRank) {
             SlicesList sendSliceList(emptySlices, emptySlices);
             DataInfo sendInfo(txChannel[0], sendSliceList);
             CHK_PRT_RET(
-                SendWrite(sendInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                DpuSendWrite(sendInfo, thread, isDrainSupported),
+                HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
 
             SlicesList recvSliceList(emptySlices, emptySlices);
             DataInfo recvInfo(rxChannel[0], recvSliceList);
             CHK_PRT_RET(
-                RecvWrite(recvInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                DpuRecvWrite(recvInfo, thread, isDrainSupported),
+                HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
         } else {
             SlicesList recvSliceList(emptySlices, emptySlices);
             DataInfo recvInfo(rxChannel[0], recvSliceList);
             CHK_PRT_RET(
-                RecvWrite(recvInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                DpuRecvWrite(recvInfo, thread, isDrainSupported),
+                HCCL_ERROR("[InsTempBarrierNHRDPU] Recv failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
 
             SlicesList sendSliceList(emptySlices, emptySlices);
             DataInfo sendInfo(txChannel[0], sendSliceList);
             CHK_PRT_RET(
-                SendWrite(sendInfo), HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step),
-                HcclResult::HCCL_E_INTERNAL);
+                DpuSendWrite(sendInfo, thread, isDrainSupported),
+                HCCL_ERROR("[InsTempBarrierNHRDPU] Send failed (step=%u)", step), HcclResult::HCCL_E_INTERNAL);
         }
     }
-#endif
     return HCCL_SUCCESS;
 }
 

@@ -32,13 +32,17 @@ public:
     }
     HcclResult KernelRun(
         const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource) override;
+    HcclResult CalcRes(
+        HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
+        AlgResourceRequest& resourceRequest) override;
     HcclResult GetRes(AlgResourceRequest& resourceRequest) const override;
 
     u64 GetThreadNum() const override;
 
 private:
-    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels)
-        const override;
+    HcclResult RunNHR(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        ThreadHandle thread = 0, bool isDrainSupported = false) const override;
 };
 } // namespace ops_hccl
 

@@ -9,6 +9,7 @@
  */
 
 #include "ins_temp_dpu_alltoall_mesh.h"
+#include "exec_timeout_manager.h"
 
 #include <algorithm>
 #include <set>
@@ -131,19 +132,21 @@ HcclResult InsTempDpuAlltoAllMesh::KernelRun(
     // 将待发送数据从sendBuf拷贝到CCL_IN上
     CHK_RET(PreCopyDataToCclInBuf(subCommRanks_[0], tempAlgParams, threads_));
 
-    // 转换成eager-mode，保障AICPU指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempDpuAlltoAllMesh] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-    if (HcommThreadSynchronize(threads_[0]) != 0) {
-        HCCL_ERROR("HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempDpuAlltoAllMesh] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+    if (!templateResource.isDpuThreadEnabled) {
+        // 转换成eager-mode，保障AICPU指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempDpuAlltoAllMesh] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+        if (HcommThreadSynchronize(threads_[0]) != 0) {
+            HCCL_ERROR("HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
+        // 将执行模式转换回到batch
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempDpuAlltoAllMesh] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
     }
 
     if (threadNum_ > 1) {
@@ -218,6 +221,25 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
     const OpParam& param, const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
     const TemplateResource& templateResource, std::vector<ThreadHandle>& threads)
 {
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：主流通知DPU线程开工，再由主流把搬运任务下发到DPU线程队列，最后等其完工通知
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyRecordOnThread(threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：把批量搬运任务下发到DPU线程
+        CHK_RET(RunDpuTransfer(
+            templateResource.channels, tempAlgParams, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(RunAicpuTransfer(commRanks, tempAlgParams, templateResource, threads));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, threads[0], templateResource.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(threads[0], templateResource.dpuThreadNotifyIdxOnMain, execTimeout)));
+        return HcclResult::HCCL_SUCCESS;
+    }
+
     // 写共享内存，唤醒dpu线程
     DPURunInfo dpuRunInfo;
     dpuRunInfo.execTimeout = param.opConfig.execTimeout;
@@ -235,13 +257,40 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
         HCCL_ERROR("[InsTempDpuAlltoAllMesh] [SendRecvData] HcommSendRequest failed");
         return HCCL_E_INTERNAL;
     }
+    CHK_RET(RunAicpuTransfer(commRanks, tempAlgParams, templateResource, threads));
+
+    // 等待dpu完成
+    HCCL_INFO("[InsTempDpuAlltoAllMesh] [SendRecvData] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+    // 等待DPU数据传输，然后回写结果回来
+    void* recvData = nullptr;
+    u32 recvMsgId = 0;
+
+    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
+        HCCL_ERROR("[InsTempDpuAlltoAllMesh][SendRecvData] HcommWaitResponse failed");
+        return HCCL_E_INTERNAL;
+    }
+
+    HCCL_INFO("[InsTempDpuAlltoAllMesh] [SendRecvData]HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+
+    if (recvMsgId != sendMsgId) {
+        HCCL_ERROR(
+            "[InsTempDpuAlltoAllMesh] [SendRecvData]recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+        return HCCL_E_INTERNAL;
+    }
+    return HcclResult::HCCL_SUCCESS;
+}
+
+HcclResult InsTempDpuAlltoAllMesh::RunAicpuTransfer(
+    const std::vector<u32>& commRanks, const TemplateDataParams& tempAlgParams,
+    const TemplateResource& templateResource, std::vector<ThreadHandle>& threads)
+{
     // AICPU部分数据传输
     u32 threadIdx = 0;
     for (u32 i = 0; i < commRanks.size(); i++) {
         u32 remoteRank = commRanks[i];
         if (remoteRank == myRank_) {
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] is eaqul with remoteRank[%u] skip aicpu data "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] is eaqul with remoteRank[%u] skip aicpu data "
                 "transfer",
                 myRank_, remoteRank);
             continue;
@@ -251,18 +300,20 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
         auto it = templateResource.channels.find(remoteRank);
         CHK_PRT_RET(
             it == templateResource.channels.end(),
-            HCCL_ERROR("[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] key not found in channels map", remoteRank),
+            HCCL_ERROR(
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] key not found in channels map", remoteRank),
             HCCL_E_PARA);
         CHK_PRT_RET(
             templateResource.channels.at(remoteRank).empty(),
             HCCL_ERROR(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] ChannelInfo Vector for myRank[%u] key is empty", remoteRank),
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] ChannelInfo Vector for myRank[%u] key is empty",
+                remoteRank),
             HCCL_E_PARA);
         const ChannelInfo& link = templateResource.channels.at(remoteRank)[0];
 
         if (link.locationType != EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE) {
             HCCL_WARNING(
-                "[InsTempDpuAlltoAllMesh][SendRecvData] skip myRank[%u] transfer data to remoteRank[%u] by "
+                "[InsTempDpuAlltoAllMesh][RunAicpuTransfer] skip myRank[%u] transfer data to remoteRank[%u] by "
                 "AICPU , the EndpointLocType must be DEVICE",
                 myRank_, remoteRank);
             continue;
@@ -270,7 +321,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
 
         if (threadIdx >= threadNum_) {
             HCCL_ERROR(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] thread index [%u] exceeds thread count [%u]", threadIdx,
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] thread index [%u] exceeds thread count [%u]", threadIdx,
                 threadNum_);
             return HCCL_E_INTERNAL;
         }
@@ -280,7 +331,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
         // 无需发送和接收数据
         if (sendCount == 0 && recvCount == 0) {
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] send data to remoteRank[%u] and myRank[%u] "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] send data to remoteRank[%u] and myRank[%u] "
                 "recv data from remoteRank[%u] are zero, skip data transfer",
                 myRank_, remoteRank, myRank_, remoteRank);
             continue;
@@ -290,7 +341,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
         void* remoteCclBuffAddr = link.remoteCclMem.addr;
         if (remoteCclBuffAddr == nullptr) {
             HCCL_ERROR(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] Remote CCL buffer address is null for "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] Remote CCL buffer address is null for "
                 "remoteRank[%u]",
                 myRank_, remoteRank);
             return HCCL_E_INTERNAL;
@@ -317,14 +368,14 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             std::vector<DataSlice> rxSrcSlices{recvSrcSlice};
             std::vector<DataSlice> rxDstSlices{recvDstSlice};
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] send data to remoteRank[%u], myRank's CCLIN "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] send data to remoteRank[%u], myRank's CCLIN "
                 "startAddr[%llu] to remoteRank's CCLOUT startAddr[%llu] and Size is [%llu]",
                 myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_,
                 sendSliceSize);
 
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] recv data from remoteRank[%u], remoteRank's "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] recv data from remoteRank[%u], remoteRank's "
                 "CCLIN startAddr[%llu] to myRank's CCLOUT startAddr[%llu] and Size is [%llu]",
                 myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + remoteRank * hcclbuffBlockMemSize_,
@@ -332,7 +383,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             SendRecvInfo sendRecvInfo{{link, link}, {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}}};
             CHK_PRT_RET(
                 SendRecvWrite(sendRecvInfo, threads[threadIdx]),
-                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [SendRecvData] AlltoAll AICPU SendRecv failed"),
+                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] AlltoAll AICPU SendRecv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else if (sendCount > 0) {
             // 待发数据量不为0,待收数据为0的情况
@@ -346,7 +397,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             std::vector<DataSlice> txSrcSlices{sendSrcSlice};
             std::vector<DataSlice> txDstSlices{sendDstSlice};
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] send data to remoteRank[%u], myRank's CCLIN "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] send data to remoteRank[%u], myRank's CCLIN "
                 "startAddr[%llu] to remoteRank's CCLOUT startAddr[%llu] and Size is [%llu]",
                 myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize_,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + myRank_ * hcclbuffBlockMemSize_,
@@ -354,7 +405,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             DataInfo sendDataInfo{link, {txSrcSlices, txDstSlices}};
             CHK_PRT_RET(
                 SendWrite(sendDataInfo, threads[threadIdx]),
-                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [SendRecvData] AlltoAll AICPU only Send failed"),
+                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] AlltoAll AICPU only Send failed"),
                 HcclResult::HCCL_E_INTERNAL);
         } else if (recvCount > 0) {
             // 待收数据量不为0,待发数据为0的情况
@@ -368,7 +419,7 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             std::vector<DataSlice> rxSrcSlices{recvSrcSlice};
             std::vector<DataSlice> rxDstSlices{recvDstSlice};
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [SendRecvData] myRank[%u] recv data from remoteRank[%u], remoteRank's "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] recv data from remoteRank[%u], remoteRank's "
                 "CCLIN startAddr[%llu] to myRank's CCLOUT startAddr[%llu] and Size is [%llu]",
                 myRank_, remoteRank, tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize_,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize_ + remoteRank * hcclbuffBlockMemSize_,
@@ -376,29 +427,10 @@ HcclResult InsTempDpuAlltoAllMesh::SendRecvData(
             DataInfo recvDataInfo{link, {rxSrcSlices, rxDstSlices}};
             CHK_PRT_RET(
                 RecvWrite(recvDataInfo, threads[threadIdx]),
-                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [SendRecvData] AlltoAll AICPU only Recv failed"),
+                HCCL_ERROR("[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] AlltoAll AICPU only Recv failed"),
                 HcclResult::HCCL_E_INTERNAL);
         }
         threadIdx++;
-    }
-
-    // 等待dpu完成
-    HCCL_INFO("[InsTempDpuAlltoAllMesh] [SendRecvData] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
-    // 等待DPU数据传输，然后回写结果回来
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempDpuAlltoAllMesh][SendRecvData] HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
-
-    HCCL_INFO(" [InsTempDpuAlltoAllMesh] [SendRecvData]HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
-
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR(
-            "[InsTempDpuAlltoAllMesh] [SendRecvData]recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        return HCCL_E_INTERNAL;
     }
     return HcclResult::HCCL_SUCCESS;
 }
@@ -448,19 +480,19 @@ void InsTempDpuAlltoAllMesh::GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSu
     }
 }
 
-HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
-    const std::vector<std::vector<u32>>& subCommRanks)
+HcclResult InsTempDpuAlltoAllMesh::RunDpuTransfer(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     // 网卡通信流程
     HCCL_INFO("[InsTempDpuAlltoAllMesh] [DPUKernelRun] start");
     CHK_PRT_RET(
-        subCommRanks.empty(), HCCL_ERROR("[InsTempDpuAlltoAllMesh] [DPUKernelRun] subCommRanks is empty"), HCCL_E_PARA);
-    CHK_PRT_RET(
-        subCommRanks[0].empty(), HCCL_ERROR("[InsTempDpuAlltoAllMesh] [DPUKernelRun] subCommRanks[0] is empty"),
+        subCommRanks_.empty(), HCCL_ERROR("[InsTempDpuAlltoAllMesh] [DPUKernelRun] subCommRanks is empty"),
         HCCL_E_PARA);
-    const std::vector<u32>& commRanks = subCommRanks[0];
+    CHK_PRT_RET(
+        subCommRanks_[0].empty(), HCCL_ERROR("[InsTempDpuAlltoAllMesh] [DPUKernelRun] subCommRanks[0] is empty"),
+        HCCL_E_PARA);
+    const std::vector<u32>& commRanks = subCommRanks_[0];
     const u32 templateRankSize = static_cast<u32>(commRanks.size());
 
     u64 splitParts = 2;
@@ -472,7 +504,7 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
 
     for (u32 i = 0; i < templateRankSize; i++) {
         u32 remoteRank = commRanks[i];
-        if (remoteRank == myRank) {
+        if (remoteRank == myRank_) {
             continue;
         }
         auto it = channels.find(remoteRank);
@@ -490,7 +522,7 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
             HCCL_WARNING(
                 "[InsTempDpuAlltoAllMesh][DPUKernelRun] skip myRank[%u] transfer data to remoteRank[%u] by "
                 "DPU , the EndpointLocType must be HOST",
-                myRank, remoteRank);
+                myRank_, remoteRank);
             continue;
         }
         u64 sendCount = tempAlgParams.sendCounts[remoteRank];
@@ -510,13 +542,13 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
                 tempAlgParams.buffInfo.hcclBuffBaseOff + remoteRank * hcclbuffBlockMemSize, sendSliceSize, sendCount));
             ctx.txDstSlices.push_back(DataSlice(
                 link.remoteCclMem.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize + myRank * hcclbuffBlockMemSize,
+                tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize + myRank_ * hcclbuffBlockMemSize,
                 sendSliceSize, sendCount));
         }
         if (recvCount > 0) {
             ctx.rxSrcSlices.push_back(DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
-                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank * hcclbuffBlockMemSize, recvSliceSize, recvCount));
+                tempAlgParams.buffInfo.hcclBuffBaseOff + myRank_ * hcclbuffBlockMemSize, recvSliceSize, recvCount));
             ctx.rxDstSlices.push_back(DataSlice(
                 tempAlgParams.buffInfo.hcclBuff.addr,
                 tempAlgParams.buffInfo.hcclBuffBaseOff + halfMaxTmpMemSize + remoteRank * hcclbuffBlockMemSize,
@@ -525,12 +557,23 @@ HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
         HCCL_INFO(
             "[InsTempDpuAlltoAllMesh][DPUKernelRun] myRank[%u], remoteRank[%u], sendCount[%llu], recvCount[%llu], "
             "channel[0x%llx], txSliceNum[%zu], rxSliceNum[%zu].",
-            myRank, remoteRank, sendCount, recvCount, link.handle, ctx.txSrcSlices.size(), ctx.rxSrcSlices.size());
+            myRank_, remoteRank, sendCount, recvCount, link.handle, ctx.txSrcSlices.size(), ctx.rxSrcSlices.size());
         pairs.push_back(ctx);
     }
 
-    CHK_RET(DpuBatchTransfer(pairs));
+    CHK_RET(DpuBatchTransfer(pairs, thread, isDrainSupported));
     HCCL_INFO("[InsTempDpuAlltoAllMesh] [DPUKernelRun] end");
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempDpuAlltoAllMesh::DPUKernelRun(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+    const std::vector<std::vector<u32>>& subCommRanks)
+{
+#ifndef AICPU_COMPILE
+    myRank_ = myRank;
+    subCommRanks_ = subCommRanks;
+    CHK_RET(RunDpuTransfer(channels, tempAlgParams));
 #endif
     return HCCL_SUCCESS;
 }

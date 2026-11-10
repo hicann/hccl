@@ -611,6 +611,10 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
         tempResMap[temp.first].threads = levelThreads_[temp.first];
         tempResMap[temp.first].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
         tempResMap[temp.first].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+        tempResMap[temp.first].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+        tempResMap[temp.first].dpuThread = resCtx.dpuThread;
+        tempResMap[temp.first].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+        tempResMap[temp.first].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
         tempAlgParamMap[temp.first].buffInfo.hcclBuff = resCtx.cclMem;
         // 下发用户地址和对称内存开关；对称模板直接在 user input 上归约，普通模板使用 ccl scratch。
         tempAlgParamMap[temp.first].buffInfo.inputPtr = param.inputPtr;

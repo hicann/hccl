@@ -11,9 +11,9 @@
 #include "ins_temp_all_gather_nhr_dpu_inter.h"
 #include "dpu_alg_nhr_opt_wrapper.h"
 #include "alg_data_trans_wrapper.h"
-#include "dpu_alg_data_trans_wrapper.h"
 #include "channel.h"
 #include "alg_v2_template_register.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempAllGatherNhrDpuInter::InsTempAllGatherNhrDpuInter(
@@ -81,53 +81,72 @@ HcclResult InsTempAllGatherNhrDpuInter::KernelRun(
 
     CHK_RET(LocalDataCopy(tempAlgParams, templateResource));
 
-    // 转换成eager-mode，保障AICPU指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：主流通知DPU线程开工，再由主流把搬运任务下发到DPU线程队列，最后等其完工通知
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：入参就是本对象成员，只需对齐可能不同的templateRankSize_
+        templateRankSize_ = subCommRanks_[0].size();
+        CHK_RET(RunNHR(
+            tempAlgParams, templateResource.channels, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain, execTimeout)));
+    } else {
+        // 转换成eager-mode，保障AICPU指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    u32 sendMsgId = 0;
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempAllGatherNhrDpuInter";
-    dpuRunInfo.tempAlgParams = tempAlgParams;
-    dpuRunInfo.channels = templateResource.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-    if (HcommSendRequest(
-            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
-        != 0) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommSendRequest failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempAllGatherNhrDpuInter] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+        u32 sendMsgId = 0;
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempAllGatherNhrDpuInter";
+        dpuRunInfo.tempAlgParams = tempAlgParams;
+        dpuRunInfo.channels = templateResource.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        if (HcommSendRequest(
+                reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommSendRequest failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempAllGatherNhrDpuInter] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
 
-    // 等待DPU数据传输，然后回写结果回来
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempAllGatherNhrDpuInter] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        // 等待DPU数据传输，然后回写结果回来
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
+        if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] HcommWaitResponse failed");
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempAllGatherNhrDpuInter] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        return HCCL_E_INTERNAL;
-    }
+        if (recvMsgId != sendMsgId) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+            return HCCL_E_INTERNAL;
+        }
 
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempAllGatherNhrDpuInter] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+        // 将执行模式转换回到batch
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempAllGatherNhrDpuInter] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
     }
 
     CHK_RET(PostLocalCopy(tempAlgParams, templateResource));
@@ -220,9 +239,9 @@ HcclResult InsTempAllGatherNhrDpuInter::LocalDataCopy(
 }
 
 HcclResult InsTempAllGatherNhrDpuInter::RunNHR(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels)
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     const uint32_t nSteps = GetNHRStepNum(templateRankSize_);
     u32 tempRankSize = templateRankSize_;
 
@@ -238,10 +257,10 @@ HcclResult InsTempAllGatherNhrDpuInter::RunNHR(
 
             stepInfo.toRank = GetRankFromMap(stepInfo.toRank);
             stepInfo.fromRank = GetRankFromMap(stepInfo.fromRank);
-            CHK_RET(BatchTransferNHR(stepInfo, channels, tempAlgParams, rpt, myRank_, tempRankSize));
+            CHK_RET(BatchTransferNHR(
+                stepInfo, channels, tempAlgParams, rpt, myRank_, tempRankSize, thread, isDrainSupported));
         }
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 

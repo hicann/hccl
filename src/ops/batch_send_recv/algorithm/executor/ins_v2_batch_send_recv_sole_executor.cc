@@ -405,6 +405,10 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     templateResource.threads = threads_;
     templateResource.npu2DpuShmemPtr = npu2DpuShmemPtr_;
     templateResource.dpu2NpuShmemPtr = dpu2NpuShmemPtr_;
+    templateResource.isDpuThreadEnabled = isDpuThreadEnabled_;
+    templateResource.dpuThread = dpuThread_;
+    templateResource.dpuThreadNotifyIdxOnMain = dpuThreadNotifyIdxOnMain_;
+    templateResource.isHcommChannelDrainSupported = isHcommChannelDrainSupported_;
     CHK_RET(algTemplate->KernelRun(sendRecvParam, tempAlgParams, templateResource));
     HCCL_DEBUG(
         "[InsV2BatchSendRecvSoleExecutor][ProcessSendDataSlice] Process a send task by dpu template, "
@@ -450,6 +454,10 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Process
     templateResource.threads = threads_;
     templateResource.npu2DpuShmemPtr = npu2DpuShmemPtr_;
     templateResource.dpu2NpuShmemPtr = dpu2NpuShmemPtr_;
+    templateResource.isDpuThreadEnabled = isDpuThreadEnabled_;
+    templateResource.dpuThread = dpuThread_;
+    templateResource.dpuThreadNotifyIdxOnMain = dpuThreadNotifyIdxOnMain_;
+    templateResource.isHcommChannelDrainSupported = isHcommChannelDrainSupported_;
     CHK_RET(algTemplate->KernelRun(sendRecvParam, tempAlgParams, templateResource));
     HCCL_DEBUG(
         "[InsV2BatchSendRecvSoleExecutor][ProcessRecvDataSlice] Process a recv task by read mode, "
@@ -584,6 +592,10 @@ HcclResult InsV2BatchSendRecvSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchest
     itemPtr_ = param.batchSendRecvDataDes.sendRecvItemsPtr;
     npu2DpuShmemPtr_ = resCtx.npu2DpuShmemPtr;
     dpu2NpuShmemPtr_ = resCtx.dpu2NpuShmemPtr;
+    isDpuThreadEnabled_ = resCtx.isDpuThreadEnabled;
+    dpuThread_ = resCtx.dpuThread;
+    dpuThreadNotifyIdxOnMain_ = resCtx.notifyNumOnMainThread + 1;
+    isHcommChannelDrainSupported_ = resCtx.isHcommChannelDrainSupported;
 
     // 任务排序
     CHK_RET(GetPairWiseList(itemPtr_, itemNum_));

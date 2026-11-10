@@ -52,6 +52,9 @@ public:
 private:
     HcclResult
     RunDpuTransfer(const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource);
+    HcclResult RunDpuPrimitives(
+        const TemplateDataParams& tempAlgParam, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
     u32 recvRank_{0};
     u64 count_{0};
     u64 processSize_{0};

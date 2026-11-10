@@ -508,6 +508,10 @@ InsV2ScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, Ins
         tempResMap[level].threads = levelThreads_[level];
         tempResMap[level].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
         tempResMap[level].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+        tempResMap[level].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+        tempResMap[level].dpuThread = resCtx.dpuThread;
+        tempResMap[level].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+        tempResMap[level].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
         tempAlgParamMap[level].buffInfo.hcclBuff = resCtx.cclMem;
     };
     if (tempLevel0_) {

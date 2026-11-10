@@ -56,6 +56,10 @@ public:
     u64 GetThreadNum() const override;
 
 private:
+    HcclResult RunDpuTransfer(
+        const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
+
     u64 processSize_{0};
     u64 count_{0};
 };

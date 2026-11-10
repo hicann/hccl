@@ -50,7 +50,7 @@ private:
     HcclResult LocalDataCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
     HcclResult RunNHR(
         const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
-        const std::vector<std::vector<uint32_t>>& subCommRanks);
+        const std::vector<std::vector<uint32_t>>& subCommRanks, ThreadHandle thread = 0, bool isDrainSupported = false);
     HcclResult PostLocalCopy(const TemplateDataParams& tempAlgParams, const TemplateResource& templateResource);
 
     u64 tempRankSize_{0};

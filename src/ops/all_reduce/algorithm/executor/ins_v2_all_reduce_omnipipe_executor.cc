@@ -711,6 +711,10 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
             }
             tempResMap[level].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
             tempResMap[level].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+            tempResMap[level].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+            tempResMap[level].dpuThread = resCtx.dpuThread;
+            tempResMap[level].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+            tempResMap[level].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
             // 对称路径的 RS 直接读写 user input，AG 直接读写 user output；普通路径仍由本地拷贝使用这些地址。
             tempAlgParamMap[level].buffInfo.inputPtr = param.inputPtr;

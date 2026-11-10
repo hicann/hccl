@@ -288,6 +288,10 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     templateResourceIntra.threads = resCtx.threads;
     templateResourceIntra.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateResourceIntra.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateResourceIntra.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceIntra.dpuThread = resCtx.dpuThread;
+    templateResourceIntra.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceIntra.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
     if (templateScratchMultiplier == 0) {

@@ -182,6 +182,10 @@ inline HcclResult AgSeq3LevelGenTempResource(
     res.threads = levels[idx].threads;
     res.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     res.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    res.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    res.dpuThread = resCtx.dpuThread;
+    res.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    res.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     return HCCL_SUCCESS;
 }
 

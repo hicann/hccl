@@ -878,9 +878,12 @@ int32_t HcommReleaseComm(const char* commId) { return 0; }
 int32_t HcommWriteWithNotifyNbiOnThread(
     ThreadHandle thread, ChannelHandle channel, void* dst, const void* src, uint64_t len, uint32_t remoteNotifyIdx)
 {
-    HcommWriteOnThread(curThread, channel, dst, src, len);
-    HcommChannelNotifyRecordOnThread(curThread, channel, remoteNotifyIdx);
-    return 0;
+    thread = (thread == 0) ? curThread : thread;
+    int32_t ret = HcommWriteOnThread(thread, channel, dst, src, len);
+    if (ret != HCCL_SUCCESS) {
+        return ret;
+    }
+    return HcommChannelNotifyRecordOnThread(thread, channel, remoteNotifyIdx);
 }
 
 int32_t HcommWriteNbiOnThread(ThreadHandle thread, ChannelHandle channel, void* dst, const void* src, uint64_t len)

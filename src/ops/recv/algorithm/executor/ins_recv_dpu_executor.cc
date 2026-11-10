@@ -137,6 +137,10 @@ InsRecvDpuExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const AlgR
     templateResource.threads = resCtx.threads;
     templateResource.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateResource.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateResource.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResource.dpuThread = resCtx.dpuThread;
+    templateResource.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResource.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
     // 选择template
     std::shared_ptr<InsAlgTemplate> algTemplateDpu

@@ -34,10 +34,13 @@ constexpr u32 NOTIFY_IDX_STEP_SYNC = 0;
  * @param repeat       当前 repeat 索引
  * @param myRank       当前 rank 的 user rank
  * @param templateRankSize 模板 rank 总数
+ * @param thread       执行搬运的DPU线程句柄，共享内存请求老路径不传（默认0）
+ * @param isDrainSupported hcomm是否支持Host Channel Drain，仅AICPU侧需要（host/DPU侧直接查版本）
  */
 HcclResult BatchTransferNHR(
     const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
-    const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize);
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize, ThreadHandle thread = 0,
+    bool isDrainSupported = false);
 
 // 校验NHR write-reduce所需的数据类型、规约操作及slice与buffer范围。
 HcclResult ValidateReduceScatterNhrParams(const TemplateDataParams& tempAlgParams, u32 rankSize);
@@ -82,7 +85,7 @@ HcclResult CheckWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType
  *        调用方负责填充 DpuTransferCtx 列表（含正确的 txDst/txSrc 偏移），
  *        本函数批量执行 Phase 1（step sync）/ Phase 2（HcommWriteNbi）/ Phase 3（data sync + Drain）。
  */
-HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs);
+HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs, ThreadHandle thread = 0, bool isDrainSupported = false);
 
 /**
  * @brief 单个NHR step的DPU write-reduce传输：前同步 → write-reduce → Drain/Fence → 后同步。

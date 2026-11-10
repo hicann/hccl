@@ -374,6 +374,10 @@ HcclResult RsSeq3LevelGenTempResource(
     // 设备模板不读该字段, 无害
     tempResource.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     tempResource.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    tempResource.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    tempResource.dpuThread = resCtx.dpuThread;
+    tempResource.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    tempResource.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     return HCCL_SUCCESS;
 }
 } // namespace ops_hccl

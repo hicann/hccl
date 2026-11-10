@@ -49,7 +49,7 @@ int32_t HcommFenceOnThread(ThreadHandle)
 
 namespace ops_hccl {
 
-HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle, ChannelHandle channel)
+HcclResult HcommChannelDrainOnThreadWithCompat(ThreadHandle, ChannelHandle channel, bool)
 {
     return static_cast<HcclResult>(
         RecordCall({StubApi::DRAIN, channel, nullptr, nullptr, 0, HCOMM_DATA_TYPE_RESERVED, HCOMM_REDUCE_RESERVED, 0}));

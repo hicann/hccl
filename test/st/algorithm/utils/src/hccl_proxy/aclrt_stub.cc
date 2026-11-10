@@ -483,7 +483,12 @@ rtError_t rtStreamAddToModel(rtStream_t stm, rtModel_t captureMdl)
 
 aclError aclsysGetVersionNum(char* pkgNname, int32_t* versionNum)
 {
-    *versionNum = 90000009;
+    const char* versionEnv = getenv("ST_HCOMM_VERSION");
+    if (versionEnv != nullptr && versionEnv[0] != '\0') {
+        *versionNum = static_cast<int32_t>(strtol(versionEnv, nullptr, 10));
+    } else {
+        *versionNum = 90000009;
+    }
     return ACL_SUCCESS;
 }
 

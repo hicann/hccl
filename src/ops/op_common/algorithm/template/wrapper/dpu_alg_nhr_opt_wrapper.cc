@@ -113,6 +113,7 @@ namespace {
         return HCCL_SUCCESS;
     }
 
+#ifndef AICPU_COMPILE
     HcclResult GetWriteReduceChannel(
         const std::map<u32, std::vector<ChannelInfo>>& channels, u32 rank, const ChannelInfo*& channel)
     {
@@ -137,6 +138,7 @@ namespace {
             return params.allRankSliceSize.at(sliceIdx) != 0;
         });
     }
+#endif
 
     void BuildTxSlices(
         const AicpuNHRStepInfo& stepInfo, const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize,
@@ -264,9 +266,9 @@ HcclResult ValidateReduceScatterNhrParams(const TemplateDataParams& params, u32 
 
 HcclResult BatchTransferNHR(
     const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
-    const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize)
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 myRank, u32 templateRankSize, ThreadHandle thread,
+    bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     bool hasTx = stepInfo.txSliceIdxs.size() > 0;
     bool hasRx = stepInfo.rxSliceIdxs.size() > 0;
     // 空闲 rank，直接跳过
@@ -311,8 +313,7 @@ HcclResult BatchTransferNHR(
             stepInfo, tempAlgParam, repeat, templateRankSize, recvCclBuffAddr, ctx.rxSrcSlices, ctx.rxDstSlices);
     }
     std::vector<DpuTransferCtx> pairs = {ctx};
-    CHK_RET(DpuBatchTransfer(pairs));
-#endif
+    CHK_RET(DpuBatchTransfer(pairs, thread, isDrainSupported));
     return HCCL_SUCCESS;
 }
 
@@ -372,9 +373,8 @@ HcclResult DpuBatchWriteReduceTransferNHR(
 
 // ========== 三阶段批量传输 ==========
 
-HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
+HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs, ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     if (pairs.empty()) {
         return HCCL_SUCCESS;
     }
@@ -383,13 +383,14 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
     // ====== Phase 1: 前同步 — 批量 rx Record + tx Wait ======
     for (auto& p : pairs) {
         if (p.hasRecv()) {
-            CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, p.rxCh->handle, NOTIFY_IDX_STEP_SYNC)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommChannelNotifyRecordOnThread(thread, p.rxCh->handle, NOTIFY_IDX_STEP_SYNC)));
         }
     }
     for (auto& p : pairs) {
         if (p.hasSend()) {
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, p.txCh->handle, NOTIFY_IDX_STEP_SYNC, execTimeout)));
+                HcommChannelNotifyWaitOnThread(thread, p.txCh->handle, NOTIFY_IDX_STEP_SYNC, execTimeout)));
         }
     }
 
@@ -400,7 +401,7 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
                 void* dst = static_cast<s8*>(p.txDstSlices[i].addr_) + p.txDstSlices[i].offset_;
                 void* src = static_cast<s8*>(p.txSrcSlices[i].addr_) + p.txSrcSlices[i].offset_;
                 CHK_RET(static_cast<HcclResult>(HcommWriteWithNotifyNbiOnThread(
-                    0, p.txCh->handle, dst, src, p.txSrcSlices[i].size_, NOTIFY_IDX_DATA_SIGNAL)));
+                    thread, p.txCh->handle, dst, src, p.txSrcSlices[i].size_, NOTIFY_IDX_DATA_SIGNAL)));
             }
         }
     }
@@ -410,23 +411,22 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs)
     for (auto& p : pairs) {
         bool txDrained = false;
         if (p.hasSend()) {
-            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, p.txCh->handle));
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, p.txCh->handle, isDrainSupported));
             txDrained = true;
         }
         if (p.hasRecv() && (!txDrained || p.rxCh->handle != p.txCh->handle)) {
-            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, p.rxCh->handle));
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, p.rxCh->handle, isDrainSupported));
         }
     }
-    CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
+    CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(thread)));
     for (auto& p : pairs) {
         if (p.hasRecv()) {
             for (u32 i = 0; i < p.rxSrcSlices.size(); i++) {
                 CHK_RET(static_cast<HcclResult>(
-                    HcommChannelNotifyWaitOnThread(0, p.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
+                    HcommChannelNotifyWaitOnThread(thread, p.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
             }
         }
     }
-#endif
     return HCCL_SUCCESS;
 }
 

@@ -10,6 +10,7 @@
 
 #include "ins_temp_reduce_scatter_mesh_1D_dpu_inter.h"
 #include "dpu_alg_nhr_opt_wrapper.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempReduceScatterMesh1dDpuInter::InsTempReduceScatterMesh1dDpuInter() {}
@@ -101,55 +102,73 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(
         return HCCL_E_INTERNAL;
     }
 
-    // 转换成eager-mode，保障AICPU指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：主流通知DPU线程开工，再由主流把搬运任务下发到DPU线程队列，最后等其完工通知
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：把搬运任务下发到DPU线程
+        CHK_RET(RunDpuTransfer(
+            templateResource.channels, tempAlgParams, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain, execTimeout)));
+    } else {
+        // 转换成eager-mode，保障AICPU指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempReduceScatterMesh1dDpuInter";
-    dpuRunInfo.tempAlgParams = tempAlgParams;
-    dpuRunInfo.channels = templateResource.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    u32 sendMsgId = 0;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-    if (HcommSendRequest(
-            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
-        != 0) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommSendRequest failed");
-        return HCCL_E_INTERNAL;
-    }
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempReduceScatterMesh1dDpuInter";
+        dpuRunInfo.tempAlgParams = tempAlgParams;
+        dpuRunInfo.channels = templateResource.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        u32 sendMsgId = 0;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        if (HcommSendRequest(
+                reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommSendRequest failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
-    // 等待DPU数据传输，然后回写结果回来
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
+        HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+        // 等待DPU数据传输，然后回写结果回来
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
 
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
+            != 0) {
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] HcommWaitResponse failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        // 将执行模式转换回到batch
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempReduceScatterMesh1dDpuInter] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR(
-            "[InsTempReduceScatterMesh1dDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        return HCCL_E_INTERNAL;
+        if (recvMsgId != sendMsgId) {
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpuInter] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+            return HCCL_E_INTERNAL;
+        }
     }
 
     CHK_RET(PostLocalReduce(param, tempAlgParams, templateResource.threads));
@@ -158,17 +177,16 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::KernelRun(
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
-    const std::vector<std::vector<uint32_t>>& subCommRanks)
+HcclResult InsTempReduceScatterMesh1dDpuInter::RunDpuTransfer(
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParams,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     CHK_PRT_RET(
-        subCommRanks.empty() || subCommRanks[0].empty(),
+        subCommRanks_.empty() || subCommRanks_[0].empty(),
         HCCL_ERROR("[InsTempReduceScatterMesh1dDpuInter][DPUKernelRun] subCommRanks is empty."), HCCL_E_PARA);
     u32 myAlgRank = 0;
-    std::vector<u32> rankIds = subCommRanks[0];
-    auto iter = std::find(rankIds.begin(), rankIds.end(), myRank);
+    std::vector<u32> rankIds = subCommRanks_[0];
+    auto iter = std::find(rankIds.begin(), rankIds.end(), myRank_);
     if (iter != rankIds.end()) {
         myAlgRank = std::distance(rankIds.begin(), iter);
     } else {
@@ -184,7 +202,7 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
 
     for (u32 rankIdx = 0; rankIdx < rankIds.size(); rankIdx++) {
         u32 remoteRank = rankIds[rankIdx];
-        if (remoteRank == myRank) {
+        if (remoteRank == myRank_) {
             continue;
         }
         u64 sendSize = tempAlgParams.allRankSliceSize.at(rankIdx);
@@ -247,7 +265,18 @@ HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
         pairs.push_back(ctx);
     }
 
-    CHK_RET(DpuBatchTransfer(pairs));
+    CHK_RET(DpuBatchTransfer(pairs, thread, isDrainSupported));
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempReduceScatterMesh1dDpuInter::DPUKernelRun(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+    const std::vector<std::vector<uint32_t>>& subCommRanks)
+{
+#ifndef AICPU_COMPILE
+    myRank_ = myRank;
+    subCommRanks_ = subCommRanks;
+    CHK_RET(RunDpuTransfer(channels, tempAlgParams));
 #endif
     return HCCL_SUCCESS;
 }

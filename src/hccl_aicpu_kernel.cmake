@@ -180,6 +180,7 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/template/host_nic/ins_temp_send_host_nic_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/template/host_nic/ins_temp_recv_host_nic_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/template/wrapper/dpu_alg_data_trans_wrapper.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/template/wrapper/dpu_alg_nhr_opt_wrapper.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/topo_match/topo_match_multilevel.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/topo_match/topo_match_ubx.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/topo_match/topo_match_ubx_1d.cc

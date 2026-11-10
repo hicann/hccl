@@ -350,6 +350,10 @@ struct TemplateResource {
     void* npu2DpuShmemPtr;
     void* dpu2NpuShmemPtr;
     void* aivCommInfoPtr = nullptr;
+    bool isDpuThreadEnabled = false;
+    ThreadHandle dpuThread = 0;
+    u32 dpuThreadNotifyIdxOnMain = 0;
+    bool isHcommChannelDrainSupported = false;
 };
 
 struct DPURunInfo {           // AICPU构造信息，写入共享内存

@@ -62,6 +62,10 @@ void InsV2BroadcastOmniPipeExecutor<
     tempResMap[templateLevel].channels = remoteRankToChannelInfo_[hierarchyLevel];
     tempResMap[templateLevel].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     tempResMap[templateLevel].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    tempResMap[templateLevel].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    tempResMap[templateLevel].dpuThread = resCtx.dpuThread;
+    tempResMap[templateLevel].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    tempResMap[templateLevel].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     InitTemplateBufferInfo(param, resCtx, tempAlgParamMap[templateLevel]);
 }
 

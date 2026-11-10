@@ -273,6 +273,10 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     // 构造框间template资源
     TemplateResource templateResourceInter;
     SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
+    templateResourceInter.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceInter.dpuThread = resCtx.dpuThread;
+    templateResourceInter.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceInter.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
 
     // 中转内存单次最多能够接受的output count，注意是count不是size
     dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];

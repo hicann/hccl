@@ -9,6 +9,7 @@
  */
 
 #include "ins_temp_scatter_omnipipe_nhr_dpu.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempScatterOmniPipeNHRDpu::InsTempScatterOmniPipeNHRDpu() {}
@@ -35,7 +36,7 @@ HcclResult InsTempScatterOmniPipeNHRDpu::CalcRes(
     // host网卡资源，不新增从流和对应Notify，只申请DPU上面
     resourceRequest.slaveThreadNum = 0; // 主thread可以通过接口传入的stream来做转换
     resourceRequest.notifyNumPerThread = {};
-    resourceRequest.notifyNumOnMainThread = 0;
+    resourceRequest.notifyNumOnMainThread = AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_NUM;
 
     std::vector<HcclChannelDesc> level0Channels;
     CHK_RET(CalcChannelRequestNhr(comm, param, topoInfo, subCommRanks_, level0Channels));
@@ -55,7 +56,7 @@ HcclResult InsTempScatterOmniPipeNHRDpu::GetRes(AlgResourceRequest& resourceRequ
     // host网卡资源，不新增从流和对应notify，只申请DPU上面
     resourceRequest.slaveThreadNum = 0;
     resourceRequest.notifyNumPerThread = {};
-    resourceRequest.notifyNumOnMainThread = 0;
+    resourceRequest.notifyNumOnMainThread = AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_NUM;
     return HCCL_SUCCESS;
 }
 
@@ -101,7 +102,26 @@ HcclResult InsTempScatterOmniPipeNHRDpu::KernelRun(
     }
     preLocalCopyDone_ = false; // 复位，供下一 step 使用
 
-    CHK_RET(RunDpuDataExchange(param, tempAlgParams, templateResource));
+    if (templateResource.isDpuThreadEnabled) {
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：不再经SendRequest，直接把搬运任务下发到DPU线程
+        templateRankSize_ = subCommRanks_[0].size();
+        TemplateDataParams paramsWithRoot = tempAlgParams;
+        paramsWithRoot.root = root_;
+        CHK_RET(RunNHR(
+            templateResource.channels, paramsWithRoot, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_IDX)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], AICPU_HOST_DPU_OMNIPIPE_THREAD_NOTIFY_IDX, execTimeout)));
+    } else {
+        CHK_RET(RunDpuDataExchange(param, tempAlgParams, templateResource));
+    }
 
     HCCL_DEBUG("[%s]Run End", __func__);
     return HcclResult::HCCL_SUCCESS;
@@ -168,7 +188,7 @@ HcclResult InsTempScatterOmniPipeNHRDpu::WaitDpuResponse(
     }
     HCCL_DEBUG("[InsTempScatterOmniPipeNHRDpu] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
     if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempScatterOmniPipeNHRDpu] failed set eager mode, tag is %s.", param.algTag);
+        HCCL_ERROR("[InsTempScatterOmniPipeNHRDpu] failed set batch mode, tag is %s.", param.algTag);
         return HCCL_E_INTERNAL;
     }
     if (recvMsgId != sendMsgId) {
@@ -218,7 +238,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::PreLocalCopy(
 HcclResult InsTempScatterOmniPipeNHRDpu::GetStepInfo(
     u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo, u32 rootAlgRank, u32 myAlgRank)
 {
-#ifndef AICPU_COMPILE
     u32 rankSize = templateRankSize_;
     stepInfo.txSliceIdxs.clear();
     stepInfo.rxSliceIdxs.clear();
@@ -261,7 +280,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::GetStepInfo(
         stepInfo.fromRank = subCommRanks_[0].at(recvFrom);
         stepInfo.nSlices = nSlices;
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -288,7 +306,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::BuildTxBatchSlices(
     u32 dataTypeSize, u32 rootAlgRank, const ChannelInfo*& txCh, std::vector<DataSlice>& txSrcSlices,
     std::vector<DataSlice>& txDstSlices)
 {
-#ifndef AICPU_COMPILE
     auto txIt = channels.find(stepInfo.toRank);
     CHK_PRT_RET(
         txIt == channels.end() || txIt->second.empty(),
@@ -318,7 +335,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::BuildTxBatchSlices(
                 txDstSlices[i].Describe().c_str());
         }
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -329,7 +345,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::BuildRxBatchSlices(
     u32 dataTypeSize, u32 rootAlgRank, const ChannelInfo*& rxCh, std::vector<DataSlice>& rxSrcSlices,
     std::vector<DataSlice>& rxDstSlices)
 {
-#ifndef AICPU_COMPILE
     auto rxIt = channels.find(stepInfo.fromRank);
     CHK_PRT_RET(
         rxIt == channels.end() || rxIt->second.empty(),
@@ -357,7 +372,6 @@ HcclResult InsTempScatterOmniPipeNHRDpu::BuildRxBatchSlices(
                 rxDstSlices[i].Describe().c_str());
         }
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 
@@ -365,33 +379,35 @@ HcclResult InsTempScatterOmniPipeNHRDpu::BuildRxBatchSlices(
 HcclResult InsTempScatterOmniPipeNHRDpu::ExecuteDpuCommPrimitive(
     bool hasTx, bool hasRx, const ChannelInfo* txCh, const ChannelInfo* rxCh, const std::vector<DataSlice>& txSrcSlices,
     const std::vector<DataSlice>& txDstSlices, const std::vector<DataSlice>& rxSrcSlices,
-    const std::vector<DataSlice>& rxDstSlices, u32 step)
+    const std::vector<DataSlice>& rxDstSlices, u32 step, ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     if (hasTx && !hasRx) {
         SlicesList txSlicesList(txSrcSlices, txDstSlices);
         DataInfo sendData(*txCh, txSlicesList);
-        CHK_PRT_RET(SendWrite(sendData), HCCL_ERROR("[RunNHR] SendWrite failed at step[%u]", step), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            DpuSendWrite(sendData, thread, isDrainSupported), HCCL_ERROR("[RunNHR] SendWrite failed at step[%u]", step),
+            HCCL_E_INTERNAL);
     } else if (!hasTx && hasRx) {
         SlicesList rxSlicesList(rxSrcSlices, rxDstSlices);
         DataInfo recvData(*rxCh, rxSlicesList);
-        CHK_PRT_RET(RecvWrite(recvData), HCCL_ERROR("[RunNHR] RecvWrite failed at step[%u]", step), HCCL_E_INTERNAL);
+        CHK_PRT_RET(
+            DpuRecvWrite(recvData, thread, isDrainSupported), HCCL_ERROR("[RunNHR] RecvWrite failed at step[%u]", step),
+            HCCL_E_INTERNAL);
     } else if (hasTx && hasRx) {
         TxRxChannels channelsPair(*txCh, *rxCh);
         TxRxSlicesList slicesPair(SlicesList(txSrcSlices, txDstSlices), SlicesList(rxSrcSlices, rxDstSlices));
         SendRecvInfo sendRecvInfo(channelsPair, slicesPair);
         CHK_PRT_RET(
-            SendRecvWrite(sendRecvInfo), HCCL_ERROR("[RunNHR] SendRecvWrite failed at step[%u]", step),
-            HCCL_E_INTERNAL);
+            DpuSendRecvWrite(sendRecvInfo, thread, isDrainSupported),
+            HCCL_ERROR("[RunNHR] SendRecvWrite failed at step[%u]", step), HcclResult::HCCL_E_INTERNAL);
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult InsTempScatterOmniPipeNHRDpu::RunNHR(
-    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam)
+    const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     HCCL_DEBUG("[RunNHR] myRank[%u], root[%u], tempAlgParam.root[%u]", myRank_, root_, tempAlgParam.root);
     dataType_ = tempAlgParam.dataType;
 
@@ -417,17 +433,16 @@ HcclResult InsTempScatterOmniPipeNHRDpu::RunNHR(
     u64 repeatNum = totalPieceNum / peerNum;
 
     for (u32 step = 0; step < nSteps; step++) {
-        CHK_RET(ExecuteNhrStep(channels, tempAlgParam, repeatNum, rootAlgRank, myAlgRank, step, nSteps));
+        CHK_RET(ExecuteNhrStep(
+            channels, tempAlgParam, repeatNum, rootAlgRank, myAlgRank, step, nSteps, thread, isDrainSupported));
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 
 HcclResult InsTempScatterOmniPipeNHRDpu::ExecuteNhrStep(
     const std::map<u32, std::vector<ChannelInfo>>& channels, const TemplateDataParams& tempAlgParam, u64 repeatNum,
-    u32 rootAlgRank, u32 myAlgRank, u32 step, u32 nSteps)
+    u32 rootAlgRank, u32 myAlgRank, u32 step, u32 nSteps, ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     AicpuNHRStepInfo stepInfo;
     CHK_RET(GetStepInfo(step, nSteps, stepInfo, rootAlgRank, myAlgRank));
     if (stepInfo.txSliceIdxs.empty() && stepInfo.rxSliceIdxs.empty()) {
@@ -459,9 +474,8 @@ HcclResult InsTempScatterOmniPipeNHRDpu::ExecuteNhrStep(
         HCCL_DEBUG("[RunNHR] step[%u] skip due to empty txSrcSlices or rxSrcSlices.", step);
         return HcclResult::HCCL_SUCCESS;
     }
-    CHK_RET(
-        ExecuteDpuCommPrimitive(hasTx, hasRx, txCh, rxCh, txSrcSlices, txDstSlices, rxSrcSlices, rxDstSlices, step));
-#endif
+    CHK_RET(ExecuteDpuCommPrimitive(
+        hasTx, hasRx, txCh, rxCh, txSrcSlices, txDstSlices, rxSrcSlices, rxDstSlices, step, thread, isDrainSupported));
     return HcclResult::HCCL_SUCCESS;
 }
 

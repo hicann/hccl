@@ -11,6 +11,7 @@
 #include <cstdint>
 #include "alg_template_base.h"
 #include "ins_temp_recv_host_nic_dpu.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempRecvHostNicDpu::InsTempRecvHostNicDpu() {}
@@ -65,57 +66,73 @@ InsTempRecvHostNicDpu::KernelRun(const OpParam& param, const TemplateDataParams&
         return HCCL_E_INTERNAL;
     }
 
-    // 转换成eager-mode，保障AICPU指令下发执行完成
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR(
-            "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu::KernelRun failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
+    if (res.isDpuThreadEnabled) {
+        // 新路径：主流通知DPU线程开工，再由主流把搬运任务下发到DPU线程队列，最后等其完工通知
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyRecordOnThread(res.threads[0], res.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(res.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        // 照抄DPUKernelRun逻辑：把搬运任务下发到DPU线程
+        CHK_RET(RunDpuTransfer(tempAlgParams, res.channels, res.dpuThread, res.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyRecordOnThread(res.dpuThread, res.threads[0], res.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(res.threads[0], res.dpuThreadNotifyIdxOnMain, execTimeout)));
+    } else {
+        // 转换成eager-mode，保障AICPU指令下发执行完成
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR(
+                "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu::KernelRun failed set eager mode, tag is %s.",
+                param.algTag);
+            return HCCL_E_INTERNAL;
+        }
 
-    if (HcommThreadSynchronize(res.threads[0]) != 0) {
-        HCCL_ERROR("InsTempRecvHostNicDpu::KernelRun HcommThreadSynchronize failed");
-        return HCCL_E_INTERNAL;
-    }
+        if (HcommThreadSynchronize(res.threads[0]) != 0) {
+            HCCL_ERROR("InsTempRecvHostNicDpu::KernelRun HcommThreadSynchronize failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempRecvHostNicDpu";
-    dpuRunInfo.tempAlgParams = tempAlgParams;
-    dpuRunInfo.channels = res.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    u32 sendMsgId = 0;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-    if (HcommSendRequest(
-            reinterpret_cast<uint64_t>(res.npu2DpuShmemPtr), param.algTag, static_cast<void*>(dpuRunInfoSeqData.data()),
-            dpuRunInfoSeqData.size(), &sendMsgId)
-        != 0) {
-        HCCL_ERROR("InsTempRecvHostNicDpu HcommRecvRequest failed");
-        return HCCL_E_INTERNAL;
-    }
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempRecvHostNicDpu";
+        dpuRunInfo.tempAlgParams = tempAlgParams;
+        dpuRunInfo.channels = res.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        u32 sendMsgId = 0;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        if (HcommSendRequest(
+                reinterpret_cast<uint64_t>(res.npu2DpuShmemPtr), param.algTag,
+                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+            != 0) {
+            HCCL_ERROR("InsTempRecvHostNicDpu HcommRecvRequest failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    HCCL_INFO("InsTempRecvHostNicDpu HcommRecvRequest run over, sendMsgId[%u]", sendMsgId);
+        HCCL_INFO("InsTempRecvHostNicDpu HcommRecvRequest run over, sendMsgId[%u]", sendMsgId);
 
-    // 等待DPU数据传输，然后回写结果回来
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-    if (HcommWaitResponse(reinterpret_cast<uint64_t>(res.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
-        HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse failed");
-        return HCCL_E_INTERNAL;
-    }
+        // 等待DPU数据传输，然后回写结果回来
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
+        if (HcommWaitResponse(reinterpret_cast<uint64_t>(res.dpu2NpuShmemPtr), recvData, 0, &recvMsgId) != 0) {
+            HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse failed");
+            return HCCL_E_INTERNAL;
+        }
 
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-    HCCL_INFO("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        // 将执行模式转换回到batch
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
 
-    if (recvMsgId != sendMsgId) {
-        HCCL_ERROR(
-            "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId,
-            sendMsgId);
-        return HCCL_E_INTERNAL;
+        if (recvMsgId != sendMsgId) {
+            HCCL_ERROR(
+                "[InsTempRecvHostNicDpu] InsTempRecvHostNicDpu recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId,
+                sendMsgId);
+            return HCCL_E_INTERNAL;
+        }
     }
 
     HCCL_INFO("[InsTempRecvHostNicDpu] Run End");
@@ -123,16 +140,15 @@ InsTempRecvHostNicDpu::KernelRun(const OpParam& param, const TemplateDataParams&
     return HcclResult::HCCL_SUCCESS;
 }
 
-HcclResult InsTempRecvHostNicDpu::DPUKernelRun(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
-    const std::vector<std::vector<uint32_t>>& subCommRanks)
+HcclResult InsTempRecvHostNicDpu::RunDpuTransfer(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
-    std::vector<u32> rankIds = subCommRanks[0];
+    std::vector<u32> rankIds = subCommRanks_[0];
 
     for (u32 rankIdx = 0; rankIdx < rankIds.size(); rankIdx++) {
         u32 rankId = rankIds[rankIdx]; // 组内rankId未必从0连续起始, 需用真实rankId做比较与查表
-        if (rankId == myRank) {
+        if (rankId == myRank_) {
             continue;
         }
         uint64_t notifyNum = 2;
@@ -144,25 +160,37 @@ HcclResult InsTempRecvHostNicDpu::DPUKernelRun(
 
         for (u64 sizeResidue = outputSize; sizeResidue > 0; sizeResidue -= sizePerRound) {
             // 前同步
-            CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, channels.at(rankId)[0].handle, 0)));
+            CHK_RET(
+                static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channels.at(rankId)[0].handle, 0)));
 
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, channels.at(rankId)[0].handle, 0, CUSTOM_TIMEOUT)));
+                HcommChannelNotifyWaitOnThread(thread, channels.at(rankId)[0].handle, 0, CUSTOM_TIMEOUT)));
 
             // 等待数据接收完成
             offset += sizePerRound;
             sizePerRound = (sizeResidue > cclOutputSize) ? cclOutputSize : sizeResidue;
             HCCL_DEBUG("rx async outputmem's offset[%llu], size[%llu]", offset, sizePerRound);
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, channels.at(rankId)[0].handle, 1, CUSTOM_TIMEOUT)));
+                HcommChannelNotifyWaitOnThread(thread, channels.at(rankId)[0].handle, 1, CUSTOM_TIMEOUT)));
 
             // 后同步，通知发送端数据接收完成
-            CHK_RET(
-                static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, channels.at(rankId)[0].handle, notifyNum)));
+            CHK_RET(static_cast<HcclResult>(
+                HcommChannelNotifyRecordOnThread(thread, channels.at(rankId)[0].handle, notifyNum)));
 
-            CHK_RET(HcommChannelDrainOnThreadWithCompat(0, channels.at(rankId)[0].handle));
+            CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, channels.at(rankId)[0].handle, isDrainSupported));
         }
     }
+    return HCCL_SUCCESS;
+}
+
+HcclResult InsTempRecvHostNicDpu::DPUKernelRun(
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels, const u32 myRank,
+    const std::vector<std::vector<uint32_t>>& subCommRanks)
+{
+#ifndef AICPU_COMPILE
+    myRank_ = myRank;
+    subCommRanks_ = subCommRanks;
+    CHK_RET(RunDpuTransfer(tempAlgParams, channels));
 #endif
     return HCCL_SUCCESS;
 }

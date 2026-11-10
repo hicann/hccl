@@ -123,6 +123,7 @@ set(INCLUDE_LIST
 
     ${HCCL_DEV_BASE}/src/ops/batch_send_recv
     ${HCCL_DEV_BASE}/src/ops/batch_send_recv/algorithm/executor
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/algorithm/template
     ${HCCL_DEV_BASE}/src/ops/batch_send_recv/selector
     ${HCCL_DEV_BASE}/src/common/hcomm_dlsym
 )
@@ -193,6 +194,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/registry/alg_v2_template_register.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/wrapper/alg_data_trans_wrapper.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/wrapper/dpu_alg_data_trans_wrapper.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/wrapper/dpu_alg_nhr_opt_wrapper.cc
 
     ${HCCL_DEV_BASE}/src/ops/op_common/topo_info/topo.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/topo_match/topo_match_1d.cc
@@ -312,6 +314,8 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_broadcast_nhr.cc
 
     ${HCCL_DEV_BASE}/src/ops/batch_send_recv/algorithm/executor/ins_v2_batch_send_recv_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/algorithm/executor/ins_v2_batch_send_recv_sole_executor.cc
+    ${HCCL_DEV_BASE}/src/ops/batch_send_recv/algorithm/template/ins_temp_batch_send_recv_dpu.cc
 
     ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/executor/reduce_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/reduce/algorithm/executor/reduce_parallel_executor.cc

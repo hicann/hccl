@@ -248,6 +248,10 @@ HcclResult InsV2AllGatherSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     // 构造框间template资源
     TemplateResource templateResourceInter;
     SetTemplateCommResource(templateResourceInter, remoteRankToChannelInfo_[1], resCtx);
+    templateResourceInter.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResourceInter.dpuThread = resCtx.dpuThread;
+    templateResourceInter.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResourceInter.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 构造框内template资源
     TemplateResource templateResourceIntra;
     SetTemplateCommResource(templateResourceIntra, remoteRankToChannelInfo_[0], resCtx);

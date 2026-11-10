@@ -583,6 +583,11 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         tempAlgParamMap[temp.first].buffInfo.hcclBuff = resCtx.cclMem;
         tempResMap[temp.first].npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
         tempResMap[temp.first].dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+        // hostdpu新路径：DPU线程与主流notify索引由host侧申请后随ctx传来
+        tempResMap[temp.first].isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+        tempResMap[temp.first].dpuThread = resCtx.dpuThread;
+        tempResMap[temp.first].dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+        tempResMap[temp.first].isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
         // 下发用户输入输出地址和对称内存开关，模板据此选择 ccl scratch 或 user output 数据面。
         tempAlgParamMap[temp.first].buffInfo.inputPtr = param.inputPtr;
         tempAlgParamMap[temp.first].buffInfo.outputPtr = param.outputPtr;

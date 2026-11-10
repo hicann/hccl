@@ -149,6 +149,10 @@ InsV2SendSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const A
     templateResource.threads = resCtx.threads;
     templateResource.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
     templateResource.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateResource.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateResource.dpuThread = resCtx.dpuThread;
+    templateResource.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateResource.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     u64 resDataSize = dataSize_;
     maxTmpMemSize_ = resCtx.cclMem.size;
     u64 maxRoundTransferSize = (maxTmpMemSize_ / dataTypeSize_) * dataTypeSize_;
