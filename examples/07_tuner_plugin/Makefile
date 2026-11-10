@@ -44,8 +44,8 @@ fetch: $(JSON_HEADER)
 $(JSON_HEADER):
 	@echo "[fetch] nlohmann/json v$(JSON_VERSION) -> $@"
 	@mkdir -p $(dir $@)
-	@curl -sL "$(JSON_URL)" -o /tmp/hccl_json_$$.zip
-	@unzip -p /tmp/hccl_json_$$.zip single_include/nlohmann/json.hpp > $@
+	@curl -fsSL "$(JSON_URL)" -o /tmp/hccl_json_$$.zip
+	@unzip -p /tmp/hccl_json_$$.zip single_include/nlohmann/json.hpp > $@ || { rm -f $@ /tmp/hccl_json_$$.zip; echo "Error: unzip failed, removed partial $@"; exit 1; }
 	@rm -f /tmp/hccl_json_$$.zip
 	@test -s $@ || { echo "Error: fetch failed, $@ is empty"; rm -f $@; exit 1; }
 
