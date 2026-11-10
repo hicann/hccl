@@ -64,9 +64,6 @@ private:
     HcclResult GatherData(
         const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads);
-    HcclResult ScatterSymmetricReadReduce(
-        u64 sendSize, void* localInBuffPtr, u64 inBuffBaseOffset, u64 recvOffset, u64 recvSize, u64 recvCount,
-        const ChannelInfo& sendRecvChannel, const std::vector<ThreadHandle>& threads, u32 remoteIdx);
     HcclResult GatherSymmetricRead(
         u64 sendSize, void* localOutBuffPtr, u64 outBuffBaseOffset, u64 sendOffset, u64 sendCount, u64 recvOffset,
         u64 recvSize, u64 recvCount, const ChannelInfo& sendRecvChannel, const std::vector<ThreadHandle>& threads,

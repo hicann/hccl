@@ -10,6 +10,7 @@
 
 #include "reduce_scatter.h"
 #include "op_common_ops.h"
+#include "auto_selector_base.h"
 #include "topo_host.h"
 #include <algorithm>
 #include <future>
@@ -229,13 +230,30 @@ HcclResult ReduceScatterOutPlace(
         return HcclResult::HCCL_SUCCESS;
     }
 
-    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE) {
+    constexpr u32 UBX_CONCURRENT_MAX_RANK_SIZE = 4;
+    constexpr u64 UBX_REDUCE_SCATTER_SYM_DATA_SIZE = 4ULL * 1024 * 1024;
+    // 输出数据量达到 4 MiB 时，在选路前查询对称窗口，供算法选择使用。
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+        && param.outputSize >= UBX_REDUCE_SCATTER_SYM_DATA_SIZE) {
         CheckAndSetSymmetricMemory(param);
     }
 
     std::string algName;
     std::unique_ptr<TopoInfoWithNetLayerDetails> topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>();
     CHK_RET(Selector(comm, param, topoInfo, algName));
+
+    // 单层 UBX Concurrent 拓扑中，小于 4 MiB 的输出使用非对称内存路径。
+    // 其他小数据场景在选路后查询窗口，再按最终算法检查是否启用。
+    bool isUbxConcurrentSmallData = false;
+    if (param.engine == CommEngine::COMM_ENGINE_AICPU_TS && topoInfo->userRankSize <= UBX_CONCURRENT_MAX_RANK_SIZE
+        && topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+        && !topoInfo->level0PcieMix && param.outputSize < UBX_REDUCE_SCATTER_SYM_DATA_SIZE) {
+        CHK_RET(AutoSelectorBase::CheckMeshNumEqualToClosNum(topoInfo.get(), isUbxConcurrentSmallData));
+    }
+    if (GetHcommVersion() >= CANN_VERSION(9, 1, 0) && param.opMode == OpMode::OPBASE
+        && param.outputSize < UBX_REDUCE_SCATTER_SYM_DATA_SIZE && !isUbxConcurrentSmallData) {
+        CheckAndSetSymmetricMemory(param);
+    }
 
     if (!IsReduceOpSymMemDeterministic(algName, topoInfo.get())) {
         param.supportSymmetricMemory = false;

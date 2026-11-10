@@ -4798,7 +4798,8 @@ bool IsReduceOpSymMemDeterministic(const std::string& algName, const TopoInfoWit
         return false;
     }
     return algName == "AicpuReduceScatterPipeLineMeshNHR" || algName == "AicpuAllReducePipeLineMeshNHR"
-           || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk";
+           || algName == "AicpuAllReduceSoleMeshChunkTwoShot" || algName == "AicpuReduceScatterSoleMeshChunk"
+           || algName == "AicpuReduceScatterConcurMeshNHR" || algName == "AicpuAllReduceConcurMeshTwoShotNHR";
 }
 
 // 与CheckAndSetSymmetricMemory的探测范围一致：每一侧需要探测的buffer都拿到了对称窗口才算有效

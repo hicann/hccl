@@ -30,6 +30,9 @@ constexpr u32 MESH_BW_MS = 22;
 constexpr u32 CLOS_BW_MS = 10;
 constexpr u32 MESH_BW_AICPU = 11;
 constexpr u32 CLOS_BW_AICPU = 10;
+// 对称内存路径使用的 Mesh/CLOS 数据切分权重。
+constexpr u32 MESH_BW_AICPU_SYMMETRIC = 1;
+constexpr u32 CLOS_BW_AICPU_SYMMETRIC = 1;
 
 namespace ops_hccl {
 
@@ -66,6 +69,7 @@ InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
         "[InsV2AllReduceConcurrentExecutor][CalcCostCoeff] rankSize=%d, netTypeLevel0=%d, netTypeLevel1=%d", rankSize,
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1));
     OpParam localParam;
+    localParam.supportSymmetricMemory = param.supportSymmetricMemory;
     SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
@@ -105,6 +109,7 @@ AlgNetMeta InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     CommTopo netTypeLevel1 = GetPhysicalLevelTopoType(topoInfo, physIdxLevel1);
 
     OpParam localParam;
+    localParam.supportSymmetricMemory = param.supportSymmetricMemory;
     SetCostModelExecuteConfig<std::is_base_of<CcuAlgTemplateBase, InsAlgTemplate0>::value>(localParam, algName);
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(localParam, dataSplitSize);
@@ -186,8 +191,8 @@ void InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
         portNum0 = MESH_BW_MS;
         portNum1 = CLOS_BW_MS;
     } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
-        portNum0 = MESH_BW_AICPU;
-        portNum1 = CLOS_BW_AICPU;
+        portNum0 = param.supportSymmetricMemory ? MESH_BW_AICPU_SYMMETRIC : MESH_BW_AICPU;
+        portNum1 = param.supportSymmetricMemory ? CLOS_BW_AICPU_SYMMETRIC : CLOS_BW_AICPU;
     }
     double splitData = static_cast<double>(portNum0) / (portNum0 + portNum1);
     splitDataSize.push_back(splitData);
@@ -319,10 +324,14 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     // 构造template
     std::shared_ptr<InsAlgTemplate0> temp0 = std::make_shared<InsAlgTemplate0>(param, myRank_, subCommRanks0);
     std::shared_ptr<InsAlgTemplate1> temp1 = std::make_shared<InsAlgTemplate1>(param, myRank_, subCommRanks1);
+    const bool useSymmetricMemory
+        = param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllReduceConcurMeshTwoShotNHR";
 
     // 获取每个template会用多少的buffer
     const u32 temp0ScratchMultiple = temp0->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
-    const u32 temp1ScratchMultiple = temp1->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
+    // 对称路径的 NHR 轴直接在用户 input 上归约，不占用 scratch；Mesh 轴保留接收空间。
+    const u32 temp1ScratchMultiple
+        = useSymmetricMemory ? 0 : temp1->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);
     const u32 totalScratchMultiple = temp0ScratchMultiple + temp1ScratchMultiple;
 
     // 计算数据切分比例，获取端口数量
@@ -335,8 +344,8 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
         portNum0 = MESH_BW_MS;
         portNum1 = CLOS_BW_MS;
     } else if (param.opExecuteConfig == OpExecuteConfig::AICPU_TS) {
-        portNum0 = MESH_BW_AICPU;
-        portNum1 = CLOS_BW_AICPU;
+        portNum0 = useSymmetricMemory ? MESH_BW_AICPU_SYMMETRIC : MESH_BW_AICPU;
+        portNum1 = useSymmetricMemory ? CLOS_BW_AICPU_SYMMETRIC : CLOS_BW_AICPU;
     }
     const u64 totalCounts = param.DataDes.count;
     const u64 sliceAlignCount = HCCL_MIN_SLICE_ALIGN / dataTypeSize_;
@@ -395,9 +404,6 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     tempAlgParams1.outputSliceStride = 0;
     tempAlgParams1.inputRepeatStride = 0;
     tempAlgParams1.outputRepeatStride = 0;
-    const bool useSymmetricMemory
-        = param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllReduceConcurMeshTwoShotNHR";
-
     TemplateResource tempAlgResource0;
     TemplateResource tempAlgResource1;
 

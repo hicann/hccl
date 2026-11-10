@@ -231,10 +231,8 @@ HcclResult InsTempAllReduceMesh1DTwoShot::RunReduceScatter(
         }
     }
 
-    // 将数据reduce到第0片数据的位置（对称内存路径下归约已在通信时完成，跳过）
-    if (!supportSymmetricMemAccess_) {
-        CHK_RET(ReduceData(tempAlgParams, threads));
-    }
+    // 在主线程上归约各 peer 写入 scratch 的分片，生成本 rank 负责的部分结果。
+    CHK_RET(ReduceData(tempAlgParams, threads));
 
     return HcclResult::HCCL_SUCCESS;
 }
@@ -275,21 +273,13 @@ HcclResult InsTempAllReduceMesh1DTwoShot::ScatterData(
                     HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] LocalCopy failed."),
                     HcclResult::HCCL_E_INTERNAL);
             }
-            // 对称内存路径：input[mySlice] 尚未被归约，拷贝延迟到 GatherData
+            // 对称路径以本 rank 的 input 分片为归约初值，跳过 input 到 scratch 的拷贝。
             continue;
         }
 
         // 数据片序号不等于自身rank序号时，跨rank发送和接收数据
         u32 remoteRank = rankList_.at(remoteIdx);
         const ChannelInfo& sendRecvChannel = channels.at(remoteRank).at(0);
-
-        if (supportSymmetricMemAccess_) {
-            // 对称内存路径：从远端 input[mySlice] read+reduce 到本地 input[mySlice]
-            CHK_RET(ScatterSymmetricReadReduce(
-                sendSize, localInBuffPtr, inBuffBaseOffset, recvOffset, recvSize, recvCount, sendRecvChannel, threads,
-                remoteIdx));
-            continue;
-        }
 
         void* remoteInBuffPtr = sendRecvChannel.remoteCclMem.addr;
         void* remoteHcclBuffPtr = sendRecvChannel.remoteCclMem.addr;
@@ -347,12 +337,20 @@ HcclResult InsTempAllReduceMesh1DTwoShot::ReduceData(
         return HcclResult::HCCL_SUCCESS;
     }
 
-    // 每片数据Reduce到第0片数据的位置
-    DataSlice reduceDstSlice(localHcclBuffPtr, hcclBuffBaseOffset, sliceSize, sliceCount);
-
-    for (u32 sliceIdx = 1; sliceIdx < templateRankSize_; ++sliceIdx) {
+    // 非对称路径以 scratch 第 0 片为初值；对称路径以本 rank 的 input 分片为初值。
+    // 主线程按分片序号累加其余 rank 的贡献，对称路径跳过本 rank 分片。
+    void* reduceDstPtr = supportSymmetricMemAccess_ ? tempAlgParams.buffInfo.inputPtr : localHcclBuffPtr;
+    u64 reduceDstOffset = supportSymmetricMemAccess_ ?
+                              tempAlgParams.buffInfo.inBuffBaseOff + sliceInfoList_.at(myRankIdx_).offset :
+                              hcclBuffBaseOffset;
+    DataSlice reduceDstSlice(reduceDstPtr, reduceDstOffset, sliceSize, sliceCount);
+    const u32 firstSlice = supportSymmetricMemAccess_ ? 0 : 1;
+    for (u32 sliceIdx = firstSlice; sliceIdx < templateRankSize_; ++sliceIdx) {
+        if (supportSymmetricMemAccess_ && sliceIdx == myRankIdx_) {
+            continue;
+        }
         DataSlice reduceSrcSlice(localHcclBuffPtr, hcclBuffBaseOffset + sliceIdx * sliceSize, sliceSize, sliceCount);
-        // 确定性计算，顺序Reduce
+        // 将当前来源 rank 的 scratch 分片归约到目标分片。
         CHK_PRT_RET(
             LocalReduce(threads[0], reduceSrcSlice, reduceDstSlice, dataType_, reduceOp_),
             HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ReduceData] LocalReduce failed"), HcclResult::HCCL_E_INTERNAL);
@@ -465,45 +463,6 @@ HcclResult InsTempAllReduceMesh1DTwoShot::GatherData(
         }
     }
 
-    return HcclResult::HCCL_SUCCESS;
-}
-
-HcclResult InsTempAllReduceMesh1DTwoShot::ScatterSymmetricReadReduce(
-    u64 sendSize, void* localInBuffPtr, u64 inBuffBaseOffset, u64 recvOffset, u64 recvSize, u64 recvCount,
-    const ChannelInfo& sendRecvChannel, const std::vector<ThreadHandle>& threads, u32 remoteIdx)
-{
-    // 对称内存路径：从远端 input[mySlice] read+reduce 到本地 input[mySlice]
-    // 所有 slice 都基于本地片（recvOffset/recvSize）构建，本地片为空时无需任何操作
-    if (recvSize == 0) {
-        return HcclResult::HCCL_SUCCESS;
-    }
-    std::vector<DataSlice> txSrcSlices;
-    std::vector<DataSlice> txDstSlices;
-    std::vector<DataSlice> rxSrcSlices;
-    std::vector<DataSlice> rxDstSlices;
-    txSrcSlices.push_back(DataSlice(localInBuffPtr, inBuffBaseOffset + recvOffset, recvSize, recvCount));
-    txDstSlices.push_back(
-        DataSlice(sendRecvChannel.remoteInputGraphMode.addr, inBuffBaseOffset + recvOffset, recvSize, recvCount));
-    rxSrcSlices.push_back(
-        DataSlice(sendRecvChannel.remoteInputGraphMode.addr, inBuffBaseOffset + recvOffset, recvSize, recvCount));
-    rxDstSlices.push_back(DataSlice(localInBuffPtr, inBuffBaseOffset + recvOffset, recvSize, recvCount));
-    if (sendSize == 0) {
-        DataReduceInfo recvReduceInfo(sendRecvChannel, SlicesList(rxSrcSlices, rxDstSlices), dataType_, reduceOp_);
-        CHK_PRT_RET(
-            RecvBatchReadReduce(recvReduceInfo, threads.at(remoteIdx)),
-            HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] RecvBatchReadReduce failed."),
-            HcclResult::HCCL_E_INTERNAL);
-        return HcclResult::HCCL_SUCCESS;
-    }
-    SendRecvReduceInfo sendRecvReduceInfo{
-        {sendRecvChannel, sendRecvChannel},
-        {{txSrcSlices, txDstSlices}, {rxSrcSlices, rxDstSlices}},
-        dataType_,
-        reduceOp_};
-    CHK_PRT_RET(
-        SendRecvBatchReadReduce(sendRecvReduceInfo, threads.at(remoteIdx)),
-        HCCL_ERROR("[InsTempAllReduceMesh1DTwoShot][ScatterData] SendRecvBatchReadReduce failed."),
-        HcclResult::HCCL_E_INTERNAL);
     return HcclResult::HCCL_SUCCESS;
 }
 
