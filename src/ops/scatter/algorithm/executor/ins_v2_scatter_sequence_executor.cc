@@ -13,6 +13,8 @@
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr_dpu_inter_node.h"
 #include "alg_attrs_registry.h"
+#include "topo_match_two_level.h"
+#include "ins_temp_scatter_nhr_nda.h"
 
 namespace ops_hccl {
 
@@ -26,6 +28,12 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
     (void)comm;
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() < TOPO_LEVEL_NUM_2 || algHierarchyInfo.infos[0].empty()
+            || algHierarchyInfo.infos[1].empty() || algHierarchyInfo.infos[0][0].empty()
+            || algHierarchyInfo.infos[1][0].empty(),
+        HCCL_ERROR("[InsV2ScatterSequenceExecutor] invalid hierarchy"), HCCL_E_PARA);
+    CHK_PTR_NULL(topoInfo);
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataCount_ = param.DataDes.count;
@@ -43,8 +51,20 @@ template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTempla
 HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>::CalcAlgHierarchyInfoV2(
     TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
+    CHK_PTR_NULL(topoInfo);
+    CHK_PRT_RET(
+        algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_TWO,
+        HCCL_ERROR("[ScatterSequence] V2 topology requires two algorithm levels"), HCCL_E_NOT_SUPPORT);
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() != ALGO_LEVEL_NUM_TWO,
+        HCCL_ERROR("[ScatterSequence] V2 matcher returned invalid levels"), HCCL_E_INTERNAL);
+    for (const auto& level : algHierarchyInfo.infos) {
+        CHK_PRT_RET(
+            level.size() != 1 || level[0].empty(),
+            HCCL_ERROR("[ScatterSequence] V2 matcher returned an invalid rank group"), HCCL_E_INTERNAL);
+    }
     return HCCL_SUCCESS;
 }
 
@@ -77,8 +97,13 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
-    rankSizeLevel0_ = algHierarchyInfo.infos[0].size();
-    rankSizeLevel1_ = algHierarchyInfo.infos[1].size();
+    CHK_RET(InitCommInfo(comm, param, topoInfo, algHierarchyInfo));
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() < 2 || algHierarchyInfo.infos[0].empty() || algHierarchyInfo.infos[1].empty()
+            || algHierarchyInfo.infos[0][0].empty() || algHierarchyInfo.infos[1][0].empty(),
+        HCCL_ERROR("[ScatterSequence] invalid hierarchy"), HCCL_E_PARA);
+    rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
+    rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     HCCL_INFO(
         "[InsV2ScatterSequenceExecutor][CalcRes] rankSizeLevel0 [%u], rankSizeLevel1 [%u]", rankSizeLevel0_,
         rankSizeLevel1_);
@@ -215,6 +240,9 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
           * HCCL_MIN_SLICE_ALIGN
           / dataTypeSize_; // 由于框内每个rank最终都会有框间同号卡的数据，因此这里需要除以rankSizeLevel1_
     // 计算loopTimes
+    CHK_PRT_RET(
+        maxCountPerLoop == 0,
+        HCCL_ERROR("[InsV2ScatterSequenceExecutor] CCL buffer cannot hold one aligned slice per peer"), HCCL_E_PARA);
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     u64 processedDataCount = 0;
 
@@ -308,4 +336,11 @@ REGISTER_ALG_ATTRS(
         return topo->Level1Nhr || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)
                || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     };);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HCCL_CMD_SCATTER, DpuScatterSequenceMeshNHRNDA, InsV2ScatterSequenceExecutor, TopoMatchTwoLevel,
+    InsTempScatterMesh1D, InsTempScatterSequenceNHRNDA);
+REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHRNDA, topo.isSupportLevel0PcieMix = true;
+                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 } // namespace ops_hccl

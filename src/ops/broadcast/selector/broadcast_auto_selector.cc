@@ -14,6 +14,7 @@
 
 namespace ops_hccl {
 
+constexpr u64 BR_NDA_PIPELINE_MIN_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 BROADCAST_MESH_CCU_MAX_DATA_SIZE = 16 * 1024;
 constexpr u64 BROADCAST_NHR_LESS_64P_CCU_MAX_DATA_SIZE = 4 * 1024 * 1024;
 constexpr u64 BROADCAST_NHR_CCU_MAX_DATA_SIZE = 1 * 1024 * 1024;
@@ -330,6 +331,33 @@ SelectorStatus BroadcastAutoSelector::SelectAivAlgo(
     }
     selectAlgName = "AivBroadcastSoleMesh";
     HCCL_INFO("[BroadcastAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
+SelectorStatus BroadcastAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)configAlgMap;
+    const u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    if (topoInfo->topoLevelNums <= 1) {
+        return SelectorStatus::NOT_MATCH;
+    }
+    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
+    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))
+            && dataSize > BR_NDA_PIPELINE_MIN_DATA_SIZE) {
+            selectAlgName = "DpuBroadcastPipeLineMeshNHRNHRNDA";
+        } else {
+            selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
+        }
+    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+        selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
+    } else {
+        return SelectorStatus::NOT_MATCH;
+    }
+    HCCL_INFO("[BroadcastAutoSelector][%s] Using algo[%s], dataSize[%llu]", __func__, selectAlgName.c_str(), dataSize);
     return SelectorStatus::MATCH;
 }
 

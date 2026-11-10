@@ -18,6 +18,8 @@ if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr_dpu_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_allgather_nhr_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr_nda_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_allgather_nhr_nda_inter.cc
     )
 endif()
 

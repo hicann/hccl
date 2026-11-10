@@ -26,6 +26,10 @@ HcclResult DpuSendRecvWrite(const SendRecvInfo& sendRecvInfo, ThreadHandle threa
 HcclResult SendWriteForNda(const DataInfo& sendInfo, const ThreadHandle& thread);
 HcclResult RecvWriteForNda(const DataInfo& recvInfo, const ThreadHandle& thread);
 HcclResult SendRecvWriteForNda(const SendRecvInfo& sendRecvInfo, const ThreadHandle& thread);
+HcclResult SendNdaSlices(
+    const ChannelInfo& channel, const std::vector<DataSlice>& srcSlices, const std::vector<DataSlice>& dstSlices,
+    const ThreadHandle& thread);
+HcclResult RecvNdaSlices(const ChannelInfo& channel, const ThreadHandle& thread);
 
 } // namespace ops_hccl
 #endif // DPU_ALG_DATA_TRANS_WRAPPER

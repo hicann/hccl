@@ -220,4 +220,43 @@ HcclResult SendRecvWriteForNda(const SendRecvInfo& sendRecvInfo, const ThreadHan
         HcommChannelNotifyWaitOnThread(thread, sendChannel.handle, NOTIFY_IDX_FIN_ACK, execTimeout)));
     return HCCL_SUCCESS;
 }
+
+HcclResult SendNdaSlices(
+    const ChannelInfo& channel, const std::vector<DataSlice>& srcSlices, const std::vector<DataSlice>& dstSlices,
+    const ThreadHandle& thread)
+{
+    CHK_PRT_RET(
+        srcSlices.size() != dstSlices.size(), HCCL_ERROR("[SendNdaSlices] unmatched slice counts"), HCCL_E_PARA);
+    for (size_t i = 0; i < srcSlices.size(); ++i) {
+        CHK_PRT_RET(
+            srcSlices[i].size_ != dstSlices[i].size_, HCCL_ERROR("[SendNdaSlices] unmatched slice sizes"), HCCL_E_PARA);
+        CHK_PRT_RET(
+            srcSlices[i].size_ != 0 && (srcSlices[i].addr_ == nullptr || dstSlices[i].addr_ == nullptr),
+            HCCL_ERROR("[SendNdaSlices] null address for non-empty slice[%zu]", i), HCCL_E_PARA);
+    }
+    const u32 timeout = ExecTimeoutManager::Instance().GetExecTimeout();
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, channel.handle, NOTIFY_IDX_ACK, timeout)));
+    for (size_t i = 0; i < srcSlices.size(); ++i) {
+        if (srcSlices[i].size_ != 0) {
+            CHK_RET(static_cast<HcclResult>(HcommWriteOnThread(
+                thread, channel.handle, static_cast<char*>(dstSlices[i].addr_) + dstSlices[i].offset_,
+                static_cast<char*>(srcSlices[i].addr_) + srcSlices[i].offset_, srcSlices[i].size_)));
+        }
+    }
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channel.handle, NOTIFY_IDX_DATA_SIGNAL)));
+    CHK_RET(
+        static_cast<HcclResult>(HcommChannelNotifyWaitOnThread(thread, channel.handle, NOTIFY_IDX_FIN_ACK, timeout)));
+    return HCCL_SUCCESS;
+}
+
+HcclResult RecvNdaSlices(const ChannelInfo& channel, const ThreadHandle& thread)
+{
+    const u32 timeout = ExecTimeoutManager::Instance().GetExecTimeout();
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channel.handle, NOTIFY_IDX_ACK)));
+    CHK_RET(static_cast<HcclResult>(
+        HcommChannelNotifyWaitOnThread(thread, channel.handle, NOTIFY_IDX_DATA_SIGNAL, timeout)));
+    CHK_RET(static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(thread, channel.handle, NOTIFY_IDX_FIN_ACK)));
+    return HCCL_SUCCESS;
+}
+
 } // namespace ops_hccl

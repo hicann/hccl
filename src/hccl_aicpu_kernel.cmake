@@ -204,6 +204,8 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor_aicpu_3level.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_dpu_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_nda_inter.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_nda_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/executor/ins_v2_all_gather_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/executor/ins_v2_all_gather_sequence_executor_3level_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_nhr_dpu.cc
@@ -230,10 +232,12 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/algorithm/executor/ins_v2_reduce_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_mesh1d.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_omnipipe_executor.cc

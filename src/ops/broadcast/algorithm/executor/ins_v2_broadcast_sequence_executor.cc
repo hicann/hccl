@@ -12,10 +12,13 @@
 #include "executor_common_ops.h"
 #include "ins_temp_scatter_mesh_1D_intra.h"
 #include "ins_temp_scatter_nhr_dpu_inter.h"
+#include "ins_temp_scatter_nhr_nda_inter.h"
 #include "ins_temp_allgather_nhr_dpu_inter.h"
+#include "ins_temp_allgather_nhr_nda_inter.h"
 #include "ins_temp_allgather_mesh_1D_intra.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
+#include "op_common.h"
 
 namespace ops_hccl {
 
@@ -35,6 +38,13 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo)
 {
+    (void)comm;
+    CHK_PTR_NULL(topoInfo);
+    CHK_PRT_RET(
+        algHierarchyInfo.infos.size() != ALGO_LEVEL_NUM_TWO || algHierarchyInfo.infos[0].size() != 1
+            || algHierarchyInfo.infos[1].size() != 1 || algHierarchyInfo.infos[0][0].empty()
+            || algHierarchyInfo.infos[1][0].empty(),
+        HCCL_ERROR("[BroadcastSequence] invalid hierarchy"), HCCL_E_PARA);
     myRank_ = topoInfo->userRank;
     rankSize_ = topoInfo->userRankSize;
     dataCount_ = param.DataDes.count;
@@ -56,6 +66,10 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     CalcAlgHierarchyInfoV2(
         TopoInfoWithNetLayerDetails* topoInfo, AlgHierarchyInfoForAllLevel& algHierarchyInfo, const AlgAttrs& algAttrs)
 {
+    CHK_PTR_NULL(topoInfo);
+    CHK_PRT_RET(
+        algAttrs.algoTypes.size() != ALGO_LEVEL_NUM_TWO,
+        HCCL_ERROR("[BroadcastSequence] expected two algorithm levels"), HCCL_E_NOT_SUPPORT);
     AlgTopoMatch topoMatch;
     CHK_RET(topoMatch.MatchTopo(topoInfo, algHierarchyInfo, algAttrs));
     return HCCL_SUCCESS;
@@ -101,8 +115,9 @@ InsV2BroadcastSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
         HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
         const AlgHierarchyInfoForAllLevel& algHierarchyInfo, AlgResourceRequest& resourceRequest)
 {
-    rankSizeLevel0_ = algHierarchyInfo.infos[0].size();
-    rankSizeLevel1_ = algHierarchyInfo.infos[1].size();
+    CHK_RET(InitCommInfo(comm, param, topoInfo, algHierarchyInfo));
+    rankSizeLevel0_ = algHierarchyInfo.infos[0][0].size();
+    rankSizeLevel1_ = algHierarchyInfo.infos[1][0].size();
     HCCL_INFO(
         "[InsV2BroadcastSequenceExecutor][CalcRes] rankSizeLevel0 [%u], rankSizeLevel1 [%u]", rankSizeLevel0_,
         rankSizeLevel1_);
@@ -535,5 +550,11 @@ REGISTER_ALG_ATTRS(
         return topo->Level1Nhr || AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH)
                || topo->netLayerDetails.localNetInsSizeOfLayer[0] == 1;
     };);
-
+REGISTER_EXECUTOR_BY_FOUR_TEMPS(
+    HCCL_CMD_BROADCAST, DpuBroadcastSequenceMeshNHRNDA, InsV2BroadcastSequenceExecutor, TopoMatchTwoLevel,
+    InsTempScatterMesh1DIntra, InsTempScatterNHRNDAInter, InsTempAllGatherNHRNDAInter, InsTempAllGatherMesh1DIntra);
+REGISTER_ALG_ATTRS(DpuBroadcastSequenceMeshNHRNDA, topo.isSupportLevel0PcieMix = true;
+                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
 } // namespace ops_hccl

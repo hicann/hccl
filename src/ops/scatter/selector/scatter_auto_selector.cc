@@ -13,6 +13,7 @@
 #include "hccl_aiv_utils.h"
 
 namespace ops_hccl {
+constexpr u64 SC_NDA_PIPELINE_MIN_DATA_SIZE = 128 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_SC_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 UBX_SC_CONCURRENT_DATA_SIZE = 8 * 1024 * 1024;
 constexpr uint32_t TOPO_LEVEL_3 = 3;
@@ -281,6 +282,34 @@ SelectorStatus ScatterAutoSelector::SelectAivAlgo(
     selectAlgName = "AivScatterSoleMesh";
 
     HCCL_INFO("[ScatterAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+    return SelectorStatus::MATCH;
+}
+
+SelectorStatus ScatterAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)configAlgMap;
+    u64 userRankSize = topoInfo->userRankSize;
+    const u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType] * userRankSize;
+    if (topoInfo->topoLevelNums <= 1) {
+        return SelectorStatus::NOT_MATCH;
+    }
+    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D) {
+        selectAlgName = "DpuScatterSequenceMeshNHRNDA";
+    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))
+            && dataSize > SC_NDA_PIPELINE_MIN_DATA_SIZE) {
+            selectAlgName = "DpuScatterPipeLineMeshNHRNHRNDA";
+        } else {
+            selectAlgName = "DpuScatterSequenceMeshNHRNDA";
+        }
+    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+        selectAlgName = "DpuScatterSequenceMeshNHRNDA";
+    } else {
+        return SelectorStatus::NOT_MATCH;
+    }
+    HCCL_INFO("[ScatterAutoSelector][%s] Using algo[%s], dataSize[%llu]", __func__, selectAlgName.c_str(), dataSize);
     return SelectorStatus::MATCH;
 }
 

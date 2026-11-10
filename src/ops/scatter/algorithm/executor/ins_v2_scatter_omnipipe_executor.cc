@@ -14,6 +14,7 @@
 #include "auto_selector_base.h"
 #include "ins_temp_scatter_omnipipe_mesh1d.h"
 #include "ins_temp_scatter_omnipipe_nhr_dpu.h"
+#include "ins_temp_scatter_omnipipe_nhr_nda.h"
 #include "ins_temp_scatter_omnipipe_nhr.h"
 #include "omnipipe_template_utils.h"
 namespace ops_hccl {
@@ -698,4 +699,14 @@ REGISTER_ALG_ATTRS(
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
 
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_SCATTER, DpuScatterPipeLineMeshNHRNHRNDA, InsV2ScatterOmniPipeExecutor, TopoMatchThreeLevel,
+    InsTempScatterOmniPipeMesh1D, InsTempScatterOmniPipeNHR, InsTempScatterOmniPipeNHRNDA);
+
+REGISTER_ALG_ATTRS(
+    DpuScatterPipeLineMeshNHRNHRNDA, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !topo->level0PcieMix;
+    });
 } // namespace ops_hccl

@@ -257,6 +257,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/all_gather/algorithm/template/aicpu/ins_temp_all_gather_omnipipe_nhr_nda.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/omnipipe_template_utils.cc
     ${HCCL_DEV_BASE}/src/ops/op_common/omnipipe_data_slice_calc.cc
+    ${HCCL_DEV_BASE}/src/ops/op_common/omnipipe_scatter_data_slice_calc.cc
 
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_omnipipe_executor.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_omnipipe_mesh_1D.cc
@@ -375,6 +376,8 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_sequence_executor_aicpu_3level.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_dpu_inter.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_nhr_nda_inter.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_nhr_nda_inter.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_allgather_mesh_1D_intra.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/template/aicpu/ins_temp_scatter_mesh_1D_intra.cc
 
@@ -386,6 +389,13 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         # DpuScatterSequenceMeshNHR
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_nda.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_nda.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_dpu.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_mesh1d.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc
+        ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_omnipipe_executor.cc
     )
 endif()
 

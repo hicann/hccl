@@ -2302,6 +2302,8 @@ HcclResult HcclGetChannel(
                     = (param.opType == HcclCMDType::HCCL_CMD_ALLGATHER
                        || param.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
                        || param.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
+                       || param.opType == HcclCMDType::HCCL_CMD_SCATTER
+                       || param.opType == HcclCMDType::HCCL_CMD_BROADCAST
                        || param.opType == HcclCMDType::HCCL_CMD_REDUCE || param.opType == HcclCMDType::HCCL_CMD_SEND
                        || param.opType == HcclCMDType::HCCL_CMD_RECEIVE
                        || param.opType == HcclCMDType::HCCL_CMD_ALLTOALL
