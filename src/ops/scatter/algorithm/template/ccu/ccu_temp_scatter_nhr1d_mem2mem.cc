@@ -8,6 +8,8 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
+#include <algorithm>
+#include <iterator>
 #include "channel.h"
 #include "ccu_kernel_scatter_nhr1d_mem2mem.h"
 #include "ccu_temp_scatter_nhr1d_mem2mem.h"
