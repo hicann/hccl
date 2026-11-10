@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -110,6 +110,17 @@ SelectorStatus SendAutoSelector::SelectDPUAlgo(
         "[SendAutoSelector][SelectDPUAlgo]no link found for rank:%u and rank:%u, use default DpuSendSoleMesh", myRank,
         remoteRank);
     selectAlgName = "DpuSendSoleMesh";
+    return SelectorStatus::MATCH;
+}
+
+SelectorStatus SendAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    (void)topoInfo;
+    (void)configAlgMap;
+    HCCL_INFO("[SendAutoSelector][SelectNdaAlgo] opType:%d", opParam.opType);
+    selectAlgName = "DpuSendSoleMeshNDA";
     return SelectorStatus::MATCH;
 }
 

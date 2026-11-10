@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -12,9 +12,11 @@
 #include "ins_v2_reduce_omnipipe_3d_executor.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1D.h"
 #include "ins_temp_reduce_scatter_omnipipe_mesh_1d_dpu.h"
+#include "ins_temp_reduce_scatter_omnipipe_mesh_1d_nda.h"
 #include "ins_temp_reduce_scatter_omnipipe_nhr.h"
 #include "ins_temp_all_gather_omnipipe_mesh_1D.h"
 #include "ins_temp_all_gather_omnipipe_nhr_dpu.h"
+#include "ins_temp_all_gather_omnipipe_nhr_nda.h"
 #include "ins_temp_all_gather_omnipipe_nhr.h"
 #include "omnipipe_data_slice_calc.h"
 #include <cmath>
@@ -611,6 +613,7 @@ HcclResult InsV2ReduceOmniPipe3DExecutor<
     if (resCtx.topoInfo.level0Topo == Level0Shape::MESH_1D_CLOS && !resCtx.topoInfo.level0PcieMix) {
         if (rankSizeLevel1_ > 1) {
             CHK_RET(tempMap[OMNIPIPE_RS_LEVEL1]->SetchannelsPerRank(remoteRankToChannelInfo_[1]));
+            CHK_RET(tempMap[OMNIPIPE_AG_LEVEL1]->SetchannelsPerRank(remoteRankToChannelInfo_[1]));
         }
     }
     // 为temp分配thread
@@ -973,4 +976,13 @@ REGISTER_ALG_ATTRS(
             return false;
         return !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
     });
+// NDA算法: 沿用DpuReducePipeLineMeshNHRNHR三级流水骨架, 最外层改用NDA模板经host RoCE直写,
+// 控制流整体保留在AICPU_TS执行(端点支持NDA时由ReduceAutoSelector选中), 不再落到DPU kernel launch。
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE, DpuReducePipeLineMeshNHRNHRNDA, InsV2ReduceOmniPipe3DExecutor, TopoMatchThreeLevel,
+    InsTempReduceScatterOmniPipeMesh1D, InsTempReduceScatterOmniPipeNHR, InsTempReduceScatterOmniPipeMesh1dNDA,
+    InsTempAllGatherOmniPipeMesh1D, InsTempAllGatherOmniPipeNHR, InsTempAllGatherOmniPipeNHRNDA);
+REGISTER_ALG_ATTRS(DpuReducePipeLineMeshNHRNHRNDA, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.isSupportLevel0PcieMix = false; topo.isHostDpuOnly = true;
+                   op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
 } // namespace ops_hccl

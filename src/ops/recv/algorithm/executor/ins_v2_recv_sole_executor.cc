@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -10,6 +10,7 @@
 
 #include "ins_v2_recv_sole_executor.h"
 #include "ins_temp_recv_dpu.h"
+#include "ins_temp_recv_nda.h"
 #include "alg_attrs_registry.h"
 
 namespace ops_hccl {
@@ -187,5 +188,16 @@ REGISTER_ALG_ATTRS(
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !IsHostNicToDeviceNicLink(opParam, topo);
     });
+
+// P2P NDA算法: 沿用DpuRecvSoleMesh的executor+模板分工, 数据流经Host RoCE直写传输, 控制流保留在AICPU_TS执行。
+REGISTER_EXECUTOR_IMPL_NO_TOPOMATCH(
+    HcclCMDType::HCCL_CMD_RECEIVE, DpuRecvSoleMeshNDA, InsV2RecvSoleExecutor, InsTempRecvNda);
+REGISTER_ALG_ATTRS(
+    DpuRecvSoleMeshNDA, topo.isSupportLevel0PcieMix = true; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return !IsHostNicToDeviceNicLink(opParam, topo);
+    };
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT; op.isSupportInplace = false);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl

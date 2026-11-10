@@ -226,7 +226,9 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_gather_nhr_dpu_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/template/aicpu/ins_temp_all_gather_nhr_nda_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/template/ins_temp_send_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/template/ins_temp_send_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/template/ins_temp_recv_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/template/ins_temp_recv_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template/ins_temp_batch_send_recv_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/executor/ins_v2_batch_send_recv_sole_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc

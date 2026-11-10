@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
  * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
  * CANN Open Software License Agreement Version 2.0 (the "License").
  * Please refer to the License for details. You may not use this file except in compliance with the License.
@@ -10,6 +10,10 @@
 
 #include "reduce_auto_selector.h"
 #include "dpu_inline_reduce_selector.h"
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+#include "op_common.h"
 #include "selector_registry.h"
 #include "hccl_aiv_utils.h"
 
@@ -29,11 +33,13 @@ namespace {
 constexpr u64 REDUCE_AICPU_1D_MAX_DATA_SIZE = 8 * 1024 * 1024;
 constexpr u64 REDUCE_CCU_TWOSHOT_1D_MAX_DATA_SIZE = 16 * 1024 * 1024;
 constexpr u64 REDUCE_NHR_CCU_MAX_DATA_SIZE = 256 * 1024;
+constexpr u64 REDUCE_NDA_PIPELINE_MIN_DATA_SIZE = 4 * 1024 * 1024;
 constexpr int TOPO_LEVEL_3 = 3;
 constexpr u64 OMNI_UBX_MS_DATA_SIZE = 64 * 1024 * 1024;
 constexpr u64 OMNI2D_UBX_REDUCE_DATA_SIZE = 128 * 1024 * 1024;
 constexpr u32 REDUCE_CCU_MAX_RANK_SIZE = 64;
 constexpr u32 UBX_REDUCE_CONCURRENT_DATA_SIZE = 2 * 1024 * 1024;
+
 SelectorStatus ReduceAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -501,6 +507,49 @@ SelectorStatus ReduceAutoSelector::SelectDPUAlgo(
             }
         } else {
             SelectDpuReduceSequenceAlgo(opParam, topoInfo, selectAlgName);
+            return SelectorStatus::MATCH;
+        }
+    }
+    return SelectorStatus::NOT_MATCH;
+}
+
+SelectorStatus ReduceAutoSelector::SelectNdaAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    CHK_PRT_RET(
+        topoInfo == nullptr, HCCL_ERROR("[Algo][ReduceAutoSelector] topoInfo is nullptr"), SelectorStatus::NOT_MATCH);
+    std::vector<HcclAlgoType> algos
+        = std::vector<HcclAlgoType>(HCCL_ALGO_LEVEL_NUM, HcclAlgoType::HCCL_ALGO_TYPE_DEFAULT);
+    auto it = configAlgMap.find(opParam.opType);
+    if ((it != configAlgMap.end()) && (it->second.size() > 1)) {
+        algos = it->second;
+    }
+    HCCL_INFO(
+        "[ReduceNda] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u", opParam.opType,
+        algos[0], algos[1], algos[2], algos[3]);
+    const u64 dataSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType];
+    // 判断条件与SelectDPUAlgo保持一致(仅去除数据量切换), 选择的算法替换为NDA对应版本:
+    // DpuReduceSequenceMeshNHR -> DpuReduceSequenceMeshNHRNDA(Intra/Inter四级流水),
+    // DpuReducePipeLineMeshNHRNHR -> DpuReducePipeLineMeshNHRNHRNDA(三级流水)
+    if (topoInfo->topoLevelNums > 1) {
+        if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+            selectAlgName = "DpuReduceSequenceMeshNHRNDA";
+            HCCL_INFO("[ReduceNda] selectAlgName is DpuReduceSequenceMeshNHRNDA");
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (!topoInfo->level0PcieMix && dataSize > REDUCE_NDA_PIPELINE_MIN_DATA_SIZE) {
+                selectAlgName = "DpuReducePipeLineMeshNHRNHRNDA";
+                HCCL_INFO("[ReduceNda] selectAlgName is %s, dataSize[%llu]", selectAlgName.c_str(), dataSize);
+                return SelectorStatus::MATCH;
+            } else {
+                selectAlgName = "DpuReduceSequenceMeshNHRNDA";
+                HCCL_INFO("[ReduceNda] selectAlgName is DpuReduceSequenceMeshNHRNDA");
+                return SelectorStatus::MATCH;
+            }
+        } else {
+            selectAlgName = "DpuReduceSequenceMeshNHRNDA";
+            HCCL_INFO("[ReduceNda] selectAlgName is DpuReduceSequenceMeshNHRNDA");
             return SelectorStatus::MATCH;
         }
     }
