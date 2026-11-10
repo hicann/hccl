@@ -157,37 +157,6 @@ bool IsHcommDefaultTimeoutSupported()
     return HcommIsSupportHcommSetNotifyWaitTimeOut() && HcommIsSupportHcommThreadNotifyWaitOnThreadWithDefaultTimeout();
 }
 
-#if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-bool IsHcommDpuInlineReduceSupported()
-{
-    // 复合判定：能力查询符号与write-reduce传输符号任一缺失（老版本HCOMM），按不支持处理
-    return HcommIsSupportHcommEndpointCheckFeature() && HcommIsSupportHcommWriteReduceWithNotifyOnThread();
-}
-
-HcclResult HcclCheckDpuInlineReduceLocal(const EndpointDesc& hostDpuEndpoint, bool* supported)
-{
-    if (supported == nullptr) {
-        return HCCL_E_PARA;
-    }
-    *supported = false;
-    if (!IsHcommDpuInlineReduceSupported()) {
-        HCCL_LOG_PRINT(HCCL, HCCL_LOG_WARN, "[HcclWrapper] dpu inline reduce not supported: symbol missing");
-        return HCCL_SUCCESS;
-    }
-    // 按HCOMM真实签名（hcomm_res.h）：以本端host侧EndpointDesc查询per-endpoint特性
-    HcclResult ret = static_cast<HcclResult>(HcommEndpointCheckFeature(
-        static_cast<HcommEndpointFeatureType>(HCCL_HCOMM_FEATURE_DPU_INLINE_REDUCE), &hostDpuEndpoint, supported));
-    if (ret != HCCL_SUCCESS) {
-        // 查询失败显式按不支持降级，禁止上抛（老HCOMM配新HCCL/未知featureType场景）
-        HCCL_LOG_PRINT(
-            HCCL, HCCL_LOG_WARN, "[HcclWrapper] HcommEndpointCheckFeature failed, ret[%d], fallback to not supported",
-            ret);
-        *supported = false;
-    }
-    return HCCL_SUCCESS;
-}
-#endif
-
 HcclResult HcclSetNotifyWaitTimeOut(uint32_t timeout)
 {
     if (!HcommIsSupportHcommSetNotifyWaitTimeOut()) {

@@ -917,8 +917,6 @@ HcclResult CalcIsUBX(TopoInfoWithNetLayerDetails* topoInfo)
 HcclResult CalcHostDPUOnly(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
 {
     topoInfo->hostDpuOnly = false;
-    // 同步清零代表端点（防止反序列化占位值干扰落存判断; 全零时locType=DEVICE表示未落存）
-    topoInfo->hostDpuEndpoint = EndpointDesc{};
     HCCL_INFO("Start CalcHostDPUOnly");
     // 只有一个server，不使用DPU
     if (topoInfo->serverNum == 1) {
@@ -991,13 +989,6 @@ HcclResult CalcHostDPUOnly(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo)
                         "[CalcHostDPUOnly] Found a host endPoint in netLayer[%u] endPointIdx[%u]", netLayer,
                         endPointIdx);
                     hostDPU = true;
-                    // 落存本端host侧代表端点, 供inline reduce能力协商时查询per-endpoint特性。
-                    // GetEndpointDesc输出是哈希序, 按EndpointDescLess取最小保证跨进程确定性;
-                    // 首次落存靠locType!=HOST判断(字段初值全零, locType=DEVICE)
-                    if (topoInfo->hostDpuEndpoint.loc.locType != ENDPOINT_LOC_TYPE_HOST
-                        || EndpointDescLess(endPointDesc, topoInfo->hostDpuEndpoint)) {
-                        topoInfo->hostDpuEndpoint = endPointDesc;
-                    }
                 }
             }
         }
