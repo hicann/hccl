@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 import unittest
 import unittest.mock
 
@@ -166,7 +167,7 @@ class TestShallowHealing(GitRepoTestCase):
         dst = tempfile.mkdtemp(prefix="clang_tidy_shallow_")
         self.addCleanup(shutil.rmtree, dst, ignore_errors=True)
         _git(["init", "-q"], dst)
-        _git(["remote", "add", "origin", "file://" + self.tmp], dst)
+        _git(["remote", "add", "origin", Path(self.tmp).as_uri()], dst)
         _git(["fetch", "--depth=1", "origin", "merge-ref"], dst)
         _git(["checkout", "--force", sha], dst)
         return dst
@@ -382,11 +383,13 @@ class TestMainFailClosed(GitRepoTestCase):
     def test_per_file_added_diff_failure_blocks(self):
         # a per-file added-line diff failure must reach the diff_failed
         # blocking branch (never be mistaken for "no added lines")
+        test_file = ctc.norm_path(os.path.join(self.tmp, "src/foo.cc"))
+        compile_db = {test_file: [ctc.norm_path(self.tmp)]}
         with unittest.mock.patch.object(ctc.shutil, "which", return_value="/usr/bin/clang-tidy"), \
              unittest.mock.patch.object(ctc, "resolve_base_ref", return_value=self.base_ref), \
              unittest.mock.patch.object(ctc, "ensure_merge_base", return_value=self.base_ref), \
              unittest.mock.patch.object(ctc, "get_changed_files", return_value=["src/foo.cc"]), \
-             unittest.mock.patch.object(ctc, "load_compile_db", return_value={ctc.norm_path(os.path.join(self.tmp, "src/foo.cc"))}), \
+             unittest.mock.patch.object(ctc, "load_compile_db", return_value=compile_db), \
              unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value=None):
             self.assertEqual(self._run_main(), 1)
 
@@ -438,6 +441,14 @@ class TestParseWarnings(unittest.TestCase):
                      "D:/repo/src/foo.cc:42:7: warning: function has 7 parameters [readability-function-size]"):
             out = list(ctc.parse_warnings(path))
             self.assertEqual(out, [("D:\\repo\\src\\foo.cc" if "\\" in path else "D:/repo/src/foo.cc", 42, "readability-function-size")])
+
+    def test_relative_warning_path_matches_compilation_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            source = os.path.join(root, "src", "a.cpp")
+            compile_dir = os.path.join(root, "nested")
+            os.makedirs(compile_dir)
+            self.assertTrue(ctc.warning_matches_source("../src/a.cpp", source, [compile_dir]))
+            self.assertFalse(ctc.warning_matches_source("../src/other.cpp", source, [compile_dir]))
 
 
 class TestDefaultBaseRef(unittest.TestCase):
@@ -501,6 +512,155 @@ class TestRunWithTimeout(unittest.TestCase):
         self.assertEqual(r.stderr, "timeout after 1s")
 
 
+class TestRunClangTidy(unittest.TestCase):
+    def test_skip_and_actual_failure_have_distinct_diagnostics(self):
+        with self.assertLogs(ctc.log, level="WARNING") as logs:
+            ctc.log_source_analysis_failure("/src/a.cc", 1, "Skipping /src/a.cc. Compile command not found.\n")
+        self.assertIn("skipped /src/a.cc: no matching compile command", logs.output[0])
+        self.assertNotIn("exited", logs.output[0])
+        with self.assertLogs(ctc.log, level="WARNING") as logs:
+            ctc.log_source_analysis_failure("/src/a.cc", 2, "fatal error")
+        self.assertIn("exited 2", logs.output[0])
+
+    def test_missing_compile_command_is_failure_even_when_tool_exits_zero(self):
+        result = subprocess.CompletedProcess([], 0, "", "Skipping /src/a.cc. Compile command not found.\n")
+        with unittest.mock.patch.object(ctc, "run_tool", return_value=result):
+            output, code = ctc.run_clang_tidy("/src/a.cc", "/build", "/config")
+        self.assertEqual(code, 1)
+        self.assertIn("Compile command not found", output)
+
+    def test_successful_analysis_is_not_changed(self):
+        result = subprocess.CompletedProcess([], 0, "", "")
+        with unittest.mock.patch.object(ctc, "run_tool", return_value=result):
+            self.assertEqual(ctc.run_clang_tidy("/src/a.cc", "/build", "/config"), ("", 0))
+
+    def test_missing_command_retries_relative_directory_using_temporary_database(self):
+        with tempfile.TemporaryDirectory() as root:
+            build = os.path.join(root, "build")
+            os.mkdir(build)
+            compile_dir = os.path.join(root, "relative-build")
+            os.mkdir(compile_dir)
+            os.mkdir(os.path.join(root, "src"))
+            source = os.path.join(root, "src", "a.cc")
+            with open(source, "w", encoding="utf-8") as fp:
+                fp.write("int value;\n")
+            path = os.path.join(build, "compile_commands.json")
+            entries = [{"directory": "relative-build", "file": "../src/a.cc", "arguments": ["clang++", "-c", "../src/a.cc"]}]
+            with open(path, "w", encoding="utf-8") as fp:
+                json.dump(entries, fp)
+            calls = []
+
+            def fake_run(cmd, cwd=None):
+                calls.append(cmd)
+                if len(calls) == 1:
+                    return subprocess.CompletedProcess(cmd, 0, "", f"Skipping {source}. Compile command not found.\n")
+                retry_dir = cmd[cmd.index("-p") + 1]
+                with open(os.path.join(retry_dir, "compile_commands.json"), encoding="utf-8") as fp:
+                    retry = json.load(fp)
+                self.assertEqual(retry[0]["directory"], compile_dir)
+                self.assertEqual(retry[0]["file"], "../src/a.cc")
+                self.assertTrue(os.path.isfile(os.path.join(retry[0]["directory"], retry[0]["file"])))
+                self.assertEqual(retry[0]["arguments"], entries[0]["arguments"])
+                return subprocess.CompletedProcess(cmd, 0, "warning output", "")
+
+            original_cwd = os.getcwd()
+            try:
+                os.chdir(root)
+                with unittest.mock.patch.object(ctc, "run_tool", side_effect=fake_run):
+                    self.assertEqual(ctc.run_clang_tidy(source, build, "/config"), ("warning output", 0))
+            finally:
+                os.chdir(original_cwd)
+            self.assertEqual(len(calls), 2)
+            self.assertFalse(os.path.exists(calls[1][calls[1].index("-p") + 1]))
+            with open(path, encoding="utf-8") as fp:
+                self.assertEqual(json.load(fp), entries)
+
+    def test_database_load_error_retries_missing_or_invalid_directories(self):
+        errors = (
+            (0, 'Error while trying to load a compilation database:\nRunning without flags.\n'),
+            (250, 'LLVM ERROR: Cannot chdir into ""!\n'),
+            (0, 'Skipping file.cc. Compile command not found.\n'),
+            (0, 'json-compilation-database: Missing key: \"directory\"\n'),
+            (0, 'Running without flags.\n'),
+        )
+        with tempfile.TemporaryDirectory() as root:
+            for value in (None, "", 42, "missing"):
+                entry = {"file": "file.cc", "arguments": ["clang++", "-c", "file.cc"]}
+                if value != "missing":
+                    entry["directory"] = value
+                with open(os.path.join(root, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                    json.dump([entry], fp)
+                for first_code, first_error in errors:
+                    calls = []
+
+                    def fake_run(cmd, cwd=None):
+                        calls.append(cmd)
+                        if len(calls) == 1:
+                            return subprocess.CompletedProcess(cmd, first_code, "", first_error)
+                        retry_dir = cmd[cmd.index("-p") + 1]
+                        with open(os.path.join(retry_dir, "compile_commands.json"), encoding="utf-8") as fp:
+                            repaired = json.load(fp)
+                        self.assertEqual(repaired[0]["directory"], ctc.norm_path(root))
+                        return subprocess.CompletedProcess(cmd, 0, "analyzed", "")
+
+                    with self.subTest(directory=value, first_code=first_code):
+                        with unittest.mock.patch.object(ctc, "run_tool", side_effect=fake_run):
+                            self.assertEqual(ctc.run_clang_tidy("file.cc", root, "/config"), ("analyzed", 0))
+                        self.assertEqual(len(calls), 2)
+
+    def test_database_load_error_without_safe_retry_is_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                json.dump([{"directory": root, "file": "file.cc"}], fp)
+            errors = (
+                subprocess.CompletedProcess([], 0, "", "Error while trying to load a compilation database:\n"),
+                subprocess.CompletedProcess([], 250, "", 'LLVM ERROR: Cannot chdir into "bad"!\n'),
+            )
+            for result in errors:
+                with self.subTest(returncode=result.returncode):
+                    with unittest.mock.patch.object(ctc, "run_tool", return_value=result) as tool:
+                        output, code = ctc.run_clang_tidy("file.cc", root, "/config")
+                    self.assertNotEqual(code, 0)
+                    self.assertEqual(output, result.stderr)
+                    self.assertEqual(tool.call_count, 1)
+                    with self.assertLogs(ctc.log, level="WARNING") as logs:
+                        ctc.log_source_analysis_failure("file.cc", code, output)
+                    self.assertIn("compilation database unavailable for file.cc", logs.output[0])
+                    self.assertNotIn("exited", logs.output[0])
+
+
+    def test_retry_does_not_hide_missing_command_or_tool_failure(self):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                json.dump([{"directory": "relative", "file": "file.cc"}], fp)
+            skipped = subprocess.CompletedProcess([], 0, "", "Skipping file.cc. Compile command not found.\n")
+            for second, expected in ((skipped, 1), (subprocess.CompletedProcess([], 2, "", "fatal error"), 2)):
+                with self.subTest(second=second):
+                    with unittest.mock.patch.object(ctc, "run_tool", side_effect=[skipped, second]):
+                        _, code = ctc.run_clang_tidy("file.cc", root, "/config")
+                    self.assertEqual(code, expected)
+
+
+    def test_fallback_words_in_source_diagnostics_do_not_block(self):
+        message = 'a.cc:1:1: note: Running without flags.\n  puts("Running without flags.");\n'
+        result = subprocess.CompletedProcess([], 0, message, "")
+        with unittest.mock.patch.object(ctc, "run_tool", return_value=result):
+            self.assertEqual(ctc.run_clang_tidy("/src/a.cc", "/build", "/config"), (message, 0))
+
+    def test_retry_cannot_report_success_without_database_flags(self):
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                json.dump([{"directory": "relative", "file": "file.cc"}], fp)
+            skipped = subprocess.CompletedProcess([], 0, "", "Skipping file.cc. Compile command not found.\n")
+            for message in ('json-compilation-database: Missing key: "directory".\n', "Running without flags.\n"):
+                with self.subTest(message=message):
+                    fallback = subprocess.CompletedProcess([], 0, "", message)
+                    with unittest.mock.patch.object(ctc, "run_tool", side_effect=[skipped, fallback]):
+                        self.assertEqual(ctc.run_clang_tidy("file.cc", root, "/config"), (message, 1))
+
+
+
+
 class TestLoadCompileDb(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="clang_tidy_check_cdb_")
@@ -511,16 +671,236 @@ class TestLoadCompileDb(unittest.TestCase):
     def test_missing_file_returns_none(self):
         self.assertIsNone(ctc.load_compile_db(self.tmp))
 
+    def test_main_blocks_empty_database_for_changed_source(self):
+        (Path(self.tmp) / "compile_commands.json").write_text("[]", encoding="utf-8")
+        old = os.getcwd()
+        try:
+            with unittest.mock.patch.object(sys, "argv", ["check", "--build-dir", self.tmp]), \
+                 unittest.mock.patch.object(ctc, "get_repo_root", return_value=self.tmp), \
+                 unittest.mock.patch.object(ctc.shutil, "which", return_value="clang-tidy"), \
+                 unittest.mock.patch.object(ctc, "resolve_base_ref", return_value="base"), \
+                 unittest.mock.patch.object(ctc, "ensure_merge_base", return_value="base"), \
+                 unittest.mock.patch.object(ctc, "get_changed_files", return_value=["changed.cc"]), \
+                 unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}), \
+                 unittest.mock.patch.object(ctc, "run_clang_tidy") as tool:
+                self.assertEqual(ctc.main(), 1)
+            tool.assert_not_called()
+        finally:
+            os.chdir(old)
+
+    def test_empty_database_preserves_header_only_analysis(self):
+        (Path(self.tmp) / "compile_commands.json").write_text("[]", encoding="utf-8")
+        old = os.getcwd()
+        try:
+            with unittest.mock.patch.object(sys, "argv", ["check", "--build-dir", self.tmp]), \
+                 unittest.mock.patch.object(ctc, "get_repo_root", return_value=self.tmp), \
+                 unittest.mock.patch.object(ctc.shutil, "which", return_value="clang-tidy"), \
+                 unittest.mock.patch.object(ctc, "resolve_base_ref", return_value="base"), \
+                 unittest.mock.patch.object(ctc, "ensure_merge_base", return_value="base"), \
+                 unittest.mock.patch.object(ctc, "get_changed_files", return_value=["changed.h"]), \
+                 unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}), \
+                 unittest.mock.patch.object(ctc, "run_clang_tidy_standalone", return_value=("", 0)) as tool:
+                self.assertEqual(ctc.main(), 0)
+            tool.assert_called_once()
+        finally:
+            os.chdir(old)
+
+    def test_main_rejects_invalid_database_after_source_changes(self):
+        path = os.path.join(self.tmp, "compile_commands.json")
+        for invalid in ("{", '{"entries": []}', '[{"file": 42}]'):
+            with self.subTest(invalid=invalid):
+                with open(path, "w", encoding="utf-8") as fp:
+                    fp.write(invalid)
+                old = os.getcwd()
+                try:
+                    with unittest.mock.patch.object(sys, "argv", ["check", "--build-dir", self.tmp]):
+                        with unittest.mock.patch.object(ctc, "get_repo_root", return_value=self.tmp):
+                            with unittest.mock.patch.object(ctc.shutil, "which", return_value="clang-tidy"):
+                                with unittest.mock.patch.object(ctc, "resolve_base_ref", return_value="base"):
+                                    with unittest.mock.patch.object(ctc, "get_changed_files", return_value=["changed.cc"]):
+                                        with unittest.mock.patch.object(ctc, "ensure_merge_base", return_value="base"):
+                                            self.assertEqual(ctc.main(), 1)
+                finally:
+                    os.chdir(old)
+
+    def test_main_skips_if_database_not_generated(self):
+        old = os.getcwd()
+        try:
+            with unittest.mock.patch.object(sys, "argv", ["check", "--build-dir", self.tmp]):
+                with unittest.mock.patch.object(ctc, "get_repo_root", return_value=self.tmp):
+                    with unittest.mock.patch.object(ctc.shutil, "which", return_value="clang-tidy"):
+                        self.assertEqual(ctc.main(), 0)
+        finally:
+            os.chdir(old)
+
+    def test_main_detects_warning_relative_to_compile_directory(self):
+        compile_dir = os.path.join(self.tmp, "nested")
+        os.makedirs(compile_dir)
+        with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
+            json.dump([{"directory": compile_dir, "file": "../src/a.cpp"}], fp)
+        output = "../src/a.cpp:1:5: warning: too many parameters [readability-function-size]\n"
+        old = os.getcwd()
+        try:
+            with unittest.mock.patch.object(sys, "argv", ["check", "--build-dir", self.tmp]):
+                with unittest.mock.patch.object(ctc, "get_repo_root", return_value=self.tmp):
+                    with unittest.mock.patch.object(ctc.shutil, "which", return_value="clang-tidy"):
+                        with unittest.mock.patch.object(ctc, "resolve_base_ref", return_value="base"):
+                            with unittest.mock.patch.object(ctc, "get_changed_files", return_value=["src/a.cpp"]):
+                                with unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}):
+                                    with unittest.mock.patch.object(ctc, "run_clang_tidy", return_value=(output, 0)):
+                                        with unittest.mock.patch.object(ctc, "ensure_merge_base", return_value="base"):
+                                            self.assertEqual(ctc.main(), 1)
+        finally:
+            os.chdir(old)
+
+    def test_malformed_entries_are_rejected(self):
+        with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
+            json.dump([{"file": 42}, "not-a-dict", {"file": "valid.cc"}], fp)
+        with self.assertRaises(ValueError):
+            ctc.load_compile_db(self.tmp)
+
+    def test_non_array_database_is_reported(self):
+        with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
+            json.dump({"entries": []}, fp)
+        with self.assertRaises(ValueError):
+            ctc.load_compile_db(self.tmp)
+
     def test_relative_entries_resolved_against_build_dir(self):
         # platform-neutral absolute path (Linux: /abs/..., Windows: C:\abs\...)
         abs_file = os.path.join(os.path.abspath(os.sep), "abs", "src", "bar.cc")
         with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
             json.dump([{"file": "src/foo.cc"}, {"file": abs_file}], fp)
         db = ctc.load_compile_db(self.tmp)
-        self.assertEqual(db, {
+        self.assertEqual(set(db), {
             ctc.norm_path(os.path.join(self.tmp, "src/foo.cc")),
             ctc.norm_path(abs_file),
         })
+
+    def test_empty_directory_falls_back_to_build_dir(self):
+        for directory in (None, "", 42):
+            with self.subTest(directory=directory):
+                with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                    json.dump([{"directory": directory, "file": "foo.cc"}], fp)
+                self.assertEqual(set(ctc.load_compile_db(self.tmp)), {
+                    ctc.norm_path(os.path.join(self.tmp, "foo.cc")),
+                })
+
+    def test_relative_file_resolved_against_entry_directory(self):
+        source_dir = os.path.join(self.tmp, "source")
+        with open(os.path.join(self.tmp, "compile_commands.json"), "w", encoding="utf-8") as fp:
+            json.dump([{"directory": source_dir, "file": "foo.cc"}], fp)
+        db = ctc.load_compile_db(self.tmp)
+        self.assertEqual(set(db), {ctc.norm_path(os.path.join(source_dir, "foo.cc"))})
+        self.assertEqual(db[ctc.norm_path(os.path.join(source_dir, "foo.cc"))], [ctc.norm_path(source_dir)])
+
+
+    def test_header_with_database_entry_analysis_failure_blocks(self):
+        header = os.path.join(self.tmp, "header.h")
+        args = ctc.argparse.Namespace(config_file="config", build_dir=self.tmp)
+        database = {ctc.norm_path(header): [ctc.norm_path(self.tmp)]}
+        with unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}):
+            with unittest.mock.patch.object(ctc, "run_clang_tidy", return_value=("error", 1)):
+                self.assertEqual(ctc.analyze_files([header], "base", self.tmp, database, args), 1)
+
+    def test_source_without_database_entry_is_exempt_without_invoking_tool(self):
+        source = os.path.join(self.tmp, "generated.cc")
+        args = ctc.argparse.Namespace(config_file="config", build_dir=self.tmp)
+        with unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}):
+            with unittest.mock.patch.object(ctc, "run_clang_tidy") as tool:
+                self.assertEqual(ctc.analyze_files([source], "base", self.tmp, {}, args), 0)
+        tool.assert_not_called()
+
+    def test_header_without_database_entry_analysis_failure_is_warn_only(self):
+        args = ctc.argparse.Namespace(config_file="config", build_dir=self.tmp)
+        with unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}):
+            with unittest.mock.patch.object(ctc, "run_clang_tidy_standalone", return_value=("error", 1)):
+                self.assertEqual(ctc.analyze_files(["header.h"], "base", self.tmp, {}, args), 0)
+
+
+
+
+class TestRetryLifetime(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.old_cwd = os.getcwd()
+        os.chdir(self.root)
+        (self.root / "relative-build").mkdir()
+        (self.root / "src").mkdir()
+        self.sources = []
+        entries = []
+        for name in ("a.cc", "b.cc"):
+            source = self.root / "src" / name
+            source.write_text("int value;\n", encoding="utf-8")
+            self.sources.append(str(source))
+            entries.append({"directory": "relative-build", "file": "../src/" + name,
+                            "arguments": ["clang++", "-c", "../src/" + name]})
+        self.path = self.root / "compile_commands.json"
+        self.path.write_text(json.dumps(entries), encoding="utf-8")
+        self.args = ctc.argparse.Namespace(build_dir=str(self.root), config_file="/config")
+
+    def tearDown(self):
+        os.chdir(self.old_cwd)
+        self.temp.cleanup()
+
+    def run_analysis(self, tool):
+        with unittest.mock.patch.object(ctc, "get_added_line_ranges", return_value={1}), \
+             unittest.mock.patch.object(ctc, "run_tool", side_effect=tool):
+            return ctc.analyze_files(self.sources, "base", str(self.root),
+                                     ctc.load_compile_db(str(self.root)), self.args)
+
+    def test_retry_reuses_one_database_and_cleans_it(self):
+        retry_dirs = []
+
+        def tool(cmd, cwd=None):
+            directory = cmd[cmd.index("-p") + 1]
+            if directory == str(self.root):
+                return subprocess.CompletedProcess(cmd, 0, "Skipping file.cc. Compile command not found.\n", "")
+            retry_dirs.append(directory)
+            self.assertTrue(Path(directory, "compile_commands.json").is_file())
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        self.assertEqual(self.run_analysis(tool), 0)
+        self.assertEqual(len(retry_dirs), 2)
+        self.assertEqual(len(set(retry_dirs)), 1)
+        self.assertFalse(Path(retry_dirs[0]).exists())
+
+    def test_changed_database_is_not_retried_with_stale_snapshot(self):
+        calls = []
+
+        def tool(cmd, cwd=None):
+            calls.append(cmd)
+            if cmd[cmd.index("-p") + 1] == str(self.root):
+                return subprocess.CompletedProcess(cmd, 0, "Skipping file.cc. Compile command not found.\n", "")
+            self.path.write_text(self.path.read_text(encoding="utf-8") + " ", encoding="utf-8")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+
+        with self.assertLogs(ctc.log, level="WARNING") as logs:
+            self.assertEqual(self.run_analysis(tool), 1)
+        self.assertEqual(len(calls), 3)
+        self.assertIn("changed during analysis", " ".join(logs.output))
+
+    def test_retry_warning_reaches_incremental_violation_gate(self):
+        self.sources = self.sources[:1]
+        calls = []
+
+        def tool(cmd, cwd=None):
+            calls.append(cmd)
+            if len(calls) == 1:
+                return subprocess.CompletedProcess(cmd, 0, "Skipping file.cc. Compile command not found.\n", "")
+            warning = "../src/a.cc:1:5: warning: too many parameters [readability-function-size]\n"
+            return subprocess.CompletedProcess(cmd, 0, warning, "")
+
+        with self.assertLogs(ctc.log, level="WARNING") as logs:
+            self.assertEqual(self.run_analysis(tool), 1)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("1 new-code complexity violation", " ".join(logs.output))
+
+    def test_failure_logs_last_three_nonempty_diagnostics(self):
+        with self.assertLogs(ctc.log, level="WARNING") as logs:
+            ctc.log_source_analysis_failure("a.cc", 2, "old\n\n detail one \ndetail two\ndetail three\n")
+        self.assertIn("detail one | detail two | detail three", " ".join(logs.output))
+        self.assertNotIn("old", " ".join(logs.output))
 
 
 if __name__ == "__main__":

@@ -11,7 +11,10 @@
 """Clang-Tidy incremental check: block only complexity warnings on newly added lines.
 
 Usage: python3 scripts/clang-tidy/clang_tidy_check.py [--build-dir build] [--base-ref upstream/master]
-Exit 0: no new-code violation; Exit 1: new-code violation found (block).
+Exit 0: no new-code violation or an explicitly skipped check. Exit 1: a
+violation, malformed/unreadable database, an empty database with changed
+sources, or failed database-backed analysis. Header-only changes may still
+use standalone analysis with an empty database.
 
 Incremental base: the diff base defaults to the target branch of the gitcode
 upstream remote (upstream/master, or upstream/<TARGET_BRANCH> in CI) and is
@@ -48,6 +51,8 @@ Limitations:
     flagged, matching the incremental (new-lines-only) interception model.
   - Standalone header analysis runs without include paths; a non-self-contained
     header that fails to parse is reported as a warning, never as a block.
+  - Unmatched commands, database load failures and directory errors may be
+    retried with normalized directories. Relative directories use process cwd.
 """
 import argparse
 import json
@@ -57,11 +62,13 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
 
 WARN_RE = re.compile(r"^(?P<file>(?:[A-Za-z]:)?[^:]+):(?P<line>\d+):\d+:\s+warning:\s+.*\[(?P<check>[^\]]+)\]")
+SKIP_NO_COMMAND_RE = re.compile(r"^Skipping .*\. Compile command not found\.", re.MULTILINE)
 TARGET_CHECKS = ("readability-function-size", "readability-function-cognitive-complexity")
 CPP_EXT = (".cc", ".cpp", ".c", ".cxx", ".h", ".hpp", ".hh", ".hxx")
 HEADER_EXT = (".h", ".hpp", ".hh", ".hxx")
@@ -273,13 +280,21 @@ def norm_path(p):
     return os.path.normpath(os.path.abspath(p))
 
 
-def load_compile_db(build_dir):
-    """Return the set of normalized absolute paths covered by compile_commands.json.
+def normalized_entry_directory(entry, build_dir):
+    """Use the same directory fallback for loading and retrying a database."""
+    directory = entry.get("directory")
+    if not isinstance(directory, str) or not directory:
+        directory = build_dir
+    return norm_path(directory)
 
-    Returns None if the file is missing or unreadable; the empty set if it
-    exists but lists no files. main() blocks when the file exists but cannot
-    be parsed (an unreadable database would silently empty the interception),
-    and skips only when the file is missing (the gate cannot even start).
+
+def load_compile_db(build_dir):
+    """Map normalized source paths to compilation directories from the database.
+
+    Returns None if the file is missing, raises ValueError for an unreadable or
+    malformed database, and returns an empty mapping for a valid empty array.
+    Relative files use the entry directory; missing, empty or non-string
+    directories fall back to build_dir. Relative directories use the process cwd.
     """
     path = os.path.join(build_dir, "compile_commands.json")
     if not os.path.isfile(path):
@@ -287,29 +302,138 @@ def load_compile_db(build_dir):
     try:
         with open(path, "r", encoding="utf-8") as fp:
             entries = json.load(fp)
-    except (OSError, ValueError):
-        log.warning("[clang-tidy] WARNING: %s unreadable", path)
-        return None
-    files = set()
-    for entry in entries:
+    except (OSError, ValueError) as exc:
+        raise ValueError("cannot read compile database {}: {}".format(path, exc)) from exc
+    if not isinstance(entries, list):
+        raise ValueError("compile database {} is not a JSON array".format(path))
+    files = {}
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise ValueError("invalid compile database entry {}".format(index))
         f = entry.get("file", "")
-        if f:
-            if not os.path.isabs(f):
-                f = os.path.join(build_dir, f)
-            files.add(norm_path(f))
+        if not isinstance(f, str) or not f:
+            raise ValueError("invalid compile database file field at entry {}".format(index))
+        directory = normalized_entry_directory(entry, build_dir)
+        if not os.path.isabs(f):
+            f = os.path.join(directory, f)
+        files.setdefault(norm_path(f), []).append(directory)
     return files
 
 
-def run_clang_tidy(f, build_dir, config_file):
+def compile_database_unavailable(output):
+    """Detect diagnostics where clang-tidy did not use the compilation database."""
+    return bool(SKIP_NO_COMMAND_RE.search(output) or re.search(
+        r"^(?:"
+        r"Error while trying to load a compilation database:|LLVM ERROR: Cannot chdir into |"
+        r"json-compilation-database: Missing key:|Running without flags\.)",
+        output, re.MULTILINE))
+
+
+def run_clang_tidy(f, build_dir, config_file, database=None):
     """Run clang-tidy on f with the compile database; returns (output, returncode)."""
     r = run_tool(["clang-tidy", "--config-file=" + config_file, "-p", build_dir, f])
-    return r.stdout + r.stderr, r.returncode
+    output = r.stdout + r.stderr
+    # Clang-tidy 12 may return 0 despite not analyzing a file with an unmatched
+    # compilation command (for example, relative directory and file entries).
+    if not compile_database_unavailable(output):
+        return output, r.returncode
+    try:
+        retry = retry_with_normalized_database(f, build_dir, config_file, database)
+    except (OSError, ValueError) as exc:
+        log.warning("[clang-tidy] WARNING: cannot prepare compilation database retry: %s", exc)
+        return output, r.returncode or 1
+    if retry is None:
+        return output, r.returncode or 1
+    output = retry.stdout + retry.stderr
+    return output, retry.returncode or int(compile_database_unavailable(output))
+
+
+def retry_with_normalized_database(f, build_dir, config_file, database=None):
+    """Reuse one normalized database per check; direct calls own their lifetime."""
+    if database is not None:
+        return database.run(f, config_file)
+    with NormalizedCompileDatabase(build_dir) as temporary:
+        return temporary.run(f, config_file)
+
+
+class NormalizedCompileDatabase:
+    """Lazily prepare and reuse a temporary compilation database for one check."""
+
+    def __init__(self, build_dir):
+        self.path = os.path.join(build_dir, "compile_commands.json")
+        self.temp = None
+        self.signature = None
+        self.prepared = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.temp is not None:
+            self.temp.cleanup()
+
+    def run(self, f, config_file):
+        try:
+            stat = os.stat(self.path)
+            signature = (stat.st_mtime_ns, stat.st_size)
+            if self.prepared and signature != self.signature:
+                log.warning("[clang-tidy] WARNING: compile database changed during analysis; cannot retry safely")
+                return None
+            if not self.prepared:
+                self.prepared = True
+                self.signature = signature
+                with open(self.path, "r", encoding="utf-8") as fp:
+                    entries = json.load(fp)
+                if not isinstance(entries, list) or not all(isinstance(entry, dict) for entry in entries):
+                    raise ValueError("invalid compilation database")
+                adjusted = []
+                changed = False
+                for entry in entries:
+                    entry = dict(entry)
+                    directory = entry.get("directory")
+                    normalized = normalized_entry_directory(entry, os.path.dirname(self.path))
+                    changed = changed or not isinstance(directory, str) or not directory or not os.path.isabs(directory)
+                    entry["directory"] = normalized
+                    adjusted.append(entry)
+                if not changed:
+                    return None
+                self.temp = tempfile.TemporaryDirectory(prefix="clang_tidy_db_")
+                with open(os.path.join(self.temp.name, "compile_commands.json"), "w", encoding="utf-8") as fp:
+                    json.dump(adjusted, fp)
+                after = os.stat(self.path)
+                if (after.st_mtime_ns, after.st_size) != self.signature:
+                    log.warning("[clang-tidy] WARNING: compile database changed during analysis; cannot retry safely")
+                    self.temp.cleanup()
+                    self.temp = None
+                    return None
+            if self.temp is None:
+                return None
+            log.info("[clang-tidy] retrying with absolute compilation directories")
+            return run_tool(["clang-tidy", "--config-file=" + config_file, "-p", self.temp.name, f])
+        except (OSError, ValueError):
+            if self.temp is not None:
+                self.temp.cleanup()
+                self.temp = None
+            raise
 
 
 def run_clang_tidy_standalone(f, config_file):
     """Run clang-tidy on a header that has no compile database entry."""
     r = run_tool(["clang-tidy", "--config-file=" + config_file, f, "--", "-x", "c++"])
     return r.stdout + r.stderr, r.returncode
+
+
+def log_source_analysis_failure(f, rc, output):
+    if SKIP_NO_COMMAND_RE.search(output):
+        log.warning("[clang-tidy] WARNING: clang-tidy skipped %s: no matching compile command", f)
+    elif compile_database_unavailable(output):
+        log.warning("[clang-tidy] WARNING: compilation database unavailable for %s, analysis failure", f)
+    else:
+        log.warning("[clang-tidy] WARNING: clang-tidy exited %d on %s, analysis failure", rc, f)
+    tail = [line.strip() for line in output.splitlines() if line.strip()][-3:]
+    if tail:
+        log.warning("[clang-tidy] diagnostic tail: %s", " | ".join(tail))
+
 
 
 def parse_warnings(output):
@@ -322,6 +446,16 @@ def parse_warnings(output):
         m = WARN_RE.match(line)
         if m and m.group("check") in TARGET_CHECKS:
             yield m.group("file"), int(m.group("line")), m.group("check")
+
+
+def warning_matches_source(warning_file, source, compile_dirs):
+    """Match diagnostic paths resolved from cwd or a source's compile directory."""
+    target = norm_path(source)
+    if norm_path(warning_file) == target:
+        return True
+    if os.path.isabs(warning_file):
+        return False
+    return any(norm_path(os.path.join(directory, warning_file)) == target for directory in compile_dirs)
 
 
 def default_base_ref():
@@ -472,57 +606,66 @@ def main():
     if not files:
         log.info("[clang-tidy] incremental diff computed: no changed C++ files, skip")
         return 0
-    compile_db = load_compile_db(args.build_dir)
+    try:
+        compile_db = load_compile_db(args.build_dir)
+    except ValueError as exc:
+        log.warning("[clang-tidy] FAIL: %s", exc)
+        return 1
     if compile_db is None:
-        # The build directory was checked for the file earlier, so reaching
-        # here means it exists but cannot be parsed: the interception would
-        # be silently empty. Block.
-        log.warning("[clang-tidy] FAIL: %s/compile_commands.json unreadable, interception incomplete", args.build_dir)
+        log.warning("[clang-tidy] FAIL: compile database disappeared during check")
+        return 1
+    if not compile_db and any(not f.endswith(HEADER_EXT) for f in files):
+        log.warning("[clang-tidy] FAIL: compile database is empty, incremental interception would be empty")
         return 1
     log.info("[clang-tidy] incremental check: base=%s, %d changed file(s)", base, len(files))
+    return analyze_files(files, base, root, compile_db, args)
 
+
+def analyze_files(files, base, root, compile_db, args):
+    """Analyze changed files and preserve the existing incremental gate policy."""
     violations = []
     diff_failed = []
     source_failed = []
     header_failed = 0
-    for f in files:
-        # Skip files with no added lines before invoking clang-tidy: only new
-        # code can be intercepted, and pure-deletion files need no analysis.
-        added = get_added_line_ranges(base, f, root)
-        if added is None:
-            # A per-file diff failure leaves the interception blind on this
-            # file: block, never treat it as "no added lines".
-            diff_failed.append(f)
-            log.warning("[clang-tidy] WARNING: added-line diff failed on %s, diff failure", f)
-            continue
-        if not added:
-            continue
-        is_header = f.endswith(HEADER_EXT)
-        if norm_path(f) not in compile_db:
-            if is_header:
-                # Headers have no compile command of their own: analyze standalone
-                # so new complexity in headers is still intercepted.
-                output, rc = run_clang_tidy_standalone(f, args.config_file)
-                if rc != 0:
-                    # Standalone headers frequently cannot parse without -I flags:
-                    # warn only, never block.
-                    header_failed += 1
-                    log.warning("[clang-tidy] WARNING: standalone analysis failed on header %s (exit %d), warn-only", f, rc)
-            else:
-                # Generated/third-party sources are out of scope: exempt them
-                # explicitly instead of failing their analysis.
-                log.warning("[clang-tidy] WARNING: %s has no entry in compile_commands.json (generated/third-party?), skip", f)
+    with NormalizedCompileDatabase(args.build_dir) as database:
+        for f in files:
+            # Skip files with no added lines before invoking clang-tidy: only new
+            # code can be intercepted, and pure-deletion files need no analysis.
+            added = get_added_line_ranges(base, f, root)
+            if added is None:
+                # A per-file diff failure leaves the interception blind on this
+                # file: block, never treat it as "no added lines".
+                diff_failed.append(f)
+                log.warning("[clang-tidy] WARNING: added-line diff failed on %s, diff failure", f)
                 continue
-        else:
-            output, rc = run_clang_tidy(f, args.build_dir, args.config_file)
-            if rc != 0:
-                # A changed source that cannot be analyzed would be a silent gap in
-                # interception: treat it as a blocking failure.
-                source_failed.append(f)
-                log.warning("[clang-tidy] WARNING: clang-tidy exited %d on %s, analysis failure", rc, f)
-        for wfile, lno, check in parse_warnings(output):
-            if norm_path(wfile) == norm_path(f) and lno in added:
-                violations.append((f, lno, check))
+            if not added:
+                continue
+            is_header = f.endswith(HEADER_EXT)
+            if norm_path(f) not in compile_db:
+                if is_header:
+                    # Headers have no compile command of their own: analyze standalone
+                    # so new complexity in headers is still intercepted.
+                    output, rc = run_clang_tidy_standalone(f, args.config_file)
+                    if rc != 0:
+                        # Standalone headers frequently cannot parse without -I flags:
+                        # warn only, never block.
+                        header_failed += 1
+                        log.warning("[clang-tidy] WARNING: standalone analysis failed on header %s (exit %d), warn-only", f, rc)
+                else:
+                    # Generated/third-party sources are out of scope: exempt them
+                    # explicitly instead of failing their analysis.
+                    log.warning("[clang-tidy] WARNING: %s has no entry in compile_commands.json (generated/third-party?), skip", f)
+                    continue
+            else:
+                output, rc = run_clang_tidy(f, args.build_dir, args.config_file, database)
+                if rc != 0:
+                    # A changed source that cannot be analyzed would be a silent gap in
+                    # interception: treat it as a blocking failure.
+                    source_failed.append(f)
+                    log_source_analysis_failure(f, rc, output)
+            for wfile, lno, check in parse_warnings(output):
+                if warning_matches_source(wfile, f, compile_db.get(norm_path(f), [])) and lno in added:
+                    violations.append((f, lno, check))
 
     if violations:
         log.warning("[clang-tidy] FAIL: %d new-code complexity violation(s):", len(violations))

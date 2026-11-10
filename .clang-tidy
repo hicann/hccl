@@ -13,8 +13,9 @@
 # -------------------
 # This is the rule book for the clang-tidy based function-complexity gate.
 # The rules below are read by scripts/clang-tidy/clang_tidy_check.py, which runs
-# after every default build (bash build.sh --pkg) and blocks ONLY newly added
+# after every default build (bash build.sh --pkg) and reports newly added
 # code that violates them. Existing violations do NOT block anything.
+# Unusable database-backed analysis also returns a failing checker verdict.
 #
 # The rules in plain language
 # ---------------------------
@@ -74,6 +75,12 @@
 #     skipped gate is a gate that does not exist. A local shallow clone that
 #     cannot heal (offline) only warns and skips, like any gate that cannot
 #     start. The escape hatch for offline builds is ENABLE_CLANG_TIDY_CHECK=off.
+#   - An unreadable or malformed compilation database, an unmatched compile
+#     command, or failed database-backed analysis makes the checker exit 1.
+#     Check build/compile_commands.json and its directory/file source paths.
+#     An empty database also fails when non-header sources have changed.
+#     The shell wrapper reports verdicts by default;
+#     ENABLE_CLANG_TIDY_BLOCK=on propagates failures to the build.
 #   - The script's own unit tests (scripts/clang-tidy/clang_tidy_check_test.py)
 #     run inside the UT flow (bash build.sh -u).
 #   - Switch: ENABLE_CLANG_TIDY_CHECK=off skips the gate entirely.
