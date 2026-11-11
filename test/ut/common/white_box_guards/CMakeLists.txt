@@ -118,6 +118,7 @@ get_filename_component(ASCEND_HAL_DIR "${ASCEND_HAL_LIBRARY}" DIRECTORY)
 # 会回调 alg_parse 的全局表，顺序颠倒会在 main 前因静态初始化顺序而为空指针。
 set(_wb_executor_src
     ${PROJECT_SOURCE_DIR}/src/common/alg_parse.cc
+    ${PROJECT_SOURCE_DIR}/src/common/hcomm_dlsym/hccl_dl.cc
     ${PROJECT_SOURCE_DIR}/src/common/hcomm_dlsym/hcomm_dlsym.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector/alg_attrs_registry.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector/cost_model.cc
@@ -139,8 +140,10 @@ set(_wb_executor_src
     ${PROJECT_SOURCE_DIR}/src/ops/recv/algorithm/executor/ins_recv_executor.cc
     ${PROJECT_SOURCE_DIR}/src/ops/send/algorithm/executor/ins_v2_send_sole_executor.cc
     ${PROJECT_SOURCE_DIR}/src/ops/send/algorithm/template/ins_temp_send_dpu.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/send/algorithm/template/ins_temp_send_nda.cc
     ${PROJECT_SOURCE_DIR}/src/ops/recv/algorithm/executor/ins_v2_recv_sole_executor.cc
     ${PROJECT_SOURCE_DIR}/src/ops/recv/algorithm/template/ins_temp_recv_dpu.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/recv/algorithm/template/ins_temp_recv_nda.cc
 )
 add_executable(executor_guards_test
     executor_guards_test.cc
