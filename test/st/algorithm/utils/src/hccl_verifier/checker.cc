@@ -51,9 +51,15 @@ HcclResult Checker::GenAndCheckGraph(AllRankTaskQueues& allRankTaskQueues, TaskC
         return HCCL_E_PARA;
     }
 
-    // 打印Task队列
-    PrintTask(allRankTaskQueues);
+    HcclResult ret = DoGenAndCheckGraph(allRankTaskQueues, opSemanticsChcker);
+    if (ret != HCCL_SUCCESS) {
+        PrintTask(allRankTaskQueues);
+    }
+    return ret;
+}
 
+HcclResult Checker::DoGenAndCheckGraph(AllRankTaskQueues& allRankTaskQueues, TaskCheckOpSemantics& opSemanticsChcker)
+{
     // 1. 检查从流
     HCCL_INFO("1. 检查从流");
     SingleTaskCheck taskChecker;

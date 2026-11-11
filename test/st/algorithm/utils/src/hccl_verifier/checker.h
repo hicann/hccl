@@ -25,6 +25,7 @@ public:
     void PrintTask(const AllRankTaskQueues& allRankTaskQueues);
 
 private:
+    HcclResult DoGenAndCheckGraph(AllRankTaskQueues& allRankTaskQueues, TaskCheckOpSemantics& opSemanticsChcker);
     void CopyTaskGraph(TaskNodePtr originNode, TaskNodePtr copyNode);
     vector<HcclSim::TaskStub*> toDeleteCopyTaskResource_;
     vector<TaskNodePtr> toDeleteCopyTaskNodeResource_;
