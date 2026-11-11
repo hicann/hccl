@@ -60,17 +60,23 @@ source /usr/local/Ascend/cann/set_env.sh
 
 ### 1. 编译自定义算子库
 
-在根目录下执行以下命令：
+在HCCL仓库根目录下，根据产品型号选择以下一条构建命令执行。请勿依次执行两条命令，每次构建都会清理已有构建产物。
+
+Atlas A2系列产品、Atlas A3系列产品：
 
 ```bash
-// A2/A3
 bash build.sh --aiv_arch=220 --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
-// A5
-bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
+```
+
+Ascend 950PR&950DT系列产品：
+
+```bash
+bash build.sh --aiv_arch=310 --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
 ```
 > 其中：
 > 
 > - `--vendor` 参数表示自定义算子标识
+> - `--aiv_arch` 指定AIV编译架构：`220`（`dav-c220-vec`）用于Atlas A2系列产品和Atlas A3系列产品，`310`（`dav-c310-vec`）用于Ascend 950PR&950DT系列产品。省略时默认按`dav-c310-vec`编译，Atlas A2系列产品和Atlas A3系列产品场景必须显式传`220`
 > - `--ops` 参数表示自定义算子名称
 > - `--custom_ops_path` 参数表示自定义算子工程路径
 

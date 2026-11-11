@@ -60,18 +60,24 @@ This sample provides a CMake-based build process.
 
 ### 2.1 Compile the Custom Operator Library
 
-Run the following commands in the sample root directory:
+From the HCCL repository root, run only the command for your product. Do not run both commands in sequence: each build cleans the previous build artifacts.
+
+Atlas A2 and Atlas A3 products:
 
 ```bash
-// A2/A3
 bash build.sh --aiv_arch=220 --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
-// A5
-bash build.sh --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
+```
+
+Ascend 950PR&950DT products:
+
+```bash
+bash build.sh --aiv_arch=310 --vendor=cust --ops=allgather_aiv --custom_ops_path=./examples/05_custom_ops_allgather/aiv
 ```
 
 > Where:
 > 
 > - `--vendor` specifies the custom operator identifier.
+> - `--aiv_arch` selects the AIV compilation architecture: `220` (`dav-c220-vec`) for Atlas A2/Atlas A3 products, or `310` (`dav-c310-vec`) for Ascend 950PR&950DT products. If omitted, it defaults to `dav-c310-vec`; Atlas A2/Atlas A3 builds must explicitly pass `220`.
 > - `--ops` specifies the custom operator name.
 > - `--custom_ops_path` specifies the custom operator project path.
 
