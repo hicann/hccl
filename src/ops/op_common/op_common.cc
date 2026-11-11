@@ -868,7 +868,9 @@ namespace {
 
     HcclResult LaunchWarmupVOperator(HcclComm comm, OpParam& param, const std::string& algName)
     {
-        if (param.engine != COMM_ENGINE_AICPU_TS && param.engine != COMM_ENGINE_CPU) {
+        // 暂停V类task cache时，不下发用于录制缓存的预热小算子。
+        constexpr bool ENABLE_V_CACHE_WARMUP = false;
+        if (!ENABLE_V_CACHE_WARMUP || (param.engine != COMM_ENGINE_AICPU_TS && param.engine != COMM_ENGINE_CPU)) {
             return HCCL_SUCCESS;
         }
 

@@ -76,11 +76,9 @@ HcclResult AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(
     }
 
     if (AicpuTaskCacheUtils::IsAlltoallvType(param.opType)) {
-        bool isAlltoallvCacheSupported = false;
-        CHK_RET(IsAlltoallvCacheSupported(param, resCtx, isAlltoallvCacheSupported));
-        if (!isAlltoallvCacheSupported) {
-            return HCCL_SUCCESS;
-        }
+        // 暂停V类task cache，正式通信沿用普通展开路径。
+        HCCL_INFO("[AicpuTaskCachePolicy][IsAicpuTaskCacheEnable] AlltoAllV/AlltoAllVC task cache is disabled");
+        return HCCL_SUCCESS;
     }
 
     // 屏蔽inplace场景

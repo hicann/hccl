@@ -98,37 +98,38 @@ namespace {
     TEST_P(AlltoallvCachePolicyTest, HonorsHostCacheDisable)
     {
         counts_[1] = 1;
-        bool isCacheEnable = false;
+        bool isCacheEnable = true;
         ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-        ASSERT_TRUE(isCacheEnable);
+        ASSERT_FALSE(isCacheEnable);
 
         // Host关闭缓存后，Device侧不得重新使能。
         param_.aicpuCacheEnable = false;
+        isCacheEnable = true;
         ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
         EXPECT_FALSE(isCacheEnable);
     }
 
-    TEST_P(AlltoallvCachePolicyTest, AdmissionUsesActualDataTypeSize)
+    TEST_P(AlltoallvCachePolicyTest, DisablesCacheAcrossDataTypes)
     {
-        counts_[1] = 129; // 单轮scratch上限为512字节：UINT8可缓存，UINT64需分片。
+        counts_[1] = 129; // 覆盖不同字节长度，V类缓存均保持禁用。
         for (auto dataType : {HCCL_DATA_TYPE_UINT8, HCCL_DATA_TYPE_UINT64}) {
             param_.all2AllVDataDes.sendType = dataType;
             param_.all2AllVDataDes.recvType = dataType;
-            bool isCacheEnable = false;
+            bool isCacheEnable = true;
             ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-            EXPECT_EQ(isCacheEnable, dataType == HCCL_DATA_TYPE_UINT8);
+            EXPECT_FALSE(isCacheEnable);
         }
     }
 
-    TEST_P(AlltoallvCachePolicyTest, EnablesSelfCopyOnlyRankForWarmupReplay)
+    TEST_P(AlltoallvCachePolicyTest, DisablesCacheForSelfCopyOnlyRank)
     {
         for (uint32_t rank = 0; rank < RANK_SIZE; ++rank) {
             SCOPED_TRACE(rank);
             resCtx_.topoInfo.userRank = rank;
             counts_[rank] = 1;
-            bool isCacheEnable = false;
+            bool isCacheEnable = true;
             ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-            EXPECT_TRUE(isCacheEnable);
+            EXPECT_FALSE(isCacheEnable);
             counts_[rank] = 0;
         }
     }
@@ -190,15 +191,15 @@ namespace {
         }
     }
 
-    TEST_P(AlltoallvCachePolicyTest, EnablesOneChannelPerPeer)
+    TEST_P(AlltoallvCachePolicyTest, DisablesCacheWithOneChannelPerPeer)
     {
         counts_[0] = 1;
         ChannelInfo channel = resCtx_.channels[0][0];
         channel.remoteRank = 2;
         resCtx_.channels[0].push_back(channel);
-        bool isCacheEnable = false;
+        bool isCacheEnable = true;
         ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-        EXPECT_TRUE(isCacheEnable);
+        EXPECT_FALSE(isCacheEnable);
     }
 
     TEST_P(AlltoallvCachePolicyTest, RejectsMultipleChannelsForPeerEvenWithZeroCount)
@@ -214,15 +215,15 @@ namespace {
         }
     }
 
-    TEST_P(AlltoallvCachePolicyTest, IgnoresInvalidDuplicateChannel)
+    TEST_P(AlltoallvCachePolicyTest, DisablesCacheWithInvalidDuplicateChannel)
     {
         counts_[0] = 1;
         ChannelInfo channel = resCtx_.channels[0][0];
         channel.isValid = false;
         resCtx_.channels[0].push_back(channel);
-        bool isCacheEnable = false;
+        bool isCacheEnable = true;
         ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-        EXPECT_TRUE(isCacheEnable);
+        EXPECT_FALSE(isCacheEnable);
     }
 
     TEST_P(AlltoallvCachePolicyTest, LeavesNonVCacheAdmissionUnchanged)
@@ -237,7 +238,7 @@ namespace {
         EXPECT_TRUE(isCacheEnable);
     }
 
-    TEST_P(AlltoallvCachePolicyTest, AllowsUbChannelsRegardlessOfCoverLayer)
+    TEST_P(AlltoallvCachePolicyTest, DisablesCacheRegardlessOfCoverLayer)
     {
         struct TopologyCase {
             std::vector<uint32_t> layers;
@@ -269,9 +270,9 @@ namespace {
                 topo.netLayerDetails.netLayerNum = static_cast<uint32_t>(testCase.layers.size());
                 topo.netLayerDetails.netLayers = testCase.layers;
                 topo.netLayerDetails.netInstNumOfLayer = testCase.instances;
-                bool isCacheEnable = false;
+                bool isCacheEnable = true;
                 ASSERT_EQ(AicpuTaskCachePolicy::IsAicpuTaskCacheEnable(param_, resCtx_, isCacheEnable), HCCL_SUCCESS);
-                EXPECT_TRUE(isCacheEnable);
+                EXPECT_FALSE(isCacheEnable);
             }
         }
     }
