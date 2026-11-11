@@ -203,9 +203,12 @@ HcclResult AllGatherVOutPlace(
     u64 inputSize = sendCount * perDataSize; // all gather v 每个rank上一份数据
     u64 outputSize = 0;
     const u64* u64RecvCount = reinterpret_cast<const u64*>(recvCounts);
+    const u64* u64RecvDispls = reinterpret_cast<const u64*>(recvDispls);
     for (u64 i = 0; i < userRankSize; i++) {
-        outputSize += u64RecvCount[i] * perDataSize;
-    } // 结果为recvCount中的数据之和
+        outputSize = (outputSize > (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize) ?
+                         outputSize :
+                         (u64RecvDispls[i] + u64RecvCount[i]) * perDataSize;
+    } // 结果为最大的displs加recvcount，非紧凑displs时大于counts总和，作为output实际写入extent
 
     // 申请OpParam参数结构体内存
     u64 varMemSize = (userRankSize + userRankSize) * sizeof(u64);

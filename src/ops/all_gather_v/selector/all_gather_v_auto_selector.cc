@@ -12,8 +12,6 @@
 #include "selector_registry.h"
 
 namespace ops_hccl {
-constexpr u64 AG_2D_SMALL_DATA_SIZE = 1024 * 1024;
-
 SelectorStatus AllGatherVAutoSelector::SelectCcuMsAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
     const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
@@ -87,8 +85,25 @@ SelectorStatus AllGatherVAutoSelector::SelectAicpuAlgo(
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
 
     if (topoInfo->topoLevelNums >= 1 && topoInfo->topoLevelNums <= TOPO_LEVEL_NUM_3) {
-        if (topoInfo->level0PcieMix && !IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
-            // PCIE机型算法选择，仅在1DMESH覆盖范围内支持
+        bool isMeshNumEqualToClosNum = true;
+        bool isClosNumMultipleOfMeshNum = false;
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            if (CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS) {
+                HCCL_WARNING(
+                    "[AllGatherVAutoSelector][%s] CheckMeshNumEqualToClosNum failed, fallback to SoleMesh.", __func__);
+            }
+            if (CheckClosNumMultipleOfMeshNum(topoInfo, isClosNumMultipleOfMeshNum) != HCCL_SUCCESS) {
+                HCCL_WARNING(
+                    "[AllGatherVAutoSelector][%s] CheckClosNumMultipleOfMeshNum failed, fallback to SoleMesh.",
+                    __func__);
+            }
+        }
+        if (!topoInfo->level0PcieMix && topoInfo->topoLevelNums <= TOPO_LEVEL_NUM_1
+            && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+            && !IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH) && !isMeshNumEqualToClosNum
+            && isClosNumMultipleOfMeshNum && !IsInputOutputOverlap(opParam)) {
+            selectAlgName = "AicpuAllGatherVPipeLineMeshNHR";
+        } else if (topoInfo->level0PcieMix && !IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
             return SelectorStatus::NOT_MATCH;
         } else {
             selectAlgName = "AicpuAllGatherVSoleMesh";
@@ -96,6 +111,7 @@ SelectorStatus AllGatherVAutoSelector::SelectAicpuAlgo(
     } else {
         return SelectorStatus::NOT_MATCH;
     }
+    HCCL_DEBUG("[AllGatherVAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
     return SelectorStatus::MATCH;
 }
 

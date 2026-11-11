@@ -170,7 +170,6 @@ add_library(hccl_aicpu_kernel SHARED
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/recv/algorithm/executor/ins_v2_recv_sole_executor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/send/algorithm/executor/ins_v2_send_sole_executor.cc
-
 )
 
 if(NOT HCCL_CANN_COMPAT_850)
@@ -193,6 +192,7 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_omnipipe_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather/algorithm/executor/ins_v2_all_gather_omnipipe_executor.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_gather_v/algorithm/executor/ins_v2_all_gather_v_omnipipe_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_reduce/algorithm/executor/ins_v2_all_reduce_omnipipe_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_sequence_executor_3level_dpu.cc
