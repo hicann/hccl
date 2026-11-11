@@ -19,46 +19,66 @@
 
 namespace ops_hccl {
 
-static const std::map<std::string, std::string> ENGINE_TYPES
-    = {{"aicpu", "Aicpu"}, {"aiv", "Aiv"}, {"dpu", "Dpu"}, {"ccums", "CcuMS"}, {"ccusched", "CcuSched"}};
-static const std::map<std::string, std::string> OP_TYPES
-    = {{"allgather", "AllGather"},
-       {"allgatherv", "AllGatherV"},
-       {"allreduce", "AllReduce"},
-       {"alltoall", "AllToAll"},
-       {"alltoallv", "AllToAllV"},
-       {"alltoallvc", "AllToAllVC"},
-       {"barrier", "Barrier"},
-       {"batchsendrecv", "BatchSendRecv"},
-       {"broadcast", "Broadcast"},
-       {"reduce", "Reduce"},
-       {"reducescatter", "ReduceScatter"},
-       {"reducescatterv", "ReduceScatterV"},
-       {"scatter", "Scatter"},
-       {"send", "Send"},
-       {"recv", "Recv"}};
-static const std::map<std::string, std::string> EXECUTOR_TYPES
-    = {{"sole", "Sole"},         {"sequence", "Sequence"}, {"parallel", "Parallel"},
-       {"pipeline", "PipeLine"}, {"concur", "Concur"},     {"strictordered", "StrictOrdered"}};
-static const std::map<std::string, std::string> ALGO_TYPES
-    = {{"mesh", "Mesh"},
-       {"mesh2die", "Mesh2Die"},
-       {"meshoneshot", "MeshOneShot"},
-       {"meshtwoshot", "MeshTwoShot"},
-       {"meshconcur", "MeshConcur"},
-       {"meshmultilink", "MeshMultiLink"},
-       {"meshchunk", "MeshChunk"},
-       {"meshchunktwoshot", "MeshChunkTwoShot"},
-       {"nhr", "NHR"},
-       {"nhrmultilink", "NHRMultiLink"},
-       {"nhraicpureduce", "NHRAicpuReduce"},
-       {"hdaicpureduce", "HDAicpuReduce"},
-       {"hd", "HD"},
-       {"meshsinglechannel", "MeshSingleChannel"},
-       {"nhrmultijetty", "NHRMultiJetty"},
-       {"meshmultijetty", "MeshMultiJetty"},
-       {"meshconcurrent", "MeshConcurrent"},
-       {"pairwise", "Pairwise"}};
+// 引擎 / opType / executor / algo 维度映射表。
+// 采用 Meyers singleton（函数内 static）而非 TU 级 static const，以消除跨 TU 静态初始化顺序未定义问题：
+// 注册单元（REGISTER_ALG_ATTRS 宏展开的静态初始化）经 ParseAlgName -> GetAlgoExecutors 读取这些表，
+// 若它们是 TU 级 static 对象，跨 TU 初始化顺序不可控，可能导致对未构造 std::map 取迭代器（UB）。
+static const std::map<std::string, std::string>& EngineTypes()
+{
+    static const std::map<std::string, std::string> types
+        = {{"aicpu", "Aicpu"}, {"aiv", "Aiv"}, {"dpu", "Dpu"}, {"ccums", "CcuMS"}, {"ccusched", "CcuSched"}};
+    return types;
+}
+static const std::map<std::string, std::string>& OpTypes()
+{
+    static const std::map<std::string, std::string> types
+        = {{"allgather", "AllGather"},
+           {"allgatherv", "AllGatherV"},
+           {"allreduce", "AllReduce"},
+           {"alltoall", "AllToAll"},
+           {"alltoallv", "AllToAllV"},
+           {"alltoallvc", "AllToAllVC"},
+           {"barrier", "Barrier"},
+           {"batchsendrecv", "BatchSendRecv"},
+           {"broadcast", "Broadcast"},
+           {"reduce", "Reduce"},
+           {"reducescatter", "ReduceScatter"},
+           {"reducescatterv", "ReduceScatterV"},
+           {"scatter", "Scatter"},
+           {"send", "Send"},
+           {"recv", "Recv"}};
+    return types;
+}
+static const std::map<std::string, std::string>& ExecutorTypes()
+{
+    static const std::map<std::string, std::string> types
+        = {{"sole", "Sole"},         {"sequence", "Sequence"}, {"parallel", "Parallel"},
+           {"pipeline", "PipeLine"}, {"concur", "Concur"},     {"strictordered", "StrictOrdered"}};
+    return types;
+}
+static const std::map<std::string, std::string>& AlgoTypes()
+{
+    static const std::map<std::string, std::string> types
+        = {{"mesh", "Mesh"},
+           {"mesh2die", "Mesh2Die"},
+           {"meshoneshot", "MeshOneShot"},
+           {"meshtwoshot", "MeshTwoShot"},
+           {"meshconcur", "MeshConcur"},
+           {"meshmultilink", "MeshMultiLink"},
+           {"meshchunk", "MeshChunk"},
+           {"meshchunktwoshot", "MeshChunkTwoShot"},
+           {"nhr", "NHR"},
+           {"nhrmultilink", "NHRMultiLink"},
+           {"nhraicpureduce", "NHRAicpuReduce"},
+           {"hdaicpureduce", "HDAicpuReduce"},
+           {"hd", "HD"},
+           {"meshsinglechannel", "MeshSingleChannel"},
+           {"nhrmultijetty", "NHRMultiJetty"},
+           {"meshmultijetty", "MeshMultiJetty"},
+           {"meshconcurrent", "MeshConcurrent"},
+           {"pairwise", "Pairwise"}};
+    return types;
+}
 
 // 小写字符串转换（自由函数，供全局使用）
 static std::string ToLowerStr(const std::string& s)
@@ -218,7 +238,7 @@ private:
             if (Peek() == ':' && Peek2() != ':') {
                 Eat(':');
                 std::string opType = ToLowerStr(name);
-                if (OP_TYPES.find(opType) == OP_TYPES.end()) {
+                if (OpTypes().find(opType) == OpTypes().end()) {
                     HCCL_WARNING("[HcclAlgoParser] invalid opType [%s] at pos %zu", opType.c_str(), pos_);
                     return HCCL_E_PARA;
                 }
@@ -270,7 +290,7 @@ private:
         SkipWs();
         if (Peek() == '{') {
             std::string executorType = ToLowerStr(name);
-            if (EXECUTOR_TYPES.find(executorType) == EXECUTOR_TYPES.end()) {
+            if (ExecutorTypes().find(executorType) == ExecutorTypes().end()) {
                 HCCL_WARNING("[HcclAlgoParser] invalid executorType [%s] at pos %zu", executorType.c_str(), pos_);
                 return HCCL_E_PARA;
             }
@@ -288,7 +308,7 @@ private:
         }
         // template shorthand: name => sole{name}
         std::string algoType = ToLowerStr(UnderscoreToCamelCase(name));
-        if (ALGO_TYPES.find(algoType) == ALGO_TYPES.end()) {
+        if (AlgoTypes().find(algoType) == AlgoTypes().end()) {
             HCCL_WARNING("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
             return HCCL_E_PARA;
         }
@@ -398,7 +418,7 @@ private:
             return HCCL_E_PARA;
         }
         std::string algoType = ToLowerStr(UnderscoreToCamelCase(name));
-        if (ALGO_TYPES.find(algoType) == ALGO_TYPES.end()) {
+        if (AlgoTypes().find(algoType) == AlgoTypes().end()) {
             HCCL_WARNING("[HcclAlgoParser] invalid algoType [%s] at pos %zu", algoType.c_str(), pos_);
             return HCCL_E_PARA;
         }
@@ -467,10 +487,10 @@ static std::string ComposeAlgoName(
     const std::vector<HcclAlgo>& algoList)
 {
     std::string name = engineType; // 首字段保持小写（camelCase）
-    name += OP_TYPES.at(opType);
-    name += EXECUTOR_TYPES.at(executorType);
+    name += OpTypes().at(opType);
+    name += ExecutorTypes().at(executorType);
     for (const auto& algo : algoList) {
-        name += ALGO_TYPES.at(algo.algoType);
+        name += AlgoTypes().at(algo.algoType);
     }
     return name;
 }
@@ -479,7 +499,7 @@ static std::string ComposeAlgoName(
 static std::string
 ComposeAlgoPrefix(const std::string& engineType, const std::string& opType, const std::string& executorType)
 {
-    return engineType + OP_TYPES.at(opType) + EXECUTOR_TYPES.at(executorType);
+    return engineType + OpTypes().at(opType) + ExecutorTypes().at(executorType);
 }
 
 // 前缀匹配
@@ -496,16 +516,21 @@ static bool ContainsSendRecv(const std::string& algoKey)
 }
 
 // algoType 驼峰名列表（按长度降序，避免 "Mesh" 误匹配 "Mesh2Die"）
-static const std::vector<std::string> SORTED_ALGO_NAMES = []() {
-    std::vector<std::string> names;
-    for (const auto& pair : ALGO_TYPES) {
-        names.push_back(pair.second);
-    }
-    std::sort(names.begin(), names.end(), [](const std::string& a, const std::string& b) {
-        return a.size() > b.size();
-    });
+// 采用 Meyers singleton，与 EngineTypes()/AlgoTypes() 等保持一致的首次调用初始化模式
+static const std::vector<std::string>& SortedAlgoNames()
+{
+    static const std::vector<std::string> names = []() {
+        std::vector<std::string> v;
+        for (const auto& pair : AlgoTypes()) {
+            v.push_back(pair.second);
+        }
+        std::sort(v.begin(), v.end(), [](const std::string& a, const std::string& b) {
+            return a.size() > b.size();
+        });
+        return v;
+    }();
     return names;
-}();
+}
 
 // 逐个算法名检查是否匹配 algoList 模式（规则 4.6.2，支持多个 level 同时有 not）
 // 前缀 engine+opType+executorType 精确匹配，后续 algoType 段逐个匹配：
@@ -515,7 +540,7 @@ static bool MatchesAlgoPattern(
     const std::string& key, const std::string& engine, const std::string& opType, const std::string& executorType,
     const std::vector<HcclAlgo>& algoList)
 {
-    std::string prefix = engine + OP_TYPES.at(opType) + EXECUTOR_TYPES.at(executorType);
+    std::string prefix = engine + OpTypes().at(opType) + ExecutorTypes().at(executorType);
     if (!StartsWith(key, prefix))
         return false;
     std::string remaining = key.substr(prefix.size());
@@ -523,7 +548,7 @@ static bool MatchesAlgoPattern(
     for (const auto& algo : algoList) {
         // 尝试在当前位置匹配一个 algoType（长名优先）
         std::string matched;
-        for (const auto& name : SORTED_ALGO_NAMES) {
+        for (const auto& name : SortedAlgoNames()) {
             if (remaining.compare(pos, name.size(), name) == 0) {
                 matched = name;
                 break;
@@ -532,10 +557,10 @@ static bool MatchesAlgoPattern(
         if (matched.empty())
             return false;
         if (algo.enable) {
-            if (matched != ALGO_TYPES.at(algo.algoType))
+            if (matched != AlgoTypes().at(algo.algoType))
                 return false;
         } else {
-            if (matched == ALGO_TYPES.at(algo.algoType))
+            if (matched == AlgoTypes().at(algo.algoType))
                 return false;
         }
         pos += matched.size();
@@ -665,11 +690,11 @@ UpdateCostModelWithAlgo(const HcclAlgoParser& algoParser, CostModel& model, cons
         const auto& exec = algoParser.executorList[idx];
         if (exec.executorType.empty())
             continue;
-        if (EXECUTOR_TYPES.find(exec.executorType) == EXECUTOR_TYPES.end())
+        if (ExecutorTypes().find(exec.executorType) == ExecutorTypes().end())
             continue;
         bool algoValid = true;
         for (const auto& algo : exec.algoList) {
-            if (ALGO_TYPES.find(algo.algoType) == ALGO_TYPES.end()) {
+            if (AlgoTypes().find(algo.algoType) == AlgoTypes().end()) {
                 algoValid = false;
                 break;
             }
@@ -679,12 +704,13 @@ UpdateCostModelWithAlgo(const HcclAlgoParser& algoParser, CostModel& model, cons
 
         std::vector<std::string> unprocessedOps;
         if (exec.opType.empty()) {
-            for (const auto& pair : OP_TYPES) {
+            for (const auto& pair : OpTypes()) {
                 if (matchedOpTypes.find(pair.first) == matchedOpTypes.end())
                     unprocessedOps.push_back(pair.first);
             }
         } else if (
-            OP_TYPES.find(exec.opType) != OP_TYPES.end() && matchedOpTypes.find(exec.opType) == matchedOpTypes.end()) {
+            OpTypes().find(exec.opType) != OpTypes().end()
+            && matchedOpTypes.find(exec.opType) == matchedOpTypes.end()) {
             unprocessedOps.push_back(exec.opType);
         }
         if (unprocessedOps.empty())
@@ -709,7 +735,7 @@ UpdateCostModelWithAlgo(const HcclAlgoParser& algoParser, CostModel& model, cons
                     opType.c_str());
             }
             bool allMatched = true;
-            for (const auto& pair : OP_TYPES) {
+            for (const auto& pair : OpTypes()) {
                 if (matchedOpTypes.find(pair.first) == matchedOpTypes.end()) {
                     allMatched = false;
                     break;
@@ -810,21 +836,21 @@ static std::vector<AlgoDimEntry> BuildDimEntries(const std::map<std::string, std
 
 const AlgoDimEntry* GetAlgoEngines(int& count)
 {
-    static auto entries = BuildDimEntries(ENGINE_TYPES);
+    static auto entries = BuildDimEntries(EngineTypes());
     count = static_cast<int>(entries.size());
     return entries.data();
 }
 
 const AlgoDimEntry* GetAlgoExecutors(int& count)
 {
-    static auto entries = BuildDimEntries(EXECUTOR_TYPES);
+    static auto entries = BuildDimEntries(ExecutorTypes());
     count = static_cast<int>(entries.size());
     return entries.data();
 }
 
 const AlgoDimEntry* GetAlgoTemplates(int& count)
 {
-    static auto entries = BuildDimEntries(ALGO_TYPES);
+    static auto entries = BuildDimEntries(AlgoTypes());
     count = static_cast<int>(entries.size());
     return entries.data();
 }

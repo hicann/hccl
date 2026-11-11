@@ -36,7 +36,7 @@ This environment variable is used to configure the inter-server communication al
       Note: When level1 (inter-server communication algorithm) is set to `AHC`, level2 (inter-SuperPoD communication algorithm) automatically adopts the AHC algorithm without additional configuration. Even if other algorithms are set for level2, these settings will not take effect.
 
     - pipeline: Pipeline parallel algorithm. It can concurrently use intra-server and inter-server links. It is suitable for use cases with large communication data volumes where each machine in the communicator contains multiple devices.
-    - pairwise: A pairwise communication algorithm, used only for AlltoAll, AlltoAllV, and AlltoAllVC operators. It involves a large number of communication steps (linear complexity) and relatively high latency, and requires additional memory allocation with the memory size proportional to the data volume. However, it is suitable for use cases with large communication data volumes where one-to-many network patterns need to be avoided.
+    - pairwise: A pairwise communication algorithm, used only for AlltoAll, AlltoAllV, and AlltoAllVC operators. It involves a large number of communication steps (linear complexity) and relatively high latency, and requires additional memory allocation with the memory size proportional to the data volume. However, it is suitable for use cases with large communication data volumes where one-to-many network patterns need to be avoided. Requirements: level0 is MESH_1D, 8 NPUs per module, rankSize ≥ 16 and a multiple of 16. For AlltoAllV/AlltoAllVC, level0 must also be symmetric and rankSize ≤ 128; otherwise, the Mesh algorithm is used as a fallback.
 
     When level1 is not set:
 

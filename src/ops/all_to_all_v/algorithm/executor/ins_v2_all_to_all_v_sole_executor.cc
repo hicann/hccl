@@ -555,6 +555,8 @@ AlgNetMeta InsV2AlltoAllVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetMe
 
 constexpr u32 PAIRWISE_RANK_NUM_PER_BOARD = InsTempAllToAllVPairwise::RANK_NUM_PER_BOARD;
 constexpr u32 PAIRWISE_UNIT_RANK_SIZE = InsTempAllToAllVPairwise::THREAD_SET_NUM * PAIRWISE_RANK_NUM_PER_BOARD;
+// 当前暂时限制128P以内选择Pairwise算法，条件改变后需同步适配
+constexpr u32 PAIRWISE_MAX_RANK_SIZE = 128;
 
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALL, AicpuAllToAllSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
@@ -578,11 +580,6 @@ REGISTER_EXEC_V2(
 REGISTER_ALG_ATTRS(
     AicpuAllToAllVSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY; topo.isSupportLevel0PcieMix = true;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        // 在t->userRankSize <= 128P时能选择AicpuAllToAllVSolePairwise，优先使用AicpuAllToAllVSolePairwise
-        if (t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
-            && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0 && t->level0Symmetric && t->userRankSize <= 128) {
-            return false;
-        }
         if (t->level0Topo == Level0Shape::MESH_1D_CLOS) {
             return t->level0PcieMix;
         }
@@ -611,6 +608,7 @@ REGISTER_EXEC_V2(
     InsTempAllToAllVPairwise);
 REGISTER_ALG_ATTRS(
     AicpuAllToAllSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+    // AlltoAll 非V 可通过 cost 竞争区分算法优先级，无需 topoPriorityCheck 排他
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
                && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
@@ -620,20 +618,32 @@ REGISTER_EXEC_V2(
     InsTempAllToAllVPairwise);
 REGISTER_ALG_ATTRS(
     AicpuAllToAllVSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-    // t->userRankSize <= 128P 当前暂时限制128P以内选择该算法，条件改变后AicpuAllToAllVSoleMesh中的过滤条件需要同步适配
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    // topoCustomCheck与topoPriorityCheck 共用同一收紧条件（含 level0Symmetric && <=128P）。
+    // 刻意收紧准入：Pairwise 仅适用于对称且 <=128P 的场景，超出范围由 AicpuAllToAllVSoleMesh（LEVEL0_TOPO_ANY）兜底。
+    // topoPriorityCheck 在 Pairwise 场景声明优先排他同 (opType, engine) 组内未声明 priority 的 AICPU 算法；
+    // 当前命中者含 AicpuAllToAllVSoleMesh 与 AicpuAllToAllVSequenceMeshMesh（后者 cost 仍为 MDE 占位值，
+    // 标定后需重新评估排他范围）。
+    // V 类算子 cost 为固定引擎常量（同引擎内无差异），不能用 cost 竞争区分同引擎多算法优先级。
+    auto isPairwiseScenario = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
-               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0 && t->level0Symmetric && t->userRankSize <= 128;
-    };);
+               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0 && t->level0Symmetric
+               && t->userRankSize <= PAIRWISE_MAX_RANK_SIZE;
+    };
+    topo.topoCustomCheck = isPairwiseScenario; topo.topoPriorityCheck = isPairwiseScenario;);
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSolePairwise, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
     InsTempAllToAllVPairwise);
 REGISTER_ALG_ATTRS(
     AicpuAllToAllVCSolePairwise, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
-    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+    // 与 ALLTOALLV 保持一致：topoCustomCheck 与 topoPriorityCheck 共用同一收紧条件（含 level0Symmetric && <=128P）。
+    // 刻意收紧准入：超出范围由 AicpuAllToAllVCSoleMesh（LEVEL0_TOPO_ANY）兜底。
+    // topoPriorityCheck 排他范围同 V 侧：含 AicpuAllToAllVCSoleMesh 与 AicpuAllToAllVCSequenceMeshMesh。
+    auto isVCPairwiseScenario = [](const TopoInfoWithNetLayerDetails* t) -> bool {
         return t->deviceNumPerModule == PAIRWISE_RANK_NUM_PER_BOARD && t->userRankSize >= PAIRWISE_UNIT_RANK_SIZE
-               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0;
-    };);
+               && t->userRankSize % PAIRWISE_UNIT_RANK_SIZE == 0 && t->level0Symmetric
+               && t->userRankSize <= PAIRWISE_MAX_RANK_SIZE;
+    };
+    topo.topoCustomCheck = isVCPairwiseScenario; topo.topoPriorityCheck = isVCPairwiseScenario;);
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 // UBX 场景并入 Dpu 标准注册（TopoMatchOneLevel），分流由 selector 保证
 REGISTER_EXEC_V2(

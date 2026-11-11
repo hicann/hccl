@@ -28,6 +28,11 @@ add_subdirectory(common/hostdpu_inline_reduce)
 add_subdirectory(alltoall_hier)
 add_subdirectory(hccl_gen_task_superkernel)
 add_subdirectory(aicpu_task_cache)
+# alg_attrs: AllToAllV/VC Pairwise 选路修复的生产注册直连 UT。wrap 编译单元以 #include
+# 生产源文件的方式执行 REGISTER_ALG_ATTRS 注册（屏蔽 REGISTER_EXEC_V2，避免实例化
+# executor/模板代码），断言 AlgAttrsRegistry 中 topoCustomCheck/topoPriorityCheck 的
+# 真实生产行为。
+add_subdirectory(alg_attrs)
 # reduce_scatter_seq64: RS/AR AicpuReduce 模板 cost 建模 + MeshNHRAicpuReduce attrs 注册准入。
 # 测 src/ 产品代码，与 alltoall_hier 同级无条件注册；注意 build.sh -u 的 UT 构建不传
 # ENABLE_EXPERIMENTAL，放入下方 if(ENABLE_EXPERIMENTAL) 分支将不被 -u 覆盖。

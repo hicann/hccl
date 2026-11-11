@@ -20,3 +20,14 @@ $\alpha + \beta\cdot\underset{i}{\max}(n_{i,i+k})$
 Hence, the total time consumption to complete the entire PairWise exchange is:
 
 $(p-1)\alpha + \beta\cdot\underset{k}{\Sigma}\underset{i}{\max}(n_{i,i+k})$
+
+## Applicable Conditions
+
+The Pairwise algorithm is supported only for AlltoAll, AlltoAllV, and AlltoAllVC (AICPU) operators. The following conditions must be met:
+
+- level0 topology is MESH_1D
+- 8 NPUs per module (deviceNumPerModule = 8)
+- rankSize ≥ 16 and a multiple of 16
+- (AlltoAllV/AlltoAllVC only) level0 is symmetric (level0Symmetric = true) and rankSize ≤ 128
+
+For AlltoAllV/AlltoAllVC, when these conditions are not met, the Mesh algorithm is used as a fallback.

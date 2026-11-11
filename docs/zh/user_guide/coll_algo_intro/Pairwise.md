@@ -18,3 +18,14 @@ $\alpha + \beta\cdot\underset{i}{\max}(n_{i,i+k})$
 那么，完成整个PairWise的耗时为：
 
 $(p-1)\alpha + \beta\cdot\underset{k}{\Sigma}\underset{i}{\max}(n_{i,i+k})$
+
+## 适用条件
+
+当前仅AllToAll/AllToAllV/AllToAllVC（AICPU）支持Pairwise算法，需满足以下条件：
+
+- level0拓扑为MESH_1D
+- 单机8卡（deviceNumPerModule = 8）
+- rankSize ≥ 16且为16的倍数
+- （仅AllToAllV/AllToAllVC）level0对称（level0Symmetric = true）且rankSize ≤ 128
+
+AllToAllV/AllToAllVC超出上述范围时，自动回退到Mesh算法。
