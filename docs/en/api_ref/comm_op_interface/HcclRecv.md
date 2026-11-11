@@ -79,6 +79,9 @@ The HcclSend and HcclRecv APIs use a synchronous call approach. They work in pai
 
 - Must serialize the calls to all communication operators in multiple communicators on each device. Out-of-order/multi-threaded concurrent calls and thread reentrancy are not allowed.
 - On the same device, the threads that dispatch all collective communication operators in the same communicator must use the same context.
+<!-- npu="950" id14 -->
+- For 950PR/950DT, self receive is not supported. `HCCL_E_NOT_SUPPORT` is returned when `srcRank` equals the current rank.
+<!-- end id14 -->
 
 ## Example
 

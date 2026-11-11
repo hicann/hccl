@@ -382,13 +382,18 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         return result;
     }
 
-    void DeSerialize(std::vector<char>& data)
+    // 返回 false 表示该段内容损坏：流读写失败、字节数不自洽或关键字段超出合法范围。
+    // 调用方不得在返回 false 后使用本对象，由调用方决定重置或报错。
+    bool DeSerialize(std::vector<char>& data)
     {
         BinaryStream binaryStream(data);
         BinaryReader ar(binaryStream);
         VisitFields(ar);
         if (topoInstDetailsOfLayerSize > HCCL_LOGIC_TOPO_LEVEL_NUM) {
-            topoInstDetailsOfLayerSize = HCCL_LOGIC_TOPO_LEVEL_NUM;
+            HCCL_ERROR(
+                "[TopoInfo][DeSerialize] implausible topoInstDetailsOfLayerSize[%u], dataSize[%zu]",
+                topoInstDetailsOfLayerSize, data.size());
+            return false;
         }
         topoInstDetailsOfLayer.resize(topoInstDetailsOfLayerSize);
         for (uint32_t idx = 0; idx < topoInstDetailsOfLayerSize; idx++) {
@@ -398,16 +403,36 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
         physicalLevels.clear();
         binaryStream >> physicalLevelNum;
         if (physicalLevelNum > PHYSICAL_LEVEL_NUM_LIMIT) {
-            HCCL_WARNING(
-                "[TopoInfo][DeSerialize] implausible physicalLevelNum[%u], drop the whole physical level section",
-                physicalLevelNum);
-            physicalLevelNum = 0;
-            return;
+            HCCL_ERROR(
+                "[TopoInfo][DeSerialize] implausible physicalLevelNum[%u], dataSize[%zu]", physicalLevelNum,
+                data.size());
+            return false;
         }
         physicalLevels.resize(physicalLevelNum);
         for (auto& level : physicalLevels) {
             VisitPhysicalLevel(ar, level);
         }
+        // 流必须恰好读尽：截断/半解析会让 readPos 提前或失效，尾随字节则留下未消费数据。
+        size_t readPos = binaryStream.GetReadPos();
+        if (readPos == BinaryStream::INVALID_POS || readPos != data.size()) {
+            HCCL_ERROR(
+                "[TopoInfo][DeSerialize] topoInfo is truncated or has trailing bytes, readPos[%zu], dataSize[%zu]",
+                readPos, data.size());
+            return false;
+        }
+        // 结构完整不代表内容可信：长度字段仍可能自洽而标量被清零/覆盖。校验拓扑字段间的基本
+        // 不变式，避免半解析出的脏值被上层当作有效拓扑使用。
+        if (userRankSize == 0 || userRank >= userRankSize || topoLevelNums == 0
+            || topoLevelNums > netLayerDetails.netLayerNum || netLayerDetails.netLayerNum == 0
+            || netLayerDetails.netLayerNum > HCCL_LOGIC_TOPO_LEVEL_NUM
+            || netLayerDetails.netLayers.size() != netLayerDetails.netLayerNum) {
+            HCCL_ERROR(
+                "[TopoInfo][DeSerialize] implausible topoInfo content, userRank[%u], userRankSize[%u], "
+                "topoLevelNums[%u], netLayerNum[%u], netLayers.size[%zu]",
+                userRank, userRankSize, topoLevelNums, netLayerDetails.netLayerNum, netLayerDetails.netLayers.size());
+            return false;
+        }
+        return true;
     }
 };
 
@@ -602,6 +627,8 @@ struct AlgResourceCtxSerializable {
     ParallelChannelPortInfo parallelPortInfo; // CCU模式下资源阶段采集的端口信息
     u32 topoInfoSeqSize = 0;
     TopoInfoWithNetLayerDetails topoInfo; // 提取的拓扑信息
+    // DeSerialize 是否成功。失败时 topoInfo 为默认值，调用方须检查后再使用；该标志不参与序列化
+    bool deserializeValid = false;
 
     // 该上下文只在同一套HCCL host/device组件内生成、缓存和消费，不作为跨版本持久化协议。
     std::vector<char> Serialize()
@@ -646,6 +673,7 @@ struct AlgResourceCtxSerializable {
 
     void DeSerialize(std::vector<char>& data)
     {
+        deserializeValid = false;
         BinaryStream binaryStream(data);
 
         binaryStream >> algType;
@@ -675,11 +703,32 @@ struct AlgResourceCtxSerializable {
         binaryStream >> dieSplitRatio;
         binaryStream >> parallelPortInfo;
         binaryStream >> topoInfoSeqSize;
+        // topoInfo 段由 Serialize 固定追加在流尾：长度必须非 0 且恰好等于头部之后的剩余字节数，
+        // 否则说明 ctx 损坏（长度越界、被截断或与头部字段重叠）。
+        size_t headerLen = binaryStream.GetReadPos();
+        if (headerLen == BinaryStream::INVALID_POS || headerLen > data.size() || topoInfoSeqSize == 0
+            || static_cast<size_t>(topoInfoSeqSize) != data.size() - headerLen) {
+            HCCL_ERROR(
+                "[AlgResourceCtxSerializable][DeSerialize] invalid topoInfoSeqSize[%u], dataSize[%zu], "
+                "headerLen[%zu], drop the topoInfo section",
+                topoInfoSeqSize, data.size(), headerLen);
+            topoInfo = TopoInfoWithNetLayerDetails{};
+            return;
+        }
         size_t startPos = data.size() - topoInfoSeqSize;
         std::vector<char> tailData(data.begin() + startPos, data.end());
         TopoInfoWithNetLayerDetails topoTemp;
-        topoTemp.DeSerialize(tailData);
+        // 长度自洽只说明包络合法；topoInfo 段内部仍可能半解析，必须结合内容级校验结果才能置位成功标志。
+        if (!topoTemp.DeSerialize(tailData)) {
+            HCCL_ERROR(
+                "[AlgResourceCtxSerializable][DeSerialize] failed to deserialize topoInfo section, "
+                "topoInfoSeqSize[%u], dataSize[%zu]",
+                topoInfoSeqSize, data.size());
+            topoInfo = TopoInfoWithNetLayerDetails{};
+            return;
+        }
         topoInfo = std::move(topoTemp);
+        deserializeValid = true;
     }
 };
 

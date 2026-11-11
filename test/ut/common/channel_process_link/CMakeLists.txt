@@ -61,6 +61,10 @@ add_executable(channel_process_link_test
     channel_process_link_test.cc
     stub/hcomm_stub.cc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/channel/channel.cc
+    # 用例直接调用 CalcChannelRequestNhrMultiJettyUbx，该函数引用以下两个实现；
+    # 其余未引用函数由 -ffunction-sections + --gc-sections 裁剪。
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/channel/channel_request.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/template_utils.cc
     ${PROJECT_SOURCE_DIR}/src/common/log.cc
 )
 

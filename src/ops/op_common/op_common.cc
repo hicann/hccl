@@ -1152,6 +1152,10 @@ HcclResult HcclExecOp(
             char* ctx = static_cast<char*>(resCtxSequence);
             std::vector<char> seq(ctx, ctx + param.ctxSize);
             resCtxHost->DeSerialize(seq);
+            CHK_PRT_RET(
+                !resCtxHost->deserializeValid,
+                HCCL_ERROR("[%s] failed to deserialize reused resCtx, ctxSize[%llu].", __func__, param.ctxSize),
+                HCCL_E_INTERNAL);
             // 覆盖主流
             ThreadHandle thread;
             CHK_RET(HcclThreadAcquireWithStream(
@@ -1176,6 +1180,10 @@ HcclResult HcclExecOp(
             char* ctx = static_cast<char*>(resCtxSequence);
             std::vector<char> seq(ctx, ctx + param.ctxSize);
             resCtxHost->DeSerialize(seq);
+            CHK_PRT_RET(
+                !resCtxHost->deserializeValid,
+                HCCL_ERROR("[%s] failed to deserialize reused resCtx, ctxSize[%llu].", __func__, param.ctxSize),
+                HCCL_E_INTERNAL);
         }
         CHK_RET(executor->Orchestrate(param, *resCtxHost));
     }
@@ -1508,7 +1516,10 @@ HcclResult HcclCalcTopoInfo(HcclComm comm, OpParam& param, std::unique_ptr<TopoI
     char* ctxTemp = reinterpret_cast<char*>(ctx);
     std::vector<char> seq(ctxTemp, ctxTemp + size);
     TopoInfoWithNetLayerDetails topoInfoTemp;
-    topoInfoTemp.DeSerialize(seq);
+    if (!topoInfoTemp.DeSerialize(seq)) {
+        HCCL_ERROR("[%s] failed to deserialize cached topoInfo, ctxSize[%llu].", __func__, size);
+        return HCCL_E_INTERNAL;
+    }
     topoInfo = std::make_unique<TopoInfoWithNetLayerDetails>(std::move(topoInfoTemp));
     HCCL_INFO("[%s] HcclCalcTopoInfo end.", __func__);
     return HCCL_SUCCESS;
@@ -1907,6 +1918,10 @@ HcclResult GetAlgResAICPU(
         std::vector<char> cachedData(static_cast<char*>(hostCtxPtr), static_cast<char*>(hostCtxPtr) + hostCtxSize);
         AlgResourceCtxSerializable hostCtxObj;
         hostCtxObj.DeSerialize(cachedData);
+        CHK_PRT_RET(
+            !hostCtxObj.deserializeValid,
+            HCCL_ERROR("[%s] failed to deserialize cached host ctx, hostCtxSize[%llu].", __func__, hostCtxSize),
+            HCCL_E_INTERNAL);
         CompReqChannelWithExistChannel(hostCtxObj.channels, resRequest);
         if (resRequest.channels[0].size() == 0) {
             return ReuseCachedDeviceCtx(comm, param, resCtxSequence, ctxSize);

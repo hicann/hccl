@@ -23,6 +23,7 @@ namespace ops_hccl {
 class BinaryStream {
 public:
     static constexpr std::ios_base::openmode DEFAULT_IOS_MODE = std::ios_base::in | std::ios_base::out;
+    static constexpr size_t INVALID_POS = static_cast<size_t>(-1);
 
     explicit BinaryStream(std::ios_base::openmode mode = DEFAULT_IOS_MODE) : stream(mode | std::ios_base::binary) {};
 
@@ -70,10 +71,17 @@ public:
     // 对string的读取函数
     BinaryStream& operator>>(std::string& s)
     {
-        size_t size;
+        size_t size = 0;
         stream.read(reinterpret_cast<char*>(&size), sizeof(size)); // 先从流中读取字符串长度
-        s.resize(size);                                            // 为string分配足够空间
+        if (!stream || !IsLengthValid(size)) {
+            s.clear(); // 流已失效或长度不可信，按空串处理，避免按脏长度分配
+            return *this;
+        }
+        s.resize(size);           // 为string分配足够空间
         stream.read(&s[0], size); // 直接读取数据到string的缓冲区中，无需再分配内存
+        if (!stream) {
+            s.clear();
+        }
         return *this;
     }
 
@@ -81,11 +89,18 @@ public:
     template <typename T>
     BinaryStream& operator>>(std::vector<T>& vec)
     {
-        size_t size;
+        size_t size = 0;
         *this >> size;
+        if (!stream || !IsLengthValid(size)) {
+            vec.clear(); // 流已失效或长度不可信，按空 vector 处理，避免按脏长度分配
+            return *this;
+        }
         vec.resize(size);
         for (auto& elem : vec) {
             *this >> elem;
+            if (!stream) {
+                break;
+            }
         }
         return *this;
     }
@@ -107,13 +122,22 @@ public:
     template <typename T1, typename T2>
     BinaryStream& operator>>(std::map<T1, T2>& m)
     {
-        size_t size;
+        size_t size = 0;
         *this >> size;
+        if (!stream) {
+            return *this;
+        }
         for (size_t i = 0; i < size; i++) {
-            T1 key;
+            T1 key{};
             *this >> key;
-            T2 value;
+            if (!stream) {
+                break;
+            }
+            T2 value{};
             *this >> value;
+            if (!stream) {
+                break;
+            }
             m[key] = value;
         }
         return *this;
@@ -133,6 +157,16 @@ public:
             vec.push_back(c);
         });
         stream.seekg(originalPos); // 恢复原始位置
+    }
+
+    // 当前读位置（已消费字节数）。流已失效时返回 INVALID_POS，调用方可据此判错。
+    size_t GetReadPos()
+    {
+        std::streampos pos = stream.tellg();
+        if (pos == std::streampos(-1)) {
+            return INVALID_POS;
+        }
+        return static_cast<size_t>(pos);
     }
 
     std::uint64_t GetSize() { return stream.str().size(); }
@@ -157,6 +191,19 @@ public:
     void Clear() { stream.clear(); }
 
 private:
+    // 长度字段取自外部数据，必须在按长度分配前校验：流中每个字符/元素至少占 1 字节，
+    // 合法长度不可能超过剩余可读字节数。长度被损坏为极大值时在此置 failbit，调用方
+    // 的 !stream 判断随即走清空/报错路径，避免 resize 抛 length_error/bad_alloc 终止进程。
+    bool IsLengthValid(size_t length)
+    {
+        std::streamsize avail = stream.rdbuf()->in_avail();
+        if (!stream || avail < 0 || length > static_cast<size_t>(avail)) {
+            stream.setstate(std::ios_base::failbit);
+            return false;
+        }
+        return true;
+    }
+
     std::stringstream stream;
 };
 

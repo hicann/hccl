@@ -100,6 +100,12 @@ HcclResult InsRecvExecutor::Orchestrate(const OpParam& param, const AlgResourceC
     maxTmpMemSize_ = resCtx.cclMem.size;
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
+    // 防御性校验：非法 dataType 会越界查表且 dataTypeSize_ 可能为 0，
+    // 后续 dataSize_ 计算与 maxLoopTransSize_ / dataTypeSize_ 除法均不可信。
+    CHK_PRT_RET(
+        !IsValidHcclDataType(dataType_),
+        HCCL_ERROR("[InsRecvExecutor][%s] invalid dataType[%d]", __func__, static_cast<int>(dataType_)),
+        HcclResult::HCCL_E_PARA);
     dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
     dataSize_ = dataCount_ * dataTypeSize_;
 
@@ -144,6 +150,12 @@ HcclResult InsRecvExecutor::OrchestrateWithThread(
     maxTmpMemSize_ = resCtx.cclMem.size;
     dataCount_ = param.DataDes.count;
     dataType_ = param.DataDes.dataType;
+    // 防御性校验：非法 dataType 会越界查表且 dataTypeSize_ 可能为 0，
+    // 后续 dataSize_ 计算与 maxLoopTransSize_ / dataTypeSize_ 除法均不可信。
+    CHK_PRT_RET(
+        !IsValidHcclDataType(dataType_),
+        HCCL_ERROR("[InsRecvExecutor][%s] invalid dataType[%d]", __func__, static_cast<int>(dataType_)),
+        HcclResult::HCCL_E_PARA);
     dataTypeSize_ = static_cast<u64>(DATATYPE_SIZE_TABLE[dataType_]);
     dataSize_ = dataCount_ * dataTypeSize_;
 
@@ -219,6 +231,12 @@ HcclResult InsRecvExecutor::OrchestrateOpbase(
     maxLoopTransSize_ = std::min<u64>(UB_MAX_DATA_SIZE, maxTmpMemSize_);
     // 一次搬运最大数据个数
     maxLoopTransCount_ = maxLoopTransSize_ / dataTypeSize_;
+    CHK_PRT_RET(
+        maxLoopTransCount_ == 0,
+        HCCL_ERROR(
+            "[InsRecvExecutor][OrchestrateOpbase] maxLoopTransCount is 0, maxLoopTransSize[%llu] dataTypeSize[%llu]",
+            maxLoopTransSize_, dataTypeSize_),
+        HcclResult::HCCL_E_INTERNAL);
 
     u64 dataCountToRecv = dataCount_;
     u64 currentOffset = 0;

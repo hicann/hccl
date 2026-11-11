@@ -57,7 +57,6 @@ HcclResult HcclKfcFreeOpArgs(void* opArgs)
     CHK_PTR_NULL(opArgs);
 
     free(opArgs);
-    opArgs = nullptr;
 
     return HCCL_SUCCESS;
 }

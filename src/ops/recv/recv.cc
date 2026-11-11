@@ -31,6 +31,10 @@ HcclResult HcclRecvNext(
     std::string tag;
     // 参数获取和校验
     CHK_PRT_RET(count == 0, HCCL_WARNING("[HcclRecv] input count is 0, return recv success"), HcclResult::HCCL_SUCCESS);
+    RPT_INPUT_ERR(
+        stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclRecv", "nullptr", "stream", "non-null pointer"}));
+    CHK_PTR_NULL(stream);
     CHK_RET(GetAndCheckRecvPara(comm, recvBuf, count, dataType, srcRank, rankSize, userRank, tag));
 
     /* 接口交互信息日志 */
@@ -81,15 +85,20 @@ HcclResult HcclRecvGraphMode(
     CHK_RET(InitEnvConfig());
     u32 rankSize = INVALID_VALUE_RANKSIZE;
     u32 userRank = INVALID_VALUE_RANKID;
-    std::string opTag(tag ? tag : "");
+    // tag 判空必须先于 count==0 短路，否则 count==0 时非法 tag 会被静默放过
+    CHK_PTR_NULL(tag);
+    std::string opTag(tag);
     // 参数获取和校验
     CHK_PRT_RET(
         count == 0, HCCL_WARNING("[HcclRecvGraphMode] input count is 0, return recv success"),
         HcclResult::HCCL_SUCCESS);
+    RPT_INPUT_ERR(
+        stream == nullptr, "EI0003", std::vector<std::string>({"ccl_op", "value", "parameter", "expect"}),
+        std::vector<std::string>({"HcclRecvGraphMode", "nullptr", "stream", "non-null pointer"}));
+    CHK_PTR_NULL(stream);
     CHK_RET(GetAndCheckRecvPara(comm, recvBuf, count, dataType, srcRank, rankSize, userRank, opTag));
 
     // 拼装ResPackGraphMode
-    CHK_PTR_NULL(tag);
     ResPackGraphMode resPack;
     // 设置tag
     auto fillTagRet = strncpy_s(resPack.tag, sizeof(resPack.tag), tag, sizeof(resPack.tag) - 1);

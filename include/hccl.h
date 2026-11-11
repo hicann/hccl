@@ -152,6 +152,8 @@ extern HcclResult HcclAllGatherV(
  * @param destRank An integer(u32) identifying the destination rank.
  * @param comm A pointer identifying the communication resource based on.
  * @param stream A pointer identifying the stream information.
+ * @note On Ascend 950PR/950DT products, destRank equal to the current rank is not supported, and
+ * HCCL_E_NOT_SUPPORT is returned.
  * @return HcclResult
  */
 extern HcclResult
@@ -166,6 +168,8 @@ HcclSend(void* sendBuf, uint64_t count, HcclDataType dataType, uint32_t destRank
  * @param srcRank An integer(u32) identifying the source rank.
  * @param comm A pointer identifying the communication resource based on.
  * @param stream A pointer identifying the stream information.
+ * @note On Ascend 950PR/950DT products, srcRank equal to the current rank is not supported, and
+ * HCCL_E_NOT_SUPPORT is returned.
  * @return HcclResult
  */
 extern HcclResult

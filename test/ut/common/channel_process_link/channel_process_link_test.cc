@@ -90,6 +90,20 @@ TEST_F(ProcessLinksForChannelTest, MultiLayerFallbackToHigherLayerSucceeds)
     EXPECT_EQ(channels[0].remoteRank, REMOTE_RANK);
 }
 
+// 防御性校验：非法dataType在入口被拦截，不进入DATATYPE_SIZE_TABLE越界查表
+TEST_F(ProcessLinksForChannelTest, CalcChannelRequestNhrMultiJettyUbxRejectsInvalidDataType)
+{
+    ops_hccl::OpParam param{};
+    param.DataDes.dataType = HCCL_DATA_TYPE_RESERVED;
+    ops_hccl::TopoInfoWithNetLayerDetails topoInfo{};
+    std::vector<std::vector<u32>> subcommInfo;
+    std::vector<HcclChannelDesc> channels;
+    // 白名单校验先于解引用comm/topoInfo，nullptr不影响本用例
+    EXPECT_EQ(
+        ops_hccl::CalcChannelRequestNhrMultiJettyUbx(nullptr, param, &topoInfo, subcommInfo, channels, 0), HCCL_E_PARA);
+    EXPECT_TRUE(channels.empty());
+}
+
 // channels已含前序对端条目时：判定基准为增量（channelCountBefore）而非绝对非空，
 // 第二个对端无link仍报错且前序条目保持不变，锁定delta判定语义不误报
 TEST_F(ProcessLinksForChannelTest, PreexistingEntriesNotMisreportedWhenNextPeerNoLink)

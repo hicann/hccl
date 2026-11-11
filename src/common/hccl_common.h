@@ -66,6 +66,15 @@ const std::set<HcclDataType> VALID_HCCL_DATA_TYPES{
     HcclDataType::HCCL_DATA_TYPE_INT128,  HcclDataType::HCCL_DATA_TYPE_HIF8,   HcclDataType::HCCL_DATA_TYPE_FP8E4M3,
     HcclDataType::HCCL_DATA_TYPE_FP8E5M2, HcclDataType::HCCL_DATA_TYPE_FP8E8M0};
 
+// dataType合法集合判定，与产品侧HcomCheckDataType口径一致（排除RESERVED与保留gap）。
+// 不得改为“上界+size表非0”的就地判定：gap 13在size表中非0，且负值参与比较/查表会越界。
+// 使用internal linkage：本函数引用同为internal linkage的VALID_HCCL_DATA_TYPES，
+// 且部分UT以C++14编译包含本头文件的源文件。
+static inline bool IsValidHcclDataType(HcclDataType type) noexcept
+{
+    return VALID_HCCL_DATA_TYPES.find(type) != VALID_HCCL_DATA_TYPES.end();
+}
+
 // 返回const char*，避免string和map查找开销
 inline const char* GetHcclDataTypeStr(HcclDataType type) noexcept
 {

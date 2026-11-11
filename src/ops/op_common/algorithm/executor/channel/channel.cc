@@ -1240,6 +1240,14 @@ HcclResult CalcChannelRequestNhrMultiJettyUbx(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels, u64 isoThreshold)
 {
+    // 防御性校验：入口层已校验 dataType，此处避免非法值越界查表/作除数。
+    // channel.cc 同时编入 AICPU 侧，不能直接复用 host 侧 param_check.cc 的 HcomCheckDataType，
+    // 故使用与其判定一致的合法值集合 VALID_HCCL_DATA_TYPES（排除 RESERVED 与保留 gap）。
+    CHK_PRT_RET(
+        VALID_HCCL_DATA_TYPES.find(param.DataDes.dataType) == VALID_HCCL_DATA_TYPES.end(),
+        HCCL_ERROR(
+            "[CalcChannelRequestNhrMultiJettyUbx] invalid dataType[%d]", static_cast<int>(param.DataDes.dataType)),
+        HCCL_E_PARA);
     u64 perDataSize = DATATYPE_SIZE_TABLE[param.DataDes.dataType];
     u64 dataSize = param.DataDes.count * perDataSize;
     bool isIsolation = !(IsAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH) || dataSize <= isoThreshold);

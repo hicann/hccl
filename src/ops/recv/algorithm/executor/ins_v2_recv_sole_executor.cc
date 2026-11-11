@@ -109,9 +109,15 @@ InsV2RecvSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const A
     myRank_ = resCtx.topoInfo.userRank;
     sendRank_ = param.sendRecvRemoteRank;
     dataCount_ = param.DataDes.count;
-    dataTypeSize_ = HCCL_SIZE_TABLE[param.DataDes.dataType];
-    dataSize_ = dataCount_ * dataTypeSize_;
     dataType_ = param.DataDes.dataType;
+    // 防御性校验：非法 dataType 会越界查表且 dataTypeSize_ 可能为 0，
+    // 后续 maxTmpMemSize_ / dataTypeSize_ 与 transferSize / dataTypeSize_ 除法均不可信。
+    CHK_PRT_RET(
+        !IsValidHcclDataType(dataType_),
+        HCCL_ERROR("[InsV2RecvSoleExecutor][%s] invalid dataType[%d]", __func__, static_cast<int>(dataType_)),
+        HCCL_E_PARA);
+    dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
+    dataSize_ = dataCount_ * dataTypeSize_;
     if (resCtx.threads.empty()) {
         HCCL_ERROR("[InsV2RecvSoleExecutor][Orchestrate] threads is empty!");
         return HCCL_E_INTERNAL;
@@ -160,6 +166,12 @@ InsV2RecvSoleExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const A
     maxTmpMemSize_ = resCtx.cclMem.size;
     u64 resDataSize = dataSize_;
     u64 maxRoundTransferSize = (maxTmpMemSize_ / dataTypeSize_) * dataTypeSize_;
+    CHK_PRT_RET(
+        maxRoundTransferSize == 0,
+        HCCL_ERROR(
+            "[InsV2RecvSoleExecutor][Orchestrate] maxRoundTransferSize is 0, maxTmpMemSize[%llu] dataTypeSize[%llu]",
+            maxTmpMemSize_, dataTypeSize_),
+        HCCL_E_INTERNAL);
     while (resDataSize > 0) {
         u64 transferSize = resDataSize > maxTmpMemSize_ ? maxRoundTransferSize : resDataSize;
         tempAlgParams.sliceSize = transferSize;

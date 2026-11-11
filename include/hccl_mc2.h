@@ -28,6 +28,9 @@ extern HcclResult HcclKfcAllocOpArgs(void** opArgs);
 /**
  * @brief  Free HcclOpArgs memory
  * @param opArgs A pointer to the HcclOpArgs memory.
+ * @note   The pointer is passed by value, so this API cannot clear the caller's pointer.
+ *         The caller MUST set its own copy to nullptr after this call to avoid double free
+ *         or dangling pointer.
  * @return HcclResult
  */
 extern HcclResult HcclKfcFreeOpArgs(void* opArgs);

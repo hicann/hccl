@@ -233,6 +233,11 @@ std::unique_ptr<AlgResourceCtxSerializable> DeserializeResCtx(const OpParam* par
     char* ctx = static_cast<char*>(param->resCtx);
     std::vector<char> seq(ctx, ctx + param->ctxSize);
     resCtx->DeSerialize(seq);
+    if (!resCtx->deserializeValid) {
+        HCCL_ERROR(
+            "[%s] failed to deserialize resCtx, algTag[%s], ctxSize[%llu].", __func__, param->algTag, param->ctxSize);
+        return nullptr;
+    }
     return resCtx;
 }
 } // namespace
@@ -462,6 +467,9 @@ static const AlgResourceCtxSerializable* GetResCtxWithCache(
     bool isStaleCache = (cachedResCtxHolder != nullptr);
     // 未命中或者通信域恢复后缓存失效，进行反序列化并存入缓存
     resCtx = DeserializeResCtx(param);
+    if (resCtx == nullptr) {
+        return nullptr;
+    }
     g_cacheManager.Put(param->algTag, *resCtx, param->commName);
     if (isStaleCache) {
         HCCL_INFO(
@@ -699,6 +707,10 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
             resCtx = DeserializeResCtx(param);
             resCtxPtr = resCtx.get();
         }
+        if (resCtxPtr == nullptr) {
+            HCCL_ERROR("failed to deserialize resCtx, tag is %s.", param->algTag);
+            return 1;
+        }
 
         if (RestoreVarDataByOpType(param, resCtxPtr) != 0) {
             return 1;
@@ -907,6 +919,10 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
 
         // 通过缓存实现反序列化优化
         resCtxPtr = GetResCtxWithCache(param, cachedResCtxHolder, resCtx);
+        if (resCtxPtr == nullptr) {
+            HCCL_ERROR("failed to deserialize resCtx, tag is %s.", param->algTag);
+            return 1;
+        }
 
         // 获取Device测主thread
         ThreadHandle thread = resCtxPtr->threads[0];
@@ -1104,6 +1120,10 @@ extern "C" unsigned int HcclLaunchAicpuKernelA3(OpParam* param)
         } else {
             resCtx = DeserializeResCtx(param);
             resCtxPtr = resCtx.get();
+        }
+        if (resCtxPtr == nullptr) {
+            HCCL_ERROR("failed to deserialize resCtx, tag is %s.", param->algTag);
+            return 1;
         }
 
         if (RestoreVarDataByOpType(param, resCtxPtr) != 0) {
