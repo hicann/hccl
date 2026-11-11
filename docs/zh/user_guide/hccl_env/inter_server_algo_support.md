@@ -140,12 +140,6 @@
   | AlltoAllV | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 无 |
   | AlltoAllVC | int8、int16、int32、int64、float16、float32、bfp16 | - 单算子模式<br>  - 图模式（Ascend IR） | 无 |
 
-- **CP算法**
-
-  | 集合通信算子 | 数据类型 | 网络运行模式 | 不支持算子处理方法 |
-  | --- | --- | --- | --- |
-  | AlltoAllV | int8、int16、int32、int64、float16、float32、bfp16 | 单算子模式 | 自动选择为pairwise算法 |
-
 <cann-filter npu-type="910">
 
 ## Atlas 训练系列产品
