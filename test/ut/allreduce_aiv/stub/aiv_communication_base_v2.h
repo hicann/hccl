@@ -15,7 +15,7 @@
 #include "aiv_defines.h"
 
 namespace allreduce_aiv_test {
-enum class EventKind { COPY, REDUCE, RECORD, WAIT };
+enum class EventKind { COPY, REDUCE, RECORD, WAIT, SYNC_ALL };
 struct Event {
     EventKind kind;
     uint64_t destination = 0;
@@ -87,6 +87,11 @@ public:
     {
         allreduce_aiv_test::currentTrace->events.push_back(
             {allreduce_aiv_test::EventKind::WAIT, 0, 0, 0, target, slot, tag});
+    }
+    template <bool>
+    void SyncAll()
+    {
+        allreduce_aiv_test::currentTrace->events.push_back({allreduce_aiv_test::EventKind::SYNC_ALL});
     }
     bool IsFirstOP(uint32_t) { return true; }
     bool IsIdleCore() const { return blockIdx_ >= numBlocks_; }

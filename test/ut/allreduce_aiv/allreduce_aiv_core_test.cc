@@ -143,8 +143,9 @@ namespace {
                                  << " elementBytes=" << sizeof(T));
         const uint64_t bytes = count * sizeof(T);
         const uint32_t launched = physicalBlocks == 0 ? blocks : physicalBlocks;
+        const bool smallCore = blocks < 2 * ranks;
         uint64_t flagLimit = 3 * ranks;
-        if (blocks >= 2 * ranks) {
+        if (!smallCore) {
             const auto allocation = Prepare<T>(ranks, blocks, count);
             flagLimit = allocation.allGatherFlagOffset_ + allocation.sliceNum;
         }
@@ -158,8 +159,13 @@ namespace {
                     bytes, bytes, 1, 0, 0, blocks, true, nullptr, nullptr, nullptr, 0, false, true);
                 EXPECT_EQ(currentTrace->firstBarriers, 1u);
                 EXPECT_EQ(currentTrace->endBarriers, 1u);
+                const auto& events = currentTrace->events;
+                const auto syncCount = std::count_if(events.begin(), events.end(), [](const Event& event) {
+                    return event.kind == EventKind::SYNC_ALL;
+                });
+                EXPECT_EQ(syncCount, smallCore ? 1 : 0);
                 if (block >= blocks) {
-                    EXPECT_TRUE(currentTrace->events.empty());
+                    EXPECT_EQ(events.size(), smallCore ? 1u : 0u);
                 }
             }
         }
@@ -184,6 +190,26 @@ namespace {
                     continue;
                 }
                 const auto& event = trace.events[positions[index]];
+                if (event.kind == EventKind::SYNC_ALL) {
+                    // Release the barrier only when every launched core on this rank has arrived.
+                    const size_t first = static_cast<size_t>(trace.rank) * launched;
+                    const size_t end = first + launched;
+                    size_t peer = first;
+                    for (; peer < end; ++peer) {
+                        const auto& events = traces[peer].events;
+                        if (positions[peer] == events.size() || events[positions[peer]].kind != EventKind::SYNC_ALL) {
+                            break;
+                        }
+                    }
+                    if (peer == end) {
+                        for (size_t core = first; core < end; ++core) {
+                            ++positions[core];
+                        }
+                        remaining -= launched;
+                        progressed = true;
+                    }
+                    continue;
+                }
                 const Flag flag{event.target, event.slot};
                 if (event.kind == EventKind::WAIT || event.kind == EventKind::RECORD) {
                     EXPECT_LT(event.target, ranks);
@@ -202,6 +228,11 @@ namespace {
                         ASSERT_GE(event.destination, Address(OUTPUT_BASE, trace.rank));
                         ASSERT_LE(event.destination + event.bytes, Address(OUTPUT_BASE, trace.rank) + bytes)
                             << "copy writes past the output guard";
+                    } else if (smallCore) {
+                        const uint64_t localCcl = Address(CCL_BASE, trace.rank);
+                        ASSERT_GE(event.destination, localCcl) << "few-core fallback writes data to a peer";
+                        ASSERT_LE(event.destination + event.bytes, localCcl + RANK_STRIDE)
+                            << "few-core fallback writes data to a peer";
                     }
                     memory.Transfer(event);
                 }
@@ -350,8 +381,10 @@ namespace {
         }
     }
 
-    TEST(AllReduceAivCoreTest, SmallCoreFallbackSkipsExtraPhysicalCores)
+    TEST(AllReduceAivCoreTest, SmallCoreFallbackUsesPullWithExtraPhysicalCores)
     {
+        // The 16-rank, 256-byte FP32 case previously exposed incorrect cross-rank writes.
+        RunScenario<float>(16, 16, 64, 48);
         // Cover one active core, rankSize cores, and the limit just below the normal-path boundary.
         const uint32_t cases[][2] = {{1, 1}, {8, 1}, {8, 8}, {8, 15}, {19, 36}, {48, 36}};
         for (const auto& scenario : cases) {

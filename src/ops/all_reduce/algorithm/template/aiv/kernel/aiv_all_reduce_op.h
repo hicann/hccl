@@ -12,7 +12,6 @@
 #define AIV_ALL_REDUCE_OP_H
 
 #include "aiv_communication_base_v2.h"
-#include "aiv_all_reduce_mesh_1d_twoshot.h"
 #include "aiv_all_reduce_mesh_1d_twoshot_write.h"
 #include "aiv_all_reduce_mesh_1d_oneshot.h"
 
@@ -32,7 +31,7 @@ using namespace AscendC;
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DECL(type) \
     extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF)
 
-// isWrite为host下发的运行期参数：true走写语义实现（少核场景沿用原少核路径），false保持原读语义实现。
+// isWrite为host下发的运行期参数，写语义入口在少核时转发给读语义TwoShot。
 #define AIV_ALLREDUCE_MESH1D_TWOSHOT_KERNEL_DEF(type)                                       \
     extern "C" __aicore__ void aiv_allreduce_mesh1d_twoshot_##type##_inner(KERNEL_ARGS_DEF) \
     {                                                                                       \

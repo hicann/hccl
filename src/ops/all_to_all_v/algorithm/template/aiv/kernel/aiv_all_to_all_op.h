@@ -12,14 +12,13 @@
 #define AIV_ALL_TO_ALL_OP_H
 
 #include "aiv_communication_base_v2.h"
-#include "aiv_all_to_all_mesh_1D.h"
 #include "aiv_all_to_all_mesh_1D_write.h"
 using namespace AscendC;
 
 #if defined(HCCL_AIV_ACLGRAPH_SK)
 #define AIV_ALL_TO_ALL_KERNEL_DECL(type) extern "C" __aicore__ void aiv_alltoall_##type##_inner(KERNEL_ARGS_DEF)
 
-// isWrite为host下发的运行期参数：true走写语义实现，false保持原有读语义实现。
+// isWrite由host下发，写语义入口在少核时转发给读语义Mesh1D。
 #define AIV_ALL_TO_ALL_KERNEL_DEF(type)                                     \
     extern "C" __aicore__ void aiv_alltoall_##type##_inner(KERNEL_ARGS_DEF) \
     {                                                                       \

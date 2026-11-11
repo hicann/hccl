@@ -8,13 +8,13 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  */
 
-#include "aiv_communication_base_v2.h"
+#include "aiv_all_reduce_mesh_1d_twoshot.h"
 
 using namespace AscendC;
 
 // 基于aiv_all_reduce_mesh_1d_twoshot.h，producer逐片直写对端归约区并发布就绪通知。
 // RS根据发送字节数和归约粒度，为每个目的rank选择1个或2个producer。
-// 每个原分片由一个consumer归约并直接发布完成通知，AG保留全部回拷核；少核路径原样保留。
+// 每个原分片由一个consumer归约并直接发布完成通知，AG保留全部回拷核。少核复用读语义TwoShot。
 // 本文件仅供单算子写语义入口使用，图模式仍使用原TwoShot内核。
 template <typename T>
 class AivAllReduceMesh1DTwoShotWrite : public AivCommBase {
@@ -264,112 +264,6 @@ public:
         }
     }
 
-    __aicore__ inline uint64_t RoundUPAiv(uint64_t dividend, uint64_t divisor)
-    {
-        return dividend / divisor + ((dividend % divisor != 0) ? 1 : 0);
-    }
-
-    __aicore__ inline void SmallCoreReduceScatter(uint32_t sliceId)
-    {
-        uint64_t dataCount = len_;
-        rankChunkStride = RoundUPAiv(dataCount, rankSize_);
-        ipc_reduce_flag_offset = rankSize_;
-        curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
-
-        // scatter（SK空闲核跳过，避免与忙核重复写数据和flag）
-        if (!IsIdleCore()) {
-            for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-                targetRank = blockIdx_ + i * numBlocks_;
-                rankChunkSize
-                    = ((targetRank + 1) * rankChunkStride <= dataCount) ?
-                          rankChunkStride :
-                          (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-
-                if (rankChunkSize > 0) {
-                    uint64_t inputOffset = input_ + (targetRank * rankChunkStride) * sizeof(T);
-                    uint64_t outputOffset
-                        = reinterpret_cast<uint64_t>(GetGmIn(targetRank)) + (rank_ * rankChunkSize) * sizeof(T);
-                    CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
-                    pipe_barrier(PIPE_ALL);
-                }
-                // set flag
-                Record(targetRank, rank_, curTag_);
-            }
-        }
-        // reduce
-        if (blockIdx_ == numBlocks_ - 1) {
-            uint64_t myRankChuckSize
-                = ((rank_ + 1) * rankChunkStride <= dataCount) ?
-                      rankChunkStride :
-                      (dataCount <= rank_ * rankChunkStride ? 0 : (dataCount - rank_ * rankChunkStride));
-            ;
-            if (myRankChuckSize > 0) {
-                // 树形折叠（与 Aicpu 保序 RunLocalReduce 同序）：累加器 = rank0 槽（myGmIn_+0，初值已是
-                // rank0），slot(dst) += slot(src) 零存储 flag 等待：源槽仅当 src >= k 时等待（[1,k)
-                // 已在作为目的槽被折入时等待过）； 目的槽仅首次被折入时等待（新目的槽只出现在第 0/1 轮）
-                uint32_t curBlocks = static_cast<uint32_t>(rankSize_);
-                uint32_t m0 = GetLargestPowerOf2LessThan(curBlocks);
-                uint32_t firstRoundDstNum = curBlocks - m0;
-                uint32_t k = (firstRoundDstNum > (m0 >> 1)) ? firstRoundDstNum : (m0 >> 1);
-                uint32_t round = 0;
-                while (curBlocks > 1) {
-                    uint32_t M = GetLargestPowerOf2LessThan(curBlocks);
-                    if (M == 0) {
-                        break;
-                    }
-                    for (uint32_t src = M; src < curBlocks; ++src) {
-                        uint32_t dst = src % M;
-                        if (src >= k) {
-                            WaitFlag(rank_, src, curTag_);
-                        }
-                        if (round == 0 || (round == 1 && dst >= firstRoundDstNum)) {
-                            WaitFlag(rank_, dst, curTag_);
-                        }
-                        // reduce
-                        uint64_t inputOffset
-                            = reinterpret_cast<uint64_t>(myGmIn_) + (src * myRankChuckSize) * sizeof(T);
-                        uint64_t outputOffset
-                            = reinterpret_cast<uint64_t>(myGmIn_) + (dst * myRankChuckSize) * sizeof(T);
-                        CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, myRankChuckSize, reduceOp_);
-                        pipe_barrier(PIPE_ALL);
-                    }
-                    curBlocks = M;
-                    ++round;
-                }
-            }
-            Record(rank_, ipc_reduce_flag_offset + 1, curTag_);
-        }
-    }
-
-    __aicore__ inline void SmallCoreAllgather()
-    {
-        uint64_t dataCount = len_;
-        // SK空闲核跳过gather，避免与忙核重复搬运
-        if (IsIdleCore()) {
-            return;
-        }
-        for (uint32_t i = 0; blockIdx_ + i * numBlocks_ < rankSize_; i++) {
-            targetRank = blockIdx_ + i * numBlocks_;
-            rankChunkSize
-                = ((targetRank + 1) * rankChunkStride <= dataCount) ?
-                      rankChunkStride :
-                      (dataCount <= targetRank * rankChunkStride ? 0 : (dataCount - targetRank * rankChunkStride));
-
-            if (rankChunkSize <= 0) {
-                return;
-            }
-
-            // waitflag
-            WaitFlag(targetRank, ipc_reduce_flag_offset + 1, curTag_);
-
-            // gather
-            uint64_t inputOffset = reinterpret_cast<uint64_t>(GetGmIn(targetRank));
-            uint64_t outputOffset = output_ + (targetRank * rankChunkStride) * sizeof(T);
-            CpGM2GM((__gm__ T*)outputOffset, (__gm__ T*)inputOffset, rankChunkSize);
-            pipe_barrier(PIPE_ALL);
-        }
-    }
-
     // 基础信息
     uint64_t coreIdx{0};
     uint64_t coreNum{0};
@@ -395,11 +289,6 @@ public:
     uint64_t getRemoteFlagOffset{0};
     uint64_t localReduceFlagOffset{0};
     uint64_t allGatherFlagOffset_{0};
-    // 少核场景
-    uint32_t targetRank;
-    uint64_t rankChunkSize;
-    uint64_t rankChunkStride;
-    uint64_t ipc_reduce_flag_offset{1024};
 
 private:
     static constexpr uint64_t MAX_PRODUCER_NUM_PER_RANK = 2;
@@ -413,17 +302,17 @@ private:
 template <typename T>
 __aicore__ inline void AivAllReduceV2Mesh1DTwoShotWrite(KERNEL_ARGS_DEF)
 {
+    // 少核统一使用读语义TwoShot的搬运和同步流程。
+    if (numBlocks < rankSize * 2) {
+        return AivAllReduceV2Mesh1DTwoShot<T>(KERNEL_ARGS_CALL);
+    }
+
     AivAllReduceMesh1DTwoShotWrite<T> op;
     op.Init(KERNEL_CLASS_INIT, true);
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();
     }
-    if (op.numBlocks_ >= rankSize * 2) {
-        op.Prepare(sliceId);
-        op.Process();
-    } else {
-        op.SmallCoreReduceScatter(sliceId);
-        op.SmallCoreAllgather();
-    }
+    op.Prepare(sliceId);
+    op.Process();
     op.BarrierAll();
 }

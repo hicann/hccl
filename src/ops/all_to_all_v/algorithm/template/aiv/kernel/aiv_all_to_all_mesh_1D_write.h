@@ -11,7 +11,7 @@
 #ifndef AIV_ALL_TO_ALL_MESH_1D_WRITE_H
 #define AIV_ALL_TO_ALL_MESH_1D_WRITE_H
 
-#include "aiv_communication_base_v2.h"
+#include "aiv_all_to_all_mesh_1D.h"
 
 using namespace AscendC;
 
@@ -30,10 +30,7 @@ public:
 
     __aicore__ inline void Process()
     {
-        if (numBlocks_ < rankSize_) {
-            // 少核场景
-            ProcessMultiRank();
-        } else if (dataSize_ <= DATA_LIMIT) {
+        if (dataSize_ <= DATA_LIMIT) {
             // 多核小数据量场景
             ProcessSmallData();
         } else {
@@ -84,44 +81,6 @@ private:
         dstOffset_ = output_ + dstRank * outputSliceStride_ + sliceOffsetSize;
         CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, sliceCount);
         pipe_barrier(PIPE_ALL);
-    }
-
-    __aicore__ inline void ProcessMultiRank()
-    {
-        // 下发核数由上层框架保证符合控核公式，算子内不校验
-        uint32_t rankNumPerCore = (rankSize_ + coreNum_ - 1) / coreNum_; // 向上取整
-
-        for (uint32_t idx = 0; idx < rankNumPerCore; ++idx) {
-            uint32_t dstRank = coreIdx_ * rankNumPerCore + idx;
-            if (dstRank >= rankSize_) {
-                break;
-            }
-
-            // PreCopy阶段
-            srcOffset_ = input_ + dstRank * inputSliceStride_;
-            dstOffset_ = reinterpret_cast<uint64_t>(myGmIn_) + dstRank * dataSize_;
-            CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
-            pipe_barrier(PIPE_ALL);
-
-            uint64_t setFlagIdx = dstRank;
-            Record(rank_, setFlagIdx, curTag_); // 按照数据源rank编排flag的偏移量
-        }
-
-        for (uint32_t idx = 0; idx < rankNumPerCore; ++idx) {
-            uint32_t dstRank = coreIdx_ * rankNumPerCore + idx;
-            if (dstRank >= rankSize_) {
-                break;
-            }
-
-            // ReadRemote阶段
-            uint64_t waitFlagIdx = rank_;
-            WaitFlag(dstRank, waitFlagIdx, curTag_);
-
-            srcOffset_ = reinterpret_cast<uint64_t>(GetGmIn(dstRank)) + rank_ * dataSize_;
-            dstOffset_ = output_ + dstRank * outputSliceStride_;
-            CpGM2GM((__gm__ T*)dstOffset_, (__gm__ T*)srcOffset_, len_);
-            pipe_barrier(PIPE_ALL);
-        }
     }
 
     __aicore__ inline void ProcessSmallData()
@@ -184,6 +143,11 @@ private:
 template <typename T>
 __aicore__ inline void AivAlltoAllV2Mesh1DWrite(KERNEL_ARGS_DEF)
 {
+    // 少核统一使用读语义的预拷贝、远端读和同步流程。
+    if (numBlocks < rankSize) {
+        return AivAlltoAllV2Mesh1D<T>(KERNEL_ARGS_CALL);
+    }
+
     bool pingpong = false;
     if (len * sizeof(T) <= DATA_LIMIT && rankSize * len * sizeof(T) <= PINGPONG_TOTAL_DATA_LIMIT) {
         pingpong = true;
