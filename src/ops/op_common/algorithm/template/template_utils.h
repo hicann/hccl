@@ -61,7 +61,9 @@ struct DataSlice {
     DataSlice(void* addr, u64 offset, u64 size, u64 count) : addr_(addr), offset_(offset), size_(size), count_(count)
     {
         if (count > 0 && size == 0) {
-            HCCL_ERROR("[DataSlice] invalid params: addr=%p, offset=%lu, size=0, count=%lu.", addr, offset, count);
+            HCCL_WARNING(
+                "[DataSlice] size=0 while count>0, treated as empty slice: addr=%p, offset=%lu, count=%lu.", addr,
+                offset, count);
         }
     }
 
