@@ -48,6 +48,7 @@ add_subdirectory(reduce_aiv)
 add_subdirectory(all_reduce_aiv)
 # allreduce_aiv: AllReduce TwoShot 写语义 kernel 的 CPU 桩级覆盖。
 add_subdirectory(allreduce_aiv)
+add_subdirectory(reduce)
 # recursive_executor 测试仅在 --experimental 构建（ENABLE_EXPERIMENTAL=ON）时编译
 if(ENABLE_EXPERIMENTAL)
     add_subdirectory(reduce_scatter_birs)

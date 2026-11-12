@@ -360,7 +360,8 @@ SelectorStatus ReduceAutoSelector::SelectMeshAlgoAicpu(
                 }
             } else if (
                 Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD) {
-                selectAlgName = "AicpuReduceSoleNHRAicpuReduce";
+                // 64位类型/PROD改走分层算法，归约在AICPU上做，规避SDMA对fp64/uint64的限制
+                selectAlgName = "AicpuReduceSequenceMeshNHRAicpuReduce";
             } else {
                 selectAlgName = "AicpuReduceParallelMeshNHR";
             }

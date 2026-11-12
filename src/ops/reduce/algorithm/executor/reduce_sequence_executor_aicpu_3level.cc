@@ -78,7 +78,7 @@ std::vector<CostModelParam> ReduceSequenceExecutorAicpu3Level<
         static_cast<int>(netTypeLevel0), static_cast<int>(netTypeLevel1), static_cast<int>(netTypeLevel2));
     std::vector<CostModelParam> params
         = [rankSize, rankSizeLevel0, rankSizeLevel1, rankSizeLevel2, portNumLevel0, portNumLevel1, portNumLevel2,
-           netTypeLevel0, netTypeLevel1, netTypeLevel2, isPod] {
+           netTypeLevel0, netTypeLevel1, netTypeLevel2, isPod, algName] {
               std::vector<CostModelParam> v;
               auto p0 = AlgTemplate0::CalcCostCoeff(CalcCostCoeffParam{
                   rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0, BufferType::INPUT,
@@ -104,6 +104,15 @@ std::vector<CostModelParam> ReduceSequenceExecutorAicpu3Level<
                   rankSizeLevel0, 1.0f * rankSizeLevel1 * rankSizeLevel2 / rankSize, netTypeLevel0,
                   BufferType::HCCL_BUFFER, BufferType::OUTPUT, BufferType::HCCL_BUFFER, portNumLevel0, isPod});
               v.insert(v.end(), p5.begin(), p5.end());
+              // 任一段代价为空则整体返回空，避免缺段条目低估成本
+              if (p0.empty() || p1.empty() || p2.empty() || p3.empty() || p4.empty() || p5.empty()) {
+                  HCCL_WARNING(
+                      "[ReduceSequenceExecutorAicpu3Level][CalcCostCoeff] some template cost coeff is empty, skip "
+                      "this algo in costmodel, algName[%s], p0[%zu] p1[%zu] p2[%zu] p3[%zu] p4[%zu] p5[%zu].",
+                      algName != nullptr ? algName : "(null)", p0.size(), p1.size(), p2.size(), p3.size(), p4.size(),
+                      p5.size());
+                  return std::vector<CostModelParam>{};
+              }
               return v;
           }();
     return params;
@@ -848,5 +857,26 @@ REGISTER_ALG_ATTRS(
     topo.isSupportLevel1Nhr = true; topo.isSupportLevel0PcieMix = false; op.isSupportInplace = false;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
+    });
+
+// PCIE标卡机型的Reduce分层算法，归约在AICPU上完成，支持fp64/uint64
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE, AicpuReduceSequenceMeshNHRAicpuReduce, ReduceSequenceExecutorAicpu3Level,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1D, InsTempReduceScatterAicpuReduceNHRPcie,
+    InsTempReduceScatterAicpuReduceNHRPcie, InsTempAllGatherNHR, InsTempAllGatherNHR, InsTempAllGatherMesh1D);
+REGISTER_ALG_ATTRS(
+    AicpuReduceSequenceMeshNHRAicpuReduce, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_1;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.isSupportLevel0PcieMix = true;
+    topo.isSupportLevel1Nhr = true; op.isSupportProd = true;
+    op.isSupportInplace = true; // 输入先暂存到cclMem，最后才写回输出，inplace安全
+    op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
+    };
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            return topo->level0PcieMix
+                   && !AutoSelectorBase::IsLayerAllConnetedWithTopo(topo, 0, CommTopo::COMM_TOPO_1DMESH);
+        }
+        return false;
     });
 } // namespace ops_hccl
