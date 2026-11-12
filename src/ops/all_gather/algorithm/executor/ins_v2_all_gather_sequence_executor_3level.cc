@@ -254,7 +254,8 @@ void InsV2AllGatherSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, InsAlgT
     if (tempAlgParamsLevel2.enableRemoteMemAccess) {
         tempAlgParamsLevel2.buffInfo.outputPtr = param.outputPtr;
         tempAlgParamsLevel2.buffInfo.outBuffType = BufferType::OUTPUT;
-        tempAlgParamsLevel2.buffInfo.outBuffBaseOff = rankIdxLevel1_ * dataSize_;
+        tempAlgParamsLevel2.buffInfo.outBuffBaseOff
+            = (rankIdxLevel1_ * levels_[0].rankSize + rankIdxLevel0_) * dataSize_;
         tempAlgParamsLevel2.outputSliceStride = levels_[0].rankSize * levels_[1].rankSize * dataSize_;
     } else {
         tempAlgParamsLevel2.buffInfo.outputPtr = resCtx.cclMem.addr;
