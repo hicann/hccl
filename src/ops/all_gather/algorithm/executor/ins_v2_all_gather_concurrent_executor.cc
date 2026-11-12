@@ -287,9 +287,9 @@ void InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTempl
     splitDataSize.push_back(splitData);
     splitDataSize.push_back(1 - splitData);
     HCCL_INFO(
-        "[InsV2AllGatherConcurrentExecutor][GetParallelDataSplit] symmetric[%d], portNum0[%u], "
+        "[InsV2AllGatherConcurrentExecutor][GetParallelDataSplit] portNum0[%u], "
         "portNum1[%u], splitData[%.4f].",
-        param.supportSymmetricMemory, portNum0, portNum1, splitData);
+        portNum0, portNum1, splitData);
     return;
 }
 
@@ -436,6 +436,9 @@ HcclResult InsV2AllGatherConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::vector<float> dataSplitSize;
     GetParallelDataSplit(param, dataSplitSize);
     const bool useSymmetricMemory = supportSymmetricMemory_;
+    if (useSymmetricMemory) {
+        HCCL_INFO("[InsV2AllGatherConcurrentExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
 
     // 缓存切分
     u32 scratchMultiplierforTemp0 = algTemplate0.CalcScratchMultiple(

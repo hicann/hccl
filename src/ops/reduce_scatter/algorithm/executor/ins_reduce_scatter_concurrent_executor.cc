@@ -257,6 +257,9 @@ HcclResult InsReduceScatterConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     std::shared_ptr<InsAlgTemplate1> tempAlg1 = std::make_shared<InsAlgTemplate1>(param, myRank_, temp1HierarchyInfo);
     const bool useSymmetricMemory
         = param.supportSymmetricMemory && std::string(param.algName) == "AicpuReduceScatterConcurMeshNHR";
+    if (useSymmetricMemory) {
+        HCCL_INFO("[InsReduceScatterConcurrentExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
 
     // 准备资源
     PrepareThreadFromTemplate(tempAlg0, tempAlg1); // 计算不同的流

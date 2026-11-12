@@ -395,8 +395,8 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 {
     HCCL_INFO(
         "[InsV2ReduceScatterOmniPipeExecutor][Orchestrate] start reduce-scatter execution, "
-        "rank[%u], symmetric[%d].",
-        resCtx.topoInfo.userRank, param.supportSymmetricMemory);
+        "rank[%u].",
+        resCtx.topoInfo.userRank);
     // 参数填充
     myRank_ = resCtx.topoInfo.userRank;
     rankSize_ = resCtx.topoInfo.userRankSize;
@@ -488,8 +488,11 @@ InsV2ReduceScatterOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate
 {
     HCCL_INFO(
         "[InsV2ReduceScatterOmniPipeExecutor][OrchestrateLoop] start reduce-scatter pipeline loops, "
-        "rank[%u], symmetric[%d].",
-        myRank_, param.supportSymmetricMemory);
+        "rank[%u].",
+        myRank_);
+    if (param.supportSymmetricMemory) {
+        HCCL_INFO("[InsV2ReduceScatterOmniPipeExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
     // 1.计算带宽
     double bw_rs_l0 = BW_OMNI_DEFAULT;
     double bw_rs_l1 = BW_OMNI_DEFAULT;

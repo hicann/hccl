@@ -399,8 +399,8 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
     InsAgAlgTemplateZ>::Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx)
 {
     HCCL_INFO(
-        "[InsV2AllReduceOmniPipeExecutor][Orchestrate] start all-reduce execution, rank[%u], symmetric[%d].",
-        resCtx.topoInfo.userRank, param.supportSymmetricMemory);
+        "[InsV2AllReduceOmniPipeExecutor][Orchestrate] start all-reduce execution, rank[%u].",
+        resCtx.topoInfo.userRank);
     // 参数填充
 
     CHK_RET(InitExecutorInfo(param, resCtx));
@@ -863,8 +863,11 @@ HcclResult InsV2AllReduceOmniPipeExecutor<
 {
     HCCL_INFO(
         "[InsV2AllReduceOmniPipeExecutor][OrchestrateLoop] start RS-to-AG pipeline loops, "
-        "rank[%u], symmetric[%d].",
-        myRank_, param.supportSymmetricMemory);
+        "rank[%u].",
+        myRank_);
+    if (param.supportSymmetricMemory) {
+        HCCL_INFO("[InsV2AllReduceOmniPipeExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
     std::vector<std::vector<u32>> subCommRanks0;
     std::vector<std::vector<u32>> subCommRanks1;
     std::vector<std::vector<u32>> subCommRanks2;

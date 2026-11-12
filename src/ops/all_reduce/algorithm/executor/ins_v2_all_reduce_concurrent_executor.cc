@@ -326,6 +326,9 @@ HcclResult InsV2AllReduceConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     std::shared_ptr<InsAlgTemplate1> temp1 = std::make_shared<InsAlgTemplate1>(param, myRank_, subCommRanks1);
     const bool useSymmetricMemory
         = param.supportSymmetricMemory && std::string(param.algName) == "AicpuAllReduceConcurMeshTwoShotNHR";
+    if (useSymmetricMemory) {
+        HCCL_INFO("[InsV2AllReduceConcurrentExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
 
     // 获取每个template会用多少的buffer
     const u32 temp0ScratchMultiple = temp0->CalcScratchMultiple(BufferType::INPUT, BufferType::OUTPUT);

@@ -454,6 +454,9 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     std::map<u32, std::shared_ptr<InsAlgTemplateBase>>& tempMap)
 {
     HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][OrchestrateLoop] start all-gather pipeline loops, rank[%u].", myRank_);
+    if (param.supportSymmetricMemory) {
+        HCCL_INFO("[InsV2AllGatherOmniPipeExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
+    }
     // 带宽赋值
     double bw_ag_l0 = BW_OMNI_DEFAULT;
     double bw_ag_l1 = BW_OMNI_DEFAULT;
@@ -595,8 +598,8 @@ InsV2AllGatherOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1, I
     }
     HCCL_DEBUG(
         "[InsV2AllGatherOmniPipeExecutor][OrchestrateLoop] split operation into executor loops, "
-        "loopCount[%llu], maxCountPerLoop[%llu], symmetric[%d].",
-        loopTimes, maxCountPerLoop, param.supportSymmetricMemory);
+        "loopCount[%llu], maxCountPerLoop[%llu].",
+        loopTimes, maxCountPerLoop);
     for (u64 loop = 0; loop < loopTimes; loop++) {
         u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxCountPerLoop;
         DataSlice src(param.inputPtr, processedDataCount * dataTypeSize_, currDataCount * dataTypeSize_, currDataCount);

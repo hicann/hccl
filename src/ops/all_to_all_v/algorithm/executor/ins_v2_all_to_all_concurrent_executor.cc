@@ -540,6 +540,7 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     if (supportSymmetricMemory_) {
         maxDataCountPerLoop[0] = std::max(maxSendOrRecvDataCount0, static_cast<u64>(1));
         maxDataCountPerLoop[1] = std::max(maxSendOrRecvDataCount1, static_cast<u64>(1));
+        HCCL_INFO("[InsV2AllToAllConcurrentExecutor][OrchestrateLoop] %s: symmetric memory enabled", param.algName);
     } else {
         CalcMaxDataCountPerLoop(param, scratchMulti, maxDataCountPerLoop);
     }
