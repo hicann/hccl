@@ -60,6 +60,16 @@ HcclResult InsTempAllGatherNhrDpuInter::CalcRes(
     return HCCL_SUCCESS;
 }
 
+// 编排期(GenTempResource)无 comm/拓扑可查, 按 CalcRes 的线程/Notify 口径重建请求(主线程完成 DPU
+// 数据转换, 不新增从流); 不 override 会落到基类默认实现(打 ERROR 并返回 INTERNAL)
+HcclResult InsTempAllGatherNhrDpuInter::GetRes(AlgResourceRequest& resourceRequest) const
+{
+    resourceRequest.slaveThreadNum = 0;
+    resourceRequest.notifyNumPerThread = {};
+    resourceRequest.notifyNumOnMainThread = 0;
+    return HCCL_SUCCESS;
+}
+
 u64 InsTempAllGatherNhrDpuInter::CalcScratchMultiple(BufferType inBufferType, BufferType outBufferType)
 {
     (void)inBufferType;

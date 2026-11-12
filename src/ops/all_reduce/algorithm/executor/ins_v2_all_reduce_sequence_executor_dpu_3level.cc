@@ -504,13 +504,12 @@ HcclResult InsV2AllReduceSequenceExecutorDpu3Level<
         const std::shared_ptr<InsAlgTemplate>& algTemplate, TemplateResource& tempResource) const
 {
     AlgResourceRequest req;
-    // DPU Inter 模板未 override GetRes（与二级 AR 一致：直接设 channels/threads/shmem），
-    // GetRes 失败时默认 slaveThreadNum=0（DPU 模板不占从流），不影响设备模板（它们 override 了）
-    if (algTemplate->GetRes(req) != HCCL_SUCCESS) {
-        req.slaveThreadNum = 0;
-        req.notifyNumPerThread.clear();
-        req.notifyNumOnMainThread = 0;
-    }
+    // 序列内全部模板（含 DPU Inter）均已 override GetRes：编排期按 CalcRes 口径重建线程/Notify 请求；
+    // 失败即真实异常（模板漏 override 或 GetRes 实现出错），报错返回，不再静默降级为 slaveThreadNum=0
+    CHK_PRT_RET(
+        algTemplate->GetRes(req) != HCCL_SUCCESS,
+        HCCL_ERROR("[InsV2AllReduceSequenceExecutorDpu3Level][GenTempResource] template GetRes failed."),
+        HCCL_E_INTERNAL);
     if (channelLevelIdx >= remoteRankToChannelInfo_.size()) {
         HCCL_ERROR(
             "[InsV2AllReduceSequenceExecutorDpu3Level][GenTempResource] channelLevelIdx[%u] should be lower"
