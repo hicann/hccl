@@ -309,7 +309,7 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
     TemplateDataParams tempAlgParams;
     InitTemplateDataParams(param, resCtx, tempAlgParams);
 
-    // CCL buffer切分为2块：前1块作为ReduceScatter输出，后1块作为AllGather输入
+    // CCL buffer切分为2块：前半块存储ReduceScatter输出并供AllGather使用，后半块作为ReduceScatter临时缓冲区
     outCclBuffSize_ = tempAlgParams.buffInfo.hcclBuff.size / 2;
     inCclBuffSize_ = tempAlgParams.buffInfo.hcclBuff.size - outCclBuffSize_;
     outCclBuffOffset_ = 0;
@@ -319,10 +319,7 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
         "outCclBuffOffset_[%llu], inCclBuffOffset_[%llu]",
         outCclBuffSize_, inCclBuffSize_, outCclBuffOffset_, inCclBuffOffset_);
 
-    // 计算单次循环最大数据元素个数
-    // outCclBuff存储ReduceScatter输出（每个rank的归约结果大小 = currDataCount/rankSize）
-    // 所以最大总数据量 = outCclBuffSize_ * rankSize_ / dataTypeSize_
-    // 向下对齐到rankSize的倍数，方便数据切分
+    // 按前半块容量限制AllGather每轮总数据量，并向下对齐到rankSize的倍数
     u64 maxCountPerLoop
         = outCclBuffSize_ / HCCL_MIN_SLICE_ALIGN * HCCL_MIN_SLICE_ALIGN / dataTypeSize_ / rankSize_ * rankSize_;
     HCCL_INFO(
@@ -330,13 +327,16 @@ InsV2AllReduceOrderPreservedExecutor<AlgTopoMatch, InsAlgTemplateRS, InsAlgTempl
         maxCountPerLoop, outCclBuffSize_, dataTypeSize_, rankSize_);
     CHK_PRT_RET(maxCountPerLoop == 0, HCCL_ERROR("[OrchestrateLoop] maxCountPerLoop is 0"), HCCL_E_INTERNAL);
 
-    // 计算循环次数：总数据量 / 单次最大数据量，向上取整
-    u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
+    // ReduceScatter末rank需要接收rankSize份尾块，每份尾块不能超过后半块容量的1/rankSize
+    const u64 maxScratchSlotCount = inCclBuffSize_ / rankSize_ / dataTypeSize_;
     // 初始化已处理的数据元素个数
     u64 processedDataCount = 0;
 
-    for (u64 loop = 0; loop < loopTimes; loop++) {
-        u64 currDataCount = (loop == loopTimes - 1) ? dataCount_ - processedDataCount : maxCountPerLoop;
+    while (processedDataCount < dataCount_) {
+        u64 currDataCount = std::min(dataCount_ - processedDataCount, maxCountPerLoop);
+        const u64 sliceCount = currDataCount / rankSize_;
+        const u64 remainderCount = std::min(currDataCount % rankSize_, maxScratchSlotCount - sliceCount);
+        currDataCount = sliceCount * rankSize_ + remainderCount;
 
         CHK_RET(RunReduceScatter(param, resCtx, currDataCount, processedDataCount, rsTempAlg, rsTemplateAlgRes));
         CHK_RET(RunAllGather(param, resCtx, currDataCount, processedDataCount, agTempAlg, agTemplateAlgRes));
