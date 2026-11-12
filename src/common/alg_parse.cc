@@ -9,6 +9,7 @@
  */
 
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <climits>
 #include <cstdlib>
@@ -770,22 +771,55 @@ HcclResult MarkHcclAlgoPriority(HcclComm comm, CostModel& cm, const std::vector<
         algoConfig.clear();
     }
 
+    bool fromEnv = false;
     if (algoConfig.empty()) {
         algoConfig = GetEnv("HCCL_ALGO");
         if (algoConfig == "EmptyString") {
-            HCCL_DEBUG("[MarkHcclAlgoPriority] both hcclAlgo and HCCL_ALGO env are empty, skip marking.");
+            // 本函数位于每算子选路路径（每次选路都会调用），读取结果用static只打印一次：
+            // RUN通道不随用户日志级别关闭（对齐hcomm官方，日志级别调高后检索口径不失效）
+            static std::atomic<bool> hcclAlgoNotSetLogged{false};
+            if (!hcclAlgoNotSetLogged.exchange(true)) {
+                HCCL_RUN_INFO("[HCCL_ENV][MarkHcclAlgoPriority] HCCL_ALGO is not set, skip marking.");
+            }
             return HCCL_SUCCESS;
         }
+        // 环境变量来源：按hcomm externalinput的[HCCL_ENV]官方句式打印（标签在前、RUN通道），static防每算子刷屏；
+        // hcomm legacy的同文案打印回收后本行成为HCCL_ALGO唯一打印
+        fromEnv = true;
+        static std::atomic<bool> hcclAlgoEnvLogged{false};
+        if (!hcclAlgoEnvLogged.exchange(true)) {
+            HCCL_RUN_INFO("[HCCL_ENV][MarkHcclAlgoPriority] HCCL_ALGO set by environment to [%s]", algoConfig.c_str());
+        }
+    } else {
+        HCCL_INFO("[MarkHcclAlgoPriority] use comm algo config: [%s]", algoConfig.c_str());
     }
-    HCCL_INFO("[MarkHcclAlgoPriority] use algo config: [%s]", algoConfig.c_str());
 
     // 解析算法配置
     HcclAlgoParser algoParser;
     ret = algoParser.Parser(algoConfig);
     if (ret != HCCL_SUCCESS) {
+        // 解析失败按来源标注：环境变量来源标[HCCL_ENV]变量名，通信域配置来源不误标为环境变量。
+        // RUN_WARNING不随日志级别关闭，本函数位于每算子选路路径，配置持续错误时须防止按算子刷屏：
+        // 与上方成功分支同口径，static只打印首次失败；旗标按来源拆分——同进程不同comm的配置来源
+        // 可以不同(部分带通信域配置、部分回退环境变量)，共享旗标会让先失败的来源永久静默另一来源的告警。
         // 解析失败，不更新优先级, 不阻碍后续执行流程
-        HCCL_WARNING("[MarkHcclAlgoPriority] parse algo config failed, the config has not taken effect, standard "
-                     "format: 'opType:executorType{level0=algoType, level1=algoType, level2=algoType};...'");
+        static std::atomic<bool> parseFailedEnvLogged{false};
+        static std::atomic<bool> parseFailedCommLogged{false};
+        if (fromEnv) {
+            if (!parseFailedEnvLogged.exchange(true)) {
+                HCCL_RUN_WARNING(
+                    "[HCCL_ENV][MarkHcclAlgoPriority] HCCL_ALGO [%s] parse failed, the config has not taken effect, "
+                    "standard format: 'opType:executorType{level0=algoType, level1=algoType, level2=algoType};...'",
+                    algoConfig.c_str());
+            }
+        } else {
+            if (!parseFailedCommLogged.exchange(true)) {
+                HCCL_RUN_WARNING(
+                    "[MarkHcclAlgoPriority] comm algo config [%s] parse failed, the config has not taken effect, "
+                    "standard format: 'opType:executorType{level0=algoType, level1=algoType, level2=algoType};...'",
+                    algoConfig.c_str());
+            }
+        }
         return HCCL_SUCCESS;
     }
 

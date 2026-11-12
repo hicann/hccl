@@ -23,6 +23,10 @@ namespace ops_hccl {
 #define HCCL_ERROR(format, ...) fprintf(stderr, "[ERROR] " format "\n", ##__VA_ARGS__)
 #define HCCL_WARNING(format, ...) fprintf(stderr, "[WARNING] " format "\n", ##__VA_ARGS__)
 #define HCCL_DEBUG(format, ...) fprintf(stderr, "[DEBUG] " format "\n", ##__VA_ARGS__)
+// RUN通道宏（alg_parse.cc新增[HCCL_ENV]打印使用），stub与普通级别宏同款fprintf实现，
+// 避免回落真实log.h宏产生对HcclCheckLogLevel的未定义引用
+#define HCCL_RUN_INFO(format, ...) fprintf(stderr, "[INFO] " format "\n", ##__VA_ARGS__)
+#define HCCL_RUN_WARNING(format, ...) fprintf(stderr, "[WARNING] " format "\n", ##__VA_ARGS__)
 
 // mock
 HcclResult static HcclGetHcclAlgo(HcclComm comm, std::string& hcclAlgo) { return HCCL_SUCCESS; }

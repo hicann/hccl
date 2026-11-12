@@ -65,9 +65,13 @@ bool LoadPluginLocked()
     /* LOAD_READY：首次加载 */
     std::string pluginPath = GetEnv("HCCL_ALG_TUNER_PLUGIN");
     if (pluginPath.empty() || pluginPath == "none") {
+        // 未设置与显式禁用(none)同文案，避免设置none时被误读为"配置未生效"
+        HCCL_RUN_INFO("[HCCL_ENV] HCCL_ALG_TUNER_PLUGIN is not set or set to none, tuner plugin disabled.");
         g_loadStatus = LOAD_FAILED;
         return false;
     }
+    // 环境变量来源：按hcomm externalinput的[HCCL_ENV]官方句式打印（RUN通道，不随用户日志级别关闭）
+    HCCL_RUN_INFO("[HCCL_ENV] HCCL_ALG_TUNER_PLUGIN set by environment to [%s]", pluginPath.c_str());
 
     /* 信任边界：插件 .so 在本进程内执行*/
     void* handle = dlopen(pluginPath.c_str(), RTLD_NOW | RTLD_LOCAL);

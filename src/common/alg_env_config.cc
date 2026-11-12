@@ -9,6 +9,7 @@
  */
 
 #include "alg_env_config.h"
+#include <atomic>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -130,15 +131,17 @@ HcclResult ParseMultipleDimensionSplitRatio()
     if (multipleDimensionSplitRatioEnv == nullptr) {
         g_algEnvConfig.multipleDimensionSplitRatioSet = false;
         g_algEnvConfig.multipleDimensionSplitRatio = 0;
-        HCCL_INFO("HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO is not set, use built-in split ratio.");
+        HCCL_RUN_INFO(
+            "[HCCL_ENV][ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO is not set, use "
+            "built-in split ratio.");
         return HCCL_SUCCESS;
     }
 
     std::string multipleDimensionSplitRatioStr(multipleDimensionSplitRatioEnv);
     if (!IsValidNumberFormat(multipleDimensionSplitRatioStr)) {
-        HCCL_WARNING(
-            "[ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO[%s] format is invalid, use "
-            "default.",
+        HCCL_RUN_WARNING(
+            "[HCCL_ENV][ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO[%s] format is "
+            "invalid, use default.",
             multipleDimensionSplitRatioStr.c_str());
         g_algEnvConfig.multipleDimensionSplitRatioSet = false;
         g_algEnvConfig.multipleDimensionSplitRatio = 0;
@@ -147,8 +150,9 @@ HcclResult ParseMultipleDimensionSplitRatio()
 
     double multipleDimensionSplitRatio = 0;
     if (SalStrToDouble(multipleDimensionSplitRatioStr, multipleDimensionSplitRatio) != HCCL_SUCCESS) {
-        HCCL_WARNING(
-            "[ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO[%s] parse failed, use default.",
+        HCCL_RUN_WARNING(
+            "[HCCL_ENV][ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO[%s] parse failed, "
+            "use default.",
             multipleDimensionSplitRatioStr.c_str());
         g_algEnvConfig.multipleDimensionSplitRatioSet = false;
         g_algEnvConfig.multipleDimensionSplitRatio = 0;
@@ -157,8 +161,10 @@ HcclResult ParseMultipleDimensionSplitRatio()
 
     g_algEnvConfig.multipleDimensionSplitRatioSet = true;
     g_algEnvConfig.multipleDimensionSplitRatio = multipleDimensionSplitRatio;
-    HCCL_INFO(
-        "HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO set by environment to [%s]", multipleDimensionSplitRatioStr.c_str());
+    HCCL_RUN_INFO(
+        "[HCCL_ENV][ParseMultipleDimensionSplitRatio] HCCL_ALG_MULTIPLE_DIMENSION_SPLIT_RATIO set by environment to "
+        "[%s]",
+        multipleDimensionSplitRatioStr.c_str());
     return HCCL_SUCCESS;
 }
 
@@ -412,10 +418,17 @@ HcclResult ParseHcclAlgo()
 {
     std::string hcclAlgo = GetEnv("HCCL_ALGO");
     if (hcclAlgo != "EmptyString") {
-        CHK_RET(SetHcclAlgoConfig(hcclAlgo));
-        HCCL_INFO("HCCL_ALGO set by environment to [%s]", hcclAlgo.c_str());
+        HcclResult ret = SetHcclAlgoConfig(hcclAlgo);
+        if (ret != HCCL_SUCCESS) {
+            // 失败路径同为[HCCL_ENV]口径；初始化中止错误须进plog保留HCCL_ERROR通道，直接return
+            // 避免CHK_RET再打call trace造成同错误重复打印
+            HCCL_ERROR("[HCCL_ENV][ParseHcclAlgo] HCCL_ALGO [%s] parse failed, ret[%d].", hcclAlgo.c_str(), ret);
+            return ret;
+        }
+        // A3路径，与A5 MarkHcclAlgoPriority口径一致（[HCCL_ENV]在前）
+        HCCL_RUN_INFO("[HCCL_ENV][ParseHcclAlgo] HCCL_ALGO set by environment to [%s]", hcclAlgo.c_str());
     } else {
-        HCCL_INFO("HCCL_ALGO is not set");
+        HCCL_RUN_INFO("[HCCL_ENV][ParseHcclAlgo] HCCL_ALGO is not set");
     }
     return HCCL_SUCCESS;
 }
@@ -876,11 +889,22 @@ HcclResult ParseAicpuTaskCacheEnable()
     } else if (value == "false" || value == "0") {
         g_algEnvConfig.aicpuCacheEnable = 0;
     } else {
-        HCCL_ERROR("HCOMM_AICPU_TASK_CACHE_ENABLE [%s] is invalid, expected true, false, 1 or 0.", value.c_str());
+        HCCL_ERROR(
+            "[HCCL_ENV][ParseAicpuTaskCacheEnable] HCOMM_AICPU_TASK_CACHE_ENABLE [%s] is invalid, expected true, "
+            "false, 1 or 0.",
+            value.c_str());
         return HCCL_E_PARA;
     }
 
-    HCCL_INFO("HCOMM_AICPU_TASK_CACHE_ENABLE set by environment to [%u]", g_algEnvConfig.aicpuCacheEnable);
+    // 本解析在InitEnvConfig的initialized检查之前（每次算子调用均重新解析以支持运行中改配），
+    // RUN通道不随日志级别关闭，按值去重打印防止训练循环按算子刷屏；值变化时打印一次
+    static std::atomic<int32_t> lastLoggedValue{-1};
+    int32_t curValue = static_cast<int32_t>(g_algEnvConfig.aicpuCacheEnable);
+    if (lastLoggedValue.exchange(curValue) != curValue) {
+        HCCL_RUN_INFO(
+            "[HCCL_ENV][ParseAicpuTaskCacheEnable] HCOMM_AICPU_TASK_CACHE_ENABLE set by environment to [%u]",
+            g_algEnvConfig.aicpuCacheEnable);
+    }
     return HCCL_SUCCESS;
 }
 
