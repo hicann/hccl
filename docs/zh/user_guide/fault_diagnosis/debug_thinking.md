@@ -272,32 +272,42 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
 ### HCCL相关故障码
 
-本节表格用于快速检索，不作为完整故障码清单。完整故障码定义、现象、可能原因及解决方法请参见《[HCCL错误码参考](https://gitcode.com/cann/hcomm/blob/master/docs/zh/error_codes/README.md)》，场景化定位指导请参见[故障诊断](README.md)。
+可根据业务日志中的故障码查找对应的错误标题，再使用多级关键字检索plog日志。
+故障现象、可能原因及解决方法请参见《[HCCL错误码参考](https://gitcode.com/cann/hcomm/blob/master/docs/zh/error_codes/README.md)》。
+场景化定位指导请参见[故障诊断](README.md)。
 
 <!-- npu="950" id10 -->
-以下plog关键字表仅适用于Ascend 950PR&950DT系列产品，可用于快速定位该系列产品的常见故障。三级关键字用于进一步标识任务执行方式或异常类型，取值包括`HOST`、`AICPU`、`AIV`、`CCU`和`CQE ERROR`。若入参校验和环境变量校验未进入任务执行阶段，则没有三级关键字。
+下表列出Ascend 950PR&950DT系列产品的故障码检索信息。
+`-`表示该级关键字无固定取值。
 
-| 故障码或场景 | 一级关键字 | 二级关键字 | 三级关键字 |
-| --- | --- | --- | --- |
-| EI0001环境变量配置异常 | InitGroupStage | EnvConfig | - |
-| EI0003算子入参校验失败 | TaskExecStage | InvalidArgument | - |
-| EI0002（HOST执行超时） | TaskExecStage | Timeout | HOST |
-| HOST其他执行异常 | TaskExecStage | RunFailed | HOST |
-| EI0002（AICPU执行超时） | TaskExecStage | Timeout | AICPU |
-| AICPU其他执行异常 | TaskExecStage | RunFailed | AICPU |
-| AIV其他执行异常 | TaskExecStage | RunFailed | AIV |
-| EI0002（CCU执行超时） | TaskExecStage | Timeout | CCU |
-| CCU其他执行异常 | TaskExecStage | RunFailed | CCU |
-| CQE错误 | TaskExecStage | RunFailed | CQE ERROR |
-| 心跳检测到CQE错误 | TaskExecStage | HeartbeatAbnormal | CQE ERROR |
-| EI0007通信域初始化资源申请失败 | InitGroupStage | Resource | - |
-| EI0007参数面资源申请失败 | InitChannelStage | Resource | - |
-| EI0009传输初始化失败 | InitGroupStage | RunFailed | - |
-| EI0014 rankTable集群配置校验失败 | InitGroupStage | RanktableCheck | - |
-| EI0015集群信息协商阶段异常 | InitGroupStage | RanktableDetect | - |
-| EI0016通信域配置项校验失败 | InitGroupStage | RanktableCheck | - |
+| EI错误码 | 错误标题 | 一级关键字 | 二级关键字 | 三级关键字 |
+| --- | --- | --- | --- | --- |
+| EI0001 | `Config_Error_Invalid_Environment_Variable`（[环境变量配置异常](_dump_env_config_error_EI0001.md)） | `InitGroupStage` | `EnvConfig` | - |
+| EI0002 | `Communication_Error_Timeout`（[通信算子执行超时](./task_exec_stage_troubleshooting.md#定位思路)） | `TaskExecStage` | `Timeout` | `HOST` / `AICPU` / `AIV` / `CCU` |
+| EI0003 | `Invalid_Argument_Collective_Communication_Operator`（集合通信算子入参校验失败） | `TaskExecStage` | `InvalidArgument` | - |
+| EI0004 | `File_Operation_Error_Parse`（[rankTable或拓扑文件读取、解析失败](rank_table_file_read_fail_EI0004.md)） | `InitGroupStage` | `RanktableConfig` | - |
+| EI0005 | `Invalid_Argument`（[参数一致性校验失败](./param_consistency_check_EI0005.md#参数一致性校验ei0005)） | `InitChannelStage` | `ParameterConflict` | - |
+| EI0006 | `Communication_Error_Get_Socket`（[参数面建链超时](./link_timeout_EI0006.md#建链超时-ei0006)） | `InitChannelStage` | `Timeout` | - |
+| EI0007 | `Resource_Error`（资源初始化或申请失败） | `InitGroupStage` / `InitChannelStage` | `Resource` | - |
+| EI0008 | `Package_Error_Incorrect_HCCL_Version`（版本一致性校验失败） | `InitChannelStage` | `VersionConflict` | - |
+| EI0009 | `Communication_Error_Initialize_Transport`（传输初始化失败） | `InitGroupStage` | `RunFailed` | - |
+| EI0010 | `Communication_Error_P2P`（[P2P通信失败](./link_timeout_EI0006.md#建链超时-ei0006)） | `InitChannelStage` | `Timeout` | - |
+| EI0011 | `Resource_Error_Insufficient_Device_Memory`（NPU内存申请失败） | `InitChannelStage` | `Resource` | - |
+| EI0012 | `Execution_Error_SDMA`（[SDMA任务异常](./_dump_task_exception_mechanism.md#task-exception机制)） | `TaskExecStage` | `RunFailed` | `AICPU` |
+| EI0013 | `Execution_Error_ROCE_CQE`（[RoCE CQE错误](./_dump_task_exception_mechanism.md#task-exception机制)） | `TaskExecStage` | `RunFailed` | `CQE ERROR` |
+| EI0014 | `Config_Error_Ranktable`（[rankTable配置值非法](_dump_cluster_info_verify_fail.md)） | `InitGroupStage` | `RanktableCheck` | - |
+| EI0015 | `Communication_Error_Ranktable_Detect`（[集群信息探测或协商失败](_dump_cluster_info_nego.md)，另见[集群信息校验](_dump_cluster_info_verify_fail.md)） | `InitGroupStage` | `RanktableDetect` / `RanktableCheck` | - |
+| EI0016 | `Config_Error`（[通信域配置项校验失败](_dump_cluster_info_verify_fail.md)） | `InitGroupStage` | `RanktableCheck` | - |
+| EI0017 | `Config_Error_Ranktable`（[rankTable缺少配置项](rank_table_file_read_fail_EI0004.md)） | `InitGroupStage` | `RanktableConfig` | - |
+| EI0018 | `Execution_Error_UB_CQE`（[UB CQE错误](./_dump_task_exception_mechanism.md#task-exception机制)） | `TaskExecStage` | `RunFailed` | `AICPU` / `CCU` |
+| EI0019 | `Communication_Error_Bind_IP_Port`（[Host网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` | `Resource` | - |
+| | | `InitGroupStage` | `RanktableDetect` | |
+| EI0020 | `Communication_Error_Bind_IP_Port`（[NPU网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` | `Resource` | - |
+| | | `InitGroupStage` | `RanktableDetect` | |
 
-故障码说明以表格标注的产品范围为准。多级检索关键字用于定位故障阶段，不用于唯一标识故障码。Ascend 950PR&950DT系列产品的EI0014与EI0016均属于通信域初始化阶段的配置校验，因此检索关键字相同，需结合故障码和报错信息区分具体原因。
+多个故障码可能共用一组关键字。例如，EI0014和EI0016均可能出现`[InitGroupStage][RanktableCheck]`，可结合故障码和日志正文区分。
+`[TaskExecStage][RunFailed]`也用于HOST、AICPU、AIV和CCU的其他执行异常，需结合业务报错确认是否上报了具体故障码。
+心跳检测到CQE错误时，可使用`[TaskExecStage][HeartbeatAbnormal][CQE ERROR]`检索日志。
 
 例如，可使用`grep -F '[TaskExecStage][InvalidArgument]'`定位算子入参校验错误，使用`grep -F '[TaskExecStage][Timeout][AICPU]'`定位AICPU执行超时。`Communicator Key Info`、`LocalRank Key Info`和`LinkInfo`用于辅助检索通信域、本端rank和链路信息，按需结合使用。
 
