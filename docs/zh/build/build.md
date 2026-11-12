@@ -287,7 +287,7 @@ bash build.sh --ut
 
       ```shell
       npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 开启验签配置
-      npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 关闭客户自定义验签
+      npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 配置为无需验签模式
       ```
 
 3. 执行HCCL Test测试命令，测试集合通信的功能及性能。

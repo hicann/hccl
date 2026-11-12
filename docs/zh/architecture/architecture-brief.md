@@ -210,8 +210,10 @@ hccl
 |        ├── all_gather_v       # AllGatherV算子实现
 |        ├── all_reduce         # AllReduce算子实现
 |        ├── all_to_all_v       # AlltoAll、AlltoAllV、AlltoAllVC算子实现
+|        ├── barrier            # Barrier算子实现
 |        ├── batch_send_recv    # BatchSendRecv算子实现
 |        ├── broadcast          # Broadcast算子实现
+|        ├── interface_graph_mode # 图模式接口实现
 |        ├── op_common          # 算子通用组件
 |        │   ├── algorithm      # 算法层
 |        │   │   ├── executor   # 算法执行器

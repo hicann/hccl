@@ -48,7 +48,7 @@ This sample supports the following products in a single-server N-card configurat
 
 The following software dependencies are required for compiling this sample. Ensure that the version requirements are met:
 
-- gcc and g++: 7.3.0 to 13.3.x
+- gcc and g++ >= 7.3.0
 - cmake >= 3.16.0
 
 ### 1.2 Install the CANN Toolkit Development Kit Package
@@ -135,7 +135,7 @@ Use Ascend HDK 25.5.T2.B001 or later, and use the npu-smi tool provided with the
 
 ```shell
 npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # Enable signature verification configuration
-npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # Disable user custom signature verification
+npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # Configure no-signature-verification mode
 ```
 
 Where:

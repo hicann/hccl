@@ -15,7 +15,7 @@ The Huawei Collective Communication Library (HCCL) is a high-performance collect
 - Provides high-performance collective communication and point-to-point communication in single-node and multi-node environments.
 - Supports collective communication primitives such as AllReduce, Broadcast, AllGather, ReduceScatter, and AlltoAll.
 - Supports communication algorithms such as Ring, Mesh, and Recursive Halving-Doubling (RHD).
-- Supports high-speed communication links such as HCCS, RoCE, and PCIe.
+- Supports high-speed communication links such as HCCS, RoCE, PCIe, and UB (Unified Bus).
 - Supports both single-operator and graph execution modes.
 
 HCCL is a core component of CANN. It supports multiple AI frameworks upward and enables communication capabilities among multiple Ascend AI processors downward. The following figure shows the software architecture:

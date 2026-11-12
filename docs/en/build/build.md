@@ -287,7 +287,7 @@ You can use HCCL Test to test collective communication functionality and perform
 
       ```shell
       npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # Enable the signature verification configuration
-      npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # Disable custom signature verification.
+      npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # Configure no-signature-verification mode
       ```
 
 3. Run the HCCL Test command to test the functionality and performance of collective communication.

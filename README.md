@@ -15,7 +15,7 @@
 - 提供单机、多机环境中的高性能集合通信和点对点通信。
 - 支持AllReduce、Broadcast、AllGather、ReduceScatter、AlltoAll等集合通信原语。
 - 支持Ring、Mesh、Recursive Halving-Doubling（RHD）等通信算法。
-- 支持HCCS、RoCE、PCIe等高速通信链路。
+- 支持HCCS、RoCE、PCIe、UB（Unified Bus）等高速通信链路。
 - 支持单算子和图模式两种执行模式。
 
 HCCL是CANN的核心组件，对上支持多种AI框架，对下使能多款昇腾AI处理器之间的通信能力，其软件架构如下图所示：

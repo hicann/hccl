@@ -48,7 +48,7 @@
 
 本样例编译用到的软件依赖如下，注意满足版本号要求：
 
-- gcc & g++ : 7.3.0 至 13.3.x
+- gcc & g++ >= 7.3.0
 - cmake >= 3.16.0
 
 ### 2. 安装 CANN Toolkit 开发套件包
@@ -135,7 +135,7 @@ bash build.sh --vendor=cust --ops=p2p --custom_ops_path=./examples/04_custom_ops
 
 ```shell
 npu-smi set -t custom-op-secverify-enable -i 0 -d 1    # 开启验签配置
-npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 关闭用户自定义验签
+npu-smi set -t custom-op-secverify-mode -i 0 -d 0      # 配置为无需验签模式
 ```
 
 其中：

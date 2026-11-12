@@ -210,8 +210,10 @@ hccl
 |        ├── all_gather_v       # AllGatherV operator implementation
 |        ├── all_reduce         # AllReduce operator implementation
 |        ├── all_to_all_v       # AlltoAll, AlltoAllV, AlltoAllVC operator implementations
+|        ├── barrier            # Barrier operator implementation
 |        ├── batch_send_recv    # BatchSendRecv operator implementation
 |        ├── broadcast          # Broadcast operator implementation
+|        ├── interface_graph_mode # Graph mode interface implementation
 |        ├── op_common          # Operator common components
 |        │   ├── algorithm      # Algorithm layer
 |        │   │   ├── executor   # Algorithm executor
