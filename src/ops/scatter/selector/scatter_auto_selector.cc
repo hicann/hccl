@@ -295,7 +295,8 @@ SelectorStatus ScatterAutoSelector::SelectNdaAlgo(
     if (topoInfo->topoLevelNums <= 1) {
         return SelectorStatus::NOT_MATCH;
     }
-    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D) {
+    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D
+        || topoInfo->level0Topo == Level0Shape::CLOS) {
         selectAlgName = "DpuScatterSequenceMeshNHRNDA";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))
@@ -304,8 +305,6 @@ SelectorStatus ScatterAutoSelector::SelectNdaAlgo(
         } else {
             selectAlgName = "DpuScatterSequenceMeshNHRNDA";
         }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        selectAlgName = "DpuScatterSequenceMeshNHRNDA";
     } else {
         return SelectorStatus::NOT_MATCH;
     }
@@ -323,7 +322,8 @@ SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
     (void)opParam;
 
     if (topoInfo->topoLevelNums > 1) {
-        if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+        if (topoInfo->deviceNumPerModule == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D
+            || topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "DpuScatterSequenceMeshNHR";
             HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
             return SelectorStatus::MATCH;
@@ -337,10 +337,6 @@ SelectorStatus ScatterAutoSelector::SelectDPUAlgo(
                 HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
                 return SelectorStatus::MATCH;
             }
-        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            selectAlgName = "DpuScatterSequenceMeshNHR";
-            HCCL_INFO("[ScatterAutoSelector] Using algo DpuScatterSequenceMeshNHR");
-            return SelectorStatus::MATCH;
         }
     }
 

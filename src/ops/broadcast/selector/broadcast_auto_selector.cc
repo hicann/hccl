@@ -343,7 +343,8 @@ SelectorStatus BroadcastAutoSelector::SelectNdaAlgo(
     if (topoInfo->topoLevelNums <= 1) {
         return SelectorStatus::NOT_MATCH;
     }
-    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D) {
+    if (topoInfo->netLayerDetails.localNetInsSizeOfLayer[0] == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D
+        || topoInfo->level0Topo == Level0Shape::CLOS) {
         selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
     } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
         if (!(topoInfo->level0PcieMix || IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH))
@@ -352,8 +353,6 @@ SelectorStatus BroadcastAutoSelector::SelectNdaAlgo(
         } else {
             selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
         }
-    } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-        selectAlgName = "DpuBroadcastSequenceMeshNHRNDA";
     } else {
         return SelectorStatus::NOT_MATCH;
     }
@@ -371,7 +370,8 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
         "[BroadcastAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
         opParam.opType, algos[0], algos[1], algos[2], algos[3]);
     if (topoInfo->topoLevelNums > 1) {
-        if ((topoInfo->deviceNumPerModule == 1) || (topoInfo->level0Topo == Level0Shape::MESH_1D)) {
+        if (topoInfo->deviceNumPerModule == 1 || topoInfo->level0Topo == Level0Shape::MESH_1D
+            || topoInfo->level0Topo == Level0Shape::CLOS) {
             selectAlgName = "DpuBroadcastSequenceMeshNHR";
             HCCL_INFO("[BroadcastAutoSelector] Using algo DpuBroadcastSequenceMeshNHR");
             return SelectorStatus::MATCH;
@@ -385,12 +385,6 @@ SelectorStatus BroadcastAutoSelector::SelectDPUAlgo(
                 HCCL_INFO("[BroadcastAutoSelector] Using algo DpuBroadcastSequenceMeshNHR");
                 return SelectorStatus::MATCH;
             }
-        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
-            // seq算法兼容level0为clos的场景
-            selectAlgName = "DpuBroadcastSequenceMeshNHR";
-            HCCL_DEBUG(
-                "[BroadcastAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
-            return SelectorStatus::MATCH;
         }
     }
     return SelectorStatus::NOT_MATCH;
