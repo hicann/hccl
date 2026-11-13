@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include "executor_v2_base.h"
 #include "alg_v2_template_base.h"
 #include "topo_match_base_v2.h"
@@ -20,10 +21,7 @@
 
 namespace ops_hccl {
 
-// Barrier 顺序编排：框间 DPU 模板 + 框内 AICPU 模板，各执行一次，纯同步无数据搬运。
-// 与 AllGather SequenceExecutor 的区别：barrier 不按 dataCount 分 loop，
-// 也不需要 buffer/stride 计算，固定执行一次同步对。
-template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1>
+template <typename AlgTopoMatch, typename InsAlgTemplate0, typename InsAlgTemplate1, typename InsAlgTemplate2 = void>
 class InsV2BarrierSequenceExecutor : public InsCollAlgBase {
 public:
     InsV2BarrierSequenceExecutor() {}
@@ -43,10 +41,6 @@ public:
         const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& param, const char* algName) const override;
 
     HcclResult Orchestrate(const OpParam& param, const AlgResourceCtxSerializable& resCtx) override;
-
-private:
-    AlgHierarchyInfoForAllLevel algHierarchyInfo_;
-    std::vector<std::map<u32, std::vector<ChannelInfo>>> remoteRankToChannelInfo_;
 };
 
 } // namespace ops_hccl

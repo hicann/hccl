@@ -30,6 +30,7 @@ message(STATUS "Final Ascend Path: ${ASCEND_HOME_PATH}")
 target_include_directories(alg_parse_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/stub
     ${PROJECT_SOURCE_DIR}/src/common
+    ${PROJECT_SOURCE_DIR}/src/ops/barrier/algorithm/executor
     ${ASCEND_HOME_PATH}/pkg_inc
     ${ASCEND_HOME_PATH}/pkg_inc/base
     ${ASCEND_HOME_PATH}/include

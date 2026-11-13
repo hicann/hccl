@@ -12,9 +12,14 @@ cmake_minimum_required(VERSION 3.14)
 
 file(GLOB_RECURSE UT_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cc")
 
-# 被测源文件：template_utils 公共层（RHD 步骤生成函数族）；桩经 UT_FILES 拾取
+# 覆盖公共 RHD 步骤生成和 Barrier 资源计算、同步模板。
 set(SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/template_utils.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/alg_v2_template_base.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/registry/alg_v2_template_register.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/barrier/algorithm/template/aicpu/barrier_rhd_utils.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_rhd_aicpu.cc
+    ${PROJECT_SOURCE_DIR}/src/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_rhd_dpu.cc
 )
 
 add_executable(template_utils_test ${UT_FILES} ${SOURCE_FILES})
@@ -31,8 +36,11 @@ else()
 endif()
 
 target_include_directories(template_utils_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/src/ops/barrier/algorithm/template/aicpu
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/registry
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/wrapper
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/channel
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/registry

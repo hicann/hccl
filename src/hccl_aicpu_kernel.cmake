@@ -216,6 +216,9 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/executor/ins_v2_barrier_sole_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_nhr_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_nhr_aicpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/barrier_rhd_utils.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_rhd_aicpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/barrier/algorithm/template/aicpu/ins_temp_barrier_rhd_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/algorithm/executor/ins_v2_reduce_sequence_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/algorithm/template/aicpu/ins_temp_gather_dpu_inter.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_dpu_alltoall_mesh.cc

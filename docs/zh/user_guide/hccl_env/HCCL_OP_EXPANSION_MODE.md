@@ -18,7 +18,7 @@
 
   - **AICPU_TS（默认值）**：代表通信算子在AI CPU展开，使用STARS调度器调度运行。
 
-    该配置项支持Broadcast、Reduce、AllReduce、Scatter、ReduceScatter、ReduceScatterV、AllGather、AllGatherV、AlltoAll、AlltoAllV、AlltoAllVC、Send、Recv、BatchSendRecv算子。
+    该配置项支持Broadcast、Reduce、AllReduce、Scatter、ReduceScatter、ReduceScatterV、AllGather、AllGatherV、AlltoAll、AlltoAllV、AlltoAllVC、Send、Recv、BatchSendRecv算子。Barrier算子在单算子模式下支持该配置项。
 
     **注意**：
 

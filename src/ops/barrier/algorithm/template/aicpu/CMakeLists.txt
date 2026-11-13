@@ -9,6 +9,9 @@
 # -----------------------------------------------------------------------------------------------------------
 
 set(src_list
+    ${CMAKE_CURRENT_SOURCE_DIR}/barrier_rhd_utils.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_barrier_rhd_aicpu.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_barrier_rhd_dpu.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_barrier_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_barrier_nhr_dpu.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_barrier_nhr_aicpu.cc

@@ -90,6 +90,7 @@ export HCCL_ALGO="<OpType>:<ExecutorType>{level0=<algoType>,level1=<algoType>,..
   - AllToAll（alltoall）
   - AllToAllV（alltoallv）
   - AllToAllVC（alltoallvc）
+  - Barrier（barrier）
   - Broadcast（broadcast）
   - Reduce（reduce）
   - ReduceScatter（reducescatter）
@@ -222,6 +223,33 @@ export HCCL_ALGO="allreduce=level0:NA;level1:ring/allgather=level0:NA;level1:H-D
 <!-- end id3 -->
 
 ## 使用约束
+
+<!-- npu="950" id12 -->
+<a id="barrier_rhd_config"></a>
+
+### Barrier的RHD算法配置
+
+Ascend 950PR&950DT系列产品的Barrier支持在符合分组和链路要求的二级、三级拓扑中显式配置RHD算法。框内使用Mesh，外层使用RHD。外层rank数支持2的整数次幂及其他规模。不同Server或超节点的卡数不等时，仍须满足分组和链路要求。
+
+以下单算子示例使用Ascend 950PR&950DT系列产品的默认展开模式`AICPU_TS`，无需额外设置[HCCL_OP_EXPANSION_MODE](HCCL_OP_EXPANSION_MODE.md)。
+
+```bash
+# 二级拓扑
+export HCCL_ALGO='barrier:sequence{level0=mesh,level1=rhd}'
+# 三级拓扑
+export HCCL_ALGO='barrier:sequence{level0=mesh,level1=rhd,level2=rhd}'
+```
+
+也可在通信域初始化前调用`HcclCommConfigInit`，将上述算法字符串写入`HcclCommConfig.hcclAlgo`，再调用`HcclCommInitRootInfoConfig`或`HcclCommInitClusterInfoConfig`创建通信域。同一通信域的各rank应使用一致配置。通信域配置非空时，以通信域配置为准。通信域配置为空时，使用环境变量。
+
+AICPU与HostDPU共用上述算法配置。HostDPU指由主机侧通过RoCE链路执行最外层同步的模式。HCCL根据通信域的拓扑和链路自动选择执行模式，可通过选路日志中的算法名确认。
+
+`ST_DPU_THREAD_NEW_FLOW`用于启用HostDPU的DPU线程新流程。当前Barrier的HostDPU RHD使用共享内存请求和响应。运行该算法时需取消设置此变量，否则回退至自适应选路。
+
+RHD仅在显式配置时参与选路。显式配置的RHD算法因拓扑层级或链路约束被过滤时，系统记录WARNING日志并回退至自适应选路。可通过`SelectMinCost: selected algName=`日志确认实际选中的算法。裸值`rhd`和`barrier:rhd`按`sole`解析，配置Barrier RHD时请使用上述`sequence`形式。
+<!-- end id12 -->
+
+### 通用约束
 
 - 若您调用HCCL C接口初始化具有特定配置的通信域时，通过“HcclCommConfig”的“hcclAlgo”参数指定了通信算法，则以通信域粒度的配置优先。
 - 如果输入的HCCL_ALGO配置字符串格式错误，则配置不会生效，系统打印警告信息，但不会阻碍后续执行流程。
