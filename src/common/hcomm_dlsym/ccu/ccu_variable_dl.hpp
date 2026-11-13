@@ -17,7 +17,7 @@
 #include "ccu_utils_dl.hpp"
 #include "ccu_primitives_impl_dl.h"
 
-namespace AscendC {
+namespace hcomm {
 namespace ccu {
 
     class Variable;
@@ -304,22 +304,22 @@ namespace ccu {
     };
 
 } // namespace ccu
-} // namespace AscendC
+} // namespace hcomm
 
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Variable, AscendC::ccu::Variable>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Variable, hcomm::ccu::Variable>::Check() const
 {}
 
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Variable, uint16_t>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Variable, uint16_t>::Check() const
 {}
 
 template <>
-inline void AscendC::ccu::detail::CcuLogicOperator<AscendC::ccu::Variable, AscendC::ccu::Variable>::Check() const
+inline void hcomm::ccu::detail::CcuLogicOperator<hcomm::ccu::Variable, hcomm::ccu::Variable>::Check() const
 {}
 
 template <>
-inline void AscendC::ccu::detail::CcuLogicUnaryOperator<AscendC::ccu::Variable>::Check() const
+inline void hcomm::ccu::detail::CcuLogicUnaryOperator<hcomm::ccu::Variable>::Check() const
 {}
 
 #endif // CCU_VARIABLE_DL_HPP

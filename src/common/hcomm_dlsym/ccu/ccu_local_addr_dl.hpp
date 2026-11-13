@@ -16,7 +16,7 @@
 #include "ccu_variable_dl.hpp"
 #include "ccu_address_dl.hpp"
 
-namespace AscendC {
+namespace hcomm {
 namespace ccu {
 
     template <typename U>
@@ -65,6 +65,6 @@ namespace ccu {
     };
 
 } // namespace ccu
-} // namespace AscendC
+} // namespace hcomm
 
 #endif // CCU_LOCAL_ADDR_DL_HPP

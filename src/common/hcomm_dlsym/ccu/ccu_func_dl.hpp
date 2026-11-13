@@ -23,7 +23,7 @@
 #include "ccu_primitives_impl_dl.h"
 #include "ccu_variable_dl.hpp"
 
-namespace AscendC {
+namespace hcomm {
 namespace ccu {
 
     namespace internal {
@@ -136,6 +136,6 @@ namespace ccu {
     }
 
 } // namespace ccu
-} // namespace AscendC
+} // namespace hcomm
 
 #endif // CCU_FUNC_DL_HPP

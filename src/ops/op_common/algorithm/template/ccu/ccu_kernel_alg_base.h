@@ -20,7 +20,7 @@
 #include "ccu_kernel_utils.h"
 #include "ccu_primitives_dl.hpp"
 #include "ccu_log.h"
-namespace ccu = ::AscendC::ccu;
+namespace ccu = ::hcomm::ccu;
 
 namespace ops_hccl {
 

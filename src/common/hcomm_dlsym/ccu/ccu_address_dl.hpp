@@ -19,7 +19,7 @@
 #include "ccu_primitives_impl_dl.h"
 #include "ccu_variable_dl.hpp"
 
-namespace AscendC {
+namespace hcomm {
 namespace ccu {
 
     class LocalAddr;
@@ -139,19 +139,19 @@ namespace ccu {
     }
 
 } // namespace ccu
-} // namespace AscendC
+} // namespace hcomm
 
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Address, AscendC::ccu::Address>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Address, hcomm::ccu::Address>::Check() const
 {}
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Address, AscendC::ccu::Variable>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Address, hcomm::ccu::Variable>::Check() const
 {}
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Variable, AscendC::ccu::Address>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Variable, hcomm::ccu::Address>::Check() const
 {}
 template <>
-inline void AscendC::ccu::detail::CcuArithmeticOperator<AscendC::ccu::Address, uint16_t>::Check() const
+inline void hcomm::ccu::detail::CcuArithmeticOperator<hcomm::ccu::Address, uint16_t>::Check() const
 {}
 
 #endif // CCU_ADDRESS_DL_HPP

@@ -22,7 +22,7 @@
 #include "ccu_event_dl.hpp"
 #include "ccu_buffer_dl.hpp"
 
-namespace AscendC {
+namespace hcomm {
 namespace ccu {
 
     // 主模板未实现：未特化的资源类型实例化 Array<T> 时编译失败，
@@ -75,7 +75,7 @@ namespace ccu {
                 ::operator delete(elems_);
                 elems_ = nullptr;
                 count_ = 0;
-                throw ::AscendC::ccu::detail::CcuException(ret, "Array BlockAlloc: failed");
+                throw ::hcomm::ccu::detail::CcuException(ret, "Array BlockAlloc: failed");
             }
             for (uint32_t i = 0; i < count; ++i) {
                 CcuArrayTraits<T>::SetHandle(elems_[i], handles[i]);
@@ -126,6 +126,6 @@ namespace ccu {
     };
 
 } // namespace ccu
-} // namespace AscendC
+} // namespace hcomm
 
 #endif // CCU_ARRAY_DL_HPP
