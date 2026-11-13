@@ -8,8 +8,8 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-# 该 UT 依赖 GE 对外接口 TaskDefBuilder / kHcclSuperKernel，接口不存在时跳过。
-# 注意：以下编译探测代码与 src/hccl.cmake 保持逐字一致，修改时请同步另一处。
+# 该 UT 依赖 GE 对外接口 TaskDefBuilder / OpImplRegisterV2 / kHcclSuperKernel / ge_version_check，
+# 接口不存在时跳过。注意：以下编译探测代码与 src/hccl.cmake 保持逐字一致，修改时请同步另一处。
 include(CheckCXXSourceCompiles)
 set(_hccl_sk_probe_saved_includes "${CMAKE_REQUIRED_INCLUDES}")
 set(_hccl_sk_probe_saved_flags "${CMAKE_REQUIRED_FLAGS}")
@@ -23,18 +23,47 @@ set(CMAKE_REQUIRED_FLAGS "-std=c++17")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 unset(HCCL_HAS_GE_SUPERKERNEL_GENTASK CACHE)
 check_cxx_source_compiles([=[
+#include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <vector>
+#include "exe_graph/runtime/exe_res_generation_context.h"
 #include "exe_graph/runtime/task_def_builder.h"
 #include "graph/arg_desc_info.h"
+#include "graph/ge_version_check.h"
+#include "register/op_impl_registry.h"
+
+// 等价于 hccl_gen_task_superkernel.cc 的 MakeSuperKernelReg：构造后按值返回，
+// 同时覆盖 OpImplRegisterV2 的拷贝/移动性（生产代码 return reg 依赖）
+static std::optional<gert::OpImplRegisterV2> MakeRegProbe(const char* opType)
+{
+    gert::OpImplRegisterV2 reg(opType);
+    reg.GenerateTask(nullptr);
+    return reg;
+}
+
 int main()
 {
+    // 弱符号版本探测（老 toolkit 上解析为空指针，调用前判空，见 cann/ge!5881）
+    if (&ge::IsVersionSupported != nullptr) {
+        (void)ge::IsVersionSupported("9.3.0");
+    }
+    // 运行期条件注册等价于 IMPL_OP(...).GenerateTask(...) 的静态注册
+    const auto reg = MakeRegProbe("HcomAllReduce");
+    (void)reg;
+    // TaskDefBuilder 调用链：即 hccl_gen_task_superkernel.cc 的 TaskDef 构建/序列化形状
     gert::TaskDefBuilder task;
     task.SetStreamId(1U).SetType(0U);
     task.GetKernelBuilder().SetBlockDim(1U).GetContextBuilder().SetArgsFormat(ge::AscendString("{i0*}"));
+    const size_t size = task.ByteSizeLong();
+    std::vector<uint8_t> buffer(size, 0U);
+    (void)task.SerializeToArray(buffer.data(), size);
+    // args format 的构建/序列化（superkernel 语义标记所在）
     std::vector<ge::ArgDescInfo> args;
     args.emplace_back(ge::ArgDescInfo(ge::ArgDescType::kIrInput, 0));
     args.insert(args.begin(), ge::ArgDescInfo::CreateHiddenInput(ge::HiddenInputSubType::kHcclSuperKernel));
-    (void)ge::ArgsFormatSerializer::Serialize(args);
+    const ge::AscendString fmt = ge::ArgsFormatSerializer::Serialize(args);
+    (void)fmt;
     return 0;
 }
 ]=] HCCL_HAS_GE_SUPERKERNEL_GENTASK)
@@ -43,7 +72,7 @@ set(CMAKE_REQUIRED_FLAGS "${_hccl_sk_probe_saved_flags}")
 set(CMAKE_TRY_COMPILE_TARGET_TYPE "${_hccl_sk_probe_saved_try_type}")
 
 if(NOT HCCL_HAS_GE_SUPERKERNEL_GENTASK)
-    message(STATUS "[UT] hccl_gen_task_superkernel skipped: GE TaskDefBuilder/kHcclSuperKernel not available.")
+    message(STATUS "[UT] hccl_gen_task_superkernel skipped: GE superkernel GenTask interface not available.")
     return()
 endif()
 

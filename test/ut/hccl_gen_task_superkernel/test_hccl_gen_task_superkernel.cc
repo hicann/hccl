@@ -28,6 +28,7 @@
 #include "gtest/gtest.h"
 #include "exe_graph/runtime/task_def_builder.h"
 #include "graph/arg_desc_info.h"
+#include "graph/ge_version_check.h"
 #include "hccl_gen_task_superkernel.h"
 
 namespace ops {
@@ -56,6 +57,15 @@ TEST(HcclSuperKernelGenTaskTest, IsA5OrLaterShortSocVersion)
     EXPECT_FALSE(IsA5OrLaterShortSocVersion("Ascend910_93"));
     EXPECT_FALSE(IsA5OrLaterShortSocVersion("Ascend310P"));
     EXPECT_FALSE(IsA5OrLaterShortSocVersion("unknown"));
+}
+
+TEST(HcclSuperKernelGenTaskTest, IsGeSuperKernelGenTaskSupported)
+{
+    // 本用例校验"接口在位且版本满足时守卫放行"：UT 套件的整体前置条件由构建探测保证（接口头文件
+    // 在位，缺失时整个 UT 在 CMake 层跳过），CANN 包头文件与运行库同源构建，故运行库提供这些符号。
+    // IsVersionSupported 经下方链接期 stub 默认转发真实实现；地址判空负路径（弱引用为 nullptr）
+    // 进程内无法构造（stub 使符号恒存在），由 GE 侧 ST 覆盖，见 VersionUnsupported 系列用例。
+    EXPECT_TRUE(IsGeSuperKernelGenTaskSupported());
 }
 
 TEST(HcclSuperKernelGenTaskTest, TaskDefBuilderSerialize)
@@ -103,10 +113,31 @@ namespace {
 
     // Serialize 失败注入开关：true 时模拟老版本 GE 未实现 kHcclSuperKernel 序列化（返回空串）的场景
     bool g_forceEmptySerialize = false;
+
+    // GE 版本不满足注入开关：true 时经下方 IsVersionSupported stub 构造"版本低于 9.3.0"场景，
+    // 覆盖版本守卫 false 分支与回调守卫兜底分支（弱引用判空分支进程内无法构造，由 GE 侧 ST 覆盖）
+    bool g_forceGeVersionUnsupported = false;
 } // namespace
 } // namespace ops
 
 namespace ge {
+// 链接期 stub：以强符号覆盖 libgraph 的 IsVersionSupported（extern "C"，按可执行文件优先解析），
+// 默认经 RTLD_NEXT 转发真实实现，保证"守卫放行"用例仍验证真实版本比较行为
+extern "C" bool IsVersionSupported(const char* version)
+{
+    if (ops::g_forceGeVersionUnsupported) {
+        return false;
+    }
+    using IsVersionSupportedFn = bool (*)(const char*);
+    static const IsVersionSupportedFn realFn
+        = reinterpret_cast<IsVersionSupportedFn>(dlsym(RTLD_NEXT, "IsVersionSupported"));
+    if (realFn == nullptr) {
+        // 运行库无该符号（老 toolkit）时无法转发，按支持处理，保持其余用例口径
+        return true;
+    }
+    return realFn(version);
+}
+
 // 链接期 stub：拦截 ArgsFormatSerializer::Serialize，默认经 RTLD_NEXT 转发 libgraph 真实实现，
 // 保证 BuildSuperKernelArgsFormat 等既有用例仍验证真实序列化行为
 AscendString ArgsFormatSerializer::Serialize(const std::vector<ArgDescInfo>& args_format)
@@ -158,6 +189,15 @@ bool ExeResGenerationContext::SetStrAttrVal(const char* attr_name, const char* v
 } // namespace gert
 
 namespace ops {
+TEST(HcclSuperKernelGenTaskTest, IsGeSuperKernelGenTaskUnsupported)
+{
+    // 注入"GE 版本低于 9.3.0"场景：版本守卫须判定不支持（老 toolkit 上不注册回调的判定依据），
+    // 由上方 IsVersionSupported 链接期 stub 的注入开关构造
+    g_forceGeVersionUnsupported = true;
+    EXPECT_FALSE(IsGeSuperKernelGenTaskSupported());
+    g_forceGeVersionUnsupported = false;
+}
+
 // 零初始化 POD：内联 GetNodeName 对空 compute_node_info 返回 nullptr，OP_LOGx 宏对 nullptr 安全
 class HcclSuperKernelGenTaskCallbackTest : public testing::Test {
 protected:
@@ -165,10 +205,22 @@ protected:
     {
         g_ctxStub.Reset();
         g_forceEmptySerialize = false; // 注入开关随用例复位，避免中断的用例残留污染后续用例
+        g_forceGeVersionUnsupported = false;
     }
     gert::ExeResGenerationContext ctx_{};
     std::vector<std::vector<uint8_t>> tasks_;
 };
+
+TEST_F(HcclSuperKernelGenTaskCallbackTest, GeVersionUnsupportedGuardRejects)
+{
+    g_ctxStub.SetAllValid();
+    // 注入"GE 版本低于 9.3.0"场景：回调入口版本守卫须在 json 落盘等任何 I/O 之前优雅失败，
+    // 覆盖老 toolkit 上注册被跳过后回调兜底的判定分支（正常流程下不可达，防御双保险）
+    g_forceGeVersionUnsupported = true;
+    EXPECT_EQ(HcclSuperKernelGenTaskCallback(&ctx_, tasks_), ge::GRAPH_FAILED);
+    EXPECT_TRUE(tasks_.empty());
+    g_forceGeVersionUnsupported = false; // 体内复位，与 SerializeArgsFormatEmpty 同惯例，防 shuffle 顺序污染
+}
 
 TEST_F(HcclSuperKernelGenTaskCallbackTest, MissingBinFilePath)
 {
