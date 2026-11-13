@@ -9,11 +9,11 @@
  */
 
 // 小函数守卫：DPUKernelRun 空入参、CalcScratchMultiple、GetRankFromMap、Describe，
-// 以及 KernelRun 的 batch 窗口与错误路径优先级。
+// 以及 KernelRun 的 batch 窗口、DPU 线程握手时序与错误路径优先级。
 
 #include "nhr_test_access.h"
-
 #include <cstdio>
+#include "exec_timeout_manager.h"
 
 namespace nhr_ut {
 namespace {
@@ -33,6 +33,15 @@ namespace {
         resource.threads = {1};
         resource.npu2DpuShmemPtr = reinterpret_cast<void*>(0x4000);
         resource.dpu2NpuShmemPtr = reinterpret_cast<void*>(0x5000);
+        return resource;
+    }
+
+    TemplateResource MakeDpuThreadResource()
+    {
+        TemplateResource resource = MakeResource();
+        resource.isDpuThreadEnabled = true;
+        resource.dpuThread = 42;
+        resource.dpuThreadNotifyIdxOnMain = 5;
         return resource;
     }
 
@@ -198,6 +207,140 @@ namespace {
 
         EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_INTERNAL);
         EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum));
+    }
+
+    TEST(NhrGuardTest, KernelRunDpuThreadEnabledHandshakeOrder)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        TemplateResource resource = MakeDpuThreadResource();
+        ResetStubState();
+        // 取一个与默认值不同的超时，验证 wait 按 ExecTimeoutManager 现取值下发
+        constexpr u32 kNotifyTimeout = 4321;
+        ExecTimeoutManager::Instance().SetExecTimeout(kNotifyTimeout);
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_SUCCESS);
+        // 新路径走线程通知，不再打开共享内存 batch 窗口
+        EXPECT_EQ(BatchModeCounts().startCount, 0u);
+        EXPECT_EQ(BatchModeCounts().endCount, 0u);
+        // 预拷贝 N*repeatNum + 收尾回写 repeatNum
+        EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum + params.repeatNum));
+
+        const std::vector<NotifyRecordCall>& records = NotifyRecordCalls();
+        ASSERT_EQ(records.size(), 2u);
+        // 开工通知：主流 → DPU 线程，通知位固定
+        EXPECT_EQ(records[0].thread, resource.threads[0]);
+        EXPECT_EQ(records[0].dstThread, resource.dpuThread);
+        EXPECT_EQ(records[0].notifyIdx, HOST_DPU_THREAD_NOTIFY_IDX);
+        // 完工通知：DPU 线程 → 主流，通知位取配置值
+        EXPECT_EQ(records[1].thread, resource.dpuThread);
+        EXPECT_EQ(records[1].dstThread, resource.threads[0]);
+        EXPECT_EQ(records[1].notifyIdx, resource.dpuThreadNotifyIdxOnMain);
+
+        const std::vector<NotifyWaitCall>& waits = NotifyWaitCalls();
+        ASSERT_EQ(waits.size(), 2u);
+        EXPECT_EQ(waits[0].thread, resource.dpuThread);
+        EXPECT_EQ(waits[0].notifyIdx, HOST_DPU_THREAD_NOTIFY_IDX);
+        EXPECT_EQ(waits[0].timeOut, kNotifyTimeout);
+        EXPECT_EQ(waits[1].thread, resource.threads[0]);
+        EXPECT_EQ(waits[1].notifyIdx, resource.dpuThreadNotifyIdxOnMain);
+        EXPECT_EQ(waits[1].timeOut, kNotifyTimeout);
+
+        // 恢复默认超时，避免单例状态泄漏到后续用例
+        ExecTimeoutManager::Instance().SetExecTimeout(CUSTOM_TIMEOUT);
+
+        // write-reduce 任务必须下发到 DPU 线程
+        const std::vector<DpuTransferCall>& transfers = DpuTransferCalls();
+        ASSERT_EQ(transfers.size(), static_cast<size_t>(GetNHRStepNum(kRankSize) * params.repeatNum));
+        for (const DpuTransferCall& call : transfers) {
+            EXPECT_EQ(call.thread, resource.dpuThread);
+        }
+
+        // 完整时序：预拷贝 → record → wait → RunNHR → record → wait → 收尾回写
+        std::vector<HandshakeEvent> expected;
+        expected.insert(expected.end(), kRankSize * params.repeatNum, HandshakeEvent::kLocalCopy);
+        expected.push_back(HandshakeEvent::kNotifyRecord);
+        expected.push_back(HandshakeEvent::kNotifyWait);
+        expected.insert(expected.end(), GetNHRStepNum(kRankSize) * params.repeatNum, HandshakeEvent::kDpuTransfer);
+        expected.push_back(HandshakeEvent::kNotifyRecord);
+        expected.push_back(HandshakeEvent::kNotifyWait);
+        expected.insert(expected.end(), params.repeatNum, HandshakeEvent::kLocalCopy);
+        EXPECT_EQ(HandshakeEvents(), expected);
+    }
+
+    TEST(NhrGuardTest, RunNhrRepeatIndexFollowsOuterLoop)
+    {
+        InsTempReduceScatterNhrDpu tpl;
+        // 取 4 rank（2 个 NHR step），使「repeat 在外层、step 在内层」的嵌套可从下标序列区分
+        SetupTemplate(tpl, 0, MakeRankIds(4));
+        TemplateDataParams params = MakeStrideParams();
+        ResetStubState();
+
+        EXPECT_EQ(tpl.RunNHR(params, {}, 42, true), HCCL_SUCCESS);
+        const u32 nSteps = GetNHRStepNum(4);
+        ASSERT_EQ(nSteps, 2u);
+        const std::vector<DpuTransferCall>& transfers = DpuTransferCalls();
+        ASSERT_EQ(transfers.size(), static_cast<size_t>(nSteps * params.repeatNum));
+        for (size_t i = 0; i < transfers.size(); ++i) {
+            EXPECT_EQ(transfers[i].repeat, static_cast<u32>(i / nSteps)) << "index " << i;
+            EXPECT_EQ(transfers[i].thread, 42u) << "index " << i;
+        }
+    }
+
+    TEST(NhrGuardTest, KernelRunDpuThreadEnabledSkipsCompletionNotifyOnRunNhrFailure)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        TemplateResource resource = MakeDpuThreadResource();
+        ResetStubState();
+        SetDpuTransferResult(static_cast<s32>(HCCL_E_INTERNAL));
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_INTERNAL);
+        // 预拷贝已完成，但收尾回写不执行
+        EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum));
+        // RunNHR 失败后不得补完工通知：只保留开工的 record/wait
+        ASSERT_EQ(NotifyRecordCalls().size(), 1u);
+        ASSERT_EQ(NotifyWaitCalls().size(), 1u);
+        EXPECT_EQ(NotifyRecordCalls()[0].dstThread, resource.dpuThread);
+        EXPECT_EQ(NotifyWaitCalls()[0].thread, resource.dpuThread);
+    }
+
+    TEST(NhrGuardTest, KernelRunDpuThreadEnabledPropagatesNotifyRecordFailure)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        TemplateResource resource = MakeDpuThreadResource();
+        ResetStubState();
+        SetNotifyRecordResult(static_cast<s32>(HCCL_E_INTERNAL));
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_INTERNAL);
+        // 预拷贝先于开工通知完成，此后不得再有 Wait/RunNHR/收尾回写
+        EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum));
+        ASSERT_EQ(NotifyRecordCalls().size(), 1u);
+        EXPECT_EQ(NotifyRecordCalls()[0].dstThread, resource.dpuThread);
+        EXPECT_TRUE(NotifyWaitCalls().empty());
+        EXPECT_TRUE(DpuTransferCalls().empty());
+    }
+
+    TEST(NhrGuardTest, KernelRunDpuThreadEnabledPropagatesNotifyWaitFailure)
+    {
+        InsTempReduceScatterNhrDpu tpl = MakeTemplate();
+        const OpParam param = MakeOpParam();
+        TemplateDataParams params = MakeStrideParams();
+        TemplateResource resource = MakeDpuThreadResource();
+        ResetStubState();
+        SetNotifyWaitResult(static_cast<s32>(HCCL_E_INTERNAL));
+
+        EXPECT_EQ(tpl.KernelRun(param, params, resource), HCCL_E_INTERNAL);
+        // 开工通知已发出，但等不到 DPU 开工，不得下发 write-reduce 或补完工通知
+        EXPECT_EQ(CopyCalls().size(), static_cast<size_t>(kRankSize * params.repeatNum));
+        ASSERT_EQ(NotifyRecordCalls().size(), 1u);
+        ASSERT_EQ(NotifyWaitCalls().size(), 1u);
+        EXPECT_EQ(NotifyWaitCalls()[0].thread, resource.dpuThread);
+        EXPECT_TRUE(DpuTransferCalls().empty());
     }
 
     TEST(NhrGuardTest, KernelRunHappyPathWritesBackWithBatchWindow)

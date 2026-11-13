@@ -44,6 +44,40 @@ struct CopyCall {
 
 std::vector<CopyCall>& CopyCalls();
 
+// 线程通知原语记录：用于断言 DPU 线程握手顺序与句柄透传
+struct NotifyRecordCall {
+    u64 thread = 0;
+    u64 dstThread = 0;
+    u32 notifyIdx = 0;
+};
+
+struct NotifyWaitCall {
+    u64 thread = 0;
+    u32 notifyIdx = 0;
+    u32 timeOut = 0;
+};
+
+std::vector<NotifyRecordCall>& NotifyRecordCalls();
+std::vector<NotifyWaitCall>& NotifyWaitCalls();
+
+// DpuBatchWriteReduceTransferNHR 桩捕获的下发线程句柄
+struct DpuTransferCall {
+    u64 thread = 0;
+    u32 repeat = 0;
+};
+
+std::vector<DpuTransferCall>& DpuTransferCalls();
+
+// 跨桩事件序列：用于断言 DPU 线程路径的整体握手时序
+enum class HandshakeEvent {
+    kLocalCopy,
+    kNotifyRecord,
+    kNotifyWait,
+    kDpuTransfer,
+};
+
+std::vector<HandshakeEvent>& HandshakeEvents();
+
 // batch 模式窗口计数：用于固化 KernelRun 的 Start/End 次数
 struct BatchModeStats {
     u32 startCount = 0;
@@ -81,6 +115,9 @@ void SetSendRequestResult(s32 result);
 void SetWaitResponseResult(s32 result);
 void SetSendMsgId(u32 msgId);
 void SetWaitResponseMsgId(u32 msgId);
+void SetNotifyRecordResult(s32 result);
+void SetNotifyWaitResult(s32 result);
+void SetDpuTransferResult(s32 result);
 void ResetStubState();
 
 inline void SetupTemplate(InsTempReduceScatterNhrDpu& tpl, u32 myRank, const std::vector<u32>& rankIds)

@@ -56,10 +56,13 @@ HcclResult ValidateReduceScatterNhrParams(const TemplateDataParams& tempAlgParam
  * @param tempAlgParam 已校验的算法参数
  * @param repeat 当前repeat索引
  * @param templateRankSize 模板rank总数，须与参数校验时的rankSize一致
+ * @param thread 执行搬运的DPU线程句柄，共享内存请求老路径不传（默认0）
+ * @param isDrainSupported hcomm是否支持Host Channel Drain，仅AICPU侧需要（host/DPU侧直接查版本）
  */
 HcclResult DpuBatchWriteReduceTransferNHR(
     const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
-    const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize);
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize, ThreadHandle thread = 0,
+    bool isDrainSupported = false);
 
 // ========== 三阶段批量传输 ==========
 
@@ -95,8 +98,12 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs, ThreadHandle thr
  * @param transfer 当前step的发送和接收通道及slice
  * @param dataType 规约数据类型
  * @param reduceOp 规约操作
+ * @param thread 执行搬运的DPU线程句柄，共享内存请求老路径不传（默认0）
+ * @param isDrainSupported hcomm是否支持Host Channel Drain，仅AICPU侧需要（host/DPU侧直接查版本）
  */
-HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType dataType, HcclReduceOp reduceOp);
+HcclResult DpuWriteReduceTransfer(
+    const DpuTransferCtx& transfer, HcclDataType dataType, HcclReduceOp reduceOp, ThreadHandle thread = 0,
+    bool isDrainSupported = false);
 
 } // namespace ops_hccl
 

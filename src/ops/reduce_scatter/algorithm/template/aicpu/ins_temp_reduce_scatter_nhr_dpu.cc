@@ -13,6 +13,7 @@
 #include "alg_data_trans_wrapper.h"
 #include "channel.h"
 #include "alg_v2_template_register.h"
+#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 
@@ -108,6 +109,10 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
     const OpParam& param, const TemplateDataParams& tempAlgParams, TemplateResource& templateResource)
 {
     HCCL_INFO("[InsTempReduceScatterNhrDpu] Run Start");
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[InsTempReduceScatterNhrDpu][KernelRun] invalid empty subCommRanks, myRank[%u]", myRank_),
+        HCCL_E_PARA);
     if (templateResource.threads.size() < 1) {
         HCCL_ERROR("[InsTempReduceScatterNhrDpu] Rank[%u], required thread error.", myRank_);
         return HCCL_E_INTERNAL;
@@ -119,61 +124,82 @@ HcclResult InsTempReduceScatterNhrDpu::KernelRun(
     const bool strideLayout = tempAlgParams.allRankSliceSize.empty();
     CHK_RET(NormalizeStrideLayout(tempAlgParams, workParams, strideLayout));
 
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set batch mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-    // 预拷贝结果作为 DPU write-reduce 的累加初值，须先于 DPU 开工完成
-    CHK_RET(LocalDataCopy(tempAlgParams, workParams, strideLayout, templateResource));
-
-    if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set eager mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set batch mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
-    }
-
-    HcclResult result = static_cast<HcclResult>(HcommThreadSynchronize(templateResource.threads[0]));
-    if (result != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] HcommThreadSynchronize failed");
-        return result;
-    }
-
     TemplateDataParams dpuAlgParams = workParams;
     dpuAlgParams.dataType = param.DataDes.dataType;
     dpuAlgParams.reduceOp = param.reduceType;
 
-    u32 sendMsgId = 0;
-    DPURunInfo dpuRunInfo;
-    dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-    dpuRunInfo.templateName = "InsTempReduceScatterNhrDpu";
-    dpuRunInfo.tempAlgParams = dpuAlgParams;
-    dpuRunInfo.channels = templateResource.channels;
-    dpuRunInfo.myRank = myRank_;
-    dpuRunInfo.subCommRanks = subCommRanks_;
-    auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-    result = static_cast<HcclResult>(HcommSendRequest(
-        reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-        static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId));
-    if (result != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] HcommSendRequest failed");
-        return result;
-    }
-    HCCL_INFO("[InsTempReduceScatterNhrDpu] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+    if (templateResource.isDpuThreadEnabled) {
+        // 新路径：预拷贝结果作为 DPU write-reduce 的累加初值，须先于 DPU 开工完成；
+        // 随后主流通知DPU线程开工，把write-reduce任务下发到DPU线程，最后等其完工通知
+        CHK_RET(LocalDataCopy(tempAlgParams, workParams, strideLayout, templateResource));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.threads[0], templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX)));
+        // 获取执行超时时间
+        u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
+        CHK_RET(static_cast<HcclResult>(
+            HcommThreadNotifyWaitOnThread(templateResource.dpuThread, HOST_DPU_THREAD_NOTIFY_IDX, execTimeout)));
+        templateRankSize_ = subCommRanks_[0].size();
+        CHK_RET(RunNHR(
+            dpuAlgParams, templateResource.channels, templateResource.dpuThread,
+            templateResource.isHcommChannelDrainSupported));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyRecordOnThread(
+            templateResource.dpuThread, templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain)));
+        CHK_RET(static_cast<HcclResult>(HcommThreadNotifyWaitOnThread(
+            templateResource.threads[0], templateResource.dpuThreadNotifyIdxOnMain, execTimeout)));
+    } else {
+        // 老路径：保持原共享内存请求/响应流程
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+        // 预拷贝结果作为 DPU write-reduce 的累加初值，须先于 DPU 开工完成
+        CHK_RET(LocalDataCopy(tempAlgParams, workParams, strideLayout, templateResource));
 
-    // 等待DPU write-reduce传输（即规约）完成
-    void* recvData = nullptr;
-    u32 recvMsgId = 0;
-    result = static_cast<HcclResult>(
-        HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId));
-    if (result == HCCL_SUCCESS && recvMsgId != sendMsgId) {
-        HCCL_ERROR("[InsTempReduceScatterNhrDpu] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
-        result = HCCL_E_INTERNAL;
+        if (HcommBatchModeEnd(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set eager mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] failed set batch mode, tag is %s.", param.algTag);
+            return HCCL_E_INTERNAL;
+        }
+
+        HcclResult result = static_cast<HcclResult>(HcommThreadSynchronize(templateResource.threads[0]));
+        if (result != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] HcommThreadSynchronize failed");
+            return result;
+        }
+
+        u32 sendMsgId = 0;
+        DPURunInfo dpuRunInfo;
+        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+        dpuRunInfo.templateName = "InsTempReduceScatterNhrDpu";
+        dpuRunInfo.tempAlgParams = dpuAlgParams;
+        dpuRunInfo.channels = templateResource.channels;
+        dpuRunInfo.myRank = myRank_;
+        dpuRunInfo.subCommRanks = subCommRanks_;
+        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+        result = static_cast<HcclResult>(HcommSendRequest(
+            reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+            static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId));
+        if (result != HCCL_SUCCESS) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] HcommSendRequest failed");
+            return result;
+        }
+        HCCL_INFO("[InsTempReduceScatterNhrDpu] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+
+        // 等待DPU write-reduce传输（即规约）完成
+        void* recvData = nullptr;
+        u32 recvMsgId = 0;
+        result = static_cast<HcclResult>(
+            HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId));
+        if (result == HCCL_SUCCESS && recvMsgId != sendMsgId) {
+            HCCL_ERROR("[InsTempReduceScatterNhrDpu] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
+            result = HCCL_E_INTERNAL;
+        }
+        HCCL_INFO("[InsTempReduceScatterNhrDpu] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        CHK_RET(result);
     }
-    HCCL_INFO("[InsTempReduceScatterNhrDpu] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
-    CHK_RET(result);
 
     CHK_RET(PostLocalCopy(tempAlgParams, workParams, templateResource));
 
@@ -273,9 +299,9 @@ HcclResult InsTempReduceScatterNhrDpu::LocalDataCopy(
 }
 
 HcclResult InsTempReduceScatterNhrDpu::RunNHR(
-    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels)
+    const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+    ThreadHandle thread, bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     const uint32_t nSteps = GetNHRStepNum(templateRankSize_);
 
     // 几何与 rpt 无关，预计算一次供各重复块复用
@@ -294,10 +320,10 @@ HcclResult InsTempReduceScatterNhrDpu::RunNHR(
     CHK_RET(ValidateReduceScatterNhrParams(tempAlgParams, templateRankSize_));
     for (uint32_t rpt = 0; rpt < tempAlgParams.repeatNum; ++rpt) {
         for (uint32_t step = 0; step < nSteps; ++step) {
-            CHK_RET(DpuBatchWriteReduceTransferNHR(stepInfos[step], channels, tempAlgParams, rpt, templateRankSize_));
+            CHK_RET(DpuBatchWriteReduceTransferNHR(
+                stepInfos[step], channels, tempAlgParams, rpt, templateRankSize_, thread, isDrainSupported));
         }
     }
-#endif
     return HcclResult::HCCL_SUCCESS;
 }
 

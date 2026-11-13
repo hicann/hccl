@@ -113,7 +113,6 @@ namespace {
         return HCCL_SUCCESS;
     }
 
-#ifndef AICPU_COMPILE
     HcclResult GetWriteReduceChannel(
         const std::map<u32, std::vector<ChannelInfo>>& channels, u32 rank, const ChannelInfo*& channel)
     {
@@ -138,7 +137,6 @@ namespace {
             return params.allRankSliceSize.at(sliceIdx) != 0;
         });
     }
-#endif
 
     void BuildTxSlices(
         const AicpuNHRStepInfo& stepInfo, const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize,
@@ -319,9 +317,9 @@ HcclResult BatchTransferNHR(
 
 HcclResult DpuBatchWriteReduceTransferNHR(
     const AicpuNHRStepInfo& stepInfo, const std::map<u32, std::vector<ChannelInfo>>& channels,
-    const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize)
+    const TemplateDataParams& tempAlgParam, u32 repeat, u32 templateRankSize, ThreadHandle thread,
+    bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     const auto validSliceIndex = [&](u32 sliceIdx) {
         return sliceIdx < templateRankSize && sliceIdx < tempAlgParam.allRankSliceSize.size()
                && sliceIdx < tempAlgParam.allRankDispls.size()
@@ -360,14 +358,7 @@ HcclResult DpuBatchWriteReduceTransferNHR(
             ctx.rxDstSlices);
     }
     CHK_RET(CheckWriteReduceTransfer(ctx, tempAlgParam.dataType));
-    CHK_RET(DpuWriteReduceTransfer(ctx, tempAlgParam.dataType, tempAlgParam.reduceOp));
-#else
-    (void)stepInfo;
-    (void)channels;
-    (void)tempAlgParam;
-    (void)repeat;
-    (void)templateRankSize;
-#endif
+    CHK_RET(DpuWriteReduceTransfer(ctx, tempAlgParam.dataType, tempAlgParam.reduceOp, thread, isDrainSupported));
     return HCCL_SUCCESS;
 }
 
@@ -430,9 +421,10 @@ HcclResult DpuBatchTransfer(std::vector<DpuTransferCtx>& pairs, ThreadHandle thr
     return HCCL_SUCCESS;
 }
 
-HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType dataType, HcclReduceOp reduceOp)
+HcclResult DpuWriteReduceTransfer(
+    const DpuTransferCtx& transfer, HcclDataType dataType, HcclReduceOp reduceOp, ThreadHandle thread,
+    bool isDrainSupported)
 {
-#ifndef AICPU_COMPILE
     const bool hasSend = transfer.hasSend();
     const bool hasRecv = transfer.hasRecv();
     if (!hasSend && !hasRecv) {
@@ -441,12 +433,12 @@ HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType d
 
     const u32 execTimeout = ExecTimeoutManager::Instance().GetExecTimeout();
     if (hasRecv) {
-        CHK_RET(
-            static_cast<HcclResult>(HcommChannelNotifyRecordOnThread(0, transfer.rxCh->handle, NOTIFY_IDX_STEP_SYNC)));
+        CHK_RET(static_cast<HcclResult>(
+            HcommChannelNotifyRecordOnThread(thread, transfer.rxCh->handle, NOTIFY_IDX_STEP_SYNC)));
     }
     if (hasSend) {
         CHK_RET(static_cast<HcclResult>(
-            HcommChannelNotifyWaitOnThread(0, transfer.txCh->handle, NOTIFY_IDX_STEP_SYNC, execTimeout)));
+            HcommChannelNotifyWaitOnThread(thread, transfer.txCh->handle, NOTIFY_IDX_STEP_SYNC, execTimeout)));
     }
 
     if (hasSend) {
@@ -459,20 +451,20 @@ HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType d
             void* dst = static_cast<s8*>(dstSlice.addr_) + dstSlice.offset_;
             const void* src = static_cast<s8*>(srcSlice.addr_) + srcSlice.offset_;
             CHK_RET(static_cast<HcclResult>(HcommWriteReduceWithNotifyOnThread(
-                0, transfer.txCh->handle, dst, src, srcSlice.count_, static_cast<HcommDataType>(dataType),
+                thread, transfer.txCh->handle, dst, src, srcSlice.count_, static_cast<HcommDataType>(dataType),
                 static_cast<HcommReduceOp>(reduceOp), NOTIFY_IDX_DATA_SIGNAL)));
         }
     }
 
     bool txDrained = false;
     if (hasSend) {
-        CHK_RET(HcommChannelDrainOnThreadWithCompat(0, transfer.txCh->handle));
+        CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, transfer.txCh->handle, isDrainSupported));
         txDrained = true;
     }
     if (hasRecv && (!txDrained || transfer.rxCh->handle != transfer.txCh->handle)) {
-        CHK_RET(HcommChannelDrainOnThreadWithCompat(0, transfer.rxCh->handle));
+        CHK_RET(HcommChannelDrainOnThreadWithCompat(thread, transfer.rxCh->handle, isDrainSupported));
     }
-    CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(0)));
+    CHK_RET(static_cast<HcclResult>(HcommFenceOnThread(thread)));
 
     if (hasRecv) {
         for (const DataSlice& slice : transfer.rxSrcSlices) {
@@ -480,10 +472,9 @@ HcclResult DpuWriteReduceTransfer(const DpuTransferCtx& transfer, HcclDataType d
                 continue;
             }
             CHK_RET(static_cast<HcclResult>(
-                HcommChannelNotifyWaitOnThread(0, transfer.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
+                HcommChannelNotifyWaitOnThread(thread, transfer.rxCh->handle, NOTIFY_IDX_DATA_SIGNAL, execTimeout)));
         }
     }
-#endif
     return HCCL_SUCCESS;
 }
 

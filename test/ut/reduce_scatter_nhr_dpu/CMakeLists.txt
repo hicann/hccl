@@ -18,6 +18,7 @@ add_executable(reduce_scatter_nhr_dpu_test
     test_nhr_cost.cc
     nhr_test_stubs.cc
     log_stub.cc
+    ${_repo_root}/src/ops/op_common/exec_timeout_manager.cc
     ${_repo_root}/src/ops/op_common/algorithm/template/template_utils.cc
     ${_repo_root}/src/ops/op_common/algorithm/template/alg_v2_template_base.cc
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_nhr_dpu.cc

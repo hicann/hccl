@@ -57,8 +57,10 @@ private:
     HcclResult LocalDataCopy(
         const TemplateDataParams& rawParams, const TemplateDataParams& workParams, bool strideLayout,
         const TemplateResource& templateResource);
-    // DPU 侧 NHR-step 循环，每步调 BatchTransferNHRReduce 做 write-reduce 交换
-    HcclResult RunNHR(const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels);
+    // NHR-step 循环：每步调用 DpuBatchWriteReduceTransferNHR 做 write-reduce 交换
+    HcclResult RunNHR(
+        const TemplateDataParams& tempAlgParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
+        ThreadHandle thread = 0, bool isDrainSupported = false);
     // host 收尾：自己分片的槽位（已是全量规约结果）→ output
     HcclResult PostLocalCopy(
         const TemplateDataParams& rawParams, const TemplateDataParams& workParams,

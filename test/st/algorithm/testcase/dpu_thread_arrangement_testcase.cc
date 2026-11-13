@@ -43,6 +43,7 @@
 #include "check_utils.h"
 #include "alg_env_config.h"
 #include "testcase_common.h"
+#include "hostdpu_inline_reduce_st_common.h"
 
 // libhccl-model-proxy 中 log_stub 的日志级别（0x03=ERROR），用例临时下调以打印 RUN_INFO
 extern uint32_t logLevel;
@@ -367,6 +368,12 @@ TEST_F(ST_DPU_THREAD_ARRANGEMENT_TEST, reduce_sequence_mesh_nhr)
         DATA_COUNT * DATA_TYPE_SIZE, ReduceLauncher(), [](HcclSim::AllRankTaskQueues& tq, u32 rs) {
             return CheckReduce(tq, rs, DATA_TYPE, DATA_COUNT, REDUCE_OP, 0);
         });
+}
+
+TEST_F(ST_DPU_THREAD_ARRANGEMENT_TEST, reduce_inline_sequence_mesh_nhr)
+{
+    hostdpu_st::FlowCase test;
+    hostdpu_st::RunCollective(HcclCMDType::HCCL_CMD_REDUCE, test);
 }
 
 // ============================== Broadcast ==============================

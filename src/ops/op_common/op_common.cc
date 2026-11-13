@@ -3850,7 +3850,7 @@ HcclResult GetAlgResDPU(
         // DPU线程只收主流的开工notify，完工notify由其在主流上指定的索引发起
         dpuThreadConfig.notifyNumPerThread = HOST_DPU_THREAD_NOTIFY_NUM;
         CHK_RET(HcclThreadAcquireWithConfig(
-            comm, COMM_ENGINE_AICPU, 1, THREAD_TYPE_TS, &dpuThreadConfig, &resCtxHost->dpuThread));
+            comm, COMM_ENGINE_AICPU, 1, THREAD_TYPE_CPU, &dpuThreadConfig, &resCtxHost->dpuThread));
         resCtxHost->isDpuThreadEnabled = true;
         HCCL_INFO(
             "[GetAlgResDPU] acquire dpu thread[%llu] success, commName[%s], algTag[%s].", resCtxHost->dpuThread,

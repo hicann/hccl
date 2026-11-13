@@ -45,6 +45,10 @@ int32_t HcommFenceOnThread(ThreadHandle)
     return RecordCall({StubApi::FENCE, 0, nullptr, nullptr, 0, HCOMM_DATA_TYPE_RESERVED, HCOMM_REDUCE_RESERVED, 0});
 }
 
+int32_t HcommThreadNotifyRecordOnThread(ThreadHandle, ThreadHandle, uint32_t) { return HCCL_SUCCESS; }
+
+int32_t HcommThreadNotifyWaitOnThread(ThreadHandle, uint32_t, uint32_t) { return HCCL_SUCCESS; }
+
 } // extern "C"
 
 namespace ops_hccl {
