@@ -11,13 +11,19 @@
 /* HCCL Tuner Plugin 示例实现。
  *
  * 功能：读取 JSON 配置文件，按 match 条件匹配集合通信调用，修改 cost table
- * （hcclTunerAlgoEntry_t[] 命名条目数组）以影响 Selector 算法选择。
+ * （HcclTunerAlgoCostEntry[] 命名条目数组）以影响 Selector 算法选择。
+ *
+ * 入口：导出 HcclTunerPluginOpsGet（返回 const HcclTunerPluginOps*，纯静态初始化）。
+ * 生命周期：Create 用标准 malloc 构造 tunerCtx 经出参返回，宿主拷贝进通信域 ctx 后
+ *           free 临时缓冲；UpdateAlgoCostTable 直接收 tunerCtx。
+ * 日志：自包含 log.h（printf），不再依赖宿主 logFunction 回调。
  *
  * 编译：make（链接为 hccl_tuner_example.so）
  * 使用：export HCCL_ALG_TUNER_PLUGIN=/path/to/hccl_tuner_example.so
  *       export HCCL_ALG_CONFIG_FILE=/path/to/hccl_tuner_config.json
  */
 
+#include <atomic>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,14 +33,16 @@
 #include <nlohmann/json.hpp>
 
 #include "hccl_tuner_plugin.h"
+#include "log.h"
 #include "securec.h"
 
 /* ===== 常量 ===== */
-#define MAX_OP_TYPES 8
+#define MAX_OP_TYPES 16 /* HCCL_CMDType 通信算子 12 种（含 v2 变体）+ 余量 */
 #define MAX_TOTAL_RULES 5000
 #define MAX_RULES_PER_OP 2000
 #define MAX_STR_LEN 64
 #define MAX_FILE_SIZE (4 * 1024 * 1024)
+#define TUNER_CTX_READY_MAGIC 0x54554E43u /* "TUNC"：宿主 Copy 完成哨兵（StoredHeader.ctxReady） */
 
 /* ===== 维度校验（engine 与 alg_parse.cc 的 ENGINE_TYPES key 保持一致；executor/template 不枚举校验）===== */
 static const char* g_validEngines[] = {"aicpu", "ccums", "ccusched", "aiv", "dpu"};
@@ -76,8 +84,16 @@ static HcclCMDType op_type_from_name(const char* name)
         return HCCL_CMD_SCATTER;
     if (strcmp(name, "alltoall") == 0)
         return HCCL_CMD_ALLTOALL;
+    if (strcmp(name, "alltoall") == 0)
+        return HCCL_CMD_ALLTOALL;
     if (strcmp(name, "alltoallv") == 0)
         return HCCL_CMD_ALLTOALLV;
+    if (strcmp(name, "alltoallvc") == 0)
+        return HCCL_CMD_ALLTOALLVC;
+    if (strcmp(name, "reduce_scatterv") == 0)
+        return HCCL_CMD_REDUCE_SCATTER_V;
+    if (strcmp(name, "all_gatherv") == 0)
+        return HCCL_CMD_ALLGATHER_V;
     return HCCL_CMD_INVALID;
 }
 #define COMM_NAME_BUF_LEN 128
@@ -89,6 +105,7 @@ typedef struct {
     int hasMinBytes;
     int hasMaxBytes;
     int hasDataType;
+    int hasReduceOp;
     int hasCommName;
     int hasMinNpusPerServer;
     int hasMaxNpusPerServer;
@@ -105,6 +122,7 @@ typedef struct {
     size_t maxBytes;
     char dataType[MAX_STR_LEN];
     HcclDataType dataTypeEnum;
+    HcclReduceOp reduceOpEnum;
     char commName[MAX_STR_LEN];
     uint32_t minNpusPerServer;
     uint32_t maxNpusPerServer;
@@ -130,31 +148,105 @@ typedef struct {
 typedef struct {
     HcclCMDType opType;
     int ruleCount;
-    int ruleOffset; /* 在扁平 Rule[] 中的起始下标 */
+    int ruleOffset; /* 在扁平 CompactRule[] 中的起始下标 */
 } OpSetDesc;
 
-/* per-comm 存储上下文（经 hostFuncs->ctxCreate 持久化到通信域 host 内存）。
- * Rule[] 紧随 StoredHeader 之后，变长，ctxCreate 时按 totalRuleCount 精确分配。 */
+/* CompactRule：解析期编译产物，整条 64B 装进一条 cache line。
+ * 15 个 has 标志消失——"是否配置"编码进哨兵值，比较指令天然完成通配：
+ *   minBytes=0 / maxBytes=UINT64_MAX / dataTypeEnum=-1 时谓词恒不成立 = 通配。
+ * 拓扑谓词（ranks/npus/servers/pods/superPods/commName/bufferSize）在 Create 编译期
+ * 对照 commInfo/topoInfo 快照消费（旧 MatchRule 运行时用的就是该快照，编译期消费语义等价），
+ * 失配规则整体剔除不落盘；engine/executor/templateName 以 uint32 偏移引用 ctx 尾部字符串区。
+ * reduceOp 谓词（与 dataType 同款哨兵）：未配置→-1 通配；HcclReduceOp
+ * 枚举全非负（RESERVED=255 仅作 parse 失败标记，非法规则已在 schema 阶段剔除）。 */
+#define STR_OFF_WILDCARD 0xFFFFFFFFu /* 规则该维偏移哨兵（通配）：字符串区不存空串，有效偏移恒 < strAreaSize */
+typedef struct {
+    uint64_t minBytes;  /* 未配置→0：nBytes < 0 恒假 = 通配 */
+    uint64_t maxBytes;  /* 未配置→UINT64_MAX：nBytes > MAX 恒假 = 通配 */
+    uint32_t engineOff; /* ctx 字符串区偏移；STR_OFF_WILDCARD = 通配 */
+    uint32_t executorOff;
+    uint32_t templateOff;
+    int32_t dataTypeEnum; /* 未配置→-1 通配；HcclDataType 枚举值全非负 */
+    int32_t reduceOpEnum; /* 未配置→-1 通配；HcclReduceOp 枚举值全非负（RESERVED=255 不落盘） */
+    float cost;           /* cost 为必填字段，有效规则恒有意义 */
+    /* 终局语义（firsthit）下掩码/序号已退役：Update 只对首条谓词命中的规则做一次
+     * ApplyRule strcmp。顶格 64B——单 cache line 预算不变。 */
+    uint32_t reserved[6]; /* 预算余量 24B：再增字段将超单 cache line，需拆热/冷结构 */
+} CompactRule;
+static_assert(sizeof(CompactRule) == 64, "CompactRule must fit in one cache line");
+
+/* per-comm 存储上下文（Create 时 malloc 构造，宿主 HcclEngineCtxCopy 进通信域后释放临时缓冲）。
+ * 布局：StoredHeader + CompactRule[totalRuleCount] + 字符串区——
+ * 3D 名驻留 ctx 尾部、规则以 uint32 偏移引用：裸 memcpy 后偏移天然有效（无需指针修正），
+ * 通信域销毁时宿主回收 ctx、字符串随之释放——生命周期与通信域精确对齐，
+ * .so 进程级池与发布/订阅并发面整体退役。 */
 typedef struct {
     OpSetDesc opSets[MAX_OP_TYPES];
     int opSetCount;
-    int totalRuleCount;
-    hcclTunerCommInfo_t commInfo;
+    int totalRuleCount;      /* 编译后存活规则数（schema 有效且拓扑预筛通过） */
+    int topoPrunedCount;     /* 拓扑预剔除数（失配规则运行时也永失配，等价剔除） */
+    int schemaRejectedCount; /* schema 剔除数（坏规则只废自己） */
+    HcclTunerCommInfo
+        commInfo; /* bufferSize 快照（供诊断/测试观察）；commName 指针不持久化（防悬垂），内容在 commNameBuf */
+    HcclTunerTopoInfo topoInfo; /* nRanks/nServers/... 快照 */
     char commNameBuf[COMM_NAME_BUF_LEN];
-    int configValid; /* Schema 校验结果：1=有效可干预，0=无效不干预 */
+    uint32_t strAreaOff;  /* 字符串区在 ctx 内的字节偏移（紧随 CompactRule[] 之后） */
+    uint32_t strAreaSize; /* 字符串区字节数（\0 分隔变长串，dedup 只增，Create 后不可变） */
+    int configValid;      /* 配置级校验结果：1=有效可干预，0=fatal 整份拒绝 */
+    uint32_t ctxReady; /* 落盘完成哨兵：宿主 EngineCtxCreate 后先清零、EngineCtxCopy 落盘后才带魔数
+                        * ——Create 与 Copy 之间读到的未就绪 ctx 由 Update 首查兜底为 no-op */
 } StoredHeader;
 
-/* 访问 StoredHeader 后面的变长 Rule[] */
-static inline Rule* GetRules(StoredHeader* ctx)
+/* 访问 StoredHeader 后面的变长 CompactRule[] */
+static inline CompactRule* GetRules(StoredHeader* ctx)
 {
-    return reinterpret_cast<Rule*>(reinterpret_cast<char*>(ctx) + sizeof(StoredHeader));
+    return reinterpret_cast<CompactRule*>(reinterpret_cast<char*>(ctx) + sizeof(StoredHeader));
 }
 
-/* ===== 全局 hostFuncs（函数表，全进程相同）===== */
-static hcclTunerHostFunctions_t g_hostFuncs;
-static int g_hostFuncsReady = 0;
+/* 访问 ctx 字符串区内的一条串（偏移来自 CompactRule 的 *Off 字段；通配返回 ""） */
+static inline const char* CtxStr(const StoredHeader* ctx, uint32_t off)
+{
+    return (off == STR_OFF_WILDCARD) ? "" : (const char*)ctx + ctx->strAreaOff + off;
+}
 
-/* Schema 校验状态（per-init 局部变量，避免并发 comm init 竞争） */
+/* 字符串区：3D 名 dedup 驻留 ctx 尾部，规则以 uint32 偏移引用。
+ * 生命周期随通信域（宿主回收 ctx 即回收），跨 comm 不共享、Create 后不可变——
+ * 单写者（编译循环，宿主 g_tunerInitMutex 串行），无并发面。
+ * 预算 MAX_STR_AREA=16KB：典型唯一 3D 名 <1KB（算法注册表名字集合），
+ * 超限返回失败由调用方剔除该规则——报错优于静默通配。 */
+#define MAX_STR_AREA (16u * 1024u)
+typedef struct {
+    char buf[MAX_STR_AREA];
+    uint32_t used;
+} StrAreaBuilder;
+
+/* 落区（编译期，单线程）：dedup 追加，仅产出偏移。空串→WILDCARD 哨兵不占区；
+ * 区满→返回 false（调用方剔除该规则，不静默通配）。 */
+static bool CtxIntern(StrAreaBuilder* sa, const char* s, uint32_t* offOut)
+{
+    if (s == NULL || s[0] == '\0') {
+        *offOut = STR_OFF_WILDCARD;
+        return true;
+    }
+    for (uint32_t off = 0; off < sa->used; off += (uint32_t)strlen(sa->buf + off) + 1u) {
+        if (strcmp(sa->buf + off, s) == 0) {
+            *offOut = off;
+            return true;
+        }
+    }
+    const size_t len = strlen(s) + 1u;
+    if (sa->used + (uint32_t)len > MAX_STR_AREA) {
+        return false;
+    }
+    if (memcpy_s(sa->buf + sa->used, len, s, len) != EOK) {
+        return false;
+    }
+    *offOut = sa->used;
+    sa->used += (uint32_t)len;
+    return true;
+}
+
+/* Schema 校验状态（per-Create 局部变量，避免并发 comm init 竞争） */
 typedef struct {
     int errors;
     int warnings;
@@ -165,30 +257,28 @@ typedef struct {
 
 #ifdef HCCL_TUNER_TESTING
 static SchemaState g_lastSchema = {}; /* 供测试验证 schema 校验结果 */
+static Rule* g_lastParseRules = NULL; /* 供测试观察 parse 级 valid/MatchCond（生产路径无此开销） */
+static int g_lastParseRuleCount = 0;
+static int g_applyRuleCalls = 0; /* 供测试断言谓词命中规则确实进入 ApplyRule（终局制下每 op 恰一次） */
 #endif
 
 static void SchemaWarn(SchemaState* s, const char* scope, const char* field)
 {
     s->warnings++;
-    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: unknown field '%s' in %s, skipping", field, scope);
-    }
+    HCCL_WARNING("Schema: unknown field '%s' in %s, skipping", field, scope);
 }
 
 static void SchemaError(SchemaState* s, const char* fmt, ...)
 {
     s->errors++;
-    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        va_list args;
-        va_start(args, fmt);
-        char buf[256] = {0};
-        if (vsnprintf_s(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
-            buf[0] = '\0';
-        }
-        va_end(args);
-        g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: %s", buf);
+    va_list args;
+    va_start(args, fmt);
+    char buf[256] = {0};
+    if (vsnprintf_s(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
+        buf[0] = '\0';
     }
+    va_end(args);
+    HCCL_WARNING("Schema: %s", buf);
 }
 
 /* 配置级致命错误：格式不可信，整份拒绝（区别于规则级 error 的逐条剔除）。 */
@@ -196,16 +286,14 @@ static void SchemaFatal(SchemaState* s, const char* fmt, ...)
 {
     s->errors++;
     s->fatal++;
-    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        va_list args;
-        va_start(args, fmt);
-        char buf[256] = {0};
-        if (vsnprintf_s(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
-            buf[0] = '\0';
-        }
-        va_end(args);
-        g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: %s", buf);
+    va_list args;
+    va_start(args, fmt);
+    char buf[256] = {0};
+    if (vsnprintf_s(buf, sizeof(buf), sizeof(buf) - 1, fmt, args) < 0) {
+        buf[0] = '\0';
     }
+    va_end(args);
+    HCCL_WARNING("Schema: %s", buf);
 }
 
 /* ===== 数据类型字符串映射 ===== */
@@ -229,6 +317,27 @@ static HcclDataType ParseDataType(const char* name)
         }
     }
     return HCCL_DATA_TYPE_RESERVED;
+}
+
+/* ===== reduce 算子字符串映射 ===== */
+static const struct {
+    const char* name;
+    HcclReduceOp op;
+} g_reduceOpMap[] = {
+    {"sum", HCCL_REDUCE_SUM},
+    {"prod", HCCL_REDUCE_PROD},
+    {"max", HCCL_REDUCE_MAX},
+    {"min", HCCL_REDUCE_MIN},
+};
+
+static HcclReduceOp ParseReduceOp(const char* name)
+{
+    for (size_t i = 0; i < sizeof(g_reduceOpMap) / sizeof(g_reduceOpMap[0]); i++) {
+        if (strcmp(name, g_reduceOpMap[i].name) == 0) {
+            return g_reduceOpMap[i].op;
+        }
+    }
+    return HCCL_REDUCE_RESERVED;
 }
 
 /* 维度值校验：engine 由插件自维护的 is_valid_engine 枚举校验；executor/template 不枚举校验
@@ -291,7 +400,7 @@ static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState
     static const char* knownKeys[]
         = {"min_ranks",           "max_ranks",           "min_bytes",   "max_bytes",   "data_type", "comm_name",
            "min_npus_per_server", "max_npus_per_server", "min_servers", "max_servers", "min_pods",  "max_pods",
-           "min_super_pods",      "max_super_pods",      "buffer_size"};
+           "min_super_pods",      "max_super_pods",      "buffer_size", "reduce_op"};
     static const int knownKeyCount = (int)(sizeof(knownKeys) / sizeof(knownKeys[0]));
     for (auto it = matchObj.begin(); it != matchObj.end(); ++it) {
         bool known = false;
@@ -322,26 +431,50 @@ static void ParseMatchField(const nlohmann::json& matchObj, Rule* r, SchemaState
         (void)GetU64Checked(matchObj, "max_bytes", r->match.maxBytes, s);
     }
     if (matchObj.contains("data_type")) {
-        if (snprintf_s(
-                r->match.dataType, sizeof(r->match.dataType), sizeof(r->match.dataType) - 1, "%s",
-                matchObj["data_type"].get<std::string>().c_str())
-            < 0) {
-            r->match.dataType[0] = '\0';
+        if (!matchObj["data_type"].is_string()) {
+            /* 类型守卫：非字符串直接 schema 剔除该规则——裸 get 抛 type_error 会中止整份解析，
+             * 违反"逐规则剔除、坏规则只废自己"契约 */
+            SchemaError(s, "data_type must be a string");
+        } else {
+            if (snprintf_s(
+                    r->match.dataType, sizeof(r->match.dataType), sizeof(r->match.dataType) - 1, "%s",
+                    matchObj["data_type"].get<std::string>().c_str())
+                < 0) {
+                r->match.dataType[0] = '\0';
+            }
+            r->match.dataTypeEnum = ParseDataType(r->match.dataType);
+            if (r->match.dataTypeEnum == HCCL_DATA_TYPE_RESERVED) {
+                SchemaError(s, "invalid data_type '%s'", r->match.dataType);
+            }
+            r->match.hasDataType = 1;
         }
-        r->match.dataTypeEnum = ParseDataType(r->match.dataType);
-        if (r->match.dataTypeEnum == HCCL_DATA_TYPE_RESERVED) {
-            SchemaError(s, "invalid data_type '%s'", r->match.dataType);
+    }
+    if (matchObj.contains("reduce_op")) {
+        if (!matchObj["reduce_op"].is_string()) {
+            SchemaError(s, "reduce_op must be a string");
+        } else {
+            std::string buf = matchObj["reduce_op"].get<std::string>();
+            r->match.reduceOpEnum = ParseReduceOp(buf.c_str());
+            if (r->match.reduceOpEnum == HCCL_REDUCE_RESERVED) {
+                SchemaError(s, "invalid reduce_op '%s'", buf.c_str());
+            }
+            r->match.hasReduceOp = 1;
         }
-        r->match.hasDataType = 1;
     }
     if (matchObj.contains("comm_name")) {
-        if (snprintf_s(
+        if (!matchObj["comm_name"].is_string()) {
+            SchemaError(s, "comm_name must be a string");
+        } else if (
+            snprintf_s(
                 r->match.commName, sizeof(r->match.commName), sizeof(r->match.commName) - 1, "%s",
                 matchObj["comm_name"].get<std::string>().c_str())
             < 0) {
-            r->match.commName[0] = '\0';
+            /* 截断若静默置空 → hasCommName=1 + 空串 strstr 恒命中 = 限定条件反转为通配
+             * ——改报 schema error 剔除该规则，对齐 template 超长的防御风格 */
+            SchemaError(s, "comm_name too long (max %d chars)", MAX_STR_LEN - 1);
+        } else {
+            r->match.hasCommName = 1;
         }
-        r->match.hasCommName = 1;
     }
     if (matchObj.contains("min_npus_per_server")) {
         r->match.hasMinNpusPerServer = 1;
@@ -415,43 +548,60 @@ static void ParseRule(const nlohmann::json& ruleObj, Rule* r, SchemaState* s)
     }
 
     if (ruleObj.contains("engine")) {
-        std::string buf = ruleObj["engine"].get<std::string>();
-        if (!is_valid_engine(buf.c_str())) {
-            SchemaError(s, "invalid engine '%s'", buf.c_str());
+        if (!ruleObj["engine"].is_string()) {
+            SchemaError(s, "engine must be a string");
         } else {
-            if (snprintf_s(r->engine, sizeof(r->engine), sizeof(r->engine) - 1, "%s", buf.c_str()) < 0) {
-                r->engine[0] = '\0';
+            std::string buf = ruleObj["engine"].get<std::string>();
+            if (!is_valid_engine(buf.c_str())) {
+                SchemaError(s, "invalid engine '%s'", buf.c_str());
+            } else {
+                if (snprintf_s(r->engine, sizeof(r->engine), sizeof(r->engine) - 1, "%s", buf.c_str()) < 0) {
+                    r->engine[0] = '\0';
+                }
             }
         }
     }
     if (ruleObj.contains("executor")) {
-        std::string buf = ruleObj["executor"].get<std::string>();
-        /* executor 不做枚举校验：合法集合随 HCCL 版本演进（strictordered 为后增），
-         * 固定枚举会拒绝新增值；拼错靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
-        if (buf.empty()) {
-            SchemaError(s, "invalid executor '%s' (empty)", buf.c_str());
+        if (!ruleObj["executor"].is_string()) {
+            SchemaError(s, "executor must be a string");
         } else {
-            if (snprintf_s(r->executor, sizeof(r->executor), sizeof(r->executor) - 1, "%s", buf.c_str()) < 0) {
-                r->executor[0] = '\0';
+            std::string buf = ruleObj["executor"].get<std::string>();
+            /* executor 不做枚举校验：合法集合随 HCCL 版本演进（strictordered 为后增），
+             * 固定枚举会拒绝新增值；拼错靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
+            if (buf.empty()) {
+                SchemaError(s, "invalid executor '%s' (empty)", buf.c_str());
+            } else {
+                if (snprintf_s(r->executor, sizeof(r->executor), sizeof(r->executor) - 1, "%s", buf.c_str()) < 0) {
+                    r->executor[0] = '\0';
+                }
             }
         }
     }
     if (ruleObj.contains("template")) {
-        std::string buf = ruleObj["template"].get<std::string>();
-        /* template 不做枚举校验：单级是单 template 名，多级是拼接串（不可枚举）。
-         * 拼写错误靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
-        if (buf.empty()) {
-            SchemaError(s, "invalid template '%s' (empty)", buf.c_str());
+        if (!ruleObj["template"].is_string()) {
+            SchemaError(s, "template must be a string");
         } else {
-            if (snprintf_s(r->templateName, sizeof(r->templateName), sizeof(r->templateName) - 1, "%s", buf.c_str())
-                < 0) {
-                r->templateName[0] = '\0';
+            std::string buf = ruleObj["template"].get<std::string>();
+            /* template 不做枚举校验：单级是单 template 名，多级是拼接串（不可枚举）。
+             * 拼写错误靠 ApplyRule 运行时 "no entry modified" warning 兜底。 */
+            if (buf.empty()) {
+                SchemaError(s, "invalid template '%s' (empty)", buf.c_str());
+            } else {
+                if (snprintf_s(r->templateName, sizeof(r->templateName), sizeof(r->templateName) - 1, "%s", buf.c_str())
+                    < 0) {
+                    r->templateName[0] = '\0';
+                }
             }
         }
     }
     if (ruleObj.contains("cost")) {
-        r->cost = ruleObj["cost"].get<float>();
-        r->hasCost = 1;
+        if (!ruleObj["cost"].is_number()) {
+            /* 同字符串字段：裸 get 抛 type_error 会中止整份解析，坏值只废这条规则 */
+            SchemaError(s, "cost must be a number");
+        } else {
+            r->cost = ruleObj["cost"].get<float>();
+            r->hasCost = 1;
+        }
     }
 
     /* 必填字段校验 */
@@ -585,113 +735,110 @@ static char* ReadFile(const char* path, size_t* outLen)
     return buf;
 }
 
-/* ===== 规则匹配 ===== */
-static int MatchRule(const Rule* r, const hcclTunerCollInfo_t* collInfo, const hcclTunerCommInfo_t* commInfo)
+/* ===== 编译期拓扑消费 =====
+ * 旧 MatchRule 的拓扑分支搬进 Create：对照 commInfo/topoInfo 快照一次性消费，
+ * 失配规则整体剔除不落 ctx（运行时也永失配，等价）。
+ * bytes/dataType 谓词编译进 CompactRule 哨兵值，运行时内联比较。 */
+static int MatchTopology(const MatchCond* m, const HcclTunerCommInfo* commInfo, const HcclTunerTopoInfo* topoInfo)
 {
-    if (r->match.hasMinRanks && commInfo->nRanks < r->match.minRanks) {
+    if (m->hasMinRanks && topoInfo->nRanks < m->minRanks) {
         return 0;
     }
-    if (r->match.hasMaxRanks && commInfo->nRanks > r->match.maxRanks) {
+    if (m->hasMaxRanks && topoInfo->nRanks > m->maxRanks) {
         return 0;
     }
-    if (r->match.hasMinBytes && collInfo->nBytes < r->match.minBytes) {
-        return 0;
-    }
-    if (r->match.hasMaxBytes && collInfo->nBytes > r->match.maxBytes) {
-        return 0;
-    }
-    if (r->match.hasDataType) {
-        if (r->match.dataTypeEnum != collInfo->dataType) {
+    if (m->hasCommName) {
+        if (commInfo->commName == NULL || strstr(commInfo->commName, m->commName) == NULL) {
             return 0;
         }
     }
-    if (r->match.hasCommName) {
-        if (commInfo->commName == NULL || strstr(commInfo->commName, r->match.commName) == NULL) {
-            return 0;
-        }
-    }
-    if (r->match.hasMinNpusPerServer && commInfo->nNpusPerServer < r->match.minNpusPerServer) {
+    if (m->hasMinNpusPerServer && topoInfo->nNpusPerServer < m->minNpusPerServer) {
         return 0;
     }
-    if (r->match.hasMaxNpusPerServer && commInfo->nNpusPerServer > r->match.maxNpusPerServer) {
+    if (m->hasMaxNpusPerServer && topoInfo->nNpusPerServer > m->maxNpusPerServer) {
         return 0;
     }
-    if (r->match.hasMinServers && commInfo->nServers < r->match.minServers) {
+    if (m->hasMinServers && topoInfo->nServers < m->minServers) {
         return 0;
     }
-    if (r->match.hasMaxServers && commInfo->nServers > r->match.maxServers) {
+    if (m->hasMaxServers && topoInfo->nServers > m->maxServers) {
         return 0;
     }
-    if (r->match.hasMinPods && commInfo->nPods < r->match.minPods) {
+    if (m->hasMinPods && topoInfo->nPods < m->minPods) {
         return 0;
     }
-    if (r->match.hasMaxPods && commInfo->nPods > r->match.maxPods) {
+    if (m->hasMaxPods && topoInfo->nPods > m->maxPods) {
         return 0;
     }
-    if (r->match.hasMinSuperPods && commInfo->nSuperPods < r->match.minSuperPods) {
+    if (m->hasMinSuperPods && topoInfo->nSuperPods < m->minSuperPods) {
         return 0;
     }
-    if (r->match.hasMaxSuperPods && commInfo->nSuperPods > r->match.maxSuperPods) {
+    if (m->hasMaxSuperPods && topoInfo->nSuperPods > m->maxSuperPods) {
         return 0;
     }
-    if (r->match.hasBufferSize && commInfo->bufferSize != r->match.bufferSize) {
+    if (m->hasBufferSize && commInfo->bufferSize != m->bufferSize) {
         return 0;
     }
     return 1;
 }
 
-/* 返回: 实际修改 cost 的条目数（禁用条目跳过不计）。返回 0 时调用方穿透后续规则。 */
-static int ApplyRule(const Rule* r, hcclTunerAlgoEntry_t* entries, int count)
+/* 返回: 实际修改 cost 的条目数（禁用条目跳过不计）。返回 0 时调用方终局（后续规则不再查看）。
+ * 遍历按 entries[0].header.size 步长（ABI 约定，编译期 sizeof 下标版本不安全）。
+ * bytes/dataType 已由哨兵值在扫描循环内联比较，此处只做 3D 名通配匹配。 */
+static int ApplyRule(const StoredHeader* ctx, const CompactRule* r, HcclTunerAlgoCostEntry* entries, uint32_t count)
 {
+#ifdef HCCL_TUNER_TESTING
+    g_applyRuleCalls++; /* 测试观察点：谓词命中的规则到达此处 */
+#endif
     int modified = 0;
-    for (int i = 0; i < count; i++) {
-        if (r->engine[0] && (entries[i].engineName == NULL || strcmp(r->engine, entries[i].engineName) != 0))
+    if (entries == NULL || count == 0 || entries[0].header.size < sizeof(HcclTunerAlgoCostEntry)) {
+        /* 步长不可信（宿主未填 header 或条目小于本插件预期布局），放弃修改；调用方终局 */
+        return 0;
+    }
+    const uint32_t stride = entries[0].header.size;
+    const char* rEngine = CtxStr(ctx, r->engineOff);
+    const char* rExecutor = CtxStr(ctx, r->executorOff);
+    const char* rTemplate = CtxStr(ctx, r->templateOff);
+    for (uint32_t i = 0; i < count; i++) {
+        HcclTunerAlgoCostEntry* e = (HcclTunerAlgoCostEntry*)((const char*)entries + (size_t)i * stride);
+        if (r->engineOff != STR_OFF_WILDCARD && (e->engineName == NULL || strcmp(rEngine, e->engineName) != 0))
             continue;
-        if (r->executor[0] && (entries[i].executorName == NULL || strcmp(r->executor, entries[i].executorName) != 0))
+        if (r->executorOff != STR_OFF_WILDCARD && (e->executorName == NULL || strcmp(rExecutor, e->executorName) != 0))
             continue;
-        if (r->templateName[0]
-            && (entries[i].templateName == NULL || strcmp(r->templateName, entries[i].templateName) != 0))
+        if (r->templateOff != STR_OFF_WILDCARD && (e->templateName == NULL || strcmp(rTemplate, e->templateName) != 0))
             continue;
-        if (entries[i].cost < 0.0f) {
-            if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-                g_hostFuncs.logFunction(
-                    HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "[TunerDFX] skip disabled: algName=%s cost=%.6f",
-                    entries[i].algName ? entries[i].algName : "?", entries[i].cost);
-            }
+        if (e->cost < 0.0f) {
+            HCCL_WARNING("[TunerDFX] skip disabled: algName=%s cost=%.6f", e->algName ? e->algName : "?", e->cost);
             continue;
         }
-        float oldCost = entries[i].cost;
-        entries[i].cost = r->hasCost ? r->cost : 0.0f;
-        if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
-                "[TunerDFX] modify: algName=%s engine=%s executor=%s template=%s cost %.6f -> %.6f",
-                entries[i].algName ? entries[i].algName : "?", entries[i].engineName ? entries[i].engineName : "?",
-                entries[i].executorName ? entries[i].executorName : "?",
-                entries[i].templateName ? entries[i].templateName : "?", oldCost, entries[i].cost);
-        }
+        float oldCost = e->cost;
+        e->cost = r->cost;
+        HCCL_INFO(
+            "[TunerDFX] modify: algName=%s engine=%s executor=%s template=%s cost %.6f -> %.6f",
+            e->algName ? e->algName : "?", e->engineName ? e->engineName : "?", e->executorName ? e->executorName : "?",
+            e->templateName ? e->templateName : "?", oldCost, e->cost);
         modified++;
     }
-    if (modified == 0 && g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        /* 穿透前奏（正常流转），DEBUG 级；异常终态由 no rule matched WARN 兜底 */
-        g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_DEBUG, __FILE__, __LINE__,
+    if (modified == 0) {
+        /* 命中但 0 改动（终局点，DEBUG 留痕；终局告警由调用方 0-modified 分支 WARN 打印） */
+        HCCL_DEBUG(
             "[TunerDFX] rule matched but no entry modified: engine=%s executor=%s template=%s cost=%.6f",
-            r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
-            r->templateName[0] ? r->templateName : "*", r->hasCost ? r->cost : 0.0f);
+            (r->engineOff != STR_OFF_WILDCARD) ? rEngine : "*", (r->executorOff != STR_OFF_WILDCARD) ? rExecutor : "*",
+            (r->templateOff != STR_OFF_WILDCARD) ? rTemplate : "*", r->cost);
     }
     return modified;
 }
 
 /* ===== 插件接口实现 ===== */
-static HcclResult MyInit(HcclComm comm, const hcclTunerCommInfo_t* commInfo, const hcclTunerHostFunctions_t* hostFuncs)
+static HcclResult MyCreate(
+    HcclComm comm, const HcclTunerCommInfo* commInfo, const HcclTunerTopoInfo* topoInfo, void** tunerCtx,
+    uint32_t* tunerCtxSize)
 {
-    if (commInfo == NULL || hostFuncs == NULL) {
+    if (commInfo == NULL || topoInfo == NULL || tunerCtx == NULL || tunerCtxSize == NULL) {
         return HCCL_E_PTR;
     }
-    /* hostFuncs 是函数表，全进程相同，存全局 */
-    g_hostFuncs = *hostFuncs;
-    g_hostFuncsReady = 1;
+    *tunerCtx = NULL;
+    *tunerCtxSize = 0;
 
     /* 1. 读文件 + 解析 JSON（临时内存树，不持久化） */
     const char* envPath = getenv("HCCL_ALG_CONFIG_FILE");
@@ -708,26 +855,18 @@ static HcclResult MyInit(HcclComm comm, const hcclTunerCommInfo_t* commInfo, con
             loadedPath = paths[i];
             break;
         }
-        if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "tuner config '%s' not found%s", paths[i],
-                (i == 0) ? ", falling back to default paths" : "");
-        }
+        HCCL_WARNING("tuner config '%s' not found%s", paths[i], (i == 0) ? ", falling back to default paths" : "");
     }
     if (content == NULL) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "no tuner config loaded, plugin inactive");
-        }
-        return HCCL_SUCCESS;
+        HCCL_WARNING("no tuner config loaded, plugin inactive");
+        return HCCL_SUCCESS; /* inactive：空 ctx，宿主跳过 acquire/copy */
     }
 
     nlohmann::json root = nlohmann::json::parse(content, nullptr, false);
     if (root.is_discarded()) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "JSON parse failed for %s", loadedPath);
-        }
+        HCCL_WARNING("JSON parse failed for %s", loadedPath);
         free(content);
-        return HCCL_SUCCESS;
+        return HCCL_SUCCESS; /* inactive */
     }
     free(content);
 
@@ -735,187 +874,309 @@ static HcclResult MyInit(HcclComm comm, const hcclTunerCommInfo_t* commInfo, con
     int opSetCount = 0;
     int totalRules = CountRules(root, &opSetCount);
     if (totalRules > MAX_TOTAL_RULES) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "total rules %d exceeds MAX_TOTAL_RULES(%d), plugin inactive",
-                totalRules, MAX_TOTAL_RULES);
-        }
-        return HCCL_SUCCESS;
+        HCCL_WARNING("total rules %d exceeds MAX_TOTAL_RULES(%d), plugin inactive", totalRules, MAX_TOTAL_RULES);
+        return HCCL_SUCCESS; /* inactive */
     }
 
-    /* 3. ctxCreate 精确大小：Header + totalRules × Rule */
-    uint64_t ctxSize = sizeof(StoredHeader) + (uint64_t)totalRules * sizeof(Rule);
-    void* storedCtx = NULL;
-    if (hostFuncs->ctxCreate(comm, "main", ctxSize, &storedCtx) != HCCL_SUCCESS || storedCtx == NULL) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "ctxCreate failed, plugin inactive");
-        }
-        return HCCL_SUCCESS;
+    /* 3. malloc 解析期临时缓冲（Rule[] 宽格式，编译后整体丢弃）；
+     *    ParseOpRules 以 StoredHeader* 为落点, 用栈上临时 header 承接 opSets 计数 */
+    Rule* tempRules = (Rule*)calloc((size_t)totalRules, sizeof(Rule));
+    if (tempRules == NULL) {
+        HCCL_WARNING("malloc failed for parse rules, count=%d", totalRules);
+        return HCCL_SUCCESS; /* inactive */
     }
-    if (memset_s(storedCtx, (size_t)ctxSize, 0, (size_t)ctxSize) != EOK) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "memset_s failed for storedCtx");
-        }
-        return HCCL_SUCCESS;
-    }
-    StoredHeader* ctx = (StoredHeader*)storedCtx;
-    Rule* rules = GetRules(ctx);
+    StoredHeader parseHdr = {}; /* 仅 opSets/opSetCount/totalRuleCount 三个字段被 Parse 层使用 */
 
-    /* 4. 第二遍：填充 Header + Rule[] */
+    /* 4. 第二遍：填充 Rule[]（宽格式，含 15 个 has 标志与拓扑谓词） */
     SchemaState schema = {};
     int curOffset = 0;
     try {
-        ParseConfig(root, ctx, rules, &curOffset, &schema);
+        ParseConfig(root, &parseHdr, tempRules, &curOffset, &schema);
     } catch (const nlohmann::json::exception& e) {
         SchemaError(&schema, "JSON field access error: %s", e.what());
     }
-    ctx->totalRuleCount = curOffset;
+    const int parsedRuleCount = curOffset;
+    const int tempOpSetCount = parseHdr.opSetCount;
 #ifdef HCCL_TUNER_TESTING
     g_lastSchema = schema;
+    if (g_lastParseRules != NULL) {
+        free(g_lastParseRules);
+    }
+    g_lastParseRules = tempRules;
+    g_lastParseRuleCount = parsedRuleCount;
 #endif
     int validRules = 0;
-    for (int i = 0; i < ctx->totalRuleCount; i++) {
-        if (rules[i].valid) {
+    for (int i = 0; i < parsedRuleCount; i++) {
+        if (tempRules[i].valid) {
             validRules++;
         }
     }
-    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
-            "tuner config loaded from %s, opSetCount=%d, totalRules=%d, validRules=%d, schemaErrors=%d, "
-            "schemaWarnings=%d",
-            loadedPath, ctx->opSetCount, ctx->totalRuleCount, validRules, schema.errors, schema.warnings);
+    HCCL_INFO(
+        "tuner config loaded from %s, opSetCount=%d, totalRules=%d, validRules=%d, schemaErrors=%d, "
+        "schemaWarnings=%d",
+        loadedPath, tempOpSetCount, parsedRuleCount, validRules, schema.errors, schema.warnings);
+
+    /* 5. 编译：valid 且拓扑匹配的规则保序压缩进 CompactRule[]，
+     *    3D 名 dedup 入 .so 进程级池；拓扑谓词在此消费，失配规则不落 ctx */
+    CompactRule* tempCompact = (CompactRule*)calloc((size_t)validRules, sizeof(CompactRule));
+    OpSetDesc newOpSets[MAX_OP_TYPES] = {};
+    if (tempCompact == NULL) {
+        HCCL_WARNING("compile alloc failed, plugin inactive");
+#ifndef HCCL_TUNER_TESTING
+        free(tempRules);
+#endif
+        return HCCL_SUCCESS;
+    }
+    int newOpSetCount = 0;
+    int active = 0;
+    int topoPruned = 0;
+    int strRejected = 0;
+    StrAreaBuilder strArea;
+    strArea.used = 0;
+    for (int i = 0; i < tempOpSetCount; i++) {
+        const OpSetDesc* src = &parseHdr.opSets[i];
+        newOpSets[i].opType = src->opType;
+        newOpSets[i].ruleOffset = active;
+        for (int j = 0; j < src->ruleCount; j++) {
+            const Rule* tr = &tempRules[src->ruleOffset + j];
+            if (!tr->valid) {
+                continue; /* schema 剔除的规则不落盘 */
+            }
+            if (!MatchTopology(&tr->match, commInfo, topoInfo)) {
+                topoPruned++;
+                continue; /* 拓扑失配规则不落盘（运行时也永失配，等价） */
+            }
+            CompactRule* cr = &tempCompact[active];
+            cr->minBytes = tr->match.hasMinBytes ? (uint64_t)tr->match.minBytes : 0ULL;
+            cr->maxBytes = tr->match.hasMaxBytes ? (uint64_t)tr->match.maxBytes : UINT64_MAX;
+            cr->dataTypeEnum = tr->match.hasDataType ? (int32_t)tr->match.dataTypeEnum : -1;
+            cr->reduceOpEnum = tr->match.hasReduceOp ? (int32_t)tr->match.reduceOpEnum : -1;
+            /* 3D 名落 ctx 字符串区：偏移供 ApplyRule strcmp；
+             * "" 通配 → 哨兵不占区。区满 → 剔除该规则（报错优于静默通配）。 */
+            if (!CtxIntern(&strArea, tr->engine, &cr->engineOff) || !CtxIntern(&strArea, tr->executor, &cr->executorOff)
+                || !CtxIntern(&strArea, tr->templateName, &cr->templateOff)) {
+                strRejected++;
+                HCCL_WARNING("str area exhausted (max %uB), rule rejected", (unsigned)MAX_STR_AREA);
+                continue;
+            }
+            cr->cost = tr->hasCost ? tr->cost : 0.0f;
+            active++;
+        }
+        newOpSets[i].ruleCount = active - newOpSets[i].ruleOffset; /* 保序：幸存规则相对顺序 = JSON 顺序 */
+    }
+    newOpSetCount = tempOpSetCount;
+
+    /* 6. malloc 最终 ctx（精确大小：Header + active × CompactRule + 字符串区——
+     *    同源计算：尺寸与写入出自同一 strArea.used，无两处维护可漂移） */
+    const uint32_t strAreaOff = (uint32_t)(sizeof(StoredHeader) + (uint64_t)active * sizeof(CompactRule));
+    uint64_t ctxSize = (uint64_t)strAreaOff + strArea.used;
+    void* tmp = malloc((size_t)ctxSize);
+    if (tmp == NULL) {
+        HCCL_WARNING("malloc failed for tuner ctx, size=%llu", (unsigned long long)ctxSize);
+        free(tempCompact);
+#ifndef HCCL_TUNER_TESTING
+        free(tempRules);
+#endif
+        return HCCL_SUCCESS; /* inactive */
+    }
+    if (memset_s(tmp, (size_t)ctxSize, 0, (size_t)ctxSize) != EOK) {
+        HCCL_WARNING("memset_s failed for tuner ctx");
+        free(tmp);
+        free(tempCompact);
+#ifndef HCCL_TUNER_TESTING
+        free(tempRules);
+#endif
+        return HCCL_SUCCESS; /* inactive */
+    }
+    StoredHeader* ctx = (StoredHeader*)tmp;
+    ctx->opSetCount = newOpSetCount;
+    for (int i = 0; i < newOpSetCount; i++) {
+        ctx->opSets[i] = newOpSets[i];
+    }
+    ctx->totalRuleCount = active;
+    ctx->topoPrunedCount = topoPruned;
+    ctx->schemaRejectedCount = parsedRuleCount - validRules;
+    ctx->strAreaOff = strAreaOff;
+    ctx->strAreaSize = strArea.used;
+    CompactRule* dstRules = GetRules(ctx);
+    for (int i = 0; i < active; i++) {
+        dstRules[i] = tempCompact[i]; /* 3D 名为字符串区偏移：随 ctx 裸 memcpy 天然有效 */
+    }
+    if (strArea.used > 0 && memcpy_s((char*)ctx + strAreaOff, strArea.used, strArea.buf, strArea.used) != EOK) {
+        HCCL_WARNING("memcpy_s failed for str area, plugin inactive");
+        free(tmp);
+        free(tempCompact);
+#ifndef HCCL_TUNER_TESTING
+        free(tempRules);
+#endif
+        return HCCL_SUCCESS; /* inactive */
     }
     if (schema.fatal > 0) {
         /* 仅配置级致命错误整体拒绝；规则级错误已逐条剔除 */
-        if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema fatal error (%d), plugin will not intervene",
-                schema.fatal);
-        }
+        HCCL_WARNING("Schema fatal error (%d), plugin will not intervene", schema.fatal);
         ctx->configValid = 0;
     } else {
         ctx->configValid = 1;
-        if (validRules < ctx->totalRuleCount) {
-            if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-                g_hostFuncs.logFunction(
-                    HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "Schema: %d rules rejected, %d rules active",
-                    ctx->totalRuleCount - validRules, validRules);
-            }
-        }
     }
+    HCCL_INFO(
+        "compiled: %d active, %d topo-pruned, %d schema-rejected, %d str-rejected, strArea=%uB, "
+        "sizeof(Rule)=%zu -> sizeof(CompactRule)=%zu, ctx=%lluB (legacy layout %lluB)",
+        active, topoPruned, parsedRuleCount - validRules, strRejected, strArea.used, sizeof(Rule), sizeof(CompactRule),
+        (unsigned long long)ctxSize,
+        (unsigned long long)(sizeof(StoredHeader) + (uint64_t)parsedRuleCount * sizeof(Rule)));
+    free(tempCompact);
+#ifndef HCCL_TUNER_TESTING
+    /* 解析期宽格式缓冲已编译完毕，成功路径同样必须释放——仅失败路径成对释放会漏 free，
+     * 生产构建每次 Create 泄漏 totalRules×~350B（上限 ~1.7MB） */
+    free(tempRules);
+#endif
 
-    /* 5. 拷贝 commInfo（commName 需拷贝到持久缓冲，init 返回后 commInfo 指针失效） */
+    /* 5. 拷贝 commInfo + topoInfo。commName 内容自持于内联缓冲 commNameBuf（随 ctx 裸
+     * memcpy 天然有效，消费者直接读 commNameBuf）；commInfo.commName 指针不持久化——
+     * 绝对地址经宿主 memcpy 进通信域后悬垂，置 NULL 防误用。 */
     ctx->commInfo = *commInfo;
+    ctx->commInfo.commName = NULL;
+    ctx->topoInfo = *topoInfo;
     if (commInfo->commName != NULL) {
         if (snprintf_s(
                 ctx->commNameBuf, sizeof(ctx->commNameBuf), sizeof(ctx->commNameBuf) - 1, "%s", commInfo->commName)
             < 0) {
             ctx->commNameBuf[0] = '\0';
         }
-        ctx->commInfo.commName = ctx->commNameBuf;
     }
-    if (g_hostFuncs.logFunction != NULL) {
-        g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_INFO, __FILE__, __LINE__, "tuner init done, comm[%p] nRanks[%u] opSetCount[%d]", comm,
-            commInfo->nRanks, ctx->opSetCount);
-    }
+
+    /* 6. 出参返回，宿主 HcclEngineCtxCopy 进通信域 ctx 后 free(tmp) */
+    ctx->ctxReady = TUNER_CTX_READY_MAGIC; /* 收尾最后置位：宿主 Copy 落盘完成的哨兵随数据一起拷入 */
+    *tunerCtx = tmp;
+    *tunerCtxSize = (uint32_t)ctxSize;
+    HCCL_INFO(
+        "tuner Create done, comm[%p] nRanks[%u] opSetCount[%d] ctxSize[%u]", comm, topoInfo->nRanks, ctx->opSetCount,
+        *tunerCtxSize);
     return HCCL_SUCCESS;
 }
 
-static HcclResult MyGetCollInfo(
-    HcclComm comm, const hcclTunerCollInfo_t* collInfo, hcclTunerAlgoEntry_t* entries, int count, int* matched)
+static HcclResult MyUpdateAlgoCostTable(
+    void* tunerCtx, const HcclTunerCollOpInfo* collOpInfo, HcclTunerAlgoCostEntry* entries, uint32_t algoCount,
+    bool* matched)
 {
-    if (collInfo == NULL || entries == NULL || count <= 0 || matched == NULL) {
+    if (collOpInfo == NULL || entries == NULL || algoCount == 0 || matched == NULL) {
         return HCCL_E_PTR;
     }
-    /* *matched 已被 HCCL 核心初始化为 0（未命中） */
-    if (!g_hostFuncsReady || g_hostFuncs.ctxGet == NULL) {
-        return HCCL_SUCCESS;
+    /* *matched 已被 HCCL 核心初始化为 false（未命中） */
+    if (tunerCtx == NULL) {
+        return HCCL_SUCCESS; /* 插件 inactive，不干预 */
     }
-    void* ctxPtr = NULL;
-    uint64_t ctxSize = 0;
-    if (g_hostFuncs.ctxGet(comm, "main", &ctxPtr, &ctxSize) != HCCL_SUCCESS || ctxPtr == NULL) {
-        return HCCL_SUCCESS;
-    }
-    /* 校验 ctxGet 返回的 size，防止 engine bug 或版本不一致导致越界读 */
-    if (ctxSize < sizeof(StoredHeader)) {
-        if (g_hostFuncs.logFunction != NULL) {
-            g_hostFuncs.logFunction(
-                HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "ctxGet size %llu < expected %zu, skip intervention",
-                (unsigned long long)ctxSize, sizeof(StoredHeader));
-        }
-        return HCCL_SUCCESS;
-    }
-    StoredHeader* ctx = (StoredHeader*)ctxPtr;
+    StoredHeader* ctx = (StoredHeader*)tunerCtx; /* 宿主传入通信域 ctx，无需 ctxGet */
 
-    /* 配置级致命错误（configValid=0）时不干预；规则级错误已在 init 时逐条剔除 */
+    /* 就绪哨兵：宿主 EngineCtxCreate 与 EngineCtxCopy 之间存在对 op 路径可见的窗口（同 comm
+     * 并发首 op），窗口内 ctx 已清零、魔数未落盘——确定性 no-op，不改价、不按脏数据解析 */
+    if (ctx->ctxReady != TUNER_CTX_READY_MAGIC) {
+        return HCCL_SUCCESS;
+    }
+
+    /* 头部一致性 sanity（新 ABI 不传 ctxSize，旧版尺寸防线无处安放）：半拷贝/越界头部在此
+     * 现形为 no-op，不改价、不越界；与宿主 Create 后清零 + Copy 落盘哨兵构成纵深防御。
+     * strAreaOff 为构造不变量（Create 侧同公式，见 :971），垃圾/半拷贝数据极难同时碰撞
+     * 全部交叉校验 */
+    if (ctx->opSetCount < 0 || ctx->opSetCount > MAX_OP_TYPES || ctx->totalRuleCount < 0
+        || ctx->totalRuleCount > MAX_TOTAL_RULES || ctx->strAreaSize > MAX_STR_AREA
+        || ctx->strAreaOff != (uint32_t)(sizeof(StoredHeader) + (uint64_t)ctx->totalRuleCount * sizeof(CompactRule))) {
+        HCCL_WARNING(
+            "[TunerDFX] ctx header inconsistent (opSetCount=%d totalRuleCount=%d strAreaSize=%u strAreaOff=%u), "
+            "skip.",
+            ctx->opSetCount, ctx->totalRuleCount, ctx->strAreaSize, ctx->strAreaOff);
+        return HCCL_SUCCESS;
+    }
+
+    /* 配置级致命错误（configValid=0）时不干预；规则级错误已在 Create 时逐条剔除 */
     if (!ctx->configValid) {
         return HCCL_SUCCESS;
     }
 
-    Rule* rules = GetRules(ctx);
+    CompactRule* rules = GetRules(ctx);
+
+    /* 先确认本 opType 配置了规则组：无组 = tuner 未调该算子，正常态——
+     * 静默早退，未配置算子无需逐规则扫描。
+     * 诊断可见性走 DEBUG（诊断版 .so 重编 LOG_LEVEL_DEBUG 可见）。 */
+    bool opSetPresent = false;
+    for (int i = 0; i < ctx->opSetCount; i++) {
+        if (ctx->opSets[i].opType == collOpInfo->collType) {
+            opSetPresent = true;
+            break;
+        }
+    }
+    if (!opSetPresent) {
+        HCCL_DEBUG("[TunerDFX] no rule group for opType=%d, skip silently", (int)collOpInfo->collType);
+        return HCCL_SUCCESS;
+    }
+
     for (int i = 0; i < ctx->opSetCount; i++) {
         OpSetDesc* desc = &ctx->opSets[i];
-        if (desc->opType != collInfo->collType) {
+        if (desc->opType != collOpInfo->collType) {
             continue;
         }
-        for (int j = 0; j < desc->ruleCount; j++) { /* 首条真正改到条目的规则终结匹配 */
-            Rule* r = &rules[desc->ruleOffset + j];
-            if (!r->valid) {
-                continue; /* schema 剔除的规则不参与匹配 */
+        /* 内层边界（与头部 sanity 构成完整自证链）：ruleOffset/ruleCount 越界即跳过该组，
+         * rules[] 下标全部有界 */
+        if (desc->ruleOffset < 0
+            || (uint64_t)desc->ruleOffset + (uint64_t)desc->ruleCount > (uint64_t)ctx->totalRuleCount) {
+            HCCL_WARNING(
+                "[TunerDFX] rule set inconsistent (opType=%d ruleOffset=%d ruleCount=%d), skip this set.",
+                (int)desc->opType, desc->ruleOffset, desc->ruleCount);
+            continue;
+        }
+        for (int j = 0; j < desc->ruleCount; j++) { /* 找到首条谓词命中的规则即终局 */
+            const CompactRule* r = &rules[desc->ruleOffset + j];
+            /* 哨兵通配：未配置的谓词编码成恒不成立的比较，编译期已消费拓扑谓词 */
+            if (collOpInfo->nBytes < r->minBytes || collOpInfo->nBytes > r->maxBytes) {
+                continue;
             }
-            if (MatchRule(r, collInfo, &ctx->commInfo)) {
-                int modified = ApplyRule(r, entries, count);
-                if (modified > 0) {
-                    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-                        g_hostFuncs.logFunction(
-                            HCCL_TUNER_LOG_INFO, __FILE__, __LINE__,
-                            "[TunerDFX] rule hit: opType=%d nBytes=%zu dataType=%d ruleIdx=%d/%d "
-                            "engine=%s executor=%s template=%s cost=%.6f",
-                            (int)collInfo->collType, collInfo->nBytes, (int)collInfo->dataType, j, desc->ruleCount,
-                            r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
-                            r->templateName[0] ? r->templateName : "*", r->hasCost ? r->cost : 0.0f);
-                    }
-                    *matched = 1; /* 真正修改了 cost 才算命中，对齐头文件契约 */
-                    return HCCL_SUCCESS;
-                }
-                /* 一条没改（目标缺席或全禁用）: 穿透后续规则；穿透是正常流转（多引擎规则集让路），DEBUG 级 */
-                if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-                    g_hostFuncs.logFunction(
-                        HCCL_TUNER_LOG_DEBUG, __FILE__, __LINE__,
-                        "[TunerDFX] rule hit (fall through): opType=%d nBytes=%zu dataType=%d ruleIdx=%d/%d "
-                        "engine=%s executor=%s template=%s, target absent or disabled",
-                        (int)collInfo->collType, collInfo->nBytes, (int)collInfo->dataType, j, desc->ruleCount,
-                        r->engine[0] ? r->engine : "*", r->executor[0] ? r->executor : "*",
-                        r->templateName[0] ? r->templateName : "*");
-                }
+            if (r->dataTypeEnum >= 0 && r->dataTypeEnum != (int32_t)collOpInfo->dataType) {
+                continue;
             }
+            if (r->reduceOpEnum >= 0 && r->reduceOpEnum != (int32_t)collOpInfo->reduceOp) {
+                continue;
+            }
+            /* 终局语义（firsthit）：首条谓词命中的规则独占本次 op——
+             * 名字匹配对这一条规则尽力而为：命中则改价；目标缺席/禁用则什么都不改。
+             * 无论哪种结果，后续规则不再查看（多引擎让路模式已退役，需让路的配置请按引擎拆分规则）。 */
+            int modified = ApplyRule(ctx, r, entries, algoCount);
+            if (modified > 0) {
+                HCCL_INFO(
+                    "[TunerDFX] rule hit: opType=%d nBytes=%llu dataType=%d ruleIdx=%d/%d "
+                    "engine=%s executor=%s template=%s cost=%.6f",
+                    (int)collOpInfo->collType, (unsigned long long)collOpInfo->nBytes, (int)collOpInfo->dataType, j,
+                    desc->ruleCount, (r->engineOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->engineOff) : "*",
+                    (r->executorOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->executorOff) : "*",
+                    (r->templateOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->templateOff) : "*", r->cost);
+                *matched = true; /* 真正修改了 cost 才算命中，对齐头文件契约 */
+                return HCCL_SUCCESS;
+            }
+            /* 本条规则谓词命中但 0 改动（目标缺席或全禁用）：终局，后续规则不再查看 */
+            HCCL_WARNING(
+                "[TunerDFX] first applicable rule 0 modified (target absent or disabled): opType=%d nBytes=%llu "
+                "dataType=%d ruleIdx=%d/%d engine=%s executor=%s template=%s (terminate, later rules not examined)",
+                (int)collOpInfo->collType, (unsigned long long)collOpInfo->nBytes, (int)collOpInfo->dataType, j,
+                desc->ruleCount, (r->engineOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->engineOff) : "*",
+                (r->executorOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->executorOff) : "*",
+                (r->templateOff != STR_OFF_WILDCARD) ? CtxStr(ctx, r->templateOff) : "*");
+            return HCCL_SUCCESS;
         }
     }
-    if (g_hostFuncsReady && g_hostFuncs.logFunction != NULL) {
-        g_hostFuncs.logFunction(
-            HCCL_TUNER_LOG_WARN, __FILE__, __LINE__, "[TunerDFX] no rule matched: opType=%d nBytes=%zu dataType=%d",
-            (int)collInfo->collType, collInfo->nBytes, (int)collInfo->dataType);
-    }
+    /* 谓词无命中（区间外/dataType/reduceOp/空组，正常形态）→ DEBUG；
+     * 目标缺席/禁用的终局告警已由上方 0-modified 分支的 WARN 打印。 */
+    HCCL_DEBUG(
+        "[TunerDFX] no applicable rule (predicates unmatched): opType=%d nBytes=%llu dataType=%d",
+        (int)collOpInfo->collType, (unsigned long long)collOpInfo->nBytes, (int)collOpInfo->dataType);
     return HCCL_SUCCESS;
 }
 
-/* ===== 插件函数表（V1，直接导出全局变量，核心通过 dlsym 获取）===== */
-hcclTunerFuncs_v1_t hcclTunerPlugin_v1 = {MyInit, MyGetCollInfo, sizeof(hcclTunerFuncs_v1_t)};
-
-/* 供 test_plugin.c 通过 #include "../plugin.c" 方式单元测试 */
-#ifdef HCCL_TUNER_TESTING
-StoredHeader* TunerGetStoredCtx(HcclComm comm)
+/* ===== 插件入口（返回 ops 指针，纯静态初始化，幂等无副作用）===== */
+__attribute__((visibility("default"))) const HcclTunerPluginOps* HcclTunerPluginOpsGet(void)
 {
-    if (!g_hostFuncsReady || g_hostFuncs.ctxGet == NULL) {
-        return NULL;
-    }
-    void* ctxPtr = NULL;
-    uint64_t ctxSize = 0;
-    if (g_hostFuncs.ctxGet(comm, "main", &ctxPtr, &ctxSize) != HCCL_SUCCESS) {
-        return NULL;
-    }
-    return (StoredHeader*)ctxPtr;
+    static const HcclTunerPluginOps ops = {
+        {HCCL_TUNER_PLUGIN_OPS_VERSION, HCCL_TUNER_PLUGIN_OPS_MAGIC_WORD, sizeof(HcclTunerPluginOps), 0u},
+        MyCreate,
+        MyUpdateAlgoCostTable,
+    };
+    return &ops;
 }
-#endif

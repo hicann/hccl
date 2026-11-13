@@ -33,6 +33,10 @@ add_subdirectory(aicpu_task_cache)
 # executor/模板代码），断言 AlgAttrsRegistry 中 topoCustomCheck/topoPriorityCheck 的
 # 真实生产行为。
 add_subdirectory(alg_attrs)
+# selector_mapper: AlgoNameMapper 真实现 UT（Lookup 全映射/miss/Init 幂等/晚注册检测）
+add_subdirectory(selector_mapper)
+# tuner: tuner_setup.cc 宿主侧 UT（dlopen/header 校验/Create 回退/Copy 回滚/幂等/Update 路径）
+add_subdirectory(tuner)
 # reduce_scatter_seq64: RS/AR AicpuReduce 模板 cost 建模 + MeshNHRAicpuReduce attrs 注册准入。
 # 测 src/ 产品代码，与 alltoall_hier 同级无条件注册；注意 build.sh -u 的 UT 构建不传
 # ENABLE_EXPERIMENTAL，放入下方 if(ENABLE_EXPERIMENTAL) 分支将不被 -u 覆盖。

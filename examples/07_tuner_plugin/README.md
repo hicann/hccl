@@ -163,6 +163,8 @@ export HCCL_ALG_CONFIG_FILE=/path/to/hccl_tuner_config.json
 算法选择不一致可致通信卡死。
 之后正常运行业务即可，插件会按配置改写 cost table。配置格式见下一节。
 
+> **注意**：配置文件在每个通信域首次初始化时读取一次并固化为快照——修改 JSON 后仅对**新建通信域**生效，已存在的通信域继续使用创建时的快照，需重启进程后生效。
+
 ### 目录下其他文件
 
 `tuner_common.py` 是两个脚本共用的常量表与纯函数（CSV 字段、算法注册名反分解、
@@ -203,15 +205,16 @@ HCCL 侧算法命名规则演进（新增引擎/执行器/模板 token）时，�
 | `version` | int | 是 | 配置格式版本，目前必须为 `1` |
 | `op_types` | object | 是 | 按算子类型组织的规则集 |
 
-### match 条件（全部 AND；首条真正改到条目的规则生效）
+### match 条件（全部 AND；首条谓词命中的规则终局）
 
-规则命中但目标不在 cost table 或被禁用时**穿透**，继续评估后续规则；全部落空则 matched=0。
+首条谓词命中的规则独占本次 op——名字匹配尽力而为：命中则改价，目标缺席/禁用则什么都不改。无论结果，后续规则不再评估（matched=0 时整轮无干预）。
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `min_ranks` / `max_ranks` | uint32 | 是 | 通信域 rank 数范围 |
 | `min_bytes` / `max_bytes` | size_t | 是 | 数据量范围（字节） |
 | `data_type` | string | 否 | 数据类型（`int8`/`int16`/`int32`/`int64`/`uint8`/`uint16`/`uint32`/`uint64`/`fp16`/`float16`/`fp32`/`float32`/`fp64`/`float64`/`bfp16`/`bfloat16`） |
+| `reduce_op` | string | 否 | reduce 算子（`sum`/`prod`/`max`/`min`），仅对 reduce 类算子有意义 |
 | `comm_name` | string | 否 | 通信域名（子串匹配） |
 | `min_npus_per_server` / `max_npus_per_server` | uint32 | 否 | 每服务器 NPU 数范围 |
 | `min_servers` / `max_servers` | uint32 | 否 | 服务器数范围 |
@@ -260,7 +263,9 @@ template 不做枚举校验：单级是单 template 名，多级是 executor 后
 
 ### 支持的 op_type
 
-`allreduce` / `allgather` / `broadcast` / `reduce` / `reduce_scatter` / `scatter` / `alltoall` / `alltoallv`
+`allreduce` / `allgather` / `broadcast` / `reduce` / `reduce_scatter` / `scatter` / `alltoall` / `alltoallv` / `alltoallvc` / `reduce_scatterv` / `all_gatherv`
+
+> v2 变体算子（`alltoallvc` / `reduce_scatterv` / `all_gatherv`）与标准算子同等支持；未知 op_type 仍会被 schema 校验拒绝（整组丢弃）。
 
 > 以上 engine / executor / template / op_type 的可选值与 HCCL 算法选择器的维度定义一致。
 
@@ -312,9 +317,11 @@ make
 
 ## 插件接口
 
-插件需导出符号 `hcclTunerPlugin_v1`（类型 `hcclTunerFuncs_v1_t`），包含 `init` 和 `getCollInfo` 两个函数指针。HCCL 核心通过 `dlsym` 获取该符号加载插件。
+插件需导出符号 `HcclTunerPluginOpsGet`（签名 `const HcclTunerPluginOps* HcclTunerPluginOpsGet(void)`，纯静态初始化、幂等），返回包含 `Create` 与 `UpdateAlgoCostTable` 两个函数指针的操作集。HCCL 核心通过 `dlsym` 获取该符号，并对返回的 header 做三连校验（magicWord/version/size），失败即降级回退 CostModel。
 
-详见 `src/ops/op_common/selector/inc/hccl_tuner_plugin.h`。
+生命周期：`Create`（每 comm 一次）用标准 `malloc` 构造 tunerCtx 经出参返回，宿主拷贝进通信域 ctx 后释放临时缓冲；`UpdateAlgoCostTable`（每 op 一次）直接接收 tunerCtx。cost table 条目遍历按 `entries[0].header.size` 步长（ABI 约定）。
+
+详见 `../../src/ops/op_common/selector/pub_inc/hccl_tuner_plugin.h`。
 
 ## 运行示例
 
@@ -336,17 +343,19 @@ AllReduce 8 ranks、4096B、fp16 匹配规则，将目标算法 cost 从 100.0 �
 [TunerDFX] modify: algName=AicpuAllReduceSequenceMeshConcurNHRNHR engine=aicpu executor=sequence template=meshconcurnhrnhr cost 5.000000 -> 0.000000
 ```
 
+终局语义下的日志信号：命中并改价 → INFO `rule hit`；首条命中规则目标缺席/禁用（0 改动终局）→ WARN `first applicable rule 0 modified (terminate)`；谓词无命中 → DEBUG `no applicable rule (predicates unmatched)`（诊断版 .so 可见）。
+
 ### 不匹配时不干预
 
-4 ranks 不在规则要求的 8~16 范围内，无规则命中，cost table 保持 CostModel 原值：
+4 ranks 不在规则要求的 8~16 范围内，无规则命中，cost table 保持 CostModel 原值（DEBUG 级 `no applicable rule (predicates unmatched)`，诊断版 .so 可见）：
 
 ```
-[TunerDFX] no rule matched: opType=2 nBytes=4096 dataType=3
+[TunerDFX] no applicable rule (predicates unmatched): opType=2 nBytes=4096 dataType=3
 ```
 
 ### 目标算法已禁用（cost<0）时跳过
 
-目标条目 cost=-1（已被禁用），插件不改它（`SelectMinCost` 中 cost<0 视为 filtered 不参与选择）；该规则穿透，后续规则继续评估（穿透细节为 DEBUG 级日志）：
+目标条目 cost=-1（已被禁用），插件不改它（`SelectMinCost` 中 cost<0 视为 filtered 不参与选择）；该规则终局，后续规则不再评估（终局告警为 WARN 级 `first applicable rule 0 modified (terminate)`；未改细节为 DEBUG 级日志）：
 
 ```
 [TunerDFX] skip disabled: algName=AicpuAllReduceSoleMeshOneShot cost=-1.000000

@@ -15,7 +15,6 @@
 
 #include "alg_env_config.h"
 #include "alg_parse.h"
-#include "algo_name_mapper.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "config_log.h"
 #include "cost_model.h"
@@ -293,14 +292,8 @@ SelectorEngine::InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoIn
 {
     HCCL_INFO("[SelectorEngine] Initializing costModel for comm, engine=%d.", static_cast<int>(param.opExecuteConfig));
 
-    // 全局一次性：构建算法名→3D 维度映射缓存
-    static std::once_flag algoMapperFlag;
-    std::call_once(algoMapperFlag, []() {
-        AlgoNameMapper::Global()->Init(*GetAllAlgos());
-        HCCL_INFO("[SelectorEngine] algo name mapper initialized.");
-    });
-
     // 通信域阶段选路管线(语义见 cost_model.h); 引擎策略归 selector: 候选引擎(含回退序)及其前缀域作管线输入
+    // 注: 算法名→3D 维度映射缓存(AlgoNameMapper)由 InitModel 内部幂等初始化并物化进条目, 此处无需再初始化
     CostModel srcCm{nullptr, 0};
 
     // RAII 兜底: 管线任何 phase 失败早退均释放临时模型(内容成功拷入 ctx 后的析构释放亦无害)
@@ -366,16 +359,20 @@ HcclResult SelectorEngine::TunerEnrichCostTable(HcclComm comm, CostTable& ct, co
     if (ct.count <= 0 || !HcclTunerIsLoaded()) {
         return HCCL_SUCCESS;
     }
-    // tuner: Enrich 填 3D 名 + 调用插件改 cost
-    AlgoNameMapper::Global()->Enrich(ct.costs, ct.count);
+    // tuner 改 cost: 3D 名已随 GenerateCostTable 条目生成时填充(costmodel per-comm 物化), 此处只调插件
     // AllToAll(V/VC) 的 dataType 存在 all2AllVDataDes.sendType 中，而非 DataDes.dataType
     HcclDataType tunerDataType = param.DataDes.dataType;
     if (param.opType == HcclCMDType::HCCL_CMD_ALLTOALL || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLV
         || param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) {
         tunerDataType = param.all2AllVDataDes.sendType;
     }
-    CHK_RET(HcclTunerCallGetCollInfo(
-        comm, param.opType, param.inputSize, tunerDataType, ct.costs, ct.count, &tunerModified));
+    HcclTunerCollOpInfo collOpInfo;
+    (void)HcclTunerCollOpInfoInit(&collOpInfo);
+    collOpInfo.collType = param.opType;
+    collOpInfo.nBytes = static_cast<uint64_t>(param.inputSize);
+    collOpInfo.dataType = tunerDataType;
+    collOpInfo.reduceOp = param.reduceType;
+    CHK_RET(HcclTunerCallGetCollInfo(comm, &collOpInfo, ct.costs, static_cast<uint32_t>(ct.count), &tunerModified));
     if (tunerModified) {
         HCCL_INFO("[SelectorEngine] tuner modified cost table.");
     } else {
@@ -437,8 +434,8 @@ SelectorEngine::Run(HcclComm comm, OpParam& param, TopoInfoWithNetLayerDetails* 
 
     CHK_RET(CostTableManager::Global()->GenerateCostTable(*cm, ct, topoInfo, param));
 
-    // step 3: tuner 改 cost(未加载或空表跳过)
     bool tunerModified = false;
+    // step 3: tuner 改 cost(未加载或空表跳过)
     CHK_RET(TunerEnrichCostTable(comm, ct, param, tunerModified));
 
     // step 4: min(ct)

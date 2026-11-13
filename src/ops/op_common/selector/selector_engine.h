@@ -36,7 +36,8 @@ private:
 
     HcclResult InitCostModel(HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, OpParam& param, CostModel*& cm);
 
-    // 调 tuner 改 cost: Enrich 填 3D 名 + 插件改 cost(未加载或空表跳过, 含 AllToAll(V/VC) dataType 特判);
+    // 调 tuner 改 cost: costModel 已物化 3D 名 + cost_table 生成时已初始化 ABI header + 插件改 cost
+    // (未加载或空表跳过, 含 AllToAll(V/VC) dataType 特判);
     // tunerModified 出参标识 cost 表是否被 tuner 改写, 供选路失败时区分死因
     HcclResult TunerEnrichCostTable(HcclComm comm, CostTable& ct, const OpParam& param, bool& tunerModified);
 

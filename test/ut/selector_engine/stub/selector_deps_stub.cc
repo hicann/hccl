@@ -257,12 +257,12 @@ HcclResult CostTableManager::GenerateCostTable(
         return HCCL_E_MEMORY;
     }
     for (int i = 0; i < cm.count; ++i) {
+        (void)HcclTunerAlgoCostEntryInit(&ct.costs[i]);
         ct.costs[i].algName = cm.costAlgoParams[i].algName;
         ct.costs[i].engineName = nullptr;
         ct.costs[i].executorName = nullptr;
         ct.costs[i].templateName = nullptr;
         ct.costs[i].cost = 1.0f;
-        ct.costs[i].structSize = sizeof(AlgoCost);
     }
     ct.count = cm.count;
     return HCCL_SUCCESS;
@@ -285,10 +285,13 @@ AlgoNameMapper* AlgoNameMapper::Global()
 
 void AlgoNameMapper::Init(const AllAlgos& allAlgos) { (void)allAlgos; }
 
-void AlgoNameMapper::Enrich(hcclTunerAlgoEntry_t* entries, int count)
+bool AlgoNameMapper::Lookup(const char* algName, AlgoDims& dims) const
 {
-    (void)entries;
-    (void)count;
+    (void)algName;
+    dims.engineUser = "";
+    dims.executorUser = "";
+    dims.templateUser = "";
+    return false;
 }
 
 AlgAttrsRegistry& AlgAttrsRegistry::Instance()
@@ -315,14 +318,12 @@ HcclResult HcclTunerInit(HcclComm comm, const ops_hccl::TopoInfoWithNetLayerDeta
 bool HcclTunerIsLoaded() { return false; }
 
 HcclResult HcclTunerCallGetCollInfo(
-    HcclComm comm, HcclCMDType cmdType, size_t nBytes, HcclDataType dataType, hcclTunerAlgoEntry_t* algoEntries,
-    int algoCount, bool* modified)
+    HcclComm comm, const HcclTunerCollOpInfo* collOpInfo, HcclTunerAlgoCostEntry* algoCostEntries, uint32_t algoCount,
+    bool* modified)
 {
     (void)comm;
-    (void)cmdType;
-    (void)nBytes;
-    (void)dataType;
-    (void)algoEntries;
+    (void)collOpInfo;
+    (void)algoCostEntries;
     (void)algoCount;
     if (modified != nullptr) {
         *modified = false;

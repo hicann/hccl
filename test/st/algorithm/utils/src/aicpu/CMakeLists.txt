@@ -23,7 +23,7 @@ set(INCLUDE_LIST
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/executor/registry
 
     ${HCCL_DEV_BASE}/src/ops/op_common/selector
-    ${HCCL_DEV_BASE}/src/ops/op_common/selector/inc
+    ${HCCL_DEV_BASE}/src/ops/op_common/selector/pub_inc
 
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template
     ${HCCL_DEV_BASE}/src/ops/op_common/algorithm/template/registry

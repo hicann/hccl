@@ -93,7 +93,7 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/executor/registry
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector
-    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/selector/pub_inc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/template
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/op_common/algorithm/template/registry
@@ -212,6 +212,10 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/selector
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template
 )
+
+# 插件 ABI 头 ops/op_common/selector/pub_inc/hccl_tuner_plugin.h 暂不安装（按评审决议先留内部目录）：
+# 打包 filelist/RECORD 由 scripts/package/module/ascend/HcclLib.xml 白名单驱动，
+# 装入安装产物须同步登记该白名单，当前不对外发布；插件作者从源仓 pub_inc 获取头文件。
 
 # [HCCL-ALGO-Plugin] 仅当显式开启插件开关时，才把 algo_plugin 目录加入包含路径，
 # 默认（OFF）状态下 INCLUDE_LIST 与插件引入前完全一致。

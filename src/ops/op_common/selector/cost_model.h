@@ -101,6 +101,12 @@ struct AlgNetMeta {
 
 struct CostAlgoParams {
     const char* algName;
+    // tuner 3D 用户名(per-comm 一次物化, costTable 生成条目时直接引用, 替代每 op 的 Enrich 查找)。
+    // 指针指向 AlgoNameMapper 进程级 cache 的持久字符串, comm ctx 序列化按值拷贝指针仍有效;
+    // 未解析到的条目保持 nullptr, 条目生成侧兜底为 ""
+    const char* engineName = nullptr;
+    const char* executorName = nullptr;
+    const char* templateName = nullptr;
     // 所有权：param 指向的内存由 costModel_ 持有（FilterByTopoAndCalibrate 深拷贝）。
     // FreeCostModel 会逐个释放 param 指向的内存。
     const CostModelParam* param;

@@ -15,7 +15,7 @@ set(_selector_ut_include_dirs
     ${_repo_root}/src/ops/op_common/inc
     ${_repo_root}/src/ops/op_common
     ${_repo_root}/src/ops/op_common/selector
-    ${_repo_root}/src/ops/op_common/selector/inc
+    ${_repo_root}/src/ops/op_common/selector/pub_inc
     ${_repo_root}/src/ops/op_common/topo_info
     ${_repo_root}/src/ops/op_common/algorithm/template
     ${_repo_root}/src/ops/op_common/algorithm/template/registry

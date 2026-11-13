@@ -10,7 +10,6 @@
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/tuner_setup.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/tuner_host_funcs.cc
 )
 
 if(TARGET hccl)

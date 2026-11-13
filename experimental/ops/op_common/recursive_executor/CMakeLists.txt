@@ -36,6 +36,7 @@ set(RE_INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/common/hcomm_dlsym/ccu
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/selector
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/selector/pub_inc
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/algorithm/executor
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/algorithm/executor/registry
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../../src/ops/op_common/algorithm/executor/channel

@@ -25,7 +25,7 @@
 
 namespace ops_hccl {
 
-typedef hcclTunerAlgoEntry_t AlgoCost;
+typedef HcclTunerAlgoCostEntry AlgoCost;
 
 typedef struct {
     AlgoCost* costs;

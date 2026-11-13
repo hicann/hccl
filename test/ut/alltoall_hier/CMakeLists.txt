@@ -31,6 +31,7 @@ target_include_directories(alltoall_hier_test PRIVATE
     ${_repo_root}/src/ops/op_common/algorithm/executor/registry
     ${_repo_root}/src/ops/op_common/algorithm/executor/channel
     ${_repo_root}/src/ops/op_common/selector
+    ${_repo_root}/src/ops/op_common/selector/pub_inc
     ${_repo_root}/src/ops/op_common/algorithm/topo_match
     ${_repo_root}/src/ops/op_common/topo_info
     ${_repo_root}/src/common

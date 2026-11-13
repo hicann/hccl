@@ -24,6 +24,7 @@
 // 实证)
 #ifndef AICPU_COMPILE
 #include "tuner_setup.h"
+#include "algo_name_mapper.h"
 #endif
 
 namespace ops_hccl {
@@ -339,9 +340,29 @@ HcclResult CostModelManager::InitModel(CostModel& cm)
         return HcclResult::HCCL_E_PARA;
     }
     // 条目与 allAlgos 对齐, count=1 待处理
+    // 3D 名 per-comm 一次物化(替代旧每 op 的 TunerEnrichCostTable 内 Enrich 查找); 仅 host——
+    // device 核库(AICPU_COMPILE)不含 AlgoNameMapper(include 见文件头保护, PR#3286 同款教训),
+    // device 条目三字段留 nullptr, 由 cost_table 生成侧兜底为 ""
+#ifndef AICPU_COMPILE
+    // Init 幂等(call_once), 此处先确保映射缓存就绪再逐条 Lookup
+    AlgoNameMapper::Global()->Init(allAlgos);
+#endif
     for (int i = 0; i < allAlgos.count; ++i) {
         cm.costAlgoParams[i].algName = allAlgos.algElements[i].algName;
         cm.costAlgoParams[i].count = 1;
+#ifndef AICPU_COMPILE
+        AlgoDims dims = {};
+        if (!AlgoNameMapper::Global()->Lookup(allAlgos.algElements[i].algName, dims)) {
+            HCCL_WARNING(
+                "[CostModelManager] InitModel 3D-name lookup miss, algName=%s.",
+                allAlgos.algElements[i].algName != nullptr ? allAlgos.algElements[i].algName : "(null)");
+        }
+        // miss 时 Lookup 输出空串(与旧 Enrich 未命中行为一致), 条目侧不再区分;
+        // 三字段均为 mapper 借出指针(静态维度表/cache_ 节点), 进程生命周期内稳定
+        cm.costAlgoParams[i].engineName = dims.engineUser;
+        cm.costAlgoParams[i].executorName = dims.executorUser;
+        cm.costAlgoParams[i].templateName = dims.templateUser;
+#endif
     }
     cm.count = allAlgos.count;
     return HcclResult::HCCL_SUCCESS;
@@ -434,8 +455,11 @@ HcclResult CostModelManager::FilterByTopoAndCalibrate(
         }
         std::copy(params.begin(), params.end(), ownedParam);
 
-        // 原地压缩(writeIdx<=i), 保留 hcclAlgoPriority, count 变为 param 组数
+        // 原地压缩(writeIdx<=i), 保留 hcclAlgoPriority/3D 名, count 变为 param 组数
         cm.costAlgoParams[writeIdx].algName = alg.algName;
+        cm.costAlgoParams[writeIdx].engineName = cm.costAlgoParams[i].engineName;
+        cm.costAlgoParams[writeIdx].executorName = cm.costAlgoParams[i].executorName;
+        cm.costAlgoParams[writeIdx].templateName = cm.costAlgoParams[i].templateName;
         cm.costAlgoParams[writeIdx].param = ownedParam;
         cm.costAlgoParams[writeIdx].count = paramCount;
         cm.costAlgoParams[writeIdx].hcclAlgoPriority = cm.costAlgoParams[i].hcclAlgoPriority;

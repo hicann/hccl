@@ -37,6 +37,7 @@ target_include_directories(topo_match_test PRIVATE
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/inc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector/pub_inc
     ${PROJECT_SOURCE_DIR}/src/common
     ${PROJECT_SOURCE_DIR}/src/common/hcomm_dlsym
     ${PROJECT_SOURCE_DIR}/src/common/hcomm_dlsym/ccu

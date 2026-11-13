@@ -14,7 +14,7 @@ set(_includes ${CMAKE_CURRENT_SOURCE_DIR} ${_repo_root}/include ${_repo_root}/sr
     ${_repo_root}/src/ops/op_common/inc
     ${_repo_root}/src/ops/op_common
     ${_repo_root}/src/ops/op_common/selector
-    ${_repo_root}/src/ops/op_common/selector/inc
+    ${_repo_root}/src/ops/op_common/selector/pub_inc
     ${_repo_root}/src/ops/op_common/topo_info
     ${_repo_root}/src/ops/op_common/algorithm/template
     ${_repo_root}/src/ops/op_common/algorithm/template/registry

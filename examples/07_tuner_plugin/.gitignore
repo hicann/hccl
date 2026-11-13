@@ -12,3 +12,8 @@ third_party/
 hccl_tuner_example.so
 __pycache__/
 *.pyc
+# 单测二进制为本地构建产物，不入库（PR #3896 复审发现误提交 2MB ELF）
+test/test_plugin
+# BUILD_FLAGS 编译选项指纹文件（构建期生成，驱动 LOG_LEVEL 变化重编）
+.build-flags
+test/.build-flags

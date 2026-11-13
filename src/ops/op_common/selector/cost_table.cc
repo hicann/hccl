@@ -245,9 +245,22 @@ void CostTableManager::OpFilterAndCalcCost(
             meta = exec->GetAlgNetMeta(topoInfo, opParam, name.c_str());
         }
 
+        // 3D 名来自 costModel 条目(per-comm 一次物化), 表生成时拷贝并对 nullptr 兜底空串——
+        // 替代旧每 op 的 TunerEnrichCostTable 内 AlgoNameMapper::Enrich 查找; ABI header 此处顺带
+        // 初始化(插件契约四字段); 兜底对齐 cost_model.h 契约"条目生成侧兜底为空串"——未经 InitModel
+        // 物化的旧式模型不得把 NULL 直达插件 ABI 条目(插件按 C 字符串 strcmp 使用)
         float cost = CalcAlgCost(
             name, dataSize, opParam, cm.costAlgoParams[i], opParam.opType, attrs->algoTypes, meta, attrs->engine);
         ct.costs[ct.count].algName = algName;
+        ct.costs[ct.count].engineName
+            = (cm.costAlgoParams[i].engineName != nullptr) ? cm.costAlgoParams[i].engineName : "";
+        ct.costs[ct.count].executorName
+            = (cm.costAlgoParams[i].executorName != nullptr) ? cm.costAlgoParams[i].executorName : "";
+        ct.costs[ct.count].templateName
+            = (cm.costAlgoParams[i].templateName != nullptr) ? cm.costAlgoParams[i].templateName : "";
+        (void)HcclAbiHeaderInit(
+            &ct.costs[ct.count].header, HCCL_TUNER_ALGO_COST_ENTRY_MAGIC_WORD, HCCL_TUNER_ALGO_COST_ENTRY_VERSION,
+            sizeof(HcclTunerAlgoCostEntry));
         ct.costs[ct.count].cost = cost;
         ++ct.count;
         hcclPrio.push_back(cm.costAlgoParams[i].hcclAlgoPriority);

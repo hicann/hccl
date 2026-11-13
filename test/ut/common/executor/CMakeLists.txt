@@ -21,7 +21,7 @@ set(_omnipipe_executor_utils_ut_include_dirs
     ${PROJECT_SOURCE_DIR}/src/ops/op_common
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/inc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector
-    ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector/inc
+    ${PROJECT_SOURCE_DIR}/src/ops/op_common/selector/pub_inc
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/topo_info
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/executor/channel

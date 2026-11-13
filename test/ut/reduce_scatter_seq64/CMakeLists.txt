@@ -25,7 +25,7 @@ set(_ut_include_dirs
     ${_repo_root}/src/ops/op_common/algorithm/executor/registry
     ${_repo_root}/src/ops/op_common/algorithm/executor/channel
     ${_repo_root}/src/ops/op_common/selector
-    ${_repo_root}/src/ops/op_common/selector/inc
+    ${_repo_root}/src/ops/op_common/selector/pub_inc
     ${_repo_root}/src/ops/op_common/topo_info
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template
     ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu
@@ -98,6 +98,7 @@ set(_ut_src
     ${_repo_root}/src/ops/op_common/algorithm/template/template_utils.cc
     ${_repo_root}/src/ops/op_common/algorithm/template/wrapper/alg_data_trans_wrapper.cc
     ${_repo_root}/src/ops/op_common/exec_timeout_manager.cc
+    ${_repo_root}/src/ops/op_common/selector/algo_name_mapper.cc
     ${_repo_root}/src/ops/op_common/selector/cost_model.cc
     ${_repo_root}/src/ops/op_common/selector/alg_attrs_registry.cc
     ${_repo_root}/src/ops/op_common/selector/auto_selector_base.cc

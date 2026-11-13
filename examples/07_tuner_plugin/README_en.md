@@ -199,6 +199,11 @@ can deadlock collective communication.
 Then run your business workload as usual; the plugin rewrites the cost table
 according to the config. See the next section for the config format.
 
+> **Note**: the config file is read once per communicator, at its first
+> initialization, and frozen into a snapshot. After editing the JSON, only
+> **newly created communicators** pick up the change; existing ones keep using
+> their creation-time snapshot, and a process restart is required.
+
 ### Other Files in This Directory
 
 `tuner_common.py` holds the constant tables and pure functions shared by the two
@@ -241,15 +246,16 @@ otherwise new algorithms land in `unresolved` and never enter the collection pla
 | `version` | int | Yes | Configuration format version, currently must be `1` |
 | `op_types` | object | Yes | Rule set organized by operator type |
 
-### Match Conditions (all AND; the first rule that actually modifies an entry wins)
+### Match Conditions (all AND; the first predicate-matching rule terminates the scan)
 
-If a rule hits but its target is absent from the cost table or disabled, it **falls through** to subsequent rules; if nothing applies, matched=0.
+If the first predicate-matching rule's target is absent from the cost table or disabled, nothing is modified, the scan terminates (later rules are not examined), and matched=0; only an actual modification sets matched=1.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `min_ranks` / `max_ranks` | uint32 | Yes | Communication domain rank count range |
 | `min_bytes` / `max_bytes` | size_t | Yes | Data size range (bytes) |
 | `data_type` | string | No | Data type (`int8`/`int16`/`int32`/`int64`/`uint8`/`uint16`/`uint32`/`uint64`/`fp16`/`float16`/`fp32`/`float32`/`fp64`/`float64`/`bfp16`/`bfloat16`) |
+| `reduce_op` | string | No | Reduce operation (`sum`/`prod`/`max`/`min`), meaningful only for reduce-type operators |
 | `comm_name` | string | No | Communication domain name (substring match) |
 | `min_npus_per_server` / `max_npus_per_server` | uint32 | No | NPUs per server range |
 | `min_servers` / `max_servers` | uint32 | No | Server count range |
@@ -301,7 +307,9 @@ Take the lowercased remaining string after the executor in algName, e.g., `Aicpu
 
 ### Supported op_type
 
-`allreduce` / `allgather` / `broadcast` / `reduce` / `reduce_scatter` / `scatter` / `alltoall` / `alltoallv`
+`allreduce` / `allgather` / `broadcast` / `reduce` / `reduce_scatter` / `scatter` / `alltoall` / `alltoallv` / `alltoallvc` / `reduce_scatterv` / `all_gatherv`
+
+> The v2 variant operators (`alltoallvc` / `reduce_scatterv` / `all_gatherv`) are supported like standard operators; unknown op_types are still rejected by schema validation (whole group dropped).
 
 > The available values for engine / executor / template / op_type above are consistent with the dimension definitions of the HCCL algorithm selector.
 
@@ -354,9 +362,11 @@ make
 
 ## Plugin Interface
 
-The plugin must export the symbol `hcclTunerPlugin_v1` (type `hcclTunerFuncs_v1_t`), containing two function pointers: `init` and `getCollInfo`. The HCCL core loads the plugin via `dlsym` to obtain this symbol.
+The plugin must export the symbol `HcclTunerPluginOpsGet` (signature `const HcclTunerPluginOps* HcclTunerPluginOpsGet(void)`, pure static initialization, idempotent), which returns an ops set containing the `Create` and `UpdateAlgoCostTable` function pointers. The HCCL core obtains this symbol via `dlsym` and validates the returned header (magicWord/version/size); on failure it degrades back to the CostModel.
 
-See `src/ops/op_common/selector/inc/hccl_tuner_plugin.h` for details.
+Lifecycle: `Create` (once per comm) builds the tunerCtx with standard `malloc` and returns it via out-parameters; the host copies it into the communicator ctx and frees the temporary buffer. `UpdateAlgoCostTable` (per op) receives the tunerCtx directly. Cost table entries are walked with the `entries[0].header.size` stride (ABI convention).
+
+See `../../src/ops/op_common/selector/pub_inc/hccl_tuner_plugin.h` for details.
 
 ## Runtime Examples
 
@@ -380,15 +390,15 @@ Multi-level algorithms are also supported. The `template` field is the lowercase
 
 ### No Match — No Intervention
 
-4 ranks is outside the required 8–16 range. No rule matches, the cost table retains CostModel values:
+4 ranks is outside the required 8–16 range. No rule matches, the cost table retains CostModel values (DEBUG-level `no applicable rule (predicates unmatched)`):
 
 ```
-[TunerDFX] no rule matched: opType=2 nBytes=4096 dataType=3
+[TunerDFX] no applicable rule (predicates unmatched): opType=2 nBytes=4096 dataType=3
 ```
 
 ### Target Algorithm Disabled (cost<0) — Skip
 
-The target entry has cost=-1 (already disabled). The plugin does not modify it (in `SelectMinCost`, cost<0 is treated as filtered and excluded from selection); the rule falls through and subsequent rules are still evaluated (fall-through details are DEBUG-level logs):
+The target entry has cost=-1 (already disabled). The plugin does not modify it (in `SelectMinCost`, cost<0 is treated as filtered and excluded from selection); the rule terminates the scan and subsequent rules are not examined (WARN-level `first applicable rule 0 modified (terminate)`; details are DEBUG-level logs):
 
 ```
 [TunerDFX] skip disabled: algName=AicpuAllReduceSoleMeshOneShot cost=-1.000000

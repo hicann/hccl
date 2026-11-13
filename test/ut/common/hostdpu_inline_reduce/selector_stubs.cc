@@ -182,7 +182,13 @@ HcclResult CheckSupportNda(HcclComm, const TopoInfoWithNetLayerDetails*, bool& i
     return HCCL_SUCCESS;
 }
 void AlgoNameMapper::Init(const AllAlgos&) {}
-void AlgoNameMapper::Enrich(hcclTunerAlgoEntry_t*, int) {}
+bool AlgoNameMapper::Lookup(const char*, AlgoDims& dims) const
+{
+    dims.engineUser = "";
+    dims.executorUser = "";
+    dims.templateUser = "";
+    return false;
+}
 HcclResult HcclGetHcclAlgo(HcclComm, std::string& config)
 {
     if (g_preferredAlgorithm.empty())
@@ -213,7 +219,7 @@ HcclResult InsCollAlgBase::OrchestrateWithThread(const OpParam&, const AlgResour
 HcclResult HcclTunerInit(HcclComm, const ops_hccl::TopoInfoWithNetLayerDetails*) { return HCCL_SUCCESS; }
 bool HcclTunerIsLoaded() { return g_tunerLoaded; }
 HcclResult
-HcclTunerCallGetCollInfo(HcclComm, HcclCMDType, size_t, HcclDataType, hcclTunerAlgoEntry_t*, int, bool* modified)
+HcclTunerCallGetCollInfo(HcclComm, const HcclTunerCollOpInfo*, HcclTunerAlgoCostEntry*, uint32_t, bool* modified)
 {
     *modified = false;
     return HCCL_SUCCESS;
