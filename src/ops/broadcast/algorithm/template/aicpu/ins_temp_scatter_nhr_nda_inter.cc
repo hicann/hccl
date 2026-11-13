@@ -12,7 +12,6 @@
 #include "alg_v2_template_register.h"
 #include "channel.h"
 #include "dpu_alg_data_trans_wrapper.h"
-#include "exec_timeout_manager.h"
 
 namespace ops_hccl {
 InsTempScatterNHRNDAInter::InsTempScatterNHRNDAInter(
@@ -68,12 +67,9 @@ HcclResult InsTempScatterNHRNDAInter::KernelRun(
         templateResource.threads.empty(), HCCL_ERROR("[InsTempScatterNHRNDAInter] no execution thread"), HCCL_E_PARA);
     root_ = tempAlgParams.root;
     // The preceding phase has already placed data at hcclBuffBaseOff + allRankDispls.
+    // Intra-phase notifications and NDA transfers are ordered on the same main thread.
     CHK_RET(static_cast<HcclResult>(HcommBatchModeEnd(param.algTag)));
-    HcclResult ret = static_cast<HcclResult>(
-        HcommThreadJoin(templateResource.threads[0], ExecTimeoutManager::Instance().GetExecTimeout()));
-    if (ret == HCCL_SUCCESS) {
-        ret = RunNHR(tempAlgParams, templateResource);
-    }
+    const HcclResult ret = RunNHR(tempAlgParams, templateResource);
     const HcclResult restoreRet = static_cast<HcclResult>(HcommBatchModeStart(param.algTag));
     return ret == HCCL_SUCCESS ? restoreRet : ret;
 }
