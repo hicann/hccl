@@ -12,8 +12,10 @@
 #include "executor_common_ops.h"
 #include "ins_temp_all_gather_nhr_nda.h"
 #include "ins_temp_all_gather_mesh_1D.h"
+#include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
 #include "ins_temp_all_gather_nhr.h"
+#include "ins_temp_all_gather_rhd_dpu.h"
 #include "coll_alg_v2_exec_registry.h"
 #include "topo_match_two_level.h"
 #include "alg_attrs_registry.h"
@@ -370,4 +372,15 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !topo->level0PcieMix;
     });
+
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSequenceMeshRHD, InsV2AllGatherSequenceExecutor, TopoMatchTwoLevel,
+    InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherRHDDPU);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherSequenceMeshRHD, topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
 } // namespace ops_hccl

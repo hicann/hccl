@@ -12,11 +12,12 @@ set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_mesh_1D_Z_axis_detour.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_nhr.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_hd_op.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_rhd.cc
 )
 if(NOT HCCL_CANN_COMPAT_850)
     list(APPEND src_list
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_nhr_dpu.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_rhd_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_nhr_nda.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_omnipipe_mesh_1D.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_all_gather_omnipipe_nhr.cc

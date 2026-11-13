@@ -255,75 +255,6 @@ TEST_F(HcclAlgoParserTest, ParseMultipleNegatedAlgo)
     EXPECT_EQ(parser.executorList[0].algoList[2].algoType, "meshchunktwoshot");
     EXPECT_FALSE(parser.executorList[0].algoList[2].enable);
 }
-
-// 测试正确用例6：HD 算法词表解析——allgather:sole{hd} 单段（HD 模板显式启用 DSL）
-TEST_F(HcclAlgoParserTest, ParseHdAlgoCase1)
-{
-    HcclAlgoParser parser;
-    std::string input = "allgather:sole{hd}";
-
-    HcclResult ret = parser.Parser(input);
-    EXPECT_EQ(ret, HCCL_SUCCESS);
-    EXPECT_EQ(parser.executorList.size(), 1u);
-
-    EXPECT_EQ(parser.executorList[0].opType, "allgather");
-    EXPECT_EQ(parser.executorList[0].executorType, "sole");
-    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
-    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "hd");
-    EXPECT_TRUE(parser.executorList[0].enable);
-}
-
-// 测试正确用例7：HD 算法词表解析——allgather:parallel{hd,hd} 两段（双槽位绑定 DSL）
-TEST_F(HcclAlgoParserTest, ParseHdAlgoCase2)
-{
-    HcclAlgoParser parser;
-    std::string input = "allgather:parallel{hd,hd}";
-
-    HcclResult ret = parser.Parser(input);
-    EXPECT_EQ(ret, HCCL_SUCCESS);
-    EXPECT_EQ(parser.executorList.size(), 1u);
-
-    EXPECT_EQ(parser.executorList[0].opType, "allgather");
-    EXPECT_EQ(parser.executorList[0].executorType, "parallel");
-    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
-    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "hd");
-    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "hd");
-    EXPECT_TRUE(parser.executorList[0].enable);
-}
-
-// 测试正确用例8：HD 与既有算法混排——shorthand "hd"、sequence{mesh,hd}、not(parallel{hd,nhr})
-TEST_F(HcclAlgoParserTest, ParseHdAlgoCase3)
-{
-    HcclAlgoParser parser;
-    std::string input = "hd;allgather:sequence{mesh,hd};not(parallel{hd,nhr})";
-
-    HcclResult ret = parser.Parser(input);
-    EXPECT_EQ(ret, HCCL_SUCCESS);
-    EXPECT_EQ(parser.executorList.size(), 3u);
-
-    // 检查第一段：hd → sole{hd}
-    EXPECT_EQ(parser.executorList[0].opType, "");
-    EXPECT_EQ(parser.executorList[0].executorType, "sole");
-    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
-    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "hd");
-    EXPECT_TRUE(parser.executorList[0].enable);
-
-    // 检查第二段：allgather:sequence{mesh,hd}
-    EXPECT_EQ(parser.executorList[1].opType, "allgather");
-    EXPECT_EQ(parser.executorList[1].executorType, "sequence");
-    EXPECT_EQ(parser.executorList[1].algoList.size(), 2u);
-    EXPECT_EQ(parser.executorList[1].algoList[0].algoType, "mesh");
-    EXPECT_EQ(parser.executorList[1].algoList[1].algoType, "hd");
-    EXPECT_TRUE(parser.executorList[1].enable);
-
-    // 检查第三段：not(parallel{hd,nhr})
-    EXPECT_EQ(parser.executorList[2].opType, "");
-    EXPECT_EQ(parser.executorList[2].executorType, "parallel");
-    EXPECT_EQ(parser.executorList[2].algoList.size(), 2u);
-    EXPECT_EQ(parser.executorList[2].algoList[0].algoType, "hd");
-    EXPECT_EQ(parser.executorList[2].algoList[1].algoType, "nhr");
-    EXPECT_FALSE(parser.executorList[2].enable);
-}
 // 测试正确用例：HD 算法词表解析——reducescatter:sole{level0=hdaicpureduce}（Sole HD 显式启用 DSL）
 TEST_F(HcclAlgoParserTest, ParseHdSoleReduceScatter)
 {
@@ -440,4 +371,73 @@ TEST_F(HcclAlgoParserTest, UpdateCostModelWithAlgoHdNegatedSelectable)
 
     EXPECT_EQ(UpdateCostModelWithAlgo(parser, model, {"Aicpu"}), HCCL_SUCCESS);
     EXPECT_EQ(entries[0].hcclAlgoPriority, 1);
+}
+
+// 测试正确用例9：RHD 算法词表解析——allgather:sequence{level0=meshconcur,level1=rhd} 完整链
+// （RHD 二级显式选路配置，AicpuAllGatherSequenceMeshConcurRHD 注册名对应）
+TEST_F(HcclAlgoParserTest, ParseRhdAlgoCase1)
+{
+    HcclAlgoParser parser;
+    std::string input = "allgather:sequence{level0=meshconcur,level1=rhd}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "allgather");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
+    // level 由位置隐式表达：algoList[0]=level0, [1]=level1
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshconcur");
+    EXPECT_TRUE(parser.executorList[0].algoList[0].enable);
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].algoList[1].enable);
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例10：RHD 算法词表解析——三级含 level2（AicpuAllGatherSequenceMeshConcurRHDRHD 注册名对应）
+TEST_F(HcclAlgoParserTest, ParseRhdAlgoCase2)
+{
+    HcclAlgoParser parser;
+    std::string input = "allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}";
+
+    HcclResult ret = parser.Parser(input);
+    EXPECT_EQ(ret, HCCL_SUCCESS);
+    EXPECT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "allgather");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 3u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshconcur");
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "rhd");
+    EXPECT_EQ(parser.executorList[0].algoList[2].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例11：RHD 与既有算法混排——shorthand "rhd"（按 sole{rhd} 缩写解析，库无 Sole RHD
+// 注册故无选路效果）、opType 前缀 + not() 否定式（opType 前缀属 segment 层，位于 not() 之前，
+// 与既有用例 "allreduce:not(sequence{...})" 同构）
+TEST_F(HcclAlgoParserTest, ParseRhdAlgoCase3)
+{
+    HcclAlgoParser parser;
+    std::string input = "rhd;allgather:not(sequence{level0=meshconcur,level1=rhd,level2=rhd})";
+
+    HcclResult ret = parser.Parser(input);
+    ASSERT_EQ(ret, HCCL_SUCCESS);
+    ASSERT_EQ(parser.executorList.size(), 2u);
+
+    // 检查第一段：rhd → sole{rhd}（shorthand 解析为单段 sole）
+    EXPECT_EQ(parser.executorList[0].opType, "");
+    EXPECT_EQ(parser.executorList[0].executorType, "sole");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+
+    // 检查第二段：allgather:not(sequence{level0=meshconcur,level1=rhd,level2=rhd})
+    EXPECT_EQ(parser.executorList[1].opType, "allgather");
+    EXPECT_EQ(parser.executorList[1].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[1].algoList.size(), 3u);
+    EXPECT_EQ(parser.executorList[1].algoList[1].algoType, "rhd");
+    EXPECT_EQ(parser.executorList[1].algoList[2].algoType, "rhd");
+    EXPECT_FALSE(parser.executorList[1].enable);
 }

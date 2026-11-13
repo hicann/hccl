@@ -14,7 +14,6 @@
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
-#include "ins_temp_all_gather_hd_op.h"
 #ifndef AICPU_COMPILE
 #include "aiv_temp_all_gather_mesh_1D.h"
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
@@ -440,17 +439,6 @@ REGISTER_EXEC_V2(
     InsTempAllGatherNHR);
 REGISTER_ALG_ATTRS(AicpuAllGatherSoleNHRMultiLink, topo.supportLevel0Topos = LEVEL0_TOPO_CLOS;
                    topo.isSupportLevel1Nhr = true;);
-
-REGISTER_EXEC_V2(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSoleHD, InsV2AllGatherSoleExecutor, TopoMatchOneLevel,
-    InsTempAllGatherHDOp);
-REGISTER_ALG_ATTRS(
-    AicpuAllGatherSoleHD, topo.maxTopoLevelNum = 1; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    // HD 仅经 HCCL_ALGO=allgather:sole{hd} 显式启用：opCustomCheck 恒 false 将其排除在默认软检查竞争之外，
-    // 显式配置时优先级跳过软检查（cost_table），拓扑硬过滤与成本非空校验仍然生效
-    op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) -> bool {
-        return false;
-    };);
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

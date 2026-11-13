@@ -12,6 +12,7 @@
 #include "executor_common_ops.h"
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
+#include "ins_temp_all_gather_rhd.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
@@ -569,6 +570,16 @@ REGISTER_ALG_ATTRS(
         u64 totalSize = opParam.DataDes.count * DATATYPE_SIZE_TABLE[opParam.DataDes.dataType] * topo->userRankSize;
         return totalSize > 4ULL * 1024 * 1024 * 1024;
     });
+
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherSequenceMeshConcurRHD, InsV2AllGatherSequenceExecutorAicpu,
+    TopoMatchTwoLevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherRHD);
+REGISTER_ALG_ATTRS(
+    AicpuAllGatherSequenceMeshConcurRHD, topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)

@@ -14,7 +14,6 @@
 #include "ins_temp_all_gather_mesh_1D.h"
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
-#include "ins_temp_all_gather_hd_op.h"
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_gather_nhr_1D_mem2mem.h"
@@ -822,19 +821,6 @@ REGISTER_ALG_ATTRS(
                && !(
                    !(topo->level0Symmetric && topo->level1Symmetric)
                    || topo->netLayerDetails.localNetInsSizeOfLayer[1] == 1);
-    };);
-
-// HD/HD 双槽位：server 内与 server 间均执行 HD 递归倍增（HCCL_ALGO=allgather:parallel{hd,hd} 显式启用）
-REGISTER_EXECUTOR_BY_TWO_TEMPS(
-    HcclCMDType::HCCL_CMD_ALLGATHER, AicpuAllGatherParallelHDHD, InsV2AllGatherParallelExecutor, TopoMatchTwoLevel,
-    InsTempAllGatherHDOp, InsTempAllGatherHDOp);
-REGISTER_ALG_ATTRS(
-    AicpuAllGatherParallelHDHD, topo.maxTopoLevelNum = 2; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
-    // HD 仅经 HCCL_ALGO=allgather:parallel{hd,hd} 显式启用：opCustomCheck 恒 false 将其排除在默认软检查
-    // 竞争之外，显式配置时优先级跳过软检查，拓扑硬过滤与成本非空校验仍然生效；两级规模约束由模板
-    // KernelRun 幂守卫兜底（非幂两级组合在执行期报 HCCL_E_PARA，非选路期回退）
-    op.opCustomCheck = [](const OpParam&, const TopoInfoWithNetLayerDetails*) -> bool {
-        return false;
     };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 

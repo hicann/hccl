@@ -269,6 +269,11 @@ struct TemplateDataParams {
     // 读写语义由执行期参数下传，模板本身无状态。
     bool isWrite{false};
     HcclReduceOp reduceOp{HcclReduceOp::HCCL_REDUCE_SUM};
+    // 跳过 RHD PRE 相位（AllReduce twoshot 融合复用 all_gather RHD 时，被合并方份额已由调用方
+    // 置于代表侧 owner 槽位）；默认 false 零影响，POST 相位恒执行（被合并方须靠 POST 取回全量）。
+    // 调用方契约：全通信域一致置位（不对称会 PRE 握手死锁）。序列化随本结构尾部追加（两端同树
+    // 编译、经 DPURunInfo 瞬时共享内存传递，无跨版本落盘兼容问题）。
+    bool skipPrePhase{false};
 
     std::vector<char> Serialize() const
     {
@@ -299,6 +304,7 @@ struct TemplateDataParams {
         binaryStream << omniLastStepRead_;
         binaryStream << localCopyFlag;
         binaryStream << isWrite;
+        binaryStream << skipPrePhase;
         binaryStream << reduceOp;
         std::vector<char> result;
         binaryStream.Dump(result);
@@ -339,6 +345,7 @@ struct TemplateDataParams {
         binaryStream >> omniLastStepRead_;
         binaryStream >> localCopyFlag;
         binaryStream >> isWrite;
+        binaryStream >> skipPrePhase;
         binaryStream >> reduceOp;
     }
 };

@@ -131,7 +131,12 @@ HcclResult GraphRevampBilateralSemantics::ProcReadNode(
     // aiv产生read write 给的链路类型
     CHK_RET(GetLinkProtoStubByTaskNode(currNode, link));
 
-    if (link == LinkProtoStub::SDMA) {
+    // SDMA 与 RDMA 的 READ 双边语义搜索等价：SearchBackwardSdmaRW/SearchForwardSdmaRW 仅按 task 类型
+    // (WAIT/POST/READ/WRITE) 与 remoteRank 搜索握手配对，不依赖链路类型（virtQueManager 为历史遗留
+    // 参数，两路均不消费）；RDMA WRITE 先例（ProcRdmaWriteNode）同为纯搜索形态。RDMA READ 原先落入
+    // else 分支硬失败（ag-rhd-dpu-20261106 dev-r13：二级 DPU RHD 的 L0 ZAxisDetour detour 通道在
+    // ST 两级拓扑产生 RDMA READ，用例必挂），现与 SDMA READ 同强度放行双边握手校验
+    if (link == LinkProtoStub::SDMA || link == LinkProtoStub::RDMA) {
         CHK_PRT_RET(
             ProcSdmaRWNode(dummyStart, currNode, rank2Head, virtQueManager) != HcclResult::HCCL_SUCCESS,
             HCCL_ERROR(

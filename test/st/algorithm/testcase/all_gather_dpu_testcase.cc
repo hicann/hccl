@@ -9,13 +9,19 @@
  */
 
 #include "testcase_common.h"
+#include "selected_algo_log_stub.h"
 
 using namespace HcclSim;
 using namespace ops_hccl;
 
 class ST_ALL_GATHER_DPU_TEST : public ::testing::Test {
 protected:
-    void SetUp() override { ResetAlgEnvConfigInitState(); }
+    void SetUp() override
+    {
+        ResetAlgEnvConfigInitState();
+        // 清空选路命中记录（PR#3933 评审 21ec67：防上一用例残留，见 ExpectAlgoHit）
+        ResetSelectedAlgoLog();
+    }
     void TearDown() override
     {
         unsetenv("HCCL_ENABLE_OPEN_AICPU");
@@ -305,6 +311,8 @@ protected:
     void SetUp() override
     {
         ResetAlgEnvConfigInitState();
+        // 清空选路命中记录（PR#3933 评审 21ec67：防上一用例残留，见 ExpectAlgoHit）
+        ResetSelectedAlgoLog();
         setenv("HCCL_ALGO", "allgather:sequence{meshconcur,nhr,nhr}", 1);
         setenv("ENABLE_HOSTDPU_L2_ONLY", "1", 1);
     }
@@ -433,4 +441,81 @@ TEST_F(ST_ALL_GATHER_DPU_3LEVEL_SEQ_TEST, sequence_dpu_3level_4x2x2_int32_stomp)
     u64 sendCount = 512;
     HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT32;
     RunAllGatherDPUA5(topoMeta, sendCount, dataType);
+}
+
+// ========== DPU RHD 二级/三级 Sequence 绑定点（PR#3933 评审 MEDIUM：ST 零覆盖定向补齐）==========
+// 选路词与 AICPU 侧 RHD（all_gather_aicpu_testcase.cc §RHD）不同源，按注册名拼名口径（alg_parse
+// ComposeAlgoName 按 [Engine]AllGatherSequence[level0 词][level1 词]… 精确匹配注册名）：
+//   二级 DpuAllGatherSequenceMeshRHD（L0 词=Mesh：L0=server 内 ZAxisDetour、L1=server 间
+//   host-DPU RHD）← allgather:sequence{level0=mesh,level1=rhd}；meshconcur 词拼出的是 AICPU 款
+//   AicpuAllGatherSequenceMeshConcurRHD，host-DPU 拓扑下被 isHostDpuOnly 硬检查互斥过滤不可达；
+//   三级 DpuAllGatherSequenceMeshConcurRHDRHD（L0 词=MeshConcur，执行序 L2→L1→L0）←
+//   allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}，与 AICPU 款同串，host-DPU
+//   拓扑（hostDpuOnly=true）下 AICPU 款被硬检查过滤、preferred 唯一收敛 DPU 款。
+// 验证范围（如实登记）：本组用例验证 preferred 选路收敛 + AICPU 侧编排面（KernelRun 协议序
+// LocalDataCopy→HcommBatchModeEnd→HcommThreadSynchronize→DPURunInfo 序列化→HcommSendRequest→
+// HcommWaitResponse→HcommBatchModeStart→PostLocalCopy，及二级 intra ZAxisDetour 数据面）；DPU
+// 数据面 RunAllGatherRHDDpu 因 ST 仿真库以 -DAICPU_COMPILE 编入 rhd_dpu.cc 而 #ifndef 编空
+// （nhr_dpu.cc:241 同构先例，HcommSendRequest 桩同步回调 HcclLaunchDPUKernel 后数据面为空转），
+// 跨 rank 搬运不随本组用例真实执行。
+// 本组 4 条用例 RunAllGatherDPUA5 后经 ExpectAlgoHit 断言选路真实命中（PR#3933 评审
+// 21ec67：防静默回退——dev-r13 pow2 组网误写实证）。
+
+// 二级 RHD 2^幂退化：1 超节点 × 2 server × 2 rank=4 rank（RHD 域 p=2、σ 恒等，前/后处理空步骤）。
+// 不开 ENABLE_HOSTDPU_L2_ONLY：两级拓扑全层报 HOST，CheckHostDPUOnly 校验 L1（末层）得
+// hostDpuOnly=true（与 sequence_dpu_3level_1x4x4_fp32_fallback 回退先例同路径），二级 DPU RHD 可达。
+// dev-r13 修正：原组网误写 (1, 2, 1)（2 rank，L0 层内单 rank → Level1Nhr=true 硬过滤，
+// "skipped by topo filter" 回退 NHR——用例从未真正命中 RHD），对齐头注释 4 rank 意图改
+// (1, 2, 2)，RHD 域 p=2 真命中（Level1Nhr=false 同 nonpow3 形态）
+TEST_F(ST_ALL_GATHER_DPU_TEST, st_all_gather_dpu_rhd_sequence_2level_pow2_fp32)
+{
+    setenv("HCCL_ALGO", "allgather:sequence{level0=mesh,level1=rhd}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 2, 2); // 1 超节点 × 2 server × 2 rank=4 rank，RHD 域 p=2
+    u64 sendCount = 512;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_FP32;
+    RunAllGatherDPUA5(topoMeta, sendCount, dataType);
+    ExpectAlgoHit("RHD");
+}
+
+// 二级 RHD 非幂（d1=3，前/后处理生效）：1 超节点 × 3 server × 2 rank=6 rank（RHD 域 p=3、r=1，
+// 相邻配对 (0,1)、代表 0/被合并 1/block 2；AICPU 侧装载/卸载槽位按非幂 run 表落位）
+TEST_F(ST_ALL_GATHER_DPU_TEST, st_all_gather_dpu_rhd_sequence_2level_nonpow3_int8)
+{
+    setenv("HCCL_ALGO", "allgather:sequence{level0=mesh,level1=rhd}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 1, 3, 2); // 1 超节点 × 3 server × 2 rank，RHD 域 p=3
+    u64 sendCount = 512;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    RunAllGatherDPUA5(topoMeta, sendCount, dataType);
+    ExpectAlgoHit("RHD");
+}
+
+// 三级 RHD：2 超节点 × 2 server × 2 rank=8 rank（L1 域 p=2、L2 域 p=2 均幂退化，执行序 L2→L1→L0）。
+// 沿套件 SetUp 的 ENABLE_HOSTDPU_L2_ONLY=1（仅 L2 报 HOST → hostDpuOnly=true；L1 报 DEVICE 过
+// 三级 admit ③），HCCL_ALGO 在用例体内覆盖套件默认 NHR 串（setenv 后 RunDpuTest 生效），强制
+// 命中 DpuAllGatherSequenceMeshConcurRHDRHD
+TEST_F(ST_ALL_GATHER_DPU_3LEVEL_SEQ_TEST, st_all_gather_dpu_rhd_sequence_3level_2x2x2_int8)
+{
+    setenv("HCCL_ALGO", "allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 2, 2, 2); // 2 超节点 × 2 server × 2 rank，L1/L2 域均 p=2
+    u64 sendCount = 512;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    RunAllGatherDPUA5(topoMeta, sendCount, dataType);
+    ExpectAlgoHit("RHD");
+}
+
+// 三级 RHD 非幂（dev-r13 补）：3 超节点 × 2 server × 2 rank=12 rank，L2 域 p=3 r=1（非幂，
+// L2=host-DPU RHD 非幂的 DPU 款 PRE/MAIN/POST 路径）、L1 域 p=2 幂退化，执行序 L2→L1→L0。
+// 复用 2x2x2 同款选路与套件开关，验证三级形态下 L2 RHD-DPU 非幂数据面（二级 nonpow3 同族）
+TEST_F(ST_ALL_GATHER_DPU_3LEVEL_SEQ_TEST, st_all_gather_dpu_rhd_sequence_3level_nonpow3_int8)
+{
+    setenv("HCCL_ALGO", "allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}", 1);
+    TopoMeta topoMeta;
+    GenTopoMeta(topoMeta, 3, 2, 2); // 3 超节点 × 2 server × 2 rank，L2 域 p=3 非幂
+    u64 sendCount = 512;
+    HcclDataType dataType = HcclDataType::HCCL_DATA_TYPE_INT8;
+    RunAllGatherDPUA5(topoMeta, sendCount, dataType);
+    ExpectAlgoHit("RHD");
 }

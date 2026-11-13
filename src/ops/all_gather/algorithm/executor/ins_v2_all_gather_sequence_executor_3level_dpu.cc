@@ -15,6 +15,8 @@
 #include "ins_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_nhr_dpu.h"
+#include "ins_temp_all_gather_rhd.h"
+#include "ins_temp_all_gather_rhd_dpu.h"
 #include "alg_attrs_registry.h"
 
 namespace ops_hccl {
@@ -365,5 +367,15 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_ALG_ATTRS(DpuAllGatherSequenceMeshConcurNHRNHR, topo.isHostDpuOnly = true;
                    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D);
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_ALLGATHER, DpuAllGatherSequenceMeshConcurRHDRHD, InsV2AllGatherSequenceExecutor3LevelDpu,
+    TopoMatchThreeLevel, InsTempAllGatherMesh1D1DZAxisDetour, InsTempAllGatherRHD, InsTempAllGatherRHDDPU);
+REGISTER_ALG_ATTRS(
+    DpuAllGatherSequenceMeshConcurRHDRHD, topo.isHostDpuOnly = true; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
 } // namespace ops_hccl
 // 算法注册

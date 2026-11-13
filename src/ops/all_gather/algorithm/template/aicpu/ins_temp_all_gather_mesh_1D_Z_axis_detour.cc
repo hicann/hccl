@@ -114,6 +114,29 @@ HcclResult InsTempAllGatherMesh1D1DZAxisDetour::CalcRes(
     CHK_RET(CalcChannelRequestMesh1DLevel0(comm, param, topoInfo, subCommRanks_, level0Channels));
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestMesh1DLevel1(comm, param, topoInfo, subCommRanks_, level1Channels));
+    // ZAxisDetour 的 detour 通道由 AICPU 设备内核直接驱动（kernel 内经 ChannelInfo.handle 执行
+    // HcommChannelNotify* 语义）。host-DPU（CPU 系引擎）两级拓扑中 level-1 即最外层网卡层，
+    // CalcChannelRequestMesh1DLevel1 会匹配到 host 侧链路（如跨服务器 ROCE 绕行），该链路经
+    // HcclGetChannel 按 localEndpoint.loc.locType 归入 COMM_ENGINE_CPU 批次，通道句柄为 host 侧
+    // 地址，设备内核不可解引用。CPU 系引擎语境下仅保留 device 侧 detour 链路；无可用 detour 时
+    // level1ChannelNumPerRank_ 为 0，数据分裂按纯 L0 降级（CalcDataSplitByBandwidthZAxisDetour
+    // 对 0 条 level1 通道全量走 level0）。AICPU/AICPU_TS 引擎语境不过滤，行为不变。
+    if (param.engine == CommEngine::COMM_ENGINE_CPU || param.engine == CommEngine::COMM_ENGINE_CPU_TS) {
+        std::vector<HcclChannelDesc> deviceLevel1Channels;
+        for (const auto& level1Channel : level1Channels) {
+            if (level1Channel.localEndpoint.loc.locType == ENDPOINT_LOC_TYPE_DEVICE) {
+                deviceLevel1Channels.push_back(level1Channel);
+            }
+        }
+        if (deviceLevel1Channels.size() != level1Channels.size()) {
+            HCCL_WARNING(
+                "[InsTempAllGatherMesh1D1DZAxisDetour][CalcRes] drop %zu host-side level1 detour channel(s), "
+                "%zu device-side kept, engine[%d]; degrade to level0-only transfer when none kept.",
+                level1Channels.size() - deviceLevel1Channels.size(), deviceLevel1Channels.size(),
+                static_cast<int>(param.engine));
+        }
+        level1Channels.swap(deviceLevel1Channels);
+    }
     level0ChannelNumPerRank_ = level0Channels.empty() ? 0 : CalcChannelsPerRank(level0Channels);
     level1ChannelNumPerRank_ = level1Channels.empty() ? 0 : CalcChannelsPerRank(level1Channels);
     channelsPerRank_ = level0ChannelNumPerRank_ + level1ChannelNumPerRank_;

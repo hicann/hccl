@@ -54,6 +54,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - NHRAicpuReduce（nhraicpureduce）：先按NHR式log2(N)步减半交换收集数据，再使用AICPU标量归约保证正确性；适用于常规NHR/mesh模板不支持的数据类型（INT64/UINT64/FP64及PROD归约等）的NHR算法变体。
       - HDAicpuReduce（hdaicpureduce）：ReduceScatter的HD递归折半算法（AICPU引擎），log2(N)步XOR配对交换、步内归约在DMA传输侧完成；要求通信域rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
       - HD（hd）：跨机层（level1）HD递归折半算法（AICPU引擎），level0机内走mesh、level1按log2(N)步折半交换并归约；要求该层rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
+      - RHD（rhd）：递归折半倍增算法（AICPU/DPU引擎），2的整数次幂时log2(N)步倍增交换、行为与HD一致，非2的整数次幂时经PRE/POST前/后处理支持（前2r个rank两两配对、配对代表参与主体倍增）；AllGather算子显式配置（如allgather:sequence{level0=mesh,level1=rhd}）时参与选路（默认选路不变）。
 
     - 若不指定`level`，`<algoType>`默认按照算法层级从低到高匹配。例如{Mesh, NHR}，代表level0使用Mesh算法，level1使用NHR算法。
 
@@ -105,6 +106,15 @@ export HCCL_ALGO="<OpType>:<ExecutorType>{level0=<algoType>,level1=<algoType>,..
 export HCCL_ALGO="allreduce:sequence{mesh,nhr}"
 # AllGather算子禁止使用level0执行Mesh算法、level1执行NHR算法的Parallel并行执行器。
 export HCCL_ALGO="allgather:not(parallel{mesh,nhr})"
+# AllGather算子启用AICPU引擎二级RHD算法（AicpuAllGatherSequenceMeshConcurRHD，level0机内Mesh、level1跨机RHD）。
+export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd}"
+# AllGather算子启用AICPU引擎三级RHD算法（AicpuAllGatherSequenceMeshConcurRHDRHD，L2/L1均RHD，执行序L2→L1→L0）。
+export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
+# AllGather算子启用host-DPU（DPU引擎）二级RHD算法（DpuAllGatherSequenceMeshRHD，L0=server内Mesh、L1=server间host-DPU RHD）。
+# AICPU/DPU款同名配置由拓扑自动消歧：host-DPU拓扑（level1链路位于host侧）命中DPU款，普通拓扑命中AICPU款。
+export HCCL_ALGO="allgather:sequence{level0=mesh,level1=rhd}"
+# AllGather算子启用host-DPU（DPU引擎）三级RHD算法（DpuAllGatherSequenceMeshConcurRHDRHD，L1=设备侧CLOS RHD、L2=host-DPU RHD）。
+export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 ```
 
 ### 配置生效语义

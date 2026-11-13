@@ -77,7 +77,8 @@ static const std::map<std::string, std::string>& AlgoTypes()
            {"nhrmultijetty", "NHRMultiJetty"},
            {"meshmultijetty", "MeshMultiJetty"},
            {"meshconcurrent", "MeshConcurrent"},
-           {"pairwise", "Pairwise"}};
+           {"pairwise", "Pairwise"},
+           {"rhd", "RHD"}};
     return types;
 }
 
@@ -945,6 +946,7 @@ const std::map<AlgoType, std::string>& GetAlgoTypeToNameMap()
         {AlgoType::GROUP_MESH, "GroupMesh"},
         {AlgoType::PAIRWISE, "Pairwise"},
         {AlgoType::HD, "HD"},
+        {AlgoType::RHD, "RHD"},
     };
     return map;
 }
@@ -973,6 +975,7 @@ const std::map<std::string, AlgoType>& GetAlgoNameToTypeMap()
         {"HD", AlgoType::HD},
         {"NHRNDA", AlgoType::NHR_NDA},
         {"MeshNDA", AlgoType::MESH_NDA},
+        {"RHD", AlgoType::RHD},
     };
     return map;
 }
