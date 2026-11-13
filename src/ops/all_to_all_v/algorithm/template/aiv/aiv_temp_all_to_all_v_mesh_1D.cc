@@ -92,16 +92,32 @@ HcclResult AivTempAlltoAllVMesh1D::KernelRun(
     aivAlltoAllVArgs.isOpBase = (param.opMode == OpMode::OPBASE);
 
     size_t count = tempRankSize_;
-    std::copy(
-        tempAlgParams.sendCounts.data(), tempAlgParams.sendCounts.data() + count,
-        aivAlltoAllVArgs.extraArgs.sendCounts);
-    std::copy(
-        tempAlgParams.sdispls.data(), tempAlgParams.sdispls.data() + count, aivAlltoAllVArgs.extraArgs.sendDispls);
-    std::copy(
-        tempAlgParams.recvCounts.data(), tempAlgParams.recvCounts.data() + count,
-        aivAlltoAllVArgs.extraArgs.recvCounts);
-    std::copy(
-        tempAlgParams.rdispls.data(), tempAlgParams.rdispls.data() + count, aivAlltoAllVArgs.extraArgs.recvDispls);
+    if (tempRankSize_ > MAX_RANK_SIZE_V) {
+        aivAlltoAllVArgs.extraArgsLarge = ExtraArgsLarge{};
+        std::copy(
+            tempAlgParams.sendCounts.data(), tempAlgParams.sendCounts.data() + count,
+            aivAlltoAllVArgs.extraArgsLarge.sendCounts);
+        std::copy(
+            tempAlgParams.sdispls.data(), tempAlgParams.sdispls.data() + count,
+            aivAlltoAllVArgs.extraArgsLarge.sendDispls);
+        std::copy(
+            tempAlgParams.recvCounts.data(), tempAlgParams.recvCounts.data() + count,
+            aivAlltoAllVArgs.extraArgsLarge.recvCounts);
+        std::copy(
+            tempAlgParams.rdispls.data(), tempAlgParams.rdispls.data() + count,
+            aivAlltoAllVArgs.extraArgsLarge.recvDispls);
+    } else {
+        std::copy(
+            tempAlgParams.sendCounts.data(), tempAlgParams.sendCounts.data() + count,
+            aivAlltoAllVArgs.extraArgs.sendCounts);
+        std::copy(
+            tempAlgParams.sdispls.data(), tempAlgParams.sdispls.data() + count, aivAlltoAllVArgs.extraArgs.sendDispls);
+        std::copy(
+            tempAlgParams.recvCounts.data(), tempAlgParams.recvCounts.data() + count,
+            aivAlltoAllVArgs.extraArgs.recvCounts);
+        std::copy(
+            tempAlgParams.rdispls.data(), tempAlgParams.rdispls.data() + count, aivAlltoAllVArgs.extraArgs.recvDispls);
+    }
 
     u64 dataSize = tempAlgParams.sliceSize;
     CHK_RET(CalNumBlocks(aivAlltoAllVArgs.numBlocks, dataSize, param.numBlocksLimit));

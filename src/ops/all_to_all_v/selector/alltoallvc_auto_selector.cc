@@ -79,10 +79,10 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAivAlgo(
     HCCL_DEBUG("[AlltoAllVCAutoSelector][%s] start, topoInfo levelNum[%u]", __func__, topoInfo->topoLevelNums);
     (void)configAlgMap;
 
-    if (topoInfo->userRankSize > MAX_RANK_SIZE_V) {
+    if (topoInfo->userRankSize > MAX_RANK_SIZE_V_LARGE) {
         HCCL_AIV_NOT_MATCH_LOG(
             opParam, HCCL_DEBUG, "[AlltoAllVCAutoSelector][%s] rankSize[%u] larger than [%u]", __func__,
-            topoInfo->userRankSize, MAX_RANK_SIZE_V);
+            topoInfo->userRankSize, MAX_RANK_SIZE_V_LARGE);
         return SelectorStatus::NOT_MATCH;
     }
 

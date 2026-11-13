@@ -20,8 +20,9 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-constexpr u32 MAX_RANK_SIZE = 1024;  // 注意要和device侧的一致
-constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE = 1024;        // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE_V = 256;       // 注意要和device侧的一致
+constexpr u32 MAX_RANK_SIZE_V_LARGE = 768; // 注意要和device侧的一致
 
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
@@ -44,6 +45,7 @@ constexpr char AIV_CACHE_INDEX_CTX_TAG[] = "AivCacheIndex";
 enum class KernelArgsType {
     ARGS_TYPE_SERVER = 0, // kernel参数为单机内
     ARGS_TYPE_TWO_SHOT = 1,
+    ARGS_TYPE_LARGE_RANK = 2, // kernel参数为大规格(768 rank)ExtraArgs
     ARGS_TYPE_DEFAULT
 };
 
@@ -66,6 +68,13 @@ struct ExtraArgs {
     u64 sendDispls[MAX_RANK_SIZE_V] = {};
     u64 recvCounts[MAX_RANK_SIZE_V] = {};
     u64 recvDispls[MAX_RANK_SIZE_V] = {};
+};
+
+struct ExtraArgsLarge {
+    u64 sendCounts[MAX_RANK_SIZE_V_LARGE];
+    u64 sendDispls[MAX_RANK_SIZE_V_LARGE];
+    u64 recvCounts[MAX_RANK_SIZE_V_LARGE];
+    u64 recvDispls[MAX_RANK_SIZE_V_LARGE];
 };
 
 // 算子计数信息
@@ -104,6 +113,7 @@ struct AivOpArgs {
     u64 outputRepeatStride = 0;
     bool isOpBase = false;
     ExtraArgs extraArgs = {};
+    ExtraArgsLarge extraArgsLarge;
     AivOpArgs() {};
     KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER;
 };
@@ -214,7 +224,7 @@ HcclResult RegisterKernel();
 
 HcclResult UnRegisterAivKernel();
 
-HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize);
+HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize, KernelArgsType argsType);
 
 HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs);
 

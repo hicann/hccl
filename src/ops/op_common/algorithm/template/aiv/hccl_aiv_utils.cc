@@ -522,7 +522,8 @@ using AivKernelArgs = struct AivKernelArgsDef {
     {}
 };
 
-using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
+template <typename ExtraArgsT>
+struct AivExtraKernelArgsDef {
     const void* buffersIn; // 注册的CCLIN地址，所有卡可访问
     u64 input;
     u64 output;
@@ -546,14 +547,14 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     const void* addOneMem;
     u32 counterMemSize;
     bool isEnableCounter;
-    ExtraArgs extraArgs;
+    ExtraArgsT extraArgs;
 
     AivExtraKernelArgsDef(
         const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 len,
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr)
+        u32 counterMemSize = 0, const ExtraArgsT* extraArgsPtr = nullptr)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -582,6 +583,9 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
         }
     }
 };
+
+using AivExtraKernelArgs = AivExtraKernelArgsDef<ExtraArgs>;
+using AivExtraKernelArgsLarge = AivExtraKernelArgsDef<ExtraArgsLarge>;
 
 HcclResult GetAivOpBinaryPath(const std::string& aivBinaryName, std::string& binaryPath)
 {
@@ -995,10 +999,18 @@ HcclResult ReplayAivInstructionsV(const AivInstruction* instructions, u32 insCou
         newArgs.output = reinterpret_cast<u64>(param.outputPtr) + instructions[i].outputOffset;
 
         u64 copySize = static_cast<u64>(rankSize) * sizeof(u64);
-        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendCounts, copySize, sendCounts, copySize));
-        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendDispls, copySize, sdispls, copySize));
-        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvCounts, copySize, recvCounts, copySize));
-        CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvDispls, copySize, rdispls, copySize));
+        if (rankSize > MAX_RANK_SIZE_V) {
+            newArgs.extraArgsLarge = ExtraArgsLarge{};
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgsLarge.sendCounts, copySize, sendCounts, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgsLarge.sendDispls, copySize, sdispls, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgsLarge.recvCounts, copySize, recvCounts, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgsLarge.recvDispls, copySize, rdispls, copySize));
+        } else {
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendCounts, copySize, sendCounts, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.sendDispls, copySize, sdispls, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvCounts, copySize, recvCounts, copySize));
+            CHK_SAFETY_FUNC_RET(memcpy_s(newArgs.extraArgs.recvDispls, copySize, rdispls, copySize));
+        }
         CHK_RET(ExecuteKernelLaunch(newArgs));
     }
     return HCCL_SUCCESS;
@@ -1067,7 +1079,7 @@ HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr)
 }
 
 // KernelLaunch内部接口
-HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize)
+HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize, KernelArgsType argsType)
 {
     AivLaunchGuard launchGuard;
     HcclResult guardRet = launchGuard.Acquire();
@@ -1102,7 +1114,7 @@ HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 arg
         attr[0].id, attr[0].value.schemMode, attr[1].id, attr[1].value.timeoutUs.timeoutLow,
         attr[1].value.timeoutUs.timeoutHigh, attr[2].id, attr[2].value.engineType, cfg.numAttrs);
 
-    s8* funcKey = GetFuncKey(opArgs.cmdType, opArgs.dataType, opArgs.argsType);
+    s8* funcKey = GetFuncKey(opArgs.cmdType, opArgs.dataType, argsType);
     AivKernelLookupResult kernelLookupResult;
     HcclResult ret = GetKernelEntry(kernelLookupResult, funcKey);
     CHK_PRT_RET(
@@ -1173,31 +1185,61 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
     }
 
     if (opArgs.cmdType == HcclCMDType::HCCL_CMD_ALLTOALLV) {
-        AivExtraKernelArgs aivExtraKernelArgs{
-            opArgs.buffersIn,
-            opArgs.input,
-            opArgs.output,
-            opArgs.rank,
-            opArgs.sendRecvRemoteRank,
-            opArgs.rankSize,
-            opArgs.count,
-            opArgs.dataType,
-            opArgs.op,
-            opArgs.root,
-            opArgs.sliceId,
-            opArgs.inputSliceStride,
-            opArgs.outputSliceStride,
-            opArgs.repeatNum,
-            opArgs.inputRepeatStride,
-            opArgs.outputRepeatStride,
-            opArgs.numBlocks,
-            opArgs.isOpBase,
-            reinterpret_cast<void*>(opArgs.counter.headCountMem),
-            reinterpret_cast<void*>(opArgs.counter.tailCountMem),
-            reinterpret_cast<void*>(opArgs.counter.addOneMem),
-            opArgs.counter.memSize,
-            &opArgs.extraArgs};
-        CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs)));
+        if (opArgs.rankSize <= MAX_RANK_SIZE_V) {
+            AivExtraKernelArgs aivExtraKernelArgs{
+                opArgs.buffersIn,
+                opArgs.input,
+                opArgs.output,
+                opArgs.rank,
+                opArgs.sendRecvRemoteRank,
+                opArgs.rankSize,
+                opArgs.count,
+                opArgs.dataType,
+                opArgs.op,
+                opArgs.root,
+                opArgs.sliceId,
+                opArgs.inputSliceStride,
+                opArgs.outputSliceStride,
+                opArgs.repeatNum,
+                opArgs.inputRepeatStride,
+                opArgs.outputRepeatStride,
+                opArgs.numBlocks,
+                opArgs.isOpBase,
+                reinterpret_cast<void*>(opArgs.counter.headCountMem),
+                reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+                reinterpret_cast<void*>(opArgs.counter.addOneMem),
+                opArgs.counter.memSize,
+                &opArgs.extraArgs};
+            CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs), opArgs.argsType));
+        } else {
+            AivExtraKernelArgsLarge aivExtraKernelArgsLarge{
+                opArgs.buffersIn,
+                opArgs.input,
+                opArgs.output,
+                opArgs.rank,
+                opArgs.sendRecvRemoteRank,
+                opArgs.rankSize,
+                opArgs.count,
+                opArgs.dataType,
+                opArgs.op,
+                opArgs.root,
+                opArgs.sliceId,
+                opArgs.inputSliceStride,
+                opArgs.outputSliceStride,
+                opArgs.repeatNum,
+                opArgs.inputRepeatStride,
+                opArgs.outputRepeatStride,
+                opArgs.numBlocks,
+                opArgs.isOpBase,
+                reinterpret_cast<void*>(opArgs.counter.headCountMem),
+                reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+                reinterpret_cast<void*>(opArgs.counter.addOneMem),
+                opArgs.counter.memSize,
+                &opArgs.extraArgsLarge};
+            CHK_RET(ExecuteKernelLaunchInner(
+                opArgs, &aivExtraKernelArgsLarge, sizeof(aivExtraKernelArgsLarge),
+                KernelArgsType::ARGS_TYPE_LARGE_RANK));
+        }
     } else {
         AivKernelArgs aivKernelArgs{
             opArgs.buffersIn,
@@ -1222,7 +1264,7 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             reinterpret_cast<void*>(opArgs.counter.tailCountMem),
             reinterpret_cast<void*>(opArgs.counter.addOneMem),
             opArgs.counter.memSize};
-        CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs)));
+        CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs), opArgs.argsType));
     }
     return HCCL_SUCCESS;
 }

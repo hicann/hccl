@@ -12,12 +12,12 @@
 
 using namespace AscendC;
 
-template <typename T>
+template <typename T, typename ExtraArgsT>
 class AivAlltoAllVMesh1D : public AivCommBase {
 public:
     __aicore__ inline AivAlltoAllVMesh1D() {}
 
-    __aicore__ inline void InitCoreInfo(ExtraArgs& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
+    __aicore__ inline void InitCoreInfo(ExtraArgsT& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
     {
         // 发送数据的编排
         uint64_t sendCountThisLoop = 0;
@@ -130,7 +130,7 @@ public:
 
     // 控核每轮：两阶段（先全部 put，再全部 get），flag 用 per-rank 两区
     __aicore__ inline void
-    ProduceConsumeCtrlCore(uint64_t loop, ExtraArgs& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
+    ProduceConsumeCtrlCore(uint64_t loop, ExtraArgsT& extraArgs, uint64_t processedDataCount, uint64_t currDataCount)
     {
         // PRODUCE：本核负责的每个 dstRank，input 本轮 chunk -> myGmIn_[dstRank 区]
         for (uint32_t idx = 0; idx < rankNumPerCore_; idx++) {
@@ -181,7 +181,7 @@ public:
         }
     }
 
-    __aicore__ inline void CalcLoopInfo(ExtraArgs& extraArgs, uint64_t& maxSendOrRecvDataCount, uint64_t& loopTimes)
+    __aicore__ inline void CalcLoopInfo(ExtraArgsT& extraArgs, uint64_t& maxSendOrRecvDataCount, uint64_t& loopTimes)
     {
         maxSendOrRecvDataCount = 0;
         for (uint64_t i = 0; i < rankSize_; i++) {
@@ -193,7 +193,7 @@ public:
                     + static_cast<uint64_t>(maxSendOrRecvDataCount % cclBufferCountPerRank_ != 0);
     }
 
-    __aicore__ inline void ProcessCtrlCore(uint64_t len, uint32_t sliceId, ExtraArgs& extraArgs)
+    __aicore__ inline void ProcessCtrlCore(uint64_t len, uint32_t sliceId, ExtraArgsT& extraArgs)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         cclBufferCountPerRank_ = len;
@@ -214,7 +214,7 @@ public:
         }
     }
 
-    __aicore__ inline void Process(uint64_t len, uint32_t sliceId, ExtraArgs& extraArgs)
+    __aicore__ inline void Process(uint64_t len, uint32_t sliceId, ExtraArgsT& extraArgs)
     {
         curTag_ = (static_cast<uint32_t>(tag_) << AIV_TAG_MOVE_RIGHT_BITS) | (sliceId & LOW_16_BITS);
         cclBufferCountPerRank_ = len;
@@ -280,10 +280,10 @@ public:
     uint64_t innerDisplsForCcl_;
 };
 
-template <typename T>
-__aicore__ inline void AivAlltoAllVV2Mesh1D(KERNEL_ARGS_DEF, ExtraArgs& extraArgs)
+template <typename T, typename ExtraArgsT>
+__aicore__ inline void AivAlltoAllVV2Mesh1D(KERNEL_ARGS_DEF, ExtraArgsT& extraArgs)
 {
-    AivAlltoAllVMesh1D<T> op;
+    AivAlltoAllVMesh1D<T, ExtraArgsT> op;
     op.Init(KERNEL_CLASS_INIT, true);
     if (op.IsFirstOP(sliceId)) {
         op.BarrierForFirstOP();

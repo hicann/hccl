@@ -120,6 +120,22 @@ static std::vector<AivKernelInfo> g_alltoallvAivKernelInfoList = {
     {"aiv_alltoallv_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3},
     {"aiv_alltoallv_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2},
     {"aiv_alltoallv_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0},
+    {"aiv_alltoallv_large_half", HcclDataType::HCCL_DATA_TYPE_FP16, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_int16_t", HcclDataType::HCCL_DATA_TYPE_INT16, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_uint16_t", HcclDataType::HCCL_DATA_TYPE_UINT16, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_float", HcclDataType::HCCL_DATA_TYPE_FP32, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_uint64_t", HcclDataType::HCCL_DATA_TYPE_FP64, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_int32_t", HcclDataType::HCCL_DATA_TYPE_INT32, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_uint32_t", HcclDataType::HCCL_DATA_TYPE_UINT32, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_int8_t", HcclDataType::HCCL_DATA_TYPE_INT8, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_uint8_t", HcclDataType::HCCL_DATA_TYPE_UINT8, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_bfloat16_t", HcclDataType::HCCL_DATA_TYPE_BFP16, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_int64_t", HcclDataType::HCCL_DATA_TYPE_INT64, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_uint64_t", HcclDataType::HCCL_DATA_TYPE_UINT64, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_hifloat8_t", HcclDataType::HCCL_DATA_TYPE_HIF8, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2, KernelArgsType::ARGS_TYPE_LARGE_RANK},
+    {"aiv_alltoallv_large_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0, KernelArgsType::ARGS_TYPE_LARGE_RANK},
 };
 static std::string g_alltoallvAivBinaryName = "hccl_aiv_all_to_all_v_op_910_95.o";
 
