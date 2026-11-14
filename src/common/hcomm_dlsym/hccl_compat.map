@@ -113,6 +113,7 @@
         */
         HcclChannelNotifyWaitDefault;
         HcclChannelNotifyWaitOnThreadDefault;
+        HcclCheckDpuInlineReduceLocal;
         HcclCommSymWinGet;
         HcclHcommBatchTransferOnThread;
         HcclSetNotifyWaitTimeOut;
@@ -193,6 +194,7 @@
         HcommWriteWithNotifyNbiOnThread;
         HcommWriteWithNotifyOnThread;
         IsHcommDefaultTimeoutSupported;
+        IsHcommDpuInlineReduceSupported;
 
     local:
         *;

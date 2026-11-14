@@ -45,8 +45,10 @@
 #include "alg_param.h"
 #include "alg_type.h"
 #include "op_common.h"
+#include "comm_negotiation.h" // NEGOTIATION_COMM_SUFFIX唯一来源收敛于协商模块（生成方/识别方同源）
 #include "ccu_fallback.h"
 #include "ccu_fallback_c.h"
+#include "hostdpu_inline_reduce.h"
 #include "aicpu_timeout.h"
 #include "exec_timeout_manager.h"
 #include "hccl_aiv_utils.h"
@@ -190,6 +192,11 @@ Selector(HcclComm comm, OpParam& param, std::unique_ptr<TopoInfoWithNetLayerDeta
     HCCL_ALGO_PLUGIN_SELECTOR_FAST_PATH(comm, param, topoInfo.get(), algName);
 #endif
 
+    // 【独立协商阶段】hostDPU inline reduce 全域能力聚合（topoInfo计算后、路由前，
+    // per-comm一次性）：设置topoInfo->allDpuSupportInlineReduce，cost model构建期/legacy分支可读。
+    // opType/捕获态门控统一在协商入口实施（见hostdpu_inline_reduce.h）：P2P算子（子集调用语义）
+    // 与图模式录制态不参与全rank集合协商，防分叉放大为全域挂死
+    CHK_RET(NegotiateHostDpuInlineReduceCapability(comm, param.opType, param.stream, topoInfo.get()));
     // host DPU 场景、NDA 机型且支持 NDA 时，走 collAlgSelector 分支，由 AutoSelectorBase::Select 的 NDA 分支选择
     // NDA 算法
     bool hostDPUOnly = false;
@@ -441,7 +448,7 @@ bool ShouldGoCcuFastLaunch(HcclComm comm, OpParam& param, CcuFastLaunchCtx** ccu
 #endif
 }
 
-// 判断通信域名称是否为协商子通信域（后缀_negotiation，由CCU fallback协商机制创建）
+// 判断通信域名称是否为协商子通信域（后缀_negotiation，由公共协商机制 comm_negotiation 创建）
 bool IsNegotiationCommName(const char* commName)
 {
     const std::string commNameStr(commName);

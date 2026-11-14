@@ -13,6 +13,7 @@
 
 #include "dlsym_common.h"
 #include "hcomm_primitives.h" // 原头文件，包含所有类型和定义
+#include "hccl_rank_graph.h"  // EndpointDesc（与HCOMM侧hcomm_res_defs.h同布局的公共结构体）
 #include "hccl_types.h"
 
 /* 8.5.0 桩: HcclCommSymWindow (来自 hccl_types.h) */
@@ -78,6 +79,16 @@ typedef struct {
     } transferInfo;
 } HcclHcommBatchTransferDesc;
 
+/* HcommEndpointCheckFeature 的 featureType 取值。
+ * 与 HCOMM 仓 include/hcomm_res_defs.h 的 HcommEndpointFeatureType 逐值锁定对齐（跨仓协议，勿单侧改动）；
+ * HCOMM 侧该枚举为 C enum（ABI 上 4 字节 int），此处以同值枚举独立声明，经 dlsym 符号跨仓传递。
+ * 注: HCOMM 侧对应成员名为 HCOMM_ENDPOINT_FEATURE_INLINE_REDUCE（无DPU_前缀），成员名可不同, 数值必须一致 */
+enum HcclHcommFeatureId {
+    HCCL_HCOMM_FEATURE_INVALID = -1,
+    HCCL_HCOMM_FEATURE_NDA = 0,               /* NPU Direct RDMA Async 特性 */
+    HCCL_HCOMM_FEATURE_DPU_INLINE_REDUCE = 1, /* 本端 hostDPU 是否支持 inline reduce（传输带规约语义） */
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -140,6 +151,14 @@ DECL_WEAK_FUNC(
     HcommResult, HcommEndpointCheckFeature, HcommEndpointFeatureType featureType, const EndpointDesc* endpointDesc,
     bool* value);
 DECL_SUPPORT_FLAG(HcommEndpointCheckFeature);
+
+/* DPU inline reduce 复合支持判定：能力查询符号 + write-reduce 传输符号，任一缺失按不支持处理
+ * （HcommIsSupportCcuV2 复合判定先例） */
+bool IsHcommDpuInlineReduceSupported();
+/* 本端 hostDPU inline reduce 能力查询（本端语义，无跨rank交换）：
+ * 按HCOMM真实签名以本端host侧EndpointDesc查询；符号缺失/查询失败一律按不支持降级、禁止上抛；
+ * 全域聚合由 HCCL 公共协商机制完成 */
+HcclResult HcclCheckDpuInlineReduceLocal(const EndpointDesc& hostDpuEndpoint, bool* supported);
 #endif
 
 void HcommPrimitivesDlInit(void* libHcommHandle); // 本模块独立初始化

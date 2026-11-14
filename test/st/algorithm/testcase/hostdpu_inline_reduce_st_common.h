@@ -139,8 +139,9 @@ public:
             comm_, "hostdpu_inline_reduce_cap", CommEngine::COMM_ENGINE_CPU_TS, sizeof(int8_t), &address));
         CHK_PTR_NULL(address);
         context_ = {HCCL_MEM_TYPE_HOST, address, sizeof(int8_t)};
-        // InlineReduceCap: ALL_RANKS_SUPPORTED = 0, SOME_RANK_UNSUPPORTED = 1.
-        *static_cast<int8_t*>(address) = supported ? 0 : 1;
+        // InlineReduceCap（与 hostdpu_inline_reduce.cc 枚举逐值锁定）：
+        // NEGOTIATION_DEGRADED = 0，SOME_RANK_UNSUPPORTED = 1，ALL_RANKS_SUPPORTED = 2
+        *static_cast<int8_t*>(address) = supported ? 2 : 1;
         return HCCL_SUCCESS;
     }
 

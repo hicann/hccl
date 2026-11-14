@@ -52,6 +52,10 @@ add_subdirectory(reduce_aiv)
 add_subdirectory(all_reduce_aiv)
 # allreduce_aiv: AllReduce TwoShot 写语义 kernel 的 CPU 桩级覆盖。
 add_subdirectory(allreduce_aiv)
+add_subdirectory(comm_negotiation)
+add_subdirectory(hostdpu_inline_reduce)
+# ccu_fallback: CCU 协商降级策略层覆盖（协商基础设施失败降级 aicpu / 资源不足回退 / 缓存命中路径）
+add_subdirectory(ccu_fallback)
 add_subdirectory(reduce)
 # recursive_executor 测试仅在 --experimental 构建（ENABLE_EXPERIMENTAL=ON）时编译
 if(ENABLE_EXPERIMENTAL)

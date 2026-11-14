@@ -58,6 +58,18 @@
         CheckCcuParamAndFallbackC;
 
         /*
+         * C-compatible negotiation wrappers declared in
+         * ops/op_common/inc/comm_negotiation_c.h.
+         *
+         * Weak symbols: default implementations live in
+         * ops/op_common/comm_negotiation.cc and dispatch to
+         * the real C++ functions in namespace ops_hccl. UT
+         * stubs and the simulator may override them with
+         * strong symbols of the same name to inject results.
+         */
+        NegotiateCommC;
+
+        /*
          * Package interfaces defined in
          * ops/interface_graph_mode/calc_resource_graph_mode.cc.
          */
