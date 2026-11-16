@@ -124,3 +124,24 @@ TEST_F(ProcessLinksForChannelTest, PreexistingEntriesNotMisreportedWhenNextPeerN
     ASSERT_EQ(channels.size(), 1u); // 前序条目不被破坏
     EXPECT_EQ(channels[0].remoteRank, PREV_RANK);
 }
+
+// Issue #837：link的endpoint不属于任何topoInst时，GetTopoTypeByLink报错且不污染出参
+TEST_F(ProcessLinksForChannelTest, GetTopoTypeByLinkNoMatchKeepsOutputClean)
+{
+    g_rankGraph.topoType = CommTopo::COMM_TOPO_CLOS; // 与出参初始值不同，污染会被观测到
+    CommLink link = MakeLink();
+    link.srcEndpointDesc.commAddr.eid[0] = 1;       // 与桩的全零endpoint不等，遍历所有topoInst均无匹配
+    CommTopo topoType = CommTopo::COMM_TOPO_1DMESH; // 调用前出参值
+    ASSERT_EQ(ops_hccl::GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_E_INTERNAL);
+    EXPECT_EQ(topoType, CommTopo::COMM_TOPO_1DMESH); // 失败路径不修改出参
+}
+
+// Issue #837回归：endpoint匹配成功时正常写入topoType，成功路径行为不变
+TEST_F(ProcessLinksForChannelTest, GetTopoTypeByLinkMatchWritesOutput)
+{
+    g_rankGraph.topoType = CommTopo::COMM_TOPO_CLOS; // 与出参初始值不同，确保写入被观测
+    CommLink link = MakeLink();
+    CommTopo topoType = CommTopo::COMM_TOPO_1DMESH;
+    ASSERT_EQ(ops_hccl::GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_SUCCESS);
+    EXPECT_EQ(topoType, CommTopo::COMM_TOPO_CLOS);
+}

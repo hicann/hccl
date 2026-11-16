@@ -954,16 +954,18 @@ HcclResult GetTopoTypeByLink(HcclComm comm, uint32_t netLayer, CommLink& link, C
             return ret;
         }
 
-        ret = HcclRankGraphGetTopoType(comm, netLayer, topoInstId, &topoType);
-        if (ret != HCCL_SUCCESS) {
-            free(endPointDescs);
-            return ret;
-        }
-        HCCL_DEBUG("[%s]topoInstId=%u, endPointNum=%u, topoType=%u", __func__, topoInstId, endPointNum, topoType);
         for (uint32_t endPointIdx = 0; endPointIdx < endPointNum; endPointIdx++) {
             EndpointDesc endPoint = endPointDescs[endPointIdx];
             if (IsEndPointEqual(link.srcEndpointDesc, endPoint)
                 == true) { // 当前TopoInst和link的endPoint相同，说明link属于当前TopoInst
+                // 先匹配endpoint归属再获取topoType赋值：失败路径不污染出参，且不中断无关topoInst的遍历
+                ret = HcclRankGraphGetTopoType(comm, netLayer, topoInstId, &topoType);
+                if (ret != HCCL_SUCCESS) {
+                    free(endPointDescs);
+                    return ret;
+                }
+                HCCL_DEBUG(
+                    "[%s]topoInstId=%u, endPointNum=%u, topoType=%u", __func__, topoInstId, endPointNum, topoType);
                 free(endPointDescs);
                 return HCCL_SUCCESS;
             }
