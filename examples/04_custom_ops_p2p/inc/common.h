@@ -33,6 +33,9 @@ enum DeviceType {
     DEVICE_TYPE_A5 = 2,
 };
 
+// profiling/Dfx 相关功能仅在 A5（Ascend950）上支持，A3 等平台不开启
+inline bool IsProfilingSupported(DeviceType devType) { return devType == DEVICE_TYPE_A5; }
+
 typedef struct {
     void* addr;
     uint64_t size;

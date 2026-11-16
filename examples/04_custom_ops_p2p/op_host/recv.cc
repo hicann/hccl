@@ -48,9 +48,6 @@ HcclResult HcclRecvCustom(
     param.dataType = dataType;
     param.opType = HcclCMDType::HCCL_CMD_RECEIVE;
 
-    // 算子执行前注册Dfx算子信息
-    CHK_RET(DfxRegOpInfoHost(param));
-
     // ==============================================
     // STEP 1: 解析拓扑信息
     // ==============================================
@@ -58,6 +55,11 @@ HcclResult HcclRecvCustom(
     CHK_RET(HcclGetRankId(comm, &rank));
     CHK_RET(HcclGetRankSize(comm, &rankSize));
     CHK_RET(GetDeviceType(&param.devType));
+
+    // 算子执行前注册Dfx算子信息（profiling/Dfx功能仅A5支持，A3等平台不开启）
+    if (IsProfilingSupported(param.devType)) {
+        CHK_RET(DfxRegOpInfoHost(param));
+    }
 
     // ==============================================
     // STEP 2: 创建资源
@@ -110,8 +112,10 @@ HcclResult HcclRecvCustom(
     // ==============================================
     CHK_RET(LaunchKernel(comm, param, stream));
 
-    // 算子执行结束后上报性能数据
-    CHK_RET(HcclProfilingReportOp(comm, beginTime));
+    // 算子执行结束后上报性能数据（仅A5等支持profiling的平台开启）
+    if (IsProfilingSupported(param.devType)) {
+        CHK_RET(HcclProfilingReportOp(comm, beginTime));
+    }
 
     return HCCL_SUCCESS;
 }

@@ -47,18 +47,21 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam* param)
         return 1;
     }
 
-    // 注册Dfx算子信息（须在下发首个task前）
-    if (DfxRegOpInfo(*param) != HCCL_SUCCESS) {
-        HCCL_ERROR("failed to register dfx op info");
-        return 1;
-    }
+    // profiling/Dfx功能仅A5支持，A3等平台不开启
+    if (IsProfilingSupported(param->devType)) {
+        // 注册Dfx算子信息（须在下发首个task前）
+        if (DfxRegOpInfo(*param) != HCCL_SUCCESS) {
+            HCCL_ERROR("failed to register dfx op info");
+            return 1;
+        }
 
-    // 下发首个task前上报kernel启动任务事件
-    if (HcommProfilingReportKernelStartTask(param->resCtx->aicpuThread, param->commName) != HCCL_SUCCESS) {
-        HCCL_ERROR(
-            "%s failed to report profiling info, thread %lu, commName %s.", __func__, param->resCtx->aicpuThread,
-            param->commName);
-        return 1;
+        // 下发首个task前上报kernel启动任务事件
+        if (HcommProfilingReportKernelStartTask(param->resCtx->aicpuThread, param->commName) != HCCL_SUCCESS) {
+            HCCL_ERROR(
+                "%s failed to report profiling info, thread %lu, commName %s.", __func__, param->resCtx->aicpuThread,
+                param->commName);
+            return 1;
+        }
     }
 
     // 主thread等待Host stream的通知
@@ -80,16 +83,18 @@ extern "C" unsigned int HcclLaunchP2PAicpuKernel(OpParam* param)
         return 1;
     }
 
-    // 执行最后一个task后上报kernel结束任务事件与device算子事件
-    if (HcommProfilingReportKernelEndTask(param->resCtx->aicpuThread, param->commName) != HCCL_SUCCESS) {
-        HCCL_ERROR(
-            "%s failed to report profiling info, thread %lu, commName %s.", __func__, param->resCtx->aicpuThread,
-            param->commName);
-        return 1;
-    }
-    if (HcommProfilingReportDeviceOp(param->commName) != HCCL_SUCCESS) {
-        HCCL_ERROR("%s HcommProfilingReportDeviceOp fail, commName[%s]", __func__, param->commName);
-        return 1;
+    // 执行最后一个task后上报kernel结束任务事件与device算子事件（仅A5等支持profiling的平台开启）
+    if (IsProfilingSupported(param->devType)) {
+        if (HcommProfilingReportKernelEndTask(param->resCtx->aicpuThread, param->commName) != HCCL_SUCCESS) {
+            HCCL_ERROR(
+                "%s failed to report profiling info, thread %lu, commName %s.", __func__, param->resCtx->aicpuThread,
+                param->commName);
+            return 1;
+        }
+        if (HcommProfilingReportDeviceOp(param->commName) != HCCL_SUCCESS) {
+            HCCL_ERROR("%s HcommProfilingReportDeviceOp fail, commName[%s]", __func__, param->commName);
+            return 1;
+        }
     }
 
     if (HcommBatchModeEnd(param->tag) != HCCL_SUCCESS) {

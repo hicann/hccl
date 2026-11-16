@@ -68,9 +68,11 @@ HcclResult LaunchKernelWithAclrt(HcclComm comm, OpParam& param, aclrtStream stre
     constexpr uint32_t numBlocks = 1;
     ACLCHECK(aclrtLaunchKernelWithConfig(funcHandle, numBlocks, stream, &cfg, argsHandle, nullptr));
 
-    // 上报 AICPU Kernel 性能数据
-    char* kernelNameCStr = kernelName.data();
-    CHK_RET(HcclReportAicpuKernel(comm, kernelBeginTime, kernelNameCStr));
+    // 上报 AICPU Kernel 性能数据（仅A5等支持profiling的平台开启）
+    if (IsProfilingSupported(param.devType)) {
+        char* kernelNameCStr = kernelName.data();
+        CHK_RET(HcclReportAicpuKernel(comm, kernelBeginTime, kernelNameCStr));
+    }
 
     // Host stream等待Device的通知
     CHK_RET(HcommThreadNotifyWaitOnThread(param.cpuThread, 0, CUSTOM_TIMEOUT));
