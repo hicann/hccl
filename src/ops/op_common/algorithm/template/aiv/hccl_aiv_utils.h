@@ -13,6 +13,7 @@
 
 #include "string"
 #include <array>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include "hccl_types.h"
@@ -29,7 +30,6 @@ constexpr u32 AIV_TOPO_BUFF_LEN = 8 * 1024;
 constexpr u32 AIV_FLAG_ADDR_OFFSET = 40 * 1024;
 constexpr u32 AIV_FLAG_AREA_SIZE = 1000 * 1024;
 constexpr u32 AIV_TAG_BUFF_LEN = 65 * 1024 * 1024;
-
 constexpr u32 AIV_MAX_CCL_LOOP_NUM = 16;
 
 constexpr u32 AIV_ATTRNUM_THREE = 3;
@@ -67,6 +67,58 @@ struct ExtraArgs {
     u64 recvCounts[MAX_RANK_SIZE_V] = {};
     u64 recvDispls[MAX_RANK_SIZE_V] = {};
 };
+
+// BatchSendRecv 单次 kernel 下发的最大任务条数，必须与 device 侧 BATCH_SEND_RECV_ITEM_MAX 一致：
+// 2*rankSize*itemCapPerPair 在 rankSize<=256 时恰好取到上界 512，没有余量。
+constexpr u32 AIV_BSR_ITEM_MAX = 512;
+
+// 跨 rank 任务的私有视图，与 device 侧 AivBatchSendRecv::AivBsrPeerView 逐字段对应。
+// 单独定义而不是匿名 struct：便于对 sizeof 做断言，也避开 -Wpedantic 对匿名 struct 的告警。
+struct AivBsrPeerViewArgs {
+    u32 cclOffset;  // @0 相对 CCL buffer base 的偏移（< rankSize*bucketCap <= 256MB）
+    u16 remoteRank; // @4 对端 rank（< rankSize <= 256，u16 足够）
+    u16 peerRsv;    // @6 显式占位，使视图恰好 8B
+};
+
+// 单条任务 24B：byteCount/cclOffset 用 u32 的前提是 host 把中转容量 clamp 到 256MB 再按 rankSize 分桶，
+// 放开该上限须同步改回 u64；512 条占 12KB，加公共入参约 12.2KB，远低于 28000B 预算。
+struct AivBsrItemArgs {
+    u64 bufAddr;     // @0  本地数据地址（send/self_send: 源地址；recv/self_recv: 目的地址）
+    u32 byteCount;   // @8  本片需要搬运的字节数（<= bucketCap）
+    u16 sliceIdx;    // @12 本轮内该 pair 的片序号 [0, itemCapPerPair)，收发两侧一致
+    u8 sendRecvType; // @14 0: send, 1: recv, 2: self_send, 3: self_recv
+    u8 rsv;          // @15
+    // 两种互斥视图，由 sendRecvType 决定取哪一个：SELF_SEND 取 dstAddr，SEND/RECV 取 peer，
+    // SELF_RECV 两个都不读。device 侧读之前必须先判类型，因此这里填错视图不会被静默掩盖成零值。
+    union {
+        u64 dstAddr;             // @16 仅 SELF_SEND：本卡目的地址
+        AivBsrPeerViewArgs peer; // @16 仅 SEND/RECV：桶位 + 对端 rank
+    };
+};
+
+struct ExtraArgsBsr {
+    u64 itemNum = 0;
+    // 每对端在 flag 信箱预留的格数（= itemCapPerPair）：保证 rankSize*flagBlock <= 256，远低于 32768 格。
+    u64 flagBlock = 0;
+    AivBsrItemArgs items[AIV_BSR_ITEM_MAX] = {};
+};
+
+static_assert(sizeof(AivBsrPeerViewArgs) == 8, "AivBsrPeerViewArgs must be 8B to union with dstAddr");
+static_assert(sizeof(AivBsrItemArgs) == 24, "AivBsrItemArgs layout must match device side AivBsrItem");
+// 偏移钉死：只比 sizeof 挡不住"两字段互换、总大小不变"。union 内成员属 conditionally-supported，
+// 不对其断言，起点与宽度由下面两条（sendRecvType 在 14、总长 24）间接锁死。
+static_assert(
+    offsetof(AivBsrItemArgs, bufAddr) == 0 && offsetof(AivBsrItemArgs, byteCount) == 8,
+    "AivBsrItemArgs bufAddr/byteCount offsets must match device side AivBsrItem");
+static_assert(
+    offsetof(AivBsrItemArgs, sliceIdx) == 12 && offsetof(AivBsrItemArgs, sendRecvType) == 14,
+    "AivBsrItemArgs sliceIdx/sendRecvType offsets must match device side AivBsrItem");
+static_assert(
+    sizeof(ExtraArgsBsr) == 2 * sizeof(u64) + sizeof(AivBsrItemArgs) * AIV_BSR_ITEM_MAX,
+    "ExtraArgsBsr layout must match device side AivBatchSendRecv::ExtraArgsBsr");
+
+static_assert(
+    sizeof(ExtraArgsBsr) == 12304, "ExtraArgsBsr ABI size must match device side AivBatchSendRecv::ExtraArgsBsr");
 
 // 算子计数信息
 struct OpCounterInfo {
@@ -219,6 +271,10 @@ HcclResult UnRegisterAivKernel();
 HcclResult ExecuteKernelLaunchInner(const AivOpArgs& opArgs, void* args, u32 argsSize);
 
 HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs);
+
+// BatchSendRecv 专用 launch 入口：入参多一份 12KB 任务表（AivBsrKernelArgs），只有 BSR 需要，
+// 故不塞进通用入口。extraArgsBsr 由调用方持有，必须在本次 launch 期间存活。
+HcclResult ExecuteKernelLaunchBsr(const AivOpArgs& opArgs, const ExtraArgsBsr& extraArgsBsr);
 
 void ProcessAivExceptionCallBack(aclrtExceptionInfo* exceptionInfo);
 

@@ -43,6 +43,12 @@ add_subdirectory(tuner)
 add_subdirectory(reduce_scatter_seq64)
 add_subdirectory(alltoall_aiv)
 add_subdirectory(all_gather_aiv)
+# batch_send_recv_aiv: BSR AIV kernel（Mesh1D）的 CPU 桩级覆盖，重点是 tag 只由轮次决定（不再读写通信域
+# 共享的 tag 计数器）、收发两侧 flag 编址一致、数据经 sender bucket 的端到端落点与屏障活跃对端筛选。
+add_subdirectory(batch_send_recv_aiv)
+# batch_send_recv_host: 同一算子的 host 侧覆盖（模板与 executor 源文件），重点是 tag 值域隔离与回绕、
+# 同一 pair 收发两侧切片对齐、对端分桶与自收发配对、DFX 口径、增量建链的对端集合与算法准入门槛。
+add_subdirectory(batch_send_recv_host)
 # reduce_scatter_aiv: RS 写语义 kernel（LocalTree / BigData）的 CPU 桩级覆盖，含 flag 依赖与输出平铺校验。
 add_subdirectory(reduce_scatter_aiv)
 # reduce_aiv: Reduce pull 语义 kernel（MultiCore / MultiRank）的 CPU 桩级覆盖，

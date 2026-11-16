@@ -1555,7 +1555,6 @@ static HcclResult TryReuseResource(
     HcclComm comm, OpParam& param, bool& increCreateChannelFlag, void** resCtxSequence, uint64_t& size,
     bool& isResourceReused)
 {
-    // 增量建链模式下不能复用资源
     if (param.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV && param.opMode == OpMode::OPBASE) {
         increCreateChannelFlag = true;
         return HCCL_E_NOT_FOUND;
@@ -1764,7 +1763,8 @@ HcclResult GetAlgResWithEngine(
             comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size,
             increCreateChannelFlag, resPack));
     } else if (param.engine == COMM_ENGINE_AIV) {
-        CHK_RET(GetAlgResAiv(comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence, size));
+        CHK_RET(GetAlgResAiv(
+            comm, param, resRequest, topoInfo, algHierarchyInfo, resCtxSequence, size, increCreateChannelFlag));
     } else if (param.engine == COMM_ENGINE_CCU) {
         auto ret = GetAlgResCcu(
             comm, param, resRequest, resCtxHost, topoInfo, algHierarchyInfo, resCtxSequence, size, resPack);
@@ -3708,21 +3708,58 @@ HcclResult HcclGetCcuKernel(
 
 HcclResult GetAlgResAiv(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size)
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size, bool increCreateChannelFlag)
 {
     size = sizeof(AlgResourceCtxSerializable);
+    // 增量模式（当前只有 BSR）：先查 ctx，命中就在原 ctx 上按 65MB 块里的两张地址表逐槽位补建。
+    // 非增量算子不会第二次走到这里（TryReuseResource 已命中返回），下面的 Get 必然落空，等价于无条件创建。
+    if (increCreateChannelFlag) {
+        void* cachedCtx = nullptr;
+        uint64_t cachedSize = 0;
+        if (HcclEngineCtxGet(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, &cachedCtx, &cachedSize)
+            == HCCL_SUCCESS) {
+            if (cachedSize != size) {
+                // 跨版本升级后旧 ctx 尺寸可能不同，原地复用会越界写穿
+                HCCL_WARNING(
+                    "[%s] cached ctx size mismatch, rebuild. algTag[%s], cached[%llu], expect[%zu].", __func__,
+                    param.algTag, cachedSize, size);
+                CHK_RET(HcclEngineCtxDestroy(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS));
+            } else {
+                // 传全量 resRequest，由 HcclAllocAlgResourceAiv 逐槽位判"已建则跳过"，不做独立的求差集。
+                HcclResult increRet = HcclAllocAlgResourceAiv(
+                    comm, param, resRequest, static_cast<AlgResourceCtxSerializable*>(cachedCtx), true);
+                if (increRet != HCCL_SUCCESS) {
+                    HCCL_ERROR(
+                        "[%s] incremental alloc failed, destroy ctx. algTag[%s], ret[%d].", __func__, param.algTag,
+                        increRet);
+                    (void)HcclEngineCtxDestroy(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS);
+                    return increRet;
+                }
+                *resCtxSequence = cachedCtx;
+                HCCL_RUN_INFO("[%s] reuse aiv ctx, algTag[%s].", __func__, param.algTag);
+                return HCCL_SUCCESS;
+            }
+        }
+    }
     CHK_RET(HcclEngineCtxCreate(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS, size, resCtxSequence));
 
     AlgResourceCtxSerializable* resCtxHost = static_cast<AlgResourceCtxSerializable*>(*resCtxSequence);
     resCtxHost->topoInfo = *topoInfo;
     resCtxHost->algHierarchyInfo = algHierarchyInfo;
 
-    CHK_RET(HcclAllocAlgResourceAiv(comm, param, resRequest, resCtxHost));
+    HcclResult ret = HcclAllocAlgResourceAiv(comm, param, resRequest, resCtxHost);
+    if (ret != HCCL_SUCCESS) {
+        // 不留下半成品 ctx：复用场景下它会被下一次下发当成有效资源接着用，问题会从报错退化为静默错数据
+        HCCL_ERROR("[%s] alloc aiv resource failed, destroy ctx. algTag[%s], ret[%d].", __func__, param.algTag, ret);
+        (void)HcclEngineCtxDestroy(comm, param.algTag, CommEngine::COMM_ENGINE_CPU_TS);
+        return ret;
+    }
     return HCCL_SUCCESS;
 }
 
 HcclResult HcclAllocAlgResourceAiv(
-    HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost)
+    HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost,
+    bool incremental)
 {
     HCCL_INFO("[%s]Start to execute.", __func__);
     HcclMemHandle memHandle; // 注册到通信域内存的handle，用于建链
@@ -3783,10 +3820,29 @@ HcclResult HcclAllocAlgResourceAiv(
     buffersIn[resCtxHost->topoInfo.userRank] = cclBufferAddr;
     buffersOut[resCtxHost->topoInfo.userRank] = resCtxHost->aivCommInfoPtr;
 
-    // 迭代每个子通信域的建链请求，创建链路
-    for (u32 level = 0; level < resRequest.channels.size(); level++) {
+    // 迭代每个子通信域的建链请求；用副本承载，避免下方回填 memHandles 污染调用方的 resRequest。
+    std::vector<std::vector<HcclChannelDesc>> channelRequestToBuild = resRequest.channels;
+    for (u32 level = 0; level < channelRequestToBuild.size(); level++) {
         // 获取子通信域的建链请求
-        std::vector<HcclChannelDesc>& levelNChannelRequest = resRequest.channels[level];
+        std::vector<HcclChannelDesc>& levelNChannelRequest = channelRequestToBuild[level];
+
+        // BatchsendRecv增量补建：先把两张地址表都已就绪的槽位剔掉，只对剩下的发起 Acquire
+        // level0的意思就是，当前AIV BatchSendRecv算子只返回level0的resRequest
+        if (incremental && level == 0) {
+            const size_t beforeNum = levelNChannelRequest.size();
+            levelNChannelRequest.erase(
+                std::remove_if(
+                    levelNChannelRequest.begin(), levelNChannelRequest.end(),
+                    [&buffersIn, &buffersOut](const HcclChannelDesc& channelDesc) {
+                        return channelDesc.remoteRank < MAX_RANK_SIZE && buffersIn[channelDesc.remoteRank] != nullptr
+                               && buffersOut[channelDesc.remoteRank] != nullptr;
+                    }),
+                levelNChannelRequest.end());
+            HCCL_RUN_INFO(
+                "[%s] incremental level[%u] requestNum[%zu] skipBuiltNum[%zu].", __func__, level,
+                levelNChannelRequest.size(), beforeNum - levelNChannelRequest.size());
+        }
+
         for (auto& channelDesc : levelNChannelRequest) {
             channelDesc.memHandles = &memHandle;
             channelDesc.memHandleNum = 1;

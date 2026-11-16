@@ -52,6 +52,7 @@
         <file value="hccl_aiv_all_to_all_op_910_95.o" optional="true"/>
         <file value="hccl_aiv_send_op_910_95.o" optional="true"/>
         <file value="hccl_aiv_recv_op_910_95.o" optional="true"/>
+        <file value="hccl_aiv_batch_send_recv_op_910_95.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int8_v2.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int16_v2.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int32_v2.o" optional="true"/>
@@ -102,6 +103,7 @@
         <file value="hccl_aiv_all_to_all_op_960.o" optional="true"/>
         <file value="hccl_aiv_send_op_960.o" optional="true"/>
         <file value="hccl_aiv_recv_op_960.o" optional="true"/>
+        <file value="hccl_aiv_batch_send_recv_op_960.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int8_v2_960.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int16_v2_960.o" optional="true"/>
         <file value="hccl_ar_superkernel_mesh_1d_oneshot_int32_v2_960.o" optional="true"/>

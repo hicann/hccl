@@ -138,10 +138,12 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
 
 HcclResult GetAlgResAiv(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, TopoInfoWithNetLayerDetails* topoInfo,
-    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size);
+    AlgHierarchyInfoForAllLevel& algHierarchyInfo, void** resCtxSequence, uint64_t& size, bool increCreateChannelFlag);
 
+// incremental=true 为BatchSendRecv增量建链专用
 HcclResult HcclAllocAlgResourceAiv(
-    HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost);
+    HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest, AlgResourceCtxSerializable* resCtxHost,
+    bool incremental = false);
 
 HcclResult GetAlgResDPU(
     HcclComm comm, const OpParam& param, AlgResourceRequest& resRequest,

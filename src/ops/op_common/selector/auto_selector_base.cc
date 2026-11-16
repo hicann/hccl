@@ -89,14 +89,16 @@ bool AutoSelectorBase::IsRollBackAiv(OpParam& opParam, TopoInfoWithNetLayerDetai
                             && (opParam.opType == HcclCMDType::HCCL_CMD_ALLREDUCE
                                 || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE_SCATTER
                                 || opParam.opType == HcclCMDType::HCCL_CMD_REDUCE);
-    bool isPcieMeshScene
-        = topoInfo->level0PcieMix && topoInfo->level0BigClosRange && (isAllToAllOps || isInt64ReduceOps);
+    bool isBatchSendRecvOps = opParam.opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV;
+    bool isPcieMeshScene = topoInfo->level0PcieMix && topoInfo->level0BigClosRange
+                           && (isAllToAllOps || isBatchSendRecvOps || isInt64ReduceOps);
 
     bool isRollBackAiv = false;
     if (isPcieMeshScene) {
         HCCL_INFO(
-            "[AutoSelectorBase] Need to rollback aiv, isPcieMeshScene[%d]: isAllToAllOps[%d] isInt64ReduceOps[%d]",
-            isPcieMeshScene, isAllToAllOps, isInt64ReduceOps);
+            "[AutoSelectorBase] Need to rollback aiv, isPcieMeshScene[%d]: isAllToAllOps[%d] isBatchSendRecvOps[%d] "
+            "isInt64ReduceOps[%d]",
+            isPcieMeshScene, isAllToAllOps, isBatchSendRecvOps, isInt64ReduceOps);
         isRollBackAiv = true;
     }
     return isRollBackAiv;

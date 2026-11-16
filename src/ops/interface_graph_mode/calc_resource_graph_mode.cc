@@ -229,8 +229,13 @@ HcclResult HcclSelectAlgGraphMode(
         "[HcclSelectAlgGraphMode] Start: group[%s] count[%llu] dataType[%u] reduceOp[%u] opType[%u] aivCoreLimit[%u]",
         group, count, dataType, op, opType, aivCoreLimit);
 
-    if (g_aivKernelInfoMap.find(opType) == g_aivKernelInfoMap.end()) {
-        HCCL_INFO("[HcclSelectAlgGraphMode] Unsupported aiv op.");
+    // BSR 的 AIV 按运行期任务表逐轮多次下发，轮数随数据变化，与图录制的"固定次数下发"不相容，且接口
+    // 无任务表入参，故明确不支持（图模式下走 AICPU）；其余算子沿用 kernel 注册表判定。
+    if (opType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV
+        || g_aivKernelInfoMap.find(opType) == g_aivKernelInfoMap.end()) {
+        // 本分支返回 HCCL_SUCCESS，调用方会直接读 ifAiv，必须显式回填。
+        *ifAiv = false;
+        HCCL_INFO("[HcclSelectAlgGraphMode] opType[%d] unsupported aiv op, skip Selector.", static_cast<int>(opType));
         return HCCL_SUCCESS;
     }
 

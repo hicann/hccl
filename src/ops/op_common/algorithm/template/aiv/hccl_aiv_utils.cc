@@ -65,6 +65,7 @@ DECL_AIV_EMBED(hccl_aiv_reduce_scatter_op_910_95);
 DECL_AIV_EMBED(hccl_aiv_scatter_op_910_95);
 DECL_AIV_EMBED(hccl_aiv_send_op_910_95);
 DECL_AIV_EMBED(hccl_aiv_recv_op_910_95);
+DECL_AIV_EMBED(hccl_aiv_batch_send_recv_op_910_95);
 #if defined(CANN_CHIP_EXT) && (CANN_CHIP_EXT == ascend960)
 DECL_AIV_EMBED(hccl_aiv_all_gather_op_960);
 DECL_AIV_EMBED(hccl_aiv_all_reduce_op_960);
@@ -76,6 +77,7 @@ DECL_AIV_EMBED(hccl_aiv_reduce_scatter_op_960);
 DECL_AIV_EMBED(hccl_aiv_scatter_op_960);
 DECL_AIV_EMBED(hccl_aiv_send_op_960);
 DECL_AIV_EMBED(hccl_aiv_recv_op_960);
+DECL_AIV_EMBED(hccl_aiv_batch_send_recv_op_960);
 #endif
 #undef DECL_AIV_EMBED
 }
@@ -99,6 +101,7 @@ static const AivEmbedSymbol kAivEmbedTable[] = {
     EMBED_ENTRY(hccl_aiv_scatter_op_910_95),
     EMBED_ENTRY(hccl_aiv_send_op_910_95),
     EMBED_ENTRY(hccl_aiv_recv_op_910_95),
+    EMBED_ENTRY(hccl_aiv_batch_send_recv_op_910_95),
 #if defined(CANN_CHIP_EXT) && (CANN_CHIP_EXT == ascend960)
     EMBED_ENTRY(hccl_aiv_all_gather_op_960),
     EMBED_ENTRY(hccl_aiv_all_reduce_op_960),
@@ -110,6 +113,7 @@ static const AivEmbedSymbol kAivEmbedTable[] = {
     EMBED_ENTRY(hccl_aiv_scatter_op_960),
     EMBED_ENTRY(hccl_aiv_send_op_960),
     EMBED_ENTRY(hccl_aiv_recv_op_960),
+    EMBED_ENTRY(hccl_aiv_batch_send_recv_op_960),
 #endif
 };
 #undef EMBED_ENTRY
@@ -565,10 +569,8 @@ using AivKernelArgs = struct AivKernelArgsDef {
     {}
 };
 
-// 本结构的 bool 字段按 4 字节对齐（alignas(sizeof(u32))），与设备侧 aclrtLaunchKernel
-// 对 KERNEL_ARGS_DEF 标量参数的 4 字节打包 ABI 保持一致；该 assert 只能兜住 host 侧
-// 误删 alignas 导致的相对偏移变化，无法替代 host/device 布局一致性校验，
-// 两者必须出自同一次构建（设备二进制与 libhccl.so 版本绑定，勿混用）。
+// bool 字段按 4 字节对齐，对应设备侧对 KERNEL_ARGS_DEF 标量参数的打包 ABI；assert 只兜住 host 侧布局，
+// host 与 device 二进制必须出自同一次构建。
 static_assert(
     offsetof(AivKernelArgs, isWrite) == offsetof(AivKernelArgs, isEnableCounter) + sizeof(u32),
     "AivKernelArgs bool fields must keep 4-byte alignment to match device kernel arg packing");
@@ -637,11 +639,95 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     }
 };
 
+// BatchSendRecv 专用 kernel 入参：在公共入参尾部追加一次性下发的任务描述
+using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
+    const void* buffersIn; // 注册的CCLIN地址，所有卡可访问
+    u64 input;
+    u64 output;
+    u32 rank;
+    u32 sendRecvRemoteRank;
+    u32 rankSize;
+    u64 len;
+    u32 dataType;
+    u32 reduceOp;
+    u32 root;
+    // 本算子承载 tag 值（= AIV_BSR_TAG_BASE + 1 + 轮次，值域 [1025, 0x7FFF]，刻意避开其它 AIV 算子的
+    // [1,1000]），kernel 直接拿它当 tag，不读通信域共享计数器。仅 BSR 使用，与上面各字段的"定时重置"无关。
+    u32 tag;
+    u64 inputSliceStride;
+    u64 outputSliceStride;
+    u64 repeatNum;
+    u64 inputRepeatStride;
+    u64 outputRepeatStride;
+    u32 numBlocks;
+    bool isOpBase;
+    const void* headCountMem;
+    const void* tailCountMem;
+    const void* addOneMem;
+    u32 counterMemSize;
+    alignas(sizeof(u32)) bool isEnableCounter;
+    // 设备侧每个 bool 形参占 4 字节参数槽；缺 isWrite 会让 extraArgsBsr 从 152 前移到 144，
+    // kernel 从 152 读到的就是 flagBlock，并被当成 itemNum 使用。
+    alignas(sizeof(u32)) bool isWrite;
+    ExtraArgsBsr extraArgsBsr;
+
+    AivBsrKernelArgsDef(
+        const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 len,
+        u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
+        u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
+        const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
+        u32 counterMemSize = 0, const ExtraArgsBsr* extraArgsBsrPtr = nullptr, bool isWrite = false)
+        : buffersIn(buffIn),
+          input(input),
+          output(output),
+          rank(rank),
+          sendRecvRemoteRank(sendRecvRemoteRank),
+          rankSize(rankSize),
+          len(len),
+          dataType(dataType),
+          reduceOp(reduceOp),
+          root(root),
+          tag(tag),
+          inputSliceStride(inputSliceStride),
+          outputSliceStride(outputSliceStride),
+          repeatNum(repeatNum),
+          inputRepeatStride(inputRepeatStride),
+          outputRepeatStride(outputRepeatStride),
+          numBlocks(numBlocks),
+          isOpBase(isOpBase),
+          headCountMem(headCountMem),
+          tailCountMem(tailCountMem),
+          addOneMem(addOneMem),
+          counterMemSize(counterMemSize),
+          isEnableCounter(false),
+          isWrite(isWrite)
+    {
+        if (extraArgsBsrPtr != nullptr) {
+            extraArgsBsr = *extraArgsBsrPtr;
+        }
+    }
+};
+
 // 与 AivKernelArgs 相同：bool 字段 4 字节对齐对应设备侧参数打包 ABI，
 // assert 仅兜底 host 侧布局，host/device 二进制必须出自同一次构建。
 static_assert(
     offsetof(AivExtraKernelArgs, isWrite) == offsetof(AivExtraKernelArgs, isEnableCounter) + sizeof(u32),
     "AivExtraKernelArgs bool fields must keep 4-byte alignment to match device kernel arg packing");
+
+// extraArgsBsr 必须落在设备侧打包的 152 字节处（isWrite 占 144 的 4 字节槽，ExtraArgsBsr 再按 8 字节对齐）。
+// 这里钉死绝对值：设备侧 KERNEL_ARGS_DEF 增删字段时立刻编译失败，强制 host/device 两侧同步。
+static_assert(
+    offsetof(AivBsrKernelArgs, extraArgsBsr) == 152,
+    "AivBsrKernelArgs extraArgsBsr offset must be 152 to match device kernel arg packing");
+
+// 上面那条只钉住总长度，钉不住中间字段错位（字段互换时 8 字节对齐仍能凑回 152）。这里按绝对偏移把两个 bool
+// 的落点钉死。不能写成 "headCountMem == isOpBase + sizeof(u32)"：headCountMem 是指针，8 字节对齐必然落在 112，
+// bool 占 1 字节（后续补 3 字节 padding）还是占 4 字节参数槽都成立，因此该写法对槽宽不一致不敏感。
+static_assert(
+    offsetof(AivBsrKernelArgs, isOpBase) == 108, "AivBsrKernelArgs isOpBase must sit at 108, right after numBlocks");
+static_assert(
+    offsetof(AivBsrKernelArgs, isEnableCounter) == 140 && offsetof(AivBsrKernelArgs, isWrite) == 144,
+    "AivBsrKernelArgs isEnableCounter/isWrite must occupy the 4-byte device arg slots at 140/144");
 
 HcclResult GetAivOpBinaryPath(const std::string& aivBinaryName, std::string& binaryPath)
 {
@@ -1270,6 +1356,11 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             &opArgs.extraArgs,
             opArgs.isWrite};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs)));
+    } else if (opArgs.cmdType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
+        // batch_send_recv 应使用独立的入口 ExecuteKernelLaunchBsr
+        HCCL_ERROR(
+            "[ExecuteKernelLaunch] cmdType[%d] must use ExecuteKernelLaunchBsr.", static_cast<int>(opArgs.cmdType));
+        return HCCL_E_INTERNAL;
     } else {
         AivKernelArgs aivKernelArgs{
             opArgs.buffersIn,
@@ -1298,6 +1389,44 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             opArgs.isWrite};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs)));
     }
+    return HCCL_SUCCESS;
+}
+
+// BatchSendRecv 专用 launch 入口：任务表由 BSR 模板持有、按引用传入。
+HcclResult ExecuteKernelLaunchBsr(const AivOpArgs& opArgs, const ExtraArgsBsr& extraArgsBsr)
+{
+    CHK_PRT_RET(
+        g_recordingQueue != nullptr,
+        HCCL_ERROR("[ExecuteKernelLaunchBsr] BSR can not be recorded, check IsAivCacheSupported and "
+                   "HcclSelectAlgGraphMode."),
+        HCCL_E_INTERNAL);
+
+    AivBsrKernelArgs aivBsrKernelArgs{
+        opArgs.buffersIn,
+        opArgs.input,
+        opArgs.output,
+        opArgs.rank,
+        opArgs.sendRecvRemoteRank,
+        opArgs.rankSize,
+        opArgs.count,
+        opArgs.dataType,
+        opArgs.op,
+        opArgs.root,
+        opArgs.sliceId,
+        opArgs.inputSliceStride,
+        opArgs.outputSliceStride,
+        opArgs.repeatNum,
+        opArgs.inputRepeatStride,
+        opArgs.outputRepeatStride,
+        opArgs.numBlocks,
+        opArgs.isOpBase,
+        reinterpret_cast<void*>(opArgs.counter.headCountMem),
+        reinterpret_cast<void*>(opArgs.counter.tailCountMem),
+        reinterpret_cast<void*>(opArgs.counter.addOneMem),
+        opArgs.counter.memSize,
+        &extraArgsBsr,
+        opArgs.isWrite};
+    CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivBsrKernelArgs, sizeof(aivBsrKernelArgs)));
     return HCCL_SUCCESS;
 }
 

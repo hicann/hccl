@@ -211,6 +211,7 @@ set(INCLUDE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/executor
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/selector
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template/aiv
 )
 
 # 插件 ABI 头 ops/op_common/selector/pub_inc/hccl_tuner_plugin.h 暂不安装（按评审决议先留内部目录）：
@@ -306,6 +307,7 @@ set(AIV_TARGETS
     hccl_aiv_scatter_op_910_95
     hccl_aiv_send_op_910_95
     hccl_aiv_recv_op_910_95
+    hccl_aiv_batch_send_recv_op_910_95
     hccl_ar_superkernel_mesh_1d_oneshot_int8_v2
     hccl_ar_superkernel_mesh_1d_oneshot_int16_v2
     hccl_ar_superkernel_mesh_1d_oneshot_int32_v2
@@ -356,6 +358,7 @@ set(AIV_TARGETS
     hccl_aiv_scatter_op_960
     hccl_aiv_send_op_960
     hccl_aiv_recv_op_960
+    hccl_aiv_batch_send_recv_op_960
     hccl_ar_superkernel_mesh_1d_oneshot_int8_v2_960
     hccl_ar_superkernel_mesh_1d_oneshot_int16_v2_960
     hccl_ar_superkernel_mesh_1d_oneshot_int32_v2_960

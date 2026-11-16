@@ -197,6 +197,11 @@ static std::vector<AivKernelInfo> g_recvAivKernelInfoList = {
 };
 static std::string g_recvAivBinaryName = "hccl_aiv_recv_op_910_95.o";
 
+static std::vector<AivKernelInfo> g_batchSendRecvAivKernelInfoList = {
+    {"aiv_batchsendrecv_int8_t", HcclDataType::HCCL_DATA_TYPE_INT8},
+};
+static std::string g_batchSendRecvAivBinaryName = "hccl_aiv_batch_send_recv_op_910_95.o";
+
 static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>> g_aivKernelInfoMap = {
     {HcclCMDType::HCCL_CMD_ALLREDUCE, {g_allreduceAivBinaryName, g_allreduceAivKernelInfoList}},
     {HcclCMDType::HCCL_CMD_REDUCE_SCATTER, {g_reduceScatterAivBinaryName, g_reduceScatterAivKernelInfoList}},
@@ -208,6 +213,7 @@ static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>
     {HcclCMDType::HCCL_CMD_REDUCE, {g_reduceAivBinaryName, g_reduceAivKernelInfoList}},
     {HcclCMDType::HCCL_CMD_SEND, {g_sendAivBinaryName, g_sendAivKernelInfoList}},
     {HcclCMDType::HCCL_CMD_RECEIVE, {g_recvAivBinaryName, g_recvAivKernelInfoList}},
+    {HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, {g_batchSendRecvAivBinaryName, g_batchSendRecvAivKernelInfoList}},
 };
 
 // A6版本（dav-920r1-vec）对应的二进制名，kernel信息列表与A5版本一致
@@ -221,6 +227,7 @@ static std::string g_scatterAivBinaryNameA6 = "hccl_aiv_scatter_op_960.o";
 static std::string g_reduceAivBinaryNameA6 = "hccl_aiv_reduce_op_960.o";
 static std::string g_sendAivBinaryNameA6 = "hccl_aiv_send_op_960.o";
 static std::string g_recvAivBinaryNameA6 = "hccl_aiv_recv_op_960.o";
+static std::string g_batchSendRecvAivBinaryNameA6 = "hccl_aiv_batch_send_recv_op_960.o";
 
 static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>> g_aivKernelInfoMapA6 = {
     {HcclCMDType::HCCL_CMD_ALLREDUCE, {g_allreduceAivBinaryNameA6, g_allreduceAivKernelInfoList}},
@@ -233,6 +240,7 @@ static std::map<HcclCMDType, std::pair<std::string, std::vector<AivKernelInfo>>>
     {HcclCMDType::HCCL_CMD_REDUCE, {g_reduceAivBinaryNameA6, g_reduceAivKernelInfoList}},
     {HcclCMDType::HCCL_CMD_SEND, {g_sendAivBinaryNameA6, g_sendAivKernelInfoList}},
     {HcclCMDType::HCCL_CMD_RECEIVE, {g_recvAivBinaryNameA6, g_recvAivKernelInfoList}},
+    {HcclCMDType::HCCL_CMD_BATCH_SEND_RECV, {g_batchSendRecvAivBinaryNameA6, g_batchSendRecvAivKernelInfoList}},
 };
 
 // 根据设备类型选择AIV kernel信息map：960芯片使用A6版本，其余使用A5版本
