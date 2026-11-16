@@ -141,7 +141,6 @@ HcclResult InsTempScatterMesh1D::KernelRun(
     enableRemoteMemAccess_ = tempAlgParams.enableRemoteMemAccess;
     threadNum_ = templateResource.threads.size();
     processSize_ = tempAlgParams.sliceSize;
-    count_ = tempAlgParams.count;
     dataType_ = param.DataDes.dataType;
     CHK_PTR_NULL(tempAlgParams.buffInfo.hcclBuff.addr);
     if (u32(myRank_) == root_ && tempAlgParams.buffInfo.inBuffType != BufferType::HCCL_BUFFER) {
@@ -152,8 +151,9 @@ HcclResult InsTempScatterMesh1D::KernelRun(
     // 尾块模式
     if (tempAlgParams.tailSize != 0 && myAlgRank == templateRankSize_ - 1) {
         processSize_ = tempAlgParams.tailSize;
-        count_ = processSize_ / dataTypeSize;
     }
+    // count_ 为本rank切片元素数，由 processSize_ 推导而非透传总量，保证 (size, count) 一致。
+    count_ = processSize_ / dataTypeSize;
     HCCL_INFO("[InsTempScatterMesh1D] Run Start");
     CHK_RET(PreCopy(tempAlgParams, templateResource.threads));
     if (threadNum_ > 1) {
