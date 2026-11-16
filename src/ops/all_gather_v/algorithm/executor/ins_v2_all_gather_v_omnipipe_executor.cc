@@ -371,11 +371,11 @@ HcclResult InsV2AllGatherVOmniPipeExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     // 4、计算第n次的loop的slice信息
     OmniPipeSliceInfo tailSliceInfo;
     if (dataCount_ % maxCountPerLoop != 0) {
-        u64 perLoopSize = (dataCount_ % maxCountPerLoop) * dataTypeSize_;
-        std::vector<u64> dataSizePerLoop(rankSize_, perLoopSize);
-        std::vector<u64> dataWholeSize(rankSize_, perLoopSize);
-        omniPipeSliceParam.dataSizePerLoop = dataSizePerLoop;
-        omniPipeSliceParam.dataWholeSize = dataWholeSize;
+        u64 tailPerLoopSize = (dataCount_ % maxCountPerLoop) * dataTypeSize_;
+        std::vector<u64> tailDataSizePerLoop(rankSize_, tailPerLoopSize);
+        std::vector<u64> tailDataWholeSize(rankSize_, tailPerLoopSize);
+        omniPipeSliceParam.dataSizePerLoop = tailDataSizePerLoop;
+        omniPipeSliceParam.dataWholeSize = tailDataWholeSize;
         tailSliceInfo = CalcAGOmniPipeSliceInfo(omniPipeSliceParam);
     }
 

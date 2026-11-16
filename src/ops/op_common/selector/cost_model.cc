@@ -199,7 +199,7 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(
     if (!(t.supportLevel0Topos & (1 << static_cast<uint8_t>(topoInfo->level0Topo)))) {
         result.matched = false;
         result.reason = "level0Topo=" + std::to_string(static_cast<uint8_t>(topoInfo->level0Topo))
-                        + " not in supportLevel0Topos=0x" + std::to_string(t.supportLevel0Topos);
+                        + " not in supportLevel0Topos=" + std::to_string(t.supportLevel0Topos);
         return result;
     }
 
@@ -209,7 +209,7 @@ TopoMatchResult CheckAlgoMatchTopoWithReason(
             if (!(t.supportLevel0MeshTypes & (1 << static_cast<uint8_t>(topoInfo->level0MeshType)))) {
                 result.matched = false;
                 result.reason = "level0MeshType=" + std::to_string(static_cast<uint8_t>(topoInfo->level0MeshType))
-                                + " not in supportLevel0MeshTypes=0x" + std::to_string(t.supportLevel0MeshTypes);
+                                + " not in supportLevel0MeshTypes=" + std::to_string(t.supportLevel0MeshTypes);
                 return result;
             }
         }

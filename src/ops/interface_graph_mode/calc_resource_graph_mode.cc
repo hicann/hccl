@@ -669,6 +669,9 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize / rankSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] exceeds u32 limit", loopTimes), HCCL_E_PARA);
         ccuTaskNum = loopTimes;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_ALLTOALLV || opParam->opType == HCCL_KERNEL_OP_TYPE_ALLTOALLVC) {
         ccuTaskNum = 1;
@@ -677,24 +680,40 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_BROADCAST) {
         maxDataSizePerLoop = transportBoundDataSize;
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_ALLGATHER) {
         maxDataSizePerLoop = transportBoundDataSize;
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_REDUCESCATTER) {
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBufferSize);
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_ALLREDUCE) {
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBufferSize);
@@ -703,24 +722,40 @@ HcclResult CalcTaskNum(OpParamGraphMode* opParam, u32& ccuTaskNum)
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_SCATTER) {
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBufferSize);
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_ALLGATHERV) {
         maxDataSizePerLoop = transportBoundDataSize;
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     } else if (opParam->opType == HCCL_KERNEL_OP_TYPE_REDUCESCATTERV) {
         maxDataSizePerLoop = std::min(transportBoundDataSize, scratchBufferSize);
         maxDataCountPerLoop = maxDataSizePerLoop / dataTypeSize;
         CHK_PRT_RET(maxDataCountPerLoop == 0, HCCL_ERROR("[CalcTaskNum] maxDataCountPerLoop is 0"), HCCL_E_PARA);
         loopTimes = dataCount / maxDataCountPerLoop + static_cast<u64>(dataCount % maxDataCountPerLoop != 0);
+        CHK_PRT_RET(
+            loopTimes > UINT32_MAX / GE_PARALLEL,
+            HCCL_ERROR("[CalcTaskNum] ccuTaskNum = loopTimes[%llu] * GE_PARALLEL exceeds u32 limit", loopTimes),
+            HCCL_E_PARA);
         ccuTaskNum = loopTimes * GE_PARALLEL;
     }
     HCCL_INFO(

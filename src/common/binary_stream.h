@@ -124,8 +124,8 @@ public:
     {
         size_t size = 0;
         *this >> size;
-        if (!stream) {
-            return *this;
+        if (!stream || !IsLengthValid(size)) {
+            return *this; // 流已失效或长度不可信，置failbit由调用方判错，不再按脏长度驱动循环
         }
         for (size_t i = 0; i < size; i++) {
             T1 key{};

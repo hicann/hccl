@@ -188,7 +188,7 @@ HcclResult InsTempReduceScatterOmniPipeMesh1dNDA::RunReduceScatter(
     const std::map<u32, std::vector<ChannelInfo>>& channels, const std::vector<ThreadHandle>& threads,
     const TemplateDataParams& tempAlgParam)
 {
-    HCCL_INFO("MT start to RunReduceScatter, channels.size()=%u", channels.size());
+    HCCL_INFO("MT start to RunReduceScatter, channels.size()=%zu", channels.size());
     u32 myAlgRank = 0;
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);
     if (iter != subCommRanks_[0].end()) {

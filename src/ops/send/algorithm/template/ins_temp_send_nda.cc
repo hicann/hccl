@@ -80,22 +80,23 @@ HcclResult InsTempSendNda::KernelRun(
     DataSlice srcSlice(
         tempAlgParams.buffInfo.inputPtr, tempAlgParams.buffInfo.inBuffBaseOff, transferSize, transferCount);
     DataSlice localCclSlice(tempAlgParams.buffInfo.hcclBuff.addr, 0, transferSize, transferCount);
-    CHK_RET(LocalCopy(templateResource.threads[0], srcSlice, localCclSlice));
-
-    // 经Host RoCE直写对端CCL Buffer; SendWriteForNda统一完成
-    // Wait ACK(对端buffer就绪)/DATA_SIGNAL(写入完成)/FIN_ACK(对端已消费)单向握手
-    DataSlice remoteCclSlice(sendChannel.remoteCclMem.addr, 0, transferSize, transferCount);
-    SlicesList sendSlicesList{{localCclSlice}, {remoteCclSlice}};
-    DataInfo sendInfo{sendChannel, sendSlicesList};
-    CHK_PRT_RET(
-        SendWriteForNda(sendInfo, templateResource.threads[0]) != HCCL_SUCCESS,
-        HCCL_ERROR("[InsTempSendNda] SendWriteForNda failed, remoteRank[%u].", recvRank_), HcclResult::HCCL_E_INTERNAL);
-
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempSendNda] failed set batch mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+    HcclResult ret = LocalCopy(templateResource.threads[0], srcSlice, localCclSlice);
+    if (ret == HCCL_SUCCESS) {
+        // 经Host RoCE直写对端CCL Buffer; SendWriteForNda统一完成
+        // Wait ACK(对端buffer就绪)/DATA_SIGNAL(写入完成)/FIN_ACK(对端已消费)单向握手
+        DataSlice remoteCclSlice(sendChannel.remoteCclMem.addr, 0, transferSize, transferCount);
+        SlicesList sendSlicesList{{localCclSlice}, {remoteCclSlice}};
+        DataInfo sendInfo{sendChannel, sendSlicesList};
+        ret = SendWriteForNda(sendInfo, templateResource.threads[0]);
     }
+    // 将执行模式转换回到batch; 成功与失败路径均恢复，避免执行引擎停留在eager模式
+    const HcclResult restoreRet = static_cast<HcclResult>(HcommBatchModeStart(param.algTag));
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || restoreRet != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsTempSendNda] NDA send failed, runRet[%d], restoreRet[%d], remoteRank[%u].", ret, restoreRet,
+            recvRank_),
+        ret != HCCL_SUCCESS ? ret : restoreRet);
 
     HCCL_INFO("[InsTempSendNda] Rank[%u] -> Rank[%u] size[%llu] Run End.", myRank_, recvRank_, transferSize);
     return HcclResult::HCCL_SUCCESS;

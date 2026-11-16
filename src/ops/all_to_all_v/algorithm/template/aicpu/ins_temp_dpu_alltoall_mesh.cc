@@ -290,7 +290,7 @@ HcclResult InsTempDpuAlltoAllMesh::RunAicpuTransfer(
         u32 remoteRank = commRanks[i];
         if (remoteRank == myRank_) {
             HCCL_INFO(
-                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] is eaqul with remoteRank[%u] skip aicpu data "
+                "[InsTempDpuAlltoAllMesh] [RunAicpuTransfer] myRank[%u] is equal to remoteRank[%u] skip aicpu data "
                 "transfer",
                 myRank_, remoteRank);
             continue;

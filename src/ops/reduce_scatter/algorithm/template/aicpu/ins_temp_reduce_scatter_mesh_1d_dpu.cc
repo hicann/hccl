@@ -111,43 +111,51 @@ HcclResult InsTempReduceScatterMesh1dDpu::KernelRun(
             HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] failed set eager mode, tag is %s.", param.algTag);
             return HCCL_E_INTERNAL;
         }
-
+        u32 sendMsgId = 0;
+        u32 recvMsgId = 0;
+        HcclResult ret = HCCL_SUCCESS;
         if (HcommThreadSynchronize(templateResource.threads[0]) != 0) {
             HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] HcommThreadSynchronize failed");
-            return HCCL_E_INTERNAL;
+            ret = HCCL_E_INTERNAL;
         }
-
-        DPURunInfo dpuRunInfo;
-        dpuRunInfo.execTimeout = param.opConfig.execTimeout;
-        dpuRunInfo.templateName = "InsTempReduceScatterMesh1dDpu";
-        dpuRunInfo.tempAlgParams = tempAlgParams;
-        dpuRunInfo.channels = templateResource.channels;
-        dpuRunInfo.myRank = myRank_;
-        dpuRunInfo.subCommRanks = subCommRanks_;
-        u32 sendMsgId = 0;
-        auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
-        if (HcommSendRequest(
-                reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
-                static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
-            != 0) {
-            HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] HcommSendRequest failed");
-            return HCCL_E_INTERNAL;
+        if (ret == HCCL_SUCCESS) {
+            DPURunInfo dpuRunInfo;
+            dpuRunInfo.execTimeout = param.opConfig.execTimeout;
+            dpuRunInfo.templateName = "InsTempReduceScatterMesh1dDpu";
+            dpuRunInfo.tempAlgParams = tempAlgParams;
+            dpuRunInfo.channels = templateResource.channels;
+            dpuRunInfo.myRank = myRank_;
+            dpuRunInfo.subCommRanks = subCommRanks_;
+            auto dpuRunInfoSeqData = dpuRunInfo.Serialize();
+            if (HcommSendRequest(
+                    reinterpret_cast<uint64_t>(templateResource.npu2DpuShmemPtr), param.algTag,
+                    static_cast<void*>(dpuRunInfoSeqData.data()), dpuRunInfoSeqData.size(), &sendMsgId)
+                != 0) {
+                HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] HcommSendRequest failed");
+                ret = HCCL_E_INTERNAL;
+            } else {
+                HCCL_INFO("[InsTempReduceScatterMesh1dDpu] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
+            }
         }
-        HCCL_INFO("[InsTempReduceScatterMesh1dDpu] HcommSendRequest run over, sendMsgId[%u]", sendMsgId);
-        // 等待DPU数据传输，然后回写结果回来
-        void* recvData = nullptr;
-        u32 recvMsgId = 0;
-        if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
-            != 0) {
-            HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] HcommWaitResponse failed");
-            return HCCL_E_INTERNAL;
+        if (ret == HCCL_SUCCESS) {
+            // 等待DPU数据传输，然后回写结果回来
+            void* recvData = nullptr;
+            if (HcommWaitResponse(reinterpret_cast<uint64_t>(templateResource.dpu2NpuShmemPtr), recvData, 0, &recvMsgId)
+                != 0) {
+                HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] HcommWaitResponse failed");
+                ret = HCCL_E_INTERNAL;
+            } else {
+                HCCL_INFO("[InsTempReduceScatterMesh1dDpu] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+            }
         }
-        // 将执行模式转换回到batch
-        if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-            HCCL_ERROR("[InsTempReduceScatterMesh1dDpu] failed set batch mode, tag is %s.", param.algTag);
-            return HCCL_E_INTERNAL;
-        }
-        HCCL_INFO("[InsTempReduceScatterMesh1dDpu] HcommWaitResponse run over, recvMsgId[%u]", recvMsgId);
+        // 将执行模式转换回到batch; 成功与失败路径均恢复，避免执行引擎停留在eager模式
+        const HcclResult restoreRet = static_cast<HcclResult>(HcommBatchModeStart(param.algTag));
+        CHK_PRT_RET(
+            ret != HCCL_SUCCESS || restoreRet != HCCL_SUCCESS,
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpu] DPU transfer failed, runRet[%d], restoreRet[%d], tag is %s.", ret,
+                restoreRet, param.algTag),
+            ret != HCCL_SUCCESS ? ret : restoreRet);
         if (recvMsgId != sendMsgId) {
             HCCL_ERROR(
                 "[InsTempReduceScatterMesh1dDpu] recvMsgId[%u] not equal to sendMsgId[%u]", recvMsgId, sendMsgId);
@@ -180,7 +188,15 @@ HcclResult InsTempReduceScatterMesh1dDpu::RunDpuTransfer(
         if (remoteRank == myRank_) {
             continue;
         }
-        const ChannelInfo& link = channels.at(remoteRank)[0];
+        auto channelIt = channels.find(remoteRank);
+        if (channelIt == channels.end() || channelIt->second.empty()) {
+            HCCL_ERROR(
+                "[InsTempReduceScatterMesh1dDpu][RunDpuTransfer] channel not found or empty for remoteRank[%u], "
+                "channels size[%zu]",
+                remoteRank, channels.size());
+            return HCCL_E_INTERNAL;
+        }
+        const ChannelInfo& link = channelIt->second[0];
 
         DpuTransferCtx ctx;
         ctx.txCh = &link;
@@ -242,8 +258,6 @@ HcclResult InsTempReduceScatterMesh1dDpu::PostLocalReduce(
         return HCCL_E_INTERNAL;
     }
     for (u32 repeatIdx = 0; repeatIdx < tempAlgParams.repeatNum; repeatIdx++) {
-        u64 dataTypeSize = HCCL_SIZE_TABLE[dataType_];
-        u64 count = processSize_ / dataTypeSize;
         // 将本端数据从inputPtr搬运到cclBuffer上面
         DataSlice srcSlice = DataSlice(
             tempAlgParams.buffInfo.inputPtr,

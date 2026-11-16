@@ -82,20 +82,21 @@ HcclResult InsTempRecvNda::KernelRun(
     DataSlice cclSlice(tempAlgParams.buffInfo.hcclBuff.addr, 0, transferSize, transferCount);
     SlicesList recvSlicesList{{remoteCclSlice}, {cclSlice}};
     DataInfo recvInfo{recvChannel, recvSlicesList};
-    CHK_PRT_RET(
-        RecvWriteForNda(recvInfo, templateResource.threads[0]) != HCCL_SUCCESS,
-        HCCL_ERROR("[InsTempRecvNda] RecvWriteForNda failed, remoteRank[%u].", sendRank_), HcclResult::HCCL_E_INTERNAL);
-
-    // 将本片数据从CCL Buffer搬运到output; 同线程队列保证搬运先于下一轮ACK执行
-    DataSlice outputSlice(
-        tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, transferSize, transferCount);
-    CHK_RET(LocalCopy(templateResource.threads[0], cclSlice, outputSlice));
-
-    // 将执行模式转换回到batch
-    if (HcommBatchModeStart(param.algTag) != HCCL_SUCCESS) {
-        HCCL_ERROR("[InsTempRecvNda] failed set batch mode, tag is %s.", param.algTag);
-        return HCCL_E_INTERNAL;
+    HcclResult ret = RecvWriteForNda(recvInfo, templateResource.threads[0]);
+    if (ret == HCCL_SUCCESS) {
+        // 将本片数据从CCL Buffer搬运到output; 同线程队列保证搬运先于下一轮ACK执行
+        DataSlice outputSlice(
+            tempAlgParams.buffInfo.outputPtr, tempAlgParams.buffInfo.outBuffBaseOff, transferSize, transferCount);
+        ret = LocalCopy(templateResource.threads[0], cclSlice, outputSlice);
     }
+    // 将执行模式转换回到batch; 成功与失败路径均恢复，避免执行引擎停留在eager模式
+    const HcclResult restoreRet = static_cast<HcclResult>(HcommBatchModeStart(param.algTag));
+    CHK_PRT_RET(
+        ret != HCCL_SUCCESS || restoreRet != HCCL_SUCCESS,
+        HCCL_ERROR(
+            "[InsTempRecvNda] NDA recv failed, runRet[%d], restoreRet[%d], remoteRank[%u].", ret, restoreRet,
+            sendRank_),
+        ret != HCCL_SUCCESS ? ret : restoreRet);
 
     HCCL_INFO("[InsTempRecvNda] Rank[%u] <- Rank[%u] size[%llu] Run End.", myRank_, sendRank_, transferSize);
     return HcclResult::HCCL_SUCCESS;
