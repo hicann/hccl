@@ -19,7 +19,7 @@ npu-smi info -t spod-info -i id -c chip_id
 - id：设备id，通过npu-smi info -l命令查出的NPU ID即为设备id。
 - chip_id：芯片id，通过npu-smi info -m命令查出的Chip ID即为芯片id。
 
-回显中的“SDID”即为superDeviceID。
+回显中的“SDID”即为superDeviceId。
 
 出现此问题的可能原因是：
 

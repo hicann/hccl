@@ -8,7 +8,7 @@ HCCL在集群信息协商时（基于root节点信息创建通信域的场景）
 2. 通信域内每个rank节点调用HcclCommInitRootInfo，同时会将rootInfo作为入参输入，该接口会拉起一个client线程，通过**host网卡**与server建立socket连接，并向server发送自己的rankInfo信息，发送完毕后进入接收状态，等待server返回完成的ranktable。
 3. Server在收集到全部rank的rankInfo信息后，会生成完整的rankTable信息，并发送给每一个client，这样每个rank上就有整个通信域的全部rank信息。
 
-由于基于拓扑探测的方式需要在rank之间建立socket连接，这里使用的是**Host侧的网卡**进行socket连接及通信，且需要通信域全部rank在超时时间内同步执行。**因此，若没有正确的选择互联的Host侧网卡，通信域内下发行为不一致是比较常见的超时失败原因。**
+由于基于拓扑探测的方式需要在rank之间建立socket连接，这里使用的是**Host侧的网卡**进行socket连接及通信，且需要通信域全部rank在超时时间内同步执行。**因此，若没有正确地选择互联的Host侧网卡，通信域内下发行为不一致是比较常见的超时失败原因。**
 
 # 通信域初始化topo探测超时（EI0015）
 

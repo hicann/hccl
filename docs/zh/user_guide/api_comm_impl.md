@@ -132,7 +132,7 @@ HCCL提供了C与Python两种语言的开发接口，用于实现分布式能力
        <!-- npu="950" id6 -->
     1. 针对Ascend 950PR&950DT系列产品，检查rootinfo文件是否存在，其他产品跳过此步骤。
 
-        基于root节点信息创建通信域前，请检查“/etc/hccl_rootInfo.json”文件是否存在，此文件记录了NPU间通信的EID（Entity ID，通信中发起或接收对象的标识）信息，环境部署完成后自动生成。若无此文件，请在当前代码仓提issue。
+        基于root节点信息创建通信域前，请检查“/etc/hccl_rootInfo.json”文件是否存在，此文件记录了NPU间通信的EID（Entity ID，通信中发起或接收对象的标识）信息，环境部署完成后自动生成。若无此文件，请在当前源码仓提issue。
        <!-- end id6 -->
 
     2. 参见[“每个Device对应一个业务进程”场景的步骤2](#set_host_nic)，指定HCCL初始化时Host节点使用的通信IP地址或通信网卡（可选）。
@@ -296,7 +296,7 @@ ReduceScatter操作是将通信域内所有rank的输入数据均分成rank size
 
 ### ReduceScatterV
 
-ReduceScatterV操作与ReduceScatter操作类似，不同点是支持为通信域内不同的节点配置不同大小的数据量（同一rank不同编号的数据大小可设置，但不同rank间相同编号的数据大小需保持一致），取每个rank对应编号的数据进行归约操作后（如sum、prod、max、min）后，再把结果按照编号分散到各个rank的输出buffer。
+ReduceScatterV操作与ReduceScatter操作类似，不同点是支持为通信域内不同的节点配置不同大小的数据量（同一rank不同编号的数据大小可设置，但不同rank间相同编号的数据大小需保持一致），取每个rank对应编号的数据进行归约操作后（如sum、prod、max、min），再把结果按照编号分散到各个rank的输出buffer。
 
 ![ReduceScatterV](figures/reduce_scatterv.png)
 

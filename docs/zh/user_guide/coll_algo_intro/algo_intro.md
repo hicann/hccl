@@ -4,7 +4,7 @@
 
 ## Server内通信算法
 
-HCCL通信域Server内支持Mesh、Ring、Double-Ring和Star算法，具体使用的算法根据硬件拓扑自动选择，用户无须配置也不支持配置。
+HCCL通信域Server内支持Mesh、Ring、Double-Ring和Star算法，具体使用的算法根据硬件拓扑自动选择，用户无需配置也不支持配置。
 
 ## Server间/超节点间通信算法
 

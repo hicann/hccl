@@ -82,7 +82,7 @@
   | 环境变量 | 配置说明 |
   | --- | --- |
   | [HCCL_CONNECT_TIMEOUT](./hccl_env/HCCL_CONNECT_TIMEOUT.md) | 配置socket建链超时等待时间，默认值为120，单位s。该场景下，建议根据网络规模大小适当调整建链超时等待时间。export HCCL_CONNECT_TIMEOUT=1200 |
-  | [HCCL_OP_EXPANSION_MODE](./hccl_env/HCCL_OP_EXPANSION_MODE.md) | 配置通信算子的展开模式 。<br>该场景下建议保持默认值“HOST”，代表通信算子在Host侧CPU展开。<br>export HCCL_OP_EXPANSION_MODE="HOST" |
+  | [HCCL_OP_EXPANSION_MODE](./hccl_env/HCCL_OP_EXPANSION_MODE.md) | 配置通信算子的展开模式。<br>该场景下建议保持默认值“HOST”，代表通信算子在Host侧CPU展开。<br>export HCCL_OP_EXPANSION_MODE="HOST" |
   | [HCCL_DETERMINISTIC](./hccl_env/HCCL_DETERMINISTIC.md) | 是否开启确定性计算，用户可以根据使用场景选择开启或关闭，默认值为false，代表关闭确定性计算。<br>export HCCL_DETERMINISTIC=false |
 
 - **推理场景**

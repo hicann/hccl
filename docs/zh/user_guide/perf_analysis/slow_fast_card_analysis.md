@@ -4,7 +4,7 @@
 
 ![快慢卡现象](figures/slow_fast_rank.png)
 
-如上图中的示例，device1先执行到AllReduce算子，但是device0的AllReduce算子执行到的时间更慢，因此device1上的AllReduce算子会有一段notify wait的时间被统计到算子的耗时中，此时需要进一步去排查卡间算子的执行有快慢卡的原因，常见的快慢卡现象的原因有：
+如上图中的示例，device1先执行到AllReduce算子，但是device0的AllReduce算子执行到的时间更慢，因此device1上的AllReduce算子会有一段notify wait的时间被统计到算子的耗时中，此时需要进一步去排查卡间算子的执行有快慢的原因，常见的快慢卡现象的原因有：
 
 - 前置计算算子性能波动。
 - 通信算子下发瓶颈，如host侧其他行为导致慢卡的通信算子没能及时下发。

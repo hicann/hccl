@@ -376,7 +376,7 @@ rank table文件配置说明如下所示：
 |  |  | net_layer |  | 必选。<br>网络层次，取值范围：[0,7]。<br>net_layer需要从0开始编号，以升序的形式排列。 |
 |  |  | net_instance_id |  | 必选。<br>该网络层次下的实例ID，用户自定义，同一个net_layer下保持唯一，长度不超过1024。 |
 |  |  | net_type |  | 必选。<br>该网络层次的网络类型。<br>当“net_layer”取值为“0”时，该参数仅支持配置为“TOPO_FILE_DESC”，代表通过拓扑文件描述。<br>当“net_layer”取值为非0时，该参数支持以下两种配置：<br>  - CLOS：代表所有节点均可互通，例如通过交换机连接的胖树结构。<br>  - TOPO_FILE_DESC：代表网络类型通过拓扑文件描述。
-|  |  | net_attr |  | 可选。<br>预留字段，表示该网络层次的其他额外信息。 |
+|  |  | net_attr |  | 可选。<br>预留字段，表示该网络层次的其他信息。 |
 |  |  | rank_addr_list |  | 必选。<br>当前rank在该网络层次使用的网络地址信息。<br>此列表下数组长度不能超过24，每个Die需要单独配置。 |
 |  |  |  | addr_type | 必选。<br>当前rank的地址类型，支持以下取值：<br>  - EID：通过HCCN TOOL查询获取EID。<br>  - IPv4：只用于Host网卡场景，在Host通过ifconfig -a获取，需要配置和NPU只有一跳PCIE-SW连接的网卡。<br>  - IPv6：只用于Host网卡场景，在Host通过ifconfig -a获取，需要配置和NPU只有一跳PCIE-SW连接的网卡。 |
 |  |  |  | addr | 必选。<br>当前rank的网络地址，字符串类型，长度范围1~256，地址需要符合“addr_type”指定的地址格式。 |

@@ -26,7 +26,7 @@
 - L1代表通信域的物理范围为Server间通信域，取值为0表示通信域内Server间通信task不开启重执行，取值为1表示通信域内Server间通信task开启重执行，默认值为0。
 - L2代表通信域的物理范围为超节点间通信域，取值为0表示通信域内超节点间通信task不开启重执行，取值为1表示通信域内超节点间通信task开启重执行，默认值为0。
 
-    L2配置为“1”时，超节点间通信若某一Device网卡故障，重执行时会使用备用Device网卡进行通信，称之为“借轨通信”。备用网卡为属于同一NPU中的另一个Die网卡，借轨通信正常执行的条件以及借轨通信的影响详细可参见[借轨通信使用须知](#借轨通信使用须知)。
+    L2配置为“1”时，超节点间通信若某一Device网卡故障，重执行时会使用备用Device网卡进行通信，称之为“借轨通信”。备用网卡为同一NPU中的另一个Die网卡，借轨通信正常执行的条件以及借轨通信的影响详细可参见[借轨通信使用须知](#借轨通信使用须知)。
 
   - 如果通信域的创建方式为“基于rank table创建通信域”，需要开发者在rank table文件中通过“backup_device_ip”参数配置备用网卡。
   - 如果通信域的创建方式为“基于root节点信息创建通信域”，会自动将同一NPU下的两个Die互为备用网卡，无需开发者手工配置。
@@ -58,7 +58,7 @@
 
     - 开启零拷贝功能的场景：零拷贝功能开启后，ReduceScatter和AllReduce算子会修改用户的输入内存，因此这两类算子无法支持重执行。
     - 包含In-Place操作的场景：此场景下，算子的输入和输出共享同一块内存，例如PyTorch的[ReduceScatter](https://pytorch.org/docs/stable/distributed.html#torch.distributed.reduce_scatter)/[AllGather](https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather)算子，所以包含In-Place操作的场景也不支持重执行。
-    - 图模式场景：在图模式下，通信可以直接在算子的输入输出上进行，例如PyTorch的[AllReduce](https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_reduce)算子，其入参tensor即作为算子的输入，又作为算子的输出，在算子的通信过程中，部分结果写入后，tensor内容就会发生变化，如果在污染的input上重新执行一遍，会得到错误的计算结果。所以此场景也不支持重执行。
+    - 图模式场景：在图模式下，通信可以直接在算子的输入输出上进行，例如PyTorch的[AllReduce](https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_reduce)算子，其入参tensor既作为算子的输入，又作为算子的输出，在算子的通信过程中，部分结果写入后，tensor内容就会发生变化，如果在污染的input上重新执行一遍，会得到错误的计算结果。所以此场景也不支持重执行。
 
 4. 故障发生时通信域内所有rank都停在同一个通信算子。若不同的rank停在不同的通信算子上，则不能重执行。
 
@@ -77,7 +77,7 @@
     | D | 否 | rank0和rank1的HCCL OP1已执行完成，D时刻故障发生时，会继续执行到HCCL OP2，而rank2仍然停在HCCL OP1，不满足重执行条件。 |
     | E | 是 | HCCL OP3。<br>三个rank都继续执行，最终停止在HCCL OP3，满足重执行条件并启动重执行。 |
 
-    下面说明下集合通信为什么不能完全保证故障发生时停止在同一个通信算子，以集合通信常见的算法RHD（Recursive Halving-Doubling）为例。
+    下面说明集合通信为什么不能完全保证故障发生时停止在同一个通信算子，以集合通信常见的算法RHD（Recursive Halving-Doubling）为例。
 
     **图3**  通信域故障示意图2  
     ![通信域故障示意图2](figures/comm_domain_fault_2.png)

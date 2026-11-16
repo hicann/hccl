@@ -24,7 +24,7 @@
 - Atlas推理系列产品
   <!-- end id3 -->
 
-报错示例如下所示：
+报错示例如下：
 
 ```text
 [ERROR]HCCL(3729526,python3.11):2025-10-23-17:30:40.098.973 [externalinput.cc:963] [3729526][Parse][rdmaServerLevel]HCCL_RDMA_SL[1000] is invalid. except: [0, 7]

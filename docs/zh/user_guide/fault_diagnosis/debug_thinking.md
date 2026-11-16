@@ -18,7 +18,7 @@
 
 - [HCCL_CONNECT_TIMEOUT](../hccl_env/HCCL_CONNECT_TIMEOUT.md)、[HCCL_EXEC_TIMEOUT](../hccl_env/HCCL_EXEC_TIMEOUT.md)
 
-  HCCL在建链阶段和执行阶段的超时时间，建议HCCL_CONNECT_TIMEOUT配置的时间小于HCCL_EXEC_TIMEOUT配置的时间，以保证复杂场景下能够正确的上报首报错信息，以区分异常业务进程被阻塞的原因是本端还是远端。
+  HCCL在建链阶段和执行阶段的超时时间，建议HCCL_CONNECT_TIMEOUT配置的时间小于HCCL_EXEC_TIMEOUT配置的时间，以保证复杂场景下能够正确地上报首报错信息，以区分异常业务进程被阻塞的原因是本端还是远端。
 
 - [HCCL_ENTRY_LOG_ENABLE](../hccl_env/HCCL_ENTRY_LOG_ENABLE.md)
 

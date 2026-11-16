@@ -49,7 +49,7 @@ HCCL提供了多种故障检测功能的开关设置，包括建链故障探测�
 <!-- end id5 -->
 
 <!-- npu="A3" id4 -->
-- **task_monitor_interval**：算子的展开模式为AI CPU的场景下，开启算子task执行耗时时间监控。
+- **task_monitor_interval**：算子的展开模式为AI CPU的场景下，开启算子task执行耗时监控。
 
     “task_monitor_interval”参数的取值范围为：\[0, 7200000\]，单位ms，默认为0。
 

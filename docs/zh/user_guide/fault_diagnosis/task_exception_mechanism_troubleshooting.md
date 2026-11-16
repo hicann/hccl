@@ -1,6 +1,6 @@
 # 定位思路
 
-HCCL通信算子的任务编排完成后会下发到Device侧上异步执行，若此时HCCL下发的任务执行失败，会通过调用回调函数通知HCCL异常task信息（stream和taskId），HCCL会以此检索下发时的task信息，打印失败task的详细信息及其所在的算子信息。
+HCCL通信算子的任务编排完成后会下发到Device侧异步执行，若此时HCCL下发的任务执行失败，会通过调用回调函数通知HCCL异常task信息（stream和taskId），HCCL会以此检索下发时的task信息，打印失败task的详细信息及其所在的算子信息。
 
 针对如下产品，如果要跟踪task级信息，需要通过[HCCL_DIAGNOSE_ENABLE](../hccl_env/HCCL_DIAGNOSE_ENABLE.md)手动开启。
 

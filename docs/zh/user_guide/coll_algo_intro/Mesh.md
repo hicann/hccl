@@ -6,7 +6,7 @@ Mesh是FullMesh互联拓扑内的基础算法，是NPU之间的全连接，任�
 
 ![](figures/mesh.png)
 
-Mesh算法实现AllReduce算子的流程如下图所示，每个NPU并发的使用多路HCCS链路从对端读取或者写入数据，使双工互联链路的双向带宽同时得到利用。
+Mesh算法实现AllReduce算子的流程如下图所示，每个NPU并发地使用多路HCCS链路从对端读取或者写入数据，使双工互联链路的双向带宽同时得到利用。
 
 ![](figures/mesh_algo_principle.png)
 

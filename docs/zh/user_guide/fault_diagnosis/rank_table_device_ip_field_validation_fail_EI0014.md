@@ -12,7 +12,7 @@
 
 HCCL在校验device ip时发现当前device侧获取的device ip与rank table中给当前rank配置的device ip不一致，因此校验失败。
 
-比如在rank0上，绑定的device对应的device ip为127.10.0.1，但是在rank table中给rank0配置的device ip为127.10.0.0，导致HCCL检验失败。
+比如在rank0上，绑定的device对应的device ip为127.10.0.1，但是在rank table中给rank0配置的device ip为127.10.0.0，导致HCCL校验失败。
 
 ## 解决方法
 
