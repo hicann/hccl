@@ -128,6 +128,33 @@ SelectorStatus AllGatherVAutoSelector::SelectAivAlgo(
     return SelectorStatus::NOT_MATCH;
 }
 
+SelectorStatus AllGatherVAutoSelector::SelectDPUAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    std::vector<HcclAlgoType> algos = GetConfiguredAlgorithms(opParam.opType, configAlgMap);
+    HCCL_INFO(
+        "[AllGatherVAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, level3:%u",
+        opParam.opType, algos[0], algos[1], algos[2], algos[3]);
+    if (topoInfo->topoLevelNums > 1) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+            selectAlgName = "DpuAllGatherVSoleMesh";
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            selectAlgName = "DpuAllGatherVSoleMesh";
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // 兼容level0为clos的场景
+            selectAlgName = "DpuAllGatherVSoleMesh";
+            HCCL_DEBUG(
+                "[AllGatherVAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
+    }
+
+    return SelectorStatus::NOT_MATCH;
+}
+
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_ALLGATHER_V, 18, AllGatherVAutoSelector);
 
 } // namespace ops_hccl

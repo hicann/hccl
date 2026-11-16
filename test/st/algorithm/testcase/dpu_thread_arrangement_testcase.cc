@@ -23,6 +23,7 @@
  *     仿真拓扑只会生成 HOST/HOST 或 DEVICE/DEVICE 同构链路，无法构造该场景。
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -454,6 +455,82 @@ TEST_F(ST_DPU_THREAD_ARRANGEMENT_TEST, all_to_all_vc_sole_mesh)
         },
         [=](HcclSim::AllRankTaskQueues& tq, u32 rs) {
             return CheckAll2AllVC(tq, rs, DATA_TYPE, sendCountMatrix);
+        });
+}
+
+// ============================== AllGatherV / ReduceScatterV ==============================
+// V 类变长算子（DpuAllGatherVSoleMesh / DpuReduceScatterVSoleMesh）：hostDpuOnly 拓扑下确定性选路。
+// 不均（含 0 count）counts 覆盖变长语义，校验 DPU Thread 新路径下变长分片的批量搬运与落位。
+namespace {
+// 构造 VDataDesTag：counts 为各 rank 变长分片，displs 为其前缀和（AGV 收侧 / RSV 发侧布局一致）
+VDataDesTag MakeVDataDes(const std::vector<u64>& counts, HcclDataType dataType)
+{
+    VDataDesTag vDataDes;
+    vDataDes.counts = counts;
+    vDataDes.displs.assign(counts.size(), 0);
+    u64 offset = 0;
+    for (size_t i = 0; i < counts.size(); ++i) {
+        vDataDes.displs[i] = offset;
+        offset += counts[i];
+    }
+    vDataDes.dataType = dataType;
+    return vDataDes;
+}
+} // namespace
+
+TEST_F(ST_DPU_THREAD_ARRANGEMENT_TEST, all_gather_v_sole_mesh_uneven)
+{
+    TopoMeta topoMeta = TwoLevelTopo();
+    u32 rankSize = HcclSim::CalRankSize(topoMeta);
+    // 不均 counts：偶数 rank 2048、奇数 rank 0（无广播量）、末 rank 尾块 7，覆盖 0 count 跳过逻辑
+    std::vector<u64> counts(rankSize, 0);
+    for (u32 i = 0; i < rankSize; ++i) {
+        counts[i] = (i == rankSize - 1) ? 7 : ((i % 2 == 0) ? 2048 : 0);
+    }
+    VDataDesTag vDataDes = MakeVDataDes(counts, DATA_TYPE);
+    u64 totalCount = 0;
+    u64 maxCount = 0;
+    for (u64 count : counts) {
+        totalCount += count;
+        maxCount = std::max(maxCount, count);
+    }
+    RunArrangement(
+        topoMeta, "", "DpuAllGatherVSoleMesh", maxCount * DATA_TYPE_SIZE, totalCount * DATA_TYPE_SIZE,
+        [=](u32 rankId, void* sendBuf, void* recvBuf, HcclComm comm, aclrtStream stream) {
+            return HcclAllGatherV(
+                sendBuf, vDataDes.counts[rankId], recvBuf, vDataDes.counts.data(), vDataDes.displs.data(),
+                vDataDes.dataType, comm, stream);
+        },
+        [=](HcclSim::AllRankTaskQueues& tq, u32 rs) {
+            return CheckAllGatherV(tq, rs, vDataDes);
+        });
+}
+
+TEST_F(ST_DPU_THREAD_ARRANGEMENT_TEST, reduce_scatter_v_sole_mesh_uneven)
+{
+    TopoMeta topoMeta = TwoLevelTopo();
+    u32 rankSize = HcclSim::CalRankSize(topoMeta);
+    // 不均 counts：偶数 rank 2048、奇数 rank 0（收量为 0）、末 rank 尾块 7，覆盖 0 count 跳过逻辑
+    std::vector<u64> counts(rankSize, 0);
+    for (u32 i = 0; i < rankSize; ++i) {
+        counts[i] = (i == rankSize - 1) ? 7 : ((i % 2 == 0) ? 2048 : 0);
+    }
+    VDataDesTag vDataDes = MakeVDataDes(counts, DATA_TYPE);
+    u64 totalCount = 0;
+    u64 maxCount = 0;
+    for (u64 count : counts) {
+        totalCount += count;
+        maxCount = std::max(maxCount, count);
+    }
+    RunArrangement(
+        topoMeta, "", "DpuReduceScatterVSoleMesh", totalCount * DATA_TYPE_SIZE, maxCount * DATA_TYPE_SIZE,
+        [=](u32 rankId, void* sendBuf, void* recvBuf, HcclComm comm, aclrtStream stream) {
+            return HcclReduceScatterV(
+                sendBuf, vDataDes.counts.data(), vDataDes.displs.data(), recvBuf, vDataDes.counts[rankId],
+                vDataDes.dataType, REDUCE_OP, comm, stream);
+        },
+        [=](HcclSim::AllRankTaskQueues& tq, u32 rs) {
+            return CheckReduceScatterV(tq, rs, REDUCE_OP, vDataDes);
         });
 }
 

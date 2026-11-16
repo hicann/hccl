@@ -279,6 +279,7 @@ add_library(hccl_aicpu_kernel SHARED
 
     ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/executor/ins_v2_all_gather_v_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/template/aicpu/ins_temp_all_gather_v_mesh_1D.cc
+    ${HCCL_DEV_BASE}/src/ops/all_gather_v/algorithm/template/aicpu/ins_temp_dpu_all_gather_v_mesh.cc
 
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_v_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/executor/ins_v2_all_to_all_sequence_executor.cc
@@ -371,6 +372,7 @@ target_sources(hccl_aicpu_kernel PRIVATE
     # AicpuReduceScatterVSoleMesh.
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/executor/ins_v2_reduce_scatter_v_sole_executor.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template/aicpu/ins_temp_reduce_scatter_v_mesh_1D.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter_v/algorithm/template/aicpu/ins_temp_dpu_reduce_scatter_v_mesh.cc
 )
 
 if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)

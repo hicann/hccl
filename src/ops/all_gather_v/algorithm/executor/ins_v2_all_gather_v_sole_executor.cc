@@ -9,8 +9,10 @@
  */
 
 #include "ins_v2_all_gather_v_sole_executor.h"
+#include <type_traits>
 #include "topo_match_one_level.h"
 #include "ins_temp_all_gather_v_mesh_1D.h"
+#include "ins_temp_dpu_all_gather_v_mesh.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 
@@ -91,12 +93,19 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     templateAlgRes.threads = resCtx.threads;
 
     templateAlgRes.aivCommInfoPtr = resCtx.aivCommInfoPtr;
+    templateAlgRes.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
+    templateAlgRes.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateAlgRes.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateAlgRes.dpuThread = resCtx.dpuThread;
+    templateAlgRes.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateAlgRes.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 准备数据
     TemplateDataParams tempAlgParams;
     SetTemplateBuffInfo(
         tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
+    tempAlgParams.dataType = dataType_;
     // 不需要重复
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
@@ -109,6 +118,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
     std::vector<u64> counts;
     counts.assign(varData, varData + rankSize_);
     tempAlgParams.allRankDispls.assign(varData + rankSize_, varData + rankSize_ + rankSize_);
+    // allRankDispls保持varData原值（count单位），字节转换由模板侧×dataTypeSize_完成，见template_utils.h单位约定
     HCCL_DEBUG(
         "[InsV2AllGatherVSoleExecutor][OrchestrateLoop] Rank[%u], inputPtr[%#llx] outputPtr[%#llx], "
         "cclAddr[%#llx], cclSize[%llu]",
@@ -164,7 +174,7 @@ HcclResult InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orchestrat
         tempAlgParams.allRankProcessedDataCount = allRankProcessedDataCount;
         tempAlgParams.buffInfo.hcclBuffBaseOff = 0;
         // 这里的stride当成传统意义上的stride 间隔
-        tempAlgParams.inputSliceStride = 0; // AllGatherV模板不使用该stride，V类算子无单一input stride语义
+        tempAlgParams.inputSliceStride = maxCountPerLoop * dataTypeSize_; // 单轮CCL块大小，DPU模板按此切CCL_IN/CCL_OUT
         tempAlgParams.outputSliceStride
             = maxCountPerLoop * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
@@ -195,6 +205,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
+    // DPU算法不做cost建模，直接返回固定系数
+    if constexpr (std::is_same_v<InsAlgTemplate, InsTempDpuAllGatherVMesh>) {
+        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+    }
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
             topoInfo, algHierarchyInfo, algName, "[InsV2AllGatherVSoleExecutor][CalcCostCoeff]",
@@ -232,7 +246,12 @@ AlgNetMeta InsV2AllGatherVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlgNetM
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
+    if constexpr (std::is_same_v<InsAlgTemplate, InsTempDpuAllGatherVMesh>) {
+        // DPU算法口径：单对端数据量为D/R，util表按单卡总量标定
+        meta.dataRatios = {static_cast<float>(rankSize)};
+    } else {
+        meta.dataRatios = {1.0f};
+    }
     meta.rankSizes = {rankSize};
     return meta;
 }
@@ -248,6 +267,15 @@ REGISTER_ALG_ATTRS(
         }
         return true;
     };);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLGATHER_V, DpuAllGatherVSoleMesh, InsV2AllGatherVSoleExecutor, TopoMatchOneLevel,
+    InsTempDpuAllGatherVMesh);
+REGISTER_ALG_ATTRS(DpuAllGatherVSoleMesh, topo.isSupportLevel0PcieMix = true; topo.minTopoLevelNum = TOPO_LEVEL_NUM_2;
+                   topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+                   op.isSupportInplace = false;);
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

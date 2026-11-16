@@ -9,8 +9,10 @@
  */
 
 #include "ins_v2_reduce_scatter_v_sole_executor.h"
+#include <type_traits>
 #include "topo_match_one_level.h"
 #include "ins_temp_reduce_scatter_v_mesh_1D.h"
+#include "ins_temp_dpu_reduce_scatter_v_mesh.h"
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -56,6 +58,7 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
     if (param.engine != CommEngine::COMM_ENGINE_AIV && param.engine != CommEngine::COMM_ENGINE_CCU) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
+    dataType_ = param.vDataDes.dataType;
     dataTypeSize_ = DATATYPE_SIZE_TABLE[param.vDataDes.dataType];
 
     HCCL_INFO("[InsV2ReduceScatterVSoleExecutor][Orchestrate] Orchestrate Start");
@@ -83,12 +86,19 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
         templateAlgRes.channels = remoteRankToChannelInfo_[0];
     }
     templateAlgRes.threads = resCtx.threads;
+    templateAlgRes.npu2DpuShmemPtr = resCtx.npu2DpuShmemPtr;
+    templateAlgRes.dpu2NpuShmemPtr = resCtx.dpu2NpuShmemPtr;
+    templateAlgRes.isDpuThreadEnabled = resCtx.isDpuThreadEnabled;
+    templateAlgRes.dpuThread = resCtx.dpuThread;
+    templateAlgRes.dpuThreadNotifyIdxOnMain = resCtx.notifyNumOnMainThread + 1;
+    templateAlgRes.isHcommChannelDrainSupported = resCtx.isHcommChannelDrainSupported;
     // 准备数据
     TemplateDataParams tempAlgParams;
     SetTemplateBuffInfo(
         tempAlgParams, BufferType::INPUT, BufferType::OUTPUT, param.inputPtr, param.outputPtr, resCtx.cclMem);
     tempAlgParams.buffInfo.inputSize = param.inputSize;
     tempAlgParams.buffInfo.outputSize = param.outputSize;
+    tempAlgParams.dataType = dataType_;
     // 不需要重复
     tempAlgParams.repeatNum = 1;
     tempAlgParams.inputRepeatStride = 0;
@@ -160,6 +170,8 @@ HcclResult InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::Orches
         tempAlgParams.tailSize = tempAlgParams.sliceSize;
         tempAlgParams.outputSliceStride
             = maxDataCountPerLoop * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
+        tempAlgParams.inputSliceStride
+            = maxDataCountPerLoop * dataTypeSize_; // 单轮CCL块大小，DPU模板按此切CCL_IN/CCL_OUT
 
         HCCL_INFO(
             "[InsV2ReduceScatterVSoleExecutor] loop [%u] tempAlgParams.buffInfo.inBuffBaseOff [%u],"
@@ -181,6 +193,10 @@ template <typename AlgTopoMatch, typename InsAlgTemplate>
 std::vector<CostModelParam> InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::CalcCostCoeff(
     HcclComm comm, TopoInfoWithNetLayerDetails* topoInfo, const char* algName, const OpParam& param)
 {
+    // DPU算法不做cost建模，直接返回固定系数
+    if constexpr (std::is_same_v<InsAlgTemplate, InsTempDpuReduceScatterVMesh>) {
+        return {{0.0f, 0.0f, 1.0f, 0.0f}};
+    }
     AlgHierarchyInfoForAllLevel algHierarchyInfo;
     if (!MatchTopoForProbe<AlgTopoMatch>(
             topoInfo, algHierarchyInfo, algName, "[InsV2ReduceScatterVSoleExecutor][CalcCostCoeff]",
@@ -218,7 +234,12 @@ AlgNetMeta InsV2ReduceScatterVSoleExecutor<AlgTopoMatch, InsAlgTemplate>::GetAlg
     meta.netTypes.push_back(netTypeLevel0);
     meta.intraGroupMode = CostAggMode::SUM;
     meta.groupSizes = {1};
-    meta.dataRatios = {1.0f};
+    if constexpr (std::is_same_v<InsAlgTemplate, InsTempDpuReduceScatterVMesh>) {
+        // DPU算法口径：单对端数据量为D/R，util表按单卡总量标定
+        meta.dataRatios = {static_cast<float>(rankSize)};
+    } else {
+        meta.dataRatios = {1.0f};
+    }
     meta.rankSizes = {rankSize};
     return meta;
 }
@@ -236,6 +257,16 @@ REGISTER_ALG_ATTRS(
         }
         return true;
     };);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, DpuReduceScatterVSoleMesh, InsV2ReduceScatterVSoleExecutor,
+    TopoMatchOneLevel, InsTempDpuReduceScatterVMesh);
+REGISTER_ALG_ATTRS(DpuReduceScatterVSoleMesh, topo.isSupportLevel0PcieMix = true;
+                   topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
+                   topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
+                   topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;
+                   op.unsupportedDataTypes = UNSUPPORTED_UINT64_FP64;);
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(

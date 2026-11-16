@@ -109,7 +109,7 @@ struct A2ASendRecvInfo {
 struct DataInfo {
     ChannelInfo channel_;
     SlicesList slices_;
-    HcclDataType dataType_;
+    HcclDataType dataType_ = HCCL_DATA_TYPE_RESERVED;
     DataInfo(const ChannelInfo& channel, const SlicesList& slices) : channel_(channel), slices_(slices) {}
     DataInfo(const ChannelInfo& channel, const SlicesList& slices, HcclDataType dataType)
         : channel_(channel),
@@ -151,7 +151,7 @@ struct TxRxSlicesList {
 struct SendRecvInfo {
     TxRxChannels sendRecvChannels_;
     TxRxSlicesList sendRecvSlices_;
-    HcclDataType dataType_;
+    HcclDataType dataType_ = HCCL_DATA_TYPE_RESERVED;
 
     SendRecvInfo(const TxRxChannels& sendRecvLinks, const TxRxSlicesList& sendRecvSlices)
         : sendRecvChannels_(sendRecvLinks),
@@ -242,6 +242,8 @@ struct TemplateDataParams {
     BuffInfo buffInfo;
     u64 count{0};
     u64 sliceSize{0};
+    // 在DPU类模板（AllToAllV/AllGatherV/ReduceScatterV/BatchSendRecv）
+    // 表示单轮CCL分块字节数，模板据此切分CCL_IN/CCL_OUT
     u64 inputSliceStride{0};
     u64 outputSliceStride{0};
     u64 repeatNum{0};
@@ -253,6 +255,7 @@ struct TemplateDataParams {
     u64 root{0};
     HcclDataType dataType{HCCL_DATA_TYPE_INT8};
     std::vector<u64> allRankSliceSize;
+    // 各rank数据起始偏移，单位由executor负责统一后下传
     std::vector<u64> allRankDispls;
     std::vector<u64> allRankProcessedDataCount;
     // alltoallV loop内变长数据

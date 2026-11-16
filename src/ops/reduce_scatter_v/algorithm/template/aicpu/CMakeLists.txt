@@ -11,6 +11,11 @@
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_reduce_scatter_v_mesh_1D.cc
 )
+if(NOT HCCL_CANN_COMPAT_850)
+    list(APPEND src_list
+        ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_dpu_reduce_scatter_v_mesh.cc
+    )
+endif()
 
 if(TARGET hccl)
     target_sources(hccl PRIVATE

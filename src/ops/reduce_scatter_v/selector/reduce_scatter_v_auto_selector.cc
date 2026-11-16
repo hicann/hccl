@@ -214,5 +214,37 @@ SelectorStatus ReduceScatterVAutoSelector::SelectAivAlgo(
     return SelectorStatus::NOT_MATCH;
 }
 
+SelectorStatus ReduceScatterVAutoSelector::SelectDPUAlgo(
+    const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
+    const std::map<HcclCMDType, std::vector<HcclAlgoType>>& configAlgMap, std::string& selectAlgName) const
+{
+    if (Is64BitDataType(opParam.vDataDes.dataType) && opParam.vDataDes.dataType != HcclDataType::HCCL_DATA_TYPE_INT64) {
+        HCCL_ERROR("[SelectDPUAlgo] [ReduceScatterVAutoSelector] UINT64 or FP64 are not yet supported for dpu mode.");
+        return SelectorStatus::NOT_MATCH;
+    }
+    std::vector<HcclAlgoType> algos = GetConfiguredAlgorithms(opParam.opType, configAlgMap);
+    HCCL_INFO(
+        "[ReduceScatterVAutoSelector] hccl algo op config: config opType:%d, level0:%u, level1:%u, level2:%u, "
+        "level3:%u",
+        opParam.opType, algos[0], algos[1], algos[2], algos[3]);
+    if (topoInfo->topoLevelNums > 1) {
+        if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
+            selectAlgName = "DpuReduceScatterVSoleMesh";
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+            selectAlgName = "DpuReduceScatterVSoleMesh";
+            return SelectorStatus::MATCH;
+        } else if (topoInfo->level0Topo == Level0Shape::CLOS) {
+            // 兼容level0为clos的场景
+            selectAlgName = "DpuReduceScatterVSoleMesh";
+            HCCL_DEBUG(
+                "[ReduceScatterVAutoSelector][%s] Level0Shape is CLOS, use algo [%s]", __func__, selectAlgName.c_str());
+            return SelectorStatus::MATCH;
+        }
+    }
+
+    return SelectorStatus::NOT_MATCH;
+}
+
 REGISTER_SELECTOR_BY_OPTYPE(HcclCMDType::HCCL_CMD_REDUCE_SCATTER_V, 18, ReduceScatterVAutoSelector);
 } // namespace ops_hccl
