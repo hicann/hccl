@@ -92,6 +92,19 @@ This environment variable is used to configure the inter-server communication al
   - <algo\> specifies the communication algorithm used by the communication operator. The supported configurations are the same as the level1 value and level2 values in the global configuration method. Ensure that the specified communication algorithm is of a type supported by the communication operator. For the algorithms supported by each operator, see [Inter-Server Communication Algorithm Support List](inter_server_algo_support.md) and [Inter-SuperPoD Communication Algorithm Support List](inter_superpod_algo_support.md). Communication operators for which no algorithm is specified will automatically select a communication algorithm based on the product form, number of nodes, and data volume.
   - Use `/` to separate configurations of multiple operators.
 
+- **Configuring communication algorithms using the executor chain syntax (for Scatter RHD):**
+
+    The Scatter operator additionally supports the executor chain syntax `scatter:sequence{level0=<algo>,level1=<algo>[,level2=<algo>]}`, where `sequence` specifies the sequential executor and each `level` specifies the algorithm for that communication level.
+
+    - RHD (rhd): Recursive Halving-Doubling algorithm with few (logarithmic) communication steps. Each step transfers a large contiguous data block, significantly reducing task submission and completion overhead in large-scale networks. Non-power-of-2 sizes are supported via a single post-processing auxiliary exchange (the pre-processing is a local layout rearrangement on the root, not a cross-rank exchange). Only the Scatter operator supports RHD, and it takes effect only when explicitly configured; the bare value `rhd` is equivalent to `sole{rhd}`, but the library provides no Sole RHD template, so the bare value does not participate in algorithm selection.
+
+    ```bash
+    # Scatter with two-level topology: level0 uses MeshConcur, level1 uses RHD.
+    export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd}"
+    # Scatter with three-level topology: level0 uses MeshConcur, level1 and level2 both use RHD.
+    export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
+    ```
+
 ## Configuration Example
 
 - Globally configuring algorithm type

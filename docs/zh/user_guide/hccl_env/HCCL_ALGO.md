@@ -54,7 +54,7 @@ export HCCL_ALGO="<ExecutorType>{level0=<algoType>,level1=<algoType>};not(<Execu
       - NHRAicpuReduce（nhraicpureduce）：先按NHR式log2(N)步减半交换收集数据，再使用AICPU标量归约保证正确性；适用于常规NHR/mesh模板不支持的数据类型（INT64/UINT64/FP64及PROD归约等）的NHR算法变体。
       - HDAicpuReduce（hdaicpureduce）：ReduceScatter的HD递归折半算法（AICPU引擎），log2(N)步XOR配对交换、步内归约在DMA传输侧完成；要求通信域rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
       - HD（hd）：跨机层（level1）HD递归折半算法（AICPU引擎），level0机内走mesh、level1按log2(N)步折半交换并归约；要求该层rank数为2的整数次幂，仅显式配置时参与选路（默认选路不变）。
-      - RHD（rhd）：递归折半倍增算法（AICPU/DPU引擎），2的整数次幂时log2(N)步倍增交换、行为与HD一致，非2的整数次幂时经PRE/POST前/后处理支持（前2r个rank两两配对、配对代表参与主体倍增）；AllGather算子显式配置（如allgather:sequence{level0=mesh,level1=rhd}）时参与选路（默认选路不变）。
+      - RHD（rhd）：递归折半倍增算法（Recursive Halving-Doubling，AICPU/DPU引擎），通信步数少（对数复杂度），且每步传输的是地址连续的大块数据（传输任务数按log量级缩减，大规模组网下任务下发与完成开销显著降低）；2的整数次幂时log2(N)步倍增交换、行为与HD一致。非2的整数次幂时：Scatter经后处理一次辅助交换支持（前处理为root本地的σ布局整理，不产生跨rank交换），AllGather经PRE/POST两步辅助交换支持（份额段拉取+全量段代表发送）。Scatter与AllGather算子均支持，且仅显式配置可选（不参与默认自适应选择），须写执行器链式形态（如`scatter:sequence{level0=meshconcur,level1=rhd}`、`allgather:sequence{level0=mesh,level1=rhd}`）；裸值`rhd`等价`sole{rhd}`（单算法执行器形态）而库不提供Sole RHD，裸值不产生选路效果。
 
     - 若不指定`level`，`<algoType>`默认按照算法层级从低到高匹配。例如{Mesh, NHR}，代表level0使用Mesh算法，level1使用NHR算法。
 
@@ -116,6 +116,10 @@ export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 export HCCL_ALGO="allgather:sequence{level0=mesh,level1=rhd}"
 # AllGather算子启用host-DPU（DPU引擎）三级RHD算法（DpuAllGatherSequenceMeshConcurRHDRHD，L1=设备侧CLOS RHD、L2=host-DPU RHD）。
 export HCCL_ALGO="allgather:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
+# Scatter算子采用Sequence执行器，level0执行MeshConcur算法（CLOS轴绕路），level1执行RHD算法（二级拓扑）。
+export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd}"
+# Scatter算子三级拓扑：level0执行MeshConcur算法，level1与level2均执行RHD算法（跨超节点为host-DPU引擎）。
+export HCCL_ALGO="scatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}"
 ```
 
 ### 配置生效语义

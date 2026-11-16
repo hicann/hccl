@@ -12,6 +12,7 @@
 #include "cost_model.h"
 #include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_scatter_nhr.h"
+#include "ins_temp_scatter_rhd.h"
 #include "alg_attrs_registry.h"
 #include "alg_data_trans_wrapper.h"
 #include "alg_attrs_registry.h"
@@ -617,4 +618,29 @@ REGISTER_ALG_ATTRS(
         u64 totalSize = perRankSize * topo->userRankSize;
         return totalSize > SCATTER_SEQUENCE_SIZE_THRESHOLD;
     });
+
+// Scatter RHD（AICPU 家族，preferred-only）：L0 绕路 + L1/L2 设备侧 RHD 模板。
+// topoCustomCheck 恒 false：未配置 HCCL_ALGO 时被默认选路（软策略）过滤，显式配置后软策略
+// 检查让位（needSoftPolicyCheck=false）、准入交由 min/maxTopoLevelNum 硬 attrs 完成；
+// CalcCostCoeff 固定占位非空（空系数会使算法在 cost 表注册阶段被跳过，显式配置也无法选中）。
+// 二级无 4GB 数据量门槛（区别于 NHR 二级：preferred-only 用户点名即用）。
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurRHD, ScatterSequenceAicpu3LevelExecutor,
+    TopoMatchTwoLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterRHD, InsTempScatterRHD);
+REGISTER_ALG_ATTRS(
+    AicpuScatterSequenceMeshConcurRHD, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
+
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_SCATTER, AicpuScatterSequenceMeshConcurRHDRHD, ScatterSequenceAicpu3LevelExecutor,
+    TopoMatchThreeLevel, AicpuTempScatterMesh1DZAxisDetour, InsTempScatterRHD, InsTempScatterRHD);
+REGISTER_ALG_ATTRS(
+    AicpuScatterSequenceMeshConcurRHDRHD, topo.minTopoLevelNum = 3; topo.maxTopoLevelNum = 3;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
 } // namespace ops_hccl

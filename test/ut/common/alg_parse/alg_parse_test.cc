@@ -373,6 +373,73 @@ TEST_F(HcclAlgoParserTest, UpdateCostModelWithAlgoHdNegatedSelectable)
     EXPECT_EQ(entries[0].hcclAlgoPriority, 1);
 }
 
+// 测试正确用例9：RHD 算法词表解析——scatter 二级链式形态 levelN= 语法
+// （与 allgather 侧 ParseRhdAlgoCase* 区分，冠 Scatter 前缀）
+TEST_F(HcclAlgoParserTest, ParseScatterRhdAlgoCase1)
+{
+    HcclAlgoParser parser;
+    std::string input = "scatter:sequence{level0=meshconcur,level1=rhd}";
+
+    HcclResult ret = parser.Parser(input);
+    ASSERT_EQ(ret, HCCL_SUCCESS);
+    ASSERT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "scatter");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 2u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshconcur");
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例10：RHD 算法词表解析——scatter 三级链式形态
+TEST_F(HcclAlgoParserTest, ParseScatterRhdAlgoCase2)
+{
+    HcclAlgoParser parser;
+    std::string input = "scatter:sequence{level0=meshconcur,level1=rhd,level2=rhd}";
+
+    HcclResult ret = parser.Parser(input);
+    ASSERT_EQ(ret, HCCL_SUCCESS);
+    ASSERT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "scatter");
+    EXPECT_EQ(parser.executorList[0].executorType, "sequence");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 3u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "meshconcur");
+    EXPECT_EQ(parser.executorList[0].algoList[1].algoType, "rhd");
+    EXPECT_EQ(parser.executorList[0].algoList[2].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+}
+
+// 测试正确用例11：裸值 rhd 按 sole 缩写解析（只断言解析行为，不断言选路——
+// 本库不注册 Sole RHD）；同时断言正反名字表各恰有一条 "RHD" 条目
+TEST_F(HcclAlgoParserTest, ParseScatterRhdAlgoCase3)
+{
+    HcclAlgoParser parser;
+    std::string input = "rhd";
+
+    HcclResult ret = parser.Parser(input);
+    ASSERT_EQ(ret, HCCL_SUCCESS);
+    ASSERT_EQ(parser.executorList.size(), 1u);
+
+    EXPECT_EQ(parser.executorList[0].opType, "");
+    EXPECT_EQ(parser.executorList[0].executorType, "sole");
+    EXPECT_EQ(parser.executorList[0].algoList.size(), 1u);
+    EXPECT_EQ(parser.executorList[0].algoList[0].algoType, "rhd");
+    EXPECT_TRUE(parser.executorList[0].enable);
+
+    // 名字表登记（enum 值免直引，RED 阶段即可编译）：反向表恰有 "RHD" 键
+    EXPECT_EQ(GetAlgoNameToTypeMap().count("RHD"), 1u);
+    // 正向表恰有一个值为 "RHD" 的条目
+    u32 rhdNameCount = 0;
+    for (const auto& kv : GetAlgoTypeToNameMap()) {
+        if (kv.second == "RHD") {
+            rhdNameCount++;
+        }
+    }
+    EXPECT_EQ(rhdNameCount, 1u);
+}
+
 // 测试正确用例9：RHD 算法词表解析——allgather:sequence{level0=meshconcur,level1=rhd} 完整链
 // （RHD 二级显式选路配置，AicpuAllGatherSequenceMeshConcurRHD 注册名对应）
 TEST_F(HcclAlgoParserTest, ParseRhdAlgoCase1)

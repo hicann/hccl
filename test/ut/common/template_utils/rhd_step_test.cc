@@ -816,6 +816,57 @@ TEST(RhdSegBytesTest, BytesUniform)
     b = RhdSegToBytesUniform(2, 5, sliceSize, 0, tailUnit);
     EXPECT_EQ(b.offset, 200u);
     EXPECT_EQ(b.len, 300u);
+    // 大尾块（tail > slice，末位吸收余数口径，先例 AllReduce GenTempAlgParamsStepTwo）：
+    // 尾槽起点仍 (tailUnit)×sliceSize，跨度为 tailSize——含末/跨末两路径
+    b = RhdSegToBytesUniform(4, 5, sliceSize, 140, tailUnit);
+    EXPECT_EQ(b.offset, 400u);
+    EXPECT_EQ(b.len, 140u);
+    b = RhdSegToBytesUniform(2, 5, sliceSize, 140, tailUnit);
+    EXPECT_EQ(b.offset, 200u);
+    EXPECT_EQ(b.len, 340u); // units 2,3 全尺寸 + 尾 140
+}
+
+// 切分表字节契约：elemOffset 产出口径为字节而非元素数，消费方不得再乘 dataTypeSize
+TEST(CalcDataSplitTest, SplitTableOffsetIsBytesNotElements)
+{
+    // 真机场景：portGroupSize [6, 2]，2 元素 int32（128B@16rank 时 L1 段）
+    ChannelInfo ch0{};
+    ch0.portGroupSize = 6;
+    ChannelInfo ch1{};
+    ch1.portGroupSize = 2;
+    const std::vector<ChannelInfo> channels = {ch0, ch1};
+    std::vector<u64> elemCountOut;
+    std::vector<u64> sizeOut;
+    std::vector<u64> elemOffset;
+    ASSERT_EQ(
+        CalcDataSplitByPortGroupCommon(2, 4, channels, elemCountOut, sizeOut, elemOffset, channels.size()),
+        HcclResult::HCCL_SUCCESS);
+    ASSERT_EQ(elemCountOut.size(), static_cast<size_t>(2));
+    EXPECT_EQ(elemCountOut[0], 1u); // 2*6/8 = 1（地板除）
+    EXPECT_EQ(elemCountOut[1], 1u); // 末通道吃余数
+    EXPECT_EQ(sizeOut[0], 4u);      // 字节
+    EXPECT_EQ(sizeOut[1], 4u);
+    // 核心断言：偏移是字节——elemOffset[1] = 前序尺寸和（4 字节），不是元素数（1）
+    EXPECT_EQ(elemOffset[0], 0u);
+    EXPECT_EQ(elemOffset[1], 4u);
+    // 首尾衔接不变量：末偏移 + 末尺寸 = 全段字节数
+    EXPECT_EQ(elemOffset[1] + sizeOut[1], 8u);
+
+    // 均权 2 通道、8 元素 int32：[4,4] 元素 = [16,16] 字节、偏移 [0,16] 字节
+    ChannelInfo even0{};
+    even0.portGroupSize = 1;
+    ChannelInfo even1{};
+    even1.portGroupSize = 1;
+    const std::vector<ChannelInfo> evenChannels = {even0, even1};
+    ASSERT_EQ(
+        CalcDataSplitByPortGroupCommon(8, 4, evenChannels, elemCountOut, sizeOut, elemOffset, evenChannels.size()),
+        HcclResult::HCCL_SUCCESS);
+    EXPECT_EQ(elemCountOut[0], 4u);
+    EXPECT_EQ(elemCountOut[1], 4u);
+    EXPECT_EQ(sizeOut[0], 16u);
+    EXPECT_EQ(sizeOut[1], 16u);
+    EXPECT_EQ(elemOffset[0], 0u);
+    EXPECT_EQ(elemOffset[1], 16u); // 若误当元素口径会得 4——本断言钉死字节语义
 }
 
 // σ 反查构建 unit 尺寸表 + 变长契约与均匀契约字节观一致

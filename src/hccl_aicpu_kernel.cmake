@@ -66,6 +66,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/scatter_single_executor.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/nhr_base.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/rhd_scatter_step.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/scatter_mesh.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/scatter_nb.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/scatter_nhr.cc
@@ -76,6 +77,7 @@ add_library(hccl_aicpu_kernel SHARED
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/scatter_sequence_aicpu_executor_3level.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_rhd.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/aicpu_temp_scatter_mesh_1D_Z_axis_detour.cc
 
 
@@ -236,9 +238,11 @@ if(NOT HCCL_CANN_COMPAT_850)
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/template/ins_temp_batch_send_recv_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/batch_send_recv/algorithm/executor/ins_v2_batch_send_recv_sole_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor_3level_dpu.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_nda.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_rhd_dpu_inter_node.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/reduce/algorithm/executor/ins_v2_reduce_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/broadcast/algorithm/executor/ins_v2_broadcast_concurrent_executor.cc
         ${CMAKE_CURRENT_SOURCE_DIR}/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc

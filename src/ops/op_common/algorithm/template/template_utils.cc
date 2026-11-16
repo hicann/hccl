@@ -162,10 +162,10 @@ HcclResult CalcRhdPart1Info(u32 rankSize, u32 myAlgRank, u32 root, RhdPart1Info&
     return HcclResult::HCCL_SUCCESS;
 }
 
-// 虚拟对齐区段 [a, b) → unit 空间：起 = (a<r)?2a:a+r，止 = (b<=r)?2b:b+r
-static inline u32 RhdUnitStartOfVirtual(u32 r, u32 a) { return (a < r) ? 2 * a : a + r; }
+// 虚拟对齐区段 [a, b) → unit 空间：起 = (a<r)?2a:a+r，止 = (b<=r)?2b:b+r（导出单源，见 template_utils.h）
+u32 RhdUnitStartOfVirtual(u32 r, u32 a) { return (a < r) ? 2 * a : a + r; }
 
-static inline u32 RhdUnitEndOfVirtual(u32 r, u32 b) { return (b <= r) ? 2 * b : b + r; }
+u32 RhdUnitEndOfVirtual(u32 r, u32 b) { return (b <= r) ? 2 * b : b + r; }
 
 HcclResult GenRhdReduceScatterSteps(const RhdPart1Info& info, std::vector<RhdStepInfo>& steps)
 {

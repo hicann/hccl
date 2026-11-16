@@ -220,6 +220,8 @@ add_library(hccl_aicpu_kernel SHARED
     ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/scatter_sequence_aicpu_executor_3level.cc
     ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_mesh_1D.cc
     ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr.cc
+    ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/rhd_scatter_step.cc
+    ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_rhd.cc
     ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/aicpu_temp_scatter_mesh_1D_Z_axis_detour.cc
 
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/executor/ins_v2_reduce_scatter_sole_executor.cc
@@ -399,6 +401,10 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr.cc
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_omnipipe_executor.cc
         ${HCCL_DEV_BASE}/src/ops/broadcast/algorithm/executor/ins_v2_broadcast_omnipipe_executor.cc
+
+        # DpuScatterSequenceMeshConcurRHD / DpuScatterSequenceMeshConcurRHDRHD
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor_3level_dpu.cc
+        ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_rhd_dpu_inter_node.cc
     )
 endif()
 

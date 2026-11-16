@@ -12,6 +12,8 @@
 #include "executor_common_ops.h"
 #include "ins_temp_scatter_mesh_1D.h"
 #include "ins_temp_scatter_nhr_dpu_inter_node.h"
+#include "aicpu_temp_scatter_mesh_1D_Z_axis_detour.h"
+#include "ins_temp_scatter_rhd_dpu_inter_node.h"
 #include "alg_attrs_registry.h"
 #include "topo_match_two_level.h"
 #include "ins_temp_scatter_nhr_nda.h"
@@ -207,6 +209,12 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     // 构建框内Scatter template
     std::shared_ptr<InsAlgTemplate0> algTemplateScatterIntra
         = std::make_shared<InsAlgTemplate0>(param, myRank_, algHierarchyInfo_.infos[0]);
+    // 仅绕路模板校准（GetThreadNum=(R-1)×channelsPerRank_ 与通道数联动，编排侧须对齐 CalcRes 侧
+    // 自算值，漏设 notify/threads 错位）。Mesh1D 恒排除：线程按 rankSize-1 申请与通道数不联动，
+    // 校准后双 die 通道 1→2 使 threads.at(count) 越界（曾触发 E_INTERNAL，sole executor 同款 algName 白名单）。
+    if (rankSizeLevel0_ > 1 && std::string(param.algName) == "DpuScatterSequenceMeshConcurRHD") {
+        CHK_RET(algTemplateScatterIntra->SetchannelsPerRank(remoteRankToChannelInfo_[0]));
+    }
 
     // 声明框间Scatter templateargs
     TemplateDataParams tempAlgParamsScatterInter;
@@ -220,6 +228,10 @@ HcclResult InsV2ScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTem
     tempAlgParamsScatterInter.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
     // 构建框间Scatter template
+    // L1(inter) 的 DPU 模板按设计恒单通道：GetThreadNum 恒 1、数据面每对端只取 channels[peer][0]
+    // （DPU 传输不做 AICPU 的多通道端口切分），全链不消费 channelsPerRank_——故此处无需
+    // SetchannelsPerRank（与 L0 绕路模板不同：其 GetThreadNum=(R-1)×channelsPerRank_，编排侧
+    // 实例必须重设，见上方 L0 的调用）。AICPU 引擎的 RHD L1/L2 槽位在三级 executor，已逐层调用。
     std::shared_ptr<InsAlgTemplate1> algTemplateScatterInter
         = std::make_shared<InsAlgTemplate1>(param, myRank_, algHierarchyInfo_.infos[1]);
 
@@ -343,4 +355,18 @@ REGISTER_ALG_ATTRS(DpuScatterSequenceMeshNHRNDA, topo.isSupportLevel0PcieMix = t
                    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.isHostDpuOnly = true; topo.isSupportLevel1Nhr = true;
                    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_CLOS;);
+
+// Scatter RHD（DPU 二级，preferred-only）：L0 绕路（MeshConcur 触发双物理层配对）+ L1 host DPU
+// RHD（老路径）。topoCustomCheck 恒 false：未配置被默认选路过滤，显式配置后软策略让位；
+// isHostDpuOnly=true 仅 host-DPU 形态准入。executor 仅增 L0 通道数校准（绕路模板白名单，
+// 见上方调用点），OrchestrateLoop 的 L1 allRank* 填充与 RHD 契约一致（均匀退化）。
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_SCATTER, DpuScatterSequenceMeshConcurRHD, InsV2ScatterSequenceExecutor, TopoMatchTwoLevel,
+    AicpuTempScatterMesh1DZAxisDetour, InsTempScatterRhdDpuInterNode);
+REGISTER_ALG_ATTRS(
+    DpuScatterSequenceMeshConcurRHD, topo.minTopoLevelNum = 2; topo.maxTopoLevelNum = 2; topo.isHostDpuOnly = true;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
 } // namespace ops_hccl

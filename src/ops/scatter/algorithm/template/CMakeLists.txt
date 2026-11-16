@@ -16,6 +16,7 @@ endif()
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/nhr_base.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/rhd_scatter_step.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/scatter_mesh.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/scatter_nb.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/scatter_nhr.cc

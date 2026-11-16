@@ -258,8 +258,8 @@ HcclResult InsTempScatterMesh1D::RunMesh(
     const TemplateDataParams& tempAlgParams)
 {
     u32 myAlgRank = 0;
-    u32 curSliceSize = 0;
-    u32 curCount = 0;
+    u64 curSliceSize = 0;
+    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     HCCL_DEBUG(

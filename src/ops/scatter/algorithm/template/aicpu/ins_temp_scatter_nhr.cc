@@ -287,8 +287,8 @@ InsTempScatterNHR::PreCopy(const TemplateDataParams& tempAlgParams, const std::v
         return HCCL_SUCCESS;
     }
 
-    u32 curSliceSize = 0;
-    u32 curCount = 0;
+    u64 curSliceSize = 0;
+    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
 
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
@@ -316,9 +316,9 @@ InsTempScatterNHR::PostCopy(const TemplateDataParams& tempAlgParams, const std::
     u32 myAlgRank;
     CHK_RET(GetAlgRank(myRank_, subCommRanks_[0], myAlgRank));
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
-    u32 curSliceSize
+    u64 curSliceSize
         = tempAlgParams.tailSize != 0 && myAlgRank == templateRankSize_ - 1 ? tempAlgParams.tailSize : processSize_;
-    u32 curCount = curSliceSize / dataTypeSize;
+    u64 curCount = curSliceSize / dataTypeSize;
     for (u32 r = 0; r < tempAlgParams.repeatNum; r++) {
         u64 srcOffset = r * templateRankSize_ * tempAlgParams.sliceSize + tempAlgParams.buffInfo.hcclBuffBaseOff
                         + myAlgRank * tempAlgParams.sliceSize;
@@ -379,8 +379,8 @@ HcclResult InsTempScatterNHR::BatchSend(
         = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
     std::vector<DataSlice> srcSlices;
     std::vector<DataSlice> dstSlices;
-    u32 curSliceSize = 0;
-    u32 curCount = 0;
+    u64 curSliceSize = 0;
+    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 repeat = 0; repeat < tempAlgParams.repeatNum; repeat++) {
         for (u32 i = 0; i < stepInfo.txSliceIdxs.size(); i++) {
@@ -432,8 +432,8 @@ HcclResult InsTempScatterNHR::BatchRecv(
         = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
     std::vector<DataSlice> srcSlices;
     std::vector<DataSlice> dstSlices;
-    u32 curSliceSize = 0;
-    u32 curCount = 0;
+    u64 curSliceSize = 0;
+    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
     for (u32 repeat = 0; repeat < tempAlgParams.repeatNum; repeat++) {
         for (u32 i = 0; i < stepInfo.rxSliceIdxs.size(); i++) {
@@ -491,8 +491,8 @@ HcclResult InsTempScatterNHR::BatchSR(
     void* localBuff
         = (!enableRemoteMemAccess_) ? tempAlgParams.buffInfo.hcclBuff.addr : tempAlgParams.buffInfo.outputPtr;
 
-    u32 curSliceSize = 0;
-    u32 curCount = 0;
+    u64 curSliceSize = 0;
+    u64 curCount = 0;
     const u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType_];
 
     std::vector<DataSlice> txSrcSlices;

@@ -475,6 +475,10 @@ HcclResult GenRhdPrePostSteps(
 // ---- 支撑辅助 ----
 // σ：algRank → 自身份额槽位；越界返回 INVALID_VALUE_RANKID
 u32 RhdUnitStartOfRank(u32 rankSize, u32 algRank);
+// 虚拟对齐区段 [a, b) → unit 空间：起 = (a<r)?2a:a+r，止 = (b<=r)?2b:b+r（单一事实源，
+// 步骤表与区段换算共用，勿私有复制）
+u32 RhdUnitStartOfVirtual(u32 r, u32 a);
+u32 RhdUnitEndOfVirtual(u32 r, u32 b);
 // 虚拟序 → 承载 algRank；越界返回 INVALID_VALUE_RANKID
 // ⚠ physRankSize 为物理规模 p（非有效规模 P），root 须与 CalcRhdPart1Info 一致
 u32 RhdAlgRankOfVirtual(u32 physRankSize, u32 root, u32 virtualRank);

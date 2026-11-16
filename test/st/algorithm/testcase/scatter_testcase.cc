@@ -234,3 +234,77 @@ TEST_F(ST_SCATTER_TEST, test_aicpu_scatter_mesh1dnhr_asymmetric_4server_root1_fp
     TopoMeta topoMeta{{{0, 1}, {8, 9, 10, 11}, {16, 17, 18, 19, 20, 21}, {24, 25, 26, 27, 28, 29, 30, 31}}};
     RunScatterTest(1, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP16);
 }
+
+// ===== Scatter RHD（AICPU 二级，preferred-only：HCCL_ALGO 显式配置选路）=====
+// 数据内容验证：CheckScatter 语义校验（root 输入 slice j 与各 rank 终态收到的切片逐一比对），
+// 非 2 次幂维度覆盖 r=1（d1=3/5）与 r=2（d1=6）配对形态；未配置 HCCL_ALGO 的默认选路回归
+// 由既有 mesh1dnhr 用例覆盖（AC-1），此处不重复。
+class ST_SCATTER_RHD_TEST : public ::testing::Test {
+protected:
+    void SetUp() override
+    {
+        ResetAlgEnvConfigInitState();
+        setenv("HCCL_OP_EXPANSION_MODE", "AI_CPU", 1);
+        setenv("HCCL_INDEPENDENT_OP", "1", 1);
+    }
+    void TearDown() override
+    {
+        unsetenv("HCCL_ALGO");
+        unsetenv("HCCL_OP_EXPANSION_MODE");
+        unsetenv("HCCL_INDEPENDENT_OP");
+        unsetenv("HCCL_ENABLE_OPEN_AICPU");
+    }
+    static void SetUpTestCase() {}
+    static void TearDownTestCase() {}
+};
+
+// 二级 2^N：2x2，root0（主路径）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_2x2_root0_int32_small_data)
+{
+    TopoMeta topoMeta{{{0, 1}, {8, 9}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_INT32);
+}
+
+// 二级 2^N 大 p：2x8，root5（大数据多 loop，覆盖 loop 尾段）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_2x8_root5_int8_big_data)
+{
+    TopoMeta topoMeta{{{0, 1, 2, 3, 4, 5, 6, 7}, {8, 9, 10, 11, 12, 13, 14, 15}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(5, topoMeta, 400 * 1024 * 1024, HcclDataType::HCCL_DATA_TYPE_INT8);
+}
+
+// 二级非 2^N（r=1，d1=3）：3x2，root3（root 压非 0 位置）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_3x2_root3_fp16_small_data)
+{
+    TopoMeta topoMeta{{{0, 1}, {8, 9}, {16, 17}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(3, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_FP16);
+}
+
+// 二级非 2^N（r=1，d1=5）：5x2，root0（root 落 part1 外的 block 成员）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_5x2_root0_fp32_small_data)
+{
+    TopoMeta topoMeta{{{0, 1}, {8, 9}, {16, 17}, {24, 25}, {32, 33}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(0, topoMeta, 200, HcclDataType::HCCL_DATA_TYPE_FP32);
+}
+
+// 二级非 2^N（r=2，d1=6）：6x2，root7（root 落 part1 内被合并方侧，代表跟随 root）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_6x2_root7_int32_small_data)
+{
+    TopoMeta topoMeta{{{0, 1}, {8, 9}, {16, 17}, {24, 25}, {32, 33}, {40, 41}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(7, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_INT32);
+}
+
+// 二级非 2^N（r=1，d1=9）：9x2，root=0——L1 RHD 的物理对端含 ±2^k 之外的 ±3 距离，
+// 若建链沿用 NHR 的 ±2^k 连接集则 rank0/rank3 无互达链路（ScatterStep 报 E_INTERNAL、
+// 对端永久等 notify 挂死；缺链与 root 相关：p=9 时 root=0/3/5/7 触发、1/2/4 安全）。
+// 设备号用连续小号（stride-8 惯例下第 9 个 server 需设备 64/65，超出仿真节点设备范围）
+TEST_F(ST_SCATTER_RHD_TEST, st_scatter_rhd_2level_9x2_root0_int32_small_data)
+{
+    TopoMeta topoMeta{{{0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13}, {14, 15}, {16, 17}}};
+    setenv("HCCL_ALGO", "scatter:sequence{level0=meshconcur,level1=rhd}", 1);
+    RunScatterTest(0, topoMeta, 100, HcclDataType::HCCL_DATA_TYPE_INT32);
+}

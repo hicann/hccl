@@ -11,7 +11,9 @@
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_mesh_1D.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_rhd.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr_dpu_inter_node.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_rhd_dpu_inter_node.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/aicpu_temp_scatter_mesh_1D_Z_axis_detour.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_nhr_nda.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/ins_temp_scatter_omnipipe_mesh1d.cc
