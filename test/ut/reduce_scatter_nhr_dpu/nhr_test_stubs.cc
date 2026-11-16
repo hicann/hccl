@@ -116,6 +116,21 @@ HcclResult LocalCopy(const ThreadHandle& thread, const DataSlice& srcSlice, cons
     return HCCL_SUCCESS;
 }
 
+// 空桩：仅满足链接（RunStep/StepLocalReduce 编进本 UT 目标），StepLocalReduce 的归约语义不在
+// 本 UT 覆盖范围——其调用点位于 DPU 侧步骤循环（AICPU_COMPILE 裁剪区），host 侧 UT 不可达，
+// 无消费方的记录钩子属死测试设施（检视意见 200433801），消费方随 Reduce/AllReduce 复用 PR 落地
+HcclResult LocalReduce(
+    const ThreadHandle& thread, const DataSlice& srcSlice, const DataSlice& dstSlice, const HcclDataType dataType,
+    const HcclReduceOp reduceOp)
+{
+    (void)thread;
+    (void)srcSlice;
+    (void)dstSlice;
+    (void)dataType;
+    (void)reduceOp;
+    return HCCL_SUCCESS;
+}
+
 HcclResult CalcChannelRequestNhrHighestHostRoce(
     HcclComm comm, const OpParam& param, const TopoInfoWithNetLayerDetails* topoInfo,
     const std::vector<std::vector<u32>>& subcommInfo, std::vector<HcclChannelDesc>& channels)

@@ -76,6 +76,16 @@ foreach(_dir ${_cann_arch_dirs})
     endif()
 endforeach()
 
+# RHD DPU inter 模板与 guard 用例仅在 >= 9.0 段编译（对齐同 PR ST 侧
+# test/st/algorithm/utils/src/aicpu/CMakeLists.txt 的 _ST_CANN_VERSION_NUM 门控）：
+# 该源依赖新版 CANN 才提供的 DPU wrapper 接口，低版本包上无条件编译会整体红
+if(_UT_CANN_VERSION_NUM GREATER_EQUAL 90000000)
+    target_sources(reduce_scatter_nhr_dpu_test PRIVATE
+        test_rhd_dpu_inter_guard.cc
+        ${_repo_root}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd_dpu_inter.cc
+    )
+endif()
+
 target_link_libraries(reduce_scatter_nhr_dpu_test PRIVATE
     $<BUILD_INTERFACE:intf_llt_pub>
     GTest::gtest_main

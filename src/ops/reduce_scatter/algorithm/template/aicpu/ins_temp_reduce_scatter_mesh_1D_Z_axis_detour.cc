@@ -106,6 +106,23 @@ HcclResult InsTempReduceScatterMesh1DZAxisDetour::CalcRes(
     CHK_RET(CalcChannelRequestMesh1DLevel0(comm, param, topoInfo, subCommRanks_, level0Channels));
     std::vector<HcclChannelDesc> level1Channels;
     CHK_RET(CalcChannelRequestMesh1DLevel1(comm, param, topoInfo, subCommRanks_, level1Channels));
+    // host 平面通道（localEndpoint.loc.locType != DEVICE，
+    // 如全 HOST hostdpu 形态下 netLayer1 的 host RoCE 对端）由 host 侧 COMM_ENGINE_CPU 建链
+    // （HostCpuRoceChannel，op_common.cc HcclGetChannel 分流），不随 AICPU H2D 资源打包、
+    // 不在设备侧重建 transport，其句柄对 channel notify/BatchTransfer 原语不可消费——
+    // 执行期第 2 个 (对端, 通道) 的首个 notify 原语即失效（无显式报错的死等/进程失效）。
+    // L0 双平面按设备侧可用性过滤：仅保留 DEVICE 端点的框间通道
+    // （与 host 建链分流同判据：locType=DEVICE ⟺ AICPU_TS 建链 ⟺ 设备侧可执行）。
+    // level1 全滤后 level1ChannelNumPerRank_=0，z 轴绕路按既有退化语义全量走框内
+    // （CalcDataSplitByBandwidthZAxisDetour 的 level1==0 分支）；
+    // 全 HOST hostdpu 形态的框间数据流由二级 L1 Dpu inter 模板（DPU 搬运协议）承担，语义自洽。
+    level1Channels.erase(
+        std::remove_if(
+            level1Channels.begin(), level1Channels.end(),
+            [](const HcclChannelDesc& desc) {
+                return desc.localEndpoint.loc.locType != EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE;
+            }),
+        level1Channels.end());
     std::vector<HcclChannelDesc> mergedChannels;
     mergedChannels.insert(mergedChannels.end(), level0Channels.begin(), level0Channels.end());
     mergedChannels.insert(mergedChannels.end(), level1Channels.begin(), level1Channels.end());
@@ -154,6 +171,18 @@ InsTempReduceScatterMesh1DZAxisDetour::SetchannelsPerRank(const std::map<u32, st
         HCCL_E_INTERNAL);
     channelsPerRank_ = CalcChannelsPerRank(channels);
     level0ChannelNumPerRank_ = MESH_CHANNELS_NUM;
+    // 无符号下溢守卫：level0ChannelNumPerRank_ 固定为 MESH_CHANNELS_NUM，减法
+    // channelsPerRank_ - level0ChannelNumPerRank_ 在 channelsPerRank_ < level0ChannelNumPerRank_ 时会
+    // 静默下溢为巨值 level1ChannelNumPerRank_，后续带宽切分按错误通道数寻址（现 CalcChannelsPerRank 映射
+    // 重载下限为 1 且 MESH_CHANNELS_NUM=1，该分支实际不可达，属对未来变更的防御性守卫）。按失败处理，
+    // 对齐本函数既有 CHK_PRT_RET（channels.empty 守卫）错误返回风格。
+    CHK_PRT_RET(
+        channelsPerRank_ < level0ChannelNumPerRank_,
+        HCCL_ERROR(
+            "[InsTempReduceScatterMesh1DZAxisDetour][SetchannelsPerRank] channelsPerRank_[%u] < "
+            "level0ChannelNumPerRank_[%u], level1 channel count underflow.",
+            channelsPerRank_, level0ChannelNumPerRank_),
+        HCCL_E_INTERNAL);
     level1ChannelNumPerRank_ = channelsPerRank_ - level0ChannelNumPerRank_;
     HCCL_INFO(
         "[InsTempReduceScatterMesh1DZAxisDetour][SetchannelsPerRank], channelsPerRank_[%u], "

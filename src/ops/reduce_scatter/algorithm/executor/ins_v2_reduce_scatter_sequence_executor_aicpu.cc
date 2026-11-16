@@ -14,6 +14,7 @@
 #include "alg_data_trans_wrapper.h"
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.h"
+#include "ins_temp_reduce_scatter_rhd.h"
 
 #ifndef AICPU_COMPILE
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -598,6 +599,41 @@ REGISTER_ALG_ATTRS(
     op.isSupportProd = true;
     op.opCustomCheck = [](const OpParam& opParam, const TopoInfoWithNetLayerDetails* topo) -> bool {
         return Is64BitDataType(opParam.DataDes.dataType) || opParam.reduceType == HcclReduceOp::HCCL_REDUCE_PROD;
+    };);
+
+// RHD（递归折半倍增，支持层内非 2 次幂）二级：level0 z 轴绕路 Mesh + level1 device RHD。
+// preferred-only：topoCustomCheck 恒 false——未配置 HCCL_ALGO 时被软策略过滤（默认选路零变化），
+// 显式配置 reducescatter:sequence{level0=meshconcur,level1=rhd} 打 preferred 后软策略跳过该检查。
+// 占位 cost（{{0,0,1,0}}）不可为空：空系数在 cost 表注册阶段即被跳过，显式配置也无法选中。
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurRHD,
+    InsV2ReduceScatterSequenceExecutorAicpu, TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour,
+    InsTempReduceScatterRHD);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSequenceMeshConcurRHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    // Level1Nhr 硬过滤位：selector 在软策略（preferred）之前按 `Level1Nhr &&
+    // !isSupportLevel1Nhr` 过滤（cost_model.cc:234-239，REDUCE_SCATTER 不在 NO_L1NHR_CHECK_OPS
+    // 豁免集），缺位时 Level0 GCD=1（level0 mesh 退化、按单级 NHR 处理）组网上显式 HCCL_ALGO
+    // 配置也被静默回退。本注册与 Dpu 二级/三级同绑 L0 InsTempReduceScatterMesh1DZAxisDetour，
+    // Level0 GCD=1 组网 RHD 二级不受 level0 mesh 规则性约束、显式放行（对齐 Dpu 二级注册
+    // DpuReduceScatterSequenceMeshConcurRHD 同款注释）。
+    topo.isSupportLevel1Nhr = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };
+    // 物理硬前提（topoPrecondCheck，preferred 不可绕过）：L1 绑定 device 版 RHD 模板，其 CalcRes
+    // 建链后过滤全部非 DEVICE 通道（ins_temp_reduce_scatter_rhd.cc:45-52），L1 为 HOST 链路时
+    // 通道必空、运行期 SetchannelsPerRank(空) 以 HCCL_E_INTERNAL 失败而非选择期过滤——对齐同 PR
+    // 三级 Aicpu/Dpu 注册的同款前提。判据取 physicalLevels[1]（板内 mesh 之上首层 = 二级锚定层，
+    // 对齐 TopoMatchTwoLevel 尾端自下而上首个全域层的实际取层）；不限定 size==TOPO_LEVEL_NUM_2
+    // ——三物理层压缩二级形态（如 [mesh, 板间 clos DEVICE, 顶层 host] 的 pod 组网，锚定层仍为
+    // physicalLevels[1]）为合法命中场景，size==2 会误杀。
+    topo.topoPrecondCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->physicalLevels.size() >= TOPO_LEVEL_NUM_2
+               && topo->physicalLevels[1].topoType == CommTopo::COMM_TOPO_CLOS
+               && topo->physicalLevels[1].locType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE;
     };);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 

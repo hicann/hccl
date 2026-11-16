@@ -42,6 +42,8 @@ enum class AlgoType : uint8_t {
     NHR_NDA,  // NHR 的 NDA 变体（UBX host 直驱网卡场景）
     MESH_NDA, // Mesh 的 NDA 变体（UBX host 直驱网卡场景）
     UNKNOWN,
+    HD_AICPU_REDUCE, // ReduceScatter HD（递归折半）AicpuReduce 变体；追加在末尾保持既有枚举数值不变
+    RHD,             // 与主仓 alg_parse.h 同步：追加末尾保持既有枚举数值不变
 };
 
 const std::set<AlgoType> MESH_ALGO_TYPES

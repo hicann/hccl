@@ -11,6 +11,7 @@
 #ifndef ALG_V2_TEMPLATE_UTILS
 #define ALG_V2_TEMPLATE_UTILS
 
+#include <atomic>
 #include <vector>
 #include <memory>
 #include <string>
@@ -272,6 +273,26 @@ struct TemplateDataParams {
     // 读写语义由执行期参数下传，模板本身无状态。
     bool isWrite{false};
     HcclReduceOp reduceOp{HcclReduceOp::HCCL_REDUCE_SUM};
+    // RHD 下发字段统一挪到流末尾（isWrite/reduceOp 之后）：本结构为全部算子的
+    // AICPU/DPU 模板共用下发参数，插中间会使版本错配时其它算子把错位字节当 root/dataType 等用
+    // （静默错解）；追加末尾时旧版本一侧读到认识的字段为止、忽略多余尾部，RHD 侧游标校验仍快速失败。
+    // 反向（新版本读旧数据：data 截止于 reduceOp、无 RHD 尾字段）由 DeSerialize 读取前的剩余长度
+    // 自检兜底——不足时保持默认值 + WARNING，不依赖裸读的未定义行为。
+    // ---- RHD 下发字段（老路径 DPURunInfo 步进协议；非 RHD 算子默认 0/false 不消费）----
+    // 步骤游标：扁平步骤表 [PRE?, MAIN×log₂P（被合并方跳过）, POST?] 的本 rank 步下标与表长；
+    // AICPU/DPU 两侧由 template_utils RHD 函数族同源重算，DPU 侧校验 rhdStepIdx < rhdStepCnt
+    // 且重算表长一致。
+    u32 rhdStepIdx{0};
+    u32 rhdStepCnt{0};
+    // 后处理跳过（复用开关）：Reduce/AllReduce 等上层算子复用 RS 相位 RHD 模板时由其 executor
+    // 置 true——跳过 POST 交换与被合并方终态回搬（被合并方结果由上层算子后续相位承担：Reduce
+    // 结果只落 root、AllReduce 由 AG 相位/POST(FULL) 回传；需求 5.1.1 模式矩阵 post=跳过/FULL）。
+    // RS 族自身恒 false（默认零影响）；两侧（device 相位门控 / DPU inter 步骤表排除）按同值构建
+    // （序列化透传保证），行为等价：均跳过 POST 交换 + 被合并方终态回搬。
+    // 注意：本字段为 Reduce/AllReduce 复用 RS 相位预留——当前尚无任何 executor 置 true（src/ 内无
+    // rhdSkipPost 写入点），置位前 skipPost 分支（device 的 POST 门控、DPU inter 的步骤表排除与
+    // 被合并方终态回搬跳过）均为不可达代码；后续接入 PR 须同步打通该开关并补行为断言。
+    bool rhdSkipPost{false};
     // 跳过 RHD PRE 相位（AllReduce twoshot 融合复用 all_gather RHD 时，被合并方份额已由调用方
     // 置于代表侧 owner 槽位）；默认 false 零影响，POST 相位恒执行（被合并方须靠 POST 取回全量）。
     // 调用方契约：全通信域一致置位（不对称会 PRE 握手死锁）。序列化随本结构尾部追加（两端同树
@@ -309,6 +330,10 @@ struct TemplateDataParams {
         binaryStream << isWrite;
         binaryStream << skipPrePhase;
         binaryStream << reduceOp;
+        // RHD 字段统一追加流末尾（见字段声明处注释）
+        binaryStream << rhdStepIdx;
+        binaryStream << rhdStepCnt;
+        binaryStream << rhdSkipPost;
         std::vector<char> result;
         binaryStream.Dump(result);
         return result;
@@ -350,6 +375,27 @@ struct TemplateDataParams {
         binaryStream >> isWrite;
         binaryStream >> skipPrePhase;
         binaryStream >> reduceOp;
+        // RHD 尾字段剩余长度自检（新读方读旧数据方向）：本结构为全算子共用下发载体，部署侧
+        // 版本偏斜时旧格式 data 截止于 reduceOp——不校验则裸读落在缓冲区末尾之外（目标值
+        // 不确定），RHD 算子会在游标校验处以不可归因形式失败。不足或流已失效（GetReadPos 为
+        // INVALID_POS）则保持默认值 + 仅首次 WARNING（每算子反序列化路径，防版本偏斜持续
+        // 状态刷屏——口径同 alg_parse.cc MarkHcclAlgoPriority 的 static 门控）：非 RHD 算子
+        // 不受影响（不消费本组字段），RHD 算子由 DPUKernelRun 游标校验显式快速失败。
+        const size_t rhdTailBytes = sizeof(rhdStepIdx) + sizeof(rhdStepCnt) + sizeof(rhdSkipPost);
+        const size_t rhdReadPos = binaryStream.GetReadPos();
+        if (rhdReadPos != BinaryStream::INVALID_POS && rhdReadPos + rhdTailBytes <= data.size()) {
+            binaryStream >> rhdStepIdx;
+            binaryStream >> rhdStepCnt;
+            binaryStream >> rhdSkipPost;
+        } else {
+            static std::atomic<bool> rhdTailAbsentLogged{false};
+            if (!rhdTailAbsentLogged.exchange(true)) {
+                HCCL_WARNING(
+                    "[TemplateDataParams][DeSerialize] RHD tail fields absent (legacy or truncated payload), keep "
+                    "defaults: rhdStepIdx[%u] rhdStepCnt[%u] rhdSkipPost[%d].",
+                    rhdStepIdx, rhdStepCnt, static_cast<int>(rhdSkipPost));
+            }
+        }
     }
 };
 
@@ -441,6 +487,19 @@ struct RhdStepInfo {
     u32 rxSegStart = 0;                // 接收区段起（unit 空间，含）
     u32 rxSegEnd = 0;                  // 接收区段止（unit 空间，不含）
 };
+
+// RHD L2 scratch 隔离双公式（单一事实来源：Dpu 三级 executor 的基址与预算两侧必须同口径配套，
+// 抽为纯函数供两侧共用并供 UT 钉死口径）。约定：R = d0·d1·d2（三层 rank 连乘，即 L0/L1 原地
+// 规约区单位数），m2 = L2 模板 CalcScratchMultiple（RhdDpuInter 为 acc+recv 双区 = 2·d2）。
+inline u64 RhdIsolatedScratchBaseOff(u32 d0, u32 d1, u32 d2, u64 unitCount, u64 dataTypeSize)
+{
+    return static_cast<u64>(d0) * d1 * d2 * unitCount * dataTypeSize; // 基址 = R·C（全 rank 同基址）
+}
+
+inline u32 RhdIsolatedScratchBudgetMul(u32 d0, u32 d1, u32 d2, u32 m2)
+{
+    return d0 * d1 * d2 + m2; // 预算乘数 = R + m2（L0/L1 区 + L2 双区，勿用连乘 m0·m1·m2）
+}
 
 struct RhdPart1Info {
     u32 r = 0;                                // r = p − 2^⌊log₂p⌋（2^N 时 0）

@@ -71,6 +71,11 @@ namespace {
         params.omniReadDstStepSliceInfo.stepOutputSliceStride = {15};
         params.omniReadDstStepSliceInfo.inputOmniPipeSliceStride = {{16}};
         params.omniReadDstStepSliceInfo.outputOmniPipeSliceStride = {{17}};
+
+        // RHD 下发字段（流末尾）：置非默认以保证往返一致性断言不退化
+        params.rhdStepIdx = 2;
+        params.rhdStepCnt = 4;
+        params.rhdSkipPost = true;
         return params;
     }
 
@@ -107,6 +112,9 @@ namespace {
         EXPECT_EQ(actual.opType, expected.opType);
         EXPECT_EQ(actual.omniLastStepRead_, expected.omniLastStepRead_);
         EXPECT_EQ(actual.localCopyFlag, expected.localCopyFlag);
+        EXPECT_EQ(actual.rhdStepIdx, expected.rhdStepIdx);
+        EXPECT_EQ(actual.rhdStepCnt, expected.rhdStepCnt);
+        EXPECT_EQ(actual.rhdSkipPost, expected.rhdSkipPost);
         EXPECT_EQ(actual.stepSliceInfo.stepCount, expected.stepSliceInfo.stepCount);
         EXPECT_EQ(actual.stepSliceInfo.stepSliceSize, expected.stepSliceInfo.stepSliceSize);
         EXPECT_EQ(actual.stepSliceInfo.stepInputSliceStride, expected.stepSliceInfo.stepInputSliceStride);
@@ -178,11 +186,14 @@ namespace {
 
     TEST(NhrSerializationTest, TruncatedTailKeepsReduceOpUntouched)
     {
-        // 尾部截断（reduceOp 字段不完整）当前实现不抛异常，读取失败时不改写目标值
+        // 尾部截断（reduceOp 字段不完整）当前实现不抛异常，读取失败时不改写目标值。
+        // [PR#3901 适配] RHD 字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）追加在 reduceOp 之后，
+        // 截断量须连 RHD 尾巴一起截掉才能使 reduceOp 落入不可读区间
         const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
         std::vector<char> data = src.Serialize();
-        ASSERT_GT(data.size(), sizeof(HcclReduceOp));
-        data.resize(data.size() - sizeof(HcclReduceOp));
+        const size_t rhdTailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool); // rhdStepIdx + rhdStepCnt + rhdSkipPost
+        ASSERT_GT(data.size(), sizeof(HcclReduceOp) + rhdTailBytes);
+        data.resize(data.size() - sizeof(HcclReduceOp) - rhdTailBytes);
 
         TemplateDataParams dst;
         dst.reduceOp = HCCL_REDUCE_MAX;
@@ -190,6 +201,50 @@ namespace {
         EXPECT_EQ(dst.reduceOp, HCCL_REDUCE_MAX);
         EXPECT_EQ(dst.dataType, src.dataType);
         EXPECT_EQ(dst.allRankSliceSize, src.allRankSliceSize);
+    }
+
+    // RHD 尾字段精确边界（legacy 格式：载荷恰好截止于 reduceOp）——走「剩余长度自检不足」分支
+    // （非流失效回绕路径）：仅截掉 rhdStepIdx/rhdStepCnt/rhdSkipPost 三个尾字段，reduceOp 完整可读，
+    // 断言 RHD 字段保持默认值且前置字段全部正常
+    TEST(NhrSerializationTest, LegacyPayloadWithoutRhdTailKeepsDefaults)
+    {
+        const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
+        std::vector<char> data = src.Serialize();
+        const size_t rhdTailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool);
+        ASSERT_GT(data.size(), rhdTailBytes);
+        data.resize(data.size() - rhdTailBytes);
+
+        TemplateDataParams dst; // 默认构造：rhdStepIdx/Cnt=0、rhdSkipPost=false
+        dst.DeSerialize(data);
+        EXPECT_EQ(dst.rhdStepIdx, 0u); // 尾字段不足 → 不改写，保持默认（无裸读脏值）
+        EXPECT_EQ(dst.rhdStepCnt, 0u);
+        EXPECT_EQ(dst.rhdSkipPost, false);
+        EXPECT_EQ(dst.reduceOp, HCCL_REDUCE_SUM); // reduceOp 完整可读
+        EXPECT_EQ(dst.dataType, src.dataType);
+        EXPECT_EQ(dst.allRankSliceSize, src.allRankSliceSize);
+    }
+
+    TEST(NhrSerializationTest, RhdStepFieldsSurviveRoundTrip)
+    {
+        // RHD 追加字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）位于流末尾：置非默认后往返须逐值一致，
+        // 其余字段（count/sliceSize/reduceOp/dataType 等）由 ExpectFullParamsEqual 全量校验
+        const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
+        ASSERT_EQ(src.rhdStepIdx, 2u);
+        ASSERT_EQ(src.rhdStepCnt, 4u);
+        ASSERT_EQ(src.rhdSkipPost, true);
+        std::vector<char> data = src.Serialize();
+
+        TemplateDataParams dst;
+        dst.DeSerialize(data);
+
+        EXPECT_EQ(dst.rhdStepIdx, src.rhdStepIdx);
+        EXPECT_EQ(dst.rhdStepCnt, src.rhdStepCnt);
+        EXPECT_EQ(dst.rhdSkipPost, src.rhdSkipPost);
+        EXPECT_EQ(dst.count, src.count);
+        EXPECT_EQ(dst.sliceSize, src.sliceSize);
+        EXPECT_EQ(dst.dataType, src.dataType);
+        EXPECT_EQ(dst.reduceOp, src.reduceOp);
+        ExpectFullParamsEqual(dst, src);
     }
 
     TEST(NhrSerializationTest, DpuRunInfoRoundTrip)

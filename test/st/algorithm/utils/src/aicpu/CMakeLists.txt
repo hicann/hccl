@@ -367,6 +367,7 @@ target_sources(hccl_aicpu_kernel PRIVATE
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_nhr_pcie.cc
     ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_aicpu_reduce_hd.cc
+    ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd.cc
     ${HCCL_DEV_BASE}/src/ops/all_to_all_v/algorithm/template/aicpu/ins_temp_ubx_all_to_all_v_mesh_1D.cc
 
     # AicpuReduceScatterVSoleMesh.
@@ -396,6 +397,10 @@ if(_ST_CANN_VERSION_NUM GREATER_EQUAL 90000000)
         # DpuScatterSequenceMeshNHR
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/executor/ins_v2_scatter_sequence_executor.cc
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_dpu_inter_node.cc
+
+        # DpuReduceScatterSequenceMeshConcurRHD
+        ${HCCL_DEV_BASE}/src/ops/reduce_scatter/algorithm/template/aicpu/ins_temp_reduce_scatter_rhd_dpu_inter.cc
+
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_nhr_nda.cc
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_nda.cc
         ${HCCL_DEV_BASE}/src/ops/scatter/algorithm/template/aicpu/ins_temp_scatter_omnipipe_nhr_dpu.cc

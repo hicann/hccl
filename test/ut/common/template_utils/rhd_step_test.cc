@@ -9,6 +9,7 @@
  */
 
 #include <algorithm>
+#include <array>
 #include <vector>
 #include <gtest/gtest.h>
 #include "template_utils.h"
@@ -916,4 +917,39 @@ TEST(RhdSegBytesTest, BytesParamValidation)
     std::vector<u64> out;
     EXPECT_EQ(RhdBuildUnitSizes(5, {100, 100}, out), HcclResult::HCCL_E_PARA); // 防越界读
     EXPECT_TRUE(out.empty());
+}
+
+// RHD L2 scratch 隔离双公式（Dpu 三级 executor 基址/预算两侧的单一事实来源）：
+// 基址 = R·C·dts（R = d0·d1·d2）、预算乘数 = R + m2（m2 = L2 模板 CalcScratchMultiple）。
+// 配套不变量：(预算乘数)·C·dts == 基址 + m2·C·dts——三级 executor 两分支任一侧单独改动即在此断言失败
+TEST(RhdScratchIsolationFormulaTest, BaseOffAndBudgetMul)
+{
+    // 2×2×2、m2=4（acc+recv 双区 = 2·d2）：R=8，基址 = 8·C·dts，预算乘数 = 12
+    EXPECT_EQ(RhdIsolatedScratchBaseOff(2, 2, 2, 100, 4), 8u * 100u * 4u);
+    EXPECT_EQ(RhdIsolatedScratchBudgetMul(2, 2, 2, 4), 12u);
+    // 3×3×2、m2=4：R=18
+    EXPECT_EQ(RhdIsolatedScratchBaseOff(3, 3, 2, 60, 2), 18u * 60u * 2u);
+    EXPECT_EQ(RhdIsolatedScratchBudgetMul(3, 3, 2, 4), 22u);
+    // 非 2 幂 + 尾块维度
+    EXPECT_EQ(RhdIsolatedScratchBaseOff(2, 3, 5, 1028, 1), 30u * 1028u);
+    EXPECT_EQ(RhdIsolatedScratchBudgetMul(2, 3, 5, 10), 40u);
+}
+
+TEST(RhdScratchIsolationFormulaTest, BudgetBasePairingInvariant)
+{
+    const std::vector<std::array<u32, 4>> dims = {{2, 2, 2, 4}, {3, 3, 2, 4}, {2, 3, 5, 10}, {4, 2, 6, 12}};
+    const std::vector<std::pair<u64, u64>> counts = {{1, 1}, {60, 2}, {1028, 1}, {100, 4}};
+    for (const auto& d : dims) {
+        for (const auto& c : counts) {
+            const u64 unitCount = c.first;
+            const u64 dts = c.second;
+            const u32 budgetMul = RhdIsolatedScratchBudgetMul(d[0], d[1], d[2], d[3]);
+            const u64 baseOff = RhdIsolatedScratchBaseOff(d[0], d[1], d[2], unitCount, dts);
+            // 预算 = 基址 + L2 双区（m2·C·dts）：隔离成立的充要配套
+            EXPECT_EQ(static_cast<u64>(budgetMul) * unitCount * dts, baseOff + static_cast<u64>(d[3]) * unitCount * dts)
+                << "dims=" << d[0] << "x" << d[1] << "x" << d[2] << " m2=" << d[3];
+            // 基址必须严格大于 0（隔离区排在上游输出区之后，非对称内存路径由 executor 取 0，另算）
+            EXPECT_GT(baseOff, 0u);
+        }
+    }
 }

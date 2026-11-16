@@ -12,7 +12,11 @@
 #include "cost_model.h"
 #include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
 #include "ins_temp_reduce_scatter_nhr.h"
+#include "ins_temp_reduce_scatter_rhd.h"
 #include "alg_data_trans_wrapper.h"
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+#include "ins_temp_reduce_scatter_rhd_dpu_inter.h"
+#endif
 
 #include "alg_attrs_registry.h"
 #include "auto_selector_base.h"
@@ -71,8 +75,21 @@ void InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, Ins
     tempAlgParamsInter.buffInfo.inBuffBaseOff
         = symMemBaseOff2 + (rankIdxLevel0_ + (rankIdxLevel1_ * rankSizeLevel0_)) * currDataCount * dataTypeSize_;
     tempAlgParamsInter.buffInfo.outBuffBaseOff = processedDataCount * dataTypeSize_;
-    tempAlgParamsInter.buffInfo.hcclBuffBaseOff
-        = (rankIdxLevel0_ + (rankIdxLevel1_ * rankSizeLevel0_)) * currDataCount * dataTypeSize_;
+    if constexpr (InsAlgTemplate2::kNeedsAccRecvScratchIsolation) {
+        // L2 DPU inter（RhdDpuInter）scratch 为 acc+recv 双区（2·d2·C），须与 L0/L1 原地规约区
+        // [0, R·C) 隔离、排在其后（R = d0·d1·d2）；基址全 rank 同值——DPU 对端 remoteCclMem 同偏移即
+        // 对端槽位（rankIdx 错位口径会破坏该同基址契约）。对称内存路径 L0/L1 在 input 对称窗口原地
+        // 规约、不占 ccl，ccl 仅作 L2 scratch，基址取 0。
+        // 公式单一事实来源：RhdIsolatedScratchBaseOff（与本文件预算分支 RhdIsolatedScratchBudgetMul 配套）。
+        tempAlgParamsInter.buffInfo.hcclBuffBaseOff
+            = supportSymmetricMemory_ ?
+                  0 :
+                  RhdIsolatedScratchBaseOff(
+                      rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_, currDataCount, dataTypeSize_);
+    } else {
+        tempAlgParamsInter.buffInfo.hcclBuffBaseOff
+            = (rankIdxLevel0_ + (rankIdxLevel1_ * rankSizeLevel0_)) * currDataCount * dataTypeSize_;
+    }
 
     tempAlgParamsInter.sliceSize = currDataCount * dataTypeSize_;
     tempAlgParamsInter.tailSize = tempAlgParamsInter.sliceSize;
@@ -82,6 +99,19 @@ void InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate0, Ins
     tempAlgParamsInter.repeatNum = 1;
     tempAlgParamsInter.inputRepeatStride = 0;
     tempAlgParamsInter.outputRepeatStride = 0;
+
+    // allRank* 变长分片契约（需求 5.2，DPU inter 模板消费）：L2 组内逐超节点份额表——均匀退化
+    // fill（allRankSliceSize[j] ≡ sliceSize、allRankDispls[j] = j·inputSliceStride，与 stride 契约
+    // 等价）。allRankSliceSize 须全 rank 一致（全局表）；allRankDispls 为本 rank 本地输入布局。
+    // stride 契约字段保留供 device RHD L2 消费，两套并存
+    tempAlgParamsInter.allRankSliceSize.clear();
+    tempAlgParamsInter.allRankDispls.clear();
+    tempAlgParamsInter.allRankProcessedDataCount.clear();
+    for (u32 j = 0; j < rankSizeLevel2_; ++j) {
+        tempAlgParamsInter.allRankSliceSize.push_back(tempAlgParamsInter.sliceSize);
+        tempAlgParamsInter.allRankDispls.push_back(j * tempAlgParamsInter.inputSliceStride);
+        tempAlgParamsInter.allRankProcessedDataCount.push_back(currDataCount);
+    }
 
     HCCL_INFO(
         "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] loop[%llu] Inter2 inputSliceStride[%llu] "
@@ -135,8 +165,21 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
         = skipLevel1_ ? 1 : algTemplateLevel1->CalcScratchMultiple(BufferType::HCCL_BUFFER, BufferType::HCCL_BUFFER);
     u32 templateScratchMultiplier2
         = algTemplateLevel2->CalcScratchMultiple(BufferType::HCCL_BUFFER, BufferType::OUTPUT);
-    u32 templateScratchMultiplier
-        = templateScratchMultiplier0 * templateScratchMultiplier1 * templateScratchMultiplier2;
+    // scratch 预算分区重算（L2 DPU inter，参考 3level_dpu.cc:167-172）：device 模板 L2 原地归约、
+    // 三层共用 [0, m0·m1·m2·C) 连乘预算即可；RhdDpuInter 的 L2 scratch 为 acc+recv 双区（m2=2·d2），
+    // 须与 L0/L1 原地规约区 [0, R·C)（R = d0·d1·d2）隔离、排在其后，总预算 = L0/L1 区 + L2 scratch
+    // = R + m2，与 GenInterTemplateParams2 的 hcclBuffBaseOff（R·C）配套。不可照抄连乘 m0·m1·m2
+    // （m2=2·d2 会把 L0/L1 区虚增至 2 倍）；R 用 rankSizeLevel 连乘表达（与 hcclBuffBaseOff 同口径）。
+    u32 templateScratchMultiplier;
+    if constexpr (InsAlgTemplate2::kNeedsAccRecvScratchIsolation) {
+        // 公式单一事实来源：RhdIsolatedScratchBudgetMul（与 GenInterTemplateParams2 的
+        // hcclBuffBaseOff=RhdIsolatedScratchBaseOff 配套，UT 钉死两侧口径一致性）
+        templateScratchMultiplier = RhdIsolatedScratchBudgetMul(
+            rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_, templateScratchMultiplier2);
+    } else {
+        templateScratchMultiplier
+            = templateScratchMultiplier0 * templateScratchMultiplier1 * templateScratchMultiplier2;
+    }
 
     TemplateResource templateResource0;
     CHK_RET(RsSeq3LevelGenTempResource(resCtx, 0, remoteRankToChannelInfo_, algTemplateLevel0, templateResource0));
@@ -159,6 +202,28 @@ HcclResult InsV2ReduceScatterSequenceExecutor3Level<AlgTopoMatch, InsAlgTemplate
             "scratchMultiplier[%u] too large for cclBuffSize[%llu]",
             myRank_, templateScratchMultiplier, tempAlgParamsLevel2.buffInfo.hcclBuff.size);
         return HCCL_E_INTERNAL;
+    }
+    if constexpr (InsAlgTemplate2::kNeedsAccRecvScratchIsolation) {
+        // 隔离双公式独立互验（预算侧 RhdIsolatedScratchBudgetMul 与基址侧 RhdIsolatedScratchBaseOff
+        // 各自独立计算，配对恒等式 budget·C·dts == baseOff + m2·C·dts 仅在两侧同口径时成立）：
+        // 任一侧被单独改动即在此显式报错，而非静默越界写 ccl；UT（rhd_step_test 配套不变量）
+        // 与本运行期互验双层兜底。不用「乘数×maxCount≤ccl」式——maxCount 由乘数除法反推，
+        // 该式恒真无独立信息量。
+        const u64 isolatedBudgetTotal = static_cast<u64>(templateScratchMultiplier) * maxCountPerLoop * dataTypeSize_;
+        const u64 isolatedLayoutTotal
+            = RhdIsolatedScratchBaseOff(
+                  rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_, maxCountPerLoop, dataTypeSize_)
+              + static_cast<u64>(templateScratchMultiplier2) * maxCountPerLoop * dataTypeSize_;
+        CHK_PRT_RET(
+            isolatedBudgetTotal != isolatedLayoutTotal,
+            HCCL_ERROR(
+                "[InsV2ReduceScatterSequenceExecutor3Level] myRank[%u] isolated scratch budget[%llu] != layout "
+                "baseOff[%llu] + L2 scratch[%llu], formula pair may have drifted.",
+                myRank_, isolatedBudgetTotal,
+                RhdIsolatedScratchBaseOff(
+                    rankSizeLevel0_, rankSizeLevel1_, rankSizeLevel2_, maxCountPerLoop, dataTypeSize_),
+                static_cast<u64>(templateScratchMultiplier2) * maxCountPerLoop * dataTypeSize_),
+            HcclResult::HCCL_E_INTERNAL);
     }
     u64 loopTimes = dataCount_ / maxCountPerLoop + static_cast<u64>(dataCount_ % maxCountPerLoop != 0);
     if (supportSymmetricMemory_) {
@@ -294,5 +359,73 @@ REGISTER_EXEC_V2_MULTI(
 REGISTER_ALG_ATTRS(AicpuReduceScatterSequenceMeshConcurNHRNHR, topo.minTopoLevelNum = TOPO_LEVEL_NUM_3;
                    topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.isSupportProd = false;
                    op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+
+// RHD 三级（Aicpu）：level0 z 轴绕路 Mesh + level1/level2 均 device RHD（同一模板实例）。
+// preferred-only + 占位 cost，口径同二级注册。
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, AicpuReduceScatterSequenceMeshConcurRHDRHD,
+    InsV2ReduceScatterSequenceExecutor3Level, TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour,
+    InsTempReduceScatterRHD, InsTempReduceScatterRHD);
+REGISTER_ALG_ATTRS(
+    AicpuReduceScatterSequenceMeshConcurRHDRHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; op.isSupportProd = false;
+    // Level1Nhr 硬过滤位（同 Dpu 三级注册 :354 口径）：selector 在软策略
+    // （preferred）之前按 `Level1Nhr && !isSupportLevel1Nhr` 过滤，缺位时 Level0 GCD=1（level0 mesh
+    // 退化）组网被静默回退。两注册共用同一 L0 模板 InsTempReduceScatterMesh1DZAxisDetour，Level0
+    // GCD=1 时不受 level0 mesh 规则性约束，显式放行；物理前提由下方 topoPrecondCheck 保证，
+    // 无额外排除理由。
+    topo.isSupportLevel1Nhr = true;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };
+    // 物理硬前提（topoPrecondCheck，preferred 不可绕过）：L1/L2 均须
+    // 设备侧 CLOS——两层级均绑定 device 版 RHD 模板，其 CalcRes 过滤全部 ROCE 通道
+    // （ins_temp_reduce_scatter_rhd.cc:45-52），任一层为 HOST 链路时通道必空、运行期以
+    // HCCL_E_INTERNAL 失败而非选择期过滤。对齐同文件 Dpu 三级注册的同款前提。
+    topo.topoPrecondCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->physicalLevels.size() == TOPO_LEVEL_NUM_3
+               && topo->physicalLevels[1].topoType == CommTopo::COMM_TOPO_CLOS
+               && topo->physicalLevels[1].locType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE
+               && topo->physicalLevels[2].locType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE;
+    };);
+
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+// RHD（递归折半倍增，支持层内非 2 幂）三级 hostdpu：level0 z 轴绕路 Mesh + level1 device RHD +
+// level2 RHD DPU inter（host RoCE、DPU 只搬数、步间 AICPU LocalReduce 交替，老路径先行）。
+// 绑 plain 版三级 executor（不用 3LevelDpu 版）：RhdDpuInter 消费五参数 stride 契约（KernelRun 入口
+// 按 sliceSize/inputSliceStride 自推导 allRank* 表），而 3LevelDpu 版 L2 fill 为 allRank* 契约且把
+// sliceSize/inputSliceStride 置 0（适配 Mesh DPU inter），换绑会致自推导零表、静默不规约。但 plain
+// 版不能零改动直绑——RhdDpuInter 的 L2 scratch 为 acc+recv 双区（2·d2），须与 L0/L1 原地规约区
+// [0, R·C) 隔离，故 plain 版经 kNeedsAccRecvScratchIsolation 分支注入 +m2 scratch 隔离（OrchestrateLoop
+// 预算重算 + GenInterTemplateParams2 的 hcclBuffBaseOff = R·C）。
+// preferred-only + 占位 cost（{{0,0,1,0}} 恒非空），attrs 对齐 Aicpu 三级版 + isHostDpuOnly
+// （hostdpu 组网入候选）；版本守卫对齐模板编译段（RHD DPU inter 模板仅在 9.x 段编译）。
+REGISTER_EXEC_V2_MULTI(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshConcurRHDRHD,
+    InsV2ReduceScatterSequenceExecutor3Level, TopoMatchThreeLevel, InsTempReduceScatterMesh1DZAxisDetour,
+    InsTempReduceScatterRHD, InsTempReduceScatterRhdDpuInter);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterSequenceMeshConcurRHDRHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_3; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_3; topo.isHostDpuOnly = true;
+    // Level1Nhr 硬过滤位（同二级注册，见 executor.cc 对应注释；
+    // Level0 GCD=1 的组网 RHD 三级不受 level0 mesh 规则性约束，显式放行）
+    topo.isSupportLevel1Nhr = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };
+    // 物理硬前提（topoPrecondCheck：无条件执行，preferred/tuner均不可绕过）：L1框间层须为设备侧CLOS。
+    // L1绑定device版RHD模板，其CalcRes经CalcChannelRequestNhr建链后过滤全部ROCE通道
+    // （ins_temp_reduce_scatter_rhd.cc:45-52，device链路口径），L1为HOST链路时通道必空，
+    // 运行期SetchannelsPerRank(空)以HCCL_E_INTERNAL失败（rD5）。违反前提的组网（如hostdpu
+    // 全HOST标准三层布局）在选择期即被过滤，preferred配置由cost_model以WARNING静默回退自动选路
+    // （回退默认二级DpuReduceScatterSequenceMeshMesh）；topoCustomCheck保持恒false（preferred-only）。
+    // 谓词对齐NHRMesh本体（executor_3level_dpu.cc，L1=physicalLevels[1]由FindAnchors三层锚定保证）。
+    topo.topoPrecondCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        return topo->physicalLevels.size() == TOPO_LEVEL_NUM_3
+               && topo->physicalLevels[1].topoType == CommTopo::COMM_TOPO_CLOS
+               && topo->physicalLevels[1].locType == EndpointLocType::ENDPOINT_LOC_TYPE_DEVICE;
+    };);
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 
 } // namespace ops_hccl

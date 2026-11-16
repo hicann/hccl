@@ -12,6 +12,10 @@
 #include "ins_temp_reduce_scatter_mesh_1D.h"
 #include "ins_temp_reduce_scatter_mesh_1d_dpu.h"
 #include "ins_temp_reduce_scatter_mesh_1d_nda.h"
+#include "ins_temp_reduce_scatter_mesh_1D_Z_axis_detour.h"
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+#include "ins_temp_reduce_scatter_rhd_dpu_inter.h"
+#endif
 #include "ins_temp_reduce_scatter_nhr_dpu.h"
 
 #include "alg_attrs_registry.h"
@@ -268,6 +272,19 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
     std::shared_ptr<InsAlgTemplate1> algTemplateIntra
         = std::make_shared<InsAlgTemplate1>(param, myRank_, interHierarchyInfo_);
 
+    // aicpu/hostdpu执行期需按通道映射刷新channelsPerRank：CalcRes期与执行期分属不同模板实例，
+    // 框内ZAxisDetour的GetThreadNum随channelsPerRank缩放，缺刷新导致执行期线程/notify与CalcRes期
+    // 申请资源失配（对齐executor_aicpu先例）。CCU资源模型不走该通道映射；单rank退化层级通道映射
+    // 为空，按层级规模守卫跳过（规避基类空映射断言，对齐executor_3level先例）。
+    if (param.engine != CommEngine::COMM_ENGINE_CCU) {
+        if (rankSizeLevel0_ > 1) {
+            CHK_RET(algTemplateInter->SetchannelsPerRank(remoteRankToChannelInfo_[0]));
+        }
+        if (rankSizeLevel1_ > 1) {
+            CHK_RET(algTemplateIntra->SetchannelsPerRank(remoteRankToChannelInfo_[1]));
+        }
+    }
+
     BufferType inBuffType = BufferType::INPUT;
     BufferType outBuffType = BufferType::OUTPUT;
     u32 templateScratchMultiplierInter = algTemplateInter->CalcScratchMultiple(inBuffType, outBuffType);
@@ -357,6 +374,12 @@ HcclResult InsV2ReduceScatterSequenceExecutor<AlgTopoMatch, InsAlgTemplate0, Ins
         tempAlgParamsIntra.outputSliceStride
             = currDataCount * dataTypeSize_; // 如果是scratchbuffer，偏移是单次循环处理的最大数据量
 
+        // allRank* 表不再由本 executor 预填：本 executor 同时承载 NhrDpu L1（其 KernelRun
+        // 按 allRankSliceSize 是否为空判定 stride/table 布局，table 口径为 outputSliceStride），executor
+        // 预填（inputSliceStride 口径，≠outputSliceStride）会把 NhrDpu 切到表布局并致槽位错位。RHD DPU
+        // inter 模板在自身 KernelRun 入口按 inputSliceStride 口径自推导（与 executor 原填表逐字节等价），
+        // 与 NhrDpu 各管各口径、互不污染。
+
         HCCL_INFO(
             "[InsV2ReduceScatterSequenceExecutor] loop [%u] tempAlgParamsIntra.inputSliceStride [%u],"
             "tempAlgParamsIntra.outputSliceStride [%u] tempAlgParamsIntra.sliceSize [%u]",
@@ -424,4 +447,29 @@ REGISTER_ALG_ATTRS(
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         return !topo->level0PcieMix;
     });
+
+// RHD（递归折半倍增，支持层内非 2 幂）二级 hostdpu：level0 z 轴绕路 Mesh + level1 RHD DPU inter
+// （host RoCE、DPU 只搬数、步间 AICPU LocalReduce 交替，老路径先行）。executor 复用既有二级
+// Sequence（既有 Dpu 先例同 executor），仅换 L1 模板实参。preferred-only + 占位 cost（{{0,0,1,0}}
+// 恒非空），口径同 Aicpu 版二级注册；isHostDpuOnly 使本注册仅在 hostdpu 组网（CheckHostDPUOnly
+// 成立、引擎判定 HOSTCPU）入候选，与 Aicpu 家族互斥。版本守卫对齐模板编译段
+// （RHD DPU inter 模板仅在 9.x 段编译）与三级注册（executor_3level.cc 同款守卫）。
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_REDUCE_SCATTER, DpuReduceScatterSequenceMeshConcurRHD, InsV2ReduceScatterSequenceExecutor,
+    TopoMatchTwoLevel, InsTempReduceScatterMesh1DZAxisDetour, InsTempReduceScatterRhdDpuInter);
+REGISTER_ALG_ATTRS(
+    DpuReduceScatterSequenceMeshConcurRHD, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D;
+    topo.minTopoLevelNum = TOPO_LEVEL_NUM_2; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2; topo.isHostDpuOnly = true;
+    // Level1Nhr 硬过滤位：selector 在软策略（preferred）之前按
+    // `Level1Nhr && !isSupportLevel1Nhr` 过滤（cost_model.cc:234-239，REDUCE_SCATTER 不在
+    // NO_L1NHR_CHECK_OPS 豁免集），缺位时 Level0 GCD=1（level0 mesh 退化、按单级 NHR 处理）
+    // 的 hostdpu 组网上显式 HCCL_ALGO 配置也被静默回退——对齐同族默认注册
+    // DpuReduceScatterSequenceMeshMesh 的显式置位（executor.cc:411）
+    topo.isSupportLevel1Nhr = true;
+    op.isSupportProd = false; op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails*) -> bool {
+        return false;
+    };);
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 } // namespace ops_hccl
