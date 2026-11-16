@@ -18,7 +18,7 @@
 - Atlas训练系列产品
 - Atlas推理系列产品
 
-注意：本样例代码基于 TensorFlow 1.x 框架开发，不兼容 TensorFlow 2.x。推荐使用 TensorFlow 1.15.0 版本。
+注意：本样例代码基于 TensorFlow 1.x 框架开发，不兼容 TensorFlow 2.x。推荐使用 TensorFlow 1.15.0 版本，且要求使用 Python 3.7.x（TensorFlow 1.15.0 官方安装包仅提供 Python 3.7 及以下版本，无法安装到 Python 3.8 及以上环境）。若当前系统 Python 版本较高，建议通过 conda 等工具创建独立的 Python 3.7.x 环境运行本样例。
 
 ### 配置环境变量
 

@@ -18,7 +18,7 @@ This sample supports the following products in a single-server 8-card configurat
 - Atlas training products
 - Atlas inference products
 
-Note: This sample code is developed based on TensorFlow 1.x and is not compatible with TensorFlow 2.x. TensorFlow 1.15.0 is recommended.
+Note: This sample code is developed based on TensorFlow 1.x and is not compatible with TensorFlow 2.x. TensorFlow 1.15.0 is recommended, and Python 3.7.x is required (official TensorFlow 1.15.0 packages are available only for Python 3.7 or earlier and cannot be installed on Python 3.8 or later). If the system Python version is higher, create a standalone Python 3.7.x environment using tools such as conda to run this sample.
 
 ### Setting Environment Variables
 
