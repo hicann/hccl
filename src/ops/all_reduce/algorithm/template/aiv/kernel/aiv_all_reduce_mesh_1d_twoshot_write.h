@@ -315,4 +315,5 @@ __aicore__ inline void AivAllReduceV2Mesh1DTwoShotWrite(KERNEL_ARGS_DEF)
     op.Prepare(sliceId);
     op.Process();
     op.BarrierAll();
+    op.TailCounter();
 }

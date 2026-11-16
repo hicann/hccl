@@ -20,6 +20,7 @@
 #include "ccu_kernel_utils.h"
 #include "ccu_primitives_dl.hpp"
 #include "ccu_log.h"
+#include "alg_param.h"
 namespace ccu = ::hcomm::ccu;
 
 namespace ops_hccl {

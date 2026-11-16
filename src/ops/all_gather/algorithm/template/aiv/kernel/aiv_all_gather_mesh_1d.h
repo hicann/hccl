@@ -205,7 +205,10 @@ __aicore__ inline void AivAllGatherV2Mesh1D(KERNEL_ARGS_DEF)
     op.Process(len, sliceId, outputSliceStride);
     if (!pingpong) {
         op.BarrierAll();
+    } else {
+        op.SyncBeforeTail();
     }
+    op.TailCounter();
 }
 
 template <typename T>
@@ -229,6 +232,7 @@ __aicore__ inline void AivAllGatherV2Mesh1DSuperKernel(SUPERKERNEL_ARGS_DEF)
         op.output_ += curSize;
         loopTag += curSize / UB_DB_DATA_BATCH_SIZE + 1;
     }
+    op.TailCounter();
 }
 
 __aicore__ inline void sk_ag_mesh_1d(SUPERKERNEL_ARGS_DEF)

@@ -129,19 +129,30 @@ struct KernelArgs {
     uint32_t numBlocks = 2;
     uint32_t core = 0;
     uint32_t roundTag = kFirstTag;
+    bool enableCounter = false;
 };
 
 void RunKernel(const KernelArgs& args, ExtraArgsBsr& extra)
 {
     bsr_aiv_test::store().currentBlock = args.core;
     bsr_aiv_test::store().currentRank = args.rank;
+    const uint64_t counterBase = bsr_aiv_test::BlockBase(args.rank) + 0x700000;
+    const GM_ADDR headCountMem
+        = args.enableCounter ? reinterpret_cast<GM_ADDR>(static_cast<uintptr_t>(counterBase)) : nullptr;
+    const GM_ADDR tailCountMem = args.enableCounter ?
+                                     reinterpret_cast<GM_ADDR>(static_cast<uintptr_t>(counterBase + sizeof(int32_t))) :
+                                     nullptr;
+    const GM_ADDR addOneMem = args.enableCounter ?
+                                  reinterpret_cast<GM_ADDR>(static_cast<uintptr_t>(counterBase + 2 * sizeof(int32_t))) :
+                                  nullptr;
     AivBatchSendRecvV2Mesh1D(
         reinterpret_cast<GM_ADDR>(static_cast<uintptr_t>(bsr_aiv_test::BlockBase(args.rank))),
         /*input*/ 0, /*output*/ 0, args.rank, /*sendRecvRemoteRank*/ 0, args.rankSize, /*len*/ 0, /*dataType*/ 0,
         /*reduceOp*/ 0, /*root*/ 0, /*sliceId = roundTag*/ args.roundTag, /*inputSliceStride*/ 0,
         /*outputSliceStride*/ 0, /*repeatNum*/ 0, /*inputRepeatStride*/ 0, /*outputRepeatStride*/ 0, args.numBlocks,
-        /*isOpBase*/ false, /*headCountMem*/ nullptr, /*tailCountMem*/ nullptr, /*addOneMem*/ nullptr,
-        /*counterMemSize*/ 0, /*isEnableCounter*/ false, /*isWrite*/ false, extra);
+        /*isOpBase*/ false, headCountMem, tailCountMem, addOneMem,
+        /*counterMemSize*/ args.enableCounter ? 3 * static_cast<uint32_t>(sizeof(int32_t)) : 0, args.enableCounter,
+        /*isWrite*/ false, extra);
 }
 
 // 一个 kernel 的所有核依次跑一遍（核号在构造期取，故每次调用都要重建对象）。
@@ -608,4 +619,29 @@ TEST(BsrAivKernel, BarrierCoversOnlyActivePeers)
     EXPECT_EQ(SelectIf(EventKind::RECORD, IsBarrierEvent).size(), 0u);
     EXPECT_EQ(SelectIf(EventKind::WAIT, IsBarrierEvent).size(), 0u);
     EXPECT_EQ(Select(EventKind::SYNC).size(), 2u);
+}
+
+// 卡死检测计数钩子：head 在 InitBsr 末尾、tail 在 kernel 末尾各发一次，且只由 block0 发射；
+// 未开启（地址为空 / isEnableCounter=false）时一次都不发。
+TEST(BsrAivKernel, StuckCounterHooksOnlyFireOnBlock0WhenEnabled)
+{
+    SetupWorld(2);
+    ExtraArgsBsr extra{};
+    extra.flagBlock = 4;
+
+    KernelArgs enabled;
+    enabled.rank = 0;
+    enabled.numBlocks = 2;
+    enabled.enableCounter = true;
+    RunAllCores(enabled, extra);
+    EXPECT_EQ(bsr_aiv_test::store().headCounters, 1u);
+    EXPECT_EQ(bsr_aiv_test::store().tailCounters, 1u);
+
+    bsr_aiv_test::ResetTrace();
+    KernelArgs disabled;
+    disabled.rank = 0;
+    disabled.numBlocks = 2;
+    RunAllCores(disabled, extra);
+    EXPECT_EQ(bsr_aiv_test::store().headCounters, 0u);
+    EXPECT_EQ(bsr_aiv_test::store().tailCounters, 0u);
 }

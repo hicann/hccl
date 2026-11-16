@@ -421,4 +421,5 @@ __aicore__ inline void AivReduceV2Mesh1D(KERNEL_ARGS_DEF)
     op.Process(sliceId);
     SyncAll<true>();
     op.BarrierAll();
+    op.TailCounter();
 }

@@ -155,6 +155,7 @@ __aicore__ inline void AivAllReduceV2Mesh1DOneShot(KERNEL_ARGS_DEF)
         op.ProcessCoreSmallCase(len, sliceId, inputSliceStride);
     }
     op.BarrierAll();
+    op.TailCounter();
 }
 
 template <typename T>
@@ -184,6 +185,7 @@ __aicore__ inline void AivAllReduceV2Mesh1DOneShotSuperKernel(SUPERKERNEL_ARGS_D
         op.output_ += curSize;
         loopTag += curSize / UB_DB_DATA_BATCH_SIZE + 1;
     }
+    op.TailCounter();
 }
 
 __aicore__ inline void sk_ar_mesh_1d_oneshot(SUPERKERNEL_ARGS_DEF)

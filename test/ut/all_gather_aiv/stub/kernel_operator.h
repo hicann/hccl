@@ -34,6 +34,9 @@ struct Trace {
     uint32_t rank;
     uint32_t block;
     std::vector<Event> events;
+    uint32_t headCounters = 0;
+    uint32_t tailCounters = 0;
+    uint32_t syncBeforeTail = 0;
 };
 inline Trace* currentTrace = nullptr;
 constexpr uint64_t RANK_STRIDE = 0x10000000ULL;

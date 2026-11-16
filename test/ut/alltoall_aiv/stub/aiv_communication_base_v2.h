@@ -30,6 +30,9 @@ struct Trace {
     uint32_t block;
     uint32_t firstBarriers = 0;
     uint32_t endBarriers = 0;
+    uint32_t headCounters = 0;
+    uint32_t tailCounters = 0;
+    uint32_t syncBeforeTail = 0;
     std::vector<Event> events;
 };
 inline Trace* currentTrace = nullptr;
@@ -49,8 +52,9 @@ public:
     template <typename... ExtraArgs>
     void Init(
         GM_ADDR, uint64_t input, uint64_t output, uint32_t rank, uint32_t, uint32_t rankSize, uint64_t len, uint32_t,
-        uint32_t, uint32_t, uint64_t inputStride, uint64_t outputStride, uint64_t, uint64_t, uint64_t, GM_ADDR, GM_ADDR,
-        GM_ADDR, uint32_t, bool, uint32_t blocks, ExtraArgs...)
+        uint32_t, uint32_t, uint64_t inputStride, uint64_t outputStride, uint64_t, uint64_t, uint64_t,
+        GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t, bool isEnableCounter, uint32_t blocks,
+        ExtraArgs...)
     {
         input_ = input;
         output_ = output;
@@ -62,6 +66,9 @@ public:
         numBlocks_ = blocks;
         blockIdx_ = alltoall_aiv_test::currentTrace->block;
         myGmIn_ = GetGmIn(rank);
+        stuckEnabled_
+            = isEnableCounter && (headCountMem != nullptr) && (tailCountMem != nullptr) && (addOneMem != nullptr);
+        HeadCounter();
     }
     GM_ADDR GetGmIn(uint32_t rank)
     {
@@ -89,6 +96,24 @@ public:
     bool IsIdleCore() const { return blockIdx_ >= numBlocks_; }
     void BarrierForFirstOP() { ++alltoall_aiv_test::currentTrace->firstBarriers; }
     void BarrierAll() { ++alltoall_aiv_test::currentTrace->endBarriers; }
+    void HeadCounter()
+    {
+        if (stuckEnabled_ && blockIdx_ == 0) {
+            ++alltoall_aiv_test::currentTrace->headCounters;
+        }
+    }
+    void TailCounter()
+    {
+        if (stuckEnabled_ && blockIdx_ == 0) {
+            ++alltoall_aiv_test::currentTrace->tailCounters;
+        }
+    }
+    void SyncBeforeTail()
+    {
+        if (stuckEnabled_) {
+            ++alltoall_aiv_test::currentTrace->syncBeforeTail;
+        }
+    }
 
     uint64_t len_ = 0;
     uint64_t input_ = 0;
@@ -99,6 +124,7 @@ public:
     uint32_t rankSize_ = 0;
     uint32_t numBlocks_ = 0;
     uint32_t blockIdx_ = 0;
+    bool stuckEnabled_ = false;
     uint32_t tag_ = 1;
     uint32_t curTag_ = 0;
     GM_ADDR myGmIn_ = nullptr;

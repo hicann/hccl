@@ -11,6 +11,7 @@
 #ifndef OPS_HCCL_SRC_OPS_INC_COLL_ALG_PARAM
 #define OPS_HCCL_SRC_OPS_INC_COLL_ALG_PARAM
 
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <map>
@@ -442,6 +443,12 @@ struct TopoInfoWithNetLayerDetails : public TopoInfo { // 通信域拓扑ctx
 struct CcuKernelArgBase {
     ChannelHandle channels[CCU_MAX_RANK_SIZE];
     uint32_t channelCount;
+    bool stuckCounterEnabled = false;
+    uint64_t stuckHeadAddr = 0;
+    uint64_t stuckTailAddr = 0;
+    uint64_t stuckAddOneAddr = 0;
+    uint64_t stuckCounterToken = 0;
+    void* stuckOrigKernelFunc = nullptr;
 };
 
 // ccu kernel register所需信息
@@ -841,8 +848,16 @@ struct OpParam { // 不申请ctx，每个算子单独下发
 #ifdef HCCL_ALGO_PLUGIN_ENABLE
     bool pluginSelected = false;
 #endif
+    // AICPU 插桩计数（须在 varData 之前）
+    u64 counterHeadAddr{0};
+    u64 counterTailAddr{0};
+    u64 counterAddOneAddr{0};
+    u32 isEnableCounter{0};
+    u32 counterReserved{0}; // 4B 填充：使新增块为 32B，保持 varData 8 字节对齐
     u8 varData[0];
 };
+
+static_assert(offsetof(OpParam, varData) % 8 == 0, "OpParam::varData must be 8-byte aligned");
 
 struct AlgDesc {
     bool isZeroCopy = false;

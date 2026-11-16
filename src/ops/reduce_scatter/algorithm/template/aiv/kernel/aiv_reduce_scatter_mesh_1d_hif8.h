@@ -62,6 +62,9 @@ public:
         }
         GetTag(buffIn);
         InitBuffArray(buffIn, pingpong);
+        InitStuckCounter(
+            reinterpret_cast<__gm__ int32_t*>(headCountMem), reinterpret_cast<__gm__ int32_t*>(tailCountMem),
+            reinterpret_cast<__gm__ int32_t*>(addOneMem), isEnableCounter);
     }
 
     __aicore__ inline void Init(GM_ADDR hiddenInput, GM_ADDR input, GM_ADDR output, bool pingpong = false)
@@ -111,6 +114,10 @@ public:
         if (args->clearEnable == 1) {
             ClearSyncBuf();
         }
+        InitStuckCounter(
+            reinterpret_cast<__gm__ int32_t*>(args->headCountMem),
+            reinterpret_cast<__gm__ int32_t*>(args->tailCountMem), reinterpret_cast<__gm__ int32_t*>(args->addOneMem),
+            args->isEnableCounter != 0);
     }
 
     __aicore__ inline void InitCoreInfo(uint64_t totalLen, uint64_t inputStride)
@@ -235,4 +242,5 @@ __aicore__ inline void AivReduceScatterV2Mesh1DHif8(KERNEL_ARGS_DEF)
     }
     op.Process(sliceId);
     op.BarrierAll();
+    op.TailCounter();
 }

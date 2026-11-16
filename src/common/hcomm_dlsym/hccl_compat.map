@@ -35,9 +35,11 @@
          */
         HcclChannelDestroy;
         HcclChannelQuery;
+        HcclStuckDetectGetCounterAddr;
         HcommIsSupportHcclChannelDestroy;
         HcommIsSupportHcclChannelQuery;
         HcommIsSupportHcclDedicatedThreadAcquire;
+        HcommIsSupportHcclStuckDetectGetCounterAddr;
         HcommIsSupportHcclThreadAcquireWithConfig;
 
         /*
@@ -155,6 +157,7 @@
         HcommIsSupportHcommEndpointCheckFeature;
         HcommIsSupportHcommFenceOnThread;
         HcommIsSupportHcommFlush;
+        HcommIsSupportHcommLocalReduceOnThread;
         HcommIsSupportHcommReadNbi;
         HcommIsSupportHcommReadNbiOnThread;
         HcommIsSupportHcommReadReduceOnThread;
@@ -174,6 +177,7 @@
         HcommIsSupportHcommWriteWithNotifyNbi;
         HcommIsSupportHcommWriteWithNotifyNbiOnThread;
         HcommIsSupportHcommWriteWithNotifyOnThread;
+        HcommLocalReduceOnThread;
         HcommReadNbi;
         HcommReadNbiOnThread;
         HcommReadReduceOnThread;

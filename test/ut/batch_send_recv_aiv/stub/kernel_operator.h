@@ -88,6 +88,9 @@ struct Store {
     uint32_t currentBlock = 0;
     uint32_t waitMisses = 0;
     uint32_t ubAllocs = 0;
+    uint32_t headCounters = 0;
+    uint32_t tailCounters = 0;
+    uint32_t syncBeforeTail = 0;
 };
 
 inline Store& store()
@@ -103,6 +106,9 @@ inline void ResetTrace()
     store().events.clear();
     store().waitMisses = 0;
     store().ubAllocs = 0;
+    store().headCounters = 0;
+    store().tailCounters = 0;
+    store().syncBeforeTail = 0;
     store().writes.clear();
     store().reads.clear();
 }

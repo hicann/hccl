@@ -294,4 +294,5 @@ __aicore__ inline void AivAlltoAllVV2Mesh1D(KERNEL_ARGS_DEF, ExtraArgs& extraArg
         op.ProcessCtrlCore(len, sliceId, extraArgs);
     }
     op.BarrierAll();
+    op.TailCounter();
 }

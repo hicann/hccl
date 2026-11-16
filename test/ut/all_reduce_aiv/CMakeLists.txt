@@ -14,6 +14,7 @@ target_include_directories(all_reduce_aiv_core_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/stub
     ${PROJECT_SOURCE_DIR}/src/ops/op_common/algorithm/template/aiv
     ${PROJECT_SOURCE_DIR}/src/ops/all_reduce/algorithm/template/aiv/kernel
+    ${PROJECT_SOURCE_DIR}/src/ops/all_gather/algorithm/template/aiv/kernel
 )
 target_link_libraries(all_reduce_aiv_core_test PRIVATE
     $<BUILD_INTERFACE:intf_llt_pub>

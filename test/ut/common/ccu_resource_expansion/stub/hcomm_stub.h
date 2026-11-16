@@ -53,6 +53,12 @@ struct MockResources {
     uint32_t remain = DEVICE_REMAIN;
     HcclResult callbackRegistrationResult = HCCL_SUCCESS;
     bool callbackSupported = true;
+    // stuck-detect 计数地址查询桩的可注入状态
+    bool stuckDetectSupported = false;
+    uint64_t stuckHeadAddr = 0;
+    uint64_t stuckTailAddr = 0;
+    uint64_t stuckAddOneAddr = 0;
+    uint64_t stuckToken = 0;
     HcclCommStateCallback cleanupCallback = nullptr;
     void* callbackArgs = nullptr;
     std::string callbackName;

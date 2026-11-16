@@ -111,7 +111,19 @@ using AivSuperKernelArgs = struct AivSuperKernelArgsDef {
     uint64_t input;
     uint64_t output;
     uint64_t cclBufferSize;
+    GM_ADDR headCountMem = nullptr;
+    GM_ADDR tailCountMem = nullptr;
+    GM_ADDR addOneMem = nullptr;
+    uint32_t counterMemSize = 0;
+    uint32_t isEnableCounter = 0;
 };
+
+static_assert(
+    sizeof(AivSuperKernelArgsDef::isEnableCounter) == sizeof(uint32_t),
+    "AivSuperKernelArgsDef::isEnableCounter must be 32-bit");
+static_assert(
+    static_cast<decltype(AivSuperKernelArgsDef::isEnableCounter)>(-1) > 0,
+    "AivSuperKernelArgsDef::isEnableCounter must be unsigned");
 
 enum class AivNotifyType { ACK, DataSignal, Done };
 

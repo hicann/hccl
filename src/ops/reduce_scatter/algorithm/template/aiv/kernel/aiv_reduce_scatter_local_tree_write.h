@@ -186,7 +186,10 @@ __aicore__ inline void AivReduceScatterV2LocalTreeWrite(KERNEL_ARGS_DEF)
     op.Process(sliceId);
     if (!pingpong) {
         op.BarrierAll();
+    } else {
+        op.SyncBeforeTail();
     }
+    op.TailCounter();
 }
 
 #endif // AIV_REDUCE_SCATTER_LOCAL_TREE_WRITE_H

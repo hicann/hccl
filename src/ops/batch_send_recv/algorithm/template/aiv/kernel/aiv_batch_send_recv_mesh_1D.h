@@ -148,6 +148,11 @@ public:
 
         tag_ = roundTag;
         InitBuffArray(buffIn, pingpong);
+
+        // 卡死检测计数：与基类 Init 一致，Init 末尾发 head，kernel 末尾发 tail
+        InitStuckCounter(
+            reinterpret_cast<__gm__ int32_t*>(headCountMem), reinterpret_cast<__gm__ int32_t*>(tailCountMem),
+            reinterpret_cast<__gm__ int32_t*>(addOneMem), isEnableCounter);
     }
 
     // 发送完成标记按 (对端rank, sliceIdx) 唯一编址，每个 item 独占一格：按 coreIndex 编址时同一核的
@@ -342,6 +347,8 @@ __aicore__ inline void AivBatchSendRecvV2Mesh1D(KERNEL_ARGS_DEF, AivBatchSendRec
     op.Process(extraArgs, itemNum);
     // 只对本轮活跃对端做屏障（内部按 peerNum 分核），而非全局 BarrierAll：避免各 rank 发射次数不一致时互等。
     op.BatchSendRecvBarrierAll(extraArgs, itemNum);
+    // 卡死检测计数：屏障后所有 block 已完成数据面，末尾发 tail（仅 block0 发射）
+    op.TailCounter();
 }
 
 #endif // AIV_BATCH_SEND_RECV_MESH_1D_H

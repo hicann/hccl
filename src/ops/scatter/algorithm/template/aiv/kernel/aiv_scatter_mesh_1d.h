@@ -98,4 +98,5 @@ __aicore__ inline void AivScatterV2Mesh1D(KERNEL_ARGS_DEF)
     }
     op.Process();
     op.BarrierAll();
+    op.TailCounter();
 }

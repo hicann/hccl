@@ -16,6 +16,7 @@
 #include <sched.h>
 #include <hccl/hccl_comm.h>
 #include "alg_param.h"
+#include "aicpu_stuck_counter.h"
 #include "executor_base.h"
 #include "coll_alg_exec_registry.h"
 #include "coll_alg_v2_exec_registry.h"
@@ -770,7 +771,7 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
 
             std::string cacheTag;
             bool isCacheHit = false;
-            // 组装aicpu task cache tag
+            // 组装aicpu task cache tag（计数使能态由 GetAicpuTaskCacheTag 统一追加 "-sd" 后缀）
             CHK_RET(AicpuTaskCacheKey::GetAicpuTaskCacheTag(*param, inputSize, cacheTag));
 
             // 查询aicpu task cache
@@ -791,8 +792,15 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
                             HCCL_ERROR("[%s] HcommAicpuTsTaskCacheStart error, ret[%d]", __func__, cacheRet), (void)0);
                     }
 
+                    // head/tail 必须留在 cache 录制窗口内：hit 路径的计数由缓存回放带出，
+                    // 移出窗口或另在 hit 分支补发都会导致漏检/重复计数（见 PR 说明）
+                    // head：窗口=下发→完成，含等待 host stream 通知/排队时间（见 aicpu_stuck_counter.h）
+                    (void)ops_hccl::AicpuStuckCounterHead(thread, *param);
+
                     // 设置算子展开相关的配置, 下发首个NotifyWait, 构造executor并执行算子展开
                     cacheRet = OpOrchestrate(param, resCtxPtr, thread, algName);
+                    // tail 紧跟下发点：成功/失败都发，保证 head/tail 严格配对
+                    (void)ops_hccl::AicpuStuckCounterTail(thread, *param);
                     CHK_PRT_BREAK(
                         cacheRet != HCCL_SUCCESS, HCCL_ERROR("[%s] OpOrchestrate error, ret[%d]", __func__, cacheRet),
                         (void)0);
@@ -826,15 +834,20 @@ extern "C" unsigned int HcclLaunchAicpuKernel(OpParam* param)
                 // 首次缓存记录通信域与tag关系
                 AicpuTaskCacheCommManager::Instance().AddCommTagMap(param->hcclComm, cacheTag);
             } else { // cache hit
-                // 刷新并下发task
+                // 本分支不补发 head/tail：录制窗口内已包含，Execute 回放时一并执行
                 if (HcommIsSupportHcommAicpuTsTaskCacheExecute()) {
                     CHK_RET(static_cast<HcclResult>(
                         HcommAicpuTsTaskCacheExecute(cacheTag.c_str(), addrs, sizes, cacheMemCount)));
                 }
             }
         } else { // 不使能aicpu task cache
+            // head：窗口=下发→完成，含等待 host stream 通知/排队时间（见 aicpu_stuck_counter.h）
+            (void)ops_hccl::AicpuStuckCounterHead(thread, *param);
             // 设置算子展开相关的配置, 下发首个NotifyWait, 构造executor并执行算子展开
-            CHK_RET(OpOrchestrate(param, resCtxPtr, thread, algName));
+            HcclResult orchestrateRet = OpOrchestrate(param, resCtxPtr, thread, algName);
+            // tail 紧跟下发点：成功/失败都发，保证 head/tail 严格配对
+            (void)ops_hccl::AicpuStuckCounterTail(thread, *param);
+            CHK_RET(orchestrateRet);
         }
 
         constexpr u32 DEFAULT_NOTIFY_IDX = 0;
@@ -891,7 +904,6 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         HCCL_ERROR("%s only support SEND/RECV, opType[%d]", __func__, static_cast<int>(param->opType));
         return 1;
     }
-
     HCCL_INFO(
         "Entry-%s, commName[%s], tag[%s], algTag[%s], opType[%d]", __func__, param->commName, param->tag, param->algTag,
         static_cast<int>(param->opType));
@@ -960,8 +972,12 @@ extern "C" unsigned int HcclLaunchP2pAicpuKernel(void* args)
         }
 
         ExecTimeoutManager::Instance().SetExecTimeout(param->opConfig.execTimeout);
+        // head：窗口=下发→完成，含等待 host stream 通知/排队时间（见 aicpu_stuck_counter.h）
+        ops_hccl::AicpuStuckCounterHead(sendRecvThread, *param);
         HcclResult ret = HCCL_SUCCESS;
         ret = executor->OrchestrateWithThread(*param, *resCtxPtr, sendRecvThread);
+        // tail 紧跟下发点：成功/失败都发，保证 head/tail 严格配对
+        (void)ops_hccl::AicpuStuckCounterTail(sendRecvThread, *param);
         if (ret != HCCL_SUCCESS) {
             HCCL_ERROR("orchestrate failed for alg:%s, opType[%d]", param->algName, static_cast<int>(param->opType));
             commGuard.MarkReleased();

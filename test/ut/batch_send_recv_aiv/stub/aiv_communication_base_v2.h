@@ -92,6 +92,39 @@ public:
         bsr_aiv_test::Push({bsr_aiv_test::EventKind::SYNC});
     }
 
+    // 卡死检测计数钩子：与生产 AivCommBase 同名同参。BSR 入口在 InitBsr 末尾发 head、kernel 末尾发
+    // tail，均只由 block0 发射；stub 只统计发射次数，不模拟 GM 归约。
+    __aicore__ inline void
+    InitStuckCounter(__gm__ int32_t* head, __gm__ int32_t* tail, __gm__ int32_t* addOne, bool enable)
+    {
+        stuckHead_ = head;
+        stuckTail_ = tail;
+        stuckAddOne_ = addOne;
+        stuckEnabled_ = enable && (head != nullptr) && (tail != nullptr) && (addOne != nullptr);
+        HeadCounter();
+    }
+
+    __aicore__ inline void HeadCounter()
+    {
+        if (stuckEnabled_ && blockIdx_ == 0) {
+            ++bsr_aiv_test::store().headCounters;
+        }
+    }
+
+    __aicore__ inline void TailCounter()
+    {
+        if (stuckEnabled_ && blockIdx_ == 0) {
+            ++bsr_aiv_test::store().tailCounters;
+        }
+    }
+
+    __aicore__ inline void SyncBeforeTail()
+    {
+        if (stuckEnabled_) {
+            ++bsr_aiv_test::store().syncBeforeTail;
+        }
+    }
+
     template <typename T>
     __aicore__ inline void CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count)
     {
@@ -144,6 +177,11 @@ public:
     uint64_t outputRepeatStride_ = 0;
 
     bool useDoubleBuffer_ = true;
+
+    __gm__ int32_t* stuckHead_ = nullptr;
+    __gm__ int32_t* stuckTail_ = nullptr;
+    __gm__ int32_t* stuckAddOne_ = nullptr;
+    bool stuckEnabled_ = false;
 
     AscendC::TPipe pipe;
     AscendC::TBuf<> localFlagBuf;

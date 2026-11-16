@@ -74,9 +74,6 @@ HCCL提供了多种故障检测功能的开关设置，包括建链故障探测�
 export HCCL_DFS_CONFIG="connection_fault_detection_time:30,cluster_heartbeat:on,stuck_detection:on,inconsistent_check:off,task_monitor_interval:0"
 ```
 
-## 使用约束
-
-**当前版本Ascend 950PR&950DT系列产品仅支持配置以下五个字段：task_exception、cluster_heartbeat、inconsistent_check、task_monitor_interval、connection_fault_detection_time。**
 
 ## 产品支持情况
 

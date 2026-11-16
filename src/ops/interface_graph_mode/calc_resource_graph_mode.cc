@@ -22,6 +22,8 @@
 #include "hccl_aiv_utils.h"
 #include "aiv_kernel_def.h"
 #include "hccl_res_dl.h"
+#include "stuck_detect_counter_helper.h"
+#include "aiv_stuck_counter_util.h"
 
 namespace {
 struct AclHostMemGuard {
@@ -333,7 +335,8 @@ namespace {
 // 图模式下算法选择+录制模式的公共流程，返回录制的aivOpArgs与cclBufferSize
 HcclResult RecordAivOpArgsGraphMode(
     const char* group, u64 count, HcclDataType dataType, HcclReduceOp op, HcclCMDType opType, u32 aivCoreLimit,
-    void* inputPtr, void* outputPtr, const char* tag, ops_hccl::AivOpArgs& aivOpArgs, u64& cclBufferSize)
+    void* inputPtr, void* outputPtr, const char* tag, ops_hccl::AivOpArgs& aivOpArgs, ops_hccl::OpCounterInfo& counter,
+    u64& cclBufferSize)
 {
     HcclComm comm = nullptr;
     CHK_RET(HcomGetCommHandleByGroup(group, &comm));
@@ -446,6 +449,8 @@ HcclResult RecordAivOpArgsGraphMode(
     }
     cclBufferSize = resCtxHost->cclMem.size;
 
+    (void)ops_hccl::GetStuckDetectCounterInfo(comm, counter);
+
     // 清除录制
     ops_hccl::g_recordingQueue = nullptr;
     ops_hccl::g_baseInputAddr = 0;
@@ -481,9 +486,11 @@ HcclResult HcclCalcAivCoreNumGraphMode(
     CHK_PRT_RET(ret <= 0, HCCL_ERROR("[HcclCalcAivCoreNumGraphMode] failed to fill tag"), HCCL_E_INTERNAL);
 
     ops_hccl::AivOpArgs aivOpArgs;
+    ops_hccl::OpCounterInfo stuckCounter;
     u64 cclBufferSize = 0;
     CHK_RET(RecordAivOpArgsGraphMode(
-        group, count, dataType, op, opType, aivCoreLimit, nullptr, nullptr, tag, aivOpArgs, cclBufferSize));
+        group, count, dataType, op, opType, aivCoreLimit, nullptr, nullptr, tag, aivOpArgs, stuckCounter,
+        cclBufferSize));
 
     *numBlocks = aivOpArgs.numBlocks;
     HCCL_INFO("[HcclCalcAivCoreNumGraphMode] Success. numBlocks=%u", *numBlocks);
@@ -510,9 +517,11 @@ HcclResult HcclGetAlgExecParamGraphMode(
     CHK_RET(HcomCheckDataType(dataType));
 
     ops_hccl::AivOpArgs aivOpArgs;
+    ops_hccl::OpCounterInfo stuckCounter;
     u64 cclBufferSize = 0;
     CHK_RET(RecordAivOpArgsGraphMode(
-        group, count, dataType, op, opType, aivCoreLimit, inputPtr, outputPtr, tag, aivOpArgs, cclBufferSize));
+        group, count, dataType, op, opType, aivCoreLimit, inputPtr, outputPtr, tag, aivOpArgs, stuckCounter,
+        cclBufferSize));
 
     ops_hccl::AivSuperKernelArgs superKernelArgs;
     superKernelArgs.buffersIn = aivOpArgs.buffersIn;
@@ -533,6 +542,7 @@ HcclResult HcclGetAlgExecParamGraphMode(
     superKernelArgs.input = aivOpArgs.input;
     superKernelArgs.output = aivOpArgs.output;
     superKernelArgs.cclBufferSize = cclBufferSize;
+    ops_hccl::FillAivStuckCounter(superKernelArgs, stuckCounter);
 
     HCCL_INFO(
         "[HcclGetAlgExecParamGraphMode] superKernelArgs: buffersIn[%p], rank[%u], rankSize[%u], "

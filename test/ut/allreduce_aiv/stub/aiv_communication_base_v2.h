@@ -97,6 +97,10 @@ public:
     bool IsIdleCore() const { return blockIdx_ >= numBlocks_; }
     void BarrierForFirstOP() { ++allreduce_aiv_test::currentTrace->firstBarriers; }
     void BarrierAll() { ++allreduce_aiv_test::currentTrace->endBarriers; }
+    // 卡死检测计数入口：本 UT 只关心 kernel 能否在 host 侧编译/调用，不校验计数下发。
+    void HeadCounter() {}
+    void TailCounter() {}
+    void SyncBeforeTail() {}
     static uint32_t GetLargestPowerOf2LessThan(uint32_t value)
     {
         uint32_t power = 1;

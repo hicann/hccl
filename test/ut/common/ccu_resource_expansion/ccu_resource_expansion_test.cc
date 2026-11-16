@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "algorithm/template/ccu/ccu_stuck_counter_trampoline.h"
 #include "hcomm_stub.h"
 #include "log.h"
 #include "op_common.h"
@@ -468,3 +469,69 @@ TEST_F(CcuResourceExpansionTest, InvalidCleanupContextDoesNotBlockCommDestroy)
     EXPECT_EQ(g_resources.cleanupCallback(Comm(), HCCL_COMM_STATE_PHASE_DESTROY_PRE, nullptr), HCCL_SUCCESS);
     EXPECT_TRUE(g_resources.destroyedInstances.empty());
 }
+
+namespace {
+CcuResult DummyStuckKernel(CcuKernelArg) { return CCU_SUCCESS; }
+
+CcuKernelInfo MakeStuckKernelInfo(const std::shared_ptr<CcuKernelArgBase>& arg)
+{
+    CcuKernelInfo info{};
+    info.setKernelArg(arg);
+    info.kernelFunc = reinterpret_cast<void*>(&DummyStuckKernel);
+    (void)strcpy_s(info.kernelFuncName, sizeof(info.kernelFuncName), "StuckFillTestKernel");
+    return info;
+}
+
+class CcuStuckCounterFillTest : public testing::Test {
+protected:
+    void SetUp() override
+    {
+        g_resources = MockResources{};
+        g_resources.stuckDetectSupported = true;
+        g_resources.stuckHeadAddr = 0x1000;
+        g_resources.stuckTailAddr = 0x2000;
+        g_resources.stuckAddOneAddr = 0x3000;
+        g_resources.stuckToken = 0xABCD;
+        MOCKER(HcclGetRankId).stubs().will(returnValue(HCCL_SUCCESS));
+    }
+    void TearDown() override { GlobalMockObject::verify(); }
+};
+
+TEST_F(CcuStuckCounterFillTest, FillsArgsAndSelectsTrampoline)
+{
+    auto arg = std::make_shared<CcuKernelArgBase>();
+    AlgResourceRequest request{};
+    request.ccuKernelInfos.push_back(MakeStuckKernelInfo(arg));
+    OpParam param{};
+    HcclComm comm = reinterpret_cast<HcclComm>(0x5100);
+    ASSERT_EQ(HcclGetChannelForCcu(comm, param, request), HCCL_SUCCESS);
+    EXPECT_TRUE(arg->stuckCounterEnabled);
+    EXPECT_EQ(arg->stuckHeadAddr, g_resources.stuckHeadAddr);
+    EXPECT_EQ(arg->stuckTailAddr, g_resources.stuckTailAddr);
+    EXPECT_EQ(arg->stuckAddOneAddr, g_resources.stuckAddOneAddr);
+    EXPECT_EQ(arg->stuckCounterToken, g_resources.stuckToken);
+    InstallCcuStuckTrampoline(request.ccuKernelInfos.front());
+    EXPECT_EQ(
+        GetCcuRegisteredKernelFunc(request.ccuKernelInfos.front()),
+        reinterpret_cast<void*>(&CcuStuckCounterTrampoline));
+    EXPECT_EQ(arg->stuckOrigKernelFunc, reinterpret_cast<void*>(&DummyStuckKernel));
+}
+
+TEST_F(CcuStuckCounterFillTest, DisabledKeepsArgsAndOriginalFunc)
+{
+    g_resources.stuckDetectSupported = false;
+    auto arg = std::make_shared<CcuKernelArgBase>();
+    AlgResourceRequest request{};
+    request.ccuKernelInfos.push_back(MakeStuckKernelInfo(arg));
+    OpParam param{};
+    HcclComm comm = reinterpret_cast<HcclComm>(0x5200);
+    ASSERT_EQ(HcclGetChannelForCcu(comm, param, request), HCCL_SUCCESS);
+    EXPECT_FALSE(arg->stuckCounterEnabled);
+    EXPECT_EQ(arg->stuckHeadAddr, 0u);
+    EXPECT_EQ(arg->stuckTailAddr, 0u);
+    EXPECT_EQ(arg->stuckAddOneAddr, 0u);
+    EXPECT_EQ(arg->stuckCounterToken, 0u);
+    InstallCcuStuckTrampoline(request.ccuKernelInfos.front());
+    EXPECT_EQ(GetCcuRegisteredKernelFunc(request.ccuKernelInfos.front()), reinterpret_cast<void*>(&DummyStuckKernel));
+}
+} // namespace
