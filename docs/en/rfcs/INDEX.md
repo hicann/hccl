@@ -26,6 +26,7 @@ This document registers all assigned RFC numbers. Before adding a new RFC, claim
 | 0001 | BIRS (Batchsize Invariant ReduceScatter) for A3 | Davydov_Danil | accepted | [#1440](https://gitcode.com/cann/hccl/merge_requests/1440) |
 | 0002 | HCCL-ALGO-Plugin — HCCL Custom Algorithm Extension Framework | m0_706553481 | accepted | [#1285](https://gitcode.com/cann/hccl/merge_requests/1285) |
 | 0003 | Unified Algorithm Structure for Collective Communication Executor | luyang20 | accepted | [#2572](https://gitcode.com/cann/hccl/merge_requests/2572) |
+| 0004 | hccl4py — HCCL Collective/P2P Python Bindings | qq_53202098 | reserved | [#3798](https://gitcode.com/cann/hccl/merge_requests/3798) |
 
 ## Numbering Rules
 

@@ -73,4 +73,33 @@ esac
 
 DP_ASSERT_EQUAL "$ret" "0" "Run UT TESTCASE"
 
+# hccl4py offline Python UT (hard when sister tree / REQUIRE is present)
+if [ -d experimental/eco_system/python/tests ]; then
+    echo "========================================"
+    echo "  hccl4py offline python UT"
+    echo "========================================"
+    _py_root="$(pwd)/experimental/eco_system/python"
+    _hcomm_py=""
+    if [ -n "${HCOMM4PY_PYTHON_PATH}" ] && [ -d "${HCOMM4PY_PYTHON_PATH}" ]; then
+        _hcomm_py="${HCOMM4PY_PYTHON_PATH}"
+    elif [ -d "$(pwd)/../hcomm/experimental/eco_system/python" ]; then
+        _hcomm_py="$(cd "$(pwd)/../hcomm/experimental/eco_system/python" && pwd)"
+    fi
+    if [ -n "${_hcomm_py}" ]; then
+        export PYTHONPATH="${_hcomm_py}:${_py_root}:${PYTHONPATH}"
+    else
+        export PYTHONPATH="${_py_root}:${PYTHONPATH}"
+    fi
+    if python3 -c "import hcomm4py" 2>/dev/null; then
+        python3 -m unittest discover -s "${_py_root}/tests" -p 'test_*.py' -v
+        DP_ASSERT_EQUAL "$?" "0" "Run hccl4py offline python UT"
+    else
+        if [ "${HCCL4PY_REQUIRE_OFFLINE_UT:-0}" = "1" ] || [ -n "${_hcomm_py}" ]; then
+            echo "::error::hccl4py offline UT required but hcomm4py is not importable"
+            exit 1
+        fi
+        echo "::warning::skip hccl4py offline python UT (hcomm4py not importable; set HCOMM4PY_PYTHON_PATH or HCCL4PY_REQUIRE_OFFLINE_UT=1)"
+    fi
+fi
+
 echo "ut_process=ut_cov" >> "${ATOMGIT_OUTPUT}"

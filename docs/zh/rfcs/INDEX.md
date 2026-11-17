@@ -26,6 +26,7 @@
 | 0001 | BIRS (Batchsize Invariant ReduceScatter) for A3 | Davydov_Danil | accepted | [#1440](https://gitcode.com/cann/hccl/merge_requests/1440) |
 | 0002 | HCCL-ALGO-Plugin —— HCCL自定义算法扩展框架 | m0_706553481 | accepted | [#1285](https://gitcode.com/cann/hccl/merge_requests/1285) |
 | 0003 | 集合通信Executor统一算法结构方案 | luyang20 | accepted | [#2572](https://gitcode.com/cann/hccl/merge_requests/2572) |
+| 0004 | hccl4py — HCCL 通信算子 Python 绑定 | qq_53202098 | reserved | [#3798](https://gitcode.com/cann/hccl/merge_requests/3798) |
 
 ## 编号规则
 
