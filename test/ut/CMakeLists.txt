@@ -20,6 +20,7 @@ add_subdirectory(common/ccu_resource_expansion)
 # white_box_guards: 序列化反序列化边界校验、图模式资源计算零值守卫的防御性 UT。
 add_subdirectory(common/white_box_guards)
 add_subdirectory(common/template_utils)
+add_subdirectory(common/alg_rank)
 add_subdirectory(selector_engine)
 # reduce_scatter_nhr_dpu: NHR DPU 模板 host 半（几何/布局/序列化/KernelRun 错误路径），
 # 定义 AICPU_COMPILE 裁掉 RunNHR；DPU 半由 common/hostdpu_inline_reduce 覆盖。

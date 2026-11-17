@@ -38,6 +38,10 @@ HcclResult PrepareOmniPipeDataSplitForMultiChannel(
 {
     dataSplitVec.clear();
     dataOffsetVec.clear();
+    // 与ins_temp_all_reduce_hd/nhr同口径: 空端口组会让CalcDataSplitByPortGroup成功返回空vector, 调用方按索引取值越界
+    CHK_PRT_RET(
+        templateResource.channels.empty() || templateResource.channels.begin()->second.empty(),
+        HCCL_ERROR("[PrepareOmniPipeDataSplitForMultiChannel] templateResource channels is empty."), HCCL_E_INTERNAL);
     u32 dataTypeSize = DATATYPE_SIZE_TABLE[dataType];
     for (uint32_t idx = 0; idx < tempAlgParams.stepSliceInfo.stepSliceSize.size(); idx++) {
         std::vector<std::vector<u64>> dataSplitVecByRepeat;

@@ -111,6 +111,10 @@ HcclResult InsRecvExecutor::Orchestrate(const OpParam& param, const AlgResourceC
 
     HCCL_DEBUG("[InsRecvExecutor][Orchestrate][%d]<-[%d] Start.", myRank_, remoteRank_);
     // 给channels_和threads_赋值
+    CHK_PRT_RET(
+        (resCtx.threads.empty() || resCtx.channels.empty() || resCtx.channels[0].empty()),
+        HCCL_ERROR("[InsRecvExecutor][Orchestrate] Rank [%d], resCtx threads or channels is empty.", myRank_),
+        HcclResult::HCCL_E_INTERNAL);
     const ThreadHandle& thread = resCtx.threads.at(0);
     auto channelIt
         = std::find_if(resCtx.channels.at(0).begin(), resCtx.channels.at(0).end(), [this](const ChannelInfo& channel_) {
@@ -160,6 +164,10 @@ HcclResult InsRecvExecutor::OrchestrateWithThread(
     dataSize_ = dataCount_ * dataTypeSize_;
 
     HCCL_DEBUG("[InsRecvExecutor][OrchestrateWithThread][%d]<-[%d] Start.", myRank_, remoteRank_);
+    CHK_PRT_RET(
+        (resCtx.channels.empty() || resCtx.channels[0].empty()),
+        HCCL_ERROR("[InsRecvExecutor][OrchestrateWithThread] Rank [%d], resCtx channels is empty.", myRank_),
+        HcclResult::HCCL_E_INTERNAL);
     HCCL_INFO("[InsRecvExecutor][OrchestrateWithThread] resCtx channels size [%zu].", resCtx.channels.at(0).size());
 
     // 给channels_赋值

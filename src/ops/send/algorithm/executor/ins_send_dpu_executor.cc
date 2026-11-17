@@ -124,6 +124,11 @@ InsSendDpuExecutor<InsAlgTemplate>::Orchestrate(const OpParam& param, const AlgR
 
     // 获取Channel信息
     CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
+    if (remoteRankToChannelInfo_.empty() || remoteRankToChannelInfo_[0].empty()) {
+        HCCL_ERROR(
+            "[InsSendDpuExecutor][Orchestrate] Rank[%u], remoteRank[%u], no channel found.", myRank_, remoteRank_);
+        return HCCL_E_INTERNAL;
+    }
 
     TemplateDataParams tempAlgParams;
     tempAlgParams.buffInfo.inputPtr = param.inputPtr;

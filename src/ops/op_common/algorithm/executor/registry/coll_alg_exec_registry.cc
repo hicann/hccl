@@ -22,7 +22,7 @@ HcclResult CollAlgExecRegistry::Register(const std::string& tag, const CollExecC
 {
     const std::lock_guard<std::mutex> lock(mu_);
     if (execCreators_.find(tag) != execCreators_.end()) {
-        HCCL_WARNING("[CollAlgExecRegistry]Exec tag[%s] already registered.", tag.c_str());
+        HCCL_ERROR("[CollAlgExecRegistry]Exec tag[%s] already registered.", tag.c_str());
         return HcclResult::HCCL_E_INTERNAL;
     }
     execCreators_.emplace(tag, collAlgExecCreator);

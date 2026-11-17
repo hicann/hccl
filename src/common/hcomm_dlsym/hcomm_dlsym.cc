@@ -20,25 +20,33 @@
 #include "hcomm_host_profiling_dl.h"
 #include "hccl_host_comm_dl.h"
 #include "hccl_res_expt_dl.h"
-#include <pthread.h>
 #include <dlfcn.h>
+#include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <mutex>
 #include <acl/acl.h>
 
 static void* gLibHandle = nullptr;
-static int gHcommVersion = 0;
+static std::atomic<int> gHcommVersion{0};
+static std::mutex gHcommDlInitMutex;
 
 int GetHcommVersion(void)
 {
-    if (gHcommVersion == 0) {
-        char hcommPkgName[] = "hcomm";
-        if (aclsysGetVersionNum(hcommPkgName, &gHcommVersion) != ACL_SUCCESS) {
-            gHcommVersion = 0;
-        }
+    // gHcommVersion 为自包含缓存值，无伴随数据发布，relaxed 序足够；查询失败不缓存，下次调用重试
+    int version = gHcommVersion.load(std::memory_order_relaxed);
+    if (version != 0) {
+        return version;
     }
 
-    return gHcommVersion;
+    char hcommPkgName[] = "hcomm";
+    int tmpVersion = 0;
+    if (aclsysGetVersionNum(hcommPkgName, &tmpVersion) == ACL_SUCCESS) {
+        gHcommVersion.store(tmpVersion, std::memory_order_relaxed);
+        version = tmpVersion;
+    }
+
+    return version;
 }
 
 bool HcommIsProfilingSupported()
@@ -59,12 +67,9 @@ bool HcommIsExportThreadSupported()
     }
 }
 
-// 初始化
-void HcommDlInit(void)
+// 实际初始化逻辑，由 HcommDlInit 持锁调用；加载失败时 gLibHandle 保持为空，后续可重试
+static void DoHcommDlInit(void)
 {
-    if (gLibHandle != nullptr)
-        return;
-
     gLibHandle = HcclDlopen("libhcomm.so", RTLD_NOW);
     if (!gLibHandle) {
         fprintf(stderr, "[HcclWrapper] Failed to open libhcomm: %s\n", dlerror());
@@ -84,4 +89,15 @@ void HcommDlInit(void)
     HcclCcuResDlInit(gLibHandle);
     CcuLaunchDlInit(gLibHandle);
     CcuPrimitivesImplDlInit(gLibHandle);
+}
+
+// 初始化，线程安全：通过互斥锁串行化；成功初始化后不重复执行，失败时允许后续重试
+void HcommDlInit(void)
+{
+    std::lock_guard<std::mutex> lock(gHcommDlInitMutex);
+    if (gLibHandle != nullptr) {
+        return;
+    }
+
+    DoHcommDlInit();
 }

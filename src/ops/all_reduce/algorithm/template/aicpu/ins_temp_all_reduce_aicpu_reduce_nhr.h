@@ -63,7 +63,7 @@ private:
     HcclResult PostCopy(const TemplateDataParams& tempAlgParams);
 
     HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
-    u32 GetAlgRank(u32 rank) const;
+    HcclResult GetAlgRank(u32 rank, u32& algRank) const;
 
     ThreadHandle thread_ = 0;
     u64 processSize_{0};

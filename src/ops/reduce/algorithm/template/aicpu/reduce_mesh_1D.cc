@@ -109,7 +109,7 @@ HcclResult ReduceMesh1D::KernelRun(
         HCCL_ERROR("[ReduceMesh1D] resource threadNum[%zu] is invalid, need[%u]", threads.size(), threadNum_),
         HcclResult::HCCL_E_INTERNAL);
 
-    myIdx_ = GetAlgRank(myRank_);
+    CHK_RET(GetAlgRank(myRank_, myIdx_));
     CHK_PRT_RET(
         myIdx_ >= templateRankSize_,
         HCCL_ERROR(
@@ -183,8 +183,10 @@ HcclResult ReduceMesh1D::SendData(
         && (myIdx_ == 0)) {
         // 兼容parallel executor调用时，SendData可能存在将CCL_BUFFER上的输入冲掉的场景：
         // parallel executor调用时，输入数据再CCL_BUFFER的第0块，直接使用processSize_ * myIdx_ = 0会将输入冲掉
-        // 因此这里与GetAlgRank(root_)调换一下顺序，拷贝到1D root卡的processSize_ * GetAlgRank(root_)位置
-        dstOffset = buffInfo.hcclBuffBaseOff + processSize_ * GetAlgRank(root_);
+        // 因此这里与GetAlgRank(root_, rootAlgRank)调换一下顺序，拷贝到1D root卡的processSize_ * rootAlgRank位置
+        u32 rootAlgRank = 0;
+        CHK_RET(GetAlgRank(root_, rootAlgRank));
+        dstOffset = buffInfo.hcclBuffBaseOff + processSize_ * rootAlgRank;
     }
     DataSlice dstDataSlice(sendChannel.remoteCclMem.addr, dstOffset, processSize_, count_);
     HCCL_INFO(
@@ -244,8 +246,10 @@ HcclResult ReduceMesh1D::GatherData(
         if ((buffInfo.inBuffType == BufferType::HCCL_BUFFER || buffInfo.outBuffType == BufferType::HCCL_BUFFER)
             && (idx == 0)) {
             // 兼容parallel executor调用的场景，对应SendData时的dstOffset修改
-            dstOffset = buffInfo.hcclBuffBaseOff + processSize_ * GetAlgRank(root_);
-            HCCL_DEBUG("[GatherData] parallel: %u %u %u, %llu", myRank_, root_, GetAlgRank(root_), dstOffset);
+            u32 rootAlgRank = 0;
+            CHK_RET(GetAlgRank(root_, rootAlgRank));
+            dstOffset = buffInfo.hcclBuffBaseOff + processSize_ * rootAlgRank;
+            HCCL_DEBUG("[GatherData] parallel: %u %u %u, %llu", myRank_, root_, rootAlgRank, dstOffset);
         }
         const DataSlice dstDataSlice(buffInfo.hcclBuff.addr, dstOffset, processSize_, count_);
         HCCL_INFO("[GatherData] %u from: %#llx, to: %#llx", myRank_, buffInfo.inputPtr, buffInfo.hcclBuff.addr);
@@ -296,13 +300,17 @@ HcclResult ReduceMesh1D::ReduceData(const TemplateDataParams& dataParams, const 
     return HcclResult::HCCL_SUCCESS;
 }
 
-u32 ReduceMesh1D::GetAlgRank(u32 rank) const
+HcclResult ReduceMesh1D::GetAlgRank(u32 rank, u32& algRank) const
 {
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[ReduceMesh1D] subCommRanks_[0] is empty"),
+        HcclResult::HCCL_E_INTERNAL);
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), rank);
-    if (iter == subCommRanks_[0].end()) {
-        throw std::runtime_error("Cannot find myRank = " + std::to_string(rank) + " in subCommRanks_[0]");
-    }
-    return static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
+    CHK_PRT_RET(
+        iter == subCommRanks_[0].end(), HCCL_ERROR("[ReduceMesh1D] Cannot find rank[%u] in subCommRanks_[0]", rank),
+        HcclResult::HCCL_E_INTERNAL);
+    algRank = static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
+    return HcclResult::HCCL_SUCCESS;
 }
 
 void ReduceMesh1D::GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub)

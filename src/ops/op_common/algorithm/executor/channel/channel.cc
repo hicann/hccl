@@ -21,6 +21,7 @@
 #include "alg_env_config.h"
 #include "comm_engine_utils.h"
 #include "op_common.h"
+#include "physical_level.h"
 #include "template_utils.h"
 #if !defined(HCCL_CANN_COMPAT_850)
 #include "ccu_alg_template_base.h"
@@ -948,38 +949,53 @@ HcclResult GetTopoTypeByLink(HcclComm comm, uint32_t netLayer, CommLink& link, C
 
     for (uint32_t topoInstIdx = 0; topoInstIdx < listSize; topoInstIdx++) { // 遍历topoInst
         uint32_t topoInstId = topoInstList[topoInstIdx];
-        uint32_t endPointNum;
+        uint32_t endPointNum = 0;
         CHK_RET(HcclRankGraphGetEndpointNum(comm, netLayer, topoInstId, &endPointNum));
-        EndpointDesc* endPointDescs = (EndpointDesc*)malloc(endPointNum * sizeof(EndpointDesc));
-        if (endPointDescs == nullptr) {
-            HCCL_ERROR("Malloc endPointDescs failed!");
-            return HCCL_E_PARA;
+        // 0是合法结果: 该topoInst上没有接口/协议时就是0, link必然不属于它
+        if (endPointNum == 0) {
+            HCCL_WARNING("[%s] endpoint num is 0 at layer[%u], inst[%u], continue.", __func__, netLayer, topoInstId);
+            continue;
         }
-        HcclResult ret = HCCL_SUCCESS;
-        ret = HcclRankGraphGetEndpointDesc(comm, netLayer, topoInstId, &endPointNum, endPointDescs);
-        if (ret != HCCL_SUCCESS) {
-            free(endPointDescs);
-            return ret;
+        // 合理性阈值: 端点数是纯本地量(接口数x协议数), 超限只可能是HCOMM侧异常, 同时防止按垃圾值分配超大vector
+        // 跳过该inst继续匹配其余inst; 若link恰属于该inst, 函数最终返回HCCL_E_INTERNAL
+        if (endPointNum > ENDPOINT_NUM_SANITY_LIMIT) {
+            HCCL_WARNING(
+                "[%s]implausible endpoint num[%u] at layer[%u] inst[%u], skip", __func__, endPointNum, netLayer,
+                topoInstId);
+            continue;
         }
+        // num是实际写入条数的上界(GetEndpointDesc会回写实际条数), 以回写的actualNum为准遍历
+        std::vector<EndpointDesc> endPointDescs(endPointNum);
+        uint32_t actualNum = endPointNum;
+        CHK_RET(HcclRankGraphGetEndpointDesc(comm, netLayer, topoInstId, &actualNum, endPointDescs.data()));
+        // 回写超过请求值说明HCOMM侧异常, 按请求容量继续遍历会越界, 局部降级并告警
+        if (actualNum > endPointNum) {
+            HCCL_WARNING(
+                "[%s]endpoint descNum[%u] exceeds requested[%u] at layer[%u] inst[%u], skip", __func__, actualNum,
+                endPointNum, netLayer, topoInstId);
+            continue;
+        }
+        endPointDescs.resize(actualNum);
 
-        for (uint32_t endPointIdx = 0; endPointIdx < endPointNum; endPointIdx++) {
+        for (uint32_t endPointIdx = 0; endPointIdx < actualNum; endPointIdx++) {
             EndpointDesc endPoint = endPointDescs[endPointIdx];
             if (IsEndPointEqual(link.srcEndpointDesc, endPoint)
                 == true) { // 当前TopoInst和link的endPoint相同，说明link属于当前TopoInst
                 // 先匹配endpoint归属再获取topoType赋值：失败路径不污染出参，且不中断无关topoInst的遍历
-                ret = HcclRankGraphGetTopoType(comm, netLayer, topoInstId, &topoType);
+                const HcclResult ret = HcclRankGraphGetTopoType(comm, netLayer, topoInstId, &topoType);
                 if (ret != HCCL_SUCCESS) {
-                    free(endPointDescs);
+                    HCCL_ERROR(
+                        "[%s] get topo type failed, layer[%u], inst[%u], ret[%d].", __func__, netLayer, topoInstId,
+                        static_cast<int>(ret));
                     return ret;
                 }
                 HCCL_DEBUG(
-                    "[%s]topoInstId=%u, endPointNum=%u, topoType=%u", __func__, topoInstId, endPointNum, topoType);
-                free(endPointDescs);
+                    "[%s]topoInstId=%u, endPointNum=%u, actualNum=%u, topoType=%u", __func__, topoInstId, endPointNum,
+                    actualNum, topoType);
                 return HCCL_SUCCESS;
             }
         }
         HCCL_WARNING("[%s]No Endpoint matches on TopoInst[%u].", __func__, topoInstId);
-        free(endPointDescs);
     }
     HCCL_ERROR("[%s]Cannot get TopoType by Link.", __func__);
     return HCCL_E_INTERNAL;

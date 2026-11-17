@@ -133,7 +133,7 @@ HcclResult InsTempAllReduceAicpuReduceNHR::KernelRun(
     thread_ = templateResource.threads.at(0);
     buffInfo_ = tempAlgParams.buffInfo;
 
-    myIdx_ = GetAlgRank(myRank_);
+    CHK_RET(GetAlgRank(myRank_, myIdx_));
     CHK_PRT_RET(
         myIdx_ >= templateRankSize_,
         HCCL_ERROR(
@@ -324,13 +324,18 @@ HcclResult InsTempAllReduceAicpuReduceNHR::GetStepInfo(u32 step, u32 nSteps, Aic
     return HcclResult::HCCL_SUCCESS;
 }
 
-u32 InsTempAllReduceAicpuReduceNHR::GetAlgRank(u32 rank) const
+HcclResult InsTempAllReduceAicpuReduceNHR::GetAlgRank(u32 rank, u32& algRank) const
 {
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(),
+        HCCL_ERROR("[InsTempAllReduceAicpuReduceNHR] subCommRanks_[0] is empty"), HcclResult::HCCL_E_INTERNAL);
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), rank);
-    if (iter == subCommRanks_[0].end()) {
-        throw std::runtime_error("Cannot find Rank = " + std::to_string(rank) + " in subCommRanks_[0]");
-    }
-    return static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
+    CHK_PRT_RET(
+        iter == subCommRanks_[0].end(),
+        HCCL_ERROR("[InsTempAllReduceAicpuReduceNHR] Cannot find rank[%u] in subCommRanks_[0]", rank),
+        HcclResult::HCCL_E_INTERNAL);
+    algRank = static_cast<u32>(std::distance(subCommRanks_[0].begin(), iter));
+    return HcclResult::HCCL_SUCCESS;
 }
 
 } // namespace ops_hccl

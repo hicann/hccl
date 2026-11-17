@@ -26,8 +26,14 @@
 struct MockRankGraph {
     // 返回给HcclRankGraphGetLayers的netLayer列表，如{0}或{0,1}
     std::vector<uint32_t> netLayers = {0};
+    // 返回给HcclRankGraphGetTopoInstsByLayer的topoInst列表；GetTopoTypeByLink可直接配置多inst跳过行为
+    std::vector<uint32_t> topoInsts = {0};
     // key为(netLayer, dstRank)，值为该层上myRank到dstRank的link列表；无条目即无link
     std::map<std::pair<uint32_t, uint32_t>, std::vector<CommLink>> links;
+    // key为topoInstId；未配置时GetEndpointNum返回1，保持既有正常路径默认行为
+    std::map<uint32_t, uint32_t> endpointNums;
+    // key为topoInstId；未配置时GetEndpointDesc回写值等于请求值
+    std::map<uint32_t, uint32_t> endpointActualNums;
     // GetTopoTypeByLink链路上的topoType返回值
     CommTopo topoType = CommTopo::COMM_TOPO_1DMESH;
     uint32_t getLinksCalls = 0;

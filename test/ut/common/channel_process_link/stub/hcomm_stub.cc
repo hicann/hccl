@@ -11,6 +11,8 @@
 
 #include "hcomm_stub.h"
 
+#include <algorithm>
+
 thread_local MockRankGraph g_rankGraph;
 
 // GetLayers返回的列表需在调用期间保持有效，用thread_local静态存储承接
@@ -53,6 +55,7 @@ HcclRankGraphGetTopoInstsByLayer(HcclComm comm, uint32_t netLayer, uint32_t** to
 {
     (void)comm;
     (void)netLayer;
+    g_topoInsts = g_rankGraph.topoInsts;
     *topoInsts = g_topoInsts.data();
     *topoInstNum = static_cast<uint32_t>(g_topoInsts.size());
     return HCCL_SUCCESS;
@@ -62,8 +65,8 @@ HcclResult HcclRankGraphGetEndpointNum(HcclComm comm, uint32_t layer, uint32_t t
 {
     (void)comm;
     (void)layer;
-    (void)topoInstId;
-    *num = 1;
+    auto it = g_rankGraph.endpointNums.find(topoInstId);
+    *num = it == g_rankGraph.endpointNums.end() ? 1 : it->second;
     return HCCL_SUCCESS;
 }
 
@@ -72,9 +75,14 @@ HcclResult HcclRankGraphGetEndpointDesc(
 {
     (void)comm;
     (void)layer;
-    (void)topoInstId;
-    endpointDesc[0] = g_endpoints[0];
-    *descNum = 1;
+    auto it = g_rankGraph.endpointActualNums.find(topoInstId);
+    const uint32_t actualNum = it == g_rankGraph.endpointActualNums.end() ? *descNum : it->second;
+    // actualNum可超过请求容量以模拟HCOMM异常回写；但桩不得越界写目标buffer
+    const uint32_t writableNum = std::min(actualNum, *descNum);
+    for (uint32_t idx = 0; idx < writableNum; idx++) {
+        endpointDesc[idx] = g_endpoints[0];
+    }
+    *descNum = actualNum;
     return HCCL_SUCCESS;
 }
 

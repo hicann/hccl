@@ -446,10 +446,10 @@ ReduceNHR::getTxRxSlices(const AicpuNHRStepInfo& stepInfo, const std::map<u32, s
 
 HcclResult ReduceNHR::getMyAlgRank()
 {
+    CHK_PRT_RET(
+        subCommRanks_.empty() || subCommRanks_[0].empty(), HCCL_ERROR("[ReduceNHR] subCommRanks_[0] is empty"),
+        HCCL_E_INTERNAL);
     auto iter = std::find(subCommRanks_[0].begin(), subCommRanks_[0].end(), myRank_);
-    if (iter == subCommRanks_[0].end()) {
-        throw std::runtime_error("Cannot find myRank = " + std::to_string(myRank_) + " in subCommRanks_[0]");
-    }
     CHK_PRT_RET(
         iter == subCommRanks_[0].end(), HCCL_ERROR("[ReduceNHR] Cannot find myRank[%u] in subCommRanks_[0]", myRank_),
         HCCL_E_INTERNAL);

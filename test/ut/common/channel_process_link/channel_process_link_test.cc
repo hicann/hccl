@@ -16,8 +16,11 @@
 #include <gtest/gtest.h>
 
 #include "channel.h"
+#include "physical_level.h"
 #include "stub/hcomm_stub.h"
 
+using ops_hccl::ENDPOINT_NUM_SANITY_LIMIT;
+using ops_hccl::GetTopoTypeByLink;      // channel.cc中为namespace内非static导出，此处直接引用
 using ops_hccl::ProcessLinksForChannel; // channel.cc中为namespace内非static导出，此处直接引用
 
 namespace {
@@ -144,4 +147,78 @@ TEST_F(ProcessLinksForChannelTest, GetTopoTypeByLinkMatchWritesOutput)
     CommTopo topoType = CommTopo::COMM_TOPO_1DMESH;
     ASSERT_EQ(ops_hccl::GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_SUCCESS);
     EXPECT_EQ(topoType, CommTopo::COMM_TOPO_CLOS);
+}
+
+// endpoint数为0的inst应跳过，继续匹配后续inst并成功返回
+TEST_F(ProcessLinksForChannelTest, ZeroEndpointSkipsInstAndMatchesNext)
+{
+    g_rankGraph.topoInsts = {0, 1};
+    g_rankGraph.endpointNums = {{0, 0}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_SUCCESS);
+    EXPECT_EQ(topoType, g_rankGraph.topoType);
+}
+
+// endpoint数超过合理性上限的inst应跳过，继续匹配后续inst并成功返回
+TEST_F(ProcessLinksForChannelTest, OverLimitEndpointSkipsInstAndMatchesNext)
+{
+    g_rankGraph.topoInsts = {0, 1};
+    g_rankGraph.endpointNums = {{0, ENDPOINT_NUM_SANITY_LIMIT + 1}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_SUCCESS);
+    EXPECT_EQ(topoType, g_rankGraph.topoType);
+}
+
+// HCOMM回写actualNum超过请求容量时应跳过该inst，避免越界遍历，并继续匹配后续inst
+TEST_F(ProcessLinksForChannelTest, ActualDescNumOverRequestSkipsInstAndMatchesNext)
+{
+    g_rankGraph.topoInsts = {0, 1};
+    g_rankGraph.endpointNums = {{0, 1}};
+    g_rankGraph.endpointActualNums = {{0, 2}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_SUCCESS);
+    EXPECT_EQ(topoType, g_rankGraph.topoType);
+}
+
+// 所有inst endpoint数均为0时无法匹配link，最终返回HCCL_E_INTERNAL
+TEST_F(ProcessLinksForChannelTest, AllZeroEndpointsReturnInternal)
+{
+    g_rankGraph.topoInsts = {0, 1};
+    g_rankGraph.endpointNums = {{0, 0}, {1, 0}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_E_INTERNAL);
+    EXPECT_EQ(topoType, CommTopo::COMM_TOPO_RESERVED);
+}
+
+// 所有inst endpoint数均超过合理性上限时无法匹配link，最终返回HCCL_E_INTERNAL
+TEST_F(ProcessLinksForChannelTest, AllOverLimitEndpointsReturnInternal)
+{
+    g_rankGraph.topoInsts = {0, 1};
+    g_rankGraph.endpointNums = {{0, ENDPOINT_NUM_SANITY_LIMIT + 1}, {1, ENDPOINT_NUM_SANITY_LIMIT + 1}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_E_INTERNAL);
+    EXPECT_EQ(topoType, CommTopo::COMM_TOPO_RESERVED);
+}
+
+// 所有inst回写actualNum均超过请求容量时无法匹配link，最终返回HCCL_E_INTERNAL
+TEST_F(ProcessLinksForChannelTest, AllActualDescNumOverRequestReturnInternal)
+{
+    g_rankGraph.topoInsts = {0};
+    g_rankGraph.endpointNums = {{0, 1}};
+    g_rankGraph.endpointActualNums = {{0, 2}};
+
+    CommLink link = {};
+    CommTopo topoType = CommTopo::COMM_TOPO_RESERVED;
+    ASSERT_EQ(GetTopoTypeByLink(nullptr, 0, link, topoType), HCCL_E_INTERNAL);
+    EXPECT_EQ(topoType, CommTopo::COMM_TOPO_RESERVED);
 }

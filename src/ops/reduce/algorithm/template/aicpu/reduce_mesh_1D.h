@@ -60,7 +60,7 @@ private:
     HcclResult SendData(
         const TemplateDataParams& dataParams, const std::map<u32, std::vector<ChannelInfo>>& channels,
         const std::vector<ThreadHandle>& threads);
-    u32 GetAlgRank(u32 rank) const;
+    HcclResult GetAlgRank(u32 rank, u32& algRank) const;
 
     void GetNotifyIdxMainToSub(std::vector<u32>& notifyIdxMainToSub) override;
     void GetNotifyIdxSubToMain(std::vector<u32>& notifyIdxSubToMain) override;

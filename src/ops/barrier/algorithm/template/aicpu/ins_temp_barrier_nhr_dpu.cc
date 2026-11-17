@@ -132,6 +132,10 @@ HcclResult InsTempBarrierNHRDPU::DPUKernelRun(
 {
     (void)tempAlgParams;
     myRank_ = myRank;
+    // DPU侧入参来自反序列化, 必须先于subCommRanks[0]访问校验
+    CHK_PRT_RET(
+        subCommRanks.empty() || subCommRanks[0].empty(),
+        HCCL_ERROR("[InsTempBarrierNHRDPU] DPUKernelRun subCommRanks is empty."), HcclResult::HCCL_E_PARA);
     templateRankSize_ = subCommRanks[0].size();
     subCommRanks_ = subCommRanks;
     CHK_RET(RunNHRBarrier(channels));
@@ -157,8 +161,19 @@ HcclResult InsTempBarrierNHRDPU::RunNHRBarrier(
         uint32_t recvFrom = (rankIdx + templateRankSize_ - deltaRank) % templateRankSize_;
         uint32_t sendTo = (rankIdx + deltaRank) % templateRankSize_;
 
-        auto rxChannel = channels.at(GetRankFromMap(recvFrom));
-        auto txChannel = channels.at(GetRankFromMap(sendTo));
+        const u32 rxRank = GetRankFromMap(recvFrom);
+        const u32 txRank = GetRankFromMap(sendTo);
+        auto rxChannelIt = channels.find(rxRank);
+        auto txChannelIt = channels.find(txRank);
+        CHK_PRT_RET(
+            rxChannelIt == channels.end() || txChannelIt == channels.end() || rxChannelIt->second.empty()
+                || txChannelIt->second.empty(),
+            HCCL_ERROR(
+                "[InsTempBarrierNHRDPU][RunNHRBarrier] Rank[%u], channel not found, rxRank[%u], txRank[%u].", myRank_,
+                rxRank, txRank),
+            HcclResult::HCCL_E_INTERNAL);
+        const auto& rxChannel = rxChannelIt->second;
+        const auto& txChannel = txChannelIt->second;
 
         // Barrier 语义：传空 slice vector，DPU wrapper 只做前后同步对，不搬运数据
         std::vector<DataSlice> emptySlices;

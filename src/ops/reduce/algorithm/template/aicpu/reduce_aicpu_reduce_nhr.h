@@ -63,7 +63,7 @@ private:
 
     HcclResult GetStepInfoList(std::vector<AicpuNHRStepInfo>& stepInfoList);
     HcclResult GetStepInfo(u32 step, u32 nSteps, AicpuNHRStepInfo& stepInfo);
-    u32 GetAlgRank(u32 rank) const;
+    HcclResult GetAlgRank(u32 rank, u32& algRank) const;
 
     ThreadHandle thread_;
     u64 processSize_{0};

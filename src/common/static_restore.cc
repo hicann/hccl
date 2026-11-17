@@ -39,28 +39,23 @@
 extern char _binary_aicpu_hccl_tar_gz_start[];
 extern char _binary_aicpu_hccl_tar_gz_end[];
 
-/* CRC32 查找表 */
-static uint32_t crc32_table[256];
-static int crc32_table_initialized = 0;
+/* CRC32 查找表：编译期生成，无运行时初始化，天然线程安全 */
+struct Crc32Table {
+    uint32_t values[256];
 
-/**
- * @brief 初始化 CRC32 查找表
- */
-static void init_crc32_table(void)
-{
-    if (crc32_table_initialized) {
-        return;
-    }
-
-    for (uint32_t i = 0; i < 256; i++) {
-        uint32_t crc = i;
-        for (int j = 0; j < 8; j++) {
-            crc = (crc >> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+    constexpr Crc32Table() : values{}
+    {
+        for (uint32_t i = 0; i < 256; i++) {
+            uint32_t crc = i;
+            for (int j = 0; j < 8; j++) {
+                crc = (crc >> 1) ^ ((crc & 1) != 0 ? 0xEDB88320U : 0U);
+            }
+            values[i] = crc;
         }
-        crc32_table[i] = crc;
     }
-    crc32_table_initialized = 1;
-}
+};
+
+static constexpr Crc32Table CRC32_TABLE;
 
 /**
  * @brief 计算内存数据的 CRC32 校验值
@@ -71,13 +66,11 @@ static void init_crc32_table(void)
  */
 static uint32_t calc_crc32(const void* data, size_t length)
 {
-    init_crc32_table();
-
     const uint8_t* bytes = (const uint8_t*)data;
     uint32_t crc = 0xFFFFFFFF;
 
     for (size_t i = 0; i < length; i++) {
-        crc = (crc >> 8) ^ crc32_table[(crc ^ bytes[i]) & 0xFF];
+        crc = (crc >> 8) ^ CRC32_TABLE.values[(crc ^ bytes[i]) & 0xFF];
     }
 
     return crc ^ 0xFFFFFFFF;
