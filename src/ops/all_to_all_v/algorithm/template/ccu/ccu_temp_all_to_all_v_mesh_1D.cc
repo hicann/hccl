@@ -154,8 +154,11 @@ HcclResult CcuTempAlltoAllVMesh1D::FastLaunch(const OpParam& param, const Templa
     uint32_t myRank = static_cast<uint32_t>(args[6]);
     HcclDataType dataType = param.all2AllVDataDes.sendType;
     uint64_t dataTypeSize = HCCL_SIZE_TABLE[dataType];
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64),
+        param.varMemSize < ALL_TO_ALL_V_VECTOR_NUM * rankSize * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize * sizeof(u64),
         HCCL_ERROR("[CcuTempAlltoAllVMesh1D::FastLaunch] param.varMemSize [%llu] is invalid", param.varMemSize),
         HCCL_E_PARA);
 

@@ -495,8 +495,12 @@ HcclResult InsV2AllToAllConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlg
     HCCL_INFO("[OrchestrateLoop] ALL_TO_ALL_V_VECTOR_NUM is [%u]", ALL_TO_ALL_V_VECTOR_NUM);
     HCCL_INFO("[OrchestrateLoop] rankSize_ is [%u]", rankSize_);
     HCCL_INFO("[OrchestrateLoop] param.varMemSize is [%u]", param.varMemSize);
+    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
+        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
         HCCL_ERROR(
             "[InsV2AllToAllConcurrentExecutor][OrchestrateLoop] param.varMemSize [%llu] is invalid", param.varMemSize),
         HCCL_E_PARA);
@@ -804,6 +808,17 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     TopoMatchConcurrentV2, InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     AicpuAllToAllVSoleMeshConcurrent, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    op.unsupportedDataTypes = UNSUPPORTED_64BIT;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT;
+    });
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMeshConcurrent, InsV2AllToAllConcurrentExecutor,
+    TopoMatchConcurrentV2, InsTempAlltoAllVMesh1D, InsTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(
+    AicpuAllToAllVCSoleMeshConcurrent, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.unsupportedDataTypes = UNSUPPORTED_64BIT;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
         bool isEqual = false;

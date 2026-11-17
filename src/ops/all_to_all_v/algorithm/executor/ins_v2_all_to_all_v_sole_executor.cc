@@ -596,6 +596,11 @@ REGISTER_EXEC_V2(
     InsTempUBXAllToAllVMesh1D);
 REGISTER_ALG_ATTRS(AicpuAllToAllVSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
                    topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMeshMultiJetty, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,
+    InsTempUBXAllToAllVMesh1D);
+REGISTER_ALG_ATTRS(AicpuAllToAllVCSoleMeshMultiJetty, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS;
+                   topo.maxTopoLevelNum = 1; op.unsupportedDataTypes = UNSUPPORTED_64BIT);
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, AicpuAllToAllVCSoleMesh, InsV2AlltoAllVSoleExecutor, TopoMatchOneLevel,

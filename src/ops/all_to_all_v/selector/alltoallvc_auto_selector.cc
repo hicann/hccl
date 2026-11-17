@@ -18,6 +18,7 @@ constexpr uint32_t INDEX_0 = 0;
 constexpr uint32_t INDEX_1 = 1;
 constexpr uint32_t INDEX_2 = 2;
 constexpr uint32_t INDEX_3 = 3;
+constexpr uint32_t CONST_4 = 4;
 
 SelectorStatus AlltoAllVCAutoSelector::SelectCcuScheduleAlgo(
     const TopoInfoWithNetLayerDetails* topoInfo, const OpParam& opParam,
@@ -45,6 +46,22 @@ SelectorStatus AlltoAllVCAutoSelector::SelectCcuScheduleAlgo(
 
     if (topoInfo->level0Topo == Level0Shape::MESH_1D) {
         selectAlgName = "CcuSchedAllToAllVCSoleMesh";
+    } else if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS) {
+        if (topoInfo->level0PcieMix) {
+            if (!IsLayerAllConnetedWithTopo(topoInfo, 0, CommTopo::COMM_TOPO_1DMESH)) {
+                HCCL_WARNING("[AlltoAllVCAutoSelector] pcie mixed topo is not supported yet for ccu schedule mode.");
+                return SelectorStatus::NOT_MATCH;
+            }
+            selectAlgName = "CcuSchedAllToAllVCSoleMesh";
+        } else {
+            bool isMeshNumEqualToClosNum = false;
+            CHK_PRT_RET(
+                CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
+                HCCL_DEBUG("[AlltoAllVCAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
+            selectAlgName = (isMeshNumEqualToClosNum && topoInfo->userRankSize <= CONST_4) ?
+                                "CcuSchedAllToAllVCSoleMeshConcurrent" :
+                                "CcuSchedAllToAllVCSoleMeshMultiJetty";
+        }
     } else {
         HCCL_DEBUG("hccl algo no match");
         return SelectorStatus::NOT_MATCH;
@@ -64,6 +81,18 @@ SelectorStatus AlltoAllVCAutoSelector::SelectAicpuAlgo(
     // 跨框 MESH_1D 且 rankSize 为 16 的倍数走 Pairwise
     if (IsPairwiseCapable(topoInfo)) {
         selectAlgName = "AicpuAllToAllVCSolePairwise";
+        HCCL_INFO("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
+        return SelectorStatus::MATCH;
+    }
+    if (topoInfo->topoLevelNums == TOPO_LEVEL_NUM_1 && topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS
+        && !topoInfo->level0PcieMix) {
+        bool isMeshNumEqualToClosNum = false;
+        CHK_PRT_RET(
+            CheckMeshNumEqualToClosNum(topoInfo, isMeshNumEqualToClosNum) != HCCL_SUCCESS,
+            HCCL_ERROR("[Algo][AlltoAllVCAutoSelector] CheckMeshNumEqualToClosNum failed."), SelectorStatus::NOT_MATCH);
+        selectAlgName = (isMeshNumEqualToClosNum && topoInfo->userRankSize <= CONST_4) ?
+                            "AicpuAllToAllVCSoleMeshConcurrent" :
+                            "AicpuAllToAllVCSoleMeshMultiJetty";
         HCCL_INFO("[AlltoAllVCAutoSelector][%s] Algo match [%s]", __func__, selectAlgName.c_str());
         return SelectorStatus::MATCH;
     }

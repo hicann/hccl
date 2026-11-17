@@ -372,11 +372,19 @@ REGISTER_EXEC_V2(
     HcclCMDType::HCCL_CMD_ALLTOALLVC, CcuSchedAllToAllVCSoleMesh, InsAlltoAllVSoleExecutor, TopoMatchOneLevel,
     CcuTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
-    CcuSchedAllToAllVCSoleMesh, topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = 1;
-    topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    CcuSchedAllToAllVCSoleMesh, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D | LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     topo.supportLevel0MeshTypes = MESH_TYPE_NOT_MESH | MESH_TYPE_SINGLE_DIE | MESH_TYPE_TWO_DIE_REGULAR;
-    topo.isSupport2DieFullMesh = true; topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
-        return !t->level2UbRtp;
+    topo.isSupport2DieFullMesh = true; topo.isSupportLevel0PcieMix = true; topo.requireAllMeshConnected = true;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* t) -> bool {
+        if (t->level2UbRtp) {
+            return false;
+        }
+        if (t->level0Topo == Level0Shape::MESH_1D_CLOS
+            && (!t->level0PcieMix || !AutoSelectorBase::IsLayerAllConnetedWithTopo(t, 0, CommTopo::COMM_TOPO_1DMESH))) {
+            return false;
+        }
+        return true;
     };);
 #endif // !HCCL_CANN_COMPAT_850
 
@@ -409,6 +417,22 @@ REGISTER_EXEC_V2(
     CcuTempAlltoAllVMesh1D);
 REGISTER_ALG_ATTRS(
     CcuSchedAllToAllVSoleMeshMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        if (topo->level0Topo == Level0Shape::MESH_1D) {
+            return topo->isUBX;
+        } else {
+            bool isEqual = false;
+            AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+            return !(isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT);
+        }
+    };);
+REGISTER_EXEC_V2(
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, CcuSchedAllToAllVCSoleMeshMultiJetty, InsAlltoAllVSoleExecutor, TopoMatchOneLevel,
+    CcuTempAlltoAllVMesh1D);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllVCSoleMeshMultiJetty, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS | LEVEL0_TOPO_MESH_1D; topo.maxTopoLevelNum = TOPO_LEVEL_NUM_2;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {

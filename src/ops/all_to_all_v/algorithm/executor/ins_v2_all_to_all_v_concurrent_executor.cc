@@ -111,8 +111,12 @@ InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplate1>
     localSendRecvInfo_.recvLength.resize(rankSize_, 0);
     localSendRecvInfo_.recvOffset.resize(rankSize_, 0);
 
+    u64 minVectorNum = ALL_TO_ALL_V_VECTOR_NUM;
+    u64 maxVectorNum
+        = (param.opType == HcclCMDType::HCCL_CMD_ALLTOALLVC) ? ALL_TO_ALL_VC_VECTOR_NUM : ALL_TO_ALL_V_VECTOR_NUM;
     CHK_PRT_RET(
-        param.varMemSize != ALL_TO_ALL_V_VECTOR_NUM * rankSize_ * sizeof(u64),
+        param.varMemSize < minVectorNum * rankSize_ * sizeof(u64)
+            || param.varMemSize > maxVectorNum * rankSize_ * sizeof(u64),
         HCCL_ERROR(
             "[InsV2AllToAllVConcurrentExecutor][SetAlltoAllLocalSendRecvInfo] param.varMemSize [%llu] is invalid",
             param.varMemSize),
@@ -476,7 +480,9 @@ HcclResult InsV2AllToAllVConcurrentExecutor<AlgTopoMatch, InsAlgTemplate0, InsAl
     temp0ThreadMain_ = temp0Threads_.at(0);
     temp1ThreadMain_ = temp1Threads_.at(0);
 
-    rankSize_ = param.varMemSize / (ALL_TO_ALL_V_VECTOR_NUM * sizeof(u64));
+    uint32_t userRankSize = 0;
+    CHK_RET(HcclGetRankSize(param.hcclComm, &userRankSize));
+    rankSize_ = userRankSize;
     dataType_ = param.all2AllVDataDes.sendType;
     dataTypeSize_ = HCCL_SIZE_TABLE[dataType_];
     CHK_RET(SetAlltoAllLocalSendRecvInfo(param));
@@ -528,6 +534,18 @@ REGISTER_EXECUTOR_BY_TWO_TEMPS(
     TopoMatchConcurrentV2, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
 REGISTER_ALG_ATTRS(
     CcuSchedAllToAllVSoleMeshConcurrent, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
+    topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
+    op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
+    topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
+        bool isEqual = false;
+        AutoSelectorBase::CheckMeshNumEqualToClosNum(topo, isEqual);
+        return isEqual && topo->userRankSize <= CONCURRENT_RANK_LIMIT;
+    };);
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLTOALLVC, CcuSchedAllToAllVCSoleMeshConcurrent, InsV2AllToAllVConcurrentExecutor,
+    TopoMatchConcurrentV2, CcuTempAllToAllVMesh1DMultiJetty, CcuTempAllToAllVMesh1DMultiJetty);
+REGISTER_ALG_ATTRS(
+    CcuSchedAllToAllVCSoleMeshConcurrent, topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;
     topo.supportLevel0Topos = LEVEL0_TOPO_MESH_1D_CLOS; topo.maxTopoLevelNum = 1;
     op.unsupportedDataTypes = UNSUPPORTED_INT8_AND_64BIT; op.isSupportInplace = false;
     topo.topoCustomCheck = [](const TopoInfoWithNetLayerDetails* topo) -> bool {
