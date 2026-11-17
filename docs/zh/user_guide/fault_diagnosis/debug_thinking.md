@@ -300,12 +300,11 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 | EI0016 | `Config_Error`（[通信域配置项校验失败](_dump_cluster_info_verify_fail.md)） | `InitGroupStage` | `RanktableCheck` | - |
 | EI0017 | `Config_Error_Ranktable`（[rankTable缺少配置项](rank_table_file_read_fail_EI0004.md)） | `InitGroupStage` | `RanktableConfig` | - |
 | EI0018 | `Execution_Error_UB_CQE`（[UB CQE错误](./_dump_task_exception_mechanism.md#task-exception机制)） | `TaskExecStage` | `RunFailed` | `AICPU` / `CCU` |
-| EI0019 | `Communication_Error_Bind_IP_Port`（[Host网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` | `Resource` | - |
-| | | `InitGroupStage` | `RanktableDetect` | |
-| EI0020 | `Communication_Error_Bind_IP_Port`（[NPU网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` | `Resource` | - |
-| | | `InitGroupStage` | `RanktableDetect` | |
+| EI0019 | `Communication_Error_Bind_IP_Port`（[Host网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` / `InitGroupStage` | `Resource` / `RanktableDetect` | - |
+| EI0020 | `Communication_Error_Bind_IP_Port`（[NPU网卡端口绑定失败](_dump_cluster_info_nego.md)） | `InitChannelStage` / `InitGroupStage` | `Resource` / `RanktableDetect` | - |
 
 多个故障码可能共用一组关键字。例如，EI0014和EI0016均可能出现`[InitGroupStage][RanktableCheck]`，可结合故障码和日志正文区分。
+EI0019和EI0020均可使用`[InitChannelStage][Resource]`或`[InitGroupStage][RanktableDetect]`检索日志。
 `[TaskExecStage][RunFailed]`也用于HOST、AICPU、AIV和CCU的其他执行异常，需结合业务报错确认是否上报了具体故障码。
 心跳检测到CQE错误时，可使用`[TaskExecStage][HeartbeatAbnormal][CQE ERROR]`检索日志。
 
