@@ -27,10 +27,27 @@ constexpr u32 MAX_RANK_SIZE_V = 256; // 注意要和device侧的一致
 constexpr u32 AIV_TAG_ADDR_OFFSET = 16 * 1024;
 constexpr u32 AIV_TOPO_ADDR_OFFSET = 32 * 1024;
 constexpr u32 AIV_TOPO_BUFF_LEN = 8 * 1024;
-constexpr u32 AIV_FLAG_ADDR_OFFSET = 40 * 1024;
+constexpr u32 AIV_FLAG_ADDR_OFFSET = 1 * 1024 * 1024;
+constexpr u32 AIV_FLAG_CLEAR_OFFSET = 512 * 1024;
 constexpr u32 AIV_FLAG_AREA_SIZE = 1000 * 1024;
 constexpr u32 AIV_TAG_BUFF_LEN = 65 * 1024 * 1024;
 constexpr u32 AIV_MAX_CCL_LOOP_NUM = 16;
+
+// AIV_URMA 内存布局常量（host 侧）
+constexpr u32 AIV_URMA_HANDLE_ADDR_OFFSET = 32 * 1024;             // 32KB
+constexpr u32 AIV_URMA_SUBCOMM_RANKS_START_OFFSET = 256 * 1024;    // 256KB
+constexpr u32 AIV_URMA_SUBCOMM_RANKS_PER_LEVEL_BYTES = 16 * 1024;  // 每级 16KB
+constexpr u32 AIV_URMA_SUBCOMM_RANKS_AREA_END = 512 * 1024;        // 512KB（TAG 区起始）
+constexpr u32 AIV_URMA_OUTPUT_ADDR_SLOT_OFFSET = 50 * 1024 * 1024; // 50MB
+constexpr u32 MAX_CHANNELS_PER_RANK = 8;                           // 每对端最大 channel 数
+
+// URMA channel 信息结构体（POD，Host 和 device 侧各定义一份，布局需一致）
+struct AivUrmaChannelInfo {
+    u32 rankSize = 0;
+    u32 channelsPerRank[MAX_RANK_SIZE] = {};
+    u64 channelHandle[MAX_RANK_SIZE * MAX_CHANNELS_PER_RANK] = {};
+    u32 portNum[MAX_RANK_SIZE * MAX_CHANNELS_PER_RANK] = {};
+};
 
 constexpr u32 AIV_ATTRNUM_THREE = 3;
 
@@ -44,6 +61,7 @@ constexpr char AIV_CACHE_INDEX_CTX_TAG[] = "AivCacheIndex";
 enum class KernelArgsType {
     ARGS_TYPE_SERVER = 0, // kernel参数为单机内
     ARGS_TYPE_TWO_SHOT = 1,
+    ARGS_TYPE_URMA = 2,
     ARGS_TYPE_DEFAULT
 };
 
@@ -157,9 +175,11 @@ struct AivOpArgs {
     u64 outputRepeatStride = 0;
     bool isOpBase = false;
     ExtraArgs extraArgs = {};
+    bool isWrite = false;            // 写语义(write)标记，核函数内部据此走不同分支
+    u32 subCommRankLevel = 0;        // 0=框内, 1=跨框
+    u32 level0ChannelNumPerRank = 0; // Z轴绕路: 框内level0链路数(0或1)
     AivOpArgs() {};
     KernelArgsType argsType = KernelArgsType::ARGS_TYPE_SERVER;
-    bool isWrite = false; // 写语义(write)标记，核函数内部据此走不同分支
 };
 
 // AIV Cache Definitions
@@ -171,6 +191,7 @@ struct AivOpCacheArgs {
     HcclReduceOp reduceOp;
     u32 root;
     u32 numBlocksLimit;
+    OpExecuteConfig opExecuteConfig{OpExecuteConfig::DEFAULT};
 
     bool operator<(const AivOpCacheArgs& other) const
     {
@@ -186,7 +207,9 @@ struct AivOpCacheArgs {
             return reduceOp < other.reduceOp;
         if (root != other.root)
             return root < other.root;
-        return numBlocksLimit < other.numBlocksLimit;
+        if (numBlocksLimit != other.numBlocksLimit)
+            return numBlocksLimit < other.numBlocksLimit;
+        return opExecuteConfig < other.opExecuteConfig;
     }
 };
 

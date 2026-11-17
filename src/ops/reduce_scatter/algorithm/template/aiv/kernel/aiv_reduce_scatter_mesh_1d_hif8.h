@@ -21,7 +21,7 @@ public:
         uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, uint64_t inputSliceStride,
         uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride,
         GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter,
-        uint32_t numBlocks, bool useDoubleBuffer, bool pingpong = false)
+        uint32_t numBlocks, bool useDoubleBuffer = true, bool pingpong = false)
     {
         rank_ = rank;
         sendRecvRemoteRank_ = sendRecvRemoteRank;

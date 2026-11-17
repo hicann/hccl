@@ -156,7 +156,7 @@ namespace {
                 currentTrace = &traces.back();
                 AivAllReduceV2Mesh1DTwoShotWrite<T>(
                     nullptr, Address(INPUT_BASE, rank), Address(OUTPUT_BASE, rank), rank, 0, ranks, count, 0, 0, 0, 1,
-                    bytes, bytes, 1, 0, 0, blocks, true, nullptr, nullptr, nullptr, 0, false, true);
+                    bytes, bytes, 1, 0, 0, blocks, true, nullptr, nullptr, nullptr, 0, false, true, 0, 0);
                 EXPECT_EQ(currentTrace->firstBarriers, 1u);
                 EXPECT_EQ(currentTrace->endBarriers, 1u);
                 const auto& events = currentTrace->events;

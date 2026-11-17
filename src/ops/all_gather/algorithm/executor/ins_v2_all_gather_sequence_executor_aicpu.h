@@ -68,6 +68,7 @@ private:
     uint32_t rankIdxLevel1_{0};
 
     CommEngine engine_{CommEngine::COMM_ENGINE_AICPU};
+    OpExecuteConfig opExecuteConfig_{OpExecuteConfig::DEFAULT};
 
     u32 ccuKernelLaunchNumInter_{0};
     u32 ccuKernelLaunchNumIntra_{0};

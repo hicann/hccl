@@ -14,6 +14,8 @@
 #include "ins_temp_all_gather_nhr.h"
 #include "ins_temp_all_gather_rhd.h"
 #ifndef AICPU_COMPILE
+#include "aiv_temp_all_gather_mesh_1D.h"
+#include "aiv_temp_all_gather_mesh_1D_Z_axis_detour.h"
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
 #include "ccu_temp_all_gather_mesh_1D_mem2mem.h"
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
@@ -68,6 +70,12 @@ InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTemplat
             topoInfo, algHierarchyInfo, algName, "[InsV2AllGatherSequenceExecutorAicpu][CalcCostCoeff]",
             TopoProbeScene::PROBE_CALC_COST_COEFF)) {
         return {};
+    }
+    // URMA 特性灰度门禁：cost model 暂未建模，返回极大值使其在候选中排最后，
+    // 仅当 AIV(UB_MEM) 不匹配时才回退到 AIV_URMA
+    if (algName != nullptr && std::string(algName).find("Urma") != std::string::npos) {
+        CostModelParam urmaCost{1e10f, 0.0f, 0.0f, 0.0f};
+        return {urmaCost, urmaCost};
     }
     u32 rankSize = topoInfo->userRankSize;
     bool isPod = topoInfo->isPod;
@@ -235,6 +243,7 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     rankIdxLevel0_ = myRank_ % rankSizeLevel0_;
     rankIdxLevel1_ = myRank_ / rankSizeLevel0_;
     engine_ = param.engine;
+    opExecuteConfig_ = param.opExecuteConfig;
     supportSymmetricMemory_ = param.supportSymmetricMemory;
     if (supportSymmetricMemory_) {
         inputOffset_ = param.inputOffset;
@@ -242,8 +251,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
         inputSymWindow_ = param.inputSymWindow;
         outputSymWindow_ = param.outputSymWindow;
     }
-    // ccu路径无channel数据，跳过RestoreChannelMap
-    if (param.engine != CommEngine::COMM_ENGINE_CCU) {
+    // ccu/aiv路径无channel数据，跳过RestoreChannelMap
+    if (param.engine != CommEngine::COMM_ENGINE_CCU && param.engine != CommEngine::COMM_ENGINE_AIV) {
         CHK_RET(RestoreChannelMap(resCtx, remoteRankToChannelInfo_));
     }
 
@@ -290,10 +299,14 @@ void InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     interTempDataParams.inputRepeatStride = 0;
     interTempDataParams.outputRepeatStride = 0;
 
-    if (engine_ == CommEngine::COMM_ENGINE_CCU || supportSymmetricMemory_) {
+    if (engine_ == CommEngine::COMM_ENGINE_CCU || opExecuteConfig_ == OpExecuteConfig::AIV_URMA
+        || supportSymmetricMemory_) {
         interTempDataParams.buffInfo.outBuffBaseOff = rankIdxLevel0_ * dataSize_ + processedDataCount * dataTypeSize_;
         interTempDataParams.outputSliceStride = dataSize_ * rankSizeLevel0_;
     }
+
+    interTempDataParams.subCommRankLevel = 1;
+    interTempDataParams.level0ChannelNumPerRank = 0;
 
     HCCL_INFO(
         "[InsV2AllGatherSequenceExecutorAicpu] loop[%llu] interTempDataParams.inputSliceStride[%llu] "
@@ -328,11 +341,15 @@ void InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, InsAlgTe
     intraTempDataParams.inputRepeatStride = currDataCount * dataTypeSize_;
     intraTempDataParams.outputRepeatStride = dataSize_ * rankSizeLevel0_;
 
-    if (engine_ == CommEngine::COMM_ENGINE_CCU || supportSymmetricMemory_) {
+    if (engine_ == CommEngine::COMM_ENGINE_CCU || opExecuteConfig_ == OpExecuteConfig::AIV_URMA
+        || supportSymmetricMemory_) {
         intraTempDataParams.buffInfo.inBuffBaseOff = processedDataCount * dataTypeSize_;
         intraTempDataParams.inputSliceStride = dataSize_;
         intraTempDataParams.inputRepeatStride = dataSize_ * rankSizeLevel0_;
     }
+
+    intraTempDataParams.subCommRankLevel = 0;
+    intraTempDataParams.level0ChannelNumPerRank = 1;
 
     HCCL_INFO(
         "[InsV2AllGatherSequenceExecutorAicpu] loop[%llu] intraTempDataParams.inputSliceStride[%llu] "
@@ -377,8 +394,9 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     // 框间template
     TemplateDataParams interTempDataParams;
     interTempDataParams.buffInfo.inputPtr = param.inputPtr;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.supportSymmetricMemory) {
-        // ccu/零拷贝: 用output作为中转，减少一次拷贝
+    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.opExecuteConfig == OpExecuteConfig::AIV_URMA
+        || param.supportSymmetricMemory) {
+        // ccu/aiv_urma/零拷贝: 用output作为中转，减少一次拷贝
         interTempDataParams.buffInfo.outputPtr = param.outputPtr;
         interTempDataParams.buffInfo.outBuffType = BufferType::OUTPUT;
     } else {
@@ -389,15 +407,16 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     interTempDataParams.buffInfo.inBuffType = BufferType::INPUT;
     interTempDataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
-    // 构建框间template（aicpu路径需要SetchannelsPerRank）
-    if (param.engine != CommEngine::COMM_ENGINE_CCU) {
+    // 构建框间template（仅aicpu路径需要SetchannelsPerRank，ccu/aiv路径无channel数据）
+    if (param.engine != CommEngine::COMM_ENGINE_CCU && param.engine != CommEngine::COMM_ENGINE_AIV) {
         interTempAlg.SetchannelsPerRank(remoteRankToChannelInfo_[1]);
     }
 
     // 框内template
     TemplateDataParams intraTempDataParams;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.supportSymmetricMemory) {
-        // ccu/零拷贝: 用output作为中转，input=output，isInputOutputEqual=1，跳过GroupCopy
+    if (param.engine == CommEngine::COMM_ENGINE_CCU || param.opExecuteConfig == OpExecuteConfig::AIV_URMA
+        || param.supportSymmetricMemory) {
+        // ccu/aiv_urma/零拷贝: 用output作为中转，input=output，isInputOutputEqual=1，跳过GroupCopy
         intraTempDataParams.buffInfo.inputPtr = param.outputPtr;
         intraTempDataParams.buffInfo.inBuffType = BufferType::OUTPUT;
     } else {
@@ -409,8 +428,8 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
     intraTempDataParams.buffInfo.outBuffType = BufferType::OUTPUT;
     intraTempDataParams.buffInfo.hcclBuffType = BufferType::HCCL_BUFFER;
 
-    // 构建框内template（aicpu路径需要SetchannelsPerRank）
-    if (param.engine != CommEngine::COMM_ENGINE_CCU) {
+    // 构建框内template（仅aicpu路径需要SetchannelsPerRank，ccu/aiv路径无channel数据）
+    if (param.engine != CommEngine::COMM_ENGINE_CCU && param.engine != CommEngine::COMM_ENGINE_AIV) {
         intraTempAlg.SetchannelsPerRank(remoteRankToChannelInfo_[0]);
     }
 
@@ -435,13 +454,19 @@ HcclResult InsV2AllGatherSequenceExecutorAicpu<AlgTopoMatch, InsAlgTemplate0, In
         templateResourceInter.threads = threads_;
         templateResourceIntra.ccuKernels = intraCcuKernels_;
         templateResourceIntra.threads = threads_;
+    } else if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+        // aiv: 只需aivCommInfoPtr，不走channels/threads
+        templateResourceInter.aivCommInfoPtr = resCtx.aivCommInfoPtr;
+        templateResourceIntra.aivCommInfoPtr = resCtx.aivCommInfoPtr;
     } else {
         CHK_RET(GenTempResource(resCtx, 1, interTempAlg, templateResourceInter));
         CHK_RET(GenTempResource(resCtx, 0, intraTempAlg, templateResourceIntra));
     }
 
     u64 maxCountPerLoop = 0;
-    if (param.engine == CommEngine::COMM_ENGINE_CCU) {
+    if (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) {
+        maxCountPerLoop = dataCount_;
+    } else if (param.engine == CommEngine::COMM_ENGINE_CCU) {
         maxCountPerLoop = UB_MAX_DATA_SIZE / dataTypeSize_;
     } else if (param.supportSymmetricMemory) {
         // 对称内存零拷贝：不受cclBuffer限制，一次传完
@@ -592,4 +617,15 @@ REGISTER_ALG_ATTRS(CcuSchedAllGatherSequenceMeshMesh, topo.maxTopoLevelNum = TOP
                    op.isSupportInplace = false; topo.maxSupportRankSize = CCU_SCHED_MAX_RANK_SIZE;);
 #endif
 #endif // CANN_VERSION_NUM >= CANN_VERSION(9, 0, 0)
+
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+#ifndef AICPU_COMPILE
+REGISTER_EXECUTOR_BY_TWO_TEMPS(
+    HcclCMDType::HCCL_CMD_ALLGATHER, AivUrmaAllGatherSequenceMeshConcurMesh, InsV2AllGatherSequenceExecutorAicpu,
+    TopoMatchTwoLevel, AivTempAllGatherMesh1DZAxisDetour, AivTempAllGatherMesh1D);
+REGISTER_ALG_ATTRS(AivUrmaAllGatherSequenceMeshConcurMesh, topo.supportLevel0Topos = LEVEL0_TOPO_ANY;
+                   topo.maxSupportRankSize = MAX_RANK_SIZE; topo.supportDevTypes = {HcclDevType::DEV_TYPE_950};
+                   op.isSupportInplace = false;);
+#endif
+#endif // CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
 } // namespace ops_hccl

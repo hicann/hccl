@@ -46,7 +46,7 @@ public:
     void Init(
         GM_ADDR, uint64_t input, uint64_t output, uint32_t rank, uint32_t, uint32_t rankSize, uint64_t len, uint32_t,
         uint32_t reduceOp, uint32_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, GM_ADDR, GM_ADDR, GM_ADDR,
-        uint32_t, bool, uint32_t blocks, bool, bool = false)
+        uint32_t, bool, uint32_t blocks, bool useDoubleBuffer = true, bool pingpong = false)
     {
         input_ = input;
         output_ = output;

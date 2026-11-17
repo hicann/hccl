@@ -56,6 +56,14 @@ constexpr uint64_t CHUNK_SIZE = 2048;
 constexpr int32_t TAG_INIT_VALUE = 1;
 constexpr int32_t TAG_RESET_COUNT = 1000;
 constexpr uint32_t AIV_FLAG_CLEAR_OFFSET = 512 * 1024;
+
+// AIV_URMA 内存布局常量（device 侧，与 host 侧 hccl_aiv_utils.h 一致）
+constexpr uint32_t AIV_URMA_HANDLE_ADDR_OFFSET = 32 * 1024;
+constexpr uint32_t AIV_URMA_SUBCOMM_RANKS_START_OFFSET = 256 * 1024;
+constexpr uint32_t AIV_URMA_SUBCOMM_RANKS_PER_LEVEL_BYTES = 16 * 1024;
+constexpr uint32_t AIV_URMA_SUBCOMM_RANKS_AREA_END = 512 * 1024;
+constexpr uint32_t AIV_URMA_OUTPUT_ADDR_SLOT_OFFSET = 50 * 1024 * 1024;
+constexpr uint32_t MAX_CHANNELS_PER_RANK = 8;
 // 相对于GM_OUT，前同步、尾同步使用的同步标记区的偏移，也是普通标记区的大小
 constexpr uint32_t FLAG1_OFFSET = 1 * 1024 * 1024;
 constexpr uint32_t FLAG2_OFFSET = 5 * 1024 * 1024;
@@ -127,14 +135,16 @@ enum class CommPattern {
         uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, uint32_t sliceId,                        \
         uint64_t inputSliceStride, uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride,      \
         uint64_t outputRepeatStride, uint32_t numBlocks, bool isOpBase, GM_ADDR headCountMem, GM_ADDR tailCountMem, \
-        GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter, bool isWrite
+        GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter, bool isWrite, uint32_t subCommRankLevel,  \
+        uint32_t level0ChannelNumPerRank
 
 #define EXTERN_KERNEL_ARGS_DEF_V2 KERNEL_ARGS_DEF, ExtraArgs extraArgs
 
 #define KERNEL_ARGS_CALL                                                                                            \
     buffIn, input, output, rank, sendRecvRemoteRank, rankSize, len, dataType, reduceOp, root, sliceId,              \
         inputSliceStride, outputSliceStride, repeatNum, inputRepeatStride, outputRepeatStride, numBlocks, isOpBase, \
-        headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter, isWrite
+        headCountMem, tailCountMem, addOneMem, counterMemSize, isEnableCounter, isWrite, subCommRankLevel,          \
+        level0ChannelNumPerRank
 
 #define EXTERN_KERNEL_ARGS_CALL KERNEL_ARGS_CALL, extraArgs
 
@@ -163,5 +173,33 @@ enum class CommPattern {
     } while (0)
 
 #define AIV_INFO_HINT AIV_INFO("Aiv log dump is enabled in %s\n", __func__)
+
+template <typename T>
+__aicore__ inline void
+DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount)
+{
+    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
+        DataCopy(dstLocal, srcGlobal, calCount);
+    } else {
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPadExtParams<T> padParams;
+        padParams.isPad = true;
+        padParams.leftPadding = 0;
+        padParams.rightPadding = 1;
+        DataCopyPad(dstLocal, srcGlobal, copyParams, padParams);
+    }
+}
+
+template <typename T>
+__aicore__ inline void
+DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount)
+{
+    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
+        DataCopy(dstGlobal, srcLocal, calCount);
+    } else {
+        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
+        DataCopyPad(dstGlobal, srcLocal, copyParams);
+    }
+}
 
 #endif // AIV_DEFINES_H

@@ -187,13 +187,14 @@ namespace {
     TEST(NhrSerializationTest, TruncatedTailKeepsReduceOpUntouched)
     {
         // 尾部截断（reduceOp 字段不完整）当前实现不抛异常，读取失败时不改写目标值。
-        // [PR#3901 适配] RHD 字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）追加在 reduceOp 之后，
-        // 截断量须连 RHD 尾巴一起截掉才能使 reduceOp 落入不可读区间
+        // RHD 字段（rhdStepIdx/rhdStepCnt/rhdSkipPost）追加在 reduceOp 之后，其后还有
+        // subCommRankLevel/level0ChannelNumPerRank（各 4B）——截断量须连整条尾巴一起截掉
+        // 才能使 reduceOp 落入不可读区间
         const TemplateDataParams src = MakeFullParams(HCCL_DATA_TYPE_FP32, HCCL_REDUCE_SUM);
         std::vector<char> data = src.Serialize();
-        const size_t rhdTailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool); // rhdStepIdx + rhdStepCnt + rhdSkipPost
-        ASSERT_GT(data.size(), sizeof(HcclReduceOp) + rhdTailBytes);
-        data.resize(data.size() - sizeof(HcclReduceOp) - rhdTailBytes);
+        const size_t tailBytes = sizeof(u32) + sizeof(u32) + sizeof(bool) + sizeof(u32) * 2;
+        ASSERT_GT(data.size(), sizeof(HcclReduceOp) + tailBytes);
+        data.resize(data.size() - sizeof(HcclReduceOp) - tailBytes);
 
         TemplateDataParams dst;
         dst.reduceOp = HCCL_REDUCE_MAX;

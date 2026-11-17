@@ -61,6 +61,24 @@ static std::vector<AivKernelInfo> g_allgatherAivKernelInfoList = {
     {"aiv_all_gather_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3},
     {"aiv_all_gather_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2},
     {"aiv_all_gather_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0},
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+    {"aiv_urma_all_gather_half", HcclDataType::HCCL_DATA_TYPE_FP16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_int16_t", HcclDataType::HCCL_DATA_TYPE_INT16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_uint16_t", HcclDataType::HCCL_DATA_TYPE_UINT16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_float", HcclDataType::HCCL_DATA_TYPE_FP32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_uint64_t", HcclDataType::HCCL_DATA_TYPE_FP64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_int32_t", HcclDataType::HCCL_DATA_TYPE_INT32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_uint32_t", HcclDataType::HCCL_DATA_TYPE_UINT32, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_int8_t", HcclDataType::HCCL_DATA_TYPE_INT8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_uint8_t", HcclDataType::HCCL_DATA_TYPE_UINT8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_bfloat16_t", HcclDataType::HCCL_DATA_TYPE_BFP16, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_int64_t", HcclDataType::HCCL_DATA_TYPE_INT64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_uint64_t", HcclDataType::HCCL_DATA_TYPE_UINT64, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_hifloat8_t", HcclDataType::HCCL_DATA_TYPE_HIF8, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_fp8_e4m3fn_t", HcclDataType::HCCL_DATA_TYPE_FP8E4M3, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_fp8_e5m2_t", HcclDataType::HCCL_DATA_TYPE_FP8E5M2, KernelArgsType::ARGS_TYPE_URMA},
+    {"aiv_urma_all_gather_fp8_e8m0_t", HcclDataType::HCCL_DATA_TYPE_FP8E8M0, KernelArgsType::ARGS_TYPE_URMA},
+#endif
 };
 static std::string g_allgatherAivBinaryName = "hccl_aiv_all_gather_op_910_95.o";
 

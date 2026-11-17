@@ -82,7 +82,8 @@ static std::vector<OpExecuteConfig> GetEnginePriority(OpExecuteConfig opExecuteC
         case OpExecuteConfig::CCU_SCHED_ONLY:
             return {OpExecuteConfig::CCU_SCHED};
         case OpExecuteConfig::AIV:
-            return {OpExecuteConfig::AIV, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
+            return {
+                OpExecuteConfig::AIV, OpExecuteConfig::AIV_URMA, OpExecuteConfig::AICPU_TS, OpExecuteConfig::HOSTCPU};
         case OpExecuteConfig::AIV_ONLY:
             return {OpExecuteConfig::AIV};
         case OpExecuteConfig::AICPU_TS:

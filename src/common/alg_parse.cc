@@ -27,7 +27,8 @@ namespace ops_hccl {
 static const std::map<std::string, std::string>& EngineTypes()
 {
     static const std::map<std::string, std::string> types
-        = {{"aicpu", "Aicpu"}, {"aiv", "Aiv"}, {"dpu", "Dpu"}, {"ccums", "CcuMS"}, {"ccusched", "CcuSched"}};
+        = {{"aicpu", "Aicpu"}, {"aiv", "Aiv"},     {"aivurma", "AivUrma"},
+           {"dpu", "Dpu"},     {"ccums", "CcuMS"}, {"ccusched", "CcuSched"}};
     return types;
 }
 static const std::map<std::string, std::string>& OpTypes()
@@ -893,8 +894,11 @@ const AlgoDimEntry* GetAlgoTemplates(int& count)
 const EnginePrefixEntry* GetEnginePrefixEntries(int& count)
 {
     static const std::vector<EnginePrefixEntry> entries = {
-        {"CcuSched", OpExecuteConfig::CCU_SCHED}, {"CcuMS", OpExecuteConfig::CCU_MS},
-        {"Aicpu", OpExecuteConfig::AICPU_TS},     {"Aiv", OpExecuteConfig::AIV},
+        {"CcuSched", OpExecuteConfig::CCU_SCHED},
+        {"CcuMS", OpExecuteConfig::CCU_MS},
+        {"Aicpu", OpExecuteConfig::AICPU_TS},
+        {"AivUrma", OpExecuteConfig::AIV_URMA},
+        {"Aiv", OpExecuteConfig::AIV},
         {"Dpu", OpExecuteConfig::HOSTCPU},
     };
     count = static_cast<int>(entries.size());
@@ -1035,6 +1039,8 @@ std::string OpExecuteConfigToString(OpExecuteConfig engine)
             return "Aicpu";
         case OpExecuteConfig::AIV:
             return "Aiv";
+        case OpExecuteConfig::AIV_URMA:
+            return "AivUrma";
         case OpExecuteConfig::AIV_ONLY:
             return "AivOnly";
         case OpExecuteConfig::HOSTCPU:

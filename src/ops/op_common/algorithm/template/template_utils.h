@@ -298,6 +298,8 @@ struct TemplateDataParams {
     // 调用方契约：全通信域一致置位（不对称会 PRE 握手死锁）。序列化随本结构尾部追加（两端同树
     // 编译、经 DPURunInfo 瞬时共享内存传递，无跨版本落盘兼容问题）。
     bool skipPrePhase{false};
+    u32 subCommRankLevel{0};
+    u32 level0ChannelNumPerRank{0};
 
     std::vector<char> Serialize() const
     {
@@ -334,6 +336,8 @@ struct TemplateDataParams {
         binaryStream << rhdStepIdx;
         binaryStream << rhdStepCnt;
         binaryStream << rhdSkipPost;
+        binaryStream << subCommRankLevel;
+        binaryStream << level0ChannelNumPerRank;
         std::vector<char> result;
         binaryStream.Dump(result);
         return result;
@@ -375,25 +379,29 @@ struct TemplateDataParams {
         binaryStream >> isWrite;
         binaryStream >> skipPrePhase;
         binaryStream >> reduceOp;
-        // RHD 尾字段剩余长度自检（新读方读旧数据方向）：本结构为全算子共用下发载体，部署侧
+        // 尾部追加字段剩余长度自检（新读方读旧数据方向）：本结构为全算子共用下发载体，部署侧
         // 版本偏斜时旧格式 data 截止于 reduceOp——不校验则裸读落在缓冲区末尾之外（目标值
         // 不确定），RHD 算子会在游标校验处以不可归因形式失败。不足或流已失效（GetReadPos 为
         // INVALID_POS）则保持默认值 + 仅首次 WARNING（每算子反序列化路径，防版本偏斜持续
-        // 状态刷屏——口径同 alg_parse.cc MarkHcclAlgoPriority 的 static 门控）：非 RHD 算子
-        // 不受影响（不消费本组字段），RHD 算子由 DPUKernelRun 游标校验显式快速失败。
-        const size_t rhdTailBytes = sizeof(rhdStepIdx) + sizeof(rhdStepCnt) + sizeof(rhdSkipPost);
-        const size_t rhdReadPos = binaryStream.GetReadPos();
-        if (rhdReadPos != BinaryStream::INVALID_POS && rhdReadPos + rhdTailBytes <= data.size()) {
+        // 状态刷屏——口径同 alg_parse.cc MarkHcclAlgoPriority 的 static 门控）：不消费
+        // 尾部字段的算子不受影响，RHD 算子由 DPUKernelRun 游标校验显式快速失败。
+        const size_t tailBytes = sizeof(rhdStepIdx) + sizeof(rhdStepCnt) + sizeof(rhdSkipPost)
+                                 + sizeof(subCommRankLevel) + sizeof(level0ChannelNumPerRank);
+        const size_t tailReadPos = binaryStream.GetReadPos();
+        if (tailReadPos != BinaryStream::INVALID_POS && tailReadPos + tailBytes <= data.size()) {
             binaryStream >> rhdStepIdx;
             binaryStream >> rhdStepCnt;
             binaryStream >> rhdSkipPost;
+            binaryStream >> subCommRankLevel;
+            binaryStream >> level0ChannelNumPerRank;
         } else {
-            static std::atomic<bool> rhdTailAbsentLogged{false};
-            if (!rhdTailAbsentLogged.exchange(true)) {
+            static std::atomic<bool> tailAbsentLogged{false};
+            if (!tailAbsentLogged.exchange(true)) {
                 HCCL_WARNING(
-                    "[TemplateDataParams][DeSerialize] RHD tail fields absent (legacy or truncated payload), keep "
-                    "defaults: rhdStepIdx[%u] rhdStepCnt[%u] rhdSkipPost[%d].",
-                    rhdStepIdx, rhdStepCnt, static_cast<int>(rhdSkipPost));
+                    "[TemplateDataParams][DeSerialize] tail fields absent (legacy or truncated payload), keep "
+                    "defaults: rhdStepIdx[%u] rhdStepCnt[%u] rhdSkipPost[%d] subCommRankLevel[%u] "
+                    "level0ChannelNumPerRank[%u].",
+                    rhdStepIdx, rhdStepCnt, static_cast<int>(rhdSkipPost), subCommRankLevel, level0ChannelNumPerRank);
             }
         }
     }

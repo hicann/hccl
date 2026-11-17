@@ -327,6 +327,12 @@ private:
     uint64_t cursor_ = 0;
 };
 
+struct DataCopyExtParams {};
+template <typename T>
+struct DataCopyPadExtParams {};
+inline void DataCopy(...) {}
+inline void DataCopyPad(...) {}
+
 } // namespace AscendC
 
 #endif // BSR_AIV_TEST_KERNEL_OPERATOR_H

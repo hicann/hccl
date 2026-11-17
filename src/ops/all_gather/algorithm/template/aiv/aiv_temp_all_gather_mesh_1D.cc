@@ -91,16 +91,29 @@ HcclResult AivTempAllGatherMesh1D::CalcRes(
     if (topoInfo->level0Topo == Level0Shape::MESH_1D_CLOS && !topoInfo->level0PcieMix) {
         std::vector<HcclChannelDesc> myChannelDescs;
         CHK_RET(CalcChannelRequestMeshClosMultiJetty(comm, param, topoInfo, subCommRanks_, myChannelDescs, true));
-        for (auto channel : myChannelDescs) {
-            if (channel.channelProtocol == COMM_PROTOCOL_UB_MEM) {
-                level0Channels.push_back(channel);
-            }
+        if (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) {
+            // URMA 支持 UB_CTP / UBOE / UB_RTP 三种协议通道
+            AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_CTP, level0Channels);
+            AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UBOE, level0Channels);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+            AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_RTP, level0Channels);
+#endif
+            CHK_PRT_RET(
+                level0Channels.empty(),
+                HCCL_ERROR(
+                    "[AivTempAllGatherMesh1D::CalcRes] AIV_URMA got empty level0Channels after protocol "
+                    "filter, total channels[%zu], none match UB_CTP/UBOE/UB_RTP",
+                    myChannelDescs.size()),
+                HCCL_E_NOT_SUPPORT);
+        } else {
+            AppendChannelsByProtocol(myChannelDescs, COMM_PROTOCOL_UB_MEM, level0Channels);
         }
         HCCL_DEBUG("[AivTempAllGatherMesh1D::CalcRes] Get Channel Success!");
     } else {
         CHK_RET(CalcChannelRequestMesh1D(comm, param, topoInfo, subCommRanks_, level0Channels));
     }
     resourceRequest.channels.push_back(level0Channels);
+    resRequest_ = resourceRequest;
     HCCL_WARNING("[AivTempAllGatherMesh1D] Resource calculation is temporarily not performed in the template.");
     return HCCL_SUCCESS;
 }
@@ -109,6 +122,9 @@ HcclResult AivTempAllGatherMesh1D::CalNumBlocks(u32& numBlocks, u64 dataSize, u3
 {
     (void)dataSize;
     numBlocks = numBlocksLimit;
+    if (opExecuteConfig_ == OpExecuteConfig::AIV_URMA) {
+        numBlocks = std::min(numBlocksLimit, tempRankSize_);
+    }
     HCCL_CONFIG_INFO(
         HCCL_ALG, "[AivTempAllGatherMesh1D] Actually use core num[%u], limit[%u]", numBlocks, numBlocksLimit);
     return HcclResult::HCCL_SUCCESS;
@@ -137,6 +153,7 @@ HcclResult AivTempAllGatherMesh1D::KernelRun(
 {
     HCCL_INFO("[AivTempAllGatherMesh1D] KernelRun start");
 
+    opExecuteConfig_ = param.opExecuteConfig;
     if (tempAlgParams.isWrite) {
         CHK_PRT_RET(
             tempRankSize_ == 0 || tempAlgParams.sliceSize > tempAlgParams.buffInfo.hcclBuff.size / tempRankSize_,
@@ -181,6 +198,11 @@ HcclResult AivTempAllGatherMesh1D::KernelRun(
     aivAllGatherArgs.repeatNum = tempAlgParams.repeatNum;
     aivAllGatherArgs.inputRepeatStride = tempAlgParams.inputRepeatStride;
     aivAllGatherArgs.outputRepeatStride = tempAlgParams.outputRepeatStride;
+    aivAllGatherArgs.subCommRankLevel = tempAlgParams.subCommRankLevel;
+    aivAllGatherArgs.level0ChannelNumPerRank = tempAlgParams.level0ChannelNumPerRank;
+    if (opExecuteConfig_ == OpExecuteConfig::AIV_URMA) {
+        aivAllGatherArgs.argsType = KernelArgsType::ARGS_TYPE_URMA;
+    }
 
     CHK_RET(ExecuteKernelLaunch(aivAllGatherArgs));
 

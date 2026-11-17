@@ -19,5 +19,14 @@ using GM_ADDR = uint8_t*;
 namespace AscendC {
 constexpr int PIPE_ALL = 0;
 inline void pipe_barrier(int) {}
+template <typename T>
+struct LocalTensor {};
+template <typename T>
+struct GlobalTensor {};
+struct DataCopyExtParams {};
+template <typename T>
+struct DataCopyPadExtParams {};
+inline void DataCopy(...) {}
+inline void DataCopyPad(...) {}
 } // namespace AscendC
 #endif

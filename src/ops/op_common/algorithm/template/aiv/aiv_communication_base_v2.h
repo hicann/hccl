@@ -51,32 +51,35 @@ struct SkArgsStruct {
 #define SK_BIND_FUNC_ARGS __gm__ struct SkArgsStruct* args
 
 // 将__sk__参数转成__aicore__参数
-#define CONVERT_SK_PARAM_TO_KERNEL_ARGS                     \
-    GM_ADDR buffIn = args->buffersIn;                       \
-    uint64_t input = args->input;                           \
-    uint64_t output = args->output;                         \
-    uint32_t rank = args->rank;                             \
-    uint32_t sendRecvRemoteRank = args->sendRecvRemoteRank; \
-    uint32_t rankSize = args->rankSize;                     \
-    uint64_t len = args->len;                               \
-    uint32_t dataType = args->dataType;                     \
-    uint32_t reduceOp = args->reduceOp;                     \
-    uint32_t root = args->root;                             \
-    uint32_t sliceId = args->tag;                           \
-    uint64_t inputSliceStride = args->inputSliceStride;     \
-    uint64_t outputSliceStride = args->outputSliceStride;   \
-    uint64_t repeatNum = args->repeatNum;                   \
-    uint64_t inputRepeatStride = args->inputRepeatStride;   \
-    uint64_t outputRepeatStride = args->outputRepeatStride; \
-    uint32_t numBlocks = args->numBlocks;                   \
-    bool isOpBase = args->isOpBase;                         \
-    GM_ADDR headCountMem = args->headCountMem;              \
-    GM_ADDR tailCountMem = args->tailCountMem;              \
-    GM_ADDR addOneMem = args->addOneMem;                    \
-    uint32_t counterMemSize = args->counterMemSize;         \
-    bool isEnableCounter = args->isEnableCounter;           \
-    bool isWrite = args->isWrite
-
+#define CONVERT_SK_PARAM_TO_KERNEL_ARGS                                                                      \
+    GM_ADDR buffIn = args->buffersIn;                                                                        \
+    uint64_t input = args->input;                                                                            \
+    uint64_t output = args->output;                                                                          \
+    uint32_t rank = args->rank;                                                                              \
+    uint32_t sendRecvRemoteRank = args->sendRecvRemoteRank;                                                  \
+    uint32_t rankSize = args->rankSize;                                                                      \
+    uint64_t len = args->len;                                                                                \
+    uint32_t dataType = args->dataType;                                                                      \
+    uint32_t reduceOp = args->reduceOp;                                                                      \
+    uint32_t root = args->root;                                                                              \
+    uint32_t sliceId = args->tag;                                                                            \
+    uint64_t inputSliceStride = args->inputSliceStride;                                                      \
+    uint64_t outputSliceStride = args->outputSliceStride;                                                    \
+    uint64_t repeatNum = args->repeatNum;                                                                    \
+    uint64_t inputRepeatStride = args->inputRepeatStride;                                                    \
+    uint64_t outputRepeatStride = args->outputRepeatStride;                                                  \
+    uint32_t numBlocks = args->numBlocks;                                                                    \
+    bool isOpBase = args->isOpBase;                                                                          \
+    GM_ADDR headCountMem = args->headCountMem;                                                               \
+    GM_ADDR tailCountMem = args->tailCountMem;                                                               \
+    GM_ADDR addOneMem = args->addOneMem;                                                                     \
+    uint32_t counterMemSize = args->counterMemSize;                                                          \
+    bool isEnableCounter = args->isEnableCounter;                                                            \
+    bool isWrite = args->isWrite;                                                                            \
+    /* SK路径暂时不走URMA，但为编译通过需要增加 subCommRankLevel/level0ChannelNumPerRank， \
+       AivSuperKernelArgsDef无此字段，默认0 */                                                        \
+    uint32_t subCommRankLevel = 0;                                                                           \
+    uint32_t level0ChannelNumPerRank = 0
 // sk 绑定函数
 #define SuperKernelBind(kernel_name)                           \
     extern "C" __sk__ void kernel_name##_1(SK_BIND_FUNC_ARGS); \
@@ -110,7 +113,7 @@ public:
         uint64_t len, uint32_t dataType, uint32_t reduceOp, uint32_t root, uint64_t inputSliceStride,
         uint64_t outputSliceStride, uint64_t repeatNum, uint64_t inputRepeatStride, uint64_t outputRepeatStride,
         GM_ADDR headCountMem, GM_ADDR tailCountMem, GM_ADDR addOneMem, uint32_t counterMemSize, bool isEnableCounter,
-        uint32_t numBlocks, bool useDoubleBuffer, bool pingpong = false)
+        uint32_t numBlocks, bool useDoubleBuffer = true, bool pingpong = false)
     {
         rank_ = rank;
         sendRecvRemoteRank_ = sendRecvRemoteRank;
@@ -262,14 +265,6 @@ public:
 
     template <typename T>
     __aicore__ inline void SetAtomicOp(uint32_t atomicOp);
-
-    template <typename T>
-    __aicore__ inline void
-    DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount);
-
-    template <typename T>
-    __aicore__ inline void
-    DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount);
 
     template <typename T>
     __aicore__ inline void CpGM2GM(__gm__ T* outputGM, __gm__ T* inputGM, uint64_t count, uint32_t atomicOp);
@@ -571,35 +566,6 @@ __aicore__ inline void AivCommBase::SetAtomicOp(uint32_t atomicOp)
         default:
             SetAtomicNone();
             break;
-    }
-}
-
-template <typename T>
-__aicore__ inline void
-AivCommBase::DataCopyGM2UB(const LocalTensor<T>& dstLocal, const GlobalTensor<T>& srcGlobal, const uint32_t calCount)
-{
-    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
-        DataCopy(dstLocal, srcGlobal, calCount);
-    } else {
-        // 结构体DataCopyExtParams最后一个参数是rsv保留位
-        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
-        DataCopyPadExtParams<T> padParams;
-        padParams.isPad = true;
-        padParams.leftPadding = 0;
-        padParams.rightPadding = 1;
-        DataCopyPad(dstLocal, srcGlobal, copyParams, padParams);
-    }
-}
-
-template <typename T>
-__aicore__ inline void
-AivCommBase::DataCopyUB2GM(const GlobalTensor<T>& dstGlobal, const LocalTensor<T>& srcLocal, const uint32_t calCount)
-{
-    if ((calCount * sizeof(T)) % UB_ALIGN_SIZE == 0) {
-        DataCopy(dstGlobal, srcLocal, calCount);
-    } else {
-        DataCopyExtParams copyParams{1, calCount * (uint32_t)sizeof(T), 0, 0, 0};
-        DataCopyPad(dstGlobal, srcLocal, copyParams);
     }
 }
 

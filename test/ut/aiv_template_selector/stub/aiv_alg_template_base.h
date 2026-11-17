@@ -85,6 +85,8 @@ protected:
     u32 root_ = 0;
     u32 sliceId_ = 0;
     HcclDataType dataType_ = HCCL_DATA_TYPE_FP32;
+    OpExecuteConfig opExecuteConfig_ = OpExecuteConfig::AIV;
+    AlgResourceRequest resRequest_;
 };
 
 } // namespace ops_hccl

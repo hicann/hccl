@@ -12,6 +12,7 @@ add_subdirectory(kernel)
 
 set(src_list
     ${CMAKE_CURRENT_SOURCE_DIR}/aiv_temp_all_gather_mesh_1D.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/aiv_temp_all_gather_mesh_1D_Z_axis_detour.cc
 )
 
 if(TARGET hccl)

@@ -133,7 +133,10 @@ enum class OpExecuteConfig {
     CCU_SCHED = 6,
     AICPU = 7,
     HOSTCPU = 8,
-    CCU_FAIL
+    CCU_MS_ONLY = 9,
+    CCU_SCHED_ONLY = 10,
+    CCU_FAIL = 11,
+    AIV_URMA = 12
 };
 
 // ---------------------------------------------------------------------------

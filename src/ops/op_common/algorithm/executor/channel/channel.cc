@@ -246,8 +246,16 @@ HcclResult GetProtocolByEngine(const OpParam& param, std::vector<CommProtocol>& 
             protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_CTP);
             break;
         case CommEngine::COMM_ENGINE_AIV:
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_MEM);
-            protocols.push_back(CommProtocol::COMM_PROTOCOL_PCIE);
+            if (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) {
+                protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_CTP);
+                protocols.push_back(CommProtocol::COMM_PROTOCOL_UBOE);
+#if CANN_VERSION_NUM >= CANN_VERSION(9, 2, 0)
+                protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_RTP);
+#endif
+            } else {
+                protocols.push_back(CommProtocol::COMM_PROTOCOL_UB_MEM);
+                protocols.push_back(CommProtocol::COMM_PROTOCOL_PCIE);
+            }
             break;
         case CommEngine::COMM_ENGINE_CPU:
             // level 1到level n-1使用UB协议，server内建联，最外层使用网卡建联
@@ -681,7 +689,7 @@ HcclResult CalcChannelRequestMesh2D(
     }
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
     CommProtocol protocol = CommProtocol::COMM_PROTOCOL_UB_CTP;
-    if (param.engine == CommEngine::COMM_ENGINE_AIV) {
+    if (param.engine == CommEngine::COMM_ENGINE_AIV && param.opExecuteConfig != OpExecuteConfig::AIV_URMA) {
         protocol = CommProtocol::COMM_PROTOCOL_UB_MEM;
     }
 #else
@@ -1194,8 +1202,10 @@ HcclResult CalcChannelRequestNhrMultiJetty(
     u32 localRankSize = subcommInfo[0].size();
     CHK_RET(CalcNHRChannelConnect(localRank, localRankSize, INVALID_VALUE_RANKID, connectRanks));
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-    CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? CommProtocol::COMM_PROTOCOL_UB_MEM :
-                                                                                  CommProtocol::COMM_PROTOCOL_UB_CTP;
+    CommProtocol expectedProtocol
+        = (param.engine == CommEngine::COMM_ENGINE_AIV && param.opExecuteConfig != OpExecuteConfig::AIV_URMA) ?
+              CommProtocol::COMM_PROTOCOL_UB_MEM :
+              CommProtocol::COMM_PROTOCOL_UB_CTP;
 #else
     // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；
     // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编
@@ -1280,8 +1290,10 @@ HcclResult CalcChannelRequestMeshClosMultiJetty(
         HcclResult::HCCL_E_PARA);
     u32 myRank = topoInfo->userRank;
 #if CANN_VERSION_NUM >= CANN_VERSION(9, 1, 0)
-    CommProtocol expectedProtocol = param.engine == CommEngine::COMM_ENGINE_AIV ? CommProtocol::COMM_PROTOCOL_UB_MEM :
-                                                                                  CommProtocol::COMM_PROTOCOL_UB_CTP;
+    CommProtocol expectedProtocol
+        = (param.engine == CommEngine::COMM_ENGINE_AIV && param.opExecuteConfig != OpExecuteConfig::AIV_URMA) ?
+              CommProtocol::COMM_PROTOCOL_UB_MEM :
+              CommProtocol::COMM_PROTOCOL_UB_CTP;
 #else
     // 8.5.0 CANN 无 UB_CTP/UB_MEM 等枚举值；
     // 主源已由算子入口 GetHcommVersion() 守护避免运行时调用；8.5.0 下用 HCCS 协议占位仅为可编

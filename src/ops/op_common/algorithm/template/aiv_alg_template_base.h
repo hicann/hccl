@@ -63,6 +63,12 @@ public:
 
     virtual HcclResult SetchannelsPerRank(const std::map<u32, std::vector<ChannelInfo>>& channels);
 
+    HcclResult GetRes(AlgResourceRequest& resourceRequest) const
+    {
+        resourceRequest = resRequest_;
+        return HCCL_SUCCESS;
+    }
+
 protected:
     // 只填写公共数据字段；cmdType、argsType、核数与sliceId递增由调用方管理。
     void FillCommonAivOpArgs(
@@ -97,8 +103,10 @@ protected:
     HcclDataType dataType_;
     // 从OpParam中获取
     bool enableDetour_ = false;
+    OpExecuteConfig opExecuteConfig_{OpExecuteConfig::DEFAULT};
     u32 sliceId_ = 0;
     u32 channelsPerRank_ = 1;
+    AlgResourceRequest resRequest_;
 };
 
 } // namespace ops_hccl

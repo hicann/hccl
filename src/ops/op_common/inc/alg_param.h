@@ -155,7 +155,8 @@ enum class OpExecuteConfig {
     HOSTCPU = 8,
     CCU_MS_ONLY = 9,
     CCU_SCHED_ONLY = 10,
-    CCU_FAIL = 11
+    CCU_FAIL = 11,
+    AIV_URMA = 12
 };
 
 // OpExecuteConfig → 字符串(用于日志)
@@ -171,6 +172,7 @@ static const std::map<OpExecuteConfig, const char*> ENGINE_STR_MAP = {
     {OpExecuteConfig::CCU_SCHED_ONLY, "CCU_SCHED_ONLY"},
     {OpExecuteConfig::AICPU, "AICPU"},
     {OpExecuteConfig::HOSTCPU, "HOSTCPU"},
+    {OpExecuteConfig::AIV_URMA, "AIV_URMA"},
     {OpExecuteConfig::CCU_FAIL, "CCU_FAIL"},
 };
 

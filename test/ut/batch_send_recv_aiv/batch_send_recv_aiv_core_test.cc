@@ -141,7 +141,8 @@ void RunKernel(const KernelArgs& args, ExtraArgsBsr& extra)
         /*reduceOp*/ 0, /*root*/ 0, /*sliceId = roundTag*/ args.roundTag, /*inputSliceStride*/ 0,
         /*outputSliceStride*/ 0, /*repeatNum*/ 0, /*inputRepeatStride*/ 0, /*outputRepeatStride*/ 0, args.numBlocks,
         /*isOpBase*/ false, /*headCountMem*/ nullptr, /*tailCountMem*/ nullptr, /*addOneMem*/ nullptr,
-        /*counterMemSize*/ 0, /*isEnableCounter*/ false, /*isWrite*/ false, extra);
+        /*counterMemSize*/ 0, /*isEnableCounter*/ false, /*isWrite*/ false, /*subCommRankLevel*/ 0,
+        /*level0ChannelNumPerRank*/ 0, extra);
 }
 
 // 一个 kernel 的所有核依次跑一遍（核号在构造期取，故每次调用都要重建对象）。

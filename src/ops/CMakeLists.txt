@@ -8,6 +8,13 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
+# hcomm_inner_def.h 引用 "hcomm/hcomm_common.h"，需要 adv_api 目录在 include 路径中
+if(EXISTS "${_CANN_ASC_KERNEL_INCLUDE_DIR}/include/adv_api/hcomm")
+    set(HCCL_URMA_EXTRA_INCLUDE "-I${_CANN_ASC_KERNEL_INCLUDE_DIR}/include/adv_api")
+else()
+    set(HCCL_URMA_EXTRA_INCLUDE "")
+endif()
+
 add_subdirectory(scatter)
 add_subdirectory(op_common)
 add_subdirectory(reduce_scatter)

@@ -14,7 +14,7 @@
 #include "alg_param.h"
 
 namespace ops_hccl {
-enum class KernelArgsType { ARGS_TYPE_SERVER, ARGS_TYPE_TWO_SHOT };
+enum class KernelArgsType { ARGS_TYPE_SERVER, ARGS_TYPE_TWO_SHOT, ARGS_TYPE_URMA };
 
 struct AivOpArgs {
     HcclCMDType cmdType = HcclCMDType::HCCL_CMD_ALLTOALL;
@@ -39,6 +39,8 @@ struct AivOpArgs {
     u64 repeatNum = 0;
     u64 inputRepeatStride = 0;
     u64 outputRepeatStride = 0;
+    u32 subCommRankLevel = 0;
+    u32 level0ChannelNumPerRank = 0;
 };
 
 namespace aiv_selector_test {

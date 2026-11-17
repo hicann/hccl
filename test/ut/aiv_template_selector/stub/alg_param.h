@@ -14,15 +14,25 @@
 #include <cstdint>
 #include <vector>
 
+// UT 桩环境不引入 dlsym_common.h，此处补齐 CANN 版本宏供源码中的 #if CANN_VERSION_NUM 守卫解析。
+#ifndef CANN_VERSION_NUM
+#define CANN_VERSION_VAL(M, m, p) ((M) * 10000000 + (m) * 100000 + (p) * 1000)
+#define CANN_VERSION(...) CANN_VERSION_VAL(9, 2, 0)
+#define CANN_VERSION_NUM CANN_VERSION(9, 2, 0)
+#endif
+
 namespace ops_hccl {
 
 using u32 = uint32_t;
 using u64 = uint64_t;
 using HcclComm = void*;
 
-enum HcclResult { HCCL_SUCCESS = 0, HCCL_E_INTERNAL = 1, HCCL_E_PARA = 2, HCCL_E_PTR = 3 };
+enum HcclResult { HCCL_SUCCESS = 0, HCCL_E_INTERNAL = 1, HCCL_E_PARA = 2, HCCL_E_PTR = 3, HCCL_E_NOT_SUPPORT = 12 };
 enum class OpMode { OPBASE, OFFLOAD };
 enum class CommEngine { COMM_ENGINE_AIV, COMM_ENGINE_AICPU_TS, COMM_ENGINE_CCU };
+enum class OpExecuteConfig { AIV, AIV_URMA };
+enum HcclReduceOp { HCCL_REDUCE_SUM = 0, HCCL_REDUCE_MAX = 2, HCCL_REDUCE_PROD = 3, HCCL_REDUCE_MIN = 4 };
+constexpr HcclReduceOp HCCL_REDUCE_RESERVED = HCCL_REDUCE_SUM;
 enum class HcclCMDType {
     HCCL_CMD_ALLREDUCE,
     HCCL_CMD_ALLTOALL,
@@ -53,6 +63,7 @@ struct DataDescription {
 struct OpParam {
     OpMode opMode = OpMode::OPBASE;
     CommEngine engine = CommEngine::COMM_ENGINE_AIV;
+    OpExecuteConfig opExecuteConfig = OpExecuteConfig::AIV;
     HcclCMDType opType = HcclCMDType::HCCL_CMD_ALLREDUCE;
     HcclComm hcclComm = nullptr;
     bool supportSymmetricMemory = false;
@@ -92,19 +103,37 @@ struct TemplateDataParams {
     u64 outputSliceStride = 0;
     std::vector<u64> sendCounts;
     bool isWrite = false;
+    HcclReduceOp reduceOp = HcclReduceOp::HCCL_REDUCE_SUM;
     u64 repeatNum = 1;
     u64 inputRepeatStride = 0;
     u64 outputRepeatStride = 0;
+    u32 subCommRankLevel = 0;
+    u32 level0ChannelNumPerRank = 0;
 };
 
 struct TemplateResource {
     void* aivCommInfoPtr = nullptr;
 };
 
-inline constexpr u32 COMM_PROTOCOL_UB_MEM = 0;
-struct HcclChannelDesc {
-    u32 channelProtocol = COMM_PROTOCOL_UB_MEM;
+enum CommProtocol {
+    COMM_PROTOCOL_UB_MEM = 0,
+    COMM_PROTOCOL_UB_CTP = 1,
+    COMM_PROTOCOL_UBOE = 7,
+    COMM_PROTOCOL_UB_RTP = 9
 };
+struct HcclChannelDesc {
+    CommProtocol channelProtocol = COMM_PROTOCOL_UB_MEM;
+};
+
+inline void AppendChannelsByProtocol(
+    const std::vector<HcclChannelDesc>& source, CommProtocol protocol, std::vector<HcclChannelDesc>& target)
+{
+    for (const auto& channel : source) {
+        if (channel.channelProtocol == protocol) {
+            target.push_back(channel);
+        }
+    }
+}
 
 struct AlgResourceRequest {
     u32 slaveThreadNum = 0;

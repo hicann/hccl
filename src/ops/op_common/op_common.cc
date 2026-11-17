@@ -558,6 +558,8 @@ HcclResult HcclAivCacheCheckAndReplay(HcclComm comm, OpParam& param, bool& cache
     cacheKey.root = param.root;
     cacheKey.reduceOp = param.reduceType;
     cacheKey.numBlocksLimit = numBlocksLimit;
+    cacheKey.opExecuteConfig
+        = (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) ? OpExecuteConfig::AIV_URMA : OpExecuteConfig::AIV;
     if (param.opType == HCCL_CMD_ALLTOALL) {
         cacheKey.dataType = param.all2AllVDataDes.sendType;
         cacheKey.count = static_cast<const u64*>(param.all2AllVDataDes.sendCounts)[0];
@@ -674,6 +676,8 @@ HcclResult ExecuteAivCacheLogic(
         cacheKey.opType = param.opType;
         cacheKey.reduceOp = param.reduceType;
         cacheKey.numBlocksLimit = param.numBlocksLimit;
+        cacheKey.opExecuteConfig
+            = (param.opExecuteConfig == OpExecuteConfig::AIV_URMA) ? OpExecuteConfig::AIV_URMA : OpExecuteConfig::AIV;
         if (param.opType == HCCL_CMD_ALLTOALL) {
             cacheKey.dataType = param.all2AllVDataDes.sendType;
             cacheKey.count = static_cast<const u64*>(param.all2AllVDataDes.sendCounts)[0];
@@ -3767,32 +3771,42 @@ HcclResult HcclAllocAlgResourceAiv(
     void* buffersIn[MAX_RANK_SIZE] = {};
     void* buffersOut[MAX_RANK_SIZE] = {};
     uint64_t commInfoSize = 0;
-    HcclResult ret
-        = HcclEngineCtxGet(comm, param.commModeTag, param.engine, &(resCtxHost->aivCommInfoPtr), &commInfoSize);
+    bool isAivUrma = (param.opExecuteConfig == OpExecuteConfig::AIV_URMA);
+    char urmaAivInfoTag[ALG_TAG_LENGTH] = "";
+    const char* aivCommInfoTag = param.commModeTag;
+    if (isAivUrma) {
+        // URMA 按算法维度分配 aivCommInfoPtr，避免同一通信域不同算法的 URMA kernel
+        // 异步执行时 subCommRanks/channelInfo 等被后续算法覆盖。标准 AIV 不区分算法，
+        // 仍用 commModeTag 复用同一块内存。
+        auto ret = sprintf_s(urmaAivInfoTag, sizeof(urmaAivInfoTag), "%s%s", param.commModeTag, param.algName);
+        CHK_PRT_RET(ret <= 0, HCCL_ERROR("[%s] failed to fill urmaAivInfoTag", __func__), HCCL_E_INTERNAL);
+        aivCommInfoTag = urmaAivInfoTag;
+    }
+    HcclResult ret = HcclEngineCtxGet(comm, aivCommInfoTag, param.engine, &(resCtxHost->aivCommInfoPtr), &commInfoSize);
     if (ret == HCCL_E_NOT_FOUND || ret == HCCL_E_PARA) {
-        CHK_RET(HcclEngineCtxCreate(
-            comm, param.commModeTag, param.engine, AIV_TAG_BUFF_LEN, &(resCtxHost->aivCommInfoPtr)));
+        CHK_RET(
+            HcclEngineCtxCreate(comm, aivCommInfoTag, param.engine, AIV_TAG_BUFF_LEN, &(resCtxHost->aivCommInfoPtr)));
         // 清零
         ACLCHECK(haclrtMemset(resCtxHost->aivCommInfoPtr, AIV_TAG_BUFF_LEN, 0, AIV_TAG_BUFF_LEN));
         if (HcommIsSupportHcclCommRegCommStateCallback()) {
-            CHK_RET(HcclCommRegCommStateCallback(param.commModeTag, ClearAivTagCb, resCtxHost->aivCommInfoPtr));
+            CHK_RET(HcclCommRegCommStateCallback(aivCommInfoTag, ClearAivTagCb, resCtxHost->aivCommInfoPtr));
         }
         // 注册到通信域，支持建链时交换
         CommMem regMem{COMM_MEM_TYPE_DEVICE, resCtxHost->aivCommInfoPtr, AIV_TAG_BUFF_LEN};
-        CHK_RET(HcclCommMemReg(comm, param.commModeTag, &regMem, &memHandle));
+        CHK_RET(HcclCommMemReg(comm, aivCommInfoTag, &regMem, &memHandle));
         void* memHandleCachePtr = nullptr; // 当前AIV存放注册内存的memHandle使用
         CHK_RET(HcclEngineCtxCreate(
-            comm, param.commModeTag, CommEngine::COMM_ENGINE_CPU_TS, sizeof(HcclMemHandle), &memHandleCachePtr));
+            comm, aivCommInfoTag, CommEngine::COMM_ENGINE_CPU_TS, sizeof(HcclMemHandle), &memHandleCachePtr));
         static_cast<HcclMemHandle*>(memHandleCachePtr)[0] = memHandle;
     } else {
         void* memHandleCachePtr = nullptr;
         uint64_t memHandleCacheSize = 0;
         HcclResult ret = HcclEngineCtxGet(
-            comm, param.commModeTag, CommEngine::COMM_ENGINE_CPU_TS, &memHandleCachePtr, &memHandleCacheSize);
+            comm, aivCommInfoTag, CommEngine::COMM_ENGINE_CPU_TS, &memHandleCachePtr, &memHandleCacheSize);
         CHK_PRT_RET(
             ret != HCCL_SUCCESS || memHandleCacheSize != sizeof(HcclMemHandle),
             HCCL_ERROR(
-                "[%s]commModeTag[%s] aiv memHandle not found in cache, ptr[%p] size[%llu]", __func__, param.commModeTag,
+                "[%s]aivCommInfoTag[%s] aiv memHandle not found in cache, ptr[%p] size[%llu]", __func__, aivCommInfoTag,
                 memHandleCachePtr, memHandleCacheSize),
             HCCL_E_INTERNAL);
         memHandle = static_cast<HcclMemHandle*>(memHandleCachePtr)[0];
@@ -3807,7 +3821,7 @@ HcclResult HcclAllocAlgResourceAiv(
             ACL_MEMCPY_DEVICE_TO_HOST));
     }
     HCCL_INFO(
-        "[%s]commModeTag[%s] regMemAddr[%p] memHandle[%p]", __func__, param.commModeTag, resCtxHost->aivCommInfoPtr,
+        "[%s]aivCommInfoTag[%s] regMemAddr[%p] memHandle[%p]", __func__, aivCommInfoTag, resCtxHost->aivCommInfoPtr,
         memHandle);
 
     void* cclBufferAddr;
@@ -3820,6 +3834,7 @@ HcclResult HcclAllocAlgResourceAiv(
     buffersIn[resCtxHost->topoInfo.userRank] = cclBufferAddr;
     buffersOut[resCtxHost->topoInfo.userRank] = resCtxHost->aivCommInfoPtr;
 
+    auto channelInfo = std::make_unique<AivUrmaChannelInfo>();
     // 迭代每个子通信域的建链请求；用副本承载，避免下方回填 memHandles 污染调用方的 resRequest。
     std::vector<std::vector<HcclChannelDesc>> channelRequestToBuild = resRequest.channels;
     for (u32 level = 0; level < channelRequestToBuild.size(); level++) {
@@ -3885,6 +3900,27 @@ HcclResult HcclAllocAlgResourceAiv(
                 channelDesc.remoteRank, memNum, remoteMems[memNum - 1].addr, remoteMems[memNum - 1].size,
                 memTags[memNum - 1]);
             buffersOut[channelDesc.remoteRank] = remoteMems[memNum - 1].addr;
+
+            if (isAivUrma) {
+                u32 chIdx = channelInfo->channelsPerRank[channelDesc.remoteRank];
+                CHK_PRT_RET(
+                    chIdx >= MAX_CHANNELS_PER_RANK,
+                    HCCL_ERROR(
+                        "[%s] remoteRank[%u] channelsPerRank[%u] exceeds MAX_CHANNELS_PER_RANK[%u]", __func__,
+                        channelDesc.remoteRank, chIdx, MAX_CHANNELS_PER_RANK),
+                    HCCL_E_PARA);
+                channelInfo->channelsPerRank[channelDesc.remoteRank] = chIdx + 1;
+                u32 slot = channelDesc.remoteRank * MAX_CHANNELS_PER_RANK + chIdx;
+                channelInfo->channelHandle[slot] = static_cast<u64>(levelNChannels[idx]);
+                uint32_t portSize = 0;
+                CHK_RET(HcclRankGraphGetEndpointInfo(
+                    comm, resCtxHost->topoInfo.userRank, &channelDesc.localEndpoint, ENDPOINT_ATTR_BW_COEFF,
+                    sizeof(uint32_t), static_cast<void*>(&portSize)));
+                CHK_PRT_RET(
+                    portSize == 0, HCCL_ERROR("[%s] remoteRank[%u] portSize is 0.", __func__, channelDesc.remoteRank),
+                    HCCL_E_INTERNAL);
+                channelInfo->portNum[slot] = portSize;
+            }
         }
     }
 
@@ -3894,6 +3930,36 @@ HcclResult HcclAllocAlgResourceAiv(
     CHK_RET(haclrtMemcpy(
         static_cast<u8*>(resCtxHost->aivCommInfoPtr) + AIV_TAG_ADDR_OFFSET, MAX_RANK_SIZE * sizeof(void*), buffersOut,
         MAX_RANK_SIZE * sizeof(void*), ACL_MEMCPY_HOST_TO_DEVICE));
+
+    if (isAivUrma) {
+        channelInfo->rankSize = resCtxHost->topoInfo.userRankSize;
+        CHK_RET(haclrtMemcpy(
+            static_cast<u8*>(resCtxHost->aivCommInfoPtr) + AIV_URMA_HANDLE_ADDR_OFFSET, sizeof(AivUrmaChannelInfo),
+            channelInfo.get(), sizeof(AivUrmaChannelInfo), ACL_MEMCPY_HOST_TO_DEVICE));
+
+        u32 levelCount = static_cast<u32>(resCtxHost->algHierarchyInfo.infos.size());
+        for (u32 level = 0; level < levelCount; level++) {
+            const std::vector<u32>& levelRanks = resCtxHost->algHierarchyInfo.infos[level][0];
+            u32 levelRankCount = static_cast<u32>(levelRanks.size());
+            u32 levelOffset = AIV_URMA_SUBCOMM_RANKS_START_OFFSET + level * AIV_URMA_SUBCOMM_RANKS_PER_LEVEL_BYTES;
+            u64 levelDataSize = static_cast<u64>(levelRankCount) * sizeof(u32);
+            CHK_PRT_RET(
+                levelDataSize > AIV_URMA_SUBCOMM_RANKS_PER_LEVEL_BYTES,
+                HCCL_ERROR(
+                    "[%s] level[%u] subCommRanks data size[%llu] exceeds per-level budget[%u]", __func__, level,
+                    levelDataSize, AIV_URMA_SUBCOMM_RANKS_PER_LEVEL_BYTES),
+                HCCL_E_PARA);
+            CHK_PRT_RET(
+                levelOffset + levelDataSize > AIV_URMA_SUBCOMM_RANKS_AREA_END,
+                HCCL_ERROR(
+                    "[%s] level[%u] subCommRanks area overflow: offset[%u] + dataSize[%llu] > limit[%u]", __func__,
+                    level, levelOffset, levelDataSize, AIV_URMA_SUBCOMM_RANKS_AREA_END),
+                HCCL_E_PARA);
+            CHK_RET(haclrtMemcpy(
+                static_cast<u8*>(resCtxHost->aivCommInfoPtr) + levelOffset, levelRankCount * sizeof(u32),
+                levelRanks.data(), levelRankCount * sizeof(u32), ACL_MEMCPY_HOST_TO_DEVICE));
+        }
+    }
 
     HCCL_INFO("[%s] Alloc res success.", __func__);
     return HCCL_SUCCESS;
@@ -4070,6 +4136,7 @@ HcclResult SetCommEngine(OpParam& param)
         {OpExecuteConfig::AICPU_TS, COMM_ENGINE_AICPU_TS},
         {OpExecuteConfig::AIV, COMM_ENGINE_AIV},
         {OpExecuteConfig::AIV_ONLY, COMM_ENGINE_AIV}, // AIV_ONLY 和 AIV 映射到同一引擎
+        {OpExecuteConfig::AIV_URMA, COMM_ENGINE_AIV}, // AIV_URMA 复用 AIV 引擎，建链时按 opExecuteConfig 区分协议
         {OpExecuteConfig::CCU_MS, COMM_ENGINE_CCU},
         {OpExecuteConfig::CCU_SCHED, COMM_ENGINE_CCU},
         {OpExecuteConfig::AICPU, COMM_ENGINE_AICPU},

@@ -43,7 +43,7 @@ namespace {
                 currentTrace = &traces.back();
                 AivAlltoAllV2Mesh1DWrite<T>(
                     nullptr, Address(INPUT_BASE, rank), Address(OUTPUT_BASE, rank), rank, 0, ranks, count, 0, 0, 0, 1,
-                    stride, stride, 1, 0, 0, blocks, true, nullptr, nullptr, nullptr, 0, false, true);
+                    stride, stride, 1, 0, 0, blocks, true, nullptr, nullptr, nullptr, 0, false, true, 0, 0);
                 active += !currentTrace->events.empty();
                 if (block >= expectedActive) {
                     EXPECT_TRUE(currentTrace->events.empty()) << "non-copying core copies data or accesses flags";

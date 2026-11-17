@@ -67,12 +67,12 @@ namespace {
                     AivReduceScatterV2LocalTreeWrite<T>(
                         nullptr, Address(INPUT_BASE, rank), Address(OUTPUT_BASE, rank), rank, 0, s.cfg.ranks,
                         s.cfg.count, 0, 0, 0, 1, s.stride, s.stride, 1, 0, 0, s.cfg.blocks, true, nullptr, nullptr,
-                        nullptr, 0, false, true);
+                        nullptr, 0, false, true, 0, 0);
                 } else {
                     AivReduceScatterV2Mesh1DBigDataWrite<T>(
                         nullptr, Address(INPUT_BASE, rank), Address(OUTPUT_BASE, rank), rank, 0, s.cfg.ranks,
                         s.cfg.count, 0, 0, 0, 1, s.stride, s.stride, 1, 0, 0, s.cfg.blocks, true, nullptr, nullptr,
-                        nullptr, 0, false, true);
+                        nullptr, 0, false, true, 0, 0);
                 }
             }
         }

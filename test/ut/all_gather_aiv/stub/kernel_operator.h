@@ -111,5 +111,10 @@ private:
     bool allocated_ = false;
     bool queued_ = false;
 };
+struct DataCopyExtParams {};
+template <typename T>
+struct DataCopyPadExtParams {};
+inline void DataCopy(...) {}
+inline void DataCopyPad(...) {}
 } // namespace AscendC
 #endif

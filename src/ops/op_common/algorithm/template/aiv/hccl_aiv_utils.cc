@@ -535,13 +535,16 @@ using AivKernelArgs = struct AivKernelArgsDef {
     u32 counterMemSize;
     alignas(sizeof(u32)) bool isEnableCounter;
     alignas(sizeof(u32)) bool isWrite;
+    u32 subCommRankLevel = 0;
+    u32 level0ChannelNumPerRank = 0;
 
     AivKernelArgsDef(
         const void* buffIn, u64 input, u64 output, u32 rank, u32 sendRecvRemoteRank, u32 rankSize, u64 len,
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, bool isEnableCounter = false, bool isWrite = false)
+        u32 counterMemSize = 0, bool isEnableCounter = false, bool isWrite = false, u32 subCommRankLevel = 0,
+        u32 level0ChannelNumPerRank = 0)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -565,7 +568,9 @@ using AivKernelArgs = struct AivKernelArgsDef {
           addOneMem(addOneMem),
           counterMemSize(counterMemSize),
           isEnableCounter(isEnableCounter),
-          isWrite(isWrite)
+          isWrite(isWrite),
+          subCommRankLevel(subCommRankLevel),
+          level0ChannelNumPerRank(level0ChannelNumPerRank)
     {}
 };
 
@@ -600,6 +605,8 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
     u32 counterMemSize;
     alignas(sizeof(u32)) bool isEnableCounter;
     alignas(sizeof(u32)) bool isWrite;
+    u32 subCommRankLevel = 0;
+    u32 level0ChannelNumPerRank = 0;
     ExtraArgs extraArgs;
 
     AivExtraKernelArgsDef(
@@ -607,7 +614,8 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, const ExtraArgs* extraArgsPtr = nullptr, bool isWrite = false)
+        u32 counterMemSize = 0, bool isEnableCounter = false, bool isWrite = false, u32 subCommRankLevel = 0,
+        u32 level0ChannelNumPerRank = 0, const ExtraArgs* extraArgsPtr = nullptr)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -630,8 +638,10 @@ using AivExtraKernelArgs = struct AivExtraKernelArgsDef {
           tailCountMem(tailCountMem),
           addOneMem(addOneMem),
           counterMemSize(counterMemSize),
-          isEnableCounter(false),
-          isWrite(isWrite)
+          isEnableCounter(isEnableCounter),
+          isWrite(isWrite),
+          subCommRankLevel(subCommRankLevel),
+          level0ChannelNumPerRank(level0ChannelNumPerRank)
     {
         if (extraArgsPtr != nullptr) {
             extraArgs = *extraArgsPtr;
@@ -666,9 +676,13 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
     const void* addOneMem;
     u32 counterMemSize;
     alignas(sizeof(u32)) bool isEnableCounter;
-    // 设备侧每个 bool 形参占 4 字节参数槽；缺 isWrite 会让 extraArgsBsr 从 152 前移到 144，
-    // kernel 从 152 读到的就是 flagBlock，并被当成 itemNum 使用。
+    // 设备侧每个 bool 形参占 4 字节参数槽；缺 isWrite 会让 extraArgsBsr 前移 8 字节，
+    // kernel 从固定槽位读到的就是 flagBlock，并被当成 itemNum 使用。
     alignas(sizeof(u32)) bool isWrite;
+    // 与 KERNEL_ARGS_DEF 尾部保持同步：subCommRankLevel/level0ChannelNumPerRank 参数槽。
+    // BSR kernel 不消费这两个值，仅占位对齐设备侧参数 ABI。
+    u32 subCommRankLevel = 0;
+    u32 level0ChannelNumPerRank = 0;
     ExtraArgsBsr extraArgsBsr;
 
     AivBsrKernelArgsDef(
@@ -676,7 +690,8 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
         u32 dataType, u32 reduceOp, u32 root, u32 tag, u64 inputSliceStride, u64 outputSliceStride, u64 repeatNum,
         u64 inputRepeatStride, u64 outputRepeatStride, u32 numBlocks, bool isOpBase = true,
         const void* headCountMem = nullptr, const void* tailCountMem = nullptr, const void* addOneMem = nullptr,
-        u32 counterMemSize = 0, const ExtraArgsBsr* extraArgsBsrPtr = nullptr, bool isWrite = false)
+        u32 counterMemSize = 0, const ExtraArgsBsr* extraArgsBsrPtr = nullptr, bool isWrite = false,
+        u32 subCommRankLevel = 0, u32 level0ChannelNumPerRank = 0)
         : buffersIn(buffIn),
           input(input),
           output(output),
@@ -700,7 +715,9 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
           addOneMem(addOneMem),
           counterMemSize(counterMemSize),
           isEnableCounter(false),
-          isWrite(isWrite)
+          isWrite(isWrite),
+          subCommRankLevel(subCommRankLevel),
+          level0ChannelNumPerRank(level0ChannelNumPerRank)
     {
         if (extraArgsBsrPtr != nullptr) {
             extraArgsBsr = *extraArgsBsrPtr;
@@ -709,18 +726,19 @@ using AivBsrKernelArgs = struct AivBsrKernelArgsDef {
 };
 
 // 与 AivKernelArgs 相同：bool 字段 4 字节对齐对应设备侧参数打包 ABI，
-// assert 仅兜底 host 侧布局，host/device 二进制必须出自同一次构建。
+// assert 仅兜底 host 侧布局，host 与 device 二进制必须出自同一次构建。
 static_assert(
     offsetof(AivExtraKernelArgs, isWrite) == offsetof(AivExtraKernelArgs, isEnableCounter) + sizeof(u32),
     "AivExtraKernelArgs bool fields must keep 4-byte alignment to match device kernel arg packing");
 
-// extraArgsBsr 必须落在设备侧打包的 152 字节处（isWrite 占 144 的 4 字节槽，ExtraArgsBsr 再按 8 字节对齐）。
+// extraArgsBsr 必须落在设备侧打包的 160 字节处（isWrite 占 144 的 4 字节槽，
+// subCommRankLevel/level0ChannelNumPerRank 各占 148/152 的 4 字节槽，ExtraArgsBsr 再按 8 字节对齐）。
 // 这里钉死绝对值：设备侧 KERNEL_ARGS_DEF 增删字段时立刻编译失败，强制 host/device 两侧同步。
 static_assert(
-    offsetof(AivBsrKernelArgs, extraArgsBsr) == 152,
-    "AivBsrKernelArgs extraArgsBsr offset must be 152 to match device kernel arg packing");
+    offsetof(AivBsrKernelArgs, extraArgsBsr) == 160,
+    "AivBsrKernelArgs extraArgsBsr offset must be 160 to match device kernel arg packing");
 
-// 上面那条只钉住总长度，钉不住中间字段错位（字段互换时 8 字节对齐仍能凑回 152）。这里按绝对偏移把两个 bool
+// 上面那条只钉住总长度，钉不住中间字段错位（字段互换时 8 字节对齐仍能凑回 160）。这里按绝对偏移把两个 bool
 // 的落点钉死。不能写成 "headCountMem == isOpBase + sizeof(u32)"：headCountMem 是指针，8 字节对齐必然落在 112，
 // bool 占 1 字节（后续补 3 字节 padding）还是占 4 字节参数槽都成立，因此该写法对槽宽不一致不敏感。
 static_assert(
@@ -728,6 +746,9 @@ static_assert(
 static_assert(
     offsetof(AivBsrKernelArgs, isEnableCounter) == 140 && offsetof(AivBsrKernelArgs, isWrite) == 144,
     "AivBsrKernelArgs isEnableCounter/isWrite must occupy the 4-byte device arg slots at 140/144");
+static_assert(
+    offsetof(AivBsrKernelArgs, subCommRankLevel) == 148 && offsetof(AivBsrKernelArgs, level0ChannelNumPerRank) == 152,
+    "AivBsrKernelArgs subCommRankLevel/level0ChannelNumPerRank must occupy the 4-byte device arg slots at 148/152");
 
 HcclResult GetAivOpBinaryPath(const std::string& aivBinaryName, std::string& binaryPath)
 {
@@ -1009,6 +1030,7 @@ u64 CalcAivCacheKeyHash(const AivOpCacheArgs& cacheKey)
     HashAppendValue(hash, cacheKey.reduceOp);
     HashAppendValue(hash, cacheKey.root);
     HashAppendValue(hash, cacheKey.numBlocksLimit);
+    HashAppendValue(hash, cacheKey.opExecuteConfig);
     HCCL_INFO("[%s] hashKey[%llu]", __func__, hash);
     return hash;
 }
@@ -1215,8 +1237,8 @@ HcclResult ClearAivTagCb(HcclComm comm, HcclCommStatePhase state, void* userPtr)
         return HCCL_SUCCESS;
     }
     ACLCHECK(haclrtMemset(
-        static_cast<u8*>(userPtr) + AIV_FLAG_ADDR_OFFSET, AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET, 0,
-        AIV_TAG_BUFF_LEN - AIV_FLAG_ADDR_OFFSET));
+        static_cast<u8*>(userPtr) + AIV_FLAG_CLEAR_OFFSET, AIV_TAG_BUFF_LEN - AIV_FLAG_CLEAR_OFFSET, 0,
+        AIV_TAG_BUFF_LEN - AIV_FLAG_CLEAR_OFFSET));
     HCCL_INFO("[%s] Aiv commInfoBuffer[%p] tag buffer clear success.", __func__, userPtr);
     return HCCL_SUCCESS;
 }
@@ -1353,8 +1375,11 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             reinterpret_cast<void*>(opArgs.counter.tailCountMem),
             reinterpret_cast<void*>(opArgs.counter.addOneMem),
             opArgs.counter.memSize,
-            &opArgs.extraArgs,
-            opArgs.isWrite};
+            opArgs.counter.isEnableCounter,
+            opArgs.isWrite,
+            opArgs.subCommRankLevel,
+            opArgs.level0ChannelNumPerRank,
+            &opArgs.extraArgs};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivExtraKernelArgs, sizeof(aivExtraKernelArgs)));
     } else if (opArgs.cmdType == HcclCMDType::HCCL_CMD_BATCH_SEND_RECV) {
         // batch_send_recv 应使用独立的入口 ExecuteKernelLaunchBsr
@@ -1385,8 +1410,10 @@ HcclResult ExecuteKernelLaunch(const AivOpArgs& opArgs)
             reinterpret_cast<void*>(opArgs.counter.tailCountMem),
             reinterpret_cast<void*>(opArgs.counter.addOneMem),
             opArgs.counter.memSize,
-            false,
-            opArgs.isWrite};
+            opArgs.counter.isEnableCounter,
+            opArgs.isWrite,
+            opArgs.subCommRankLevel,
+            opArgs.level0ChannelNumPerRank};
         CHK_RET(ExecuteKernelLaunchInner(opArgs, &aivKernelArgs, sizeof(aivKernelArgs)));
     }
     return HCCL_SUCCESS;

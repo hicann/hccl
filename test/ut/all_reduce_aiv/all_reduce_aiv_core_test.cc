@@ -58,7 +58,7 @@ namespace {
                 currentTrace = &traces.back();
                 AivAllReduceV2Mesh1DTwoShot<T>(
                     nullptr, Address(INPUT_BASE, rank), Address(OUTPUT_BASE, rank), rank, 0, s.cfg.ranks, s.cfg.count,
-                    0, 0, 0, 1, 0, 0, 1, 0, 0, s.cfg.blocks, true, nullptr, nullptr, nullptr, 0, false, false);
+                    0, 0, 0, 1, 0, 0, 1, 0, 0, s.cfg.blocks, true, nullptr, nullptr, nullptr, 0, false, false, 0, 0);
             }
         }
         currentTrace = nullptr;

@@ -22,5 +22,14 @@ inline void pipe_barrier(int) {}
 template <int pipe>
 inline void PipeBarrier()
 {}
+template <typename T>
+struct LocalTensor {};
+template <typename T>
+struct GlobalTensor {};
+struct DataCopyExtParams {};
+template <typename T>
+struct DataCopyPadExtParams {};
+inline void DataCopy(...) {}
+inline void DataCopyPad(...) {}
 } // namespace AscendC
 #endif
