@@ -237,7 +237,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
     HCCL业务存在三个阶段，分别是通信域初始化、参数面建链和通信算子执行，由于不同阶段使用的硬件资源、通信拓扑和同步方式有明显差异，因此可先确认当前HCCL报错所在的阶段，再根据不同的阶段找到对应的章节做进一步排查。
 
-    - HCCL在常见的报错场景增加了多级检索关键字，可以根据报错日志中的关键字快速识别当前报错阶段，并根据报错信息做进一步排查和定位。多级检索关键字详见[HCCL多级检索关键字](#hccl多级检索关键字)，如下日志表明在算子执行阶段发生了超时报错，且当前的算子展开方式为HOST模式：
+    - HCCL在常见的报错场景增加了多级检索关键字，可以根据报错日志中的关键字快速识别当前报错阶段，并根据报错信息做进一步排查和定位。多级检索关键字详见[HCCL相关故障码](#hccl相关故障码)中的故障码检索表，如下日志表明在算子执行阶段发生了超时报错，且当前的算子展开方式为HOST模式：
 
       ```text
       [ERROR] HCCL(858209,all_reduce_test):2025-12-10-19:52:32.589.097 [task_exception_handler.cc:27] [858274][TaskExecStage][Timeout][HOST]Task run failed, base information is streamID:[1740], taskID[23], tag[AllReduce_127.0.0.1%enp_60000_0_1765367469951573], AlgType(level 0-1-2):[fullmesh-ring-NHR].
@@ -252,25 +252,7 @@ HCCL的日志信息会记录在CANN日志中，CANN的相关日志说明请参�
 
             除此三个阶段的关键信息外，若在业务的打屏日志中有明确的错误码信息，如`EI0001`，可直接根据错误码在后续内容中找到对应的故障码，并进一步排查。
 
-### HCCL多级检索关键字
-
-| 一级关键字 | 二级检索关键字 | 故障场景 |
-| --- | --- | --- |
-| InitGroupStage | EnvConfig | [通信域初始化阶段环境变量配置异常](_dump_env_config_error_EI0001.md) |
-|                |RanktableConfig | [通信域初始化阶段rankTable文件读取失败](rank_table_file_read_fail_EI0004.md) |
-|                |RanktableCheck | [通信域初始化阶段rankTable集群信息校验失败](_dump_cluster_info_verify_fail.md) |
-|                |RanktableDetect | [通信域初始化阶段集群信息探测失败](_dump_cluster_info_nego.md) |
-|                |Resource | 通信域初始化节点资源初始化失败 |
-| InitChannelStage | ParameterConflict | [参数面建链阶段参数一致性校验失败](./param_consistency_check_EI0005.md#参数一致性校验ei0005) |
-|                |VersionConflict | 参数面建链阶段HCCL版本不一致校验失败 |
-|                |Timeout | [参数面建链阶段超时报错](./link_timeout_EI0006.md#建链超时-ei0006) |
-| TaskExecStage | InvalidArgument | 算子执行阶段入参校验失败 |
-|               |Not Supported | 算子执行阶段不支持场景 |
-|               |Timeout | [算子执行阶段执行超时](./task_exec_stage_troubleshooting.md#定位思路) |
-|               |RunFailed | [算子执行阶段执行失败](./_dump_task_exception_mechanism.md#task-exception机制) |
-|               |HeartbeatAbnormal | [算子执行阶段发现心跳异常事件](_dump_cluster_heartbeat_mechanism.md#集群心跳机制) |
-
-### HCCL相关故障码
+## HCCL相关故障码
 
 可根据业务日志中的故障码查找对应的错误标题，再使用多级关键字检索plog日志。
 故障现象、可能原因及解决方法请参见《[HCCL错误码参考](https://gitcode.com/cann/hcomm/blob/master/docs/zh/error_codes/README.md)》。
@@ -314,26 +296,38 @@ EI0019和EI0020均可使用`[InitChannelStage][Resource]`或`[InitGroupStage][Ra
 
 <!-- npu="A3,910b" id11 -->
 以下故障码说明表适用于Atlas A3系列产品和Atlas A2系列产品。
+`-`表示该级关键字无固定取值。
 
-| 故障码 | 故障码说明 |
-| --- | --- |
-| EI0001 | [环境变量配置异常](_dump_env_config_error_EI0001.md) |
-| EI0002 | [通信算子执行超时](task_exec_stage_troubleshooting.md#定位思路) |
-| EI0003 | 集合通信算子入参校验失败，请根据报错信息中的具体入参判断 |
-| EI0004 | [rankTable文件加载失败](_dump_rank_table_load_fail.md) |
-| EI0005 | [参数一致性校验失败](param_consistency_check_EI0005.md#参数一致性校验ei0005) |
-| EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时-ei0006) |
-| EI0007 | 资源初始化失败，请根据报错信息判断具体失败原因 |
-| EI0008 | HCCL版本不一致，校验失败，请根据报错信息中的版本信息判断 |
-| EI0009 | 传输初始化失败，请根据报错信息判断具体失败原因 |
-| EI0010 | Server内卡间建链失败，请根据报错信息判断具体失败原因 |
-| EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) |
-| EI0012 | [算子执行时发生SDMA任务异常](./sdma_error_EI0012.md#sdma-errorei0012) |
-| EI0013 | [算子执行时发生ROCE CQE ERROR异常](./error_cqe_report_EI0013.md#error-cqe报错ei0013) |
-| EI0014 | [集群信息校验失败](_dump_cluster_info_verify_fail.md) |
-| EI0015 | [通信域集群信息协商阶段超时](_dump_cluster_info_nego.md) |
-| EI0016 | [TLS信息配置不一致](tls_info_config_inconsistent_EI0016.md) |
-| EI0019 | [通信域创建阶段server节点端口绑定失败](./server_node_port_bind_fail_EI0019.md#server节点端口绑定失败ei0019)或[参数面建链阶段端口绑定失败](./param_port_bind_fail_EI0019.md#参数面端口绑定失败ei0019) |
-| EI9999 | HCCL内部错误，请结合CANN日志排查；仍无法解决时请联系技术支持 |
+| 故障码 | 故障码说明 | 一级关键字 | 二级关键字 | 三级关键字 |
+| --- | --- | --- | --- | --- |
+| EI0001 | [环境变量配置异常](_dump_env_config_error_EI0001.md) | `InitGroupStage` | `EnvConfig` | - |
+| EI0002 | [通信算子执行超时](task_exec_stage_troubleshooting.md#定位思路) | `TaskExecStage` | `Timeout` | `HOST` / `HOST_TS` / `AICPU` / `AIV` |
+| EI0003 | 集合通信算子入参校验失败，请根据报错信息中的具体入参判断 | `TaskExecStage` | `InvalidArgument` | - |
+| EI0004 | [rankTable文件加载失败](_dump_rank_table_load_fail.md) | `InitGroupStage` | `RanktableConfig` | - |
+| EI0005 | [参数一致性校验失败](param_consistency_check_EI0005.md#参数一致性校验ei0005) | `InitChannelStage` | `ParameterConflict` | - |
+| EI0006 | [通信算子参数面建链超时](link_timeout_EI0006.md#建链超时-ei0006) | `InitChannelStage` | `Timeout` | - |
+| EI0007 | 资源初始化失败，请根据报错信息判断具体失败原因 | `InitGroupStage` | `Resource` | - |
+| EI0008 | HCCL版本不一致，校验失败，请根据报错信息中的版本信息判断 | `InitChannelStage` | `VersionConflict` | - |
+| EI0009 | 传输初始化失败，请根据报错信息判断具体失败原因 | `InitGroupStage` | `Resource` | - |
+| EI0010 | Server内卡间建链失败，请根据报错信息判断具体失败原因 | `InitChannelStage` | `Timeout` | - |
+| EI0011 | [QP内存资源申请失败](qp_mem_resource_apply_EI0011.md#qp内存资源申请相关ei0011) | `InitGroupStage` | `Resource` | - |
+| EI0012 | [算子执行时发生SDMA任务异常](./sdma_error_EI0012.md#sdma-errorei0012) | `TaskExecStage` | `RunFailed` | `HOST` / `HOST_TS` / `AICPU` / `AIV` |
+| EI0013 | [RoCE CQE错误](./error_cqe_report_EI0013.md#error-cqe报错ei0013) | `TaskExecStage` | `HeartbeatAbnormal` | `CQE ERROR` / `ROCE CQE ERROR` |
+| EI0014 | [集群信息校验失败](_dump_cluster_info_verify_fail.md) | `InitGroupStage` | `RanktableCheck` | - |
+| EI0015 | [通信域集群信息协商阶段超时](_dump_cluster_info_nego.md) | `InitGroupStage` | `RanktableDetect` | - |
+| EI0016 | [TLS信息配置不一致](tls_info_config_inconsistent_EI0016.md) | `InitGroupStage` | `RanktableCheck` | - |
+| EI0019 | [参数面建链阶段端口绑定失败](./param_port_bind_fail_EI0019.md#参数面端口绑定失败ei0019)/[通信域创建阶段server节点端口绑定失败](./server_node_port_bind_fail_EI0019.md#server节点端口绑定失败ei0019) | `InitGroupStage` / `InitChannelStage` | `RanktableDetect` | - |
+| EI9999 | HCCL内部错误，请结合CANN日志排查；仍无法解决时请联系技术支持 | - | - | - |
+
+多个故障码可能共用`[InitGroupStage][Resource]`，可结合业务故障码和日志正文区分。排查EI0009时，可在同一条日志中查找`RoCE link status is down`。排查EI0011时，可用`create qp failed`定位QP创建失败，再在同一进程的附近日志中查找`out of memory`。
+
+EI0012也可能在AIV任务执行失败时上报，可检索`[TaskExecStage][RunFailed][AIV]`并查看日志正文。
+
+EI0019的两类场景可通过日志中的`socket type`区分。`socket type[0]`或`socket type[1]`表示参数面端口绑定失败，前缀为`[InitGroupStage][RanktableDetect]`。`socket type[2]`表示通信域创建时Host侧网卡端口绑定失败，前缀为`[InitChannelStage][RanktableDetect]`。
 
 <!-- end id11 -->
+
+业务日志未上报故障码时，可使用以下关键字检索plog日志。
+
+- `[TaskExecStage][HeartbeatAbnormal]`表示算子执行阶段检测到心跳异常。可结合日志正文区分心跳丢失、进程卡住和CQE错误，参见[集群心跳机制](_dump_cluster_heartbeat_mechanism.md#集群心跳机制)。
+- `[TaskExecStage][Not Supported]`表示当前算子或配置不受支持。可根据日志正文确认具体限制。
