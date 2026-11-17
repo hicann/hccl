@@ -186,7 +186,6 @@ check_cxx_source_compiles([=[
 #include "exe_graph/runtime/exe_res_generation_context.h"
 #include "exe_graph/runtime/task_def_builder.h"
 #include "graph/arg_desc_info.h"
-#include "graph/ge_version_check.h"
 #include "register/op_impl_registry.h"
 
 // 等价于 hccl_gen_task_superkernel.cc 的 MakeSuperKernelReg：构造后按值返回，
@@ -200,10 +199,9 @@ static std::optional<gert::OpImplRegisterV2> MakeRegProbe(const char* opType)
 
 int main()
 {
-    // 弱符号版本探测（老 toolkit 上解析为空指针，调用前判空，见 cann/ge!5881）
-    if (&ge::IsVersionSupported != nullptr) {
-        (void)ge::IsVersionSupported("9.3.0");
-    }
+    // 弱符号业务方法存在性探测（老 toolkit 上解析为空指针，调用前判空）
+    const bool taskDefBuilderAvailable = &gert::TaskDefBuilder::SetStreamId != nullptr;
+    (void)taskDefBuilderAvailable;
     // 运行期条件注册等价于 IMPL_OP(...).GenerateTask(...) 的静态注册
     const auto reg = MakeRegProbe("HcomAllReduce");
     (void)reg;
@@ -235,7 +233,7 @@ if(HCCL_HAS_GE_SUPERKERNEL_GENTASK)
 else()
     # 探测不到接口：降级（不编入 superkernel gen_task），不中断构建。
     # 运行期另有弱符号版本守卫（IsGeSuperKernelGenTaskSupported）：老 toolkit 上不注册回调，
-    # 由 toolkit 自带的旧 superkernel 实现接管兜底（cann/ge!5881 兼容方案）。
+    # 由 toolkit 自带的旧 superkernel 实现接管兜底。
     # 注意：接口是否随 CANN 包发布与版本号不严格绑定。
     message(WARNING
         "HCCL SuperKernel GenTask is disabled: GE superkernel GenTask interface "

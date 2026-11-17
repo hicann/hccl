@@ -29,11 +29,12 @@ bool IsA5OrLaterShortSocVersion(const std::string& shortSocVersion);
 // 构造 HCCL SuperKernel 子算子的 args format：布局固定为 hidden input 在前，随后 input、output。
 ge::AscendString BuildSuperKernelArgsFormat();
 
-// 版本守卫（GE 弱符号兼容方案，见 cann/ge!5881）：GE 自 9.3.0 起将 TaskDefBuilder 开放为弱符号，
-// 并新增弱符号版本探测接口 ge::IsVersionSupported。老 toolkit（<9.3.0）的 GE 库无这些符号，
-// 弱引用运行期解析为空指针，故须先判空再调用版本接口；返回 false 表示运行环境不支持
-// SuperKernel GenTask，注册方不注册回调、回调方优雅失败，由 toolkit 自带的旧 superkernel
-// 实现接管兜底（存量行为不变）。
+// TaskDefBuilder 业务方法弱符号存在性探测（单一实现点：守卫与 UT 共用，避免双侧表达式漂移）。
+bool HasTaskDefBuilderBusinessMethod();
+
+// 版本守卫：TaskDefBuilder 业务方法为弱符号，老 toolkit 上解析为空指针，调用前须判空；
+// 返回 false 表示运行环境不支持 SuperKernel GenTask——注册方不注册回调、回调方优雅失败，
+// 由 toolkit 自带的旧 superkernel 实现接管兜底（存量行为不变）。
 bool IsGeSuperKernelGenTaskSupported();
 
 ge::Status

@@ -30,7 +30,6 @@
 #include <unistd.h>
 #include "exe_graph/runtime/exe_res_generation_context.h"
 #include "exe_graph/runtime/task_def_builder.h"
-#include "graph/ge_version_check.h"
 #include "op_util.h"
 #include "platform/platform_info.h"
 #include "register/op_impl_registry.h"
@@ -85,17 +84,20 @@ ge::AscendString BuildSuperKernelArgsFormat()
     return ge::ArgsFormatSerializer::Serialize(argDescs);
 }
 
+bool HasTaskDefBuilderBusinessMethod()
+{
+    // GE 自 9.3.0 起将 TaskDefBuilder 业务方法声明为弱符号（构造/析构内联、内部任务描述惰性创建）：
+    // 老 toolkit 上弱引用解析为空指针，调用前须判空。本仓编译探测无法校验 weak 属性，以链接产物
+    // nm -D（业务方法应为 w）为准。业务方法同批发布，运行库整体在场或缺席，取 SetStreamId 为
+    // 代表性方法做整组存在性探测
+    return &gert::TaskDefBuilder::SetStreamId != nullptr;
+}
+
 bool IsGeSuperKernelGenTaskSupported()
 {
-    // 前置契约：本守卫成立依赖 GE 头侧将 TaskDefBuilder 与 IsVersionSupported 声明为弱符号
-    // （cann/ge!5881）——本仓编译探测只校验头文件在位，无法校验 weak 属性；消费侧弱引用是否
-    // 真正降级为 WEAK UND 以链接产物为准（nm -D libopgraph_hccl.so 应为 w），GE 包升级时复核。
-    // 老 toolkit（<9.3.0）的 GE 库无该符号，弱引用运行期解析为空指针，必须先判空再调用，
-    // 避免空指针跳 0
-    if (&ge::IsVersionSupported == nullptr) {
-        return false;
-    }
-    return ge::IsVersionSupported("9.3.0"); // 与 src/hccl.cmake 及 UT 探测体中的 "9.3.0" 同口径，修改需三处同步
+    // 守卫委托单一探测点：改探测符号必须修改 HasTaskDefBuilderBusinessMethod（评审可见），
+    // 避免实现与测试双侧表达式漂移
+    return HasTaskDefBuilderBusinessMethod();
 }
 
 namespace {
@@ -286,8 +288,8 @@ HcclSuperKernelGenTaskCallback(const gert::ExeResGenerationContext* context, std
 {
     const char* nodeName = context->GetNodeName();
 
-    // 版本守卫（注册时机已探测，此处双保险）：老 toolkit（<9.3.0）上 TaskDefBuilder 各方法为
-    // 空指针弱引用，任何构造/调用都会跳 0；此处优雅失败，由 GE 默认任务生成路径兜底
+    // 版本守卫（注册时机已探测，此处双保险）：老 toolkit 上 TaskDefBuilder 业务方法为空指针弱引用，
+    // 调用即跳 0；此处优雅失败，由 toolkit 自带旧 superkernel 实现接管
     if (!IsGeSuperKernelGenTaskSupported()) {
         OP_LOGW(nodeName, "GE runtime does not support superkernel gen task (requires >= 9.3.0).");
         return ge::GRAPH_FAILED;
@@ -403,7 +405,7 @@ HcclSuperKernelGenTaskCallback(const gert::ExeResGenerationContext* context, std
 
 namespace {
     // 运行期条件注册等价于 IMPL_OP(...).GenerateTask(...) 的静态注册，但注册动作条件化：
-    // 版本守卫不支持（老 toolkit）时不注册，保持 GE 对 Hcom 算子的默认任务生成路径兜底。
+    // 版本守卫不支持（老 toolkit）时不注册，由 toolkit 自带旧 superkernel 实现接管兜底。
     // 返回 optional 仅为延长注册对象生命周期（注册在构造时完成），注册表条目由 register 库内部维护，
     // 不依赖本 so 的符号导出
     std::optional<gert::OpImplRegisterV2> MakeSuperKernelReg(const char* opType, bool enabled)
@@ -419,11 +421,12 @@ namespace {
 
 // 注册时机（dlopen 本 so 的静态初始化阶段）做一次版本守卫探测：弱符号在静态初始化执行前已由
 // 动态链接器解析完毕（老 toolkit 上为空指针），此后运行环境不再变化，结论全进程一致。
-// 不注册仅意味着运行环境 GE 低于 9.3.0：本 so 对 GE 新符号的弱引用全部解析为空指针，
-// dlopen 不再因 undefined symbol 失败；Hcom 算子由 toolkit 自带的旧 superkernel 实现接管
-// （发行 toolkit 中位于 libopgraph_legacy.so），存量行为不变，实现老 toolkit 兼容。
-// 判定不支持时打印一条 INFO：区分"本 so 已加载但 GE 不支持"与"so 未加载"两种部署形态，
-// 便于线上诊断；静态初始化期 OP_LOG 对 nullptr opname 安全（op_util.h）
+// 不支持时不注册：本 so 弱引用全部解析为空指针，dlopen 不再因 undefined symbol 失败；Hcom
+// 算子由 toolkit 自带的旧 superkernel 实现接管（libopgraph_legacy.so），存量行为不变。
+// 前提：降级链仅在构建基线为弱符号头（头文件含 GE_TASK_PROTO_CTOR_WEAK）时成立；强声明头下
+// 本 so 为强引用，老 toolkit 仍 dlopen 失败（与无守卫等价），构建时注意核对基线头形态。
+// 判定不支持时打印 INFO：区分"so 已加载但 GE 不支持"与"so 未加载"，便于线上诊断；
+// 静态初始化期 OP_LOG 对 nullptr opname 安全（op_util.h）
 [[maybe_unused]] const bool g_geSuperKernelGenTaskSupported = [] {
     const bool supported = IsGeSuperKernelGenTaskSupported();
     if (!supported) {

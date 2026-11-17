@@ -8,7 +8,7 @@
 # See LICENSE in the root of the software repository for the full text of the License.
 # -----------------------------------------------------------------------------------------------------------
 
-# 该 UT 依赖 GE 对外接口 TaskDefBuilder / OpImplRegisterV2 / kHcclSuperKernel / ge_version_check，
+# 该 UT 依赖 GE 对外接口 TaskDefBuilder（业务方法弱符号）/ OpImplRegisterV2 / kHcclSuperKernel，
 # 接口不存在时跳过。注意：以下编译探测代码与 src/hccl.cmake 保持逐字一致，修改时请同步另一处。
 include(CheckCXXSourceCompiles)
 set(_hccl_sk_probe_saved_includes "${CMAKE_REQUIRED_INCLUDES}")
@@ -30,7 +30,6 @@ check_cxx_source_compiles([=[
 #include "exe_graph/runtime/exe_res_generation_context.h"
 #include "exe_graph/runtime/task_def_builder.h"
 #include "graph/arg_desc_info.h"
-#include "graph/ge_version_check.h"
 #include "register/op_impl_registry.h"
 
 // 等价于 hccl_gen_task_superkernel.cc 的 MakeSuperKernelReg：构造后按值返回，
@@ -44,10 +43,9 @@ static std::optional<gert::OpImplRegisterV2> MakeRegProbe(const char* opType)
 
 int main()
 {
-    // 弱符号版本探测（老 toolkit 上解析为空指针，调用前判空，见 cann/ge!5881）
-    if (&ge::IsVersionSupported != nullptr) {
-        (void)ge::IsVersionSupported("9.3.0");
-    }
+    // 弱符号业务方法存在性探测（老 toolkit 上解析为空指针，调用前判空）
+    const bool taskDefBuilderAvailable = &gert::TaskDefBuilder::SetStreamId != nullptr;
+    (void)taskDefBuilderAvailable;
     // 运行期条件注册等价于 IMPL_OP(...).GenerateTask(...) 的静态注册
     const auto reg = MakeRegProbe("HcomAllReduce");
     (void)reg;
